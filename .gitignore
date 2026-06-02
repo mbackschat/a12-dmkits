@@ -1,0 +1,18 @@
+# Gradle
+.gradle/
+build/
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+bin/
+
+# OS
+.DS_Store
+
+# Keep the Gradle wrapper jar tracked
+!gradle/wrapper/gradle-wrapper.jar

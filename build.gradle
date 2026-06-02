@@ -1,0 +1,39 @@
+plugins {
+    id 'java-library'
+}
+
+group = 'io.github.mbackschat.a12.rulekit'
+version = '0.1.0-SNAPSHOT'
+
+// PUBLIC + LOCAL repositories only. The A12 kernel is resolved from the local Maven
+// repository (~/.m2), where the dedicated a12-kernel-bootstrap kit publishes it from
+// public sources. No private registry is used. See docs/PROJECT-PROPOSAL.md §19.
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+def kernelVersion = '30.8.1'
+
+dependencies {
+    // Public consumer surface only (D9 / N8). The facade transitively provides the public
+    // IDocumentModel, IDocumentModelService (expand / checkConsistency — the §11 validate seam),
+    // and the DM-JSON serializer. Kernel types appear in rulekit's own public API, hence `api`.
+    // Deliberately NOT kernel-md-model / kernel-md-a12internal: those carry the internal-tier
+    // `betterbuilders` the proposal excludes.
+    api "com.mgmtp.a12.kernel:kernel-md-facade:${kernelVersion}"
+
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
