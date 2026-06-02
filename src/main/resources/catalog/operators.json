@@ -57,7 +57,7 @@
     "constraints": [ "ordering is legal only for numbers, amounts, and dates (not strings, enums, booleans, confirms, or date-ranges)" ],
     "gotchas": [ "the symbol is the same in every condition language (it is not a localized keyword)" ],
     "validExample": { "dsl": "[Quantity] <= 0", "note": "fires when Quantity is zero or negative" },
-    "invalidExample": { "dsl": "[Name] <= [Code]", "error": "MVK_INVALID_TYPE_FOR_COMPARISON", "fix": "ordering needs numbers or dates; compare strings with == / != instead" },
+    "invalidExample": { "dsl": "[CustomerName] <= [ProductCode]", "error": "MVK_INVALID_TYPE_FOR_COMPARISON", "fix": "ordering needs numbers or dates; compare strings with == / != instead" },
     "sinceKernel": "30.8.x"
   },
   {
@@ -69,7 +69,7 @@
     "meaning": "The character length of a string field's value.",
     "constraints": [ "the operand must be a string field" ],
     "gotchas": [ "applying Length to a non-string field is a type error" ],
-    "validExample": { "dsl": "Length(Name) > 10", "note": "fires when Name is longer than 10 characters" },
+    "validExample": { "dsl": "Length(CustomerName) > 10", "note": "fires when CustomerName is longer than 10 characters" },
     "invalidExample": { "dsl": "Length(Quantity) > 10", "error": "operand type", "fix": "Length needs a string field, not a number" },
     "sinceKernel": "30.8.x"
   }
