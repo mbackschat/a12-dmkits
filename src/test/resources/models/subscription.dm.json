@@ -1,0 +1,131 @@
+{
+  "header": {
+    "id": "subscription",
+    "modelType": "document",
+    "modelVersion": "28.4.0",
+    "locales": [
+      {
+        "code": "en_US"
+      }
+    ],
+    "labels": [],
+    "annotations": [],
+    "modelReferences": []
+  },
+  "content": {
+    "modelInfo": {
+      "name": "subscription",
+      "variant": "cockpit",
+      "revision": "Arbeitsversion",
+      "immutable": false
+    },
+    "modelConfig": {
+      "decimalSeparator": ".",
+      "timeZone": "Europe/Berlin",
+      "conditionLanguage": {
+        "code": "en_US"
+      },
+      "fieldRefByShortNameAllowed": true
+    },
+    "modelRoot": {
+      "rootGroups": [
+        {
+          "type": "Group",
+          "id": "/Subscription",
+          "name": "Subscription",
+          "Group": {
+            "repeatability": 1,
+            "elements": [
+              {
+                "type": "Field",
+                "id": "/Subscription/Tier",
+                "name": "Tier",
+                "Field": {
+                  "fieldType": {
+                    "type": "EnumerationType",
+                    "EnumerationType": {
+                      "values": [
+                        {
+                          "value": "BASIC",
+                          "label": [
+                            {
+                              "locale": "en_US",
+                              "text": "Basic"
+                            },
+                            {
+                              "locale": "de_DE",
+                              "text": "Basis"
+                            }
+                          ]
+                        },
+                        {
+                          "value": "PRO",
+                          "label": [
+                            {
+                              "locale": "en_US",
+                              "text": "Pro"
+                            },
+                            {
+                              "locale": "de_DE",
+                              "text": "Pro"
+                            }
+                          ]
+                        },
+                        {
+                          "value": "ENTERPRISE",
+                          "label": [
+                            {
+                              "locale": "en_US",
+                              "text": "Enterprise"
+                            },
+                            {
+                              "locale": "de_DE",
+                              "text": "Enterprise"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Group",
+                "id": "/Subscription/Addons",
+                "name": "Addons",
+                "Group": {
+                  "repeatability": 20,
+                  "elements": [
+                    {
+                      "type": "Field",
+                      "id": "/Subscription/Addons/Name",
+                      "name": "Name",
+                      "Field": {
+                        "fieldType": {
+                          "type": "StringType"
+                        }
+                      }
+                    },
+                    {
+                      "type": "Field",
+                      "id": "/Subscription/Addons/MonthlyFee",
+                      "name": "MonthlyFee",
+                      "Field": {
+                        "fieldType": {
+                          "type": "NumberType",
+                          "NumberType": {
+                            "maxFractionalDigits": 2
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
