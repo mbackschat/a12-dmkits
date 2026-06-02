@@ -2,6 +2,16 @@
 
 Working notes gathered while scaffolding Phase 1 against the A12 kernel **`30.8.1`** public surface (sibling repo `a12-kernel`, resolved from `mavenLocal`). These are verified against the kernel source unless marked otherwise. They complement the design in [`PROJECT-PROPOSAL.md`](./PROJECT-PROPOSAL.md); when something here contradicts the proposal, this file reflects what the code actually does.
 
+## Validating a rule via `checkConsistency` (F4 — verified by experiment)
+
+Confirmed end-to-end by the `RuleValidator` increment (inject a `Rule` into the model DM-JSON → deserialize → `expand` → `checkConsistency`):
+
+- **A rule must carry error text.** A rule with no `errorMessage` is rejected with `MVK_ERROR_MESSAGE_MISSING` (and a companion `RULE_HAS_NO_ERRORTEXT`). The validator therefore **auto-injects a placeholder `errorMessage` per model locale** so that requirement doesn't mask the condition diagnostics we actually want to check. (Locales come from `header.locales[].code` in the DM-JSON.)
+- **Absolute-path conditions validate fine.** `FieldFilled(/Subscription/Addons/MonthlyFee) And [/Subscription/Addons/MonthlyFee] <= 0` is accepted by the kernel as a rule condition. So rulekit's current absolute-path rendering produces **kernel-valid** output — the relative/short path policy (§18.9) is a readability/diff refinement, **not** a correctness requirement.
+- **error-field-referenced works across path forms.** The rule's `errorEntityRelPath` was relative (`../MonthlyFee`) while the condition referenced the field by absolute path; the kernel still considered the error field referenced (no `MVK_ERROR_FIELD_NOT_REFERENCED`). They resolve to the same node.
+- **Not every code is `MVK_*`.** `checkConsistency` notifications carry mixed code styles — `MVK_INVALID_TYPE_FOR_COMPARISON` (string ordering) and `MVK_ERROR_MESSAGE_MISSING` have the `MVK_` prefix, but `RULE_HAS_NO_ERRORTEXT` does not. So MVK-code extraction from the message is **best-effort**; don't assume every problem yields an `MVK_*` code.
+- **N7 is now feasible.** With the validator in place, CI-validating the catalog's `validExample`/`invalidExample` against the real kernel (each embedded as a rule) is a buildable next step — it just needs a tiny harness around `RuleValidator`.
+
 ## Build / environment gotchas
 
 - **The machine's global Gradle config injects a private registry** (`registry.internal.invalid`). A plain `./gradlew test` then fails to resolve even public deps (it routes Maven Central parent POMs through the private mirror). Build with an **isolated, public-repos-only `GRADLE_USER_HOME`** — the same trick the bootstrap uses. The sibling `a12-kernel-demo` documents `export GRADLE_USER_HOME="$ROOT/.gradle-isolated"`. rulekit's README does the same. Don't commit a per-machine init that hardcodes the private repo.
