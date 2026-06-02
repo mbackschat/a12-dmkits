@@ -33,11 +33,7 @@ public final class ModelLoader {
      * actionable message pointing at {@link #load(Reader, IDocumentModelReferenceResolver)}.
      */
     public static IDocumentModel loadSelfContained(Reader reader) throws IOException {
-        return load(reader, reference -> {
-            throw new IllegalStateException(
-                    "model references a separate model (\"" + reference + "\") but was loaded as "
-                            + "self-contained; use ModelLoader.load(reader, resolver) and supply a resolver");
-        });
+        return load(reader, ReferenceResolvers.selfContained());
     }
 
     /**
