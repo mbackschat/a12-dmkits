@@ -1,0 +1,76 @@
+[
+  {
+    "id": "FieldFilled",
+    "kind": "predicate",
+    "keywords": { "en": "FieldFilled", "de": "FeldAngegeben" },
+    "operands": [ { "type": "any" } ],
+    "returns": "boolean",
+    "meaning": "True iff the referenced field currently holds a value.",
+    "constraints": [ "the operand is a single field reference, not a bracketed field-value expression" ],
+    "gotchas": [ "a field carrying a formal error is removed from evaluation, so 'FieldFilled(F) Or FieldNotFilled(F)' is not a tautology" ],
+    "validExample": { "dsl": "FieldFilled(Quantity)", "note": "true when Quantity has a value" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "FieldNotFilled",
+    "kind": "predicate",
+    "keywords": { "en": "FieldNotFilled", "de": "FeldNichtAngegeben" },
+    "operands": [ { "type": "any" } ],
+    "returns": "boolean",
+    "meaning": "True iff the referenced field is empty.",
+    "constraints": [ "the operand is a single field reference" ],
+    "gotchas": [ "FieldFilled and FieldNotFilled are not strict complements once formal errors are in play (see FieldFilled)" ],
+    "validExample": { "dsl": "FieldNotFilled(Quantity)", "note": "true when Quantity is empty" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "And",
+    "kind": "operator",
+    "keywords": { "en": "And", "de": "Und" },
+    "operands": [ { "type": "boolean" }, { "type": "boolean" } ],
+    "returns": "boolean",
+    "meaning": "True iff both boolean operands are true.",
+    "constraints": [ "both operands must be boolean conditions" ],
+    "gotchas": [ "there is no 'Not' operator", "parentheses are required when mixing And with Or" ],
+    "validExample": { "dsl": "FieldFilled(Quantity) And FieldFilled(UnitPrice)", "note": "fires only when both are filled" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "Or",
+    "kind": "operator",
+    "keywords": { "en": "Or", "de": "Oder" },
+    "operands": [ { "type": "boolean" }, { "type": "boolean" } ],
+    "returns": "boolean",
+    "meaning": "True iff at least one boolean operand is true.",
+    "constraints": [ "both operands must be boolean conditions" ],
+    "gotchas": [ "parentheses are required when mixing Or with And" ],
+    "validExample": { "dsl": "FieldFilled(Quantity) Or FieldFilled(BackorderQuantity)", "note": "fires when either is filled" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "LessThanOrEqual",
+    "kind": "operator",
+    "keywords": { "en": "<=", "de": "<=" },
+    "operands": [ { "type": "orderable" }, { "type": "orderable" } ],
+    "returns": "boolean",
+    "meaning": "True iff the left operand is less than or equal to the right.",
+    "constraints": [ "ordering is legal only for numbers, amounts, and dates (not strings, enums, booleans, confirms, or date-ranges)" ],
+    "gotchas": [ "the symbol is the same in every condition language (it is not a localized keyword)" ],
+    "validExample": { "dsl": "[Quantity] <= 0", "note": "fires when Quantity is zero or negative" },
+    "invalidExample": { "dsl": "[Name] <= [Code]", "error": "MVK_INVALID_TYPE_FOR_COMPARISON", "fix": "ordering needs numbers or dates; compare strings with == / != instead" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "Length",
+    "kind": "function",
+    "keywords": { "en": "Length", "de": "Laenge" },
+    "operands": [ { "type": "string" } ],
+    "returns": "number",
+    "meaning": "The character length of a string field's value.",
+    "constraints": [ "the operand must be a string field" ],
+    "gotchas": [ "applying Length to a non-string field is a type error" ],
+    "validExample": { "dsl": "Length(Name) > 10", "note": "fires when Name is longer than 10 characters" },
+    "invalidExample": { "dsl": "Length(Quantity) > 10", "error": "operand type", "fix": "Length needs a string field, not a number" },
+    "sinceKernel": "30.8.x"
+  }
+]

@@ -29,6 +29,9 @@ dependencies {
     // `betterbuilders` the proposal excludes.
     api "com.mgmtp.a12.kernel:kernel-md-facade:${kernelVersion}"
 
+    // The operator catalog (proposal §9) is a bundled JSON resource parsed at load time.
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
