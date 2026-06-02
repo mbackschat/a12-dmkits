@@ -6,7 +6,15 @@ A **model-aware**, typed, combinator-style **builder** (Java first, TypeScript l
 
 ## Status
 
-Early scaffold. The design is captured in **[`docs/PROJECT-PROPOSAL.md`](docs/PROJECT-PROPOSAL.md)** — vision, requirements, architecture, the operator-catalog spine, the decision log (§17, locked), and the phased roadmap (§16). We are at the start of **Phase 1** (Java vertical slice); this repo currently contains the build skeleton and a kernel-wiring smoke test.
+Phase 1 in progress (Java vertical slice). The design is captured in **[`docs/PROJECT-PROPOSAL.md`](docs/PROJECT-PROPOSAL.md)** — vision, requirements, architecture, the operator-catalog spine, the decision log (§17, locked), and the phased roadmap (§16); verified kernel facts in **[`docs/KERNEL-INTEGRATION-NOTES.md`](docs/KERNEL-INTEGRATION-NOTES.md)**.
+
+Working end-to-end today:
+- **Model index** (F0) — load DM-JSON → `expand` → `checkConsistency` → index group tree, field kinds, number scale, repetition.
+- **Operator catalog** (§9) — bundled JSON spine with verified bilingual keywords; **self-verifying**: every example is checked against the real kernel (N7).
+- **Typed condition AST + renderer** — model-bound handles compose immutable `Condition`s; the catalog-driven renderer emits canonical EN/DE text.
+- **Ground-truth validator** (F4) — injects a rendered rule as DM-JSON and runs `checkConsistency`, mapping `MVK_*` to problems.
+
+Not yet built: relative/short path policy (§18.9), computations (F2), broader operator/type coverage, explainability (F9), modify (F8), the TS port.
 
 ## Prerequisites
 
@@ -30,7 +38,7 @@ export JAVA_HOME="$(/usr/libexec/java_home -v 21)"   # macOS; or point at any JD
 ./gradlew test
 ```
 
-The smoke test (`KernelWiringTest`) confirms the public kernel services rulekit's validate seam will use (`IDocumentModelService` — `expand` / `checkConsistency`) are reachable through `kernel-md-facade` alone.
+The suite covers kernel wiring, the model index, the renderer (EN/DE), the validator, and the self-verifying catalog (each example checked against the real kernel) — so a green `test` means rulekit's output is confirmed by the engine, not just plausible.
 
 ## License
 
