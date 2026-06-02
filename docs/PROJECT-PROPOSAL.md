@@ -6,7 +6,7 @@
 >
 > **Not an official A12 artifact.** A personal exploration; not affiliated with or endorsed by mgm. Builds only against public OSS sources (no internal systems).
 >
-> **Resume here:** this document *is* the project so far (Phase 0 in §16 — design, no code). The recommended decisions are in [§17](#17-decision-log) (recommendations, not locked); what to settle before scaffolding Phase 1 is in [§18](#18-open-questions). The most **build-shaping** questions are **#1** (source of truth: authoring *new* rules vs editing *existing* BA-authored DSL), **#7** (v1 binding level — runtime L2a recommended), and **#9** (path-rendering policy); the genuinely **owner-dependent forks** (⮕ *needs your call* in §18) are **#1, #5, #6, #8, #9**. The one non-negotiable: **model-awareness is foundational** ([§5a](#5a-model-awareness)).
+> **Resume here:** this document *is* the project so far (Phase 0 in §16 — design, no code). The recommended decisions are in [§17](#17-decision-log); the open questions in [§18](#18-open-questions) are **all decided as of 2026-06-02** — every one adopts its recommendation (owner's call), including the genuine owner-dependent forks **#1** (source of truth → authoring *new* rules, builder-code-as-truth), **#5** (jOOQ-functional `DSL.*`), **#6** (standalone library), **#8** (consume an existing model only), **#9** (relative-paths-default rendering). The build-shaping settled defaults are **#1**, **#7** (runtime L2a binding) and **#9**. The **one remaining open call** is the **§19 license** (recommend Apache-2.0 or MIT). The one non-negotiable: **model-awareness is foundational** ([§5a](#5a-model-awareness)). Next step: scaffold **Phase 1** (§16).
 
 ---
 
@@ -539,15 +539,17 @@ Each phase is independently shippable and useful; later phases are *earned by ne
 | D13 | Decimal-scale pre-checking boundary (§11/§5b) | pre-check scale **only for the arithmetic-free case** (comparing two declared-scale fields, scales read from `INumberType.getMaxFractionalDigits()`); for any expression involving arithmetic, **do not predict** the result scale — defer to the real-kernel `checkConsistency` step and steer authors to explicit `Round*` | the kernel's *parser* computes result scale (`*` sums, `+`/`-` max, `/`/general `^` unpredictable, `Round(…,z)`→`z`); predicting it would reimplement engine truth (**N3**). Owning only the cheap field-vs-field case keeps the pre-check honest and drift-free |
 | D14 | Explainability (F9, §14) — design now, ship later | Treat a structured **`explain(rule, model)`** surface (referenced fields + types + roles, operators + catalog semantics, iteration/error-field/severity context, NL gloss) as a **first-class goal scheduled for Phase 2**, but make the **Phase-1 AST carry catalog operator-ids + model-resolved field refs** so it's a cheap projection, not a rebuild. Explaining *rulekit-built* ASTs is Phase 2; explaining *foreign DSL text* is gated on the #3 round-trip (Phase 5). | understanding precedes rewriting/modifying — explanation is the same catalog+model projection that powers re-express (#2) and the self-sufficiency eval (N6); it is near-free *iff* the AST keeps its structure, so the only thing that must happen now is the invariant, not the feature |
 
-*(These are recommendations to confirm/adjust, not locked decisions.)*
+*(Recommended defaults. The entries mirrored by a now-decided §18 question are locked accordingly — D2↔#7, D4/D5↔#1, D6↔#5/#6, D12↔#4, D13, D14↔#12; the rest stand as the working design unless revisited.)*
 
 ---
 
 ## 18. Open questions <a name="18-open-questions"></a>
 
-Each carries a **recommendation**, its **rationale**, and the **alternatives** considered. The genuinely owner-dependent forks are flagged ⮕ **needs your call**; the rest are mostly *confirm*.
+Each carries a **recommendation**, its **rationale**, and the **alternatives** considered.
 
-1. **Source of truth in practice** — is the goal purely *new* rule authoring, or must we eventually edit *existing BA-authored DSL/JSON*? ⮕ **needs your call** (it's what flips #3 from someday to must-have).
+> **Decided 2026-06-02 — all twelve adopt their recommendation** (owner's call). The recommendation/rationale/alternatives below are retained as the design record (the *why* behind each choice and what was rejected); the ⮕ markers flag which were the genuine owner-dependent forks rather than confirmations. The only call still open is the **§19 license** choice.
+
+1. **Source of truth in practice** — is the goal purely *new* rule authoring, or must we eventually edit *existing BA-authored DSL/JSON*? ⮕ **fork — decided: recommendation adopted** (it's what flips #3 from someday to must-have).
    - **Recommendation:** default to **new-authoring, builder-code-as-source-of-truth** (rebuild); keep the render/parse seam open so the #3 round-trip *can* be added later.
    - **Scope clarification (this is about *rules*, not the model).** Binding to an **existing `DocumentModel`** is *always* supported and is the only mode — F0/§5a: v1 consumes an existing model and never builds model structure. Q1 concerns only the **rules' source of truth**: authoring/replacing rules *through the builder* (recommended) vs. reading back **pre-existing rule *text*** you didn't author via rulekit (the #3 round-trip, deferred). So "work on an existing model, (re)authoring its rules with the builder" is the mainline; only round-tripping foreign rule strings is deferred.
    - **Rationale:** covers the near-term LLM value (authoring + in-AST transform #1 + re-express #2) cheaply; #3 is the expensive, drift-prone, blast-radius-heavy capability — don't pay for it speculatively.
@@ -568,14 +570,14 @@ Each carries a **recommendation**, its **rationale**, and the **alternatives** c
    - **Rationale:** that covers `ComputationDemo` and the bulk of real use; the deferred cases are rarer and carry the self-validation/decimal-scale subtleties best handled once the core is proven (catalog-driven, so coverage grows).
    - **Alternatives:** (a) full computation coverage in v1 (more upfront, over-build risk); (b) conditions-only v1, computations later (faster first ship, defers half the goal).
 
-5. **Naming / ergonomic style** — jOOQ-functional `DSL.*` vs FluentValidation-OO `RuleFor(...)`? ⮕ **needs your call** (partly taste; affects the TS twin).
+5. **Naming / ergonomic style** — jOOQ-functional `DSL.*` vs FluentValidation-OO `RuleFor(...)`? ⮕ **fork — decided: recommendation adopted** (partly taste; affects the TS twin).
    - **Recommendation:** **jOOQ-functional `DSL.*` static-import core**, with optional FluentValidation-style sugar; optimise for a clean Zod-flavored TS twin.
    - **Rationale:** functional value-combinators compose best (matches the combinator/parameterization requirement + immutable AST), are the most LLM-legible, and map most directly to TS (Zod is functional). We bind to a *DocumentModel* via field handles, not a typed POJO, so `RuleFor(x -> …)` fits less naturally.
    - **Still current under modern Java (25):** no Java feature supersedes the static-import-factory + immutable-fluent-node idiom (no operator overloading / extension methods / named args), so jOOQ/QueryDSL remain the exemplars. Modern Java changes the *internals, not the surface*: model the AST as **sealed interfaces + records** and dispatch the renderer with **pattern-matching `switch`** — keep the jOOQ-style authoring surface on top.
    - **For the TS twin:** *not* a literal jOOQ port — TS re-skins to a **Zod-flavored** surface (a `z`-like namespace / standalone functions + chaining, not Java static imports) over the **same catalog + AST contract**. The portable part is the **functional combinator core** that jOOQ and Zod share; the per-language skin differs (§13). Keep language-specific type tricks (Java generics, TS template-literal types) out of the shared contract.
    - **Alternatives:** (a) FluentValidation-OO primary (familiar, but less TS-portable); (b) both surfaces first-class (more API to maintain, parity burden).
 
-6. **Distribution** — standalone library, or contribute into the kernel? ⮕ **needs your call** (intent: personal tool vs contribution).
+6. **Distribution** — standalone library, or contribute into the kernel? ⮕ **fork — decided: recommendation adopted** (intent: personal tool vs contribution).
    - **Recommendation:** **standalone library alongside `kernel-md-facade`** for now; revisit upstreaming only if broadly useful and the maintainers want it.
    - **Rationale:** standalone = fast iteration, decoupled release cycles, matches the "personal/unofficial" status; upstreaming is a later governance decision, not a technical blocker.
    - **Alternatives:** (a) propose into the kernel from the start (max reach/official, but slow + couples to kernel releases); (b) keep private/personal-only.
@@ -585,12 +587,12 @@ Each carries a **recommendation**, its **rationale**, and the **alternatives** c
    - **Rationale:** L2a needs no build step, works on any model an LLM loads at runtime (ideal for the dynamic/LLM use case), and delivers the model-awareness safety immediately; L2b is a pure compile-time-autocomplete enhancement with a per-model codegen cost.
    - **Alternatives:** (a) L2b codegen from the start (best IDE autocomplete + compile-time drift detection, but a per-model build step and Java-specific); (b) L1 model-*validated* only (string paths checked against the model — simplest, but loses the typed-handle ergonomics).
 
-8. **Consume vs build the model** — does the rulekit also construct models? ⮕ **needs your call** (timing).
+8. **Consume vs build the model** — does the rulekit also construct models? ⮕ **fork — decided: recommendation adopted** (timing).
    - **Recommendation:** **v1 consumes/binds to an existing public `IDocumentModel` only**; if model *construction* is added later, **emit public DM-JSON** (per D9), and only when a concrete one-flow need appears.
    - **Rationale:** rules need a model regardless → binding is mandatory and sufficient for v1; building models is adjacent scope, and DM-JSON keeps the public/polyglot/stable foundation.
    - **Alternatives:** (a) add typed model construction in v1 for a single model+rules flow (more scope, but a complete authoring story); (b) wrap the internal `betterbuilders` for construction (fast, but inherits internal-tier instability + Java-only; rejected by D9).
 
-9. **Path-rendering policy** — relative vs absolute vs short paths? ⮕ **needs your call** (diff/readability tradeoff).
+9. **Path-rendering policy** — relative vs absolute vs short paths? ⮕ **fork — decided: recommendation adopted** (diff/readability tradeoff).
    - **Recommendation:** default to **relative paths from the rule group** (the kernel guide's *own* preference — shortest, and they survive group moves), falling back to **absolute** when a relative path can't be proven unambiguous against the model **or whenever the path combines `..` up-navigation with the `*` asterisk** (which the kernel forbids in relative form — `MVK_INVALID_WILDCARD_REL`); use **short names** only when the model sets `fieldRefByShortNameAllowed` *and* the name is unique; **auto-quote keyword segments** (`Order/'Date'`) regardless.
    - **Rationale:** relative is what the guide favours (it says relative notations are shorter and survive a Rule-Group move) and yields the cleanest diffs (good for modify/#2); absolute is the safe, unambiguous escape *and is mandatory for up-navigation + asterisk* (which is why cross-group aggregate rules use it); short names are the fiddly, setting-gated form. Being model-aware, the renderer can *prove* uniqueness and pick the safest readable form. *(Independently verified against the BA guide — Rule Group / Paths sections + the `MVK_INVALID_WILDCARD_REL` parser message; `KERNEL-SEMANTICS.md` §10 is correct.)*
    - **Alternatives:** (a) always-absolute (max determinism/safety, noisier vs hand-authored, ignores the guide's preference); (b) preserve-author-intent / minimal-edit (only meaningful with #3 round-trip; research-grade).
