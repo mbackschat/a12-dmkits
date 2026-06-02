@@ -33,4 +33,13 @@ public final class BoundModel {
         }
         return new NumberRef(field(path), index.numberScale(path));
     }
+
+    /** A typed string handle. Throws if the field at {@code path} is not a string. */
+    public StringRef str(String path) {
+        ValueKind kind = index.kindOf(path);
+        if (kind != ValueKind.STRING) {
+            throw new IllegalArgumentException(path + " is not a string field (kind=" + kind + ")");
+        }
+        return new StringRef(field(path));
+    }
 }

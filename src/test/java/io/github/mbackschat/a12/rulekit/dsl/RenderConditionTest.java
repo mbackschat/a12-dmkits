@@ -65,6 +65,24 @@ class RenderConditionTest {
         assertThrows(IllegalArgumentException.class, () -> m.num(NAME));
     }
 
+    @Test
+    void rendersStringEqualityWithAQuotedLiteral() {
+        Condition c = m.str(NAME).eq("ACME");
+        assertEquals("[/Subscription/Addons/Name] == \"ACME\"", new DslRenderer().render(c));
+    }
+
+    @Test
+    void rendersLengthFunctionBilingually() {
+        Condition c = m.str(NAME).length().gt(10);
+        assertEquals("Length(/Subscription/Addons/Name) > 10", new DslRenderer().render(c));
+        assertEquals("Laenge(/Subscription/Addons/Name) > 10", new DslRenderer(ConditionLanguage.DE).render(c));
+    }
+
+    @Test
+    void typedStringHandleRejectsANumberField() {
+        assertThrows(IllegalArgumentException.class, () -> m.str(MONTHLY_FEE));
+    }
+
     private static Reader fixture(String classpathLocation) {
         InputStream in = RenderConditionTest.class.getClassLoader().getResourceAsStream(classpathLocation);
         assertNotNull(in, "fixture not found: " + classpathLocation);

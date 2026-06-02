@@ -19,6 +19,11 @@ public record NumberRef(FieldRef field, int scale) {
         return field.value();
     }
 
+    /** This field's value as a comparable numeric expression. */
+    public NumberExpr asNumber() {
+        return new NumberExpr(value());
+    }
+
     public Condition le(long literal) {
         return compareTo(CompareOp.LE, literal);
     }
@@ -46,4 +51,6 @@ public record NumberRef(FieldRef field, int scale) {
     private Condition compareTo(CompareOp op, long literal) {
         return new ComparisonCondition(value(), op, NumberLiteral.of(literal));
     }
+    // Comparison construction is shared with NumberExpr (see asNumber()); kept inline here so the
+    // common num(...).le(0) form needs no extra hop.
 }

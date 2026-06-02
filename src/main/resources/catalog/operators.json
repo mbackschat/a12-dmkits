@@ -61,6 +61,32 @@
     "sinceKernel": "30.8.x"
   },
   {
+    "id": "Equal",
+    "kind": "operator",
+    "keywords": { "en": "==", "de": "==" },
+    "operands": [ { "type": "comparable" }, { "type": "comparable" } ],
+    "returns": "boolean",
+    "meaning": "True iff the two operands are equal.",
+    "constraints": [ "operands must be type-compatible; two numbers must share the same decimal scale" ],
+    "gotchas": [ "comparing numbers of different decimal scale is rejected — round to match", "enums compare by stored value, never display text" ],
+    "validExample": { "dsl": "[CustomerName] == \"ACME\"", "note": "fires when CustomerName equals ACME" },
+    "invalidExample": { "dsl": "[Quantity] == [UnitPrice]", "error": "MVK_INVALID_COMPARE_DEC_PLACES", "fix": "operands differ in decimal scale (0 vs 2); round one with RoundDown(..., n)" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "NotEqual",
+    "kind": "operator",
+    "keywords": { "en": "!=", "de": "!=" },
+    "operands": [ { "type": "comparable" }, { "type": "comparable" } ],
+    "returns": "boolean",
+    "meaning": "True iff the two operands are not equal.",
+    "constraints": [ "operands must be type-compatible; two numbers must share the same decimal scale" ],
+    "gotchas": [ "same decimal-scale rule as ==" ],
+    "validExample": { "dsl": "[CustomerName] != \"ACME\"", "note": "fires when CustomerName is not ACME" },
+    "invalidExample": { "dsl": "[Quantity] != [UnitPrice]", "error": "MVK_INVALID_COMPARE_DEC_PLACES", "fix": "round operands to a common scale before comparing" },
+    "sinceKernel": "30.8.x"
+  },
+  {
     "id": "Length",
     "kind": "function",
     "keywords": { "en": "Length", "de": "Laenge" },
