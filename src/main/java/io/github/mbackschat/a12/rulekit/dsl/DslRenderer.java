@@ -54,9 +54,14 @@ public final class DslRenderer {
         return switch (calculation) {
             case FieldValue v -> "[" + v.field().path() + "]";
             case NumberLiteral n -> n.value().toPlainString();
-            case StringLiteral s -> '"' + s.value().replace("\\", "\\\\").replace("\"", "\\\"") + '"';
+            case StringLiteral s -> quote(s.value());
+            case EnumValueLiteral e -> quote(e.value());
             case LengthOf l -> keyword("Length") + "(" + l.field().path() + ")";
         };
+    }
+
+    private static String quote(String value) {
+        return '"' + value.replace("\\", "\\\\").replace("\"", "\\\"") + '"';
     }
 
     private String keyword(String operatorId) {

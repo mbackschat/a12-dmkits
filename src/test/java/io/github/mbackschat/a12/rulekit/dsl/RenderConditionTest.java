@@ -83,6 +83,22 @@ class RenderConditionTest {
         assertThrows(IllegalArgumentException.class, () -> m.str(MONTHLY_FEE));
     }
 
+    @Test
+    void rendersEnumComparisonByStoredValue() {
+        Condition c = m.enumOf("/Subscription/Tier").is("PRO");
+        assertEquals("[/Subscription/Tier] == \"PRO\"", new DslRenderer().render(c));
+    }
+
+    @Test
+    void enumHandleRejectsAValueOutsideTheModelDomain() {
+        assertThrows(IllegalArgumentException.class, () -> m.enumOf("/Subscription/Tier").is("PLATINUM"));
+    }
+
+    @Test
+    void typedEnumHandleRejectsANonEnumField() {
+        assertThrows(IllegalArgumentException.class, () -> m.enumOf(MONTHLY_FEE));
+    }
+
     private static Reader fixture(String classpathLocation) {
         InputStream in = RenderConditionTest.class.getClassLoader().getResourceAsStream(classpathLocation);
         assertNotNull(in, "fixture not found: " + classpathLocation);

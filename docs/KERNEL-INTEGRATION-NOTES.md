@@ -4,6 +4,8 @@ Working notes gathered while scaffolding Phase 1 against the A12 kernel **`30.8.
 
 ## Validating a rule via `checkConsistency` (F4 — verified by experiment)
 
+**Enum comparison by stored value works for text-bearing enums.** `[Tier] == "PRO"` validates against the kernel even though `Tier` is a text-bearing enum (BASIC/PRO/ENTERPRISE with labels). This clarifies the §5b "text-bearing enum ↔ string: no" rule: it forbids comparing an enum to an actual **string field/expression**, not to its own **enum-value literal** (the quoted stored value). So rulekit's `EnumRef.is("PRO")` → `[Tier] == "PRO"` is correct; the value is checked against the model's enum domain at build time.
+
 Confirmed end-to-end by the `RuleValidator` increment (inject a `Rule` into the model DM-JSON → deserialize → `expand` → `checkConsistency`):
 
 - **A rule must carry error text.** A rule with no `errorMessage` is rejected with `MVK_ERROR_MESSAGE_MISSING` (and a companion `RULE_HAS_NO_ERRORTEXT`). The validator therefore **auto-injects a placeholder `errorMessage` per model locale** so that requirement doesn't mask the condition diagnostics we actually want to check. (Locales come from `header.locales[].code` in the DM-JSON.)

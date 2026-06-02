@@ -42,4 +42,13 @@ public final class BoundModel {
         }
         return new StringRef(field(path));
     }
+
+    /** A typed enumeration handle carrying the model's allowed values. Throws if not an enum. */
+    public EnumRef enumOf(String path) {
+        ValueKind kind = index.kindOf(path);
+        if (kind != ValueKind.ENUMERATION) {
+            throw new IllegalArgumentException(path + " is not an enumeration field (kind=" + kind + ")");
+        }
+        return new EnumRef(field(path), index.enumValues(path));
+    }
 }

@@ -70,6 +70,25 @@ class RuleValidatorTest {
     }
 
     @Test
+    void validatesEnumComparisonAgainstTheKernel() throws Exception {
+        BoundModel m;
+        try (Reader r = new InputStreamReader(
+                RuleValidatorTest.class.getClassLoader().getResourceAsStream("models/subscription.dm.json"),
+                StandardCharsets.UTF_8)) {
+            m = BoundModel.of(ModelIndex.of(ModelLoader.loadSelfContained(r)));
+        }
+        // Tier is a text-bearing enum (BASIC/PRO/ENTERPRISE) — confirm comparison by stored value is accepted.
+        String dsl = new DslRenderer().render(m.enumOf("/Subscription/Tier").is("PRO"));
+
+        DraftRule rule = new DraftRule(
+                "/Subscription", "TierIsProRule", "../Tier", dsl, "TIER_PRO", "ERROR");
+
+        ValidationResult result = new RuleValidator().check(modelJson, rule);
+
+        assertTrue(result.ok(), () -> "enum-by-value comparison should validate, got: " + result.problems());
+    }
+
+    @Test
     void rejectsATypeIllegalComparison() {
         // Ordering a string ([Name]) is a type error — MVK_INVALID_TYPE_FOR_COMPARISON.
         DraftRule rule = new DraftRule(

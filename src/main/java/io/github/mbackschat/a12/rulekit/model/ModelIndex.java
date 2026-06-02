@@ -1,12 +1,14 @@
 package io.github.mbackschat.a12.rulekit.model;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
 import com.mgmtp.a12.kernel.md.model.api.IElement;
 import com.mgmtp.a12.kernel.md.model.api.IField;
 import com.mgmtp.a12.kernel.md.model.api.IGroup;
+import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IEnumerationType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IFieldType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.INumberType;
 
@@ -67,6 +69,21 @@ public final class ModelIndex {
                     fieldPath + " is not a number field (kind=" + ValueKind.of(type) + ")");
         }
         return number.getMaxFractionalDigits();
+    }
+
+    /**
+     * The allowed stored values of the enumeration field at {@code fieldPath} (the enum domain).
+     * Enums compare by stored value, never display text (§5b), so these are the values to compare to.
+     *
+     * @throws IllegalArgumentException if the field is not an enumeration
+     */
+    public List<String> enumValues(String fieldPath) {
+        IFieldType type = effectiveType(field(fieldPath));
+        if (!(type instanceof IEnumerationType enumeration)) {
+            throw new IllegalArgumentException(
+                    fieldPath + " is not an enumeration field (kind=" + ValueKind.of(type) + ")");
+        }
+        return enumeration.getValues().stream().map(IEnumerationType.IEnumValue::getValue).toList();
     }
 
     /** Whether the group at {@code groupPath} can repeat (repeatability other than exactly 1). */
