@@ -45,6 +45,11 @@ public final class BoundModel {
         return new StringRef(field(path));
     }
 
+    /** A typed group handle (knows repeatability from the model). Throws if the path is not a group. */
+    public GroupRef group(String path) {
+        return new GroupRef(path, index.isRepeating(path));
+    }
+
     /** A typed boolean handle ({@code isTrue()}/{@code isFalse()}). Throws if not a boolean field. */
     public BoolRef bool(String path) {
         ValueKind kind = index.kindOf(path);

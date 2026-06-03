@@ -141,6 +141,25 @@
                     }
                   ]
                 }
+              },
+              {
+                "type": "Group",
+                "id": "/Subscription/Billing",
+                "name": "Billing",
+                "Group": {
+                  "elements": [
+                    {
+                      "type": "Field",
+                      "id": "/Subscription/Billing/InvoiceEmail",
+                      "name": "InvoiceEmail",
+                      "Field": {
+                        "fieldType": {
+                          "type": "StringType"
+                        }
+                      }
+                    }
+                  ]
+                }
               }
             ]
           }

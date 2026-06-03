@@ -61,6 +61,11 @@ class OperatorIdTest {
         assertResolves("Length");
         assertResolves("True");
         assertResolves("False");
+        assertResolves("GroupFilled");
+        assertResolves("GroupNotFilled");
+        for (GroupQuantifier q : GroupQuantifier.values()) {
+            assertResolves(q.operatorId());
+        }
     }
 
     @Test

@@ -65,4 +65,41 @@ public final class Dsl {
     static Condition fieldList(Quantifier quantifier, List<FieldRef> fields) {
         return new FieldListPredicate(quantifier, fields);
     }
+
+    // --- group predicates (the group twin of the field forms) ----------------------------------
+
+    public static Condition groupFilled(GroupRef group) {
+        return new GroupPresenceCondition(group, true);
+    }
+
+    public static Condition groupNotFilled(GroupRef group) {
+        return new GroupPresenceCondition(group, false);
+    }
+
+    public static Condition allGroupsFilled(GroupRef first, GroupRef... rest) {
+        return groupList(GroupQuantifier.ALL_GROUPS_FILLED, first, rest);
+    }
+
+    public static Condition noGroupFilled(GroupRef first, GroupRef... rest) {
+        return groupList(GroupQuantifier.NO_GROUP_FILLED, first, rest);
+    }
+
+    public static Condition atLeastOneGroupFilled(GroupRef first, GroupRef... rest) {
+        return groupList(GroupQuantifier.AT_LEAST_ONE_GROUP_FILLED, first, rest);
+    }
+
+    public static Condition notAllGroupsFilled(GroupRef first, GroupRef... rest) {
+        return groupList(GroupQuantifier.NOT_ALL_GROUPS_FILLED, first, rest);
+    }
+
+    public static Condition groupsNotCollectivelyFilled(GroupRef first, GroupRef... rest) {
+        return groupList(GroupQuantifier.GROUPS_NOT_COLLECTIVELY_FILLED, first, rest);
+    }
+
+    private static Condition groupList(GroupQuantifier quantifier, GroupRef first, GroupRef... rest) {
+        List<GroupRef> groups = new ArrayList<>();
+        groups.add(first);
+        groups.addAll(List.of(rest));
+        return new GroupListPredicate(quantifier, groups);
+    }
 }

@@ -114,6 +114,54 @@
                     "type": "ConfirmType"
                   }
                 }
+              },
+              {
+                "type": "Group",
+                "id": "/Order/ShippingAddress",
+                "name": "ShippingAddress",
+                "Group": {
+                  "elements": [
+                    {
+                      "type": "Field",
+                      "id": "/Order/ShippingAddress/Street",
+                      "name": "Street",
+                      "Field": {
+                        "fieldType": {
+                          "type": "StringType"
+                        }
+                      }
+                    },
+                    {
+                      "type": "Field",
+                      "id": "/Order/ShippingAddress/City",
+                      "name": "City",
+                      "Field": {
+                        "fieldType": {
+                          "type": "StringType"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "Group",
+                "id": "/Order/BillingAddress",
+                "name": "BillingAddress",
+                "Group": {
+                  "elements": [
+                    {
+                      "type": "Field",
+                      "id": "/Order/BillingAddress/PostalCode",
+                      "name": "PostalCode",
+                      "Field": {
+                        "fieldType": {
+                          "type": "StringType"
+                        }
+                      }
+                    }
+                  ]
+                }
               }
             ]
           }

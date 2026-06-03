@@ -156,6 +156,40 @@ class RenderConditionTest {
         assertThrows(IllegalArgumentException.class, () -> m.allFieldsFilled(NAME, "/Subscription/Addons/Nope"));
     }
 
+    @Test
+    void rendersGroupPresenceBilingually() {
+        // Corpus backlog item 2: GroupFilled is the highest-frequency previously-uncovered construct.
+        Condition c = m.group("/Subscription/Addons").filled();
+        assertEquals("GroupFilled(/Subscription/Addons)", new DslRenderer().render(c));
+        assertEquals("KontextAngegeben(/Subscription/Addons)", new DslRenderer(ConditionLanguage.DE).render(c));
+
+        assertEquals("GroupNotFilled(/Subscription/Billing)",
+                new DslRenderer().render(m.group("/Subscription/Billing").notFilled()));
+    }
+
+    @Test
+    void rendersGroupListQuantifierBilingually() {
+        Condition c = Dsl.atLeastOneGroupFilled(m.group("/Subscription/Addons"), m.group("/Subscription/Billing"));
+        assertEquals("AtLeastOneGroupFilled(/Subscription/Addons, /Subscription/Billing)",
+                new DslRenderer().render(c));
+        assertEquals("MindestensEinKontextAngegeben(/Subscription/Addons, /Subscription/Billing)",
+                new DslRenderer(ConditionLanguage.DE).render(c));
+    }
+
+    @Test
+    void groupHandleRejectsAFieldPathAndViceVersa() {
+        // GroupFilled(field) is MVK_NO_FIELDS_ALLOWED, FieldFilled(group) is MVK_NO_GROUPS_ALLOWED
+        // (verified — see KERNEL-INTEGRATION-NOTES): the typed handles erase both classes.
+        assertThrows(IllegalArgumentException.class, () -> m.group(MONTHLY_FEE));
+        assertThrows(IllegalArgumentException.class, () -> m.field("/Subscription/Addons"));
+    }
+
+    @Test
+    void groupHandleKnowsRepeatability() {
+        assertEquals(true, m.group("/Subscription/Addons").repeating());
+        assertEquals(false, m.group("/Subscription/Billing").repeating());
+    }
+
     private static Reader fixture(String classpathLocation) {
         InputStream in = RenderConditionTest.class.getClassLoader().getResourceAsStream(classpathLocation);
         assertNotNull(in, "fixture not found: " + classpathLocation);

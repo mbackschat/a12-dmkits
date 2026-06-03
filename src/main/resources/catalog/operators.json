@@ -9,6 +9,7 @@
     "constraints": [ "the operand is a single field reference, not a bracketed field-value expression" ],
     "gotchas": [ "a field carrying a formal error is removed from evaluation, so 'FieldFilled(F) Or FieldNotFilled(F)' is not a tautology" ],
     "validExample": { "dsl": "FieldFilled(Quantity)", "note": "true when Quantity has a value" },
+    "invalidExample": { "dsl": "FieldFilled(ShippingAddress) And FieldNotFilled(ShippingAddress/Street)", "error": "MVK_NO_GROUPS_ALLOWED", "fix": "FieldFilled takes a field — for a group use GroupFilled" },
     "sinceKernel": "30.8.x"
   },
   {
@@ -192,6 +193,91 @@
     "meaning": "True iff the number of filled fields among the listed is not exactly one (zero, or two or more).",
     "constraints": [ "the operand is a list of field references" ],
     "validExample": { "dsl": "NotExactlyOneFieldFilled(CustomerName, ProductCode)", "note": "true when zero or both are filled" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "GroupFilled",
+    "kind": "predicate",
+    "keywords": { "en": "GroupFilled", "de": "KontextAngegeben" },
+    "operands": [ { "type": "group" } ],
+    "returns": "boolean",
+    "meaning": "True iff the referenced group is filled. For a repeatable group this means the repeat row EXISTS — an empty, freshly created row counts as filled.",
+    "constraints": [ "the operand is a group (or root group) reference, never a field" ],
+    "gotchas": [ "'filled' means 'row exists', not 'row has data' — a blank added repetition satisfies GroupFilled", "an enclosing GroupFilled(Group) counts as referencing the rule's error field (no MVK_ERROR_FIELD_NOT_REFERENCED)" ],
+    "validExample": { "dsl": "GroupFilled(ShippingAddress)", "note": "true when the shipping address group is present" },
+    "invalidExample": { "dsl": "GroupFilled(CustomerName)", "error": "MVK_NO_FIELDS_ALLOWED", "fix": "GroupFilled takes a group — for a field use FieldFilled" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "GroupNotFilled",
+    "kind": "predicate",
+    "keywords": { "en": "GroupNotFilled", "de": "KontextNichtAngegeben" },
+    "operands": [ { "type": "group" } ],
+    "returns": "boolean",
+    "meaning": "True iff the referenced group is not filled (no row exists / nothing entered).",
+    "constraints": [ "the operand is a group reference, never a field" ],
+    "gotchas": [ "a negative condition combined with repeatable groups is rejected (MVK_NEG_CONDITION_IN_ITERATION) unless guarded, e.g. GroupFilled(K) And AtLeastOneFieldFilled(K/F)" ],
+    "validExample": { "dsl": "GroupNotFilled(ShippingAddress)", "note": "true when no shipping address was entered" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "AllGroupsFilled",
+    "kind": "predicate",
+    "keywords": { "en": "AllGroupsFilled", "de": "AlleKontexteAngegeben" },
+    "operands": [ { "type": "group-list" } ],
+    "returns": "boolean",
+    "meaning": "True iff every listed group is filled.",
+    "constraints": [ "the operand is a list of group references" ],
+    "gotchas": [ "see GroupFilled: for repeatable groups, an existing empty row counts as filled" ],
+    "validExample": { "dsl": "AllGroupsFilled(ShippingAddress, BillingAddress)", "note": "true when both address groups are present" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "NoGroupFilled",
+    "kind": "predicate",
+    "keywords": { "en": "NoGroupFilled", "de": "KeinKontextAngegeben" },
+    "operands": [ { "type": "group-list" } ],
+    "returns": "boolean",
+    "meaning": "True iff none of the listed groups is filled.",
+    "constraints": [ "the operand is a list of group references" ],
+    "gotchas": [ "negative semantics — needs guarding when repeatable groups are involved (MVK_NEG_CONDITION_IN_ITERATION)" ],
+    "validExample": { "dsl": "NoGroupFilled(ShippingAddress, BillingAddress)", "note": "true when neither address group is present" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "AtLeastOneGroupFilled",
+    "kind": "predicate",
+    "keywords": { "en": "AtLeastOneGroupFilled", "de": "MindestensEinKontextAngegeben" },
+    "operands": [ { "type": "group-list" } ],
+    "returns": "boolean",
+    "meaning": "True iff at least one of the listed groups is filled.",
+    "constraints": [ "the operand is a list of group references" ],
+    "gotchas": [],
+    "validExample": { "dsl": "AtLeastOneGroupFilled(ShippingAddress, BillingAddress)", "note": "true when any address group is present" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "NotAllGroupsFilled",
+    "kind": "predicate",
+    "keywords": { "en": "NotAllGroupsFilled", "de": "NichtAlleOderKeinKontextAngegeben" },
+    "operands": [ { "type": "group-list" } ],
+    "returns": "boolean",
+    "meaning": "True iff the listed groups are not all filled (at least one is missing).",
+    "constraints": [ "the operand is a list of group references" ],
+    "gotchas": [ "the German keyword (NichtAlleOderKein...) spells out that the none-filled case also satisfies it" ],
+    "validExample": { "dsl": "NotAllGroupsFilled(ShippingAddress, BillingAddress)", "note": "fires when at least one address group is missing" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "GroupsNotCollectivelyFilled",
+    "kind": "predicate",
+    "keywords": { "en": "GroupsNotCollectivelyFilled", "de": "KontexteNichtGemeinsamAngegeben" },
+    "operands": [ { "type": "group-list" } ],
+    "returns": "boolean",
+    "meaning": "True iff the listed groups are not collectively filled — some filled and some not (a partial-fill check).",
+    "constraints": [ "the operand is a list of group references" ],
+    "gotchas": [],
+    "validExample": { "dsl": "GroupsNotCollectivelyFilled(ShippingAddress, BillingAddress)", "note": "fires when exactly one of the two address groups is present" },
     "sinceKernel": "30.8.x"
   },
   {

@@ -42,6 +42,10 @@ public final class DslRenderer {
                     render(c.left()) + " " + keyword(c.operatorId()) + " " + render(c.right());
             case LogicCondition l ->
                     child(l, l.left()) + " " + keyword(l.operatorId()) + " " + child(l, l.right());
+            case GroupPresenceCondition g -> keyword(g.operatorId()) + "(" + g.group().path() + ")";
+            case GroupListPredicate p -> keyword(p.operatorId()) + "("
+                    + p.groups().stream().map(GroupRef::path).collect(java.util.stream.Collectors.joining(", "))
+                    + ")";
         };
     }
 

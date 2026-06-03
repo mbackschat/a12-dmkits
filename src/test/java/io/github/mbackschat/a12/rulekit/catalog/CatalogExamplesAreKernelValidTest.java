@@ -27,9 +27,19 @@ import io.github.mbackschat.a12.rulekit.validate.ValidationResult;
  */
 class CatalogExamplesAreKernelValidTest {
 
-    /** Field names in {@code order.dm.json}, in the order to pick a referenced error field. */
+    /** Field names/paths in {@code order.dm.json}, in the order to pick a referenced error field. */
     private static final List<String> ORDER_FIELDS =
-            List.of("CustomerName", "ProductCode", "Quantity", "UnitPrice", "BackorderQuantity", "ExpressShipping", "TermsConfirmed");
+            List.of("CustomerName", "ProductCode", "Quantity", "UnitPrice", "BackorderQuantity",
+                    "ExpressShipping", "TermsConfirmed", "ShippingAddress/Street", "BillingAddress/PostalCode");
+
+    /**
+     * Group names → a representative contained field, for examples that reference only groups.
+     * Legal because an enclosing group reference counts as referencing the error field (verified —
+     * see KERNEL-INTEGRATION-NOTES).
+     */
+    private static final java.util.Map<String, String> ORDER_GROUP_FIELDS = java.util.Map.of(
+            "ShippingAddress", "ShippingAddress/Street",
+            "BillingAddress", "BillingAddress/PostalCode");
 
     private static final OperatorCatalog CATALOG = OperatorCatalog.load();
     private static final RuleValidator VALIDATOR = new RuleValidator();
@@ -84,9 +94,14 @@ class CatalogExamplesAreKernelValidTest {
     /** The first fixture field referenced (as a whole word) in the example — used as the rule's error entity. */
     private static String firstReferencedField(String dsl) {
         return ORDER_FIELDS.stream()
-                .filter(name -> Pattern.compile("\\b" + name + "\\b").matcher(dsl).find())
+                .filter(name -> Pattern.compile("\\b" + Pattern.quote(name) + "\\b").matcher(dsl).find())
                 .findFirst()
+                .or(() -> ORDER_GROUP_FIELDS.entrySet().stream()
+                        .filter(e -> Pattern.compile("\\b" + e.getKey() + "\\b").matcher(dsl).find())
+                        .map(java.util.Map.Entry::getValue)
+                        .findFirst())
                 .orElseThrow(() -> new IllegalStateException(
-                        "no Order field is referenced in example: " + dsl + " — pick one that uses a fixture field"));
+                        "no Order field or group is referenced in example: " + dsl
+                                + " — pick one that uses a fixture field/group"));
     }
 }
