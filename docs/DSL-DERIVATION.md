@@ -44,11 +44,11 @@ So the *shape* is: catalog (the operator vocabulary) × model index (the field t
 
 - **Ergonomics.** A builder mechanically generated from grammar productions is low-level and awkward; the fluent, combinator-friendly surface needs human design.
 - **Semantics aren't in the grammar.** Operand-type legality, decimal-scale discipline, the error-scenario inversion (`true` ⇒ invalid), null handling, "no `Not`" — these are parser/BA semantics, not syntactic productions. The whole value of a typed front-end (make illegal states unrepresentable) lives in exactly the layer the grammar omits.
-- **Drift is controlled by tests, not by generation.** Instead of generating-to-stay-in-sync, rulekit stays honest with two checks against the real grammar/engine: the **keyword-parity coverage test** (catalog ↔ lexer terminals) and **N7** (every catalog example run through the real kernel). Generation would couple us to grammar internals; testing keeps the public, polyglot contract.
+- **Drift is controlled by tests, not by generation.** Instead of generating-to-stay-in-sync, rulekit stays honest with the **four anchors** of proposal §9: **N7** (every catalog example run through the real kernel), **keyword parity** (catalog ↔ lexer terminals, per shared token constant), **construct parity** (catalog ↔ the parsetree-api name enums and the `MVK_*` error enum), and the opt-in **semantics drift oracle** (catalog texts diffed against the kernel's bilingual web content catalogs — compare only, EUPL boundary). Generation would couple us to grammar internals; testing keeps the public, polyglot contract.
 
-## The one place the grammar *would* be consumed directly (deferred)
+## Even the reverse direction never touches the grammar directly (updated 2026-06-03)
 
-The **text → AST round-trip** (#3, proposal §12, Phase 5) — reading existing DSL strings back into rulekit's AST — is the only feature that would consume the kernel's ANTLR **parse tree** programmatically (map parse-tree nodes → AST nodes). It is deliberately deferred and gated on a concrete legacy-editing need. Authoring/rendering (the current direction) never needs it.
+v1 of this doc expected the **text → AST round-trip** (#3) to be the one feature consuming the kernel's ANTLR parse tree programmatically. The kernel API survey ([`KERNEL-RULE-API-SURVEY.md`](./KERNEL-RULE-API-SURVEY.md)) showed otherwise: **ingest (F10, proposal §12 — now Phase 2)** goes through the kernel's own **high-level, ANTLR-free AST** (`IRuleParser` → `ICondition` → converter visitor → rulekit AST, via the N8 kernel-adapter tier). So the claim above strengthens: rulekit never consumes the `.g4`, the generated parser classes, *or* the ANTLR parse tree — in **either** direction. The grammar stays strictly upstream (it shapes the kernel's parser and the curated docs) and downstream (that parser judges rulekit's output and parses rulekit's input).
 
 ## Worked example: `<=` and `Length`, end to end
 

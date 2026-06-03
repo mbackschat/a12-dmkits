@@ -4,12 +4,15 @@ import io.github.mbackschat.a12.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.rulekit.catalog.OperatorEntry;
 
 /**
- * Renders a {@link Condition} AST to canonical A12 DSL text (proposal §8, layer 3). Worded keywords
- * ({@code FieldFilled}, {@code And}, …) come from the {@link OperatorCatalog} in the chosen
- * {@link ConditionLanguage}, so the same AST renders to EN or DE; comparison symbols are intrinsic.
+ * Renders a {@link Condition} AST to canonical A12 DSL text (proposal §8, component 4). Every
+ * operator keyword — worded ({@code FieldFilled}, {@code And}/{@code Und}) or symbolic
+ * ({@code <=}) — is looked up from the {@link OperatorCatalog} by the node's own
+ * {@link Condition#operatorId() operator-id} (D14), so the same AST renders to EN or DE and no
+ * keyword knowledge lives outside the catalog.
  *
  * <p>Paths render in absolute form for now. The model+rule-group-aware path policy (relative/short,
- * keyword-segment quoting — §18.9, F3) is a later refinement.
+ * keyword-segment quoting, honoring ingested {@link PathStyle} hints — §18 fork 9, F3a) is a later
+ * refinement.
  */
 public final class DslRenderer {
 
@@ -31,16 +34,14 @@ public final class DslRenderer {
 
     public String render(Condition condition) {
         return switch (condition) {
-            case FieldPresenceCondition f ->
-                    keyword(f.filled() ? "FieldFilled" : "FieldNotFilled") + "(" + f.field().path() + ")";
-            case FieldListPredicate p -> keyword(p.quantifier().operatorId()) + "("
+            case FieldPresenceCondition f -> keyword(f.operatorId()) + "(" + f.field().path() + ")";
+            case FieldListPredicate p -> keyword(p.operatorId()) + "("
                     + p.fields().stream().map(FieldRef::path).collect(java.util.stream.Collectors.joining(", "))
                     + ")";
             case ComparisonCondition c ->
-                    render(c.left()) + " " + c.operator().symbol() + " " + render(c.right());
+                    render(c.left()) + " " + keyword(c.operatorId()) + " " + render(c.right());
             case LogicCondition l ->
-                    child(l, l.left()) + " " + keyword(l.op() == LogicCondition.Op.AND ? "And" : "Or")
-                            + " " + child(l, l.right());
+                    child(l, l.left()) + " " + keyword(l.operatorId()) + " " + child(l, l.right());
         };
     }
 
@@ -59,7 +60,7 @@ public final class DslRenderer {
             case NumberLiteral n -> n.value().toPlainString();
             case StringLiteral s -> quote(s.value());
             case EnumValueLiteral e -> quote(e.value());
-            case LengthOf l -> keyword("Length") + "(" + l.field().path() + ")";
+            case LengthOf l -> keyword(l.operatorId()) + "(" + l.field().path() + ")";
         };
     }
 

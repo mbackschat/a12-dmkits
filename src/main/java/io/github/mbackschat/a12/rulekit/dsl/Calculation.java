@@ -3,6 +3,14 @@ package io.github.mbackschat.a12.rulekit.dsl;
 /**
  * A typed value expression (proposal §5) — the operand kind that supplies values inside conditions
  * and renders into a computation's {@code operation}. The closed set keeps rendering exhaustive.
+ *
+ * <p><strong>The function-node pattern</strong> (proposal §8): every keyword construct gets its own
+ * typed node (like {@link LengthOf}) carrying its catalog operator-id — type safety is the product,
+ * so there is no generic {@code FunctionCall} node. Only <em>rendering</em> is generalized: the
+ * renderer looks the keyword up from the catalog by id. Value nodes ({@link FieldValue}, the
+ * literals) apply no operator — their {@code [...]}/quote syntax is intrinsic, not a catalog
+ * keyword — so they carry no operator-id; pattern-matching over the sealed set is the dispatch
+ * mechanism either way.
  */
 public sealed interface Calculation permits FieldValue, NumberLiteral, StringLiteral, EnumValueLiteral, LengthOf {
 }

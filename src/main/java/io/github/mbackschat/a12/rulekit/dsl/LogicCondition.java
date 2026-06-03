@@ -6,8 +6,23 @@ package io.github.mbackschat.a12.rulekit.dsl;
  */
 public record LogicCondition(Op op, Condition left, Condition right) implements Condition {
 
+    @Override
+    public String operatorId() {
+        return op.operatorId();
+    }
+
     public enum Op {
-        AND,
-        OR
+        AND("And"),
+        OR("Or");
+
+        private final String operatorId;
+
+        Op(String operatorId) {
+            this.operatorId = operatorId;
+        }
+
+        public String operatorId() {
+            return operatorId;
+        }
     }
 }

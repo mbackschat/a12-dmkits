@@ -1,24 +1,26 @@
 package io.github.mbackschat.a12.rulekit.dsl;
 
 /**
- * The comparison operators. These render as fixed symbols that are identical in every condition
- * language (unlike worded keywords such as {@code And}/{@code Und}, which come from the catalog).
+ * The comparison operators. Each maps to its catalog operator-id (D14); the catalog's keywords for
+ * these are fixed symbols identical in every condition language (unlike worded keywords such as
+ * {@code And}/{@code Und}), but the renderer still looks them up from the catalog like any other
+ * operator — keyword knowledge lives only there.
  */
 public enum CompareOp {
-    EQ("=="),
-    NE("!="),
-    LT("<"),
-    LE("<="),
-    GT(">"),
-    GE(">=");
+    EQ("Equal"),
+    NE("NotEqual"),
+    LT("LessThan"),
+    LE("LessThanOrEqual"),
+    GT("GreaterThan"),
+    GE("GreaterThanOrEqual");
 
-    private final String symbol;
+    private final String operatorId;
 
-    CompareOp(String symbol) {
-        this.symbol = symbol;
+    CompareOp(String operatorId) {
+        this.operatorId = operatorId;
     }
 
-    public String symbol() {
-        return symbol;
+    public String operatorId() {
+        return operatorId;
     }
 }

@@ -61,6 +61,45 @@
     "sinceKernel": "30.8.x"
   },
   {
+    "id": "LessThan",
+    "kind": "operator",
+    "keywords": { "en": "<", "de": "<" },
+    "operands": [ { "type": "orderable" }, { "type": "orderable" } ],
+    "returns": "boolean",
+    "meaning": "True iff the left operand is strictly less than the right.",
+    "constraints": [ "ordering is legal only for numbers, amounts, and dates (not strings, enums, booleans, confirms, or date-ranges)" ],
+    "gotchas": [ "the symbol is the same in every condition language (it is not a localized keyword)" ],
+    "validExample": { "dsl": "[Quantity] < 0", "note": "fires when Quantity is negative" },
+    "invalidExample": { "dsl": "[CustomerName] < [ProductCode]", "error": "MVK_INVALID_TYPE_FOR_COMPARISON", "fix": "ordering needs numbers or dates; compare strings with == / != instead" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "GreaterThan",
+    "kind": "operator",
+    "keywords": { "en": ">", "de": ">" },
+    "operands": [ { "type": "orderable" }, { "type": "orderable" } ],
+    "returns": "boolean",
+    "meaning": "True iff the left operand is strictly greater than the right.",
+    "constraints": [ "ordering is legal only for numbers, amounts, and dates (not strings, enums, booleans, confirms, or date-ranges)" ],
+    "gotchas": [ "the symbol is the same in every condition language (it is not a localized keyword)" ],
+    "validExample": { "dsl": "[Quantity] > 100", "note": "fires when Quantity exceeds 100" },
+    "invalidExample": { "dsl": "[CustomerName] > [ProductCode]", "error": "MVK_INVALID_TYPE_FOR_COMPARISON", "fix": "ordering needs numbers or dates; compare strings with == / != instead" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "GreaterThanOrEqual",
+    "kind": "operator",
+    "keywords": { "en": ">=", "de": ">=" },
+    "operands": [ { "type": "orderable" }, { "type": "orderable" } ],
+    "returns": "boolean",
+    "meaning": "True iff the left operand is greater than or equal to the right.",
+    "constraints": [ "ordering is legal only for numbers, amounts, and dates (not strings, enums, booleans, confirms, or date-ranges)" ],
+    "gotchas": [ "the symbol is the same in every condition language (it is not a localized keyword)" ],
+    "validExample": { "dsl": "[Quantity] >= 100", "note": "fires when Quantity reaches 100" },
+    "invalidExample": { "dsl": "[CustomerName] >= [ProductCode]", "error": "MVK_INVALID_TYPE_FOR_COMPARISON", "fix": "ordering needs numbers or dates; compare strings with == / != instead" },
+    "sinceKernel": "30.8.x"
+  },
+  {
     "id": "Equal",
     "kind": "operator",
     "keywords": { "en": "==", "de": "==" },

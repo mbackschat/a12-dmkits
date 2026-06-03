@@ -1,6 +1,6 @@
 # a12-rulekit — project instructions
 
-Design and rationale live in [`docs/PROJECT-PROPOSAL.md`](docs/PROJECT-PROPOSAL.md); verified kernel-integration facts in [`docs/KERNEL-INTEGRATION-NOTES.md`](docs/KERNEL-INTEGRATION-NOTES.md); how the builder structure is derived (and the ANTLR grammar's indirect role) in [`docs/DSL-DERIVATION.md`](docs/DSL-DERIVATION.md); the real-model operator-usage analysis and transform backlog in [`docs/WORKSPACE-CORPUS-ANALYSIS.md`](docs/WORKSPACE-CORPUS-ANALYSIS.md).
+Design and rationale live in [`docs/PROJECT-PROPOSAL.md`](docs/PROJECT-PROPOSAL.md); verified kernel-integration facts in [`docs/KERNEL-INTEGRATION-NOTES.md`](docs/KERNEL-INTEGRATION-NOTES.md); the comprehensive kernel/editor API inventory for the bidirectional-modification goal in [`docs/KERNEL-RULE-API-SURVEY.md`](docs/KERNEL-RULE-API-SURVEY.md); how the builder structure is derived (and the ANTLR grammar's indirect role) in [`docs/DSL-DERIVATION.md`](docs/DSL-DERIVATION.md); the real-model operator-usage analysis and transform backlog in [`docs/WORKSPACE-CORPUS-ANALYSIS.md`](docs/WORKSPACE-CORPUS-ANALYSIS.md).
 
 ## Language
 
@@ -24,6 +24,7 @@ Write idiomatic modern Java 21, not Java 8 with newer syntax:
 - **Every non-obvious finding gets written down under `docs/`** — kernel/build/environment facts default to [`docs/KERNEL-INTEGRATION-NOTES.md`](docs/KERNEL-INTEGRATION-NOTES.md); design decisions to [`docs/PROJECT-PROPOSAL.md`](docs/PROJECT-PROPOSAL.md). If a finding doesn't fit an existing doc's scope, **propose a new doc** rather than overloading one.
 - A finding is only "done" when it's documented. When a new fact **contradicts** an existing note, update that note — don't leave stale claims.
 - **After any substantive change, state which docs need updating** (proposal / notes / README status / this file) and update them in the same change.
+- **Doc evolution: the proposal stays whole; specs split out on implementation boundaries** (decided 2026-06-03). Don't split `PROJECT-PROPOSAL.md` into per-section files — it's one argument, densely cross-referenced by stable anchors (`§N`, `Fn`/`Nn`/`Dn`, forks Q1–Q12). Instead, when a component's design detail outgrows its proposal section during implementation, extract a **component spec** (e.g. `docs/CATALOG-SPEC.md`, `docs/ADAPTER-SPEC.md`, `docs/AST-SPEC.md`): the spec supersedes the section's *detail*, and the proposal section shrinks to intent + a pointer. Revisit a wholesale split only if the proposal exceeds ~800 lines despite spec extraction.
 
 ## Testing strategy
 

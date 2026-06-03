@@ -18,7 +18,7 @@ import io.github.mbackschat.a12.rulekit.model.ModelLoader;
 /**
  * First vertical slice: typed, model-bound handles compose a {@link Condition} AST that the
  * catalog-driven renderer turns into canonical DSL text (proposal §6/§10). Paths render in absolute
- * form for now; the relative/short path policy + rule-group context (§18.9, F3) come later.
+ * form for now; the relative/short path policy + rule-group context (§18 fork 9, F3a) come later.
  */
 class RenderConditionTest {
 

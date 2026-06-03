@@ -8,4 +8,9 @@ public record FieldListPredicate(Quantifier quantifier, List<FieldRef> fields) i
     public FieldListPredicate {
         fields = List.copyOf(fields);
     }
+
+    @Override
+    public String operatorId() {
+        return quantifier.operatorId();
+    }
 }
