@@ -15,4 +15,7 @@ package io.github.mbackschat.a12.rulekit.dsl;
  * set is the dispatch mechanism either way.
  */
 public sealed interface Calculation permits FieldValue, NumberLiteral, StringLiteral, EnumValueLiteral, BoolLiteral, LengthOf {
+
+    /** The value kind this expression yields (§5b) — the typed AST mirrors the lattice. */
+    io.github.mbackschat.a12.rulekit.model.ValueKind kind();
 }

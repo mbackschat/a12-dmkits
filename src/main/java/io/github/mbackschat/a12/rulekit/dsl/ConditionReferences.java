@@ -23,6 +23,13 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
         return new ConditionReferences(fields, groups);
     }
 
+    /** The references of a value expression — e.g. a computation slot's {@code operation}. */
+    public static ConditionReferences of(Calculation calculation) {
+        Set<String> fields = new LinkedHashSet<>();
+        collect(calculation, fields);
+        return new ConditionReferences(fields, Set.of());
+    }
+
     /** Whether {@code fieldPath} is referenced directly or lies under a referenced group. */
     public boolean covers(String fieldPath) {
         return fieldPaths.contains(fieldPath)

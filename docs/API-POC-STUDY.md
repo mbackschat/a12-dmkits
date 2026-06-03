@@ -4,7 +4,7 @@
 >
 > **This doc is deliberately kept alive:** whenever a feature lands or an interesting usage emerges, the corresponding study here is updated to showcase it (see the doc-evolution note in `CLAUDE.md`). It doubles as the seed material for the LLM skill (N1) and the self-sufficiency eval (N6).
 >
-> Domain: the committed **subscription** fixture (our own original) — `Subscription` root with `Tier` (enum `BASIC/PRO/ENTERPRISE`), `AutoRenew` (boolean), `TermsAccepted` (confirm), repeatable `Addons{Name, MonthlyFee(scale 2)}`, `Billing{InvoiceEmail}`; the **order** fixture adds `ShippingAddress`/`BillingAddress` groups. Extended illustratively where a construct needs it.
+> Domain: the committed **subscription** fixture (our own original) — `Subscription` root with `Tier` (enum `BASIC/PRO/ENTERPRISE`), `AutoRenew` (boolean), `TermsAccepted` (confirm), repeatable `Addons{Name, MonthlyFee(scale 2)}`, `Billing{InvoiceEmail, BaseFee(scale 2), EffectiveFee(scale 2)}`; the **order** fixture adds `ShippingAddress`/`BillingAddress` groups and boolean/confirm fields. Extended illustratively where a construct needs it.
 
 ---
 
@@ -90,7 +90,7 @@ static Condition uniqueBy(GroupRef repeating, FieldRef key) {
 
 The fragments show how backlog items compose into the **business idioms** the proposal's §2 names (`mandatory`, `withinTolerance`, `chronological`, `uniqueBy`) — each is 1–3 lines once its operators exist.
 
-### 3.3 A domain fragment library — packaging reuse 🔮 (pattern works today)
+### 3.3 A domain fragment library — packaging reuse ✅ (all shown fragments work today)
 
 ```java
 /** The team's validation idiom collection: plain static methods over Dsl + handles. */
@@ -111,25 +111,26 @@ public final class SubscriptionIdioms {
 
 No framework, no registry — a fragment library is a Java class; discoverability comes from javadoc + the skill. (This is the Zod lesson: schemas-are-code.)
 
-### 3.4 Parameterized *rules* — templates over the model (navigation ✅, `Rule` object 🔮)
+### 3.4 Parameterized *rules* — templates over the model ✅ (message interpolation still 🔮)
 
 ```java
-/** One rule per monetary field: never negative. Navigation (✅, §6c) drives the loop. */
+/** One rule per monetary field: never negative. Navigation (§6c) drives the loop. */
 static List<Rule> nonNegativeMoneyRules(BoundModel m) {
     return m.fields()                                             // ✅ Level-1 navigation
             .filter(f -> f.kind() == ValueKind.NUMBER && f.scale() == 2)   // "money" by convention
-            .map(f -> Rule.in(f.group())                          // 🔮 Rule authoring object (F2a)
+            .map(f -> Rule.in(f.group())                          // ✅ Rule authoring object (F2a)
+                    .name(f.name() + "NonNegativeRule")
                     .errorField(f.asNum())
                     .when(f.asNum().filled().and(f.asNum().lt(0)))
                     .code("NON_NEGATIVE_" + f.name().toUpperCase())
-                    .severity(ERROR)
-                    .message(en("{0} must not be negative.", f))
+                    .severity(Severity.ERROR)
+                    .message(en(f.name() + " must not be negative."))   // 🔮 {0}→$Field.value$ interpolation
                     .build())
             .toList();
 }
 ```
 
-This is the bulk-authoring payoff: a *rule template* is a function `BoundModel → List<Rule>`; an LLM (or CI) applies it to any model. The navigation half works today (the condition-level pipeline is test-backed in `NavigationTest`); the `Rule` object (F2a) is the remaining piece.
+This is the bulk-authoring payoff: a *rule template* is a function `BoundModel → List<Rule>`; an LLM (or CI) applies it to any model.
 
 ### 3.5 n-ary composition ✅ (finding 10 — implemented 2026-06-04)
 
@@ -170,18 +171,21 @@ vr.problems().forEach(p -> System.out.println(p.mvkCode() + ": " + p.message()))
 m.add(rule); m.writeTo(path);                              // 🔮 DM-JSON write path (public, polyglot — D9)
 ```
 
-### 4.3 A computation, same materials (F2) 🔮
+### 4.3 A computation, same materials (F2) ✅ — implemented 2026-06-04 (`ComputationAuthoringTest`; aggregates/arithmetic in operations are corpus items 6–7)
 
 ```java
-Computation annual = Computation.of(m.num("/Subscription/AnnualCost"))
-        .commonPrecondition(atLeastOneFieldFilled(fee.field()))
-        .when(tier.is("ENTERPRISE")).calc(sum(m.nums("Addons*/MonthlyFee")).times(12).times("0.90"))
-        .otherwise(sum(m.nums("Addons*/MonthlyFee")).times(12));
-// type & scale of each alternative checked against AnnualCost (cheap case — D13); mutual exclusivity
-// pre-checked; the kernel confirms — incl. computation dependency cycles via the adapter (survey §11)
+Computation tiered = Computation.of(m.num("/Subscription/Billing/EffectiveFee"))   // element placed in the
+        .name("TieredFeeComp")                                                     // computed field's group;
+        .commonPrecondition(fieldFilled(base.field()))                             // relPath computed
+        .when(base.ge(100)).calc(base.value())             // staged: every when() must get its calc()
+        .when(base.lt(100)).calc(NumberLiteral.of("0.00"))
+        .message(en("EffectiveFee follows the fee tiers."))
+        .build();
 ```
 
-**Cross-slot reuse for free:** `SubscriptionIdioms.paidTier(tier)` drops unchanged into a rule `errorCondition` *or* a computation `precondition` — one expression language, many slots (§5). That is the concrete payoff of combinators + the slot model, and the reason F2's `Computation` object is the most valuable remaining Phase-1 piece.
+**The original sketch here used `.otherwise(...)` — that was kernel-illegal** (verified: mixing preconditioned and unconditional alternatives draws `MVK_ERROR_EMPTY_PRECONDITION`), so the API doesn't offer it: either one unconditional `calc(...)` or all-preconditioned `when(...).calc(...)`. Further slot rules pre-checked at `build()` with the code named: the computed field must not appear in preconditions *or* operations (`MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD` — both verified), operation **kind** must match the computed field (`Calculation.kind()` — the typed AST now carries the §5b lattice), message required. Mutual exclusivity of preconditions stays the kernel/runtime's judgment; result *scale* stays the kernel's call (D13).
+
+**Cross-slot reuse for free:** `SubscriptionIdioms.paidTier(tier)` drops unchanged into a rule `errorCondition` *or* a computation `precondition` — one expression language, many slots (§5). That is the concrete payoff of combinators + the slot model.
 
 ## 5. The bidirectional edit loop (F8, F10) — modify studies
 
@@ -356,8 +360,9 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 | §3.1 fragments, §3.3 library pattern, §6 catalog queries, §2 type-steering | ✅ pattern works today on covered operators |
 | §3.2 domain fragments (`withinTolerance`, `chronological`, `uniqueBy`) | 🔮 their operators are corpus items 6–7 + tolerance |
 | §6c navigation (Level 1: `fields()`/`groups()`/`fieldAt` + strict narrowing), §3.5 `allOf`/`anyOf` | ✅ implemented 2026-06-04 (findings 9–10) |
-| §3.4 rule templates | 🔮 condition-level pipeline works today (`NavigationTest`); full form needs the `Rule` object (F2a) |
-| `Rule`/`Computation` objects, message helper, DM-JSON write, fork-9 path policy, `advice()` | 🔮 Phase-1 remainder (F2/F2a) |
+| §3.4 rule templates | ✅ full form works (navigation + `Rule` object) |
+| `Rule` + `Computation` authoring objects (computed relPaths, slot-rule pre-checks, validator bridges, `Calculation.kind()`) | ✅ implemented 2026-06-04 |
+| Message *interpolation*, DM-JSON write (`m.add`/`replaceCondition`/`writeTo`), fork-9 path policy, `advice()` | 🔮 Phase-1 remainder (F2a/F6) |
 | ingest / explain / diff / LLM loop | 🔮 Phase 2 (adapter) |
 | TS twin | 🔮 Phase 4 |
 

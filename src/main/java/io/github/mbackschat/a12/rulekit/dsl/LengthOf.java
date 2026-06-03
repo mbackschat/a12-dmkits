@@ -7,4 +7,9 @@ public record LengthOf(FieldRef field) implements Calculation {
     public String operatorId() {
         return "Length";
     }
+
+    @Override
+    public io.github.mbackschat.a12.rulekit.model.ValueKind kind() {
+        return io.github.mbackschat.a12.rulekit.model.ValueKind.NUMBER;
+    }
 }

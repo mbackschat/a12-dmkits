@@ -12,4 +12,9 @@ public record NumberLiteral(BigDecimal value) implements Calculation {
     public static NumberLiteral of(String value) {
         return new NumberLiteral(new BigDecimal(value));
     }
+
+    @Override
+    public io.github.mbackschat.a12.rulekit.model.ValueKind kind() {
+        return io.github.mbackschat.a12.rulekit.model.ValueKind.NUMBER;
+    }
 }

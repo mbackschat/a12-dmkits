@@ -31,7 +31,15 @@ public final class RuleValidator {
 
     /** Check {@code rule} against the model given as DM-JSON text. */
     public ValidationResult check(String modelJson, DraftRule rule) {
-        String injected = inject(modelJson, rule);
+        return checkInjected(inject(modelJson, rule));
+    }
+
+    /** Check {@code computation} against the model given as DM-JSON text. */
+    public ValidationResult check(String modelJson, DraftComputation computation) {
+        return checkInjected(inject(modelJson, computation));
+    }
+
+    private ValidationResult checkInjected(String injected) {
 
         IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
         IDocumentModelService service = FACTORY.createDocumentModelService();
@@ -48,14 +56,25 @@ public final class RuleValidator {
     }
 
     private String inject(String modelJson, DraftRule rule) {
+        return injectInto(modelJson, rule.groupPath(), (root, elements) ->
+                elements.add(ruleNode(rule, localeCodes(root))));
+    }
+
+    private String inject(String modelJson, DraftComputation computation) {
+        return injectInto(modelJson, computation.groupPath(), (root, elements) ->
+                elements.add(computationNode(computation, localeCodes(root))));
+    }
+
+    private String injectInto(String modelJson, String groupPath,
+            java.util.function.BiConsumer<ObjectNode, ArrayNode> adder) {
         try {
             ObjectNode root = (ObjectNode) mapper.readTree(modelJson);
             JsonNode rootGroups = root.path("content").path("modelRoot").path("rootGroups");
-            ArrayNode elements = elementsOf(rootGroups, rule.groupPath());
+            ArrayNode elements = elementsOf(rootGroups, groupPath);
             if (elements == null) {
-                throw new IllegalArgumentException("no group at path: " + rule.groupPath());
+                throw new IllegalArgumentException("no group at path: " + groupPath);
             }
-            elements.add(ruleNode(rule, localeCodes(root)));
+            adder.accept(root, elements);
             return mapper.writeValueAsString(root);
         } catch (IOException e) {
             throw new UncheckedIOException("failed to read/write the model DM-JSON", e);
@@ -113,6 +132,36 @@ public final class RuleValidator {
             ObjectNode message = messages.addObject();
             message.put("locale", code);
             message.put("text", rule.name());
+        }
+        return node;
+    }
+
+    private ObjectNode computationNode(DraftComputation computation, List<String> localeCodes) {
+        ObjectNode node = mapper.createObjectNode();
+        node.put("type", "Computation");
+        node.put("id", computation.groupPath() + "/" + computation.name());
+        node.put("name", computation.name());
+
+        ObjectNode body = node.putObject("Computation");
+        body.put("computedFieldRelPath", computation.computedFieldRelPath());
+        if (computation.commonPrecondition() != null) {
+            body.put("commonPrecondition", computation.commonPrecondition());
+        }
+        ArrayNode alternatives = body.putArray("computationAlternatives");
+        for (DraftComputation.Alternative alternative : computation.alternatives()) {
+            ObjectNode alt = alternatives.addObject();
+            if (alternative.precondition() != null) {
+                alt.put("precondition", alternative.precondition());
+            }
+            alt.put("operation", alternative.operation());
+        }
+
+        // Computations also require error text (MVK_ERROR_MESSAGE_MISSING) — placeholder per locale.
+        ArrayNode messages = body.putArray("errorMessage");
+        for (String code : localeCodes) {
+            ObjectNode message = messages.addObject();
+            message.put("locale", code);
+            message.put("text", computation.name());
         }
         return node;
     }

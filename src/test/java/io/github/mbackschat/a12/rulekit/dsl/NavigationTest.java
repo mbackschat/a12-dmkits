@@ -44,7 +44,9 @@ class NavigationTest {
                 "/Subscription/TermsAccepted",
                 "/Subscription/Addons/Name",
                 "/Subscription/Addons/MonthlyFee",
-                "/Subscription/Billing/InvoiceEmail"), paths);
+                "/Subscription/Billing/InvoiceEmail",
+                "/Subscription/Billing/BaseFee",
+                "/Subscription/Billing/EffectiveFee"), paths);
     }
 
     @Test
@@ -60,7 +62,7 @@ class NavigationTest {
         List<FieldInfo> money = m.fields()
                 .filter(f -> f.kind() == ValueKind.NUMBER && f.scale() == 2)
                 .toList();
-        assertEquals(1, money.size());
+        assertEquals(3, money.size());
         assertEquals("/Subscription/Addons/MonthlyFee", money.getFirst().path());
         assertEquals("MonthlyFee", money.getFirst().name());
     }
@@ -98,7 +100,9 @@ class NavigationTest {
                 .map(c -> new DslRenderer().render(c))
                 .toList();
         assertEquals(List.of(
-                "FieldFilled(/Subscription/Addons/MonthlyFee) And [/Subscription/Addons/MonthlyFee] < 0"),
+                "FieldFilled(/Subscription/Addons/MonthlyFee) And [/Subscription/Addons/MonthlyFee] < 0",
+                "FieldFilled(/Subscription/Billing/BaseFee) And [/Subscription/Billing/BaseFee] < 0",
+                "FieldFilled(/Subscription/Billing/EffectiveFee) And [/Subscription/Billing/EffectiveFee] < 0"),
                 rendered);
     }
 

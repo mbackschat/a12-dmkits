@@ -6,4 +6,9 @@ package io.github.mbackschat.a12.rulekit.dsl;
  * the operand's enum-ness travels with the AST (useful for explain/F9).
  */
 public record EnumValueLiteral(String value) implements Calculation {
+
+    @Override
+    public io.github.mbackschat.a12.rulekit.model.ValueKind kind() {
+        return io.github.mbackschat.a12.rulekit.model.ValueKind.ENUMERATION;
+    }
 }

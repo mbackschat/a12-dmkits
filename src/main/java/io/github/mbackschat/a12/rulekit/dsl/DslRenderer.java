@@ -58,7 +58,8 @@ public final class DslRenderer {
         return rendered;
     }
 
-    private String render(Calculation calculation) {
+    /** Renders a value expression — e.g. a computation slot's {@code operation}. */
+    public String render(Calculation calculation) {
         return switch (calculation) {
             case FieldValue v -> "[" + v.field().path() + "]";
             case NumberLiteral n -> n.value().toPlainString();

@@ -84,7 +84,7 @@ The owner's goals, consolidated (original vision 2026-06-02; bidirectionality de
 - **F0a (foundational) — Own the operand type system** (→ §5b)
   - A **type lattice** of the kernel's value kinds + legality/comparability rules, encoded as catalog data (the kernel exposes no readable type tag), CI-verified against the engine.
 - **F1 — Build boolean `Condition`s** via the typed API — the kind that fills a rule's `errorCondition` *and* computation pre-/common-preconditions (one AST, many slots — §5).
-- **F2 — Build `Calculation`s and `Computation`s** — computed field + optional `commonPrecondition` + `(precondition, operation)` alternatives; the computed field's type & decimal scale enforced.
+- **F2 — Build `Calculation`s and `Computation`s** — computed field + optional `commonPrecondition` + `(precondition, operation)` alternatives; the operation's value **kind** is enforced locally (`Calculation.kind()`), decimal **scale** stays the kernel's call (D13). Alternatives are either one unconditional or all preconditioned — mixing is kernel-illegal (`MVK_ERROR_EMPTY_PRECONDITION`, verified) and unrepresentable in the builder.
 - **F2a — Author the adjacent slots** (fork #11)
   - Path slots (`errorEntityRelPath`, `computedFieldRelPath`) set from typed field handles.
   - A light typed **error-message interpolation helper** (`$Field.value$`, no-asterisk rule enforced); full templating stays optional sugar.

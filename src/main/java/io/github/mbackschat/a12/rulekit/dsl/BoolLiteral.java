@@ -11,4 +11,9 @@ public record BoolLiteral(boolean value) implements Calculation {
     public String operatorId() {
         return value ? "True" : "False";
     }
+
+    @Override
+    public io.github.mbackschat.a12.rulekit.model.ValueKind kind() {
+        return io.github.mbackschat.a12.rulekit.model.ValueKind.BOOLEAN;
+    }
 }
