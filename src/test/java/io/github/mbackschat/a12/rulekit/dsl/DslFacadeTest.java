@@ -56,6 +56,28 @@ class DslFacadeTest {
     }
 
     @Test
+    void allOfFoldsWithAndWithoutRedundantParentheses() {
+        Condition a = m.field(NAME).filled();
+        Condition b = m.field(MONTHLY_FEE).filled();
+        Condition c = m.num(MONTHLY_FEE).gt(0);
+        assertEquals(
+                "FieldFilled(/Subscription/Addons/Name) And FieldFilled(/Subscription/Addons/MonthlyFee)"
+                        + " And [/Subscription/Addons/MonthlyFee] > 0",
+                new DslRenderer().render(Dsl.allOf(a, b, c)));
+    }
+
+    @Test
+    void anyOfNestedInAllOfParenthesizesPerTheKernelMixingRule() {
+        Condition a = m.field(NAME).filled();
+        Condition b = m.num(MONTHLY_FEE).le(0);
+        Condition c = m.num(MONTHLY_FEE).gt(100);
+        assertEquals(
+                "FieldFilled(/Subscription/Addons/Name) And "
+                        + "([/Subscription/Addons/MonthlyFee] <= 0 Or [/Subscription/Addons/MonthlyFee] > 100)",
+                new DslRenderer().render(Dsl.allOf(a, Dsl.anyOf(b, c))));
+    }
+
+    @Test
     void lengthFactoryMatchesTheHandleForm() {
         Condition viaDsl = length(m.str(NAME)).gt(10);
         assertEquals("Length(/Subscription/Addons/Name) > 10", new DslRenderer().render(viaDsl));

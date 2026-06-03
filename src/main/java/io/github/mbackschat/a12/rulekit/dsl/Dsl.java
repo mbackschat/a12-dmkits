@@ -66,6 +66,26 @@ public final class Dsl {
         return new FieldListPredicate(quantifier, fields);
     }
 
+    // --- n-ary composition (study finding 10) ---------------------------------------------------
+
+    /** And-fold: {@code allOf(a, b, c)} renders {@code a And b And c} (no redundant parentheses). */
+    public static Condition allOf(Condition first, Condition second, Condition... rest) {
+        Condition folded = first.and(second);
+        for (Condition c : rest) {
+            folded = folded.and(c);
+        }
+        return folded;
+    }
+
+    /** Or-fold: {@code anyOf(a, b, c)} renders {@code a Or b Or c}; parenthesized when mixed with And. */
+    public static Condition anyOf(Condition first, Condition second, Condition... rest) {
+        Condition folded = first.or(second);
+        for (Condition c : rest) {
+            folded = folded.or(c);
+        }
+        return folded;
+    }
+
     // --- group predicates (the group twin of the field forms) ----------------------------------
 
     public static Condition groupFilled(GroupRef group) {

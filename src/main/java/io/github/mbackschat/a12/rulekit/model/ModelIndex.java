@@ -91,6 +91,39 @@ public final class ModelIndex {
         return group(groupPath).getRepeatability() != 1;
     }
 
+    // --- navigation (Level 1, study finding 9): streams of facts in model order -----------------
+
+    /** Paths of all fields, in model order. */
+    public java.util.stream.Stream<String> fieldPaths() {
+        return byPath.entrySet().stream()
+                .filter(e -> e.getValue() instanceof IField)
+                .map(Map.Entry::getKey);
+    }
+
+    /** Paths of all groups (root groups included), in model order. */
+    public java.util.stream.Stream<String> groupPaths() {
+        return byPath.entrySet().stream()
+                .filter(e -> e.getValue() instanceof IGroup)
+                .map(Map.Entry::getKey);
+    }
+
+    /** Paths of the fields directly contained in the group at {@code groupPath}, in model order. */
+    public java.util.stream.Stream<String> fieldPaths(String groupPath) {
+        return group(groupPath).getElements().stream()
+                .filter(IField.class::isInstance)
+                .map(IElement::getId);
+    }
+
+    /** Whether a field exists at {@code path} (the non-throwing peek behind {@code fieldAt}). */
+    public boolean isField(String path) {
+        return byPath.get(path) instanceof IField;
+    }
+
+    /** The element's short name (last path segment, as modeled). */
+    public String nameOf(String path) {
+        return require(path).getName();
+    }
+
     private static IFieldType effectiveType(IField field) {
         return field.getEffectiveType().orElseGet(field::getFieldType);
     }

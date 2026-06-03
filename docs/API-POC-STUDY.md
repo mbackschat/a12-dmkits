@@ -111,16 +111,16 @@ public final class SubscriptionIdioms {
 
 No framework, no registry — a fragment library is a Java class; discoverability comes from javadoc + the skill. (This is the Zod lesson: schemas-are-code.)
 
-### 3.4 Parameterized *rules* — templates over the model 🔮
+### 3.4 Parameterized *rules* — templates over the model (navigation ✅, `Rule` object 🔮)
 
 ```java
-/** One rule per monetary field: never negative. The model index drives the loop. */
+/** One rule per monetary field: never negative. Navigation (✅, §6c) drives the loop. */
 static List<Rule> nonNegativeMoneyRules(BoundModel m) {
-    return m.fieldsOfKind(ValueKind.NUMBER).stream()             // 🔮 model-index query surface (finding 9)
-            .filter(f -> f.scale() == 2)                          // "money" by convention: scale 2
-            .map(f -> Rule.in(m.groupOf(f))                       // 🔮 Rule authoring object (F2a)
-                    .errorField(f)
-                    .when(f.filled().and(f.lt(0)))
+    return m.fields()                                             // ✅ Level-1 navigation
+            .filter(f -> f.kind() == ValueKind.NUMBER && f.scale() == 2)   // "money" by convention
+            .map(f -> Rule.in(f.group())                          // 🔮 Rule authoring object (F2a)
+                    .errorField(f.asNum())
+                    .when(f.asNum().filled().and(f.asNum().lt(0)))
                     .code("NON_NEGATIVE_" + f.name().toUpperCase())
                     .severity(ERROR)
                     .message(en("{0} must not be negative.", f))
@@ -129,16 +129,14 @@ static List<Rule> nonNegativeMoneyRules(BoundModel m) {
 }
 ```
 
-This is the bulk-authoring payoff: a *rule template* is a function `BoundModel → List<Rule>`; an LLM (or CI) applies it to any model. It needs two planned pieces: the `Rule` object and a **model-index query surface** (`fieldsOfKind`, `groupOf`, `fields(group)`) — recorded as finding 9.
+This is the bulk-authoring payoff: a *rule template* is a function `BoundModel → List<Rule>`; an LLM (or CI) applies it to any model. The navigation half works today (the condition-level pipeline is test-backed in `NavigationTest`); the `Rule` object (F2a) is the remaining piece.
 
-### 3.5 n-ary composition 🔮 (finding 10)
+### 3.5 n-ary composition ✅ (finding 10 — implemented 2026-06-04)
 
 ```java
-Condition c = allOf(r1, r2, r3);            // folds with And, parenthesizing per the kernel's mixing rule
-Condition d = anyOf(r1, r2);                // Or-fold
+Condition c = allOf(r1, r2, r3);            // And-fold: "r1 And r2 And r3" — no redundant parentheses
+Condition d = allOf(r1, anyOf(r2, r3));     // "r1 And (r2 Or r3)" — parens per the kernel's mixing rule
 ```
-
-Today only binary `and`/`or` exist; `allOf`/`anyOf` varargs in `Dsl` are Phase-1-sized sugar that matter for templates (3.4) and LLM-generated rule sets.
 
 ## 4. Authoring a rule end-to-end (F1, F2, F2a, F3, F4, F6)
 
@@ -290,7 +288,7 @@ grep BirthDate ctx/rules.jsonl
 
 The 10k-field problem dissolves: the files hold everything, only grep hits enter context; `model-card.md` (skeleton) is the single read-whole artifact. JSONL = one line per fact = greppable *and* `jq`/Python-parseable; each artifact stamps the snapshot's model id/version.
 
-### 6c. Navigating the model (finding 9, Level 1) 🔮 — jOOQ-`Meta`-style, no query language
+### 6c. Navigating the model (finding 9, Level 1) ✅ — jOOQ-`Meta`-style, no query language (implemented 2026-06-04; `NavigationTest`)
 
 The programmatic counterpart to 6b's files — and the machinery beneath them (`fields.jsonl` *is* `m.fields()` serialized). Streams of rich **info handles**; matching is plain Java; narrowing bridges back to strict authoring handles:
 
@@ -353,7 +351,8 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 | Handles (`num/str/enumOf/bool/confirm/group`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–2 + base set) |
 | §3.1 fragments, §3.3 library pattern, §6 catalog queries, §2 type-steering | ✅ pattern works today on covered operators |
 | §3.2 domain fragments (`withinTolerance`, `chronological`, `uniqueBy`) | 🔮 their operators are corpus items 6–7 + tolerance |
-| §3.4 rule templates, §3.5 `allOf`/`anyOf`, §6c navigation (Level 1) | 🔮 findings 9–10 (below; navigation design decided 2026-06-04) |
+| §6c navigation (Level 1: `fields()`/`groups()`/`fieldAt` + strict narrowing), §3.5 `allOf`/`anyOf` | ✅ implemented 2026-06-04 (findings 9–10) |
+| §3.4 rule templates | 🔮 condition-level pipeline works today (`NavigationTest`); full form needs the `Rule` object (F2a) |
 | `Rule`/`Computation` objects, message helper, DM-JSON write, fork-9 path policy, `advice()` | 🔮 Phase-1 remainder (F2/F2a) |
 | ingest / explain / diff / LLM loop | 🔮 Phase 2 (adapter) |
 | TS twin | 🔮 Phase 4 |
@@ -368,8 +367,8 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 6. **LLM execution vehicle** — skill-documented scratch-test/JBang patterns first; a thin `rulekit-cli` is a separate decision.
 7. **`explain` should flag suspicions, not just facts** — cheap heuristics (inverted predicate, unguarded negative condition on a repeatable group) over the same projection; candidate F9 refinement.
 8. **Diff must disclose lossiness up front** — "n comments will be dropped" belongs in `RenderedDiff`'s contract.
-9. *(new; **design decided 2026-06-04** — the navigational API, jOOQ-`Meta`-style)* **The model index gets a Level-1 navigation surface** — the unifying design for rule templates (§3.4), F9a's `find`/`describe`/`dump` (which iterate everything anyway), and the fork-9 renderer internals (ancestry, short-name uniqueness — built regardless). Shape: `m.fields()`/`m.groups()`/`m.fields(group)` return **streams of rich info handles**; `m.fieldAt(path)` is the non-throwing peek; **matching is plain `Stream.filter`** — deliberately *no* query language/matcher API (the jOOQ `Meta` restraint; XPath-style DSLs rejected); **info handles narrow to typed authoring handles** via `asNum()`/`asStr()`/… (lenient exploring, strict authoring — jOOQ's `Field<?>` coercion pattern). Safe because the binding is an immutable snapshot (F0) — everything memoizes internally. Polyglot contract is "iterate model facts", not `java.util.Stream`. **Level 2 is parked with named triggers:** glob path patterns (a template inexpressible via `filter`), ancestry axes (the iteration cluster's authoring needs), annotation queries (real-model demand) — none gets built without its trigger. The static counterpart remains L2b codegen refs (Phase 3 — jOOQ's generated schema classes).
-10. *(new)* **n-ary `allOf`/`anyOf` in `Dsl`** — varargs And/Or folds with correct parenthesization; trivial, and templates/agents want them.
+9. ✅ *(implemented 2026-06-04, same-day design)* **The model index gets a Level-1 navigation surface** — the unifying design for rule templates (§3.4), F9a's `find`/`describe`/`dump` (which iterate everything anyway), and the fork-9 renderer internals (ancestry, short-name uniqueness — built regardless). Shape: `m.fields()`/`m.groups()`/`m.fields(group)` return **streams of rich info handles**; `m.fieldAt(path)` is the non-throwing peek; **matching is plain `Stream.filter`** — deliberately *no* query language/matcher API (the jOOQ `Meta` restraint; XPath-style DSLs rejected); **info handles narrow to typed authoring handles** via `asNum()`/`asStr()`/… (lenient exploring, strict authoring — jOOQ's `Field<?>` coercion pattern). Safe because the binding is an immutable snapshot (F0) — everything memoizes internally. Polyglot contract is "iterate model facts", not `java.util.Stream`. **Level 2 is parked with named triggers:** glob path patterns (a template inexpressible via `filter`), ancestry axes (the iteration cluster's authoring needs), annotation queries (real-model demand) — none gets built without its trigger. The static counterpart remains L2b codegen refs (Phase 3 — jOOQ's generated schema classes).
+10. ✅ *(implemented 2026-06-04)* ~~n-ary `allOf`/`anyOf` in `Dsl`~~ — varargs And/Or folds; parenthesization falls out of the existing renderer mixing rule.
 11. *(new)* **Fragment libraries are the re-expression vocabulary** — §5.4 shows modify-by-re-express often means *recognizing a named idiom*; the skill should encourage teams to keep a `…Idioms` class and teach the LLM to prefer its fragments over raw composition. (Also the natural home for org-specific conventions.)
 12. *(new, 2026-06-04)* **The model-context surface is F9's other half** (owner idea, recorded as **F9a** in the proposal): `describe()`/`find()`/`whereUsed()` in an own `context` package — the agent's entry point is a *name*, and "explain the rule on birthdate" needs name resolution + the field→rules inverse index (slot-labeled) before F9 can fire. Exact where-used rides the Phase-2 adapter (`getDirectlyReferencedEntities`, no converter needed); `describe`/`find` are Phase-1-sized and share finding 9's index queries. **Two constraints recorded same day (owner):** *(a) snapshot semantics* — a `BoundModel` is an immutable snapshot (no events, no staleness; writes produce a new binding; derived lookups memoized internally so clients never build their own indexes); *(b) model scale* — 1k fields / 6-level nesting is a *normal* DM, 10k exists → `describe()` is progressive disclosure (skeleton + drill-down), never a full catalogue.
 

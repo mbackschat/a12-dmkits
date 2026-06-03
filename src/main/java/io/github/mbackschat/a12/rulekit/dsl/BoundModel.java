@@ -50,6 +50,33 @@ public final class BoundModel {
         return new GroupRef(path, index.isRepeating(path));
     }
 
+    // --- navigation (Level 1, study finding 9): streams of info handles; filter is the matcher --
+
+    /** Every field, in model order, as rich {@link FieldInfo} descriptors. */
+    public java.util.stream.Stream<FieldInfo> fields() {
+        return index.fieldPaths().map(this::fieldInfo);
+    }
+
+    /** The fields directly contained in {@code group}, in model order. */
+    public java.util.stream.Stream<FieldInfo> fields(GroupRef group) {
+        return index.fieldPaths(group.path()).map(this::fieldInfo);
+    }
+
+    /** Every group (root groups included), in model order. */
+    public java.util.stream.Stream<GroupInfo> groups() {
+        return index.groupPaths()
+                .map(p -> new GroupInfo(this, p, index.nameOf(p), index.isRepeating(p)));
+    }
+
+    /** The non-throwing peek — exploring is lenient; narrowing (on {@link FieldInfo}) is strict. */
+    public java.util.Optional<FieldInfo> fieldAt(String path) {
+        return index.isField(path) ? java.util.Optional.of(fieldInfo(path)) : java.util.Optional.empty();
+    }
+
+    private FieldInfo fieldInfo(String path) {
+        return new FieldInfo(this, path, index.nameOf(path), index.kindOf(path));
+    }
+
     /** A typed boolean handle ({@code isTrue()}/{@code isFalse()}). Throws if not a boolean field. */
     public BoolRef bool(String path) {
         ValueKind kind = index.kindOf(path);

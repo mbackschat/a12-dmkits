@@ -13,7 +13,7 @@ Working end-to-end today:
 - **Operator catalog** (§9) — bundled JSON spine with verified bilingual keywords; **self-verifying**: every example is checked against the real kernel (N7).
 - **Typed condition AST + renderer** — model-bound handles compose immutable `Condition`s; every node carries its **catalog operator-id + model-resolved refs + provenance hint** (the D14 invariant that makes explain/ingest cheap later); the renderer emits canonical EN/DE text with *no keyword knowledge outside the catalog*.
 - **Ground-truth validator** (F4) — injects a rendered rule as DM-JSON and runs `checkConsistency`, mapping `MVK_*` to problems.
-- **`Dsl.*` static facade + `Condition.transform`** — free-standing, handle-based factories for combinators, and the bottom-up rewriter (modify #1) with reference-identity reuse for untouched subtrees; number comparisons take scale-faithful `String`/`BigDecimal` literals.
+- **`Dsl.*` static facade + `Condition.transform` + Level-1 navigation** — handle-based factories (incl. n-ary `allOf`/`anyOf`), the bottom-up rewriter (modify #1), and jOOQ-`Meta`-style model navigation (`fields()`/`groups()`/`fieldAt` streams of info handles with strict narrowing — the rule-template enabler); number comparisons take scale-faithful `String`/`BigDecimal` literals.
 
 Not yet built: relative/short path policy (§18 fork 9), computations (F2), broader operator/type coverage (corpus-backlog order), the kernel-adapter module with text→AST ingest (F10), explainability (F9), modify loop (F8), the TS port.
 
