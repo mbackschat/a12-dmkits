@@ -106,6 +106,29 @@ class RuleValidatorTest {
     }
 
     @Test
+    void locksConfirmAndBooleanComparisonRules() {
+        // Verified 2026-06-03 (see KERNEL-INTEGRATION-NOTES): boolean compares to True/False/boolean;
+        // confirm only to True (or another confirm). Lock both rejection codes.
+        DraftRule confirmFalse = new DraftRule(
+                "/Subscription", "ConfirmFalseRule", "../TermsAccepted",
+                "[TermsAccepted] == False", "CONFIRM_FALSE", "ERROR");
+        ValidationResult r1 = new RuleValidator().check(modelJson, confirmFalse);
+        assertFalse(r1.ok(), "confirm == False must be rejected");
+        assertTrue(r1.problems().stream()
+                        .anyMatch(p -> p.mvkCode().filter("MVK_INVALID_COMPARE_TO_YES"::equals).isPresent()),
+                () -> "expected MVK_INVALID_COMPARE_TO_YES, got: " + r1.problems());
+
+        DraftRule boolVsString = new DraftRule(
+                "/Subscription", "BoolVsStringRule", "../AutoRenew",
+                "[AutoRenew] == \"yes\"", "BOOL_STR", "ERROR");
+        ValidationResult r2 = new RuleValidator().check(modelJson, boolVsString);
+        assertFalse(r2.ok(), "boolean == string must be rejected");
+        assertTrue(r2.problems().stream()
+                        .anyMatch(p -> p.mvkCode().filter("MVK_INVALID_COMPARE_TO_YESNO"::equals).isPresent()),
+                () -> "expected MVK_INVALID_COMPARE_TO_YESNO, got: " + r2.problems());
+    }
+
+    @Test
     void rejectsATypeIllegalComparison() {
         // Ordering a string ([Name]) is a type error — MVK_INVALID_TYPE_FOR_COMPARISON.
         DraftRule rule = new DraftRule(

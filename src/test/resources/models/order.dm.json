@@ -94,6 +94,26 @@
                     }
                   }
                 }
+              },
+              {
+                "type": "Field",
+                "id": "/Order/ExpressShipping",
+                "name": "ExpressShipping",
+                "Field": {
+                  "fieldType": {
+                    "type": "BooleanType"
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Order/TermsConfirmed",
+                "name": "TermsConfirmed",
+                "Field": {
+                  "fieldType": {
+                    "type": "ConfirmType"
+                  }
+                }
               }
             ]
           }

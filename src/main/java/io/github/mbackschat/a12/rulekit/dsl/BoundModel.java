@@ -45,6 +45,28 @@ public final class BoundModel {
         return new StringRef(field(path));
     }
 
+    /** A typed boolean handle ({@code isTrue()}/{@code isFalse()}). Throws if not a boolean field. */
+    public BoolRef bool(String path) {
+        ValueKind kind = index.kindOf(path);
+        if (kind != ValueKind.BOOLEAN) {
+            throw new IllegalArgumentException(path + " is not a boolean field (kind=" + kind + ")");
+        }
+        return new BoolRef(field(path));
+    }
+
+    /**
+     * A typed confirm handle — a distinct kind from boolean (§5b): offers {@code confirmed()} /
+     * {@code notConfirmed()} only (confirm never compares to {@code False}). Throws if not a
+     * confirm field.
+     */
+    public ConfirmRef confirm(String path) {
+        ValueKind kind = index.kindOf(path);
+        if (kind != ValueKind.CONFIRM) {
+            throw new IllegalArgumentException(path + " is not a confirm field (kind=" + kind + ")");
+        }
+        return new ConfirmRef(field(path));
+    }
+
     /** A typed enumeration handle carrying the model's allowed values. Throws if not an enum. */
     public EnumRef enumOf(String path) {
         ValueKind kind = index.kindOf(path);

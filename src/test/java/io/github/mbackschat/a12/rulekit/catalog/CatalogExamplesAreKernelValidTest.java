@@ -29,7 +29,7 @@ class CatalogExamplesAreKernelValidTest {
 
     /** Field names in {@code order.dm.json}, in the order to pick a referenced error field. */
     private static final List<String> ORDER_FIELDS =
-            List.of("CustomerName", "ProductCode", "Quantity", "UnitPrice", "BackorderQuantity");
+            List.of("CustomerName", "ProductCode", "Quantity", "UnitPrice", "BackorderQuantity", "ExpressShipping", "TermsConfirmed");
 
     private static final OperatorCatalog CATALOG = OperatorCatalog.load();
     private static final RuleValidator VALIDATOR = new RuleValidator();

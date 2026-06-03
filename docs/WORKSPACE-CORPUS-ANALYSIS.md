@@ -30,7 +30,7 @@ A read-only **analysis** of two real A12 model corpora, used to prioritize what 
 | 14 | `Or`/`or`/`OR` | ✅ |
 | 13 / 10 / 8 / 6 / 5 | `NotExactlyOneFieldFilled` / `NotAllFieldsFilled` / `FieldsNotCollectivelyFilled` / `AtLeastOneFieldFilled` / `NoFieldFilled` | ✅ (quantifier family done) |
 | **11** | `NumberOfFilledFields` (aggregate) | ❌ |
-| **11 / 3** | `True` / `False` (boolean & confirm literals) | ❌ no boolean literals |
+| 11 / 3 | `True` / `False` (boolean & confirm literals) | ✅ (`BoolRef.isTrue/isFalse`, `ConfirmRef.confirmed/notConfirmed`) |
 | **8 / 8 / 8 / 6 / 4** | `CurrentRepetition` / `For` (semantic index) / `Today` / `Having` / `RepetitionNotUnique` | ❌ iteration + dates |
 | **6 / 1 / 1 / 1** | `Date(...)` / `DifferenceInDays` / `DifferenceInYears` / `AddMonths` | ❌ date family |
 | **5** | `->` (enum category) | ❌ |
@@ -74,7 +74,7 @@ Real conditions include `;;` line comments, `\r\n` line breaks, and case-variant
 | 53 | `AllFieldsFilled` (quantifier family) | ✅ |
 | 46 | `GroupFilled` | ❌ group predicates |
 | **45** | `CustomCondition` | ❌ (the app-defined escape hatch) |
-| 23 | `True` / `False` literals | ❌ |
+| 23 | `True` / `False` literals | ✅ |
 | **23** | value-list membership (`…InValueList`) | ❌ |
 | **14 / 13** | `PatternMatched` / `PatternViolated` | ❌ |
 | 7 | `NumberOfFilledFields` | ❌ |
@@ -85,7 +85,7 @@ Real conditions include `;;` line comments, `\r\n` line breaks, and case-variant
 
 Counts shown as C1 (app) + C2 (metamodel). Order balances combined frequency against effort.
 
-1. **Boolean (+ confirm) literals & comparison** — `== True/False` (14 + 23). *Low effort; unlocks the most common gating pattern.*
+1. ~~**Boolean (+ confirm) literals & comparison**~~ — ✅ **done 2026-06-03** (`BoolLiteral` + `BoolRef`/`ConfirmRef`; confirm-vs-False made unrepresentable — `MVK_INVALID_COMPARE_TO_YES`/`_YESNO` verified and N7-locked).
 2. **Group predicates** — `GroupFilled` (56 + 46 ≈ 100) + `GroupNotFilled`/`AllGroupsFilled`/`AtLeastOneGroupFilled`. *Low–med; highest combined non-trivial frequency; mirrors `FieldFilled` over a group ref.*
 3. **Enum-category navigation** — `[Field -> Category] <op> "X"` (5 + 54). *Med; needs enum category access from the model index (already have `getCategories()`). Bumped up by Corpus 2.*
 4. **Pattern operators** — `PatternMatched` / `PatternViolated` (0 + 27). *Med; string field + regex constant.*

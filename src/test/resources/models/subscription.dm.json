@@ -90,6 +90,26 @@
                 }
               },
               {
+                "type": "Field",
+                "id": "/Subscription/AutoRenew",
+                "name": "AutoRenew",
+                "Field": {
+                  "fieldType": {
+                    "type": "BooleanType"
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Subscription/TermsAccepted",
+                "name": "TermsAccepted",
+                "Field": {
+                  "fieldType": {
+                    "type": "ConfirmType"
+                  }
+                }
+              },
+              {
                 "type": "Group",
                 "id": "/Subscription/Addons",
                 "name": "Addons",

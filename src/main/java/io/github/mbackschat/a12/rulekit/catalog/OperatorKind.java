@@ -14,6 +14,8 @@ public enum OperatorKind {
     FUNCTION,
     AGGREGATE,
     PATH_OP,
+    /** Keyword constants with localized spellings, e.g. {@code True}/{@code Wahr}. */
+    CONSTANT,
     STRUCTURAL;
 
     @JsonCreator

@@ -60,6 +60,7 @@ public final class DslRenderer {
             case NumberLiteral n -> n.value().toPlainString();
             case StringLiteral s -> quote(s.value());
             case EnumValueLiteral e -> quote(e.value());
+            case BoolLiteral b -> keyword(b.operatorId());
             case LengthOf l -> keyword(l.operatorId()) + "(" + l.field().path() + ")";
         };
     }

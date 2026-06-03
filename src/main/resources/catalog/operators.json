@@ -195,6 +195,32 @@
     "sinceKernel": "30.8.x"
   },
   {
+    "id": "True",
+    "kind": "constant",
+    "keywords": { "en": "True", "de": "Wahr" },
+    "operands": [],
+    "returns": "boolean-constant",
+    "meaning": "The boolean/confirm constant 'true'. Booleans compare to True/False; confirm fields compare ONLY to True (== / !=).",
+    "constraints": [ "usable in equality comparisons against boolean fields (== / !=) and confirm fields (== / != True only)" ],
+    "gotchas": [ "an UNSET boolean makes the comparison not-evaluated (neither true nor false) — guard with FieldFilled when that matters", "an unset confirm counts as not confirmed, so [Confirm] != True is the idiom for 'not confirmed'" ],
+    "validExample": { "dsl": "[ExpressShipping] == True", "note": "fires when the boolean is set and true" },
+    "invalidExample": { "dsl": "[ExpressShipping] == \"yes\"", "error": "MVK_INVALID_COMPARE_TO_YESNO", "fix": "a boolean compares only to True/False or another boolean field, never to a string" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "False",
+    "kind": "constant",
+    "keywords": { "en": "False", "de": "Falsch" },
+    "operands": [],
+    "returns": "boolean-constant",
+    "meaning": "The boolean constant 'false'. Legal against boolean fields only — a confirm field never compares to False.",
+    "constraints": [ "usable in equality comparisons against boolean fields only" ],
+    "gotchas": [ "confirm fields compare only to True — [Confirm] == False is rejected; use [Confirm] != True for 'not confirmed'" ],
+    "validExample": { "dsl": "[ExpressShipping] == False", "note": "fires when the boolean is set and false" },
+    "invalidExample": { "dsl": "[TermsConfirmed] == False", "error": "MVK_INVALID_COMPARE_TO_YES", "fix": "a confirm compares only to True (or another confirm field) — use [TermsConfirmed] != True" },
+    "sinceKernel": "30.8.x"
+  },
+  {
     "id": "Length",
     "kind": "function",
     "keywords": { "en": "Length", "de": "Laenge" },

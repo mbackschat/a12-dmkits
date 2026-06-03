@@ -39,6 +39,8 @@ class OperatorIdTest {
     @Test
     void operatorBearingCalculationNodesCarryTheirCatalogOperatorId() {
         assertEquals("Length", new LengthOf(STR).operatorId());
+        assertEquals("True", new BoolLiteral(true).operatorId());
+        assertEquals("False", new BoolLiteral(false).operatorId());
     }
 
     @Test
@@ -57,6 +59,8 @@ class OperatorIdTest {
             assertResolves(op.operatorId());
         }
         assertResolves("Length");
+        assertResolves("True");
+        assertResolves("False");
     }
 
     @Test
