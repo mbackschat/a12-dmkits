@@ -97,4 +97,10 @@ Counts shown as C1 (app) + C2 (metamodel). Order balances combined frequency aga
 
 ## How this drives the work
 
-Each backlog item is built as a normal increment: catalog entries (verified EN/DE keywords) + AST node(s) + typed handles + renderer, with examples authored in **our own** fixtures and **kernel-validated by N7**. The corpora only tell us *what to build and in what order*; correctness comes from the kernel, originality from our own domains. A separate, **opt-in** integration test (env-gated, skipped if absent — never committing corpus content) that runs the `deserialize → expand(resolver) → checkConsistency` path over both corpora would harden the model index against (a) Corpus 1's 27 reference-using models and (b) Corpus 2's type-def-heavy metamodels, and would double as the verification that 28.3.0 models load tolerantly under our pinned kernel.
+Each backlog item is built as a normal increment: catalog entries (verified EN/DE keywords) + AST node(s) + typed handles + renderer, with examples authored in **our own** fixtures and **kernel-validated by N7**. The corpora only tell us *what to build and in what order*; correctness comes from the kernel, originality from our own domains.
+
+**Decided sourcing policy:**
+- **Corpus 1 (A12 Tools, proprietary):** read-only analysis only. Transform via **one-time pattern-inspired original authoring** — our own coherent fixtures exercising the patterns; never commit or structurally migrate their content.
+- **Corpus 2 (`a12-kernel-mm`, EUPL-1.2 OSS):** *referenced*, not vendored. The bootstrap already clones it as a sibling, so an **opt-in integration test** reads `../a12-kernel-mm/documentModels` (env-overridable, skipped if absent). Not committed — EUPL copyleft would conflict with rulekit's intended permissive license (§19), and referencing ≠ copying.
+
+That opt-in test (`deserialize → expand(resolver) → checkConsistency` over the canonical models) would harden the model index against Corpus 2's type-def/combination-reference-heavy metamodels and **verify 28.3.0 loads tolerantly** under our pinned kernel — but it needs a filesystem resolver for kernel-mm's multi-variant reference scheme, so it's its own increment.

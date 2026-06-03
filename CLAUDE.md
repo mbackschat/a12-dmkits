@@ -8,7 +8,8 @@ English is the project default: code, identifiers, comments, docs, and the **def
 
 ## Test & sample document models
 
-- **Never copy domains, fields, or rules directly from the a12 kernel repos** (`a12-kernel`, `a12-kernel-mm`, `a12-base`, etc.). Invent your own domain and naming instead. The one exception is **`a12-kernel-demo`** — copying or adapting its example models is fine.
+- **Committed fixtures are always our own originals.** Never copy domains, fields, or rules into the repo from the a12 kernel repos (`a12-kernel`, `a12-kernel-mm`, `a12-base`, …) or the proprietary *A12 Tools* workspaces. Invent your own. The one exception is **`a12-kernel-demo`** — copying/adapting its example models is fine.
+- **Reference vs. copy.** Real corpora are a **read-only oracle** for *patterns and frequencies* (see [`docs/WORKSPACE-CORPUS-ANALYSIS.md`](docs/WORKSPACE-CORPUS-ANALYSIS.md)), transformed into our own fixtures (kernel-validated by N7). `a12-kernel-mm` is OSS (**EUPL-1.2**) and may be *referenced* — via the bootstrap's sibling clone (`../a12-kernel-mm`), env-overridable, skipped if absent — for **opt-in integration tests only**. Do **not commit** its model files: EUPL copyleft conflicts with rulekit's intended permissive license (§19); referencing ≠ copying. The *A12 Tools* workspaces are proprietary → read-only analysis only, never committed in any form.
 - Whatever you invent **must make sense**: coherent domain, realistic field names and types, plausible rules. No nonsense placeholders.
 
 ## Coding style — make full use of Java 21
