@@ -1,6 +1,6 @@
 # a12-rulekit — project instructions
 
-Design and rationale live in [`docs/PROJECT-PROPOSAL.md`](docs/PROJECT-PROPOSAL.md); verified kernel-integration facts in [`docs/KERNEL-INTEGRATION-NOTES.md`](docs/KERNEL-INTEGRATION-NOTES.md); how the builder structure is derived (and the ANTLR grammar's indirect role) in [`docs/DSL-DERIVATION.md`](docs/DSL-DERIVATION.md).
+Design and rationale live in [`docs/PROJECT-PROPOSAL.md`](docs/PROJECT-PROPOSAL.md); verified kernel-integration facts in [`docs/KERNEL-INTEGRATION-NOTES.md`](docs/KERNEL-INTEGRATION-NOTES.md); how the builder structure is derived (and the ANTLR grammar's indirect role) in [`docs/DSL-DERIVATION.md`](docs/DSL-DERIVATION.md); the real-model operator-usage analysis and transform backlog in [`docs/WORKSPACE-CORPUS-ANALYSIS.md`](docs/WORKSPACE-CORPUS-ANALYSIS.md).
 
 ## Language
 
