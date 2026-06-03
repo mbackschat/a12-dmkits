@@ -75,19 +75,48 @@ The owner's goals, consolidated (original vision 2026-06-02; bidirectionality de
 
 ### Functional
 
-- **F0 (foundational) Bind to a DocumentModel.** rulekit consumes a **fully-expanded** `IDocumentModel` (or model + caller-supplied `IDocumentModelReferenceResolver`, which rulekit expands itself; fail fast if references are unresolvable). It indexes the group tree, field types, repetition/index fields, and enum domains, and authors rules *into a specific group*. (→ §5a.)
-- **F0a (foundational) Model the operand type system.** rulekit owns a **type lattice** of the kernel's value kinds and the legality/comparability rules over them; the kernel exposes no readable type tag, so this is rulekit's to encode — as catalog data, CI-verified against the engine. (→ §5b.)
-- **F1** Build **boolean `Condition`s** via a typed API — the kind that fills a rule's `errorCondition` *and* computation pre-/common-preconditions (one AST, many slots — §5).
-- **F2** Build **typed `Calculation`s** and assemble **`Computation`s** (computed field + optional `commonPrecondition` + `(precondition, operation)` alternatives), with the computed field's type & decimal scale enforced.
-- **F2a** Author the **adjacent slots**: path slots (`errorEntityRelPath`, `computedFieldRelPath`) from typed field handles (near-free, the renderer computes paths anyway); a light **typed error-message interpolation helper** (`$Field.value$`, enforcing the no-asterisk rule). Full message templating stays optional sugar. (Decided fork #11.)
-- **F3** **Render** to canonical DSL text — EN by default, DE available, same AST. **F3a:** the renderer is model- and rule-group-aware: it computes the correct/safest **path form** (relative-first per the kernel's own preference; → fork #9) and **auto-quotes keyword-named segments**, dissolving the keyword-collision and common path-error classes by construction.
-- **F4** **Validate** via the **real kernel** with no compile/execute: the shipped path is DM-JSON injection + `checkConsistency` on the expanded model; the adapter adds a **fast per-rule path** (`hasValidConditionText`) for inner loops and CI. `MVK_*` failures map to actionable fixes. (→ §11.)
-- **F5** **Combinators**: expressions are first-class, immutable, composable values; reusable parameterized fragments are ordinary functions returning expression nodes.
-- **F6** **Integrate** with the existing authoring path: emit strings for `RuleBuilder.errorCondition(...)`-style call sites and whole Rule/Computation **DM-JSON nodes** (the public, polyglot write path — D9).
-- **F7** **Expose semantics**: the machine- and human-readable **operator catalog** (→ §9).
-- **F8** **Modify — the edit loop is core scope.** Immutable, transformable AST from day one (#1); **modify-by-re-express + rendered diff** (#2); and the **text→AST read path** (#3 core) so the loop covers *foreign/BA-authored* rules too. Every modify yields a reviewable rendered diff. Minimal-edit (concrete-syntax-preserving) re-render stays research-gated. (→ §12.)
-- **F9** **Explainability — full context for a specific rule.** A structured `explain(rule, model)` projection: referenced fields (path + model type + role), operators used (catalog `meaning`, kinds, constraints, gotchas), structural context (group; error field; whether & why the rule iterates; severity; for computations: computed field + scale, precondition table), and an NL gloss. One mechanism, two consumers: *understand/rewrite existing rules* and *ground new authoring*. Covers rulekit-built **and converted-foreign** ASTs (same projection — F10 feeds it). The kernel's `getDirectlyReferencedEntities`/`referencesIteration` serve as cross-check oracles.
-- **F10 (new in v2) Ingest — text → rulekit AST.** Parse existing rule/computation text via the kernel adapter (`IRuleParser` → `ICondition`) and **convert** it into rulekit's AST with a read-only visitor. Incremental construct coverage with **fail-fast** on unconverted constructs (never silent loss); converted nodes carry provenance (origin: text) and, where available, the author's **path-notation style** (from `PathNotationConfig`) as a rendering hint.
+- **F0 (foundational) — Bind to a DocumentModel** (→ §5a)
+  - Consumes a **fully-expanded** `IDocumentModel`, or model + caller-supplied `IDocumentModelReferenceResolver` (rulekit expands; fails fast on unresolvable references).
+  - Indexes the group tree, field types, repetition/index fields, and enum domains; rules are authored *into a specific group*.
+  - **Snapshot semantics:** a binding is an **immutable snapshot** — no in-place mutation exists in the public tier (verified), so no staleness and no event mechanism; every write (DM-JSON surgery, Phase-2 `replaceCondition`) produces a **new model → new binding**.
+  - **Memoized lookups:** derived indexes (kind/name/label maps, short-name uniqueness, keyword collisions) are lazily memoized inside the binding — clients never build their own.
+  - **Model scale (owner facts):** ~1,000 fields / 6-level nesting is a *normal* DM; 10,000-field models exist. Trivial for Java-side indexing; decisive for anything LLM-facing (→ F9a).
+- **F0a (foundational) — Own the operand type system** (→ §5b)
+  - A **type lattice** of the kernel's value kinds + legality/comparability rules, encoded as catalog data (the kernel exposes no readable type tag), CI-verified against the engine.
+- **F1 — Build boolean `Condition`s** via the typed API — the kind that fills a rule's `errorCondition` *and* computation pre-/common-preconditions (one AST, many slots — §5).
+- **F2 — Build `Calculation`s and `Computation`s** — computed field + optional `commonPrecondition` + `(precondition, operation)` alternatives; the computed field's type & decimal scale enforced.
+- **F2a — Author the adjacent slots** (fork #11)
+  - Path slots (`errorEntityRelPath`, `computedFieldRelPath`) set from typed field handles.
+  - A light typed **error-message interpolation helper** (`$Field.value$`, no-asterisk rule enforced); full templating stays optional sugar.
+- **F3 — Render** to canonical DSL text: EN default, DE available, same AST.
+  - **F3a — model- and rule-group-aware rendering:** computes the correct/safest **path form** (relative-first, per the kernel's own preference — fork #9) and **auto-quotes keyword-named segments**, dissolving the keyword-collision and common path-error classes by construction.
+- **F4 — Validate via the real kernel**, no compile/execute (→ §11)
+  - Shipped path: DM-JSON injection + `checkConsistency` on the expanded model.
+  - Adapter fast lane: per-rule `hasValidConditionText` for inner loops and CI.
+  - `MVK_*` failures map to actionable fixes.
+- **F5 — Combinators:** expressions are first-class, immutable, composable values; reusable parameterized fragments are ordinary functions returning expression nodes.
+- **F6 — Integrate:** emit condition strings for `RuleBuilder.errorCondition(...)`-style call sites, and whole Rule/Computation **DM-JSON nodes** (the public, polyglot write path — D9).
+- **F7 — Expose semantics:** the machine- and human-readable **operator catalog** (→ §9).
+- **F8 — Modify: the edit loop is core scope** (→ §12)
+  - **#1** immutable, transformable AST from day one; **#2** modify-by-re-express + rendered diff; **#3 (core)** the text→AST read path, so the loop covers foreign/BA-authored rules.
+  - Every modify yields a **reviewable rendered diff**.
+  - Minimal-edit (concrete-syntax-preserving) re-render stays research-gated (Phase 5).
+- **F9 — Explain a specific rule** (structured projection; → §14)
+  - `explain(rule, model)` assembles: referenced fields (path + model type + **role**), operators used (catalog `meaning`/kinds/constraints/gotchas), structural context (group; error field; whether & why the rule iterates; severity; computation table where applicable), and an NL gloss.
+  - One mechanism, two consumers: *understand/rewrite existing rules* and *ground new authoring*.
+  - Works identically for rulekit-built and converted-foreign ASTs (F10 feeds it); the kernel's `getDirectlyReferencedEntities`/`referencesIteration` are cross-check oracles.
+- **F9a — Model-context surface: the inverse projections** *(added 2026-06-04; own `context` package — a projection layer over model index + catalog, nothing else depends on it)*
+  - **Motivation:** an LLM asked *"explain the rule on birthdate"* must first resolve the name and find the rules — F9's other half: `find → whereUsed → explain(each)`.
+  - **`describe()`** — the model card, **progressive disclosure, never a full catalogue** (at F0's scale a full dump is 20–400k tokens): default = the **skeleton** (root groups, depth-limited tree, counts + kind histograms — low-thousands of tokens even at 10k fields); `describe(group)` drills down; reduced-model extraction (parked) is the right-sized "context for one rule" on large models.
+  - **`find(nameish)`** — candidate fields by name/id-segment/label match; deliberately dumb string ranking — fuzzy/NL interpretation stays the LLM's job.
+  - **`whereUsed(field)`** — the inverse index: every rule/computation referencing the field, **slot-labeled per hit** (error field / errorCondition operand / precondition / operation / message parameter — the §5 vocabulary). Exact via the adapter's `getDirectlyReferencedEntities` (one kernel call per rule, **no converter coverage needed** — Phase-2 adapter skeleton); the API stays in the public-tier core with a **pluggable reference-resolver seam** (core ships a labeled heuristic; the adapter contributes the exact resolver — N8-clean).
+  - **Delivery — files/stdout are the agent API** (owner direction): agents dump-then-grep, so the primary agent form is emitted artifacts: `model-card.md` (the only read-whole file), `fields.jsonl`/`groups.jsonl`/`rules.jsonl` (one line per fact; `rules.jsonl` carries raw condition text + `referencedFields`, marked `heuristic` until the adapter fills it exactly). `grep -i birthdate fields.jsonl` *is* the agent's `find`. Artifacts stamp the snapshot's model id/version.
+  - **Stream-first emitters** (owner refinement): the dump primitive targets `Appendable`/stdout per artifact, git-style (stdout default, `--output` optional, artifact as subcommand) — pipes work; `dump(dir)` is convenience wiring. Honest caveat: JVM startup costs seconds per invocation (unlike git), so the recommended agent loop is **dump-once-then-grep** (a redirect).
+  - **Scope guard:** structured projections + plain files only — no embeddings, no semantic search, no MCP/CLI product, no doc generation; grep is the query language.
+- **F10 — Ingest: text → rulekit AST** *(new in v2)*
+  - Parse existing rule/computation text via the kernel adapter (`IRuleParser` → `ICondition`), convert with a read-only visitor.
+  - Incremental construct coverage, **fail-fast** on unconverted constructs — never silent loss.
+  - Converted nodes carry **provenance** (origin: text) and the author's **path-notation style** (`PathNotationConfig`) as a rendering hint.
 
 ### Non-functional
 
@@ -414,7 +443,11 @@ Semantics captured at three tiers: **(A)** per-operator (catalog), **(B)** langu
 
 ### Explainability (F9) — the introspection surface
 
-`explain(rule, model)` assembles: referenced fields (path + model type + **role**: error field / operand / filter / index / `$`-correlated), operators used (catalog semantics travel with the rule), structural context (group; whether & why the rule iterates — the §5a error-field rule; severity; computation table where applicable), and an NL gloss. **Structured data first, gloss optional** (fork #12). It is a pure projection of catalog + model index onto the AST — near-free because of the D14 invariant (nodes carry catalog-ids + model refs), and it works identically for ingested foreign rules (F10). The kernel's own analysis services cross-check it (survey §9). *Exploratory, parked:* a "what can legally come next" affordance via the kernel's ATN machinery, and reduced-model extraction (`createReducedDocumentModel`) for focused LLM context.
+`explain(rule, model)` assembles: referenced fields (path + model type + **role**: error field / operand / filter / index / `$`-correlated), operators used (catalog semantics travel with the rule), structural context (group; whether & why the rule iterates — the §5a error-field rule; severity; computation table where applicable), and an NL gloss. **Structured data first, gloss optional** (fork #12). It is a pure projection of catalog + model index onto the AST — near-free because of the D14 invariant (nodes carry catalog-ids + model refs), and it works identically for ingested foreign rules (F10). The kernel's own analysis services cross-check it (survey §9).
+
+**The inverse direction (F9a, 2026-06-04):** an agent's entry point is usually a *name*, not a rule — "explain the rule on birthdate". The **`context` package** composes the answer from three projections: `find("birthdate")` → field + metadata, `whereUsed(field)` → the rules/computations touching it (slot-labeled), `explain(each)`. rulekit supplies the structure; the natural-language resolution and answer prose stay the LLM's work. `describe()` (the model card) gives the agent its map of the model without burning context on raw DM-JSON.
+
+*Exploratory, parked:* a "what can legally come next" affordance via the kernel's ATN machinery, and reduced-model extraction (`createReducedDocumentModel`) for focused LLM context.
 
 ---
 
@@ -439,8 +472,8 @@ Semantics captured at three tiers: **(A)** per-operator (catalog), **(B)** langu
 ## 16. Phased roadmap <a name="16-roadmap"></a>
 
 - **Phase 0 — Design & catalog skeleton.** *Done:* this proposal (v1→v2), catalog schema, kernel pinned (`30.8.1`), build against `mavenLocal`, the API survey.
-- **Phase 1 — Java vertical slice** *(in progress)*: model index (L2a runtime typed refs) → catalog → typed AST (immutable + transformable #1, carrying the **D14 invariant**: catalog-ids + model refs + provenance) → model/rule-group-aware renderer (EN/DE) → validate via the real kernel → emit DM-JSON. Operator coverage in **corpus-backlog order** (`WORKSPACE-CORPUS-ANALYSIS.md`): boolean literals → group predicates → enum categories → patterns → value lists → aggregates → the iteration cluster → `CustomCondition` → dates. Adopt the **test-tier oracles now**: differential render + DE translation (N7), and the construct-enum parity anchor (N3).
-- **Phase 2 — The bidirectional edit loop.** The **kernel-adapter module** (N8 tier): `getMvkServiceForModel` bootstrap, **F10 ingest** (parse → converter visitor, corpus-priority coverage, fail-fast), fast per-rule validation, delegated rename. **F9 explain** for built *and* ingested ASTs. **#2 re-express + rendered diff.** Together: *ingest → explain → modify → diff → validate* over any rule in a model. Ship the LLM skill here (it teaches the full loop).
+- **Phase 1 — Java vertical slice** *(in progress)*: model index (L2a runtime typed refs) → catalog → typed AST (immutable + transformable #1, carrying the **D14 invariant**: catalog-ids + model refs + provenance) → model/rule-group-aware renderer (EN/DE) → validate via the real kernel → emit DM-JSON. Operator coverage in **corpus-backlog order** (`WORKSPACE-CORPUS-ANALYSIS.md`): boolean literals → group predicates → enum categories → patterns → value lists → aggregates → the iteration cluster → `CustomCondition` → dates. Adopt the **test-tier oracles now**: differential render + DE translation (N7), and the construct-enum parity anchor (N3). Includes the **`context` package's Phase-1 half** (F9a): `describe()` model card + `find()` name resolution over the model index (plus the index query surface they need — study finding 9).
+- **Phase 2 — The bidirectional edit loop.** The **kernel-adapter module** (N8 tier): `getMvkServiceForModel` bootstrap, **F10 ingest** (parse → converter visitor, corpus-priority coverage, fail-fast), fast per-rule validation, delegated rename. **F9 explain** for built *and* ingested ASTs, plus **F9a's exact `whereUsed`** (the adapter's `getDirectlyReferencedEntities` — one call per rule, needs no converter coverage, so it lands with the adapter's walking skeleton). **#2 re-express + rendered diff.** Together: *find → whereUsed → ingest → explain → modify → diff → validate* over any rule in a model. Ship the LLM skill here (it teaches the full loop).
 - **Phase 3 — Codegen typed refs (L2b) + optional model construction.** Per-model typed handle classes (kernel typed-accessor generator as precedent) for compile-time safety; optional typed model *construction* emitting public DM-JSON (fork #8). *Spike candidate:* on-the-fly rule testing against sample data (survey §12 — deprecation status and cost need a dedicated look).
 - **Phase 4 — TypeScript twin.** Zod-flavored surface over the same catalog/render rules; build + render + pre-checks (no TS ingest/validation — §13).
 - **Phase 5 — research-gated residuals.** Minimal-edit / concrete-syntax-preserving re-render; full-grammar converter coverage beyond corpus-driven growth; anything from the parked exploratory list (§14) that earns a concrete need.

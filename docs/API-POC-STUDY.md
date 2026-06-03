@@ -1,231 +1,378 @@
-# API study — what rulekit feels like in the end
+# API study & review surface — what rulekit feels like
 
-> **Status:** illustrative **design study**, 2026-06-03 — a peek at the end-state developer & LLM experience the v2 proposal enables ([`PROJECT-PROPOSAL.md`](./PROJECT-PROPOSAL.md) §10/§12/§14). Names and exact signatures are **not final**; the AST/renderer/validator/catalog parts exist today, the `Rule`/`Computation` authoring objects, adapter (`ingest`), `explain`, and `diff` are Phase-1/2 scope. §6 collects the **design findings** writing this study surfaced — that feedback is the point of a POC study. *Amendment (same day):* **findings 1–3 are implemented** — the `Dsl.*` facade, scale-faithful literal overloads, and `Condition.transform` exist as shown here (§2.2's combinator and §3.1's transform are now working code, not sketches); finding 2's premise was corrected by a kernel experiment (see §6).
+> **Status:** living **design study and review surface**, expanded 2026-06-04 (first version 2026-06-03) — code studies for **every stated proposal goal** ([`PROJECT-PROPOSAL.md`](./PROJECT-PROPOSAL.md) v2 §2/§3), so the end-state experience can be reviewed *before* each part is built. Names and signatures of unbuilt parts are **not final**. Status markers throughout: ✅ = works today, verbatim or near-verbatim; 🔮 = Phase-1/2 scope, illustrative.
 >
-> Domain: the committed **subscription** fixture (our own original — `Subscription` root, repeatable `Addons` group with `Name`/`MonthlyFee` (scale 2), `Tier` enum `BASIC/PRO/ENTERPRISE`), extended illustratively where a construct needs it.
+> **This doc is deliberately kept alive:** whenever a feature lands or an interesting usage emerges, the corresponding study here is updated to showcase it (see the doc-evolution note in `CLAUDE.md`). It doubles as the seed material for the LLM skill (N1) and the self-sufficiency eval (N6).
+>
+> Domain: the committed **subscription** fixture (our own original) — `Subscription` root with `Tier` (enum `BASIC/PRO/ENTERPRISE`), `AutoRenew` (boolean), `TermsAccepted` (confirm), repeatable `Addons{Name, MonthlyFee(scale 2)}`, `Billing{InvoiceEmail}`; the **order** fixture adds `ShippingAddress`/`BillingAddress` groups. Extended illustratively where a construct needs it.
 
 ---
 
-## 1. Setup — bind once, everything flows from the model
+## 1. Setup — bind once, everything flows from the model (F0) ✅
 
 ```java
-import static io.github.mbackschat.a12.rulekit.Dsl.*;          // literals, fragments, severities
-import io.github.mbackschat.a12.rulekit.*;
+import static io.github.mbackschat.a12.rulekit.dsl.Dsl.*;
+import io.github.mbackschat.a12.rulekit.dsl.*;
 
-// Self-contained model (or: BoundModel.load(json, resolver) when it carries includes — F0)
-BoundModel m = BoundModel.load(Path.of("subscription.dm.json"));
+BoundModel m = BoundModel.of(ModelIndex.of(ModelLoader.loadSelfContained(reader)));   // ✅ today
+// BoundModel m = BoundModel.load(path);                      // 🔮 sugar
+// BoundModel m = BoundModel.load(path, resolver);            // 🔮 model with includes: rulekit expands (F0)
 
-// Typed handles — runtime lookups, fail fast on wrong path or kind (L2a, §5a)
-NumberRef fee  = m.num("/Subscription/Addons/MonthlyFee");     // knows: number, scale 2
-EnumRef   tier = m.enumOf("/Subscription/Tier");               // knows: BASIC, PRO, ENTERPRISE
-StringRef name = m.str("/Subscription/Addons/Name");
-GroupRef  addons = m.group("/Subscription/Addons");            // knows: repeatable (max 20)
+NumberRef  fee   = m.num("/Subscription/Addons/MonthlyFee");  // knows: number, scale 2
+EnumRef    tier  = m.enumOf("/Subscription/Tier");            // knows: BASIC, PRO, ENTERPRISE
+BoolRef    renew = m.bool("/Subscription/AutoRenew");         // boolean ≠ confirm (§5b)
+ConfirmRef terms = m.confirm("/Subscription/TermsAccepted");
+GroupRef   addons = m.group("/Subscription/Addons");          // knows: repeatable
 ```
 
-Everything the safety story needs is now in hand: kinds, scale, enum domain, repetition. `m.num(NAME)` throws *here*, not as an `MVK_*` three steps later.
+Everything the safety story needs is in hand at bind time: kinds, scale, enum domain, repetition. `m.num(stringPath)` fails *here* with the kind named — not as an `MVK_*` three steps later.
 
-## 2. Authoring a rule
+## 2. The type system steers (F0a/§5b) ✅ — a study in what you *cannot* write
 
-### 2.1 The condition — typed composition
+The largest `MVK_*` class is type rejection; the API removes it method-by-method. All of these are **compile errors or immediate failures today**:
 
 ```java
-// "A PRO subscription's add-ons must each carry a positive monthly fee."
-Condition feeMissing  = tier.is("PRO").and(fee.notFilled());
-Condition feeNotPos   = fee.filled().and(fee.le(0));            // le("0.00") overload: scale-explicit
-
-// What cannot be written (compile-time, §5b):
-// name.le(...)      — no ordering on strings: the method does not exist
-// tier.is("GOLD")   — fails fast: not in the model's enum domain
-// anything.not()    — no negation in the kernel: no such method; use the negative predicate families
+m.str(NAME).le("x")          // does not compile — strings have no ordering (MVK_INVALID_TYPE_FOR_COMPARISON erased)
+anything.not()                // does not compile — the kernel has no negation; use the negative predicate families
+tier.is("GOLD")               // fails fast — not in the model's enum domain (checked at build, not at the kernel)
+terms.isFalse()               // does not exist — confirm compares only to True (MVK_INVALID_COMPARE_TO_YES erased)
+fieldFilled(addons)           // does not compile — FieldRef ≠ GroupRef (MVK_NO_GROUPS_ALLOWED / MVK_NO_FIELDS_ALLOWED erased)
+m.bool("/Subscription/TermsAccepted")  // fails fast — confirm is a distinct kind from boolean (§5b)
 ```
 
-### 2.2 Combinators — fragments are just methods (F5)
+Each erased mistake corresponds to a **kernel-verified** rejection code (see `KERNEL-INTEGRATION-NOTES.md`) — the type system is the documentation.
+
+## 3. Combinators & parameterization (F5) — the reuse study
+
+### 3.1 Parameterized fragments are ordinary methods ✅
 
 ```java
+/** Gate + requiredness — the corpus's most frequent pattern shape. */
 static Condition mandatoryWhen(Condition gate, FieldRef field) {
     return gate.and(fieldNotFilled(field));
 }
-static Condition chargedAddon(BoundModel m) {                   // reusable, model-bound fragment
-    return m.num("/Subscription/Addons/MonthlyFee").filled();
+
+/** All-or-nothing: fields must be filled together (the partial-fill error). */
+static Condition requiredTogether(FieldRef first, FieldRef... rest) {
+    return fieldsNotCollectivelyFilled(first, rest);
 }
 
-Condition proNeedsFee = mandatoryWhen(tier.is("PRO"), fee.field());
+/** A group that exists must have real content — guards the "blank added row" trap (GroupFilled = row exists). */
+static Condition groupNotBlank(GroupRef group, FieldRef witness) {
+    return groupFilled(group).and(fieldNotFilled(witness));
+}
+
+// Composed like values:
+Condition r1 = mandatoryWhen(tier.is("PRO"), fee.field());
+Condition r2 = mandatoryWhen(renew.isTrue().and(terms.confirmed()), m.field("/Subscription/Billing/InvoiceEmail"));
+Condition r3 = groupNotBlank(addons, m.field("/Subscription/Addons/Name"));
 ```
 
-The same fragment drops into a rule `errorCondition` or a computation `precondition` unchanged — one expression language, many slots (§5).
-
-### 2.3 The rule object — slots filled from typed handles (F2a)
+### 3.2 Fragments with domain parameters 🔮 (needs the named operators from the backlog)
 
 ```java
-Rule rule = Rule.in(addons)                                     // rule must live in a group — by construction
-        .errorField(fee)                                        // errorEntityRelPath computed, not hand-written
-        .when(proNeedsFee)                                      // builder checks: error field referenced? → actionable error here
+/** Tolerance check — only the fixed 1/2/5/10 variants exist (the catalog teaches this; the enum enforces it). */
+static Condition withinTolerance(NumberRef actual, NumberRef expected, Tolerance t) {
+    return allFieldsFilled(actual.field(), expected.field())
+            .and(actual.value().differsWithTolerance(t, expected.value()));   // 🔮 DiffersWithToleranceRange{N}
+}
+
+/** Chronology over a repeating group — composes the iteration cluster (backlog item 7). */
+static Condition chronological(GroupRef repeating, DateRef date) {
+    return date.value().lt(date.atRepetition(currentRepetition(repeating).plus(1)));  // 🔮 CurrentRepetition
+}
+
+/** Uniqueness by key — one operator, but the fragment names the business intent. */
+static Condition uniqueBy(GroupRef repeating, FieldRef key) {
+    return groupFilled(repeating).and(repetitionNotUnique(key));               // 🔮 RepetitionNotUnique
+}
+```
+
+The fragments show how backlog items compose into the **business idioms** the proposal's §2 names (`mandatory`, `withinTolerance`, `chronological`, `uniqueBy`) — each is 1–3 lines once its operators exist.
+
+### 3.3 A domain fragment library — packaging reuse 🔮 (pattern works today)
+
+```java
+/** The team's validation idiom collection: plain static methods over Dsl + handles. */
+public final class SubscriptionIdioms {
+    private SubscriptionIdioms() {}
+
+    public static Condition paidTier(EnumRef tier) {
+        return tier.isNot("BASIC");
+    }
+    public static Condition feeRequired(EnumRef tier, NumberRef fee) {
+        return mandatoryWhen(paidTier(tier), fee.field());
+    }
+    public static Condition feePositiveWhenPresent(NumberRef fee) {
+        return fee.filled().and(fee.le(0));    // error scenario: fee present but not positive
+    }
+}
+```
+
+No framework, no registry — a fragment library is a Java class; discoverability comes from javadoc + the skill. (This is the Zod lesson: schemas-are-code.)
+
+### 3.4 Parameterized *rules* — templates over the model 🔮
+
+```java
+/** One rule per monetary field: never negative. The model index drives the loop. */
+static List<Rule> nonNegativeMoneyRules(BoundModel m) {
+    return m.fieldsOfKind(ValueKind.NUMBER).stream()             // 🔮 model-index query surface (finding 9)
+            .filter(f -> f.scale() == 2)                          // "money" by convention: scale 2
+            .map(f -> Rule.in(m.groupOf(f))                       // 🔮 Rule authoring object (F2a)
+                    .errorField(f)
+                    .when(f.filled().and(f.lt(0)))
+                    .code("NON_NEGATIVE_" + f.name().toUpperCase())
+                    .severity(ERROR)
+                    .message(en("{0} must not be negative.", f))
+                    .build())
+            .toList();
+}
+```
+
+This is the bulk-authoring payoff: a *rule template* is a function `BoundModel → List<Rule>`; an LLM (or CI) applies it to any model. It needs two planned pieces: the `Rule` object and a **model-index query surface** (`fieldsOfKind`, `groupOf`, `fields(group)`) — recorded as finding 9.
+
+### 3.5 n-ary composition 🔮 (finding 10)
+
+```java
+Condition c = allOf(r1, r2, r3);            // folds with And, parenthesizing per the kernel's mixing rule
+Condition d = anyOf(r1, r2);                // Or-fold
+```
+
+Today only binary `and`/`or` exist; `allOf`/`anyOf` varargs in `Dsl` are Phase-1-sized sugar that matter for templates (3.4) and LLM-generated rule sets.
+
+## 4. Authoring a rule end-to-end (F1, F2, F2a, F3, F4, F6)
+
+### 4.1 The rule object — slots from typed handles (F2a) 🔮
+
+```java
+Rule rule = Rule.in(addons)                       // rule must live in a group — by construction
+        .errorField(fee)                          // errorEntityRelPath computed, not hand-written
+        .when(SubscriptionIdioms.feeRequired(tier, fee))
         .code("ADDON_FEE_REQUIRED_FOR_PRO")
         .severity(ERROR)
-        .message(en("A PRO subscription requires a monthly fee per add-on: {0}", name),
-                 de("Ein PRO-Abo erfordert eine Monatsgebühr je Zusatzoption: {0}", name))
-        .build();                                               // message helper emits $Name.value$ correctly
+        .message(en("A PRO subscription requires a monthly fee per add-on: {0}", m.str(NAME)),
+                 de("Ein PRO-Abo erfordert eine Monatsgebühr je Zusatzoption: {0}", m.str(NAME)))
+        .build();                                  // message helper emits $Name.value$ correctly
 ```
 
-What used to be five hand-written strings (`errorCondition`, `errorEntityRelPath`, message interpolations, …) is now one typed object; the §1-motivation failure classes (keyword-named field, error-field-not-referenced, rule-at-root, wrong relative path) are unrepresentable or fail at `build()` with the fix in the message.
-
-### 2.4 Render → validate → emit
+### 4.2 Render → validate → emit ✅ / 🔮
 
 ```java
-rule.render();                       // "FieldFilled(MonthlyFee) And ..." — relative paths per fork 9
-rule.render(ConditionLanguage.DE);   // same AST, German keywords — free (one catalog, two dialects)
+new DslRenderer().render(condition);                       // ✅ canonical EN (absolute paths today; fork-9 path policy 🔮)
+new DslRenderer(ConditionLanguage.DE).render(condition);   // ✅ same AST, German keywords
 
-ValidationResult vr = m.validate(rule);                 // F4: real kernel, parse/check only, no compile
-if (!vr.ok()) {
-    vr.problems().forEach(p -> System.out.println(p.advice()));
-    // e.g. "MVK_INVALID_COMPARE_DEC_PLACES: operands differ in decimal scale (0 vs 2).
-    //       Round one side: RoundDown([UnitPrice], 0) — see catalog: Round*"
-}
+ValidationResult vr = new RuleValidator().check(modelJson, draftRule);   // ✅ F4: real kernel, no compile
+vr.problems().forEach(p -> System.out.println(p.mvkCode() + ": " + p.message()));
+// 🔮 advice(): "MVK_INVALID_COMPARE_DEC_PLACES → operands differ in declared scale; round one side: RoundDown(...)"
 
-m.add(rule);                          // injects the Rule node into the group's DM-JSON (public write path, D9)
-m.writeTo(Path.of("subscription.dm.json"));
+m.add(rule); m.writeTo(path);                              // 🔮 DM-JSON write path (public, polyglot — D9)
 ```
 
-### 2.5 A computation, same materials (F2)
+### 4.3 A computation, same materials (F2) 🔮
 
 ```java
-// Illustrative computed field: /Subscription/AnnualCost (number, scale 2) = sum of add-on fees × 12
 Computation annual = Computation.of(m.num("/Subscription/AnnualCost"))
         .commonPrecondition(atLeastOneFieldFilled(fee.field()))
-        .when(tier.is("ENTERPRISE")).calc(sum(m.nums("Addons*/MonthlyFee")).times(12).discounted("0.90"))
+        .when(tier.is("ENTERPRISE")).calc(sum(m.nums("Addons*/MonthlyFee")).times(12).times("0.90"))
         .otherwise(sum(m.nums("Addons*/MonthlyFee")).times(12));
-// type & scale of every alternative checked against AnnualCost's declared scale (cheap case — D13);
-// alternatives' mutual exclusivity pre-checked, kernel confirms; cycle check via the adapter (survey §11)
+// type & scale of each alternative checked against AnnualCost (cheap case — D13); mutual exclusivity
+// pre-checked; the kernel confirms — incl. computation dependency cycles via the adapter (survey §11)
 ```
 
-## 3. Modifying a rule — the edit loop (§12)
+**Cross-slot reuse for free:** `SubscriptionIdioms.paidTier(tier)` drops unchanged into a rule `errorCondition` *or* a computation `precondition` — one expression language, many slots (§5). That is the concrete payoff of combinators + the slot model, and the reason F2's `Computation` object is the most valuable remaining Phase-1 piece.
 
-### 3.1 In-session transform (#1 — **exists**; this is working code, verbatim in `TransformConditionTest`)
+## 5. The bidirectional edit loop (F8, F10) — modify studies
+
+### 5.1 In-session transform (#1) ✅ — working code, verbatim in `TransformConditionTest`
 
 ```java
-// "Make the fee rule apply to PRO *and* ENTERPRISE"
 Condition widened = proNeedsFee.transform(node -> switch (node) {
     case ComparisonCondition c when c.operatorId().equals("Equal")
             && c.right() instanceof EnumValueLiteral(String v) && v.equals("PRO")
             -> tier.is("PRO").or(tier.is("ENTERPRISE"));
     default -> node;
 });
+// bottom-up; untouched subtrees keep reference identity; D14 ids make the guards readable
 ```
 
-Bottom-up rewrite over the sealed tree; untouched nodes are reused (immutability, N5). The D14 ids make matching readable (`operatorId().equals("Equal")` instead of structural guessing).
-
-### 3.2 Ingest a foreign, BA-authored rule (F10 — Phase 2)
+### 5.2 Ingest a foreign, BA-authored rule (F10) 🔮 Phase 2
 
 ```java
 ExistingRule legacy = m.rule("/Subscription/Addons/LegacyFeeRule");
-// its errorCondition text (hand-written years ago, with comments and short names):
+// its errorCondition (hand-written, with comments and short names):
 //   ;; fee must be set for paid tiers
 //   FieldFilled(MonthlyFee) AND [/Subscription/Tier] != "BASIC"
 
-Ingest in = KernelAdapter.ingest(legacy, m);    // kernel parses → converter visitor → rulekit AST
+Ingest in = KernelAdapter.ingest(legacy, m);     // kernel parses → converter visitor → rulekit AST
 switch (in) {
-    case Ingest.Converted(Condition ast)      -> work(ast);
-    case Ingest.Gap(String construct, var loc) -> log("converter gap: " + construct);  // fail-fast, named
+    case Ingest.Converted(Condition ast)       -> work(ast);
+    case Ingest.Gap(String construct, var loc)  -> log("converter gap: " + construct);   // fail-fast, named
 }
-// the AST's FieldRefs carry authored PathStyle hints (SHORT for MonthlyFee, ABSOLUTE for Tier);
-// comments are concrete syntax — recorded as lost-on-re-render in the diff header (§12 lossiness)
+// FieldRefs carry authored PathStyle hints (SHORT, ABSOLUTE); comments are flagged as lost-on-re-render
 ```
 
-### 3.3 Explain (F9) — same projection for built and ingested rules
-
-```java
-Explanation ex = m.explain(legacy);             // or m.explain(rule) for a rulekit-built one
-System.out.println(ex.toJson());
-```
+### 5.3 Explain (F9) 🔮 Phase 2 — same projection for built and ingested rules
 
 ```jsonc
+// m.explain(legacy).toJson() — abbreviated; full shape in the 2026-06-03 study version (git history)
 {
-  "rule": "/Subscription/Addons/LegacyFeeRule",
-  "gloss": "Fires (data invalid) when an add-on's MonthlyFee is filled while the subscription tier is not BASIC.",
-  "suspicious": ["gloss reads inverted for a requiredness rule — did the author mean FieldNotFilled? (error scenario: true ⇒ invalid)"],
-  "errorField": { "path": "/Subscription/Addons/MonthlyFee", "kind": "number", "scale": 2 },
-  "iterates": { "value": true, "why": "the error field sits under repeatable group Addons (max 20) — the rule runs per add-on, the message lands on each offending repetition" },
-  "referencedFields": [
-    { "path": "/Subscription/Addons/MonthlyFee", "kind": "number", "scale": 2, "roles": ["error-field", "operand"], "authoredPathStyle": "SHORT" },
-    { "path": "/Subscription/Tier", "kind": "enumeration", "values": ["BASIC", "PRO", "ENTERPRISE"], "roles": ["operand"], "authoredPathStyle": "ABSOLUTE" }
-  ],
-  "operators": [
-    { "id": "FieldFilled", "meaning": "true iff the field holds a value", "gotchas": ["a field with a formal error is removed from evaluation — FieldFilled is then neither true nor false"] },
-    { "id": "And", "meaning": "logical conjunction", "gotchas": ["parentheses required when mixed with Or"] },
-    { "id": "NotEqual", "meaning": "true iff operands differ", "gotchas": ["enums compare by stored value, never display text"] }
-  ],
-  "structural": { "group": "/Subscription/Addons", "severity": "ERROR", "conditionLanguage": "EN" }
+  "gloss": "Fires (data invalid) when an add-on's MonthlyFee is filled while the tier is not BASIC.",
+  "suspicious": ["gloss reads inverted for a requiredness rule — did the author mean FieldNotFilled? (true ⇒ invalid)"],
+  "iterates": { "value": true, "why": "error field sits under repeatable group Addons — the rule runs per add-on" },
+  "referencedFields": [ { "path": ".../MonthlyFee", "kind": "number", "scale": 2, "roles": ["error-field","operand"], "authoredPathStyle": "SHORT" } ],
+  "operators": [ { "id": "FieldFilled", "meaning": "...", "gotchas": ["a field with a formal error is removed from evaluation"] } ]
 }
 ```
 
-Everything an LLM (or a human reviewer) needs to reason about *this* rule travels with it — model types, iteration behavior, operator semantics from the catalog, even a heuristic "suspicious" hint. It is a pure projection of catalog + model index onto the AST (D14 pays off here).
-
-### 3.4 Re-express, diff, validate, write back (#2)
+### 5.4 Re-express, diff, validate, write back (#2) 🔮 Phase 2
 
 ```java
-Condition fixed = tier.isNot("BASIC").and(fee.notFilled());     // rebuilt from intent, not patched text
-
-RenderedDiff diff = m.diff(legacy, fixed);
-System.out.println(diff);
+Condition fixed = SubscriptionIdioms.feeRequired(tier, fee);     // rebuilt from intent — often a library fragment!
+RenderedDiff diff = m.diff(legacy, fixed);                       // discloses lossiness: "1 comment will be dropped"
+ValidationResult vr = m.validate(legacy.withCondition(fixed));
+m.replaceCondition(legacy, fixed);
 ```
 
-```
---- /Subscription/Addons/LegacyFeeRule (authored text; 1 comment will be dropped on write)
-+++ re-expressed via rulekit
-- ;; fee must be set for paid tiers
-- FieldFilled(MonthlyFee) AND [/Subscription/Tier] != "BASIC"
-+ [/Subscription/Tier] != "BASIC" And FieldNotFilled(MonthlyFee)
-```
+Note how 3.3's fragment library closes the loop: **re-expression frequently means recognizing a known idiom** — the LLM maps a foreign rule onto `feeRequired(...)` and the diff shows the cleanup.
+
+## 6. Semantics as data (F7, N6) ✅ — the catalog is queryable today
 
 ```java
-ValidationResult vr = m.validate(legacy.withCondition(fixed));  // kernel confirms before anything is written
-m.replaceCondition(legacy, fixed);                              // DM-JSON write path; diff was the review gate
+OperatorCatalog catalog = OperatorCatalog.load();                                  // ✅
+OperatorEntry e = catalog.byId("GroupFilled").orElseThrow();
+e.meaning();      // "True iff the referenced group is filled. For a repeatable group this means the row EXISTS — ..."
+e.gotchas();      // ["'filled' means 'row exists', not 'row has data' — ...", "an enclosing GroupFilled(Group) counts as referencing the rule's error field ..."]
+e.keywords().de(); // "KontextAngegeben"
+e.invalidExample(); // dsl + the exact MVK_* + the fix — every example kernel-validated in CI (N7)
 ```
 
-Every modify — transform or re-express — ends in a **rendered diff + kernel validation**; nothing edits strings or the kernel's tree directly (D4).
+An LLM reads exactly this. The **self-sufficiency eval** (N6) is the runnable acceptance test: given only the catalog + skill + javadoc, author and correctly explain a rule per covered operator — where it can't, the material (not the LLM) is deemed incomplete.
 
-## 4. The LLM interaction this enables (§14)
+### 6b. The model-context surface (F9a, `context` package) 🔮 — "explain the rule on birthdate"
 
-The skill teaches one loop: **ingest → explain → re-express/transform → diff → validate**. A realistic session:
+The agent's entry point is usually a *name*, not a rule. Three projections compose the answer:
 
-> **User:** "Customers report they can't save BASIC subscriptions — something fires on add-ons without a fee. Find it and fix it so only paid tiers require a fee."
+```java
+ModelCard card = Context.describe(m);             // 🔮 Phase 1 — the agent's map, PROGRESSIVE: default is the
+                                                  //    skeleton (group tree + counts/kind histograms — low-1000s
+                                                  //    of tokens even on a 10k-field model); drill down per group:
+ModelCard addons = Context.describe(m, m.group("/Subscription/Addons"));
+List<FieldMatch> hits = Context.find(m, "birthdate");
+// → [/Customer/BirthDate (date, format dd.MM.yyyy, in group /Customer)]   — dumb string ranking, deliberately;
+//    fuzzy/NL interpretation is the LLM's job
+
+List<Usage> usages = Context.whereUsed(m, hits.getFirst().field());   // 🔮 Phase 2 exact (adapter)
+// → [ {rule: "/Customer/AgeCheckRule",   slot: ERROR_CONDITION, role: "operand"},
+//     {rule: "/Customer/BirthDateRule",  slot: ERROR_FIELD},
+//     {computation: "/Customer/Age",     slot: OPERATION} ]                — slot-labeled (§5 vocabulary)
+
+usages.forEach(u -> m.explain(u.owner()));        // 🔮 F9 — and the loop closes
+```
+
+The N8 seam: `context` lives in the public-tier core; `whereUsed` takes a pluggable reference-resolver — core ships a labeled heuristic (text matching), the Phase-2 adapter contributes the exact one (`getDirectlyReferencedEntities`, one kernel call per rule, no converter needed).
+
+**And for agents, the primary form is files** (owner direction — agents are trained to dump-then-grep):
+
+```java
+Context.dump(m, Artifact.FIELDS, System.out);   // 🔮 stream-first primitive — stdout pipes like git
+Context.dump(m, Path.of("ctx/"));               // 🔮 convenience: all four artifacts to files
+```
+
+```bash
+# one-shot question — pipe (mind JVM startup: seconds, not git-milliseconds):
+jbang rulekit-ctx.java model.json fields | grep -i birthdate
+# repeated exploration — dump once, then grep (the recommended loop):
+grep -i birthdate ctx/fields.jsonl
+# {"path":"/Customer/BirthDate","kind":"date","format":"dd.MM.yyyy","group":"/Customer","repeatsUnder":null}
+grep BirthDate ctx/rules.jsonl
+# {"rule":"/Customer/AgeCheckRule","slot":"errorCondition","condition":"DifferenceInYears(BirthDate, Today) < 18","referencedFields":null,"resolution":"heuristic"}
+```
+
+The 10k-field problem dissolves: the files hold everything, only grep hits enter context; `model-card.md` (skeleton) is the single read-whole artifact. JSONL = one line per fact = greppable *and* `jq`/Python-parseable; each artifact stamps the snapshot's model id/version.
+
+### 6c. Navigating the model (finding 9, Level 1) 🔮 — jOOQ-`Meta`-style, no query language
+
+The programmatic counterpart to 6b's files — and the machinery beneath them (`fields.jsonl` *is* `m.fields()` serialized). Streams of rich **info handles**; matching is plain Java; narrowing bridges back to strict authoring handles:
+
+```java
+// iterate + match — Stream.filter IS the matcher (no custom matcher API, no XPath-for-DM):
+List<FieldInfo> money = m.fields()
+        .filter(f -> f.kind() == ValueKind.NUMBER && f.scale() == 2)
+        .toList();
+
+m.fields(m.group("/Subscription/Addons"))        // scoped to a group
+        .forEach(f -> System.out.println(f.path() + " : " + f.kind()));
+
+Optional<FieldInfo> peek = m.fieldAt("/Subscription/Tier");   // non-throwing — exploring is lenient,
+NumberRef fee = money.getFirst().asNum();                      // narrowing is strict (authoring guarantees)
+
+// which makes rule templates (§3.4) one stream pipeline:
+List<Rule> rules = m.fields()
+        .filter(f -> f.kind() == ValueKind.NUMBER && f.scale() == 2)
+        .map(f -> Rule.in(f.group()).errorField(f.asNum())
+                .when(f.asNum().filled().and(f.asNum().lt(0)))
+                .code("NON_NEGATIVE_" + f.name().toUpperCase()).severity(ERROR).build())
+        .toList();
+```
+
+Safe by F0's snapshot semantics (immutable binding → internal memoization, clients never index); **Level 2** (glob paths, ancestry axes, annotation queries) stays parked behind named triggers — see finding 9. The *static* navigation counterpart is L2b codegen refs (Phase 3, jOOQ's generated-schema analogue).
+
+## 7. The LLM session (N1, §14) 🔮 Phase 2 — the loop the skill teaches
+
+> **User:** "Customers can't save BASIC subscriptions — something fires on add-ons without a fee. Find and fix it so only paid tiers require a fee."
 
 | Step | Agent does | rulekit gives back |
 |---|---|---|
-| 1 | `m.rules()` → scan; `m.explain(each)` | structured explanations; the gloss + `suspicious` hint flags `LegacyFeeRule` ("fires when fee **is** filled on non-BASIC" — inverted) |
-| 2 | reads the catalog entries cited in the explanation | `FieldFilled` vs `FieldNotFilled` semantics, the error-scenario inversion from the language-semantics layer — no BA docs needed (N6) |
-| 3 | re-expresses intent with the builder: `tier.isNot("BASIC").and(fee.notFilled())` | a typed AST — illegal variants didn't compile |
-| 4 | `m.validate(...)` | `ok` — or an `MVK_*` mapped to an actionable fix the agent can apply mechanically |
-| 5 | `m.diff(legacy, fixed)` | the reviewable diff above — pasted into the PR/answer for the human gate |
-| 6 | `m.replaceCondition(...)`, write DM-JSON | the model file change, exactly scoped |
+| 1 | `m.rules()` → `m.explain(each)` | the `suspicious` hint flags `LegacyFeeRule` (inverted predicate) |
+| 2 | reads the cited catalog entries | `FieldFilled` vs `FieldNotFilled` + the error-scenario inversion — no BA docs (N6) |
+| 3 | re-expresses: `feeRequired(tier, fee)` | a typed AST — illegal variants didn't compile |
+| 4 | validates | ok / `MVK_*` mapped to a mechanical fix |
+| 5 | diffs | the reviewable diff for the PR — the human gate |
+| 6 | writes back | exactly-scoped DM-JSON change |
 
-And the authoring direction:
+Authoring direction: *"ENTERPRISE needs ≥ 2 add-ons"* → agent queries the index (`addons.repeating()`), finds `NumberOfFilledFields` in the catalog (operands/returns/example), composes, validates. Wrong guesses die at compile (step 3) or parse (step 4) with the fix named — the feedback loop agents thrive on. **Execution vehicle:** scratch JUnit/JBang patterns shipped with the skill (finding 6; a CLI is a separate, later decision).
 
-> **User:** "Add a rule: ENTERPRISE subscriptions need at least two add-ons."
+## 8. Polyglot peek (N2, §13) 🔮 Phase 4 — the same catalog, a Zod-flavored skin
 
-The agent never guesses syntax: it asks the model index for the group (`addons.repeatable()` → true, max 20), finds the aggregate in the catalog (`NumberOfFilledFields` — operands, return kind, example), composes `tier.is("ENTERPRISE").and(numberOfFilledFields(m.nums("Addons*/Name")).lt(2))`, validates, and presents rendered text + diff. A wrong guess fails in step 3 (compile) or 4 (kernel) with a message that names the fix — the feedback loop an LLM thrives on, instead of a silent `MVK_UNEXPECTED_TOKEN` at codegen time.
+```typescript
+import { bind } from "@a12-rulekit/core";                       // reads the SAME catalog JSON + DM-JSON
 
-**Execution vehicle:** rulekit is a library; the skill's recommended harness is a scratch JUnit test or `jshell`/JBang snippet in the consumer repo (model file + assertions + diff output) — see finding 6 below.
+const m = bind(dmJson);
+const fee = m.num("/Subscription/Addons/MonthlyFee");
+const proNeedsFee = m.enum("/Subscription/Tier").is("PRO").and(fee.notFilled());
+proNeedsFee.render();                                            // identical canonical DSL text
+// no TS ingest/validate: the TS kernel stack has no AST and no buildable runtime (survey §15) — by design
+```
 
-## 5. What exists today vs. this study
+The contract is data (catalog + DM-JSON + render rules), so this is a parallel reading, not a port — and naming parity means an agent transfers Java↔TS knowledge 1:1.
+
+## 9. What exists today vs. study (review checklist)
 
 | Study element | Status |
 |---|---|
-| `BoundModel` handles, typed conditions, catalog-driven EN/DE render, `m.validate` (as `RuleValidator`), D14 ids + `PathStyle` | **exists** (Phase 1, partial operator coverage) |
-| `Dsl.*` static facade (handle-based factories), scale-faithful literal overloads (`eq("0.00")`/BigDecimal), `Condition.transform` (#1) | **exists** (findings 1–3 implemented 2026-06-03; literal-scale behavior kernel-verified — see `KERNEL-INTEGRATION-NOTES.md`) |
-| `Rule`/`Computation` authoring objects, message helper, `m.add`/`replaceCondition`/`writeTo`, relative-path rendering | Phase 1 remainder (F2/F2a, fork 9) |
-| `KernelAdapter.ingest`, `m.explain`, `m.diff` | Phase 2 (the edit loop) |
-| `sum(...)`, aggregates, `*` paths, `numberOfFilledFields` | corpus backlog items 6–7 |
+| Handles (`num/str/enumOf/bool/confirm/group`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–2 + base set) |
+| §3.1 fragments, §3.3 library pattern, §6 catalog queries, §2 type-steering | ✅ pattern works today on covered operators |
+| §3.2 domain fragments (`withinTolerance`, `chronological`, `uniqueBy`) | 🔮 their operators are corpus items 6–7 + tolerance |
+| §3.4 rule templates, §3.5 `allOf`/`anyOf`, §6c navigation (Level 1) | 🔮 findings 9–10 (below; navigation design decided 2026-06-04) |
+| `Rule`/`Computation` objects, message helper, DM-JSON write, fork-9 path policy, `advice()` | 🔮 Phase-1 remainder (F2/F2a) |
+| ingest / explain / diff / LLM loop | 🔮 Phase 2 (adapter) |
+| TS twin | 🔮 Phase 4 |
 
-## 6. Design findings this study surfaced (feedback into the proposal/code)
+## 10. Design findings (the review surface's output)
 
-1. ✅ **The `Dsl.*` facade is missing and needed.** *Implemented 2026-06-03:* `Dsl` ships static factories that *take handles* — never string paths (model-awareness stays mandatory); `BoundModel`'s string-path quantifiers remain as validating convenience over the same construction path.
-2. ✅ **Literal ergonomics must be scale-aware.** *Implemented — with the premise corrected by experiment:* the kernel's decimal-scale check (`MVK_INVALID_COMPARE_DEC_PLACES`) is **field-vs-field only**; numeric **literals pass at any written scale** (`[scale-2 field] == 0` is accepted — verified, recorded in `KERNEL-INTEGRATION-NOTES.md`, locked by a regression test). So the `le("0.00")`/BigDecimal overloads are *rendering-fidelity* ergonomics, not trap-avoidance; the D13 cheap pre-check becomes relevant with **field-operand comparisons** — the noted follow-up increment.
-3. ✅ **`transform` wants a single bottom-up rewriter.** *Implemented:* `Condition.transform(UnaryOperator<Condition>)` as one default method — bottom-up, untouched subtrees reused by reference (no-op returns `this`). The calculation twin is deferred with an explicit trigger: today every `Calculation` is a leaf; it lands with the first nesting node (arithmetic/aggregates, corpus items 6–7).
-4. **Rule identity matters for the edit loop**: ingest/diff/replace all key on the rule's full name + group. `ExistingRule` (name + slots + raw text) earns its place as a first-class handle — design it with the `Rule` authoring object, not after.
-5. **`Ingest` should be a sealed result** (`Converted` / `Gap(construct, location)`) so converter gaps are data, not exceptions — the corpus round-trip oracle (`WORKSPACE-CORPUS-ANALYSIS.md`) then *is* a loop over `Ingest` results.
-6. **The LLM needs an execution vehicle** — the library alone isn't invokable by an agent. Candidates: skill-documented scratch-test/JBang patterns (cheap, Phase 2) vs. a thin `rulekit-cli` (`explain <model> <rule>`, `validate`, `diff`) later. The skill should ship the scratch-test pattern first; a CLI is a separate decision.
-7. **`explain` should flag suspicions, not just facts.** The inverted-predicate hint in §3.3 (error-scenario inversion misuse) is cheap heuristics over the same projection and is disproportionately valuable to the LLM loop. Candidate F9 refinement.
-8. **Diff must disclose lossiness up front** — the "1 comment will be dropped" header line is the honest form of §12's canonicalization caveat; make it part of `RenderedDiff`'s contract.
+1. ✅ ~~`Dsl.*` facade~~ — implemented (handles-only factories; string-path convenience stays on `BoundModel`).
+2. ✅ ~~Scale-aware literals~~ — implemented; premise corrected: the kernel's scale check is **field-vs-field only**, literals are exempt (verified) — overloads are rendering-fidelity; D13's pre-check waits for field-operand comparisons.
+3. ✅ ~~`transform` rewriter~~ — implemented (bottom-up, identity-preserving; calculation twin triggers with the first nesting calculation node).
+4. **Rule identity matters for the edit loop** — `ExistingRule` (full name + slots + raw text) should be designed *with* the `Rule` authoring object (F2a), not after.
+5. **`Ingest` as a sealed result** (`Converted`/`Gap`) — converter gaps become data; the corpus round-trip oracle is then a loop over `Ingest` results.
+6. **LLM execution vehicle** — skill-documented scratch-test/JBang patterns first; a thin `rulekit-cli` is a separate decision.
+7. **`explain` should flag suspicions, not just facts** — cheap heuristics (inverted predicate, unguarded negative condition on a repeatable group) over the same projection; candidate F9 refinement.
+8. **Diff must disclose lossiness up front** — "n comments will be dropped" belongs in `RenderedDiff`'s contract.
+9. *(new; **design decided 2026-06-04** — the navigational API, jOOQ-`Meta`-style)* **The model index gets a Level-1 navigation surface** — the unifying design for rule templates (§3.4), F9a's `find`/`describe`/`dump` (which iterate everything anyway), and the fork-9 renderer internals (ancestry, short-name uniqueness — built regardless). Shape: `m.fields()`/`m.groups()`/`m.fields(group)` return **streams of rich info handles**; `m.fieldAt(path)` is the non-throwing peek; **matching is plain `Stream.filter`** — deliberately *no* query language/matcher API (the jOOQ `Meta` restraint; XPath-style DSLs rejected); **info handles narrow to typed authoring handles** via `asNum()`/`asStr()`/… (lenient exploring, strict authoring — jOOQ's `Field<?>` coercion pattern). Safe because the binding is an immutable snapshot (F0) — everything memoizes internally. Polyglot contract is "iterate model facts", not `java.util.Stream`. **Level 2 is parked with named triggers:** glob path patterns (a template inexpressible via `filter`), ancestry axes (the iteration cluster's authoring needs), annotation queries (real-model demand) — none gets built without its trigger. The static counterpart remains L2b codegen refs (Phase 3 — jOOQ's generated schema classes).
+10. *(new)* **n-ary `allOf`/`anyOf` in `Dsl`** — varargs And/Or folds with correct parenthesization; trivial, and templates/agents want them.
+11. *(new)* **Fragment libraries are the re-expression vocabulary** — §5.4 shows modify-by-re-express often means *recognizing a named idiom*; the skill should encourage teams to keep a `…Idioms` class and teach the LLM to prefer its fragments over raw composition. (Also the natural home for org-specific conventions.)
+12. *(new, 2026-06-04)* **The model-context surface is F9's other half** (owner idea, recorded as **F9a** in the proposal): `describe()`/`find()`/`whereUsed()` in an own `context` package — the agent's entry point is a *name*, and "explain the rule on birthdate" needs name resolution + the field→rules inverse index (slot-labeled) before F9 can fire. Exact where-used rides the Phase-2 adapter (`getDirectlyReferencedEntities`, no converter needed); `describe`/`find` are Phase-1-sized and share finding 9's index queries. **Two constraints recorded same day (owner):** *(a) snapshot semantics* — a `BoundModel` is an immutable snapshot (no events, no staleness; writes produce a new binding; derived lookups memoized internally so clients never build their own indexes); *(b) model scale* — 1k fields / 6-level nesting is a *normal* DM, 10k exists → `describe()` is progressive disclosure (skeleton + drill-down), never a full catalogue.
 
-*(1–3 ✅ implemented 2026-06-03 — see the status table in §5; 4–5 shape Phase-2 API design; 6–8 are proposal-level refinements to fold into §12/§14 when Phase 2 starts.)*
+13. *(new, 2026-06-04)* **Files/stdout are the agent API** (owner direction): the agent-facing form of the context surface is greppable JSONL artifacts (`model-card.md` + `fields.jsonl`/`groups.jsonl`/`rules.jsonl`) — grep is the query language agents are trained on, dissolving both the 10k-field context problem and most of the bespoke-query-API surface (the Java projections stay as the programmatic layer that `dump` serializes). **Emitters are stream-first** (git-style: per-artifact stdout default, `--output` optional) so agents can pipe — `… fields | grep -i birthdate` — while the JVM-startup cost (seconds per invocation, unlike git) keeps *dump-once-then-grep* (`> ctx/fields.jsonl`) the recommended loop for repeated exploration. The skill's first taught step becomes "dump, then grep". Heuristic-vs-exact reference resolution is labeled *in the artifact* (`"resolution":"heuristic"`), keeping agents honest pre-adapter.
+
+*(4–6 shape Phase-2 API design; 7–8 are proposal §12/§14 refinements; 9–13 are scheduled — 9/10/12-describe-find/13-dump Phase 1, the rest Phase 2.)*
