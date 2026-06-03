@@ -2,6 +2,10 @@
 
 Design and rationale live in [`docs/PROJECT-PROPOSAL.md`](docs/PROJECT-PROPOSAL.md); verified kernel-integration facts in [`docs/KERNEL-INTEGRATION-NOTES.md`](docs/KERNEL-INTEGRATION-NOTES.md); how the builder structure is derived (and the ANTLR grammar's indirect role) in [`docs/DSL-DERIVATION.md`](docs/DSL-DERIVATION.md).
 
+## Language
+
+English is the project default: code, identifiers, comments, docs, and the **default render target** (`DslRenderer` defaults to `ConditionLanguage.EN`) are English. **German is a supported render target, not the default** — the operator catalog carries verified `de` keywords and `new DslRenderer(ConditionLanguage.DE)` renders to it. Translations are welcome; English stays canonical.
+
 ## Test & sample document models
 
 - **Never copy domains, fields, or rules directly from the a12 kernel repos** (`a12-kernel`, `a12-kernel-mm`, `a12-base`, etc.). Invent your own domain and naming instead. The one exception is **`a12-kernel-demo`** — copying or adapting its example models is fine.
@@ -19,6 +23,11 @@ Write idiomatic modern Java 21, not Java 8 with newer syntax:
 - **Every non-obvious finding gets written down under `docs/`** — kernel/build/environment facts default to [`docs/KERNEL-INTEGRATION-NOTES.md`](docs/KERNEL-INTEGRATION-NOTES.md); design decisions to [`docs/PROJECT-PROPOSAL.md`](docs/PROJECT-PROPOSAL.md). If a finding doesn't fit an existing doc's scope, **propose a new doc** rather than overloading one.
 - A finding is only "done" when it's documented. When a new fact **contradicts** an existing note, update that note — don't leave stale claims.
 - **After any substantive change, state which docs need updating** (proposal / notes / README status / this file) and update them in the same change.
+
+## Testing strategy
+
+- **Example-based TDD is the primary spec** (red/green) — readable, intent-revealing tests drive each feature.
+- **The real kernel is the oracle.** `RuleValidator` + `checkConsistency` confirm that rendered output is actually accepted (F4); N7 runs every catalog example through it.
 
 ## Build
 
