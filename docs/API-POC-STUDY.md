@@ -4,7 +4,7 @@
 >
 > **This doc is deliberately kept alive:** whenever a feature lands or an interesting usage emerges, the corresponding study here is updated to showcase it (see the doc-evolution note in `CLAUDE.md`). It doubles as the seed material for the LLM skill (N1) and the self-sufficiency eval (N6).
 >
-> Domain: the committed **subscription** fixture (our own original) — `Subscription` root with `Tier` (enum `BASIC/PRO/ENTERPRISE`, category `Pricing` FREE/PAID), `AutoRenew` (boolean), `TermsAccepted` (confirm), repeatable `Addons{Name, MonthlyFee(scale 2)}`, `Billing{InvoiceEmail, BaseFee(scale 2), EffectiveFee(scale 2)}`; the **order** fixture adds `ShippingAddress`/`BillingAddress` groups and boolean/confirm fields. Extended illustratively where a construct needs it.
+> Domain: the committed **subscription** fixture (our own original) — `Subscription` root with `Tier` (enum `BASIC/PRO/ENTERPRISE`, category `Pricing` FREE/PAID), `AutoRenew` (boolean), `TermsAccepted` (confirm), repeatable `Addons{Name, MonthlyFee(scale 2)}`, `Billing{InvoiceEmail, BaseFee(scale 2), EffectiveFee(scale 2)}`; declared locales `en_US` + `de_DE` (header locales are arbitrary — en/de are not special); the **order** fixture adds `ShippingAddress`/`BillingAddress` groups and boolean/confirm fields. Extended illustratively where a construct needs it.
 
 ---
 
@@ -121,7 +121,7 @@ No framework, no registry — a fragment library is a Java class; discoverabilit
 static List<Rule> nonNegativeMoneyRules(BoundModel m) {
     return m.fields()                                             // ✅ Level-1 navigation
             .filter(f -> f.kind() == ValueKind.NUMBER && f.scale() == 2)   // "money" by convention
-            .map(f -> Rule.in(f.group())                          // ✅ Rule authoring object (F2a)
+            .map(f -> m.rule(f.group())                         // ✅ Rule authoring object (F2a)
                     .name(f.name() + "NonNegativeRule")
                     .errorField(f.asNum())
                     .when(f.asNum().filled().and(f.asNum().lt(0)))
@@ -147,7 +147,7 @@ Condition d = allOf(r1, anyOf(r2, r3));     // "r1 And (r2 Or r3)" — parens pe
 ### 4.1 The rule object — slots from typed handles (F2a) ✅ — implemented 2026-06-04 (`RuleAuthoringTest`; message *interpolation* still 🔮)
 
 ```java
-Rule rule = Rule.in(addons)                       // rule must live in a group — by construction
+Rule rule = m.rule(addons)                        // model-aware entry: rule lives in a group by construction
         .name("AddonFeeRequiredRule")             // the element name (the study originally forgot it)
         .errorField(fee)                          // errorEntityRelPath computed — "../MonthlyFee"
         .when(SubscriptionIdioms.feeRequired(tier, fee))
@@ -156,7 +156,10 @@ Rule rule = Rule.in(addons)                       // rule must live in a group �
         .message(en("A PRO subscription requires a monthly fee per add-on."),
                  de("Ein PRO-Abo erfordert eine Monatsgebühr je Zusatzoption."))   // 🔮 {0}→$Name.value$ interpolation: F2a follow-up
         .build();   // pre-checks at build(): error field under the group; error-field-referenced
-                    // (directly or via enclosing group ref — kernel-verified); ≥1 message; all with the fix named
+                    // (directly or via enclosing group ref — kernel-verified); the LOCALE LAW:
+                    // a message for EVERY declared locale (MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING),
+                    // none for undeclared ones (stricter than the kernel, which ignores them silently);
+                    // header locales are arbitrary — Dsl.text("fr_FR", …) for anything beyond en/de sugar
 // rule.draft() bridges to the F4 validator; rule.render(DE) renders the same AST in German.
 // ConditionReferences.of(condition) — the build-check's collector — is the seed of F9's referenced-fields projection.
 ```
@@ -177,7 +180,7 @@ m.add(rule); m.writeTo(path);                              // 🔮 DM-JSON write
 ### 4.3 A computation, same materials (F2) ✅ — implemented 2026-06-04 (`ComputationAuthoringTest`; aggregates/arithmetic in operations are corpus items 6–7)
 
 ```java
-Computation tiered = Computation.of(m.num("/Subscription/Billing/EffectiveFee"))   // element placed in the
+Computation tiered = m.computation(m.num("/Subscription/Billing/EffectiveFee"))   // element placed in the
         .name("TieredFeeComp")                                                     // computed field's group;
         .commonPrecondition(fieldFilled(base.field()))                             // relPath computed
         .when(base.ge(100)).calc(base.value())             // staged: every when() must get its calc()
@@ -207,7 +210,7 @@ Condition widened = proNeedsFee.transform(node -> switch (node) {
 ### 5.2 Ingest a foreign, BA-authored rule (F10) 🔮 Phase 2
 
 ```java
-ExistingRule legacy = m.rule("/Subscription/Addons/LegacyFeeRule");
+ExistingRule legacy = m.existingRule("/Subscription/Addons/LegacyFeeRule");   // fetch ≠ m.rule(group) (build)
 // its errorCondition (hand-written, with comments and short names):
 //   ;; fee must be set for paid tiers
 //   FieldFilled(MonthlyFee) AND [/Subscription/Tier] != "BASIC"
@@ -318,7 +321,7 @@ NumberRef fee = money.getFirst().asNum();                      // narrowing is s
 // which makes rule templates (§3.4) one stream pipeline:
 List<Rule> rules = m.fields()
         .filter(f -> f.kind() == ValueKind.NUMBER && f.scale() == 2)
-        .map(f -> Rule.in(f.group()).errorField(f.asNum())
+        .map(f -> m.rule(f.group()).errorField(f.asNum())
                 .when(f.asNum().filled().and(f.asNum().lt(0)))
                 .code("NON_NEGATIVE_" + f.name().toUpperCase()).severity(ERROR).build())
         .toList();
@@ -386,4 +389,6 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 
 13. *(new, 2026-06-04)* **Files/stdout are the agent API** (owner direction): the agent-facing form of the context surface is greppable JSONL artifacts (`model-card.md` + `fields.jsonl`/`groups.jsonl`/`rules.jsonl`) — grep is the query language agents are trained on, dissolving both the 10k-field context problem and most of the bespoke-query-API surface (the Java projections stay as the programmatic layer that `dump` serializes). **Emitters are stream-first** (git-style: per-artifact stdout default, `--output` optional) so agents can pipe — `… fields | grep -i birthdate` — while the JVM-startup cost (seconds per invocation, unlike git) keeps *dump-once-then-grep* (`> ctx/fields.jsonl`) the recommended loop for repeated exploration. The skill's first taught step becomes "dump, then grep". Heuristic-vs-exact reference resolution is labeled *in the artifact* (`"resolution":"heuristic"`), keeping agents honest pre-adapter.
 
-*(4–6 shape Phase-2 API design; 7–8 are proposal §12/§14 refinements; 9–13 are scheduled — 9/10/12-describe-find/13-dump Phase 1, the rest Phase 2.)*
+14. *(new, 2026-06-04 — owner direction after the locale-law surprise)* **Constraint mining beats whack-a-mole.** Coverage was corpus-frequency-driven (finds operators), blind to *structural laws* — which sit in enumerable sources: the public accessor lists (slot parity: `IRule.guiPatterns/variantFilter/variantErrorMessages` and `IComputation.roundingMode/errorCodesToSuppress/variantFilter` are gaps found *by inspection*), the `MVK_*` enums (~100+ codes — every surprise so far was in there all along; classify each: erased/pre-checked/delegated/pending/unknown→experiment-queue, CI-checked = the **MVK ledger**), the **kernel-mm metamodels** (source of truth for valid DM structure — schema + constraint-rule oracles, EUPL-respecting own-words analysis), and the deserializer tier. Standing discipline: consult `../a12-kernel-demo/KERNEL-SEMANTICS.md` (read-only) before each increment; record what it lacks in our own `docs/KERNEL-FINDINGS.md`. Instruments 1+2 are the next increment.
+
+*(4–6 shape Phase-2 API design; 7–8 are proposal §12/§14 refinements; 9–13 are scheduled — 9/10/12-describe-find/13-dump Phase 1, the rest Phase 2; 14 is the meta-instrument now in CLAUDE.md.)*

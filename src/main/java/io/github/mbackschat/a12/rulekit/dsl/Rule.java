@@ -30,9 +30,8 @@ public record Rule(
         messages = List.copyOf(messages);
     }
 
-    public static Builder in(GroupRef group) {
-        return new Builder(group);
-    }
+    // Builders are created via BoundModel#rule(GroupRef) — model-aware so messages can be checked
+    // against the model's DECLARED locales (which are arbitrary; en/de are not special).
 
     /** The error entity's path relative to the rule element (which sits inside the group). */
     public String errorEntityRelPath() {
@@ -56,6 +55,7 @@ public record Rule(
     public static final class Builder {
 
         private final GroupRef group;
+        private final List<String> declaredLocales;
         private String name;
         private FieldRef errorField;
         private Condition condition;
@@ -63,8 +63,9 @@ public record Rule(
         private Severity severity;
         private final List<LocalizedText> messages = new ArrayList<>();
 
-        private Builder(GroupRef group) {
+        Builder(GroupRef group, List<String> declaredLocales) {
             this.group = group;
+            this.declaredLocales = List.copyOf(declaredLocales);
         }
 
         public Builder name(String name) {
@@ -127,6 +128,7 @@ public record Rule(
             require(!messages.isEmpty(),
                     "a rule needs at least one error message (the kernel rejects message-less rules"
                             + " with MVK_ERROR_MESSAGE_MISSING) — message(en(...))");
+            LocalizedText.checkDeclared(declaredLocales, messages, "rule");
             require(errorField.path().startsWith(group.path() + "/"),
                     "the error field " + errorField.path() + " must lie under the rule's group "
                             + group.path() + " — author the rule in a containing group");

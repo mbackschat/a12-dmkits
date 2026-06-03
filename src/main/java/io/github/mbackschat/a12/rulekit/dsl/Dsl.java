@@ -66,12 +66,22 @@ public final class Dsl {
         return new FieldListPredicate(quantifier, fields);
     }
 
-    // --- localized error-message texts (F2a; DM-JSON locale codes) ------------------------------
+    // --- localized error-message texts (F2a) ----------------------------------------------------
+    // A model may declare ANY locales (header `locales`) — en/de are mere sugar for the common
+    // codes; text(...) covers the rest. Builders check messages against the model's declared
+    // locales at build() (every declared locale covered; no undeclared ones used).
 
+    /** A message text for an arbitrary declared locale code, e.g. {@code text("fr_FR", "…")}. */
+    public static LocalizedText text(String locale, String text) {
+        return new LocalizedText(locale, text);
+    }
+
+    /** Sugar for the common {@code en_US} — only valid if the model declares it. */
     public static LocalizedText en(String text) {
         return new LocalizedText("en_US", text);
     }
 
+    /** Sugar for the common {@code de_DE} — only valid if the model declares it. */
     public static LocalizedText de(String text) {
         return new LocalizedText("de_DE", text);
     }

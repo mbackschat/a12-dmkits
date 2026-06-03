@@ -37,18 +37,9 @@ public record Computation(
     public record Alternative(Optional<Condition> precondition, Calculation operation) {
     }
 
-    /** Start a computation for {@code computed}; the element is placed in the field's group. */
-    public static Builder of(NumberRef computed) {
-        return of(computed.field());
-    }
-
-    public static Builder of(StringRef computed) {
-        return of(computed.field());
-    }
-
-    public static Builder of(FieldRef computed) {
-        return new Builder(computed);
-    }
+    // Builders are created via BoundModel#computation(...) — model-aware so messages can be checked
+    // against the model's DECLARED locales (which are arbitrary; en/de are not special). The
+    // computation element is placed in the computed field's group.
 
     /** The computed field's path relative to the computation element (a sibling in the group). */
     public String computedFieldRelPath() {
@@ -73,13 +64,15 @@ public record Computation(
     public static final class Builder {
 
         private final FieldRef computedField;
+        private final List<String> declaredLocales;
         private String name;
         private Condition commonPrecondition;
         private final List<Alternative> alternatives = new ArrayList<>();
         private final List<LocalizedText> messages = new ArrayList<>();
 
-        private Builder(FieldRef computedField) {
+        Builder(FieldRef computedField, List<String> declaredLocales) {
             this.computedField = computedField;
+            this.declaredLocales = List.copyOf(declaredLocales);
         }
 
         public Builder name(String name) {
@@ -115,6 +108,7 @@ public record Computation(
                     "a computation needs at least one error message (self-validation text;"
                             + " the kernel rejects message-less computations with MVK_ERROR_MESSAGE_MISSING)"
                             + " — message(en(...))");
+            LocalizedText.checkDeclared(declaredLocales, messages, "computation");
 
             boolean anyUnconditional = alternatives.stream().anyMatch(a -> a.precondition().isEmpty());
             boolean anyConditional = alternatives.stream().anyMatch(a -> a.precondition().isPresent());

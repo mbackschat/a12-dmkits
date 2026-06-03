@@ -52,6 +52,18 @@ public final class ModelIndex {
         return model;
     }
 
+    /**
+     * The model's declared locales (header {@code locales}, e.g. {@code en_US}) — any valid Java
+     * locale code is possible, EN/DE are <em>not</em> special here. Error messages must cover every
+     * declared locale ({@code MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING} — verified); rulekit
+     * additionally rejects messages for <em>undeclared</em> locales (the kernel tolerates them
+     * silently, which usually hides a typo or dead text).
+     */
+    public List<String> locales() {
+        List<java.util.Locale> locales = model.getHeader().getLocales();
+        return locales == null ? List.of() : locales.stream().map(java.util.Locale::toString).toList();
+    }
+
     /** The {@link ValueKind} of the field at {@code fieldPath} (type-definitions resolved). */
     public ValueKind kindOf(String fieldPath) {
         return ValueKind.of(effectiveType(field(fieldPath)));

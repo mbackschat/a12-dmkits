@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.rulekit.dsl;
 
+import static io.github.mbackschat.a12.rulekit.dsl.Dsl.de;
 import static io.github.mbackschat.a12.rulekit.dsl.Dsl.en;
 import static io.github.mbackschat.a12.rulekit.dsl.Dsl.fieldFilled;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -47,10 +48,10 @@ class ComputationAuthoringTest {
 
     @Test
     void buildsAnUnconditionalComputationTheKernelAccepts() {
-        Computation comp = Computation.of(m.num("/Subscription/Billing/EffectiveFee"))
+        Computation comp = m.computation(m.num("/Subscription/Billing/EffectiveFee"))
                 .name("EffectiveFeeComp")
                 .calc(m.num("/Subscription/Billing/BaseFee").value())
-                .message(en("EffectiveFee must equal BaseFee."))
+                .message(en("EffectiveFee must equal BaseFee."), de("Die effektive Gebühr muss der Basisgebühr entsprechen."))
                 .build();
 
         assertEquals("/Subscription/Billing", comp.groupPath());
@@ -63,12 +64,12 @@ class ComputationAuthoringTest {
     @Test
     void buildsATieredComputationWithCommonPrecondition() {
         NumberRef base = m.num("/Subscription/Billing/BaseFee");
-        Computation comp = Computation.of(m.num("/Subscription/Billing/EffectiveFee"))
+        Computation comp = m.computation(m.num("/Subscription/Billing/EffectiveFee"))
                 .name("TieredFeeComp")
                 .commonPrecondition(fieldFilled(base.field()))
                 .when(base.ge(100)).calc(base.value())
                 .when(base.lt(100)).calc(NumberLiteral.of("0.00"))
-                .message(en("EffectiveFee follows the fee tiers."))
+                .message(en("EffectiveFee follows the fee tiers."), de("Die effektive Gebühr folgt den Gebührenstufen."))
                 .build();
 
         ValidationResult vr = new RuleValidator().check(modelJson, comp.draft());
@@ -79,21 +80,21 @@ class ComputationAuthoringTest {
     void rejectsMixingUnconditionalAndPreconditionedAlternatives() {
         // The study's original .otherwise(...) sketch — kernel-illegal (MVK_ERROR_EMPTY_PRECONDITION).
         NumberRef base = m.num("/Subscription/Billing/BaseFee");
-        var builder = Computation.of(m.num("/Subscription/Billing/EffectiveFee"))
+        var builder = m.computation(m.num("/Subscription/Billing/EffectiveFee"))
                 .name("MixedComp")
                 .when(base.ge(100)).calc(base.value())
                 .calc(NumberLiteral.of("0.00"))
-                .message(en("nope"));
+                .message(en("nope"), de("nein"));
         IllegalStateException ex = assertThrows(IllegalStateException.class, builder::build);
         assertTrue(ex.getMessage().contains("MVK_ERROR_EMPTY_PRECONDITION"), ex::getMessage);
     }
 
     @Test
     void rejectsAnOperationOfTheWrongKind() {
-        var builder = Computation.of(m.num("/Subscription/Billing/EffectiveFee"))
+        var builder = m.computation(m.num("/Subscription/Billing/EffectiveFee"))
                 .name("WrongKindComp")
                 .calc(m.str("/Subscription/Billing/InvoiceEmail").field().value())
-                .message(en("nope"));
+                .message(en("nope"), de("nein"));
         IllegalStateException ex = assertThrows(IllegalStateException.class, builder::build);
         assertTrue(ex.getMessage().contains("kinds must match"), ex::getMessage);
     }
@@ -103,22 +104,22 @@ class ComputationAuthoringTest {
         NumberRef computed = m.num("/Subscription/Billing/EffectiveFee");
         NumberRef base = m.num("/Subscription/Billing/BaseFee");
 
-        var inPrecondition = Computation.of(computed)
+        var inPrecondition = m.computation(computed)
                 .name("SelfPre")
                 .when(computed.ge(0)).calc(base.value())
-                .message(en("nope"));
+                .message(en("nope"), de("nein"));
         assertThrows(IllegalStateException.class, inPrecondition::build);
 
-        var inOperation = Computation.of(computed)
+        var inOperation = m.computation(computed)
                 .name("SelfOp")
                 .calc(computed.value())
-                .message(en("nope"));
+                .message(en("nope"), de("nein"));
         assertThrows(IllegalStateException.class, inOperation::build);
     }
 
     @Test
     void requiresAMessage() {
-        var builder = Computation.of(m.num("/Subscription/Billing/EffectiveFee"))
+        var builder = m.computation(m.num("/Subscription/Billing/EffectiveFee"))
                 .name("NoMsgComp")
                 .calc(m.num("/Subscription/Billing/BaseFee").value());
         assertThrows(IllegalStateException.class, builder::build);

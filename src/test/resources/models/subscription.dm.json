@@ -6,6 +6,9 @@
     "locales": [
       {
         "code": "en_US"
+      },
+      {
+        "code": "de_DE"
       }
     ],
     "labels": [],

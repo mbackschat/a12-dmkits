@@ -108,6 +108,26 @@ public final class BoundModel {
         return new EnumRef(field(path), index.enumValues(path), index.enumCategories(path));
     }
 
+    // --- authoring objects (F2/F2a) — model-aware so messages check against DECLARED locales ----
+
+    /** Start a rule in {@code group}; messages are checked against the model's declared locales. */
+    public Rule.Builder rule(GroupRef group) {
+        return new Rule.Builder(group, index.locales());
+    }
+
+    /** Start a computation for {@code computed}; the element is placed in the field's group. */
+    public Computation.Builder computation(NumberRef computed) {
+        return computation(computed.field());
+    }
+
+    public Computation.Builder computation(StringRef computed) {
+        return computation(computed.field());
+    }
+
+    public Computation.Builder computation(FieldRef computed) {
+        return new Computation.Builder(computed, index.locales());
+    }
+
     // --- field-list quantifiers (proposal §5) — each validates every path against the model -------
 
     public Condition allFieldsFilled(String... paths) {
