@@ -1,6 +1,6 @@
 # API study — what rulekit feels like in the end
 
-> **Status:** illustrative **design study**, 2026-06-03 — a peek at the end-state developer & LLM experience the v2 proposal enables ([`PROJECT-PROPOSAL.md`](./PROJECT-PROPOSAL.md) §10/§12/§14). Names and exact signatures are **not final**; the AST/renderer/validator/catalog parts exist today, the `Rule`/`Computation` authoring objects, transform API, adapter (`ingest`), `explain`, and `diff` are Phase-1/2 scope. §6 collects the **design findings** writing this study surfaced — that feedback is the point of a POC study.
+> **Status:** illustrative **design study**, 2026-06-03 — a peek at the end-state developer & LLM experience the v2 proposal enables ([`PROJECT-PROPOSAL.md`](./PROJECT-PROPOSAL.md) §10/§12/§14). Names and exact signatures are **not final**; the AST/renderer/validator/catalog parts exist today, the `Rule`/`Computation` authoring objects, adapter (`ingest`), `explain`, and `diff` are Phase-1/2 scope. §6 collects the **design findings** writing this study surfaced — that feedback is the point of a POC study. *Amendment (same day):* **findings 1–3 are implemented** — the `Dsl.*` facade, scale-faithful literal overloads, and `Condition.transform` exist as shown here (§2.2's combinator and §3.1's transform are now working code, not sketches); finding 2's premise was corrected by a kernel experiment (see §6).
 >
 > Domain: the committed **subscription** fixture (our own original — `Subscription` root, repeatable `Addons` group with `Name`/`MonthlyFee` (scale 2), `Tier` enum `BASIC/PRO/ENTERPRISE`), extended illustratively where a construct needs it.
 
@@ -100,7 +100,7 @@ Computation annual = Computation.of(m.num("/Subscription/AnnualCost"))
 
 ## 3. Modifying a rule — the edit loop (§12)
 
-### 3.1 In-session transform (#1 — exists in spirit today; API sketch)
+### 3.1 In-session transform (#1 — **exists**; this is working code, verbatim in `TransformConditionTest`)
 
 ```java
 // "Make the fee rule apply to PRO *and* ENTERPRISE"
@@ -219,13 +219,13 @@ The agent never guesses syntax: it asks the model index for the group (`addons.r
 
 ## 6. Design findings this study surfaced (feedback into the proposal/code)
 
-1. **The `Dsl.*` facade is missing and needed.** Free-standing forms (`fieldNotFilled(ref)`, `atLeastOneFieldFilled(...)`, `sum(...)`) read better in combinators than handle-method chains; today everything hangs off `BoundModel`/handles. → introduce `Dsl` with static factories that *take handles*, keeping model-awareness (no string paths in `Dsl.*`).
-2. **Literal ergonomics must be scale-aware.** `fee.le(0)` (long) vs a scale-2 field invites the `==`-scale trap on equality; offer `le("0.00")`/BigDecimal overloads and document that comparison-vs-literal scale is the kernel's call (D13).
-3. **`transform` wants a single bottom-up rewriter** (`Condition.transform(UnaryOperator<Condition>)` + the calculation twin) — with sealed types + `when` guards it reads well; no visitor class needed. Cheap to add now.
+1. ✅ **The `Dsl.*` facade is missing and needed.** *Implemented 2026-06-03:* `Dsl` ships static factories that *take handles* — never string paths (model-awareness stays mandatory); `BoundModel`'s string-path quantifiers remain as validating convenience over the same construction path.
+2. ✅ **Literal ergonomics must be scale-aware.** *Implemented — with the premise corrected by experiment:* the kernel's decimal-scale check (`MVK_INVALID_COMPARE_DEC_PLACES`) is **field-vs-field only**; numeric **literals pass at any written scale** (`[scale-2 field] == 0` is accepted — verified, recorded in `KERNEL-INTEGRATION-NOTES.md`, locked by a regression test). So the `le("0.00")`/BigDecimal overloads are *rendering-fidelity* ergonomics, not trap-avoidance; the D13 cheap pre-check becomes relevant with **field-operand comparisons** — the noted follow-up increment.
+3. ✅ **`transform` wants a single bottom-up rewriter.** *Implemented:* `Condition.transform(UnaryOperator<Condition>)` as one default method — bottom-up, untouched subtrees reused by reference (no-op returns `this`). The calculation twin is deferred with an explicit trigger: today every `Calculation` is a leaf; it lands with the first nesting node (arithmetic/aggregates, corpus items 6–7).
 4. **Rule identity matters for the edit loop**: ingest/diff/replace all key on the rule's full name + group. `ExistingRule` (name + slots + raw text) earns its place as a first-class handle — design it with the `Rule` authoring object, not after.
 5. **`Ingest` should be a sealed result** (`Converted` / `Gap(construct, location)`) so converter gaps are data, not exceptions — the corpus round-trip oracle (`WORKSPACE-CORPUS-ANALYSIS.md`) then *is* a loop over `Ingest` results.
 6. **The LLM needs an execution vehicle** — the library alone isn't invokable by an agent. Candidates: skill-documented scratch-test/JBang patterns (cheap, Phase 2) vs. a thin `rulekit-cli` (`explain <model> <rule>`, `validate`, `diff`) later. The skill should ship the scratch-test pattern first; a CLI is a separate decision.
 7. **`explain` should flag suspicions, not just facts.** The inverted-predicate hint in §3.3 (error-scenario inversion misuse) is cheap heuristics over the same projection and is disproportionately valuable to the LLM loop. Candidate F9 refinement.
 8. **Diff must disclose lossiness up front** — the "1 comment will be dropped" header line is the honest form of §12's canonicalization caveat; make it part of `RenderedDiff`'s contract.
 
-*(1–3 are Phase-1-sized; 4–5 shape Phase-2 API design; 6–8 are proposal-level refinements to fold into §12/§14 when Phase 2 starts.)*
+*(1–3 ✅ implemented 2026-06-03 — see the status table in §5; 4–5 shape Phase-2 API design; 6–8 are proposal-level refinements to fold into §12/§14 when Phase 2 starts.)*
