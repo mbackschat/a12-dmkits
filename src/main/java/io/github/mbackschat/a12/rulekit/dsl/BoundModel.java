@@ -84,6 +84,6 @@ public final class BoundModel {
         if (paths.length == 0) {
             throw new IllegalArgumentException(quantifier.operatorId() + " needs at least one field");
         }
-        return new FieldListPredicate(quantifier, Arrays.stream(paths).map(this::field).toList());
+        return Dsl.fieldList(quantifier, Arrays.stream(paths).map(this::field).toList());
     }
 }
