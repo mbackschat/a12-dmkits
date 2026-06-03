@@ -87,6 +87,75 @@
     "sinceKernel": "30.8.x"
   },
   {
+    "id": "AllFieldsFilled",
+    "kind": "predicate",
+    "keywords": { "en": "AllFieldsFilled", "de": "AlleFelderAngegeben" },
+    "operands": [ { "type": "field-list" } ],
+    "returns": "boolean",
+    "meaning": "True iff every listed field has a value.",
+    "constraints": [ "the operand is a list of field references (typically two or more)" ],
+    "gotchas": [ "a field carrying a formal error is removed from evaluation (see FieldFilled)" ],
+    "validExample": { "dsl": "AllFieldsFilled(CustomerName, ProductCode)", "note": "true when both are filled" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "NoFieldFilled",
+    "kind": "predicate",
+    "keywords": { "en": "NoFieldFilled", "de": "KeinFeldAngegeben" },
+    "operands": [ { "type": "field-list" } ],
+    "returns": "boolean",
+    "meaning": "True iff none of the listed fields has a value.",
+    "constraints": [ "the operand is a list of field references" ],
+    "validExample": { "dsl": "NoFieldFilled(CustomerName, ProductCode)", "note": "true when neither is filled" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "AtLeastOneFieldFilled",
+    "kind": "predicate",
+    "keywords": { "en": "AtLeastOneFieldFilled", "de": "MindestensEinFeldAngegeben" },
+    "operands": [ { "type": "field-list" } ],
+    "returns": "boolean",
+    "meaning": "True iff at least one of the listed fields has a value.",
+    "constraints": [ "the operand is a list of field references" ],
+    "validExample": { "dsl": "AtLeastOneFieldFilled(CustomerName, ProductCode)", "note": "true when either is filled" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "NotAllFieldsFilled",
+    "kind": "predicate",
+    "keywords": { "en": "NotAllFieldsFilled", "de": "NichtAlleFelderOderKeinFeldAngegeben" },
+    "operands": [ { "type": "field-list" } ],
+    "returns": "boolean",
+    "meaning": "True iff the listed fields are not all filled (at least one is empty).",
+    "constraints": [ "the operand is a list of field references" ],
+    "gotchas": [ "the exact boundary vs NoFieldFilled (the DE name hints at 'not all OR none') — confirm against the BA guide before relying on edge semantics" ],
+    "validExample": { "dsl": "NotAllFieldsFilled(CustomerName, ProductCode)", "note": "true unless both are filled" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "FieldsNotCollectivelyFilled",
+    "kind": "predicate",
+    "keywords": { "en": "FieldsNotCollectivelyFilled", "de": "FelderNichtGemeinsamAngegeben" },
+    "operands": [ { "type": "field-list" } ],
+    "returns": "boolean",
+    "meaning": "True iff the listed fields are not collectively filled — some filled and some not (a partial-fill check).",
+    "constraints": [ "the operand is a list of field references" ],
+    "gotchas": [ "exact semantics (partial-fill vs other) — confirm against the BA guide" ],
+    "validExample": { "dsl": "FieldsNotCollectivelyFilled(CustomerName, ProductCode)", "note": "true on a partial fill" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "NotExactlyOneFieldFilled",
+    "kind": "predicate",
+    "keywords": { "en": "NotExactlyOneFieldFilled", "de": "NichtGenauEinFeldAngegeben" },
+    "operands": [ { "type": "field-list" } ],
+    "returns": "boolean",
+    "meaning": "True iff the number of filled fields among the listed is not exactly one (zero, or two or more).",
+    "constraints": [ "the operand is a list of field references" ],
+    "validExample": { "dsl": "NotExactlyOneFieldFilled(CustomerName, ProductCode)", "note": "true when zero or both are filled" },
+    "sinceKernel": "30.8.x"
+  },
+  {
     "id": "Length",
     "kind": "function",
     "keywords": { "en": "Length", "de": "Laenge" },

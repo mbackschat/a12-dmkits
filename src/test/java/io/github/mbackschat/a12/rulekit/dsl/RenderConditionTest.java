@@ -99,6 +99,20 @@ class RenderConditionTest {
         assertThrows(IllegalArgumentException.class, () -> m.enumOf(MONTHLY_FEE));
     }
 
+    @Test
+    void rendersFieldListQuantifierBilingually() {
+        Condition c = m.allFieldsFilled(NAME, MONTHLY_FEE);
+        assertEquals("AllFieldsFilled(/Subscription/Addons/Name, /Subscription/Addons/MonthlyFee)",
+                new DslRenderer().render(c));
+        assertEquals("AlleFelderAngegeben(/Subscription/Addons/Name, /Subscription/Addons/MonthlyFee)",
+                new DslRenderer(ConditionLanguage.DE).render(c));
+    }
+
+    @Test
+    void fieldListQuantifierValidatesEveryPath() {
+        assertThrows(IllegalArgumentException.class, () -> m.allFieldsFilled(NAME, "/Subscription/Addons/Nope"));
+    }
+
     private static Reader fixture(String classpathLocation) {
         InputStream in = RenderConditionTest.class.getClassLoader().getResourceAsStream(classpathLocation);
         assertNotNull(in, "fixture not found: " + classpathLocation);

@@ -6,7 +6,8 @@ package io.github.mbackschat.a12.rulekit.dsl;
  * {@link #or} build new nodes (N5). The closed set of node types lets the renderer dispatch with an
  * exhaustive switch.
  */
-public sealed interface Condition permits FieldPresenceCondition, ComparisonCondition, LogicCondition {
+public sealed interface Condition
+        permits FieldPresenceCondition, FieldListPredicate, ComparisonCondition, LogicCondition {
 
     default Condition and(Condition other) {
         return new LogicCondition(LogicCondition.Op.AND, this, other);

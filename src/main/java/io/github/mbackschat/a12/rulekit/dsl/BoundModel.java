@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.rulekit.dsl;
 
+import java.util.Arrays;
+
 import io.github.mbackschat.a12.rulekit.model.ModelIndex;
 import io.github.mbackschat.a12.rulekit.model.ValueKind;
 
@@ -50,5 +52,38 @@ public final class BoundModel {
             throw new IllegalArgumentException(path + " is not an enumeration field (kind=" + kind + ")");
         }
         return new EnumRef(field(path), index.enumValues(path));
+    }
+
+    // --- field-list quantifiers (proposal §5) — each validates every path against the model -------
+
+    public Condition allFieldsFilled(String... paths) {
+        return fieldList(Quantifier.ALL_FIELDS_FILLED, paths);
+    }
+
+    public Condition noFieldFilled(String... paths) {
+        return fieldList(Quantifier.NO_FIELD_FILLED, paths);
+    }
+
+    public Condition atLeastOneFieldFilled(String... paths) {
+        return fieldList(Quantifier.AT_LEAST_ONE_FIELD_FILLED, paths);
+    }
+
+    public Condition notAllFieldsFilled(String... paths) {
+        return fieldList(Quantifier.NOT_ALL_FIELDS_FILLED, paths);
+    }
+
+    public Condition fieldsNotCollectivelyFilled(String... paths) {
+        return fieldList(Quantifier.FIELDS_NOT_COLLECTIVELY_FILLED, paths);
+    }
+
+    public Condition notExactlyOneFieldFilled(String... paths) {
+        return fieldList(Quantifier.NOT_EXACTLY_ONE_FIELD_FILLED, paths);
+    }
+
+    private Condition fieldList(Quantifier quantifier, String[] paths) {
+        if (paths.length == 0) {
+            throw new IllegalArgumentException(quantifier.operatorId() + " needs at least one field");
+        }
+        return new FieldListPredicate(quantifier, Arrays.stream(paths).map(this::field).toList());
     }
 }

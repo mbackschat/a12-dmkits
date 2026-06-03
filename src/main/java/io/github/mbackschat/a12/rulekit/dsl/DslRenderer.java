@@ -33,6 +33,9 @@ public final class DslRenderer {
         return switch (condition) {
             case FieldPresenceCondition f ->
                     keyword(f.filled() ? "FieldFilled" : "FieldNotFilled") + "(" + f.field().path() + ")";
+            case FieldListPredicate p -> keyword(p.quantifier().operatorId()) + "("
+                    + p.fields().stream().map(FieldRef::path).collect(java.util.stream.Collectors.joining(", "))
+                    + ")";
             case ComparisonCondition c ->
                     render(c.left()) + " " + c.operator().symbol() + " " + render(c.right());
             case LogicCondition l ->
