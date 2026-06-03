@@ -72,6 +72,19 @@ class RenderConditionTest {
     }
 
     @Test
+    void rendersScaleExplicitLiteralsFromStringAndBigDecimalOverloads() {
+        // Scale-aware ergonomics (study finding 2): the written scale is preserved exactly.
+        // Literals are scale-flexible at the kernel (verified — see RuleValidatorTest), so these
+        // overloads are about faithful rendering, not about dodging MVK_INVALID_COMPARE_DEC_PLACES.
+        assertEquals("[/Subscription/Addons/MonthlyFee] == 0.00",
+                new DslRenderer().render(m.num(MONTHLY_FEE).eq("0.00")));
+        assertEquals("[/Subscription/Addons/MonthlyFee] >= 19.90",
+                new DslRenderer().render(m.num(MONTHLY_FEE).ge(new java.math.BigDecimal("19.90"))));
+        assertEquals("Length(/Subscription/Addons/Name) <= 10.5",
+                new DslRenderer().render(m.str(NAME).length().le("10.5")));
+    }
+
+    @Test
     void rendersLengthFunctionBilingually() {
         Condition c = m.str(NAME).length().gt(10);
         assertEquals("Length(/Subscription/Addons/Name) > 10", new DslRenderer().render(c));

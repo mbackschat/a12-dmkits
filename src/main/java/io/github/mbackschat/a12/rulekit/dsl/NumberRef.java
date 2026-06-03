@@ -1,9 +1,13 @@
 package io.github.mbackschat.a12.rulekit.dsl;
 
+import java.math.BigDecimal;
+
 /**
  * A typed handle to a number field. Only number fields get the comparison builders, so a
  * type-illegal ordering can't be written (§5b). The declared {@code scale} (decimal places) is read
- * from the model and will feed the scale pre-check (D13) once comparisons take field operands.
+ * from the model and will feed the field-vs-field scale pre-check (D13) once comparisons take field
+ * operands. All comparisons delegate to {@link NumberExpr} — one implementation, every overload
+ * (long / scale-faithful String / BigDecimal).
  */
 public record NumberRef(FieldRef field, int scale) {
 
@@ -24,33 +28,75 @@ public record NumberRef(FieldRef field, int scale) {
         return new NumberExpr(value());
     }
 
-    public Condition le(long literal) {
-        return compareTo(CompareOp.LE, literal);
-    }
-
     public Condition lt(long literal) {
-        return compareTo(CompareOp.LT, literal);
+        return asNumber().lt(literal);
     }
 
-    public Condition ge(long literal) {
-        return compareTo(CompareOp.GE, literal);
+    public Condition lt(String literal) {
+        return asNumber().lt(literal);
+    }
+
+    public Condition lt(BigDecimal literal) {
+        return asNumber().lt(literal);
+    }
+
+    public Condition le(long literal) {
+        return asNumber().le(literal);
+    }
+
+    public Condition le(String literal) {
+        return asNumber().le(literal);
+    }
+
+    public Condition le(BigDecimal literal) {
+        return asNumber().le(literal);
     }
 
     public Condition gt(long literal) {
-        return compareTo(CompareOp.GT, literal);
+        return asNumber().gt(literal);
+    }
+
+    public Condition gt(String literal) {
+        return asNumber().gt(literal);
+    }
+
+    public Condition gt(BigDecimal literal) {
+        return asNumber().gt(literal);
+    }
+
+    public Condition ge(long literal) {
+        return asNumber().ge(literal);
+    }
+
+    public Condition ge(String literal) {
+        return asNumber().ge(literal);
+    }
+
+    public Condition ge(BigDecimal literal) {
+        return asNumber().ge(literal);
     }
 
     public Condition eq(long literal) {
-        return compareTo(CompareOp.EQ, literal);
+        return asNumber().eq(literal);
+    }
+
+    public Condition eq(String literal) {
+        return asNumber().eq(literal);
+    }
+
+    public Condition eq(BigDecimal literal) {
+        return asNumber().eq(literal);
     }
 
     public Condition ne(long literal) {
-        return compareTo(CompareOp.NE, literal);
+        return asNumber().ne(literal);
     }
 
-    private Condition compareTo(CompareOp op, long literal) {
-        return new ComparisonCondition(value(), op, NumberLiteral.of(literal));
+    public Condition ne(String literal) {
+        return asNumber().ne(literal);
     }
-    // Comparison construction is shared with NumberExpr (see asNumber()); kept inline here so the
-    // common num(...).le(0) form needs no extra hop.
+
+    public Condition ne(BigDecimal literal) {
+        return asNumber().ne(literal);
+    }
 }

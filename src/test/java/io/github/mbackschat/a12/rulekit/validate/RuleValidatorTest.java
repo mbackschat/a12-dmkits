@@ -89,6 +89,23 @@ class RuleValidatorTest {
     }
 
     @Test
+    void acceptsScaleFreeNumericLiteralsOnEquality() {
+        // Verified 2026-06-03: the kernel's decimal-scale check (MVK_INVALID_COMPARE_DEC_PLACES)
+        // applies to field-vs-field comparisons only — numeric LITERALS are accepted at any written
+        // scale against a scale-2 field (== 0, == 0.00, == 0.0, != 0, <= 0.000 all pass).
+        // This test locks that behavior so a kernel upgrade that changes it fails loudly.
+        // (See KERNEL-INTEGRATION-NOTES.md; the field-vs-field rejection is N7-proven via the
+        // catalog's Equal invalidExample.)
+        for (String cond : new String[]{"[MonthlyFee] == 0", "[MonthlyFee] == 0.0", "[MonthlyFee] != 0"}) {
+            DraftRule rule = new DraftRule(
+                    "/Subscription/Addons", "LiteralScaleRule", "../MonthlyFee",
+                    "FieldFilled(MonthlyFee) And " + cond, "LIT_SCALE", "ERROR");
+            ValidationResult result = new RuleValidator().check(modelJson, rule);
+            assertTrue(result.ok(), () -> cond + " should be accepted, got: " + result.problems());
+        }
+    }
+
+    @Test
     void rejectsATypeIllegalComparison() {
         // Ordering a string ([Name]) is a type error — MVK_INVALID_TYPE_FOR_COMPARISON.
         DraftRule rule = new DraftRule(
