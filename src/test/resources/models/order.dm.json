@@ -162,6 +162,39 @@
                     }
                   ]
                 }
+              },
+              {
+                "type": "Field",
+                "id": "/Order/Priority",
+                "name": "Priority",
+                "Field": {
+                  "fieldType": {
+                    "type": "EnumerationType",
+                    "EnumerationType": {
+                      "values": [
+                        {
+                          "value": "STANDARD"
+                        },
+                        {
+                          "value": "EXPRESS"
+                        },
+                        {
+                          "value": "OVERNIGHT"
+                        }
+                      ],
+                      "categories": [
+                        {
+                          "name": "SpeedClass",
+                          "values": [
+                            "NORMAL",
+                            "FAST",
+                            "FAST"
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
               }
             ]
           }

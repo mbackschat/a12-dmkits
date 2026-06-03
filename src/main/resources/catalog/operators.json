@@ -281,6 +281,19 @@
     "sinceKernel": "30.8.x"
   },
   {
+    "id": "EnumCategory",
+    "kind": "path-op",
+    "keywords": { "en": "->", "de": "->" },
+    "operands": [ { "type": "enumeration" }, { "type": "category-name" } ],
+    "returns": "enumeration",
+    "meaning": "Maps an enumeration field's value to its value in the named category: [Field -> Category]. The model pairs category values positionally with the enum values; comparisons run against the category's (distinct) value domain.",
+    "constraints": [ "the left operand must be an enumeration field (MVK_NO_ENUMERATION otherwise)", "the category must be declared on that field's enumeration (MVK_CATEGORY_UNKOWN — kernel's spelling)" ],
+    "gotchas": [ "compare against CATEGORY values, not the enum's own values — '[Priority -> SpeedClass] == \"EXPRESS\"' is rejected because EXPRESS is an enum value, not a SpeedClass value", "the arrow is the same symbol in every condition language" ],
+    "validExample": { "dsl": "[Priority -> SpeedClass] == \"FAST\"", "note": "fires when the priority's speed class is FAST" },
+    "invalidExample": { "dsl": "[Priority -> SpeedClass] == \"EXPRESS\"", "error": "MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON", "fix": "EXPRESS is an enum value; compare to a SpeedClass category value (NORMAL/FAST)" },
+    "sinceKernel": "30.8.x"
+  },
+  {
     "id": "True",
     "kind": "constant",
     "keywords": { "en": "True", "de": "Wahr" },

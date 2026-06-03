@@ -61,6 +61,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case StringLiteral s -> { }
             case EnumValueLiteral e -> { }
             case BoolLiteral b -> { }
+            case EnumCategoryAccess c -> fields.add(c.field().path());
         }
     }
 }

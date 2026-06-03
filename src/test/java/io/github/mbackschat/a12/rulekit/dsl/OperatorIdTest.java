@@ -63,6 +63,7 @@ class OperatorIdTest {
         assertResolves("False");
         assertResolves("GroupFilled");
         assertResolves("GroupNotFilled");
+        assertResolves("EnumCategory");
         for (GroupQuantifier q : GroupQuantifier.values()) {
             assertResolves(q.operatorId());
         }

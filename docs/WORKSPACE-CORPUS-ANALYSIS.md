@@ -33,7 +33,7 @@ A read-only **analysis** of two real A12 model corpora, used to prioritize what 
 | 11 / 3 | `True` / `False` (boolean & confirm literals) | ✅ (`BoolRef.isTrue/isFalse`, `ConfirmRef.confirmed/notConfirmed`) |
 | **8 / 8 / 8 / 6 / 4** | `CurrentRepetition` / `For` (semantic index) / `Today` / `Having` / `RepetitionNotUnique` | ❌ iteration + dates |
 | **6 / 1 / 1 / 1** | `Date(...)` / `DifferenceInDays` / `DifferenceInYears` / `AddMonths` | ❌ date family |
-| **5** | `->` (enum category) | ❌ |
+| 5 | `->` (enum category) | ✅ (`EnumRef.category(...)`) |
 | 4 / 4 / 3 / 1 / 1 | `RangeAsString` / (group: `AtLeastOneGroupFilled` ✅) / `PatternViolated` / `GroupNotFilled` ✅ / `Length` | partial (`Length` ✅, group predicates ✅) |
 | ~2 | value-list membership (`IncludedInValueList`, `NoFieldValue…InValueList`) | ❌ |
 
@@ -70,7 +70,7 @@ Real conditions include `;;` line comments, `\r\n` line breaks, and case-variant
 | **137** | `*` flatten | ❌ iteration |
 | 70 | `Length` | ✅ |
 | **57** | `RepetitionNotUnique` | ❌ |
-| **54** | `->` enum-category | ❌ |
+| 54 | `->` enum-category | ✅ |
 | 53 | `AllFieldsFilled` (quantifier family) | ✅ |
 | 46 | `GroupFilled` | ✅ |
 | **45** | `CustomCondition` | ❌ (the app-defined escape hatch) |
@@ -87,7 +87,7 @@ Counts shown as C1 (app) + C2 (metamodel). Order balances combined frequency aga
 
 1. ~~**Boolean (+ confirm) literals & comparison**~~ — ✅ **done 2026-06-03** (`BoolLiteral` + `BoolRef`/`ConfirmRef`; confirm-vs-False made unrepresentable — `MVK_INVALID_COMPARE_TO_YES`/`_YESNO` verified and N7-locked).
 2. ~~**Group predicates**~~ — ✅ **done 2026-06-04** (all seven: `GroupFilled`/`GroupNotFilled` + five group-list quantifiers; `MVK_NO_FIELDS_ALLOWED`/`MVK_NO_GROUPS_ALLOWED` made unrepresentable; enclosing-group-counts-as-error-field-reference verified).
-3. **Enum-category navigation** — `[Field -> Category] <op> "X"` (5 + 54). *Med; needs enum category access from the model index (already have `getCategories()`). Bumped up by Corpus 2.*
+3. ~~**Enum-category navigation**~~ — ✅ **done 2026-06-04** (`EnumRef.category(...)` → validated `CategoryRef`; `MVK_CATEGORY_UNKOWN`/`MVK_NO_ENUMERATION`/`MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON` made unrepresentable or fail-fast).
 4. **Pattern operators** — `PatternMatched` / `PatternViolated` (0 + 27). *Med; string field + regex constant.*
 5. **Value-list membership** — `…IncludedInValueList` family (≈2 + 23). *Med.*
 6. **`NumberOfFilledFields` aggregate** (11 + 7) → comparable numeric expression. *Med.*

@@ -84,6 +84,16 @@
                             }
                           ]
                         }
+                      ],
+                      "categories": [
+                        {
+                          "name": "Pricing",
+                          "values": [
+                            "FREE",
+                            "PAID",
+                            "PAID"
+                          ]
+                        }
                       ]
                     }
                   }

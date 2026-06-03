@@ -86,6 +86,26 @@ public final class ModelIndex {
         return enumeration.getValues().stream().map(IEnumerationType.IEnumValue::getValue).toList();
     }
 
+    /**
+     * The categories of the enumeration field at {@code fieldPath}: category name → its distinct
+     * category values (the model maps positionally — {@code categories[c].values[i]} pairs with
+     * enum {@code values[i]}; the comparison domain is the distinct set).
+     *
+     * @throws IllegalArgumentException if the field is not an enumeration
+     */
+    public Map<String, List<String>> enumCategories(String fieldPath) {
+        IFieldType type = effectiveType(field(fieldPath));
+        if (!(type instanceof IEnumerationType enumeration)) {
+            throw new IllegalArgumentException(
+                    fieldPath + " is not an enumeration field (kind=" + ValueKind.of(type) + ")");
+        }
+        Map<String, List<String>> categories = new LinkedHashMap<>();
+        for (IEnumerationType.IEnumCategory category : enumeration.getCategories()) {
+            categories.put(category.getName(), category.getValues().stream().distinct().toList());
+        }
+        return categories;
+    }
+
     /** Whether the group at {@code groupPath} can repeat (repeatability other than exactly 1). */
     public boolean isRepeating(String groupPath) {
         return group(groupPath).getRepeatability() != 1;

@@ -67,6 +67,8 @@ public final class DslRenderer {
             case EnumValueLiteral e -> quote(e.value());
             case BoolLiteral b -> keyword(b.operatorId());
             case LengthOf l -> keyword(l.operatorId()) + "(" + l.field().path() + ")";
+            case EnumCategoryAccess c ->
+                    "[" + c.field().path() + " " + keyword(c.operatorId()) + " " + c.category() + "]";
         };
     }
 

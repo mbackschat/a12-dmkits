@@ -16,7 +16,7 @@ Working end-to-end today:
 - **`Rule` + `Computation` authoring objects** (F2/F2a) — `Rule.in(group)…build()` / `Computation.of(field).when(…).calc(…)…build()`: computed `errorEntityRelPath`/`computedFieldRelPath`, build-time slot-rule pre-checks with the `MVK_*` code named (error-field-referenced incl. enclosing-group semantics; no computed-field self-reference; operation kind via `Calculation.kind()`; the kernel-illegal mixed/`otherwise` alternative form is unrepresentable), validator bridges.
 - **`Dsl.*` static facade + `Condition.transform` + Level-1 navigation** — handle-based factories (incl. n-ary `allOf`/`anyOf`), the bottom-up rewriter (modify #1), and jOOQ-`Meta`-style model navigation (`fields()`/`groups()`/`fieldAt` streams of info handles with strict narrowing — the rule-template enabler); number comparisons take scale-faithful `String`/`BigDecimal` literals.
 
-Not yet built: relative/short path policy (§18 fork 9), message interpolation + DM-JSON write path (F2a/F6), broader operator/type coverage (corpus-backlog order: enum categories `->` next), the model-context surface (F9a: `describe`/`find`/`dump`), the kernel-adapter module with text→AST ingest (F10), explainability (F9), the full modify loop (F8 #2/#3), the TS port.
+Not yet built: relative/short path policy (§18 fork 9), message interpolation + DM-JSON write path (F2a/F6), broader operator/type coverage (corpus-backlog order: patterns `PatternMatched`/`PatternViolated` next), the model-context surface (F9a: `describe`/`find`/`dump`), the kernel-adapter module with text→AST ingest (F10), explainability (F9), the full modify loop (F8 #2/#3), the TS port.
 
 ## Prerequisites
 

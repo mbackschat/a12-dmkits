@@ -105,7 +105,7 @@ public final class BoundModel {
         if (kind != ValueKind.ENUMERATION) {
             throw new IllegalArgumentException(path + " is not an enumeration field (kind=" + kind + ")");
         }
-        return new EnumRef(field(path), index.enumValues(path));
+        return new EnumRef(field(path), index.enumValues(path), index.enumCategories(path));
     }
 
     // --- field-list quantifiers (proposal §5) — each validates every path against the model -------

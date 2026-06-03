@@ -30,7 +30,8 @@ class CatalogExamplesAreKernelValidTest {
     /** Field names/paths in {@code order.dm.json}, in the order to pick a referenced error field. */
     private static final List<String> ORDER_FIELDS =
             List.of("CustomerName", "ProductCode", "Quantity", "UnitPrice", "BackorderQuantity",
-                    "ExpressShipping", "TermsConfirmed", "ShippingAddress/Street", "BillingAddress/PostalCode");
+                    "ExpressShipping", "TermsConfirmed", "Priority",
+                    "ShippingAddress/Street", "BillingAddress/PostalCode");
 
     /**
      * Group names → a representative contained field, for examples that reference only groups.

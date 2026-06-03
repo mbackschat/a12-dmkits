@@ -4,7 +4,7 @@
 >
 > **This doc is deliberately kept alive:** whenever a feature lands or an interesting usage emerges, the corresponding study here is updated to showcase it (see the doc-evolution note in `CLAUDE.md`). It doubles as the seed material for the LLM skill (N1) and the self-sufficiency eval (N6).
 >
-> Domain: the committed **subscription** fixture (our own original) — `Subscription` root with `Tier` (enum `BASIC/PRO/ENTERPRISE`), `AutoRenew` (boolean), `TermsAccepted` (confirm), repeatable `Addons{Name, MonthlyFee(scale 2)}`, `Billing{InvoiceEmail, BaseFee(scale 2), EffectiveFee(scale 2)}`; the **order** fixture adds `ShippingAddress`/`BillingAddress` groups and boolean/confirm fields. Extended illustratively where a construct needs it.
+> Domain: the committed **subscription** fixture (our own original) — `Subscription` root with `Tier` (enum `BASIC/PRO/ENTERPRISE`, category `Pricing` FREE/PAID), `AutoRenew` (boolean), `TermsAccepted` (confirm), repeatable `Addons{Name, MonthlyFee(scale 2)}`, `Billing{InvoiceEmail, BaseFee(scale 2), EffectiveFee(scale 2)}`; the **order** fixture adds `ShippingAddress`/`BillingAddress` groups and boolean/confirm fields. Extended illustratively where a construct needs it.
 
 ---
 
@@ -38,6 +38,9 @@ tier.is("GOLD")               // fails fast — not in the model's enum domain (
 terms.isFalse()               // does not exist — confirm compares only to True (MVK_INVALID_COMPARE_TO_YES erased)
 fieldFilled(addons)           // does not compile — FieldRef ≠ GroupRef (MVK_NO_GROUPS_ALLOWED / MVK_NO_FIELDS_ALLOWED erased)
 m.bool("/Subscription/TermsAccepted")  // fails fast — confirm is a distinct kind from boolean (§5b)
+tier.category("Nope")                  // fails fast — not a declared category (MVK_CATEGORY_UNKOWN erased)
+tier.category("Pricing").is("BASIC")   // fails fast — BASIC is an enum value, not a Pricing category value
+                                       //   (MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON erased)
 ```
 
 Each erased mistake corresponds to a **kernel-verified** rejection code (see `KERNEL-INTEGRATION-NOTES.md`) — the type system is the documentation.
@@ -356,7 +359,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 
 | Study element | Status |
 |---|---|
-| Handles (`num/str/enumOf/bool/confirm/group`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–2 + base set) |
+| Handles (`num/str/enumOf/bool/confirm/group`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–3 + base set) |
 | §3.1 fragments, §3.3 library pattern, §6 catalog queries, §2 type-steering | ✅ pattern works today on covered operators |
 | §3.2 domain fragments (`withinTolerance`, `chronological`, `uniqueBy`) | 🔮 their operators are corpus items 6–7 + tolerance |
 | §6c navigation (Level 1: `fields()`/`groups()`/`fieldAt` + strict narrowing), §3.5 `allOf`/`anyOf` | ✅ implemented 2026-06-04 (findings 9–10) |
