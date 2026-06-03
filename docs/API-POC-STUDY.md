@@ -140,17 +140,21 @@ Condition d = allOf(r1, anyOf(r2, r3));     // "r1 And (r2 Or r3)" — parens pe
 
 ## 4. Authoring a rule end-to-end (F1, F2, F2a, F3, F4, F6)
 
-### 4.1 The rule object — slots from typed handles (F2a) 🔮
+### 4.1 The rule object — slots from typed handles (F2a) ✅ — implemented 2026-06-04 (`RuleAuthoringTest`; message *interpolation* still 🔮)
 
 ```java
 Rule rule = Rule.in(addons)                       // rule must live in a group — by construction
-        .errorField(fee)                          // errorEntityRelPath computed, not hand-written
+        .name("AddonFeeRequiredRule")             // the element name (the study originally forgot it)
+        .errorField(fee)                          // errorEntityRelPath computed — "../MonthlyFee"
         .when(SubscriptionIdioms.feeRequired(tier, fee))
         .code("ADDON_FEE_REQUIRED_FOR_PRO")
-        .severity(ERROR)
-        .message(en("A PRO subscription requires a monthly fee per add-on: {0}", m.str(NAME)),
-                 de("Ein PRO-Abo erfordert eine Monatsgebühr je Zusatzoption: {0}", m.str(NAME)))
-        .build();                                  // message helper emits $Name.value$ correctly
+        .severity(Severity.ERROR)
+        .message(en("A PRO subscription requires a monthly fee per add-on."),
+                 de("Ein PRO-Abo erfordert eine Monatsgebühr je Zusatzoption."))   // 🔮 {0}→$Name.value$ interpolation: F2a follow-up
+        .build();   // pre-checks at build(): error field under the group; error-field-referenced
+                    // (directly or via enclosing group ref — kernel-verified); ≥1 message; all with the fix named
+// rule.draft() bridges to the F4 validator; rule.render(DE) renders the same AST in German.
+// ConditionReferences.of(condition) — the build-check's collector — is the seed of F9's referenced-fields projection.
 ```
 
 ### 4.2 Render → validate → emit ✅ / 🔮

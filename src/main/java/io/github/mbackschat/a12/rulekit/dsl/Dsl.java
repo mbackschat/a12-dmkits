@@ -66,6 +66,16 @@ public final class Dsl {
         return new FieldListPredicate(quantifier, fields);
     }
 
+    // --- localized error-message texts (F2a; DM-JSON locale codes) ------------------------------
+
+    public static LocalizedText en(String text) {
+        return new LocalizedText("en_US", text);
+    }
+
+    public static LocalizedText de(String text) {
+        return new LocalizedText("de_DE", text);
+    }
+
     // --- n-ary composition (study finding 10) ---------------------------------------------------
 
     /** And-fold: {@code allOf(a, b, c)} renders {@code a And b And c} (no redundant parentheses). */
