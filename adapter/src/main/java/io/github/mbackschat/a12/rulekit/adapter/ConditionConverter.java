@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.rulekit.adapter;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiFunction;
 
@@ -8,6 +9,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IComparison
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.ICompositeCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.ICondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IEntityListCondition;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IValueListCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IConstantOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IFieldIdOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOperation;
@@ -15,6 +17,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ComparisonOpera
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListConditionName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.FieldIdOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.LogOp;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ValueListConditionName;
 
 import io.github.mbackschat.a12.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.rulekit.dsl.Condition;
@@ -61,6 +64,9 @@ final class ConditionConverter {
         }
         if (node instanceof IEntityListCondition entityList) {
             return convertEntityList(entityList);
+        }
+        if (node instanceof IValueListCondition valueList) {
+            return convertValueList(valueList);
         }
         throw unsupported("condition", node);
     }
@@ -115,6 +121,52 @@ final class ConditionConverter {
     private Condition groups(List<String> paths, BiFunction<GroupRef, GroupRef[], Condition> factory) {
         List<GroupRef> refs = paths.stream().map(model::group).toList();
         return factory.apply(refs.get(0), refs.subList(1, refs.size()).toArray(GroupRef[]::new));
+    }
+
+    private Condition convertValueList(IValueListCondition valueList) {
+        String path = valueList.getField().getFullName();
+        ValueKind kind = model.fieldAt(path)
+                .orElseThrow(() -> unsupported("value-list on unknown field " + path, valueList))
+                .kind();
+        List<String> values = valueList.getValueList().stream().map(op -> constantValue(op, valueList)).toList();
+        if (values.isEmpty()) {
+            throw unsupported("empty value list", valueList);
+        }
+        boolean included = valueList.getConditionName() == ValueListConditionName.FieldValueIncludedInValueList;
+        return switch (kind) {
+            case STRING -> {
+                StringRef r = model.str(path);
+                String[] rest = values.subList(1, values.size()).toArray(String[]::new);
+                yield included ? r.in(values.get(0), rest) : r.notIn(values.get(0), rest);
+            }
+            case ENUMERATION -> {
+                EnumRef r = model.enumOf(path);
+                String[] rest = values.subList(1, values.size()).toArray(String[]::new);
+                yield included ? r.in(values.get(0), rest) : r.notIn(values.get(0), rest);
+            }
+            case NUMBER -> {
+                NumberRef r = model.num(path);
+                long[] longs = new long[values.size()];
+                for (int i = 0; i < values.size(); i++) {
+                    try {
+                        longs[i] = Long.parseLong(values.get(i));
+                    } catch (NumberFormatException e) {
+                        throw unsupported("number value-list with a non-integer value '"
+                                + values.get(i) + "'", valueList);
+                    }
+                }
+                long[] rest = Arrays.copyOfRange(longs, 1, longs.length);
+                yield included ? r.in(longs[0], rest) : r.notIn(longs[0], rest);
+            }
+            default -> throw unsupported("value-list membership on a " + kind + " field", valueList);
+        };
+    }
+
+    private String constantValue(IOperation op, ICondition origin) {
+        if (op instanceof IConstantOperation constant) {
+            return constant.getValue();
+        }
+        throw unsupported("value-list entry that is not a constant", origin);
     }
 
     private Condition convertComparison(IComparisonCondition comparison) {

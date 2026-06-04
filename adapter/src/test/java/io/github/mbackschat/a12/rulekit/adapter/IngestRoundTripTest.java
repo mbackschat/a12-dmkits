@@ -82,17 +82,38 @@ class IngestRoundTripTest {
     }
 
     @Test
+    void roundTripsValueListMembership() {
+        BoundModel m = base();
+        var cases = new java.util.LinkedHashMap<String, Condition>();
+        BoundModel withRules = m
+                .add(rule(m, "/Subscription/Addons", "NameInRule", m.field("/Subscription/Addons/Name"),
+                        m.str("/Subscription/Addons/Name").in("Gold", "Silver", "Bronze"), cases))
+                .add(rule(m, "/Subscription/Addons", "NameNotInRule", m.field("/Subscription/Addons/Name"),
+                        m.str("/Subscription/Addons/Name").notIn("Banned"), cases))
+                .add(rule(m, "/Subscription", "TierInRule", m.field("/Subscription/Tier"),
+                        m.enumOf("/Subscription/Tier").in("PRO", "ENTERPRISE"), cases))
+                .add(rule(m, "/Subscription/Addons", "FeeInRule", m.field("/Subscription/Addons/MonthlyFee"),
+                        m.num("/Subscription/Addons/MonthlyFee").in(0, 10, 100), cases));
+
+        KernelAdapter adapter = KernelAdapter.of(withRules);
+        cases.forEach((fullName, original) ->
+                assertEquals(RENDER.render(original), RENDER.render(adapter.ingest(fullName)),
+                        () -> "value-list round-trip mismatch for " + fullName));
+    }
+
+    @Test
     void failsFastOnAnUnconvertedConstruct() {
         BoundModel m = base();
         var ignore = new java.util.LinkedHashMap<String, Condition>();
-        // A value-list membership condition is not in the first slice → fail-fast, never silent loss.
-        BoundModel withRule = m.add(rule(m, "/Subscription/Addons", "NameListRule",
-                m.field("/Subscription/Addons/Name"),
-                m.str("/Subscription/Addons/Name").in("Gold", "Silver"), ignore));
+        // A custom (application) condition is not yet converted → fail-fast, never silent loss.
+        BoundModel withRule = m.add(rule(m, "/Subscription", "CustomRule",
+                m.field("/Subscription/Tier"),
+                m.field("/Subscription/Tier").filled().and(
+                        io.github.mbackschat.a12.rulekit.dsl.Dsl.customCondition("ExternalEligibility")), ignore));
         KernelAdapter adapter = KernelAdapter.of(withRule);
 
         UnsupportedConstructException ex = assertThrows(UnsupportedConstructException.class,
-                () -> adapter.ingest("/Subscription/Addons/NameListRule"));
+                () -> adapter.ingest("/Subscription/CustomRule"));
         org.junit.jupiter.api.Assertions.assertTrue(ex.getMessage().contains("kernel node:"),
                 () -> "the fail-fast message should name the unconverted construct: " + ex.getMessage());
     }
