@@ -500,6 +500,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 | Message *interpolation*, fork-9 path policy, `advice()` | 🔮 Phase-1 remainder (F2a; F9) |
 | F9a model-context: `describe()` model card + `find()` name resolution (`context.ModelContext`) | ✅ Phase-1 half (2026-06-04); `whereUsed`/`explain`/`dump` 🔮 |
 | fork #9 / F3a path policy — relative-to-group paths (`../` to siblings) + keyword-segment quoting | ✅ 2026-06-04 (kernel-verified): relative rendering + single-quoting keyword-named segments (catalog keywords; full lexer set rides N3) |
+| N3 keyword-parity anchor — catalog keywords ↔ kernel lexer terminals (`catalog.KeywordParityTest`) | ✅ 2026-06-04 (forward: every catalog/stub keyword is a real terminal, or a language-independent symbol); reverse + construct-name/error-type parity 🔮 |
 | ingest / explain / diff / LLM loop | 🔮 Phase 2 (adapter) |
 | TS twin | 🔮 Phase 4 |
 
