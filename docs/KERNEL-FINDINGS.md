@@ -197,6 +197,16 @@ The kernel jars carry standard Maven manifest attributes, and the JVM exposes th
 - These come from the jar's `META-INF/MANIFEST.MF` main attributes — present on every kernel module checked (`kernel-core-parser`, `kernel-core-service`, `kernel-md-model`, …). So any class rulekit already imports works as the version source; no dependency on a kernel constant or service.
 - **Treatment (F11):** rulekit reads this once at validation time and compares to the catalog's stamped `verifiedAgainst` floor; a mismatch is a single INFO/WARNING, never an error. The verification floor only rises (oldest supported = current), so the live concern is newer-than-floor skew.
 
+## Parsetree construct-name enums — the kernel's machine-readable operator inventory (N3 reverse anchor, 2026-06-04)
+
+The package `…core.parsetree.a12internal.api.types` holds ~18 construct-name enums (`kernel-core-parsetree-api`) — the kernel's own operator inventory, the second N3 parity anchor. Discovered by reflecting over each (`adapter.KernelConstructParityTest`):
+
+- **`getRuntimeName()` returns the German keyword; the enum constant's `name()` is the English/canonical construct name.** E.g. `EntityListConditionName.AllFieldsFilled.getRuntimeName()` → `AlleFelderAngegeben`. So `name()` ≈ catalog `keywords.en`, `getRuntimeName()` ≈ catalog `keywords.de` — the matching keys for the reverse-parity test.
+- **Not all enums have `getRuntimeName()`.** The symbolic families don't: `ComparisonOperation` (`GT/NE/LT/EQ/GE/LE`, tolerance `NE1/NE2/NE5/NE10`, pattern `WM/NM`), `CalcOp` (`ADD/MULTIPLY/SUBTRACT/DIVIDE/POWER`), `RootGroupConditionName` (German-only). These render as glyphs (`>`, `+`, …) or are out of scope, so they map to the catalog differently (by id) or not at all.
+- **Some members are legacy German-only aliases** with no English name (`name()` == `getRuntimeName()`, both German): `EntityListConditionName.{ZeilenNichtAufsteigend, ZeilenLueckenlos, ZeileNichtEindeutig}` (the last superseded by `RepetitionNotUnique`), `EntityListOperationName.MaximalAngegebenerZeilenindex`, `FieldIdOperationName.AktuelleVordruckNummer`.
+- **`RootGroupConditionName` is multi-form (Vordruck/USB) scope** — `MindestensEinVordruckAngegeben`, `UsbNichtFortlaufend`, … — outside rulekit's single-document-model scope.
+- **The enums carry the full coverage backlog**, machine-readably: families rulekit hasn't modeled (date extraction, sub-day date add/diff, op-list math, tolerance comparisons, value coercions) appear as enum members with no catalog counterpart — exactly the operators a future increment (or a kernel upgrade) would add. `KernelConstructParityTest`'s exclusion list enumerates them with reasons.
+
 ## Schema oracle — what the kernel-mm metamodels formalize (instrument 3, 2026-06-04)
 
 Read-only mining of the sibling `a12-kernel-mm` canonical set (own-words summary; EUPL — nothing copied). Harness: `KernelMmIntegrationTest` (opt-in, skips when the clone is absent).
