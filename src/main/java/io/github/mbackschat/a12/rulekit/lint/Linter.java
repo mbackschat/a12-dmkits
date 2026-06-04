@@ -62,10 +62,35 @@ public final class Linter {
     public List<Diagnostic> lint(BoundModel model, Rule rule) {
         String rulePath = rule.group().path() + "/" + rule.name();
         List<Diagnostic> out = new ArrayList<>(lint(rulePath, rule.condition()));
+        invertedRequiredness(rule, rulePath, out);
         if (model.iteratesForErrorField(rule.errorField().path())) {
             negativeUnderIteration(rule, model, rulePath, out);
         }
         return List.copyOf(out);
+    }
+
+    /**
+     * An {@code errorCondition} is the <em>error scenario</em> (true ⇒ the data is invalid), so a
+     * requiredness rule must fire on <em>absence</em>. A bare {@code FieldFilled(E)} on the rule's
+     * own error field {@code E} fires on <em>presence</em> — flagging valid-looking data, almost
+     * always an inversion ("did you mean {@code FieldNotFilled}?"). Conservative: only the bare
+     * (sole-predicate) form — a guarded {@code FieldFilled(E) And <ctx>} is a legitimate
+     * "{@code E} must be empty in this context" rule, so it is left alone.
+     */
+    private void invertedRequiredness(Rule rule, String rulePath, List<Diagnostic> out) {
+        if (rule.condition() instanceof FieldPresenceCondition f
+                && f.filled()
+                && f.field().path().equals(rule.errorField().path())) {
+            out.add(new Diagnostic(Severity.WARNING, DiagnosticSource.LINT,
+                    Optional.of("RK_INVERTED_REQUIREDNESS"),
+                    "the rule errors when '" + f.field().path() + "' IS filled — an errorCondition fires on"
+                            + " the invalid case, so a requiredness rule should fire on absence",
+                    new Diagnostic.Where(rulePath, Optional.of("FieldFilled")),
+                    Optional.of("FieldNotFilled(" + f.field().path() + ")"),
+                    Optional.of("an errorCondition is the error scenario (true ⇒ invalid); FieldFilled is true"
+                            + " when the field HAS a value, so this flags present values, not missing ones —"
+                            + " did you mean FieldNotFilled?")));
+        }
     }
 
     /**

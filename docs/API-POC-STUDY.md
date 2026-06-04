@@ -488,7 +488,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 | `Rule` + `Computation` authoring objects (computed relPaths, slot-rule pre-checks, validator bridges, `Calculation.kind()`) | ✅ implemented 2026-06-04 |
 | DM-JSON write path: `ofJson`/`add(Rule)`/`toJson`/`writeTo` (snapshot, re-validated, includes-preserving) | ✅ F6 first slice (2026-06-04); `add(Computation)`/`replaceCondition`/`removeRule` 🔮 |
 | Structured `Diagnostic` (`severity·source·code·summary·where·fix·explain`) + catalog-join + JSON | ✅ F4a first increment (2026-06-04); "did you mean" / span-pointing 🔮 |
-| Lint layer — valid-but-suspicious WARNINGs over the AST (`lint.Linter`, `RK_*` codes) | ✅ pure-AST (contradictory/non-complementary presence, duplicate operand) + model-context `RK_NEG_CONDITION_IN_ITERATION` (2026-06-04); inverted-requiredness 🔮 |
+| Lint layer — valid-but-suspicious WARNINGs over the AST (`lint.Linter`, `RK_*` codes) | ✅ pure-AST (contradictory/non-complementary presence, duplicate operand) + rule-context (`RK_NEG_CONDITION_IN_ITERATION`, `RK_INVERTED_REQUIREDNESS`) (2026-06-04) |
 | Gotcha/INFO channel — catalog `gotchas` keyed by operators a rule uses (`lint.Advisor`, `RK_GOTCHA`) | ✅ 2026-06-04 (descends nested `Calculation`s via `dsl.OperatorUsage`); gotcha-relevance curation ✅ (`GotchaKind` SURPRISE/AUTHORING/RENDERING, suppresses trivia) |
 | Message *interpolation*, fork-9 path policy, `advice()` | 🔮 Phase-1 remainder (F2a; F9) |
 | ingest / explain / diff / LLM loop | 🔮 Phase 2 (adapter) |

@@ -120,6 +120,58 @@ class LinterTest {
                 () -> "non-iterating rule should not warn: " + linter.lint(m, rule));
     }
 
+    // --- model-context lint: inverted requiredness (a bare FieldFilled on the error field)
+
+    @Test
+    void warnsWhenABareFieldFilledOnTheErrorFieldInvertsRequiredness() {
+        // errorCondition fires on the INVALID case; FieldFilled(Tier) errors when Tier IS present.
+        Rule rule = m.rule(m.group("/Subscription"))
+                .name("TierRequiredRule")
+                .errorField(m.field("/Subscription/Tier"))
+                .when(m.field("/Subscription/Tier").filled())
+                .code("TIER_REQUIRED").severity(io.github.mbackschat.a12.rulekit.dsl.Severity.ERROR)
+                .message(Dsl.en("Tier required."), Dsl.de("Stufe erforderlich."))
+                .build();
+
+        Diagnostic d = only(linter.lint(m, rule), "RK_INVERTED_REQUIREDNESS");
+        assertEquals(DiagnosticSource.LINT, d.source());
+        assertEquals(Severity.WARNING, d.severity());
+        assertTrue(d.where().operator().filter("FieldFilled"::equals).isPresent());
+        assertTrue(d.fix().filter(f -> f.contains("FieldNotFilled")).isPresent(),
+                () -> "fix should propose FieldNotFilled: " + d.fix());
+    }
+
+    @Test
+    void doesNotWarnOnACorrectRequirednessRule() {
+        Rule rule = m.rule(m.group("/Subscription"))
+                .name("TierRequiredRule")
+                .errorField(m.field("/Subscription/Tier"))
+                .when(m.field("/Subscription/Tier").notFilled())
+                .code("TIER_REQUIRED").severity(io.github.mbackschat.a12.rulekit.dsl.Severity.ERROR)
+                .message(Dsl.en("Tier required."), Dsl.de("Stufe erforderlich."))
+                .build();
+
+        assertTrue(linter.lint(m, rule).stream()
+                .noneMatch(d -> d.code().filter("RK_INVERTED_REQUIREDNESS"::equals).isPresent()),
+                () -> "a FieldNotFilled requiredness rule should not warn: " + linter.lint(m, rule));
+    }
+
+    @Test
+    void doesNotWarnWhenFieldFilledIsGuarded() {
+        // A guarded FieldFilled(E) And <ctx> is a legitimate "field must be empty here" rule — not flagged.
+        Rule rule = m.rule(m.group("/Subscription"))
+                .name("TierForbiddenRule")
+                .errorField(m.field("/Subscription/Tier"))
+                .when(m.field("/Subscription/Tier").filled().and(m.field("/Subscription/AutoRenew").filled()))
+                .code("TIER_CTX").severity(io.github.mbackschat.a12.rulekit.dsl.Severity.ERROR)
+                .message(Dsl.en("Tier check."), Dsl.de("Stufenprüfung."))
+                .build();
+
+        assertTrue(linter.lint(m, rule).stream()
+                .noneMatch(d -> d.code().filter("RK_INVERTED_REQUIREDNESS"::equals).isPresent()),
+                () -> "a guarded FieldFilled should not warn: " + linter.lint(m, rule));
+    }
+
     private static Diagnostic only(List<Diagnostic> diagnostics, String code) {
         List<Diagnostic> matches = diagnostics.stream()
                 .filter(d -> d.code().filter(code::equals).isPresent())
