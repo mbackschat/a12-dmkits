@@ -641,5 +641,23 @@
     "validExample": { "dsl": "FieldFilled(Items/Count) And CurrentRepetition(Items) > 1", "note": "fires from the second line item onward (the error field under Items makes the rule iterate)" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And CurrentRepetition(Items) > 1", "error": "MVK_NO_WILDCARD", "fix": "CurrentRepetition needs the rule to iterate over the group — put the error field inside Items" },
     "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "CustomCondition",
+    "kind": "predicate",
+    "keywords": { "en": "CustomCondition", "de": "ApplikationsBedingung" },
+    "operands": [ { "type": "name" } ],
+    "returns": "boolean",
+    "meaning": "Delegates the fire/don't-fire decision to host code the consuming system registers under the given name — the escape hatch when the language cannot express a check.",
+    "constraints": [
+      "the name is a bare identifier (letter, then letters/digits/underscores), no operands",
+      "forbidden inside a Having filter (MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION) and in computation rules",
+      "does not satisfy the error-field rule on its own — pair it with a field reference"
+    ],
+    "gotchas": [
+      "the kernel only parses/places it; whether the registered implementation exists is the consuming system's concern, not checkConsistency's"
+    ],
+    "validExample": { "dsl": "FieldFilled(CustomerName) And CustomCondition NotReverse", "note": "host code decides; the FieldFilled conjunct references the error field" },
+    "sinceKernel": "30.8.x"
   }
 ]

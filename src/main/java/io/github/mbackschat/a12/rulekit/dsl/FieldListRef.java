@@ -46,6 +46,7 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
     private static void rejectForbiddenInFilter(Condition c) {
         switch (c) {
             case RepetitionNotUniqueCondition ignored -> forbidden("RepetitionNotUnique");
+            case CustomConditionRef ignored -> forbidden("CustomCondition");
             case LogicCondition l -> {
                 rejectForbiddenInFilter(l.left());
                 rejectForbiddenInFilter(l.right());

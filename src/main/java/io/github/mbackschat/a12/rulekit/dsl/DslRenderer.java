@@ -52,6 +52,7 @@ public final class DslRenderer {
             case ValueListCondition v -> keyword(v.operatorId()) + "(" + v.field().path() + ", "
                     + v.values().stream().map(this::render).collect(java.util.stream.Collectors.joining(", "))
                     + ")";
+            case CustomConditionRef c -> keyword(c.operatorId()) + " " + c.name();
             case RepetitionNotUniqueCondition r -> keyword(r.operatorId()) + "("
                     + r.keys().stream().map(FieldRef::path).collect(java.util.stream.Collectors.joining(", "))
                     + r.scope().map(s -> " " + keyword("FromScope") + " " + s.path()).orElse("")

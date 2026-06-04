@@ -73,7 +73,7 @@ Real conditions include `;;` line comments, `\r\n` line breaks, and case-variant
 | 54 | `->` enum-category | ✅ |
 | 53 | `AllFieldsFilled` (quantifier family) | ✅ |
 | 46 | `GroupFilled` | ✅ |
-| **45** | `CustomCondition` | ❌ (the app-defined escape hatch) |
+| 45 | `CustomCondition` | ✅ (`Dsl.customCondition(name)`) |
 | 23 | `True` / `False` literals | ✅ |
 | 23 | value-list membership (`…InValueList`) | ✅ (literal lists; `*`-path lists ride the iteration cluster) |
 | 14 / 13 | `PatternMatched` / `PatternViolated` | ✅ (`StringRef.matches`/`violates`) |
@@ -98,7 +98,7 @@ Counts shown as C1 (app) + C2 (metamodel). Order balances combined frequency aga
    - 7d ~~`Having` filter~~ — ✅ **done 2026-06-04** (`FieldListRef.having(filter)`; starred-field requirement structural, works in aggregate + quantifier slots, filter-condition exclusions pre-checked for the representable constructs (RNU + nested Having), rest kernel-delegated). **`$` correlation deferred** — it needs field-vs-field comparison (`[inner] == [$outer]`, D13 not built); `MVK_INVALID_OUTER_ITERATION` recorded, pre-check rides that feature.
    - 7e ~~`CurrentRepetition`~~ (8) — ✅ **done 2026-06-04** (`Dsl.currentRepetition(group)` → numeric expression; groups-only structural, iterating-position law kernel-delegated + locked).
    - **7f (split out, deferred — needs index-field fixtures):** `For`/`Fuer` semantic index (8), parallel iteration, and the deferred pre-checks (`MVK_NO_WILDCARD` missing-star, RNU position) — all hinge on repeatable groups declaring an **index field** (our fixtures lack one → `MVK_NO_INDEX_FIELD`) plus an explicit iteration model. Low demand; built on real need (KERNEL-FINDINGS §9).
-8. **`CustomCondition`** (0 + 45) — the app-defined boolean escape hatch (Zod `.refine` analogue). *Med; emit an opaque named condition the kernel resolves.*
+8. ~~**`CustomCondition`**~~ — ✅ **done 2026-06-04** (`Dsl.customCondition(name)` → `CustomConditionRef`; bare-identifier name validated; both forbidden contexts pre-checked — inside `Having` (`MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION`) and in computation rules (§14)).
 9. **Date family** — `Today`, `Date(d,m,y)`, `DifferenceIn*`, `Add*` (~17 + ~0). *Med; app-only — date kinds + year-presence comparability (§5b).*
 
 ## How this drives the work

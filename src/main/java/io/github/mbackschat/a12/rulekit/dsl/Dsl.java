@@ -82,6 +82,11 @@ public final class Dsl {
         return new NumberExpr(new ListAggregate(op, operands));
     }
 
+    /** {@code CustomCondition <Name>} — the app-defined escape hatch (KERNEL-SEMANTICS §14). */
+    public static Condition customCondition(String name) {
+        return new CustomConditionRef(name);
+    }
+
     /** {@code CurrentRepetition(group)} — the group's current iteration index, as a number expression. */
     public static NumberExpr currentRepetition(GroupRef group) {
         return new NumberExpr(new CurrentRepetition(group));

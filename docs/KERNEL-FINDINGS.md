@@ -29,6 +29,16 @@ The condition lexer's rule is `StringLiteral : '"' ( '""' | ~["] )* '"'` — an 
 
 In DM-JSON, a category's `values` list pairs **positionally** with the enumeration's `values` (entry *i* categorizes enum value *i*); the comparison domain is the category's distinct value set. Codes: comparing to one of the *enum's own* values instead of a *category* value → **`MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON`**; an unknown category name → **`MVK_CATEGORY_UNKOWN`** (the kernel's spelling); `->` on a non-enumeration field → **`MVK_NO_ENUMERATION`**. Curiosity: `[Enum -> Category] == [Enum]` (category vs. plain enum field) is *accepted*. *(Locked: N7 `EnumCategory` examples + `dsl.operators.EnumConditionTest`.)*
 
+## §14 supplement — CustomCondition's two forbidden contexts (corpus item 8, 2026-06-04 experiments)
+
+`CustomCondition <Name>` (DE `ApplikationsBedingung`; grammar `applikationsBedingung: 'ApplikationsBedingung' nameOhnePunkt`) is a bare predicate — a host-registered name, no operands. KERNEL-SEMANTICS §14 names two bans; both verified and now **pre-checked** (the constructs are representable):
+
+- **Inside a `Having` filter** → **`MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION`** ("The language feature 'CustomCondition' is not supported for filter conditions"). *(Isolating it needs a filter that already references the iteration — otherwise `MVK_NO_ITERATION_FOR_WILDCARD` fires first.)*
+- **In computation rules** (§14) — pre-checked in `Computation.build()` by walking preconditions for a `CustomConditionRef`.
+- It does **not** satisfy the error-field rule on its own (a bare `CustomCondition X` → `MVK_ERROR_FIELD_NOT_REFERENCED`); pair it with a field reference — rulekit's generic `Rule.build()` error-field pre-check already covers this.
+
+*(Locked: N7 `CustomCondition` valid; `dsl.operators.CustomConditionTest` for both bans + the bare-identifier name rule. DE keyword pairing verified from the lexer bundle (can't N7 against the en_US fixture — model condition-language gates parsing).)*
+
 ## §2 supplement — the filled-count aggregates (2026-06-04 experiments)
 
 `NumberOfFilledFields` / `NumberOfFilledGroups` (DE: `AnzahlAngegebenerFelder`/`AnzahlAngegebenerKontexte`; the grammar's `feldListenAnzahlOp`, third sibling `NumberOfDifferentValues` deferred) are **numeric expressions**, freely comparable and usable in arithmetic (`NumberOfFilledFields(a, b) + 1 < [Q]` validates). Slot rules:

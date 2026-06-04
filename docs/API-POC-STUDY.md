@@ -154,6 +154,10 @@ public final class SubscriptionIdioms {
         return sum(m.flatten("/Subscription/Addons*/MonthlyFee")
                 .having(m.num("/Subscription/Addons/MonthlyFee").gt(0))).gt(budget);
     }
+    /** Escape hatch ✅ (item 8) — the Zod `.refine` analogue: name a host-registered check. */
+    public static Condition reversibleTier(EnumRef tier) {
+        return tier.is("ENTERPRISE").and(customCondition("NotReverse"));   // host code decides NotReverse
+    }
 }
 ```
 
@@ -444,7 +448,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 
 | Study element | Status |
 |---|---|
-| Handles (`num/str/enumOf/bool/confirm/group`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–6 + iteration slices 7a–7e — patterns, value lists, count + list aggregates, `*` lists, `repetitionNotUnique(...).from(...)`, `flatten(...).having(filter)`, `currentRepetition(group)`) |
+| Handles (`num/str/enumOf/bool/confirm/group`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–6, 8 + iteration slices 7a–7e — patterns, value lists, count + list aggregates, `*` lists, `repetitionNotUnique(...).from(...)`, `flatten(...).having(filter)`, `currentRepetition(group)`, `customCondition(name)`) |
 | §3.1 fragments, §3.3 library pattern, §6 catalog queries, §2 type-steering | ✅ pattern works today on covered operators |
 | §3.2 domain fragments (`withinTolerance`, `chronological`, `uniqueBy`) | `uniqueBy` ✅ (7b); the others 🔮 (tolerance ops, `CurrentRepetition`) |
 | §6c navigation (Level 1: `fields()`/`groups()`/`fieldAt` + strict narrowing), §3.5 `allOf`/`anyOf` | ✅ implemented 2026-06-04 (findings 9–10) |

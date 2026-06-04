@@ -26,7 +26,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_DIFFERENT_NO_VALUE` | unclassified | — (experiment queue) |
 | `MVK_DIFFERENT_ROOT_GROUPS` | unclassified | — (experiment queue) |
 | `MVK_DIFFERENT_YES_VALUE` | unclassified | — (experiment queue) |
-| `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` | pre-checked | `FieldListRef.having` rejects RepetitionNotUnique + nested Having (the representable forbidden constructs; rest kernel-delegated; locked: `dsl.operators.IterationConditionTest`) |
+| `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` | pre-checked | `FieldListRef.having` rejects RepetitionNotUnique + nested Having + CustomCondition (the representable forbidden constructs; rest kernel-delegated; locked: `dsl.operators.IterationConditionTest`/`CustomConditionTest`) |
 | `MVK_DUPLICATE_PARAM1` | pre-checked | `ListAggregate`/`CountAggregate` reject duplicate operands with the code named (locked: `dsl.operators.AggregateConditionTest`) |
 | `MVK_DUPLICATE_PARAM2` | unclassified | — (experiment queue) |
 | `MVK_ENTITY_MOVE_IN_A12_MODEL_CONDITION` | unclassified | — (experiment queue) |

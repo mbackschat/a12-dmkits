@@ -23,8 +23,9 @@ Working end-to-end today:
 - **List aggregates (slice 7c)** — `sum`/`maxValue`/`minValue` and `numberOfDifferentValues` as comparable numeric expressions over plain fields or `*`-lists; number-only, type-homogeneity, param-size, and the duplicate-operand laws all pre-checked with the `MVK_*` code named.
 - **`Having` filter (slice 7d)** — `flatten(...).having(filter)` narrows a `*`-list before an aggregate/quantifier consumes it; the starred-field requirement is structural and the representable filter-condition exclusions (RepetitionNotUnique, nested Having) are pre-checked. (`$` correlation deferred — it needs field-vs-field comparison.)
 - **`CurrentRepetition` (slice 7e)** — `currentRepetition(group)` as a numeric expression (groups-only; the iterating-position law is kernel-locked). Semantic index (`For`/`Fuer`) + parallel iteration are split to 7f (need index-field fixtures).
+- **`CustomCondition` (item 8)** — `customCondition(name)`, the app-defined escape hatch; the bare-identifier name is validated and both forbidden contexts (`Having` filters, computation rules) are pre-checked.
 
-Not yet built: relative/short path policy (§18 fork 9), message interpolation + DM-JSON write path (F2a/F6), broader operator/type coverage (iteration cluster: 7a–7e ✅; 7f deferred — semantic index/parallel iteration need index-field fixtures; field-vs-field comparison unblocks `$` correlation; then `CustomCondition` and the date family), the model-context surface (F9a: `describe`/`find`/`dump`), the kernel-adapter module with text→AST ingest (F10), explainability (F9), the full modify loop (F8 #2/#3), the TS port.
+Not yet built: relative/short path policy (§18 fork 9), message interpolation + DM-JSON write path (F2a/F6), broader operator/type coverage (iteration cluster 7a–7e ✅, 7f deferred; `CustomCondition` ✅; next: the date family (item 9), then field-vs-field comparison unblocks `$` correlation), the model-context surface (F9a: `describe`/`find`/`dump`), the kernel-adapter module with text→AST ingest (F10), explainability (F9), the full modify loop (F8 #2/#3), the TS port.
 
 ## Prerequisites
 

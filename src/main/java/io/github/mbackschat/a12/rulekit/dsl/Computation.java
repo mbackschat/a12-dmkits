@@ -127,14 +127,18 @@ public record Computation(
                 require(!ConditionReferences.of(a.operation()).covers(computedPath),
                         "the computed field " + computedPath + " must not be referenced in its own"
                                 + " operation (MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD)");
-                a.precondition().ifPresent(p -> require(!ConditionReferences.of(p).covers(computedPath),
-                        "the computed field " + computedPath + " must not be referenced in a"
-                                + " precondition (MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD)"));
+                a.precondition().ifPresent(p -> {
+                    require(!ConditionReferences.of(p).covers(computedPath),
+                            "the computed field " + computedPath + " must not be referenced in a"
+                                    + " precondition (MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD)");
+                    requireNoCustomCondition(p);
+                });
             }
             if (commonPrecondition != null) {
                 require(!ConditionReferences.of(commonPrecondition).covers(computedPath),
                         "the computed field " + computedPath + " must not be referenced in the"
                                 + " common precondition (MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD)");
+                requireNoCustomCondition(commonPrecondition);
             }
 
             String groupPath = computedPath.substring(0, computedPath.lastIndexOf('/'));
@@ -145,6 +149,19 @@ public record Computation(
         private static void require(boolean ok, String problem) {
             if (!ok) {
                 throw new IllegalStateException(problem);
+            }
+        }
+
+        /** CustomCondition is forbidden in computation rules (KERNEL-SEMANTICS §14). */
+        private static void requireNoCustomCondition(Condition c) {
+            switch (c) {
+                case CustomConditionRef ignored -> throw new IllegalStateException(
+                        "CustomCondition is not allowed in a computation rule (KERNEL-SEMANTICS §14)");
+                case LogicCondition l -> {
+                    requireNoCustomCondition(l.left());
+                    requireNoCustomCondition(l.right());
+                }
+                default -> { }
             }
         }
     }
