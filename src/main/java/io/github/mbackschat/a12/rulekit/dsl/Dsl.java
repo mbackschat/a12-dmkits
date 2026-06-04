@@ -38,6 +38,34 @@ public final class Dsl {
         return field.violates(regex);
     }
 
+    // --- filled-count aggregates — comparable numeric expressions ------------------------------
+
+    /** {@code NumberOfFilledFields(f1, f2, …)} — ≥2 fields by signature; kinds may be mixed. */
+    public static NumberExpr numberOfFilledFields(FieldRef first, FieldRef second, FieldRef... rest) {
+        var fields = new java.util.ArrayList<FieldRef>();
+        fields.add(first);
+        fields.add(second);
+        fields.addAll(java.util.List.of(rest));
+        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS, fields, java.util.List.of()));
+    }
+
+    /** {@code NumberOfFilledFields(group, …)} — counts the filled fields inside the group(s). */
+    public static NumberExpr numberOfFilledFields(GroupRef first, GroupRef... rest) {
+        var groups = new java.util.ArrayList<GroupRef>();
+        groups.add(first);
+        groups.addAll(java.util.List.of(rest));
+        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS, java.util.List.of(), groups));
+    }
+
+    /** {@code NumberOfFilledGroups(g1, g2, …)} — ≥2 groups by signature. */
+    public static NumberExpr numberOfFilledGroups(GroupRef first, GroupRef second, GroupRef... rest) {
+        var groups = new java.util.ArrayList<GroupRef>();
+        groups.add(first);
+        groups.add(second);
+        groups.addAll(java.util.List.of(rest));
+        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_GROUPS, java.util.List.of(), groups));
+    }
+
     // --- field-list × value-list quantifiers — Name(f1, f2 In v1, v2) --------------------------
     // Typed entry points keep the field list type-homogeneous (MVK_VARYING_TYPES_NOT_ALLOWED
     // erased); the enum variants domain-check every value against every field (the kernel's

@@ -453,5 +453,41 @@
     "gotchas": [],
     "validExample": { "dsl": "NotAllFieldValuesIncludedInValueList(CustomerName, ProductCode In \"a\", \"b\")", "note": "true unless every listed field's value is in the list" },
     "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "NumberOfFilledFields",
+    "kind": "function",
+    "keywords": { "en": "NumberOfFilledFields", "de": "AnzahlAngegebenerFelder" },
+    "operands": [ { "type": "field-list-or-groups" } ],
+    "returns": "number",
+    "meaning": "The number of listed fields that currently hold a value; with group arguments, the number of filled fields inside the group(s).",
+    "constraints": [
+      "more than one field OR at least one group (MVK_PARAMSIZE_INVALIDN)",
+      "field kinds may be mixed (it counts presence, not values)",
+      "root groups are not allowed (MVK_ROOT_GROUP_REFERENCED); no enum-category arguments"
+    ],
+    "gotchas": [
+      "the result is an ordinary number expression — compare it, or use it in arithmetic"
+    ],
+    "validExample": { "dsl": "NumberOfFilledFields(CustomerName, ProductCode, Quantity) < 2", "note": "fires when fewer than two of the three are filled" },
+    "invalidExample": { "dsl": "NumberOfFilledFields(CustomerName) < 1", "error": "MVK_PARAMSIZE_INVALIDN", "fix": "list at least two fields (or one group) — for a single field use FieldFilled/FieldNotFilled" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "NumberOfFilledGroups",
+    "kind": "function",
+    "keywords": { "en": "NumberOfFilledGroups", "de": "AnzahlAngegebenerKontexte" },
+    "operands": [ { "type": "group-list" } ],
+    "returns": "number",
+    "meaning": "The number of listed groups that are filled (exist).",
+    "constraints": [
+      "more than one group (MVK_PARAMSIZE_INVALIDGN); groups only (MVK_NO_FIELDS_ALLOWED); no root groups"
+    ],
+    "gotchas": [
+      "'filled' means the group row exists, not that it has data (same trap as GroupFilled)"
+    ],
+    "validExample": { "dsl": "NumberOfFilledGroups(ShippingAddress, BillingAddress) == 2", "note": "true when both address groups exist" },
+    "invalidExample": { "dsl": "NumberOfFilledGroups(ShippingAddress, CustomerName) < 1", "error": "MVK_NO_FIELDS_ALLOWED", "fix": "NumberOfFilledGroups takes groups — count fields with NumberOfFilledFields" },
+    "sinceKernel": "30.8.x"
   }
 ]

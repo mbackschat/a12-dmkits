@@ -151,8 +151,8 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_PARAMSIZE_INVALID1` | unclassified | — (experiment queue) |
 | `MVK_PARAMSIZE_INVALID2` | unclassified | — (experiment queue) |
 | `MVK_PARAMSIZE_INVALIDFN` | unclassified | — (experiment queue) |
-| `MVK_PARAMSIZE_INVALIDGN` | unclassified | — (experiment queue) |
-| `MVK_PARAMSIZE_INVALIDN` | unclassified | — (experiment queue) |
+| `MVK_PARAMSIZE_INVALIDGN` | erased | `Dsl.numberOfFilledGroups(first, second, …)` requires ≥2 groups by signature (locked: N7 invalidExample) |
+| `MVK_PARAMSIZE_INVALIDN` | erased | `Dsl.numberOfFilledFields` signatures require ≥2 fields or ≥1 group (locked: N7 invalidExample) |
 | `MVK_PARAMSIZE_INVALID_2` | unclassified | — (experiment queue) |
 | `MVK_PARTIAL_DATE_NOT_ALLOWED` | unclassified | — (experiment queue) |
 | `MVK_POINT_IN_A12_MODEL` | unclassified | — (experiment queue) |
@@ -161,7 +161,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_REPEATABLE_GROUP_MISSING` | unclassified | — (experiment queue) |
 | `MVK_REPEATABLE_LEVEL_REQUIRED` | unclassified | — (experiment queue) |
 | `MVK_ROOT_GROUP_IS_EMPTY` | unclassified | — (experiment queue) |
-| `MVK_ROOT_GROUP_REFERENCED` | unclassified | — (experiment queue) |
+| `MVK_ROOT_GROUP_REFERENCED` | pre-checked | `CountAggregate` rejects root-group refs with the code named (locked: `RenderConditionTest.filledCountAggregatesRejectRootGroups`) |
 | `MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS` | unclassified | — (experiment queue) |
 | `MVK_RULE_GROUP_IS_EMPTY_OR_INVALID` | unclassified | — (experiment queue) |
 | `MVK_SEMANTIC_INDEX_AND_WILDCARD` | unclassified | — (experiment queue) |
@@ -326,4 +326,4 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_YES_NO_INVALID_2` | unclassified | — (experiment queue) |
 | `MVK_YES_VALUE_MISSING` | unclassified | — (experiment queue) |
 
-*Classified: 31 of 300 (codes may appear in more than one source); the rest queue up as their operator families land or via dedicated experiments.*
+*Classified: 34 of 300 (codes may appear in more than one source); the rest queue up as their operator families land or via dedicated experiments.*

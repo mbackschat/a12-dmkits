@@ -26,8 +26,9 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
     /** The references of a value expression — e.g. a computation slot's {@code operation}. */
     public static ConditionReferences of(Calculation calculation) {
         Set<String> fields = new LinkedHashSet<>();
-        collect(calculation, fields);
-        return new ConditionReferences(fields, Set.of());
+        Set<String> groups = new LinkedHashSet<>();
+        collect(calculation, fields, groups);
+        return new ConditionReferences(fields, groups);
     }
 
     /** Whether {@code fieldPath} is referenced directly or lies under a referenced group. */
@@ -41,8 +42,8 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case FieldPresenceCondition f -> fields.add(f.field().path());
             case FieldListPredicate p -> p.fields().forEach(f -> fields.add(f.path()));
             case ComparisonCondition c -> {
-                collect(c.left(), fields);
-                collect(c.right(), fields);
+                collect(c.left(), fields, groups);
+                collect(c.right(), fields, groups);
             }
             case LogicCondition l -> {
                 collect(l.left(), fields, groups);
@@ -53,16 +54,16 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case PatternCondition p -> fields.add(p.field().path());
             case ValueListCondition v -> {
                 fields.add(v.field().path());
-                v.values().forEach(value -> collect(value, fields));
+                v.values().forEach(value -> collect(value, fields, groups));
             }
             case FieldListValueListCondition v -> {
                 v.fields().forEach(f -> fields.add(f.path()));
-                v.values().forEach(value -> collect(value, fields));
+                v.values().forEach(value -> collect(value, fields, groups));
             }
         }
     }
 
-    private static void collect(Calculation calculation, Set<String> fields) {
+    private static void collect(Calculation calculation, Set<String> fields, Set<String> groups) {
         switch (calculation) {
             case FieldValue v -> fields.add(v.field().path());
             case LengthOf l -> fields.add(l.field().path());
@@ -71,6 +72,10 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case EnumValueLiteral e -> { }
             case BoolLiteral b -> { }
             case EnumCategoryAccess c -> fields.add(c.field().path());
+            case CountAggregate a -> {
+                a.fields().forEach(f -> fields.add(f.path()));
+                a.groups().forEach(g -> groups.add(g.path()));
+            }
         }
     }
 }

@@ -80,6 +80,12 @@ public final class DslRenderer {
             case LengthOf l -> keyword(l.operatorId()) + "(" + l.field().path() + ")";
             case EnumCategoryAccess c ->
                     "[" + c.field().path() + " " + keyword(c.operatorId()) + " " + c.category() + "]";
+            case CountAggregate a -> keyword(a.operatorId()) + "("
+                    + java.util.stream.Stream.concat(
+                            a.fields().stream().map(FieldRef::path),
+                            a.groups().stream().map(GroupRef::path))
+                    .collect(java.util.stream.Collectors.joining(", "))
+                    + ")";
         };
     }
 

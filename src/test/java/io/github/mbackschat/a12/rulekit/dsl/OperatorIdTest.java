@@ -73,6 +73,9 @@ class OperatorIdTest {
         for (ValueListQuantifier q : ValueListQuantifier.values()) {
             assertResolves(q.operatorId());
         }
+        for (CountAggregate.CountOp op : CountAggregate.CountOp.values()) {
+            assertResolves(op.operatorId());
+        }
         for (GroupQuantifier q : GroupQuantifier.values()) {
             assertResolves(q.operatorId());
         }

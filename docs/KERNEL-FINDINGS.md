@@ -29,6 +29,17 @@ The condition lexer's rule is `StringLiteral : '"' ( '""' | ~["] )* '"'` — an 
 
 In DM-JSON, a category's `values` list pairs **positionally** with the enumeration's `values` (entry *i* categorizes enum value *i*); the comparison domain is the category's distinct value set. Codes: comparing to one of the *enum's own* values instead of a *category* value → **`MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON`**; an unknown category name → **`MVK_CATEGORY_UNKOWN`** (the kernel's spelling); `->` on a non-enumeration field → **`MVK_NO_ENUMERATION`**. Curiosity: `[Enum -> Category] == [Enum]` (category vs. plain enum field) is *accepted*. *(Locked: N7 `EnumCategory` examples + `RenderConditionTest.categoryHandleErasesTheVerifiedCategoryMistakes`.)*
 
+## §2 supplement — the filled-count aggregates (2026-06-04 experiments)
+
+`NumberOfFilledFields` / `NumberOfFilledGroups` (DE: `AnzahlAngegebenerFelder`/`AnzahlAngegebenerKontexte`; the grammar's `feldListenAnzahlOp`, third sibling `NumberOfDifferentValues` deferred) are **numeric expressions**, freely comparable and usable in arithmetic (`NumberOfFilledFields(a, b) + 1 < [Q]` validates). Slot rules:
+
+- **`NumberOfFilledFields` needs more than one field *or* at least one group** — a single field draws **`MVK_PARAMSIZE_INVALIDN`** ("There must be more than one field or at least one group"). The group form counts the filled fields *inside* the group(s); multiple groups are legal. Field kinds may be **mixed** (boolean, enum, number together — it counts presence, not values).
+- **`NumberOfFilledGroups` needs more than one group** — a single group draws **`MVK_PARAMSIZE_INVALIDGN`**; a field argument draws the familiar type-direction code **`MVK_NO_FIELDS_ALLOWED`**.
+- **Root groups are banned in both** — **`MVK_ROOT_GROUP_REFERENCED`** ("It is not allowed to reference a rootgroup").
+- Comparing the count to a **decimal literal** (`<= 1.5`) is accepted (consistent with the §5 literal-scale exemption).
+
+*(Locked: N7 examples of both operators incl. the param-size/type-direction invalids; root-group ban pre-checked in `CountAggregate` — `RenderConditionTest.filledCountAggregatesRejectRootGroups`.)*
+
 ## §8 supplement — the value-list membership family (2026-06-04 experiments)
 
 Five operators in two grammar shapes, not covered by KERNEL-SEMANTICS. **Shape A** `FieldValueIncludedInValueList(field, v1, …)` / `FieldValueNotIncludedInValueList(…)` (DE: `FeldWertInWerteListe`/`FeldWertNichtInWerteListe`); **shape B** `AtLeastOne|No|NotAllFieldValue(s)IncludedInValueList(f1, f2 In v1, …)` (DE: `MindestensEin…`/`Kein…`/`NichtAlle…`; `In` is a language-independent grammar literal like the symbols). Slot rules:

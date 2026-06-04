@@ -136,6 +136,10 @@ public final class SubscriptionIdioms {
     public static Condition noTestPlaceholders(StringRef first, StringRef... more) {
         return noFieldValueIncludedInValueList(List.of("test", "demo", "n/a"), first, more);
     }
+    /** Threshold idiom ✅ — the count is an ordinary number expression (kinds may be mixed). */
+    public static Condition incompleteBilling(BoundModel m) {
+        return numberOfFilledFields(m.group("/Subscription/Billing")).lt(3);   // group form: count inside
+    }
 }
 ```
 
@@ -426,7 +430,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 
 | Study element | Status |
 |---|---|
-| Handles (`num/str/enumOf/bool/confirm/group`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–5 + base set — incl. patterns and value lists) |
+| Handles (`num/str/enumOf/bool/confirm/group`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–6 + base set — patterns, value lists, filled-count aggregates) |
 | §3.1 fragments, §3.3 library pattern, §6 catalog queries, §2 type-steering | ✅ pattern works today on covered operators |
 | §3.2 domain fragments (`withinTolerance`, `chronological`, `uniqueBy`) | 🔮 their operators are corpus items 6–7 + tolerance |
 | §6c navigation (Level 1: `fields()`/`groups()`/`fieldAt` + strict narrowing), §3.5 `allOf`/`anyOf` | ✅ implemented 2026-06-04 (findings 9–10) |

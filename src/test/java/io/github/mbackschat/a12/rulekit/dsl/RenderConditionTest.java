@@ -177,6 +177,38 @@ class RenderConditionTest {
     }
 
     @Test
+    void rendersFilledCountAggregatesBilingually() {
+        // ≥2 fields by signature (MVK_PARAMSIZE_INVALIDN erased); mixed kinds are legal
+        Condition c = Dsl.numberOfFilledFields(
+                m.field("/Subscription/Tier"), m.field("/Subscription/AutoRenew")).lt(2);
+        assertEquals("NumberOfFilledFields(/Subscription/Tier, /Subscription/AutoRenew) < 2",
+                new DslRenderer().render(c));
+        assertEquals("AnzahlAngegebenerFelder(/Subscription/Tier, /Subscription/AutoRenew) < 2",
+                new DslRenderer(ConditionLanguage.DE).render(c));
+
+        // the single-GROUP form counts filled fields inside the group
+        assertEquals("NumberOfFilledFields(/Subscription/Billing) < 3",
+                new DslRenderer().render(Dsl.numberOfFilledFields(m.group("/Subscription/Billing")).lt(3)));
+
+        // NumberOfFilledGroups needs ≥2 groups (MVK_PARAMSIZE_INVALIDGN erased by signature)
+        Condition g = Dsl.numberOfFilledGroups(
+                m.group("/Subscription/Addons"), m.group("/Subscription/Billing")).eq(2);
+        assertEquals("NumberOfFilledGroups(/Subscription/Addons, /Subscription/Billing) == 2",
+                new DslRenderer().render(g));
+        assertEquals("AnzahlAngegebenerKontexte(/Subscription/Addons, /Subscription/Billing) == 2",
+                new DslRenderer(ConditionLanguage.DE).render(g));
+    }
+
+    @Test
+    void filledCountAggregatesRejectRootGroups() {
+        // Verified 2026-06-04: a root group draws MVK_ROOT_GROUP_REFERENCED — pre-checked here.
+        assertThrows(IllegalArgumentException.class,
+                () -> Dsl.numberOfFilledFields(m.group("/Subscription")));
+        assertThrows(IllegalArgumentException.class,
+                () -> Dsl.numberOfFilledGroups(m.group("/Subscription"), m.group("/Subscription/Addons")));
+    }
+
+    @Test
     void rendersEnumComparisonByStoredValue() {
         Condition c = m.enumOf("/Subscription/Tier").is("PRO");
         assertEquals("[/Subscription/Tier] == \"PRO\"", new DslRenderer().render(c));

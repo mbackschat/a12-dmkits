@@ -17,8 +17,9 @@ Working end-to-end today:
 - **`Dsl.*` static facade + `Condition.transform` + Level-1 navigation** — handle-based factories (incl. n-ary `allOf`/`anyOf`), the bottom-up rewriter (modify #1), and jOOQ-`Meta`-style model navigation (`fields()`/`groups()`/`fieldAt` streams of info handles with strict narrowing — the rule-template enabler); number comparisons take scale-faithful `String`/`BigDecimal` literals.
 - **Pattern operators** — `StringRef.matches`/`violates` → `PatternMatched`/`PatternViolated` with the kernel's slot rules made unrepresentable (string field left, string-constant regex right) and a `Pattern.compile` fail-fast; string literals render with the kernel's quote-doubling escaping (no backslash escapes — a latent renderer bug this increment uncovered).
 - **Value-list membership** — `in`/`notIn` on `StringRef`/`NumberRef`/`EnumRef` (integer-only numbers by signature; enum domains pre-checked) plus the three field-list quantifiers (`AtLeastOne`/`No`/`NotAllFieldValue(s)IncludedInValueList`) with type-homogeneous lists enforced by the API.
+- **Filled-count aggregates** — `numberOfFilledFields` (field and group forms) / `numberOfFilledGroups` as comparable numeric expressions; the kernel's param-size laws live in the method signatures, root-group refs are pre-checked.
 
-Not yet built: relative/short path policy (§18 fork 9), message interpolation + DM-JSON write path (F2a/F6), broader operator/type coverage (corpus-backlog order: `NumberOfFilledFields` next, then the iteration cluster), the model-context surface (F9a: `describe`/`find`/`dump`), the kernel-adapter module with text→AST ingest (F10), explainability (F9), the full modify loop (F8 #2/#3), the TS port.
+Not yet built: relative/short path policy (§18 fork 9), message interpolation + DM-JSON write path (F2a/F6), broader operator/type coverage (corpus-backlog order: the iteration cluster next), the model-context surface (F9a: `describe`/`find`/`dump`), the kernel-adapter module with text→AST ingest (F10), explainability (F9), the full modify loop (F8 #2/#3), the TS port.
 
 ## Prerequisites
 

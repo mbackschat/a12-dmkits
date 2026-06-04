@@ -29,7 +29,7 @@ A read-only **analysis** of two real A12 model corpora, used to prioritize what 
 | 19 / 11 / 11 / 7 | `<=` / `<` / `>` / `>=` | ✅ (symbols; catalog has `<=`) |
 | 14 | `Or`/`or`/`OR` | ✅ |
 | 13 / 10 / 8 / 6 / 5 | `NotExactlyOneFieldFilled` / `NotAllFieldsFilled` / `FieldsNotCollectivelyFilled` / `AtLeastOneFieldFilled` / `NoFieldFilled` | ✅ (quantifier family done) |
-| **11** | `NumberOfFilledFields` (aggregate) | ❌ |
+| 11 | `NumberOfFilledFields` (aggregate) | ✅ (`CountAggregate` → comparable `NumberExpr`) |
 | 11 / 3 | `True` / `False` (boolean & confirm literals) | ✅ (`BoolRef.isTrue/isFalse`, `ConfirmRef.confirmed/notConfirmed`) |
 | **8 / 8 / 8 / 6 / 4** | `CurrentRepetition` / `For` (semantic index) / `Today` / `Having` / `RepetitionNotUnique` | ❌ iteration + dates |
 | **6 / 1 / 1 / 1** | `Date(...)` / `DifferenceInDays` / `DifferenceInYears` / `AddMonths` | ❌ date family |
@@ -77,7 +77,7 @@ Real conditions include `;;` line comments, `\r\n` line breaks, and case-variant
 | 23 | `True` / `False` literals | ✅ |
 | 23 | value-list membership (`…InValueList`) | ✅ (literal lists; `*`-path lists ride the iteration cluster) |
 | 14 / 13 | `PatternMatched` / `PatternViolated` | ✅ (`StringRef.matches`/`violates`) |
-| 7 | `NumberOfFilledFields` | ❌ |
+| 7 | `NumberOfFilledFields` | ✅ |
 
 **Insight:** the metamodels are the heavy users of the *advanced* cluster (`*`, `->`, `RepetitionNotUnique`, `Pattern*`, `CustomCondition`, value-lists) that Corpus 1 barely touches. The kernel team's own rules are the strongest evidence of which advanced operators matter — and they pervasively use `;;` comments and multi-line conditions (reinforcing the #3 parser findings above).
 
@@ -90,7 +90,7 @@ Counts shown as C1 (app) + C2 (metamodel). Order balances combined frequency aga
 3. ~~**Enum-category navigation**~~ — ✅ **done 2026-06-04** (`EnumRef.category(...)` → validated `CategoryRef`; `MVK_CATEGORY_UNKOWN`/`MVK_NO_ENUMERATION`/`MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON` made unrepresentable or fail-fast).
 4. ~~**Pattern operators**~~ — ✅ **done 2026-06-04** (`StringRef.matches/violates` → `PatternCondition`; left-side bare-string-field + right-side string-constant slot rules made unrepresentable; `Pattern.compile` fail-fast for `MVK_INVALID_PATTERN` with the portable-subset gate kernel-delegated — and the increment uncovered + fixed the renderer's string-literal escaping: quote-doubling, not backslashes; KERNEL-FINDINGS §7).
 5. ~~**Value-list membership**~~ — ✅ **done 2026-06-04** (all five operators: `in`/`notIn` on `StringRef`/`NumberRef`/`EnumRef` + the three `Dsl` field-list quantifiers; integer-only numbers, kind-matching, type-homogeneous field lists, and the bool/confirm exclusion all unrepresentable; enum domains pre-checked. Field-valued lists + `*`-path field lists deferred to the iteration cluster).
-6. **`NumberOfFilledFields` aggregate** (11 + 7) → comparable numeric expression. *Med.*
+6. ~~**`NumberOfFilledFields` aggregate**~~ — ✅ **done 2026-06-04** (`Dsl.numberOfFilledFields` field/group forms + `numberOfFilledGroups` → `CountAggregate` as a comparable `NumberExpr`; the param-size laws live in the signatures, root groups pre-checked. Sibling `NumberOfDifferentValues` deferred — its homogeneity laws ride the iteration cluster, where its `*`-path use lives).
 7. **Iteration / structural cluster** — `*` flatten (28 + 137), `RepetitionNotUnique` (4 + 57), `$` correlation (21 + 0), `CurrentRepetition` (8), `For` semantic-index (8), `Having` (6). *High effort, highest value — model-awareness (§5a) pays off here. Its own multi-step phase; Corpus 2 shows it's even more important than Corpus 1 alone suggested.*
 8. **`CustomCondition`** (0 + 45) — the app-defined boolean escape hatch (Zod `.refine` analogue). *Med; emit an opaque named condition the kernel resolves.*
 9. **Date family** — `Today`, `Date(d,m,y)`, `DifferenceIn*`, `Add*` (~17 + ~0). *Med; app-only — date kinds + year-presence comparability (§5b).*
