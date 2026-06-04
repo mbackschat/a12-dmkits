@@ -1,0 +1,13 @@
+{
+  "id": "T2",
+  "family": "authoring",
+  "model": "subscription",
+  "operators": ["LessThan", "FieldValue"],
+  "intent": "A subscription's effective fee must never be lower than its base fee.",
+  "gold": {
+    "field": "/Subscription/Billing/EffectiveFee",
+    "condition": "[EffectiveFee] < [BaseFee]",
+    "code": "EFFECTIVE_FEE_BELOW_BASE"
+  },
+  "notes": "Structurally distinct from the skill's worked example: NON-iterating (error field in the non-repeatable Billing group, so no per-row guard needed), a field-vs-field numeric comparison (both operands bracketed), and a different polarity flip (requirement '>=' -> violation '<'). No enum, no iteration, no GroupFilled guard. Tests genuine transfer of the principles, not template substitution."
+}
