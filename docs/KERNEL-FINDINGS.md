@@ -182,6 +182,13 @@ Consequences:
 - The MVK ledger gained MM_Common's 105 codes as its fourth source (`MvkLedgerTest` checks it opt-in against the sibling clone); the other text-bearing source found en route: `FehlertextErrorType` (kernel-core-service — error-text parameter checks; mostly non-`MVK_` codes like `RULE_HAS_NO_ERRORTEXT`, confirming the earlier "not every code is `MVK_*`" note).
 - The kernel eats its own dogfood: the validation language validates the validation models. rulekit's catalog/ingest work on metamodel rules (already exercised by the harness) therefore covers the kernel's own usage of its language.
 
+## `checkConsistency` notification granularity — `getSource()` is the `IRule` (2026-06-04 probe)
+
+`RankedNotification` exposes `getMessage()`, `getSeverity()`, and **`getSource()` (returns `Object`)** — rulekit had been reading only the first two. Probed by injecting a kernel-rejected rule (`[CustomerName] < [ProductCode]` → `MVK_INVALID_TYPE_FOR_COMPARISON`) and inspecting the source:
+
+- `getSource()` is the offending **`IRule`** element (concrete class `…internal.wrapper.RuleWrapper`, but it implements the **public** `IRule` — so consuming it is N8-safe). It carries `errorCondition`/`errorEntity`/`errorCode`, i.e. **rule granularity**.
+- It does **not** point at the offending *operator/node* inside the condition, and there is no character offset or span — so it gives nothing finer than `where.rule`, which rulekit already fills. Useful instead for **rule attribution** when checking a model with many rules at once (which problem belongs to which rule); the F4a span-pointing operator-pin therefore stays the AST↔catalog set-intersection heuristic (`lint.SpanResolver`), and precise node-level spans remain a Phase-2 capability (see below). *(Documented, not locked — it concerns a notification field rulekit doesn't consume; precedent: the deserialize-tier entry.)*
+
 ## Schema oracle — what the kernel-mm metamodels formalize (instrument 3, 2026-06-04)
 
 Read-only mining of the sibling `a12-kernel-mm` canonical set (own-words summary; EUPL — nothing copied). Harness: `KernelMmIntegrationTest` (opt-in, skips when the clone is absent).
