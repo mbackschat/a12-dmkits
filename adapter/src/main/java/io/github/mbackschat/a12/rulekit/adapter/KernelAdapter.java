@@ -22,6 +22,10 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
 import com.mgmtp.a12.kernel.md.serializer.model.internal.service.ExternalDocumentModelSerializerService;
 
 import io.github.mbackschat.a12.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.rulekit.dsl.ConditionLanguage;
+import io.github.mbackschat.a12.rulekit.dsl.DslRenderer;
+import io.github.mbackschat.a12.rulekit.dsl.RenderedDiff;
 import io.github.mbackschat.a12.rulekit.model.ReferenceResolvers;
 
 /**
@@ -142,6 +146,34 @@ public final class KernelAdapter {
             out.put(r.getFullName(), ingest(r.getFullName()));
         }
         return out;
+    }
+
+    /**
+     * Modify-by-re-express diff (F8 #2): render the rule's current condition (as ingested) against a
+     * re-expressed {@code modified} one, disclosing lossiness up front (study finding 8). The
+     * before/after are both rulekit renderings (symmetric — the diff is the intended change, not
+     * cosmetics); the lossiness notes what re-rendering a foreign source drops — chiefly comments,
+     * detected via the kernel's {@code stripComments}. The caller reviews this before writing back.
+     *
+     * @throws IllegalStateException if the rule's current condition didn't ingest cleanly (it is
+     *         {@code Opaque}) — you can't re-express an AST you don't have.
+     */
+    public RenderedDiff diff(String ruleFullName, Condition modified) {
+        if (!(ingest(ruleFullName) instanceof Ingest.Converted current)) {
+            throw new IllegalStateException("cannot diff a rule whose condition did not ingest cleanly: "
+                    + ruleFullName);
+        }
+        IRule rule = rule(ruleFullName);
+        java.util.List<String> lossiness = new java.util.ArrayList<>();
+        String raw = rule.getErrorConditionText();
+        if (raw != null && !raw.equals(mvk.stripComments(rule))) {
+            lossiness.add("the source rule's comments/formatting are not preserved by re-rendering");
+        }
+        return RenderedDiff.between(render(current.condition()), render(modified), lossiness);
+    }
+
+    private static String render(Condition condition) {
+        return new DslRenderer(ConditionLanguage.EN).render(condition);
     }
 
     /** Parse a rule's own stored condition into the kernel transport AST (adapter-internal, for F10 ingest). */
