@@ -81,6 +81,16 @@ class NavigationTest {
     }
 
     @Test
+    void pathsThroughAFieldCannotResolve() {
+        // Structural guarantee made executable: the index is built by walking groups only, and a
+        // field contributes no children — so a path whose intermediate segment is a field (Tier)
+        // can never exist, and every resolvable path has all-group intermediates.
+        assertTrue(m.fieldAt("/Subscription/Tier/Nope").isEmpty());
+        assertThrows(IllegalArgumentException.class, () -> m.num("/Subscription/Tier/Nope"));
+        assertThrows(IllegalArgumentException.class, () -> m.group("/Subscription/Tier/Nope"));
+    }
+
+    @Test
     void infoHandlesNarrowStrictlyToTypedAuthoringHandles() {
         FieldInfo fee = m.fieldAt("/Subscription/Addons/MonthlyFee").orElseThrow();
         NumberRef num = fee.asNum();                       // lenient exploring → strict authoring

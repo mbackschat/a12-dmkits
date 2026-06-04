@@ -18,6 +18,14 @@ In DM-JSON, a category's `values` list pairs **positionally** with the enumerati
 
 `GroupFilled(field)` → **`MVK_NO_FIELDS_ALLOWED`** ("Only groups or root groups are allowed"); `FieldFilled(group)` → **`MVK_NO_GROUPS_ALLOWED`**. Also re-confirmed experimentally: an enclosing group reference (`GroupFilled(G)`) satisfies the error-field-referenced rule for a field inside `G` — a bare `GroupFilled(ShippingAddress)` condition with error field `ShippingAddress/Street` validates. *(Locked: N7 `GroupFilled`/`FieldFilled` invalid examples + `RuleAuthoringTest.acceptsAnEnclosingGroupReferenceAsErrorFieldReference`.)*
 
+## §9 supplement — repeatability interactions (2026-06-04 experiments)
+
+- **`MVK_NEG_CONDITION_IN_ITERATION` triggers on iteration × unguarded negativity** — reproduced: with the error field under repeatable `Addons` (the rule iterates), both `GroupNotFilled(Addons)` and a bare `FieldNotFilled(Addons/MonthlyFee)` are rejected; the guarded form `GroupFilled(Addons) And FieldNotFilled(Addons/MonthlyFee)` passes. The trigger is the *rule's iteration* (error-field position) combined with a negative condition — not the predicate's group argument per se.
+- **A repeatable group referenced from a *non-iterating* rule needs the asterisk** — `FieldFilled(Tier) And GroupNotFilled(Addons)` with error field `Tier` is rejected with **`MVK_NO_WILDCARD`** ("Missing specification of an asterisk for 'Addons'"). A previously unknown law; pre-checkable once the iteration model lands (rulekit knows both the error-field iteration and the group's repeatability).
+- **Root groups work with both group predicates** — `GroupFilled(/Subscription)` and `GroupNotFilled(/Subscription)` (non-repeatable root, non-iterating rule) both validate; the kernel parses root-group references into a distinct AST node (`IRootGroupCondition`) but the surface syntax is uniform.
+
+*(No locks yet — pre-checks deferred to the iteration cluster; the codes are classified kernel-delegated in `MVK-LEDGER.md`.)*
+
 ## §11 supplement — computation alternatives and the calculated-field ban
 
 - **Alternatives are all-or-nothing about preconditions**: either a single alternative *without* a precondition, or several that *all* carry one — mixing a precondition-less "otherwise" in is rejected with **`MVK_ERROR_EMPTY_PRECONDITION`**. The default branch must be an explicit complementary precondition (as the demo's `BonusComp` does with `[WeekPay] < 500`).

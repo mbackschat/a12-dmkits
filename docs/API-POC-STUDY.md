@@ -174,7 +174,8 @@ ValidationResult vr = new RuleValidator().check(modelJson, draftRule);   // ✅ 
 vr.problems().forEach(p -> System.out.println(p.mvkCode() + ": " + p.message()));
 // 🔮 advice(): "MVK_INVALID_COMPARE_DEC_PLACES → operands differ in declared scale; round one side: RoundDown(...)"
 
-m.add(rule); m.writeTo(path);                              // 🔮 DM-JSON write path (public, polyglot — D9)
+BoundModel m2 = m.add(rule);                               // 🔮 snapshot semantics (F0): write → NEW binding
+m2.writeTo(path);                                          // 🔮 DM-JSON write path (public, polyglot — D9)
 ```
 
 ### 4.3 A computation, same materials (F2) ✅ — implemented 2026-06-04 (`ComputationAuthoringTest`; aggregates/arithmetic in operations are corpus items 6–7)
@@ -207,20 +208,49 @@ Condition widened = proNeedsFee.transform(node -> switch (node) {
 // bottom-up; untouched subtrees keep reference identity; D14 ids make the guards readable
 ```
 
-### 5.2 Ingest a foreign, BA-authored rule (F10) 🔮 Phase 2
+### 5.2 Ingest a foreign, BA-authored rule — the full loop, load to save (F10) 🔮 Phase 2
 
 ```java
+// LOAD — deserialize → expand → checkConsistency → bind (F0); the binding is an immutable snapshot
+BoundModel m = BoundModel.load(Path.of("subscription.dm.json"));
+
 ExistingRule legacy = m.existingRule("/Subscription/Addons/LegacyFeeRule");   // fetch ≠ m.rule(group) (build)
 // its errorCondition (hand-written, with comments and short names):
 //   ;; fee must be set for paid tiers
 //   FieldFilled(MonthlyFee) AND [/Subscription/Tier] != "BASIC"
 
-Ingest in = KernelAdapter.ingest(legacy, m);     // kernel parses → converter visitor → rulekit AST
-switch (in) {
-    case Ingest.Converted(Condition ast)       -> work(ast);
-    case Ingest.Gap(String construct, var loc)  -> log("converter gap: " + construct);   // fail-fast, named
-}
+// INGEST — kernel parses → converter visitor → rulekit AST (fail-fast on gaps, never silent loss)
+Condition ast = switch (KernelAdapter.ingest(legacy, m)) {
+    case Ingest.Converted(Condition c)         -> c;
+    case Ingest.Gap(String construct, var loc) -> throw new UnsupportedOperationException(construct);
+};
 // FieldRefs carry authored PathStyle hints (SHORT, ABSOLUTE); comments are flagged as lost-on-re-render
+
+// WORK — "work(ast)" made concrete: extend the rule so the fee must also be positive.
+// transform (#1, ✅ today) rewrites the matched node; untouched subtrees are reused by reference.
+NumberRef fee = m.num("/Subscription/Addons/MonthlyFee");
+Condition changed = ast.transform(node -> switch (node) {
+    case FieldPresenceCondition f
+            when f.operatorId().equals("FieldFilled") && f.field().path().endsWith("/MonthlyFee")
+        -> f.and(fee.gt(0));                       // FieldFilled(MonthlyFee) → FieldFilled(...) And [...] > 0
+    default -> node;
+});
+// (for a plain extension, composing beats rewriting: Condition changed = ast.and(fee.gt(0));)
+
+// REVIEW → VALIDATE → PERSIST — snapshot semantics (F0): a write yields a NEW model + binding
+RenderedDiff diff = m.diff(legacy, changed);                       // the human gate; discloses lost comments
+ValidationResult vr = m.validate(legacy.withCondition(changed));   // kernel confirms before anything is written
+BoundModel m2 = m.replaceCondition(legacy, changed);               // new binding over the updated model
+m2.writeTo(Path.of("subscription.dm.json"));                       // SAVE — DM-JSON, the portable artifact
+// m still sees the old snapshot; m2 the new one — no in-place mutation, no staleness (F0)
+```
+
+```text
+--- /Subscription/Addons/LegacyFeeRule (authored text; 1 comment will be dropped on write)
++++ modified via rulekit transform
+- ;; fee must be set for paid tiers
+- FieldFilled(MonthlyFee) AND [/Subscription/Tier] != "BASIC"
++ FieldFilled(MonthlyFee) And [/Subscription/Addons/MonthlyFee] > 0 And [/Subscription/Tier] != "BASIC"
 ```
 
 ### 5.3 Explain (F9) 🔮 Phase 2 — same projection for built and ingested rules
@@ -242,7 +272,7 @@ switch (in) {
 Condition fixed = SubscriptionIdioms.feeRequired(tier, fee);     // rebuilt from intent — often a library fragment!
 RenderedDiff diff = m.diff(legacy, fixed);                       // discloses lossiness: "1 comment will be dropped"
 ValidationResult vr = m.validate(legacy.withCondition(fixed));
-m.replaceCondition(legacy, fixed);
+BoundModel m2 = m.replaceCondition(legacy, fixed);   // new binding (F0); persist via m2.writeTo(...) as in §5.2
 ```
 
 Note how 3.3's fragment library closes the loop: **re-expression frequently means recognizing a known idiom** — the LLM maps a foreign rule onto `feeRequired(...)` and the diff shows the cleanup.
@@ -389,6 +419,6 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 
 13. *(new, 2026-06-04)* **Files/stdout are the agent API** (owner direction): the agent-facing form of the context surface is greppable JSONL artifacts (`model-card.md` + `fields.jsonl`/`groups.jsonl`/`rules.jsonl`) — grep is the query language agents are trained on, dissolving both the 10k-field context problem and most of the bespoke-query-API surface (the Java projections stay as the programmatic layer that `dump` serializes). **Emitters are stream-first** (git-style: per-artifact stdout default, `--output` optional) so agents can pipe — `… fields | grep -i birthdate` — while the JVM-startup cost (seconds per invocation, unlike git) keeps *dump-once-then-grep* (`> ctx/fields.jsonl`) the recommended loop for repeated exploration. The skill's first taught step becomes "dump, then grep". Heuristic-vs-exact reference resolution is labeled *in the artifact* (`"resolution":"heuristic"`), keeping agents honest pre-adapter.
 
-14. *(new, 2026-06-04 — owner direction after the locale-law surprise)* **Constraint mining beats whack-a-mole.** Coverage was corpus-frequency-driven (finds operators), blind to *structural laws* — which sit in enumerable sources: the public accessor lists (slot parity: `IRule.guiPatterns/variantFilter/variantErrorMessages` and `IComputation.roundingMode/errorCodesToSuppress/variantFilter` are gaps found *by inspection*), the `MVK_*` enums (~100+ codes — every surprise so far was in there all along; classify each: erased/pre-checked/delegated/pending/unknown→experiment-queue, CI-checked = the **MVK ledger**), the **kernel-mm metamodels** (source of truth for valid DM structure — schema + constraint-rule oracles, EUPL-respecting own-words analysis), and the deserializer tier. Standing discipline: consult `../a12-kernel-demo/KERNEL-SEMANTICS.md` (read-only) before each increment; record what it lacks in our own `docs/KERNEL-FINDINGS.md`. Instruments 1+2 are the next increment.
+14. *(new, 2026-06-04 — owner direction after the locale-law surprise)* **Constraint mining beats whack-a-mole.** Coverage was corpus-frequency-driven (finds operators), blind to *structural laws* — which sit in enumerable sources: the public accessor lists (slot parity: `IRule.guiPatterns/variantFilter/variantErrorMessages` and `IComputation.roundingMode/errorCodesToSuppress/variantFilter` are gaps found *by inspection*), the `MVK_*` enums (~100+ codes — every surprise so far was in there all along; classify each: erased/pre-checked/delegated/pending/unknown→experiment-queue, CI-checked = the **MVK ledger**), the **kernel-mm metamodels** (source of truth for valid DM structure — schema + constraint-rule oracles, EUPL-respecting own-words analysis), and the deserializer tier. Standing discipline: consult `../a12-kernel-demo/KERNEL-SEMANTICS.md` (read-only) before each increment; record what it lacks in our own `docs/KERNEL-FINDINGS.md`. Instruments 1+2 shipped 2026-06-04: `SlotParityTest` (every public IRule/IComputation accessor classified; found+deferred guiPatterns/variantFilter/variantErrorMessages/errorCodesToSuppress/roundingMode) and `docs/MVK-LEDGER.md` + `MvkLedgerTest` (194+2 codes, exact-parity CI; unclassified = the experiment queue).
 
 *(4–6 shape Phase-2 API design; 7–8 are proposal §12/§14 refinements; 9–13 are scheduled — 9/10/12-describe-find/13-dump Phase 1, the rest Phase 2; 14 is the meta-instrument now in CLAUDE.md.)*
