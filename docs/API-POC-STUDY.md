@@ -341,18 +341,34 @@ m2.writeTo(Path.of("subscription.dm.json"));                       // SAVE — D
  FieldFilled(MonthlyFee) And [/Subscription/Tier -> Pricing] == "PAID" And [/Subscription/Addons/MonthlyFee] > 0)
 ```
 
-### 5.3 Explain (F9) 🔮 Phase 2 — same projection for built and ingested rules
+### 5.3 Explain (F9) ✅ 2026-06-04 — same projection for built and ingested rules
+
+`ModelContext.explain(condition)` → `RuleExplanation` (JSON below). One mechanism, two consumers — and it works **identically on a rulekit-built condition and a converted-foreign one** (F10 ingest feeds it). The snippet below is the *real* output (`ExplainSnippetProbe`/`ExplainIngestedRuleTest`) of explaining the **ingested** foreign rule `FieldFilled(CustomerName) And Sum(Items*/Count) > 100` — parsed by the kernel, converted to a rulekit AST, then explained with no adapter-specific code:
 
 ```jsonc
-// m.explain(legacy).toJson() — abbreviated; full shape in the 2026-06-03 study version (git history)
+// new ModelContext(model).explain(ingested).toJson()
 {
-  "gloss": "Fires (data invalid) when an add-on's MonthlyFee is filled while the tier is not BASIC.",
-  "suspicious": ["gloss reads inverted for a requiredness rule — did the author mean FieldNotFilled? (true ⇒ invalid)"],
-  "iterates": { "value": true, "why": "error field sits under repeatable group Addons — the rule runs per add-on" },
-  "referencedFields": [ { "path": ".../MonthlyFee", "kind": "number", "scale": 2, "roles": ["error-field","operand"], "authoredPathStyle": "SHORT" } ],
-  "operators": [ { "id": "FieldFilled", "meaning": "...", "gotchas": ["a field with a formal error is removed from evaluation"] } ]
+  "text" : "FieldFilled(/Order/CustomerName) And Sum(/Order/Items*/Count) > 100",
+  "operators" : [
+    { "id":"And",        "keyword":"And", "kind":"OPERATOR",  "meaning":"True iff both boolean operands are true.",
+      "gotchas":["there is no 'Not' operator"] },
+    { "id":"FieldFilled","keyword":"FieldFilled","kind":"PREDICATE","meaning":"True iff the referenced field currently holds a value.",
+      "gotchas":["a field carrying a formal error is removed from evaluation, so 'FieldFilled(F) Or FieldNotFilled(F)' is not a tautology"] },
+    { "id":"GreaterThan","keyword":">", "kind":"OPERATOR",  "meaning":"True iff the left operand is strictly greater than the right." },
+    { "id":"Sum",        "keyword":"Sum","kind":"FUNCTION",  "meaning":"The sum of the listed number fields' values, typically over a repetition list.",
+      "gotchas":["an UNSPECIFIED field counts as 0 — unlike MaxValue/MinValue, which ignore unspecified fields (KERNEL-SEMANTICS §9)"] }
+  ],
+  "references" : [
+    { "path":"/Order/CustomerName", "kind":"STRING" },
+    { "path":"/Order/Items/Count",  "kind":"NUMBER" }
+  ],
+  "iterates" : true,
+  "iterationGroup" : "/Order/Items",
+  "gloss" : "Uses And, FieldFilled, >, Sum over /Order/CustomerName, /Order/Items/Count; iterates within /Order/Items."
 }
 ```
+
+*Carried forward (the 2026-06-03 sketch's richer rule-envelope, not yet shipped):* per-reference **roles** (error-field / operand) and **severity** need the rule envelope, not just the condition; the **`suspicious`** hints are available separately today via `RuleDiagnostics`/`lint.Linter`; authored path-style is a render concern. See proposal §F9 ("rule-envelope enrichment").
 
 ### 5.4 Re-express, diff, validate, write back (#2) 🔮 Phase 2
 
@@ -378,16 +394,16 @@ e.invalidExample(); // dsl + the exact MVK_* + the fix — every example kernel-
 
 An LLM reads exactly this. The **self-sufficiency eval** (N6) is the runnable acceptance test: given only the catalog + skill + javadoc, author and correctly explain a rule per covered operator — where it can't, the material (not the LLM) is deemed incomplete.
 
-### 6b. The model-context surface (F9a, `context` package) 🔮 — "explain the rule on birthdate"
+### 6b. The model-context surface (F9a, `context` package) — `describe`/`find` ✅ 2026-06-04, `whereUsed`/`dump` 🔮 — "explain the rule on birthdate"
 
-The agent's entry point is usually a *name*, not a rule. Three projections compose the answer:
+The agent's entry point is usually a *name*, not a rule. Three projections compose the answer. (Shipped API is instance methods — `new ModelContext(m).describe()` / `.find(...)` / `.explain(...)`; the `Context.*` static shape below is the original sketch.)
 
 ```java
-ModelCard card = Context.describe(m);             // 🔮 Phase 1 — the agent's map, PROGRESSIVE: default is the
+ModelCard card = Context.describe(m);             // ✅ 2026-06-04 — the agent's map, PROGRESSIVE: default is the
                                                   //    skeleton (group tree + counts/kind histograms — low-1000s
                                                   //    of tokens even on a 10k-field model); drill down per group:
 ModelCard addons = Context.describe(m, m.group("/Subscription/Addons"));
-List<FieldMatch> hits = Context.find(m, "birthdate");
+List<FieldMatch> hits = Context.find(m, "birthdate");   // ✅ 2026-06-04
 // → [/Customer/BirthDate (date, format dd.MM.yyyy, in group /Customer)]   — dumb string ranking, deliberately;
 //    fuzzy/NL interpretation is the LLM's job
 
@@ -396,7 +412,7 @@ List<Usage> usages = Context.whereUsed(m, hits.getFirst().field());   // 🔮 Ph
 //     {rule: "/Customer/BirthDateRule",  slot: ERROR_FIELD},
 //     {computation: "/Customer/Age",     slot: OPERATION} ]                — slot-labeled (§5 vocabulary)
 
-usages.forEach(u -> m.explain(u.owner()));        // 🔮 F9 — and the loop closes
+usages.forEach(u -> ctx.explain(u.condition()));  // F9 explain ✅ condition-level (ModelContext.explain → RuleExplanation); rule-level convenience 🔮
 ```
 
 The N8 seam: `context` lives in the public-tier core; `whereUsed` takes a pluggable reference-resolver — core ships a labeled heuristic (text matching), the Phase-2 adapter contributes the exact one (`getDirectlyReferencedEntities`, one kernel call per rule, no converter needed).
@@ -484,21 +500,21 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 |---|---|
 | Handles (`num/str/enumOf/bool/confirm/group/date`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–6, 8, 9a + iteration 7a–7f — patterns, value lists, count + list aggregates, `*` lists, `repetitionNotUnique(...).from(...)`, `flatten(...).having(filter)`, `currentRepetition`, `num(f).forIndex(...)`, parallel iteration, `customCondition`, dates, field-vs-field) |
 | §3.1 fragments, §3.3 library pattern, §6 catalog queries, §2 type-steering | ✅ pattern works today on covered operators |
-| §3.2 domain fragments (`withinTolerance`, `chronological`, `uniqueBy`) | `uniqueBy` ✅ (7b); the others 🔮 (tolerance ops, `CurrentRepetition`) |
+| §3.2 domain fragments (`withinTolerance`, `chronological`, `uniqueBy`) | `uniqueBy` ✅ (7b); `chronological` now buildable (dates ✅); `withinTolerance` 🔮 (tolerance ops unmodeled) |
 | §3.4a `sameAddress` (field-vs-field equality) | ✅ string + number (finding 18); enum-vs-enum 🔮 |
 | §6c navigation (Level 1: `fields()`/`groups()`/`fieldAt` + strict narrowing), §3.5 `allOf`/`anyOf` | ✅ implemented 2026-06-04 (findings 9–10) |
 | §3.4 rule templates | ✅ full form works (navigation + `Rule` object) |
 | `Rule` + `Computation` authoring objects (computed relPaths, slot-rule pre-checks, validator bridges, `Calculation.kind()`) | ✅ implemented 2026-06-04 |
 | DM-JSON write path: `ofJson`/`add(Rule)`/`toJson`/`writeTo` (snapshot, re-validated, includes-preserving) | ✅ F6 first slice (2026-06-04); `add(Computation)`/`replaceCondition`/`removeRule` 🔮 |
-| Structured `Diagnostic` (`severity·source·code·summary·where·fix·explain`) + catalog-join + JSON | ✅ F4a first increment (2026-06-04) — KERNEL, LINT, and PRECHECK origins all land |
+| Structured `Diagnostic` (`severity·source·code·summary·where·fix·explain`) + catalog-join + JSON | ✅ F4a first increment (2026-06-04) — KERNEL, LINT, PRECHECK origins land (ENVIRONMENT added with F11) |
 | PRECHECK diagnostics — pre-checks carry a structured `Diagnostic` (`PrecheckException`) | ✅ 2026-06-04 (Rule.Builder; still an `IllegalStateException` so fail-fast is unchanged; Computation.Builder + handle refs follow). **F11 split (2026-06-04):** completeness/structural pre-checks stay hard; the kernel-semantic `MVK_ERROR_FIELD_NOT_REFERENCED` (`covers()` heuristic) is *deferred* to the live kernel (`Rule.deferredChecks()`, advisory WARNING) — never a hard `build()` throw |
 | Unified diagnose — one call returns KERNEL+LINT+INFO (+deferred PRECHECK, +ENVIRONMENT) for a rule (`lint.RuleDiagnostics`) | ✅ 2026-06-04 (`diagnose(model, rule) → ValidationResult`; KERNEL span-pointed; deferred prechecks deduped against the kernel verdict; F11 kernel-version advisory once per instance) |
 | Span-pointing — pin a KERNEL diagnostic's `where.operator` + `where.span` via AST↔problem matching (`lint.SpanResolver`) | ✅ 2026-06-04 (used∩candidate operators → operator-exact join; `where.span` from the renderer emit-map `DslRenderer.renderWithSpans` for the single-node case) |
 | "Did you mean" suggestions — nearest path / enum value on fail-fast handle errors (`model.Suggest`) | ✅ 2026-06-04 (Levenshtein, typo-plausible threshold) |
 | Lint layer — valid-but-suspicious WARNINGs over the AST (`lint.Linter`, `RK_*` codes) | ✅ pure-AST (contradictory/non-complementary presence, duplicate operand) + rule-context (`RK_NEG_CONDITION_IN_ITERATION`, `RK_INVERTED_REQUIREDNESS`) (2026-06-04) |
 | Gotcha/INFO channel — catalog `gotchas` keyed by operators a rule uses (`lint.Advisor`, `RK_GOTCHA`) | ✅ 2026-06-04 (descends nested `Calculation`s via `dsl.OperatorUsage`); gotcha-relevance curation ✅ (`GotchaKind` SURPRISE/AUTHORING/RENDERING, suppresses trivia) |
-| Message *interpolation*, fork-9 path policy, `advice()` | 🔮 Phase-1 remainder (F2a; F9) |
-| F9a model-context: `describe()` model card + `find()` name resolution (`context.ModelContext`) | ✅ Phase-1 half (2026-06-04); `whereUsed`/`explain`/`dump` 🔮 |
+| Message *interpolation* (F2a), `advice()` | 🔮 Phase-1 remainder (fork-9 path policy and F9 explain — once grouped here — have since shipped; see their own rows) |
+| F9a model-context: `describe()` model card + `find()` name resolution (`context.ModelContext`) | ✅ Phase-1 half (2026-06-04); `explain` ✅ (F9, its own row); `whereUsed`/`dump` 🔮 |
 | fork #9 / F3a path policy — relative-to-group paths (`../` to siblings) + keyword-segment quoting | ✅ 2026-06-04 (kernel-verified): relative rendering + single-quoting keyword-named segments (catalog keywords; full lexer set rides N3) |
 | N3 keyword-parity anchor — catalog keywords ↔ kernel lexer terminals (`catalog.KeywordParityTest`) | ✅ 2026-06-04 (forward: every catalog/stub keyword is a real terminal, or a language-independent symbol) |
 | N3 reverse construct-name parity — every parsetree-api construct-name enum member is cataloged or explicitly excluded (`adapter.KernelConstructParityTest`) | ✅ 2026-06-04 (the "foresee new operators" early-warning: a kernel-added construct fails the test; self-cleaning on stale exclusions; exclusions double as the coverage backlog). MVK error-code parity = the MVK ledger; reverse *keyword* parity still 🔮 |

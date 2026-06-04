@@ -20,7 +20,7 @@ Working end-to-end today (capability snapshot — the per-feature status board i
 - **Model context** (F9a) — `context.ModelContext`: `describe()` gives an agent a compact model card (fields + kinds + enum domains + group repeatability, JSON) and `find(name)` resolves a name to fields (exact / substring / fuzzy) — the inverse of authoring, so an agent orients before it builds.
 - **DM-JSON write path** (F6) — `ofJson` → `add(Rule)` → re-validated new binding → `toJson`/`writeTo`, editing the authored JSON so includes/`modelReferences` are preserved (round-trip fixture-proven).
 
-Next up in **Phase 2** (the adapter is bootstrapped, see Status): text→AST ingest (F10, the converter visitor + `IProblem → Diagnostic`), explain F9 + F9a exact `whereUsed`, modify-by-re-express + diff F8 #2/#3, then the TypeScript twin. The small Phase-1 remainder rides alongside: N3's remaining parity directions and F2a message-interpolation sugar.
+Next up in **Phase 2** (F10 ingest and F9 explain have landed — see Status): **modify-by-re-express + reviewable diff** (F8 #2/#3, the last loop piece), **F9a exact `whereUsed`** and **`IProblem → Diagnostic`** (fold the adapter's kernel problems into the F4a surface), the **F9 rule-envelope enrichment** (role/severity), and the **F10 long tail** (custom conditions, operand wrappers, …); then the TypeScript twin. The small Phase-1 remainder rides alongside: N3's remaining parity directions and F2a message-interpolation sugar.
 
 Build the adapter module with `./gradlew :adapter:test`; `./gradlew :test` keeps the core build free of the internal tier.
 
