@@ -77,6 +77,16 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 
 *(Locked: `RuleValidatorTest.locksWildcardSlotRules`; rulekit treatment: `FieldOperand` = `FieldRef` | `FieldListRef`, list slots take the operand union, scalar slots take `FieldRef` — `BoundModel.flatten(starPath)` validates star placement.)*
 
+## §9 supplement — `RepetitionNotUnique` slot laws (slice 7b, 2026-06-04 experiments)
+
+- **The rule sits at the parent**: every key field must have at least one repeatable group **between the rule group and the field** (or sit directly in a repeatable root group) — `RepetitionNotUnique(Addons/Name)` from *inside* `Addons` draws **`MVK_REPEATABLE_GROUP_MISSING`**; the same condition from the parent validates. Position-dependent → kernel-delegated, not pre-checked.
+- **Keys are plain fields**: a group argument → `MVK_NO_GROUPS_ALLOWED`; a starred path → `MVK_NO_WILDCARDS_ALLOWED` (the iteration is implicit). **Composite keys** (several key fields) are legal. A key mixing in a non-repeatable field (e.g. `Tier`) → `MVK_REPEATABLE_GROUP_MISSING` for that field.
+- **The rule must iterate** — with a non-iterating error field the plain key path draws the ordinary `MVK_NO_WILDCARD` before any RNU-specific check.
+- **`@From`'s reference group must be repeatable** — `@From /Subscription` (root, non-repeating) draws **`MVK_GROUP_NOT_REPEATABLE`**. Note `@From`/`@Von` is a **localized keyword** (lexer-bundle token `VON`), unlike the language-independent `In` separator.
+- **`FieldValuesNotUnique` (DE `FeldWerteNichtEindeutig`) is a separate, plain field-list predicate** (the grammar's `feldListenBedingung` family, not `wiederholungBedingung`): cross-field distinctness over plain or starred operands — both shapes kernel-verified.
+
+*(Locked: `RuleValidatorTest.locksRepetitionNotUniquePositionLaw` + N7 `RepetitionNotUnique`/`FromScope`/`FieldValuesNotUnique` examples; `@From` repeatability pre-checked in `RepetitionNotUniqueCondition.from`.)*
+
 ## §11 supplement — computation alternatives and the calculated-field ban
 
 - **Alternatives are all-or-nothing about preconditions**: either a single alternative *without* a precondition, or several that *all* carry one — mixing a precondition-less "otherwise" in is rejected with **`MVK_ERROR_EMPTY_PRECONDITION`**. The default branch must be an explicit complementary precondition (as the demo's `BonusComp` does with `[WeekPay] < 500`).

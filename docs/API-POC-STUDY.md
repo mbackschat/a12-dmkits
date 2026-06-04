@@ -99,9 +99,10 @@ static Condition chronological(GroupRef repeating, DateRef date) {
     return date.value().lt(date.atRepetition(currentRepetition(repeating).plus(1)));  // 🔮 CurrentRepetition
 }
 
-/** Uniqueness by key — one operator, but the fragment names the business intent. */
+/** Uniqueness by key ✅ (7b) — one operator, but the fragment names the business intent.
+ *  The rule sits at the PARENT of the repeating group (kernel position law, KERNEL-FINDINGS §9). */
 static Condition uniqueBy(GroupRef repeating, FieldRef key) {
-    return groupFilled(repeating).and(repetitionNotUnique(key));               // 🔮 RepetitionNotUnique
+    return groupFilled(repeating).and(repetitionNotUnique(key));               // ✅ + .from(scope) for @From
 }
 ```
 
@@ -433,9 +434,9 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 
 | Study element | Status |
 |---|---|
-| Handles (`num/str/enumOf/bool/confirm/group`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–6 + iteration slice 7a — patterns, value lists, count aggregates, `*` repetition lists via `m.flatten`) |
+| Handles (`num/str/enumOf/bool/confirm/group`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–6 + iteration slices 7a/7b — patterns, value lists, count aggregates, `*` lists, `repetitionNotUnique(...).from(...)`) |
 | §3.1 fragments, §3.3 library pattern, §6 catalog queries, §2 type-steering | ✅ pattern works today on covered operators |
-| §3.2 domain fragments (`withinTolerance`, `chronological`, `uniqueBy`) | 🔮 their operators are corpus items 6–7 + tolerance |
+| §3.2 domain fragments (`withinTolerance`, `chronological`, `uniqueBy`) | `uniqueBy` ✅ (7b); the others 🔮 (tolerance ops, `CurrentRepetition`) |
 | §6c navigation (Level 1: `fields()`/`groups()`/`fieldAt` + strict narrowing), §3.5 `allOf`/`anyOf` | ✅ implemented 2026-06-04 (findings 9–10) |
 | §3.4 rule templates | ✅ full form works (navigation + `Rule` object) |
 | `Rule` + `Computation` authoring objects (computed relPaths, slot-rule pre-checks, validator bridges, `Calculation.kind()`) | ✅ implemented 2026-06-04 |

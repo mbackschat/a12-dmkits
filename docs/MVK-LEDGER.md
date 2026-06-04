@@ -45,7 +45,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_FIELDNAME_NOT_UNIQUE` | unclassified | — (experiment queue) |
 | `MVK_FIELD_REF_OP` | unclassified | — (experiment queue) |
 | `MVK_GROUP_IS_EMPTY` | unclassified | — (experiment queue) |
-| `MVK_GROUP_NOT_REPEATABLE` | pending | iteration cluster (corpus item 7) |
+| `MVK_GROUP_NOT_REPEATABLE` | pre-checked | `RepetitionNotUniqueCondition.from` requires a repeatable reference group (locked: `RenderConditionTest.repetitionNotUniqueScopeMustBeRepeatable` + N7 `FromScope` invalidExample) |
 | `MVK_INCONSISTENT_TYPES_COMPARED` | unclassified | — (experiment queue) |
 | `MVK_INDEX_FIELD_INVALID` | unclassified | — (experiment queue) |
 | `MVK_INDEX_TYPE_INCONSISTENT` | unclassified | — (experiment queue) |
@@ -158,7 +158,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_POINT_IN_A12_MODEL` | unclassified | — (experiment queue) |
 | `MVK_REF_ERROR_ENTITY_IF_FILLED_NOT_REFERENCED` | unclassified | — (experiment queue) |
 | `MVK_REF_ERROR_ENTITY_IF_NOT_FILLED_NOT_REFERENCED` | unclassified | — (experiment queue) |
-| `MVK_REPEATABLE_GROUP_MISSING` | unclassified | — (experiment queue) |
+| `MVK_REPEATABLE_GROUP_MISSING` | kernel-delegated | position-dependent (key repeatable *relative to the rule group*) — verified + locked (`RuleValidatorTest.locksRepetitionNotUniquePositionLaw`); pre-check candidate once `Rule.build()` consults the iteration model (7e) |
 | `MVK_REPEATABLE_LEVEL_REQUIRED` | unclassified | — (experiment queue) |
 | `MVK_ROOT_GROUP_IS_EMPTY` | unclassified | — (experiment queue) |
 | `MVK_ROOT_GROUP_REFERENCED` | pre-checked | `CountAggregate` rejects root-group refs with the code named (locked: `RenderConditionTest.filledCountAggregatesRejectRootGroups`) |
@@ -326,4 +326,4 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_YES_NO_INVALID_2` | unclassified | — (experiment queue) |
 | `MVK_YES_VALUE_MISSING` | unclassified | — (experiment queue) |
 
-*Classified: 36 of 300 (codes may appear in more than one source); the rest queue up as their operator families land or via dedicated experiments.*
+*Classified: 38 of 300 (codes may appear in more than one source); the rest queue up as their operator families land or via dedicated experiments.*

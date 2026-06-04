@@ -60,6 +60,9 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 v.fields().forEach(f -> fields.add(f.fieldPath()));
                 v.values().forEach(value -> collect(value, fields, groups));
             }
+            // the @From scope deliberately does NOT count as a reference (unverified whether the
+            // kernel's error-field rule honors it; keys are what the condition reads)
+            case RepetitionNotUniqueCondition r -> r.keys().forEach(k -> fields.add(k.path()));
         }
     }
 

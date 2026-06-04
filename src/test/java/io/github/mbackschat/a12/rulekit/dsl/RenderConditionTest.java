@@ -246,6 +246,41 @@ class RenderConditionTest {
     }
 
     @Test
+    void rendersRepetitionNotUniqueBilingually() {
+        Condition c = Dsl.repetitionNotUnique(m.field("/Subscription/Addons/Name"));
+        assertEquals("RepetitionNotUnique(/Subscription/Addons/Name)", new DslRenderer().render(c));
+        assertEquals("WiederholungNichtEindeutig(/Subscription/Addons/Name)",
+                new DslRenderer(ConditionLanguage.DE).render(c));
+
+        // composite key + @From scope (a LOCALIZED keyword: @From / @Von)
+        Condition scoped = Dsl.repetitionNotUnique(
+                m.field("/Subscription/Addons/Name"), m.field("/Subscription/Addons/MonthlyFee"))
+                .from(m.group("/Subscription/Addons"));
+        assertEquals("RepetitionNotUnique(/Subscription/Addons/Name, /Subscription/Addons/MonthlyFee"
+                + " @From /Subscription/Addons)", new DslRenderer().render(scoped));
+        assertEquals("WiederholungNichtEindeutig(/Subscription/Addons/Name, /Subscription/Addons/MonthlyFee"
+                + " @Von /Subscription/Addons)", new DslRenderer(ConditionLanguage.DE).render(scoped));
+    }
+
+    @Test
+    void repetitionNotUniqueScopeMustBeRepeatable() {
+        // Verified 2026-06-04: @From on a non-repeatable group is MVK_GROUP_NOT_REPEATABLE — pre-checked.
+        assertThrows(IllegalArgumentException.class,
+                () -> Dsl.repetitionNotUnique(m.field("/Subscription/Addons/Name"))
+                        .from(m.group("/Subscription/Billing")));
+    }
+
+    @Test
+    void rendersFieldValuesNotUniqueOverPlainAndStarredOperands() {
+        assertEquals("FieldValuesNotUnique(/Subscription/Billing/BaseFee, /Subscription/Billing/EffectiveFee)",
+                new DslRenderer().render(Dsl.fieldValuesNotUnique(
+                        m.field("/Subscription/Billing/BaseFee"), m.field("/Subscription/Billing/EffectiveFee"))));
+        assertEquals("FeldWerteNichtEindeutig(/Subscription/Addons*/Name)",
+                new DslRenderer(ConditionLanguage.DE).render(
+                        Dsl.fieldValuesNotUnique(m.flatten("/Subscription/Addons*/Name"))));
+    }
+
+    @Test
     void rendersEnumComparisonByStoredValue() {
         Condition c = m.enumOf("/Subscription/Tier").is("PRO");
         assertEquals("[/Subscription/Tier] == \"PRO\"", new DslRenderer().render(c));

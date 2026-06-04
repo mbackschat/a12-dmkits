@@ -489,5 +489,54 @@
     "validExample": { "dsl": "NumberOfFilledGroups(ShippingAddress, BillingAddress) == 2", "note": "true when both address groups exist" },
     "invalidExample": { "dsl": "NumberOfFilledGroups(ShippingAddress, CustomerName) < 1", "error": "MVK_NO_FIELDS_ALLOWED", "fix": "NumberOfFilledGroups takes groups — count fields with NumberOfFilledFields" },
     "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "RepetitionNotUnique",
+    "kind": "predicate",
+    "keywords": { "en": "RepetitionNotUnique", "de": "WiederholungNichtEindeutig" },
+    "operands": [ { "type": "repeatable-key-fields" }, { "type": "from-scope", "optional": true } ],
+    "returns": "boolean",
+    "meaning": "True for a repetition whose (composite) key value occurs more than once within the reference scope.",
+    "constraints": [
+      "keys are plain fields — no groups (MVK_NO_GROUPS_ALLOWED), no asterisks (MVK_NO_WILDCARDS_ALLOWED)",
+      "each key must be repeatable relative to the rule group (MVK_REPEATABLE_GROUP_MISSING) — the rule sits at the parent and iterates",
+      "the optional @From reference group must be repeatable (MVK_GROUP_NOT_REPEATABLE)"
+    ],
+    "gotchas": [
+      "omitting or changing @From changes the uniqueness scope (unique per parent row vs. across all rows)",
+      "not allowed together with parallel iteration"
+    ],
+    "validExample": { "dsl": "RepetitionNotUnique(Items/Sku)", "note": "fires on each line item whose Sku also appears on another line" },
+    "invalidExample": { "dsl": "RepetitionNotUnique(CustomerName)", "error": "MVK_REPEATABLE_GROUP_MISSING", "fix": "the key must sit under a repeatable group between rule group and field" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "FromScope",
+    "kind": "path-op",
+    "keywords": { "en": "@From", "de": "@Von" },
+    "operands": [ { "type": "repeatable-group" } ],
+    "returns": "scope",
+    "meaning": "Names the reference group within whose repetitions RepetitionNotUnique checks uniqueness.",
+    "constraints": [ "the reference group must be repeatable (MVK_GROUP_NOT_REPEATABLE)" ],
+    "gotchas": [ "a localized keyword (unlike the In separator): @From in EN, @Von in DE" ],
+    "validExample": { "dsl": "RepetitionNotUnique(Items/Sku @From Items)", "note": "unique Sku within each Items scope" },
+    "invalidExample": { "dsl": "RepetitionNotUnique(Items/Sku @From ShippingAddress)", "error": "MVK_GROUP_NOT_REPEATABLE", "fix": "@From needs a repeatable reference group" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "FieldValuesNotUnique",
+    "kind": "predicate",
+    "keywords": { "en": "FieldValuesNotUnique", "de": "FeldWerteNichtEindeutig" },
+    "operands": [ { "type": "field-list" } ],
+    "returns": "boolean",
+    "meaning": "True when the listed fields' values are not all distinct.",
+    "constraints": [
+      "takes plain or flattened (starred) field operands"
+    ],
+    "gotchas": [
+      "negativity-sensitive when mixing iterating and non-iterating operands (MVK_NEG_CONDITION_IN_ITERATION territory)"
+    ],
+    "validExample": { "dsl": "FieldFilled(CustomerName) And FieldValuesNotUnique(Items*/Sku)", "note": "fires when any two line items share a Sku (non-iterating form)" },
+    "sinceKernel": "30.8.x"
   }
 ]

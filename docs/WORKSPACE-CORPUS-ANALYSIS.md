@@ -31,7 +31,7 @@ A read-only **analysis** of two real A12 model corpora, used to prioritize what 
 | 13 / 10 / 8 / 6 / 5 | `NotExactlyOneFieldFilled` / `NotAllFieldsFilled` / `FieldsNotCollectivelyFilled` / `AtLeastOneFieldFilled` / `NoFieldFilled` | ✅ (quantifier family done) |
 | 11 | `NumberOfFilledFields` (aggregate) | ✅ (`CountAggregate` → comparable `NumberExpr`) |
 | 11 / 3 | `True` / `False` (boolean & confirm literals) | ✅ (`BoolRef.isTrue/isFalse`, `ConfirmRef.confirmed/notConfirmed`) |
-| **8 / 8 / 8 / 6 / 4** | `CurrentRepetition` / `For` (semantic index) / `Today` / `Having` / `RepetitionNotUnique` | ❌ iteration + dates |
+| 8 / 8 / 8 / 6 / 4 | `CurrentRepetition` / `For` (semantic index) / `Today` / `Having` / `RepetitionNotUnique` ✅ | ❌ iteration (7d/7e) + dates — `RepetitionNotUnique` ✅ 7b |
 | **6 / 1 / 1 / 1** | `Date(...)` / `DifferenceInDays` / `DifferenceInYears` / `AddMonths` | ❌ date family |
 | 5 | `->` (enum category) | ✅ (`EnumRef.category(...)`) |
 | 4 / 4 / 3 / 1 / 1 | `RangeAsString` / (group: `AtLeastOneGroupFilled` ✅) / `PatternViolated` ✅ / `GroupNotFilled` ✅ / `Length` ✅ | partial (`RangeAsString` ❌) |
@@ -69,7 +69,7 @@ Real conditions include `;;` line comments, `\r\n` line breaks, and case-variant
 | 202 / 105 | `FieldFilled` / `FieldNotFilled` | ✅ |
 | 137 | `*` flatten | ✅ (slice 7a) |
 | 70 | `Length` | ✅ |
-| **57** | `RepetitionNotUnique` | ❌ |
+| 57 | `RepetitionNotUnique` | ✅ (slice 7b) |
 | 54 | `->` enum-category | ✅ |
 | 53 | `AllFieldsFilled` (quantifier family) | ✅ |
 | 46 | `GroupFilled` | ✅ |
@@ -93,7 +93,7 @@ Counts shown as C1 (app) + C2 (metamodel). Order balances combined frequency aga
 6. ~~**`NumberOfFilledFields` aggregate**~~ — ✅ **done 2026-06-04** (`Dsl.numberOfFilledFields` field/group forms + `numberOfFilledGroups` → `CountAggregate` as a comparable `NumberExpr`; the param-size laws live in the signatures, root groups pre-checked. Sibling `NumberOfDifferentValues` deferred — its homogeneity laws ride the iteration cluster, where its `*`-path use lives).
 7. **Iteration / structural cluster** — its own multi-step phase (slices 7a–7e), in progress:
    - 7a ~~`*` flatten~~ (28 + 137) — ✅ **done 2026-06-04** (`BoundModel.flatten` → `FieldListRef`; list slots take the `FieldOperand` union, scalar slots stay `FieldRef` — `MVK_NO_WILDCARDS_ALLOWED` erased, `MVK_INVALID_WILDCARD` pre-checked; negativity law + `MVK_NO_WILDCARD` pre-check deliberately kernel-delegated, see KERNEL-FINDINGS §9).
-   - 7b `RepetitionNotUnique` (4 + 57, + `@From` scope) — next.
+   - 7b ~~`RepetitionNotUnique`~~ (4 + 57, + `@From` scope) — ✅ **done 2026-06-04** (`Dsl.repetitionNotUnique(keys…).from(group)`; keys are plain `FieldRef`s by signature, `@From` repeatability pre-checked, the position law kernel-delegated + locked; **`FieldValuesNotUnique` rode along** as a `Quantifier` family member; order fixture gained repeatable `Items{Sku, Count}`).
    - 7c `Sum`/`MaxValue`/`MinValue` over `*`-lists (+ deferred `NumberOfDifferentValues`); `Sum(Addons*/X) > n` syntax already kernel-confirmed.
    - 7d `Having` filter + `$` correlation (21 + 0, `Having` 6) — with the filter-condition exclusion laws.
    - 7e `CurrentRepetition` (8), `For` semantic index (8), parallel iteration — completes the iteration model; the `MVK_NO_WILDCARD` pre-check lands here.

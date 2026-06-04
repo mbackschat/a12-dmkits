@@ -16,7 +16,7 @@ import java.util.function.UnaryOperator;
 public sealed interface Condition
         permits FieldPresenceCondition, FieldListPredicate, ComparisonCondition, LogicCondition,
         GroupPresenceCondition, GroupListPredicate, PatternCondition, ValueListCondition,
-        FieldListValueListCondition {
+        FieldListValueListCondition, RepetitionNotUniqueCondition {
 
     /** The catalog operator-id this node applies — the renderer's only source of keywords. */
     String operatorId();
@@ -54,6 +54,7 @@ public sealed interface Condition
             case PatternCondition p -> p;
             case ValueListCondition v -> v;
             case FieldListValueListCondition v -> v;
+            case RepetitionNotUniqueCondition r -> r;
         };
         return rewriter.apply(rebuilt);
     }

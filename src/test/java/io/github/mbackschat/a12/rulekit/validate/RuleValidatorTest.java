@@ -232,6 +232,27 @@ class RuleValidatorTest {
     }
 
     @Test
+    void locksRepetitionNotUniquePositionLaw() {
+        // Verified 2026-06-04 (KERNEL-FINDINGS §9): every key must be repeatable RELATIVE to the
+        // rule group — position-dependent, so kernel-delegated rather than pre-checked.
+        DraftRule insideTheGroup = new DraftRule(
+                "/Subscription/Addons", "InsideRule", "../Name",
+                "RepetitionNotUnique(/Subscription/Addons/Name)", "RNU_IN", "ERROR");
+        ValidationResult r = new RuleValidator().check(modelJson, insideTheGroup);
+        assertFalse(r.ok(), "RNU from inside the repeatable group must be rejected");
+        assertTrue(r.problems().stream()
+                        .anyMatch(p -> p.mvkCode().filter("MVK_REPEATABLE_GROUP_MISSING"::equals).isPresent()),
+                () -> "expected MVK_REPEATABLE_GROUP_MISSING, got: " + r.problems());
+
+        // ... while the same condition from the parent level validates (the canonical shape).
+        DraftRule parentLevel = new DraftRule(
+                "/Subscription", "ParentRule", "../Addons/Name",
+                "RepetitionNotUnique(Addons/Name)", "RNU_OK", "ERROR");
+        assertTrue(new RuleValidator().check(modelJson, parentLevel).ok(),
+                "the parent-level canonical shape must validate");
+    }
+
+    @Test
     void rejectsATypeIllegalComparison() {
         // Ordering a string ([Name]) is a type error — MVK_INVALID_TYPE_FOR_COMPARISON.
         DraftRule rule = new DraftRule(

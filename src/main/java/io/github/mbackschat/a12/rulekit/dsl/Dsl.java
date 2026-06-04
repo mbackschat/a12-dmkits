@@ -195,6 +195,24 @@ public final class Dsl {
         return fieldList(Quantifier.NOT_EXACTLY_ONE_FIELD_FILLED, first, rest);
     }
 
+    /** {@code FieldValuesNotUnique(f1, f2, …)} — true when the listed values are not all distinct. */
+    public static Condition fieldValuesNotUnique(FieldOperand first, FieldOperand... rest) {
+        return fieldList(Quantifier.FIELD_VALUES_NOT_UNIQUE, first, rest);
+    }
+
+    /**
+     * {@code RepetitionNotUnique(key1, key2, …)} — duplicate-key detection over repetitions
+     * (KERNEL-SEMANTICS §9). Scope with {@link RepetitionNotUniqueCondition#from from(group)}
+     * ({@code @From}). Keys are plain {@link FieldRef}s by signature — groups and starred lists
+     * are unrepresentable here.
+     */
+    public static RepetitionNotUniqueCondition repetitionNotUnique(FieldRef first, FieldRef... rest) {
+        List<FieldRef> keys = new ArrayList<>();
+        keys.add(first);
+        keys.addAll(List.of(rest));
+        return new RepetitionNotUniqueCondition(keys, java.util.Optional.empty());
+    }
+
     private static Condition fieldList(Quantifier quantifier, FieldOperand first, FieldOperand... rest) {
         List<FieldOperand> fields = new ArrayList<>();
         fields.add(first);

@@ -76,6 +76,8 @@ class OperatorIdTest {
         for (CountAggregate.CountOp op : CountAggregate.CountOp.values()) {
             assertResolves(op.operatorId());
         }
+        assertResolves("RepetitionNotUnique");
+        assertResolves("FromScope");
         for (GroupQuantifier q : GroupQuantifier.values()) {
             assertResolves(q.operatorId());
         }

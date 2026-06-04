@@ -164,6 +164,39 @@
                 }
               },
               {
+                "type": "Group",
+                "id": "/Order/Items",
+                "name": "Items",
+                "Group": {
+                  "repeatability": 50,
+                  "elements": [
+                    {
+                      "type": "Field",
+                      "id": "/Order/Items/Sku",
+                      "name": "Sku",
+                      "Field": {
+                        "fieldType": {
+                          "type": "StringType"
+                        }
+                      }
+                    },
+                    {
+                      "type": "Field",
+                      "id": "/Order/Items/Count",
+                      "name": "Count",
+                      "Field": {
+                        "fieldType": {
+                          "type": "NumberType",
+                          "NumberType": {
+                            "maxFractionalDigits": 0
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
                 "type": "Field",
                 "id": "/Order/Priority",
                 "name": "Priority",
