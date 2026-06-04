@@ -1,0 +1,49 @@
+plugins {
+    id 'application'
+}
+
+// The standalone CLI (proposal N10 / docs/CLI-SPEC.md): the modeller/BA front-end. The `application`
+// plugin gives `run` / `installDist` / `distZip` so the dev inner loop never builds the self-contained
+// app-image (jlink/jpackage is Phase B, distribution only — it adds no behavior, just bundles a JVM).
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    // core engine — BoundModel/ModelContext + the model index. Brings kernel-md-facade transitively.
+    // (+ project(':adapter') joins here when the ingest/explain/whereUsed verbs land — CLI-SPEC §2.)
+    implementation project(':')
+
+    // The CLI serializes the context projections to JSONL/markdown itself (kept out of core), so it
+    // needs Jackson directly (core's is `implementation`, not exposed transitively).
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+
+    // The kernel logs via SLF4J; with no provider it prints "No SLF4J providers were found" warnings
+    // to stderr. A no-op binding silences them so the CLI's output stays clean for agent piping.
+    runtimeOnly 'org.slf4j:slf4j-nop:2.0.16'
+
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+application {
+    mainClass = 'io.github.mbackschat.a12.rulekit.cli.CliMain'
+}
+
+// Dev convenience: `:cli:run` resolves relative model paths from the repo root (its default is the
+// subproject dir). The shipped CLI runs from the user's CWD; this only affects `:cli:run`.
+tasks.named('run') {
+    workingDir = rootProject.projectDir
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

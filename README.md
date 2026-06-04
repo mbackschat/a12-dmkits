@@ -20,9 +20,9 @@ Working end-to-end today (capability snapshot — the per-feature status board i
 - **Model context** (F9a) — `context.ModelContext`: `describe()` gives an agent a compact model card (fields + kinds + enum domains + group repeatability, JSON) and `find(name)` resolves a name to fields (exact / substring / fuzzy) — the inverse of authoring, so an agent orients before it builds.
 - **DM-JSON write path** (F6) — `ofJson` → `add(Rule)` → re-validated new binding → `toJson`/`writeTo`, editing the authored JSON so includes/`modelReferences` are preserved (round-trip fixture-proven).
 
-Next up in **Phase 2** (F10 ingest and F9 explain have landed — see Status): **modify-by-re-express + reviewable diff** (F8 #2/#3, the last loop piece), **F9a exact `whereUsed`** and **`IProblem → Diagnostic`** (fold the adapter's kernel problems into the F4a surface), the **F9 rule-envelope enrichment** (role/severity), and and the **F10 long tail** (custom conditions, operand wrappers, …). The small Phase-1 remainder rides alongside: N3's remaining parity directions and F2a message-interpolation sugar. *(The TypeScript twin (§13) is deferred — a very-future, design-informing milestone, not on the near agenda.)*
+Next up in **Phase 2** (F10 ingest, F9 explain, and the F8 modify/diff/write-back loop have all landed — see Status): the **standalone CLI** and the **LLM skill** that together serve **two personas over one engine** (developer = Claude Code editing rulekit-the-library in their own project, no bespoke vehicle; modeller/BA = the CLI, no Java toolchain — proposal **N10**), plus **F9a exact `whereUsed`** and **`IProblem → Diagnostic`** (fold the adapter's kernel problems into the F4a surface), the **F9 rule-envelope enrichment** (role/severity), and the **F10 long tail** (custom conditions, operand wrappers, …). The small Phase-1 remainder rides alongside: N3's remaining parity directions and F2a message-interpolation sugar. *(The TypeScript twin (§13) is deferred — a very-future, design-informing milestone, not on the near agenda.)*
 
-Build the adapter module with `./gradlew :adapter:test`; `./gradlew :test` keeps the core build free of the internal tier.
+Build the adapter module with `./gradlew :adapter:test`; `./gradlew :test` keeps the core build free of the internal tier. The standalone CLI (the modeller/BA front-end, N10) is scaffolded as `:cli` with its first `dump` verb — run it in dev via `./gradlew :cli:run --args="dump model.json fields"` (no packaging in the loop; see [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md)).
 
 ## Prerequisites
 
@@ -60,4 +60,4 @@ It hard-rejects the mechanical violations and reminds on the judgment rule; bypa
 
 ## License
 
-Deliberately left open for now; a permissive OSS license (Apache-2.0 or MIT) is the working intent — to be settled before first publish. See proposal §19.
+**MIT** — see [`LICENSE`](LICENSE). rulekit's source is its own original work and ships no kernel binary, so it carries no copyleft entanglement (consistent with the sibling `a12-kernel-demo` / `a12-kernel-bootstrap`, both MIT). The kernel itself is dual-licensed `EUPL-1.2 OR commercial`; the future standalone CLI, which *bundles* the kernel, will ship that distributable under **EUPL-1.2** (the source stays MIT). Full analysis: [`docs/LICENSING.md`](docs/LICENSING.md).

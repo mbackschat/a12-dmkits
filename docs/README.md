@@ -5,6 +5,8 @@ What each document under `docs/` holds, so you can jump to the right one. This i
 ## Design & vision
 
 - **[PROJECT-PROPOSAL.md](PROJECT-PROPOSAL.md)** — the one argument: vision (the bidirectional *ingest → explain → modify → diff → validate* loop), requirements (`Fn`/`Nn`/`Dn`), architecture, the operator-catalog spine, the decision log (§17), and the phased roadmap (§16). Densely cross-referenced by stable anchors; specs split out of it on implementation boundaries rather than fragmenting the argument.
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** — the *physical* view: the Gradle subprojects (core / opt-in `adapter` / planned `cli`) and the skill, their artifacts, the core's acyclic package layering, the N8/D15 kernel-coupling boundary, what crosses each boundary as plain data, and the **proposed parts laid out as TBD** with each one's intended home. Complements the proposal's conceptual component view (§15).
+- **[CLI-SPEC.md](CLI-SPEC.md)** — the standalone CLI (the modeller/BA front-end, N10): the verb surface, the JSON I/O contract, the **dev/test workflow that keeps the inner loop fast** (JUnit verb tests; packaging out of the loop), the `dump` verb detail, sizing, and the dev-vs-distribution packaging phases.
 
 ## Kernel truth (verified facts & their treatment)
 
@@ -22,3 +24,7 @@ What each document under `docs/` holds, so you can jump to the right one. This i
 ## Experience study
 
 - **[API-POC-STUDY.md](API-POC-STUDY.md)** — the living study & review surface: what rulekit *feels like* to use, with numbered findings that feed the Phase-1/2 increments (and seed the LLM skill and self-sufficiency eval). Features flip 🔮→✅ here as they land.
+
+## Licensing
+
+- **[LICENSING.md](LICENSING.md)** — the settled license decision (rulekit source **MIT**; the kernel-bundling CLI distributable **EUPL-1.2**) and the full reasoning: the kernel's dual `EUPL-1.2 OR commercial`, why redistribution is permitted, and why MIT-source + EUPL-bundle don't conflict. The proposal's §19 states the decision in one line and points here.
