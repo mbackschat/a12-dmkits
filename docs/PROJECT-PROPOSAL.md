@@ -108,10 +108,10 @@ The owner's goals, consolidated (original vision 2026-06-02; bidirectionality de
   - **#1** immutable, transformable AST from day one; **#2** modify-by-re-express + rendered diff; **#3 (core)** the text→AST read path, so the loop covers foreign/BA-authored rules.
   - Every modify yields a **reviewable rendered diff**.
   - Minimal-edit (concrete-syntax-preserving) re-render stays research-gated (Phase 5).
-- **F9 — Explain a specific rule** (structured projection; → §14)
-  - `explain(rule, model)` assembles: referenced fields (path + model type + **role**), operators used (catalog `meaning`/kinds/constraints/gotchas), structural context (group; error field; whether & why the rule iterates; severity; computation table where applicable), and an NL gloss.
-  - One mechanism, two consumers: *understand/rewrite existing rules* and *ground new authoring*.
-  - Works identically for rulekit-built and converted-foreign ASTs (F10 feeds it); the kernel's `getDirectlyReferencedEntities`/`referencesIteration` are cross-check oracles.
+- **F9 — Explain a specific rule** (structured projection; → §14) *(✅ condition-level 2026-06-04)*
+  - `ModelContext.explain(condition) → RuleExplanation` assembles: operators used (catalog `meaning`/kind/gotchas), referenced fields/groups (path + model kind), whether & which repeatable group it iterates, the canonical text, and an NL gloss; JSON-serializable (files-as-API).
+  - One mechanism, two consumers: *understand/rewrite existing rules* and *ground new authoring* — verified **identically on a rulekit-built condition and a converted-foreign one** (F10 ingest feeds it; demonstrated end-to-end).
+  - *Carried forward:* rule-level context (error-field **role** labels, severity, computation table) and the kernel cross-check oracles (`getDirectlyReferencedEntities`/`referencesIteration`) — the condition-level projection is in; the rule-envelope enrichment is the next slice.
 - **F9a — Model-context surface: the inverse projections** *(added 2026-06-04; own `context` package — a projection layer over model index + catalog, nothing else depends on it)*
   - **Motivation:** an LLM asked *"explain the rule on birthdate"* must first resolve the name and find the rules — F9's other half: `find → whereUsed → explain(each)`.
   - **`describe()`** — the model card, **progressive disclosure, never a full catalogue** (at F0's scale a full dump is 20–400k tokens): default = the **skeleton** (root groups, depth-limited tree, counts + kind histograms — low-thousands of tokens even at 10k fields); `describe(group)` drills down; reduced-model extraction (parked) is the right-sized "context for one rule" on large models.

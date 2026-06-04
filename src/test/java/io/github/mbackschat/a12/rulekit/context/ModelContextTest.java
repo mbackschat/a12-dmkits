@@ -8,6 +8,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.rulekit.Fixtures;
+import io.github.mbackschat.a12.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.rulekit.dsl.Condition;
 
 /**
  * F9a model-context surface — {@code describe()} (the agent's map of the model, without raw DM-JSON)
@@ -58,5 +60,23 @@ class ModelContextTest {
         assertEquals(1, hits.size(), () -> "hits: " + hits);
         assertEquals("/Subscription/Tier", hits.get(0).path());
         assertEquals(FieldMatch.How.FUZZY, hits.get(0).how());
+    }
+
+    @Test
+    void explainProjectsABuiltCondition() {
+        BoundModel m = Fixtures.subscription();
+        Condition c = m.num("/Subscription/Addons/MonthlyFee").gt(1000);
+
+        RuleExplanation ex = new ModelContext(m).explain(c);
+
+        assertTrue(ex.operators().stream().anyMatch(o -> o.id().equals("GreaterThan")),
+                () -> "operators: " + ex.operators());
+        assertTrue(ex.references().stream().anyMatch(
+                        r -> r.path().equals("/Subscription/Addons/MonthlyFee") && r.kind().equals("NUMBER")),
+                () -> "references: " + ex.references());
+        // MonthlyFee lives in the repeatable Addons group → the condition iterates
+        assertTrue(ex.iterates());
+        assertEquals(java.util.Optional.of("/Subscription/Addons"), ex.iterationGroup());
+        assertTrue(ex.toJson().contains("\"references\""), ex.toJson());
     }
 }
