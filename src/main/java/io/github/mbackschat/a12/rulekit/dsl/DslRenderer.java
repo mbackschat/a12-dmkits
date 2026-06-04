@@ -46,6 +46,8 @@ public final class DslRenderer {
             case GroupListPredicate p -> keyword(p.operatorId()) + "("
                     + p.groups().stream().map(GroupRef::path).collect(java.util.stream.Collectors.joining(", "))
                     + ")";
+            case PatternCondition p ->
+                    "[" + p.field().path() + "] " + keyword(p.operatorId()) + " " + quote(p.regex());
         };
     }
 
@@ -73,7 +75,9 @@ public final class DslRenderer {
     }
 
     private static String quote(String value) {
-        return '"' + value.replace("\\", "\\\\").replace("\"", "\\\"") + '"';
+        // Kernel lexer (verified 2026-06-04): StringLiteral : '"' ( '""' | ~["] )* '"' — embedded
+        // quotes are doubled; backslash is a plain character (no escape sequences).
+        return '"' + value.replace("\"", "\"\"") + '"';
     }
 
     private String keyword(String operatorId) {

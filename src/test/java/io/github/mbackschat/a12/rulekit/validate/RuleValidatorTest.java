@@ -129,6 +129,47 @@ class RuleValidatorTest {
     }
 
     @Test
+    void locksPatternComparisonSlotRules() {
+        // Verified 2026-06-04 (see KERNEL-FINDINGS §7): the regex gate is Java Pattern.compile PLUS
+        // a portable-subset check — lookbehind is Java-valid yet rejected. So rulekit's
+        // Pattern.compile pre-check is a necessary condition only; the subset stays kernel-delegated.
+        DraftRule lookbehind = new DraftRule(
+                "/Subscription/Billing", "LookbehindRule", "../InvoiceEmail",
+                "[InvoiceEmail] PatternMatched \"(?<=a)b\"", "PAT_LB", "ERROR");
+        ValidationResult r1 = new RuleValidator().check(modelJson, lookbehind);
+        assertFalse(r1.ok(), "lookbehind is outside the portable regex subset");
+        assertTrue(r1.problems().stream()
+                        .anyMatch(p -> p.mvkCode().filter("MVK_INVALID_PATTERN"::equals).isPresent()),
+                () -> "expected MVK_INVALID_PATTERN, got: " + r1.problems());
+
+        // The right side must be a string CONSTANT — a field reference is rejected.
+        DraftRule fieldRight = new DraftRule(
+                "/Subscription/Billing", "FieldRightRule", "../InvoiceEmail",
+                "[InvoiceEmail] PatternMatched [InvoiceEmail]", "PAT_FR", "ERROR");
+        ValidationResult r2 = new RuleValidator().check(modelJson, fieldRight);
+        assertFalse(r2.ok(), "pattern right side must be a string constant");
+        assertTrue(r2.problems().stream()
+                        .anyMatch(p -> p.mvkCode().filter("MVK_MISSING_CONST_IN_PATTERN_COMP"::equals).isPresent()),
+                () -> "expected MVK_MISSING_CONST_IN_PATTERN_COMP, got: " + r2.problems());
+    }
+
+    @Test
+    void locksKernelStringLiteralEscaping() {
+        // Verified 2026-06-04: StringLiteral : '"' ( '""' | ~["] )* '"' — embedded quotes are
+        // DOUBLED, backslash is a plain character. Backslash-escaping a quote is a parse error.
+        DraftRule doubled = new DraftRule(
+                "/Subscription/Billing", "DoubledQuoteRule", "../InvoiceEmail",
+                "[InvoiceEmail] == \"say \"\"hi\"\"\"", "STR_DQ", "ERROR");
+        assertTrue(new RuleValidator().check(modelJson, doubled).ok(), "doubled-quote escaping is the kernel way");
+
+        DraftRule backslashed = new DraftRule(
+                "/Subscription/Billing", "BackslashQuoteRule", "../InvoiceEmail",
+                "[InvoiceEmail] == \"say \\\"hi\\\"\"", "STR_BS", "ERROR");
+        assertFalse(new RuleValidator().check(modelJson, backslashed).ok(),
+                "backslash escapes are not kernel string-literal syntax");
+    }
+
+    @Test
     void rejectsATypeIllegalComparison() {
         // Ordering a string ([Name]) is a type error — MVK_INVALID_TYPE_FOR_COMPARISON.
         DraftRule rule = new DraftRule(

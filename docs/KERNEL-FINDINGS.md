@@ -10,6 +10,21 @@ The Boolean≠Confirm split is enforced at parse time with distinct codes: a Boo
 
 The `==`/`!=` decimal-scale gate applies to **field/expression operands only**. Against a scale-2 field, `== 0`, `== 0.0`, `== 0.00`, `!= 0`, and `<= 0.000` are all accepted — only field-vs-field/expression comparisons of differing declared scale draw `MVK_INVALID_COMPARE_DEC_PLACES`. Consequence: scale-explicit literals (`0.00`) are a rendering-fidelity nicety, not a correctness requirement. *(Locked: `RuleValidatorTest.acceptsScaleFreeNumericLiteralsOnEquality`.)*
 
+## §7 supplement — pattern-comparison slot rules and the portable-subset gate (2026-06-04 experiments)
+
+`PatternMatched`/`PatternViolated` (DE: `WieMuster`/`NichtWieMuster`) are grammar-level *infix comparison operators* (`vglOp` alternatives like `==`), but their slot rules are far stricter than the grammar:
+
+- **Left side: a bare string field value only.** A non-string field (number, enum, boolean) → **`MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON`** ("only allowed for string values" — note: *enums are not pattern-comparable* even though they compare to strings with `==`). A string *expression* (e.g. concatenation) → **`MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON`** ("only allowed with a field value as first parameter"). A constant → the general **`MVK_INVALID_COMPARE_TO_CONST`**.
+- **Right side: a string constant only.** A field reference → **`MVK_MISSING_CONST_IN_PATTERN_COMP`**; a number constant → `MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON`.
+- **The regex gate is Java `Pattern.compile` *plus* a portable-subset check** (`PatternUtils.isPatternValid`; the extmp world uses `CommonUtils.isRegExValid` instead): lookbehind `(?<=a)b` is Java-valid yet rejected with **`MVK_INVALID_PATTERN`** — KERNEL-SEMANTICS §7's "portable subset" is *enforced*, not advisory. Consequence: a Java-side `Pattern.compile` pre-check is a necessary condition only; final validity is the kernel's call.
+- **The empty pattern `""` is accepted** for document models (the non-extmp branch; extmp additionally requires non-empty).
+
+*(Locked: `RuleValidatorTest.locksPatternComparisonSlotRules` + N7 `PatternMatched`/`PatternViolated` examples.)*
+
+## §7 supplement — string-literal escaping is quote-doubling, not backslashes
+
+The condition lexer's rule is `StringLiteral : '"' ( '""' | ~["] )* '"'` — an embedded quote is **doubled** (`"say ""hi"""`), and **backslash is a plain character** (no escape sequences; regex classes like `\d` are written as-is). Backslash-escaping a quote (`\"`) is a parse error (`MVK_UNEXPECTED_TOKEN`). Found while building the pattern operators: rulekit's renderer had C-style escaping and would have emitted wrong regexes for any pattern containing `\` — fixed and locked. *(Locked: `RuleValidatorTest.locksKernelStringLiteralEscaping` + `RenderConditionTest.quotesStringLiteralsTheKernelWay`.)*
+
 ## §8 supplement — enum-category codes and the positional mapping
 
 In DM-JSON, a category's `values` list pairs **positionally** with the enumeration's `values` (entry *i* categorizes enum value *i*); the comparison domain is the category's distinct value set. Codes: comparing to one of the *enum's own* values instead of a *category* value → **`MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON`**; an unknown category name → **`MVK_CATEGORY_UNKOWN`** (the kernel's spelling); `->` on a non-enumeration field → **`MVK_NO_ENUMERATION`**. Curiosity: `[Enum -> Category] == [Enum]` (category vs. plain enum field) is *accepted*. *(Locked: N7 `EnumCategory` examples + `RenderConditionTest.categoryHandleErasesTheVerifiedCategoryMistakes`.)*

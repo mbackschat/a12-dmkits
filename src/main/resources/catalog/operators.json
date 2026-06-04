@@ -331,5 +331,45 @@
     "validExample": { "dsl": "Length(CustomerName) > 10", "note": "fires when CustomerName is longer than 10 characters" },
     "invalidExample": { "dsl": "Length(Quantity) > 10", "error": "operand type", "fix": "Length needs a string field, not a number" },
     "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "PatternMatched",
+    "kind": "operator",
+    "keywords": { "en": "PatternMatched", "de": "WieMuster" },
+    "operands": [ { "type": "string-field" }, { "type": "string-constant" } ],
+    "returns": "boolean",
+    "meaning": "True iff the string field's whole value matches the regular expression (anchored).",
+    "constraints": [
+      "the left side must be a bare string field value — no expressions, no constants, no enums",
+      "the right side must be a string constant holding a valid regex",
+      "only the regex subset portable across the kernel's target languages is accepted (e.g. lookbehind is rejected although Java-valid)"
+    ],
+    "gotchas": [
+      "the match is anchored over the WHOLE value — '@' does not find an @ somewhere, use '.*@.*'",
+      "in DSL string literals a backslash is a plain character and an embedded quote is doubled (\"\"), so regex character classes like \\d are written as-is",
+      "a backtracking-prone pattern such as (a+)+ is a performance/security risk (KERNEL-SEMANTICS §7)"
+    ],
+    "validExample": { "dsl": "FieldFilled(ProductCode) And [ProductCode] PatternMatched \"[A-Z]{2}-[0-9]{4}\"", "note": "fires when ProductCode has the legacy XX-9999 format" },
+    "invalidExample": { "dsl": "[Quantity] PatternMatched \".*\"", "error": "MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON", "fix": "pattern comparison works on string fields only" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "PatternViolated",
+    "kind": "operator",
+    "keywords": { "en": "PatternViolated", "de": "NichtWieMuster" },
+    "operands": [ { "type": "string-field" }, { "type": "string-constant" } ],
+    "returns": "boolean",
+    "meaning": "True iff the string field's whole value does NOT match the regular expression (anchored).",
+    "constraints": [
+      "the left side must be a bare string field value — no expressions, no constants, no enums",
+      "the right side must be a string constant holding a valid regex",
+      "only the regex subset portable across the kernel's target languages is accepted"
+    ],
+    "gotchas": [
+      "an empty field is not evaluated — guard with FieldFilled when the rule should fire only on present-but-malformed values"
+    ],
+    "validExample": { "dsl": "FieldFilled(BillingAddress/PostalCode) And [BillingAddress/PostalCode] PatternViolated \"[0-9]{5}\"", "note": "fires when a present postal code is not exactly five digits" },
+    "invalidExample": { "dsl": "[CustomerName] PatternViolated \"(\"", "error": "MVK_INVALID_PATTERN", "fix": "the right side must be a valid (portable-subset) regular expression" },
+    "sinceKernel": "30.8.x"
   }
 ]

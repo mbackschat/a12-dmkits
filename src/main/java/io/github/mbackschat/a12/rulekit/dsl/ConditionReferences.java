@@ -50,6 +50,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             }
             case GroupPresenceCondition g -> groups.add(g.group().path());
             case GroupListPredicate p -> p.groups().forEach(g -> groups.add(g.path()));
+            case PatternCondition p -> fields.add(p.field().path());
         }
     }
 

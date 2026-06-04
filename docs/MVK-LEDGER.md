@@ -54,7 +54,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_INVALID_COMPARE_DEC_PLACES` | kernel-delegated | by design (D13): result scales are the kernel’s; literals are exempt (KERNEL-FINDINGS §5) |
 | `MVK_INVALID_COMPARE_ENUM_TO_ENUM` | unclassified | — (experiment queue) |
 | `MVK_INVALID_COMPARE_ENUM_TO_STRING` | unclassified | — (experiment queue) |
-| `MVK_INVALID_COMPARE_TO_CONST` | unclassified | — (experiment queue) |
+| `MVK_INVALID_COMPARE_TO_CONST` | erased | handles always put a field value on one side; constant-vs-constant unrepresentable (verified via pattern experiments 2026-06-04) |
 | `MVK_INVALID_COMPARE_TO_DATE` | unclassified | — (experiment queue) |
 | `MVK_INVALID_COMPARE_TO_DATE_RANGE` | unclassified | — (experiment queue) |
 | `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` | pre-checked | operation kind must match the computed field (`Calculation.kind()`) |
@@ -75,9 +75,9 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_INVALID_NUMBER_FOR_EXP` | unclassified | — (experiment queue) |
 | `MVK_INVALID_OUTER_ITERATION` | unclassified | — (experiment queue) |
 | `MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON` | unclassified | — (experiment queue) |
-| `MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON` | unclassified | — (experiment queue) |
+| `MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON` | erased | `PatternCondition` left side is always a bare string field value — expressions unrepresentable (KERNEL-FINDINGS §7) |
 | `MVK_INVALID_PARAMS_FOR_OP` | unclassified | — (experiment queue) |
-| `MVK_INVALID_PATTERN` | unclassified | — (experiment queue) |
+| `MVK_INVALID_PATTERN` | pre-checked | `StringRef.matches/violates` fail fast via `Pattern.compile` (necessary condition only — the portable-subset gate stays kernel-delegated; locked: `RuleValidatorTest.locksPatternComparisonSlotRules`) |
 | `MVK_INVALID_PREDEFINED_TYPE` | unclassified | — (experiment queue) |
 | `MVK_INVALID_RAW_TYPE` | unclassified | — (experiment queue) |
 | `MVK_INVALID_ROOT_GROUP` | unclassified | — (experiment queue) |
@@ -92,7 +92,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_INVALID_TYPE` | unclassified | — (experiment queue) |
 | `MVK_INVALID_TYPES_FOR_COMPARISON` | unclassified | — (experiment queue) |
 | `MVK_INVALID_TYPE_FOR_COMPARISON` | erased | no ordering methods on non-orderable handles (`StringRef` has no `le`); N7 invalid examples |
-| `MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON` | unclassified | — (experiment queue) |
+| `MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON` | erased | only `StringRef` offers `matches`/`violates` (enums/numbers/booleans excluded by type; locked: N7 `PatternMatched` invalidExample) |
 | `MVK_INVALID_TYPE_FOR_TOLERANCE_OP` | unclassified | — (experiment queue) |
 | `MVK_INVALID_UNSPECIFIED_TYPE` | unclassified | — (experiment queue) |
 | `MVK_INVALID_WILDCARD` | unclassified | — (experiment queue) |
@@ -101,7 +101,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_ITERATION_RESTRICTION_IN_A12_MODEL` | unclassified | — (experiment queue) |
 | `MVK_MAX_GROUP_RESTRICTION_TO_ONE` | unclassified | — (experiment queue) |
 | `MVK_MAX_LFDNR_RESTRICTION_TO_ONE` | unclassified | — (experiment queue) |
-| `MVK_MISSING_CONST_IN_PATTERN_COMP` | unclassified | — (experiment queue) |
+| `MVK_MISSING_CONST_IN_PATTERN_COMP` | erased | the regex parameter is a Java `String` — a field reference on the right is unrepresentable (locked: `RuleValidatorTest.locksPatternComparisonSlotRules`) |
 | `MVK_MISSING_ERROR_FIELD` | unclassified | — (experiment queue) |
 | `MVK_MISSING_YEAR` | unclassified | — (experiment queue) |
 | `MVK_MULTIPLE_INDEX_FIELDS` | unclassified | — (experiment queue) |
@@ -326,4 +326,4 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_YES_NO_INVALID_2` | unclassified | — (experiment queue) |
 | `MVK_YES_VALUE_MISSING` | unclassified | — (experiment queue) |
 
-*Classified: 21 of 300 (codes may appear in more than one source); the rest queue up as their operator families land or via dedicated experiments.*
+*Classified: 26 of 300 (codes may appear in more than one source); the rest queue up as their operator families land or via dedicated experiments.*

@@ -34,6 +34,8 @@ class OperatorIdTest {
         assertEquals("And", and.operatorId());
         Condition or = new FieldPresenceCondition(NUM, true).or(new FieldPresenceCondition(STR, true));
         assertEquals("Or", or.operatorId());
+        assertEquals("PatternMatched", new PatternCondition(STR, true, ".*").operatorId());
+        assertEquals("PatternViolated", new PatternCondition(STR, false, ".*").operatorId());
     }
 
     @Test
@@ -64,6 +66,8 @@ class OperatorIdTest {
         assertResolves("GroupFilled");
         assertResolves("GroupNotFilled");
         assertResolves("EnumCategory");
+        assertResolves("PatternMatched");
+        assertResolves("PatternViolated");
         for (GroupQuantifier q : GroupQuantifier.values()) {
             assertResolves(q.operatorId());
         }

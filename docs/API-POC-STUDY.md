@@ -41,6 +41,10 @@ m.bool("/Subscription/TermsAccepted")  // fails fast — confirm is a distinct k
 tier.category("Nope")                  // fails fast — not a declared category (MVK_CATEGORY_UNKOWN erased)
 tier.category("Pricing").is("BASIC")   // fails fast — BASIC is an enum value, not a Pricing category value
                                        //   (MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON erased)
+m.num(FEE).matches(".*")               // does not compile — patterns work on string fields only
+                                       //   (MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON erased; enums too)
+email.matches("(")                     // fails fast — not a compilable regex (MVK_INVALID_PATTERN pre-checked;
+                                       //   the kernel's portable-subset gate has the final word: lookbehind dies at F4)
 ```
 
 Each erased mistake corresponds to a **kernel-verified** rejection code (see `KERNEL-INTEGRATION-NOTES.md`) — the type system is the documentation.
@@ -108,6 +112,14 @@ public final class SubscriptionIdioms {
     }
     public static Condition feePositiveWhenPresent(NumberRef fee) {
         return fee.filled().and(fee.le(0));    // error scenario: fee present but not positive
+    }
+    /** Format idiom ✅ — present-but-malformed (the FieldFilled guard is the kernel's own pattern habit). */
+    public static Condition malformedEmail(StringRef email) {
+        return email.filled().and(email.violates(".+@.+\\..+"));   // regex renders verbatim — no escaping layer
+    }
+    /** Reserved-prefix idiom ✅ — the shape of the metamodel's own HEADER_ID_STARTS_WITH_XML rule. */
+    public static Condition reservedPrefix(StringRef id) {
+        return id.matches("[xX][mM][lL].*");                       // anchored whole-value match (§7)
     }
 }
 ```
@@ -392,7 +404,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 
 | Study element | Status |
 |---|---|
-| Handles (`num/str/enumOf/bool/confirm/group`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–3 + base set) |
+| Handles (`num/str/enumOf/bool/confirm/group`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–4 + base set — incl. `matches`/`violates` patterns) |
 | §3.1 fragments, §3.3 library pattern, §6 catalog queries, §2 type-steering | ✅ pattern works today on covered operators |
 | §3.2 domain fragments (`withinTolerance`, `chronological`, `uniqueBy`) | 🔮 their operators are corpus items 6–7 + tolerance |
 | §6c navigation (Level 1: `fields()`/`groups()`/`fieldAt` + strict narrowing), §3.5 `allOf`/`anyOf` | ✅ implemented 2026-06-04 (findings 9–10) |
@@ -421,4 +433,6 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 
 14. *(new, 2026-06-04 — owner direction after the locale-law surprise)* **Constraint mining beats whack-a-mole.** Coverage was corpus-frequency-driven (finds operators), blind to *structural laws* — which sit in enumerable sources: the public accessor lists (slot parity: `IRule.guiPatterns/variantFilter/variantErrorMessages` and `IComputation.roundingMode/errorCodesToSuppress/variantFilter` are gaps found *by inspection*), the `MVK_*` enums (~100+ codes — every surprise so far was in there all along; classify each: erased/pre-checked/delegated/pending/unknown→experiment-queue, CI-checked = the **MVK ledger**), the **kernel-mm metamodels** (source of truth for valid DM structure — schema + constraint-rule oracles, EUPL-respecting own-words analysis), and the deserializer tier. Standing discipline: consult `../a12-kernel-demo/KERNEL-SEMANTICS.md` (read-only) before each increment; record what it lacks in our own `docs/KERNEL-FINDINGS.md`. Instruments 1+2+3 shipped 2026-06-04: `SlotParityTest` (every public IRule/IComputation accessor classified; found+deferred guiPatterns/variantFilter/variantErrorMessages/errorCodesToSuppress/roundingMode) and `docs/MVK-LEDGER.md` + `MvkLedgerTest` (194+2 codes, exact-parity CI; unclassified = the experiment queue); `KernelMmIntegrationTest` (instrument 3, opt-in: 15 canonical metamodels load under 30.8.1, 547 rules, zero UNKNOWN kinds — schema-oracle findings in KERNEL-FINDINGS).
 
-*(4–6 shape Phase-2 API design; 7–8 are proposal §12/§14 refinements; 9–13 are scheduled — 9/10/12-describe-find/13-dump Phase 1, the rest Phase 2; 14 is the meta-instrument now in CLAUDE.md.)*
+15. *(new, 2026-06-04 — from the pattern increment)* **A new operator family's experiments routinely surface adjacent kernel laws — budget for them.** Probing the four pattern slot codes also yielded: the portable-regex-subset gate is *enforced* (Java-valid lookbehind rejected → `Pattern.compile` pre-checks can only be necessary conditions), and **DSL string literals escape by quote-doubling, not backslashes** — which exposed and fixed a latent renderer bug (`quote()` was C-style; any `\`-bearing regex would have rendered wrong). The N7/lock harness then froze both laws for free. Pattern: when an increment's probes return something unexpected about a *neighboring* mechanism (literals, lexing, evaluation order), chase it in the same increment — it is already reproduced, and the fix + lock are cheapest right there.
+
+*(4–6 shape Phase-2 API design; 7–8 are proposal §12/§14 refinements; 9–13 are scheduled — 9/10/12-describe-find/13-dump Phase 1, the rest Phase 2; 14 is the meta-instrument now in CLAUDE.md; 15 is increment practice.)*

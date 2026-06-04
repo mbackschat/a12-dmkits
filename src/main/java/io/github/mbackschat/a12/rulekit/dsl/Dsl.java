@@ -28,6 +28,16 @@ public final class Dsl {
         return field.length();
     }
 
+    /** {@code [field] PatternMatched "regex"} — anchored whole-value match. */
+    public static Condition patternMatched(StringRef field, String regex) {
+        return field.matches(regex);
+    }
+
+    /** {@code [field] PatternViolated "regex"} — anchored whole-value non-match. */
+    public static Condition patternViolated(StringRef field, String regex) {
+        return field.violates(regex);
+    }
+
     // --- field-list quantifiers — at least one field by signature ------------------------------
 
     public static Condition allFieldsFilled(FieldRef first, FieldRef... rest) {
