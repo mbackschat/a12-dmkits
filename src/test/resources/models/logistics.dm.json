@@ -1,0 +1,86 @@
+{
+  "header": {
+    "id": "logistics",
+    "modelType": "document",
+    "modelVersion": "28.4.0",
+    "locales": [ { "code": "en_US" } ],
+    "labels": [],
+    "annotations": [],
+    "modelReferences": []
+  },
+  "content": {
+    "modelInfo": { "name": "logistics", "variant": "cockpit", "revision": "Arbeitsversion", "immutable": false },
+    "modelConfig": {
+      "decimalSeparator": ".",
+      "timeZone": "Europe/Berlin",
+      "conditionLanguage": { "code": "en_US" },
+      "fieldRefByShortNameAllowed": true
+    },
+    "modelRoot": {
+      "rootGroups": [
+        {
+          "type": "Group",
+          "id": "/Shipment",
+          "name": "Shipment",
+          "Group": {
+            "repeatability": 1,
+            "elements": [
+              {
+                "type": "Field",
+                "id": "/Shipment/ShipmentRef",
+                "name": "ShipmentRef",
+                "Field": { "fieldType": { "type": "StringType" } }
+              },
+              {
+                "type": "Group",
+                "id": "/Shipment/Lines",
+                "name": "Lines",
+                "Group": {
+                  "repeatability": 50,
+                  "indexFieldName": "LineRef",
+                  "elements": [
+                    {
+                      "type": "Field",
+                      "id": "/Shipment/Lines/LineRef",
+                      "name": "LineRef",
+                      "Field": { "fieldType": { "type": "StringType" } }
+                    },
+                    {
+                      "type": "Field",
+                      "id": "/Shipment/Lines/OrderedQty",
+                      "name": "OrderedQty",
+                      "Field": { "fieldType": { "type": "NumberType", "NumberType": { "maxFractionalDigits": 0 } } }
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "Group",
+                "id": "/Shipment/Picks",
+                "name": "Picks",
+                "Group": {
+                  "repeatability": 50,
+                  "indexFieldName": "LineRef",
+                  "elements": [
+                    {
+                      "type": "Field",
+                      "id": "/Shipment/Picks/LineRef",
+                      "name": "LineRef",
+                      "Field": { "fieldType": { "type": "StringType" } }
+                    },
+                    {
+                      "type": "Field",
+                      "id": "/Shipment/Picks/PickedQty",
+                      "name": "PickedQty",
+                      "Field": { "fieldType": { "type": "NumberType", "NumberType": { "maxFractionalDigits": 0 } } }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

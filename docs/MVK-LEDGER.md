@@ -125,7 +125,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_NO_ENUMERATION` | erased | only `EnumRef` offers `category()` |
 | `MVK_NO_FIELDS_ALLOWED` | erased | `GroupRef` ≠ `FieldRef` — group predicates take groups only |
 | `MVK_NO_GROUPS_ALLOWED` | erased | field predicates take `FieldRef` only |
-| `MVK_NO_INDEX_FIELD` | unclassified | — (experiment queue) |
+| `MVK_NO_INDEX_FIELD` | kernel-delegated | semantic index `[Field For …]` needs the group to declare `indexFieldName`; rulekit index does not yet expose it (slice 7f) — locked: N7 `SemanticIndex` invalidExample |
 | `MVK_NO_ITERATION_FOR_WILDCARD` | pending | `$` correlation deferred (rides field-vs-field comparison) |
 | `MVK_NO_NUMBER` | pre-checked | `ListAggregate` Sum requires NUMBER operands (locked: N7 `Sum` invalidExample) |
 | `MVK_NO_NUMBER_FOR_CALC` | unclassified | — (experiment queue) |
@@ -135,7 +135,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_NO_STRING_OR_NUMBER_FOR_ADD` | unclassified | — (experiment queue) |
 | `MVK_NO_TYPEYESNO` | unclassified | — (experiment queue) |
 | `MVK_NO_TYPE_YES_OR_YESNO` | unclassified | — (experiment queue) |
-| `MVK_NO_WILDCARD` | kernel-delegated | repeatable group without `*` in a non-iterating rule; pre-check deferred to slice 7e — parallel iteration (index fields) makes plain refs legal, a naive check would false-positive |
+| `MVK_NO_WILDCARD` | kernel-delegated | repeatable group without `*`; pre-check would need full iteration-model analysis — **confirmed 7f**: under parallel iteration a plain cross-group ref is legal, so a naive check false-positives (locked: `validate.laws.IterationLawsTest`) |
 | `MVK_NO_WILDCARDS_ALLOWED` | erased | scalar slots take `FieldRef` only; starred lists are `FieldListRef`, accepted only by list slots (locked: `validate.laws.IterationLawsTest`) |
 | `MVK_NO_WILDCARDS_G_ALLOWED` | unclassified | — (experiment queue) |
 | `MVK_NUMBER_AND_NON_NUMBER` | pre-checked | `CountAggregate` NumberOfDifferentValues homogeneity check |
@@ -167,7 +167,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_SEMANTIC_INDEX_AND_WILDCARD` | unclassified | — (experiment queue) |
 | `MVK_SEMANTIC_INDEX_BELOW_WILDCARD` | unclassified | — (experiment queue) |
 | `MVK_SEMANTIC_INDEX_CONTAINED_IN_INDEX` | unclassified | — (experiment queue) |
-| `MVK_SEMANTIC_INDEX_INVALID_ITER` | unclassified | — (experiment queue) |
+| `MVK_SEMANTIC_INDEX_INVALID_ITER` | kernel-delegated | an entity semantic-index that itself iterates; rulekit offers only the string-constant `forIndex` form (7f) |
 | `MVK_SEMANTIC_INDEX_NOT_ALLOWED` | unclassified | — (experiment queue) |
 | `MVK_SEMANTIC_INDEX_NO_FIELD` | unclassified | — (experiment queue) |
 | `MVK_SEMANTIC_INDEX_REF_OP` | unclassified | — (experiment queue) |
@@ -326,4 +326,4 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_YES_NO_INVALID_2` | unclassified | — (experiment queue) |
 | `MVK_YES_VALUE_MISSING` | unclassified | — (experiment queue) |
 
-*Classified: 48 of 300 (codes may appear in more than one source); the rest queue up as their operator families land or via dedicated experiments.*
+*Classified: 50 of 300 (codes may appear in more than one source); the rest queue up as their operator families land or via dedicated experiments.*

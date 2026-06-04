@@ -106,6 +106,8 @@ public final class DslRenderer {
                     .collect(java.util.stream.Collectors.joining(", "))
                     + ")";
             case CurrentRepetition r -> keyword(r.operatorId()) + "(" + r.group().path() + ")";
+            case SemanticIndexValue v ->
+                    "[" + v.field().path() + " " + keyword(v.operatorId()) + " " + quote(v.indexValue()) + "]";
             case Today t -> keyword(t.operatorId());
             case DateDifference d -> keyword(d.operatorId())
                     + "(" + renderArg(d.left()) + ", " + renderArg(d.right()) + ")";

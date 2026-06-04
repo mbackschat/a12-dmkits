@@ -84,6 +84,7 @@ class OperatorIdTest {
         assertResolves("Having");
         assertResolves("CurrentRepetition");
         assertResolves("CustomCondition");
+        assertResolves("SemanticIndex");
         assertResolves("Today");
         for (DateDifference.Unit u : DateDifference.Unit.values()) {
             assertResolves(u.operatorId());

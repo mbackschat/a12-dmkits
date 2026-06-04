@@ -88,6 +88,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 collect(d.right(), fields, groups);
             }
             case DateShift s -> collect(s.date(), fields, groups);
+            case SemanticIndexValue v -> fields.add(v.field().path());
         }
     }
 

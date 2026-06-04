@@ -95,7 +95,7 @@ static Condition withinTolerance(NumberRef actual, NumberRef expected, Tolerance
 }
 
 /** Chronology over a repeating group — composes the iteration cluster (backlog item 7).
- *  `currentRepetition(group)` ✅ (7e); the date ordering + atRepetition selector are 🔮 (dates + 7f). */
+ *  `currentRepetition(group)` ✅ (7e), semantic index `num(f).forIndex("k")` ✅ (7f); date+atRepetition 🔮. */
 static Condition chronological(GroupRef repeating, DateRef date) {
     return date.value().lt(date.atRepetition(currentRepetition(repeating).plus(1)));  // ✅ currentRepetition; 🔮 rest
 }
@@ -476,7 +476,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 
 | Study element | Status |
 |---|---|
-| Handles (`num/str/enumOf/bool/confirm/group/date`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–6, 8, 9a + iteration slices 7a–7e — patterns, value lists, count + list aggregates, `*` lists, `repetitionNotUnique(...).from(...)`, `flatten(...).having(filter)`, `currentRepetition(group)`, `customCondition(name)`, dates: `today()`/ordering/`differenceIn*`/`add*`) |
+| Handles (`num/str/enumOf/bool/confirm/group/date`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–6, 8, 9a + iteration 7a–7f — patterns, value lists, count + list aggregates, `*` lists, `repetitionNotUnique(...).from(...)`, `flatten(...).having(filter)`, `currentRepetition`, `num(f).forIndex(...)`, parallel iteration, `customCondition`, dates, field-vs-field) |
 | §3.1 fragments, §3.3 library pattern, §6 catalog queries, §2 type-steering | ✅ pattern works today on covered operators |
 | §3.2 domain fragments (`withinTolerance`, `chronological`, `uniqueBy`) | `uniqueBy` ✅ (7b); the others 🔮 (tolerance ops, `CurrentRepetition`) |
 | §3.4a `sameAddress` (field-vs-field equality) | ✅ string + number (finding 18); enum-vs-enum 🔮 |

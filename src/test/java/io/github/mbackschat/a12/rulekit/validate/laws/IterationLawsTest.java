@@ -34,6 +34,19 @@ class IterationLawsTest {
     }
 
     @Test
+    void parallelIterationOverIndexKeyedGroupsIsSupportedNotBlocked() {
+        // Two repeatable groups sharing an index field (Lines, Picks on LineRef) iterate JOINTLY;
+        // rulekit's existing handles express this with no special construct (verified 2026-06-04).
+        KernelLaws.acceptsLogistics("/Shipment/Lines", "../OrderedQty",
+                "FieldsNotCollectivelyFilled(/Shipment/Lines/OrderedQty, /Shipment/Picks/PickedQty)");
+        // and a plain cross-group reference is LEGAL under parallel iteration — which is exactly why
+        // the MVK_NO_WILDCARD missing-asterisk pre-check stays kernel-delegated (a naive check would
+        // wrongly reject this). KERNEL-FINDINGS §9.
+        KernelLaws.acceptsLogistics("/Shipment/Lines", "../OrderedQty",
+                "FieldFilled(OrderedQty) And FieldFilled(/Shipment/Picks/PickedQty)");
+    }
+
+    @Test
     void repetitionNotUniqueKeysMustBeRepeatableRelativeToTheRuleGroup() {
         // from INSIDE the repeatable group → rejected (position-dependent, kernel-delegated)
         KernelLaws.rejects("/Subscription/Addons", "../Name",

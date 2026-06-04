@@ -125,6 +125,15 @@ class IterationConditionTest {
     }
 
     @Test
+    void rendersSemanticIndexBilingually() {
+        // [Field For "value"] — slice 7f; the order fixture's Items group is index-keyed (Sku)
+        BoundModel order = Fixtures.order();
+        Condition c = order.num("/Order/Items/Count").forIndex("SKU-1").gt(0);
+        assertEquals("[/Order/Items/Count For \"SKU-1\"] > 0", new DslRenderer().render(c));
+        assertEquals("[/Order/Items/Count Fuer \"SKU-1\"] > 0", new DslRenderer(ConditionLanguage.DE).render(c));
+    }
+
+    @Test
     void rendersFieldValuesNotUniqueOverPlainAndStarredOperands() {
         assertEquals("FieldValuesNotUnique(/Subscription/Billing/BaseFee, /Subscription/Billing/EffectiveFee)",
                 new DslRenderer().render(Dsl.fieldValuesNotUnique(

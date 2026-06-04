@@ -661,6 +661,24 @@
     "sinceKernel": "30.8.x"
   },
   {
+    "id": "SemanticIndex",
+    "kind": "path-op",
+    "keywords": { "en": "For", "de": "Fuer" },
+    "operands": [ { "type": "field" }, { "type": "index-value" } ],
+    "returns": "value",
+    "meaning": "The field's value in the repetition whose index field equals the given value ([Field For \"value\"]).",
+    "constraints": [
+      "the field's enclosing repeatable group must declare an indexFieldName (else MVK_NO_INDEX_FIELD)",
+      "the index value is a string constant matching the index field; an iterating entity index is restricted (MVK_SEMANTIC_INDEX_INVALID_ITER)"
+    ],
+    "gotchas": [
+      "selects a specific repetition by key — distinct from '*' (all repetitions) and the rule's own iteration"
+    ],
+    "validExample": { "dsl": "FieldFilled(CustomerName) And [Items/Count For \"SKU-1\"] > 0", "note": "the ordered count of the line item keyed SKU-1" },
+    "invalidExample": { "dsl": "FieldFilled(CustomerName) And [BillingAddress/PostalCode For \"x\"] == \"y\"", "error": "MVK_NO_INDEX_FIELD", "fix": "semantic index needs a repeatable group with an index field; BillingAddress has none" },
+    "sinceKernel": "30.8.x"
+  },
+  {
     "id": "Today",
     "kind": "constant",
     "keywords": { "en": "Today", "de": "Heute" },

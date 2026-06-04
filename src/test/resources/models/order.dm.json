@@ -169,6 +169,7 @@
                 "name": "Items",
                 "Group": {
                   "repeatability": 50,
+                  "indexFieldName": "Sku",
                   "elements": [
                     {
                       "type": "Field",

@@ -48,6 +48,11 @@ final class KernelLaws {
         assertRejects(ORDER, group, errorField, condition, expectedCode);
     }
 
+    /** Logistics-fixture variant (two index-keyed repeatable groups, for parallel iteration). */
+    static void acceptsLogistics(String group, String errorField, String condition) {
+        assertAccepts(Fixtures.json("models/logistics.dm.json"), group, errorField, condition);
+    }
+
     private static void assertAccepts(String json, String group, String errorField, String condition) {
         ValidationResult r = check(json, group, errorField, condition);
         assertTrue(r.ok(), () -> "expected acceptance of '" + condition + "', got: " + r.problems());

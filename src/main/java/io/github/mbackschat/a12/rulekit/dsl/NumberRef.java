@@ -100,6 +100,16 @@ public record NumberRef(FieldRef field, int scale) {
         return asNumber().ne(literal);
     }
 
+    /**
+     * {@code [field For "indexValue"]} — the semantic index (slice 7f): this field's value in the
+     * repetition whose index field equals {@code indexValue}. Comparable as a number expression.
+     * The enclosing repeatable group must declare an {@code indexFieldName} (else the kernel reports
+     * {@code MVK_NO_INDEX_FIELD} — kernel-delegated).
+     */
+    public NumberExpr forIndex(String indexValue) {
+        return new NumberExpr(new SemanticIndexValue(field, indexValue));
+    }
+
     // --- field-vs-field comparison (finding 18) --------------------------------------------------
     // Ordering ignores scale; == / != require equal declared scale (MVK_INVALID_COMPARE_DEC_PLACES,
     // pre-checked here — verified 2026-06-04, the D13 gate made cheap since rulekit knows both scales).
