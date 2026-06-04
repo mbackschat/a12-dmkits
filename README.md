@@ -10,7 +10,7 @@ Phase 1 in progress (Java vertical slice). The design is captured in **[`docs/PR
 
 Working end-to-end today:
 - **Model index** (F0) — load DM-JSON → `expand` → `checkConsistency` → index group tree, field kinds, number scale, repetition.
-- **Operator catalog** (§9) — bundled JSON spine with verified bilingual keywords; **self-verifying**: every example is checked against the real kernel (N7).
+- **Operator catalog** (§9) — bundled JSON spine with verified bilingual keywords; **self-verifying**: every `SUPPORTED` example is checked against the real kernel (N7). Carries an `OperatorStatus` so it maps the whole operator space: `SUPPORTED` (built, N7-validated) vs `PLANNED` stubs (known-but-unbuilt operators — `RangeAsString`, `Date`, `Now`, … — described with lexer-grounded keywords, no example).
 - **Typed condition AST + renderer** — model-bound handles compose immutable `Condition`s; every node carries its **catalog operator-id + model-resolved refs + provenance hint** (the D14 invariant that makes explain/ingest cheap later); the renderer emits canonical EN/DE text with *no keyword knowledge outside the catalog*.
 - **Ground-truth validator** (F4) — injects a rendered rule as DM-JSON and runs `checkConsistency`, mapping `MVK_*` to problems.
 - **Structured diagnostics** (F4a, first increment) — kernel problems are promoted to an LSP-shaped `Diagnostic` (`severity·source·code·summary·where·fix·explain`); a **catalog-join** reuses the matching operator's curated, N7-locked `fix`/`meaning` (no drift), and `ValidationResult.toJson()` emits an agent-parseable array. The gotcha/INFO channel, "did you mean", and AST span-pointing follow.

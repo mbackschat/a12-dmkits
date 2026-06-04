@@ -3,6 +3,8 @@ package io.github.mbackschat.a12.rulekit.catalog;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -37,9 +39,35 @@ class OperatorCatalogTest {
             assertFalse(isBlank(e.keywords().de()), () -> e.id() + ": missing de keyword");
             assertFalse(isBlank(e.returns()), () -> e.id() + ": missing returns");
             assertFalse(isBlank(e.meaning()), () -> e.id() + ": missing meaning");
-            assertNotNull(e.validExample(), () -> e.id() + ": missing validExample");
-            assertFalse(isBlank(e.validExample().dsl()), () -> e.id() + ": validExample has no dsl");
         }
+    }
+
+    /**
+     * The stub-entries policy (proposal §9): a {@code SUPPORTED} operator must carry a
+     * {@code validExample} so it can't silently escape the N7 kernel-validation harness; only
+     * {@code PLANNED} stubs are exempt.
+     */
+    @Test
+    void everySupportedEntryHasAValidExample() {
+        for (OperatorEntry e : CATALOG.entries()) {
+            if (e.supported()) {
+                assertNotNull(e.validExample(), () -> e.id() + ": SUPPORTED entry missing validExample");
+                assertFalse(isBlank(e.validExample().dsl()), () -> e.id() + ": validExample has no dsl");
+            }
+        }
+    }
+
+    /** Stubs map the kernel operator space rulekit hasn't built — described, but example-free. */
+    @Test
+    void plannedStubsAreCataloguedButCarryNoExample() {
+        assertTrue(CATALOG.entries().stream().anyMatch(e -> !e.supported()),
+                "the catalog should map known-but-unbuilt operators as PLANNED stubs");
+
+        OperatorEntry rangeAsString = CATALOG.byId("RangeAsString").orElseThrow();
+        assertFalse(rangeAsString.supported(), "RangeAsString is not built yet — it should be a PLANNED stub");
+        assertEquals("RangeAsString", rangeAsString.keywords().en());
+        assertEquals("BereichAlsString", rangeAsString.keywords().de());
+        assertNull(rangeAsString.validExample(), "a PLANNED stub carries no validExample");
     }
 
     @Test

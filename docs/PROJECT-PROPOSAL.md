@@ -348,6 +348,8 @@ Two parts: **per-operator entries** (above — `meaning` + edge cases + valid *a
 3. **Construct parity** *(new)* — catalog ↔ the parsetree-api **name enums** (`EntityListConditionName` et al.): every enum member mapped or explicitly excluded; same for `ParserErrorTypesEnum` against the failure→fix table.
 4. **Semantics drift detection** *(new, opt-in)* — diff the catalog's EN/DE keywords and `meaning` texts against the kernel's web **content catalogs** (~120 bilingual descriptions). ⚠️ EUPL boundary: compare only, never copy verbatim — rulekit's texts stay its own.
 
+**Stub-entries policy** *(adopted 2026-06-04).* The catalog is a complete **map of the kernel operator space**, not only the subset rulekit builds — so an LLM (and `describe`/docs) can see that an operator *exists and is deferred* rather than hallucinate a handle. Each entry carries an `OperatorStatus`: **`SUPPORTED`** (rulekit has a typed handle; an N7-validated `validExample` is **required** — enforced by `OperatorCatalogTest.everySupportedEntryHasAValidExample`, so a supported operator can't silently escape N7) or **`PLANNED`** (a *stub*: keywords grounded in the lexer bundles + `meaning`/`returns`/`kind`, but **no example** — exempt from N7, which already filters example-less entries). An absent `status` defaults to `SUPPORTED`, so existing entries are unchanged. Seed stubs (2026-06-04): `RangeAsString`, `Date`, `Now`, `Valid`/`Invalid`, `SumOfProducts`, `FirstFilledValue`, `DateRange`/`DateRangesOverlap` — the known-but-unbuilt operators from the corpus histogram and the date/aggregate findings. Building a stub = flip it to `SUPPORTED` and add the handle + example.
+
 ---
 
 ## 10. API design sketch <a name="10-api-design-sketch"></a>

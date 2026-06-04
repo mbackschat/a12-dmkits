@@ -764,5 +764,95 @@
     "gotchas": [ { "text": "differs from AddMonths across leap years (§6)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And [DeliveryDate] > AddYears(OrderDate, 1)", "note": "fires when delivery is more than a year out" },
     "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "RangeAsString",
+    "kind": "function",
+    "keywords": { "en": "RangeAsString", "de": "BereichAlsString" },
+    "returns": "string",
+    "meaning": "Renders a number/amount field's value as a locale-formatted string — typically to feed a string comparison or a message.",
+    "constraints": [ "rulekit: PLANNED stub — no typed handle yet; keywords grounded in the lexer bundles (see WORKSPACE-CORPUS-ANALYSIS backlog)" ],
+    "status": "PLANNED",
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "Date",
+    "kind": "function",
+    "keywords": { "en": "Date", "de": "Datum" },
+    "returns": "date",
+    "meaning": "Constructs a date from day, month, and year operands (needs bounded-integer / digit-patterned operand fields).",
+    "constraints": [ "rulekit: PLANNED stub — no typed handle yet; keywords grounded in the lexer bundles (see WORKSPACE-CORPUS-ANALYSIS backlog)" ],
+    "status": "PLANNED",
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "Now",
+    "kind": "constant",
+    "keywords": { "en": "Now", "de": "Jetzt" },
+    "returns": "datetime",
+    "meaning": "The current date-time — the date-time sibling of Today (discouraged with ==, forbidden in computations).",
+    "constraints": [ "rulekit: PLANNED stub — no typed handle yet; keywords grounded in the lexer bundles (see WORKSPACE-CORPUS-ANALYSIS backlog)" ],
+    "status": "PLANNED",
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "Valid",
+    "kind": "predicate",
+    "keywords": { "en": "Valid", "de": "Gueltig" },
+    "returns": "boolean",
+    "meaning": "True iff the field holds a valid instance of the named registered custom field type (delegates to a runtime type verifier).",
+    "constraints": [ "rulekit: PLANNED stub — no typed handle yet; keywords grounded in the lexer bundles (see WORKSPACE-CORPUS-ANALYSIS backlog)" ],
+    "status": "PLANNED",
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "Invalid",
+    "kind": "predicate",
+    "keywords": { "en": "Invalid", "de": "Ungueltig" },
+    "returns": "boolean",
+    "meaning": "True iff the field is not a valid instance of the named registered custom field type (the negation of Valid).",
+    "constraints": [ "rulekit: PLANNED stub — no typed handle yet; keywords grounded in the lexer bundles (see WORKSPACE-CORPUS-ANALYSIS backlog)" ],
+    "status": "PLANNED",
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "SumOfProducts",
+    "kind": "function",
+    "keywords": { "en": "SumOfProducts", "de": "SummeVonProdukten" },
+    "returns": "number",
+    "meaning": "The sum of the element-wise products across two or more repetition lists (a feldListenOp sibling of Sum).",
+    "constraints": [ "rulekit: PLANNED stub — no typed handle yet; keywords grounded in the lexer bundles (see WORKSPACE-CORPUS-ANALYSIS backlog)" ],
+    "status": "PLANNED",
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "FirstFilledValue",
+    "kind": "function",
+    "keywords": { "en": "FirstFilledValue", "de": "ErsterAngegebenerWert" },
+    "returns": "any",
+    "meaning": "The first specified value among the operands, in order (a feldListenOp sibling of Sum).",
+    "constraints": [ "rulekit: PLANNED stub — no typed handle yet; keywords grounded in the lexer bundles (see WORKSPACE-CORPUS-ANALYSIS backlog)" ],
+    "status": "PLANNED",
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "DateRange",
+    "kind": "function",
+    "keywords": { "en": "DateRange", "de": "DatumBereich" },
+    "returns": "date-range",
+    "meaning": "Constructs a date range from a start and an end date.",
+    "constraints": [ "rulekit: PLANNED stub — no typed handle yet; keywords grounded in the lexer bundles (see WORKSPACE-CORPUS-ANALYSIS backlog)" ],
+    "status": "PLANNED",
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "DateRangesOverlap",
+    "kind": "predicate",
+    "keywords": { "en": "DateRangesOverlap", "de": "DatumsBereicheUeberlappend" },
+    "returns": "boolean",
+    "meaning": "True iff two date ranges overlap.",
+    "constraints": [ "rulekit: PLANNED stub — no typed handle yet; keywords grounded in the lexer bundles (see WORKSPACE-CORPUS-ANALYSIS backlog)" ],
+    "status": "PLANNED",
+    "sinceKernel": "30.8.x"
   }
 ]

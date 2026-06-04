@@ -23,12 +23,19 @@ public record OperatorEntry(
         List<Gotcha> gotchas,
         Example validExample,
         InvalidExample invalidExample,
+        OperatorStatus status,
         String sinceKernel) {
 
     public OperatorEntry {
         operands = operands == null ? List.of() : List.copyOf(operands);
         constraints = constraints == null ? List.of() : List.copyOf(constraints);
         gotchas = gotchas == null ? List.of() : List.copyOf(gotchas);
+        status = status == null ? OperatorStatus.SUPPORTED : status;
+    }
+
+    /** Whether rulekit builds a typed handle for this operator (vs a {@link OperatorStatus#PLANNED} stub). */
+    public boolean supported() {
+        return status == OperatorStatus.SUPPORTED;
     }
 
     /** The localized keywords; the kernel selects the set via the model's {@code conditionLanguage}. */
