@@ -12,13 +12,15 @@ import com.mgmtp.a12.model.notification.Severity;
 import io.github.mbackschat.a12.rulekit.Fixtures;
 import io.github.mbackschat.a12.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.rulekit.validate.DiagnosticSource;
 
 /**
- * F4a lint layer (first increment) — valid-but-suspicious conditions the kernel accepts but an LLM
- * shouldn't have written. Pure-AST structural heuristics; model-context lints (unguarded negative
- * under a repeatable group, inverted requiredness) are a later increment.
+ * F4a lint layer — valid-but-suspicious conditions the kernel accepts but an LLM shouldn't have
+ * written. Pure-AST structural heuristics plus the model-context one (an unguarded negative under a
+ * repeatable group, which pre-warns the kernel-delegated {@code MVK_NEG_CONDITION_IN_ITERATION}).
  */
 class LinterTest {
 
@@ -65,6 +67,57 @@ class LinterTest {
     void aCleanConditionHasNoLints() {
         Condition c = m.field(NAME).filled().and(m.num(FEE).gt("100"));
         assertTrue(linter.lint(c).isEmpty(), () -> "unexpected lints: " + linter.lint(c));
+    }
+
+    // --- model-context lint: unguarded negative under a repeatable group (pre-warns MVK_NEG_CONDITION_IN_ITERATION)
+
+    @Test
+    void warnsOnAnUnguardedNegativeUnderIteration() {
+        // Error field under repeatable /Subscription/Addons → the rule iterates; bare FieldNotFilled is unguarded.
+        Rule rule = m.rule(m.group("/Subscription/Addons"))
+                .name("FeePresentRule")
+                .errorField(m.num(FEE))
+                .when(m.field(FEE).notFilled())
+                .code("FEE_PRESENT").severity(io.github.mbackschat.a12.rulekit.dsl.Severity.ERROR)
+                .message(Dsl.en("Fee required."), Dsl.de("Gebühr erforderlich."))
+                .build();
+
+        Diagnostic d = only(linter.lint(m, rule), "RK_NEG_CONDITION_IN_ITERATION");
+        assertEquals(DiagnosticSource.LINT, d.source());
+        assertEquals(Severity.WARNING.name(), d.severity().name());
+        assertTrue(d.where().operator().filter("FieldNotFilled"::equals).isPresent());
+        assertTrue(d.fix().isPresent(), "should suggest guarding the negative");
+    }
+
+    @Test
+    void doesNotWarnWhenTheNegativeIsGuarded() {
+        Rule rule = m.rule(m.group("/Subscription/Addons"))
+                .name("FeeGuardedRule")
+                .errorField(m.num(FEE))
+                .when(Dsl.groupFilled(m.group("/Subscription/Addons")).and(m.field(FEE).notFilled()))
+                .code("FEE_GUARDED").severity(io.github.mbackschat.a12.rulekit.dsl.Severity.ERROR)
+                .message(Dsl.en("Fee required."), Dsl.de("Gebühr erforderlich."))
+                .build();
+
+        assertTrue(linter.lint(m, rule).stream()
+                .noneMatch(d -> d.code().filter("RK_NEG_CONDITION_IN_ITERATION"::equals).isPresent()),
+                () -> "guarded negative should not warn: " + linter.lint(m, rule));
+    }
+
+    @Test
+    void doesNotWarnWhenTheRuleDoesNotIterate() {
+        // /Subscription/Tier sits in the non-repeatable root group → the rule does not iterate.
+        Rule rule = m.rule(m.group("/Subscription"))
+                .name("TierPresentRule")
+                .errorField(m.field("/Subscription/Tier"))
+                .when(m.field("/Subscription/Tier").notFilled())
+                .code("TIER_PRESENT").severity(io.github.mbackschat.a12.rulekit.dsl.Severity.ERROR)
+                .message(Dsl.en("Tier required."), Dsl.de("Stufe erforderlich."))
+                .build();
+
+        assertTrue(linter.lint(m, rule).stream()
+                .noneMatch(d -> d.code().filter("RK_NEG_CONDITION_IN_ITERATION"::equals).isPresent()),
+                () -> "non-iterating rule should not warn: " + linter.lint(m, rule));
     }
 
     private static Diagnostic only(List<Diagnostic> diagnostics, String code) {

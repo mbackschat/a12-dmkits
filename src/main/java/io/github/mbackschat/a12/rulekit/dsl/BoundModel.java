@@ -128,6 +128,28 @@ public final class BoundModel {
     }
 
     /**
+     * Whether a rule whose error entity is {@code errorFieldPath} <em>iterates</em> — i.e. a
+     * repeatable group lies on the path to it (the §5a error-field rule). The F4a lint layer uses
+     * this to pre-warn the kernel-delegated {@code MVK_NEG_CONDITION_IN_ITERATION}.
+     */
+    public boolean iteratesForErrorField(String errorFieldPath) {
+        return nearestRepeatableAncestor(errorFieldPath).isPresent();
+    }
+
+    /** The nearest (deepest) repeatable group on the path to {@code fieldPath}, if any. */
+    public java.util.Optional<String> nearestRepeatableAncestor(String fieldPath) {
+        String path = fieldPath;
+        int slash;
+        while ((slash = path.lastIndexOf('/')) > 0) {
+            path = path.substring(0, slash);
+            if (index.isRepeating(path)) {
+                return java.util.Optional.of(path);
+            }
+        }
+        return java.util.Optional.empty();
+    }
+
+    /**
      * A flattened repetition list from a star path, e.g. {@code /Subscription/Addons*&#47;Name}
      * (KERNEL-SEMANTICS §9). Every starred segment must be a repeatable group — a star on a
      * non-repeatable group is rejected here with the kernel's code named

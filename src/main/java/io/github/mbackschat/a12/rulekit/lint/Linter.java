@@ -3,12 +3,24 @@ package io.github.mbackschat.a12.rulekit.lint;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import com.mgmtp.a12.model.notification.Severity;
 
+import io.github.mbackschat.a12.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.rulekit.dsl.ComparisonCondition;
 import io.github.mbackschat.a12.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.rulekit.dsl.CustomConditionRef;
+import io.github.mbackschat.a12.rulekit.dsl.FieldListPredicate;
+import io.github.mbackschat.a12.rulekit.dsl.FieldListValueListCondition;
 import io.github.mbackschat.a12.rulekit.dsl.FieldPresenceCondition;
+import io.github.mbackschat.a12.rulekit.dsl.GroupListPredicate;
+import io.github.mbackschat.a12.rulekit.dsl.GroupPresenceCondition;
 import io.github.mbackschat.a12.rulekit.dsl.LogicCondition;
+import io.github.mbackschat.a12.rulekit.dsl.PatternCondition;
+import io.github.mbackschat.a12.rulekit.dsl.RepetitionNotUniqueCondition;
+import io.github.mbackschat.a12.rulekit.dsl.Rule;
+import io.github.mbackschat.a12.rulekit.dsl.ValueListCondition;
 import io.github.mbackschat.a12.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.rulekit.validate.DiagnosticSource;
 
@@ -18,12 +30,18 @@ import io.github.mbackschat.a12.rulekit.validate.DiagnosticSource;
  * kernel only reports structural <em>errors</em>, so "compiles and is accepted, but probably not
  * what you meant" must come from rulekit.
  *
- * <p>First increment — three pure-AST structural heuristics, each {@code source = LINT},
- * {@code severity = WARNING}, with an {@code RK_*} code and the offending logic operator in
- * {@code where.operator}. Model-context lints (an unguarded negative condition under a repeatable
- * group, inverted requiredness) need the rule's binding and are a later increment.
+ * <p>Two tiers: <b>pure-AST</b> structural heuristics (run on any {@link Condition}) and
+ * <b>model-context</b> heuristics (run on a {@link Rule} bound to a {@link BoundModel}, where the
+ * rule's iteration is known). Each diagnostic is {@code source = LINT}, {@code severity = WARNING},
+ * with an {@code RK_*} code and the offending operator in {@code where.operator}.
  */
 public final class Linter {
+
+    /** Positive presence predicates that count as guarding a negative condition under iteration. */
+    private static final Set<String> POSITIVE_PRESENCE = Set.of(
+            "FieldFilled", "GroupFilled",
+            "AllFieldsFilled", "AtLeastOneFieldFilled",
+            "AllGroupsFilled", "AtLeastOneGroupFilled");
 
     /** Lint {@code condition} with no rule context (the {@code where.rule} is left empty). */
     public List<Diagnostic> lint(Condition condition) {
@@ -35,6 +53,79 @@ public final class Linter {
         List<Diagnostic> out = new ArrayList<>();
         visit(condition, null, rulePath, out);
         return List.copyOf(out);
+    }
+
+    /**
+     * Lint {@code rule} against {@code model} — the pure-AST lints plus the model-context ones that
+     * need the rule's iteration (whether its error field lies under a repeatable group).
+     */
+    public List<Diagnostic> lint(BoundModel model, Rule rule) {
+        String rulePath = rule.group().path() + "/" + rule.name();
+        List<Diagnostic> out = new ArrayList<>(lint(rulePath, rule.condition()));
+        if (model.iteratesForErrorField(rule.errorField().path())) {
+            negativeUnderIteration(rule, model, rulePath, out);
+        }
+        return List.copyOf(out);
+    }
+
+    /**
+     * An iterating rule (error field under a repeatable group) whose condition carries a negative
+     * presence predicate with <em>no</em> positive presence guard anywhere — the case the kernel
+     * rejects with {@code MVK_NEG_CONDITION_IN_ITERATION} (KERNEL-FINDINGS §9). Conservative by
+     * design: the kernel's full positive/negative classification is context-sensitive (~800 lines,
+     * kernel-delegated to F4), so this fires only on the clearly-unguarded shape.
+     */
+    private void negativeUnderIteration(Rule rule, BoundModel model, String rulePath, List<Diagnostic> out) {
+        List<String[]> negatives = new ArrayList<>();
+        boolean[] hasPositiveGuard = {false};
+        collectPresence(rule.condition(), negatives, hasPositiveGuard);
+        if (negatives.isEmpty() || hasPositiveGuard[0]) {
+            return;
+        }
+        String[] negative = negatives.get(0);
+        String guardGroup = model.nearestRepeatableAncestor(rule.errorField().path())
+                .orElse(rule.group().path());
+        out.add(new Diagnostic(Severity.WARNING, DiagnosticSource.LINT,
+                Optional.of("RK_NEG_CONDITION_IN_ITERATION"),
+                "this rule iterates (error field '" + rule.errorField().path() + "' is under a repeatable group)"
+                        + " and uses the negative condition " + negative[0] + "(" + negative[1] + ") with no"
+                        + " positive presence guard — the kernel rejects unguarded negatives in iteration",
+                new Diagnostic.Where(rulePath, Optional.of(negative[0])),
+                Optional.of("guard it, e.g. GroupFilled(" + guardGroup + ") And <the existing condition>"),
+                Optional.of("a negative condition under iteration must be guarded by a positive presence check so"
+                        + " the kernel can bound the iteration (MVK_NEG_CONDITION_IN_ITERATION; KERNEL-FINDINGS §9)")));
+    }
+
+    /** Collect bare negative presence predicates and note whether any positive presence guard exists. */
+    private void collectPresence(Condition condition, List<String[]> negatives, boolean[] hasPositiveGuard) {
+        switch (condition) {
+            case FieldPresenceCondition f -> {
+                if (f.filled()) {
+                    hasPositiveGuard[0] = true;
+                } else {
+                    negatives.add(new String[] {"FieldNotFilled", f.field().path()});
+                }
+            }
+            case GroupPresenceCondition g -> {
+                if (g.filled()) {
+                    hasPositiveGuard[0] = true;
+                } else {
+                    negatives.add(new String[] {"GroupNotFilled", g.group().path()});
+                }
+            }
+            case FieldListPredicate p -> hasPositiveGuard[0] |= POSITIVE_PRESENCE.contains(p.operatorId());
+            case GroupListPredicate p -> hasPositiveGuard[0] |= POSITIVE_PRESENCE.contains(p.operatorId());
+            case LogicCondition l -> {
+                collectPresence(l.left(), negatives, hasPositiveGuard);
+                collectPresence(l.right(), negatives, hasPositiveGuard);
+            }
+            case ComparisonCondition ignored -> { }
+            case PatternCondition ignored -> { }
+            case ValueListCondition ignored -> { }
+            case FieldListValueListCondition ignored -> { }
+            case RepetitionNotUniqueCondition ignored -> { }
+            case CustomConditionRef ignored -> { }
+        }
     }
 
     /**
