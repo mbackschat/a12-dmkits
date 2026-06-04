@@ -118,8 +118,28 @@ The CLI's heavy costs are **distribution, not code**: self-contained packaging (
 
 | Proposed part | TBD — home | Note |
 |---|---|---|
+| **modelkit** (Phase 3, fork #8) — build/edit document-model *structure* (fields, groups, type-defs, includes) and save back, include-preserving | **`structure` layer parallel to `dsl`**, over the shared base — *not* on top of rulekit | uses public DM-JSON only (D9; no `betterbuilders`); the MM_Common metamodels are its schema oracle. See "the umbrella" below. |
 | **Codegen refs** (Phase 3) — static navigation counterpart to `context` (generated schema handles) | **TBD: new `codegen` unit** | jOOQ's generated-schema analogue; the L2b static counterpart to runtime navigation |
 | **TypeScript twin** (Phase 4, **design-informing only — do not propose implementation**) | **TBD: parallel implementation** | builds the same `model` index from the same DM-JSON content, shares the catalog JSON spine + DM-JSON write path. The public-only core boundary (§3) and data-only out-surface (§4) are precisely what keep this possible — do not let kernel types or internal-tier coupling leak into core, or the twin becomes impossible |
+
+### The umbrella (D10 revisit, 2026-06-05) — parallel kits over one model-core
+
+modelkit and rulekit are **parallel layers over a shared model-core**, not one atop the other. Target shape once modelkit ships as a peer:
+
+```
+ <umbrella: a12-kernel-kits>
+  ├── model-core   (index/read · GENERIC dsl-free DM-JSON write · validate · diagnostics)   ← shared base
+  ├── rulekit      (catalog · AST/dsl · rule builders)        ── over model-core
+  ├── modelkit     (Field/Group/TypeDef/Include builders)     ── over model-core (does NOT use dsl)
+  ├── adapter      (internal-tier read — serves both kits)
+  └── cli · skill  (front-ends spanning all kits)
+```
+
+In today's package graph (§2) this means `structure` sits **beside `dsl`**, both over `model`/`validate`/`write` — `structure` must not depend on `dsl`.
+
+**The one prep that enables it (do on the next `write` touch):** `write.ModelWriter` currently depends on `dsl` (it knows `Rule`). Split it: a **generic, `dsl`-free** half (`findElement`/`insertElement`/`removeElement`, include-preserving `toJson`, depending only on `model`) that both the rule write and the structural write build on; the `Rule`-node knowledge stays with the rule layer. Also add **source-artifact provenance** to the index (mirror of D14) so include-aware editing later writes to the owning artifact.
+
+**Rename trigger & timing (D10):** keep `a12-rulekit` while rules-only (accurate today); rename the repo + move the package root to the umbrella **when modelkit becomes a real peer**. Because renames of Maven coordinates + the Java package root are *cheapest before first publish*, lock those in the pre-publish window even if the repo rename waits. Don't module-split prematurely — modelkit starts as a **package** (`structure`) in core (it crosses no kernel boundary, so it hasn't "earned" a module, §1); extract `:model-core` + `:modelkit` only when size/coupling justify it.
 
 ## 6. Maintenance
 
