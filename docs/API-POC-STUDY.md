@@ -189,6 +189,29 @@ static List<Rule> nonNegativeMoneyRules(BoundModel m) {
 
 This is the bulk-authoring payoff: a *rule template* is a function `BoundModel → List<Rule>`; an LLM (or CI) applies it to any model.
 
+### 3.4a Authoring-time reuse over a multi-field structure — `sameAddress` 🔮 (needs field-vs-field equality; finding 18)
+
+When you author **many rules in Java that compare the same multi-field structure** (e.g. a seven-field address), a fragment removes the boilerplate — ordinary F5 combinator reuse, two levels deep. (Note: this is a convenience in the *authoring code*, not a transformation of the stored rule — the kernel DSL is flat, so the rendered `errorCondition` is the same string either way; what improves is the Java you write, not the persisted text.)
+
+```java
+// field level — "null-safe equality": both present and equal, OR both absent
+static Condition equalOrBothEmpty(FieldRef a, FieldRef b) {
+    return allFieldsFilled(a, b).and(m.str(a).eq(m.str(b)))      // 🔮 field-vs-field eq (string/enum: no scale)
+            .or(noFieldFilled(a, b));
+    // renders ( (AllFieldsFilled(a,b) And [a]==[b]) Or NoFieldFilled(a,b) ) — rulekit auto-parenthesizes
+}
+// address level — parametrized over WHICH fields hold the address
+record Address(StringRef street, StringRef zip, StringRef city, /* … 7 */) {}
+static Condition sameAddress(Address x, Address y) {
+    return allOf(equalOrBothEmpty(x.street().field(), y.street().field()),
+                 equalOrBothEmpty(x.zip().field(),    y.zip().field()), /* … */);
+}
+// each rule then reads at intent level — e.g. "the warehouse ships from the sender's or the buyer's address":
+m.rule(g).when(warehouseAddr.filled().and(sameAddress(warehouse, sender).or(sameAddress(warehouse, buyer)))) …
+```
+
+The fragment is just a function — the F5 payoff for repetitive authoring. The one missing primitive is **field-vs-field equality** (`a.eq(b)`) — buildable *now* for string/enum (no scale), number deferred behind the D13 scale pre-check (finding 18). (Later: a `sameAddress(GroupRef, GroupRef)` that zips like-named fields via the model index — Level-2 navigation.)
+
 ### 3.5 n-ary composition ✅ (finding 10 — implemented 2026-06-04)
 
 ```java
@@ -496,4 +519,6 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
     ```
     **First build increment:** promote `Problem` → `Diagnostic` (code/where/fix/explain/source) + catalog-join for kernel problems + JSON output; lints, "did you mean", and span-pointing follow. Recorded as proposal **F4a**.
 
-*(4–6 shape Phase-2 API design; 7–8 are proposal §12/§14 refinements; 9–13 are scheduled — 9/10/12-describe-find/13-dump Phase 1, the rest Phase 2; 14 is the meta-instrument now in CLAUDE.md; 15–16 are increment/authoring practice; 17 is F4a, build-sequenced after the current Phase-1 backlog.)*
+18. *(new, 2026-06-04)* **Field-vs-field comparison is the prioritized next primitive.** Comparing two fields (`[A] == [B]`, `[A] <= [B]`) is a basic capability rulekit lacks (comparisons take literals only) — it makes whole classes of ordinary rules inexpressible: confirmation match (`[Email] == [EmailConfirm]`), range sanity (`[MinQty] <= [MaxQty]`), reconciliation (`[Net] + [Tax] == [Gross]`), and the multi-field-structure reuse of §3.4a. The recordable consequence is **prioritization**: field-vs-field (currently the vague "D13 later") blocks *two* independent high-value features — those cross-field rules **and** `$` correlation (§5.2/7d). The cheap unlock is real: **string/enum field-vs-field equality has no scale**, so it's buildable now exactly like date ordering was (slice 9a); only **number** field-vs-field needs the D13 decimal-scale pre-check. Recommended order: string/enum field-vs-field equality (near-term) → number field-vs-field + scale pre-check.
+
+*(4–6 shape Phase-2 API design; 7–8 are proposal §12/§14 refinements; 9–13 are scheduled — 9/10/12-describe-find/13-dump Phase 1, the rest Phase 2; 14 is the meta-instrument now in CLAUDE.md; 15–16 are increment/authoring practice; 17 is F4a; 18 prioritizes field-vs-field comparison.)*
