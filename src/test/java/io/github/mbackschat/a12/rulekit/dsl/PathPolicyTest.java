@@ -53,4 +53,22 @@ class PathPolicyTest {
         Condition c = m.field("/Subscription/Addons/MonthlyFee").filled();
         assertEquals("FieldFilled(/Subscription/Addons/MonthlyFee)", new DslRenderer().render(c));
     }
+
+    @Test
+    void singleQuotesAKeywordNamedPathSegment() {
+        // A field named like a DSL keyword is a parse error unquoted (MVK_UNEXPECTED_TOKEN, probe-verified);
+        // 'Length' is the grammar's escape. Detection uses the catalog keywords ('Length' is one).
+        Condition c = new FieldPresenceCondition(
+                new FieldRef("/Order/Length", io.github.mbackschat.a12.rulekit.model.ValueKind.NUMBER), true);
+
+        assertEquals("FieldFilled(/Order/'Length')", new DslRenderer().render(c));
+        assertEquals("FieldFilled('Length')", new DslRenderer(ConditionLanguage.EN, "/Order").render(c));
+    }
+
+    @Test
+    void leavesOrdinaryPathSegmentsUnquoted() {
+        Condition c = m.field("/Subscription/Addons/MonthlyFee").filled();
+        assertEquals("FieldFilled(MonthlyFee)",
+                new DslRenderer(ConditionLanguage.EN, "/Subscription/Addons").render(c));
+    }
 }

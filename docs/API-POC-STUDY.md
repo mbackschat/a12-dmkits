@@ -499,7 +499,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 | Gotcha/INFO channel — catalog `gotchas` keyed by operators a rule uses (`lint.Advisor`, `RK_GOTCHA`) | ✅ 2026-06-04 (descends nested `Calculation`s via `dsl.OperatorUsage`); gotcha-relevance curation ✅ (`GotchaKind` SURPRISE/AUTHORING/RENDERING, suppresses trivia) |
 | Message *interpolation*, fork-9 path policy, `advice()` | 🔮 Phase-1 remainder (F2a; F9) |
 | F9a model-context: `describe()` model card + `find()` name resolution (`context.ModelContext`) | ✅ Phase-1 half (2026-06-04); `whereUsed`/`explain`/`dump` 🔮 |
-| fork #9 / F3a path policy — rule/computation paths rendered relative to the group (`../` to siblings) | ✅ relative rendering (2026-06-04, `DslRenderer` base group, kernel-verified); keyword-segment quoting 🔮 |
+| fork #9 / F3a path policy — relative-to-group paths (`../` to siblings) + keyword-segment quoting | ✅ 2026-06-04 (kernel-verified): relative rendering + single-quoting keyword-named segments (catalog keywords; full lexer set rides N3) |
 | ingest / explain / diff / LLM loop | 🔮 Phase 2 (adapter) |
 | TS twin | 🔮 Phase 4 |
 

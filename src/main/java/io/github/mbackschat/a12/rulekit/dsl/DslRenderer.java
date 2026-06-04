@@ -22,6 +22,7 @@ public final class DslRenderer {
     private final OperatorCatalog catalog;
     private final ConditionLanguage language;
     private final String baseGroup;
+    private final java.util.Set<String> keywords;
 
     public DslRenderer() {
         this(ConditionLanguage.EN);
@@ -44,6 +45,10 @@ public final class DslRenderer {
         this.catalog = catalog;
         this.language = language;
         this.baseGroup = baseGroup;
+        this.keywords = catalog.entries().stream()
+                .flatMap(e -> java.util.stream.Stream.of(e.keywords().en(), e.keywords().de()))
+                .filter(k -> k != null && !k.isBlank())
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
     }
 
     /**
@@ -53,7 +58,39 @@ public final class DslRenderer {
      * authoring norm.
      */
     private String path(String absolute) {
-        return baseGroup == null ? absolute : relativize(baseGroup, absolute);
+        String form = baseGroup == null ? absolute : relativize(baseGroup, absolute);
+        return quoteKeywordSegments(form);
+    }
+
+    /**
+     * Single-quote any path segment that collides with a DSL keyword (fork #9 / F3a) — the kernel
+     * rejects an unquoted keyword-named entity with {@code MVK_UNEXPECTED_TOKEN} (KERNEL-FINDINGS
+     * §paths), and {@code '<name>'} is the grammar's escape (NameOhnePunktMitQuotes). Detection uses
+     * the catalog's operator keywords; the full lexer keyword set rides the N3 parity anchor.
+     */
+    private String quoteKeywordSegments(String renderedPath) {
+        String[] segments = renderedPath.split("/", -1);
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < segments.length; i++) {
+            if (i > 0) {
+                out.append('/');
+            }
+            out.append(quoteSegment(segments[i]));
+        }
+        return out.toString();
+    }
+
+    private String quoteSegment(String segment) {
+        if (segment.isEmpty() || segment.equals("..")) {
+            return segment;
+        }
+        String name = segment;
+        String suffix = "";
+        if (name.endsWith("*")) {           // a flattened repetition segment — quote the name, keep the '*'
+            suffix = "*";
+            name = name.substring(0, name.length() - 1);
+        }
+        return keywords.contains(name) ? "'" + name + "'" + suffix : segment;
     }
 
     private static String relativize(String base, String absolute) {
