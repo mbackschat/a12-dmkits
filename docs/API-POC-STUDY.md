@@ -45,6 +45,13 @@ m.num(FEE).matches(".*")               // does not compile — patterns work on 
                                        //   (MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON erased; enums too)
 email.matches("(")                     // fails fast — not a compilable regex (MVK_INVALID_PATTERN pre-checked;
                                        //   the kernel's portable-subset gate has the final word: lookbehind dies at F4)
+renew.in("x")                          // does not exist — value lists exclude booleans/confirms
+                                       //   (MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED erased)
+fee.in(10.50)                          // does not compile — value-list numbers are INTEGER literals only
+                                       //   (long... signature; a decimal is a kernel parse error)
+tier.in("PRO", "GOLD")                 // fails fast — GOLD is outside the enum domain
+noFieldValueIncludedInValueList(List.of("x"), name, fee)  // does not compile — field lists must be
+                                       //   type-homogeneous (MVK_VARYING_TYPES_NOT_ALLOWED erased)
 ```
 
 Each erased mistake corresponds to a **kernel-verified** rejection code (see `KERNEL-INTEGRATION-NOTES.md`) — the type system is the documentation.
@@ -120,6 +127,14 @@ public final class SubscriptionIdioms {
     /** Reserved-prefix idiom ✅ — the shape of the metamodel's own HEADER_ID_STARTS_WITH_XML rule. */
     public static Condition reservedPrefix(StringRef id) {
         return id.matches("[xX][mM][lL].*");                       // anchored whole-value match (§7)
+    }
+    /** Allow-list idiom ✅ — enum membership beats chained Or; the domain is pre-checked. */
+    public static Condition rushOrder(EnumRef priority) {
+        return priority.in("EXPRESS", "OVERNIGHT");                // FieldValueIncludedInValueList(…)
+    }
+    /** Placeholder sweep ✅ — one quantifier over several same-type fields (In-list shape). */
+    public static Condition noTestPlaceholders(StringRef first, StringRef... more) {
+        return noFieldValueIncludedInValueList(List.of("test", "demo", "n/a"), first, more);
     }
 }
 ```
@@ -411,7 +426,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 
 | Study element | Status |
 |---|---|
-| Handles (`num/str/enumOf/bool/confirm/group`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–4 + base set — incl. `matches`/`violates` patterns) |
+| Handles (`num/str/enumOf/bool/confirm/group`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–5 + base set — incl. patterns and value lists) |
 | §3.1 fragments, §3.3 library pattern, §6 catalog queries, §2 type-steering | ✅ pattern works today on covered operators |
 | §3.2 domain fragments (`withinTolerance`, `chronological`, `uniqueBy`) | 🔮 their operators are corpus items 6–7 + tolerance |
 | §6c navigation (Level 1: `fields()`/`groups()`/`fieldAt` + strict narrowing), §3.5 `allOf`/`anyOf` | ✅ implemented 2026-06-04 (findings 9–10) |

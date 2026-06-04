@@ -48,6 +48,15 @@ public final class DslRenderer {
                     + ")";
             case PatternCondition p ->
                     "[" + p.field().path() + "] " + keyword(p.operatorId()) + " " + quote(p.regex());
+            case ValueListCondition v -> keyword(v.operatorId()) + "(" + v.field().path() + ", "
+                    + v.values().stream().map(this::render).collect(java.util.stream.Collectors.joining(", "))
+                    + ")";
+            case FieldListValueListCondition v -> keyword(v.operatorId()) + "("
+                    + v.fields().stream().map(FieldRef::path).collect(java.util.stream.Collectors.joining(", "))
+                    // 'In' is a language-independent grammar literal (inOp), like the comparison symbols
+                    + " In "
+                    + v.values().stream().map(this::render).collect(java.util.stream.Collectors.joining(", "))
+                    + ")";
         };
     }
 

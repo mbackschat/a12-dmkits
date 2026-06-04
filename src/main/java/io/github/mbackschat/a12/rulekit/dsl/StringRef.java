@@ -27,6 +27,25 @@ public record StringRef(FieldRef field) {
         return new NumberExpr(new LengthOf(field));
     }
 
+    /** {@code FieldValueIncludedInValueList(field, "v1", …)} — membership in a literal list. */
+    public Condition in(String first, String... rest) {
+        return new ValueListCondition(field, true, stringValues(first, rest));
+    }
+
+    /** {@code FieldValueNotIncludedInValueList(field, "v1", …)}. */
+    public Condition notIn(String first, String... rest) {
+        return new ValueListCondition(field, false, stringValues(first, rest));
+    }
+
+    static java.util.List<Calculation> stringValues(String first, String... rest) {
+        var values = new java.util.ArrayList<Calculation>();
+        values.add(new StringLiteral(first));
+        for (String v : rest) {
+            values.add(new StringLiteral(v));
+        }
+        return values;
+    }
+
     /** {@code [field] PatternMatched "regex"} — anchored whole-value match (KERNEL-SEMANTICS §7). */
     public Condition matches(String regex) {
         return new PatternCondition(field, true, checkRegex(regex));

@@ -29,6 +29,19 @@ The condition lexer's rule is `StringLiteral : '"' ( '""' | ~["] )* '"'` — an 
 
 In DM-JSON, a category's `values` list pairs **positionally** with the enumeration's `values` (entry *i* categorizes enum value *i*); the comparison domain is the category's distinct value set. Codes: comparing to one of the *enum's own* values instead of a *category* value → **`MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON`**; an unknown category name → **`MVK_CATEGORY_UNKOWN`** (the kernel's spelling); `->` on a non-enumeration field → **`MVK_NO_ENUMERATION`**. Curiosity: `[Enum -> Category] == [Enum]` (category vs. plain enum field) is *accepted*. *(Locked: N7 `EnumCategory` examples + `RenderConditionTest.categoryHandleErasesTheVerifiedCategoryMistakes`.)*
 
+## §8 supplement — the value-list membership family (2026-06-04 experiments)
+
+Five operators in two grammar shapes, not covered by KERNEL-SEMANTICS. **Shape A** `FieldValueIncludedInValueList(field, v1, …)` / `FieldValueNotIncludedInValueList(…)` (DE: `FeldWertInWerteListe`/`FeldWertNichtInWerteListe`); **shape B** `AtLeastOne|No|NotAllFieldValue(s)IncludedInValueList(f1, f2 In v1, …)` (DE: `MindestensEin…`/`Kein…`/`NichtAlle…`; `In` is a language-independent grammar literal like the symbols). Slot rules:
+
+- **Only string, enum, and number fields participate** — a boolean/confirm field draws **`MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED`** ("only allowed to use string fields, enumerations or numbers (including amounts)").
+- **Numeric values are integer literals only** — the grammar's value-list `number` is `'-'? digits`; a decimal (`10.50`) is a *parse error* (`MVK_UNEXPECTED_TOKEN`), even against a scale-2 field. Negative integers are fine.
+- **Value types must match the field kind** — string field vs numbers or number field vs strings → **`MVK_INVALID_TYPES_FOR_COMPARISON`** (the plural-`TYPES` sibling of the comparison code).
+- **Enum domains are enforced** — shape A: an out-of-domain value → **`MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION`**; shape B → **`MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY`**.
+- **Shape B field lists must be type-homogeneous** — mixing a string and a number (or enum) field → **`MVK_VARYING_TYPES_NOT_ALLOWED`** ("All fields must be the same type"). A single-field list is legal.
+- The field slot is a **bare path** (a bracketed `[Field]` is a parse error); the value list may also contain **field references** (`[OtherField]`) and may mix them with literals; shape B's right side accepts an entity list or strings (no numbers, per grammar).
+
+*(Locked: `RuleValidatorTest.locksValueListSlotRules` + N7 examples of all five operators. Field-valued lists and `*`-path field lists are deferred — the latter to the iteration cluster.)*
+
 ## §9 supplement — field/group predicates are type-directional
 
 `GroupFilled(field)` → **`MVK_NO_FIELDS_ALLOWED`** ("Only groups or root groups are allowed"); `FieldFilled(group)` → **`MVK_NO_GROUPS_ALLOWED`**. Also re-confirmed experimentally: an enclosing group reference (`GroupFilled(G)`) satisfies the error-field-referenced rule for a field inside `G` — a bare `GroupFilled(ShippingAddress)` condition with error field `ShippingAddress/Street` validates. *(Locked: N7 `GroupFilled`/`FieldFilled` invalid examples + `RuleAuthoringTest.acceptsAnEnclosingGroupReferenceAsErrorFieldReference`.)*

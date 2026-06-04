@@ -35,7 +35,7 @@ A read-only **analysis** of two real A12 model corpora, used to prioritize what 
 | **6 / 1 / 1 / 1** | `Date(...)` / `DifferenceInDays` / `DifferenceInYears` / `AddMonths` | ❌ date family |
 | 5 | `->` (enum category) | ✅ (`EnumRef.category(...)`) |
 | 4 / 4 / 3 / 1 / 1 | `RangeAsString` / (group: `AtLeastOneGroupFilled` ✅) / `PatternViolated` ✅ / `GroupNotFilled` ✅ / `Length` ✅ | partial (`RangeAsString` ❌) |
-| ~2 | value-list membership (`IncludedInValueList`, `NoFieldValue…InValueList`) | ❌ |
+| ~2 | value-list membership (`IncludedInValueList`, `NoFieldValue…InValueList`) | ✅ (`in`/`notIn` + quantifier statics) |
 
 ## Abstract pattern inventory (generic skeletons — to transform into our own domains)
 
@@ -75,7 +75,7 @@ Real conditions include `;;` line comments, `\r\n` line breaks, and case-variant
 | 46 | `GroupFilled` | ✅ |
 | **45** | `CustomCondition` | ❌ (the app-defined escape hatch) |
 | 23 | `True` / `False` literals | ✅ |
-| **23** | value-list membership (`…InValueList`) | ❌ |
+| 23 | value-list membership (`…InValueList`) | ✅ (literal lists; `*`-path lists ride the iteration cluster) |
 | 14 / 13 | `PatternMatched` / `PatternViolated` | ✅ (`StringRef.matches`/`violates`) |
 | 7 | `NumberOfFilledFields` | ❌ |
 
@@ -89,7 +89,7 @@ Counts shown as C1 (app) + C2 (metamodel). Order balances combined frequency aga
 2. ~~**Group predicates**~~ — ✅ **done 2026-06-04** (all seven: `GroupFilled`/`GroupNotFilled` + five group-list quantifiers; `MVK_NO_FIELDS_ALLOWED`/`MVK_NO_GROUPS_ALLOWED` made unrepresentable; enclosing-group-counts-as-error-field-reference verified).
 3. ~~**Enum-category navigation**~~ — ✅ **done 2026-06-04** (`EnumRef.category(...)` → validated `CategoryRef`; `MVK_CATEGORY_UNKOWN`/`MVK_NO_ENUMERATION`/`MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON` made unrepresentable or fail-fast).
 4. ~~**Pattern operators**~~ — ✅ **done 2026-06-04** (`StringRef.matches/violates` → `PatternCondition`; left-side bare-string-field + right-side string-constant slot rules made unrepresentable; `Pattern.compile` fail-fast for `MVK_INVALID_PATTERN` with the portable-subset gate kernel-delegated — and the increment uncovered + fixed the renderer's string-literal escaping: quote-doubling, not backslashes; KERNEL-FINDINGS §7).
-5. **Value-list membership** — `…IncludedInValueList` family (≈2 + 23). *Med.*
+5. ~~**Value-list membership**~~ — ✅ **done 2026-06-04** (all five operators: `in`/`notIn` on `StringRef`/`NumberRef`/`EnumRef` + the three `Dsl` field-list quantifiers; integer-only numbers, kind-matching, type-homogeneous field lists, and the bool/confirm exclusion all unrepresentable; enum domains pre-checked. Field-valued lists + `*`-path field lists deferred to the iteration cluster).
 6. **`NumberOfFilledFields` aggregate** (11 + 7) → comparable numeric expression. *Med.*
 7. **Iteration / structural cluster** — `*` flatten (28 + 137), `RepetitionNotUnique` (4 + 57), `$` correlation (21 + 0), `CurrentRepetition` (8), `For` semantic-index (8), `Having` (6). *High effort, highest value — model-awareness (§5a) pays off here. Its own multi-step phase; Corpus 2 shows it's even more important than Corpus 1 alone suggested.*
 8. **`CustomCondition`** (0 + 45) — the app-defined boolean escape hatch (Zod `.refine` analogue). *Med; emit an opaque named condition the kernel resolves.*

@@ -170,6 +170,37 @@ class RuleValidatorTest {
     }
 
     @Test
+    void locksValueListSlotRules() {
+        // Verified 2026-06-04 (KERNEL-FINDINGS): value-list numbers are INTEGER literals only —
+        // a decimal is a grammar-level parse error, even against a scale-2 field.
+        DraftRule decimal = new DraftRule(
+                "/Subscription/Billing", "DecimalListRule", "../BaseFee",
+                "FieldValueIncludedInValueList(BaseFee, 10.50)", "VL_DEC", "ERROR");
+        ValidationResult r1 = new RuleValidator().check(modelJson, decimal);
+        assertFalse(r1.ok(), "decimal literals are not allowed in value lists");
+
+        // Boolean/confirm fields are excluded from the family.
+        DraftRule boolField = new DraftRule(
+                "/Subscription", "BoolListRule", "../AutoRenew",
+                "FieldValueIncludedInValueList(AutoRenew, \"x\")", "VL_BOOL", "ERROR");
+        ValidationResult r2 = new RuleValidator().check(modelJson, boolField);
+        assertFalse(r2.ok(), "boolean fields are not allowed in value lists");
+        assertTrue(r2.problems().stream()
+                        .anyMatch(p -> p.mvkCode().filter("MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED"::equals).isPresent()),
+                () -> "expected MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED, got: " + r2.problems());
+
+        // Shape B field lists must be type-homogeneous.
+        DraftRule mixed = new DraftRule(
+                "/Subscription/Billing", "MixedListRule", "../InvoiceEmail",
+                "NoFieldValueIncludedInValueList(InvoiceEmail, BaseFee In \"x\")", "VL_MIX", "ERROR");
+        ValidationResult r3 = new RuleValidator().check(modelJson, mixed);
+        assertFalse(r3.ok(), "mixed-type field lists must be rejected");
+        assertTrue(r3.problems().stream()
+                        .anyMatch(p -> p.mvkCode().filter("MVK_VARYING_TYPES_NOT_ALLOWED"::equals).isPresent()),
+                () -> "expected MVK_VARYING_TYPES_NOT_ALLOWED, got: " + r3.problems());
+    }
+
+    @Test
     void rejectsATypeIllegalComparison() {
         // Ordering a string ([Name]) is a type error — MVK_INVALID_TYPE_FOR_COMPARISON.
         DraftRule rule = new DraftRule(

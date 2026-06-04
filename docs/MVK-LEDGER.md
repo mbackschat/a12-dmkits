@@ -82,15 +82,15 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_INVALID_RAW_TYPE` | unclassified | — (experiment queue) |
 | `MVK_INVALID_ROOT_GROUP` | unclassified | — (experiment queue) |
 | `MVK_INVALID_ROOT_GROUP_CONSTR` | unclassified | — (experiment queue) |
-| `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION` | unclassified | — (experiment queue) |
+| `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION` | pre-checked | `EnumRef.in/notIn` check every value against the enum domain (locked: `RenderConditionTest.enumValueListsPreCheckTheDomain`) |
 | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_CATEGORY` | unclassified | — (experiment queue) |
-| `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY` | unclassified | — (experiment queue) |
+| `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY` | pre-checked | the `Dsl` enum value-list quantifiers check every value against every listed field's domain |
 | `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON` | pre-checked | `EnumRef.is`/`CategoryRef.is` validate against the model domain |
 | `MVK_INVALID_SUPPRESSED_WARNING` | pending | no `@SuppressWarning` surface yet (only MVK_INVALID_COMPARE_DEC_PLACES is suppressible) |
 | `MVK_INVALID_TABLE_ENUM` | unclassified | — (experiment queue) |
 | `MVK_INVALID_TIME` | unclassified | — (experiment queue) |
 | `MVK_INVALID_TYPE` | unclassified | — (experiment queue) |
-| `MVK_INVALID_TYPES_FOR_COMPARISON` | unclassified | — (experiment queue) |
+| `MVK_INVALID_TYPES_FOR_COMPARISON` | erased | value-list handles bind the value type to the field kind (`StringRef.in(String…)`, `NumberRef.in(long…)`; locked: N7 `FieldValueNotIncludedInValueList` invalidExample) |
 | `MVK_INVALID_TYPE_FOR_COMPARISON` | erased | no ordering methods on non-orderable handles (`StringRef` has no `le`); N7 invalid examples |
 | `MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON` | erased | only `StringRef` offers `matches`/`violates` (enums/numbers/booleans excluded by type; locked: N7 `PatternMatched` invalidExample) |
 | `MVK_INVALID_TYPE_FOR_TOLERANCE_OP` | unclassified | — (experiment queue) |
@@ -141,7 +141,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_NUMBER_AND_NON_NUMBER` | unclassified | — (experiment queue) |
 | `MVK_ONLY_CONSTANTS_USED` | unclassified | — (experiment queue) |
 | `MVK_ONLY_ENUMS_ALLOWED` | unclassified | — (experiment queue) |
-| `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` | unclassified | — (experiment queue) |
+| `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` | erased | `BoolRef`/`ConfirmRef` offer no `in`/`notIn` (locked: `RuleValidatorTest.locksValueListSlotRules` + N7 `FieldValueIncludedInValueList` invalidExample) |
 | `MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED` | unclassified | — (experiment queue) |
 | `MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED_NO_FIELD` | unclassified | — (experiment queue) |
 | `MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED` | unclassified | — (experiment queue) |
@@ -181,7 +181,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_TOO_MANY_DIV_FOR_CALC` | unclassified | — (experiment queue) |
 | `MVK_TOO_MANY_PARENT_GROUPS` | unclassified | — (experiment queue) |
 | `MVK_TOO_MANY_POW_FOR_CALC` | unclassified | — (experiment queue) |
-| `MVK_VARYING_TYPES_NOT_ALLOWED` | unclassified | — (experiment queue) |
+| `MVK_VARYING_TYPES_NOT_ALLOWED` | erased | the `Dsl` value-list quantifiers take all-`StringRef` or all-`EnumRef` lists (locked: `RuleValidatorTest.locksValueListSlotRules` + N7 `AtLeastOneFieldValueIncludedInValueList` invalidExample) |
 | `MVK_WILDCARDS_REQUIRED` | unclassified | — (experiment queue) |
 | `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED` | unclassified | — (experiment queue) |
 | `MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED` | unclassified | — (experiment queue) |
@@ -326,4 +326,4 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_YES_NO_INVALID_2` | unclassified | — (experiment queue) |
 | `MVK_YES_VALUE_MISSING` | unclassified | — (experiment queue) |
 
-*Classified: 26 of 300 (codes may appear in more than one source); the rest queue up as their operator families land or via dedicated experiments.*
+*Classified: 31 of 300 (codes may appear in more than one source); the rest queue up as their operator families land or via dedicated experiments.*

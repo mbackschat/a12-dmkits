@@ -50,4 +50,34 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
         }
         return new ComparisonCondition(field.value(), op, new EnumValueLiteral(value));
     }
+
+    /**
+     * {@code FieldValueIncludedInValueList(field, "v1", …)} — every value is checked against the
+     * enum domain (pre-checks {@code MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION}).
+     */
+    public Condition in(String first, String... rest) {
+        return new ValueListCondition(field, true, checkedValues(first, rest));
+    }
+
+    /** {@code FieldValueNotIncludedInValueList(field, "v1", …)} — domain-checked (see {@link #in}). */
+    public Condition notIn(String first, String... rest) {
+        return new ValueListCondition(field, false, checkedValues(first, rest));
+    }
+
+    private List<Calculation> checkedValues(String first, String... rest) {
+        var values = new java.util.ArrayList<Calculation>();
+        values.add(checkedLiteral(first));
+        for (String v : rest) {
+            values.add(checkedLiteral(v));
+        }
+        return values;
+    }
+
+    EnumValueLiteral checkedLiteral(String value) {
+        if (!allowedValues.contains(value)) {
+            throw new IllegalArgumentException("'" + value + "' is not a value of " + field.path()
+                    + " — allowed: " + allowedValues + " (MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION)");
+        }
+        return new EnumValueLiteral(value);
+    }
 }

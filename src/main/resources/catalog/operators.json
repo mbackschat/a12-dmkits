@@ -371,5 +371,87 @@
     "validExample": { "dsl": "FieldFilled(BillingAddress/PostalCode) And [BillingAddress/PostalCode] PatternViolated \"[0-9]{5}\"", "note": "fires when a present postal code is not exactly five digits" },
     "invalidExample": { "dsl": "[CustomerName] PatternViolated \"(\"", "error": "MVK_INVALID_PATTERN", "fix": "the right side must be a valid (portable-subset) regular expression" },
     "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "FieldValueIncludedInValueList",
+    "kind": "predicate",
+    "keywords": { "en": "FieldValueIncludedInValueList", "de": "FeldWertInWerteListe" },
+    "operands": [ { "type": "string-enum-or-number-field" }, { "type": "literal-list" } ],
+    "returns": "boolean",
+    "meaning": "True iff the field's value equals one of the listed values.",
+    "constraints": [
+      "the field must be a string, enumeration, or number field (no booleans/confirms)",
+      "the field is a bare path (no brackets); values follow as a comma list",
+      "value types must match the field's kind; numeric values are INTEGER literals only (a decimal is a parse error)",
+      "for an enumeration every listed value must be in the enum's domain"
+    ],
+    "gotchas": [
+      "field-value entries ([OtherField]) are also legal in the list — mixing them with literals is fine"
+    ],
+    "validExample": { "dsl": "FieldValueIncludedInValueList(Priority, \"EXPRESS\", \"OVERNIGHT\")", "note": "true when Priority is one of the rush classes" },
+    "invalidExample": { "dsl": "FieldValueIncludedInValueList(ExpressShipping, \"x\")", "error": "MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED", "fix": "value lists work on string/enum/number fields — compare a boolean with == True/False" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "FieldValueNotIncludedInValueList",
+    "kind": "predicate",
+    "keywords": { "en": "FieldValueNotIncludedInValueList", "de": "FeldWertNichtInWerteListe" },
+    "operands": [ { "type": "string-enum-or-number-field" }, { "type": "literal-list" } ],
+    "returns": "boolean",
+    "meaning": "True iff the field's value equals none of the listed values.",
+    "constraints": [
+      "same slot rules as FieldValueIncludedInValueList (string/enum/number field, matching value types, integer-only numbers)"
+    ],
+    "gotchas": [
+      "an empty field is not evaluated — guard with FieldFilled when the rule should fire only on present values"
+    ],
+    "validExample": { "dsl": "FieldFilled(ProductCode) And FieldValueNotIncludedInValueList(ProductCode, \"LEGACY-1\", \"LEGACY-2\")", "note": "fires when a present product code is outside the supported set" },
+    "invalidExample": { "dsl": "FieldValueNotIncludedInValueList(Quantity, \"x\")", "error": "MVK_INVALID_TYPES_FOR_COMPARISON", "fix": "a number field needs integer values: FieldValueNotIncludedInValueList(Quantity, 1, 2)" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "AtLeastOneFieldValueIncludedInValueList",
+    "kind": "predicate",
+    "keywords": { "en": "AtLeastOneFieldValueIncludedInValueList", "de": "MindestensEinFeldWertInWerteListe" },
+    "operands": [ { "type": "homogeneous-field-list" }, { "type": "literal-list" } ],
+    "returns": "boolean",
+    "meaning": "True iff at least one of the listed fields holds one of the listed values.",
+    "constraints": [
+      "syntax: Name(f1, f2 In v1, v2) — the In separator is language-independent",
+      "all listed fields must share one type (MVK_VARYING_TYPES_NOT_ALLOWED)",
+      "values are string literals (or field references); for enums each value must be in the domain"
+    ],
+    "gotchas": [],
+    "validExample": { "dsl": "AtLeastOneFieldValueIncludedInValueList(ShippingAddress/Street, BillingAddress/PostalCode In \"unknown\", \"n/a\")", "note": "true when any address field carries a placeholder value" },
+    "invalidExample": { "dsl": "AtLeastOneFieldValueIncludedInValueList(CustomerName, Quantity In \"x\")", "error": "MVK_VARYING_TYPES_NOT_ALLOWED", "fix": "list only same-type fields — here a string and a number field are mixed" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "NoFieldValueIncludedInValueList",
+    "kind": "predicate",
+    "keywords": { "en": "NoFieldValueIncludedInValueList", "de": "KeinFeldWertInWerteListe" },
+    "operands": [ { "type": "homogeneous-field-list" }, { "type": "literal-list" } ],
+    "returns": "boolean",
+    "meaning": "True iff none of the listed fields holds any of the listed values.",
+    "constraints": [
+      "syntax and slot rules as AtLeastOneFieldValueIncludedInValueList"
+    ],
+    "gotchas": [],
+    "validExample": { "dsl": "NoFieldValueIncludedInValueList(CustomerName, ProductCode In \"test\", \"demo\")", "note": "true when no test placeholders are present" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "NotAllFieldValuesIncludedInValueList",
+    "kind": "predicate",
+    "keywords": { "en": "NotAllFieldValuesIncludedInValueList", "de": "NichtAlleFeldWerteInWerteListe" },
+    "operands": [ { "type": "homogeneous-field-list" }, { "type": "literal-list" } ],
+    "returns": "boolean",
+    "meaning": "True iff at least one of the listed fields holds a value outside the listed values.",
+    "constraints": [
+      "syntax and slot rules as AtLeastOneFieldValueIncludedInValueList"
+    ],
+    "gotchas": [],
+    "validExample": { "dsl": "NotAllFieldValuesIncludedInValueList(CustomerName, ProductCode In \"a\", \"b\")", "note": "true unless every listed field's value is in the list" },
+    "sinceKernel": "30.8.x"
   }
 ]

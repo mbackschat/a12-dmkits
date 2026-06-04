@@ -99,4 +99,27 @@ public record NumberRef(FieldRef field, int scale) {
     public Condition ne(BigDecimal literal) {
         return asNumber().ne(literal);
     }
+
+    /**
+     * {@code FieldValueIncludedInValueList(field, n1, …)} — membership in a literal list. The
+     * {@code long} signature is the kernel law: value-list numbers are integer literals only
+     * (a decimal is a grammar-level parse error — KERNEL-FINDINGS).
+     */
+    public Condition in(long first, long... rest) {
+        return new ValueListCondition(field, true, integerValues(first, rest));
+    }
+
+    /** {@code FieldValueNotIncludedInValueList(field, n1, …)} — integer literals only (see {@link #in}). */
+    public Condition notIn(long first, long... rest) {
+        return new ValueListCondition(field, false, integerValues(first, rest));
+    }
+
+    private static java.util.List<Calculation> integerValues(long first, long... rest) {
+        var values = new java.util.ArrayList<Calculation>();
+        values.add(NumberLiteral.of(first));
+        for (long v : rest) {
+            values.add(NumberLiteral.of(v));
+        }
+        return values;
+    }
 }

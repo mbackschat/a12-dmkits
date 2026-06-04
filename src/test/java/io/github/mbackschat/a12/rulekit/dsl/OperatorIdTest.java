@@ -68,6 +68,11 @@ class OperatorIdTest {
         assertResolves("EnumCategory");
         assertResolves("PatternMatched");
         assertResolves("PatternViolated");
+        assertResolves("FieldValueIncludedInValueList");
+        assertResolves("FieldValueNotIncludedInValueList");
+        for (ValueListQuantifier q : ValueListQuantifier.values()) {
+            assertResolves(q.operatorId());
+        }
         for (GroupQuantifier q : GroupQuantifier.values()) {
             assertResolves(q.operatorId());
         }

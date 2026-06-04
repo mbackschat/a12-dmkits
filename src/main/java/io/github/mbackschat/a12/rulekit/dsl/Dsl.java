@@ -38,6 +38,68 @@ public final class Dsl {
         return field.violates(regex);
     }
 
+    // --- field-list × value-list quantifiers — Name(f1, f2 In v1, v2) --------------------------
+    // Typed entry points keep the field list type-homogeneous (MVK_VARYING_TYPES_NOT_ALLOWED
+    // erased); the enum variants domain-check every value against every field (the kernel's
+    // MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY pre-checked).
+
+    public static Condition atLeastOneFieldValueIncludedInValueList(
+            java.util.List<String> values, StringRef first, StringRef... rest) {
+        return stringListQuantifier(ValueListQuantifier.AT_LEAST_ONE_FIELD_VALUE_INCLUDED, values, first, rest);
+    }
+
+    public static Condition noFieldValueIncludedInValueList(
+            java.util.List<String> values, StringRef first, StringRef... rest) {
+        return stringListQuantifier(ValueListQuantifier.NO_FIELD_VALUE_INCLUDED, values, first, rest);
+    }
+
+    public static Condition notAllFieldValuesIncludedInValueList(
+            java.util.List<String> values, StringRef first, StringRef... rest) {
+        return stringListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, values, first, rest);
+    }
+
+    public static Condition atLeastOneFieldValueIncludedInValueList(
+            java.util.List<String> values, EnumRef first, EnumRef... rest) {
+        return enumListQuantifier(ValueListQuantifier.AT_LEAST_ONE_FIELD_VALUE_INCLUDED, values, first, rest);
+    }
+
+    public static Condition noFieldValueIncludedInValueList(
+            java.util.List<String> values, EnumRef first, EnumRef... rest) {
+        return enumListQuantifier(ValueListQuantifier.NO_FIELD_VALUE_INCLUDED, values, first, rest);
+    }
+
+    public static Condition notAllFieldValuesIncludedInValueList(
+            java.util.List<String> values, EnumRef first, EnumRef... rest) {
+        return enumListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, values, first, rest);
+    }
+
+    private static Condition stringListQuantifier(
+            ValueListQuantifier q, java.util.List<String> values, StringRef first, StringRef... rest) {
+        var fields = new java.util.ArrayList<FieldRef>();
+        fields.add(first.field());
+        for (StringRef r : rest) {
+            fields.add(r.field());
+        }
+        var literals = values.stream().<Calculation>map(StringLiteral::new).toList();
+        return new FieldListValueListCondition(q, fields, literals);
+    }
+
+    private static Condition enumListQuantifier(
+            ValueListQuantifier q, java.util.List<String> values, EnumRef first, EnumRef... rest) {
+        var refs = new java.util.ArrayList<EnumRef>();
+        refs.add(first);
+        refs.addAll(java.util.List.of(rest));
+        // every value must be valid for every listed enum field
+        var literals = new java.util.ArrayList<Calculation>();
+        for (String v : values) {
+            for (EnumRef r : refs) {
+                r.checkedLiteral(v);
+            }
+            literals.add(new EnumValueLiteral(v));
+        }
+        return new FieldListValueListCondition(q, refs.stream().map(EnumRef::field).toList(), literals);
+    }
+
     // --- field-list quantifiers — at least one field by signature ------------------------------
 
     public static Condition allFieldsFilled(FieldRef first, FieldRef... rest) {
