@@ -186,6 +186,17 @@ Read-only mining of the sibling `a12-kernel-mm` canonical set (own-words summary
 - **`CT_MODEL_HEADER` formalizes the DM header itself**: `header{id, modelType, modelVersion, description, locales[]{code}, labels[]{locale,text}, annotations[]{name,value}, modelReferences[]{alias, modelType, purpose, reference}}` — i.e. the *reference scheme* Corpus-1 workspace models use (`alias`/`purpose`/`reference`) is documented here for the future resolver work, and `locales.code` is a **typedef** (the format constraint that fails at deserialize — KERNEL-FINDINGS §13). Its one rule: a model id must not start with `xml` (`[id] PatternMatched "[xX][mM][lL].*"` — `HEADER_ID_STARTS_WITH_XML`).
 - **Constraint-rule topics** (per-operator occurrences across the 547 conditions): `FieldFilled` 293 / `FieldNotFilled` 246, `RepetitionNotUnique` 90, `CustomCondition` 53, `PatternViolated`/`PatternMatched` 55, `GroupFilled` 41, `Length` 7 — re-confirming the corpus backlog's priority of patterns, value-lists, `RepetitionNotUnique`, and `CustomCondition`.
 
+## §10 supplement — the model-include (`modelAlias`) mechanism + the mount-suffix path (2026-06-04)
+
+How a DM includes another (the workspace `purpose:"include"` scheme, adapted to our own domain in `storefront.dm.json` → `catalog.dm.json`):
+
+- **Header**: `modelReferences: [{alias, modelType:"document", purpose:"include", reference:<includedModelId>}]`.
+- **Content**: a placeholder **Group** with `"Group": {"repeatability": 1, "modelAlias": <alias>}` and **no inline `elements`** — `expand(model, resolver)` mounts the referenced model's content there. The `resolver` (`IDocumentModelReferenceResolver.getDocumentModel(reference)`) returns the included model; a directory resolver maps `reference` → `<reference>.json`.
+- **The mount group id gets a `_` suffix on expand**, and the included root group nests under it: a base mount group `/Storefront/Inventory` exposes the included field as **`/Storefront/Inventory_/Catalog/ListPrice`** (mount `_` + included root group `Catalog` + field). This is the *expanded* path the field index/handles use.
+- **Expanded ≠ authored for included fields.** That expanded `…/Inventory_/…` path is **not valid inside a rule condition** — a written rule referencing it draws **`MVK_INVALID_ENTITY`** ("group or field '/Storefront/Inventory_' is not valid"); the authorable form is the unsuffixed mount path. So *building/reading* against an included field works (handles resolve the expanded path), but *persisting a rule that references it* needs an expanded→authored path translation — fork-9 path-policy work, deferred.
+
+rulekit treatment + the write-separation guarantee live in `KERNEL-INTEGRATION-NOTES.md`. *(Locked: `IncludesWritePathTest`.)*
+
 ## §13 supplement — the message-locale law
 
 Header `locales` are **arbitrary** valid Java locale codes (`fr_FR` is fine; a malformed code like `en_us` fails at *deserialization* — "Invalid locale format" — before any consistency check). English/German are not special here; only the *condition keyword* language is limited to the EN/DE bundles.

@@ -251,8 +251,8 @@ ValidationResult vr = new RuleValidator().check(modelJson, draftRule);   // ✅ 
 vr.problems().forEach(p -> System.out.println(p.mvkCode() + ": " + p.message()));
 // 🔮 advice(): "MVK_INVALID_COMPARE_DEC_PLACES → operands differ in declared scale; round one side: RoundDown(...)"
 
-BoundModel m2 = m.add(rule);                               // 🔮 snapshot semantics (F0): write → NEW binding
-m2.writeTo(path);                                          // 🔮 DM-JSON write path (public, polyglot — D9)
+BoundModel m2 = m.add(rule);                               // ✅ snapshot (F0): write → NEW binding, re-validated
+m2.writeTo(path);                                          // ✅ DM-JSON write path — authored JSON, includes preserved (D9, F6)
 ```
 
 ### 4.3 A computation, same materials (F2) ✅ — implemented 2026-06-04 (`ComputationAuthoringTest`; aggregates/arithmetic in operations are corpus items 6–7)
@@ -483,7 +483,8 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 | §6c navigation (Level 1: `fields()`/`groups()`/`fieldAt` + strict narrowing), §3.5 `allOf`/`anyOf` | ✅ implemented 2026-06-04 (findings 9–10) |
 | §3.4 rule templates | ✅ full form works (navigation + `Rule` object) |
 | `Rule` + `Computation` authoring objects (computed relPaths, slot-rule pre-checks, validator bridges, `Calculation.kind()`) | ✅ implemented 2026-06-04 |
-| Message *interpolation*, DM-JSON write (`m.add`/`replaceCondition`/`writeTo`), fork-9 path policy, `advice()` | 🔮 Phase-1 remainder (F2a/F6) |
+| DM-JSON write path: `ofJson`/`add(Rule)`/`toJson`/`writeTo` (snapshot, re-validated, includes-preserving) | ✅ F6 first slice (2026-06-04); `add(Computation)`/`replaceCondition`/`removeRule` 🔮 |
+| Message *interpolation*, fork-9 path policy, `advice()` | 🔮 Phase-1 remainder (F2a; F9/F4a) |
 | ingest / explain / diff / LLM loop | 🔮 Phase 2 (adapter) |
 | TS twin | 🔮 Phase 4 |
 

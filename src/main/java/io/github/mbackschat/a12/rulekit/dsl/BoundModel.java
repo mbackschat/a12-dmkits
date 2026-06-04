@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.rulekit.dsl;
 import java.util.Arrays;
 
 import io.github.mbackschat.a12.rulekit.model.ModelIndex;
+import io.github.mbackschat.a12.rulekit.model.ModelLoader;
 import io.github.mbackschat.a12.rulekit.model.ValueKind;
 
 /**
@@ -13,13 +14,80 @@ import io.github.mbackschat.a12.rulekit.model.ValueKind;
 public final class BoundModel {
 
     private final ModelIndex index;
+    // Retained for the F6 write path; null for read-only bindings. This is the AUTHORED (unexpanded)
+    // DM-JSON — writes edit it and never the kernel's expanded model, so includes/modelReferences are
+    // preserved verbatim, never inlined. The resolver is kept so re-binding a model with includes works.
+    private final String sourceJson;
+    private final com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver resolver;
 
-    private BoundModel(ModelIndex index) {
+    private BoundModel(ModelIndex index, String sourceJson,
+            com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver resolver) {
         this.index = index;
+        this.sourceJson = sourceJson;
+        this.resolver = resolver;
     }
 
     public static BoundModel of(ModelIndex index) {
-        return new BoundModel(index);
+        return new BoundModel(index, null, null);
+    }
+
+    /**
+     * Bind from <em>self-contained</em> DM-JSON, retaining the source so the model can be
+     * {@link #add(Rule) written} back (F6). For a model with includes / {@code modelReferences}, use
+     * {@link #ofJson(String, com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver)}.
+     */
+    public static BoundModel ofJson(String modelJson) {
+        return ofJson(modelJson,
+                io.github.mbackschat.a12.rulekit.model.ReferenceResolvers.selfContained());
+    }
+
+    /**
+     * Bind from DM-JSON with a {@code resolver} for includes / type-def imports, retaining both so
+     * the write path round-trips an included model correctly (loads → expands against the resolver →
+     * {@code checkConsistency}). The retained source is the unexpanded authored JSON, so
+     * {@link #toJson()} / {@link #writeTo} preserve the includes rather than inlining them.
+     */
+    public static BoundModel ofJson(String modelJson,
+            com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver resolver) {
+        try (var reader = new java.io.StringReader(modelJson)) {
+            return new BoundModel(ModelIndex.of(ModelLoader.load(reader, resolver)), modelJson, resolver);
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException("failed to bind model from JSON", e);
+        }
+    }
+
+    // --- write path (F6) — every write yields a NEW binding (snapshot semantics, F0) -----------
+
+    /**
+     * Adds {@code rule} to the model and returns a <em>new</em> binding over the updated DM-JSON;
+     * this binding is unchanged. The result is re-validated (deserialize → expand →
+     * {@code checkConsistency}), so a write that would break the model fails loudly here.
+     */
+    public BoundModel add(Rule rule) {
+        // re-bind with the SAME resolver, so a model with includes re-expands correctly
+        return ofJson(io.github.mbackschat.a12.rulekit.write.ModelWriter.addRule(requireWritable(), rule), resolver);
+    }
+
+    /** The model as DM-JSON text (the retained source, with any writes applied). */
+    public String toJson() {
+        return requireWritable();
+    }
+
+    /** Persists the model's DM-JSON to {@code path} (the portable artifact). */
+    public void writeTo(java.nio.file.Path path) {
+        try {
+            java.nio.file.Files.writeString(path, requireWritable());
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException("failed to write model to " + path, e);
+        }
+    }
+
+    private String requireWritable() {
+        if (sourceJson == null) {
+            throw new IllegalStateException("this binding has no source JSON — use BoundModel.ofJson(...) "
+                    + "to enable the write path (F6)");
+        }
+        return sourceJson;
     }
 
     /** A generic handle to the field at {@code path} (any kind). Throws if the path is not a field. */

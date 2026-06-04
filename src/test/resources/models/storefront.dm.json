@@ -1,0 +1,48 @@
+{
+  "header": {
+    "id": "storefront",
+    "modelType": "document",
+    "modelVersion": "28.4.0",
+    "locales": [ { "code": "en_US" } ],
+    "labels": [],
+    "annotations": [],
+    "modelReferences": [
+      { "alias": "catalog", "modelType": "document", "purpose": "include", "reference": "catalog" }
+    ]
+  },
+  "content": {
+    "modelInfo": { "name": "storefront", "variant": "cockpit", "revision": "Arbeitsversion", "immutable": false },
+    "modelConfig": {
+      "decimalSeparator": ".",
+      "timeZone": "Europe/Berlin",
+      "conditionLanguage": { "code": "en_US" },
+      "fieldRefByShortNameAllowed": true
+    },
+    "modelRoot": {
+      "rootGroups": [
+        {
+          "type": "Group",
+          "id": "/Storefront",
+          "name": "Storefront",
+          "Group": {
+            "repeatability": 1,
+            "elements": [
+              {
+                "type": "Field",
+                "id": "/Storefront/StoreName",
+                "name": "StoreName",
+                "Field": { "fieldType": { "type": "StringType" } }
+              },
+              {
+                "type": "Group",
+                "id": "/Storefront/Inventory",
+                "name": "Inventory",
+                "Group": { "repeatability": 1, "modelAlias": "catalog" }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
