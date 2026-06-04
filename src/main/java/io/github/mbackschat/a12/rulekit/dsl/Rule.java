@@ -2,8 +2,11 @@ package io.github.mbackschat.a12.rulekit.dsl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
+import io.github.mbackschat.a12.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.rulekit.validate.DraftRule;
+import io.github.mbackschat.a12.rulekit.validate.PrecheckException;
 
 /**
  * A typed validation rule — the F2a authoring object (study §4.1): the rule lives in a group by
@@ -120,30 +123,41 @@ public record Rule(
         }
 
         public Rule build() {
-            require(name != null && !name.isBlank(), "a rule needs a name (the element name in its group)");
-            require(errorField != null, "a rule needs an error field — errorField(...)");
-            require(condition != null, "a rule needs an error condition — when(...)");
-            require(code != null && !code.isBlank(), "a rule needs an error code — code(...)");
-            require(severity != null, "a rule needs a severity — severity(...)");
-            require(!messages.isEmpty(),
+            check(name != null && !name.isBlank(), "RK_INCOMPLETE_RULE",
+                    "a rule needs a name (the element name in its group)", null);
+            check(errorField != null, "RK_INCOMPLETE_RULE",
+                    "a rule needs an error field — errorField(...)", "errorField(...)");
+            check(condition != null, "RK_INCOMPLETE_RULE",
+                    "a rule needs an error condition — when(...)", "when(...)");
+            check(code != null && !code.isBlank(), "RK_INCOMPLETE_RULE",
+                    "a rule needs an error code — code(...)", "code(...)");
+            check(severity != null, "RK_INCOMPLETE_RULE",
+                    "a rule needs a severity — severity(...)", "severity(...)");
+            check(!messages.isEmpty(), "MVK_ERROR_MESSAGE_MISSING",
                     "a rule needs at least one error message (the kernel rejects message-less rules"
-                            + " with MVK_ERROR_MESSAGE_MISSING) — message(en(...))");
+                            + " with MVK_ERROR_MESSAGE_MISSING) — message(en(...))", "message(en(...))");
             LocalizedText.checkDeclared(declaredLocales, messages, "rule");
-            require(errorField.path().startsWith(group.path() + "/"),
+            check(errorField.path().startsWith(group.path() + "/"), "RK_ERROR_FIELD_OUTSIDE_GROUP",
                     "the error field " + errorField.path() + " must lie under the rule's group "
-                            + group.path() + " — author the rule in a containing group");
-            require(ConditionReferences.of(condition).covers(errorField.path()),
+                            + group.path() + " — author the rule in a containing group",
+                    "author the rule in a group that contains " + errorField.path());
+            check(ConditionReferences.of(condition).covers(errorField.path()), "MVK_ERROR_FIELD_NOT_REFERENCED",
                     "the error field " + errorField.path() + " is not referenced by the condition"
                             + " (directly or via an enclosing group reference) — the kernel rejects this"
                             + " with MVK_ERROR_FIELD_NOT_REFERENCED; reference it, or pick a referenced"
-                            + " field as the error field");
+                            + " field as the error field",
+                    "reference " + errorField.path() + " in the condition, or pick a referenced field as the error field");
             return new Rule(group, name, errorField, condition, code, severity, messages);
         }
 
-        private static void require(boolean ok, String problem) {
-            if (!ok) {
-                throw new IllegalStateException(problem);
+        /** Fail fast with a structured PRECHECK diagnostic (still an {@code IllegalStateException}). */
+        private void check(boolean ok, String code, String summary, String fix) {
+            if (ok) {
+                return;
             }
+            String rulePath = name == null || name.isBlank() ? group.path() : group.path() + "/" + name;
+            throw new PrecheckException(Diagnostic.precheck(Optional.of(code), summary,
+                    new Diagnostic.Where(rulePath, Optional.empty()), Optional.ofNullable(fix), Optional.empty()));
         }
     }
 }

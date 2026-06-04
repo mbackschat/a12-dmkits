@@ -56,6 +56,12 @@ public record Diagnostic(
         }
     }
 
+    /** A build-time pre-check diagnostic (PRECHECK origin, ERROR) — what {@link PrecheckException} carries. */
+    public static Diagnostic precheck(Optional<String> code, String summary, Where where,
+            Optional<String> fix, Optional<String> explain) {
+        return new Diagnostic(Severity.ERROR, DiagnosticSource.PRECHECK, code, summary, where, fix, explain);
+    }
+
     /**
      * A raw kernel notification, before catalog-join enrichment. The {@code MVK_*} code is extracted
      * from the message when present; {@code fix}/{@code explain} stay empty until

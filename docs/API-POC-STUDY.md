@@ -487,7 +487,8 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 | §3.4 rule templates | ✅ full form works (navigation + `Rule` object) |
 | `Rule` + `Computation` authoring objects (computed relPaths, slot-rule pre-checks, validator bridges, `Calculation.kind()`) | ✅ implemented 2026-06-04 |
 | DM-JSON write path: `ofJson`/`add(Rule)`/`toJson`/`writeTo` (snapshot, re-validated, includes-preserving) | ✅ F6 first slice (2026-06-04); `add(Computation)`/`replaceCondition`/`removeRule` 🔮 |
-| Structured `Diagnostic` (`severity·source·code·summary·where·fix·explain`) + catalog-join + JSON | ✅ F4a first increment (2026-06-04); PRECHECK-source 🔮 |
+| Structured `Diagnostic` (`severity·source·code·summary·where·fix·explain`) + catalog-join + JSON | ✅ F4a first increment (2026-06-04) — KERNEL, LINT, and PRECHECK origins all land |
+| PRECHECK diagnostics — build-time pre-checks carry a structured `Diagnostic` (`PrecheckException`) | ✅ 2026-06-04 (Rule.Builder; still an `IllegalStateException` so fail-fast is unchanged; Computation.Builder + handle refs follow) |
 | Span-pointing — pin a KERNEL diagnostic's `where.operator` + `where.span` via AST↔problem matching (`lint.SpanResolver`) | ✅ 2026-06-04 (used∩candidate operators → operator-exact join; `where.span` from the renderer emit-map `DslRenderer.renderWithSpans` for the single-node case) |
 | "Did you mean" suggestions — nearest path / enum value on fail-fast handle errors (`model.Suggest`) | ✅ 2026-06-04 (Levenshtein, typo-plausible threshold) |
 | Lint layer — valid-but-suspicious WARNINGs over the AST (`lint.Linter`, `RK_*` codes) | ✅ pure-AST (contradictory/non-complementary presence, duplicate operand) + rule-context (`RK_NEG_CONDITION_IN_ITERATION`, `RK_INVERTED_REQUIREDNESS`) (2026-06-04) |
