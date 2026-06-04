@@ -34,12 +34,14 @@ JSON/JSONL out on stdout (pipeable, `jq`/`grep`-able); non-zero exit on error wi
 
 | Verb | In | Out | Status | Engine |
 |---|---|---|---|---|
-| **`dump`** | model.json [+ artifact] | JSONL / markdown (the finding-13 artifacts) | **first** | core |
-| `describe` | model.json | model card JSON | planned | core |
+| **`dump`** | model.json [+ artifact] | JSONL / markdown (the finding-13 artifacts) | ✅ 2026-06-05 | core |
+| **`describe`** | model.json | model card JSON (F9a) | ✅ 2026-06-05 | core |
+| **`validate`** | model.json | `{valid, diagnostics[]}` JSON (model-level; rule-level with the rule-spec) | ✅ 2026-06-05 | core |
+| **`check`** | model.json + `--field`/`--condition`/`--code` [`--group`] | `{valid, diagnostics[]}` JSON (authoring feedback, no persist) | ✅ 2026-06-05 | core |
+| `batch` | a list of ops (stdin/file) | results array | **planned — build with the benchmark runner** (amortizes JVM startup + kernel warm-up across many ops; the StringTemplate group cache is per-process — see KERNEL-FINDINGS) | core |
 | `ingest` | model.json + rule id | rulekit AST (JSON) / `Opaque` | planned | adapter |
 | `explain` | model.json + rule/condition | `RuleExplanation` JSON | planned | core |
 | `add` | model.json + rule-spec JSON | validated DM-JSON | planned | core |
-| `validate` | model.json [+ rule] | `Diagnostic[]` JSON | planned | core |
 | `diff` | model.json + rule id + modified spec | `RenderedDiff` JSON | planned | adapter |
 | `write-back` | model.json + rule id + spec | rewritten DM-JSON | planned | core |
 
