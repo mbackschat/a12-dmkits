@@ -52,6 +52,9 @@ fee.in(10.50)                          // does not compile — value-list number
 tier.in("PRO", "GOLD")                 // fails fast — GOLD is outside the enum domain
 noFieldValueIncludedInValueList(List.of("x"), name, fee)  // does not compile — field lists must be
                                        //   type-homogeneous (MVK_VARYING_TYPES_NOT_ALLOWED erased)
+fieldFilled(m.flatten("/S/Addons*/Name"))  // does not compile — scalar slots take FieldRef, starred
+                                       //   lists are FieldListRef (MVK_NO_WILDCARDS_ALLOWED erased)
+m.flatten("/S/Billing*/BaseFee")       // fails fast — Billing is not repeatable (MVK_INVALID_WILDCARD)
 ```
 
 Each erased mistake corresponds to a **kernel-verified** rejection code (see `KERNEL-INTEGRATION-NOTES.md`) — the type system is the documentation.
@@ -430,7 +433,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 
 | Study element | Status |
 |---|---|
-| Handles (`num/str/enumOf/bool/confirm/group`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–6 + base set — patterns, value lists, filled-count aggregates) |
+| Handles (`num/str/enumOf/bool/confirm/group`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–6 + iteration slice 7a — patterns, value lists, count aggregates, `*` repetition lists via `m.flatten`) |
 | §3.1 fragments, §3.3 library pattern, §6 catalog queries, §2 type-steering | ✅ pattern works today on covered operators |
 | §3.2 domain fragments (`withinTolerance`, `chronological`, `uniqueBy`) | 🔮 their operators are corpus items 6–7 + tolerance |
 | §6c navigation (Level 1: `fields()`/`groups()`/`fieldAt` + strict narrowing), §3.5 `allOf`/`anyOf` | ✅ implemented 2026-06-04 (findings 9–10) |

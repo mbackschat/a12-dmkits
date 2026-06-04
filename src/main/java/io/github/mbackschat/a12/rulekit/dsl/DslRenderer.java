@@ -36,7 +36,8 @@ public final class DslRenderer {
         return switch (condition) {
             case FieldPresenceCondition f -> keyword(f.operatorId()) + "(" + f.field().path() + ")";
             case FieldListPredicate p -> keyword(p.operatorId()) + "("
-                    + p.fields().stream().map(FieldRef::path).collect(java.util.stream.Collectors.joining(", "))
+                    + p.fields().stream().map(FieldOperand::renderedPath)
+                            .collect(java.util.stream.Collectors.joining(", "))
                     + ")";
             case ComparisonCondition c ->
                     render(c.left()) + " " + keyword(c.operatorId()) + " " + render(c.right());
@@ -52,7 +53,8 @@ public final class DslRenderer {
                     + v.values().stream().map(this::render).collect(java.util.stream.Collectors.joining(", "))
                     + ")";
             case FieldListValueListCondition v -> keyword(v.operatorId()) + "("
-                    + v.fields().stream().map(FieldRef::path).collect(java.util.stream.Collectors.joining(", "))
+                    + v.fields().stream().map(FieldOperand::renderedPath)
+                            .collect(java.util.stream.Collectors.joining(", "))
                     // 'In' is a language-independent grammar literal (inOp), like the comparison symbols
                     + " In "
                     + v.values().stream().map(this::render).collect(java.util.stream.Collectors.joining(", "))
@@ -82,7 +84,7 @@ public final class DslRenderer {
                     "[" + c.field().path() + " " + keyword(c.operatorId()) + " " + c.category() + "]";
             case CountAggregate a -> keyword(a.operatorId()) + "("
                     + java.util.stream.Stream.concat(
-                            a.fields().stream().map(FieldRef::path),
+                            a.fields().stream().map(FieldOperand::renderedPath),
                             a.groups().stream().map(GroupRef::path))
                     .collect(java.util.stream.Collectors.joining(", "))
                     + ")";

@@ -95,7 +95,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON` | erased | only `StringRef` offers `matches`/`violates` (enums/numbers/booleans excluded by type; locked: N7 `PatternMatched` invalidExample) |
 | `MVK_INVALID_TYPE_FOR_TOLERANCE_OP` | unclassified | — (experiment queue) |
 | `MVK_INVALID_UNSPECIFIED_TYPE` | unclassified | — (experiment queue) |
-| `MVK_INVALID_WILDCARD` | unclassified | — (experiment queue) |
+| `MVK_INVALID_WILDCARD` | pre-checked | `BoundModel.flatten` rejects a star on a non-repeatable group with the code named (locked: `RuleValidatorTest.locksWildcardSlotRules`) |
 | `MVK_INVALID_WILDCARD_FOR_RULEGROUP` | unclassified | — (experiment queue) |
 | `MVK_INVALID_WILDCARD_REL` | pending | fork-9 path policy: `..`+`*` forces absolute paths |
 | `MVK_ITERATION_RESTRICTION_IN_A12_MODEL` | unclassified | — (experiment queue) |
@@ -106,7 +106,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_MISSING_YEAR` | unclassified | — (experiment queue) |
 | `MVK_MULTIPLE_INDEX_FIELDS` | unclassified | — (experiment queue) |
 | `MVK_MULTIPLE_INDEX_FIELDS2` | unclassified | — (experiment queue) |
-| `MVK_NEG_CONDITION_IN_ITERATION` | kernel-delegated | verified 2026-06-04 (KERNEL-FINDINGS §9): iterating rule × unguarded negative condition; pre-check candidate with the iteration model |
+| `MVK_NEG_CONDITION_IN_ITERATION` | kernel-delegated | by design (decided 2026-06-04 in slice 7a): the law is a full truth-propagation algorithm (`IterationNotValidVisitor`, ~800 lines, context-dependent positivity) — not replicated; F4 is the gate |
 | `MVK_NON_NUMERIC` | unclassified | — (experiment queue) |
 | `MVK_NOT_IN_GROUP` | unclassified | — (experiment queue) |
 | `MVK_NOT_IN_RULEGROUP` | unclassified | — (experiment queue) |
@@ -135,8 +135,8 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_NO_STRING_OR_NUMBER_FOR_ADD` | unclassified | — (experiment queue) |
 | `MVK_NO_TYPEYESNO` | unclassified | — (experiment queue) |
 | `MVK_NO_TYPE_YES_OR_YESNO` | unclassified | — (experiment queue) |
-| `MVK_NO_WILDCARD` | kernel-delegated | verified 2026-06-04: repeatable group without `*` in a non-iterating rule; iteration cluster pending |
-| `MVK_NO_WILDCARDS_ALLOWED` | unclassified | — (experiment queue) |
+| `MVK_NO_WILDCARD` | kernel-delegated | repeatable group without `*` in a non-iterating rule; pre-check deferred to slice 7e — parallel iteration (index fields) makes plain refs legal, a naive check would false-positive |
+| `MVK_NO_WILDCARDS_ALLOWED` | erased | scalar slots take `FieldRef` only; starred lists are `FieldListRef`, accepted only by list slots (locked: `RuleValidatorTest.locksWildcardSlotRules`) |
 | `MVK_NO_WILDCARDS_G_ALLOWED` | unclassified | — (experiment queue) |
 | `MVK_NUMBER_AND_NON_NUMBER` | unclassified | — (experiment queue) |
 | `MVK_ONLY_CONSTANTS_USED` | unclassified | — (experiment queue) |
@@ -326,4 +326,4 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_YES_NO_INVALID_2` | unclassified | — (experiment queue) |
 | `MVK_YES_VALUE_MISSING` | unclassified | — (experiment queue) |
 
-*Classified: 34 of 300 (codes may appear in more than one source); the rest queue up as their operator families land or via dedicated experiments.*
+*Classified: 36 of 300 (codes may appear in more than one source); the rest queue up as their operator families land or via dedicated experiments.*

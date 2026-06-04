@@ -10,7 +10,7 @@ import java.util.List;
  * separator is a language-independent grammar literal (like the comparison symbols).
  */
 public record FieldListValueListCondition(
-        ValueListQuantifier quantifier, List<FieldRef> fields, List<Calculation> values)
+        ValueListQuantifier quantifier, List<FieldOperand> fields, List<Calculation> values)
         implements Condition {
 
     public FieldListValueListCondition {

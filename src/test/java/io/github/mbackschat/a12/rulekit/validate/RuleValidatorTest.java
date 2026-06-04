@@ -201,6 +201,37 @@ class RuleValidatorTest {
     }
 
     @Test
+    void locksWildcardSlotRules() {
+        // Verified 2026-06-04 (KERNEL-FINDINGS §9): '*' builds a repetition LIST — legal only in
+        // list slots. A scalar slot (FieldFilled, [value], GroupFilled) rejects it:
+        DraftRule scalarStar = new DraftRule(
+                "/Subscription", "ScalarStarRule", "../Tier",
+                "FieldFilled(Tier) And [Addons*/MonthlyFee] > 100", "WC_SCALAR", "ERROR");
+        ValidationResult r1 = new RuleValidator().check(modelJson, scalarStar);
+        assertFalse(r1.ok(), "a starred path in a scalar slot must be rejected");
+        assertTrue(r1.problems().stream()
+                        .anyMatch(p -> p.mvkCode().filter("MVK_NO_WILDCARDS_ALLOWED"::equals).isPresent()),
+                () -> "expected MVK_NO_WILDCARDS_ALLOWED, got: " + r1.problems());
+
+        // ... and a star on a non-repeatable group is its own code:
+        DraftRule invalidStar = new DraftRule(
+                "/Subscription", "InvalidStarRule", "../Tier",
+                "FieldFilled(Tier) And AtLeastOneFieldFilled(Billing*/BaseFee)", "WC_INV", "ERROR");
+        ValidationResult r2 = new RuleValidator().check(modelJson, invalidStar);
+        assertFalse(r2.ok(), "a star on a non-repeatable group must be rejected");
+        assertTrue(r2.problems().stream()
+                        .anyMatch(p -> p.mvkCode().filter("MVK_INVALID_WILDCARD"::equals).isPresent()),
+                () -> "expected MVK_INVALID_WILDCARD, got: " + r2.problems());
+
+        // The list slots accept it (here: a quantifier, in a non-iterating rule).
+        DraftRule listStar = new DraftRule(
+                "/Subscription", "ListStarRule", "../Tier",
+                "FieldFilled(Tier) And AtLeastOneFieldFilled(Addons*/Name)", "WC_LIST", "ERROR");
+        assertTrue(new RuleValidator().check(modelJson, listStar).ok(),
+                "a starred path in a list slot is legal");
+    }
+
+    @Test
     void rejectsATypeIllegalComparison() {
         // Ordering a string ([Name]) is a type error — MVK_INVALID_TYPE_FOR_COMPARISON.
         DraftRule rule = new DraftRule(

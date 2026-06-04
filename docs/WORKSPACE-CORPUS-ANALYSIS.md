@@ -23,7 +23,7 @@ A read-only **analysis** of two real A12 model corpora, used to prioritize what 
 | 87 / 83 | `FieldFilled` / `FieldNotFilled` | ✅ |
 | 56 | `GroupFilled` | ✅ (`GroupRef` + group quantifier family) |
 | 39 / 15 | `==` / `!=` | ✅ |
-| **28** | `*` flatten | ❌ iteration |
+| 28 | `*` flatten | ✅ (`flatten()` → `FieldListRef`, slice 7a) |
 | 21 | `AllFieldsFilled` | ✅ (quantifier family done) |
 | **21** | `$` correlation | ❌ iteration |
 | 19 / 11 / 11 / 7 | `<=` / `<` / `>` / `>=` | ✅ (symbols; catalog has `<=`) |
@@ -67,7 +67,7 @@ Real conditions include `;;` line comments, `\r\n` line breaks, and case-variant
 | 500 / 29 | `And` / `Or` | ✅ |
 | 233 / 54 | `==` / `!=` | ✅ |
 | 202 / 105 | `FieldFilled` / `FieldNotFilled` | ✅ |
-| **137** | `*` flatten | ❌ iteration |
+| 137 | `*` flatten | ✅ (slice 7a) |
 | 70 | `Length` | ✅ |
 | **57** | `RepetitionNotUnique` | ❌ |
 | 54 | `->` enum-category | ✅ |
@@ -91,7 +91,12 @@ Counts shown as C1 (app) + C2 (metamodel). Order balances combined frequency aga
 4. ~~**Pattern operators**~~ — ✅ **done 2026-06-04** (`StringRef.matches/violates` → `PatternCondition`; left-side bare-string-field + right-side string-constant slot rules made unrepresentable; `Pattern.compile` fail-fast for `MVK_INVALID_PATTERN` with the portable-subset gate kernel-delegated — and the increment uncovered + fixed the renderer's string-literal escaping: quote-doubling, not backslashes; KERNEL-FINDINGS §7).
 5. ~~**Value-list membership**~~ — ✅ **done 2026-06-04** (all five operators: `in`/`notIn` on `StringRef`/`NumberRef`/`EnumRef` + the three `Dsl` field-list quantifiers; integer-only numbers, kind-matching, type-homogeneous field lists, and the bool/confirm exclusion all unrepresentable; enum domains pre-checked. Field-valued lists + `*`-path field lists deferred to the iteration cluster).
 6. ~~**`NumberOfFilledFields` aggregate**~~ — ✅ **done 2026-06-04** (`Dsl.numberOfFilledFields` field/group forms + `numberOfFilledGroups` → `CountAggregate` as a comparable `NumberExpr`; the param-size laws live in the signatures, root groups pre-checked. Sibling `NumberOfDifferentValues` deferred — its homogeneity laws ride the iteration cluster, where its `*`-path use lives).
-7. **Iteration / structural cluster** — `*` flatten (28 + 137), `RepetitionNotUnique` (4 + 57), `$` correlation (21 + 0), `CurrentRepetition` (8), `For` semantic-index (8), `Having` (6). *High effort, highest value — model-awareness (§5a) pays off here. Its own multi-step phase; Corpus 2 shows it's even more important than Corpus 1 alone suggested.*
+7. **Iteration / structural cluster** — its own multi-step phase (slices 7a–7e), in progress:
+   - 7a ~~`*` flatten~~ (28 + 137) — ✅ **done 2026-06-04** (`BoundModel.flatten` → `FieldListRef`; list slots take the `FieldOperand` union, scalar slots stay `FieldRef` — `MVK_NO_WILDCARDS_ALLOWED` erased, `MVK_INVALID_WILDCARD` pre-checked; negativity law + `MVK_NO_WILDCARD` pre-check deliberately kernel-delegated, see KERNEL-FINDINGS §9).
+   - 7b `RepetitionNotUnique` (4 + 57, + `@From` scope) — next.
+   - 7c `Sum`/`MaxValue`/`MinValue` over `*`-lists (+ deferred `NumberOfDifferentValues`); `Sum(Addons*/X) > n` syntax already kernel-confirmed.
+   - 7d `Having` filter + `$` correlation (21 + 0, `Having` 6) — with the filter-condition exclusion laws.
+   - 7e `CurrentRepetition` (8), `For` semantic index (8), parallel iteration — completes the iteration model; the `MVK_NO_WILDCARD` pre-check lands here.
 8. **`CustomCondition`** (0 + 45) — the app-defined boolean escape hatch (Zod `.refine` analogue). *Med; emit an opaque named condition the kernel resolves.*
 9. **Date family** — `Today`, `Date(d,m,y)`, `DifferenceIn*`, `Add*` (~17 + ~0). *Med; app-only — date kinds + year-presence comparability (§5b).*
 

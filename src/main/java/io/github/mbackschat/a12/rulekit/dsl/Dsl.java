@@ -40,9 +40,12 @@ public final class Dsl {
 
     // --- filled-count aggregates — comparable numeric expressions ------------------------------
 
-    /** {@code NumberOfFilledFields(f1, f2, …)} — ≥2 fields by signature; kinds may be mixed. */
-    public static NumberExpr numberOfFilledFields(FieldRef first, FieldRef second, FieldRef... rest) {
-        var fields = new java.util.ArrayList<FieldRef>();
+    /**
+     * {@code NumberOfFilledFields(f1, f2, …)} — ≥2 fields by signature; kinds may be mixed.
+     * Operands may be flattened repetition lists ({@link BoundModel#flatten}).
+     */
+    public static NumberExpr numberOfFilledFields(FieldOperand first, FieldOperand second, FieldOperand... rest) {
+        var fields = new java.util.ArrayList<FieldOperand>();
         fields.add(first);
         fields.add(second);
         fields.addAll(java.util.List.of(rest));
@@ -103,7 +106,7 @@ public final class Dsl {
 
     private static Condition stringListQuantifier(
             ValueListQuantifier q, java.util.List<String> values, StringRef first, StringRef... rest) {
-        var fields = new java.util.ArrayList<FieldRef>();
+        var fields = new java.util.ArrayList<FieldOperand>();
         fields.add(first.field());
         for (StringRef r : rest) {
             fields.add(r.field());
@@ -125,45 +128,83 @@ public final class Dsl {
             }
             literals.add(new EnumValueLiteral(v));
         }
-        return new FieldListValueListCondition(q, refs.stream().map(EnumRef::field).toList(), literals);
+        return new FieldListValueListCondition(q, refs.stream().<FieldOperand>map(EnumRef::field).toList(), literals);
+    }
+
+    // shape B over flattened repetition lists (string-kind fields; the corpus's dominant shape) —
+    // enum-kind starred lists are deferred until FieldListRef carries the enum domain.
+
+    public static Condition atLeastOneFieldValueIncludedInValueList(
+            java.util.List<String> values, FieldListRef first, FieldListRef... rest) {
+        return flattenedListQuantifier(ValueListQuantifier.AT_LEAST_ONE_FIELD_VALUE_INCLUDED, values, first, rest);
+    }
+
+    public static Condition noFieldValueIncludedInValueList(
+            java.util.List<String> values, FieldListRef first, FieldListRef... rest) {
+        return flattenedListQuantifier(ValueListQuantifier.NO_FIELD_VALUE_INCLUDED, values, first, rest);
+    }
+
+    public static Condition notAllFieldValuesIncludedInValueList(
+            java.util.List<String> values, FieldListRef first, FieldListRef... rest) {
+        return flattenedListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, values, first, rest);
+    }
+
+    private static Condition flattenedListQuantifier(
+            ValueListQuantifier q, java.util.List<String> values, FieldListRef first, FieldListRef... rest) {
+        var fields = new java.util.ArrayList<FieldOperand>();
+        fields.add(checkedStringList(first));
+        for (FieldListRef r : rest) {
+            fields.add(checkedStringList(r));
+        }
+        var literals = values.stream().<Calculation>map(StringLiteral::new).toList();
+        return new FieldListValueListCondition(q, fields, literals);
+    }
+
+    private static FieldListRef checkedStringList(FieldListRef ref) {
+        if (ref.kind() != io.github.mbackschat.a12.rulekit.model.ValueKind.STRING) {
+            throw new IllegalArgumentException("value-list quantifiers over repetition lists take"
+                    + " string fields here; " + ref.renderedPath() + " is " + ref.kind()
+                    + " (enum-kind lists are deferred — MVK_INVALID_TYPES_FOR_COMPARISON otherwise)");
+        }
+        return ref;
     }
 
     // --- field-list quantifiers — at least one field by signature ------------------------------
 
-    public static Condition allFieldsFilled(FieldRef first, FieldRef... rest) {
+    public static Condition allFieldsFilled(FieldOperand first, FieldOperand... rest) {
         return fieldList(Quantifier.ALL_FIELDS_FILLED, first, rest);
     }
 
-    public static Condition noFieldFilled(FieldRef first, FieldRef... rest) {
+    public static Condition noFieldFilled(FieldOperand first, FieldOperand... rest) {
         return fieldList(Quantifier.NO_FIELD_FILLED, first, rest);
     }
 
-    public static Condition atLeastOneFieldFilled(FieldRef first, FieldRef... rest) {
+    public static Condition atLeastOneFieldFilled(FieldOperand first, FieldOperand... rest) {
         return fieldList(Quantifier.AT_LEAST_ONE_FIELD_FILLED, first, rest);
     }
 
-    public static Condition notAllFieldsFilled(FieldRef first, FieldRef... rest) {
+    public static Condition notAllFieldsFilled(FieldOperand first, FieldOperand... rest) {
         return fieldList(Quantifier.NOT_ALL_FIELDS_FILLED, first, rest);
     }
 
-    public static Condition fieldsNotCollectivelyFilled(FieldRef first, FieldRef... rest) {
+    public static Condition fieldsNotCollectivelyFilled(FieldOperand first, FieldOperand... rest) {
         return fieldList(Quantifier.FIELDS_NOT_COLLECTIVELY_FILLED, first, rest);
     }
 
-    public static Condition notExactlyOneFieldFilled(FieldRef first, FieldRef... rest) {
+    public static Condition notExactlyOneFieldFilled(FieldOperand first, FieldOperand... rest) {
         return fieldList(Quantifier.NOT_EXACTLY_ONE_FIELD_FILLED, first, rest);
     }
 
-    private static Condition fieldList(Quantifier quantifier, FieldRef first, FieldRef... rest) {
-        List<FieldRef> fields = new ArrayList<>();
+    private static Condition fieldList(Quantifier quantifier, FieldOperand first, FieldOperand... rest) {
+        List<FieldOperand> fields = new ArrayList<>();
         fields.add(first);
         fields.addAll(List.of(rest));
         return fieldList(quantifier, fields);
     }
 
     /** Shared construction path — also used by {@link BoundModel}'s string-path convenience forms. */
-    static Condition fieldList(Quantifier quantifier, List<FieldRef> fields) {
-        return new FieldListPredicate(quantifier, fields);
+    static Condition fieldList(Quantifier quantifier, List<? extends FieldOperand> fields) {
+        return new FieldListPredicate(quantifier, List.copyOf(fields));
     }
 
     // --- localized error-message texts (F2a) ----------------------------------------------------

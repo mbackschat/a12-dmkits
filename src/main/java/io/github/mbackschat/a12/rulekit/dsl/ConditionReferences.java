@@ -40,7 +40,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
     private static void collect(Condition condition, Set<String> fields, Set<String> groups) {
         switch (condition) {
             case FieldPresenceCondition f -> fields.add(f.field().path());
-            case FieldListPredicate p -> p.fields().forEach(f -> fields.add(f.path()));
+            case FieldListPredicate p -> p.fields().forEach(f -> fields.add(f.fieldPath()));
             case ComparisonCondition c -> {
                 collect(c.left(), fields, groups);
                 collect(c.right(), fields, groups);
@@ -57,7 +57,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 v.values().forEach(value -> collect(value, fields, groups));
             }
             case FieldListValueListCondition v -> {
-                v.fields().forEach(f -> fields.add(f.path()));
+                v.fields().forEach(f -> fields.add(f.fieldPath()));
                 v.values().forEach(value -> collect(value, fields, groups));
             }
         }
@@ -73,7 +73,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case BoolLiteral b -> { }
             case EnumCategoryAccess c -> fields.add(c.field().path());
             case CountAggregate a -> {
-                a.fields().forEach(f -> fields.add(f.path()));
+                a.fields().forEach(f -> fields.add(f.fieldPath()));
                 a.groups().forEach(g -> groups.add(g.path()));
             }
         }

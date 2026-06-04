@@ -50,6 +50,35 @@ public final class BoundModel {
         return new GroupRef(path, index.isRepeating(path));
     }
 
+    /**
+     * A flattened repetition list from a star path, e.g. {@code /Subscription/Addons*&#47;Name}
+     * (KERNEL-SEMANTICS §9). Every starred segment must be a repeatable group — a star on a
+     * non-repeatable group is rejected here with the kernel's code named
+     * ({@code MVK_INVALID_WILDCARD}); the base path must resolve to a field.
+     */
+    public FieldListRef flatten(String starPath) {
+        if (!starPath.contains("*")) {
+            throw new IllegalArgumentException("no '*' in " + starPath
+                    + " — a plain field reference is field(path)/num(path)/…");
+        }
+        var flattened = new java.util.ArrayList<GroupRef>();
+        StringBuilder base = new StringBuilder();
+        for (String segment : starPath.substring(1).split("/")) {
+            boolean starred = segment.endsWith("*");
+            String name = starred ? segment.substring(0, segment.length() - 1) : segment;
+            base.append('/').append(name);
+            if (starred) {
+                String groupPath = base.toString();
+                if (!index.isRepeating(groupPath)) {
+                    throw new IllegalArgumentException("'" + groupPath + "' is not repeatable —"
+                            + " a star is only allowed on repeatable groups (MVK_INVALID_WILDCARD)");
+                }
+                flattened.add(new GroupRef(groupPath, true));
+            }
+        }
+        return new FieldListRef(field(base.toString()), flattened);
+    }
+
     // --- navigation (Level 1, study finding 9): streams of info handles; filter is the matcher --
 
     /** Every field, in model order, as rich {@link FieldInfo} descriptors. */

@@ -13,7 +13,7 @@ import io.github.mbackschat.a12.rulekit.model.ValueKind;
  * groups are banned in both ({@code MVK_ROOT_GROUP_REFERENCED}). The {@link Dsl} entry points
  * enforce all of that by signature + pre-check; field kinds may be mixed.
  */
-public record CountAggregate(CountOp op, List<FieldRef> fields, List<GroupRef> groups)
+public record CountAggregate(CountOp op, List<FieldOperand> fields, List<GroupRef> groups)
         implements Calculation {
 
     public enum CountOp {

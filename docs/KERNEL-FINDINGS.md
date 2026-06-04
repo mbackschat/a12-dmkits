@@ -65,6 +65,18 @@ Five operators in two grammar shapes, not covered by KERNEL-SEMANTICS. **Shape A
 
 *(No locks yet — pre-checks deferred to the iteration cluster; the codes are classified kernel-delegated in `MVK-LEDGER.md`.)*
 
+## §9 supplement — wildcard slot laws (slice 7a, 2026-06-04 experiments)
+
+The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds a **repetition list**; whether it is legal depends purely on the *slot*:
+
+- **List slots accept starred paths**: the field-list quantifiers (`AtLeastOneFieldFilled(Addons*/Name)` …), shape-B value lists (`…(Addons*/Name In "x")`), and the count/`Sum` aggregates — iterating rule or not, and **mixing plain and starred operands in one predicate is legal**.
+- **Scalar slots reject them** with **`MVK_NO_WILDCARDS_ALLOWED`** ("It is not allowed to use an asterisk"): `FieldFilled(Addons*/Name)`, a bracketed value `[Addons*/Fee]`, `GroupFilled(Addons*)`, and shape A's single-field slot.
+- A star on a **non-repeatable** group is its own code: **`MVK_INVALID_WILDCARD`** ("Since 'X' is not repeatable…").
+- **The negativity law (`MVK_NEG_CONDITION_IN_ITERATION`) is not an operator list** — the kernel's `IterationNotValidVisitor` (~800 lines) classifies each condition as positive/negative *in context*: the same operator flips depending on whether its operands reference the iteration (e.g. `FieldFilled(A)` is "negative" when `A` does *not* iterate but the rule does), and aggregate comparisons against constants are negativity-sensitive by comparison direction (`< / <= / != n`, `== 0`-style forms). rulekit deliberately does **not** replicate this — kernel-delegated to F4.
+- **`MVK_NO_WILDCARD` (missing star) is not naively pre-checkable**: under *parallel iteration* (joined repeatable groups via same-name/type index fields) plain references to another repeatable group are legal — the pre-check waits for slice 7e's iteration model.
+
+*(Locked: `RuleValidatorTest.locksWildcardSlotRules`; rulekit treatment: `FieldOperand` = `FieldRef` | `FieldListRef`, list slots take the operand union, scalar slots take `FieldRef` — `BoundModel.flatten(starPath)` validates star placement.)*
+
 ## §11 supplement — computation alternatives and the calculated-field ban
 
 - **Alternatives are all-or-nothing about preconditions**: either a single alternative *without* a precondition, or several that *all* carry one — mixing a precondition-less "otherwise" in is rejected with **`MVK_ERROR_EMPTY_PRECONDITION`**. The default branch must be an explicit complementary precondition (as the demo's `BonusComp` does with `[WeekPay] < 500`).

@@ -9,11 +9,21 @@ import io.github.mbackschat.a12.rulekit.model.ValueKind;
  * ingested references remember their authored notation. Obtain handles from {@link BoundModel}
  * (always {@link PathStyle#CANONICAL}); the ingest converter constructs the hinted form.
  */
-public record FieldRef(String path, ValueKind kind, PathStyle styleHint) {
+public record FieldRef(String path, ValueKind kind, PathStyle styleHint) implements FieldOperand {
 
     /** A builder-made reference — no authored style; the renderer decides the path form. */
     public FieldRef(String path, ValueKind kind) {
         this(path, kind, PathStyle.CANONICAL);
+    }
+
+    @Override
+    public String renderedPath() {
+        return path;
+    }
+
+    @Override
+    public String fieldPath() {
+        return path;
     }
 
     public Condition filled() {
