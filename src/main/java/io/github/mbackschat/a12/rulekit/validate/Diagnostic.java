@@ -34,14 +34,25 @@ public record Diagnostic(
         explain = explain == null ? Optional.empty() : explain;
     }
 
-    /** Where a diagnostic points: the rule's path today; the AST operator-id / text span later. */
-    public record Where(String rule, Optional<String> operator) {
+    /** Where a diagnostic points: the rule's path, the AST operator-id, and a rendered-text span. */
+    public record Where(String rule, Optional<String> operator, Optional<Span> span) {
         public Where {
             operator = operator == null ? Optional.empty() : operator;
+            span = span == null ? Optional.empty() : span;
+        }
+
+        /** Rule + operator, no span (the common case before span-pointing attaches one). */
+        public Where(String rule, Optional<String> operator) {
+            this(rule, operator, Optional.empty());
         }
 
         static Where rule(String rule) {
-            return new Where(rule, Optional.empty());
+            return new Where(rule, Optional.empty(), Optional.empty());
+        }
+
+        /** This locator with {@code span} attached (span-pointing, F4a). */
+        public Where withSpan(Span span) {
+            return new Where(rule, operator, Optional.of(span));
         }
     }
 

@@ -7,9 +7,11 @@ import java.util.Set;
 import io.github.mbackschat.a12.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.rulekit.catalog.OperatorEntry;
 import io.github.mbackschat.a12.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.rulekit.dsl.OperatorUsage;
 import io.github.mbackschat.a12.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.rulekit.validate.DiagnosticSource;
+import io.github.mbackschat.a12.rulekit.validate.Span;
 
 /**
  * F4a <b>span-pointing</b> — link a KERNEL {@link Diagnostic} back to the AST node that produced it.
@@ -33,13 +35,14 @@ public final class SpanResolver {
         this.catalog = catalog;
     }
 
-    /** The diagnostics with each KERNEL one's {@code where.operator} pinned where the AST disambiguates it. */
+    /** The diagnostics with each KERNEL one's {@code where.operator}/{@code span} pinned where the AST disambiguates it. */
     public List<Diagnostic> resolve(List<Diagnostic> diagnostics, Condition condition) {
         Set<String> used = OperatorUsage.of(condition);
-        return diagnostics.stream().map(d -> refine(d, used)).toList();
+        DslRenderer.Rendered rendered = new DslRenderer().renderWithSpans(condition);
+        return diagnostics.stream().map(d -> refine(d, used, rendered)).toList();
     }
 
-    private Diagnostic refine(Diagnostic diagnostic, Set<String> used) {
+    private Diagnostic refine(Diagnostic diagnostic, Set<String> used, DslRenderer.Rendered rendered) {
         if (diagnostic.source() != DiagnosticSource.KERNEL
                 || diagnostic.code().isEmpty()
                 || diagnostic.where().operator().isPresent()) {
@@ -59,9 +62,21 @@ public final class SpanResolver {
         Optional<String> explain = Optional.ofNullable(operator.meaning())
                 .filter(s -> s != null && !s.isBlank())
                 .or(diagnostic::explain);
+        Diagnostic.Where where = new Diagnostic.Where(diagnostic.where().rule(), Optional.of(operator.id()));
+        Optional<Span> span = spanOf(operator.id(), rendered);
+        if (span.isPresent()) {
+            where = where.withSpan(span.get());
+        }
         return new Diagnostic(diagnostic.severity(), diagnostic.source(), diagnostic.code(),
-                diagnostic.summary(),
-                new Diagnostic.Where(diagnostic.where().rule(), Optional.of(operator.id())),
-                fix, explain);
+                diagnostic.summary(), where, fix, explain);
+    }
+
+    /** The span of the operator's node — only when exactly one rendered node carries that operator-id. */
+    private Optional<Span> spanOf(String operatorId, DslRenderer.Rendered rendered) {
+        List<Span> matches = rendered.spans().entrySet().stream()
+                .filter(e -> operatorId.equals(e.getKey().operatorId()))
+                .map(java.util.Map.Entry::getValue)
+                .toList();
+        return matches.size() == 1 ? Optional.of(matches.get(0)) : Optional.empty();
     }
 }

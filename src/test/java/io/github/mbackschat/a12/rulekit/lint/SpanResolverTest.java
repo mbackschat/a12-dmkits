@@ -37,7 +37,7 @@ class SpanResolverTest {
     }
 
     @Test
-    void pinsTheOperatorWhenExactlyOneUsedOperatorCanProduceTheCode() {
+    void pinsTheOperatorAndSpanWhenExactlyOneUsedOperatorCanProduceTheCode() {
         // The rule uses only LessThan; MVK_INVALID_TYPE_FOR_COMPARISON has four ordering-op candidates.
         Condition c = m.num(FEE).lt(0);
 
@@ -45,6 +45,14 @@ class SpanResolverTest {
 
         assertEquals(Optional.of("LessThan"), refined.where().operator());
         assertTrue(refined.fix().isPresent(), "fix should be re-derived from the pinned operator");
+        // the single comparison node is the whole condition → its span covers the rendered text
+        assertTrue(refined.where().span().isPresent(), "span should be attached for the single pinned node");
+        assertEquals(0, refined.where().span().get().start());
+        assertEquals(new io.github.mbackschat.a12.rulekit.dsl.DslRenderer().render(c).length(),
+                refined.where().span().get().end());
+
+        String json = new io.github.mbackschat.a12.rulekit.validate.ValidationResult(false, List.of(refined)).toJson();
+        assertTrue(json.contains("\"span\""), json);
     }
 
     @Test

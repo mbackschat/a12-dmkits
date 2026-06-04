@@ -40,6 +40,7 @@ public record ValidationResult(boolean ok, List<Diagnostic> diagnostics) {
             ObjectNode where = node.putObject("where");
             where.put("rule", d.where().rule());
             d.where().operator().ifPresent(op -> where.put("operator", op));
+            d.where().span().ifPresent(s -> where.putArray("span").add(s.start()).add(s.end()));
             d.fix().ifPresent(f -> node.put("fix", f));
             d.explain().ifPresent(e -> node.put("explain", e));
         }

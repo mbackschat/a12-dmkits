@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.rulekit.dsl;
 
 import io.github.mbackschat.a12.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.rulekit.catalog.OperatorEntry;
+import io.github.mbackschat.a12.rulekit.validate.Span;
 
 /**
  * Renders a {@link Condition} AST to canonical A12 DSL text (proposal §8, component 4). Every
@@ -30,6 +31,47 @@ public final class DslRenderer {
     public DslRenderer(OperatorCatalog catalog, ConditionLanguage language) {
         this.catalog = catalog;
         this.language = language;
+    }
+
+    /**
+     * The rendered text together with the character span each {@link Condition} node occupies in it
+     * (the F4a emit-map for span-pointing). The {@code text} is byte-identical to {@link #render};
+     * only {@code LogicCondition}'s compositional layout is walked here, every other (leaf) node
+     * reuses {@link #render} so there is no second copy of the rendering rules.
+     */
+    public Rendered renderWithSpans(Condition condition) {
+        StringBuilder out = new StringBuilder();
+        java.util.Map<Condition, Span> spans = new java.util.IdentityHashMap<>();
+        emit(condition, out, spans);
+        return new Rendered(out.toString(), spans);
+    }
+
+    /** A rendered condition plus the per-node spans into its text (identity-keyed). */
+    public record Rendered(String text, java.util.Map<Condition, Span> spans) {
+    }
+
+    private void emit(Condition condition, StringBuilder out, java.util.Map<Condition, Span> spans) {
+        int start = out.length();
+        if (condition instanceof LogicCondition logic) {
+            emitChild(logic, logic.left(), out, spans);
+            out.append(" ").append(keyword(logic.operatorId())).append(" ");
+            emitChild(logic, logic.right(), out, spans);
+        } else {
+            out.append(render(condition));
+        }
+        spans.put(condition, new Span(start, out.length()));
+    }
+
+    private void emitChild(LogicCondition parent, Condition child, StringBuilder out,
+            java.util.Map<Condition, Span> spans) {
+        boolean parenthesize = child instanceof LogicCondition nested && nested.op() != parent.op();
+        if (parenthesize) {
+            out.append("(");
+        }
+        emit(child, out, spans);
+        if (parenthesize) {
+            out.append(")");
+        }
     }
 
     public String render(Condition condition) {
