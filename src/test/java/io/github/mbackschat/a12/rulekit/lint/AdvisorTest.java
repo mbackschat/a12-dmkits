@@ -66,6 +66,17 @@ class AdvisorTest {
     }
 
     @Test
+    void suppressesRenderingTriviaGotchas() {
+        // LessThan's only gotcha ("the symbol is the same in every language") is RENDERING — rulekit
+        // handles it, so it must not reach the author. The number operands apply no operator.
+        Condition c = SUB.num("/Subscription/Billing/BaseFee").lt("100");
+
+        assertTrue(advisor.advise(c).stream()
+                        .noneMatch(d -> d.summary().contains("same in every condition language")),
+                () -> "rendering trivia leaked: " + advisor.advise(c));
+    }
+
+    @Test
     void aGotchaFreeOperatorProducesNothing() {
         // NoFieldFilled carries no catalog gotchas, and field refs apply no operator.
         Condition c = Dsl.noFieldFilled(SUB.field(NAME), SUB.field(EMAIL));

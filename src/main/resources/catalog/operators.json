@@ -7,7 +7,7 @@
     "returns": "boolean",
     "meaning": "True iff the referenced field currently holds a value.",
     "constraints": [ "the operand is a single field reference, not a bracketed field-value expression" ],
-    "gotchas": [ "a field carrying a formal error is removed from evaluation, so 'FieldFilled(F) Or FieldNotFilled(F)' is not a tautology" ],
+    "gotchas": [ { "text": "a field carrying a formal error is removed from evaluation, so 'FieldFilled(F) Or FieldNotFilled(F)' is not a tautology", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(Quantity)", "note": "true when Quantity has a value" },
     "invalidExample": { "dsl": "FieldFilled(ShippingAddress) And FieldNotFilled(ShippingAddress/Street)", "error": "MVK_NO_GROUPS_ALLOWED", "fix": "FieldFilled takes a field — for a group use GroupFilled" },
     "sinceKernel": "30.8.x"
@@ -20,7 +20,7 @@
     "returns": "boolean",
     "meaning": "True iff the referenced field is empty.",
     "constraints": [ "the operand is a single field reference" ],
-    "gotchas": [ "FieldFilled and FieldNotFilled are not strict complements once formal errors are in play (see FieldFilled)" ],
+    "gotchas": [ { "text": "FieldFilled and FieldNotFilled are not strict complements once formal errors are in play (see FieldFilled)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldNotFilled(Quantity)", "note": "true when Quantity is empty" },
     "sinceKernel": "30.8.x"
   },
@@ -32,7 +32,7 @@
     "returns": "boolean",
     "meaning": "True iff both boolean operands are true.",
     "constraints": [ "both operands must be boolean conditions" ],
-    "gotchas": [ "there is no 'Not' operator", "parentheses are required when mixing And with Or" ],
+    "gotchas": [ { "text": "there is no 'Not' operator", "kind": "SURPRISE" }, { "text": "parentheses are required when mixing And with Or", "kind": "RENDERING" } ],
     "validExample": { "dsl": "FieldFilled(Quantity) And FieldFilled(UnitPrice)", "note": "fires only when both are filled" },
     "sinceKernel": "30.8.x"
   },
@@ -44,7 +44,7 @@
     "returns": "boolean",
     "meaning": "True iff at least one boolean operand is true.",
     "constraints": [ "both operands must be boolean conditions" ],
-    "gotchas": [ "parentheses are required when mixing Or with And" ],
+    "gotchas": [ { "text": "parentheses are required when mixing Or with And", "kind": "RENDERING" } ],
     "validExample": { "dsl": "FieldFilled(Quantity) Or FieldFilled(BackorderQuantity)", "note": "fires when either is filled" },
     "sinceKernel": "30.8.x"
   },
@@ -56,7 +56,7 @@
     "returns": "boolean",
     "meaning": "True iff the left operand is less than or equal to the right.",
     "constraints": [ "ordering is legal only for numbers, amounts, and dates (not strings, enums, booleans, confirms, or date-ranges)" ],
-    "gotchas": [ "the symbol is the same in every condition language (it is not a localized keyword)" ],
+    "gotchas": [ { "text": "the symbol is the same in every condition language (it is not a localized keyword)", "kind": "RENDERING" } ],
     "validExample": { "dsl": "[Quantity] <= 0", "note": "fires when Quantity is zero or negative" },
     "invalidExample": { "dsl": "[CustomerName] <= [ProductCode]", "error": "MVK_INVALID_TYPE_FOR_COMPARISON", "fix": "ordering needs numbers or dates; compare strings with == / != instead" },
     "sinceKernel": "30.8.x"
@@ -69,7 +69,7 @@
     "returns": "boolean",
     "meaning": "True iff the left operand is strictly less than the right.",
     "constraints": [ "ordering is legal only for numbers, amounts, and dates (not strings, enums, booleans, confirms, or date-ranges)" ],
-    "gotchas": [ "the symbol is the same in every condition language (it is not a localized keyword)" ],
+    "gotchas": [ { "text": "the symbol is the same in every condition language (it is not a localized keyword)", "kind": "RENDERING" } ],
     "validExample": { "dsl": "[Quantity] < 0", "note": "fires when Quantity is negative" },
     "invalidExample": { "dsl": "[CustomerName] < [ProductCode]", "error": "MVK_INVALID_TYPE_FOR_COMPARISON", "fix": "ordering needs numbers or dates; compare strings with == / != instead" },
     "sinceKernel": "30.8.x"
@@ -82,7 +82,7 @@
     "returns": "boolean",
     "meaning": "True iff the left operand is strictly greater than the right.",
     "constraints": [ "ordering is legal only for numbers, amounts, and dates (not strings, enums, booleans, confirms, or date-ranges)" ],
-    "gotchas": [ "the symbol is the same in every condition language (it is not a localized keyword)" ],
+    "gotchas": [ { "text": "the symbol is the same in every condition language (it is not a localized keyword)", "kind": "RENDERING" } ],
     "validExample": { "dsl": "[Quantity] > 100", "note": "fires when Quantity exceeds 100" },
     "invalidExample": { "dsl": "[CustomerName] > [ProductCode]", "error": "MVK_INVALID_TYPE_FOR_COMPARISON", "fix": "ordering needs numbers or dates; compare strings with == / != instead" },
     "sinceKernel": "30.8.x"
@@ -95,7 +95,7 @@
     "returns": "boolean",
     "meaning": "True iff the left operand is greater than or equal to the right.",
     "constraints": [ "ordering is legal only for numbers, amounts, and dates (not strings, enums, booleans, confirms, or date-ranges)" ],
-    "gotchas": [ "the symbol is the same in every condition language (it is not a localized keyword)" ],
+    "gotchas": [ { "text": "the symbol is the same in every condition language (it is not a localized keyword)", "kind": "RENDERING" } ],
     "validExample": { "dsl": "[Quantity] >= 100", "note": "fires when Quantity reaches 100" },
     "invalidExample": { "dsl": "[CustomerName] >= [ProductCode]", "error": "MVK_INVALID_TYPE_FOR_COMPARISON", "fix": "ordering needs numbers or dates; compare strings with == / != instead" },
     "sinceKernel": "30.8.x"
@@ -108,7 +108,7 @@
     "returns": "boolean",
     "meaning": "True iff the two operands are equal.",
     "constraints": [ "operands must be type-compatible; two number fields/expressions must share the same declared decimal scale (numeric literals are scale-exempt)" ],
-    "gotchas": [ "comparing number FIELDS of different declared scale is rejected — round to match; numeric literals are exempt (any written scale is accepted, verified against the kernel)", "enums compare by stored value, never display text" ],
+    "gotchas": [ { "text": "comparing number FIELDS of different declared scale is rejected — round to match; numeric literals are exempt (any written scale is accepted, verified against the kernel)", "kind": "SURPRISE" }, { "text": "enums compare by stored value, never display text", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "[CustomerName] == \"ACME\"", "note": "fires when CustomerName equals ACME" },
     "invalidExample": { "dsl": "[Quantity] == [UnitPrice]", "error": "MVK_INVALID_COMPARE_DEC_PLACES", "fix": "operands differ in decimal scale (0 vs 2); round one with RoundDown(..., n)" },
     "sinceKernel": "30.8.x"
@@ -121,7 +121,7 @@
     "returns": "boolean",
     "meaning": "True iff the two operands are not equal.",
     "constraints": [ "operands must be type-compatible; two number fields/expressions must share the same declared decimal scale (numeric literals are scale-exempt)" ],
-    "gotchas": [ "same decimal-scale rule as ==" ],
+    "gotchas": [ { "text": "same decimal-scale rule as ==", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "[CustomerName] != \"ACME\"", "note": "fires when CustomerName is not ACME" },
     "invalidExample": { "dsl": "[Quantity] != [UnitPrice]", "error": "MVK_INVALID_COMPARE_DEC_PLACES", "fix": "round operands to a common scale before comparing" },
     "sinceKernel": "30.8.x"
@@ -134,7 +134,7 @@
     "returns": "boolean",
     "meaning": "True iff every listed field has a value.",
     "constraints": [ "the operand is a list of field references (typically two or more)" ],
-    "gotchas": [ "a field carrying a formal error is removed from evaluation (see FieldFilled)" ],
+    "gotchas": [ { "text": "a field carrying a formal error is removed from evaluation (see FieldFilled)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(CustomerName, ProductCode)", "note": "true when both are filled" },
     "sinceKernel": "30.8.x"
   },
@@ -168,7 +168,7 @@
     "returns": "boolean",
     "meaning": "True iff the listed fields are not all filled (at least one is empty).",
     "constraints": [ "the operand is a list of field references" ],
-    "gotchas": [ "the exact boundary vs NoFieldFilled (the DE name hints at 'not all OR none') — confirm against the BA guide before relying on edge semantics" ],
+    "gotchas": [ { "text": "the exact boundary vs NoFieldFilled (the DE name hints at 'not all OR none') — confirm against the BA guide before relying on edge semantics", "kind": "AUTHORING" } ],
     "validExample": { "dsl": "NotAllFieldsFilled(CustomerName, ProductCode)", "note": "true unless both are filled" },
     "sinceKernel": "30.8.x"
   },
@@ -180,7 +180,7 @@
     "returns": "boolean",
     "meaning": "True iff the listed fields are not collectively filled — some filled and some not (a partial-fill check).",
     "constraints": [ "the operand is a list of field references" ],
-    "gotchas": [ "exact semantics (partial-fill vs other) — confirm against the BA guide" ],
+    "gotchas": [ { "text": "exact semantics (partial-fill vs other) — confirm against the BA guide", "kind": "AUTHORING" } ],
     "validExample": { "dsl": "FieldsNotCollectivelyFilled(CustomerName, ProductCode)", "note": "true on a partial fill" },
     "sinceKernel": "30.8.x"
   },
@@ -203,7 +203,7 @@
     "returns": "boolean",
     "meaning": "True iff the referenced group is filled. For a repeatable group this means the repeat row EXISTS — an empty, freshly created row counts as filled.",
     "constraints": [ "the operand is a group (or root group) reference, never a field" ],
-    "gotchas": [ "'filled' means 'row exists', not 'row has data' — a blank added repetition satisfies GroupFilled", "an enclosing GroupFilled(Group) counts as referencing the rule's error field (no MVK_ERROR_FIELD_NOT_REFERENCED)" ],
+    "gotchas": [ { "text": "'filled' means 'row exists', not 'row has data' — a blank added repetition satisfies GroupFilled", "kind": "SURPRISE" }, { "text": "an enclosing GroupFilled(Group) counts as referencing the rule's error field (no MVK_ERROR_FIELD_NOT_REFERENCED)", "kind": "AUTHORING" } ],
     "validExample": { "dsl": "GroupFilled(ShippingAddress)", "note": "true when the shipping address group is present" },
     "invalidExample": { "dsl": "GroupFilled(CustomerName)", "error": "MVK_NO_FIELDS_ALLOWED", "fix": "GroupFilled takes a group — for a field use FieldFilled" },
     "sinceKernel": "30.8.x"
@@ -216,7 +216,7 @@
     "returns": "boolean",
     "meaning": "True iff the referenced group is not filled (no row exists / nothing entered).",
     "constraints": [ "the operand is a group reference, never a field" ],
-    "gotchas": [ "a negative condition combined with repeatable groups is rejected (MVK_NEG_CONDITION_IN_ITERATION) unless guarded, e.g. GroupFilled(K) And AtLeastOneFieldFilled(K/F)" ],
+    "gotchas": [ { "text": "a negative condition combined with repeatable groups is rejected (MVK_NEG_CONDITION_IN_ITERATION) unless guarded, e.g. GroupFilled(K) And AtLeastOneFieldFilled(K/F)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "GroupNotFilled(ShippingAddress)", "note": "true when no shipping address was entered" },
     "sinceKernel": "30.8.x"
   },
@@ -228,7 +228,7 @@
     "returns": "boolean",
     "meaning": "True iff every listed group is filled.",
     "constraints": [ "the operand is a list of group references" ],
-    "gotchas": [ "see GroupFilled: for repeatable groups, an existing empty row counts as filled" ],
+    "gotchas": [ { "text": "see GroupFilled: for repeatable groups, an existing empty row counts as filled", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllGroupsFilled(ShippingAddress, BillingAddress)", "note": "true when both address groups are present" },
     "sinceKernel": "30.8.x"
   },
@@ -240,7 +240,7 @@
     "returns": "boolean",
     "meaning": "True iff none of the listed groups is filled.",
     "constraints": [ "the operand is a list of group references" ],
-    "gotchas": [ "negative semantics — needs guarding when repeatable groups are involved (MVK_NEG_CONDITION_IN_ITERATION)" ],
+    "gotchas": [ { "text": "negative semantics — needs guarding when repeatable groups are involved (MVK_NEG_CONDITION_IN_ITERATION)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "NoGroupFilled(ShippingAddress, BillingAddress)", "note": "true when neither address group is present" },
     "sinceKernel": "30.8.x"
   },
@@ -252,7 +252,7 @@
     "returns": "boolean",
     "meaning": "True iff at least one of the listed groups is filled.",
     "constraints": [ "the operand is a list of group references" ],
-    "gotchas": [],
+    "gotchas": [  ],
     "validExample": { "dsl": "AtLeastOneGroupFilled(ShippingAddress, BillingAddress)", "note": "true when any address group is present" },
     "sinceKernel": "30.8.x"
   },
@@ -264,7 +264,7 @@
     "returns": "boolean",
     "meaning": "True iff the listed groups are not all filled (at least one is missing).",
     "constraints": [ "the operand is a list of group references" ],
-    "gotchas": [ "the German keyword (NichtAlleOderKein...) spells out that the none-filled case also satisfies it" ],
+    "gotchas": [ { "text": "the German keyword (NichtAlleOderKein...) spells out that the none-filled case also satisfies it", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "NotAllGroupsFilled(ShippingAddress, BillingAddress)", "note": "fires when at least one address group is missing" },
     "sinceKernel": "30.8.x"
   },
@@ -276,7 +276,7 @@
     "returns": "boolean",
     "meaning": "True iff the listed groups are not collectively filled — some filled and some not (a partial-fill check).",
     "constraints": [ "the operand is a list of group references" ],
-    "gotchas": [],
+    "gotchas": [  ],
     "validExample": { "dsl": "GroupsNotCollectivelyFilled(ShippingAddress, BillingAddress)", "note": "fires when exactly one of the two address groups is present" },
     "sinceKernel": "30.8.x"
   },
@@ -288,7 +288,7 @@
     "returns": "enumeration",
     "meaning": "Maps an enumeration field's value to its value in the named category: [Field -> Category]. The model pairs category values positionally with the enum values; comparisons run against the category's (distinct) value domain.",
     "constraints": [ "the left operand must be an enumeration field (MVK_NO_ENUMERATION otherwise)", "the category must be declared on that field's enumeration (MVK_CATEGORY_UNKOWN — kernel's spelling)" ],
-    "gotchas": [ "compare against CATEGORY values, not the enum's own values — '[Priority -> SpeedClass] == \"EXPRESS\"' is rejected because EXPRESS is an enum value, not a SpeedClass value", "the arrow is the same symbol in every condition language" ],
+    "gotchas": [ { "text": "compare against CATEGORY values, not the enum's own values — '[Priority -> SpeedClass] == \"EXPRESS\"' is rejected because EXPRESS is an enum value, not a SpeedClass value", "kind": "SURPRISE" }, { "text": "the arrow is the same symbol in every condition language", "kind": "RENDERING" } ],
     "validExample": { "dsl": "[Priority -> SpeedClass] == \"FAST\"", "note": "fires when the priority's speed class is FAST" },
     "invalidExample": { "dsl": "[Priority -> SpeedClass] == \"EXPRESS\"", "error": "MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON", "fix": "EXPRESS is an enum value; compare to a SpeedClass category value (NORMAL/FAST)" },
     "sinceKernel": "30.8.x"
@@ -301,7 +301,7 @@
     "returns": "boolean-constant",
     "meaning": "The boolean/confirm constant 'true'. Booleans compare to True/False; confirm fields compare ONLY to True (== / !=).",
     "constraints": [ "usable in equality comparisons against boolean fields (== / !=) and confirm fields (== / != True only)" ],
-    "gotchas": [ "an UNSET boolean makes the comparison not-evaluated (neither true nor false) — guard with FieldFilled when that matters", "an unset confirm counts as not confirmed, so [Confirm] != True is the idiom for 'not confirmed'" ],
+    "gotchas": [ { "text": "an UNSET boolean makes the comparison not-evaluated (neither true nor false) — guard with FieldFilled when that matters", "kind": "SURPRISE" }, { "text": "an unset confirm counts as not confirmed, so [Confirm] != True is the idiom for 'not confirmed'", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "[ExpressShipping] == True", "note": "fires when the boolean is set and true" },
     "invalidExample": { "dsl": "[ExpressShipping] == \"yes\"", "error": "MVK_INVALID_COMPARE_TO_YESNO", "fix": "a boolean compares only to True/False or another boolean field, never to a string" },
     "sinceKernel": "30.8.x"
@@ -314,7 +314,7 @@
     "returns": "boolean-constant",
     "meaning": "The boolean constant 'false'. Legal against boolean fields only — a confirm field never compares to False.",
     "constraints": [ "usable in equality comparisons against boolean fields only" ],
-    "gotchas": [ "confirm fields compare only to True — [Confirm] == False is rejected; use [Confirm] != True for 'not confirmed'" ],
+    "gotchas": [ { "text": "confirm fields compare only to True — [Confirm] == False is rejected; use [Confirm] != True for 'not confirmed'", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "[ExpressShipping] == False", "note": "fires when the boolean is set and false" },
     "invalidExample": { "dsl": "[TermsConfirmed] == False", "error": "MVK_INVALID_COMPARE_TO_YES", "fix": "a confirm compares only to True (or another confirm field) — use [TermsConfirmed] != True" },
     "sinceKernel": "30.8.x"
@@ -327,7 +327,7 @@
     "returns": "number",
     "meaning": "The character length of a string field's value.",
     "constraints": [ "the operand must be a string field" ],
-    "gotchas": [ "applying Length to a non-string field is a type error" ],
+    "gotchas": [ { "text": "applying Length to a non-string field is a type error", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "Length(CustomerName) > 10", "note": "fires when CustomerName is longer than 10 characters" },
     "invalidExample": { "dsl": "Length(Quantity) > 10", "error": "operand type", "fix": "Length needs a string field, not a number" },
     "sinceKernel": "30.8.x"
@@ -345,9 +345,9 @@
       "only the regex subset portable across the kernel's target languages is accepted (e.g. lookbehind is rejected although Java-valid)"
     ],
     "gotchas": [
-      "the match is anchored over the WHOLE value — '@' does not find an @ somewhere, use '.*@.*'",
-      "in DSL string literals a backslash is a plain character and an embedded quote is doubled (\"\"), so regex character classes like \\d are written as-is",
-      "a backtracking-prone pattern such as (a+)+ is a performance/security risk (KERNEL-SEMANTICS §7)"
+      { "text": "the match is anchored over the WHOLE value — '@' does not find an @ somewhere, use '.*@.*'", "kind": "SURPRISE" },
+      { "text": "in DSL string literals a backslash is a plain character and an embedded quote is doubled (\"\"), so regex character classes like \\d are written as-is", "kind": "SURPRISE" },
+      { "text": "a backtracking-prone pattern such as (a+)+ is a performance/security risk (KERNEL-SEMANTICS §7)", "kind": "SURPRISE" }
     ],
     "validExample": { "dsl": "FieldFilled(ProductCode) And [ProductCode] PatternMatched \"[A-Z]{2}-[0-9]{4}\"", "note": "fires when ProductCode has the legacy XX-9999 format" },
     "invalidExample": { "dsl": "[Quantity] PatternMatched \".*\"", "error": "MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON", "fix": "pattern comparison works on string fields only" },
@@ -366,7 +366,7 @@
       "only the regex subset portable across the kernel's target languages is accepted"
     ],
     "gotchas": [
-      "an empty field is not evaluated — guard with FieldFilled when the rule should fire only on present-but-malformed values"
+      { "text": "an empty field is not evaluated — guard with FieldFilled when the rule should fire only on present-but-malformed values", "kind": "SURPRISE" }
     ],
     "validExample": { "dsl": "FieldFilled(BillingAddress/PostalCode) And [BillingAddress/PostalCode] PatternViolated \"[0-9]{5}\"", "note": "fires when a present postal code is not exactly five digits" },
     "invalidExample": { "dsl": "[CustomerName] PatternViolated \"(\"", "error": "MVK_INVALID_PATTERN", "fix": "the right side must be a valid (portable-subset) regular expression" },
@@ -386,7 +386,7 @@
       "for an enumeration every listed value must be in the enum's domain"
     ],
     "gotchas": [
-      "field-value entries ([OtherField]) are also legal in the list — mixing them with literals is fine"
+      { "text": "field-value entries ([OtherField]) are also legal in the list — mixing them with literals is fine", "kind": "AUTHORING" }
     ],
     "validExample": { "dsl": "FieldValueIncludedInValueList(Priority, \"EXPRESS\", \"OVERNIGHT\")", "note": "true when Priority is one of the rush classes" },
     "invalidExample": { "dsl": "FieldValueIncludedInValueList(ExpressShipping, \"x\")", "error": "MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED", "fix": "value lists work on string/enum/number fields — compare a boolean with == True/False" },
@@ -403,7 +403,7 @@
       "same slot rules as FieldValueIncludedInValueList (string/enum/number field, matching value types, integer-only numbers)"
     ],
     "gotchas": [
-      "an empty field is not evaluated — guard with FieldFilled when the rule should fire only on present values"
+      { "text": "an empty field is not evaluated — guard with FieldFilled when the rule should fire only on present values", "kind": "SURPRISE" }
     ],
     "validExample": { "dsl": "FieldFilled(ProductCode) And FieldValueNotIncludedInValueList(ProductCode, \"LEGACY-1\", \"LEGACY-2\")", "note": "fires when a present product code is outside the supported set" },
     "invalidExample": { "dsl": "FieldValueNotIncludedInValueList(Quantity, \"x\")", "error": "MVK_INVALID_TYPES_FOR_COMPARISON", "fix": "a number field needs integer values: FieldValueNotIncludedInValueList(Quantity, 1, 2)" },
@@ -421,7 +421,7 @@
       "all listed fields must share one type (MVK_VARYING_TYPES_NOT_ALLOWED)",
       "values are string literals (or field references); for enums each value must be in the domain"
     ],
-    "gotchas": [],
+    "gotchas": [  ],
     "validExample": { "dsl": "AtLeastOneFieldValueIncludedInValueList(ShippingAddress/Street, BillingAddress/PostalCode In \"unknown\", \"n/a\")", "note": "true when any address field carries a placeholder value" },
     "invalidExample": { "dsl": "AtLeastOneFieldValueIncludedInValueList(CustomerName, Quantity In \"x\")", "error": "MVK_VARYING_TYPES_NOT_ALLOWED", "fix": "list only same-type fields — here a string and a number field are mixed" },
     "sinceKernel": "30.8.x"
@@ -436,7 +436,7 @@
     "constraints": [
       "syntax and slot rules as AtLeastOneFieldValueIncludedInValueList"
     ],
-    "gotchas": [],
+    "gotchas": [  ],
     "validExample": { "dsl": "NoFieldValueIncludedInValueList(CustomerName, ProductCode In \"test\", \"demo\")", "note": "true when no test placeholders are present" },
     "sinceKernel": "30.8.x"
   },
@@ -450,7 +450,7 @@
     "constraints": [
       "syntax and slot rules as AtLeastOneFieldValueIncludedInValueList"
     ],
-    "gotchas": [],
+    "gotchas": [  ],
     "validExample": { "dsl": "NotAllFieldValuesIncludedInValueList(CustomerName, ProductCode In \"a\", \"b\")", "note": "true unless every listed field's value is in the list" },
     "sinceKernel": "30.8.x"
   },
@@ -467,7 +467,7 @@
       "root groups are not allowed (MVK_ROOT_GROUP_REFERENCED); no enum-category arguments"
     ],
     "gotchas": [
-      "the result is an ordinary number expression — compare it, or use it in arithmetic"
+      { "text": "the result is an ordinary number expression — compare it, or use it in arithmetic", "kind": "AUTHORING" }
     ],
     "validExample": { "dsl": "NumberOfFilledFields(CustomerName, ProductCode, Quantity) < 2", "note": "fires when fewer than two of the three are filled" },
     "invalidExample": { "dsl": "NumberOfFilledFields(CustomerName) < 1", "error": "MVK_PARAMSIZE_INVALIDN", "fix": "list at least two fields (or one group) — for a single field use FieldFilled/FieldNotFilled" },
@@ -484,7 +484,7 @@
       "more than one group (MVK_PARAMSIZE_INVALIDGN); groups only (MVK_NO_FIELDS_ALLOWED); no root groups"
     ],
     "gotchas": [
-      "'filled' means the group row exists, not that it has data (same trap as GroupFilled)"
+      { "text": "'filled' means the group row exists, not that it has data (same trap as GroupFilled)", "kind": "SURPRISE" }
     ],
     "validExample": { "dsl": "NumberOfFilledGroups(ShippingAddress, BillingAddress) == 2", "note": "true when both address groups exist" },
     "invalidExample": { "dsl": "NumberOfFilledGroups(ShippingAddress, CustomerName) < 1", "error": "MVK_NO_FIELDS_ALLOWED", "fix": "NumberOfFilledGroups takes groups — count fields with NumberOfFilledFields" },
@@ -503,8 +503,9 @@
       "the optional @From reference group must be repeatable (MVK_GROUP_NOT_REPEATABLE)"
     ],
     "gotchas": [
-      "omitting or changing @From changes the uniqueness scope (unique per parent row vs. across all rows)",
-      "not allowed together with parallel iteration"
+      { "text": "omitting or changing @From changes the uniqueness scope (unique per parent row vs. across all rows)", "kind": "SURPRISE" },
+      { "text": "not allowed together with parallel iteration", "kind": "SURPRISE" },
+      { "text": "the rule must sit at the PARENT of the repeated group — each key field needs a repeatable group between the rule's group and the field, so authoring it INSIDE the repeated group is rejected (MVK_REPEATABLE_GROUP_MISSING)", "kind": "SURPRISE" }
     ],
     "validExample": { "dsl": "RepetitionNotUnique(Items/Sku)", "note": "fires on each line item whose Sku also appears on another line" },
     "invalidExample": { "dsl": "RepetitionNotUnique(CustomerName)", "error": "MVK_REPEATABLE_GROUP_MISSING", "fix": "the key must sit under a repeatable group between rule group and field" },
@@ -518,7 +519,7 @@
     "returns": "scope",
     "meaning": "Names the reference group within whose repetitions RepetitionNotUnique checks uniqueness.",
     "constraints": [ "the reference group must be repeatable (MVK_GROUP_NOT_REPEATABLE)" ],
-    "gotchas": [ "a localized keyword (unlike the In separator): @From in EN, @Von in DE" ],
+    "gotchas": [ { "text": "a localized keyword (unlike the In separator): @From in EN, @Von in DE", "kind": "RENDERING" } ],
     "validExample": { "dsl": "RepetitionNotUnique(Items/Sku @From Items)", "note": "unique Sku within each Items scope" },
     "invalidExample": { "dsl": "RepetitionNotUnique(Items/Sku @From ShippingAddress)", "error": "MVK_GROUP_NOT_REPEATABLE", "fix": "@From needs a repeatable reference group" },
     "sinceKernel": "30.8.x"
@@ -534,7 +535,7 @@
       "takes plain or flattened (starred) field operands"
     ],
     "gotchas": [
-      "negativity-sensitive when mixing iterating and non-iterating operands (MVK_NEG_CONDITION_IN_ITERATION territory)"
+      { "text": "negativity-sensitive when mixing iterating and non-iterating operands (MVK_NEG_CONDITION_IN_ITERATION territory)", "kind": "SURPRISE" }
     ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And FieldValuesNotUnique(Items*/Sku)", "note": "fires when any two line items share a Sku (non-iterating form)" },
     "sinceKernel": "30.8.x"
@@ -551,7 +552,7 @@
       "more than one field or a repetition list (MVK_PARAMSIZE_INVALIDN); no duplicates (MVK_DUPLICATE_PARAM1)"
     ],
     "gotchas": [
-      "an UNSPECIFIED field counts as 0 — unlike MaxValue/MinValue, which ignore unspecified fields (KERNEL-SEMANTICS §9)"
+      { "text": "an UNSPECIFIED field counts as 0 — unlike MaxValue/MinValue, which ignore unspecified fields (KERNEL-SEMANTICS §9)", "kind": "SURPRISE" }
     ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And Sum(Items*/Count) > 100", "note": "fires when the order's total item count exceeds 100" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And Sum(CustomerName, ProductCode) > 0", "error": "MVK_NO_NUMBER", "fix": "Sum takes number fields" },
@@ -569,7 +570,7 @@
       "more than one field or a repetition list; no duplicates"
     ],
     "gotchas": [
-      "a Number list with no specified value yields 0 (KERNEL-SEMANTICS §9)"
+      { "text": "a Number list with no specified value yields 0 (KERNEL-SEMANTICS §9)", "kind": "SURPRISE" }
     ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And MaxValue(Items*/Count) > 50", "note": "fires when any single line orders more than 50" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And MaxValue(CustomerName, ProductCode) > 0", "error": "MVK_NOT_SORTABLE", "fix": "MaxValue needs numbers (or dates)" },
@@ -585,7 +586,7 @@
     "constraints": [
       "same slot rules as MaxValue"
     ],
-    "gotchas": [],
+    "gotchas": [  ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And MinValue(Items*/Count) >= 1", "note": "fires only when every specified line count is at least 1" },
     "sinceKernel": "30.8.x"
   },
@@ -601,7 +602,7 @@
       "no booleans/confirms (MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED)",
       "more than one field or a repetition list; no duplicates"
     ],
-    "gotchas": [],
+    "gotchas": [  ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And NumberOfDifferentValues(Items*/Sku) < 2", "note": "fires when all line items are variants of one Sku" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And NumberOfDifferentValues(CustomerName, Quantity) < 2", "error": "MVK_STRING_ENUM_AND_NON_STRING_ENUM", "fix": "list only same-type fields" },
     "sinceKernel": "30.8.x"
@@ -618,7 +619,7 @@
       "the filter condition may not contain CustomCondition, RepetitionNotUnique, a semantic index, a parallel iteration, or a nested Having (MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION)"
     ],
     "gotchas": [
-      "inside the filter, the $ operator pins a reference to the rule's current (outer) repetition — correlated subquery"
+      { "text": "inside the filter, the $ operator pins a reference to the rule's current (outer) repetition — correlated subquery", "kind": "AUTHORING" }
     ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And Sum(Items*/Count Having [Items/Sku] == \"A\") > 5", "note": "sums only the line items whose Sku is A" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And Sum(Items*/Count Having RepetitionNotUnique(Items/Sku)) > 0", "error": "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION", "fix": "RepetitionNotUnique is not allowed inside a filter condition" },
@@ -636,7 +637,8 @@
       "the rule must iterate over that group, otherwise MVK_NO_WILDCARD (position-dependent — kernel-checked)"
     ],
     "gotchas": [
-      "for a non-repeatable group the index is constant (accepted, rarely useful)"
+      { "text": "for a non-repeatable group the index is constant (accepted, rarely useful)", "kind": "AUTHORING" },
+      { "text": "the rule must iterate over the group (its error field lies under it); from a non-iterating rule the kernel rejects it (MVK_NO_WILDCARD)", "kind": "SURPRISE" }
     ],
     "validExample": { "dsl": "FieldFilled(Items/Count) And CurrentRepetition(Items) > 1", "note": "fires from the second line item onward (the error field under Items makes the rule iterate)" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And CurrentRepetition(Items) > 1", "error": "MVK_NO_WILDCARD", "fix": "CurrentRepetition needs the rule to iterate over the group — put the error field inside Items" },
@@ -655,7 +657,7 @@
       "does not satisfy the error-field rule on its own — pair it with a field reference"
     ],
     "gotchas": [
-      "the kernel only parses/places it; whether the registered implementation exists is the consuming system's concern, not checkConsistency's"
+      { "text": "the kernel only parses/places it; whether the registered implementation exists is the consuming system's concern, not checkConsistency's", "kind": "SURPRISE" }
     ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And CustomCondition NotReverse", "note": "host code decides; the FieldFilled conjunct references the error field" },
     "sinceKernel": "30.8.x"
@@ -672,7 +674,7 @@
       "the index value is a string constant matching the index field; an iterating entity index is restricted (MVK_SEMANTIC_INDEX_INVALID_ITER)"
     ],
     "gotchas": [
-      "selects a specific repetition by key — distinct from '*' (all repetitions) and the rule's own iteration"
+      { "text": "selects a specific repetition by key — distinct from '*' (all repetitions) and the rule's own iteration", "kind": "AUTHORING" }
     ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And [Items/Count For \"SKU-1\"] > 0", "note": "the ordered count of the line item keyed SKU-1" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And [BillingAddress/PostalCode For \"x\"] == \"y\"", "error": "MVK_NO_INDEX_FIELD", "fix": "semantic index needs a repeatable group with an index field; BillingAddress has none" },
@@ -686,7 +688,7 @@
     "returns": "date",
     "meaning": "The current date (ignores the time of day).",
     "constraints": [ "compares only to dates (a date field, another date expression) — not to numbers" ],
-    "gotchas": [ "Now (the date-time sibling) is discouraged with == and forbidden in computations" ],
+    "gotchas": [ { "text": "Now (the date-time sibling) is discouraged with == and forbidden in computations", "kind": "AUTHORING" } ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And [OrderDate] >= Today", "note": "fires when the order date is today or in the future" },
     "invalidExample": { "dsl": "FieldFilled(Quantity) And [Quantity] >= Today", "error": "MVK_INVALID_COMPARE_TO_DATE", "fix": "Today compares to dates — compare a date field, not a number" },
     "sinceKernel": "30.8.x"
@@ -699,7 +701,7 @@
     "returns": "number",
     "meaning": "The number of whole days from the first date to the second.",
     "constraints": [ "both operands are dates (fields or date expressions), rendered as bare entity refs" ],
-    "gotchas": [ "differences are a floor, not a calendar count (DifferenceInMonths(31.01,30.03)=1); fractional offsets truncate" ],
+    "gotchas": [ { "text": "differences are a floor, not a calendar count (DifferenceInMonths(31.01,30.03)=1); fractional offsets truncate", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, DeliveryDate) > 7", "note": "fires when delivery is more than a week after order" },
     "sinceKernel": "30.8.x"
   },
@@ -711,7 +713,7 @@
     "returns": "number",
     "meaning": "The largest number of whole months that can be added to the first date without passing the second.",
     "constraints": [ "both operands are dates" ],
-    "gotchas": [ "a floor, not a calendar count (KERNEL-SEMANTICS §6)" ],
+    "gotchas": [ { "text": "a floor, not a calendar count (KERNEL-SEMANTICS §6)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInMonths(OrderDate, DeliveryDate) >= 1", "note": "fires when at least a month apart" },
     "sinceKernel": "30.8.x"
   },
@@ -723,7 +725,7 @@
     "returns": "number",
     "meaning": "The largest number of whole years between the two dates.",
     "constraints": [ "both operands are dates" ],
-    "gotchas": [ "a floor; a naive age check around leap days can be off (Add* vs Difference* disagree across leap years)" ],
+    "gotchas": [ { "text": "a floor; a naive age check around leap days can be off (Add* vs Difference* disagree across leap years)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInYears(OrderDate, DeliveryDate) >= 1", "note": "fires when at least a year apart" },
     "sinceKernel": "30.8.x"
   },
@@ -735,7 +737,7 @@
     "returns": "date",
     "meaning": "The date shifted forward by the given number of days.",
     "constraints": [ "the first operand is a date (bare entity ref); the second an integer amount" ],
-    "gotchas": [ "fractional offsets are truncated, not rounded" ],
+    "gotchas": [ { "text": "fractional offsets are truncated, not rounded", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And [DeliveryDate] > AddDays(OrderDate, 7)", "note": "fires when delivery is more than a week out" },
     "sinceKernel": "30.8.x"
   },
@@ -747,7 +749,7 @@
     "returns": "date",
     "meaning": "The date shifted forward by the given number of months (preserves the day number).",
     "constraints": [ "the first operand is a date; the second an integer amount" ],
-    "gotchas": [ "AddMonths preserves the day; AddYears maps end-of-February — they disagree across a leap-year boundary (§6)" ],
+    "gotchas": [ { "text": "AddMonths preserves the day; AddYears maps end-of-February — they disagree across a leap-year boundary (§6)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And [DeliveryDate] > AddMonths(OrderDate, 3)", "note": "fires when delivery is more than a quarter out" },
     "sinceKernel": "30.8.x"
   },
@@ -759,7 +761,7 @@
     "returns": "date",
     "meaning": "The date shifted forward by the given number of years (maps end-of-February to end-of-February).",
     "constraints": [ "the first operand is a date; the second an integer amount" ],
-    "gotchas": [ "differs from AddMonths across leap years (§6)" ],
+    "gotchas": [ { "text": "differs from AddMonths across leap years (§6)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And [DeliveryDate] > AddYears(OrderDate, 1)", "note": "fires when delivery is more than a year out" },
     "sinceKernel": "30.8.x"
   }

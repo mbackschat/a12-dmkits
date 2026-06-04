@@ -20,7 +20,7 @@ public record OperatorEntry(
         String returns,
         String meaning,
         List<String> constraints,
-        List<String> gotchas,
+        List<Gotcha> gotchas,
         Example validExample,
         InvalidExample invalidExample,
         String sinceKernel) {
@@ -39,6 +39,19 @@ public record OperatorEntry(
     /** An operand slot, described by the value kind it accepts (e.g. {@code "number"}, {@code "any"}). */
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Operand(String type) {
+    }
+
+    /**
+     * A semantic note about the operator, classified so the F4a gotcha/INFO channel surfaces the
+     * author-relevant ones ({@link GotchaKind#SURPRISE}/{@link GotchaKind#AUTHORING}) and suppresses
+     * trivia ({@link GotchaKind#RENDERING}). A missing {@code kind} defaults to {@code SURPRISE} so
+     * older entries still surface.
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Gotcha(String text, GotchaKind kind) {
+        public Gotcha {
+            kind = kind == null ? GotchaKind.SURPRISE : kind;
+        }
     }
 
     /** A valid usage example (CI-validated against the real kernel as a later anchor — N7). */

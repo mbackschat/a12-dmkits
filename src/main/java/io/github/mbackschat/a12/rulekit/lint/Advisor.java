@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import com.mgmtp.a12.model.notification.Severity;
 
+import io.github.mbackschat.a12.rulekit.catalog.GotchaKind;
 import io.github.mbackschat.a12.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.rulekit.catalog.OperatorEntry;
 import io.github.mbackschat.a12.rulekit.dsl.Condition;
@@ -53,9 +54,14 @@ public final class Advisor {
             catalog.byId(operatorId).ifPresent(entry -> {
                 Optional<String> explain = Optional.ofNullable(entry.meaning())
                         .filter(s -> !s.isBlank());
-                for (String gotcha : entry.gotchas()) {
+                for (OperatorEntry.Gotcha gotcha : entry.gotchas()) {
+                    // RENDERING gotchas are trivia rulekit already handles (language-independent
+                    // symbols, And/Or parenthesization) — not author-facing, so the channel is silent.
+                    if (gotcha.kind() == GotchaKind.RENDERING) {
+                        continue;
+                    }
                     out.add(new Diagnostic(Severity.INFO, DiagnosticSource.LINT,
-                            Optional.of(GOTCHA_CODE), gotcha,
+                            Optional.of(GOTCHA_CODE), gotcha.text(),
                             new Diagnostic.Where(rulePath, Optional.of(operatorId)),
                             Optional.empty(), explain));
                 }
