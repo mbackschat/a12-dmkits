@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.rulekit.adapter;
 
 import static io.github.mbackschat.a12.rulekit.dsl.Dsl.de;
 import static io.github.mbackschat.a12.rulekit.dsl.Dsl.en;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -12,6 +13,8 @@ import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.rulekit.dsl.ConditionLanguage;
+import io.github.mbackschat.a12.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.rulekit.dsl.RenderedDiff;
 import io.github.mbackschat.a12.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.rulekit.dsl.Severity;
@@ -57,6 +60,16 @@ class ModifyAndDiffTest {
                 .code("FEE").severity(Severity.ERROR).message(en("Too high."), de("Zu hoch.")).build();
         ValidationResult vr = new RuleDiagnostics().diagnose(model, modifiedRule);
         assertTrue(vr.ok(), () -> "re-expressed rule should validate, got: " + vr.diagnostics());
+
+        // write-back (F8 #3): apply the reviewed change, persisted as a new binding (F0)
+        BoundModel applied = model.replaceCondition(RULE, modified);
+        assertTrue(applied.toJson().contains("FieldFilled(MonthlyFee)"),
+                () -> "the applied model carries the re-expressed condition: " + applied.toJson());
+        // and it round-trips: re-ingesting the applied rule yields the modified AST
+        Condition reingested = assertInstanceOf(Ingest.Converted.class,
+                KernelAdapter.of(applied).ingest(RULE)).condition();
+        assertEquals(new DslRenderer(ConditionLanguage.EN).render(modified),
+                new DslRenderer(ConditionLanguage.EN).render(reingested));
     }
 
     private static String read(String path) {

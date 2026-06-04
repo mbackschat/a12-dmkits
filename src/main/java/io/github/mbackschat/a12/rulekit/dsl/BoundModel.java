@@ -68,6 +68,20 @@ public final class BoundModel {
         return ofJson(io.github.mbackschat.a12.rulekit.write.ModelWriter.addRule(requireWritable(), rule), resolver);
     }
 
+    /**
+     * Replaces the condition of the rule at {@code ruleFullName} with {@code newCondition}, returning
+     * a <em>new</em> binding (this one is unchanged); the F8 #3 write-back that applies a reviewed
+     * re-express. The condition is rendered relative to the rule's group (fork-9), like any authored
+     * rule; only the {@code errorCondition} slot changes. Re-validated on re-bind, so a write that
+     * breaks the rule fails loudly here.
+     */
+    public BoundModel replaceCondition(String ruleFullName, Condition newCondition) {
+        String groupPath = ruleFullName.substring(0, ruleFullName.lastIndexOf('/'));
+        String conditionText = new DslRenderer(ConditionLanguage.EN, groupPath).render(newCondition);
+        return ofJson(io.github.mbackschat.a12.rulekit.write.ModelWriter.replaceCondition(
+                requireWritable(), ruleFullName, conditionText), resolver);
+    }
+
     /** The model as DM-JSON text (the retained source, with any writes applied). */
     public String toJson() {
         return requireWritable();

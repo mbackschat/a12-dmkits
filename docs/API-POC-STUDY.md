@@ -370,7 +370,7 @@ m2.writeTo(Path.of("subscription.dm.json"));                       // SAVE — D
 
 *Carried forward (the 2026-06-03 sketch's richer rule-envelope, not yet shipped):* per-reference **roles** (error-field / operand) and **severity** need the rule envelope, not just the condition; the **`suspicious`** hints are available separately today via `RuleDiagnostics`/`lint.Linter`; authored path-style is a render concern. See proposal §F9 ("rule-envelope enrichment").
 
-### 5.4 Re-express, diff, validate, write back (#2) — diff ✅ 2026-06-04; write-back 🔮
+### 5.4 Re-express, diff, validate, write back (#2) ✅ 2026-06-04
 
 ```java
 Condition current = ((Ingest.Converted) adapter.ingest("/Subscription/Addons/FeeCapRule")).condition();  // ✅ F10
@@ -379,7 +379,7 @@ RenderedDiff diff = adapter.diff("/Subscription/Addons/FeeCapRule", fixed);   //
 //  diff.unified() → "- [/…/MonthlyFee] > 1000  / + [/…/MonthlyFee] > 1000 And FieldFilled(/…/MonthlyFee)"
 //  diff.lossiness() → ["…comments/formatting not preserved…"] when the source carried any
 ValidationResult vr = new RuleDiagnostics().diagnose(m, m.rule(g).errorField(fee).when(fixed)…build());  // ✅ F4/F4a
-BoundModel m2 = m.replaceCondition(legacy, fixed);   // 🔮 write-back: new binding (F0); persist via m2.writeTo(...) (§5.2)
+BoundModel m2 = model.replaceCondition("/Subscription/Addons/FeeCapRule", fixed);  // ✅ F8 #3 — new binding (F0), re-validated; persist via m2.writeTo(...) (§5.2)
 ```
 
 Note how 3.3's fragment library closes the loop: **re-expression frequently means recognizing a known idiom** — the LLM maps a foreign rule onto `feeRequired(...)` and the diff shows the cleanup.
@@ -525,7 +525,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 | Kernel-adapter bootstrap — opt-in `adapter` module, `KernelAdapter` over the a12internal read chain (`getMvkServiceForModel` → `ElementContainer.getAllRules`), boundary-converting | ✅ 2026-06-04 (Phase 2 start): `referencedFields` (exact F9a whereUsed), `canonicalConditionText` (kernel parse+format round-trip), `hasValidCondition` (per-rule fast lane); canary = N8 pin+canary |
 | F10 ingest — text→AST converter (`adapter.ConditionConverter`, `KernelAdapter.ingest`) | ✅ 2026-06-04: composite And/Or, comparisons (num/str/enum vs constant/field), string patterns (`matches`/`violates`), field/group presence, the field-list + group-list quantifier families, value-list membership (`in`/`notIn`), **aggregates + `Having`** (`Sum`/`MaxValue`/`MinValue`/`NumberOfDifferentValues` over a flattened wildcard scope, `*`-path rebuilt from the kernel indices, recursive Having filter), the **iteration/uniqueness cluster** (`CurrentRepetition`, `RepetitionNotUnique` + `.from`, `FieldValuesNotUnique`), and **dates** (date comparisons vs `Today`/another date, `DifferenceInDays`/`Months`/`Years`); re-authored through the handle API (D14-preserving); render→parse→convert→render round-trip oracle. **Tolerant: returns a sealed `Ingest` (`Converted`/`Opaque`), `ingestAll()` for a whole DM — an unmodeled construct is preserved verbatim, never lost/corrupt (F11).** Preserved-opaque (the converter's internal `UnsupportedConstructException` reason): `CustomCondition`, `Now`/`BaseYear`/date construction/`AddDays`, tolerance comparisons, operand wrappers, count-of-filled aggregates |
 | F9 explain — structured projection of a condition (`context.ModelContext.explain` → `RuleExplanation`) | ✅ 2026-06-04: operators (catalog meaning + gotchas), references (+model kind), iteration scope, NL gloss, JSON. One mechanism, two consumers — works identically on built and **ingested** conditions (demonstrated end-to-end on a foreign aggregate rule) |
-| F8 modify-by-re-express + diff (`dsl.RenderedDiff`, `KernelAdapter.diff`) | ✅ 2026-06-04: re-express a built/ingested condition (compose/`transform`), `RenderedDiff` (before/after/changed/lossiness, `unified()` + JSON) discloses comment/formatting loss; full loop *ingest → re-express → diff → validate* tested. `replaceCondition` write-back + LLM loop + `IProblem→Diagnostic` 🔮 |
+| F8 modify-by-re-express + diff + write-back (`dsl.RenderedDiff`, `KernelAdapter.diff`, `BoundModel.replaceCondition`) | ✅ 2026-06-04: re-express a built/ingested condition (compose/`transform`), `RenderedDiff` (before/after/changed/lossiness, `unified()` + JSON) discloses comment/formatting loss, and **`replaceCondition` writes the reviewed change back** (new binding, re-validated, `writeTo` persists). Full loop *ingest → re-express → diff → validate → write-back* tested. LLM loop + `IProblem→Diagnostic` 🔮 |
 | TS twin | 🔮 **deferred — very-future; design-informing only, not on the near agenda** (Phase 4) |
 
 ## 10. Design findings (the review surface's output)

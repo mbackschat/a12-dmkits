@@ -44,6 +44,24 @@ class WritePathTest {
         assertFalse(m.toJson().contains("FeePositiveRule"), "original binding must be untouched (F0)");
     }
 
+    @Test
+    void replaceConditionSwapsOnlyTheConditionSlot() {
+        BoundModel m = bind();
+        BoundModel withRule = m.add(feePositive(m));
+        String rulePath = "/Subscription/Addons/FeePositiveRule";
+
+        BoundModel applied = withRule.replaceCondition(rulePath,
+                withRule.num("/Subscription/Addons/MonthlyFee").gt(1000));
+
+        String json = applied.toJson();
+        assertTrue(json.contains("> 1000"), "the new condition is written");
+        assertFalse(json.contains("<= 0"), "the old condition is gone");
+        assertTrue(json.contains("FEE_POSITIVE"), "the error code (and the rest of the rule) is preserved");
+        // snapshot: the prior binding still carries the original condition (F0)
+        assertTrue(withRule.toJson().contains("<= 0"), "prior binding untouched");
+        // reaching here means the re-bind re-ran checkConsistency and the write validated
+    }
+
     private static Rule feePositive(BoundModel m) {
         return m.rule(m.group("/Subscription/Addons"))
                 .name("FeePositiveRule").errorField(m.num("/Subscription/Addons/MonthlyFee"))

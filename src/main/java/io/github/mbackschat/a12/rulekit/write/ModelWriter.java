@@ -42,6 +42,47 @@ public final class ModelWriter {
         }
     }
 
+    /**
+     * Returns {@code modelJson} with the {@code errorCondition} of the rule at {@code ruleFullName}
+     * replaced by {@code newConditionText} (F8 #3 write-back). Only the condition slot changes —
+     * messages, error field, code, and severity are left exactly as authored. Re-binding the result
+     * re-runs {@code checkConsistency}, so a write that breaks the rule fails loudly.
+     */
+    public static String replaceCondition(String modelJson, String ruleFullName, String newConditionText) {
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(modelJson);
+            JsonNode rootGroups = root.path("content").path("modelRoot").path("rootGroups");
+            ObjectNode rule = findRule(rootGroups, ruleFullName);
+            if (rule == null) {
+                throw new IllegalArgumentException("no rule at path: " + ruleFullName);
+            }
+            ((ObjectNode) rule.path("Rule")).put("errorCondition", newConditionText);
+            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
+        } catch (IOException e) {
+            throw new UncheckedIOException("failed to read/write the model DM-JSON", e);
+        }
+    }
+
+    /** Depth-first search for a {@code Rule} element by its id (full path), returning its node. */
+    private static ObjectNode findRule(JsonNode elements, String ruleFullName) {
+        if (!elements.isArray()) {
+            return null;
+        }
+        for (JsonNode node : elements) {
+            String type = node.path("type").asText();
+            if ("Rule".equals(type) && ruleFullName.equals(node.path("id").asText())) {
+                return (ObjectNode) node;
+            }
+            if ("Group".equals(type)) {
+                ObjectNode found = findRule(node.path("Group").path("elements"), ruleFullName);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
     private static ObjectNode ruleNode(Rule rule) {
         ObjectNode node = MAPPER.createObjectNode();
         node.put("type", "Rule");
