@@ -189,28 +189,28 @@ static List<Rule> nonNegativeMoneyRules(BoundModel m) {
 
 This is the bulk-authoring payoff: a *rule template* is a function `BoundModel → List<Rule>`; an LLM (or CI) applies it to any model.
 
-### 3.4a Authoring-time reuse over a multi-field structure — `sameAddress` 🔮 (needs field-vs-field equality; finding 18)
+### 3.4a Authoring-time reuse over a multi-field structure — `sameAddress` ✅ (field-vs-field equality landed; finding 18)
 
 When you author **many rules in Java that compare the same multi-field structure** (e.g. a seven-field address), a fragment removes the boilerplate — ordinary F5 combinator reuse, two levels deep. (Note: this is a convenience in the *authoring code*, not a transformation of the stored rule — the kernel DSL is flat, so the rendered `errorCondition` is the same string either way; what improves is the Java you write, not the persisted text.)
 
 ```java
 // field level — "null-safe equality": both present and equal, OR both absent
-static Condition equalOrBothEmpty(FieldRef a, FieldRef b) {
-    return allFieldsFilled(a, b).and(m.str(a).eq(m.str(b)))      // 🔮 field-vs-field eq (string/enum: no scale)
-            .or(noFieldFilled(a, b));
+static Condition equalOrBothEmpty(StringRef a, StringRef b) {
+    return allFieldsFilled(a.field(), b.field()).and(a.eq(b))    // ✅ field-vs-field eq (string: no scale)
+            .or(noFieldFilled(a.field(), b.field()));
     // renders ( (AllFieldsFilled(a,b) And [a]==[b]) Or NoFieldFilled(a,b) ) — rulekit auto-parenthesizes
 }
 // address level — parametrized over WHICH fields hold the address
 record Address(StringRef street, StringRef zip, StringRef city, /* … 7 */) {}
 static Condition sameAddress(Address x, Address y) {
-    return allOf(equalOrBothEmpty(x.street().field(), y.street().field()),
-                 equalOrBothEmpty(x.zip().field(),    y.zip().field()), /* … */);
+    return allOf(equalOrBothEmpty(x.street(), y.street()),
+                 equalOrBothEmpty(x.zip(),    y.zip()), /* … */);
 }
 // each rule then reads at intent level — e.g. "the warehouse ships from the sender's or the buyer's address":
 m.rule(g).when(warehouseAddr.filled().and(sameAddress(warehouse, sender).or(sameAddress(warehouse, buyer)))) …
 ```
 
-The fragment is just a function — the F5 payoff for repetitive authoring. The one missing primitive is **field-vs-field equality** (`a.eq(b)`) — buildable *now* for string/enum (no scale), number deferred behind the D13 scale pre-check (finding 18). (Later: a `sameAddress(GroupRef, GroupRef)` that zips like-named fields via the model index — Level-2 navigation.)
+The fragment is just a function — the F5 payoff for repetitive authoring. **Field-vs-field equality** (`a.eq(b)`) landed for string + number (number `==`/`!=` pre-checks equal scale; ordering exempt — finding 18); enum-vs-enum is deferred (text-bearing rules + fixture). (Later: a `sameAddress(GroupRef, GroupRef)` that zips like-named fields via the model index — Level-2 navigation.)
 
 ### 3.5 n-ary composition ✅ (finding 10 — implemented 2026-06-04)
 
@@ -479,6 +479,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 | Handles (`num/str/enumOf/bool/confirm/group/date`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–6, 8, 9a + iteration slices 7a–7e — patterns, value lists, count + list aggregates, `*` lists, `repetitionNotUnique(...).from(...)`, `flatten(...).having(filter)`, `currentRepetition(group)`, `customCondition(name)`, dates: `today()`/ordering/`differenceIn*`/`add*`) |
 | §3.1 fragments, §3.3 library pattern, §6 catalog queries, §2 type-steering | ✅ pattern works today on covered operators |
 | §3.2 domain fragments (`withinTolerance`, `chronological`, `uniqueBy`) | `uniqueBy` ✅ (7b); the others 🔮 (tolerance ops, `CurrentRepetition`) |
+| §3.4a `sameAddress` (field-vs-field equality) | ✅ string + number (finding 18); enum-vs-enum 🔮 |
 | §6c navigation (Level 1: `fields()`/`groups()`/`fieldAt` + strict narrowing), §3.5 `allOf`/`anyOf` | ✅ implemented 2026-06-04 (findings 9–10) |
 | §3.4 rule templates | ✅ full form works (navigation + `Rule` object) |
 | `Rule` + `Computation` authoring objects (computed relPaths, slot-rule pre-checks, validator bridges, `Calculation.kind()`) | ✅ implemented 2026-06-04 |
@@ -519,6 +520,6 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
     ```
     **First build increment:** promote `Problem` → `Diagnostic` (code/where/fix/explain/source) + catalog-join for kernel problems + JSON output; lints, "did you mean", and span-pointing follow. Recorded as proposal **F4a**.
 
-18. *(new, 2026-06-04)* **Field-vs-field comparison is the prioritized next primitive.** Comparing two fields (`[A] == [B]`, `[A] <= [B]`) is a basic capability rulekit lacks (comparisons take literals only) — it makes whole classes of ordinary rules inexpressible: confirmation match (`[Email] == [EmailConfirm]`), range sanity (`[MinQty] <= [MaxQty]`), reconciliation (`[Net] + [Tax] == [Gross]`), and the multi-field-structure reuse of §3.4a. The recordable consequence is **prioritization**: field-vs-field (currently the vague "D13 later") blocks *two* independent high-value features — those cross-field rules **and** `$` correlation (§5.2/7d). The cheap unlock is real: **string/enum field-vs-field equality has no scale**, so it's buildable now exactly like date ordering was (slice 9a); only **number** field-vs-field needs the D13 decimal-scale pre-check. Recommended order: string/enum field-vs-field equality (near-term) → number field-vs-field + scale pre-check.
+18. *(new, 2026-06-04 — ✅ string + number landed same day)* **Field-vs-field comparison.** Comparing two fields (`[A] == [B]`, `[A] <= [B]`) was a basic capability rulekit lacked (comparisons took literals only) — it makes whole classes of ordinary rules inexpressible: confirmation match (`[Email] == [EmailConfirm]`), range sanity (`[MinQty] <= [MaxQty]`), reconciliation (`[Net] + [Tax] == [Gross]`), and the multi-field-structure reuse of §3.4a. The recordable consequence is **prioritization**: field-vs-field (currently the vague "D13 later") blocks *two* independent high-value features — those cross-field rules **and** `$` correlation (§5.2/7d). The cheap unlock is real: **string/enum field-vs-field equality has no scale**, so it's buildable now exactly like date ordering was (slice 9a); only **number** field-vs-field needs the D13 decimal-scale pre-check. Done 2026-06-04: `StringRef.eq/ne(StringRef)` + `NumberRef.{lt,le,gt,ge,eq,ne}(NumberRef)`, the number `==`/`!=` pre-checking equal scale. Enum-vs-enum still deferred (text-bearing rules + fixture). This unblocks `sameAddress` (§3.4a); `$` correlation remains its own deferred feature.
 
 *(4–6 shape Phase-2 API design; 7–8 are proposal §12/§14 refinements; 9–13 are scheduled — 9/10/12-describe-find/13-dump Phase 1, the rest Phase 2; 14 is the meta-instrument now in CLAUDE.md; 15–16 are increment/authoring practice; 17 is F4a; 18 prioritizes field-vs-field comparison.)*

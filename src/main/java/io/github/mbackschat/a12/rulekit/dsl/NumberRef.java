@@ -100,6 +100,48 @@ public record NumberRef(FieldRef field, int scale) {
         return asNumber().ne(literal);
     }
 
+    // --- field-vs-field comparison (finding 18) --------------------------------------------------
+    // Ordering ignores scale; == / != require equal declared scale (MVK_INVALID_COMPARE_DEC_PLACES,
+    // pre-checked here — verified 2026-06-04, the D13 gate made cheap since rulekit knows both scales).
+
+    public Condition lt(NumberRef other) {
+        return fieldCmp(CompareOp.LT, other);
+    }
+
+    public Condition le(NumberRef other) {
+        return fieldCmp(CompareOp.LE, other);
+    }
+
+    public Condition gt(NumberRef other) {
+        return fieldCmp(CompareOp.GT, other);
+    }
+
+    public Condition ge(NumberRef other) {
+        return fieldCmp(CompareOp.GE, other);
+    }
+
+    public Condition eq(NumberRef other) {
+        requireSameScale(other);
+        return fieldCmp(CompareOp.EQ, other);
+    }
+
+    public Condition ne(NumberRef other) {
+        requireSameScale(other);
+        return fieldCmp(CompareOp.NE, other);
+    }
+
+    private Condition fieldCmp(CompareOp op, NumberRef other) {
+        return new ComparisonCondition(field.value(), op, other.field.value());
+    }
+
+    private void requireSameScale(NumberRef other) {
+        if (scale != other.scale) {
+            throw new IllegalArgumentException("cannot compare number fields of different scale with == / !="
+                    + " (" + field.path() + " scale " + scale + " vs " + other.field.path() + " scale "
+                    + other.scale + ") — MVK_INVALID_COMPARE_DEC_PLACES; ordering (< <= > >=) is exempt");
+        }
+    }
+
     /**
      * {@code FieldValueIncludedInValueList(field, n1, …)} — membership in a literal list. The
      * {@code long} signature is the kernel law: value-list numbers are integer literals only

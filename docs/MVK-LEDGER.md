@@ -51,7 +51,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_INDEX_TYPE_INCONSISTENT` | unclassified | — (experiment queue) |
 | `MVK_INDEX_VALUE_INVALID` | unclassified | — (experiment queue) |
 | `MVK_INVALID_COMBINATION_OF_REPETITON_NOT_UNIQUE` | unclassified | — (experiment queue) |
-| `MVK_INVALID_COMPARE_DEC_PLACES` | kernel-delegated | by design (D13): result scales are the kernel’s; literals are exempt (KERNEL-FINDINGS §5) |
+| `MVK_INVALID_COMPARE_DEC_PLACES` | pre-checked | `NumberRef.eq/ne(NumberRef)` require equal declared scale (the gate is `==`/`!=`-only; ordering exempt); expression-result scales beyond that stay the kernel’s (D13). Literals exempt (KERNEL-FINDINGS §5). Locked: `validate.laws.NumberLawsTest` |
 | `MVK_INVALID_COMPARE_ENUM_TO_ENUM` | unclassified | — (experiment queue) |
 | `MVK_INVALID_COMPARE_ENUM_TO_STRING` | unclassified | — (experiment queue) |
 | `MVK_INVALID_COMPARE_TO_CONST` | erased | handles always put a field value on one side; constant-vs-constant unrepresentable (verified via pattern experiments 2026-06-04) |
@@ -326,4 +326,4 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_YES_NO_INVALID_2` | unclassified | — (experiment queue) |
 | `MVK_YES_VALUE_MISSING` | unclassified | — (experiment queue) |
 
-*Classified: 47 of 300 (codes may appear in more than one source); the rest queue up as their operator families land or via dedicated experiments.*
+*Classified: 48 of 300 (codes may appear in more than one source); the rest queue up as their operator families land or via dedicated experiments.*

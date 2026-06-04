@@ -22,6 +22,15 @@ public record StringRef(FieldRef field) {
         return new ComparisonCondition(field.value(), CompareOp.NE, new StringLiteral(literal));
     }
 
+    /** Field-vs-field equality {@code [this] == [other]} — strings have no scale, so no gate. */
+    public Condition eq(StringRef other) {
+        return new ComparisonCondition(field.value(), CompareOp.EQ, other.field.value());
+    }
+
+    public Condition ne(StringRef other) {
+        return new ComparisonCondition(field.value(), CompareOp.NE, other.field.value());
+    }
+
     /** {@code Length(field)} as a numeric expression for comparison. */
     public NumberExpr length() {
         return new NumberExpr(new LengthOf(field));

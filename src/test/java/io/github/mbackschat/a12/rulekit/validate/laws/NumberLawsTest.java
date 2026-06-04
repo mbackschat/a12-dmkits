@@ -19,4 +19,21 @@ class NumberLawsTest {
         KernelLaws.rejects("/Subscription/Addons", "../Name",
                 "FieldFilled(Name) And [Name] <= [MonthlyFee]", "MVK_INVALID_TYPE_FOR_COMPARISON");
     }
+
+    @Test
+    void fieldVsFieldScaleGateAppliesToEqualityOnly() {
+        // Verified 2026-06-04: == / != between two number fields of DIFFERENT scale (Quantity 0,
+        // UnitPrice 2) → MVK_INVALID_COMPARE_DEC_PLACES; ORDERING (< <= > >=) is exempt.
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                "AllFieldsFilled(Quantity, UnitPrice) And [Quantity] == [UnitPrice]",
+                "MVK_INVALID_COMPARE_DEC_PLACES");
+        KernelLaws.acceptsOrder("/Order", "../Quantity",
+                "AllFieldsFilled(Quantity, UnitPrice) And [Quantity] < [UnitPrice]");
+    }
+
+    @Test
+    void stringFieldVsFieldEqualityIsAccepted() {
+        KernelLaws.acceptsOrder("/Order", "../CustomerName",
+                "AllFieldsFilled(CustomerName, ProductCode) And [CustomerName] == [ProductCode]");
+    }
 }

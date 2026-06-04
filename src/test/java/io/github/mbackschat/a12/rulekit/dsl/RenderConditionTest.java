@@ -85,6 +85,25 @@ class RenderConditionTest {
     }
 
     @Test
+    void rendersStringFieldVsFieldEquality() {
+        // field-vs-field — strings have no scale, so == / != between two string fields is direct
+        assertEquals("[/Subscription/Addons/Name] == [/Subscription/Billing/InvoiceEmail]",
+                new DslRenderer().render(m.str(NAME).eq(m.str("/Subscription/Billing/InvoiceEmail"))));
+        assertEquals("[/Subscription/Addons/Name] != [/Subscription/Billing/InvoiceEmail]",
+                new DslRenderer().render(m.str(NAME).ne(m.str("/Subscription/Billing/InvoiceEmail"))));
+    }
+
+    @Test
+    void rendersNumberFieldVsFieldComparisons() {
+        // ordering between two number fields ignores scale (verified 2026-06-04)
+        assertEquals("[/Subscription/Billing/BaseFee] <= [/Subscription/Billing/EffectiveFee]",
+                new DslRenderer().render(m.num("/Subscription/Billing/BaseFee").le(m.num("/Subscription/Billing/EffectiveFee"))));
+        // == between equal-scale number fields is fine
+        assertEquals("[/Subscription/Billing/BaseFee] == [/Subscription/Billing/EffectiveFee]",
+                new DslRenderer().render(m.num("/Subscription/Billing/BaseFee").eq(m.num("/Subscription/Billing/EffectiveFee"))));
+    }
+
+    @Test
     void rendersLengthFunctionBilingually() {
         Condition c = m.str(NAME).length().gt(10);
         assertEquals("Length(/Subscription/Addons/Name) > 10", new DslRenderer().render(c));
