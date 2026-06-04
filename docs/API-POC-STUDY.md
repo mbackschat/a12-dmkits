@@ -238,16 +238,21 @@ Condition ast = switch (KernelAdapter.ingest(legacy, m)) {
 };
 // FieldRefs carry authored PathStyle hints (SHORT, ABSOLUTE); comments are flagged as lost-on-re-render
 
-// WORK — "work(ast)" made concrete: extend the rule so the fee must also be positive.
-// transform (#1, ✅ today) rewrites the matched node; untouched subtrees are reused by reference.
+// WORK — extend the rule so the fee must also be positive. A plain extension COMPOSES:
+// the immutable original becomes a subtree, the addition is appended — intent on the surface.
 NumberRef fee = m.num("/Subscription/Addons/MonthlyFee");
-Condition changed = ast.transform(node -> switch (node) {
-    case FieldPresenceCondition f
-            when f.operatorId().equals("FieldFilled") && f.field().path().endsWith("/MonthlyFee")
-        -> f.and(fee.gt(0));                       // FieldFilled(MonthlyFee) → FieldFilled(...) And [...] > 0
-    default -> node;
+Condition changed = ast.and(fee.gt(0));            // … And [MonthlyFee] > 0
+
+// transform (#1, ✅ today) is the SURGICAL tool — reach for it when the edit happens INSIDE the
+// tree (node replacement, bulk rewrites). Sensible change: [Tier] != "BASIC" hardcodes the tier
+// list — re-express it via the Pricing category so future paid tiers are covered automatically.
+// Composing can't do this: the old comparison node must be REPLACED where it sits.
+Condition modernized = changed.transform(node -> switch (node) {
+    case ComparisonCondition(FieldValue(var f), var op, EnumValueLiteral v)
+            when f.path().endsWith("/Tier")
+        -> tier.category("Pricing").is("PAID");    // [Tier] != "BASIC" → [Tier -> Pricing] == "PAID"
+    default -> node;                               // untouched subtrees are reused by reference
 });
-// (for a plain extension, composing beats rewriting: Condition changed = ast.and(fee.gt(0));)
 
 // REVIEW → VALIDATE → PERSIST — snapshot semantics (F0): a write yields a NEW model + binding
 RenderedDiff diff = m.diff(legacy, changed);                       // the human gate; discloses lost comments
@@ -259,10 +264,12 @@ m2.writeTo(Path.of("subscription.dm.json"));                       // SAVE — D
 
 ```text
 --- /Subscription/Addons/LegacyFeeRule (authored text; 1 comment will be dropped on write)
-+++ modified via rulekit transform
++++ modified via rulekit (composed: appended at the end)
 - ;; fee must be set for paid tiers
 - FieldFilled(MonthlyFee) AND [/Subscription/Tier] != "BASIC"
-+ FieldFilled(MonthlyFee) And [/Subscription/Addons/MonthlyFee] > 0 And [/Subscription/Tier] != "BASIC"
++ FieldFilled(MonthlyFee) And [/Subscription/Tier] != "BASIC" And [/Subscription/Addons/MonthlyFee] > 0
+(with the transform's category replacement on top, `modernized` renders:
+ FieldFilled(MonthlyFee) And [/Subscription/Tier -> Pricing] == "PAID" And [/Subscription/Addons/MonthlyFee] > 0)
 ```
 
 ### 5.3 Explain (F9) 🔮 Phase 2 — same projection for built and ingested rules
@@ -435,4 +442,6 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 
 15. *(new, 2026-06-04 — from the pattern increment)* **A new operator family's experiments routinely surface adjacent kernel laws — budget for them.** Probing the four pattern slot codes also yielded: the portable-regex-subset gate is *enforced* (Java-valid lookbehind rejected → `Pattern.compile` pre-checks can only be necessary conditions), and **DSL string literals escape by quote-doubling, not backslashes** — which exposed and fixed a latent renderer bug (`quote()` was C-style; any `\`-bearing regex would have rendered wrong). The N7/lock harness then froze both laws for free. Pattern: when an increment's probes return something unexpected about a *neighboring* mechanism (literals, lexing, evaluation order), chase it in the same increment — it is already reproduced, and the fix + lock are cheapest right there.
 
-*(4–6 shape Phase-2 API design; 7–8 are proposal §12/§14 refinements; 9–13 are scheduled — 9/10/12-describe-find/13-dump Phase 1, the rest Phase 2; 14 is the meta-instrument now in CLAUDE.md; 15 is increment practice.)*
+16. *(new, 2026-06-04 — owner review of §5.2)* **Compose to extend; transform only to operate inside.** A plain extension is `ast.and(more)` — the immutable original becomes a subtree, intent stays on the surface. `transform` is the *surgical* tool and must be presented as such: node replacement (§5.2's `[Tier] != "BASIC"` → `[Tier -> Pricing] == "PAID"` modernization — impossible by composing), placement, bulk rewrites across matches. The first draft used `transform` for a plain extension — machinery over intent, exactly what §2's thesis forbids. Skill consequence: teach the decision rule ("extending? `and()`. editing inside? `transform`."), not just the APIs.
+
+*(4–6 shape Phase-2 API design; 7–8 are proposal §12/§14 refinements; 9–13 are scheduled — 9/10/12-describe-find/13-dump Phase 1, the rest Phase 2; 14 is the meta-instrument now in CLAUDE.md; 15–16 are increment/authoring practice.)*
