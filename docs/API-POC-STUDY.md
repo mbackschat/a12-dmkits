@@ -249,8 +249,10 @@ new DslRenderer(ConditionLanguage.DE).render(condition);   // ✅ same AST, Germ
 
 ValidationResult vr = new RuleValidator().check(modelJson, draftRule);   // ✅ F4: real kernel, no compile
 vr.diagnostics().forEach(d -> System.out.println(d.code() + " " + d.fix()));  // ✅ F4a: code + catalog-joined fix
-System.out.println(vr.toJson());                           // ✅ F4a: agent-parseable diagnostics (files-as-API)
-// 🔮 lint WARNINGs + gotcha/INFO channel + "did you mean" + AST span-pointing (F4a later increments)
+
+// ✅ F4a unified surface: KERNEL (span-pointed) + LINT warnings + gotcha INFO in one result
+ValidationResult all = new RuleDiagnostics().diagnose(boundModel, rule);
+System.out.println(all.toJson());                          // ✅ agent-parseable, one array, every origin (files-as-API)
 
 BoundModel m2 = m.add(rule);                               // ✅ snapshot (F0): write → NEW binding, re-validated
 m2.writeTo(path);                                          // ✅ DM-JSON write path — authored JSON, includes preserved (D9, F6)
@@ -489,6 +491,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 | DM-JSON write path: `ofJson`/`add(Rule)`/`toJson`/`writeTo` (snapshot, re-validated, includes-preserving) | ✅ F6 first slice (2026-06-04); `add(Computation)`/`replaceCondition`/`removeRule` 🔮 |
 | Structured `Diagnostic` (`severity·source·code·summary·where·fix·explain`) + catalog-join + JSON | ✅ F4a first increment (2026-06-04) — KERNEL, LINT, and PRECHECK origins all land |
 | PRECHECK diagnostics — build-time pre-checks carry a structured `Diagnostic` (`PrecheckException`) | ✅ 2026-06-04 (Rule.Builder; still an `IllegalStateException` so fail-fast is unchanged; Computation.Builder + handle refs follow) |
+| Unified diagnose — one call returns KERNEL+LINT+INFO for a rule (`lint.RuleDiagnostics`) | ✅ 2026-06-04 (`diagnose(model, rule) → ValidationResult`; KERNEL is span-pointed; PRECHECK is build-time, separate) |
 | Span-pointing — pin a KERNEL diagnostic's `where.operator` + `where.span` via AST↔problem matching (`lint.SpanResolver`) | ✅ 2026-06-04 (used∩candidate operators → operator-exact join; `where.span` from the renderer emit-map `DslRenderer.renderWithSpans` for the single-node case) |
 | "Did you mean" suggestions — nearest path / enum value on fail-fast handle errors (`model.Suggest`) | ✅ 2026-06-04 (Levenshtein, typo-plausible threshold) |
 | Lint layer — valid-but-suspicious WARNINGs over the AST (`lint.Linter`, `RK_*` codes) | ✅ pure-AST (contradictory/non-complementary presence, duplicate operand) + rule-context (`RK_NEG_CONDITION_IN_ITERATION`, `RK_INVERTED_REQUIREDNESS`) (2026-06-04) |
