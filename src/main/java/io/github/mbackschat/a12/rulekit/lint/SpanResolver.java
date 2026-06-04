@@ -7,6 +7,7 @@ import java.util.Set;
 import io.github.mbackschat.a12.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.rulekit.catalog.OperatorEntry;
 import io.github.mbackschat.a12.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.rulekit.dsl.OperatorUsage;
 import io.github.mbackschat.a12.rulekit.validate.Diagnostic;
@@ -37,8 +38,17 @@ public final class SpanResolver {
 
     /** The diagnostics with each KERNEL one's {@code where.operator}/{@code span} pinned where the AST disambiguates it. */
     public List<Diagnostic> resolve(List<Diagnostic> diagnostics, Condition condition) {
+        return resolve(diagnostics, condition, null);
+    }
+
+    /**
+     * As {@link #resolve(List, Condition)}, but renders spans relative to {@code baseGroup} so the
+     * offsets match the rule's own (relative, fork #9) rendering rather than an absolute one.
+     */
+    public List<Diagnostic> resolve(List<Diagnostic> diagnostics, Condition condition, String baseGroup) {
         Set<String> used = OperatorUsage.of(condition);
-        DslRenderer.Rendered rendered = new DslRenderer().renderWithSpans(condition);
+        DslRenderer.Rendered rendered =
+                new DslRenderer(ConditionLanguage.EN, baseGroup).renderWithSpans(condition);
         return diagnostics.stream().map(d -> refine(d, used, rendered)).toList();
     }
 

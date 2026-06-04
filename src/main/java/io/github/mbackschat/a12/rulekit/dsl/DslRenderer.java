@@ -11,26 +11,69 @@ import io.github.mbackschat.a12.rulekit.validate.Span;
  * {@link Condition#operatorId() operator-id} (D14), so the same AST renders to EN or DE and no
  * keyword knowledge lives outside the catalog.
  *
- * <p>Paths render in absolute form for now. The model+rule-group-aware path policy (relative/short,
- * keyword-segment quoting, honoring ingested {@link PathStyle} hints — §18 fork 9, F3a) is a later
- * refinement.
+ * <p>Path policy (§18 fork 9, F3a): with a {@code baseGroup} set the renderer emits paths
+ * <em>relative</em> to the rule's group (bare under the group, {@code ../} up to a sibling — both
+ * kernel-verified, KERNEL-FINDINGS §paths), which is how {@code Rule}/{@code Computation} render;
+ * without one it emits absolute paths. Keyword-segment quoting and honoring ingested
+ * {@link PathStyle} hints are the remaining refinements.
  */
 public final class DslRenderer {
 
     private final OperatorCatalog catalog;
     private final ConditionLanguage language;
+    private final String baseGroup;
 
     public DslRenderer() {
         this(ConditionLanguage.EN);
     }
 
     public DslRenderer(ConditionLanguage language) {
-        this(OperatorCatalog.load(), language);
+        this(OperatorCatalog.load(), language, null);
+    }
+
+    /** A renderer that emits paths relative to {@code baseGroup} (fork #9 / F3a); {@code null} = absolute. */
+    public DslRenderer(ConditionLanguage language, String baseGroup) {
+        this(OperatorCatalog.load(), language, baseGroup);
     }
 
     public DslRenderer(OperatorCatalog catalog, ConditionLanguage language) {
+        this(catalog, language, null);
+    }
+
+    public DslRenderer(OperatorCatalog catalog, ConditionLanguage language, String baseGroup) {
         this.catalog = catalog;
         this.language = language;
+        this.baseGroup = baseGroup;
+    }
+
+    /**
+     * A path in the configured form: relative to the rule's group when a {@code baseGroup} is set
+     * (fork #9 — the kernel's preferred, readable form, verified accepted: bare under the group,
+     * {@code ../} up to a sibling), else the absolute path. Both are kernel-valid; relative is the
+     * authoring norm.
+     */
+    private String path(String absolute) {
+        return baseGroup == null ? absolute : relativize(baseGroup, absolute);
+    }
+
+    private static String relativize(String base, String absolute) {
+        String[] b = base.split("/");
+        String[] f = absolute.split("/");
+        int common = 0;
+        while (common < b.length && common < f.length && b[common].equals(f[common])) {
+            common++;
+        }
+        StringBuilder rel = new StringBuilder();
+        for (int i = common; i < b.length; i++) {
+            rel.append("../");
+        }
+        for (int i = common; i < f.length; i++) {
+            rel.append(f[i]);
+            if (i < f.length - 1) {
+                rel.append('/');
+            }
+        }
+        return rel.isEmpty() ? absolute : rel.toString();
     }
 
     /**
@@ -76,7 +119,7 @@ public final class DslRenderer {
 
     public String render(Condition condition) {
         return switch (condition) {
-            case FieldPresenceCondition f -> keyword(f.operatorId()) + "(" + f.field().path() + ")";
+            case FieldPresenceCondition f -> keyword(f.operatorId()) + "(" + path(f.field().path()) + ")";
             case FieldListPredicate p -> keyword(p.operatorId()) + "("
                     + p.fields().stream().map(this::operand)
                             .collect(java.util.stream.Collectors.joining(", "))
@@ -85,19 +128,19 @@ public final class DslRenderer {
                     render(c.left()) + " " + keyword(c.operatorId()) + " " + render(c.right());
             case LogicCondition l ->
                     child(l, l.left()) + " " + keyword(l.operatorId()) + " " + child(l, l.right());
-            case GroupPresenceCondition g -> keyword(g.operatorId()) + "(" + g.group().path() + ")";
+            case GroupPresenceCondition g -> keyword(g.operatorId()) + "(" + path(g.group().path()) + ")";
             case GroupListPredicate p -> keyword(p.operatorId()) + "("
-                    + p.groups().stream().map(GroupRef::path).collect(java.util.stream.Collectors.joining(", "))
+                    + p.groups().stream().map(g -> path(g.path())).collect(java.util.stream.Collectors.joining(", "))
                     + ")";
             case PatternCondition p ->
-                    "[" + p.field().path() + "] " + keyword(p.operatorId()) + " " + quote(p.regex());
-            case ValueListCondition v -> keyword(v.operatorId()) + "(" + v.field().path() + ", "
+                    "[" + path(p.field().path()) + "] " + keyword(p.operatorId()) + " " + quote(p.regex());
+            case ValueListCondition v -> keyword(v.operatorId()) + "(" + path(v.field().path()) + ", "
                     + v.values().stream().map(this::render).collect(java.util.stream.Collectors.joining(", "))
                     + ")";
             case CustomConditionRef c -> keyword(c.operatorId()) + " " + c.name();
             case RepetitionNotUniqueCondition r -> keyword(r.operatorId()) + "("
-                    + r.keys().stream().map(FieldRef::path).collect(java.util.stream.Collectors.joining(", "))
-                    + r.scope().map(s -> " " + keyword("FromScope") + " " + s.path()).orElse("")
+                    + r.keys().stream().map(k -> path(k.path())).collect(java.util.stream.Collectors.joining(", "))
+                    + r.scope().map(s -> " " + keyword("FromScope") + " " + path(s.path())).orElse("")
                     + ")";
             case FieldListValueListCondition v -> keyword(v.operatorId()) + "("
                     + v.fields().stream().map(this::operand)
@@ -112,9 +155,9 @@ public final class DslRenderer {
     /** A field-list operand: its path, plus a {@code Having <filter>} clause for a filtered list. */
     private String operand(FieldOperand op) {
         if (op instanceof FieldListRef list && list.filter().isPresent()) {
-            return list.renderedPath() + " " + keyword("Having") + " " + render(list.filter().get());
+            return path(list.renderedPath()) + " " + keyword("Having") + " " + render(list.filter().get());
         }
-        return op.renderedPath();
+        return path(op.renderedPath());
     }
 
     private String child(LogicCondition parent, Condition child) {
@@ -129,14 +172,14 @@ public final class DslRenderer {
     /** Renders a value expression — e.g. a computation slot's {@code operation}. */
     public String render(Calculation calculation) {
         return switch (calculation) {
-            case FieldValue v -> "[" + v.field().path() + "]";
+            case FieldValue v -> "[" + path(v.field().path()) + "]";
             case NumberLiteral n -> n.value().toPlainString();
             case StringLiteral s -> quote(s.value());
             case EnumValueLiteral e -> quote(e.value());
             case BoolLiteral b -> keyword(b.operatorId());
-            case LengthOf l -> keyword(l.operatorId()) + "(" + l.field().path() + ")";
+            case LengthOf l -> keyword(l.operatorId()) + "(" + path(l.field().path()) + ")";
             case EnumCategoryAccess c ->
-                    "[" + c.field().path() + " " + keyword(c.operatorId()) + " " + c.category() + "]";
+                    "[" + path(c.field().path()) + " " + keyword(c.operatorId()) + " " + c.category() + "]";
             case ListAggregate a -> keyword(a.operatorId()) + "("
                     + a.operands().stream().map(this::operand)
                             .collect(java.util.stream.Collectors.joining(", "))
@@ -144,12 +187,12 @@ public final class DslRenderer {
             case CountAggregate a -> keyword(a.operatorId()) + "("
                     + java.util.stream.Stream.concat(
                             a.fields().stream().map(this::operand),
-                            a.groups().stream().map(GroupRef::path))
+                            a.groups().stream().map(g -> path(g.path())))
                     .collect(java.util.stream.Collectors.joining(", "))
                     + ")";
-            case CurrentRepetition r -> keyword(r.operatorId()) + "(" + r.group().path() + ")";
+            case CurrentRepetition r -> keyword(r.operatorId()) + "(" + path(r.group().path()) + ")";
             case SemanticIndexValue v ->
-                    "[" + v.field().path() + " " + keyword(v.operatorId()) + " " + quote(v.indexValue()) + "]";
+                    "[" + path(v.field().path()) + " " + keyword(v.operatorId()) + " " + quote(v.indexValue()) + "]";
             case Today t -> keyword(t.operatorId());
             case DateDifference d -> keyword(d.operatorId())
                     + "(" + renderArg(d.left()) + ", " + renderArg(d.right()) + ")";
@@ -164,7 +207,7 @@ public final class DslRenderer {
      */
     private String renderArg(Calculation value) {
         if (value instanceof FieldValue v) {
-            return v.field().path();
+            return path(v.field().path());
         }
         return render(value);
     }

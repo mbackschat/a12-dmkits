@@ -41,13 +41,13 @@ public record Rule(
         return "../" + errorField.path().substring(group.path().length() + 1);
     }
 
-    /** Canonical EN condition text. */
+    /** Canonical EN condition text — paths rendered relative to the rule's group (fork #9). */
     public String render() {
-        return new DslRenderer().render(condition);
+        return new DslRenderer(ConditionLanguage.EN, group.path()).render(condition);
     }
 
     public String render(ConditionLanguage language) {
-        return new DslRenderer(language).render(condition);
+        return new DslRenderer(language, group.path()).render(condition);
     }
 
     /** The bridge to the F4 validator ({@code RuleValidator.check(modelJson, rule.draft())}). */

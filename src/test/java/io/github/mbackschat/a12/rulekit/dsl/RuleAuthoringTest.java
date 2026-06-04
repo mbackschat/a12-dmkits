@@ -59,7 +59,7 @@ class RuleAuthoringTest {
 
         assertEquals("../MonthlyFee", rule.errorEntityRelPath());
         assertEquals(
-                "FieldFilled(/Subscription/Addons/MonthlyFee) And [/Subscription/Addons/MonthlyFee] <= 0",
+                "FieldFilled(MonthlyFee) And [MonthlyFee] <= 0",   // fork #9: paths relative to the rule's group
                 rule.render());
 
         ValidationResult vr = new RuleValidator().check(modelJson, rule.draft());

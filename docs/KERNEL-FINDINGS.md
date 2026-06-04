@@ -219,3 +219,7 @@ Header `locales` are **arbitrary** valid Java locale codes (`fr_FR` is fine; a m
 - A message for an **undeclared** locale is **silently tolerated and ignored** — no diagnostic, so a typo'd locale code or dead text goes unnoticed (rulekit rejects it at build time for exactly that reason).
 
 *(Locked: `RuleAuthoringTest.requiresAMessageForEveryDeclaredLocale` / `rejectsMessagesForUndeclaredLocales`.)*
+
+## §paths supplement — relative path forms accepted in conditions (fork #9, 2026-06-04 probe)
+
+Conditions accept paths **relative to the rule's group**, not only absolute — verified against the kernel: a bare segment for a field directly under the rule group (`FieldFilled(MonthlyFee)` at `/Subscription/Addons`), the bracketed value form (`[MonthlyFee]`), and `../` parent navigation to a sibling group's field (`FieldFilled(../Tier)` from `/Subscription/Addons`). All kernel-accepted (computation operations too). Descending *relatively* into a **repeatable** subgroup still hits the wildcard law (`MVK_NO_WILDCARD`) — that is the iteration rule, orthogonal to the path form. rulekit's renderer now renders rule/computation conditions relative to their group (the authoring norm — `DslRenderer` with a base group); standalone `DslRenderer.render` stays absolute, and absolute remains valid (KERNEL-INTEGRATION-NOTES). Keyword-segment quoting (a field named like a keyword) is the remaining fork-9 half — deferred (needs a keyword-named fixture + the quoting syntax). *(Locked: `dsl.PathPolicyTest`.)*
