@@ -34,6 +34,10 @@ Write idiomatic modern Java 21, not Java 8 with newer syntax:
 
 - **Example-based TDD is the primary spec** (red/green) — readable, intent-revealing tests drive each feature.
 - **The real kernel is the oracle.** `RuleValidator` + `checkConsistency` confirm that rendered output is actually accepted (F4); N7 runs every catalog example through it.
+- **Test layout: one file per operator family; hotspot files never grow** (decided 2026-06-04). A new increment adds a *new* small test file, it does not pile onto a monolith. The split:
+  - `dsl/` keeps only the renderer/handle **core** (`RenderConditionTest`: composition, parenthesization, literal quoting, kind checks). Each operator family gets its own file under **`dsl/operators/`** (`PatternConditionTest`, `ValueListConditionTest`, `AggregateConditionTest`, `IterationConditionTest`, `EnumConditionTest`, …) holding that family's render (EN/DE) + handle pre-checks.
+  - `validate/` keeps only F4 **mechanics** (`RuleValidatorTest`: injection, round-trip, problem mapping). The kernel-law locks are *executable `KERNEL-FINDINGS.md` entries* and live under **`validate/laws/`** (`…LawsTest`, one per findings section), sharing the `KernelLaws` accept/reject harness. Each `KERNEL-FINDINGS` §/ledger row points at its `…LawsTest` class.
+  - Fixtures load once via the shared **`Fixtures`** util (`subscription()`/`order()`/`…Json()`) — no copied `@BeforeAll`, so a new file costs a few lines. `BoundModel` is an immutable snapshot (F0), safe to share.
 
 ## Build
 

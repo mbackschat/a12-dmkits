@@ -4,11 +4,11 @@ Kernel-behavior facts **verified by experiment against kernel `30.8.1`** that ar
 
 ## §1 supplement — Boolean/Confirm comparability codes
 
-The Boolean≠Confirm split is enforced at parse time with distinct codes: a Boolean compares only to `True`/`False` or another Boolean — anything else (e.g. a string) is **`MVK_INVALID_COMPARE_TO_YESNO`**; a Confirm compares only to `True` or another Confirm — `[Confirm] == False` and Boolean↔Confirm cross-comparisons are **`MVK_INVALID_COMPARE_TO_YES`**. "Not confirmed" is written `[Confirm] != True` (an unset confirm counts as not confirmed). *(Locked: `RuleValidatorTest.locksConfirmAndBooleanComparisonRules`.)*
+The Boolean≠Confirm split is enforced at parse time with distinct codes: a Boolean compares only to `True`/`False` or another Boolean — anything else (e.g. a string) is **`MVK_INVALID_COMPARE_TO_YESNO`**; a Confirm compares only to `True` or another Confirm — `[Confirm] == False` and Boolean↔Confirm cross-comparisons are **`MVK_INVALID_COMPARE_TO_YES`**. "Not confirmed" is written `[Confirm] != True` (an unset confirm counts as not confirmed). *(Locked: `validate.laws.BooleanConfirmLawsTest`.)*
 
 ## §5 supplement — numeric literals are exempt from the scale check
 
-The `==`/`!=` decimal-scale gate applies to **field/expression operands only**. Against a scale-2 field, `== 0`, `== 0.0`, `== 0.00`, `!= 0`, and `<= 0.000` are all accepted — only field-vs-field/expression comparisons of differing declared scale draw `MVK_INVALID_COMPARE_DEC_PLACES`. Consequence: scale-explicit literals (`0.00`) are a rendering-fidelity nicety, not a correctness requirement. *(Locked: `RuleValidatorTest.acceptsScaleFreeNumericLiteralsOnEquality`.)*
+The `==`/`!=` decimal-scale gate applies to **field/expression operands only**. Against a scale-2 field, `== 0`, `== 0.0`, `== 0.00`, `!= 0`, and `<= 0.000` are all accepted — only field-vs-field/expression comparisons of differing declared scale draw `MVK_INVALID_COMPARE_DEC_PLACES`. Consequence: scale-explicit literals (`0.00`) are a rendering-fidelity nicety, not a correctness requirement. *(Locked: `validate.laws.NumberLawsTest`.)*
 
 ## §7 supplement — pattern-comparison slot rules and the portable-subset gate (2026-06-04 experiments)
 
@@ -19,15 +19,15 @@ The `==`/`!=` decimal-scale gate applies to **field/expression operands only**. 
 - **The regex gate is Java `Pattern.compile` *plus* a portable-subset check** (`PatternUtils.isPatternValid`; the extmp world uses `CommonUtils.isRegExValid` instead): lookbehind `(?<=a)b` is Java-valid yet rejected with **`MVK_INVALID_PATTERN`** — KERNEL-SEMANTICS §7's "portable subset" is *enforced*, not advisory. Consequence: a Java-side `Pattern.compile` pre-check is a necessary condition only; final validity is the kernel's call.
 - **The empty pattern `""` is accepted** for document models (the non-extmp branch; extmp additionally requires non-empty).
 
-*(Locked: `RuleValidatorTest.locksPatternComparisonSlotRules` + N7 `PatternMatched`/`PatternViolated` examples.)*
+*(Locked: `validate.laws.PatternLawsTest` + N7 `PatternMatched`/`PatternViolated` examples.)*
 
 ## §7 supplement — string-literal escaping is quote-doubling, not backslashes
 
-The condition lexer's rule is `StringLiteral : '"' ( '""' | ~["] )* '"'` — an embedded quote is **doubled** (`"say ""hi"""`), and **backslash is a plain character** (no escape sequences; regex classes like `\d` are written as-is). Backslash-escaping a quote (`\"`) is a parse error (`MVK_UNEXPECTED_TOKEN`). Found while building the pattern operators: rulekit's renderer had C-style escaping and would have emitted wrong regexes for any pattern containing `\` — fixed and locked. *(Locked: `RuleValidatorTest.locksKernelStringLiteralEscaping` + `RenderConditionTest.quotesStringLiteralsTheKernelWay`.)*
+The condition lexer's rule is `StringLiteral : '"' ( '""' | ~["] )* '"'` — an embedded quote is **doubled** (`"say ""hi"""`), and **backslash is a plain character** (no escape sequences; regex classes like `\d` are written as-is). Backslash-escaping a quote (`\"`) is a parse error (`MVK_UNEXPECTED_TOKEN`). Found while building the pattern operators: rulekit's renderer had C-style escaping and would have emitted wrong regexes for any pattern containing `\` — fixed and locked. *(Locked: `validate.laws.PatternLawsTest` + `RenderConditionTest.quotesStringLiteralsTheKernelWay`.)*
 
 ## §8 supplement — enum-category codes and the positional mapping
 
-In DM-JSON, a category's `values` list pairs **positionally** with the enumeration's `values` (entry *i* categorizes enum value *i*); the comparison domain is the category's distinct value set. Codes: comparing to one of the *enum's own* values instead of a *category* value → **`MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON`**; an unknown category name → **`MVK_CATEGORY_UNKOWN`** (the kernel's spelling); `->` on a non-enumeration field → **`MVK_NO_ENUMERATION`**. Curiosity: `[Enum -> Category] == [Enum]` (category vs. plain enum field) is *accepted*. *(Locked: N7 `EnumCategory` examples + `RenderConditionTest.categoryHandleErasesTheVerifiedCategoryMistakes`.)*
+In DM-JSON, a category's `values` list pairs **positionally** with the enumeration's `values` (entry *i* categorizes enum value *i*); the comparison domain is the category's distinct value set. Codes: comparing to one of the *enum's own* values instead of a *category* value → **`MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON`**; an unknown category name → **`MVK_CATEGORY_UNKOWN`** (the kernel's spelling); `->` on a non-enumeration field → **`MVK_NO_ENUMERATION`**. Curiosity: `[Enum -> Category] == [Enum]` (category vs. plain enum field) is *accepted*. *(Locked: N7 `EnumCategory` examples + `dsl.operators.EnumConditionTest`.)*
 
 ## §2 supplement — the filled-count aggregates (2026-06-04 experiments)
 
@@ -38,7 +38,7 @@ In DM-JSON, a category's `values` list pairs **positionally** with the enumerati
 - **Root groups are banned in both** — **`MVK_ROOT_GROUP_REFERENCED`** ("It is not allowed to reference a rootgroup").
 - Comparing the count to a **decimal literal** (`<= 1.5`) is accepted (consistent with the §5 literal-scale exemption).
 
-*(Locked: N7 examples of both operators incl. the param-size/type-direction invalids; root-group ban pre-checked in `CountAggregate` — `RenderConditionTest.filledCountAggregatesRejectRootGroups`.)*
+*(Locked: N7 examples of both operators incl. the param-size/type-direction invalids; root-group ban pre-checked in `CountAggregate` — `dsl.operators.AggregateConditionTest`.)*
 
 ## §8 supplement — the value-list membership family (2026-06-04 experiments)
 
@@ -51,7 +51,7 @@ Five operators in two grammar shapes, not covered by KERNEL-SEMANTICS. **Shape A
 - **Shape B field lists must be type-homogeneous** — mixing a string and a number (or enum) field → **`MVK_VARYING_TYPES_NOT_ALLOWED`** ("All fields must be the same type"). A single-field list is legal.
 - The field slot is a **bare path** (a bracketed `[Field]` is a parse error); the value list may also contain **field references** (`[OtherField]`) and may mix them with literals; shape B's right side accepts an entity list or strings (no numbers, per grammar).
 
-*(Locked: `RuleValidatorTest.locksValueListSlotRules` + N7 examples of all five operators. Field-valued lists and `*`-path field lists are deferred — the latter to the iteration cluster.)*
+*(Locked: `validate.laws.ValueListLawsTest` + N7 examples of all five operators. Field-valued lists and `*`-path field lists are deferred — the latter to the iteration cluster.)*
 
 ## §9 supplement — field/group predicates are type-directional
 
@@ -75,7 +75,7 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 - **The negativity law (`MVK_NEG_CONDITION_IN_ITERATION`) is not an operator list** — the kernel's `IterationNotValidVisitor` (~800 lines) classifies each condition as positive/negative *in context*: the same operator flips depending on whether its operands reference the iteration (e.g. `FieldFilled(A)` is "negative" when `A` does *not* iterate but the rule does), and aggregate comparisons against constants are negativity-sensitive by comparison direction (`< / <= / != n`, `== 0`-style forms). rulekit deliberately does **not** replicate this — kernel-delegated to F4.
 - **`MVK_NO_WILDCARD` (missing star) is not naively pre-checkable**: under *parallel iteration* (joined repeatable groups via same-name/type index fields) plain references to another repeatable group are legal — the pre-check waits for slice 7e's iteration model.
 
-*(Locked: `RuleValidatorTest.locksWildcardSlotRules`; rulekit treatment: `FieldOperand` = `FieldRef` | `FieldListRef`, list slots take the operand union, scalar slots take `FieldRef` — `BoundModel.flatten(starPath)` validates star placement.)*
+*(Locked: `validate.laws.IterationLawsTest`; rulekit treatment: `FieldOperand` = `FieldRef` | `FieldListRef`, list slots take the operand union, scalar slots take `FieldRef` — `BoundModel.flatten(starPath)` validates star placement.)*
 
 ## §9 supplement — list-aggregate slot laws (slice 7c, 2026-06-04 experiments)
 
@@ -87,7 +87,7 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 - **`NumberOfDifferentValues` is value-comparing**, so its operands must be type-homogeneous: string/enum together (**`MVK_STRING_ENUM_AND_NON_STRING_ENUM`**) or all numbers (**`MVK_NUMBER_AND_NON_NUMBER`**); booleans/confirms never (**`MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED`**).
 - Missing-row semantics (KERNEL-SEMANTICS §9): `Sum` substitutes 0 for unspecified fields; `MaxValue`/`MinValue` ignore them.
 
-*(Locked: N7 examples of all four operators incl. three invalids; the pre-checks live in `ListAggregate`/`CountAggregate` — `RenderConditionTest.listAggregatesPreCheckTheVerifiedSlotRules`. The date variant of Max/Min rides the date family, item 9.)*
+*(Locked: N7 examples of all four operators incl. three invalids; the pre-checks live in `ListAggregate`/`CountAggregate` — `dsl.operators.AggregateConditionTest`. The date variant of Max/Min rides the date family, item 9.)*
 
 ## §9 supplement — `RepetitionNotUnique` slot laws (slice 7b, 2026-06-04 experiments)
 
@@ -97,7 +97,7 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 - **`@From`'s reference group must be repeatable** — `@From /Subscription` (root, non-repeating) draws **`MVK_GROUP_NOT_REPEATABLE`**. Note `@From`/`@Von` is a **localized keyword** (lexer-bundle token `VON`), unlike the language-independent `In` separator.
 - **`FieldValuesNotUnique` (DE `FeldWerteNichtEindeutig`) is a separate, plain field-list predicate** (the grammar's `feldListenBedingung` family, not `wiederholungBedingung`): cross-field distinctness over plain or starred operands — both shapes kernel-verified.
 
-*(Locked: `RuleValidatorTest.locksRepetitionNotUniquePositionLaw` + N7 `RepetitionNotUnique`/`FromScope`/`FieldValuesNotUnique` examples; `@From` repeatability pre-checked in `RepetitionNotUniqueCondition.from`.)*
+*(Locked: `validate.laws.IterationLawsTest` + N7 `RepetitionNotUnique`/`FromScope`/`FieldValuesNotUnique` examples; `@From` repeatability pre-checked in `RepetitionNotUniqueCondition.from`.)*
 
 ## §11 supplement — computation alternatives and the calculated-field ban
 

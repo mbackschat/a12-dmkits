@@ -27,7 +27,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_DIFFERENT_ROOT_GROUPS` | unclassified | — (experiment queue) |
 | `MVK_DIFFERENT_YES_VALUE` | unclassified | — (experiment queue) |
 | `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` | unclassified | — (experiment queue) |
-| `MVK_DUPLICATE_PARAM1` | pre-checked | `ListAggregate`/`CountAggregate` reject duplicate operands with the code named (locked: `RenderConditionTest.listAggregatesPreCheckTheVerifiedSlotRules`) |
+| `MVK_DUPLICATE_PARAM1` | pre-checked | `ListAggregate`/`CountAggregate` reject duplicate operands with the code named (locked: `dsl.operators.AggregateConditionTest`) |
 | `MVK_DUPLICATE_PARAM2` | unclassified | — (experiment queue) |
 | `MVK_ENTITY_MOVE_IN_A12_MODEL_CONDITION` | unclassified | — (experiment queue) |
 | `MVK_ENTITY_MOVE_IN_A12_MODEL_ERRORTEXT` | unclassified | — (experiment queue) |
@@ -45,7 +45,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_FIELDNAME_NOT_UNIQUE` | unclassified | — (experiment queue) |
 | `MVK_FIELD_REF_OP` | unclassified | — (experiment queue) |
 | `MVK_GROUP_IS_EMPTY` | unclassified | — (experiment queue) |
-| `MVK_GROUP_NOT_REPEATABLE` | pre-checked | `RepetitionNotUniqueCondition.from` requires a repeatable reference group (locked: `RenderConditionTest.repetitionNotUniqueScopeMustBeRepeatable` + N7 `FromScope` invalidExample) |
+| `MVK_GROUP_NOT_REPEATABLE` | pre-checked | `RepetitionNotUniqueCondition.from` requires a repeatable reference group (locked: `dsl.operators.IterationConditionTest` + N7 `FromScope` invalidExample) |
 | `MVK_INCONSISTENT_TYPES_COMPARED` | unclassified | — (experiment queue) |
 | `MVK_INDEX_FIELD_INVALID` | unclassified | — (experiment queue) |
 | `MVK_INDEX_TYPE_INCONSISTENT` | unclassified | — (experiment queue) |
@@ -77,12 +77,12 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON` | unclassified | — (experiment queue) |
 | `MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON` | erased | `PatternCondition` left side is always a bare string field value — expressions unrepresentable (KERNEL-FINDINGS §7) |
 | `MVK_INVALID_PARAMS_FOR_OP` | unclassified | — (experiment queue) |
-| `MVK_INVALID_PATTERN` | pre-checked | `StringRef.matches/violates` fail fast via `Pattern.compile` (necessary condition only — the portable-subset gate stays kernel-delegated; locked: `RuleValidatorTest.locksPatternComparisonSlotRules`) |
+| `MVK_INVALID_PATTERN` | pre-checked | `StringRef.matches/violates` fail fast via `Pattern.compile` (necessary condition only — the portable-subset gate stays kernel-delegated; locked: `validate.laws.PatternLawsTest`) |
 | `MVK_INVALID_PREDEFINED_TYPE` | unclassified | — (experiment queue) |
 | `MVK_INVALID_RAW_TYPE` | unclassified | — (experiment queue) |
 | `MVK_INVALID_ROOT_GROUP` | unclassified | — (experiment queue) |
 | `MVK_INVALID_ROOT_GROUP_CONSTR` | unclassified | — (experiment queue) |
-| `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION` | pre-checked | `EnumRef.in/notIn` check every value against the enum domain (locked: `RenderConditionTest.enumValueListsPreCheckTheDomain`) |
+| `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION` | pre-checked | `EnumRef.in/notIn` check every value against the enum domain (locked: `dsl.operators.ValueListConditionTest`) |
 | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_CATEGORY` | unclassified | — (experiment queue) |
 | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY` | pre-checked | the `Dsl` enum value-list quantifiers check every value against every listed field's domain |
 | `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON` | pre-checked | `EnumRef.is`/`CategoryRef.is` validate against the model domain |
@@ -95,13 +95,13 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON` | erased | only `StringRef` offers `matches`/`violates` (enums/numbers/booleans excluded by type; locked: N7 `PatternMatched` invalidExample) |
 | `MVK_INVALID_TYPE_FOR_TOLERANCE_OP` | unclassified | — (experiment queue) |
 | `MVK_INVALID_UNSPECIFIED_TYPE` | unclassified | — (experiment queue) |
-| `MVK_INVALID_WILDCARD` | pre-checked | `BoundModel.flatten` rejects a star on a non-repeatable group with the code named (locked: `RuleValidatorTest.locksWildcardSlotRules`) |
+| `MVK_INVALID_WILDCARD` | pre-checked | `BoundModel.flatten` rejects a star on a non-repeatable group with the code named (locked: `validate.laws.IterationLawsTest`) |
 | `MVK_INVALID_WILDCARD_FOR_RULEGROUP` | unclassified | — (experiment queue) |
 | `MVK_INVALID_WILDCARD_REL` | pending | fork-9 path policy: `..`+`*` forces absolute paths |
 | `MVK_ITERATION_RESTRICTION_IN_A12_MODEL` | unclassified | — (experiment queue) |
 | `MVK_MAX_GROUP_RESTRICTION_TO_ONE` | unclassified | — (experiment queue) |
 | `MVK_MAX_LFDNR_RESTRICTION_TO_ONE` | unclassified | — (experiment queue) |
-| `MVK_MISSING_CONST_IN_PATTERN_COMP` | erased | the regex parameter is a Java `String` — a field reference on the right is unrepresentable (locked: `RuleValidatorTest.locksPatternComparisonSlotRules`) |
+| `MVK_MISSING_CONST_IN_PATTERN_COMP` | erased | the regex parameter is a Java `String` — a field reference on the right is unrepresentable (locked: `validate.laws.PatternLawsTest`) |
 | `MVK_MISSING_ERROR_FIELD` | unclassified | — (experiment queue) |
 | `MVK_MISSING_YEAR` | unclassified | — (experiment queue) |
 | `MVK_MULTIPLE_INDEX_FIELDS` | unclassified | — (experiment queue) |
@@ -136,12 +136,12 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_NO_TYPEYESNO` | unclassified | — (experiment queue) |
 | `MVK_NO_TYPE_YES_OR_YESNO` | unclassified | — (experiment queue) |
 | `MVK_NO_WILDCARD` | kernel-delegated | repeatable group without `*` in a non-iterating rule; pre-check deferred to slice 7e — parallel iteration (index fields) makes plain refs legal, a naive check would false-positive |
-| `MVK_NO_WILDCARDS_ALLOWED` | erased | scalar slots take `FieldRef` only; starred lists are `FieldListRef`, accepted only by list slots (locked: `RuleValidatorTest.locksWildcardSlotRules`) |
+| `MVK_NO_WILDCARDS_ALLOWED` | erased | scalar slots take `FieldRef` only; starred lists are `FieldListRef`, accepted only by list slots (locked: `validate.laws.IterationLawsTest`) |
 | `MVK_NO_WILDCARDS_G_ALLOWED` | unclassified | — (experiment queue) |
 | `MVK_NUMBER_AND_NON_NUMBER` | pre-checked | `CountAggregate` NumberOfDifferentValues homogeneity check |
 | `MVK_ONLY_CONSTANTS_USED` | unclassified | — (experiment queue) |
 | `MVK_ONLY_ENUMS_ALLOWED` | unclassified | — (experiment queue) |
-| `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` | erased | `BoolRef`/`ConfirmRef` offer no `in`/`notIn` (locked: `RuleValidatorTest.locksValueListSlotRules` + N7 `FieldValueIncludedInValueList` invalidExample) |
+| `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` | erased | `BoolRef`/`ConfirmRef` offer no `in`/`notIn` (locked: `validate.laws.ValueListLawsTest` + N7 `FieldValueIncludedInValueList` invalidExample) |
 | `MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED` | pre-checked | `CountAggregate` NumberOfDifferentValues rejects boolean/confirm operands |
 | `MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED_NO_FIELD` | unclassified | — (experiment queue) |
 | `MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED` | unclassified | — (experiment queue) |
@@ -158,10 +158,10 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_POINT_IN_A12_MODEL` | unclassified | — (experiment queue) |
 | `MVK_REF_ERROR_ENTITY_IF_FILLED_NOT_REFERENCED` | unclassified | — (experiment queue) |
 | `MVK_REF_ERROR_ENTITY_IF_NOT_FILLED_NOT_REFERENCED` | unclassified | — (experiment queue) |
-| `MVK_REPEATABLE_GROUP_MISSING` | kernel-delegated | position-dependent (key repeatable *relative to the rule group*) — verified + locked (`RuleValidatorTest.locksRepetitionNotUniquePositionLaw`); pre-check candidate once `Rule.build()` consults the iteration model (7e) |
+| `MVK_REPEATABLE_GROUP_MISSING` | kernel-delegated | position-dependent (key repeatable *relative to the rule group*) — verified + locked (`validate.laws.IterationLawsTest`); pre-check candidate once `Rule.build()` consults the iteration model (7e) |
 | `MVK_REPEATABLE_LEVEL_REQUIRED` | unclassified | — (experiment queue) |
 | `MVK_ROOT_GROUP_IS_EMPTY` | unclassified | — (experiment queue) |
-| `MVK_ROOT_GROUP_REFERENCED` | pre-checked | `CountAggregate` rejects root-group refs with the code named (locked: `RenderConditionTest.filledCountAggregatesRejectRootGroups`) |
+| `MVK_ROOT_GROUP_REFERENCED` | pre-checked | `CountAggregate` rejects root-group refs with the code named (locked: `dsl.operators.AggregateConditionTest`) |
 | `MVK_ROOT_GROUP_WITH_OTHER_PARAMETERS` | unclassified | — (experiment queue) |
 | `MVK_RULE_GROUP_IS_EMPTY_OR_INVALID` | unclassified | — (experiment queue) |
 | `MVK_SEMANTIC_INDEX_AND_WILDCARD` | unclassified | — (experiment queue) |
@@ -181,7 +181,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_TOO_MANY_DIV_FOR_CALC` | unclassified | — (experiment queue) |
 | `MVK_TOO_MANY_PARENT_GROUPS` | unclassified | — (experiment queue) |
 | `MVK_TOO_MANY_POW_FOR_CALC` | unclassified | — (experiment queue) |
-| `MVK_VARYING_TYPES_NOT_ALLOWED` | erased | the `Dsl` value-list quantifiers take all-`StringRef` or all-`EnumRef` lists (locked: `RuleValidatorTest.locksValueListSlotRules` + N7 `AtLeastOneFieldValueIncludedInValueList` invalidExample) |
+| `MVK_VARYING_TYPES_NOT_ALLOWED` | erased | the `Dsl` value-list quantifiers take all-`StringRef` or all-`EnumRef` lists (locked: `validate.laws.ValueListLawsTest` + N7 `AtLeastOneFieldValueIncludedInValueList` invalidExample) |
 | `MVK_WILDCARDS_REQUIRED` | unclassified | — (experiment queue) |
 | `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED` | unclassified | — (experiment queue) |
 | `MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED` | unclassified | — (experiment queue) |
