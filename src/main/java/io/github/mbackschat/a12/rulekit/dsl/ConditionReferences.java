@@ -40,7 +40,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
     private static void collect(Condition condition, Set<String> fields, Set<String> groups) {
         switch (condition) {
             case FieldPresenceCondition f -> fields.add(f.field().path());
-            case FieldListPredicate p -> p.fields().forEach(f -> fields.add(f.fieldPath()));
+            case FieldListPredicate p -> p.fields().forEach(f -> collectOperand(f, fields, groups));
             case ComparisonCondition c -> {
                 collect(c.left(), fields, groups);
                 collect(c.right(), fields, groups);
@@ -57,7 +57,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 v.values().forEach(value -> collect(value, fields, groups));
             }
             case FieldListValueListCondition v -> {
-                v.fields().forEach(f -> fields.add(f.fieldPath()));
+                v.fields().forEach(f -> collectOperand(f, fields, groups));
                 v.values().forEach(value -> collect(value, fields, groups));
             }
             // the @From scope deliberately does NOT count as a reference (unverified whether the
@@ -76,10 +76,18 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case BoolLiteral b -> { }
             case EnumCategoryAccess c -> fields.add(c.field().path());
             case CountAggregate a -> {
-                a.fields().forEach(f -> fields.add(f.fieldPath()));
+                a.fields().forEach(f -> collectOperand(f, fields, groups));
                 a.groups().forEach(g -> groups.add(g.path()));
             }
-            case ListAggregate a -> a.operands().forEach(o -> fields.add(o.fieldPath()));
+            case ListAggregate a -> a.operands().forEach(o -> collectOperand(o, fields, groups));
+        }
+    }
+
+    /** A list operand contributes its field path plus — for a filtered list — its Having filter's refs. */
+    private static void collectOperand(FieldOperand op, Set<String> fields, Set<String> groups) {
+        fields.add(op.fieldPath());
+        if (op instanceof FieldListRef list) {
+            list.filter().ifPresent(f -> collect(f, fields, groups));
         }
     }
 }

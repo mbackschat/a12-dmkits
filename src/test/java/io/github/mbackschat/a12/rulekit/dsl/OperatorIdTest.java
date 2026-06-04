@@ -81,6 +81,7 @@ class OperatorIdTest {
         for (ListAggregate.AggOp op : ListAggregate.AggOp.values()) {
             assertResolves(op.operatorId());
         }
+        assertResolves("Having");
         for (GroupQuantifier q : GroupQuantifier.values()) {
             assertResolves(q.operatorId());
         }

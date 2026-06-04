@@ -79,6 +79,35 @@ class IterationConditionTest {
     }
 
     @Test
+    void rendersHavingFilteredRepetitionLists() {
+        // Having filters a *-list before an aggregate/quantifier consumes it (KERNEL-FINDINGS §9).
+        FieldListRef fees = m.flatten("/Subscription/Addons*/MonthlyFee")
+                .having(m.str("/Subscription/Addons/Name").eq("Backup"));
+        assertEquals("Sum(/Subscription/Addons*/MonthlyFee Having [/Subscription/Addons/Name] == \"Backup\") > 100",
+                new DslRenderer().render(Dsl.sum(fees).gt(100)));
+        assertEquals("Summe(/Subscription/Addons*/MonthlyFee Mit [/Subscription/Addons/Name] == \"Backup\") > 100",
+                new DslRenderer(ConditionLanguage.DE).render(Dsl.sum(fees).gt(100)));
+
+        // Having also works in a quantifier slot
+        FieldListRef names = m.flatten("/Subscription/Addons*/Name")
+                .having(m.num("/Subscription/Addons/MonthlyFee").gt(0));
+        assertEquals("AtLeastOneFieldFilled(/Subscription/Addons*/Name Having [/Subscription/Addons/MonthlyFee] > 0)",
+                new DslRenderer().render(Dsl.atLeastOneFieldFilled(names)));
+    }
+
+    @Test
+    void havingRejectsForbiddenFilterConstructs() {
+        FieldListRef fees = m.flatten("/Subscription/Addons*/MonthlyFee");
+        // RepetitionNotUnique in a filter → MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION (pre-checked)
+        assertThrows(IllegalArgumentException.class,
+                () -> fees.having(Dsl.repetitionNotUnique(m.field("/Subscription/Addons/Name"))));
+        // nested Having (a filtered list inside the filter) → same code (pre-checked)
+        Condition nested = Dsl.sum(m.flatten("/Subscription/Addons*/MonthlyFee")
+                .having(m.str("/Subscription/Addons/Name").eq("x"))).gt(0);
+        assertThrows(IllegalArgumentException.class, () -> fees.having(nested));
+    }
+
+    @Test
     void rendersFieldValuesNotUniqueOverPlainAndStarredOperands() {
         assertEquals("FieldValuesNotUnique(/Subscription/Billing/BaseFee, /Subscription/Billing/EffectiveFee)",
                 new DslRenderer().render(Dsl.fieldValuesNotUnique(

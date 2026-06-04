@@ -36,7 +36,7 @@ public final class DslRenderer {
         return switch (condition) {
             case FieldPresenceCondition f -> keyword(f.operatorId()) + "(" + f.field().path() + ")";
             case FieldListPredicate p -> keyword(p.operatorId()) + "("
-                    + p.fields().stream().map(FieldOperand::renderedPath)
+                    + p.fields().stream().map(this::operand)
                             .collect(java.util.stream.Collectors.joining(", "))
                     + ")";
             case ComparisonCondition c ->
@@ -57,13 +57,21 @@ public final class DslRenderer {
                     + r.scope().map(s -> " " + keyword("FromScope") + " " + s.path()).orElse("")
                     + ")";
             case FieldListValueListCondition v -> keyword(v.operatorId()) + "("
-                    + v.fields().stream().map(FieldOperand::renderedPath)
+                    + v.fields().stream().map(this::operand)
                             .collect(java.util.stream.Collectors.joining(", "))
                     // 'In' is a language-independent grammar literal (inOp), like the comparison symbols
                     + " In "
                     + v.values().stream().map(this::render).collect(java.util.stream.Collectors.joining(", "))
                     + ")";
         };
+    }
+
+    /** A field-list operand: its path, plus a {@code Having <filter>} clause for a filtered list. */
+    private String operand(FieldOperand op) {
+        if (op instanceof FieldListRef list && list.filter().isPresent()) {
+            return list.renderedPath() + " " + keyword("Having") + " " + render(list.filter().get());
+        }
+        return op.renderedPath();
     }
 
     private String child(LogicCondition parent, Condition child) {
@@ -87,12 +95,12 @@ public final class DslRenderer {
             case EnumCategoryAccess c ->
                     "[" + c.field().path() + " " + keyword(c.operatorId()) + " " + c.category() + "]";
             case ListAggregate a -> keyword(a.operatorId()) + "("
-                    + a.operands().stream().map(FieldOperand::renderedPath)
+                    + a.operands().stream().map(this::operand)
                             .collect(java.util.stream.Collectors.joining(", "))
                     + ")";
             case CountAggregate a -> keyword(a.operatorId()) + "("
                     + java.util.stream.Stream.concat(
-                            a.fields().stream().map(FieldOperand::renderedPath),
+                            a.fields().stream().map(this::operand),
                             a.groups().stream().map(GroupRef::path))
                     .collect(java.util.stream.Collectors.joining(", "))
                     + ")";

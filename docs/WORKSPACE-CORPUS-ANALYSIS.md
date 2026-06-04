@@ -25,13 +25,13 @@ A read-only **analysis** of two real A12 model corpora, used to prioritize what 
 | 39 / 15 | `==` / `!=` | ✅ |
 | 28 | `*` flatten | ✅ (`flatten()` → `FieldListRef`, slice 7a) |
 | 21 | `AllFieldsFilled` | ✅ (quantifier family done) |
-| **21** | `$` correlation | ❌ iteration |
+| 21 | `$` correlation | ❌ deferred — needs field-vs-field comparison (D13) |
 | 19 / 11 / 11 / 7 | `<=` / `<` / `>` / `>=` | ✅ (symbols; catalog has `<=`) |
 | 14 | `Or`/`or`/`OR` | ✅ |
 | 13 / 10 / 8 / 6 / 5 | `NotExactlyOneFieldFilled` / `NotAllFieldsFilled` / `FieldsNotCollectivelyFilled` / `AtLeastOneFieldFilled` / `NoFieldFilled` | ✅ (quantifier family done) |
 | 11 | `NumberOfFilledFields` (aggregate) | ✅ (`CountAggregate` → comparable `NumberExpr`) |
 | 11 / 3 | `True` / `False` (boolean & confirm literals) | ✅ (`BoolRef.isTrue/isFalse`, `ConfirmRef.confirmed/notConfirmed`) |
-| 8 / 8 / 8 / 6 / 4 | `CurrentRepetition` / `For` (semantic index) / `Today` / `Having` / `RepetitionNotUnique` ✅ | ❌ iteration (7d/7e) + dates — `RepetitionNotUnique` ✅ 7b |
+| 8 / 8 / 8 / 6 / 4 | `CurrentRepetition` / `For` (semantic index) / `Today` / `Having` ✅ / `RepetitionNotUnique` ✅ | `Having` ✅ 7d, `RepetitionNotUnique` ✅ 7b; `CurrentRepetition`/`For` → 7e, dates → item 9 |
 | **6 / 1 / 1 / 1** | `Date(...)` / `DifferenceInDays` / `DifferenceInYears` / `AddMonths` | ❌ date family |
 | 5 | `->` (enum category) | ✅ (`EnumRef.category(...)`) |
 | 4 / 4 / 3 / 1 / 1 | `RangeAsString` / (group: `AtLeastOneGroupFilled` ✅) / `PatternViolated` ✅ / `GroupNotFilled` ✅ / `Length` ✅ | partial (`RangeAsString` ❌) |
@@ -95,7 +95,7 @@ Counts shown as C1 (app) + C2 (metamodel). Order balances combined frequency aga
    - 7a ~~`*` flatten~~ (28 + 137) — ✅ **done 2026-06-04** (`BoundModel.flatten` → `FieldListRef`; list slots take the `FieldOperand` union, scalar slots stay `FieldRef` — `MVK_NO_WILDCARDS_ALLOWED` erased, `MVK_INVALID_WILDCARD` pre-checked; negativity law + `MVK_NO_WILDCARD` pre-check deliberately kernel-delegated, see KERNEL-FINDINGS §9).
    - 7b ~~`RepetitionNotUnique`~~ (4 + 57, + `@From` scope) — ✅ **done 2026-06-04** (`Dsl.repetitionNotUnique(keys…).from(group)`; keys are plain `FieldRef`s by signature, `@From` repeatability pre-checked, the position law kernel-delegated + locked; **`FieldValuesNotUnique` rode along** as a `Quantifier` family member; order fixture gained repeatable `Items{Sku, Count}`).
    - 7c ~~`Sum`/`MaxValue`/`MinValue` + `NumberOfDifferentValues`~~ — ✅ **done 2026-06-04** (`Dsl.sum/maxValue/minValue` → `ListAggregate`, `numberOfDifferentValues` joins `CountAggregate`; number-only, homogeneity, param-size, and the newly found duplicate-operand law (`MVK_DUPLICATE_PARAM1`) all pre-checked; a single `*`-operand satisfies the param law. `SumOfProducts` + `FirstFilledValue` deferred; Max/Min date variant rides item 9).
-   - 7d `Having` filter + `$` correlation (21 + 0, `Having` 6) — with the filter-condition exclusion laws.
+   - 7d ~~`Having` filter~~ — ✅ **done 2026-06-04** (`FieldListRef.having(filter)`; starred-field requirement structural, works in aggregate + quantifier slots, filter-condition exclusions pre-checked for the representable constructs (RNU + nested Having), rest kernel-delegated). **`$` correlation deferred** — it needs field-vs-field comparison (`[inner] == [$outer]`, D13 not built); `MVK_INVALID_OUTER_ITERATION` recorded, pre-check rides that feature.
    - 7e `CurrentRepetition` (8), `For` semantic index (8), parallel iteration — completes the iteration model; the `MVK_NO_WILDCARD` pre-check lands here.
 8. **`CustomCondition`** (0 + 45) — the app-defined boolean escape hatch (Zod `.refine` analogue). *Med; emit an opaque named condition the kernel resolves.*
 9. **Date family** — `Today`, `Date(d,m,y)`, `DifferenceIn*`, `Add*` (~17 + ~0). *Med; app-only — date kinds + year-presence comparability (§5b).*

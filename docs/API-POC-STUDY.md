@@ -148,6 +148,11 @@ public final class SubscriptionIdioms {
     public static Condition addonBudgetExceeded(BoundModel m, String budget) {
         return sum(m.flatten("/Subscription/Addons*/MonthlyFee")).gt(budget);  // scale-faithful literal
     }
+    /** Filtered aggregate ✅ (7d) — Having narrows the *-list before Sum consumes it. */
+    public static Condition paidAddonBudget(BoundModel m, String budget) {
+        return sum(m.flatten("/Subscription/Addons*/MonthlyFee")
+                .having(m.num("/Subscription/Addons/MonthlyFee").gt(0))).gt(budget);
+    }
 }
 ```
 
@@ -438,7 +443,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 
 | Study element | Status |
 |---|---|
-| Handles (`num/str/enumOf/bool/confirm/group`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–6 + iteration slices 7a–7c — patterns, value lists, count + list aggregates (`sum`/`max`/`min`/`numberOfDifferentValues`), `*` lists, `repetitionNotUnique(...).from(...)`) |
+| Handles (`num/str/enumOf/bool/confirm/group`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–6 + iteration slices 7a–7d — patterns, value lists, count + list aggregates, `*` lists, `repetitionNotUnique(...).from(...)`, `flatten(...).having(filter)`) |
 | §3.1 fragments, §3.3 library pattern, §6 catalog queries, §2 type-steering | ✅ pattern works today on covered operators |
 | §3.2 domain fragments (`withinTolerance`, `chronological`, `uniqueBy`) | `uniqueBy` ✅ (7b); the others 🔮 (tolerance ops, `CurrentRepetition`) |
 | §6c navigation (Level 1: `fields()`/`groups()`/`fieldAt` + strict narrowing), §3.5 `allOf`/`anyOf` | ✅ implemented 2026-06-04 (findings 9–10) |
@@ -455,7 +460,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 3. ✅ ~~`transform` rewriter~~ — implemented (bottom-up, identity-preserving; calculation twin triggers with the first nesting calculation node).
 4. **Rule identity matters for the edit loop** — `ExistingRule` (full name + slots + raw text) should be designed *with* the `Rule` authoring object (F2a), not after.
 5. **`Ingest` as a sealed result** (`Converted`/`Gap`) — converter gaps become data; the corpus round-trip oracle is then a loop over `Ingest` results.
-6. **LLM execution vehicle** — skill-documented scratch-test/JBang patterns first; a thin `rulekit-cli` is a separate decision.
+6. **LLM execution vehicle — compile-first, not REPL** (2026-06-04). The agent runs a snippet as a **single-file Java program** (`java --source 21 [--enable-preview] Script.java`, JEP 330/445 — bare `void main()`, no boilerplate) or, when dependencies matter, **JBang** with `//DEPS com.mgmtp.a12:…:30.8.1` resolving rulekit + the kernel from mavenLocal (zero classpath assembly — the actual pain point, not the language). *Rationale:* rulekit's value is making illegal states **unrepresentable at compile time**, so a failing `javac` hands the agent the type-steering fix *before* execution (the feedback loop of finding §2) — strictly more than a runtime verdict. `jshell` stays the **interactive-exploration** mode, not the scripted-run path (looser diagnostics, manual `--class-path`). *Use/potential:* the skill teaches "write `Rule.java`, run it, read the compiler error or the kernel `Problems`"; JBang `//DEPS` makes a snippet self-contained and shareable; a thin `rulekit-cli` (stdin → run, classpath baked in) remains a separate, later decision that this path doesn't block.
 7. **`explain` should flag suspicions, not just facts** — cheap heuristics (inverted predicate, unguarded negative condition on a repeatable group) over the same projection; candidate F9 refinement.
 8. **Diff must disclose lossiness up front** — "n comments will be dropped" belongs in `RenderedDiff`'s contract.
 9. ✅ *(implemented 2026-06-04, same-day design)* **The model index gets a Level-1 navigation surface** — the unifying design for rule templates (§3.4), F9a's `find`/`describe`/`dump` (which iterate everything anyway), and the fork-9 renderer internals (ancestry, short-name uniqueness — built regardless). Shape: `m.fields()`/`m.groups()`/`m.fields(group)` return **streams of rich info handles**; `m.fieldAt(path)` is the non-throwing peek; **matching is plain `Stream.filter`** — deliberately *no* query language/matcher API (the jOOQ `Meta` restraint; XPath-style DSLs rejected); **info handles narrow to typed authoring handles** via `asNum()`/`asStr()`/… (lenient exploring, strict authoring — jOOQ's `Field<?>` coercion pattern). Safe because the binding is an immutable snapshot (F0) — everything memoizes internally. Polyglot contract is "iterate model facts", not `java.util.Stream`. **Level 2 is parked with named triggers:** glob path patterns (a template inexpressible via `filter`), ancestry axes (the iteration cluster's authoring needs), annotation queries (real-model demand) — none gets built without its trigger. The static counterpart remains L2b codegen refs (Phase 3 — jOOQ's generated schema classes).

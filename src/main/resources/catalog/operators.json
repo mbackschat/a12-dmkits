@@ -605,5 +605,23 @@
     "validExample": { "dsl": "FieldFilled(CustomerName) And NumberOfDifferentValues(Items*/Sku) < 2", "note": "fires when all line items are variants of one Sku" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And NumberOfDifferentValues(CustomerName, Quantity) < 2", "error": "MVK_STRING_ENUM_AND_NON_STRING_ENUM", "fix": "list only same-type fields" },
     "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "Having",
+    "kind": "path-op",
+    "keywords": { "en": "Having", "de": "Mit" },
+    "operands": [ { "type": "repetition-list" }, { "type": "filter-condition" } ],
+    "returns": "repetition-list",
+    "meaning": "Filters a *-repetition list down to the repetitions where the condition holds, before an aggregate or quantifier consumes it.",
+    "constraints": [
+      "the filtered field must carry an asterisk (MVK_WILDCARDS_REQUIRED) — only flattened lists can be filtered",
+      "the filter condition may not contain CustomCondition, RepetitionNotUnique, a semantic index, a parallel iteration, or a nested Having (MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION)"
+    ],
+    "gotchas": [
+      "inside the filter, the $ operator pins a reference to the rule's current (outer) repetition — correlated subquery"
+    ],
+    "validExample": { "dsl": "FieldFilled(CustomerName) And Sum(Items*/Count Having [Items/Sku] == \"A\") > 5", "note": "sums only the line items whose Sku is A" },
+    "invalidExample": { "dsl": "FieldFilled(CustomerName) And Sum(Items*/Count Having RepetitionNotUnique(Items/Sku)) > 0", "error": "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION", "fix": "RepetitionNotUnique is not allowed inside a filter condition" },
+    "sinceKernel": "30.8.x"
   }
 ]

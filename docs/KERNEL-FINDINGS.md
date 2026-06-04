@@ -77,6 +77,17 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 
 *(Locked: `validate.laws.IterationLawsTest`; rulekit treatment: `FieldOperand` = `FieldRef` | `FieldListRef`, list slots take the operand union, scalar slots take `FieldRef` — `BoundModel.flatten(starPath)` validates star placement.)*
 
+## §9 supplement — the `Having` filter and `$` correlation (slice 7d, 2026-06-04 experiments)
+
+`Having` (DE `Mit`; grammar: `'Mit' bedingung` on an `entitySpec`) filters a `*`-repetition list before an aggregate/quantifier consumes it; `$` (`DOLLAR`, language-independent) pins a reference to the rule's outer repetition inside a filter.
+
+- **`Having` requires a starred (flattened) field** — on a plain reference it draws **`MVK_WILDCARDS_REQUIRED`** ("At least one asterisk needs to be specified for the filtered field"). So it lives on `FieldListRef`, not on plain `FieldRef`.
+- **It attaches in any list slot** — verified inside `Sum`/aggregates *and* the field-list quantifiers (`AtLeastOneFieldFilled(… Having …)`).
+- **Filter-condition exclusions** → **`MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION`** ("The language feature 'X' is not supported for filter conditions"): verified for `RepetitionNotUnique` and a **nested `Having`**; KERNEL-SEMANTICS §9 also lists `CustomCondition`, a semantic index, and a parallel iteration. rulekit pre-checks the two representable ones (RNU + nested Having); the rest stay kernel-delegated.
+- **`$` is filter-only** — outside a filter it draws **`MVK_INVALID_OUTER_ITERATION`** ("The symbol '$' to specify rule iteration is only allowed inside filter conditions"). A valid use correlates inner to outer: `Sum(/S/Addons*/MonthlyFee Having [/S/Addons/Name] == [$/S/Addons/Name]) > 0`. **`$` is deferred**: its only sensible use is a **field-to-field** comparison in the filter (`[inner] == [$outer]`), and rulekit has no field-vs-field comparison yet (D13) — so `$` rides that feature, not this slice. (`$` on the *filtered* side without a non-`$` inner ref → `MVK_NO_ITERATION_FOR_WILDCARD`.)
+
+*(Locked: N7 `Having` valid + `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` invalid; pre-checks in `FieldListRef.having` — `dsl.operators.IterationConditionTest`. `Having`'s starred-field law is structural (only `FieldListRef` offers it); `$`/`MVK_INVALID_OUTER_ITERATION`/`MVK_WILDCARDS_REQUIRED`/`MVK_NO_ITERATION_FOR_WILDCARD` recorded, pre-checks deferred with `$`.)*
+
 ## §9 supplement — list-aggregate slot laws (slice 7c, 2026-06-04 experiments)
 
 `Sum`/`MaxValue`/`MinValue` (DE `Summe`/`MaxWert`/`MinWert`; grammar `feldListenOp`, siblings `SumOfProducts` and `FirstFilledValue` deferred) and `NumberOfDifferentValues` (DE `AnzahlVerschiedenerWerte`; third member of the count family):

@@ -26,7 +26,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_DIFFERENT_NO_VALUE` | unclassified | — (experiment queue) |
 | `MVK_DIFFERENT_ROOT_GROUPS` | unclassified | — (experiment queue) |
 | `MVK_DIFFERENT_YES_VALUE` | unclassified | — (experiment queue) |
-| `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` | unclassified | — (experiment queue) |
+| `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` | pre-checked | `FieldListRef.having` rejects RepetitionNotUnique + nested Having (the representable forbidden constructs; rest kernel-delegated; locked: `dsl.operators.IterationConditionTest`) |
 | `MVK_DUPLICATE_PARAM1` | pre-checked | `ListAggregate`/`CountAggregate` reject duplicate operands with the code named (locked: `dsl.operators.AggregateConditionTest`) |
 | `MVK_DUPLICATE_PARAM2` | unclassified | — (experiment queue) |
 | `MVK_ENTITY_MOVE_IN_A12_MODEL_CONDITION` | unclassified | — (experiment queue) |
@@ -73,7 +73,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` | unclassified | — (experiment queue) |
 | `MVK_INVALID_LENGTH_OF_RAW_TYPE` | unclassified | — (experiment queue) |
 | `MVK_INVALID_NUMBER_FOR_EXP` | unclassified | — (experiment queue) |
-| `MVK_INVALID_OUTER_ITERATION` | unclassified | — (experiment queue) |
+| `MVK_INVALID_OUTER_ITERATION` | pending | `$` correlation deferred (needs field-vs-field comparison, D13) — KERNEL-FINDINGS §9 |
 | `MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON` | unclassified | — (experiment queue) |
 | `MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON` | erased | `PatternCondition` left side is always a bare string field value — expressions unrepresentable (KERNEL-FINDINGS §7) |
 | `MVK_INVALID_PARAMS_FOR_OP` | unclassified | — (experiment queue) |
@@ -126,7 +126,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_NO_FIELDS_ALLOWED` | erased | `GroupRef` ≠ `FieldRef` — group predicates take groups only |
 | `MVK_NO_GROUPS_ALLOWED` | erased | field predicates take `FieldRef` only |
 | `MVK_NO_INDEX_FIELD` | unclassified | — (experiment queue) |
-| `MVK_NO_ITERATION_FOR_WILDCARD` | unclassified | — (experiment queue) |
+| `MVK_NO_ITERATION_FOR_WILDCARD` | pending | `$` correlation deferred (rides field-vs-field comparison) |
 | `MVK_NO_NUMBER` | pre-checked | `ListAggregate` Sum requires NUMBER operands (locked: N7 `Sum` invalidExample) |
 | `MVK_NO_NUMBER_FOR_CALC` | unclassified | — (experiment queue) |
 | `MVK_NO_STRING` | unclassified | — (experiment queue) |
@@ -182,7 +182,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_TOO_MANY_PARENT_GROUPS` | unclassified | — (experiment queue) |
 | `MVK_TOO_MANY_POW_FOR_CALC` | unclassified | — (experiment queue) |
 | `MVK_VARYING_TYPES_NOT_ALLOWED` | erased | the `Dsl` value-list quantifiers take all-`StringRef` or all-`EnumRef` lists (locked: `validate.laws.ValueListLawsTest` + N7 `AtLeastOneFieldValueIncludedInValueList` invalidExample) |
-| `MVK_WILDCARDS_REQUIRED` | unclassified | — (experiment queue) |
+| `MVK_WILDCARDS_REQUIRED` | erased | `having` is offered only by `FieldListRef` (a starred list), never by plain `FieldRef` |
 | `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED` | unclassified | — (experiment queue) |
 | `MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED` | unclassified | — (experiment queue) |
 | `MVK_WRONG_DATE_FORMAT_FOR_OP` | unclassified | — (experiment queue) |
@@ -326,4 +326,4 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_YES_NO_INVALID_2` | unclassified | — (experiment queue) |
 | `MVK_YES_VALUE_MISSING` | unclassified | — (experiment queue) |
 
-*Classified: 44 of 300 (codes may appear in more than one source); the rest queue up as their operator families land or via dedicated experiments.*
+*Classified: 46 of 300 (codes may appear in more than one source); the rest queue up as their operator families land or via dedicated experiments.*
