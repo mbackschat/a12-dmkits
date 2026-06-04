@@ -55,7 +55,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_INVALID_COMPARE_ENUM_TO_ENUM` | unclassified | — (experiment queue) |
 | `MVK_INVALID_COMPARE_ENUM_TO_STRING` | unclassified | — (experiment queue) |
 | `MVK_INVALID_COMPARE_TO_CONST` | erased | handles always put a field value on one side; constant-vs-constant unrepresentable (verified via pattern experiments 2026-06-04) |
-| `MVK_INVALID_COMPARE_TO_DATE` | unclassified | — (experiment queue) |
+| `MVK_INVALID_COMPARE_TO_DATE` | erased + pre-checked | only `DateRef`/date expressions compare as dates (`DateOperand`); a number/string field has no date comparison method (locked: N7 `Today` invalidExample). Date constant literals deferred (9b) |
 | `MVK_INVALID_COMPARE_TO_DATE_RANGE` | unclassified | — (experiment queue) |
 | `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` | pre-checked | operation kind must match the computed field (`Calculation.kind()`) |
 | `MVK_INVALID_COMPARE_TO_YES` | erased | `ConfirmRef` has no `isFalse()`; Boolean↔Confirm cross-compare unrepresentable |
@@ -185,7 +185,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_WILDCARDS_REQUIRED` | erased | `having` is offered only by `FieldListRef` (a starred list), never by plain `FieldRef` |
 | `MVK_WILDCARD_AT_LOWEST_LEVEL_REQUIRED` | unclassified | — (experiment queue) |
 | `MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED` | unclassified | — (experiment queue) |
-| `MVK_WRONG_DATE_FORMAT_FOR_OP` | unclassified | — (experiment queue) |
+| `MVK_WRONG_DATE_FORMAT_FOR_OP` | pending | `Date(d,m,y)` construction (slice 9b) — needs bounded-integer operand fields |
 
 ## `CalculationErrorType` (kernel-core-calc, reflective CI check)
 
@@ -326,4 +326,4 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_YES_NO_INVALID_2` | unclassified | — (experiment queue) |
 | `MVK_YES_VALUE_MISSING` | unclassified | — (experiment queue) |
 
-*Classified: 46 of 300 (codes may appear in more than one source); the rest queue up as their operator families land or via dedicated experiments.*
+*Classified: 47 of 300 (codes may appear in more than one source); the rest queue up as their operator families land or via dedicated experiments.*

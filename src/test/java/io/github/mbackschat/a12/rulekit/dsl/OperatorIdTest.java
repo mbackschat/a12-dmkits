@@ -84,6 +84,13 @@ class OperatorIdTest {
         assertResolves("Having");
         assertResolves("CurrentRepetition");
         assertResolves("CustomCondition");
+        assertResolves("Today");
+        for (DateDifference.Unit u : DateDifference.Unit.values()) {
+            assertResolves(u.operatorId());
+        }
+        for (DateShift.Unit u : DateShift.Unit.values()) {
+            assertResolves(u.operatorId());
+        }
         for (GroupQuantifier q : GroupQuantifier.values()) {
             assertResolves(q.operatorId());
         }

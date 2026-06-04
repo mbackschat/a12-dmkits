@@ -158,6 +158,11 @@ public final class SubscriptionIdioms {
     public static Condition reversibleTier(EnumRef tier) {
         return tier.is("ENTERPRISE").and(customCondition("NotReverse"));   // host code decides NotReverse
     }
+    /** Date threshold ✅ (9a) — the most frequent date pattern; Today composes directly. */
+    public static Condition deliveryWithinDays(DateRef order, DateRef delivery, long days) {
+        return allOf(order.filled(), delivery.filled(),
+                delivery.after(addDays(order, days)));        // [Delivery] > AddDays(Order, days)
+    }
 }
 ```
 
@@ -448,7 +453,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 
 | Study element | Status |
 |---|---|
-| Handles (`num/str/enumOf/bool/confirm/group`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–6, 8 + iteration slices 7a–7e — patterns, value lists, count + list aggregates, `*` lists, `repetitionNotUnique(...).from(...)`, `flatten(...).having(filter)`, `currentRepetition(group)`, `customCondition(name)`) |
+| Handles (`num/str/enumOf/bool/confirm/group/date`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–6, 8, 9a + iteration slices 7a–7e — patterns, value lists, count + list aggregates, `*` lists, `repetitionNotUnique(...).from(...)`, `flatten(...).having(filter)`, `currentRepetition(group)`, `customCondition(name)`, dates: `today()`/ordering/`differenceIn*`/`add*`) |
 | §3.1 fragments, §3.3 library pattern, §6 catalog queries, §2 type-steering | ✅ pattern works today on covered operators |
 | §3.2 domain fragments (`withinTolerance`, `chronological`, `uniqueBy`) | `uniqueBy` ✅ (7b); the others 🔮 (tolerance ops, `CurrentRepetition`) |
 | §6c navigation (Level 1: `fields()`/`groups()`/`fieldAt` + strict narrowing), §3.5 `allOf`/`anyOf` | ✅ implemented 2026-06-04 (findings 9–10) |
@@ -481,7 +486,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 
 16. *(new, 2026-06-04 — owner review of §5.2)* **Compose to extend; transform only to operate inside.** A plain extension is `ast.and(more)` — the immutable original becomes a subtree, intent stays on the surface. `transform` is the *surgical* tool and must be presented as such: node replacement (§5.2's `[Tier] != "BASIC"` → `[Tier -> Pricing] == "PAID"` modernization — impossible by composing), placement, bulk rewrites across matches. The first draft used `transform` for a plain extension — machinery over intent, exactly what §2's thesis forbids. Skill consequence: teach the decision rule ("extending? `and()`. editing inside? `transform`."), not just the APIs.
 
-17. *(new, 2026-06-04 — owner idea)* **Rich diagnostics are an LLM-facing requirement (F4a).** Errors *and* warnings, each with **what / where / how-to-fix**, in one structured shape modelled on **LSP `Diagnostic`** (`severity · code · summary · where · fix · explain · source`) — the lingua franca editors and agents already parse. Three origins unified: PRECHECK (rulekit build-time, already fix-bearing), KERNEL (`MVK_*` from F4), LINT (valid-but-suspicious WARNINGs over the AST — finding 7's heuristics). Two researched moves give the leverage: **(a) catalog-join** — a kernel `MVK_*` inherits the matching catalog entry's `fix`/`gotchas`, so kernel diagnostics get the curated, N7-locked fix DB for free (no drift); **(b) applicable fixes** — `fix` carries valid replacement DSL (rustc/`cargo fix` model), not prose, so the agent pastes it; plus **"did you mean"** off the model index (Elm/TS hints) for the top mistakes (enum-not-in-domain, wrong path). The lint layer is the distinguishing half: an LLM can't get "compiles, kernel-accepts, but probably not what you meant" from `checkConsistency`. Sketch of the shape:
+17. *(new, 2026-06-04 — owner idea)* **Rich diagnostics are an LLM-facing requirement (F4a).** Errors *and* warnings, each with **what / where / how-to-fix**, in one structured shape modelled on **LSP `Diagnostic`** (`severity · code · summary · where · fix · explain · source`) — the lingua franca editors and agents already parse. Three origins unified: PRECHECK (rulekit build-time, already fix-bearing), KERNEL (`MVK_*` from F4), LINT (valid-but-suspicious WARNINGs over the AST — finding 7's heuristics). Two researched moves give the leverage: **(a) catalog-join** — a kernel `MVK_*` inherits the matching catalog entry's `fix`/`gotchas`, so kernel diagnostics get the curated, N7-locked fix DB for free (no drift); **(b) applicable fixes** — `fix` carries valid replacement DSL (rustc/`cargo fix` model), not prose, so the agent pastes it; plus **"did you mean"** off the model index (Elm/TS hints) for the top mistakes (enum-not-in-domain, wrong path). The lint layer is the distinguishing half: an LLM can't get "compiles, kernel-accepts, but probably not what you meant" from `checkConsistency`. **Three diagnostic kinds, by the structural-vs-semantic split:** ERROR (structural — F4 catches), WARNING (probable mistake — lint), and **INFO/gotcha (correct-but-surprising — `checkConsistency` is silent because the rule is *valid*)**. The third is sourced from the catalog `gotchas` keyed by the operators a rule *uses* — e.g. authoring `AddYears` surfaces "anchors end-of-February; differs from `AddMonths` across a leap year (`AddYears(28.02.2010,2)=29.02.2012`, not `28.02.2012`)" (owner's 2026-06-04 leap-day find); likewise `DifferenceInMonths` floor-not-count, `Sum`-substitutes-0-vs-`Max/Min`-ignore, `GroupFilled`=row-exists, `FieldFilled`≠strict-complement. Sketch of the shape:
     ```jsonc
     { "severity": "WARNING", "code": "RK_INVERTED_REQUIREDNESS", "source": "LINT",
       "summary": "rule fires when the data looks VALID — did you mean FieldNotFilled?",

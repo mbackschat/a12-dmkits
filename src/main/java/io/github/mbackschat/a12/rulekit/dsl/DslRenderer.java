@@ -106,7 +106,23 @@ public final class DslRenderer {
                     .collect(java.util.stream.Collectors.joining(", "))
                     + ")";
             case CurrentRepetition r -> keyword(r.operatorId()) + "(" + r.group().path() + ")";
+            case Today t -> keyword(t.operatorId());
+            case DateDifference d -> keyword(d.operatorId())
+                    + "(" + renderArg(d.left()) + ", " + renderArg(d.right()) + ")";
+            case DateShift s -> keyword(s.operatorId())
+                    + "(" + renderArg(s.date()) + ", " + s.amount() + ")";
         };
+    }
+
+    /**
+     * Renders a value in <em>argument position</em>: a date/field reference is the bare entity path
+     * (as in {@code DifferenceInDays(A, B)}), not the bracketed value form used in comparisons.
+     */
+    private String renderArg(Calculation value) {
+        if (value instanceof FieldValue v) {
+            return v.field().path();
+        }
+        return render(value);
     }
 
     private static String quote(String value) {

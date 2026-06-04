@@ -659,5 +659,90 @@
     ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And CustomCondition NotReverse", "note": "host code decides; the FieldFilled conjunct references the error field" },
     "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "Today",
+    "kind": "constant",
+    "keywords": { "en": "Today", "de": "Heute" },
+    "operands": [],
+    "returns": "date",
+    "meaning": "The current date (ignores the time of day).",
+    "constraints": [ "compares only to dates (a date field, another date expression) — not to numbers" ],
+    "gotchas": [ "Now (the date-time sibling) is discouraged with == and forbidden in computations" ],
+    "validExample": { "dsl": "FieldFilled(OrderDate) And [OrderDate] >= Today", "note": "fires when the order date is today or in the future" },
+    "invalidExample": { "dsl": "FieldFilled(Quantity) And [Quantity] >= Today", "error": "MVK_INVALID_COMPARE_TO_DATE", "fix": "Today compares to dates — compare a date field, not a number" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "DifferenceInDays",
+    "kind": "function",
+    "keywords": { "en": "DifferenceInDays", "de": "DifferenzInTagen" },
+    "operands": [ { "type": "date" }, { "type": "date" } ],
+    "returns": "number",
+    "meaning": "The number of whole days from the first date to the second.",
+    "constraints": [ "both operands are dates (fields or date expressions), rendered as bare entity refs" ],
+    "gotchas": [ "differences are a floor, not a calendar count (DifferenceInMonths(31.01,30.03)=1); fractional offsets truncate" ],
+    "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, DeliveryDate) > 7", "note": "fires when delivery is more than a week after order" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "DifferenceInMonths",
+    "kind": "function",
+    "keywords": { "en": "DifferenceInMonths", "de": "DifferenzInMonaten" },
+    "operands": [ { "type": "date" }, { "type": "date" } ],
+    "returns": "number",
+    "meaning": "The largest number of whole months that can be added to the first date without passing the second.",
+    "constraints": [ "both operands are dates" ],
+    "gotchas": [ "a floor, not a calendar count (KERNEL-SEMANTICS §6)" ],
+    "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInMonths(OrderDate, DeliveryDate) >= 1", "note": "fires when at least a month apart" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "DifferenceInYears",
+    "kind": "function",
+    "keywords": { "en": "DifferenceInYears", "de": "DifferenzInJahren" },
+    "operands": [ { "type": "date" }, { "type": "date" } ],
+    "returns": "number",
+    "meaning": "The largest number of whole years between the two dates.",
+    "constraints": [ "both operands are dates" ],
+    "gotchas": [ "a floor; a naive age check around leap days can be off (Add* vs Difference* disagree across leap years)" ],
+    "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInYears(OrderDate, DeliveryDate) >= 1", "note": "fires when at least a year apart" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "AddDays",
+    "kind": "function",
+    "keywords": { "en": "AddDays", "de": "AddiereTage" },
+    "operands": [ { "type": "date" }, { "type": "integer" } ],
+    "returns": "date",
+    "meaning": "The date shifted forward by the given number of days.",
+    "constraints": [ "the first operand is a date (bare entity ref); the second an integer amount" ],
+    "gotchas": [ "fractional offsets are truncated, not rounded" ],
+    "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And [DeliveryDate] > AddDays(OrderDate, 7)", "note": "fires when delivery is more than a week out" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "AddMonths",
+    "kind": "function",
+    "keywords": { "en": "AddMonths", "de": "AddiereMonate" },
+    "operands": [ { "type": "date" }, { "type": "integer" } ],
+    "returns": "date",
+    "meaning": "The date shifted forward by the given number of months (preserves the day number).",
+    "constraints": [ "the first operand is a date; the second an integer amount" ],
+    "gotchas": [ "AddMonths preserves the day; AddYears maps end-of-February — they disagree across a leap-year boundary (§6)" ],
+    "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And [DeliveryDate] > AddMonths(OrderDate, 3)", "note": "fires when delivery is more than a quarter out" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "AddYears",
+    "kind": "function",
+    "keywords": { "en": "AddYears", "de": "AddiereJahre" },
+    "operands": [ { "type": "date" }, { "type": "integer" } ],
+    "returns": "date",
+    "meaning": "The date shifted forward by the given number of years (maps end-of-February to end-of-February).",
+    "constraints": [ "the first operand is a date; the second an integer amount" ],
+    "gotchas": [ "differs from AddMonths across leap years (§6)" ],
+    "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And [DeliveryDate] > AddYears(OrderDate, 1)", "note": "fires when delivery is more than a year out" },
+    "sinceKernel": "30.8.x"
   }
 ]

@@ -82,6 +82,39 @@ public final class Dsl {
         return new NumberExpr(new ListAggregate(op, operands));
     }
 
+    // --- date family (item 9) — Today, differences (→ number), shifts (→ date) ----------------
+
+    /** {@code Today} — the current date constant (DE {@code Heute}). */
+    public static DateExpr today() {
+        return new DateExpr(new Today());
+    }
+
+    /** {@code DifferenceInDays(a, b)} — a numeric date difference (a floor, not a calendar count). */
+    public static NumberExpr differenceInDays(DateOperand a, DateOperand b) {
+        return new NumberExpr(new DateDifference(DateDifference.Unit.DAYS, a.expression(), b.expression()));
+    }
+
+    public static NumberExpr differenceInMonths(DateOperand a, DateOperand b) {
+        return new NumberExpr(new DateDifference(DateDifference.Unit.MONTHS, a.expression(), b.expression()));
+    }
+
+    public static NumberExpr differenceInYears(DateOperand a, DateOperand b) {
+        return new NumberExpr(new DateDifference(DateDifference.Unit.YEARS, a.expression(), b.expression()));
+    }
+
+    /** {@code AddDays(date, n)} — shifts a date, yielding a date (comparable). */
+    public static DateExpr addDays(DateOperand date, long amount) {
+        return new DateExpr(new DateShift(DateShift.Unit.DAYS, date.expression(), amount));
+    }
+
+    public static DateExpr addMonths(DateOperand date, long amount) {
+        return new DateExpr(new DateShift(DateShift.Unit.MONTHS, date.expression(), amount));
+    }
+
+    public static DateExpr addYears(DateOperand date, long amount) {
+        return new DateExpr(new DateShift(DateShift.Unit.YEARS, date.expression(), amount));
+    }
+
     /** {@code CustomCondition <Name>} — the app-defined escape hatch (KERNEL-SEMANTICS §14). */
     public static Condition customCondition(String name) {
         return new CustomConditionRef(name);

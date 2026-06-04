@@ -29,6 +29,20 @@ The condition lexer's rule is `StringLiteral : '"' ( '""' | ~["] )* '"'` — an 
 
 In DM-JSON, a category's `values` list pairs **positionally** with the enumeration's `values` (entry *i* categorizes enum value *i*); the comparison domain is the category's distinct value set. Codes: comparing to one of the *enum's own* values instead of a *category* value → **`MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON`**; an unknown category name → **`MVK_CATEGORY_UNKOWN`** (the kernel's spelling); `->` on a non-enumeration field → **`MVK_NO_ENUMERATION`**. Curiosity: `[Enum -> Category] == [Enum]` (category vs. plain enum field) is *accepted*. *(Locked: N7 `EnumCategory` examples + `dsl.operators.EnumConditionTest`.)*
 
+## §6 supplement — the date family (corpus item 9 slice 9a, 2026-06-04 experiments)
+
+`Today` (DE `Heute`), `DifferenceInDays|Months|Years` (DE `DifferenzIn{Tagen,Monaten,Jahren}`), `AddDays|Months|Years` (DE `Addiere{Tage,Monate,Jahre}`):
+
+- **Date ordering needs no scale machinery** — dates have no scale (unlike the D13-deferred numeric field-vs-field), so `[A] < [B]` / `[A] == [B]` between two date fields validates directly. `[Date] >= Today` and date-vs-date `==`/ordering all work.
+- **`Today` composes everywhere** — as a comparison operand (`[OrderDate] >= Today`) and as a function operand (`DifferenceInDays(OrderDate, Today)`).
+- **A date compared to a non-date is rejected** — `[Quantity] >= Today` → **`MVK_INVALID_COMPARE_TO_DATE`** ("only allowed to compare dates with other fitting dates").
+- **Bare vs bracketed by position** — a date field is bracketed `[OrderDate]` as a *value* (in comparisons) but **bare** `OrderDate` as an *entity argument* inside `DifferenceInDays(…)`/`AddMonths(…)`. (rulekit's renderer has a `renderArg` for argument position.)
+- `DifferenceIn*` returns a **number** (comparable/arithmetic); `Add*` returns a **date** (comparable). Semantics caveats (kernel, §6): differences are a *floor* not a calendar count; `AddMonths` preserves the day while `AddYears` maps end-of-February — they disagree across leap years.
+
+**Deferred to slice 9b — format-finicky / need special operand fields.** A **date constant literal** (`31.12.2020`) against a `yyyy-MM-dd` `DateType` field is rejected (`MVK_INVALID_COMPARE_TO_DATE`) — the comparable-fragment rules (§6: both formats include the year or both omit) make literal constants format-dependent. **`Date(d,m,y)` construction** needs bounded-integer / digit-patterned operand fields (a plain scale-0 number draws `MVK_WRONG_DATE_FORMAT_FOR_OP`), as do `Valid(...)`/`Invalid(...)` over constructed dates. `Now`, `DateRange`/`DateRangesOverlap`, `DateTime`/`Time` also deferred. Low marginal demand; build on need.
+
+*(Locked: N7 examples of Today + all three Difference*/Add* operators + the `Today` number-vs-date invalid; `dsl.operators.DateConditionTest` for rendering + the non-date-field handle rejection. The order fixture gained `OrderDate`/`DeliveryDate` DateType fields.)*
+
 ## §14 supplement — CustomCondition's two forbidden contexts (corpus item 8, 2026-06-04 experiments)
 
 `CustomCondition <Name>` (DE `ApplikationsBedingung`; grammar `applikationsBedingung: 'ApplikationsBedingung' nameOhnePunkt`) is a bare predicate — a host-registered name, no operands. KERNEL-SEMANTICS §14 names two bans; both verified and now **pre-checked** (the constructs are representable):

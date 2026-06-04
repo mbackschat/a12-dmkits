@@ -32,7 +32,7 @@ A read-only **analysis** of two real A12 model corpora, used to prioritize what 
 | 11 | `NumberOfFilledFields` (aggregate) | ✅ (`CountAggregate` → comparable `NumberExpr`) |
 | 11 / 3 | `True` / `False` (boolean & confirm literals) | ✅ (`BoolRef.isTrue/isFalse`, `ConfirmRef.confirmed/notConfirmed`) |
 | 8 / 8 / 8 / 6 / 4 | `CurrentRepetition` ✅ / `For` (semantic index) / `Today` / `Having` ✅ / `RepetitionNotUnique` ✅ | `CurrentRepetition` ✅ 7e, `Having` ✅ 7d, `RepetitionNotUnique` ✅ 7b; `For` → 7f (index fields), dates → item 9 |
-| **6 / 1 / 1 / 1** | `Date(...)` / `DifferenceInDays` / `DifferenceInYears` / `AddMonths` | ❌ date family |
+| 6 / 1 / 1 / 1 | `Date(...)` / `DifferenceInDays` ✅ / `DifferenceInYears` ✅ / `AddMonths` ✅ | `DifferenceIn*`/`Add*` ✅ 9a; `Date(...)` → 9b |
 | 5 | `->` (enum category) | ✅ (`EnumRef.category(...)`) |
 | 4 / 4 / 3 / 1 / 1 | `RangeAsString` / (group: `AtLeastOneGroupFilled` ✅) / `PatternViolated` ✅ / `GroupNotFilled` ✅ / `Length` ✅ | partial (`RangeAsString` ❌) |
 | ~2 | value-list membership (`IncludedInValueList`, `NoFieldValue…InValueList`) | ✅ (`in`/`notIn` + quantifier statics) |
@@ -99,7 +99,9 @@ Counts shown as C1 (app) + C2 (metamodel). Order balances combined frequency aga
    - 7e ~~`CurrentRepetition`~~ (8) — ✅ **done 2026-06-04** (`Dsl.currentRepetition(group)` → numeric expression; groups-only structural, iterating-position law kernel-delegated + locked).
    - **7f (split out, deferred — needs index-field fixtures):** `For`/`Fuer` semantic index (8), parallel iteration, and the deferred pre-checks (`MVK_NO_WILDCARD` missing-star, RNU position) — all hinge on repeatable groups declaring an **index field** (our fixtures lack one → `MVK_NO_INDEX_FIELD`) plus an explicit iteration model. Low demand; built on real need (KERNEL-FINDINGS §9).
 8. ~~**`CustomCondition`**~~ — ✅ **done 2026-06-04** (`Dsl.customCondition(name)` → `CustomConditionRef`; bare-identifier name validated; both forbidden contexts pre-checked — inside `Having` (`MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION`) and in computation rules (§14)).
-9. **Date family** — `Today`, `Date(d,m,y)`, `DifferenceIn*`, `Add*` (~17 + ~0). *Med; app-only — date kinds + year-presence comparability (§5b).*
+9. **Date family** — ~17 + ~0; app-only.
+   - 9a ~~`Today` + date ordering + `DifferenceIn{Days,Months,Years}` + `Add{Days,Months,Years}`~~ — ✅ **done 2026-06-04** (`DateRef`/`DateOperand`/`DateExpr`; date field-vs-field ordering needs no scale machinery; `Today` composes as comparison + function operand; bare-vs-bracketed-by-position rendering; number-vs-date rejection N7-locked. Order fixture gained `OrderDate`/`DeliveryDate`).
+   - **9b (deferred — format-finicky / special operands):** date constant literals (`31.12.2020` — fragment/format-dependent), `Date(d,m,y)` construction + `Valid`/`Invalid` (need bounded-integer operand fields), `Now`, `DateRange`/`DateRangesOverlap`, `DateTime`/`Time`. Low marginal demand (KERNEL-FINDINGS §6).
 10. **`Valid(Field, "Type")` / `Ungueltig`** — *low priority, post-backlog.* The `predefinedTypeValidityCondition` predicate: "is the field a valid instance of a registered **custom field type**" (kernel ships a verifier library — `kernel-rt/kernel-core-customfieldtype-impl`: Steuernummer, BIC/IBAN, IdNr, date formats, …). Distinct from `CustomCondition` (item 8 = app-registered *boolean*); this delegates to a custom-*type* validator and runs at runtime, so it's mostly a *formal-validation* (field-type) concern, not a rule concern. **Never appears in either corpus histogram** — apps rely on formal type validation, not the `Valid(...)` predicate — so it's noted here only so it isn't forgotten; build on real demand. rulekit already classifies such fields as `ValueKind.CUSTOM`. (EUPL/German-domain verifiers: reference-only, never vendored.)
 
 ## How this drives the work

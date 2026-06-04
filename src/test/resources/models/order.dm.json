@@ -228,6 +228,32 @@
                     }
                   }
                 }
+              },
+              {
+                "type": "Field",
+                "id": "/Order/OrderDate",
+                "name": "OrderDate",
+                "Field": {
+                  "fieldType": {
+                    "type": "DateType",
+                    "DateType": {
+                      "format": "yyyy-MM-dd"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Order/DeliveryDate",
+                "name": "DeliveryDate",
+                "Field": {
+                  "fieldType": {
+                    "type": "DateType",
+                    "DateType": {
+                      "format": "yyyy-MM-dd"
+                    }
+                  }
+                }
               }
             ]
           }
