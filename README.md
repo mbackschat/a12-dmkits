@@ -46,6 +46,16 @@ export JAVA_HOME="$(/usr/libexec/java_home -v 21)"   # macOS; or point at any JD
 
 The suite covers kernel wiring, the model index, the renderer (EN/DE), the validator, the self-verifying catalog (each example checked against the real kernel), and the constraint-mining instruments (slot parity, MVK ledger) — so a green `test` means rulekit's output is confirmed by the engine, not just plausible. With the sibling `a12-kernel-mm` clone present, an opt-in harness additionally loads all 15 of the kernel's own metamodels through the index (skipped when absent).
 
+## Commit hooks
+
+A committed `commit-msg` hook (`.githooks/commit-msg`) enforces the repo's commit convention — Conventional Commits subject, subject-only by default, no bullet lists or test counts. Enable it once per clone:
+
+```sh
+git config core.hooksPath .githooks
+```
+
+It hard-rejects the mechanical violations and reminds on the judgment rule; bypass a single commit with `git commit --no-verify`. To apply the same check across all your repos, point your global git template at it (e.g. copy the hook into `~/.git-template/hooks` and set `git config --global init.templateDir ~/.git-template`).
+
 ## License
 
 Deliberately left open for now; a permissive OSS license (Apache-2.0 or MIT) is the working intent — to be settled before first publish. See proposal §19.

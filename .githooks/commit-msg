@@ -1,0 +1,56 @@
+#!/bin/sh
+# commit-msg hook — enforce this repo's commit-message convention (see the global CLAUDE.md
+# "Commit messages" section). Mechanical rules are hard-rejected; the judgment rule
+# ("subject-only by default; a body only for a non-obvious *why*") is reminded, not enforced.
+#
+# Enable per clone:  git config core.hooksPath .githooks
+# Bypass once:       git commit --no-verify
+
+msg_file="$1"
+subject=$(sed -n '1p' "$msg_file")
+
+# Machine-generated subjects we don't hand-author — leave them alone.
+case "$subject" in
+  "Merge "*|"Revert "*|"fixup! "*|"squash! "*|"amend! "*) exit 0 ;;
+esac
+
+types='feat|fix|docs|refactor|perf|test|build|ci|chore'
+fail=0
+err() { printf 'commit-msg: %s\n' "$1" >&2; fail=1; }
+
+# (1) Conventional subject with a lowercase type from the allowed set.
+if ! printf '%s' "$subject" | grep -Eq "^($types)(\([^)]+\))?!?: .+"; then
+  err "subject must be '<type>(scope): subject' with a lowercase type [$types]. Got: $subject"
+fi
+
+# Soft note: overlong subject.
+if [ "$(printf '%s' "$subject" | wc -c)" -gt 72 ]; then
+  printf 'commit-msg: note — subject is over 72 chars; consider tightening.\n' >&2
+fi
+
+# Body = line 3 onward (line 2 is the blank separator); drop git comment lines.
+body=$(sed -n '3,$p' "$msg_file" | grep -v '^#')
+
+# (2) No bullet lists in the body.
+if printf '%s\n' "$body" | grep -Eq '^[[:space:]]*[-*] '; then
+  err "no bullet lists in the body — use prose."
+fi
+
+# (3) No test counts / pass-fail tallies.
+if printf '%s\n' "$body" | grep -Eiq '([0-9]+ tests?|tests? (pass|passing|passed|green)|[0-9]+ (passed|failing|failed))'; then
+  err "don't restate test counts/results in the message."
+fi
+
+# Judgment reminder: a non-empty body that isn't only footers.
+body_no_footers=$(printf '%s\n' "$body" \
+  | grep -Ev '^(Closes|Fixes|Refs|Co-authored-by|Signed-off-by|BREAKING CHANGE)[: ]' \
+  | tr -d '[:space:]')
+if [ -n "$body_no_footers" ]; then
+  printf 'commit-msg: reminder — subject-only by default; keep any body to 1-2 sentences of non-obvious *why*, no diff restatement.\n' >&2
+fi
+
+if [ "$fail" -ne 0 ]; then
+  printf 'commit-msg: rejected. Fix the message, or bypass once with --no-verify.\n' >&2
+  exit 1
+fi
+exit 0
