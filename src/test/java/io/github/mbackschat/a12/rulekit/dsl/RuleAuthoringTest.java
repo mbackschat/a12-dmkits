@@ -63,7 +63,7 @@ class RuleAuthoringTest {
                 rule.render());
 
         ValidationResult vr = new RuleValidator().check(modelJson, rule.draft());
-        assertTrue(vr.ok(), () -> "kernel should accept the authored rule, got: " + vr.problems());
+        assertTrue(vr.ok(), () -> "kernel should accept the authored rule, got: " + vr.diagnostics());
     }
 
     @Test
@@ -80,7 +80,7 @@ class RuleAuthoringTest {
 
         assertEquals("../Addons/MonthlyFee", rule.errorEntityRelPath());
         ValidationResult vr = new RuleValidator().check(modelJson, rule.draft());
-        assertTrue(vr.ok(), () -> "kernel should accept the deeper relPath, got: " + vr.problems());
+        assertTrue(vr.ok(), () -> "kernel should accept the deeper relPath, got: " + vr.diagnostics());
     }
 
     @Test
@@ -96,7 +96,7 @@ class RuleAuthoringTest {
                 .build();
 
         ValidationResult vr = new RuleValidator().check(modelJson, rule.draft());
-        assertTrue(vr.ok(), () -> "enclosing group reference should satisfy the kernel, got: " + vr.problems());
+        assertTrue(vr.ok(), () -> "enclosing group reference should satisfy the kernel, got: " + vr.diagnostics());
     }
 
     @Test

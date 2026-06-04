@@ -28,7 +28,7 @@ class RuleValidatorTest {
 
         ValidationResult result = new RuleValidator().check(modelJson, rule);
 
-        assertTrue(result.ok(), () -> "expected a valid rule, got: " + result.problems());
+        assertTrue(result.ok(), () -> "expected a valid rule, got: " + result.diagnostics());
     }
 
     @Test
@@ -43,7 +43,7 @@ class RuleValidatorTest {
 
         ValidationResult result = new RuleValidator().check(modelJson, rule);
 
-        assertTrue(result.ok(), () -> "renderer output should validate against the kernel, got: " + result.problems());
+        assertTrue(result.ok(), () -> "renderer output should validate against the kernel, got: " + result.diagnostics());
     }
 
     @Test
@@ -57,6 +57,6 @@ class RuleValidatorTest {
 
         ValidationResult result = new RuleValidator().check(modelJson, rule);
 
-        assertTrue(result.ok(), () -> "enum-by-value comparison should validate, got: " + result.problems());
+        assertTrue(result.ok(), () -> "enum-by-value comparison should validate, got: " + result.diagnostics());
     }
 }

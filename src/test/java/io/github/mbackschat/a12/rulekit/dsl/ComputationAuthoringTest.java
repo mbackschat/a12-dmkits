@@ -58,7 +58,7 @@ class ComputationAuthoringTest {
         assertEquals("../EffectiveFee", comp.computedFieldRelPath());
 
         ValidationResult vr = new RuleValidator().check(modelJson, comp.draft());
-        assertTrue(vr.ok(), () -> "kernel should accept the computation, got: " + vr.problems());
+        assertTrue(vr.ok(), () -> "kernel should accept the computation, got: " + vr.diagnostics());
     }
 
     @Test
@@ -73,7 +73,7 @@ class ComputationAuthoringTest {
                 .build();
 
         ValidationResult vr = new RuleValidator().check(modelJson, comp.draft());
-        assertTrue(vr.ok(), () -> "kernel should accept the tiered computation, got: " + vr.problems());
+        assertTrue(vr.ok(), () -> "kernel should accept the tiered computation, got: " + vr.diagnostics());
     }
 
     @Test

@@ -19,7 +19,7 @@ class ScaleExperimentTest {
             ValidationResult r = new RuleValidator().check(modelJson, new DraftRule(
                     "/Subscription/Addons", "Exp", "../MonthlyFee",
                     "FieldFilled(MonthlyFee) And " + cond, "EXP", "ERROR"));
-            System.out.println("EXPERIMENT: " + cond + " -> " + (r.ok() ? "OK" : r.problems()));
+            System.out.println("EXPERIMENT: " + cond + " -> " + (r.ok() ? "OK" : r.diagnostics()));
         }
     }
 }

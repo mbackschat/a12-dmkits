@@ -248,8 +248,9 @@ new DslRenderer().render(condition);                       // ✅ canonical EN (
 new DslRenderer(ConditionLanguage.DE).render(condition);   // ✅ same AST, German keywords
 
 ValidationResult vr = new RuleValidator().check(modelJson, draftRule);   // ✅ F4: real kernel, no compile
-vr.problems().forEach(p -> System.out.println(p.mvkCode() + ": " + p.message()));
-// 🔮 advice(): "MVK_INVALID_COMPARE_DEC_PLACES → operands differ in declared scale; round one side: RoundDown(...)"
+vr.diagnostics().forEach(d -> System.out.println(d.code() + " " + d.fix()));  // ✅ F4a: code + catalog-joined fix
+System.out.println(vr.toJson());                           // ✅ F4a: agent-parseable diagnostics (files-as-API)
+// 🔮 lint WARNINGs + gotcha/INFO channel + "did you mean" + AST span-pointing (F4a later increments)
 
 BoundModel m2 = m.add(rule);                               // ✅ snapshot (F0): write → NEW binding, re-validated
 m2.writeTo(path);                                          // ✅ DM-JSON write path — authored JSON, includes preserved (D9, F6)
@@ -484,7 +485,8 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 | §3.4 rule templates | ✅ full form works (navigation + `Rule` object) |
 | `Rule` + `Computation` authoring objects (computed relPaths, slot-rule pre-checks, validator bridges, `Calculation.kind()`) | ✅ implemented 2026-06-04 |
 | DM-JSON write path: `ofJson`/`add(Rule)`/`toJson`/`writeTo` (snapshot, re-validated, includes-preserving) | ✅ F6 first slice (2026-06-04); `add(Computation)`/`replaceCondition`/`removeRule` 🔮 |
-| Message *interpolation*, fork-9 path policy, `advice()` | 🔮 Phase-1 remainder (F2a; F9/F4a) |
+| Structured `Diagnostic` (`severity·source·code·summary·where·fix·explain`) + catalog-join + JSON | ✅ F4a first increment (2026-06-04); lints / gotcha-INFO / "did you mean" / span-pointing 🔮 |
+| Message *interpolation*, fork-9 path policy, `advice()` | 🔮 Phase-1 remainder (F2a; F9) |
 | ingest / explain / diff / LLM loop | 🔮 Phase 2 (adapter) |
 | TS twin | 🔮 Phase 4 |
 
@@ -511,7 +513,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 
 16. *(new, 2026-06-04 — owner review of §5.2)* **Compose to extend; transform only to operate inside.** A plain extension is `ast.and(more)` — the immutable original becomes a subtree, intent stays on the surface. `transform` is the *surgical* tool and must be presented as such: node replacement (§5.2's `[Tier] != "BASIC"` → `[Tier -> Pricing] == "PAID"` modernization — impossible by composing), placement, bulk rewrites across matches. The first draft used `transform` for a plain extension — machinery over intent, exactly what §2's thesis forbids. Skill consequence: teach the decision rule ("extending? `and()`. editing inside? `transform`."), not just the APIs.
 
-17. *(new, 2026-06-04 — owner idea)* **Rich diagnostics are an LLM-facing requirement (F4a).** Errors *and* warnings, each with **what / where / how-to-fix**, in one structured shape modelled on **LSP `Diagnostic`** (`severity · code · summary · where · fix · explain · source`) — the lingua franca editors and agents already parse. Three origins unified: PRECHECK (rulekit build-time, already fix-bearing), KERNEL (`MVK_*` from F4), LINT (valid-but-suspicious WARNINGs over the AST — finding 7's heuristics). Two researched moves give the leverage: **(a) catalog-join** — a kernel `MVK_*` inherits the matching catalog entry's `fix`/`gotchas`, so kernel diagnostics get the curated, N7-locked fix DB for free (no drift); **(b) applicable fixes** — `fix` carries valid replacement DSL (rustc/`cargo fix` model), not prose, so the agent pastes it; plus **"did you mean"** off the model index (Elm/TS hints) for the top mistakes (enum-not-in-domain, wrong path). The lint layer is the distinguishing half: an LLM can't get "compiles, kernel-accepts, but probably not what you meant" from `checkConsistency`. **Three diagnostic kinds, by the structural-vs-semantic split:** ERROR (structural — F4 catches), WARNING (probable mistake — lint), and **INFO/gotcha (correct-but-surprising — `checkConsistency` is silent because the rule is *valid*)**. The third is sourced from the catalog `gotchas` keyed by the operators a rule *uses* — e.g. authoring `AddYears` surfaces "anchors end-of-February; differs from `AddMonths` across a leap year (`AddYears(28.02.2010,2)=29.02.2012`, not `28.02.2012`)" (owner's 2026-06-04 leap-day find); likewise `DifferenceInMonths` floor-not-count, `Sum`-substitutes-0-vs-`Max/Min`-ignore, `GroupFilled`=row-exists, `FieldFilled`≠strict-complement. Sketch of the shape:
+17. *(new, 2026-06-04 — owner idea; first increment ✅ 2026-06-04)* **Rich diagnostics are an LLM-facing requirement (F4a).** Errors *and* warnings, each with **what / where / how-to-fix**, in one structured shape modelled on **LSP `Diagnostic`** (`severity · code · summary · where · fix · explain · source`) — the lingua franca editors and agents already parse. Three origins unified: PRECHECK (rulekit build-time, already fix-bearing), KERNEL (`MVK_*` from F4), LINT (valid-but-suspicious WARNINGs over the AST — finding 7's heuristics). Two researched moves give the leverage: **(a) catalog-join** — a kernel `MVK_*` inherits the matching catalog entry's `fix`/`gotchas`, so kernel diagnostics get the curated, N7-locked fix DB for free (no drift); **(b) applicable fixes** — `fix` carries valid replacement DSL (rustc/`cargo fix` model), not prose, so the agent pastes it; plus **"did you mean"** off the model index (Elm/TS hints) for the top mistakes (enum-not-in-domain, wrong path). The lint layer is the distinguishing half: an LLM can't get "compiles, kernel-accepts, but probably not what you meant" from `checkConsistency`. **Three diagnostic kinds, by the structural-vs-semantic split:** ERROR (structural — F4 catches), WARNING (probable mistake — lint), and **INFO/gotcha (correct-but-surprising — `checkConsistency` is silent because the rule is *valid*)**. The third is sourced from the catalog `gotchas` keyed by the operators a rule *uses* — e.g. authoring `AddYears` surfaces "anchors end-of-February; differs from `AddMonths` across a leap year (`AddYears(28.02.2010,2)=29.02.2012`, not `28.02.2012`)" (owner's 2026-06-04 leap-day find); likewise `DifferenceInMonths` floor-not-count, `Sum`-substitutes-0-vs-`Max/Min`-ignore, `GroupFilled`=row-exists, `FieldFilled`≠strict-complement. Sketch of the shape:
     ```jsonc
     { "severity": "WARNING", "code": "RK_INVERTED_REQUIREDNESS", "source": "LINT",
       "summary": "rule fires when the data looks VALID — did you mean FieldNotFilled?",
@@ -519,7 +521,16 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
       "fix": "FieldNotFilled(MonthlyFee) And [Tier] != \"BASIC\"",
       "explain": "FieldFilled is true when the field HAS a value; a requiredness rule fires on absence." }
     ```
-    **First build increment:** promote `Problem` → `Diagnostic` (code/where/fix/explain/source) + catalog-join for kernel problems + JSON output; lints, "did you mean", and span-pointing follow. Recorded as proposal **F4a**.
+    **First build increment — shipped 2026-06-04** (`DiagnosticTest`): `Problem` promoted to `Diagnostic` (`severity·source·code·summary·where·fix·explain`); the `KERNEL` source with `where.rule`; catalog-join (`OperatorCatalog.byInvalidError`) reusing the matching `invalidExample.fix` + operator `meaning`; and `ValidationResult.toJson()`. A real kernel rejection now renders as:
+    ```jsonc
+    // [CustomerName] < [ProductCode]  (ordering two strings)
+    { "severity": "ERROR", "source": "KERNEL", "code": "MVK_INVALID_TYPE_FOR_COMPARISON",
+      "summary": "Rule with path '/Order/OrderingProbe': 'Less than' or 'greater than' comparative is only allowed to be used for numbers, amounts and dates. [MVK_INVALID_TYPE_FOR_COMPARISON]",
+      "where": { "rule": "/Order/OrderingProbe" },
+      "fix": "ordering needs numbers or dates; compare strings with == / != instead",
+      "explain": "True iff the left operand is less than or equal to the right." }
+    ```
+    (The `explain` is from the first catalog entry sharing the code — `<=` — since several ordering ops report it; exact-operator pinning + `where.operator`/span come with AST↔problem linking.) **Still to come:** the PRECHECK/LINT sources (the lint layer is the distinguishing half), the gotcha/INFO channel, "did you mean", and span-pointing. Recorded as proposal **F4a**.
 
 18. *(new, 2026-06-04 — ✅ string + number landed same day)* **Field-vs-field comparison.** Comparing two fields (`[A] == [B]`, `[A] <= [B]`) was a basic capability rulekit lacked (comparisons took literals only) — it makes whole classes of ordinary rules inexpressible: confirmation match (`[Email] == [EmailConfirm]`), range sanity (`[MinQty] <= [MaxQty]`), reconciliation (`[Net] + [Tax] == [Gross]`), and the multi-field-structure reuse of §3.4a. The recordable consequence is **prioritization**: field-vs-field (currently the vague "D13 later") blocks *two* independent high-value features — those cross-field rules **and** `$` correlation (§5.2/7d). The cheap unlock is real: **string/enum field-vs-field equality has no scale**, so it's buildable now exactly like date ordering was (slice 9a); only **number** field-vs-field needs the D13 decimal-scale pre-check. Done 2026-06-04: `StringRef.eq/ne(StringRef)` + `NumberRef.{lt,le,gt,ge,eq,ne}(NumberRef)`, the number `==`/`!=` pre-checking equal scale. Enum-vs-enum still deferred (text-bearing rules + fixture). This unblocks `sameAddress` (§3.4a); `$` correlation remains its own deferred feature.
 

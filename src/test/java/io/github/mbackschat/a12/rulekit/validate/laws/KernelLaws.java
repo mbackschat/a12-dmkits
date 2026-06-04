@@ -55,14 +55,14 @@ final class KernelLaws {
 
     private static void assertAccepts(String json, String group, String errorField, String condition) {
         ValidationResult r = check(json, group, errorField, condition);
-        assertTrue(r.ok(), () -> "expected acceptance of '" + condition + "', got: " + r.problems());
+        assertTrue(r.ok(), () -> "expected acceptance of '" + condition + "', got: " + r.diagnostics());
     }
 
     private static void assertRejects(String json, String group, String errorField, String condition, String code) {
         ValidationResult r = check(json, group, errorField, condition);
         assertFalse(r.ok(), () -> "expected rejection of '" + condition + "'");
-        assertTrue(r.problems().stream().anyMatch(p -> p.mvkCode().filter(code::equals).isPresent()),
-                () -> "expected " + code + " for '" + condition + "', got: " + r.problems());
+        assertTrue(r.diagnostics().stream().anyMatch(p -> p.code().filter(code::equals).isPresent()),
+                () -> "expected " + code + " for '" + condition + "', got: " + r.diagnostics());
     }
 
     private static ValidationResult check(String json, String group, String errorField, String condition) {

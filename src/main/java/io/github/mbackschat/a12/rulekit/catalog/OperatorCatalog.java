@@ -59,4 +59,17 @@ public final class OperatorCatalog {
     public Optional<OperatorEntry> byId(String id) {
         return Optional.ofNullable(byId.get(id));
     }
+
+    /**
+     * The first catalog entry that documents this kernel error code in its {@code invalidExample} —
+     * the catalog-join behind F4a, letting a kernel {@code MVK_*} diagnostic inherit that entry's
+     * curated, N7-locked {@code fix}/{@code meaning} (no drift). When several operators share a code
+     * (e.g. all ordering operators report {@code MVK_INVALID_TYPE_FOR_COMPARISON}), the first in
+     * catalog order is representative; pinning the exact operator awaits AST↔problem span-linking.
+     */
+    public Optional<OperatorEntry> byInvalidError(String mvkCode) {
+        return entries.stream()
+                .filter(e -> e.invalidExample() != null && mvkCode.equals(e.invalidExample().error()))
+                .findFirst();
+    }
 }

@@ -16,6 +16,7 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
 import com.mgmtp.a12.model.notification.RankedNotification;
 
+import io.github.mbackschat.a12.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.rulekit.model.ReferenceResolvers;
 
 /**
@@ -28,31 +29,34 @@ public final class RuleValidator {
 
     private static final DocumentModelServiceFactory FACTORY = new DocumentModelServiceFactory();
     private final ObjectMapper mapper = new ObjectMapper();
+    private final DiagnosticEnricher enricher = new DiagnosticEnricher(OperatorCatalog.load());
 
     /** Check {@code rule} against the model given as DM-JSON text. */
     public ValidationResult check(String modelJson, DraftRule rule) {
-        return checkInjected(inject(modelJson, rule));
+        return checkInjected(inject(modelJson, rule), rule.groupPath() + "/" + rule.name());
     }
 
     /** Check {@code computation} against the model given as DM-JSON text. */
     public ValidationResult check(String modelJson, DraftComputation computation) {
-        return checkInjected(inject(modelJson, computation));
+        return checkInjected(inject(modelJson, computation),
+                computation.groupPath() + "/" + computation.name());
     }
 
-    private ValidationResult checkInjected(String injected) {
+    private ValidationResult checkInjected(String injected, String rulePath) {
 
         IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
         IDocumentModelService service = FACTORY.createDocumentModelService();
 
-        List<Problem> problems = new ArrayList<>();
+        List<Diagnostic> diagnostics = new ArrayList<>();
         try {
             IDocumentModel model = serializer.deserialize(new StringReader(injected));
             service.expand(model, ReferenceResolvers.selfContained());
-            service.checkConsistency(model, (RankedNotification n) -> problems.add(Problem.from(n)));
+            service.checkConsistency(model, (RankedNotification n) ->
+                    diagnostics.add(enricher.enrich(Diagnostic.fromKernel(n, rulePath))));
         } catch (IOException e) {
             throw new UncheckedIOException("failed to deserialize the rule-injected model", e);
         }
-        return ValidationResult.of(problems);
+        return ValidationResult.of(diagnostics);
     }
 
     private String inject(String modelJson, DraftRule rule) {

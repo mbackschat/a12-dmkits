@@ -25,7 +25,7 @@ class BoolExperimentTest {
                 new Probe("../ExpressShipping", "[ExpressShipping] == [TermsConfirmed]")}) {
             ValidationResult r = new RuleValidator().check(modelJson, new DraftRule(
                     "/Order", "Exp", p.errField(), p.cond(), "EXP", "ERROR"));
-            System.out.println("EXPERIMENT: " + p.cond() + " -> " + (r.ok() ? "OK" : r.problems()));
+            System.out.println("EXPERIMENT: " + p.cond() + " -> " + (r.ok() ? "OK" : r.diagnostics()));
         }
     }
 }

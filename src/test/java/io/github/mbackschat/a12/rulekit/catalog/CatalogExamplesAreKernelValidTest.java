@@ -64,7 +64,7 @@ class CatalogExamplesAreKernelValidTest {
                 .map(e -> dynamicTest(e.id() + " · valid", () -> {
                     ValidationResult result = check(e.validExample().dsl());
                     assertTrue(result.ok(),
-                            () -> e.id() + " validExample '" + e.validExample().dsl() + "' rejected: " + result.problems());
+                            () -> e.id() + " validExample '" + e.validExample().dsl() + "' rejected: " + result.diagnostics());
                 }));
     }
 
@@ -79,9 +79,9 @@ class CatalogExamplesAreKernelValidTest {
                             () -> e.id() + " invalidExample '" + bad.dsl() + "' was unexpectedly accepted");
                     if (bad.error() != null && bad.error().startsWith("MVK_")) {
                         assertTrue(
-                                result.problems().stream()
-                                        .anyMatch(p -> p.mvkCode().filter(bad.error()::equals).isPresent()),
-                                () -> e.id() + " expected " + bad.error() + ", got: " + result.problems());
+                                result.diagnostics().stream()
+                                        .anyMatch(p -> p.code().filter(bad.error()::equals).isPresent()),
+                                () -> e.id() + " expected " + bad.error() + ", got: " + result.diagnostics());
                     }
                 }));
     }
