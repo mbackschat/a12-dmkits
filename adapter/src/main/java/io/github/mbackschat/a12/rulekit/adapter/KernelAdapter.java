@@ -6,6 +6,7 @@ import java.io.UncheckedIOException;
 import java.util.Set;
 import java.util.TreeSet;
 
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.ICondition;
 import com.mgmtp.a12.kernel.core.tool.a12internal.api.ado.IEC;
 import com.mgmtp.a12.kernel.core.tool.a12internal.api.ado.IEntity;
 import com.mgmtp.a12.kernel.core.tool.a12internal.api.ado.IRule;
@@ -21,6 +22,7 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
 import com.mgmtp.a12.kernel.md.serializer.model.internal.service.ExternalDocumentModelSerializerService;
 
 import io.github.mbackschat.a12.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.rulekit.model.ReferenceResolvers;
 
 /**
@@ -51,9 +53,11 @@ public final class KernelAdapter {
 
     private final IMVK_Service mvk;
     private final ElementContainer elements;
+    private final BoundModel model;
 
-    private KernelAdapter(IMVK_Service mvk) {
+    private KernelAdapter(IMVK_Service mvk, BoundModel model) {
         this.mvk = mvk;
+        this.model = model;
         IEC iec = mvk.getIEC();
         if (!(iec instanceof ElementContainer container)) {
             throw new IllegalStateException(
@@ -64,11 +68,16 @@ public final class KernelAdapter {
 
     /** Open an adapter over a rulekit {@link BoundModel} (via its DM-JSON — the public boundary). */
     public static KernelAdapter of(BoundModel model) {
-        return ofJson(model.toJson());
+        return new KernelAdapter(buildService(model.toJson()), model);
     }
 
     /** Open an adapter over a model given as DM-JSON: deserialize + expand, then bootstrap the MVK service. */
     public static KernelAdapter ofJson(String modelJson) {
+        return new KernelAdapter(buildService(modelJson), BoundModel.ofJson(modelJson));
+    }
+
+    /** Deserialize + expand the DM-JSON (public path), convert to internal, and bootstrap the MVK service. */
+    private static IMVK_Service buildService(String modelJson) {
         IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
         IDocumentModelService service = FACTORY.createDocumentModelService();
         try {
@@ -76,8 +85,7 @@ public final class KernelAdapter {
             service.expand(pub, ReferenceResolvers.selfContained());
             String variant = service.extractUsedVariants(pub).stream().findFirst().orElse("");
             DocumentModel intern = ExternalDocumentModelSerializerService.getInternDocumentModel(pub);
-            IMVK_Service mvk = new DocumentModelService().getMvkServiceForModel(intern, variant, SILENT);
-            return new KernelAdapter(mvk);
+            return new DocumentModelService().getMvkServiceForModel(intern, variant, SILENT);
         } catch (IOException e) {
             throw new UncheckedIOException("failed to deserialize the model DM-JSON", e);
         }
@@ -104,6 +112,22 @@ public final class KernelAdapter {
     /** Whether the kernel accepts the rule's condition — the per-rule fast lane (no whole-model check). */
     public boolean hasValidCondition(String ruleFullName) {
         return mvk.hasValidConditionText(rule(ruleFullName), SILENT);
+    }
+
+    /**
+     * Ingest (F10): parse a rule's stored condition and convert it into rulekit's typed AST — the
+     * read direction of the bidirectional loop. The returned {@link Condition} is an ordinary rulekit
+     * node (re-renderable, transformable), carrying the D14 invariant as if hand-authored; the kernel
+     * transport AST never escapes. Throws {@link UnsupportedConstructException} on a construct the
+     * converter does not yet handle (fail-fast, never a silent loss).
+     */
+    public Condition ingest(String ruleFullName) {
+        return new ConditionConverter(model).convert(parseCondition(ruleFullName));
+    }
+
+    /** Parse a rule's own stored condition into the kernel transport AST (adapter-internal, for F10 ingest). */
+    ICondition parseCondition(String ruleFullName) {
+        return mvk.parseBedingungNoExpand(rule(ruleFullName), SILENT);
     }
 
     /** Look up a tool-API {@code IRule} among the model's existing rules by full name (read-only — N8). */

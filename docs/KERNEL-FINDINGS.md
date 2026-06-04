@@ -207,6 +207,16 @@ The package `…core.parsetree.a12internal.api.types` holds ~18 construct-name e
 - **`RootGroupConditionName` is multi-form (Vordruck/USB) scope** — `MindestensEinVordruckAngegeben`, `UsbNichtFortlaufend`, … — outside rulekit's single-document-model scope.
 - **The enums carry the full coverage backlog**, machine-readably: families rulekit hasn't modeled (date extraction, sub-day date add/diff, op-list math, tolerance comparisons, value coercions) appear as enum members with no catalog counterpart — exactly the operators a future increment (or a kernel upgrade) would add. `KernelConstructParityTest`'s exclusion list enumerates them with reasons.
 
+## Parsing a condition to the AST — shapes for the F10 converter (2026-06-04 probe)
+
+Verified by parsing rulekit-authored conditions via `IMVK_Service.parseBedingungNoExpand(IRule, pr)` (parses the rule's *own* stored `errorCondition`) and inspecting the `ICondition` tree:
+
+- **`ICondition` carries no discriminator** — no `getName()`, no kind enum, only `traverse(ASTVisitor)`. Dispatch by `instanceof` against the concrete subtype interfaces.
+- **Single-field presence is canonicalized into the field-list node.** `FieldFilled(x)` parses to an **`IEntityListCondition` named `AllFieldsFilled`** with a one-element entity list; `FieldNotFilled(x)` → name **`NoFieldFilled`**, one element. There is no dedicated single-field "filled" node and no `FieldFilled`/`FieldNotFilled` enum constant — the single-field and field-list forms collapse to the same node, distinguished only by entity-list arity. (So a 1-element `AllFieldsFilled`/`NoFieldFilled` round-trips to rulekit's `.filled()`/`.notFilled()`.)
+- **`IComparisonCondition`**: `getOperation1()` (left) / `getOperation2()` (right) → `IOperation`; `getCmpOp()` → `ComparisonOperation` (`GT/LT/GE/LE/EQ/NE` + tolerance `NE1/2/5/10` + pattern `WM/NM`). A plain field operand is `IFieldIdOperation` with `getOperatorName() == FieldValue` (other names = `Length`/`Round…`/`AbsValue`/… wrappers); `getField().getFullName()` is the resolved absolute path. A literal is `IConstantOperation.getValue()` — **always a String**; its kind is `IOperation.getType()` (`OperationType {NUMBER, STRING, DATE, DATE_RANGE}`), not on the operand subtype. So a number comparison can be rebuilt with the kernel's literal string directly via rulekit's `gt(String)`/`eq(String)`/… overloads (no re-parsing).
+- **`ICompositeCondition`**: `getLogOp()` → `LogOp {And, Or}`; `getConditionList()` → `List<ICondition>` (**n-ary**, not binary); `hasBrackets()` records source parenthesization.
+- **`IEntityId` has no value-kind** and no `isGroup()` (derive from `!isField()`); the field kind comes from the model, not the path node — rulekit's converter reads it via `BoundModel.fieldAt(path).kind()`.
+
 ## Schema oracle — what the kernel-mm metamodels formalize (instrument 3, 2026-06-04)
 
 Read-only mining of the sibling `a12-kernel-mm` canonical set (own-words summary; EUPL — nothing copied). Harness: `KernelMmIntegrationTest` (opt-in, skips when the clone is absent).
