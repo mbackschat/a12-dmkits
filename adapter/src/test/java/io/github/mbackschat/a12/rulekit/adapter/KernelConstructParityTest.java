@@ -68,8 +68,8 @@ class KernelConstructParityTest {
                 String key = simple + "." + member;
                 seenKeys.add(key);
 
-                boolean covered = known.contains(member)
-                        || (runtimeName != null && known.contains(String.valueOf(runtimeName.invoke(constant))));
+                String rn = runtimeName == null ? null : String.valueOf(runtimeName.invoke(constant));
+                boolean covered = isCovered(member, rn, known);
                 boolean excluded = EXCLUDED.containsKey(key);
 
                 if (covered && excluded) {
@@ -89,6 +89,35 @@ class KernelConstructParityTest {
                 + "(a new/renamed operator? catalog it, or add to EXCLUDED with a reason): " + newOrUnhandled);
         assertTrue(staleExclusions.isEmpty(), () -> "stale EXCLUDED entries (the exclusion list must "
                 + "track the live kernel): " + staleExclusions);
+    }
+
+    // --- dry-run negative-controls: rehearse a kernel change and prove this guardian fires (task #4) ---
+
+    @Test
+    void rehearsal_aKernelAddingANewConstructIsFlagged() {
+        Set<String> known = catalogKnownNames();
+        // A hypothetical operator the kernel might add in a future release: matches no catalog name,
+        // and is not in EXCLUDED → the guardian above classes it as `newOrUnhandled` and fails.
+        String fabricated = "SomeBrandNewKernelOperatorV99";
+        assertTrue(!isCovered(fabricated, "EinNeuerKernelOperatorV99", known)
+                        && !EXCLUDED.containsKey("EntityListConditionName." + fabricated),
+                "a fabricated new construct must be neither covered nor excluded — so a real kernel "
+                        + "addition would fail everyKernelConstructIsCatalogedOrExplicitlyExcluded");
+        // …and a real construct is still recognized, so the check isn't vacuously rejecting everything.
+        assertTrue(isCovered("AllFieldsFilled", "AlleFelderAngegeben", known),
+                "a cataloged construct must read as covered");
+    }
+
+    @Test
+    void rehearsal_theCatalogMatchSetIsNonEmpty() {
+        // Anti-rot: if the catalog failed to load, `known` would be empty and every construct would
+        // read as a (false) violation. A populated set proves the covered-check can actually match.
+        assertTrue(catalogKnownNames().size() > 50, "the catalog match set should be populated");
+    }
+
+    /** Whether a kernel construct's {@code name()} or {@code getRuntimeName()} matches a catalog name. */
+    private static boolean isCovered(String member, String runtimeName, Set<String> known) {
+        return known.contains(member) || (runtimeName != null && known.contains(runtimeName));
     }
 
     /** Catalog ids + EN + DE keywords — the names a kernel construct can match to count as covered. */

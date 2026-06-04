@@ -48,4 +48,23 @@ class KeywordParityTest {
     private static boolean isSymbolic(String keyword) {
         return keyword.chars().noneMatch(Character::isLetter);
     }
+
+    // --- dry-run negative-controls: rehearse a kernel keyword change and prove this guardian fires (task #4) ---
+
+    @Test
+    void rehearsal_aDriftedKeywordWouldBeRejected() {
+        // The guardian asserts every catalog keyword is a real lexer terminal. Rehearse a kernel that
+        // renames/removes one (or a catalog typo): a keyword that is not a terminal is absent from the
+        // bundle, so the `EN.keySet().contains(...)` assertion above would fail.
+        assertTrue(EN.keySet().contains("FieldFilled"), "a real terminal must be present");
+        assertTrue(!EN.keySet().contains("FieldFilledRenamedByKernel"),
+                "a drifted/renamed keyword must be absent — that is what makes the parity check bite");
+    }
+
+    @Test
+    void rehearsal_theLexerBundlesAreNonEmpty() {
+        // Anti-rot: an empty/missing bundle would make `contains(...)` always false and the forward
+        // parity assertions fail loudly rather than silently pass — confirm the bundles actually loaded.
+        assertTrue(EN.keySet().size() > 20 && DE.keySet().size() > 20, "lexer terminal bundles should be populated");
+    }
 }
