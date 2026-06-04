@@ -157,6 +157,15 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 
 *(Locked: `ComputationAuthoringTest`.)*
 
+## The pre-`checkConsistency` tiers — the write path's output contract (instrument 4, 2026-06-04)
+
+Two structural gates fire *outside* `checkConsistency`, found while scoping the F6 DM-JSON write path:
+
+- **Deserialize tier (Jackson binding).** `serializer.deserialize(reader)` is a Jackson read — malformed JSON, an unknown `"type"` discriminator, an unparseable number/enum, and the **locale-format check** (`en_us` → "Invalid locale format", before any consistency pass) fail here as `IOException`/binding errors, *not* `MVK_*` codes. Not enum-enumerable; documented, not locked.
+- **Serialize/write gate — `BasicConsistencyCheck`.** `serialize(model, writer, …)` runs `BasicConsistencyCheck.checkModel` first and **aborts the write on any ERROR** — so this, not `checkConsistency`, is what an F6 `writeTo` must satisfy. Its `BasicDocumentModelConsistencyCategory` enum (16 categories) is the enumerable contract: `ID_EMPTY`, `NAME_EMPTY`, `ERROR_{ENTITY,CODE,CONDITION}_EMPTY`, `COMPUTED_FIELD_EMPTY`, `COMPUTATION_OPERATION_EMPTY`, `ENUM_TYPE_DUPLICATE_{VALUE,CATEGORIES}`, `LOCALIZED_TEXT_{ELEMENT,TYPEDEF}_NULL_PROBLEM`, `INDEX_FIELD_NAME_EMPTY`, `SORT_FIELD_NAME_EMPTY`, `TYPEDEF_{TYPE_REF,ID,NAME}_EMPTY`.
+
+rulekit's authoring builders already satisfy the rule/computation subset (`ERROR_*`, `COMPUTED_FIELD/OPERATION`, `LOCALIZED_TEXT_ELEMENT`) by construction; the rest are model-structure concerns rulekit doesn't author (it only *adds rules/computations to an already-valid model*). *(Locked: `SerializerTierParityTest` — reflective parity over the category enum, so a kernel upgrade adding a category fails loudly.)*
+
 ## How `checkConsistency` actually works — structural laws ARE metamodel rules (2026-06-04)
 
 Found while repairing the MVK ledger's coverage hole (`MVK_ERROR_MESSAGE_MISSING`/`MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING` appear at runtime but in no kernel enum, no source file, and no plain string in any jar): `checkConsistency`'s `CodeGenerationRule` runs `generateValidationCode`, and part of that pipeline **validates the model itself as a document against the `MM_Common` metamodel** — using validators *code-generated from the metamodel's rules* (the `mmvalidators-extmpinternal-mm_common-v2-codegen` jar, transitively on the classpath). The two "missing" codes are ordinary **rule `errorCode`s authored in MM_Common**, alongside **103 more** — 105 structural laws expressed as A12 rules over the metamodel.
