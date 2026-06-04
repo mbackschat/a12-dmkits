@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.rulekit.dsl.ConditionLanguage;
+import io.github.mbackschat.a12.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.rulekit.dsl.Rule;
@@ -99,6 +100,39 @@ class IngestRoundTripTest {
         cases.forEach((fullName, original) ->
                 assertEquals(RENDER.render(original), RENDER.render(adapter.ingest(fullName)),
                         () -> "value-list round-trip mismatch for " + fullName));
+    }
+
+    @Test
+    void roundTripsAggregatesAndHaving() {
+        // Aggregates validate in the order model (Items*/Count, Sku); its only declared locale is en_US.
+        BoundModel base = BoundModel.ofJson(read("models/order.dm.json"));
+        var cases = new java.util.LinkedHashMap<String, Condition>();
+        String cust = "/Order/CustomerName";
+        Condition sumC = base.field(cust).filled().and(Dsl.sum(base.flatten("/Order/Items*/Count")).gt(100));
+        Condition maxC = base.field(cust).filled().and(Dsl.maxValue(base.flatten("/Order/Items*/Count")).gt(50));
+        Condition ndvC = base.field(cust).filled()
+                .and(Dsl.numberOfDifferentValues(base.flatten("/Order/Items*/Sku")).lt(2));
+        Condition havingC = base.field(cust).filled().and(Dsl.sum(
+                base.flatten("/Order/Items*/Count").having(base.str("/Order/Items/Sku").eq("A"))).gt(5));
+
+        BoundModel m = base
+                .add(orderRule(base, "SumRule", sumC, cases))
+                .add(orderRule(base, "MaxRule", maxC, cases))
+                .add(orderRule(base, "NdvRule", ndvC, cases))
+                .add(orderRule(base, "HavingRule", havingC, cases));
+
+        KernelAdapter adapter = KernelAdapter.of(m);
+        cases.forEach((fullName, original) ->
+                assertEquals(RENDER.render(original), RENDER.render(adapter.ingest(fullName)),
+                        () -> "aggregate round-trip mismatch for " + fullName));
+    }
+
+    /** A rule in the order model (single declared locale en_US), error field = the referenced CustomerName. */
+    private static Rule orderRule(BoundModel m, String name, Condition cond, java.util.Map<String, Condition> sink) {
+        Rule r = m.rule(m.group("/Order")).name(name).errorField(m.field("/Order/CustomerName")).when(cond)
+                .code("C").severity(Severity.ERROR).message(en("x")).build();
+        sink.put("/Order/" + name, cond);
+        return r;
     }
 
     @Test

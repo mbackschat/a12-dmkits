@@ -5,16 +5,19 @@ import java.util.List;
 import java.util.function.BiFunction;
 
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.IEntityId;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.IParseTreeEntity;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IComparisonCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.ICompositeCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.ICondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IEntityListCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IValueListCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IConstantOperation;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IEntityListOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IFieldIdOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ComparisonOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListConditionName;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.FieldIdOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.LogOp;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ValueListConditionName;
@@ -23,7 +26,9 @@ import io.github.mbackschat.a12.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.rulekit.dsl.EnumRef;
+import io.github.mbackschat.a12.rulekit.dsl.FieldListRef;
 import io.github.mbackschat.a12.rulekit.dsl.GroupRef;
+import io.github.mbackschat.a12.rulekit.dsl.NumberExpr;
 import io.github.mbackschat.a12.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.rulekit.dsl.StringRef;
 import io.github.mbackschat.a12.rulekit.model.ValueKind;
@@ -171,21 +176,80 @@ final class ConditionConverter {
 
     private Condition convertComparison(IComparisonCondition comparison) {
         IOperation left = comparison.getOperation1();
-        if (!(left instanceof IFieldIdOperation field) || field.getOperatorName() != FieldIdOperationName.FieldValue) {
-            throw unsupported("comparison whose left side is not a plain field value", comparison);
-        }
-        String path = field.getField().getFullName();
-        ValueKind kind = model.fieldAt(path)
-                .orElseThrow(() -> unsupported("comparison on unknown field " + path, comparison))
-                .kind();
         ComparisonOperation op = comparison.getCmpOp();
         IOperation right = comparison.getOperation2();
-        return switch (kind) {
-            case NUMBER -> numberComparison(model.num(path), op, right, comparison);
-            case STRING -> stringComparison(model.str(path), op, right, comparison);
-            case ENUMERATION -> enumComparison(model.enumOf(path), op, right, comparison);
-            default -> throw unsupported("comparison on a " + kind + " field", comparison);
+        if (left instanceof IEntityListOperation aggregate) {
+            return numberExprComparison(convertAggregate(aggregate), op, right, comparison);
+        }
+        if (left instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
+            String path = field.getField().getFullName();
+            ValueKind kind = model.fieldAt(path)
+                    .orElseThrow(() -> unsupported("comparison on unknown field " + path, comparison))
+                    .kind();
+            return switch (kind) {
+                case NUMBER -> numberComparison(model.num(path), op, right, comparison);
+                case STRING -> stringComparison(model.str(path), op, right, comparison);
+                case ENUMERATION -> enumComparison(model.enumOf(path), op, right, comparison);
+                default -> throw unsupported("comparison on a " + kind + " field", comparison);
+            };
+        }
+        throw unsupported("comparison whose left side is not a plain field value or an aggregate", comparison);
+    }
+
+    /** An aggregate operand (`Sum`/`MaxValue`/… over a wildcard field scope, optionally `Having`-filtered). */
+    private NumberExpr convertAggregate(IEntityListOperation aggregate) {
+        List<IEntityId> entities = aggregate.getEntityList().getEntityIdList();
+        EntityListOperationName name = aggregate.getOperatorName();
+        if (entities.size() != 1 || !entities.get(0).isField()) {
+            throw unsupported("aggregate " + name + " over a non-single-field scope", aggregate);
+        }
+        FieldListRef scope = flattenScope(entities.get(0));
+        return switch (name) {
+            case Sum -> Dsl.sum(scope);
+            case MaxValue -> Dsl.maxValue(scope);
+            case MinValue -> Dsl.minValue(scope);
+            case NumberOfDifferentValues -> Dsl.numberOfDifferentValues(scope);
+            default -> throw unsupported("aggregate operator " + name, aggregate);
         };
+    }
+
+    /** Rebuild the wildcard scope (e.g. {@code Items} flattened) from the resolved path + indices, plus any Having filter. */
+    private FieldListRef flattenScope(IEntityId entity) {
+        FieldListRef scope = model.flatten(reconstructStarPath(entity));
+        ICondition filter = entity.getFilterCondition();
+        return filter == null ? scope : scope.having(convert(filter));
+    }
+
+    /** {@code getFullName()} drops the wildcard; re-insert {@code *} after each segment marked WILDCARD in indices. */
+    private static String reconstructStarPath(IEntityId entity) {
+        String[] segments = entity.getFullName().split("/", -1);   // ["", "Order", "Items", "Count"]
+        long[] indices = entity.getIndices();                       // [1, 0, 1] — 0 == WILDCARD at "Items"
+        StringBuilder path = new StringBuilder();
+        for (int i = 1; i < segments.length; i++) {
+            path.append('/').append(segments[i]);
+            int idx = i - 1;
+            if (idx < indices.length && indices[idx] == IParseTreeEntity.WILDCARD) {
+                path.append('*');
+            }
+        }
+        return path.toString();
+    }
+
+    private Condition numberExprComparison(NumberExpr expr, ComparisonOperation op, IOperation right,
+            ICondition origin) {
+        if (right instanceof IConstantOperation constant) {
+            String v = constant.getValue();
+            return switch (op) {
+                case GT -> expr.gt(v);
+                case LT -> expr.lt(v);
+                case GE -> expr.ge(v);
+                case LE -> expr.le(v);
+                case EQ -> expr.eq(v);
+                case NE -> expr.ne(v);
+                default -> throw unsupported("aggregate comparison operator " + op, origin);
+            };
+        }
+        throw unsupported("aggregate compared against a non-constant operand", origin);
     }
 
     private Condition numberComparison(NumberRef left, ComparisonOperation op, IOperation right,
