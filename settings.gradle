@@ -1,1 +1,6 @@
 rootProject.name = 'a12-rulekit'
+
+// The kernel-adapter (proposal D15/N8): an opt-in, Java-only module that consumes the kernel's
+// a12internal *read* surface (parser/formatter/meta) — never part of the shipped, polyglot core.
+// Build it with `:adapter:test`; `:test` keeps core free of the internal tier.
+include 'adapter'

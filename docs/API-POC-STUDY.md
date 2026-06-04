@@ -502,7 +502,8 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 | fork #9 / F3a path policy — relative-to-group paths (`../` to siblings) + keyword-segment quoting | ✅ 2026-06-04 (kernel-verified): relative rendering + single-quoting keyword-named segments (catalog keywords; full lexer set rides N3) |
 | N3 keyword-parity anchor — catalog keywords ↔ kernel lexer terminals (`catalog.KeywordParityTest`) | ✅ 2026-06-04 (forward: every catalog/stub keyword is a real terminal, or a language-independent symbol); reverse + construct-name/error-type parity 🔮 |
 | F11 kernel-version tolerance — bias to acceptance, never a self-inflicted false positive | ✅ 2026-06-04: pre-check split (semantic `MVK_ERROR_FIELD_NOT_REFERENCED` deferred to the kernel); runtime skew advisory (`validate.KernelVersion` via `Package.getImplementationVersion()` vs the catalog's `verifiedAgainst`, ENVIRONMENT INFO, once per instance). Ingest opaque-node passthrough 🔮 Phase 2; CI version matrix 🔮 (single-version until a newer kernel publishes) |
-| ingest / explain / diff / LLM loop | 🔮 Phase 2 (adapter) |
+| Kernel-adapter bootstrap — opt-in `adapter` module, `KernelAdapter` over the a12internal read chain (`getMvkServiceForModel` → `ElementContainer.getAllRules`), boundary-converting | ✅ 2026-06-04 (Phase 2 start): `referencedFields` (exact F9a whereUsed), `canonicalConditionText` (kernel parse+format round-trip), `hasValidCondition` (per-rule fast lane); canary = N8 pin+canary |
+| ingest / explain / diff / LLM loop | 🔮 Phase 2 (adapter): F10 converter visitor + IProblem→Diagnostic next |
 | TS twin | 🔮 Phase 4 |
 
 ## 10. Design findings (the review surface's output)

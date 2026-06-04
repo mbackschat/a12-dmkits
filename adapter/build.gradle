@@ -1,0 +1,43 @@
+plugins {
+    id 'java-library'
+}
+
+// The kernel-adapter (proposal D15 / N8 tier 3): an OPT-IN, Java-only module that consumes the
+// kernel's `a12internal` *read* surface (parser / formatter / referenced-entities) under the four
+// guardrails — boundary conversion (kernel types never escape a public signature), read-only (never
+// construct/mutate kernel `…Impl`), pin + canary (pinned version + a CI canary failing loudly on an
+// upgrade break), fail-fast coverage. This is deliberately NOT part of the shipped, polyglot core.
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+def kernelVersion = '30.8.1'
+
+dependencies {
+    // rulekit core — BoundModel/Rule/Dsl + ReferenceResolvers; brings kernel-md-facade + the public
+    // model API transitively (api). Kernel public types are fine here; the internal tier below is
+    // confined to this module and never leaks into a public adapter signature (boundary conversion).
+    api project(':')
+
+    // The a12internal *read* tier — adapter-only (core must never depend on these per N8/D15):
+    implementation "com.mgmtp.a12.kernel:kernel-core-tool-api:${kernelVersion}"      // IMVK_Service, IRuleParser, IConditionFormatter, IRuleMetaInformation, ado.IRule/IEntity/IEC, IProblemReporter
+    implementation "com.mgmtp.a12.kernel:kernel-core-parsetree-api:${kernelVersion}" // ICondition (the transport AST)
+    implementation "com.mgmtp.a12.kernel:kernel-md-model:${kernelVersion}"           // DocumentModelService.getMvkServiceForModel, ElementContainer
+    implementation "com.mgmtp.a12.kernel:kernel-md-serializer:${kernelVersion}"      // ExternalDocumentModelSerializerService.getInternDocumentModel
+    implementation "com.mgmtp.a12.kernel:kernel-md-a12internal:${kernelVersion}"     // internal DocumentModel
+
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
