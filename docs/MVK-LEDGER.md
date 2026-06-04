@@ -1,10 +1,12 @@
 # The MVK ledger — every kernel rule-diagnostic, classified
 
-Instrument 2 of the constraint-mining discipline (`CLAUDE.md`): every `MVK_*` code of the kernel’s rule diagnostics, classified. Sources (kernel `30.8.1`): `ParserErrorTypesEnum` (176 codes) and `CalculationErrorType` (18 codes) — both internal-tier, read reflectively by `MvkLedgerTest` (test-only, N8). **`unclassified` is the proactive experiment queue** — the anti-whack-a-mole instrument.
+Instrument 2 of the constraint-mining discipline (`CLAUDE.md`): every `MVK_*` code the kernel can report, classified (300 codes across four sources, kernel `30.8.1`). **`unclassified` is the proactive experiment queue.** `MvkLedgerTest` keeps each section in exact two-way parity with its source (the three enums reflectively — internal tier, test-only per N8; the metamodel section against the sibling `a12-kernel-mm` clone, skipped when absent).
+
+**The fourth source is the deep one** (found 2026-06-04 while repairing this ledger’s coverage hole): `checkConsistency` validates the model *as a document against the MM_Common metamodel* — its generated validators (`mmvalidators-…-codegen` on the classpath) carry 105 structural laws authored as ordinary A12 rules, each with an `MVK_*` errorCode. Structural laws **are** metamodel rules.
 
 Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — caught at `build()`/handle creation with the fix named · **kernel-delegated** — deliberately left to F4 (with reason) · **pending** — its operator family is not built yet (corpus backlog) · **unclassified** — not yet analyzed (queue).
 
-## `ParserErrorTypesEnum`
+## `ParserErrorTypesEnum` (kernel-core-parser, reflective CI check)
 
 | Code | Bucket | rulekit treatment / lock |
 |---|---|---|
@@ -185,7 +187,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_WILDCARD_ONLY_AT_LOWEST_LEVEL_ALLOWED` | unclassified | — (experiment queue) |
 | `MVK_WRONG_DATE_FORMAT_FOR_OP` | unclassified | — (experiment queue) |
 
-## `CalculationErrorType`
+## `CalculationErrorType` (kernel-core-calc, reflective CI check)
 
 | Code | Bucket | rulekit treatment / lock |
 |---|---|---|
@@ -208,13 +210,120 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_ERROR_WRONG_ROUNDING_MODE` | unclassified | — (experiment queue) |
 | `MVK_GROUP_AS_CALCULATED_FIELD` | unclassified | — (experiment queue) |
 
-## Observed at runtime, source not yet located
-
-These codes were reported by `checkConsistency` in experiments but are not declared in either enum above (likely the md-tier rule checks; locate when classifying):
+## `FehlertextErrorType` (kernel-core-service, reflective CI check; its non-`MVK_` members like `RULE_HAS_NO_ERRORTEXT` are out of ledger scope)
 
 | Code | Bucket | rulekit treatment / lock |
 |---|---|---|
-| `MVK_ERROR_MESSAGE_MISSING` | pre-checked | builders require ≥1 message |
-| `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING` | pre-checked | builders require a message per declared locale (KERNEL-FINDINGS §13) |
+| `MVK_INDEX_FOR_ERROR_TEXT_INVALID` | unclassified | — (experiment queue) |
 
-*Classified: 21 of 196; the rest queue up as their operator families land (corpus backlog) or via dedicated experiments.*
+## `MM_Common` metamodel rules (a12-kernel-mm; opt-in CI check against the sibling clone)
+
+| Code | Bucket | rulekit treatment / lock |
+|---|---|---|
+| `MVK_ADDITIONAL_CHECK_INVALID` | unclassified | — (experiment queue) |
+| `MVK_AMOUNT_INT_PART_MISSING` | unclassified | — (experiment queue) |
+| `MVK_ARITY_TOO_BIG` | unclassified | — (experiment queue) |
+| `MVK_CATEGORY_NAME_DUPLICATE` | unclassified | — (experiment queue) |
+| `MVK_CATEGORY_VALUES_NOT_ALLOWED` | unclassified | — (experiment queue) |
+| `MVK_CATEGORY_VALUE_DUPLICATE` | unclassified | — (experiment queue) |
+| `MVK_CATEGORY_VALUE_INVALID` | unclassified | — (experiment queue) |
+| `MVK_CONDITION_MISSING` | unclassified | — (experiment queue) |
+| `MVK_COUNT_OF_VALUES_INVALID` | unclassified | — (experiment queue) |
+| `MVK_DATE_RANGE_FORMAT_INVALID_CODEGEN` | unclassified | — (experiment queue) |
+| `MVK_DEPENDENT_COLUMNS_DUPLICATE` | unclassified | — (experiment queue) |
+| `MVK_DEPENDENT_COLUMNS_EQUALS_COLUMN` | unclassified | — (experiment queue) |
+| `MVK_DEPENDENT_COLUMNS_NOT_ALLOWED` | unclassified | — (experiment queue) |
+| `MVK_DEPENDENT_COLUMN_NAME_MISSING` | unclassified | — (experiment queue) |
+| `MVK_DISPLAY_VALUES_DUPLICATE` | unclassified | — (experiment queue) |
+| `MVK_DISPLAY_VALUES_MISSING` | unclassified | — (experiment queue) |
+| `MVK_DISPLAY_VALUES_NOT_ALLOWED` | unclassified | — (experiment queue) |
+| `MVK_DISPLAY_VALUE_INVALID` | unclassified | — (experiment queue) |
+| `MVK_DISPLAY_VALUE_TOO_LONG` | unclassified | — (experiment queue) |
+| `MVK_ERROR_CODE_MISSING` | unclassified | — (experiment queue) |
+| `MVK_ERROR_FIELD_MISSING` | unclassified | — (experiment queue) |
+| `MVK_ERROR_MESSAGE_AND_NO_PATTERN` | unclassified | — (experiment queue) |
+| `MVK_ERROR_MESSAGE_AND_PATTERN_INVALID` | unclassified | — (experiment queue) |
+| `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING` | pre-checked | builders require a message per declared locale (KERNEL-FINDINGS §13) — a **metamodel rule** (MM_Common) |
+| `MVK_ERROR_MESSAGE_MISSING` | pre-checked | builders require ≥1 message — a **metamodel rule** (MM_Common) |
+| `MVK_FORMAT_DATE_RANGE_MISSING` | unclassified | — (experiment queue) |
+| `MVK_FORMAT_MISSING` | unclassified | — (experiment queue) |
+| `MVK_FRACT_DIGITS_INVALID` | unclassified | — (experiment queue) |
+| `MVK_FRACT_DIGITS_MISSING` | unclassified | — (experiment queue) |
+| `MVK_INDEX_FIELD_DUPLICATE` | unclassified | — (experiment queue) |
+| `MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES` | unclassified | — (experiment queue) |
+| `MVK_INTERNAL_VALUES_DUPLICATE` | unclassified | — (experiment queue) |
+| `MVK_INTERNAL_VALUES_MISSING` | unclassified | — (experiment queue) |
+| `MVK_INTERNAL_VALUES_NOT_ALLOWED` | unclassified | — (experiment queue) |
+| `MVK_INTERNAL_VALUE_INVALID` | unclassified | — (experiment queue) |
+| `MVK_INTERNAL_VALUE_MISSING` | unclassified | — (experiment queue) |
+| `MVK_INVALID_SORTINFO` | unclassified | — (experiment queue) |
+| `MVK_INVALID_SORT_PRIO` | unclassified | — (experiment queue) |
+| `MVK_LANGUAGES_DUPLICATE` | unclassified | — (experiment queue) |
+| `MVK_LANGUAGE_DUPLICATE` | unclassified | — (experiment queue) |
+| `MVK_LANGUAGE_FOR_VALUES_MISSING` | unclassified | — (experiment queue) |
+| `MVK_LANGUAGE_INVALID` | unclassified | — (experiment queue) |
+| `MVK_LANGUAGE_MISSING` | unclassified | — (experiment queue) |
+| `MVK_LINE_BREAK_AND_MAX_LENGTH_1_INVALID` | unclassified | — (experiment queue) |
+| `MVK_MAX_DIGITS_MISSING` | unclassified | — (experiment queue) |
+| `MVK_MAX_LENGTH_TOO_BIG` | unclassified | — (experiment queue) |
+| `MVK_MAX_LENGTH_TOO_SMALL` | unclassified | — (experiment queue) |
+| `MVK_MAX_MISSING` | unclassified | — (experiment queue) |
+| `MVK_MAX_TOO_BIG` | unclassified | — (experiment queue) |
+| `MVK_MESSAGE_FOR_LANGUAGE_MISSING` | unclassified | — (experiment queue) |
+| `MVK_MIN_LENGTH_BIGGER_MAX_LENGTH` | unclassified | — (experiment queue) |
+| `MVK_MIN_LENGTH_TOO_BIG` | unclassified | — (experiment queue) |
+| `MVK_MIN_VALUE_BIGGER_THAN_MAX_VALUE` | unclassified | — (experiment queue) |
+| `MVK_MISSING_CATEGORY_VALUE` | unclassified | — (experiment queue) |
+| `MVK_MISSING_INTERNAL_VALUE` | unclassified | — (experiment queue) |
+| `MVK_MISSING_VALUE_FOR_CATEGORY` | unclassified | — (experiment queue) |
+| `MVK_NAME_ENDS_WITH_COLON_H_DV` | unclassified | — (experiment queue) |
+| `MVK_NAME_FIELDS_DUPLICATE` | unclassified | — (experiment queue) |
+| `MVK_NAME_GROUP_DUPLICATE` | unclassified | — (experiment queue) |
+| `MVK_NAME_INVALID_A12_DV` | unclassified | — (experiment queue) |
+| `MVK_NAME_INVALID_DOT_COLON_A12_DV` | unclassified | — (experiment queue) |
+| `MVK_NAME_INVALID_DOT_COLON_H_DV` | unclassified | — (experiment queue) |
+| `MVK_NAME_INVALID_H_DV` | unclassified | — (experiment queue) |
+| `MVK_NAME_MISSING` | unclassified | — (experiment queue) |
+| `MVK_NAME_ROOT_GROUP_DUPLICATE` | unclassified | — (experiment queue) |
+| `MVK_NAME_RULES_DUPLICATE` | unclassified | — (experiment queue) |
+| `MVK_NAME_STARTS_WITH_DIGIT` | unclassified | — (experiment queue) |
+| `MVK_NAME_STARTS_WITH_DIGIT_A12_DV` | unclassified | — (experiment queue) |
+| `MVK_NAME_STARTS_WITH_DIGIT_H_DV` | unclassified | — (experiment queue) |
+| `MVK_NAME_STARTS_WITH_XML` | unclassified | — (experiment queue) |
+| `MVK_NAME_STARTS_WITH_XML_A12_DV` | unclassified | — (experiment queue) |
+| `MVK_NO_VALUE_MISSING` | unclassified | — (experiment queue) |
+| `MVK_NO_VAL_AND_HINT_LISTS` | unclassified | — (experiment queue) |
+| `MVK_OPTIONAL_DATE_TYPE_INVALID` | unclassified | — (experiment queue) |
+| `MVK_PATTERN_INVALID` | unclassified | — (experiment queue) |
+| `MVK_PROGRAMMING_LANGUAGE_MISSING` | unclassified | — (experiment queue) |
+| `MVK_ROOT_GROUP_NAME_INVALID` | unclassified | — (experiment queue) |
+| `MVK_ROW_INVALID` | unclassified | — (experiment queue) |
+| `MVK_ROW_TOO_BIG` | unclassified | — (experiment queue) |
+| `MVK_RULE_NAME_INVALID` | unclassified | — (experiment queue) |
+| `MVK_SEVERITY_MISSING` | unclassified | — (experiment queue) |
+| `MVK_SORT_FIELD_DUPLICATE` | unclassified | — (experiment queue) |
+| `MVK_SORT_INFO_MISSING` | unclassified | — (experiment queue) |
+| `MVK_SORT_PRIO_DUPLICATE` | unclassified | — (experiment queue) |
+| `MVK_SORT_PRIO_VALUE_MISSING` | unclassified | — (experiment queue) |
+| `MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK` | unclassified | — (experiment queue) |
+| `MVK_STRING_TYPE_PARAMS_INCONSISTENT` | unclassified | — (experiment queue) |
+| `MVK_SUPP_LANGUAGES_DUPLICATE` | unclassified | — (experiment queue) |
+| `MVK_SUPP_LANGUAGES_MISSING` | unclassified | — (experiment queue) |
+| `MVK_S_VALUE_INVALID` | unclassified | — (experiment queue) |
+| `MVK_S_VALUE_NOT_ALLOWED` | unclassified | — (experiment queue) |
+| `MVK_TABLE_AND_COLUMN_NAME` | unclassified | — (experiment queue) |
+| `MVK_TOO_MANY_INDEX_FIELDS` | unclassified | — (experiment queue) |
+| `MVK_TYPE_MISSING` | unclassified | — (experiment queue) |
+| `MVK_UNSPECIFIED_TYPE_NO_CODEGEN` | unclassified | — (experiment queue) |
+| `MVK_VALUES_DUPLICATE` | unclassified | — (experiment queue) |
+| `MVK_VALUES_FOR_LANGUAGE_MISSING` | unclassified | — (experiment queue) |
+| `MVK_VALUE_INVALID` | unclassified | — (experiment queue) |
+| `MVK_VALUE_LANGUAGES_DUPLICATE` | unclassified | — (experiment queue) |
+| `MVK_VALUE_LANGUAGE_INVALID` | unclassified | — (experiment queue) |
+| `MVK_VALUE_TOO_LONG` | unclassified | — (experiment queue) |
+| `MVK_VALUE_TOO_SHORT` | unclassified | — (experiment queue) |
+| `MVK_YES_NO_INVALID` | unclassified | — (experiment queue) |
+| `MVK_YES_NO_INVALID_2` | unclassified | — (experiment queue) |
+| `MVK_YES_VALUE_MISSING` | unclassified | — (experiment queue) |
+
+*Classified: 21 of 300 (codes may appear in more than one source); the rest queue up as their operator families land or via dedicated experiments.*

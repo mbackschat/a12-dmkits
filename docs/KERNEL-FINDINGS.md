@@ -35,6 +35,15 @@ In DM-JSON, a category's `values` list pairs **positionally** with the enumerati
 
 *(Locked: `ComputationAuthoringTest`.)*
 
+## How `checkConsistency` actually works — structural laws ARE metamodel rules (2026-06-04)
+
+Found while repairing the MVK ledger's coverage hole (`MVK_ERROR_MESSAGE_MISSING`/`MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING` appear at runtime but in no kernel enum, no source file, and no plain string in any jar): `checkConsistency`'s `CodeGenerationRule` runs `generateValidationCode`, and part of that pipeline **validates the model itself as a document against the `MM_Common` metamodel** — using validators *code-generated from the metamodel's rules* (the `mmvalidators-extmpinternal-mm_common-v2-codegen` jar, transitively on the classpath). The two "missing" codes are ordinary **rule `errorCode`s authored in MM_Common**, alongside **103 more** — 105 structural laws expressed as A12 rules over the metamodel.
+
+Consequences:
+- The owner's "kernel-mm is the source of truth about valid document model structures" is **literal**: the metamodel rules are executable law, not documentation.
+- The MVK ledger gained MM_Common's 105 codes as its fourth source (`MvkLedgerTest` checks it opt-in against the sibling clone); the other text-bearing source found en route: `FehlertextErrorType` (kernel-core-service — error-text parameter checks; mostly non-`MVK_` codes like `RULE_HAS_NO_ERRORTEXT`, confirming the earlier "not every code is `MVK_*`" note).
+- The kernel eats its own dogfood: the validation language validates the validation models. rulekit's catalog/ingest work on metamodel rules (already exercised by the harness) therefore covers the kernel's own usage of its language.
+
 ## Schema oracle — what the kernel-mm metamodels formalize (instrument 3, 2026-06-04)
 
 Read-only mining of the sibling `a12-kernel-mm` canonical set (own-words summary; EUPL — nothing copied). Harness: `KernelMmIntegrationTest` (opt-in, skips when the clone is absent).
