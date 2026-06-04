@@ -497,6 +497,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 | Lint layer — valid-but-suspicious WARNINGs over the AST (`lint.Linter`, `RK_*` codes) | ✅ pure-AST (contradictory/non-complementary presence, duplicate operand) + rule-context (`RK_NEG_CONDITION_IN_ITERATION`, `RK_INVERTED_REQUIREDNESS`) (2026-06-04) |
 | Gotcha/INFO channel — catalog `gotchas` keyed by operators a rule uses (`lint.Advisor`, `RK_GOTCHA`) | ✅ 2026-06-04 (descends nested `Calculation`s via `dsl.OperatorUsage`); gotcha-relevance curation ✅ (`GotchaKind` SURPRISE/AUTHORING/RENDERING, suppresses trivia) |
 | Message *interpolation*, fork-9 path policy, `advice()` | 🔮 Phase-1 remainder (F2a; F9) |
+| F9a model-context: `describe()` model card + `find()` name resolution (`context.ModelContext`) | ✅ Phase-1 half (2026-06-04); `whereUsed`/`explain`/`dump` 🔮 |
 | ingest / explain / diff / LLM loop | 🔮 Phase 2 (adapter) |
 | TS twin | 🔮 Phase 4 |
 
