@@ -60,6 +60,28 @@ class IngestRoundTripTest {
     }
 
     @Test
+    void roundTripsQuantifiersGroupsAndPatterns() {
+        BoundModel m = base();
+        var cases = new java.util.LinkedHashMap<String, Condition>();
+        BoundModel withRules = m
+                .add(rule(m, "/Subscription/Billing", "AllFeesRule", m.field("/Subscription/Billing/BaseFee"),
+                        m.allFieldsFilled("/Subscription/Billing/BaseFee", "/Subscription/Billing/EffectiveFee"), cases))
+                .add(rule(m, "/Subscription/Billing", "OneFeeRule", m.field("/Subscription/Billing/BaseFee"),
+                        m.notExactlyOneFieldFilled("/Subscription/Billing/BaseFee", "/Subscription/Billing/EffectiveFee"), cases))
+                .add(rule(m, "/Subscription", "BillingPresentRule", m.field("/Subscription/Billing/InvoiceEmail"),
+                        io.github.mbackschat.a12.rulekit.dsl.Dsl.groupFilled(m.group("/Subscription/Billing")), cases))
+                .add(rule(m, "/Subscription/Billing", "EmailPatternRule", m.field("/Subscription/Billing/InvoiceEmail"),
+                        m.str("/Subscription/Billing/InvoiceEmail").matches("[^@]+@[^@]+"), cases))
+                .add(rule(m, "/Subscription/Billing", "EmailNoPatternRule", m.field("/Subscription/Billing/InvoiceEmail"),
+                        m.str("/Subscription/Billing/InvoiceEmail").violates("@@"), cases));
+
+        KernelAdapter adapter = KernelAdapter.of(withRules);
+        cases.forEach((fullName, original) ->
+                assertEquals(RENDER.render(original), RENDER.render(adapter.ingest(fullName)),
+                        () -> "ingest round-trip mismatch for " + fullName));
+    }
+
+    @Test
     void failsFastOnAnUnconvertedConstruct() {
         BoundModel m = base();
         var ignore = new java.util.LinkedHashMap<String, Condition>();

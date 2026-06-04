@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.rulekit.adapter;
 
 import java.util.List;
+import java.util.function.BiFunction;
 
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.IEntityId;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IComparisonCondition;
@@ -11,12 +12,15 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IConstantOp
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IFieldIdOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ComparisonOperation;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListConditionName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.FieldIdOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.LogOp;
 
 import io.github.mbackschat.a12.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.rulekit.dsl.EnumRef;
+import io.github.mbackschat.a12.rulekit.dsl.GroupRef;
 import io.github.mbackschat.a12.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.rulekit.dsl.StringRef;
 import io.github.mbackschat.a12.rulekit.model.ValueKind;
@@ -28,9 +32,12 @@ import io.github.mbackschat.a12.rulekit.model.ValueKind;
  * model-resolved refs + provenance) for free, exactly as if a human had built it.
  *
  * <p>Recursive {@code instanceof} dispatch over the kernel tree; any construct not covered raises
- * {@link UnsupportedConstructException} — fail-fast, never a silent loss (N8). This first slice
- * covers the corpus-frequent core: composite And/Or, comparisons (field vs constant / field vs
- * field) on number/string/enum fields, and single-field presence. Coverage grows by corpus priority.
+ * {@link UnsupportedConstructException} — fail-fast, never a silent loss (N8). Coverage (by corpus
+ * priority): composite And/Or; comparisons on number/string/enum fields vs a constant or another
+ * field; string patterns ({@code WM}/{@code NM} → {@code matches}/{@code violates}); single-field
+ * and single-group presence; and the field-list and group-list quantifier families. Still
+ * fail-fast (later slices): value-list membership, aggregates/{@code Having}, dates, tolerance
+ * comparisons, operand-wrapping field ops ({@code Length}/{@code Round…}).
  *
  * <p>Kernel-canonicalization note (verified): the kernel parses single-field {@code FieldFilled(x)} /
  * {@code FieldNotFilled(x)} into an {@code IEntityListCondition} named {@code AllFieldsFilled} /
@@ -74,17 +81,40 @@ final class ConditionConverter {
 
     private Condition convertEntityList(IEntityListCondition entityList) {
         List<IEntityId> entities = entityList.getEntityList().getEntityIdList();
-        if (entities.size() == 1 && entities.get(0).isField()) {
-            String path = entities.get(0).getFullName();
-            return switch (entityList.getConditionName()) {
-                case AllFieldsFilled -> model.field(path).filled();
-                case NoFieldFilled -> model.field(path).notFilled();
-                default -> throw unsupported("single-field entity-list name "
-                        + entityList.getConditionName(), entityList);
+        if (entities.isEmpty()) {
+            throw unsupported("empty entity-list condition", entityList);
+        }
+        List<String> paths = entities.stream().map(IEntityId::getFullName).toList();
+        EntityListConditionName name = entityList.getConditionName();
+        boolean single = paths.size() == 1;
+        String[] p = paths.toArray(String[]::new);
+        if (entities.get(0).isField()) {
+            return switch (name) {
+                // single-field FieldFilled/FieldNotFilled canonicalize to AllFieldsFilled/NoFieldFilled[x]
+                case AllFieldsFilled -> single ? model.field(p[0]).filled() : model.allFieldsFilled(p);
+                case NoFieldFilled -> single ? model.field(p[0]).notFilled() : model.noFieldFilled(p);
+                case AtLeastOneFieldFilled -> model.atLeastOneFieldFilled(p);
+                case NotAllFieldsFilled -> model.notAllFieldsFilled(p);
+                case FieldsNotCollectivelyFilled -> model.fieldsNotCollectivelyFilled(p);
+                case NotExactlyOneFieldFilled -> model.notExactlyOneFieldFilled(p);
+                default -> throw unsupported("field-list condition " + name, entityList);
             };
         }
-        throw unsupported("multi-entity / group entity-list condition ("
-                + entityList.getConditionName() + ")", entityList);
+        return switch (name) {
+            // single-group GroupFilled/GroupNotFilled canonicalize to AllGroupsFilled/NoGroupFilled[g]
+            case AllGroupsFilled -> single ? model.group(p[0]).filled() : groups(paths, Dsl::allGroupsFilled);
+            case NoGroupFilled -> single ? model.group(p[0]).notFilled() : groups(paths, Dsl::noGroupFilled);
+            case AtLeastOneGroupFilled -> groups(paths, Dsl::atLeastOneGroupFilled);
+            case NotAllGroupsFilled -> groups(paths, Dsl::notAllGroupsFilled);
+            case GroupsNotCollectivelyFilled -> groups(paths, Dsl::groupsNotCollectivelyFilled);
+            default -> throw unsupported("group-list condition " + name, entityList);
+        };
+    }
+
+    /** Resolve group paths to {@code GroupRef}s and apply a {@code (first, rest…)} quantifier factory. */
+    private Condition groups(List<String> paths, BiFunction<GroupRef, GroupRef[], Condition> factory) {
+        List<GroupRef> refs = paths.stream().map(model::group).toList();
+        return factory.apply(refs.get(0), refs.subList(1, refs.size()).toArray(GroupRef[]::new));
     }
 
     private Condition convertComparison(IComparisonCondition comparison) {
@@ -137,16 +167,20 @@ final class ConditionConverter {
 
     private Condition stringComparison(StringRef left, ComparisonOperation op, IOperation right,
             ICondition origin) {
-        if (op != ComparisonOperation.EQ) {
-            throw unsupported("string comparison operator " + op + " (only equality is modeled)", origin);
-        }
         if (right instanceof IConstantOperation constant) {
-            return left.eq(constant.getValue());
+            String v = constant.getValue();
+            return switch (op) {
+                case EQ -> left.eq(v);
+                case WM -> left.matches(v);   // [field] WM "pattern"  → PatternMatched
+                case NM -> left.violates(v);  // [field] NM "pattern"  → PatternViolated
+                default -> throw unsupported("string comparison operator " + op, origin);
+            };
         }
-        if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
+        if (op == ComparisonOperation.EQ && right instanceof IFieldIdOperation rf
+                && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
             return left.eq(model.str(rf.getField().getFullName()));
         }
-        throw unsupported("string equality against a non-field, non-constant operand", origin);
+        throw unsupported("string comparison against a non-field, non-constant operand", origin);
     }
 
     private Condition enumComparison(EnumRef left, ComparisonOperation op, IOperation right,
