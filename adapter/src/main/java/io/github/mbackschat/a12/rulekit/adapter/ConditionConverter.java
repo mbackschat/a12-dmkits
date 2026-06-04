@@ -14,11 +14,13 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IValueListC
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IConstantOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IEntityListOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IFieldIdOperation;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IGroupOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ComparisonOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListConditionName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.FieldIdOperationName;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.GroupOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.LogOp;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ValueListConditionName;
 
@@ -27,9 +29,11 @@ import io.github.mbackschat.a12.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.rulekit.dsl.EnumRef;
 import io.github.mbackschat.a12.rulekit.dsl.FieldListRef;
+import io.github.mbackschat.a12.rulekit.dsl.FieldRef;
 import io.github.mbackschat.a12.rulekit.dsl.GroupRef;
 import io.github.mbackschat.a12.rulekit.dsl.NumberExpr;
 import io.github.mbackschat.a12.rulekit.dsl.NumberRef;
+import io.github.mbackschat.a12.rulekit.dsl.RepetitionNotUniqueCondition;
 import io.github.mbackschat.a12.rulekit.dsl.StringRef;
 import io.github.mbackschat.a12.rulekit.model.ValueKind;
 
@@ -108,6 +112,19 @@ final class ConditionConverter {
                 case NotAllFieldsFilled -> model.notAllFieldsFilled(p);
                 case FieldsNotCollectivelyFilled -> model.fieldsNotCollectivelyFilled(p);
                 case NotExactlyOneFieldFilled -> model.notExactlyOneFieldFilled(p);
+                case FieldValuesNotUnique -> {
+                    FieldRef[] keys = fieldRefs(paths);
+                    yield Dsl.fieldValuesNotUnique(keys[0], Arrays.copyOfRange(keys, 1, keys.length));
+                }
+                case RepetitionNotUnique -> {
+                    FieldRef[] keys = fieldRefs(paths);
+                    RepetitionNotUniqueCondition rnu =
+                            Dsl.repetitionNotUnique(keys[0], Arrays.copyOfRange(keys, 1, keys.length));
+                    // a kernel `… From group` scope rides on getAdditionalGroupReference()
+                    yield entityList.getAdditionalGroupReference()
+                            .map(g -> (Condition) rnu.from(model.group(g.getFullName())))
+                            .orElse(rnu);
+                }
                 default -> throw unsupported("field-list condition " + name, entityList);
             };
         }
@@ -126,6 +143,10 @@ final class ConditionConverter {
     private Condition groups(List<String> paths, BiFunction<GroupRef, GroupRef[], Condition> factory) {
         List<GroupRef> refs = paths.stream().map(model::group).toList();
         return factory.apply(refs.get(0), refs.subList(1, refs.size()).toArray(GroupRef[]::new));
+    }
+
+    private FieldRef[] fieldRefs(List<String> paths) {
+        return paths.stream().map(model::field).toArray(FieldRef[]::new);
     }
 
     private Condition convertValueList(IValueListCondition valueList) {
@@ -180,6 +201,11 @@ final class ConditionConverter {
         IOperation right = comparison.getOperation2();
         if (left instanceof IEntityListOperation aggregate) {
             return numberExprComparison(convertAggregate(aggregate), op, right, comparison);
+        }
+        if (left instanceof IGroupOperation groupOp
+                && groupOp.getOperatorName() == GroupOperationName.CurrentRepetition) {
+            NumberExpr expr = Dsl.currentRepetition(model.group(groupOp.getGroup().getFullName()));
+            return numberExprComparison(expr, op, right, comparison);
         }
         if (left instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
             String path = field.getField().getFullName();

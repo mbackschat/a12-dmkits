@@ -103,6 +103,26 @@ class IngestRoundTripTest {
     }
 
     @Test
+    void roundTripsIterationAndUniqueness() {
+        BoundModel m = base();
+        var cases = new java.util.LinkedHashMap<String, Condition>();
+        BoundModel withRules = m
+                .add(rule(m, "/Subscription/Addons", "RepRule", m.field("/Subscription/Addons/MonthlyFee"),
+                        Dsl.currentRepetition(m.group("/Subscription/Addons")).gt(1)
+                                .and(m.num("/Subscription/Addons/MonthlyFee").filled()), cases))
+                .add(rule(m, "/Subscription", "UniqueNameRule", m.field("/Subscription/Addons/Name"),
+                        Dsl.repetitionNotUnique(m.field("/Subscription/Addons/Name")), cases))
+                .add(rule(m, "/Subscription/Billing", "FeeDupRule", m.field("/Subscription/Billing/BaseFee"),
+                        Dsl.fieldValuesNotUnique(m.field("/Subscription/Billing/BaseFee"),
+                                m.field("/Subscription/Billing/EffectiveFee")), cases));
+
+        KernelAdapter adapter = KernelAdapter.of(withRules);
+        cases.forEach((fullName, original) ->
+                assertEquals(RENDER.render(original), RENDER.render(adapter.ingest(fullName)),
+                        () -> "iteration/uniqueness round-trip mismatch for " + fullName));
+    }
+
+    @Test
     void roundTripsAggregatesAndHaving() {
         // Aggregates validate in the order model (Items*/Count, Sku); its only declared locale is en_US.
         BoundModel base = BoundModel.ofJson(read("models/order.dm.json"));
