@@ -14,7 +14,7 @@ How we measure — and improve — whether rulekit's bundled material lets an LL
 
 The agent gets exactly the **shipped** material for the persona under test, and **nothing else**:
 
-- **BA/CLI path:** the CLI (verbs + their own usage output) + the bundled operator catalog (`src/main/resources/catalog/operators.json`) + (when it exists) the N1 skill. The agent uses the `installDist` launcher (the JVM "java starter" — current code, identical behavior to native; the native binary is a stale spike artifact, never the eval vehicle).
+- **BA/CLI path:** the CLI (verbs + their own usage output) + the bundled operator catalog (`src/main/resources/catalog/operators.json`) + the **N1 skill** (`skill/SKILL.md`, first draft 2026-06-05). The agent uses the `installDist` launcher (the JVM "java starter" — current code, identical behavior to native; the native binary is a stale spike artifact, never the eval vehicle).
 - **Developer path:** rulekit-the-library + its javadoc + the catalog, used in a scratch project (the dev's own compiler is the feedback).
 
 **Hard boundary:** the agent must **not** read rulekit's source, `docs/`, READMEs, or tests — only the shipped material. This is what makes the eval measure the *product*, not the design notes. (Reading the model file under test is allowed — it's the input.)
@@ -55,6 +55,7 @@ The benchmark is the **forcing function**: it tells us, objectively, which verbs
 
 - Spawn a **fresh agent** (clean context; the `Agent` tool does this). For the suite at scale, a **Workflow** fans out tasks × k runs through clean agents, each scored via the CLI, aggregating pass@k (opt-in — it spawns many agents).
 - The prompt **must not leak the answer.** *(Protocol lesson from the 2026-06-05 baseline: the first probe prompt hinted at the error-scenario inversion — "think about when the condition is true" — which biases the result. Keep prompts neutral; state the business requirement and the constraints, not the technique.)*
+- **No teaching to the test.** The skill's worked examples must be *structurally distinct* from the benchmark tasks, or a pass measures copying, not self-sufficiency. *(Lesson: the skill's worked example (Order/EXPRESS/DeliveryDate) is near-identical in shape to T1 (Subscription/PRO/MonthlyFee), so the T1-with-skill pass measures pattern-substitution transfer, not novel composition — add T2 tasks whose shape no taught example covers.)*
 - State the hard boundary (§2: no source/docs).
 - Require a structured report ending in an explicit **GAPS** section (what was missing/confusing/guessed) — that section is the actual deliverable.
 
@@ -64,7 +65,7 @@ Grows as coverage grows; each task carries an objective success criterion. Basel
 
 | # | Family | Task | Gold (kernel-verified) | Status |
 |---|---|---|---|---|
-| T1 | Authoring | "When Tier is PRO, each add-on's MonthlyFee must be provided" (subscription model) | field `/Subscription/Addons/MonthlyFee`; condition `GroupFilled(/Subscription/Addons) And [/Subscription/Tier] == "PRO" And FieldNotFilled(MonthlyFee)`; code `PRO_ADDON_FEE_REQUIRED` | ✅ gold verified; agent author-and-validate passed 2026-06-05 (Opus 4.8) |
+| T1 | Authoring | "When Tier is PRO, each add-on's MonthlyFee must be provided" (subscription model) | field `/Subscription/Addons/MonthlyFee`; condition `GroupFilled(/Subscription/Addons) And [/Subscription/Tier] == "PRO" And FieldNotFilled(MonthlyFee)`; code `PRO_ADDON_FEE_REQUIRED` | ✅ gold verified; agent pass — no-skill: multi-attempt/medium-confidence; **+skill: first-attempt/high-confidence** (Opus 4.8, 2026-06-05). *Caveat: T1 ≈ the skill's worked example → measures transfer, not novel composition.* |
 
 ## 7. Baseline result — first probe (2026-06-05, task T1)
 
@@ -102,6 +103,10 @@ Task schema (per file):
             "code": "PRO_ADDON_FEE_REQUIRED" } }
 ```
 
+### T1 with the skill — the skill lift (2026-06-05, neutral prompt, Opus 4.8 clean)
+
+Adding `skill/SKILL.md` to the material moved T1 from *multi-attempt / medium-confidence* (check-only) to **first-attempt / high-confidence**: the agent got the polarity right by construction (citing the skill's polarity table — *"without it I would almost certainly have written the opposite rule `FieldFilled(...)`"*), pre-empted `MVK_NEG_CONDITION_IN_ITERATION` with the guard, and ran a negative-control to confirm the guard is load-bearing. The #1 silent-inversion gap is closed by the skill. **Caveat (above, §5):** T1 ≈ the skill's worked example, so this is *transfer*, not novel composition — needs structurally-distinct T2 to be a strong claim. Minor new findings: the catalog is large JSON keyed by `id`/`keywords` (hard to skim raw — a future `cli operators <search>` or the skill naming operators mitigates); shell-quoting embedded `"…"` in `--condition` is friction (a `--condition-file`/stdin or the JSON rule-spec avoids it).
+
 ## 9. Status & next
 
-The loop is live and the first lift is measured (§7). Next: draft the first **skill** content from the confirmed gaps (polarity = violation; path references; iteration-via-error-field; the negative-in-iteration guard), grow the suite (T2… spanning operator families + a rules-bearing comprehension fixture), and build the **`batch` verb + Layer-2 Workflow runner** for `model × task` pass@k (incl. Sonnet-vs-Opus comparison).
+The loop is live; the first **two** lifts are measured (§7): `check` (couldn't-validate → author-and-validate) and the skill (multi-attempt → first-attempt, polarity fixed). Next: **(1)** grow the suite with **structurally-distinct T2…** tasks spanning operator families (so passes measure composition, not template-substitution) + a rules-bearing comprehension fixture; **(2)** the **`batch` verb + Layer-2 Workflow runner** for `model × task × k` pass@k (incl. **Sonnet-vs-Opus** comparison — does the skill lift weaker tiers too?); **(3)** consider a structured authoring route (`add` + JSON rule-spec) so the `RK_INVERTED_REQUIREDNESS` lint can back the skill's polarity guidance for the BA path.

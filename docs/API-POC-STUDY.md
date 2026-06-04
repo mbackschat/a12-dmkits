@@ -469,7 +469,9 @@ List<Rule> rules = m.fields()
 
 Safe by F0's snapshot semantics (immutable binding → internal memoization, clients never index); **Level 2** (glob paths, ancestry axes, annotation queries) stays parked behind named triggers — see finding 9. The *static* navigation counterpart is L2b codegen refs (Phase 3, jOOQ's generated-schema analogue).
 
-## 7. The LLM session (N1, N10, §14) 🔮 Phase 2 — the loop the skill teaches, for both personas
+## 7. The LLM session (N1, N10, §14) 🌓 first skill draft landed 2026-06-05 (`skill/SKILL.md`) — the loop the skill teaches, for both personas
+
+> **Skill status:** the first BA-path skill draft exists and was **eval-measured** (a clean Opus subagent, given only the CLI + catalog + skill, went from multi-attempt/medium-confidence to **first-attempt/high-confidence** on the T1 authoring task, with the silent-inversion polarity trap closed by the skill's polarity section). Method, lifts, and caveats in [`EVAL-SPEC.md`](./EVAL-SPEC.md). Remaining: structurally-distinct benchmark tasks (T1 ≈ the skill's worked example), the dev-path half, and the Workflow pass@k runner.
 
 The **same loop, two surfaces** (N10 — one engine, two interactions): the **developer's** agent (Claude Code) runs these as ordinary calls on rulekit-the-library *inside the developer's own project* — the project compiler is the type-steering, no special vehicle. The **modeller/BA's** agent runs the equivalent **CLI verbs** (`rulekit ingest/explain/add/validate/diff …`, JSON in/out) against the standalone binary — no JDK, no `.m2`. The steps below show the developer's library calls; each maps 1:1 to a CLI verb the BA path uses.
 
