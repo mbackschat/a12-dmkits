@@ -147,6 +147,29 @@ class IngestRoundTripTest {
                         () -> "aggregate round-trip mismatch for " + fullName));
     }
 
+    @Test
+    void roundTripsDates() {
+        BoundModel base = BoundModel.ofJson(read("models/order.dm.json"));
+        var cases = new java.util.LinkedHashMap<String, Condition>();
+        String cust = "/Order/CustomerName";
+        Condition todayC = base.field(cust).filled()
+                .and(base.date("/Order/OrderDate").onOrAfter(Dsl.today()));
+        Condition beforeC = base.field(cust).filled()
+                .and(base.date("/Order/DeliveryDate").before(base.date("/Order/OrderDate")));
+        Condition diffC = base.field(cust).filled().and(
+                Dsl.differenceInDays(base.date("/Order/OrderDate"), base.date("/Order/DeliveryDate")).gt(7));
+
+        BoundModel m = base
+                .add(orderRule(base, "DateTodayRule", todayC, cases))
+                .add(orderRule(base, "DateBeforeRule", beforeC, cases))
+                .add(orderRule(base, "DateDiffRule", diffC, cases));
+
+        KernelAdapter adapter = KernelAdapter.of(m);
+        cases.forEach((fullName, original) ->
+                assertEquals(RENDER.render(original), RENDER.render(adapter.ingest(fullName)),
+                        () -> "date round-trip mismatch for " + fullName));
+    }
+
     /** A rule in the order model (single declared locale en_US), error field = the referenced CustomerName. */
     private static Rule orderRule(BoundModel m, String name, Condition cond, java.util.Map<String, Condition> sink) {
         Rule r = m.rule(m.group("/Order")).name(name).errorField(m.field("/Order/CustomerName")).when(cond)

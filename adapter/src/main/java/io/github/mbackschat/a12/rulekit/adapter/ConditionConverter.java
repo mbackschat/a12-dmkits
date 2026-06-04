@@ -16,16 +16,22 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IEntityList
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IFieldIdOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IGroupOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOperation;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IPointInTimeOperation;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateDiffOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ComparisonOperation;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.DateDiffOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListConditionName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.FieldIdOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.GroupOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.LogOp;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.PointInTimeOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ValueListConditionName;
 
 import io.github.mbackschat.a12.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.rulekit.dsl.DateOperand;
+import io.github.mbackschat.a12.rulekit.dsl.DateRef;
 import io.github.mbackschat.a12.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.rulekit.dsl.EnumRef;
 import io.github.mbackschat.a12.rulekit.dsl.FieldListRef;
@@ -207,6 +213,9 @@ final class ConditionConverter {
             NumberExpr expr = Dsl.currentRepetition(model.group(groupOp.getGroup().getFullName()));
             return numberExprComparison(expr, op, right, comparison);
         }
+        if (left instanceof IDateDiffOperation diff) {
+            return numberExprComparison(convertDateDiff(diff), op, right, comparison);
+        }
         if (left instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
             String path = field.getField().getFullName();
             ValueKind kind = model.fieldAt(path)
@@ -216,6 +225,7 @@ final class ConditionConverter {
                 case NUMBER -> numberComparison(model.num(path), op, right, comparison);
                 case STRING -> stringComparison(model.str(path), op, right, comparison);
                 case ENUMERATION -> enumComparison(model.enumOf(path), op, right, comparison);
+                case DATE -> dateComparison(model.date(path), op, right, comparison);
                 default -> throw unsupported("comparison on a " + kind + " field", comparison);
             };
         }
@@ -331,6 +341,42 @@ final class ConditionConverter {
             return left.is(constant.getValue());
         }
         throw unsupported("enum comparison (only `== \"value\"` is modeled), operator " + op, origin);
+    }
+
+    private Condition dateComparison(DateRef left, ComparisonOperation op, IOperation right, ICondition origin) {
+        DateOperand other = convertDateOperand(right, origin);
+        return switch (op) {
+            case LT -> left.before(other);
+            case LE -> left.onOrBefore(other);
+            case GT -> left.after(other);
+            case GE -> left.onOrAfter(other);
+            case EQ -> left.eq(other);
+            default -> throw unsupported("date comparison operator " + op, origin);
+        };
+    }
+
+    /** {@code DifferenceInDays/Months/Years(a, b)} as a numeric operand. */
+    private NumberExpr convertDateDiff(IDateDiffOperation diff) {
+        DateOperand a = convertDateOperand(diff.getDateSpec1(), diff);
+        DateOperand b = convertDateOperand(diff.getDateSpec2(), diff);
+        DateDiffOperationName name = diff.getOperatorName();
+        return switch (name) {
+            case DifferenceInDays -> Dsl.differenceInDays(a, b);
+            case DifferenceInMonths -> Dsl.differenceInMonths(a, b);
+            case DifferenceInYears -> Dsl.differenceInYears(a, b);
+            default -> throw unsupported("date-diff operator " + name, diff);
+        };
+    }
+
+    /** A date-valued operand: a date field ({@code FieldValue}) or a point-in-time ({@code Today}). */
+    private DateOperand convertDateOperand(IOperation op, Object origin) {
+        if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
+            return model.date(field.getField().getFullName());
+        }
+        if (op instanceof IPointInTimeOperation pit && pit.getOperatorName() == PointInTimeOperationName.Today) {
+            return Dsl.today();
+        }
+        throw unsupported("date operand " + op.getClass().getSimpleName(), origin);
     }
 
     private static UnsupportedConstructException unsupported(String what, Object node) {
