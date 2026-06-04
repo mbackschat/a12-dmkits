@@ -3,7 +3,9 @@ package io.github.mbackschat.a12.rulekit.adapter;
 import static io.github.mbackschat.a12.rulekit.dsl.Dsl.de;
 import static io.github.mbackschat.a12.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -23,7 +25,7 @@ import io.github.mbackschat.a12.rulekit.dsl.Severity;
  * F10 first slice — the read direction round-trips. For each authored condition: rulekit renders it,
  * the kernel parses that text, and the converter rebuilds a rulekit {@link Condition} — which must
  * render identically (render → parse → convert → render is the identity for the covered constructs).
- * Plus the fail-fast contract: an unconverted construct raises {@link UnsupportedConstructException}.
+ * Plus the tolerance contract: an unconverted construct is preserved as {@link Ingest.Opaque}, never lost.
  */
 class IngestRoundTripTest {
 
@@ -56,7 +58,7 @@ class IngestRoundTripTest {
 
         KernelAdapter adapter = KernelAdapter.of(withRules);
         cases.forEach((fullName, original) ->
-                assertEquals(RENDER.render(original), RENDER.render(adapter.ingest(fullName)),
+                assertEquals(RENDER.render(original), RENDER.render(converted(adapter.ingest(fullName))),
                         () -> "ingest round-trip mismatch for " + fullName));
     }
 
@@ -78,7 +80,7 @@ class IngestRoundTripTest {
 
         KernelAdapter adapter = KernelAdapter.of(withRules);
         cases.forEach((fullName, original) ->
-                assertEquals(RENDER.render(original), RENDER.render(adapter.ingest(fullName)),
+                assertEquals(RENDER.render(original), RENDER.render(converted(adapter.ingest(fullName))),
                         () -> "ingest round-trip mismatch for " + fullName));
     }
 
@@ -98,7 +100,7 @@ class IngestRoundTripTest {
 
         KernelAdapter adapter = KernelAdapter.of(withRules);
         cases.forEach((fullName, original) ->
-                assertEquals(RENDER.render(original), RENDER.render(adapter.ingest(fullName)),
+                assertEquals(RENDER.render(original), RENDER.render(converted(adapter.ingest(fullName))),
                         () -> "value-list round-trip mismatch for " + fullName));
     }
 
@@ -118,7 +120,7 @@ class IngestRoundTripTest {
 
         KernelAdapter adapter = KernelAdapter.of(withRules);
         cases.forEach((fullName, original) ->
-                assertEquals(RENDER.render(original), RENDER.render(adapter.ingest(fullName)),
+                assertEquals(RENDER.render(original), RENDER.render(converted(adapter.ingest(fullName))),
                         () -> "iteration/uniqueness round-trip mismatch for " + fullName));
     }
 
@@ -143,7 +145,7 @@ class IngestRoundTripTest {
 
         KernelAdapter adapter = KernelAdapter.of(m);
         cases.forEach((fullName, original) ->
-                assertEquals(RENDER.render(original), RENDER.render(adapter.ingest(fullName)),
+                assertEquals(RENDER.render(original), RENDER.render(converted(adapter.ingest(fullName))),
                         () -> "aggregate round-trip mismatch for " + fullName));
     }
 
@@ -166,7 +168,7 @@ class IngestRoundTripTest {
 
         KernelAdapter adapter = KernelAdapter.of(m);
         cases.forEach((fullName, original) ->
-                assertEquals(RENDER.render(original), RENDER.render(adapter.ingest(fullName)),
+                assertEquals(RENDER.render(original), RENDER.render(converted(adapter.ingest(fullName))),
                         () -> "date round-trip mismatch for " + fullName));
     }
 
@@ -179,20 +181,46 @@ class IngestRoundTripTest {
     }
 
     @Test
-    void failsFastOnAnUnconvertedConstruct() {
+    void preservesAnUnconvertedConstructAsOpaque() {
         BoundModel m = base();
         var ignore = new java.util.LinkedHashMap<String, Condition>();
-        // A custom (application) condition is not yet converted → fail-fast, never silent loss.
+        // A custom (application) condition isn't converted yet → preserved opaque, not lost, not corrupt.
         BoundModel withRule = m.add(rule(m, "/Subscription", "CustomRule",
                 m.field("/Subscription/Tier"),
-                m.field("/Subscription/Tier").filled().and(
-                        io.github.mbackschat.a12.rulekit.dsl.Dsl.customCondition("ExternalEligibility")), ignore));
+                m.field("/Subscription/Tier").filled().and(Dsl.customCondition("ExternalEligibility")), ignore));
         KernelAdapter adapter = KernelAdapter.of(withRule);
 
-        UnsupportedConstructException ex = assertThrows(UnsupportedConstructException.class,
-                () -> adapter.ingest("/Subscription/CustomRule"));
-        org.junit.jupiter.api.Assertions.assertTrue(ex.getMessage().contains("kernel node:"),
-                () -> "the fail-fast message should name the unconverted construct: " + ex.getMessage());
+        Ingest result = adapter.ingest("/Subscription/CustomRule");
+        Ingest.Opaque opaque = assertInstanceOf(Ingest.Opaque.class, result,
+                () -> "an unconverted construct should ingest as Opaque, got: " + result);
+        assertTrue(opaque.reason().contains("kernel node:"),
+                () -> "the reason should name the unconverted construct: " + opaque.reason());
+        // preserved verbatim: the rule's text survives (re-emit on write-back) and still references it
+        assertFalse(opaque.canonicalText().isBlank());
+        assertTrue(opaque.canonicalText().contains("ExternalEligibility"),
+                () -> "opaque text should preserve the rule verbatim: " + opaque.canonicalText());
+    }
+
+    @Test
+    void ingestAllReturnsTypedAndOpaqueOutcomesPerRule() {
+        BoundModel m = base();
+        var ignore = new java.util.LinkedHashMap<String, Condition>();
+        BoundModel withRules = m
+                .add(rule(m, "/Subscription", "OkRule", m.field("/Subscription/Tier"),
+                        m.field("/Subscription/Tier").filled(), ignore))
+                .add(rule(m, "/Subscription", "OpaqueRule", m.field("/Subscription/Tier"),
+                        m.field("/Subscription/Tier").filled().and(Dsl.customCondition("X")), ignore));
+
+        java.util.Map<String, Ingest> all = KernelAdapter.of(withRules).ingestAll();
+        // a whole model ingests without throwing: supported rules typed, the rest preserved opaque
+        assertInstanceOf(Ingest.Converted.class, all.get("/Subscription/OkRule"));
+        assertInstanceOf(Ingest.Opaque.class, all.get("/Subscription/OpaqueRule"));
+    }
+
+    /** Unwrap a {@link Ingest.Converted}, asserting the ingest converted (not opaque). */
+    private static Condition converted(Ingest result) {
+        return assertInstanceOf(Ingest.Converted.class, result,
+                () -> "expected a converted ingest, got: " + result).condition();
     }
 
     private static Rule rule(BoundModel m, String group, String name,

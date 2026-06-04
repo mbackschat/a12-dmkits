@@ -22,7 +22,6 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
 import com.mgmtp.a12.kernel.md.serializer.model.internal.service.ExternalDocumentModelSerializerService;
 
 import io.github.mbackschat.a12.rulekit.dsl.BoundModel;
-import io.github.mbackschat.a12.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.rulekit.model.ReferenceResolvers;
 
 /**
@@ -116,13 +115,33 @@ public final class KernelAdapter {
 
     /**
      * Ingest (F10): parse a rule's stored condition and convert it into rulekit's typed AST — the
-     * read direction of the bidirectional loop. The returned {@link Condition} is an ordinary rulekit
-     * node (re-renderable, transformable), carrying the D14 invariant as if hand-authored; the kernel
-     * transport AST never escapes. Throws {@link UnsupportedConstructException} on a construct the
-     * converter does not yet handle (fail-fast, never a silent loss).
+     * read direction of the bidirectional loop. Returns a sealed {@link Ingest}: {@code Converted}
+     * (an ordinary rulekit {@link Condition}, carrying the D14 invariant as if hand-authored) or, for
+     * a not-yet-modeled construct, {@code Opaque} (the rule preserved verbatim with a reason — never
+     * lost, never reported as corrupt). Tolerant by design: a valid rule the kernel accepts never
+     * throws here (the converter's strict {@link UnsupportedConstructException} is caught and mapped
+     * to {@code Opaque}). The kernel transport AST never escapes.
      */
-    public Condition ingest(String ruleFullName) {
-        return new ConditionConverter(model).convert(parseCondition(ruleFullName));
+    public Ingest ingest(String ruleFullName) {
+        try {
+            return new Ingest.Converted(new ConditionConverter(model).convert(parseCondition(ruleFullName)));
+        } catch (UnsupportedConstructException unconverted) {
+            return new Ingest.Opaque(canonicalConditionText(ruleFullName), unconverted.getMessage());
+        }
+    }
+
+    /**
+     * Ingest every rule in the model — the publishing-safe whole-DM entry point. Returns each rule's
+     * outcome keyed by full name (insertion-ordered); never throws on an unmodeled construct (those
+     * become {@link Ingest.Opaque}). The caller sees exactly which rules are typed and which are
+     * preserved opaque.
+     */
+    public java.util.Map<String, Ingest> ingestAll() {
+        java.util.Map<String, Ingest> out = new java.util.LinkedHashMap<>();
+        for (IRule r : elements.getAllRules()) {
+            out.put(r.getFullName(), ingest(r.getFullName()));
+        }
+        return out;
     }
 
     /** Parse a rule's own stored condition into the kernel transport AST (adapter-internal, for F10 ingest). */
