@@ -78,6 +78,9 @@ class OperatorIdTest {
         }
         assertResolves("RepetitionNotUnique");
         assertResolves("FromScope");
+        for (ListAggregate.AggOp op : ListAggregate.AggOp.values()) {
+            assertResolves(op.operatorId());
+        }
         for (GroupQuantifier q : GroupQuantifier.values()) {
             assertResolves(q.operatorId());
         }

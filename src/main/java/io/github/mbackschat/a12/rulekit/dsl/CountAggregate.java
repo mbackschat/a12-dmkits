@@ -18,7 +18,8 @@ public record CountAggregate(CountOp op, List<FieldOperand> fields, List<GroupRe
 
     public enum CountOp {
         FILLED_FIELDS("NumberOfFilledFields"),
-        FILLED_GROUPS("NumberOfFilledGroups");
+        FILLED_GROUPS("NumberOfFilledGroups"),
+        DIFFERENT_VALUES("NumberOfDifferentValues");
 
         private final String operatorId;
 
@@ -35,10 +36,12 @@ public record CountAggregate(CountOp op, List<FieldOperand> fields, List<GroupRe
         fields = List.copyOf(fields);
         groups = List.copyOf(groups);
         switch (op) {
-            case FILLED_FIELDS -> {
-                if (fields.size() < 2 && groups.isEmpty()) {
-                    throw new IllegalArgumentException("NumberOfFilledFields needs more than one field"
-                            + " or at least one group (MVK_PARAMSIZE_INVALIDN)");
+            case FILLED_FIELDS, DIFFERENT_VALUES -> {
+                // a single flattened repetition list also satisfies the param law (verified)
+                if (fields.size() < 2 && groups.isEmpty()
+                        && fields.stream().noneMatch(f -> f instanceof FieldListRef)) {
+                    throw new IllegalArgumentException(op.operatorId() + " needs more than one field,"
+                            + " a repetition list, or a group (MVK_PARAMSIZE_INVALIDN)");
                 }
             }
             case FILLED_GROUPS -> {
@@ -48,10 +51,38 @@ public record CountAggregate(CountOp op, List<FieldOperand> fields, List<GroupRe
                 }
             }
         }
+        if (op == CountOp.DIFFERENT_VALUES) {
+            checkValueComparable(fields);
+        }
+        ListAggregate.checkNoDuplicates(op.operatorId(), fields);
         for (GroupRef g : groups) {
             if (g.path().indexOf('/', 1) < 0) {
                 throw new IllegalArgumentException("a root group may not be referenced in "
                         + op.operatorId() + ": " + g.path() + " (MVK_ROOT_GROUP_REFERENCED)");
+            }
+        }
+    }
+
+    /**
+     * NumberOfDifferentValues compares values, so its operands must be type-homogeneous (verified
+     * 2026-06-04): string/enum together, or all numbers; booleans/confirms never (dates ride the
+     * date family).
+     */
+    private static void checkValueComparable(List<FieldOperand> fields) {
+        for (FieldOperand f : fields) {
+            switch (f.kind()) {
+                case STRING, ENUMERATION, NUMBER -> { }
+                default -> throw new IllegalArgumentException("NumberOfDifferentValues cannot compare "
+                        + f.renderedPath() + " (" + f.kind()
+                        + ") — MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED");
+            }
+        }
+        boolean firstIsNumber = fields.getFirst().kind() == ValueKind.NUMBER;
+        for (FieldOperand f : fields) {
+            if ((f.kind() == ValueKind.NUMBER) != firstIsNumber) {
+                String code = firstIsNumber ? "MVK_NUMBER_AND_NON_NUMBER" : "MVK_STRING_ENUM_AND_NON_STRING_ENUM";
+                throw new IllegalArgumentException("NumberOfDifferentValues operands must be"
+                        + " type-homogeneous; " + f.renderedPath() + " breaks it (" + code + ")");
             }
         }
     }

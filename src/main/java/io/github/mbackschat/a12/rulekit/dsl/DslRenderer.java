@@ -86,6 +86,10 @@ public final class DslRenderer {
             case LengthOf l -> keyword(l.operatorId()) + "(" + l.field().path() + ")";
             case EnumCategoryAccess c ->
                     "[" + c.field().path() + " " + keyword(c.operatorId()) + " " + c.category() + "]";
+            case ListAggregate a -> keyword(a.operatorId()) + "("
+                    + a.operands().stream().map(FieldOperand::renderedPath)
+                            .collect(java.util.stream.Collectors.joining(", "))
+                    + ")";
             case CountAggregate a -> keyword(a.operatorId()) + "("
                     + java.util.stream.Stream.concat(
                             a.fields().stream().map(FieldOperand::renderedPath),

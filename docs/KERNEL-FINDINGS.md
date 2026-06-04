@@ -77,6 +77,18 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 
 *(Locked: `RuleValidatorTest.locksWildcardSlotRules`; rulekit treatment: `FieldOperand` = `FieldRef` | `FieldListRef`, list slots take the operand union, scalar slots take `FieldRef` — `BoundModel.flatten(starPath)` validates star placement.)*
 
+## §9 supplement — list-aggregate slot laws (slice 7c, 2026-06-04 experiments)
+
+`Sum`/`MaxValue`/`MinValue` (DE `Summe`/`MaxWert`/`MinWert`; grammar `feldListenOp`, siblings `SumOfProducts` and `FirstFilledValue` deferred) and `NumberOfDifferentValues` (DE `AnzahlVerschiedenerWerte`; third member of the count family):
+
+- **Param law is shared with the count aggregates** — more than one field or a group (`MVK_PARAMSIZE_INVALIDN`); **a single flattened (`*`) operand satisfies it** (it expands to many fields), so `Sum(Items*/Count)` is the canonical shape. Mixed starred + plain operands and mixed scales are legal.
+- **Duplicate operands are rejected** — `Sum(A, A)` draws **`MVK_DUPLICATE_PARAM1`** (fires before the type checks; applies to the whole entity-list family incl. `NumberOfFilledFields`).
+- **Type laws**: `Sum` takes numbers only (**`MVK_NO_NUMBER`** — "Only numbers and amounts"); `MaxValue`/`MinValue` take numbers **or dates** (**`MVK_NOT_SORTABLE`** — "Only numbers, amounts or dates"); a **group argument** is expanded to its contained fields and type-checked the same way.
+- **`NumberOfDifferentValues` is value-comparing**, so its operands must be type-homogeneous: string/enum together (**`MVK_STRING_ENUM_AND_NON_STRING_ENUM`**) or all numbers (**`MVK_NUMBER_AND_NON_NUMBER`**); booleans/confirms never (**`MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED`**).
+- Missing-row semantics (KERNEL-SEMANTICS §9): `Sum` substitutes 0 for unspecified fields; `MaxValue`/`MinValue` ignore them.
+
+*(Locked: N7 examples of all four operators incl. three invalids; the pre-checks live in `ListAggregate`/`CountAggregate` — `RenderConditionTest.listAggregatesPreCheckTheVerifiedSlotRules`. The date variant of Max/Min rides the date family, item 9.)*
+
 ## §9 supplement — `RepetitionNotUnique` slot laws (slice 7b, 2026-06-04 experiments)
 
 - **The rule sits at the parent**: every key field must have at least one repeatable group **between the rule group and the field** (or sit directly in a repeatable root group) — `RepetitionNotUnique(Addons/Name)` from *inside* `Addons` draws **`MVK_REPEATABLE_GROUP_MISSING`**; the same condition from the parent validates. Position-dependent → kernel-delegated, not pre-checked.

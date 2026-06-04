@@ -60,6 +60,36 @@ public final class Dsl {
         return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS, java.util.List.of(), groups));
     }
 
+    /** {@code Sum(…)} over number fields/repetition lists — unspecified fields count as 0 (§9). */
+    public static NumberExpr sum(FieldOperand first, FieldOperand... rest) {
+        return listAggregate(ListAggregate.AggOp.SUM, first, rest);
+    }
+
+    /** {@code MaxValue(…)} over number fields/repetition lists — unspecified fields are ignored. */
+    public static NumberExpr maxValue(FieldOperand first, FieldOperand... rest) {
+        return listAggregate(ListAggregate.AggOp.MAX_VALUE, first, rest);
+    }
+
+    /** {@code MinValue(…)} over number fields/repetition lists — unspecified fields are ignored. */
+    public static NumberExpr minValue(FieldOperand first, FieldOperand... rest) {
+        return listAggregate(ListAggregate.AggOp.MIN_VALUE, first, rest);
+    }
+
+    private static NumberExpr listAggregate(ListAggregate.AggOp op, FieldOperand first, FieldOperand... rest) {
+        var operands = new java.util.ArrayList<FieldOperand>();
+        operands.add(first);
+        operands.addAll(java.util.List.of(rest));
+        return new NumberExpr(new ListAggregate(op, operands));
+    }
+
+    /** {@code NumberOfDifferentValues(…)} — distinct-value count over type-homogeneous operands. */
+    public static NumberExpr numberOfDifferentValues(FieldOperand first, FieldOperand... rest) {
+        var fields = new java.util.ArrayList<FieldOperand>();
+        fields.add(first);
+        fields.addAll(java.util.List.of(rest));
+        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.DIFFERENT_VALUES, fields, java.util.List.of()));
+    }
+
     /** {@code NumberOfFilledGroups(g1, g2, …)} — ≥2 groups by signature. */
     public static NumberExpr numberOfFilledGroups(GroupRef first, GroupRef second, GroupRef... rest) {
         var groups = new java.util.ArrayList<GroupRef>();

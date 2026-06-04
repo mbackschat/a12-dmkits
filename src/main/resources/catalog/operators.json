@@ -538,5 +538,72 @@
     ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And FieldValuesNotUnique(Items*/Sku)", "note": "fires when any two line items share a Sku (non-iterating form)" },
     "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "Sum",
+    "kind": "function",
+    "keywords": { "en": "Sum", "de": "Summe" },
+    "operands": [ { "type": "number-field-list" } ],
+    "returns": "number",
+    "meaning": "The sum of the listed number fields' values, typically over a repetition list.",
+    "constraints": [
+      "number fields only (MVK_NO_NUMBER)",
+      "more than one field or a repetition list (MVK_PARAMSIZE_INVALIDN); no duplicates (MVK_DUPLICATE_PARAM1)"
+    ],
+    "gotchas": [
+      "an UNSPECIFIED field counts as 0 — unlike MaxValue/MinValue, which ignore unspecified fields (KERNEL-SEMANTICS §9)"
+    ],
+    "validExample": { "dsl": "FieldFilled(CustomerName) And Sum(Items*/Count) > 100", "note": "fires when the order's total item count exceeds 100" },
+    "invalidExample": { "dsl": "FieldFilled(CustomerName) And Sum(CustomerName, ProductCode) > 0", "error": "MVK_NO_NUMBER", "fix": "Sum takes number fields" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "MaxValue",
+    "kind": "function",
+    "keywords": { "en": "MaxValue", "de": "MaxWert" },
+    "operands": [ { "type": "number-field-list" } ],
+    "returns": "number",
+    "meaning": "The largest of the listed number fields' values; unspecified fields are ignored.",
+    "constraints": [
+      "numbers (or dates — not yet covered by rulekit) only (MVK_NOT_SORTABLE)",
+      "more than one field or a repetition list; no duplicates"
+    ],
+    "gotchas": [
+      "a Number list with no specified value yields 0 (KERNEL-SEMANTICS §9)"
+    ],
+    "validExample": { "dsl": "FieldFilled(CustomerName) And MaxValue(Items*/Count) > 50", "note": "fires when any single line orders more than 50" },
+    "invalidExample": { "dsl": "FieldFilled(CustomerName) And MaxValue(CustomerName, ProductCode) > 0", "error": "MVK_NOT_SORTABLE", "fix": "MaxValue needs numbers (or dates)" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "MinValue",
+    "kind": "function",
+    "keywords": { "en": "MinValue", "de": "MinWert" },
+    "operands": [ { "type": "number-field-list" } ],
+    "returns": "number",
+    "meaning": "The smallest of the listed number fields' values; unspecified fields are ignored.",
+    "constraints": [
+      "same slot rules as MaxValue"
+    ],
+    "gotchas": [],
+    "validExample": { "dsl": "FieldFilled(CustomerName) And MinValue(Items*/Count) >= 1", "note": "fires only when every specified line count is at least 1" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "NumberOfDifferentValues",
+    "kind": "function",
+    "keywords": { "en": "NumberOfDifferentValues", "de": "AnzahlVerschiedenerWerte" },
+    "operands": [ { "type": "homogeneous-field-list" } ],
+    "returns": "number",
+    "meaning": "The number of distinct values among the listed fields, typically over a repetition list.",
+    "constraints": [
+      "operands must be type-homogeneous: string/enum together, or all numbers (MVK_STRING_ENUM_AND_NON_STRING_ENUM / MVK_NUMBER_AND_NON_NUMBER)",
+      "no booleans/confirms (MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED)",
+      "more than one field or a repetition list; no duplicates"
+    ],
+    "gotchas": [],
+    "validExample": { "dsl": "FieldFilled(CustomerName) And NumberOfDifferentValues(Items*/Sku) < 2", "note": "fires when all line items are variants of one Sku" },
+    "invalidExample": { "dsl": "FieldFilled(CustomerName) And NumberOfDifferentValues(CustomerName, Quantity) < 2", "error": "MVK_STRING_ENUM_AND_NON_STRING_ENUM", "fix": "list only same-type fields" },
+    "sinceKernel": "30.8.x"
   }
 ]

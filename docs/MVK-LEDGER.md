@@ -27,7 +27,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_DIFFERENT_ROOT_GROUPS` | unclassified | — (experiment queue) |
 | `MVK_DIFFERENT_YES_VALUE` | unclassified | — (experiment queue) |
 | `MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION` | unclassified | — (experiment queue) |
-| `MVK_DUPLICATE_PARAM1` | unclassified | — (experiment queue) |
+| `MVK_DUPLICATE_PARAM1` | pre-checked | `ListAggregate`/`CountAggregate` reject duplicate operands with the code named (locked: `RenderConditionTest.listAggregatesPreCheckTheVerifiedSlotRules`) |
 | `MVK_DUPLICATE_PARAM2` | unclassified | — (experiment queue) |
 | `MVK_ENTITY_MOVE_IN_A12_MODEL_CONDITION` | unclassified | — (experiment queue) |
 | `MVK_ENTITY_MOVE_IN_A12_MODEL_ERRORTEXT` | unclassified | — (experiment queue) |
@@ -112,7 +112,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_NOT_IN_RULEGROUP` | unclassified | — (experiment queue) |
 | `MVK_NOT_IN_SAME_PATH` | unclassified | — (experiment queue) |
 | `MVK_NOT_ON_ERRORFIELD_PATH` | unclassified | — (experiment queue) |
-| `MVK_NOT_SORTABLE` | unclassified | — (experiment queue) |
+| `MVK_NOT_SORTABLE` | pre-checked | `ListAggregate` Max/Min require NUMBER operands (date variant pending, item 9; locked: N7 `MaxValue` invalidExample) |
 | `MVK_NO_BASE_YEAR` | unclassified | — (experiment queue) |
 | `MVK_NO_BOOLY_ALLOWED` | unclassified | — (experiment queue) |
 | `MVK_NO_CONST` | unclassified | — (experiment queue) |
@@ -127,7 +127,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_NO_GROUPS_ALLOWED` | erased | field predicates take `FieldRef` only |
 | `MVK_NO_INDEX_FIELD` | unclassified | — (experiment queue) |
 | `MVK_NO_ITERATION_FOR_WILDCARD` | unclassified | — (experiment queue) |
-| `MVK_NO_NUMBER` | unclassified | — (experiment queue) |
+| `MVK_NO_NUMBER` | pre-checked | `ListAggregate` Sum requires NUMBER operands (locked: N7 `Sum` invalidExample) |
 | `MVK_NO_NUMBER_FOR_CALC` | unclassified | — (experiment queue) |
 | `MVK_NO_STRING` | unclassified | — (experiment queue) |
 | `MVK_NO_STRING_OR_ENUM` | unclassified | — (experiment queue) |
@@ -138,11 +138,11 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_NO_WILDCARD` | kernel-delegated | repeatable group without `*` in a non-iterating rule; pre-check deferred to slice 7e — parallel iteration (index fields) makes plain refs legal, a naive check would false-positive |
 | `MVK_NO_WILDCARDS_ALLOWED` | erased | scalar slots take `FieldRef` only; starred lists are `FieldListRef`, accepted only by list slots (locked: `RuleValidatorTest.locksWildcardSlotRules`) |
 | `MVK_NO_WILDCARDS_G_ALLOWED` | unclassified | — (experiment queue) |
-| `MVK_NUMBER_AND_NON_NUMBER` | unclassified | — (experiment queue) |
+| `MVK_NUMBER_AND_NON_NUMBER` | pre-checked | `CountAggregate` NumberOfDifferentValues homogeneity check |
 | `MVK_ONLY_CONSTANTS_USED` | unclassified | — (experiment queue) |
 | `MVK_ONLY_ENUMS_ALLOWED` | unclassified | — (experiment queue) |
 | `MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED` | erased | `BoolRef`/`ConfirmRef` offer no `in`/`notIn` (locked: `RuleValidatorTest.locksValueListSlotRules` + N7 `FieldValueIncludedInValueList` invalidExample) |
-| `MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED` | unclassified | — (experiment queue) |
+| `MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED` | pre-checked | `CountAggregate` NumberOfDifferentValues rejects boolean/confirm operands |
 | `MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED_NO_FIELD` | unclassified | — (experiment queue) |
 | `MVK_ONLY_STRING_ENUM_NUMBER_DATE_ALLOWED` | unclassified | — (experiment queue) |
 | `MVK_PARALLEL_ITERATION_FOR_FILTERED_ENTITY_NOT_ALLOWED` | unclassified | — (experiment queue) |
@@ -174,7 +174,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_SEMANTIC_INDEX_WITH_CATEGORY` | unclassified | — (experiment queue) |
 | `MVK_SEMANTIC_INDEX_WITH_SEMANTIC_INDEX` | unclassified | — (experiment queue) |
 | `MVK_SEMANTIC_INDEX_WITH_WILDCARD` | unclassified | — (experiment queue) |
-| `MVK_STRING_ENUM_AND_NON_STRING_ENUM` | unclassified | — (experiment queue) |
+| `MVK_STRING_ENUM_AND_NON_STRING_ENUM` | pre-checked | `CountAggregate` NumberOfDifferentValues homogeneity check (locked: N7 invalidExample) |
 | `MVK_STRING_VALUE_NOT_IN_COLUMN` | unclassified | — (experiment queue) |
 | `MVK_TABLE_ENUM_EXPECTED` | unclassified | — (experiment queue) |
 | `MVK_TOO_MANY_CONST_FOR_CALC_OP` | unclassified | — (experiment queue) |
@@ -326,4 +326,4 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_YES_NO_INVALID_2` | unclassified | — (experiment queue) |
 | `MVK_YES_VALUE_MISSING` | unclassified | — (experiment queue) |
 
-*Classified: 38 of 300 (codes may appear in more than one source); the rest queue up as their operator families land or via dedicated experiments.*
+*Classified: 44 of 300 (codes may appear in more than one source); the rest queue up as their operator families land or via dedicated experiments.*

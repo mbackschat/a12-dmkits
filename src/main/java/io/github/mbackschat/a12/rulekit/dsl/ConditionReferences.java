@@ -79,6 +79,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 a.fields().forEach(f -> fields.add(f.fieldPath()));
                 a.groups().forEach(g -> groups.add(g.path()));
             }
+            case ListAggregate a -> a.operands().forEach(o -> fields.add(o.fieldPath()));
         }
     }
 }

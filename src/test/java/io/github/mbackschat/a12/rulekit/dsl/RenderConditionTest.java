@@ -281,6 +281,43 @@ class RenderConditionTest {
     }
 
     @Test
+    void rendersListAggregatesBilingually() {
+        Condition c = Dsl.sum(m.flatten("/Subscription/Addons*/MonthlyFee")).gt("100.00");
+        assertEquals("Sum(/Subscription/Addons*/MonthlyFee) > 100.00", new DslRenderer().render(c));
+        assertEquals("Summe(/Subscription/Addons*/MonthlyFee) > 100.00",
+                new DslRenderer(ConditionLanguage.DE).render(c));
+
+        assertEquals("MaxWert(/Subscription/Addons*/MonthlyFee) > 50",
+                new DslRenderer(ConditionLanguage.DE).render(
+                        Dsl.maxValue(m.flatten("/Subscription/Addons*/MonthlyFee")).gt(50)));
+        assertEquals("MinValue(/Subscription/Billing/BaseFee, /Subscription/Billing/EffectiveFee) >= 0",
+                new DslRenderer().render(Dsl.minValue(
+                        m.field("/Subscription/Billing/BaseFee"), m.field("/Subscription/Billing/EffectiveFee")).ge(0)));
+        assertEquals("AnzahlVerschiedenerWerte(/Subscription/Addons*/Name) < 2",
+                new DslRenderer(ConditionLanguage.DE).render(
+                        Dsl.numberOfDifferentValues(m.flatten("/Subscription/Addons*/Name")).lt(2)));
+    }
+
+    @Test
+    void listAggregatesPreCheckTheVerifiedSlotRules() {
+        // number operands only (MVK_NO_NUMBER / MVK_NOT_SORTABLE)
+        assertThrows(IllegalArgumentException.class,
+                () -> Dsl.sum(m.field("/Subscription/Addons/Name"), m.field("/Subscription/Billing/InvoiceEmail")));
+        // param law: a single plain field is too few — but a single repetition list is fine
+        assertThrows(IllegalArgumentException.class, () -> Dsl.sum(m.field("/Subscription/Billing/BaseFee")));
+        // duplicates (MVK_DUPLICATE_PARAM1)
+        assertThrows(IllegalArgumentException.class,
+                () -> Dsl.sum(m.field("/Subscription/Billing/BaseFee"), m.field("/Subscription/Billing/BaseFee")));
+        // NumberOfDifferentValues homogeneity + the bool/confirm ban
+        assertThrows(IllegalArgumentException.class,
+                () -> Dsl.numberOfDifferentValues(
+                        m.field("/Subscription/Addons/Name"), m.field("/Subscription/Addons/MonthlyFee")));
+        assertThrows(IllegalArgumentException.class,
+                () -> Dsl.numberOfDifferentValues(
+                        m.field("/Subscription/AutoRenew"), m.field("/Subscription/TermsAccepted")));
+    }
+
+    @Test
     void rendersEnumComparisonByStoredValue() {
         Condition c = m.enumOf("/Subscription/Tier").is("PRO");
         assertEquals("[/Subscription/Tier] == \"PRO\"", new DslRenderer().render(c));

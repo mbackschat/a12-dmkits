@@ -20,8 +20,9 @@ Working end-to-end today:
 - **Filled-count aggregates** — `numberOfFilledFields` (field and group forms) / `numberOfFilledGroups` as comparable numeric expressions; the kernel's param-size laws live in the method signatures, root-group refs are pre-checked.
 - **Flattened repetition lists (`*`, iteration slice 7a)** — `m.flatten("/Order/Items*/Price")` → `FieldListRef`, accepted by the list slots (quantifiers, shape-B value lists, count aggregates) alongside plain refs; scalar slots take `FieldRef` only, so a star in a scalar slot is unrepresentable.
 - **Uniqueness (slice 7b)** — `repetitionNotUnique(keys…).from(group)` (composite keys, localized `@From`/`@Von`, repeatable-scope pre-check; the position law — keys repeatable *relative to the rule group* — is kernel-locked) and the `FieldValuesNotUnique` cross-field distinctness predicate.
+- **List aggregates (slice 7c)** — `sum`/`maxValue`/`minValue` and `numberOfDifferentValues` as comparable numeric expressions over plain fields or `*`-lists; number-only, type-homogeneity, param-size, and the duplicate-operand laws all pre-checked with the `MVK_*` code named.
 
-Not yet built: relative/short path policy (§18 fork 9), message interpolation + DM-JSON write path (F2a/F6), broader operator/type coverage (iteration cluster in progress — next slices: list aggregates `Sum`/`Max`/`Min`, `Having`/`$`, semantic index), the model-context surface (F9a: `describe`/`find`/`dump`), the kernel-adapter module with text→AST ingest (F10), explainability (F9), the full modify loop (F8 #2/#3), the TS port.
+Not yet built: relative/short path policy (§18 fork 9), message interpolation + DM-JSON write path (F2a/F6), broader operator/type coverage (iteration cluster in progress — next slices: `Having`/`$` filter, semantic index/parallel iteration), the model-context surface (F9a: `describe`/`find`/`dump`), the kernel-adapter module with text→AST ingest (F10), explainability (F9), the full modify loop (F8 #2/#3), the TS port.
 
 ## Prerequisites
 
