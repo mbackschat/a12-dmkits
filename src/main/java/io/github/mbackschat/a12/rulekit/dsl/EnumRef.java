@@ -46,7 +46,8 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
     private Condition compareTo(CompareOp op, String value) {
         if (!allowedValues.contains(value)) {
             throw new IllegalArgumentException(
-                    "'" + value + "' is not a value of " + field.path() + " — allowed: " + allowedValues);
+                    "'" + value + "' is not a value of " + field.path() + " — allowed: " + allowedValues
+                            + io.github.mbackschat.a12.rulekit.model.Suggest.hint(value, allowedValues));
         }
         return new ComparisonCondition(field.value(), op, new EnumValueLiteral(value));
     }

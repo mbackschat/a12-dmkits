@@ -177,7 +177,8 @@ public final class ModelIndex {
     private IElement require(String path) {
         IElement element = byPath.get(path);
         if (element == null) {
-            throw new IllegalArgumentException("no element at path: " + path);
+            throw new IllegalArgumentException("no element at path: " + path
+                    + Suggest.hint(path, byPath.keySet()));
         }
         return element;
     }
