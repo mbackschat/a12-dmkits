@@ -8,7 +8,7 @@ What each document under `docs/` holds, so you can jump to the right one. This i
 
 ## Kernel truth (verified facts & their treatment)
 
-- **[KERNEL-FINDINGS.md](KERNEL-FINDINGS.md)** — experiment-verified kernel behaviors that **complement** `a12-kernel`'s canonical, consult-only `KERNEL-SEMANTICS.md` (checked out as `../../a12-kernel-demo/KERNEL-SEMANTICS.md`). Section-numbered to mirror it; every entry is test-locked in this repo.
+- **[KERNEL-FINDINGS.md](KERNEL-FINDINGS.md)** — experiment-verified kernel behaviors that **complement** `a12-kernel-demo`'s canonical, consult-only `KERNEL-SEMANTICS.md` (checked out as `../../a12-kernel-demo/KERNEL-SEMANTICS.md`). Section-numbered to mirror it; every entry is test-locked in this repo.
 - **[KERNEL-INTEGRATION-NOTES.md](KERNEL-INTEGRATION-NOTES.md)** — rulekit's *treatment* of each verified kernel/build/environment fact: how the kit validates (F4), writes (F6), and diagnoses (F4a) against the real engine.
 - **[MVK-LEDGER.md](MVK-LEDGER.md)** — the classified inventory of every kernel `MVK_*` rule-diagnostic (erased-by-types / pre-checked / kernel-delegated / pending / unknown→experiment-queue). CI-locked, so a new code can't slip through unclassified.
 
