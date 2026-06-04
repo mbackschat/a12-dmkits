@@ -82,6 +82,7 @@ class OperatorIdTest {
             assertResolves(op.operatorId());
         }
         assertResolves("Having");
+        assertResolves("CurrentRepetition");
         for (GroupQuantifier q : GroupQuantifier.values()) {
             assertResolves(q.operatorId());
         }

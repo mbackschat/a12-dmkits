@@ -24,6 +24,16 @@ class IterationLawsTest {
     }
 
     @Test
+    void currentRepetitionRequiresTheRuleToIterateOverTheGroup() {
+        // iterating (error field under Addons) → accepted
+        KernelLaws.accepts("/Subscription/Addons", "../MonthlyFee",
+                "FieldFilled(MonthlyFee) And CurrentRepetition(/Subscription/Addons) > 1");
+        // non-iterating → MVK_NO_WILDCARD (position-dependent, kernel-delegated)
+        KernelLaws.rejects("/Subscription", "../Tier",
+                "FieldFilled(Tier) And CurrentRepetition(/Subscription/Addons) > 1", "MVK_NO_WILDCARD");
+    }
+
+    @Test
     void repetitionNotUniqueKeysMustBeRepeatableRelativeToTheRuleGroup() {
         // from INSIDE the repeatable group → rejected (position-dependent, kernel-delegated)
         KernelLaws.rejects("/Subscription/Addons", "../Name",

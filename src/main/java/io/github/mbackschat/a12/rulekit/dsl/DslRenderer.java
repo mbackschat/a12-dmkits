@@ -104,6 +104,7 @@ public final class DslRenderer {
                             a.groups().stream().map(GroupRef::path))
                     .collect(java.util.stream.Collectors.joining(", "))
                     + ")";
+            case CurrentRepetition r -> keyword(r.operatorId()) + "(" + r.group().path() + ")";
         };
     }
 

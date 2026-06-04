@@ -94,9 +94,10 @@ static Condition withinTolerance(NumberRef actual, NumberRef expected, Tolerance
             .and(actual.value().differsWithTolerance(t, expected.value()));   // 🔮 DiffersWithToleranceRange{N}
 }
 
-/** Chronology over a repeating group — composes the iteration cluster (backlog item 7). */
+/** Chronology over a repeating group — composes the iteration cluster (backlog item 7).
+ *  `currentRepetition(group)` ✅ (7e); the date ordering + atRepetition selector are 🔮 (dates + 7f). */
 static Condition chronological(GroupRef repeating, DateRef date) {
-    return date.value().lt(date.atRepetition(currentRepetition(repeating).plus(1)));  // 🔮 CurrentRepetition
+    return date.value().lt(date.atRepetition(currentRepetition(repeating).plus(1)));  // ✅ currentRepetition; 🔮 rest
 }
 
 /** Uniqueness by key ✅ (7b) — one operator, but the fragment names the business intent.
@@ -443,7 +444,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 
 | Study element | Status |
 |---|---|
-| Handles (`num/str/enumOf/bool/confirm/group`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–6 + iteration slices 7a–7d — patterns, value lists, count + list aggregates, `*` lists, `repetitionNotUnique(...).from(...)`, `flatten(...).having(filter)`) |
+| Handles (`num/str/enumOf/bool/confirm/group`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–6 + iteration slices 7a–7e — patterns, value lists, count + list aggregates, `*` lists, `repetitionNotUnique(...).from(...)`, `flatten(...).having(filter)`, `currentRepetition(group)`) |
 | §3.1 fragments, §3.3 library pattern, §6 catalog queries, §2 type-steering | ✅ pattern works today on covered operators |
 | §3.2 domain fragments (`withinTolerance`, `chronological`, `uniqueBy`) | `uniqueBy` ✅ (7b); the others 🔮 (tolerance ops, `CurrentRepetition`) |
 | §6c navigation (Level 1: `fields()`/`groups()`/`fieldAt` + strict narrowing), §3.5 `allOf`/`anyOf` | ✅ implemented 2026-06-04 (findings 9–10) |

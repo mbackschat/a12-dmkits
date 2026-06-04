@@ -80,6 +80,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 a.groups().forEach(g -> groups.add(g.path()));
             }
             case ListAggregate a -> a.operands().forEach(o -> collectOperand(o, fields, groups));
+            case CurrentRepetition r -> groups.add(r.group().path());
         }
     }
 

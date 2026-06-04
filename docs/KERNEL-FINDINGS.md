@@ -77,6 +77,18 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 
 *(Locked: `validate.laws.IterationLawsTest`; rulekit treatment: `FieldOperand` = `FieldRef` | `FieldListRef`, list slots take the operand union, scalar slots take `FieldRef` — `BoundModel.flatten(starPath)` validates star placement.)*
 
+## §9 supplement — `CurrentRepetition` and the deferred index-field cluster (slice 7e, 2026-06-04 experiments)
+
+`CurrentRepetition` (DE `AktuelleWiederholung`; grammar `groupOp: 'AktuelleWiederholung' '(' entitySpec ')'`) is a **numeric expression** — the current iteration index of a group.
+
+- **Takes a group, not a field** — a field argument → **`MVK_NO_FIELDS_ALLOWED`** ("Only groups or root groups are allowed"). Structural: `Dsl.currentRepetition(GroupRef)`.
+- **The rule must iterate over that group** — from a non-iterating rule it draws **`MVK_NO_WILDCARD`** ("Missing specification of an asterisk"). Position-dependent → kernel-delegated (like the RNU position law).
+- **A non-repeatable group is tolerated** (its index is constant) — `CurrentRepetition(/Subscription/Billing)` from an iterating rule validates.
+
+**Deferred to slice 7f — needs index-field fixtures.** Both the **semantic index** (`Fuer`/`For`; grammar `'Fuer' (entitySpec | StringLiteral)`) and **parallel iteration** require a repeatable group to declare an **index field**, which our fixtures lack: `[Field Fuer "1"]` → **`MVK_NO_INDEX_FIELD`** ("there is no repeatable group with index field"), and `Fuer "const"` is even a parse error in that position. The semantic-index code family (`MVK_SEMANTIC_INDEX_*`, `MVK_INDEX_*`) and the still-deferred pre-checks (`MVK_NO_WILDCARD` missing-star, RNU position) all hinge on an explicit **iteration model** over index-field-bearing groups — its own slice once a fixture grows the metadata. Low demand (corpus: semantic index 8 / 0, `For` parallel iteration negligible).
+
+*(Locked: N7 `CurrentRepetition` valid (iterating) + invalid (non-iterating `MVK_NO_WILDCARD`); the iterating-position law in `validate.laws.IterationLawsTest`. Groups-only is structural.)*
+
 ## §9 supplement — the `Having` filter and `$` correlation (slice 7d, 2026-06-04 experiments)
 
 `Having` (DE `Mit`; grammar: `'Mit' bedingung` on an `entitySpec`) filters a `*`-repetition list before an aggregate/quantifier consumes it; `$` (`DOLLAR`, language-independent) pins a reference to the rule's outer repetition inside a filter.

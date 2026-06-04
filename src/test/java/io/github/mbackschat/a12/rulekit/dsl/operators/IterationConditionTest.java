@@ -108,6 +108,23 @@ class IterationConditionTest {
     }
 
     @Test
+    void rendersCurrentRepetitionBilingually() {
+        // CurrentRepetition(group) is a numeric op = the group's current iteration index (KERNEL-FINDINGS §9).
+        Condition c = Dsl.currentRepetition(m.group("/Subscription/Addons")).gt(1);
+        assertEquals("CurrentRepetition(/Subscription/Addons) > 1", new DslRenderer().render(c));
+        assertEquals("AktuelleWiederholung(/Subscription/Addons) > 1",
+                new DslRenderer(ConditionLanguage.DE).render(c));
+    }
+
+    @Test
+    void currentRepetitionTakesGroupsOnly() {
+        // a field arg → MVK_NO_FIELDS_ALLOWED — unrepresentable: currentRepetition takes a GroupRef
+        // (the method signature is the guard). No assertion needed beyond compile-time; smoke a group:
+        assertEquals("CurrentRepetition(/Subscription/Billing) >= 1",
+                new DslRenderer().render(Dsl.currentRepetition(m.group("/Subscription/Billing")).ge(1)));
+    }
+
+    @Test
     void rendersFieldValuesNotUniqueOverPlainAndStarredOperands() {
         assertEquals("FieldValuesNotUnique(/Subscription/Billing/BaseFee, /Subscription/Billing/EffectiveFee)",
                 new DslRenderer().render(Dsl.fieldValuesNotUnique(

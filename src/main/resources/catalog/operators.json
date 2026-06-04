@@ -623,5 +623,23 @@
     "validExample": { "dsl": "FieldFilled(CustomerName) And Sum(Items*/Count Having [Items/Sku] == \"A\") > 5", "note": "sums only the line items whose Sku is A" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And Sum(Items*/Count Having RepetitionNotUnique(Items/Sku)) > 0", "error": "MVK_DISALLOWED_CONSTRUCT_IN_FILTER_CONDITION", "fix": "RepetitionNotUnique is not allowed inside a filter condition" },
     "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "CurrentRepetition",
+    "kind": "function",
+    "keywords": { "en": "CurrentRepetition", "de": "AktuelleWiederholung" },
+    "operands": [ { "type": "group" } ],
+    "returns": "number",
+    "meaning": "The current iteration index of the given group, as a number expression.",
+    "constraints": [
+      "the argument is a group, not a field (MVK_NO_FIELDS_ALLOWED)",
+      "the rule must iterate over that group, otherwise MVK_NO_WILDCARD (position-dependent — kernel-checked)"
+    ],
+    "gotchas": [
+      "for a non-repeatable group the index is constant (accepted, rarely useful)"
+    ],
+    "validExample": { "dsl": "FieldFilled(Items/Count) And CurrentRepetition(Items) > 1", "note": "fires from the second line item onward (the error field under Items makes the rule iterate)" },
+    "invalidExample": { "dsl": "FieldFilled(CustomerName) And CurrentRepetition(Items) > 1", "error": "MVK_NO_WILDCARD", "fix": "CurrentRepetition needs the rule to iterate over the group — put the error field inside Items" },
+    "sinceKernel": "30.8.x"
   }
 ]

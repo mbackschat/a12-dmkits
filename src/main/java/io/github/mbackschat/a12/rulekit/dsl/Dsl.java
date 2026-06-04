@@ -82,6 +82,11 @@ public final class Dsl {
         return new NumberExpr(new ListAggregate(op, operands));
     }
 
+    /** {@code CurrentRepetition(group)} — the group's current iteration index, as a number expression. */
+    public static NumberExpr currentRepetition(GroupRef group) {
+        return new NumberExpr(new CurrentRepetition(group));
+    }
+
     /** {@code NumberOfDifferentValues(…)} — distinct-value count over type-homogeneous operands. */
     public static NumberExpr numberOfDifferentValues(FieldOperand first, FieldOperand... rest) {
         var fields = new java.util.ArrayList<FieldOperand>();
