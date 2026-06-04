@@ -10,10 +10,12 @@ import io.github.mbackschat.a12.rulekit.validate.PrecheckException;
 
 /**
  * A typed validation rule — the F2a authoring object (study §4.1): the rule lives in a group by
- * construction ({@link #in(GroupRef)}), {@code errorEntityRelPath} is computed from the error-field
- * handle, and the error-field-referenced rule is pre-checked at {@link Builder#build()} (directly,
- * or via an enclosing group reference — kernel-verified), so {@code MVK_ERROR_FIELD_NOT_REFERENCED}
- * and the rule-at-root mistake are caught here with the fix named.
+ * construction ({@link #in(GroupRef)}), and {@code errorEntityRelPath} is computed from the
+ * error-field handle. {@link Builder#build()} hard-fails only on completeness and rulekit's own
+ * structural invariants; the kernel-semantic error-field-referenced check ({@code
+ * MVK_ERROR_FIELD_NOT_REFERENCED}, the {@code covers()} heuristic) is <i>deferred</i> to the live
+ * kernel (F11) via {@link #deferredChecks()}, so a heuristic that drifts from a newer kernel can
+ * never be the sole reason an accepted rule is reported corrupt.
  *
  * <p>The condition stays an AST (D14 — the working representation); render is on demand. v1 scope:
  * the error entity is a field under the rule's group (the kernel also allows group error entities —
@@ -53,6 +55,36 @@ public record Rule(
     /** The bridge to the F4 validator ({@code RuleValidator.check(modelJson, rule.draft())}). */
     public DraftRule draft() {
         return new DraftRule(group.path(), name, errorEntityRelPath(), render(), code, severity.name());
+    }
+
+    /**
+     * Kernel-semantic pre-checks <i>deferred</i> to the live kernel (F11): rulekit predicts them but
+     * does NOT hard-fail {@code build()} on them, so a heuristic that drifts from a newer kernel can
+     * never be the sole reason a rule the kernel itself accepts is reported corrupt. Surfaced as
+     * advisory WARNINGs by {@link io.github.mbackschat.a12.rulekit.lint.RuleDiagnostics}, and
+     * suppressed there when the live kernel already ruled on the same {@code MVK_*} code.
+     *
+     * <p>Currently one: the error field referenced by the condition (the {@code covers()} heuristic,
+     * which only approximates the kernel's {@code MVK_ERROR_FIELD_NOT_REFERENCED}). Completeness
+     * pre-checks (name/condition/error-field/code/severity/message) stay hard in {@code build()} —
+     * they are rulekit's own API contract, and the validator masks {@code MVK_ERROR_MESSAGE_MISSING}
+     * so the kernel can't arbitrate message presence — and the under-group placement check guards
+     * rulekit's own relative-path math. Neither is deferred.
+     */
+    public List<Diagnostic> deferredChecks() {
+        if (ConditionReferences.of(condition).covers(errorField.path())) {
+            return List.of();
+        }
+        return List.of(Diagnostic.precheckWarning(
+                Optional.of("MVK_ERROR_FIELD_NOT_REFERENCED"),
+                "the error field " + errorField.path() + " appears unreferenced by the condition"
+                        + " (directly or via an enclosing group reference); the kernel typically rejects"
+                        + " this with MVK_ERROR_FIELD_NOT_REFERENCED — if your kernel accepts it, this is"
+                        + " advisory only",
+                new Diagnostic.Where(group.path() + "/" + name, Optional.empty()),
+                Optional.of("reference " + errorField.path()
+                        + " in the condition, or pick a referenced field as the error field"),
+                Optional.empty()));
     }
 
     public static final class Builder {
@@ -141,12 +173,8 @@ public record Rule(
                     "the error field " + errorField.path() + " must lie under the rule's group "
                             + group.path() + " — author the rule in a containing group",
                     "author the rule in a group that contains " + errorField.path());
-            check(ConditionReferences.of(condition).covers(errorField.path()), "MVK_ERROR_FIELD_NOT_REFERENCED",
-                    "the error field " + errorField.path() + " is not referenced by the condition"
-                            + " (directly or via an enclosing group reference) — the kernel rejects this"
-                            + " with MVK_ERROR_FIELD_NOT_REFERENCED; reference it, or pick a referenced"
-                            + " field as the error field",
-                    "reference " + errorField.path() + " in the condition, or pick a referenced field as the error field");
+            // MVK_ERROR_FIELD_NOT_REFERENCED is NOT hard-checked here (F11) — it mirrors a kernel
+            // judgment the live kernel arbitrates, so it is deferred to Rule#deferredChecks().
             return new Rule(group, name, errorField, condition, code, severity, messages);
         }
 

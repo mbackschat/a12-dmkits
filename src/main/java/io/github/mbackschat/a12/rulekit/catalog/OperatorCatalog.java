@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
@@ -23,8 +24,10 @@ public final class OperatorCatalog {
 
     private final List<OperatorEntry> entries;
     private final Map<String, OperatorEntry> byId;
+    private final String verifiedAgainst;
 
-    private OperatorCatalog(List<OperatorEntry> entries) {
+    private OperatorCatalog(List<OperatorEntry> entries, String verifiedAgainst) {
+        this.verifiedAgainst = verifiedAgainst;
         this.entries = List.copyOf(entries);
         Map<String, OperatorEntry> index = new LinkedHashMap<>();
         for (OperatorEntry entry : entries) {
@@ -41,8 +44,10 @@ public final class OperatorCatalog {
             if (in == null) {
                 throw new IllegalStateException("operator catalog resource not found: " + RESOURCE);
             }
-            OperatorEntry[] parsed = MAPPER.readValue(in, OperatorEntry[].class);
-            return new OperatorCatalog(List.of(parsed));
+            JsonNode root = MAPPER.readTree(in);
+            String verifiedAgainst = root.path("verifiedAgainst").asText(null);
+            OperatorEntry[] parsed = MAPPER.treeToValue(root.path("operators"), OperatorEntry[].class);
+            return new OperatorCatalog(List.of(parsed), verifiedAgainst);
         } catch (IOException e) {
             throw new UncheckedIOException("failed to read operator catalog " + RESOURCE, e);
         }
@@ -50,6 +55,15 @@ public final class OperatorCatalog {
 
     public List<OperatorEntry> entries() {
         return entries;
+    }
+
+    /**
+     * The kernel version this catalog was verified against (N7 ran every {@code SUPPORTED} example
+     * against it) — the F11 verification floor. The live kernel may be newer; {@code KernelVersion}
+     * compares the two and surfaces a single advisory on skew, never an error.
+     */
+    public String verifiedAgainst() {
+        return verifiedAgainst;
     }
 
     public int size() {

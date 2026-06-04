@@ -189,6 +189,14 @@ Consequences:
 - `getSource()` is the offending **`IRule`** element (concrete class `…internal.wrapper.RuleWrapper`, but it implements the **public** `IRule` — so consuming it is N8-safe). It carries `errorCondition`/`errorEntity`/`errorCode`, i.e. **rule granularity**.
 - It does **not** point at the offending *operator/node* inside the condition, and there is no character offset or span — so it gives nothing finer than `where.rule`, which rulekit already fills. Useful instead for **rule attribution** when checking a model with many rules at once (which problem belongs to which rule); the F4a span-pointing operator-pin therefore stays the AST↔catalog set-intersection heuristic (`lint.SpanResolver`). **Scope correction (the gap is kernel→node, identical in both phases):** *character-precise* spans for rulekit-**authored** rules are achievable in **Phase 1** — the renderer already produces the text, so a node→`[start,end)` emit-map plus node-instance localization would highlight the exact substring without ingest. Only *foreign*-rule spans truly need ingest: no AST exists until the text is parsed, and the kernel's parser (unlike `checkConsistency`) may carry token positions for its own diagnostics. *(Documented, not locked — it concerns a notification field rulekit doesn't consume; precedent: the deserialize-tier entry.)*
 
+## Runtime kernel-version detection — the jar manifest, via `Package` (F11 spike, 2026-06-04)
+
+The kernel jars carry standard Maven manifest attributes, and the JVM exposes them at runtime with no kernel-specific API. Probed by reading `Package` off two loaded kernel classes (`IDocumentModel`, `DocumentModelServiceFactory`):
+
+- `c.getPackage().getImplementationVersion()` → **`30.8.1`** (the full `Implementation-Version`); `getSpecificationVersion()` → **`30.8`** (`Specification-Version`, the minor line). `getImplementationTitle()` → the per-module artifact id (e.g. `'kernel-md-model-api'`).
+- These come from the jar's `META-INF/MANIFEST.MF` main attributes — present on every kernel module checked (`kernel-core-parser`, `kernel-core-service`, `kernel-md-model`, …). So any class rulekit already imports works as the version source; no dependency on a kernel constant or service.
+- **Treatment (F11):** rulekit reads this once at validation time and compares to the catalog's stamped `verifiedAgainst` floor; a mismatch is a single INFO/WARNING, never an error. The verification floor only rises (oldest supported = current), so the live concern is newer-than-floor skew.
+
 ## Schema oracle — what the kernel-mm metamodels formalize (instrument 3, 2026-06-04)
 
 Read-only mining of the sibling `a12-kernel-mm` canonical set (own-words summary; EUPL — nothing copied). Harness: `KernelMmIntegrationTest` (opt-in, skips when the clone is absent).

@@ -23,10 +23,10 @@ import io.github.mbackschat.a12.rulekit.validate.ValidationResult;
 
 /**
  * The {@code Rule} authoring object (F2a, study §4.1): one typed build replaces five hand-written
- * strings — the rule lives in a group by construction, {@code errorEntityRelPath} is computed from
- * the error-field handle, and the error-field-referenced rule (incl. the verified
- * enclosing-group-counts semantics) is pre-checked at {@code build()} instead of surfacing as
- * {@code MVK_ERROR_FIELD_NOT_REFERENCED} later.
+ * strings — the rule lives in a group by construction, and {@code errorEntityRelPath} is computed
+ * from the error-field handle. Completeness and structural-placement mistakes hard-fail at
+ * {@code build()}; the error-field-referenced check (which mirrors a kernel judgment) is deferred to
+ * the live kernel (F11, {@code Rule#deferredChecks()}) rather than hard-failing on a heuristic.
  */
 class RuleAuthoringTest {
 
@@ -100,18 +100,22 @@ class RuleAuthoringTest {
     }
 
     @Test
-    void rejectsAnUnreferencedErrorFieldAtBuildTime() {
+    void defersAnUnreferencedErrorFieldToTheKernel() {
         NumberRef fee = m.num("/Subscription/Addons/MonthlyFee");
-        var builder = m.rule(m.group("/Subscription/Addons"))
+        // F11: the error-field-referenced check mirrors a kernel judgment (the covers() heuristic only
+        // approximates it), so build() no longer hard-fails — it is deferred to the live kernel.
+        Rule rule = m.rule(m.group("/Subscription/Addons"))
                 .name("BadRule")
                 .errorField(m.str("/Subscription/Addons/Name"))     // error field: Name
                 .when(fee.filled().and(fee.le(0)))                  // condition references only MonthlyFee
                 .code("BAD")
                 .severity(Severity.ERROR)
-                .message(en("nope"), de("nein"));
-        IllegalStateException ex = assertThrows(IllegalStateException.class, builder::build);
-        assertTrue(ex.getMessage().contains("error field"),
-                () -> "message should name the problem: " + ex.getMessage());
+                .message(en("nope"), de("nein"))
+                .build();
+        var deferred = rule.deferredChecks();
+        assertEquals(1, deferred.size(), () -> "expected the deferred error-field check, got: " + deferred);
+        assertTrue(deferred.get(0).summary().contains("error field"),
+                () -> "the deferred check should name the problem: " + deferred.get(0).summary());
     }
 
     @Test

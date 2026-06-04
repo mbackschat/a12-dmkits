@@ -63,6 +63,17 @@ public record Diagnostic(
     }
 
     /**
+     * A <i>deferred</i> kernel-semantic pre-check (PRECHECK origin, WARNING) — advisory, not a
+     * {@code build()} throw (F11): rulekit predicts a kernel judgment but lets the live kernel be the
+     * authority, so a heuristic that drifts from a newer kernel can never be the sole reason a rule
+     * the kernel accepts is reported corrupt.
+     */
+    public static Diagnostic precheckWarning(Optional<String> code, String summary, Where where,
+            Optional<String> fix, Optional<String> explain) {
+        return new Diagnostic(Severity.WARNING, DiagnosticSource.PRECHECK, code, summary, where, fix, explain);
+    }
+
+    /**
      * A raw kernel notification, before catalog-join enrichment. The {@code MVK_*} code is extracted
      * from the message when present; {@code fix}/{@code explain} stay empty until
      * {@link DiagnosticEnricher} joins the catalog.

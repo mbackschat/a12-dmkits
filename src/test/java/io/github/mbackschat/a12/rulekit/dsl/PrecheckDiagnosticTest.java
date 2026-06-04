@@ -3,7 +3,6 @@ package io.github.mbackschat.a12.rulekit.dsl;
 import static io.github.mbackschat.a12.rulekit.dsl.Dsl.de;
 import static io.github.mbackschat.a12.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -26,25 +25,27 @@ class PrecheckDiagnosticTest {
     private static final BoundModel m = Fixtures.subscription();
 
     @Test
-    void anErrorFieldNotReferencedFailsWithAStructuredPrecheckDiagnostic() {
+    void anErrorFieldNotReferencedIsDeferred_notAHardBuildFailure() {
         NumberRef fee = m.num("/Subscription/Addons/MonthlyFee");
-        var builder = m.rule(m.group("/Subscription/Addons"))
+        // F11: this no longer throws — the error-field-referenced check mirrors a kernel judgment, so
+        // it is deferred to the live kernel rather than hard-failing build() on the covers() heuristic.
+        Rule rule = m.rule(m.group("/Subscription/Addons"))
                 .name("BadRule")
                 .errorField(m.str("/Subscription/Addons/Name"))   // error field Name, condition references only fee
                 .when(fee.filled().and(fee.le(0)))
                 .code("BAD").severity(io.github.mbackschat.a12.rulekit.dsl.Severity.ERROR)
-                .message(en("nope"), de("nein"));
+                .message(en("nope"), de("nein"))
+                .build();
 
-        PrecheckException ex = assertThrows(PrecheckException.class, builder::build);
-        // still fail-fast: an IllegalStateException, so existing callers are unaffected
-        assertInstanceOf(IllegalStateException.class, ex);
+        var deferred = rule.deferredChecks();
+        assertEquals(1, deferred.size(), () -> "expected one deferred check, got: " + deferred);
 
-        Diagnostic d = ex.diagnostic();
+        Diagnostic d = deferred.get(0);
         assertEquals(DiagnosticSource.PRECHECK, d.source());
-        assertEquals(Severity.ERROR, d.severity());
+        assertEquals(Severity.WARNING, d.severity(), "deferred kernel-semantic prechecks are advisory, not ERROR");
         assertEquals(java.util.Optional.of("MVK_ERROR_FIELD_NOT_REFERENCED"), d.code());
         assertEquals("/Subscription/Addons/BadRule", d.where().rule());
-        assertTrue(d.fix().isPresent(), "a PRECHECK diagnostic should carry an actionable fix");
+        assertTrue(d.fix().isPresent(), "a deferred PRECHECK diagnostic should carry an actionable fix");
         assertTrue(d.summary().contains("error field"), d.summary());
     }
 

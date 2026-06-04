@@ -1,3 +1,6 @@
+{
+  "verifiedAgainst": "30.8.1",
+  "operators":
 [
   {
     "id": "FieldFilled",
@@ -856,3 +859,4 @@
     "sinceKernel": "30.8.x"
   }
 ]
+}
