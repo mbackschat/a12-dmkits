@@ -57,7 +57,7 @@ Real conditions include `;;` line comments, `\r\n` line breaks, and case-variant
 ## Source & provenance (read-only; do not commit)
 
 - **Source:** `a12-kernel-mm/documentModels/` — the kernel's own **metamodels** (MM_Common, MM_Computation, MM_Typedef, MM_CombinationModel, SelectionModel, CT_* custom-type attribute models). Internal type-system models, not application domains. A **kernel OSS repo → do-not-copy** (`CLAUDE.md`); read-only, transform *shapes* only.
-- **Volume:** 59 JSON files = the same logical models in render variants (`a12-`/`codegen-`/`none-`) × current/`-previous`. Deduped to **13 canonical models** (`a12-`, non-previous) carrying **355 rule conditions** — far rule-denser than Corpus 1.
+- **Volume:** 59 JSON files = the same logical models in render variants (`a12-`/`codegen-`/`none-`) × current/`-previous`. Deduped to **15 canonical models** (one per directory, preferring `a12-`, else `codegen-` — `MM_Common_v2` ships only `codegen-`) carrying **547 rule conditions** — far rule-denser than Corpus 1. *(Corrected 2026-06-04 by the shipped harness; the earlier 13/355 figures used a selection that missed codegen-only directories.)*
 - **Version:** header `modelVersion` **28.3.0** (one minor below Corpus 1's 28.4.0). Within the 28.x line the kernel reads; expected to load tolerantly, **not yet verified through `ModelLoader`** — a good check for the resolver/expand integration test.
 
 ## Operator frequency (canonical set, 355 conditions)
@@ -103,7 +103,7 @@ Each backlog item is built as a normal increment: catalog entries (verified EN/D
 - **Corpus 1 (A12 Tools, proprietary):** read-only analysis only. Transform via **one-time pattern-inspired original authoring** — our own coherent fixtures exercising the patterns; never commit or structurally migrate their content.
 - **Corpus 2 (`a12-kernel-mm`, EUPL-1.2 OSS):** *referenced*, not vendored. The bootstrap already clones it as a sibling, so an **opt-in integration test** reads `../a12-kernel-mm/documentModels` (env-overridable, skipped if absent). Not committed — EUPL copyleft would conflict with rulekit's intended permissive license (§19), and referencing ≠ copying.
 
-That opt-in test (`deserialize → expand(resolver) → checkConsistency` over the canonical models) would harden the model index against Corpus 2's type-def/combination-reference-heavy metamodels and **verify 28.3.0 loads tolerantly** under our pinned kernel — but it needs a filesystem resolver for kernel-mm's multi-variant reference scheme, so it's its own increment.
+~~That opt-in test … needs a filesystem resolver for kernel-mm's multi-variant reference scheme~~ — **shipped 2026-06-04** (`KernelMmIntegrationTest`, opt-in, skips when the sibling clone is absent): all 15 canonical metamodels load, expand, and pass `checkConsistency` under the pinned 30.8.1 kernel (28.3.0 tolerance **verified**), and every field classifies to a concrete kind (typedef-heavy — zero UNKNOWN). The resolver assumption was wrong: **none of the 59 files carries `modelReferences`** — variants are file naming, not references; `selfContained()` suffices. Schema-oracle findings in `KERNEL-FINDINGS.md`.
 
 ## The corpora as the ingest round-trip oracle (Phase 2 — noted 2026-06-03)
 

@@ -35,6 +35,17 @@ In DM-JSON, a category's `values` list pairs **positionally** with the enumerati
 
 *(Locked: `ComputationAuthoringTest`.)*
 
+## Schema oracle — what the kernel-mm metamodels formalize (instrument 3, 2026-06-04)
+
+Read-only mining of the sibling `a12-kernel-mm` canonical set (own-words summary; EUPL — nothing copied). Harness: `KernelMmIntegrationTest` (opt-in, skips when the clone is absent).
+
+- **All 59 kernel-mm files are self-contained** — none carries `modelReferences`. The "multi-variant reference scheme needs a filesystem resolver" assumption was wrong: variants are file *naming* (`a12-`/`codegen-`/`none-` × current/`-previous`), not references. `ReferenceResolvers.selfContained()` suffices.
+- **Canonical set = 15 models** (one per directory, preferring `a12-`, else `codegen-` — `MM_Common_v2` ships only `codegen-`), carrying **547 rules** and 6 computations.
+- **Version tolerance verified by execution**: all 15 are `modelVersion 28.3.0` and load + expand + pass `checkConsistency` under our pinned **30.8.1** kernel.
+- **Typedef hardening**: the metamodels are typedef-heavy (~310 `TypeDefType` field occurrences), and the model index classified **all 473 canonical fields to concrete kinds — zero UNKNOWN** (`IField.getEffectiveType()` resolves them after expansion, as designed).
+- **`CT_MODEL_HEADER` formalizes the DM header itself**: `header{id, modelType, modelVersion, description, locales[]{code}, labels[]{locale,text}, annotations[]{name,value}, modelReferences[]{alias, modelType, purpose, reference}}` — i.e. the *reference scheme* Corpus-1 workspace models use (`alias`/`purpose`/`reference`) is documented here for the future resolver work, and `locales.code` is a **typedef** (the format constraint that fails at deserialize — KERNEL-FINDINGS §13). Its one rule: a model id must not start with `xml` (`[id] PatternMatched "[xX][mM][lL].*"` — `HEADER_ID_STARTS_WITH_XML`).
+- **Constraint-rule topics** (per-operator occurrences across the 547 conditions): `FieldFilled` 293 / `FieldNotFilled` 246, `RepetitionNotUnique` 90, `CustomCondition` 53, `PatternViolated`/`PatternMatched` 55, `GroupFilled` 41, `Length` 7 — re-confirming the corpus backlog's priority of patterns, value-lists, `RepetitionNotUnique`, and `CustomCondition`.
+
 ## §13 supplement — the message-locale law
 
 Header `locales` are **arbitrary** valid Java locale codes (`fr_FR` is fine; a malformed code like `en_us` fails at *deserialization* — "Invalid locale format" — before any consistency check). English/German are not special here; only the *condition keyword* language is limited to the EN/DE bundles.

@@ -40,7 +40,7 @@ export JAVA_HOME="$(/usr/libexec/java_home -v 21)"   # macOS; or point at any JD
 ./gradlew test
 ```
 
-The suite covers kernel wiring, the model index, the renderer (EN/DE), the validator, and the self-verifying catalog (each example checked against the real kernel) — so a green `test` means rulekit's output is confirmed by the engine, not just plausible.
+The suite covers kernel wiring, the model index, the renderer (EN/DE), the validator, the self-verifying catalog (each example checked against the real kernel), and the constraint-mining instruments (slot parity, MVK ledger) — so a green `test` means rulekit's output is confirmed by the engine, not just plausible. With the sibling `a12-kernel-mm` clone present, an opt-in harness additionally loads all 15 of the kernel's own metamodels through the index (skipped when absent).
 
 ## License
 
