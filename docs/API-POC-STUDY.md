@@ -473,7 +473,9 @@ proNeedsFee.render();                                            // identical ca
 
 The contract is data (catalog + DM-JSON + render rules), so this is a parallel reading, not a port — and naming parity means an agent transfers Java↔TS knowledge 1:1.
 
-## 9. What exists today vs. study (review checklist)
+## 9. Implementation-status board (canonical)
+
+**This table is the single source of truth for what rulekit has built.** Other docs defer here: the [README](../README.md) gives the outside capability snapshot, [`PROJECT-PROPOSAL.md`](./PROJECT-PROPOSAL.md) states intent (not per-increment status), and [`WORKSPACE-CORPUS-ANALYSIS.md`](./WORKSPACE-CORPUS-ANALYSIS.md) tracks the orthogonal operator-coverage/backlog axis. When a feature lands, update this row (and flip its study snippet 🔮→✅) — not four scattered status lists.
 
 | Study element | Status |
 |---|---|
