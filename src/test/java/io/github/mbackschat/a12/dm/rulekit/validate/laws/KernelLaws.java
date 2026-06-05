@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.ModelDrafts;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
@@ -19,6 +20,7 @@ final class KernelLaws {
     private static final RuleValidator VALIDATOR = new RuleValidator();
     private static final String SUBSCRIPTION = Fixtures.subscriptionJson();
     private static final String ORDER = Fixtures.orderJson();
+    private static final String LOGISTICS = ModelDrafts.logistics().toJson();
 
     private KernelLaws() {
     }
@@ -48,9 +50,9 @@ final class KernelLaws {
         assertRejects(ORDER, group, errorField, condition, expectedCode);
     }
 
-    /** Logistics-fixture variant (two index-keyed repeatable groups, for parallel iteration). */
+    /** Logistics-fixture variant (two index-keyed repeatable groups) — authored via modelkit, not JSON. */
     static void acceptsLogistics(String group, String errorField, String condition) {
-        assertAccepts(Fixtures.json("models/logistics.dm.json"), group, errorField, condition);
+        assertAccepts(LOGISTICS, group, errorField, condition);
     }
 
     private static void assertAccepts(String json, String group, String errorField, String condition) {
