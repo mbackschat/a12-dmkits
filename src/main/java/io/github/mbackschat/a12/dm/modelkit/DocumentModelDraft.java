@@ -131,6 +131,9 @@ public final class DocumentModelDraft {
         writeAnnotations(node, group.annotations());
         ObjectNode body = node.putObject("Group");
         body.put("repeatability", group.repeatability());
+        if (group.indexFieldName() != null) {
+            body.put("indexFieldName", group.indexFieldName());
+        }
         ArrayNode elements = body.putArray("elements");
         for (ElementDraft element : group.elements()) {
             elements.add(switch (element) {
@@ -258,13 +261,23 @@ public final class DocumentModelDraft {
                         }
                     }
                 }
-                ArrayNode values = fieldType.putObject("EnumerationType").putArray("values");
+                ObjectNode enumeration = fieldType.putObject("EnumerationType");
+                ArrayNode values = enumeration.putArray("values");
                 for (FieldTypeSpec.EnumValue v : e.values()) {
                     ObjectNode valueNode = values.addObject();
                     valueNode.put("value", v.value());
                     if (!v.labels().isEmpty()) {
                         ArrayNode labels = valueNode.putArray("label");
                         locales.forEach(loc -> labels.addObject().put("locale", loc).put("text", v.labels().get(loc)));
+                    }
+                }
+                if (!e.categories().isEmpty()) {
+                    ArrayNode categories = enumeration.putArray("categories");
+                    for (FieldTypeSpec.EnumCategory c : e.categories()) {
+                        ObjectNode categoryNode = categories.addObject();
+                        categoryNode.put("name", c.name());
+                        ArrayNode catValues = categoryNode.putArray("values");
+                        c.values().forEach(catValues::add);
                     }
                 }
             }
@@ -369,6 +382,7 @@ public final class DocumentModelDraft {
 
         private final String name;
         private int repeatability = 1;
+        private String indexFieldName;
         private final List<ElementDraft> elements = new ArrayList<>();
         private final List<ElementDraft.Annotation> annotations = new ArrayList<>();
 
@@ -382,6 +396,16 @@ public final class DocumentModelDraft {
                 throw new IllegalArgumentException("a repeatable group needs max ≥ 2 (1 is non-repeating): " + max);
             }
             this.repeatability = max;
+            return this;
+        }
+
+        /**
+         * Mark a direct child field as this repeatable group's row key ({@code indexFieldName}) — the
+         * value that identifies a row, letting two lists iterate in lockstep. Requires {@link
+         * #repeatable(int)}; the named field must be a direct child (both checked at build).
+         */
+        public GroupBuilder indexField(String fieldName) {
+            this.indexFieldName = fieldName;
             return this;
         }
 
@@ -477,7 +501,20 @@ public final class DocumentModelDraft {
         }
 
         private ElementDraft.Group toDraft() {
-            return new ElementDraft.Group(name, repeatability, List.copyOf(elements), List.copyOf(annotations));
+            if (indexFieldName != null) {
+                if (repeatability == 1) {
+                    throw new IllegalStateException("group '" + name + "' sets an index field '"
+                            + indexFieldName + "' but is not repeatable");
+                }
+                boolean present = elements.stream()
+                        .anyMatch(e -> e instanceof ElementDraft.Field f && f.name().equals(indexFieldName));
+                if (!present) {
+                    throw new IllegalStateException("group '" + name + "' index field '" + indexFieldName
+                            + "' is not a direct child field");
+                }
+            }
+            return new ElementDraft.Group(name, repeatability, indexFieldName,
+                    List.copyOf(elements), List.copyOf(annotations));
         }
     }
 
@@ -629,9 +666,13 @@ public final class DocumentModelDraft {
         }
     }
 
-    /** Configures an enumeration field — stored values, each with optional per-locale labels. */
+    /**
+     * Configures an enumeration field — stored values (each with optional per-locale labels) and
+     * optional {@code categories} that classify those values positionally.
+     */
     public static final class EnumFieldBuilder extends FieldAttrs<EnumFieldBuilder> {
         private final List<FieldTypeSpec.EnumValue> values = new ArrayList<>();
+        private final List<FieldTypeSpec.EnumCategory> categories = new ArrayList<>();
 
         public EnumFieldBuilder value(String value) {
             values.add(new FieldTypeSpec.EnumValue(value, Map.of()));
@@ -645,11 +686,20 @@ public final class DocumentModelDraft {
             return this;
         }
 
+        /**
+         * Add a named classification: one category value per enum value, in the order the values were
+         * added ({@code classifications[i]} classifies value {@code i}). Length is checked at build.
+         */
+        public EnumFieldBuilder category(String name, String... classifications) {
+            categories.add(new FieldTypeSpec.EnumCategory(name, List.of(classifications)));
+            return this;
+        }
+
         private FieldTypeSpec spec() {
             if (values.isEmpty()) {
                 throw new IllegalStateException("an enumeration field needs at least one value");
             }
-            return new FieldTypeSpec.EnumSpec(values);
+            return new FieldTypeSpec.EnumSpec(values, categories);
         }
     }
 

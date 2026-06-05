@@ -108,10 +108,23 @@ public sealed interface FieldTypeSpec {
         }
     }
 
-    /** An enumeration: at least one stored value; comparisons use the stored value, not the label (§8). */
-    record EnumSpec(List<EnumValue> values) implements FieldTypeSpec {
+    /**
+     * An enumeration: at least one stored value; comparisons use the stored value, not the label (§8).
+     * Optional {@code categories} group the values — each category maps positionally onto the values
+     * ({@code categories[c].values[i]} classifies {@code values[i]}), so every category must classify
+     * every value (length checked here).
+     */
+    record EnumSpec(List<EnumValue> values, List<EnumCategory> categories) implements FieldTypeSpec {
         public EnumSpec {
             values = List.copyOf(values);
+            categories = List.copyOf(categories);
+            for (EnumCategory category : categories) {
+                if (category.values().size() != values.size()) {
+                    throw new IllegalArgumentException("category '" + category.name() + "' classifies "
+                            + category.values().size() + " values but the enum has " + values.size()
+                            + " (a category must classify every value)");
+                }
+            }
         }
 
         @Override
@@ -124,6 +137,13 @@ public sealed interface FieldTypeSpec {
     record EnumValue(String value, Map<String, String> labels) {
         public EnumValue {
             labels = Map.copyOf(labels);
+        }
+    }
+
+    /** A named classification of the enum's values: {@code values[i]} is the category of enum value {@code i}. */
+    record EnumCategory(String name, List<String> values) {
+        public EnumCategory {
+            values = List.copyOf(values);
         }
     }
 }

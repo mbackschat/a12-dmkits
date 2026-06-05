@@ -28,8 +28,12 @@ public sealed interface ElementDraft permits ElementDraft.Field, ElementDraft.Gr
     record Field(String name, FieldTypeSpec type, Requiredness requiredness,
             Map<String, String> labels, List<Annotation> annotations) implements ElementDraft {}
 
-    /** A group; {@code repeatability == 1} is single, {@code > 1} a repeatable list. */
-    record Group(String name, int repeatability, List<ElementDraft> elements,
+    /**
+     * A group; {@code repeatability == 1} is single, {@code > 1} a repeatable list. A repeatable group
+     * may carry an {@code indexFieldName} — the direct child field whose value identifies a row (so two
+     * lists can be iterated in lockstep); {@code null} when unset.
+     */
+    record Group(String name, int repeatability, String indexFieldName, List<ElementDraft> elements,
             List<Annotation> annotations) implements ElementDraft {}
 
     /**
