@@ -133,7 +133,19 @@ public record Rule(
             return errorField(field.field());
         }
 
-        /** The error condition — true ⇒ the data is invalid (the kernel's error-scenario inversion). */
+        /**
+         * The <b>error condition</b>: TRUE exactly when the document is <b>invalid</b>. A rule states the
+         * <em>violation</em>, not the requirement — the kernel's error-scenario inversion, and there is
+         * no {@code Not} operator (use the negative-form predicate). Enforce a requirement by writing what
+         * makes it <em>fail</em>:
+         * <ul>
+         *   <li>"X must be provided" &rarr; {@code when(x.notFilled())} — not {@code x.filled()}</li>
+         *   <li>"amount must be &le; 1000" &rarr; {@code when(amount.gt(1000))} — not {@code amount.le(1000)}</li>
+         * </ul>
+         * Neither the compiler nor {@link #build()} can catch a back-to-front condition (both polarities
+         * are valid), so re-read it as "true exactly when the data is wrong". The {@code lint.RuleDiagnostics}
+         * backstop flags the common inversion ({@code RK_INVERTED_REQUIREDNESS}).
+         */
         public Builder when(Condition condition) {
             this.condition = condition;
             return this;
@@ -154,6 +166,16 @@ public record Rule(
             return this;
         }
 
+        /**
+         * Validate the typed slots and produce the immutable {@link Rule}. {@code build()} fail-fasts on the
+         * <b>structural</b> requirements (name, error field, condition, code, severity, &ge;1 message per
+         * declared locale, error field under the rule's group) but does <b>not</b> run the semantic lint.
+         * Valid-but-suspicious shapes the type system can't see — a wrong-{@link #when(Condition) polarity}
+         * condition, a negative presence test under a repeatable group, an unguarded number comparison — are
+         * surfaced by {@code lint.RuleDiagnostics.diagnose(model, rule)} (the developer's lint backstop), and
+         * the real-kernel verdict by {@code validate.RuleValidator}. A structural violation throws a
+         * {@code PrecheckException} (an {@code IllegalStateException}) naming the {@code MVK_*}/{@code RK_*} it prevents.
+         */
         public Rule build() {
             check(name != null && !name.isBlank(), "RK_INCOMPLETE_RULE",
                     "a rule needs a name (the element name in its group)", null);

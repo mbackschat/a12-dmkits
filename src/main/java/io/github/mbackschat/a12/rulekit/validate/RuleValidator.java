@@ -24,6 +24,12 @@ import io.github.mbackschat.a12.rulekit.model.ReferenceResolvers;
  * DM-JSON — the public, polyglot path (no internal {@code betterbuilders}, per D9/N8) — then runs
  * the real kernel's {@code checkConsistency} (a parse/convert pass: no compile, no execute) and
  * collects the reported problems.
+ *
+ * <p>This is the <b>kernel's verdict only</b>: it accepts a structurally valid rule even when its
+ * <em>meaning</em> is wrong — most notably a back-to-front {@code when(...)} polarity, which is a
+ * perfectly valid condition. To also catch those valid-but-suspicious shapes, run
+ * {@code lint.RuleDiagnostics.diagnose(model, rule)} — it layers the AST lint ({@code RK_*} polarity /
+ * negative-in-iteration / gotcha findings) on top of this kernel check.
  */
 public final class RuleValidator {
 
