@@ -108,16 +108,33 @@ if (candidates.length) {
     verb: 'check',
     args: [MODEL_FILE(r.task), '--field', r.out.field, '--condition', r.out.condition, '--code', r.out.code || 'EVAL'],
   }))
-  const rescore = await agent(
-    `Re-validate candidate rules against the real kernel in ONE process using the batch verb.
+  const selfReport = () => {
+    const m = {}
+    for (const r of candidates) m[`${r.model}/${r.task.id}/${r.i}`] = !!(r.out && r.out.kernelAccepted)
+    return m
+  }
+  // The authoritative re-check is best-effort: if the rescore agent fails (e.g. doesn't emit the
+  // structured verdict), fall back to the agents' own kernelAccepted self-reports rather than
+  // aborting the whole run. (A schema list is easier to emit reliably than a dynamic-keyed map.)
+  try {
+    const rescore = await agent(
+      `Re-validate candidate rules against the real kernel in ONE process using the batch verb.
 Steps: (1) write this JSON array verbatim to /tmp/rk-eval-ops.json:
 ${JSON.stringify(ops)}
 (2) run:  ${CLI} batch /tmp/rk-eval-ops.json
-(3) the output is a JSON array; each result echoes its "id" and carries result.valid (its kernel verdict).
-Return ONLY JSON mapping each result's "id" to its valid flag: {"<id>": true|false, ...}.`,
-    { label: 'batch recheck', phase: 'Recheck',
-      schema: { type: 'object', additionalProperties: { type: 'boolean' } } })
-  authoritative = rescore || {}
+(3) the output is a JSON array; each element echoes its "id" and carries result.valid (the kernel verdict).
+Report every op via the structured-output tool: one {id, valid} per op.`,
+      { label: 'batch recheck', phase: 'Recheck',
+        schema: { type: 'object', additionalProperties: false, required: ['verdicts'],
+          properties: { verdicts: { type: 'array', items: {
+            type: 'object', additionalProperties: false, required: ['id', 'valid'],
+            properties: { id: { type: 'string' }, valid: { type: 'boolean' } } } } } } })
+    for (const v of (rescore && rescore.verdicts) || []) authoritative[v.id] = v.valid
+    if (Object.keys(authoritative).length === 0) authoritative = selfReport()
+  } catch (e) {
+    log('batch recheck failed (' + e.message + ') — falling back to agent self-report')
+    authoritative = selfReport()
+  }
 }
 
 // ---- Judge: semantic correctness (catches kernel-valid-but-wrong, e.g. inverted polarity) ----------
