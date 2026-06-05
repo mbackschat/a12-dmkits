@@ -10,12 +10,67 @@ Gradle units (core + adapter) plus the CLI — the standalone front-end — and 
 |---|---|---|---|---|---|
 | **core** | root project (`:`) | public kernel only | `kernel-md-facade` + public model API + serializer — **must not** touch `kernel-md-model`/`kernel-md-a12internal` (D15, enforced) | the library: typed builder, renderer, validator, diagnostics, context projections, DM-JSON write path | Phase 1 ✅ |
 | **adapter** | `:adapter` subproject | `api project(':')` + kernel internal-read modules | the `a12internal` **read** tier (`parsetree-api`, `tool-api`, `DocumentModelService`) under N8 guardrails | opt-in Java-only module: ingest, explain-support, whereUsed, diff helper | Phase 2, bootstrapped ✅ |
-| **cli** | `:cli` subproject (`application` plugin) | core now (**+ adapter** as ingest/explain verbs land) | inherits adapter's once added (bundled inside the binary, not a library surface) | the **standalone, zero-toolchain front-end for the modeller/BA (N10)** — verbs + JSON in/out; self-contained app-image (JVM bundled). Detail: [`CLI-SPEC.md`](CLI-SPEC.md) | Phase 2, `dump` verb scaffolded |
-| **skill** | *(no module)* | — | — | the N1 Claude Code skill: teaching material for **both** persona loops (dev in-repo; BA via CLI) + the `MVK_*` fix table | Phase 2, planned |
+| **cli** | `:cli` subproject (`application` plugin) | core now (**+ adapter** as ingest/explain verbs land) | inherits adapter's once added (bundled inside the binary, not a library surface) | the **standalone, zero-toolchain front-end for the modeller/BA (N10)** — verbs + JSON in/out; self-contained app-image (JVM bundled). Detail: [`CLI-SPEC.md`](CLI-SPEC.md) | Phase 2 — `dump`/`describe`/`validate`/`check`/`add` ✅ |
+| **skill** | *(no module)* | — | — | the N1 Claude Code skill (`skill/SKILL.md`): teaching material for **both** persona loops (dev in-repo; BA via CLI) + the `MVK_*` fix table; read by the agent, not a code dep | Phase 2 — first draft ✅ |
 
-`settings.gradle` includes only `adapter` today. `./gradlew :test` runs the core in isolation (no internal tier on the classpath — the D15 boundary is build-checked by construction); `./gradlew :adapter:test` runs the adapter; `./gradlew test` runs both.
+`settings.gradle` includes `adapter` and `cli`. `./gradlew :test` runs the core in isolation (no internal tier on the classpath — the D15 boundary is build-checked by construction); `./gradlew :adapter:test` runs the adapter; `./gradlew :cli:test` runs the CLI (incl. the N6 gold-oracle over `eval/tasks/`); `./gradlew test` runs all.
 
 **There is no separate *developer* deployment unit (N10).** A developer uses rulekit as a library inside their own project; Claude Code edits that project's source and the project's own compiler supplies the type-steering. The only standalone front-end is the **CLI**, for the modeller/BA who has no Java toolchain.
+
+### Subproject layering (today)
+
+How the Gradle units stack, what each depends on, and where the kernel coupling sits. Arrows = "depends on". Widening kernel coupling top-to-bottom.
+
+```
+  front-ends            ┌──────────────────────────┐   ┌──────────────────────────────┐
+  (who drives it)       │  :cli  (application)      │   │  Claude Code in the dev's    │
+                        │  verbs: dump describe     │   │  OWN project (rulekit as a   │
+                        │  validate check add       │   │  library dependency)         │
+                        └───────┬──────────────────┘   └───────────────┬──────────────┘
+                                │ implementation               depends on │
+        skill/SKILL.md ┄┄┄┄┄┄┄┄┄┤ (+ :adapter once                        │
+        (read by agent,         │  ingest/explain land)                   │
+         not a code dep)        ▼                                         ▼
+                        ┌──────────────┐   api    ┌───────────────────────────────────┐
+                        │  :adapter    │─────────▶│  core  (root project ` : `)        │
+   opt-in internal tier │  a12internal │          │  catalog · model · validate · dsl  │
+                        │  READ        │          │  · lint · context · write (DmJson) │
+                        └──────┬───────┘          └─────────────────┬─────────────────┘
+                               │ internal-read                       │ public OSS only (D9/D15)
+                               ▼                                     ▼
+                        ┌─────────────────────────────────────────────────────────────┐
+                        │  A12 kernel @ mavenLocal                                      │
+                        │  public: kernel-md-facade (expand/checkConsistency/serialize) │
+                        │  a12internal: parsetree-api · tool-api · DocumentModelService │
+                        └─────────────────────────────────────────────────────────────┘
+
+  eval/ (benchmark corpus + runner): tasks/*.json (data) ; Layer-1 gold oracle runs in :cli:test
+  over core's RuleValidator ; Layer-2 runner (Workflow, planned) drives clean agents through :cli.
+```
+
+Key reads: **core never sees the internal tier** (D15 — enforced by classpath); the **adapter** is the only unit that crosses into `a12internal`, and it returns core types (boundary conversion, N8); **cli** bundles whatever it depends on into the app-image (it's an *app*, not a published library, so pulling `:adapter` later is fine); **skill** is teaching material the *agent* reads — not a build dependency.
+
+### Scenarios & consumers (who uses what)
+
+The same engine, three consumer paths:
+
+```
+ (A) DEVELOPER            Claude Code ──edits──▶ dev's project ──depends on──▶ core ──▶ public kernel
+     (in-repo library)    feedback = the project's own javac + RuleValidator diagnostics.
+                          No CLI, no adapter (unless ingesting foreign rules). N10 "no bespoke vehicle".
+
+ (B) MODELLER / BA        BA's agent ──runs──▶ :cli launcher ──▶ core (+ :adapter for ingest/explain)
+     (standalone CLI)        describe/dump → orient   check → kernel verdict   add → persist DM-JSON
+                          feedback = kernel Diagnostics (runtime). JVM bundled & invisible (N10).
+
+ (C) EVAL / N6            clean subagent ──reads──▶ skill/SKILL.md + catalog ; ──runs──▶ :cli ──▶ core ──▶ kernel
+     (self-sufficiency)   measures whether the shipped material suffices.   Layer-1 gold oracle = :cli:test
+                          (deterministic, core RuleValidator) ; Layer-2 = Workflow pass@k over clean agents.
+
+ (future) TS TWIN         a parallel impl builds the same model index from the same DM-JSON + catalog —
+                          possible only because core stays public-only & data-out (§3/§4). Design-informing only.
+```
+
 
 **Decision (2026-06-04, superseding the earlier "ship-with-skill" framing): the file/JSONL dump emitter is a CLI verb, not core and not a separate JBang script.** The agent-facing artifacts (finding 13 — `fields.jsonl`/`groups.jsonl`/`rules.jsonl`/`model-card.md`) are emitted by the CLI (`rulekit dump model.json fields`), which consumes core's public projections (`m.fields()`, `m.groups()`, `ModelContext`/`ModelCard`) and serializes them. The serialization/IO concern stays out of the core library; core exposes the programmatic projections (also directly usable by an in-repo developer), the CLI renders them to files. *(The standalone-vehicle question collapsed to a single answer — the CLI — once we recognized developers don't need a bespoke vehicle, N10; that supersedes the brief skill-tools/JBang-script home.)*
 
@@ -137,7 +192,7 @@ modelkit and rulekit are **parallel layers over a shared model-core**, not one a
 
 In today's package graph (§2) this means `structure` sits **beside `dsl`**, both over `model`/`validate`/`write` — `structure` must not depend on `dsl`.
 
-**The one prep that enables it (do on the next `write` touch):** `write.ModelWriter` currently depends on `dsl` (it knows `Rule`). Split it: a **generic, `dsl`-free** half (`findElement`/`insertElement`/`removeElement`, include-preserving `toJson`, depending only on `model`) that both the rule write and the structural write build on; the `Rule`-node knowledge stays with the rule layer. Also add **source-artifact provenance** to the index (mirror of D14) so include-aware editing later writes to the owning artifact.
+**The one prep that enables it — ✅ done 2026-06-05:** the generic, `dsl`-free half is now `write.DmJson` (`insertIntoGroup`/`groupElements`/`findElement`, include-preserving), and `write.ModelWriter` (the `Rule`-node knowledge) builds on it. modelkit's structural write reuses `DmJson` directly. Still TBD: **source-artifact provenance** on the index (mirror of D14) so include-aware editing later writes to the owning artifact.
 
 **Rename trigger & timing (D10):** keep `a12-rulekit` while rules-only (accurate today); rename the repo + move the package root to the umbrella **when modelkit becomes a real peer**. Because renames of Maven coordinates + the Java package root are *cheapest before first publish*, lock those in the pre-publish window even if the repo rename waits. Don't module-split prematurely — modelkit starts as a **package** (`structure`) in core (it crosses no kernel boundary, so it hasn't "earned" a module, §1); extract `:model-core` + `:modelkit` only when size/coupling justify it.
 

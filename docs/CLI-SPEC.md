@@ -39,9 +39,9 @@ JSON/JSONL out on stdout (pipeable, `jq`/`grep`-able); non-zero exit on error wi
 | **`validate`** | model.json | `{valid, diagnostics[]}` JSON (model-level; rule-level with the rule-spec) | ✅ 2026-06-05 | core |
 | **`check`** | model.json + `--field`/`--condition`/`--code` [`--group`] | `{valid, diagnostics[]}` JSON (authoring feedback, no persist) | ✅ 2026-06-05 | core |
 | `batch` | a list of ops (stdin/file) | results array | **planned — build with the benchmark runner** (amortizes JVM startup + kernel warm-up across many ops; the StringTemplate group cache is per-process — see KERNEL-FINDINGS) | core |
+| **`add`** | model.json + rule-spec JSON [`--output`] | the persisted DM-JSON (stdout) | ✅ 2026-06-05 | core (`write`) |
 | `ingest` | model.json + rule id | rulekit AST (JSON) / `Opaque` | planned | adapter |
 | `explain` | model.json + rule/condition | `RuleExplanation` JSON | planned | core |
-| `add` | model.json + rule-spec JSON | validated DM-JSON | planned | core |
 | `diff` | model.json + rule id + modified spec | `RenderedDiff` JSON | planned | adapter |
 | `write-back` | model.json + rule id + spec | rewritten DM-JSON | planned | core |
 
@@ -64,6 +64,19 @@ Line shapes (JSONL stays pure data — the model id/version stamp lives in `mode
 - **model-card.md** — markdown, stamped with model id + version + counts + the group skeleton (repeatability) + enum domains.
 
 Implementation: fields/groups/card from core (`BoundModel.ofJson` → `fields()`/`groups()`/`nearestRepeatableAncestor()`); rules from a read-only walk of the authored DM-JSON (Jackson), since core does not enumerate existing rules. Serialization lives in `:cli`, **not** core (core exposes the programmatic projections; the CLI renders them to files).
+
+## 5b. The `check` and `add` verbs (the authoring loop)
+
+- **`check`** — submit a candidate rule, get the real kernel's verdict, persist nothing: `check <model> --field <ABS path> --condition "<DSL>" --code <ID> [--group <path>] [--severity] [--name]`. Wraps core `RuleValidator.check`; `--field` is the error field's absolute path, the kernel's `../`-relative form and `--group` (the iteration scope, default = field's parent) are computed for you.
+- **`add`** — persist a rule from a JSON **rule-spec**, completing the loop (check → add → saved model): `add <model> <spec.json> [--output <file>]`. Spec carries the full envelope:
+  ```json
+  { "field": "/Subscription/Billing/EffectiveFee", "condition": "[EffectiveFee] < [BaseFee]",
+    "code": "EFFECTIVE_FEE_BELOW_BASE", "severity": "ERROR", "name": "…",
+    "messages": [ {"locale":"en_US","text":"…"}, {"locale":"de_DE","text":"…"} ] }
+  ```
+  Flow: kernel-validate the condition → if rejected, emit `{persisted:false,diagnostics}` to **stderr**, exit 1, persist nothing → else inject with the **real** messages and **re-validate the persisted model** (which catches message/locale-coverage that the condition-check masks with placeholders) → emit the new DM-JSON to **stdout** (or write `--output`), exit 0.
+- **Write path:** `add` builds on the generalized, **dsl-free `write.DmJson`** primitives (`insertIntoGroup`/`findElement`) — the shared model-core write surgery the future modelkit reuses (fork #8); the `Rule`-node shape stays in `write.ModelWriter`.
+- **Still TBD — the inverted-requiredness lint on the BA path.** `add`/`check` take the condition as **DSL text**, so the AST-based `RK_INVERTED_REQUIREDNESS` lint (the automated backstop for the skill's #1 polarity teaching — the kernel accepts both polarities silently) can't fire yet. It needs the condition as an AST: either ingest the text (adapter) or accept a structured-AST rule-spec. Follow-up.
 
 ## 6. Sizing (measured 2026-06-05)
 

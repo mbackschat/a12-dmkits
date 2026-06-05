@@ -19,7 +19,7 @@ public final class Cli {
     /** Dispatch a verb. Returns a process exit code (0 = success). */
     public static int run(String[] args, Appendable out, Appendable err) {
         if (args.length == 0) {
-            return fail(err, "usage: rulekit <verb> [args]   (verbs: dump, describe, validate, check)");
+            return fail(err, "usage: rulekit <verb> [args]   (verbs: dump, describe, validate, check, add)");
         }
         String[] rest = Arrays.copyOfRange(args, 1, args.length);
         return switch (args[0]) {
@@ -27,7 +27,8 @@ public final class Cli {
             case "describe" -> DescribeCommand.run(rest, out, err);
             case "validate" -> ValidateCommand.run(rest, out, err);
             case "check" -> CheckCommand.run(rest, out, err);
-            default -> fail(err, "unknown verb: " + args[0] + "   (verbs: dump, describe, validate, check)");
+            case "add" -> AddCommand.run(rest, out, err);
+            default -> fail(err, "unknown verb: " + args[0] + "   (verbs: dump, describe, validate, check, add)");
         };
     }
 
