@@ -16,11 +16,11 @@ How we measure — and improve — whether rulekit's bundled material lets an LL
 
 The agent gets exactly the **shipped** material for the persona under test, and **nothing else**:
 
-- **BA/CLI path:** the CLI (verbs + their own usage output) + the bundled operator catalog (`src/main/resources/catalog/operators.json`) + the **N1 skill** (`skill/SKILL.md`, first draft 2026-06-05). The agent uses the `installDist` launcher (the JVM "java starter" — current code, identical behavior to native; the native binary is a stale spike artifact, never the eval vehicle).
+- **BA/CLI path:** the **self-describing CLI** — its verbs plus their `--help`/`manifest`/`schema` output and the operator catalog reached through **`cli operators`** (since 2026-06-05; no separate `operators.json` hand-off) — and the **N1 skill** (`skill/SKILL.md`). The agent uses the `installDist` launcher (the JVM "java starter" — current code, identical behavior to native; the native binary is a stale spike artifact, never the eval vehicle). *(The bare-tool benchmark workflow withholds even the skill — it measures whether the self-describing CLI **alone** suffices.)*
 - **Developer path:** rulekit-the-library's **public API + javadoc** + the catalog, with the **compiler + lint (`RuleDiagnostics`)** as the feedback (N10 — no bespoke vehicle). *Harness:* a clean agent in a **git worktree** authors a rule via the typed builder and validates with `RuleValidator`, iterating against `javac`/gradle. (First probe 2026-06-05 — see [`../eval/RESULTS.md`](../eval/RESULTS.md); harness distinct from the CLI Workflow runner.)
 
 **Hard boundary — per persona** (no design notes, no answer keys; that's what makes the eval measure the *product*):
-- **BA/CLI:** only the CLI + catalog + N1 skill — **not** rulekit's source, `docs/`, or tests.
+- **BA/CLI:** only the CLI (which self-describes its operator catalog via `cli operators`) + the N1 skill — **not** rulekit's source, `docs/`, or tests.
 - **Developer:** the public API **source + javadoc** + catalog + `README` *are* the material (that's what a library user sees) — but `skill/`, `docs/` (design notes), and **`eval/` (the golds)** are off-limits.
 
 Either way, reading the model file under test is allowed — it's the input.
@@ -41,7 +41,7 @@ Two families, both with an **objective, deterministic backbone** (the kernel is 
 ## 4. The build-measure-learn loop (run it in-session)
 
 ```
-draft material (skill + catalog + CLI verbs)
+draft material (skill + self-describing CLI: verbs, --help, cli operators)
       │
       ▼
 spawn a CLEAN subagent  ──►  give it ONLY the material + one task
@@ -147,7 +147,7 @@ WORKFLOW  (eval/benchmark.workflow.js)                — fan-out + scoring; ONE
   │   spawns N clean agents — model pinned, neutral prompt, material boundary enforced
   ▼
 CLEAN SUBAGENTS  (the instrument)                     — ISOLATED BY DESIGN (a first-time consumer)
-  see ONLY: the CLI launcher + the operator catalog + the N1 skill + the model file under test
+  see ONLY: the self-describing CLI launcher (verbs · --help · cli operators) + the N1 skill + the model file under test
   return:  a candidate rule / an explanation, via StructuredOutput
 ```
 

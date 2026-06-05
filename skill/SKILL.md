@@ -5,21 +5,25 @@ description: Author and validate A12 Kernel validation rules with the rulekit CL
 
 # Authoring A12 validation rules with rulekit
 
-You help author **A12 validation rules** on a document model, using the `rulekit` CLI and its bundled operator catalog. You don't need A12 background docs — the catalog + the CLI's kernel-checked feedback are enough if you follow the rules below.
+You help author **A12 validation rules** on a document model with the `rulekit` CLI. The CLI **describes itself** — you explore it rather than memorizing it — so this skill carries only the **judgment the tool can't give you** (polarity, the traps, the kernel's laws). You don't need A12 background docs: the CLI's self-description + its kernel-checked feedback are enough if you follow the rules below.
 
 ## Your tools
 
-- **The CLI** — `cli <verb> …` (run `cli` with no args for the verb list). The verbs you'll use:
-  - `cli describe <model.json>` — the model card (fields, kinds, enum values, groups, repeatability).
-  - `cli dump <model.json> fields|groups|rules` — greppable JSONL; `cli dump <model.json> card` — the skeleton.
-  - `cli check <model.json> --field <ABSOLUTE field path> --condition "<DSL>" --code <ID>` — submit a candidate rule and get the **real kernel's** verdict: `{"valid": true|false, "diagnostics": [...]}`. This is your ground truth.
-  - `cli validate <model.json>` — re-check a model's *existing* rules.
-- **The operator catalog** (`operators.json`) — the reference for every operator: meaning, operand types, examples, and **gotchas** (read these — they often name the exact fix for a rejection).
+The CLI is **self-describing** — explore it:
+
+- `cli --help` — the verb list; `cli <verb> --help` — a verb's parameters and what they mean; `cli manifest` — the same, machine-readable.
+- `cli operators` — the DSL operator catalog (each operator's meaning, operands, examples, and **gotchas** — read the gotchas, they often name the exact fix for a rejection); `cli operators <id>` — one in full.
+- `cli schema <verb>` — the JSON a verb emits or expects.
+
+The three you lean on:
+- **`cli describe <model.json>`** — orient: fields, kinds, enum values, groups, repeatability.
+- **`cli operators`** — pick operators by meaning.
+- **`cli check <model.json> --field <ABSOLUTE field path> --condition "<DSL>" --code <ID>`** — submit a candidate and get the **real kernel's** verdict `{"valid": …, "diagnostics": […]}`. This is your ground truth. (`cli validate <model.json>` re-checks a model's *existing* rules.)
 
 ## The loop
 
 1. **Orient** — `cli describe` / `cli dump` to learn the fields, their kinds, enum values, and which groups repeat.
-2. **Pick operators** — from the catalog, by meaning.
+2. **Pick operators** — from `cli operators`, by meaning.
 3. **Compose** the condition — minding **polarity**, **paths**, and **iteration** below.
 4. **Check** — `cli check …`. If `valid:true`, done. If not, read each diagnostic.
 5. **Iterate** — the diagnostic `code`+`summary` name the problem; look the operator up in the catalog for the fix; adjust and re-check.
@@ -59,7 +63,7 @@ How an **empty** (unspecified) field behaves in a comparison depends on its type
 | **confirm** | treated as **`False`** |
 | string · date · boolean · enum | the comparison is **not evaluated** (it doesn't fire, no error) |
 
-So **guard a number comparison** when an empty value shouldn't trip it — `FieldFilled(Amount) And [Amount] < 100`. Two corners: the `0` substitution does **not** apply to `Min`/`Max` (empties are ignored there), and there are no empty strings, so `[F] == ""` is never true — use `FieldNotFilled(F)` to test for absence.
+So **guard a number comparison** when an empty value shouldn't trip it — `FieldFilled(Amount) And [Amount] < 100`. (`cli check` flags the unguarded case for you as `RK_UNGUARDED_NUMBER_COMPARISON`.) Two corners: the `0` substitution does **not** apply to `Min`/`Max` (empties are ignored there), and there are no empty strings, so `[F] == ""` is never true — use `FieldNotFilled(F)` to test for absence.
 
 ## Per-row iteration & the negative guard
 
@@ -71,7 +75,7 @@ So **guard a number comparison** when an empty value shouldn't trip it — `Fiel
 When a rule reasons about **all the rows at once** (not one row), use an **aggregate** over the flattened group — `Group*/Field` (the `*` takes every row's value):
 
 - **`Sum(Lines*/Amount)` sums the field's *values*.** This is **not** the same as *counting* rows — `Sum` adds the numbers; to count how many fields are filled use `NumberOfFilledFields(...)`. Mixing these up is a common slip: "total of the amounts" is `Sum`, "how many items" is a count.
-- `Min` / `Max` / count-style aggregates exist too — look up the exact names/operands in the catalog.
+- `Min` / `Max` / count-style aggregates exist too — look up the exact names/operands with `cli operators`.
 - An aggregate **is a number**, so compare it like one: `Sum(Lines*/Amount) > 500`. To compare against another field instead of a literal, bracket the field: `[Cap] < Sum(Lines*/Amount)`.
 - **`Having` filters which rows are folded:** `Sum(Lines*/Amount Having [Lines/Type] == "FEE")` sums only the fee lines.
 - An aggregate rule is **model-level** (it spans rows), so put its error field on a **non-repeatable** field — it does **not** iterate per row.
@@ -90,7 +94,7 @@ Date operators need **both operands present** and have a **fixed argument order*
 - **`DifferenceInDays(A, B)` = B − A** (same for `DifferenceInMonths` / `DifferenceInYears`): **positive when B is *later* than A.** So:
   - "B is *before* A" → `DifferenceInDays(A, B) < 0`
   - "B is more than N days *after* A" → `DifferenceInDays(A, B) > N`
-- Other date ops (`Today`, `AddYears`, …) are in the catalog.
+- Other date ops (`Today`, `AddYears`, …) — see `cli operators`.
 
 Example — *"a ticket must be resolved within 5 days of being raised"* (dates `/Ticket/RaisedDate`, `/Ticket/ResolvedDate`):
 ```
@@ -128,4 +132,4 @@ Apply the same shape to your own model: find the enum + the repeatable group wit
 - `MVK_UNEXPECTED_TOKEN` → usually a comparison missing brackets (`[Field] > 1000`) or a malformed expression.
 - `MVK_INVALID_TYPE_FOR_COMPARISON` → ordering (`<`/`>`) needs numbers or dates; compare strings/enums with `==` / `!=`.
 
-For anything else, look the operator up in the catalog — its `gotchas` and `fix` fields usually say exactly what to do.
+For anything else, look the operator up with `cli operators <id>` — its `gotchas` and `fix` fields usually say exactly what to do.

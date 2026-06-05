@@ -2,7 +2,8 @@
 // token-heavy (model × task × k clean agents + judges) and so is opt-in, never per-commit. The
 // deterministic Layer-1 backbone (golds validate / comprehension rules ingest) is EvalGoldOracleTest.
 //
-// What it measures: given ONLY the shipped material (the CLI launcher + the operator catalog), can a
+// What it measures: given ONLY the shipped material (the self-describing CLI launcher — verbs, --help,
+// `cli operators`; no raw catalog file, no skill), can a
 // clean agent (a) AUTHOR a rule the kernel accepts AND that is semantically right, and (b) READ BACK
 // foreign rules correctly? Kernel-accepts is necessary but NOT sufficient — the kernel accepts an
 // inverted-polarity rule too, so a judge re-scores semantic correctness against the task gold/rubric.
@@ -32,7 +33,6 @@ const TASKS = A.tasks || []
 log(`benchmark inputs: ${MODELS.length} model(s) [${MODELS}], k=${K}, ${TASKS.length} task(s)`)
 if (TASKS.length === 0) throw new Error('no tasks passed in args.tasks — nothing to benchmark')
 const CLI = 'JAVA_HOME="$(/usr/libexec/java_home -v 21)" cli/build/install/cli/bin/cli'
-const CATALOG = 'src/main/resources/catalog/operators.json'
 const MODEL_FILE = t => `cli/src/test/resources/models/${t.model}.dm.json`
 
 const AUTHORING = TASKS.filter(t => t.family === 'authoring')
@@ -42,8 +42,7 @@ const COMPREHENSION = TASKS.filter(t => t.family === 'comprehension')
 
 function authorPrompt(task) {
   return `You help a business analyst author an A12 validation rule. Assume NO prior A12/rulekit knowledge; use ONLY:
-  - the CLI:  ${CLI} <args>   (discover its verbs by running it with no args)
-  - the operator catalog JSON: ${CATALOG}
+  - the CLI:  ${CLI} <args>   (it is self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <verb> --help\` shows a verb's parameters, \`${CLI} operators\` lists the DSL operators and \`${CLI} operators <id>\` gives one in full)
   - the model file: ${MODEL_FILE(task)}
 Do NOT read any rulekit source, docs, tests, or *.md files. Requirement to enforce: "${task.intent}".
 Author the rule and CONFIRM the kernel accepts it via the CLI. Return ONLY JSON:
@@ -53,8 +52,7 @@ Author the rule and CONFIRM the kernel accepts it via the CLI. Return ONLY JSON:
 function explainPrompt(task) {
   return `You help a business analyst understand the validation rules already on an A12 model. Assume NO prior
 A12/rulekit knowledge; use ONLY:
-  - the CLI:  ${CLI} <args>   (discover its verbs by running it with no args)
-  - the operator catalog JSON: ${CATALOG}
+  - the CLI:  ${CLI} <args>   (it is self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <verb> --help\` shows a verb's parameters, \`${CLI} operators\` lists the DSL operators and \`${CLI} operators <id>\` gives one in full)
   - the model file: ${MODEL_FILE(task)}
 Do NOT read any rulekit source, docs, tests, or *.md files. For each of these rules: ${JSON.stringify(task.rules)}
 explain exactly what makes a document INVALID (the violation the rule fires on) and which field it guards.
