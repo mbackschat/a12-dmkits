@@ -3,11 +3,11 @@
   "family": "authoring",
   "model": "order",
   "operators": ["FieldFilled", "LessThan", "Sum", "Having", "Equal", "And"],
-  "intent": "An order's stated Quantity must cover its rush stock: the declared Quantity may not be less than the total count of line items whose Sku is RUSH.",
+  "intent": "An order's stated Quantity must be at least the total quantity ordered across its RUSH line items — i.e. the sum of each RUSH line item's Count.",
   "gold": {
     "field": "/Order/Quantity",
     "condition": "FieldFilled(Quantity) And [Quantity] < Sum(Items*/Count Having [Items/Sku] == \"RUSH\")",
     "code": "QUANTITY_BELOW_RUSH_ITEMS"
   },
-  "notes": "Aggregate + Having family. The aggregate folds the repeatable Items group with a filter ([Items/Sku] == \"RUSH\") so only matching rows are summed; the result is compared to a non-repeatable field. The error field (Quantity) is itself referenced (so it's covered), and the rule does NOT iterate (it lives in /Order, not /Order/Items) — a model-level aggregate, not a per-row rule. Path flattening: Items*/Count inside Sum, Items/Sku inside the Having filter."
+  "notes": "Aggregate + Having family. The aggregate folds the repeatable Items group with a filter ([Items/Sku] == \"RUSH\") so only matching rows are summed; the result is compared to a non-repeatable field. The error field (Quantity) is itself referenced (so it's covered), and the rule does NOT iterate (it lives in /Order, not /Order/Items) — a model-level aggregate, not a per-row rule. Path flattening: Items*/Count inside Sum, Items/Sku inside the Having filter. NOTE on the intent wording: the earlier version said 'the total count of line items whose Sku is RUSH', which reads as COUNTING items — both tiers then counted rows instead of summing the per-line Count (eval/RESULTS.md 2026-06-05 06:49). The field is named Count but holds a per-line quantity, so the intent now explicitly says 'the sum of each RUSH line item's Count' to match the gold (which sums Count values). Intent⇄gold mismatch, not a skill gap."
 }
