@@ -17,9 +17,13 @@ How we measure — and improve — whether rulekit's bundled material lets an LL
 The agent gets exactly the **shipped** material for the persona under test, and **nothing else**:
 
 - **BA/CLI path:** the CLI (verbs + their own usage output) + the bundled operator catalog (`src/main/resources/catalog/operators.json`) + the **N1 skill** (`skill/SKILL.md`, first draft 2026-06-05). The agent uses the `installDist` launcher (the JVM "java starter" — current code, identical behavior to native; the native binary is a stale spike artifact, never the eval vehicle).
-- **Developer path:** rulekit-the-library + its javadoc + the catalog, used in a scratch project (the dev's own compiler is the feedback).
+- **Developer path:** rulekit-the-library's **public API + javadoc** + the catalog, with the **compiler + lint (`RuleDiagnostics`)** as the feedback (N10 — no bespoke vehicle). *Harness:* a clean agent in a **git worktree** authors a rule via the typed builder and validates with `RuleValidator`, iterating against `javac`/gradle. (First probe 2026-06-05 — see [`../eval/RESULTS.md`](../eval/RESULTS.md); harness distinct from the CLI Workflow runner.)
 
-**Hard boundary:** the agent must **not** read rulekit's source, `docs/`, READMEs, or tests — only the shipped material. This is what makes the eval measure the *product*, not the design notes. (Reading the model file under test is allowed — it's the input.)
+**Hard boundary — per persona** (no design notes, no answer keys; that's what makes the eval measure the *product*):
+- **BA/CLI:** only the CLI + catalog + N1 skill — **not** rulekit's source, `docs/`, or tests.
+- **Developer:** the public API **source + javadoc** + catalog + `README` *are* the material (that's what a library user sees) — but `skill/`, `docs/` (design notes), and **`eval/` (the golds)** are off-limits.
+
+Either way, reading the model file under test is allowed — it's the input.
 
 ## 3. Task families & scoring
 

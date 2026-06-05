@@ -15,6 +15,25 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-05 07:15 CEST — developer-path baseline probe (n=1, opus, worktree)
+
+The first eval of the **developer path** (N10). A clean opus agent, given only rulekit's public DSL API + javadoc + catalog (**no CLI, no BA skill**), in a git worktree, authoring a rule via the typed builder with the **compiler + `RuleValidator`** as the feedback loop. Task = T1's intent (PRO ⇒ add-on MonthlyFee required — the polarity + iteration-guard traps). Boundary: `skill/`, `docs/`, `eval/` forbidden.
+
+**Result — substantive pass.** Authored `[Tier] == "PRO" And FieldFilled(Addons/Name) And FieldNotFilled(Addons/MonthlyFee)` (error field MonthlyFee), kernel-accepted, **polarity correct**, guarded. ≈ the gold (`GroupFilled(Addons) And [Tier]=="PRO" And FieldNotFilled(MonthlyFee)`); differs only in the guard (`FieldFilled(Name)` vs `GroupFilled(Addons)` — diverges on a no-Name add-on). Compiled first try; 2 validate iterations.
+
+**Type system erased the syntactic class (as predicted):** types/paths/shape; cross-group hosting caught by `build()` (`RK_ERROR_FIELD_OUTSIDE_GROUP`); locale-message coverage pre-checked by `build()`.
+
+**Two semantic traps survived — the same ones the BA path has:**
+1. **Polarity.** Got right, but **only via one javadoc sentence** on `Rule.Builder.when()` ("true ⇒ the data is invalid"); the agent flagged it as the #1 risk — *"the compiler happily accepts the wrong-polarity condition."* Navigable but fragile (n=1; a coin-flip without explicit framing).
+2. **Iteration guard.** `build()` does **not** pre-warn — the agent's first attempt (no guard) was rejected by the live kernel (`MVK_NEG_CONDITION_IN_ITERATION`). The `Linter` *has* the check (`RK_NEG_CONDITION_IN_ITERATION`) but `build()` doesn't run it, and a developer calling `build()` + `RuleValidator` isn't pointed at `RuleDiagnostics`. The guard remedy came from the catalog gotcha text.
+
+**Answer to "can you write wrong rules via the API?": yes** — polarity, the iteration guard, and empty-as-0 all survive the type system, which erases only the syntactic class. **But a full dev "skill" looks unnecessary** — the gaps are narrow and fixable at the API surface:
+- enrich `Rule.Builder.when()` javadoc with the error-scenario polarity framing (✅/❌);
+- make the lint **discoverable** on the dev path (javadoc pointer `build()`/`RuleValidator` → `RuleDiagnostics`, the developer's lint backstop) so `RK_NEG_CONDITION_IN_ITERATION` / `RK_INVERTED_REQUIREDNESS` surface at author time, not only via the kernel;
+- the candidate unguarded-number-comparison lint (empty-as-0) serves both personas.
+
+n=1 — a pass@k dev-path run would firm up the polarity coin-flip. (Harness: clean agent + worktree + compiler/lint loop; distinct from the CLI Workflow runner.)
+
 ### 2026-06-05 06:57 CEST — T4 intent reword, opus + sonnet, k=2 (run `w5qap37n5`)
 
 Confirming the T4 intent fix (reworded to "the sum of each RUSH line item's Count"; gold unchanged). Fresh, T4 only — 9 agents.
