@@ -1,6 +1,6 @@
 # a12-rulekit — CLI spec (the modeller/BA standalone front-end)
 
-The component spec for the standalone CLI (N10). The proposal's [§14/§16](PROJECT-PROPOSAL.md) state intent; [`ARCHITECTURE.md`](ARCHITECTURE.md) places it among the subprojects; this spec holds the detail — the verb surface, the JSON I/O contract, the **dev/test workflow that keeps the inner loop fast**, the sizing, and the two packaging phases. Status flips on the [`API-POC-STUDY.md` §9](API-POC-STUDY.md) board.
+The component spec for the standalone CLI (N10). The proposal's [§14/§16](PROJECT-PROPOSAL.md) state intent; [`ARCHITECTURE.md`](ARCHITECTURE.md) places it among the subprojects; this spec holds the detail — the verb surface, the JSON I/O contract, the **dev/test workflow that keeps the inner loop fast**, the sizing, and the two packaging phases. Status flips on the [`API-POC-STUDY.md` §9](API-POC-STUDY.md) board. Verifiable, runnable demos of the verbs: [`CLI-TOUR-SPEC.md`](CLI-TOUR-SPEC.md) ↔ [`../examples/`](../examples/).
 
 ## 1. Purpose & persona
 

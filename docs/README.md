@@ -28,6 +28,10 @@ What each document under `docs/` holds, so you can jump to the right one. This i
 - **[EVAL-SPEC.md](EVAL-SPEC.md)** — the self-sufficiency eval & benchmark (N6/N1): the method (a **clean subagent** as the LLM-under-test, since self-eval is invalid), the material boundary, objective+soft-regression scoring, the build-measure-learn loop, the probe protocol, the living task suite, and the runner cost model + execution architecture (§8). The *method*, not the numbers.
 - **[../eval/RESULTS.md](../eval/RESULTS.md)** — the dated **results log** (sibling of the runner, outside `docs/`): baselines, per-change lifts, model comparisons, and pass@k runs, newest first. EVAL-SPEC is the fixed method; this is the moving record.
 
+## Demos
+
+- **[CLI-TOUR-SPEC.md](CLI-TOUR-SPEC.md)** — the **method** for the verifiable CLI demos: how to author/verify/regenerate them, the `bin/rk` launcher shim, the determinism contract (showboat `verify` is exact-match), and the expansion backlog (more demos + a CI verify gate). The demos themselves are in **[../examples/](../examples/)** (outside `docs/`) — `EVAL-SPEC` ↔ `eval/` split.
+
 ## Licensing
 
 - **[LICENSING.md](LICENSING.md)** — the settled license decision (rulekit source **MIT**; the kernel-bundling CLI distributable **EUPL-1.2**) and the full reasoning: the kernel's dual `EUPL-1.2 OR commercial`, why redistribution is permitted, and why MIT-source + EUPL-bundle don't conflict. The proposal's §19 states the decision in one line and points here.

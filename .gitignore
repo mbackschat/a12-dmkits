@@ -9,7 +9,8 @@ build/
 .settings/
 .classpath
 .project
-bin/
+bin/*
+!bin/rk
 
 # OS
 .DS_Store
