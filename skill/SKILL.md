@@ -54,6 +54,39 @@ A condition is evaluated relative to the rule's **group** (its iteration scope �
 - Putting the **error field inside a repeatable group** makes the rule fire **once per row** ("each …"). That happens automatically — you don't ask for it; you choose the error field.
 - A **negative** condition (`FieldNotFilled`, `NoFieldFilled`, …) inside an iterating rule is **rejected** (`MVK_NEG_CONDITION_IN_ITERATION`) unless guarded by a positive existence check on the row: `GroupFilled(<the repeatable group>) And <your negative condition>`.
 
+## Aggregates over a repeatable group
+
+When a rule reasons about **all the rows at once** (not one row), use an **aggregate** over the flattened group — `Group*/Field` (the `*` takes every row's value):
+
+- **`Sum(Lines*/Amount)` sums the field's *values*.** This is **not** the same as *counting* rows — `Sum` adds the numbers; to count how many fields are filled use `NumberOfFilledFields(...)`. Mixing these up is a common slip: "total of the amounts" is `Sum`, "how many items" is a count.
+- `Min` / `Max` / count-style aggregates exist too — look up the exact names/operands in the catalog.
+- An aggregate **is a number**, so compare it like one: `Sum(Lines*/Amount) > 500`. To compare against another field instead of a literal, bracket the field: `[Cap] < Sum(Lines*/Amount)`.
+- **`Having` filters which rows are folded:** `Sum(Lines*/Amount Having [Lines/Type] == "FEE")` sums only the fee lines.
+- An aggregate rule is **model-level** (it spans rows), so put its error field on a **non-repeatable** field — it does **not** iterate per row.
+
+Example — *"the total of all FEE lines must not exceed 500"* (an invoice with repeatable `/Invoice/Lines`):
+```
+cli check invoice.json --field /Invoice/Total \
+  --condition "Sum(Lines*/Amount Having [Lines/Type] == \"FEE\") > 500" --code FEE_TOTAL_TOO_HIGH
+```
+
+## Dates
+
+Date operators need **both operands present** and have a **fixed argument order** — get both right:
+
+- **Guard presence first.** A date function on a missing date is a formal error; lead with `AllFieldsFilled(DateA, DateB) And …`.
+- **`DifferenceInDays(A, B)` = B − A** (same for `DifferenceInMonths` / `DifferenceInYears`): **positive when B is *later* than A.** So:
+  - "B is *before* A" → `DifferenceInDays(A, B) < 0`
+  - "B is more than N days *after* A" → `DifferenceInDays(A, B) > N`
+- Other date ops (`Today`, `AddYears`, …) are in the catalog.
+
+Example — *"a ticket must be resolved within 5 days of being raised"* (dates `/Ticket/RaisedDate`, `/Ticket/ResolvedDate`):
+```
+cli check ticket.json --field /Ticket/ResolvedDate \
+  --condition "AllFieldsFilled(RaisedDate, ResolvedDate) And DifferenceInDays(RaisedDate, ResolvedDate) > 5" \
+  --code RESOLVED_TOO_LATE
+```
+
 ## Worked example (a *different* model, to show the pattern)
 
 Requirement: *"When an order's Channel is EXPRESS, each line item's DeliveryDate must be provided."*
