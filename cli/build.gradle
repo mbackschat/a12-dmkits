@@ -47,13 +47,13 @@ dependencies {
 }
 
 application {
-    mainClass = 'io.github.mbackschat.a12.rulekit.cli.CliMain'
+    mainClass = 'io.github.mbackschat.a12.dm.cli.CliMain'
 }
 
 // picocli-codegen: name the project so the generated native-image config lands under a stable
 // META-INF/native-image/<group>/<artifact>/ path (CLI-SPEC §B2).
 tasks.named('compileJava') {
-    options.compilerArgs += ['-Aproject=io.github.mbackschat.a12.rulekit/rulekit-cli']
+    options.compilerArgs += ['-Aproject=io.github.mbackschat.a12.dm/rulekit-cli']
 }
 
 // Dev convenience: `:cli:run` resolves relative model paths from the repo root (its default is the

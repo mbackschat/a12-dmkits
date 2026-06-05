@@ -11,8 +11,8 @@
 ## 1. Setup — bind once, everything flows from the model (F0) ✅
 
 ```java
-import static io.github.mbackschat.a12.rulekit.dsl.Dsl.*;
-import io.github.mbackschat.a12.rulekit.dsl.*;
+import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.*;
+import io.github.mbackschat.a12.dm.rulekit.dsl.*;
 
 BoundModel m = BoundModel.of(ModelIndex.of(ModelLoader.loadSelfContained(reader)));   // ✅ today
 // BoundModel m = BoundModel.load(path);                      // 🔮 sugar

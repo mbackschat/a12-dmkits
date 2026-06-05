@@ -360,10 +360,10 @@ Two parts: **per-operator entries** (above — `meaning` + edge cases + valid *a
 
 ## 10. API design sketch <a name="10-api-design-sketch"></a>
 
-Illustrative (final names from the catalog); jOOQ-functional `Dsl.*` static-import core (fork #5), real package `io.github.mbackschat.a12.rulekit`. Bare strings denote model-resolved handles; the renderer derives actual path forms (fork #9).
+Illustrative (final names from the catalog); jOOQ-functional `Dsl.*` static-import core (fork #5), real package `io.github.mbackschat.a12.dm`. Bare strings denote model-resolved handles; the renderer derives actual path forms (fork #9).
 
 ```java
-import static io.github.mbackschat.a12.rulekit.Dsl.*;
+import static io.github.mbackschat.a12.dm.Dsl.*;
 
 // --- author (builder direction) ---
 var m = BoundModel.load(dmJson);                       // expanded + indexed (F0)

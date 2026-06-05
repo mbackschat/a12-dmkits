@@ -2,7 +2,7 @@ plugins {
     id 'java-library'
 }
 
-group = 'io.github.mbackschat.a12.rulekit'
+group = 'io.github.mbackschat.a12.dm'
 version = '0.1.0-SNAPSHOT'
 
 // PUBLIC + LOCAL repositories only. The A12 kernel is resolved from the local Maven
