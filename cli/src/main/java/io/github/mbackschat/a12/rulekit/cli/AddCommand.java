@@ -11,8 +11,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.github.mbackschat.a12.rulekit.adapter.Ingest;
+import io.github.mbackschat.a12.rulekit.adapter.KernelAdapter;
 import io.github.mbackschat.a12.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.rulekit.dsl.LocalizedText;
+import io.github.mbackschat.a12.rulekit.lint.Linter;
+import io.github.mbackschat.a12.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.rulekit.validate.ValidationResult;
@@ -94,12 +98,17 @@ final class AddCommand {
         // 2) persist with the real messages, then re-validate (catches message/locale coverage)
         String persisted = ModelWriter.addRule(modelJson, group, name, errorEntityRelPath,
                 code, condition, severity, messages);
+        BoundModel reModel;
         try {
-            BoundModel.ofJson(persisted);
+            reModel = BoundModel.ofJson(persisted);
         } catch (RuntimeException e) {
             return fail(err, "persisted rule is invalid (e.g. missing a message for a declared locale): "
                     + e.getMessage());
         }
+
+        // 2b) best-effort lint backstop — surface valid-but-suspicious findings (chiefly the silent
+        // inverted-polarity trap the kernel can't catch). Advisory: a kernel-valid persist is never blocked.
+        lintBackstop(reModel, group + "/" + name, field, err);
 
         // 3) emit
         try {
@@ -116,6 +125,37 @@ final class AddCommand {
             return 0;
         } catch (IOException e) {
             return fail(err, "cannot write output: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Ingest the just-persisted rule's condition (F10) and run the model-context lint, emitting any
+     * findings (chiefly {@code RK_INVERTED_REQUIREDNESS}) as warnings to stderr. Best-effort: if the
+     * condition doesn't convert ({@code Opaque}) or anything throws, we stay silent — a kernel-valid
+     * persist is never blocked by lint.
+     */
+    private static void lintBackstop(BoundModel model, String ruleFullName, String errorFieldPath, Appendable err) {
+        try {
+            Ingest ingest = KernelAdapter.of(model).ingest(ruleFullName);
+            if (!(ingest instanceof Ingest.Converted converted)) {
+                return;
+            }
+            List<Diagnostic> findings = new Linter().lint(model, errorFieldPath, converted.condition());
+            if (findings.isEmpty()) {
+                return;
+            }
+            ObjectNode root = MAPPER.createObjectNode();
+            ArrayNode warnings = root.putArray("warnings");
+            for (Diagnostic d : findings) {
+                ObjectNode w = warnings.addObject();
+                w.put("severity", d.severity().name());
+                d.code().ifPresent(c -> w.put("code", c));
+                w.put("summary", d.summary());
+                d.fix().ifPresent(f -> w.put("fix", f));
+            }
+            err.append(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root)).append('\n');
+        } catch (RuntimeException | IOException ignored) {
+            // best-effort: lint never blocks a valid, persisted rule
         }
     }
 

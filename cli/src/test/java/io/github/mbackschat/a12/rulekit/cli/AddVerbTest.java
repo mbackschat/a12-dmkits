@@ -80,6 +80,23 @@ class AddVerbTest {
     }
 
     @Test
+    void warnsOnInvertedRequirednessButStillPersists(@TempDir Path dir) throws Exception {
+        // the requirement written positively (FieldFilled on the error field): kernel-valid, but it's
+        // the inverted polarity — fires when the fee IS present. add persists it (it's valid) and the
+        // best-effort lint backstop warns RK_INVERTED_REQUIREDNESS on stderr.
+        String inverted = """
+                {"field":"/Subscription/Addons/MonthlyFee","condition":"FieldFilled(MonthlyFee)",
+                 "code":"FEE_PRESENT","name":"FeePresent",
+                 "messages":[{"locale":"en_US","text":"x"},{"locale":"de_DE","text":"y"}]}
+                """;
+        var res = CliTestSupport.run("add", model(dir).toString(), spec(dir, inverted).toString());
+        assertEquals(0, res.code(), res::err);
+        assertTrue(res.out().contains("FeePresent"), "the (valid) rule is still persisted");
+        assertTrue(res.err().contains("RK_INVERTED_REQUIREDNESS"),
+                () -> "the lint backstop warns about the inverted polarity: " + res.err());
+    }
+
+    @Test
     void missingMessagesAltogetherFails(@TempDir Path dir) throws Exception {
         String noMsg = """
                 {"field":"/Subscription/Billing/EffectiveFee","condition":"[EffectiveFee] < [BaseFee]","code":"X"}

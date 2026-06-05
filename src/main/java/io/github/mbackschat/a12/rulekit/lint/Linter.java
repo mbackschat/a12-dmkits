@@ -62,9 +62,27 @@ public final class Linter {
     public List<Diagnostic> lint(BoundModel model, Rule rule) {
         String rulePath = rule.group().path() + "/" + rule.name();
         List<Diagnostic> out = new ArrayList<>(lint(rulePath, rule.condition()));
-        invertedRequiredness(rule, rulePath, out);
+        invertedRequiredness(rule.condition(), rule.errorField().path(), rulePath, out);
         if (model.iteratesForErrorField(rule.errorField().path())) {
-            negativeUnderIteration(rule, model, rulePath, out);
+            negativeUnderIteration(rule.condition(), rule.errorField().path(), rule.group().path(),
+                    model, rulePath, out);
+        }
+        return List.copyOf(out);
+    }
+
+    /**
+     * Lint a candidate condition for a rule whose error field is {@code errorFieldPath}, without a
+     * built {@link Rule} — the entry the CLI's {@code add} uses on a condition ingested from text
+     * (F10), so the model-context lints (inverted requiredness, negative-under-iteration) can fire on
+     * the BA path. The rule's group is taken as the error field's parent (the {@code add} default).
+     */
+    public List<Diagnostic> lint(BoundModel model, String errorFieldPath, Condition condition) {
+        List<Diagnostic> out = new ArrayList<>(lint("", condition));
+        invertedRequiredness(condition, errorFieldPath, "", out);
+        if (model.iteratesForErrorField(errorFieldPath)) {
+            int slash = errorFieldPath.lastIndexOf('/');
+            String groupPath = slash > 0 ? errorFieldPath.substring(0, slash) : errorFieldPath;
+            negativeUnderIteration(condition, errorFieldPath, groupPath, model, "", out);
         }
         return List.copyOf(out);
     }
@@ -77,10 +95,11 @@ public final class Linter {
      * (sole-predicate) form — a guarded {@code FieldFilled(E) And <ctx>} is a legitimate
      * "{@code E} must be empty in this context" rule, so it is left alone.
      */
-    private void invertedRequiredness(Rule rule, String rulePath, List<Diagnostic> out) {
-        if (rule.condition() instanceof FieldPresenceCondition f
+    private void invertedRequiredness(Condition condition, String errorFieldPath, String rulePath,
+            List<Diagnostic> out) {
+        if (condition instanceof FieldPresenceCondition f
                 && f.filled()
-                && f.field().path().equals(rule.errorField().path())) {
+                && f.field().path().equals(errorFieldPath)) {
             out.add(new Diagnostic(Severity.WARNING, DiagnosticSource.LINT,
                     Optional.of("RK_INVERTED_REQUIREDNESS"),
                     "the rule errors when '" + f.field().path() + "' IS filled — an errorCondition fires on"
@@ -100,19 +119,20 @@ public final class Linter {
      * design: the kernel's full positive/negative classification is context-sensitive (~800 lines,
      * kernel-delegated to F4), so this fires only on the clearly-unguarded shape.
      */
-    private void negativeUnderIteration(Rule rule, BoundModel model, String rulePath, List<Diagnostic> out) {
+    private void negativeUnderIteration(Condition condition, String errorFieldPath, String ruleGroupPath,
+            BoundModel model, String rulePath, List<Diagnostic> out) {
         List<String[]> negatives = new ArrayList<>();
         boolean[] hasPositiveGuard = {false};
-        collectPresence(rule.condition(), negatives, hasPositiveGuard);
+        collectPresence(condition, negatives, hasPositiveGuard);
         if (negatives.isEmpty() || hasPositiveGuard[0]) {
             return;
         }
         String[] negative = negatives.get(0);
-        String guardGroup = model.nearestRepeatableAncestor(rule.errorField().path())
-                .orElse(rule.group().path());
+        String guardGroup = model.nearestRepeatableAncestor(errorFieldPath)
+                .orElse(ruleGroupPath);
         out.add(new Diagnostic(Severity.WARNING, DiagnosticSource.LINT,
                 Optional.of("RK_NEG_CONDITION_IN_ITERATION"),
-                "this rule iterates (error field '" + rule.errorField().path() + "' is under a repeatable group)"
+                "this rule iterates (error field '" + errorFieldPath + "' is under a repeatable group)"
                         + " and uses the negative condition " + negative[0] + "(" + negative[1] + ") with no"
                         + " positive presence guard — the kernel rejects unguarded negatives in iteration",
                 new Diagnostic.Where(rulePath, Optional.of(negative[0])),
