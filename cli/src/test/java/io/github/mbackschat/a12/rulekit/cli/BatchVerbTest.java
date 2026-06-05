@@ -1,0 +1,114 @@
+package io.github.mbackschat.a12.rulekit.cli;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+/**
+ * The {@code batch} verb — run a sequence of verb invocations in one process so JVM startup and the
+ * kernel's one-time StringTemplate warm-up are amortized across all ops (the benchmark-runner enabler).
+ * Each op runs through the same {@link Cli#run} seam; per-op results are collected into a JSON array.
+ */
+class BatchVerbTest {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    private static Path model(Path dir) throws IOException {
+        Path f = dir.resolve("m.dm.json");
+        Files.writeString(f, CliTestSupport.subscriptionJson());
+        return f;
+    }
+
+    @Test
+    void runsMultipleOpsInOneInvocationAndCarriesPerOpResults(@TempDir Path dir) throws Exception {
+        String m = model(dir).toString();
+        String ops = """
+                [
+                  {"verb":"check","args":["%s","--field","/Subscription/Billing/EffectiveFee","--condition","[EffectiveFee] < [BaseFee]","--code","FEE"]},
+                  {"verb":"check","args":["%s","--field","/Subscription/Billing/EffectiveFee","--condition","@@@ not a condition @@@","--code","X"]},
+                  {"verb":"describe","args":["%s"]}
+                ]""".formatted(m, m, m);
+        Path opsFile = dir.resolve("ops.json");
+        Files.writeString(opsFile, ops);
+
+        var res = CliTestSupport.run("batch", opsFile.toString());
+        assertEquals(0, res.code(), res::err);
+        JsonNode arr = MAPPER.readTree(res.out());
+        assertEquals(3, arr.size(), () -> "one result per op: " + res.out());
+
+        // op0 — a valid candidate: exit 0, its JSON result embedded
+        assertEquals("check", arr.get(0).get("verb").asText());
+        assertEquals(0, arr.get(0).get("exit").asInt());
+        assertTrue(arr.get(0).get("result").get("valid").asBoolean(), "valid candidate");
+
+        // op1 — an invalid candidate: non-zero exit, but the batch did NOT abort
+        assertEquals(1, arr.get(1).get("exit").asInt(), "a failing op keeps its own exit code");
+        assertFalse(arr.get(1).get("result").get("valid").asBoolean());
+
+        // op2 — a different verb ran in the same process (warm cache)
+        assertEquals("describe", arr.get(2).get("verb").asText());
+        assertEquals(0, arr.get(2).get("exit").asInt());
+    }
+
+    @Test
+    void diagnosticsAreAttributableToTheirOp(@TempDir Path dir) throws Exception {
+        // Two checks that BOTH fail with kernel diagnostics on the SAME synthetic rule name
+        // (/Subscription/Addons/CheckRule). The diagnostics alone can't tell them apart — only the
+        // self-describing wrapper (op index + echoed id + echoed args) attributes each correctly.
+        String m = model(dir).toString();
+        String ops = """
+                [
+                  {"id":"neg-in-iter","verb":"check","args":["%s","--field","/Subscription/Addons/MonthlyFee","--condition","FieldNotFilled(MonthlyFee)","--code","A"]},
+                  {"id":"syntax","verb":"check","args":["%s","--field","/Subscription/Addons/MonthlyFee","--condition","@@@ junk @@@","--code","B"]}
+                ]""".formatted(m, m);
+        Path opsFile = dir.resolve("ops.json");
+        Files.writeString(opsFile, ops);
+
+        var res = CliTestSupport.run("batch", opsFile.toString());
+        JsonNode arr = MAPPER.readTree(res.out());
+
+        // both ops failed with their own kernel diagnostics, kept distinct
+        assertEquals(1, arr.get(0).get("exit").asInt());
+        assertEquals(1, arr.get(1).get("exit").asInt());
+        // each result is self-describing: explicit op index, echoed id, echoed args
+        assertEquals(0, arr.get(0).get("op").asInt());
+        assertEquals(1, arr.get(1).get("op").asInt());
+        assertEquals("neg-in-iter", arr.get(0).get("id").asText());
+        assertEquals("syntax", arr.get(1).get("id").asText());
+        assertTrue(arr.get(0).get("args").toString().contains("FieldNotFilled"), "the args that caused op 0 are on op 0");
+        assertTrue(arr.get(1).get("args").toString().contains("junk"), "the args that caused op 1 are on op 1");
+        // and the diagnostics themselves differ, so the attribution is checkable end-to-end
+        assertTrue(arr.get(0).get("result").get("diagnostics").toString().contains("MVK_NEG_CONDITION_IN_ITERATION"));
+        assertTrue(arr.get(1).get("result").get("diagnostics").toString().contains("MVK_UNEXPECTED_TOKEN"));
+    }
+
+    @Test
+    void malformedOpsFileIsABatchLevelError(@TempDir Path dir) throws Exception {
+        Path opsFile = dir.resolve("ops.json");
+        Files.writeString(opsFile, "{ not an array }");
+        var res = CliTestSupport.run("batch", opsFile.toString());
+        assertNotEquals(0, res.code(), "a malformed ops file fails at the batch level");
+    }
+
+    @Test
+    void refusesToNest(@TempDir Path dir) throws Exception {
+        Path opsFile = dir.resolve("ops.json");
+        Files.writeString(opsFile, "[ {\"verb\":\"batch\",\"args\":[\"x\"]} ]");
+        var res = CliTestSupport.run("batch", opsFile.toString());
+        assertEquals(0, res.code(), "the batch itself runs");
+        JsonNode arr = MAPPER.readTree(res.out());
+        assertEquals(2, arr.get(0).get("exit").asInt(), "but a nested batch op is rejected");
+        assertTrue(arr.get(0).get("stderr").asText().toLowerCase().contains("nest"));
+    }
+}
