@@ -15,6 +15,10 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-05 19:12 CEST — targeted T1 re-run confirms the judge path-resolution fix (opus, k=2)
+
+After fixing the judge prompt (it now knows bare field names resolve **up** ancestor groups — GAP 1 from the 19:06 run), a fresh **T1-only** re-run (`w8700u6m0`, 5 agents) flips **opus T1 → 2/2**. Both judges now resolve bare `[Tier]` to `/Subscription/Tier` and rule the candidates equivalent to the gold (*"the only difference is path notation … both denote the same field"*). Confirms the 19:06 T1 0/2 was a **judge false-negative**, not an authoring gap — opus authors T1 correctly from the self-describing CLI alone. (Did not re-judge sonnet's separate `FieldFilled(Name)` vs `GroupFilled(Addons)` guard divergence — that one is a real, subtle slip, left as-is.)
+
 ### 2026-06-05 19:06 CEST — full pass@k under the self-explaining CLI + trimmed skill (opus + sonnet, k=2)
 
 First run under the **new material boundary**: produce agents get ONLY the self-describing CLI (`--help` / `manifest` / `cli operators`) — **no `operators.json` hand-off** — plus the judgment-only (trimmed) skill. Question: did dropping the raw catalog + trimming the skill regress self-sufficiency? Run `wxltzni75` (57 agents, 1.17M subagent tokens, 7m43s).
