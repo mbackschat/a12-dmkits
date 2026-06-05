@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-rulekit/schema/explain.schema.json",
+  "title": "RuleExplanation",
+  "description": "Output of `rulekit explain` — a rule's condition projected for understanding. `operators` is the glossary (each distinct construct once, with meaning/gotchas); `tree` is the structure, and every tree node's `op` is a BACKLINK into `operators[].id` (meanings are not repeated per node).",
+  "type": "object",
+  "required": ["text", "operators", "references", "iterates", "tree", "gloss"],
+  "additionalProperties": false,
+  "properties": {
+    "text": { "type": "string", "description": "the canonical EN rendering of the whole condition" },
+    "operators": {
+      "type": "array",
+      "description": "glossary of the distinct operators used, in encounter order; tree nodes reference these by id",
+      "items": {
+        "type": "object",
+        "required": ["id", "keyword", "kind", "meaning"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "description": "catalog operator-id; the key tree nodes backlink to via `op`" },
+          "keyword": { "type": "string", "description": "the EN DSL keyword/symbol" },
+          "kind": { "type": "string", "description": "OPERATOR | PREDICATE | FUNCTION | CONSTANT (\"?\" if the id is unknown to the catalog)" },
+          "meaning": { "type": "string", "description": "plain-language semantics" },
+          "gotchas": { "type": "array", "items": { "type": "string" }, "description": "author-relevant surprises the kernel is silent on" }
+        }
+      }
+    },
+    "references": {
+      "type": "array",
+      "description": "the fields/groups the condition touches",
+      "items": {
+        "type": "object",
+        "required": ["path", "kind"],
+        "additionalProperties": false,
+        "properties": {
+          "path": { "type": "string" },
+          "kind": { "type": "string", "description": "the model value-kind, or \"GROUP\" for a group reference" }
+        }
+      }
+    },
+    "iterates": { "type": "boolean", "description": "whether the condition ranges over a repeatable group" },
+    "iterationGroup": { "type": "string", "description": "the repeatable group iterated over; present only when `iterates` is true" },
+    "tree": { "$ref": "#/$defs/node" },
+    "gloss": { "type": "string", "description": "a one-line natural-language summary" }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "description": "one node of the condition's structure. `op` backlinks into operators[].id; `text` is the rendered DSL of this subtree. `children` are the operator-bearing operands (a LogicCondition's two sides, a comparison's function/aggregate operands), in source order; value operands (fields, literals) are shown in `text`, not as nodes.",
+      "required": ["op", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "type": "string", "description": "operator-id — a key into the `operators` glossary" },
+        "text": { "type": "string", "description": "the rendered DSL of this subtree" },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/node" } }
+      }
+    }
+  }
+}

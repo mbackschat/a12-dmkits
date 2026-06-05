@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-rulekit/schema/describe.schema.json",
+  "title": "ModelCard",
+  "description": "Output of `rulekit describe` — the model's fields (with kind, and scale/enum-domain where applicable) and groups (with repeatability). An agent's map of a model without reading raw DM-JSON.",
+  "type": "object",
+  "required": ["fields", "groups"],
+  "additionalProperties": false,
+  "properties": {
+    "fields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "name", "kind"],
+        "additionalProperties": false,
+        "properties": {
+          "path": { "type": "string", "description": "absolute path of the field" },
+          "name": { "type": "string", "description": "the field's local name" },
+          "kind": { "type": "string", "description": "value-kind: STRING | NUMBER | BOOLEAN | CONFIRM | DATE | ENUMERATION | CUSTOM | …" },
+          "scale": { "type": "integer", "description": "decimal scale; present for NUMBER fields only" },
+          "enumValues": { "type": "array", "items": { "type": "string" }, "description": "allowed stored values; present for ENUMERATION fields only" }
+        }
+      }
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "repeatable"],
+        "additionalProperties": false,
+        "properties": {
+          "path": { "type": "string" },
+          "repeatable": { "type": "boolean", "description": "whether the group repeats (rules over it iterate)" }
+        }
+      }
+    }
+  }
+}

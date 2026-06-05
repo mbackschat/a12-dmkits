@@ -48,7 +48,8 @@ public final class ModelContext {
      * (F10 ingest): feed {@code adapter.ingest(rule)}'s {@code Converted.condition()} straight in.
      */
     public RuleExplanation explain(Condition condition) {
-        String text = new DslRenderer(ConditionLanguage.EN).render(condition);
+        DslRenderer renderer = new DslRenderer(ConditionLanguage.EN);
+        String text = renderer.render(condition);
 
         List<RuleExplanation.Operator> operators = new ArrayList<>();
         for (String id : OperatorUsage.of(condition)) {
@@ -72,8 +73,9 @@ public final class ModelContext {
                 references.add(new RuleExplanation.Reference(g, "GROUP")));
 
         Optional<String> iterationGroup = iterationScope(refs);
+        RuleExplanation.Node tree = new ExplanationTreeBuilder(renderer).build(condition);
         return new RuleExplanation(text, operators, references,
-                iterationGroup.isPresent(), iterationGroup, gloss(operators, references, iterationGroup));
+                iterationGroup.isPresent(), iterationGroup, tree, gloss(operators, references, iterationGroup));
     }
 
     /** The repeatable group the condition ranges over, if any (a referenced field's repeatable ancestor, or a repeatable referenced group). */

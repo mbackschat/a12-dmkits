@@ -7,3 +7,9 @@ Executable, `verify`-able demos of the rulekit CLI (authored with [showboat](htt
 ```bash
 uvx showboat@0.6.1 verify examples/cli-tour.md   # exit 0 = output still matches the live CLI
 ```
+
+## Demos in this folder
+
+| File | What it shows |
+|---|---|
+| [`cli-tour.md`](cli-tour.md) | A tour of the verb surface on the `order-ruled` fixture. Opens with the **model** it guards (fields + kinds), then walks `validate` · `ingest` · `explain` (the structural tree) · `check` (with the lint backstop) — each as a command, its captured output, and a "what just happened" note. |

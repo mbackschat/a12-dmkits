@@ -1,7 +1,7 @@
 # rulekit CLI — verb tour
 
-*2026-06-05T13:33:12Z by Showboat 0.6.1*
-<!-- showboat-id: 3e29da35-656b-4983-82b1-bb00e19cc4d8 -->
+*2026-06-05T15:49:39Z by Showboat 0.6.1*
+<!-- showboat-id: f57a6d75-1484-4ef2-877f-fba10d65b338 -->
 
 The rulekit CLI is **JSON-in / JSON-out** over the A12 kernel. Every command runs through `bin/rk` (the launcher shim) from the repo root; the field breakdown also uses `jq`. Output blocks below are captured by [showboat](https://github.com/simonw/showboat); re-check them any time with `uvx showboat@0.6.1 verify examples/cli-tour.md` (exit 0 = output still matches the live CLI).
 
@@ -58,52 +58,73 @@ bin/rk ingest cli/src/test/resources/models/order-ruled.dm.json --rule /Order/De
 
 ## explain
 
-Breaks a condition into its operators, predicates, and functions — each with a plain-language **meaning** and the **gotchas** that bite authors. It also lists referenced fields and whether the rule iterates.
+Projects a condition in **normalized** form: a flat **`operators` glossary** (each distinct construct once, with meaning + gotchas) plus a structural **`tree`** whose nodes are just `{op, text, children}` — `op` backlinks into the glossary. The tree gives the And/Or nesting the flat list throws away; the glossary gives the meanings without repeating them at every occurrence. (The full output also lists the referenced fields and whether the rule iterates.)
 
 ```bash
-bin/rk explain cli/src/test/resources/models/order-ruled.dm.json --rule /Order/DeliveryNotBeforeOrder
+bin/rk explain cli/src/test/resources/models/order-ruled.dm.json --rule /Order/DeliveryNotBeforeOrder | jq '{operators, tree}'
 ```
 
 ```output
 {
-  "text" : "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And DifferenceInDays(/Order/OrderDate, /Order/DeliveryDate) < 0",
-  "operators" : [ {
-    "id" : "And",
-    "keyword" : "And",
-    "kind" : "OPERATOR",
-    "meaning" : "True iff both boolean operands are true.",
-    "gotchas" : [ "there is no 'Not' operator" ]
-  }, {
-    "id" : "AllFieldsFilled",
-    "keyword" : "AllFieldsFilled",
-    "kind" : "PREDICATE",
-    "meaning" : "True iff every listed field has a value.",
-    "gotchas" : [ "a field carrying a formal error is removed from evaluation (see FieldFilled)" ]
-  }, {
-    "id" : "LessThan",
-    "keyword" : "<",
-    "kind" : "OPERATOR",
-    "meaning" : "True iff the left operand is strictly less than the right."
-  }, {
-    "id" : "DifferenceInDays",
-    "keyword" : "DifferenceInDays",
-    "kind" : "FUNCTION",
-    "meaning" : "The number of whole days from the first date to the second.",
-    "gotchas" : [ "differences are a floor, not a calendar count (DifferenceInMonths(31.01,30.03)=1); fractional offsets truncate" ]
-  } ],
-  "references" : [ {
-    "path" : "/Order/DeliveryDate",
-    "kind" : "DATE"
-  }, {
-    "path" : "/Order/OrderDate",
-    "kind" : "DATE"
-  } ],
-  "iterates" : false,
-  "gloss" : "Uses And, AllFieldsFilled, <, DifferenceInDays over /Order/DeliveryDate, /Order/OrderDate."
+  "operators": [
+    {
+      "id": "And",
+      "keyword": "And",
+      "kind": "OPERATOR",
+      "meaning": "True iff both boolean operands are true.",
+      "gotchas": [
+        "there is no 'Not' operator"
+      ]
+    },
+    {
+      "id": "AllFieldsFilled",
+      "keyword": "AllFieldsFilled",
+      "kind": "PREDICATE",
+      "meaning": "True iff every listed field has a value.",
+      "gotchas": [
+        "a field carrying a formal error is removed from evaluation (see FieldFilled)"
+      ]
+    },
+    {
+      "id": "LessThan",
+      "keyword": "<",
+      "kind": "OPERATOR",
+      "meaning": "True iff the left operand is strictly less than the right."
+    },
+    {
+      "id": "DifferenceInDays",
+      "keyword": "DifferenceInDays",
+      "kind": "FUNCTION",
+      "meaning": "The number of whole days from the first date to the second.",
+      "gotchas": [
+        "differences are a floor, not a calendar count (DifferenceInMonths(31.01,30.03)=1); fractional offsets truncate"
+      ]
+    }
+  ],
+  "tree": {
+    "op": "And",
+    "text": "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And DifferenceInDays(/Order/OrderDate, /Order/DeliveryDate) < 0",
+    "children": [
+      {
+        "op": "AllFieldsFilled",
+        "text": "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate)"
+      },
+      {
+        "op": "LessThan",
+        "text": "DifferenceInDays(/Order/OrderDate, /Order/DeliveryDate) < 0",
+        "children": [
+          {
+            "op": "DifferenceInDays",
+            "text": "DifferenceInDays(/Order/OrderDate, /Order/DeliveryDate)"
+          }
+        ]
+      }
+    ]
+  }
 }
 ```
 
-→ Each construct carries its meaning plus traps: `DifferenceInDays` *floors* rather than counting calendar days, and the catalog reminds you there is no `Not` operator. `iterates: false` marks this a whole-order rule; `references` is exactly the two date fields it reads.
+→ The shape is explicit: an `And` of a guard (`AllFieldsFilled`) and a comparison, with `DifferenceInDays` nested *inside* the `<`. Each `op` in the tree keys into the `operators` glossary for its meaning/gotchas — stated **once**, even if an operator recurs. A flat list alone can't tell you the dates are **compared**, not merely referenced; the tree can.
 
 ## check
 

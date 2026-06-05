@@ -41,7 +41,8 @@ JSON/JSONL out on stdout (pipeable, `jq`/`grep`-able); non-zero exit on error wi
 | `batch` | a JSON array of ops (file) | results array | ✅ (2026-06-05) — runs many ops in one process, amortizing JVM startup + the kernel's per-process StringTemplate warm-up (see KERNEL-FINDINGS); each result is self-describing for attribution | core |
 | **`add`** | model.json + rule-spec JSON [`--output`] | the persisted DM-JSON (stdout) | ✅ 2026-06-05 | core (`write`) |
 | **`ingest`** | model.json `--rule <id>` | `{converted, condition}` or `{converted:false, canonicalText, reason}` | ✅ 2026-06-05 | adapter |
-| **`explain`** | model.json `--rule <id>` | `RuleExplanation` JSON (operators + meaning/gotchas, refs, iteration, gloss) | ✅ 2026-06-05 | adapter + core |
+| **`explain`** | model.json `--rule <id>` | `RuleExplanation` JSON (structural `tree` + flat operators with meaning/gotchas, refs, iteration, gloss) | ✅ 2026-06-05 | adapter + core |
+| **`schema`** | `[<name>]` (explain/describe/validate/ingest) | the JSON Schema of that verb's output, **on demand** (lists names when bare); documents the explain `tree.op → operators[].id` backlink | ✅ 2026-06-05 | cli (resources) |
 | `diff` | model.json + rule id + new condition | `RenderedDiff` JSON | ✅ (2026-06-05) — F8 re-express loop; structured render-vs-render or textual when Opaque; `--output` writes back | adapter |
 | `write-back` | model.json + rule id + spec | rewritten DM-JSON | planned | core |
 

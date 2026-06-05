@@ -20,6 +20,13 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  *       author-relevant {@code gotchas} (the semantic surprises {@code checkConsistency} is silent on).</li>
  *   <li>{@code references} — the fields/groups the condition touches, with their model kind.</li>
  *   <li>{@code iterates}/{@code iterationGroup} — whether the condition ranges over a repeatable group, and which.</li>
+ *   <li>{@code tree} — the condition's <b>structure</b>: a walk of the sealed AST so the And/Or nesting
+ *       and which operator wraps which is preserved (the flat {@code operators} list loses it). Each
+ *       node is {@code {op, text, children}} where {@code op} is a <b>backlink</b> into
+ *       {@code operators} (the meaning/gotchas live there once, not repeated per node) and {@code text}
+ *       is the rendered DSL of that subtree. Operator-bearing operands (functions/aggregates) become
+ *       child nodes; value leaves (fields/literals) stay in {@code text}. So {@code operators} is the
+ *       glossary, {@code tree} is the shape — normalized, not duplicated.</li>
  *   <li>{@code gloss} — a one-line natural-language summary.</li>
  * </ul>
  */
@@ -29,6 +36,7 @@ public record RuleExplanation(
         List<Reference> references,
         boolean iterates,
         Optional<String> iterationGroup,
+        Node tree,
         String gloss) {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -43,6 +51,19 @@ public record RuleExplanation(
     public record Operator(String id, String keyword, String kind, String meaning, List<String> gotchas) {
         public Operator {
             gotchas = gotchas == null ? List.of() : List.copyOf(gotchas);
+        }
+    }
+
+    /**
+     * One node of the structural {@code tree}. {@code op} is the operator-id — a <b>backlink</b> into
+     * the {@code operators} glossary (where its keyword/kind/meaning/gotchas live, once); {@code text}
+     * is the rendered DSL of this subtree. {@code children} are the operands that themselves carry an
+     * operator — {@code LogicCondition}'s two sides, a comparison's function/aggregate operands — in
+     * source order; value operands (fields, literals) are shown in {@code text} rather than as nodes.
+     */
+    public record Node(String op, String text, List<Node> children) {
+        public Node {
+            children = children == null ? List.of() : List.copyOf(children);
         }
     }
 
@@ -74,11 +95,25 @@ public record RuleExplanation(
         }
         root.put("iterates", iterates);
         iterationGroup.ifPresent(g -> root.put("iterationGroup", g));
+        if (tree != null) {
+            root.set("tree", treeJson(tree));
+        }
         root.put("gloss", gloss);
         try {
             return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("failed to render the explanation as JSON", e);
         }
+    }
+
+    private static ObjectNode treeJson(Node n) {
+        ObjectNode o = MAPPER.createObjectNode();
+        o.put("op", n.op());
+        o.put("text", n.text());
+        if (!n.children().isEmpty()) {
+            ArrayNode c = o.putArray("children");
+            n.children().forEach(child -> c.add(treeJson(child)));
+        }
+        return o;
     }
 }

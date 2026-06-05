@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-rulekit/schema/ingest.schema.json",
+  "title": "Ingest",
+  "description": "Output of `rulekit ingest` — a stored rule's condition read back. `converted` true = rulekit fully modeled every construct (an ordinary AST, ready for explain/diff); false = a tolerant Opaque passthrough preserving the kernel's text verbatim for constructs not yet modeled.",
+  "type": "object",
+  "required": ["rule", "converted", "condition"],
+  "additionalProperties": false,
+  "properties": {
+    "rule": { "type": "string", "description": "the rule's full name" },
+    "converted": { "type": "boolean", "description": "true = Converted (full rulekit AST); false = Opaque (verbatim passthrough)" },
+    "condition": { "type": "string", "description": "the rendered DSL (Converted) or the raw kernel condition text (Opaque)" }
+  }
+}
