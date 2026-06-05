@@ -15,6 +15,30 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-05 19:06 CEST — full pass@k under the self-explaining CLI + trimmed skill (opus + sonnet, k=2)
+
+First run under the **new material boundary**: produce agents get ONLY the self-describing CLI (`--help` / `manifest` / `cli operators`) — **no `operators.json` hand-off** — plus the judgment-only (trimmed) skill. Question: did dropping the raw catalog + trimming the skill regress self-sufficiency? Run `wxltzni75` (57 agents, 1.17M subagent tokens, 7m43s).
+
+| Task | opus | sonnet | family |
+|---|---|---|---|
+| T1 | 0/2 | 0/2 | authoring — iteration guard + cross-group enum |
+| T2 | 2/2 | 2/2 | authoring — field-vs-field |
+| T3 | 2/2 | 2/2 | authoring — pattern |
+| T4 | 1/2 | 1/2 | authoring — aggregate + empty-number guard |
+| T5 | 2/2 | 2/2 | authoring — date |
+| T6 | 2/2 | 2/2 | authoring — value-list + boolean |
+| T7 | 2/2 | 2/2 | comprehension |
+
+**Verdict: no regression from the self-explaining changes.** With the raw catalog withheld, agents discovered the vocabulary via `cli operators` and authored T2/T3/T5/T6 perfectly and read T7 perfectly — so the catalog-via-CLI swap and the skill trim hold. The two non-perfect cells are *not* caused by the change:
+
+- **T1 0/2 — mostly a judge false-negative (eval-design), kernel-verified.** Every opus judge marked the candidate non-equivalent *solely* because it used bare `[Tier]` instead of absolute `[/Subscription/Tier]`, claiming bare resolves to a non-existent `/Subscription/Addons/Tier`. **Not so:** `cli check` proves bare `[Tier]` from the `/Subscription/Addons` rule context is **valid** and binds to the ancestor `/Subscription/Tier` (a bogus bare name → `MVK_INVALID_ENTITY`) — bare names **walk up ancestor groups**. So opus's candidates are correct; the judge's path model is wrong (GAP 1). Sonnet additionally used `FieldFilled(Name)` as the row guard instead of `GroupFilled(Addons)` — a genuine, subtle divergence (they differ when an add-on row has an empty Name), so sonnet's T1 misses are partly real.
+- **T4 1/2 — the known empty-number-guard subtlety** (consistent with prior runs, not new). The passing run guards `FieldFilled(Quantity)`; the failing run omits it, so per KERNEL-SEMANTICS §2 the empty number reads as 0 and the rule fires on an empty Quantity — genuinely ≠ the gold. The `RK_UNGUARDED_NUMBER_COMPARISON` lint does **not** fire here (it skips field-vs-aggregate), so the agent gets no nudge.
+
+**GAPS / actions:**
+1. **Judge path-resolution bug (eval-design):** the judge doesn't know bare field names walk up ancestors → false-negatives (T1). Fix the judge prompt; a cheap T1 re-run should then flip toward ~2/2 (opus).
+2. **Kernel finding (new):** bare field names resolve against the rule's group **or an ancestor** (`[Tier]` from `/Subscription/Addons` → `/Subscription/Tier`, no `../` needed) — refines KERNEL-FINDINGS §paths. → documented + the skill's "bare = that scope" line corrected.
+3. **Lint gap (minor):** `RK_UNGUARDED_NUMBER_COMPARISON` skips field-vs-aggregate, so T4's missing guard isn't nudged — a candidate lint extension.
+
 ### 2026-06-05 07:15 CEST — developer-path baseline probe (n=1, opus, worktree)
 
 The first eval of the **developer path** (N10). A clean opus agent, given only rulekit's public DSL API + javadoc + catalog (**no CLI, no BA skill**), in a git worktree, authoring a rule via the typed builder with the **compiler + `RuleValidator`** as the feedback loop. Task = T1's intent (PRO ⇒ add-on MonthlyFee required — the polarity + iteration-guard traps). Boundary: `skill/`, `docs/`, `eval/` forbidden.

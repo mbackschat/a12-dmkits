@@ -148,7 +148,11 @@ exactly the same documents? Polarity matters — a rule that fires on the opposi
 Judge WITHIN the field's ACTUAL value domain: two rules that differ only on values the field cannot hold
 ARE equivalent. The model is ${MODEL_FILE(r.task)} — first run \`${CLI} describe ${MODEL_FILE(r.task)}\` to
 see field types and enum value sets (e.g. an enum with only three possible values: "X not in {A,B}" then
-equals "X == C"). For pattern/regex operands, equivalence is about capturing the SAME intended format —
+equals "X == C"). PATH RESOLUTION: a bare field name resolves against the rule's group AND its ancestor
+groups (the kernel walks UP the hierarchy), so a bare ref and an absolute ref denote the SAME field when
+no nearer match exists — e.g. bare [Tier] from a rule scoped to /Subscription/Addons is the same field as
+[/Subscription/Tier]. A difference that is only path NOTATION for the same resolved field is NOT a semantic
+difference. For pattern/regex operands, equivalence is about capturing the SAME intended format —
 treat trivially different regexes (anchors, equivalent character classes) that accept the same strings as
 equivalent; do not require byte-identical regex text.
 Reference gold: field="${r.task.gold.field}", condition=${JSON.stringify(r.task.gold.condition)}.

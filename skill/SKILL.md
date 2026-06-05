@@ -46,8 +46,8 @@ So to enforce a requirement, write its **violation**:
 
 A condition is evaluated relative to the rule's **group** (its iteration scope — defaults to the error field's parent group).
 
-- **Bare name** = a field in that scope: `FieldNotFilled(MonthlyFee)`.
-- **Absolute path** for a field in another group: `[/Customer/Status]`.
+- **Bare name** = a field in the rule's scope **or an ancestor group** — the kernel searches *up* the hierarchy: `FieldNotFilled(MonthlyFee)`, and from a rule scoped to `/Subscription/Addons`, `[Tier]` resolves up to `/Subscription/Tier` (no `../` or absolute path needed for an ancestor's field).
+- **Absolute path** for a field in a *different branch* (or just to be explicit): `[/Customer/Status]`.
 - **Comparisons** bracket the value reference: `[Quantity] > 0`, `[/Customer/Status] == "ACTIVE"`. **Predicates** take bare refs: `FieldNotFilled(Quantity)`.
 - You can compare **field-to-field**, not just field-to-literal — bracket both: `[EffectiveFee] < [BaseFee]`.
 - **Strict vs inclusive**: map the wording carefully. "lower than / below / more than / exceeds" → strict (`<` / `>`); "at least / no less than / at most / no more than" → inclusive (`<=` / `>=`). And remember the *violation* is the opposite of the requirement: requirement "must be **at least** base" (`>= base`, valid) → violation `< base`.
