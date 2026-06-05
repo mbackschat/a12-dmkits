@@ -33,6 +33,9 @@ dependencies {
     implementation "com.mgmtp.a12.kernel:kernel-md-serializer:${kernelVersion}"      // ExternalDocumentModelSerializerService.getInternDocumentModel
     implementation "com.mgmtp.a12.kernel:kernel-md-a12internal:${kernelVersion}"     // internal DocumentModel
 
+    // modelkit (structure builder) — TEST-only: an ingest round-trip authors its model with it.
+    testImplementation project(':modelkit')
+
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

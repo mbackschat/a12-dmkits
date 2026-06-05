@@ -1,5 +1,11 @@
 rootProject.name = 'a12-rulekit'
 
+// modelkit (docs/MODELKIT-PROPOSAL / ARCHITECTURE §5.2): the standalone, Jackson-only document-model
+// *structure* builder. Its own module so the structure⊥dsl boundary (D10) is compiler-enforced — its
+// main can't import core/rulekit. Consumed in TEST scope by the root project and :adapter (nothing in
+// core/rulekit/adapter main uses it).
+include 'modelkit'
+
 // The kernel-adapter (proposal D15/N8): an opt-in, Java-only module that consumes the kernel's
 // a12internal *read* surface (parser/formatter/meta) — never part of the shipped, polyglot core.
 // Build it with `:adapter:test`; `:test` keeps core free of the internal tier.

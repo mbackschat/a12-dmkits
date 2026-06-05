@@ -1,0 +1,26 @@
+plugins {
+    id 'java-library'
+}
+
+// modelkit (ARCHITECTURE §5.2 / docs/MODELKIT-PROPOSAL): the typed document-model *structure* builder,
+// peer of rulekit's rule builder. Deliberately **standalone** — depends on Jackson only, never on the
+// kernel or on rulekit's `dsl`/`core` (the umbrella's structure⊥dsl rule, D10). Keeping it its own
+// module makes that boundary compiler-enforced (a stray `import …dm.core` here won't compile) and the
+// TypeScript twin a clean port. Its tests live in the aggregate test set for now (they share Fixtures
+// and the committed fixtures with rulekit's tests, and use core's ModelLoader as the kernel oracle).
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    // Pure emit: build the DM-JSON tree with Jackson; no kernel, no rulekit. toJson() returns a String,
+    // so Jackson stays an implementation detail (not on the public signature).
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+}
