@@ -24,7 +24,8 @@ What each document under `docs/` holds, so you can jump to the right one. This i
 ## Experience study
 
 - **[API-POC-STUDY.md](API-POC-STUDY.md)** — the living study & review surface: what rulekit *feels like* to use, with numbered findings that feed the Phase-1/2 increments (and seed the LLM skill and self-sufficiency eval). Features flip 🔮→✅ here as they land.
-- **[EVAL-SPEC.md](EVAL-SPEC.md)** — the self-sufficiency eval & benchmark (N6/N1): the method (a **clean subagent** as the LLM-under-test, since self-eval is invalid), the material boundary, objective+soft-regression scoring, the build-measure-learn loop, the probe protocol, and the living task suite with baseline results.
+- **[EVAL-SPEC.md](EVAL-SPEC.md)** — the self-sufficiency eval & benchmark (N6/N1): a newcomer **primer** and **glossary**, the method (a **clean subagent** as the LLM-under-test, since self-eval is invalid), the material boundary, objective+soft-regression scoring, the build-measure-learn loop, the probe protocol, and the living task suite. The *method*, not the numbers.
+- **[../eval/RESULTS.md](../eval/RESULTS.md)** — the dated **results log** (sibling of the runner, outside `docs/`): baselines, per-change lifts, model comparisons, and pass@k runs, newest first. EVAL-SPEC is the fixed method; this is the moving record.
 
 ## Licensing
 
