@@ -1,0 +1,13 @@
+{
+  "id": "T3",
+  "family": "authoring",
+  "model": "subscription",
+  "operators": ["FieldFilled", "PatternViolated", "And"],
+  "intent": "A subscription's invoice email, when one is given, must look like a real email address (a name, an @, then a host).",
+  "gold": {
+    "field": "/Subscription/Billing/InvoiceEmail",
+    "condition": "FieldFilled(InvoiceEmail) And [InvoiceEmail] PatternViolated \"[A-Za-z0-9._-]+@[A-Za-z0-9.-]+\"",
+    "code": "INVOICE_EMAIL_MALFORMED"
+  },
+  "notes": "Pattern family. NON-iterating (error field in the non-repeatable Billing group). The violation is 'present but ill-formed', so it pairs a positive presence guard (FieldFilled) with PatternViolated (not PatternMatched) — getting the regex polarity right is the test: matching the pattern is the GOOD case, so the rule must fire on a violation of it. Bracketed ref on the left of the pattern op; bare ref inside FieldFilled."
+}

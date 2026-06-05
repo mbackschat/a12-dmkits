@@ -1,0 +1,13 @@
+{
+  "id": "T5",
+  "family": "authoring",
+  "model": "order",
+  "operators": ["AllFieldsFilled", "DifferenceInDays", "LessThan", "And"],
+  "intent": "An order's delivery date must not fall before its order date.",
+  "gold": {
+    "field": "/Order/DeliveryDate",
+    "condition": "AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, DeliveryDate) < 0",
+    "code": "DELIVERY_BEFORE_ORDER"
+  },
+  "notes": "Date family. DifferenceInDays(A, B) is B minus A in days (positive when B is after A), so 'delivery before order' is DifferenceInDays(OrderDate, DeliveryDate) < 0 — the test is getting the argument order and the sign right. Guarded by AllFieldsFilled over BOTH dates (a date op on an absent operand is a formal error), which also exercises the multi-field presence guard. NON-iterating; both dates are top-level /Order fields, referenced bare inside the date functions."
+}

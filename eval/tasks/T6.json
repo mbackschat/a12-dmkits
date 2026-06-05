@@ -1,0 +1,13 @@
+{
+  "id": "T6",
+  "family": "authoring",
+  "model": "subscription",
+  "operators": ["Equal", "FieldValueNotIncludedInValueList", "And"],
+  "intent": "An auto-renewing subscription must be on a paid tier — Pro or Enterprise — never Basic.",
+  "gold": {
+    "field": "/Subscription/Tier",
+    "condition": "[AutoRenew] == True And FieldValueNotIncludedInValueList(Tier, \"PRO\", \"ENTERPRISE\")",
+    "code": "AUTORENEW_REQUIRES_PAID_TIER"
+  },
+  "notes": "Value-list family, with a boolean condition. The violation is 'auto-renew is on AND the tier is outside the paid set', so it uses the NEGATIVE value-list predicate (FieldValueNotIncludedInValueList) — picking the not-included variant over the included one is the polarity test. Boolean compared with the capitalized literal True (not the string \"true\"; the kernel rejects string-vs-boolean). Enum values compared by their stored codes (PRO/ENTERPRISE), not their labels. NON-iterating; AutoRenew and the error field Tier are siblings in /Subscription."
+}
