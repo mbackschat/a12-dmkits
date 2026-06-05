@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-rulekit/schema/batch.schema.json",
+  "title": "BatchOps",
+  "description": "INPUT of `rulekit batch <ops.json>` — a JSON array of verb invocations run in one process. Each op's result echoes its `id`/`verb`/`args` so diagnostics are never mis-attributed.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["verb"],
+    "additionalProperties": false,
+    "properties": {
+      "verb": { "type": "string", "description": "the verb to run (any except `batch`, which cannot nest)" },
+      "args": { "type": "array", "items": { "type": "string" }, "description": "the verb's argv (as on the command line, minus the verb)" },
+      "id": { "type": "string", "description": "optional caller tag, echoed back on the result for correlation" }
+    }
+  }
+}

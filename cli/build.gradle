@@ -29,6 +29,14 @@ dependencies {
     // needs Jackson directly (core's is `implementation`, not exposed transitively).
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
 
+    // picocli — the declarative command framework (CLI-SPEC §1a, the self-explaining requirement): one
+    // `@Command`/`@Option` declaration per verb drives parsing, `--help`, AND the machine-readable
+    // manifest, so help can't drift from behavior. codegen (annotation processor) emits the GraalVM
+    // native-image reflection config under META-INF/native-image, so the native build (CLI-SPEC §B2)
+    // needs no hand-written config.
+    implementation 'info.picocli:picocli:4.7.6'
+    annotationProcessor 'info.picocli:picocli-codegen:4.7.6'
+
     // The kernel logs via SLF4J; with no provider it prints "No SLF4J providers were found" warnings
     // to stderr. A no-op binding silences them so the CLI's output stays clean for agent piping.
     runtimeOnly 'org.slf4j:slf4j-nop:2.0.16'
@@ -40,6 +48,12 @@ dependencies {
 
 application {
     mainClass = 'io.github.mbackschat.a12.rulekit.cli.CliMain'
+}
+
+// picocli-codegen: name the project so the generated native-image config lands under a stable
+// META-INF/native-image/<group>/<artifact>/ path (CLI-SPEC §B2).
+tasks.named('compileJava') {
+    options.compilerArgs += ['-Aproject=io.github.mbackschat.a12.rulekit/rulekit-cli']
 }
 
 // Dev convenience: `:cli:run` resolves relative model paths from the repo root (its default is the

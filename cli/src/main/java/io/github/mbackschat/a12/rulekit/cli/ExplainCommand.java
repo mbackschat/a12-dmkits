@@ -12,50 +12,42 @@ import io.github.mbackschat.a12.rulekit.adapter.Ingest;
 import io.github.mbackschat.a12.rulekit.adapter.KernelAdapter;
 import io.github.mbackschat.a12.rulekit.context.ModelContext;
 import io.github.mbackschat.a12.rulekit.dsl.BoundModel;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
+import picocli.CommandLine.Parameters;
 
 /**
  * The {@code explain} verb (CLI-SPEC §4 / F9) — project an existing rule's condition into a structured
- * {@code RuleExplanation} (operators with catalog meaning + gotchas, referenced fields, iteration
- * scope, an NL gloss). Ingests the rule first (F10), then explains the resulting AST — the same
- * mechanism that works on a hand-built condition.
- *
- * <p>Usage: {@code explain <model.json> --rule <ruleFullName>}.
+ * {@code RuleExplanation} (a flat operator glossary + a structural {@code tree} whose nodes backlink
+ * into it, referenced fields, iteration scope, an NL gloss). Ingests the rule first (F10), then explains
+ * the resulting AST — the same mechanism that works on a hand-built condition.
  */
-final class ExplainCommand {
+@Command(name = "explain", mixinStandardHelpOptions = true,
+        description = "Project an existing rule's condition as a structured RuleExplanation (glossary + tree).")
+final class ExplainCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private ExplainCommand() {
-    }
+    @Parameters(index = "0", paramLabel = "<model.json>", description = "the DM-JSON model file")
+    String model;
 
-    static int run(String[] args, Appendable out, Appendable err) {
-        if (args.length == 0) {
-            return fail(err, "usage: explain <model.json> --rule <ruleFullName>");
-        }
-        String modelPath = args[0];
-        String rule = null;
-        for (int i = 1; i < args.length; i++) {
-            if ("--rule".equals(args[i]) && i + 1 < args.length) {
-                rule = args[++i];
-            } else {
-                return fail(err, "unknown option: " + args[i] + "\nusage: explain <model.json> --rule <ruleFullName>");
-            }
-        }
-        if (rule == null) {
-            return fail(err, "explain needs --rule <ruleFullName>");
-        }
+    @Option(names = "--rule", required = true, paramLabel = "<ruleFullName>",
+            description = "full name of the rule to explain, e.g. /Order/SomeRule")
+    String rule;
 
+    @Override
+    public Integer call() {
         String modelJson;
         try {
-            modelJson = Files.readString(Path.of(modelPath));
+            modelJson = Files.readString(Path.of(model));
         } catch (IOException e) {
-            return fail(err, "cannot read model: " + e.getMessage());
+            return fail("cannot read model: " + e.getMessage());
         }
         try {
-            BoundModel model = BoundModel.ofJson(modelJson);
-            Ingest ingest = KernelAdapter.of(model).ingest(rule);
+            BoundModel boundModel = BoundModel.ofJson(modelJson);
+            Ingest ingest = KernelAdapter.of(boundModel).ingest(rule);
             if (ingest instanceof Ingest.Converted converted) {
-                append(out, new ModelContext(model).explain(converted.condition()).toJson() + "\n");
+                out().print(new ModelContext(boundModel).explain(converted.condition()).toJson() + "\n");
             } else if (ingest instanceof Ingest.Opaque opaque) {
                 // can't explain a construct the converter doesn't model yet — report it, don't fail
                 ObjectNode root = MAPPER.createObjectNode();
@@ -63,11 +55,11 @@ final class ExplainCommand {
                 root.put("explained", false);
                 root.put("reason", opaque.reason());
                 root.put("canonicalText", opaque.canonicalText());
-                append(out, pretty(root));
+                out().print(pretty(root));
             }
             return 0;
         } catch (RuntimeException e) {
-            return fail(err, "explain failed: " + e.getMessage());
+            return fail("explain failed: " + e.getMessage());
         }
     }
 
@@ -77,22 +69,5 @@ final class ExplainCommand {
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("cannot serialize explain result", e);
         }
-    }
-
-    private static void append(Appendable out, String text) {
-        try {
-            out.append(text);
-        } catch (IOException e) {
-            throw new IllegalStateException("cannot write output", e);
-        }
-    }
-
-    private static int fail(Appendable err, String message) {
-        try {
-            err.append(message).append('\n');
-        } catch (IOException ignored) {
-            // best-effort diagnostic
-        }
-        return 2;
     }
 }

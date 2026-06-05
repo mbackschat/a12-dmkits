@@ -1,9 +1,34 @@
 # rulekit CLI — verb tour
 
-*2026-06-05T15:49:39Z by Showboat 0.6.1*
-<!-- showboat-id: f57a6d75-1484-4ef2-877f-fba10d65b338 -->
+*2026-06-05T16:29:31Z by Showboat 0.6.1*
+<!-- showboat-id: 7935c320-7fb8-4b7b-902d-be46902773a5 -->
 
-The rulekit CLI is **JSON-in / JSON-out** over the A12 kernel. Every command runs through `bin/rk` (the launcher shim) from the repo root; the field breakdown also uses `jq`. Output blocks below are captured by [showboat](https://github.com/simonw/showboat); re-check them any time with `uvx showboat@0.6.1 verify examples/cli-tour.md` (exit 0 = output still matches the live CLI).
+The rulekit CLI is **JSON-in / JSON-out** over the A12 kernel. Every command runs through `bin/rk` (the launcher shim) from the repo root; some steps also use `jq`. Output blocks below are captured by [showboat](https://github.com/simonw/showboat); re-check them any time with `uvx showboat@0.6.1 verify examples/cli-tour.md` (exit 0 = output still matches the live CLI).
+
+## Discover the tool
+
+A cold agent can learn the CLI **from the CLI** — no external docs needed. `manifest` lists every verb (and `bin/rk <verb> --help` shows that verb's parameters and meanings); `operators` browses the DSL vocabulary; `schema <verb>` gives a verb's JSON I/O contract.
+
+```bash
+bin/rk manifest | jq -r '.verbs[].verb'
+```
+
+```output
+dump
+describe
+validate
+check
+add
+ingest
+explain
+diff
+batch
+schema
+operators
+manifest
+```
+
+→ Twelve self-describing verbs. Each verb's parameters + meanings live in that same `manifest` (and in `bin/rk <verb> --help`); `bin/rk operators` lists the DSL operators with their semantics, `bin/rk operators <id>` one in full. The tool describes itself — the N1 skill teaches *judgment* (polarity, the traps), not this catalog.
 
 ## The model — `order-ruled`
 
@@ -58,7 +83,7 @@ bin/rk ingest cli/src/test/resources/models/order-ruled.dm.json --rule /Order/De
 
 ## explain
 
-Projects a condition in **normalized** form: a flat **`operators` glossary** (each distinct construct once, with meaning + gotchas) plus a structural **`tree`** whose nodes are just `{op, text, children}` — `op` backlinks into the glossary. The tree gives the And/Or nesting the flat list throws away; the glossary gives the meanings without repeating them at every occurrence. (The full output also lists the referenced fields and whether the rule iterates.)
+Projects a condition in **normalized** form: a flat **`operators` glossary** (each distinct construct once, with meaning + gotchas) plus a structural **`tree`** whose nodes are just `{operator, text, children}` — `operator` backlinks into the glossary. The tree gives the And/Or nesting the flat list throws away; the glossary gives the meanings without repeating them at every occurrence. (The full output also lists the referenced fields and whether the rule iterates.)
 
 ```bash
 bin/rk explain cli/src/test/resources/models/order-ruled.dm.json --rule /Order/DeliveryNotBeforeOrder | jq '{operators, tree}'
@@ -102,19 +127,19 @@ bin/rk explain cli/src/test/resources/models/order-ruled.dm.json --rule /Order/D
     }
   ],
   "tree": {
-    "op": "And",
+    "operator": "And",
     "text": "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And DifferenceInDays(/Order/OrderDate, /Order/DeliveryDate) < 0",
     "children": [
       {
-        "op": "AllFieldsFilled",
+        "operator": "AllFieldsFilled",
         "text": "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate)"
       },
       {
-        "op": "LessThan",
+        "operator": "LessThan",
         "text": "DifferenceInDays(/Order/OrderDate, /Order/DeliveryDate) < 0",
         "children": [
           {
-            "op": "DifferenceInDays",
+            "operator": "DifferenceInDays",
             "text": "DifferenceInDays(/Order/OrderDate, /Order/DeliveryDate)"
           }
         ]
@@ -124,7 +149,7 @@ bin/rk explain cli/src/test/resources/models/order-ruled.dm.json --rule /Order/D
 }
 ```
 
-→ The shape is explicit: an `And` of a guard (`AllFieldsFilled`) and a comparison, with `DifferenceInDays` nested *inside* the `<`. Each `op` in the tree keys into the `operators` glossary for its meaning/gotchas — stated **once**, even if an operator recurs. A flat list alone can't tell you the dates are **compared**, not merely referenced; the tree can.
+→ The shape is explicit: an `And` of a guard (`AllFieldsFilled`) and a comparison, with `DifferenceInDays` nested *inside* the `<`. Each node's `operator` keys into the `operators` glossary for its meaning/gotchas — stated **once**, even if an operator recurs. A flat list alone can't tell you the dates are **compared**, not merely referenced; the tree can.
 
 ## check
 

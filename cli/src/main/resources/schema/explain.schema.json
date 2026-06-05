@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-rulekit/schema/explain.schema.json",
   "title": "RuleExplanation",
-  "description": "Output of `rulekit explain` — a rule's condition projected for understanding. `operators` is the glossary (each distinct construct once, with meaning/gotchas); `tree` is the structure, and every tree node's `op` is a BACKLINK into `operators[].id` (meanings are not repeated per node).",
+  "description": "Output of `rulekit explain` — a rule's condition projected for understanding. `operators` is the glossary (each distinct construct once, with meaning/gotchas); `tree` is the structure, and every tree node's `operator` is a BACKLINK into `operators[].id` (meanings are not repeated per node).",
   "type": "object",
   "required": ["text", "operators", "references", "iterates", "tree", "gloss"],
   "additionalProperties": false,
@@ -45,11 +45,11 @@
   "$defs": {
     "node": {
       "type": "object",
-      "description": "one node of the condition's structure. `op` backlinks into operators[].id; `text` is the rendered DSL of this subtree. `children` are the operator-bearing operands (a LogicCondition's two sides, a comparison's function/aggregate operands), in source order; value operands (fields, literals) are shown in `text`, not as nodes.",
-      "required": ["op", "text"],
+      "description": "one node of the condition's structure. `operator` backlinks into operators[].id; `text` is the rendered DSL of this subtree. `children` are the operator-bearing operands (a LogicCondition's two sides, a comparison's function/aggregate operands), in source order; value operands (fields, literals) are shown in `text`, not as nodes.",
+      "required": ["operator", "text"],
       "additionalProperties": false,
       "properties": {
-        "op": { "type": "string", "description": "operator-id — a key into the `operators` glossary" },
+        "operator": { "type": "string", "description": "operator-id — a key into the `operators` glossary" },
         "text": { "type": "string", "description": "the rendered DSL of this subtree" },
         "children": { "type": "array", "items": { "$ref": "#/$defs/node" } }
       }

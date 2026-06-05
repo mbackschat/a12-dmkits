@@ -1,7 +1,8 @@
 package io.github.mbackschat.a12.rulekit.cli;
 
-import java.io.IOException;
-import java.util.Arrays;
+import java.io.PrintWriter;
+
+import picocli.CommandLine;
 
 /**
  * The standalone CLI (proposal N10 / docs/CLI-SPEC.md) — the modeller/BA front-end over the engine.
@@ -10,41 +11,29 @@ import java.util.Arrays;
  * passed sinks (no {@code System.exit}, no static streams), so every verb is a sub-second JUnit test
  * with no packaging and no spawned process (CLI-SPEC §3 — the fast inner loop). {@link CliMain} is the
  * thin shell that wires it to the process.
+ *
+ * <p>Dispatch, parsing, {@code --help}, and the machine-readable manifest are all driven by
+ * <b>picocli</b> from one declaration per verb (the {@link RootCommand} subcommand tree), so the help
+ * can't drift from the parsing (CLI-SPEC §1a — the self-explaining requirement).
  */
 public final class Cli {
 
     private Cli() {
     }
 
-    /** Dispatch a verb. Returns a process exit code (0 = success). */
+    /** Dispatch a verb. Returns a process exit code (0 = success, 1 = invalid, 2 = usage/IO error). */
     public static int run(String[] args, Appendable out, Appendable err) {
-        if (args.length == 0) {
-            return fail(err, "usage: rulekit <verb> [args]"
-                    + "   (verbs: dump, describe, validate, check, add, ingest, explain, diff, batch, schema)");
-        }
-        String[] rest = Arrays.copyOfRange(args, 1, args.length);
-        return switch (args[0]) {
-            case "dump" -> DumpCommand.run(rest, out, err);
-            case "describe" -> DescribeCommand.run(rest, out, err);
-            case "validate" -> ValidateCommand.run(rest, out, err);
-            case "check" -> CheckCommand.run(rest, out, err);
-            case "add" -> AddCommand.run(rest, out, err);
-            case "ingest" -> IngestCommand.run(rest, out, err);
-            case "explain" -> ExplainCommand.run(rest, out, err);
-            case "diff" -> DiffCommand.run(rest, out, err);
-            case "batch" -> BatchCommand.run(rest, out, err);
-            case "schema" -> SchemaCommand.run(rest, out, err);
-            default -> fail(err, "unknown verb: " + args[0]
-                    + "   (verbs: dump, describe, validate, check, add, ingest, explain, diff, batch, schema)");
-        };
-    }
-
-    private static int fail(Appendable err, String message) {
+        PrintWriter outW = new PrintWriter(new AppendableWriter(out), true);
+        PrintWriter errW = new PrintWriter(new AppendableWriter(err), true);
         try {
-            err.append(message).append('\n');
-        } catch (IOException ignored) {
-            // best-effort diagnostic
+            return new CommandLine(new RootCommand())
+                    .setOut(outW)
+                    .setErr(errW)
+                    .setExpandAtFiles(false) // model paths are plain args, never @argfiles
+                    .execute(args);
+        } finally {
+            outW.flush();
+            errW.flush();
         }
-        return 2;
     }
 }

@@ -11,40 +11,36 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Parameters;
+
 /**
- * The {@code batch} verb (CLI-SPEC §4) — run a sequence of verb invocations in ONE process. The kernel
- * pays a one-time cost on the first {@code checkConsistency} of a process (~497 StringTemplate classes
- * load, then cache for the JVM's life); spawning the CLI once per rule pays it every time. {@code batch}
- * runs the whole list in a single process so that warm-up — and JVM startup — is amortized across all
- * ops. This is the enabler for the N6 benchmark runner (many `check`s per task/tier).
- *
- * <p>Reads a JSON array of ops, each {@code {"verb": "...", "args": [...]}}, dispatches every op through
- * {@link Cli#run} (the same seam as a standalone call), and emits a JSON array of per-op results
- * {@code {verb, exit, result|stdout, stderr?}} — JSON stdout is embedded as {@code result}, other text
- * as {@code stdout}. Usage: {@code batch <ops.json>}. A batch-level error (missing/malformed file) exits
- * 2; otherwise exit 0 with each op's own exit code in the array, so one failing op never aborts the rest.
+ * The {@code batch} verb (CLI-SPEC §4) — run a sequence of verb invocations in ONE process, amortizing
+ * JVM startup + the kernel's one-time StringTemplate warm-up across all ops (the N6 runner enabler).
+ * Reads a JSON array of ops {@code {"verb","args":[…],"id"?}}, dispatches each through {@link Cli#run}
+ * (the same seam as a standalone call), and emits a JSON array of self-describing per-op results.
+ * A batch-level error (missing/malformed file) exits 2; otherwise exit 0 with each op's own exit code.
  */
-final class BatchCommand {
+@Command(name = "batch", mixinStandardHelpOptions = true,
+        description = "Run a JSON array of verb invocations in one process (amortizes JVM + kernel warm-up).")
+final class BatchCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final String USAGE =
-            "usage: batch <ops.json>   (ops: [{\"verb\":\"check\",\"args\":[\"model.json\", …]}, …])";
 
-    private BatchCommand() {
-    }
+    @Parameters(index = "0", paramLabel = "<ops.json>",
+            description = "a JSON array of ops: [{\"verb\":\"check\",\"args\":[\"model.json\", …],\"id\"?}, …]")
+    String opsFile;
 
-    static int run(String[] args, Appendable out, Appendable err) {
-        if (args.length != 1) {
-            return fail(err, USAGE);
-        }
+    @Override
+    public Integer call() {
         JsonNode ops;
         try {
-            ops = MAPPER.readTree(Files.readString(Path.of(args[0])));
+            ops = MAPPER.readTree(Files.readString(Path.of(opsFile)));
         } catch (IOException e) {
-            return fail(err, "cannot read ops file: " + e.getMessage());
+            return fail("cannot read ops file: " + e.getMessage());
         }
         if (!ops.isArray()) {
-            return fail(err, "ops file must be a JSON array\n" + USAGE);
+            return fail("ops file must be a JSON array");
         }
         ArrayNode results = MAPPER.createArrayNode();
         int index = 0;
@@ -52,19 +48,16 @@ final class BatchCommand {
             results.add(runOp(op, index++));
         }
         try {
-            out.append(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(results)).append('\n');
+            out().print(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(results) + "\n");
             return 0;
-        } catch (IOException e) {
-            return fail(err, "cannot write batch results: " + e.getMessage());
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            return fail("cannot write batch results: " + e.getMessage());
         }
     }
 
     private static ObjectNode runOp(JsonNode op, int index) {
         // Every result is SELF-DESCRIBING so a diagnostic can never be mis-attributed: the explicit
-        // `op` index, the caller's optional `id`, the `verb`, and the echoed `args` together say which
-        // invocation produced the result — even if results are reordered or diagnostics are flattened
-        // out of their wrapper. (Within a verb's own diagnostics the rule path may still be a synthetic
-        // default like "CheckRule"; pass that verb's `--name` if you need it distinct there too.)
+        // `op` index, the caller's optional `id`, the `verb`, and the echoed `args`.
         ObjectNode result = MAPPER.createObjectNode();
         result.put("op", index);
         if (op.hasNonNull("id")) {
@@ -97,7 +90,6 @@ final class BatchCommand {
         try {
             exit = Cli.run(argv.toArray(String[]::new), opOut, opErr);
         } catch (RuntimeException e) {
-            // a verb that throws is still just a failed op — keep the batch going
             result.put("exit", 1);
             result.put("stderr", "op threw: " + e.getMessage());
             return result;
@@ -110,7 +102,6 @@ final class BatchCommand {
         return result;
     }
 
-    /** Embed stdout as parsed JSON when it is JSON (verbs emit JSON), else verbatim as a string. */
     private static void attachStdout(ObjectNode result, String stdout) {
         String trimmed = stdout.strip();
         if (trimmed.isEmpty()) {
@@ -127,14 +118,5 @@ final class BatchCommand {
         result.put("exit", 2);
         result.put("stderr", message);
         return result;
-    }
-
-    private static int fail(Appendable err, String message) {
-        try {
-            err.append(message).append('\n');
-        } catch (IOException ignored) {
-            // best-effort diagnostic
-        }
-        return 2;
     }
 }

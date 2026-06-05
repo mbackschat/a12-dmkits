@@ -13,64 +13,59 @@ import io.github.mbackschat.a12.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.rulekit.dsl.FieldInfo;
 import io.github.mbackschat.a12.rulekit.dsl.GroupInfo;
 import io.github.mbackschat.a12.rulekit.model.ValueKind;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
+import picocli.CommandLine.Parameters;
 
 /**
  * The {@code dump} verb (CLI-SPEC §5) — renders the model-context surface as the finding-13
  * artifacts. Serialization lives here in {@code :cli}, never in core: core exposes the programmatic
  * projections ({@code BoundModel.fields()/groups()}), the CLI turns them into JSONL/markdown files.
- *
- * <p>Usage: {@code dump <model.json> [fields|groups|rules|card]} prints one artifact to stdout;
- * {@code dump <model.json> --output <dir>} writes all four; bare {@code dump <model.json>} prints
- * the model card.
  */
-final class DumpCommand {
+@Command(name = "dump", mixinStandardHelpOptions = true,
+        description = "Render the model as the finding-13 artifacts (fields/groups/rules JSONL + model card).")
+final class DumpCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private DumpCommand() {
-    }
+    @Parameters(index = "0", paramLabel = "<model.json>", description = "the DM-JSON model file")
+    String model;
 
-    static int run(String[] args, Appendable out, Appendable err) {
-        if (args.length == 0) {
-            return fail(err, "usage: dump <model.json> [fields|groups|rules|card] | --output <dir>");
-        }
-        Path modelPath = Path.of(args[0]);
-        String outputDir = null;
+    @Parameters(index = "1", arity = "0..1", paramLabel = "<artifact>",
+            description = "one of: fields | groups | rules | card (default: card). Ignored with --output.")
+    String artifactArg;
+
+    @Option(names = {"--output", "-o"}, paramLabel = "<dir>",
+            description = "write all four artifacts into this directory instead of printing one")
+    String outputDir;
+
+    @Override
+    public Integer call() {
         Artifact only = null;
-        for (int i = 1; i < args.length; i++) {
-            String a = args[i];
-            if ("--output".equals(a) || "-o".equals(a)) {
-                if (i + 1 >= args.length) {
-                    return fail(err, "--output needs a directory");
-                }
-                outputDir = args[++i];
-            } else {
-                Optional<Artifact> artifact = Artifact.fromArg(a);
-                if (artifact.isEmpty()) {
-                    return fail(err, "unknown artifact: " + a + " (want fields|groups|rules|card)");
-                }
-                only = artifact.get();
+        if (artifactArg != null) {
+            Optional<Artifact> artifact = Artifact.fromArg(artifactArg);
+            if (artifact.isEmpty()) {
+                return fail("unknown artifact: " + artifactArg + " (want fields|groups|rules|card)");
             }
+            only = artifact.get();
         }
-
         try {
-            String json = Files.readString(modelPath);
-            BoundModel model = BoundModel.ofJson(json);
-
+            String json = Files.readString(Path.of(model));
+            BoundModel bound = BoundModel.ofJson(json);
             if (outputDir != null) {
                 Path dir = Path.of(outputDir);
                 Files.createDirectories(dir);
                 for (Artifact a : Artifact.values()) {
-                    Files.writeString(dir.resolve(a.fileName), render(a, model, json));
+                    Files.writeString(dir.resolve(a.fileName), render(a, bound, json));
                 }
                 return 0;
             }
-            append(out, render(only == null ? Artifact.MODEL_CARD : only, model, json));
+            out().print(render(only == null ? Artifact.MODEL_CARD : only, bound, json));
             return 0;
         } catch (IOException e) {
-            return fail(err, "cannot read model: " + e.getMessage());
+            return fail("cannot read model: " + e.getMessage());
         } catch (RuntimeException e) {
-            return fail(err, "dump failed: " + e.getMessage());
+            return fail("dump failed: " + e.getMessage());
         }
     }
 
@@ -82,8 +77,6 @@ final class DumpCommand {
             case MODEL_CARD -> modelCard(model, json);
         };
     }
-
-    // ---- JSONL projections (one self-contained JSON object per line) --------------------------
 
     private static String fieldsJsonl(BoundModel model) {
         StringBuilder sb = new StringBuilder();
@@ -151,7 +144,7 @@ final class DumpCommand {
                 n.put("errorField", body.path("errorEntityRelPath").asText());
                 n.put("severity", body.path("severity").asText());
                 n.put("condition", body.path("errorCondition").asText());
-                n.putNull("referencedFields"); // raw text; resolving refs needs the adapter's parse
+                n.putNull("referencedFields");
                 n.put("resolution", "heuristic");
                 sb.append(line(n));
             } else if ("Group".equals(type)) {
@@ -159,8 +152,6 @@ final class DumpCommand {
             }
         }
     }
-
-    // ---- model-card.md (the read-whole skeleton, stamped) -------------------------------------
 
     private static String modelCard(BoundModel model, String json) {
         JsonNode header = readHeader(json);
@@ -203,11 +194,9 @@ final class DumpCommand {
         }
     }
 
-    // ---- helpers -----------------------------------------------------------------------------
-
     private static String line(ObjectNode node) {
         try {
-            return MAPPER.writeValueAsString(node) + "\n"; // compact: one object per line
+            return MAPPER.writeValueAsString(node) + "\n";
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             throw new IllegalStateException("cannot serialize JSONL line", e);
         }
@@ -216,22 +205,5 @@ final class DumpCommand {
     private static JsonNode textOrNull(Optional<String> value) {
         return value.<JsonNode>map(MAPPER.getNodeFactory()::textNode)
                 .orElseGet(MAPPER.getNodeFactory()::nullNode);
-    }
-
-    private static void append(Appendable out, String text) {
-        try {
-            out.append(text);
-        } catch (IOException e) {
-            throw new IllegalStateException("cannot write output", e);
-        }
-    }
-
-    private static int fail(Appendable err, String message) {
-        try {
-            err.append(message).append('\n');
-        } catch (IOException ignored) {
-            // best-effort diagnostic
-        }
-        return 2;
     }
 }

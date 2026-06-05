@@ -22,7 +22,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  *   <li>{@code iterates}/{@code iterationGroup} — whether the condition ranges over a repeatable group, and which.</li>
  *   <li>{@code tree} — the condition's <b>structure</b>: a walk of the sealed AST so the And/Or nesting
  *       and which operator wraps which is preserved (the flat {@code operators} list loses it). Each
- *       node is {@code {op, text, children}} where {@code op} is a <b>backlink</b> into
+ *       node is {@code {operator, text, children}} where {@code operator} is a <b>backlink</b> into
  *       {@code operators} (the meaning/gotchas live there once, not repeated per node) and {@code text}
  *       is the rendered DSL of that subtree. Operator-bearing operands (functions/aggregates) become
  *       child nodes; value leaves (fields/literals) stay in {@code text}. So {@code operators} is the
@@ -55,13 +55,14 @@ public record RuleExplanation(
     }
 
     /**
-     * One node of the structural {@code tree}. {@code op} is the operator-id — a <b>backlink</b> into
-     * the {@code operators} glossary (where its keyword/kind/meaning/gotchas live, once); {@code text}
-     * is the rendered DSL of this subtree. {@code children} are the operands that themselves carry an
-     * operator — {@code LogicCondition}'s two sides, a comparison's function/aggregate operands — in
-     * source order; value operands (fields, literals) are shown in {@code text} rather than as nodes.
+     * One node of the structural {@code tree}. {@code operator} is the operator-id — a <b>backlink</b>
+     * into the {@code operators} glossary (where its keyword/kind/meaning/gotchas live, once);
+     * {@code text} is the rendered DSL of this subtree. {@code children} are the operands that
+     * themselves carry an operator — {@code LogicCondition}'s two sides, a comparison's
+     * function/aggregate operands — in source order; value operands (fields, literals) are shown in
+     * {@code text} rather than as nodes.
      */
-    public record Node(String op, String text, List<Node> children) {
+    public record Node(String operator, String text, List<Node> children) {
         public Node {
             children = children == null ? List.of() : List.copyOf(children);
         }
@@ -108,7 +109,7 @@ public record RuleExplanation(
 
     private static ObjectNode treeJson(Node n) {
         ObjectNode o = MAPPER.createObjectNode();
-        o.put("op", n.op());
+        o.put("operator", n.operator());
         o.put("text", n.text());
         if (!n.children().isEmpty()) {
             ArrayNode c = o.putArray("children");

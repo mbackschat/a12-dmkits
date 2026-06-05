@@ -5,59 +5,48 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Parameters;
+
 /**
- * The {@code schema} verb (CLI-SPEC §4) — emits the JSON Schema of a verb's output, so an agent can
- * learn a structure's contract <b>on demand</b> instead of inferring it from one example. Schemas are
- * never attached to the verbs' own responses (that would bloat every call); they live here, fetched
- * when wanted. Notably {@code schema explain} documents the {@code tree.op → operators[].id} backlink.
+ * The {@code schema} verb (CLI-SPEC §4) — emits the JSON Schema of a verb's input or output, so an
+ * agent can learn a structure's contract <b>on demand</b> instead of inferring it from one example.
+ * Schemas are never attached to the verbs' own responses (that would bloat every call); they live
+ * here, fetched when wanted. {@code schema explain} documents the {@code tree.op → operators[].id}
+ * backlink; {@code schema add}/{@code batch} document the verbs' JSON <em>inputs</em>.
  *
- * <p>Usage: {@code schema} (lists the available names) or {@code schema <name>} (prints that schema).
- * Schemas are classpath resources under {@code /schema/<name>.schema.json}, drift-locked by
- * {@code SchemaVerbTest} (every emitted top-level key must be declared).
+ * <p>Schemas are classpath resources under {@code /schema/<name>.schema.json}, drift-locked by
+ * {@code SchemaVerbTest}.
  */
-final class SchemaCommand {
+@Command(name = "schema", mixinStandardHelpOptions = true,
+        description = "Emit the JSON Schema of a verb's input/output on demand (lists names when bare).")
+final class SchemaCommand extends BaseCommand {
 
-    /** The verb outputs that have a published schema (CI-locked against drift). */
-    static final List<String> NAMES = List.of("explain", "describe", "validate", "ingest");
+    /** The verb I/O structures that have a published schema (CI-locked against drift). */
+    static final List<String> NAMES = List.of("explain", "describe", "validate", "ingest", "add", "batch");
 
-    private SchemaCommand() {
-    }
+    @Parameters(index = "0", arity = "0..1", paramLabel = "<name>",
+            description = "one of: explain, describe, validate, ingest (outputs); add, batch (inputs)")
+    String name;
 
-    static int run(String[] args, Appendable out, Appendable err) {
-        if (args.length == 0) {
-            append(out, "Available schemas (use `schema <name>`): " + String.join(", ", NAMES) + "\n");
+    @Override
+    public Integer call() {
+        if (name == null) {
+            out().print("Available schemas (use `schema <name>`): " + String.join(", ", NAMES) + "\n");
             return 0;
         }
-        String name = args[0];
         if (!NAMES.contains(name)) {
-            return fail(err, "unknown schema: " + name + "   (available: " + String.join(", ", NAMES) + ")");
+            return fail("unknown schema: " + name + "   (available: " + String.join(", ", NAMES) + ")");
         }
         String resource = "/schema/" + name + ".schema.json";
         try (InputStream in = SchemaCommand.class.getResourceAsStream(resource)) {
             if (in == null) {
-                return fail(err, "schema resource missing: " + resource);
+                return fail("schema resource missing: " + resource);
             }
-            append(out, new String(in.readAllBytes(), StandardCharsets.UTF_8));
+            out().print(new String(in.readAllBytes(), StandardCharsets.UTF_8));
             return 0;
         } catch (IOException e) {
-            return fail(err, "cannot read schema: " + e.getMessage());
+            return fail("cannot read schema: " + e.getMessage());
         }
-    }
-
-    private static void append(Appendable out, String text) {
-        try {
-            out.append(text);
-        } catch (IOException e) {
-            throw new IllegalStateException("cannot write output", e);
-        }
-    }
-
-    private static int fail(Appendable err, String message) {
-        try {
-            err.append(message).append('\n');
-        } catch (IOException ignored) {
-            // best-effort diagnostic
-        }
-        return 2;
     }
 }

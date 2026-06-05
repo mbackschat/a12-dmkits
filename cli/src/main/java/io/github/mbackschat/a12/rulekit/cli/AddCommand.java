@@ -18,69 +18,64 @@ import io.github.mbackschat.a12.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.rulekit.validate.ValidationResult;
 import io.github.mbackschat.a12.rulekit.write.ModelWriter;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
+import picocli.CommandLine.Parameters;
 
 /**
  * The {@code add} verb (CLI-SPEC §4) — persist a rule into a model from a JSON rule-spec, completing
  * the BA loop (check → add → saved model). Validates the condition against the real kernel before
- * persisting, then re-validates the persisted model (which catches message/locale-coverage problems
- * the condition-check masks with placeholders). On success the new DM-JSON goes to stdout (or
+ * persisting, then re-validates the persisted model. On success the new DM-JSON goes to stdout (or
  * {@code --output <file>}); on rejection nothing is persisted and diagnostics go to stderr (exit 1).
  *
- * <p>Usage: {@code add <model.json> <rule-spec.json> [--output <file>]}. The rule-spec carries the
- * full envelope: {@code field} (absolute), {@code condition} (DSL), {@code code}, {@code messages}
- * (≥1, each {@code {locale,text}}), optional {@code severity} (default ERROR) and {@code name}.
+ * <p>The rule-spec carries the full envelope: {@code field} (absolute), {@code condition} (DSL),
+ * {@code code}, {@code messages} (≥1, each {@code {locale,text}}), optional {@code severity} (default
+ * ERROR) and {@code name}. See {@code schema add} for the JSON Schema.
  */
-final class AddCommand {
+@Command(name = "add", mixinStandardHelpOptions = true,
+        description = "Persist a rule from a JSON rule-spec (kernel-validated before + after writing). See `schema add`.")
+final class AddCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final String USAGE =
-            "usage: add <model.json> <rule-spec.json> [--output <file>]\n"
-            + "  rule-spec: {\"field\":\"/G/F\",\"condition\":\"<DSL>\",\"code\":\"ID\","
-            + "\"messages\":[{\"locale\":\"en_US\",\"text\":\"…\"}],\"severity\":\"ERROR\",\"name\":\"…\"}";
 
-    private AddCommand() {
-    }
+    @Parameters(index = "0", paramLabel = "<model.json>", description = "the DM-JSON model file")
+    String model;
 
-    static int run(String[] args, Appendable out, Appendable err) {
-        if (args.length < 2) {
-            return fail(err, USAGE);
-        }
-        String modelPath = args[0];
-        String specPath = args[1];
-        String outputPath = null;
-        for (int i = 2; i < args.length; i++) {
-            if (("--output".equals(args[i]) || "-o".equals(args[i])) && i + 1 < args.length) {
-                outputPath = args[++i];
-            } else {
-                return fail(err, "unknown option: " + args[i] + "\n" + USAGE);
-            }
-        }
+    @Parameters(index = "1", paramLabel = "<rule-spec.json>",
+            description = "the rule envelope as JSON (see `schema add`)")
+    String specPath;
 
+    @Option(names = {"--output", "-o"}, paramLabel = "<file>",
+            description = "write the new DM-JSON to this file instead of stdout")
+    String outputPath;
+
+    @Override
+    public Integer call() {
         String modelJson;
         JsonNode spec;
         try {
-            modelJson = Files.readString(Path.of(modelPath));
+            modelJson = Files.readString(Path.of(model));
             spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
         } catch (IOException e) {
-            return fail(err, "cannot read input: " + e.getMessage());
+            return fail("cannot read input: " + e.getMessage());
         }
 
         String field = text(spec, "field");
         String condition = text(spec, "condition");
         String code = text(spec, "code");
         if (field == null || condition == null || code == null) {
-            return fail(err, "rule-spec needs field, condition, and code\n" + USAGE);
+            return fail("rule-spec needs field, condition, and code (see `schema add`)");
         }
         List<LocalizedText> messages = messages(spec);
         if (messages.isEmpty()) {
-            return fail(err, "rule-spec needs at least one message {locale,text}\n" + USAGE);
+            return fail("rule-spec needs at least one message {locale,text} (see `schema add`)");
         }
         String severity = spec.hasNonNull("severity") ? spec.get("severity").asText() : "ERROR";
         String name = spec.hasNonNull("name") ? spec.get("name").asText() : code;
 
         int slash = field.lastIndexOf('/');
         if (slash <= 0) {
-            return fail(err, "field must be an absolute path (e.g. /Group/Field)\n" + USAGE);
+            return fail("field must be an absolute path (e.g. /Group/Field)");
         }
         String group = field.substring(0, slash);
         String errorEntityRelPath = "../" + field.substring(group.length() + 1);
@@ -89,7 +84,7 @@ final class AddCommand {
         ValidationResult check = new RuleValidator().check(modelJson,
                 new DraftRule(group, name, errorEntityRelPath, condition, code, severity));
         if (!check.ok()) {
-            return reject(err, "condition rejected by the kernel", check);
+            return reject("condition rejected by the kernel", check);
         }
 
         // 2) persist with the real messages, then re-validate (catches message/locale coverage)
@@ -99,13 +94,12 @@ final class AddCommand {
         try {
             reModel = BoundModel.ofJson(persisted);
         } catch (RuntimeException e) {
-            return fail(err, "persisted rule is invalid (e.g. missing a message for a declared locale): "
+            return fail("persisted rule is invalid (e.g. missing a message for a declared locale): "
                     + e.getMessage());
         }
 
-        // 2b) best-effort lint backstop — surface valid-but-suspicious findings (chiefly the silent
-        // inverted-polarity trap the kernel can't catch). Advisory: a kernel-valid persist is never blocked.
-        lintBackstop(reModel, group + "/" + name, field, err);
+        // 2b) best-effort lint backstop — never blocks a kernel-valid persist
+        lintBackstop(reModel, group + "/" + name, field);
 
         // 3) emit
         try {
@@ -115,22 +109,17 @@ final class AddCommand {
                 ok.put("persisted", true);
                 ok.put("rule", group + "/" + name);
                 ok.put("file", outputPath);
-                append(out, MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(ok) + "\n");
+                out().print(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(ok) + "\n");
             } else {
-                append(out, persisted);
+                out().print(persisted);
             }
             return 0;
         } catch (IOException e) {
-            return fail(err, "cannot write output: " + e.getMessage());
+            return fail("cannot write output: " + e.getMessage());
         }
     }
 
-    /**
-     * Run the shared lint backstop on the just-persisted rule and emit any findings (chiefly
-     * {@code RK_INVERTED_REQUIREDNESS}) as warnings to stderr. Best-effort: a kernel-valid persist is
-     * never blocked by lint, so an empty result or any failure stays silent.
-     */
-    private static void lintBackstop(BoundModel model, String ruleFullName, String errorFieldPath, Appendable err) {
+    private void lintBackstop(BoundModel model, String ruleFullName, String errorFieldPath) {
         List<Diagnostic> findings = LintBackstop.lintPersisted(model, ruleFullName, errorFieldPath);
         if (findings.isEmpty()) {
             return;
@@ -145,8 +134,8 @@ final class AddCommand {
                 w.put("summary", d.summary());
                 d.fix().ifPresent(f -> w.put("fix", f));
             }
-            err.append(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root)).append('\n');
-        } catch (IOException ignored) {
+            err().println(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root));
+        } catch (com.fasterxml.jackson.core.JsonProcessingException ignored) {
             // best-effort: lint never blocks a valid, persisted rule
         }
     }
@@ -168,33 +157,16 @@ final class AddCommand {
         return spec.hasNonNull(field) ? spec.get(field).asText() : null;
     }
 
-    private static int reject(Appendable err, String summary, ValidationResult result) {
+    private int reject(String summary, ValidationResult result) {
         try {
             ObjectNode root = MAPPER.createObjectNode();
             root.put("persisted", false);
             root.put("reason", summary);
             root.set("diagnostics", MAPPER.readTree(result.toJson()));
-            err.append(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root)).append('\n');
-        } catch (IOException ignored) {
+            err().println(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root));
+        } catch (com.fasterxml.jackson.core.JsonProcessingException ignored) {
             // best-effort
         }
         return 1;
-    }
-
-    private static void append(Appendable out, String text) {
-        try {
-            out.append(text);
-        } catch (IOException e) {
-            throw new IllegalStateException("cannot write output", e);
-        }
-    }
-
-    private static int fail(Appendable err, String message) {
-        try {
-            err.append(message).append('\n');
-        } catch (IOException ignored) {
-            // best-effort diagnostic
-        }
-        return 2;
     }
 }

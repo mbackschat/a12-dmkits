@@ -10,17 +10,19 @@ The CLI is the **modeller/BA's** interaction surface (N10): one engine (core + a
 
 **A cold agent, given only the binary, must be able to explore the tool.** Discoverability is a property of the *CLI*, not the N1 skill — the skill stays minimal (it teaches judgment: polarity, the empty-as-0 trap; not the verb/parameter catalog), so the tool has to carry its own description. Three layers, each a separate concern:
 
-| Layer | Question it answers | Mechanism |
-|---|---|---|
-| **Verbs** | "what can this tool do?" | `help` / a machine-readable verb manifest (verbs × summary) |
-| **Parameters** | "how do I call verb X, and what do the args mean?" | per-verb `--help` / the manifest's `args:[{name, required, meaning}]`; consistent `usage:` on error |
-| **I/O shape** | "what does verb X emit / expect?" | `schema <name>` (✅ outputs); input schemas (`add` rule-spec, `batch` ops) to follow |
+| Layer | Question it answers | Mechanism | State |
+|---|---|---|---|
+| **Verbs** | "what can this tool do?" | `--help` (root) + `manifest` (machine-readable verbs × summary) | ✅ |
+| **Parameters** | "how do I call verb X, and what do the args mean?" | per-verb `--help` + the `manifest` `params:[{name, required, description}]` | ✅ |
+| **I/O shape** | "what does verb X emit / expect?" | `schema <name>` — outputs (explain/describe/validate/ingest) + inputs (add/batch) | ✅ |
+| **DSL vocabulary** | "what operators exist and what do they mean?" | `operators` (list + per-operator full semantics) | ✅ |
 
-Rules of thumb when touching the CLI: a new verb ships with its help/manifest entry and an output schema in the same change; usage strings are uniformly rich (name + meaning per flag), not terse; nothing about the verb surface is discoverable *only* by reading the skill or the source. Drift is caught at build (verb↔manifest parity, schema↔output key coverage) — the F11 discipline. Status of the layers is in §4 (verb table) and the §9 board.
+**Implementation: picocli** (§2) — one `@Command`/`@Option(description=…)` declaration per verb drives parsing, `--help`, *and* the `manifest`, so the help cannot drift from behavior (the most-stable option; the Java-standard, GraalVM-native-ready framework). Rules of thumb when touching the CLI: a new verb is a `@Command` class added to `RootCommand` (it gets `--help` + a manifest entry automatically) and ships an output schema in the same change; option descriptions are the single source of help text; nothing about the verb surface is discoverable *only* by reading the skill or the source. Drift is caught at build — `ManifestVerbTest` (verb-set discoverability), `SchemaVerbTest` (schema↔output key coverage) — the F11 discipline. Status of the layers is in §4 (verb table) and the §9 board.
 
 ## 2. Module shape
 
 - **`:cli` Gradle subproject**, `application` plugin. Depends on **core + adapter** (the adapter, added 2026-06-05, powers the `ingest`/`explain` read-back verbs; it pulls the internal kernel read tier — fine for an *app*; N8 confines the internal tier to adapter/cli, never core).
+- **picocli** drives the command tree (added 2026-06-05, §1a): `RootCommand` + one `@Command` class per verb, each a `Callable<Integer>` extending `BaseCommand` (which supplies the `out`/`err` writers from the seam). `picocli-codegen` (annotation processor) auto-emits the GraalVM native-image reflection config under `META-INF/native-image/`, so the B2 native build needs no hand-written config.
 - **Testability split — the key to the fast loop:**
   - `Cli.run(String[] args, Appendable out, Appendable err) -> int` — **pure and testable**: no `System.exit`, no `System.out` capture, returns an exit code, writes to the passed sinks.
   - `CliMain.main(String[])` — the thin shell: `System.exit(Cli.run(args, System.out, System.err))`.
@@ -54,7 +56,9 @@ JSON/JSONL out on stdout (pipeable, `jq`/`grep`-able); non-zero exit on error wi
 | **`add`** | model.json + rule-spec JSON [`--output`] | the persisted DM-JSON (stdout) | ✅ 2026-06-05 | core (`write`) |
 | **`ingest`** | model.json `--rule <id>` | `{converted, condition}` or `{converted:false, canonicalText, reason}` | ✅ 2026-06-05 | adapter |
 | **`explain`** | model.json `--rule <id>` | `RuleExplanation` JSON (structural `tree` + flat operators with meaning/gotchas, refs, iteration, gloss) | ✅ 2026-06-05 | adapter + core |
-| **`schema`** | `[<name>]` (explain/describe/validate/ingest) | the JSON Schema of that verb's output, **on demand** (lists names when bare); documents the explain `tree.op → operators[].id` backlink | ✅ 2026-06-05 | cli (resources) |
+| **`schema`** | `[<name>]` (explain/describe/validate/ingest outputs; add/batch inputs) | the JSON Schema of that verb's I/O, **on demand** (lists names when bare); documents the explain `tree.operator → operators[].id` backlink | ✅ 2026-06-05 | cli (resources) |
+| **`operators`** | `[<id>] [--kind] [--keyword]` | the DSL **operator catalog** — a filterable list, or one operator's full semantics (keywords EN/DE, operands, meaning, constraints, gotchas, valid/invalid example). The proactive complement to `explain` | ✅ 2026-06-05 | core catalog |
+| **`manifest`** | — | machine-readable map of **every verb + its parameters** (name, required, meaning), derived from the picocli model so it can't drift | ✅ 2026-06-05 | cli (picocli) |
 | `diff` | model.json + rule id + new condition | `RenderedDiff` JSON | ✅ (2026-06-05) — F8 re-express loop; structured render-vs-render or textual when Opaque; `--output` writes back | adapter |
 | `write-back` | model.json + rule id + spec | rewritten DM-JSON | planned | core |
 

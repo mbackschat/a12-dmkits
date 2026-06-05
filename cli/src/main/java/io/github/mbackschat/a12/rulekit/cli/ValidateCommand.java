@@ -13,36 +13,41 @@ import com.mgmtp.a12.model.notification.RankedNotification;
 
 import io.github.mbackschat.a12.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.rulekit.model.ModelConsistencyException;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Parameters;
+import picocli.CommandLine.Unmatched;
 
 /**
  * The {@code validate} verb (CLI-SPEC §4) — runs the model through the real kernel (the F4
  * ground-truth step) and reports consistency as JSON: {@code {"valid":bool,"diagnostics":[...]}},
  * exit 0 if valid, 1 if not. Model-level today; rule-level validation arrives with the JSON rule-spec.
- *
- * <p>Usage: {@code validate <model.json>}.
  */
-final class ValidateCommand {
+@Command(name = "validate", mixinStandardHelpOptions = true,
+        description = "Run the model through the real kernel; report {valid, diagnostics[]} (exit 0 valid, 1 not).")
+final class ValidateCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final Pattern MVK = Pattern.compile("MVK_[A-Z0-9_]+");
 
-    private ValidateCommand() {
-    }
+    @Parameters(index = "0", paramLabel = "<model.json>",
+            description = "the DM-JSON model file (re-checks its existing rules)")
+    String model;
 
-    static int run(String[] args, Appendable out, Appendable err) {
-        if (args.length == 0) {
-            return fail(err, "usage: validate <model.json>");
-        }
-        if (args.length > 1) {
+    @Unmatched
+    String[] extra = new String[0];
+
+    @Override
+    public Integer call() {
+        if (extra.length > 0) {
             // don't silently ignore extra args (N6 baseline finding) — point at the right verb
-            return fail(err, "validate takes only <model.json> (it re-checks the model's existing rules). "
+            return fail("validate takes only <model.json> (it re-checks the model's existing rules). "
                     + "To validate a candidate rule, use: check <model.json> --group … --field … --condition … --code …");
         }
         String json;
         try {
-            json = Files.readString(Path.of(args[0]));
+            json = Files.readString(Path.of(model));
         } catch (IOException e) {
-            return fail(err, "cannot read model: " + e.getMessage());
+            return fail("cannot read model: " + e.getMessage());
         }
 
         ObjectNode root = MAPPER.createObjectNode();
@@ -51,28 +56,26 @@ final class ValidateCommand {
             BoundModel.ofJson(json);
             root.put("valid", true);
             root.set("diagnostics", diagnostics);
-            append(out, pretty(root));
+            out().print(pretty(root));
             return 0;
         } catch (ModelConsistencyException e) {
             for (RankedNotification n : e.notifications()) {
                 diagnostics.add(diagnostic(n.getSeverity().name(), n.getMessage()));
             }
-            return invalid(out, root, diagnostics);
+            return invalid(root, diagnostics);
         } catch (RuntimeException e) {
-            // deserialize / expand / parse failure — still "not a valid model"
             diagnostics.add(diagnostic("ERROR", String.valueOf(e.getMessage())));
-            return invalid(out, root, diagnostics);
+            return invalid(root, diagnostics);
         }
     }
 
-    private static int invalid(Appendable out, ObjectNode root, ArrayNode diagnostics) {
+    private int invalid(ObjectNode root, ArrayNode diagnostics) {
         root.put("valid", false);
         root.set("diagnostics", diagnostics);
-        append(out, pretty(root));
+        out().print(pretty(root));
         return 1;
     }
 
-    /** One diagnostic: severity, the MVK code if the message carries one, and the message. */
     private static ObjectNode diagnostic(String severity, String message) {
         ObjectNode d = MAPPER.createObjectNode();
         d.put("severity", severity);
@@ -93,22 +96,5 @@ final class ValidateCommand {
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             throw new IllegalStateException("cannot serialize validation result", e);
         }
-    }
-
-    private static void append(Appendable out, String text) {
-        try {
-            out.append(text);
-        } catch (IOException e) {
-            throw new IllegalStateException("cannot write output", e);
-        }
-    }
-
-    private static int fail(Appendable err, String message) {
-        try {
-            err.append(message).append('\n');
-        } catch (IOException ignored) {
-            // best-effort diagnostic
-        }
-        return 2;
     }
 }

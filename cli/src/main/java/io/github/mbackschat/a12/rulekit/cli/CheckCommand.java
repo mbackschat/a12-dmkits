@@ -14,126 +14,96 @@ import io.github.mbackschat.a12.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.rulekit.validate.ValidationResult;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
+import picocli.CommandLine.Parameters;
 
 /**
  * The {@code check} verb (CLI-SPEC §4) — the authoring feedback loop: submit a candidate rule
  * (condition + error field + code, in a group) and get the real kernel's verdict + diagnostics, with
- * no need to persist anything. This is what lets a BA's agent author *and self-verify* a rule. Wraps
- * core {@link RuleValidator#check}; on a kernel-valid candidate it also runs the best-effort
- * {@link LintBackstop} (temporary in-memory injection) so the silent inverted-polarity trap surfaces
- * in the diagnostics here too, not only on {@code add}.
- *
- * <p>Usage: {@code check <model.json> --group <path> --field <relPath> --condition "<DSL>" --code <id>
- * [--severity ERROR|WARNING] [--name <name>]}.
+ * no need to persist anything. Wraps core {@link RuleValidator#check}; on a kernel-valid candidate it
+ * also runs the best-effort {@link LintBackstop} so the silent inverted-polarity / unguarded-number
+ * traps surface in the diagnostics here too, not only on {@code add}.
  */
-final class CheckCommand {
+@Command(name = "check", mixinStandardHelpOptions = true,
+        description = "Validate a candidate rule against the real kernel (+ lint), without persisting.")
+final class CheckCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final String USAGE =
-            "usage: check <model.json> --field <absolutePath> --condition \"<DSL>\" --code <id>"
-            + " [--group <path>] [--severity ERROR|WARNING] [--name <name>]"
-            + "\n  --field is the error field's absolute path; --group (the rule's iteration scope)"
-            + " defaults to the field's parent group.";
 
-    private CheckCommand() {
-    }
+    @Parameters(index = "0", paramLabel = "<model.json>", description = "the DM-JSON model file")
+    String model;
 
-    static int run(String[] args, Appendable out, Appendable err) {
-        if (args.length == 0) {
-            return fail(err, USAGE);
-        }
-        String model = args[0];
-        String group = null;
-        String field = null;
-        String condition = null;
-        String code = null;
-        String severity = "ERROR";
-        String name = "CheckRule";
+    @Option(names = "--field", required = true, paramLabel = "<absolutePath>",
+            description = "the error field's absolute path, e.g. /Group/Field")
+    String field;
 
-        for (int i = 1; i < args.length; i++) {
-            String flag = args[i];
-            if (i + 1 >= args.length) {
-                return fail(err, flag + " needs a value\n" + USAGE);
-            }
-            String value = args[++i];
-            switch (flag) {
-                case "--group" -> group = value;
-                case "--field" -> field = value;
-                case "--condition" -> condition = value;
-                case "--code" -> code = value;
-                case "--severity" -> severity = value;
-                case "--name" -> name = value;
-                default -> {
-                    return fail(err, "unknown option: " + flag + "\n" + USAGE);
-                }
-            }
-        }
-        String missing = firstMissing(field, condition, code);
-        if (missing != null) {
-            return fail(err, "missing required option: " + missing + "\n" + USAGE);
-        }
-        // The rule's group defaults to the field's parent (the "rule on this field" case).
-        if (group == null) {
+    @Option(names = "--condition", required = true, paramLabel = "<DSL>",
+            description = "the candidate condition in A12 DSL (true on a violation)")
+    String condition;
+
+    @Option(names = "--code", required = true, paramLabel = "<id>", description = "the rule's error code")
+    String code;
+
+    @Option(names = "--group", paramLabel = "<path>",
+            description = "the rule's iteration scope; defaults to the field's parent group")
+    String group;
+
+    @Option(names = "--severity", defaultValue = "ERROR", paramLabel = "ERROR|WARNING",
+            description = "rule severity (default: ${DEFAULT-VALUE})")
+    String severity;
+
+    @Option(names = "--name", defaultValue = "CheckRule", paramLabel = "<name>",
+            description = "candidate rule name (default: ${DEFAULT-VALUE})")
+    String name;
+
+    @Override
+    public Integer call() {
+        String effectiveGroup = group;
+        if (effectiveGroup == null) {
             int slash = field.lastIndexOf('/');
             if (slash <= 0) {
-                return fail(err, "--field must be an absolute path (e.g. /Group/Field)\n" + USAGE);
+                return fail("--field must be an absolute path (e.g. /Group/Field)");
             }
-            group = field.substring(0, slash);
+            effectiveGroup = field.substring(0, slash);
         }
-        if (!field.startsWith(group + "/")) {
-            return fail(err, "--field " + field + " must be inside --group " + group + "\n" + USAGE);
+        if (!field.startsWith(effectiveGroup + "/")) {
+            return fail("--field " + field + " must be inside --group " + effectiveGroup);
         }
         // The kernel's error-entity relpath is fork-9 group-relative: "../" + path below the group.
-        String errorEntityRelPath = "../" + field.substring(group.length() + 1);
+        String errorEntityRelPath = "../" + field.substring(effectiveGroup.length() + 1);
 
         String json;
         try {
             json = Files.readString(Path.of(model));
         } catch (IOException e) {
-            return fail(err, "cannot read model: " + e.getMessage());
+            return fail("cannot read model: " + e.getMessage());
         }
         try {
-            DraftRule draft = new DraftRule(group, name, errorEntityRelPath, condition, code, severity);
+            DraftRule draft = new DraftRule(effectiveGroup, name, errorEntityRelPath, condition, code, severity);
             ValidationResult result = new RuleValidator().check(json, draft);
-            // Best-effort lint backstop: on a kernel-valid candidate, surface valid-but-suspicious
-            // findings (chiefly the silent inverted-polarity trap). These are WARNINGs, so merging
-            // them never flips `valid`; advisory, and never run on an already-rejected candidate.
             List<Diagnostic> all = new ArrayList<>(result.diagnostics());
             if (result.ok()) {
-                all.addAll(LintBackstop.lintCandidate(json, group, name, errorEntityRelPath,
+                all.addAll(LintBackstop.lintCandidate(json, effectiveGroup, name, errorEntityRelPath,
                         code, condition, severity, field));
             }
             ValidationResult merged = ValidationResult.of(all);
             ObjectNode root = MAPPER.createObjectNode();
             root.put("valid", merged.ok());
             root.set("diagnostics", MAPPER.readTree(merged.toJson()));
-            append(out, pretty(root));
+            out().print(pretty(root));
             return merged.ok() ? 0 : 1;
         } catch (IOException e) {
-            return fail(err, "check failed: " + e.getMessage());
+            return fail("check failed: " + e.getMessage());
         } catch (RuntimeException e) {
-            // a candidate so malformed it can't even be injected — still "not valid"
             ObjectNode root = MAPPER.createObjectNode();
             root.put("valid", false);
             root.putArray("diagnostics").addObject()
                     .put("severity", "ERROR").put("source", "KERNEL")
                     .put("summary", String.valueOf(e.getMessage()));
-            append(out, pretty(root));
+            out().print(pretty(root));
             return 1;
         }
-    }
-
-    private static String firstMissing(String field, String condition, String code) {
-        if (field == null) {
-            return "--field";
-        }
-        if (condition == null) {
-            return "--condition";
-        }
-        if (code == null) {
-            return "--code";
-        }
-        return null;
     }
 
     private static String pretty(ObjectNode root) {
@@ -142,22 +112,5 @@ final class CheckCommand {
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("cannot serialize check result", e);
         }
-    }
-
-    private static void append(Appendable out, String text) {
-        try {
-            out.append(text);
-        } catch (IOException e) {
-            throw new IllegalStateException("cannot write output", e);
-        }
-    }
-
-    private static int fail(Appendable err, String message) {
-        try {
-            err.append(message).append('\n');
-        } catch (IOException ignored) {
-            // best-effort diagnostic
-        }
-        return 2;
     }
 }

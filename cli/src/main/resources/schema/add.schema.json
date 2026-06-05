@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-rulekit/schema/add.schema.json",
+  "title": "AddRuleSpec",
+  "description": "INPUT of `rulekit add <model.json> <rule-spec.json>` — the rule envelope to persist. The condition is validated against the real kernel before writing, and the persisted model is re-validated (so every declared message locale must be covered).",
+  "type": "object",
+  "required": ["field", "condition", "code", "messages"],
+  "additionalProperties": false,
+  "properties": {
+    "field": { "type": "string", "description": "the error field's ABSOLUTE path, e.g. /Order/Quantity; its parent group is the rule's iteration scope" },
+    "condition": { "type": "string", "description": "the condition in A12 DSL — TRUE on a violation (the rule fires when it holds)" },
+    "code": { "type": "string", "description": "the rule's error code" },
+    "messages": {
+      "type": "array",
+      "description": "≥1 localized message; cover every locale the model declares",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["locale", "text"],
+        "additionalProperties": false,
+        "properties": {
+          "locale": { "type": "string", "description": "a full locale code, e.g. en_US (bare 'en' is rejected by the kernel)" },
+          "text": { "type": "string" }
+        }
+      }
+    },
+    "severity": { "type": "string", "description": "ERROR | WARNING (default ERROR)" },
+    "name": { "type": "string", "description": "the rule's name (default: the code)" }
+  }
+}

@@ -6,48 +6,30 @@ import java.nio.file.Path;
 
 import io.github.mbackschat.a12.rulekit.context.ModelContext;
 import io.github.mbackschat.a12.rulekit.dsl.BoundModel;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Parameters;
 
 /**
  * The {@code describe} verb (CLI-SPEC §4) — emits the F9a model card as JSON, so an agent can orient
  * on a model (fields + kinds + enum domains + group repeatability) without reading raw DM-JSON.
- *
- * <p>Usage: {@code describe <model.json>}.
  */
-final class DescribeCommand {
+@Command(name = "describe", mixinStandardHelpOptions = true,
+        description = "Emit the model card (fields + kinds + enum domains + group repeatability) as JSON.")
+final class DescribeCommand extends BaseCommand {
 
-    private DescribeCommand() {
-    }
+    @Parameters(index = "0", paramLabel = "<model.json>", description = "the DM-JSON model file")
+    String model;
 
-    static int run(String[] args, Appendable out, Appendable err) {
-        if (args.length == 0) {
-            return fail(err, "usage: describe <model.json>");
-        }
+    @Override
+    public Integer call() {
         try {
-            BoundModel model = BoundModel.ofJson(Files.readString(Path.of(args[0])));
-            append(out, new ModelContext(model).describe().toJson());
-            append(out, "\n");
+            BoundModel m = BoundModel.ofJson(Files.readString(Path.of(model)));
+            out().print(new ModelContext(m).describe().toJson() + "\n");
             return 0;
         } catch (IOException e) {
-            return fail(err, "cannot read model: " + e.getMessage());
+            return fail("cannot read model: " + e.getMessage());
         } catch (RuntimeException e) {
-            return fail(err, "describe failed: " + e.getMessage());
+            return fail("describe failed: " + e.getMessage());
         }
-    }
-
-    private static void append(Appendable out, String text) {
-        try {
-            out.append(text);
-        } catch (IOException e) {
-            throw new IllegalStateException("cannot write output", e);
-        }
-    }
-
-    private static int fail(Appendable err, String message) {
-        try {
-            err.append(message).append('\n');
-        } catch (IOException ignored) {
-            // best-effort diagnostic
-        }
-        return 2;
     }
 }

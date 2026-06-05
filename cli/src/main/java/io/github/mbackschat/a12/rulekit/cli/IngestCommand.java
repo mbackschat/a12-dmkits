@@ -12,44 +12,36 @@ import io.github.mbackschat.a12.rulekit.adapter.Ingest;
 import io.github.mbackschat.a12.rulekit.adapter.KernelAdapter;
 import io.github.mbackschat.a12.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.rulekit.dsl.DslRenderer;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
+import picocli.CommandLine.Parameters;
 
 /**
  * The {@code ingest} verb (CLI-SPEC §4) — read an <em>existing</em> rule's condition back into rulekit's
  * typed AST (F10), via the opt-in kernel adapter. Tolerant: a construct the converter doesn't model
  * yet comes back as {@code Opaque} (preserved verbatim + a reason), never an error. This is the
  * read-back foundation that {@code explain} and the AST inverted-requiredness lint build on.
- *
- * <p>Usage: {@code ingest <model.json> --rule <ruleFullName>}.
  */
-final class IngestCommand {
+@Command(name = "ingest", mixinStandardHelpOptions = true,
+        description = "Read an existing rule's condition back into rulekit's typed AST (tolerant: Converted or Opaque).")
+final class IngestCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private IngestCommand() {
-    }
+    @Parameters(index = "0", paramLabel = "<model.json>", description = "the DM-JSON model file")
+    String model;
 
-    static int run(String[] args, Appendable out, Appendable err) {
-        if (args.length == 0) {
-            return fail(err, "usage: ingest <model.json> --rule <ruleFullName>");
-        }
-        String modelPath = args[0];
-        String rule = null;
-        for (int i = 1; i < args.length; i++) {
-            if ("--rule".equals(args[i]) && i + 1 < args.length) {
-                rule = args[++i];
-            } else {
-                return fail(err, "unknown option: " + args[i] + "\nusage: ingest <model.json> --rule <ruleFullName>");
-            }
-        }
-        if (rule == null) {
-            return fail(err, "ingest needs --rule <ruleFullName>");
-        }
+    @Option(names = "--rule", required = true, paramLabel = "<ruleFullName>",
+            description = "full name of the rule to read back, e.g. /Order/SomeRule")
+    String rule;
 
+    @Override
+    public Integer call() {
         String modelJson;
         try {
-            modelJson = Files.readString(Path.of(modelPath));
+            modelJson = Files.readString(Path.of(model));
         } catch (IOException e) {
-            return fail(err, "cannot read model: " + e.getMessage());
+            return fail("cannot read model: " + e.getMessage());
         }
         try {
             Ingest ingest = KernelAdapter.ofJson(modelJson).ingest(rule);
@@ -63,10 +55,10 @@ final class IngestCommand {
                 root.put("canonicalText", opaque.canonicalText());
                 root.put("reason", opaque.reason());
             }
-            append(out, pretty(root));
+            out().print(pretty(root));
             return 0;
         } catch (RuntimeException e) {
-            return fail(err, "ingest failed: " + e.getMessage());
+            return fail("ingest failed: " + e.getMessage());
         }
     }
 
@@ -76,22 +68,5 @@ final class IngestCommand {
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("cannot serialize ingest result", e);
         }
-    }
-
-    private static void append(Appendable out, String text) {
-        try {
-            out.append(text);
-        } catch (IOException e) {
-            throw new IllegalStateException("cannot write output", e);
-        }
-    }
-
-    private static int fail(Appendable err, String message) {
-        try {
-            err.append(message).append('\n');
-        } catch (IOException ignored) {
-            // best-effort diagnostic
-        }
-        return 2;
     }
 }
