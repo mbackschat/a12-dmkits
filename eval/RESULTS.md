@@ -15,6 +15,25 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-05 06:49 CEST — targeted re-run T3/T4/T5/T6, opus + sonnet, k=2 (run `w90famp3n`)
+
+Confirming the four fixes from the 05:51 run. Fresh run (material + harness changed), subset to the four authoring tasks. 33 agents = 16 produce + 1 recheck + 16 judge (§8a; `A=4, C=0, M=2, k=2`), ~729k tokens.
+
+| model | T3 | T4 | T5 | T6 |
+|---|---|---|---|---|
+| opus | **2/2** (↑ 0/2) | 0/2 | 1/2 | **2/2** (↑ 0/2) |
+| sonnet | **2/2** (↑ 0/2) | 0/2 | 2/2 | **2/2** (↑ 0/2) |
+
+**Two fixes confirmed:**
+- **T3 ✅ 0/4 → 4/4.** The unambiguous product-code gold worked — both tiers wrote byte-identical conditions. The earlier email-regex false negative is gone.
+- **T6 ✅ 0/4 → 4/4.** The judge now reasons within the enum domain: *"Tier is exactly {BASIC, PRO, ENTERPRISE}, so 'not in {PRO, ENTERPRISE}' equals '== BASIC'"* — so `Tier == "BASIC"` is correctly scored equivalent. The judge-context false negative is gone.
+
+**T4 re-diagnosed — 0/4, but NOT the gap I fixed.** Both tiers wrote a *count of RUSH items*; the gold *sums their per-line `Count`*. But the intent reads **"the total count of line items whose Sku is RUSH"** — which most naturally means *count the items*, and the field is literally named `Count`. So the agents' reading is defensible; this is an **intent⇄gold mismatch + a misleading field name**, not a skill gap. (The skill's Sum-vs-count section is still correct pedagogy — it just wasn't T4's problem.) **Fix:** reword T4's intent to unambiguously call for *summing each RUSH line's `Count` quantity* (or rename the confusing field). This is a third eval-design artifact, found only because re-measuring contradicted my assumed cause.
+
+**T5 — 3/4, unchanged.** One opus run still inverted the polarity (fired on `DeliveryDate >= OrderDate`, the opposite). The skill's `DifferenceInDays` sign note didn't move the rate — the remaining miss is a *polarity* slip, not a sign error, and at k=2 is within noise. Watch; raise `k` if it matters.
+
+**Takeaway:** the targeted re-run cost ~⅓ of a full run and confirmed the two harness fixes *and* corrected my misdiagnosis of T4 — the build-measure-learn loop catching a wrong fix is exactly the point. Net material gaps remaining: essentially none proven (T4 = task-spec bug, T5 = residual polarity noise).
+
 ### 2026-06-05 05:51 CEST — first pass@k, full suite, opus + sonnet, k=2 (run `wx2sb6fin`)
 
 The first complete Layer-2 run. `pass = kernel-valid AND judge-equivalent to the gold` (comprehension: judge-correct vs the rubric). **56 agents** = 28 produce + 1 recheck + 27 judge (the agent-count formula is in EVAL-SPEC §8a; `A=6, C=1, M=2, k=2`), ~386k tokens, ~92s — resumed over the cached produce agents from the failed `w35lyr1fd`.
