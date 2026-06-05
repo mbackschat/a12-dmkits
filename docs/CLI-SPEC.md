@@ -8,7 +8,7 @@ The CLI is the **modeller/BA's** interaction surface (N10): one engine (core + a
 
 ## 2. Module shape
 
-- **`:cli` Gradle subproject**, `application` plugin. Depends on **core** now; **+ adapter** joins when the ingest/explain/whereUsed verbs land (the adapter pulls the internal kernel read tier — fine for an *app*; N8 confines the internal tier to adapter/cli, never core).
+- **`:cli` Gradle subproject**, `application` plugin. Depends on **core + adapter** (the adapter, added 2026-06-05, powers the `ingest`/`explain` read-back verbs; it pulls the internal kernel read tier — fine for an *app*; N8 confines the internal tier to adapter/cli, never core).
 - **Testability split — the key to the fast loop:**
   - `Cli.run(String[] args, Appendable out, Appendable err) -> int` — **pure and testable**: no `System.exit`, no `System.out` capture, returns an exit code, writes to the passed sinks.
   - `CliMain.main(String[])` — the thin shell: `System.exit(Cli.run(args, System.out, System.err))`.
@@ -40,8 +40,8 @@ JSON/JSONL out on stdout (pipeable, `jq`/`grep`-able); non-zero exit on error wi
 | **`check`** | model.json + `--field`/`--condition`/`--code` [`--group`] | `{valid, diagnostics[]}` JSON (authoring feedback, no persist) | ✅ 2026-06-05 | core |
 | `batch` | a list of ops (stdin/file) | results array | **planned — build with the benchmark runner** (amortizes JVM startup + kernel warm-up across many ops; the StringTemplate group cache is per-process — see KERNEL-FINDINGS) | core |
 | **`add`** | model.json + rule-spec JSON [`--output`] | the persisted DM-JSON (stdout) | ✅ 2026-06-05 | core (`write`) |
-| `ingest` | model.json + rule id | rulekit AST (JSON) / `Opaque` | planned | adapter |
-| `explain` | model.json + rule/condition | `RuleExplanation` JSON | planned | core |
+| **`ingest`** | model.json `--rule <id>` | `{converted, condition}` or `{converted:false, canonicalText, reason}` | ✅ 2026-06-05 | adapter |
+| **`explain`** | model.json `--rule <id>` | `RuleExplanation` JSON (operators + meaning/gotchas, refs, iteration, gloss) | ✅ 2026-06-05 | adapter + core |
 | `diff` | model.json + rule id + modified spec | `RenderedDiff` JSON | planned | adapter |
 | `write-back` | model.json + rule id + spec | rewritten DM-JSON | planned | core |
 

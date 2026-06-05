@@ -18,8 +18,12 @@ java {
 
 dependencies {
     // core engine — BoundModel/ModelContext + the model index. Brings kernel-md-facade transitively.
-    // (+ project(':adapter') joins here when the ingest/explain/whereUsed verbs land — CLI-SPEC §2.)
     implementation project(':')
+
+    // the opt-in kernel-adapter (internal a12internal read tier) — powers the read-back verbs
+    // (ingest/explain). Fine to bundle here: the CLI is an *app*, not a published library, so the
+    // N8/D15 "no internal tier in core" rule doesn't apply to it; kernel types stay inside the adapter.
+    implementation project(':adapter')
 
     // The CLI serializes the context projections to JSONL/markdown itself (kept out of core), so it
     // needs Jackson directly (core's is `implementation`, not exposed transitively).

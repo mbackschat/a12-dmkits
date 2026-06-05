@@ -28,8 +28,8 @@ How the Gradle units stack, what each depends on, and where the kernel coupling 
                         │  validate check add       │   │  library dependency)         │
                         └───────┬──────────────────┘   └───────────────┬──────────────┘
                                 │ implementation               depends on │
-        skill/SKILL.md ┄┄┄┄┄┄┄┄┄┤ (+ :adapter once                        │
-        (read by agent,         │  ingest/explain land)                   │
+        skill/SKILL.md ┄┄┄┄┄┄┄┄┄┤ (+ :adapter — powers                    │
+        (read by agent,         │  ingest/explain)                        │
          not a code dep)        ▼                                         ▼
                         ┌──────────────┐   api    ┌───────────────────────────────────┐
                         │  :adapter    │─────────▶│  core  (root project ` : `)        │
