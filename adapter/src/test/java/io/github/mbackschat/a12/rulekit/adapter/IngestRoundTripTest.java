@@ -85,6 +85,33 @@ class IngestRoundTripTest {
     }
 
     @Test
+    void roundTripsBooleanConfirmAndInequalityComparisons() {
+        // Converter-completeness (surfaced by the kernel-mm ingest-coverage spike): boolean/confirm
+        // comparisons and the `!=` direction for string/enum — all already in rulekit's DSL, just not
+        // wired into the F10 converter. Real models lean on these heavily (confirm flags everywhere).
+        BoundModel m = base();
+        var cases = new java.util.LinkedHashMap<String, Condition>();
+        BoundModel withRules = m
+                .add(rule(m, "/Subscription", "AutoRenewOnRule", m.field("/Subscription/AutoRenew"),
+                        m.bool("/Subscription/AutoRenew").isTrue(), cases))
+                .add(rule(m, "/Subscription", "AutoRenewOffRule", m.field("/Subscription/AutoRenew"),
+                        m.bool("/Subscription/AutoRenew").isFalse(), cases))
+                .add(rule(m, "/Subscription", "TermsConfirmedRule", m.field("/Subscription/TermsAccepted"),
+                        m.confirm("/Subscription/TermsAccepted").confirmed(), cases))
+                .add(rule(m, "/Subscription", "TermsNotConfirmedRule", m.field("/Subscription/TermsAccepted"),
+                        m.confirm("/Subscription/TermsAccepted").notConfirmed(), cases))
+                .add(rule(m, "/Subscription/Addons", "NameNeRule", m.field("/Subscription/Addons/Name"),
+                        m.str("/Subscription/Addons/Name").ne("Banned"), cases))
+                .add(rule(m, "/Subscription", "TierNeRule", m.field("/Subscription/Tier"),
+                        m.enumOf("/Subscription/Tier").isNot("PRO"), cases));
+
+        KernelAdapter adapter = KernelAdapter.of(withRules);
+        cases.forEach((fullName, original) ->
+                assertEquals(RENDER.render(original), RENDER.render(converted(adapter.ingest(fullName))),
+                        () -> "comparison round-trip mismatch for " + fullName));
+    }
+
+    @Test
     void roundTripsValueListMembership() {
         BoundModel m = base();
         var cases = new java.util.LinkedHashMap<String, Condition>();

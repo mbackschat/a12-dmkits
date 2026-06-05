@@ -11,6 +11,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.ICompositeC
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.ICondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IEntityListCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IValueListCondition;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IBoolConstantOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IConstantOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IEntityListOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IFieldIdOperation;
@@ -18,6 +19,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IGroupOpera
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IPointInTimeOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateDiffOperation;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.BoolConstantOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ComparisonOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.DateDiffOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListConditionName;
@@ -226,6 +228,8 @@ final class ConditionConverter {
                 case STRING -> stringComparison(model.str(path), op, right, comparison);
                 case ENUMERATION -> enumComparison(model.enumOf(path), op, right, comparison);
                 case DATE -> dateComparison(model.date(path), op, right, comparison);
+                case BOOLEAN -> booleanComparison(model.bool(path), op, right, comparison);
+                case CONFIRM -> confirmComparison(model.confirm(path), op, right, comparison);
                 default -> throw unsupported("comparison on a " + kind + " field", comparison);
             };
         }
@@ -367,24 +371,66 @@ final class ConditionConverter {
             String v = constant.getValue();
             return switch (op) {
                 case EQ -> left.eq(v);
+                case NE -> left.ne(v);
                 case WM -> left.matches(v);   // [field] WM "pattern"  → PatternMatched
                 case NM -> left.violates(v);  // [field] NM "pattern"  → PatternViolated
                 default -> throw unsupported("string comparison operator " + op, origin);
             };
         }
-        if (op == ComparisonOperation.EQ && right instanceof IFieldIdOperation rf
-                && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
-            return left.eq(model.str(rf.getField().getFullName()));
+        if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
+            StringRef other = model.str(rf.getField().getFullName());
+            return switch (op) {
+                case EQ -> left.eq(other);
+                case NE -> left.ne(other);
+                default -> throw unsupported("string field comparison operator " + op, origin);
+            };
         }
         throw unsupported("string comparison against a non-field, non-constant operand", origin);
     }
 
     private Condition enumComparison(EnumRef left, ComparisonOperation op, IOperation right,
             ICondition origin) {
-        if (op == ComparisonOperation.EQ && right instanceof IConstantOperation constant) {
-            return left.is(constant.getValue());
+        if (right instanceof IConstantOperation constant) {
+            return switch (op) {
+                case EQ -> left.is(constant.getValue());
+                case NE -> left.isNot(constant.getValue());
+                default -> throw unsupported("enum comparison operator " + op, origin);
+            };
         }
-        throw unsupported("enum comparison (only `== \"value\"` is modeled), operator " + op, origin);
+        throw unsupported("enum comparison against a non-constant operand, operator " + op, origin);
+    }
+
+    /** {@code [bool] == True|False} → {@link io.github.mbackschat.a12.rulekit.dsl.BoolRef}. */
+    private Condition booleanComparison(io.github.mbackschat.a12.rulekit.dsl.BoolRef left,
+            ComparisonOperation op, IOperation right, ICondition origin) {
+        if (op == ComparisonOperation.EQ) {
+            return booleanConstant(right, origin) ? left.isTrue() : left.isFalse();
+        }
+        throw unsupported("boolean comparison operator " + op, origin);
+    }
+
+    /**
+     * {@code [confirm] == True} / {@code != True} → {@link io.github.mbackschat.a12.rulekit.dsl.ConfirmRef}.
+     * A confirm compares only to {@code True} (kernel rejects {@code == False}); the literal is asserted.
+     */
+    private Condition confirmComparison(io.github.mbackschat.a12.rulekit.dsl.ConfirmRef left,
+            ComparisonOperation op, IOperation right, ICondition origin) {
+        if (!booleanConstant(right, origin)) {
+            throw unsupported("confirm comparison to False (kernel allows only True)", origin);
+        }
+        return switch (op) {
+            case EQ -> left.confirmed();
+            case NE -> left.notConfirmed();
+            default -> throw unsupported("confirm comparison operator " + op, origin);
+        };
+    }
+
+    /** The boolean value of a {@code True}/{@code False} literal operand ({@link IBoolConstantOperation}). */
+    private boolean booleanConstant(IOperation right, ICondition origin) {
+        if (right instanceof IBoolConstantOperation b) {
+            return b.getValue() == BoolConstantOperationName.True;
+        }
+        throw unsupported("boolean/confirm comparison against a non-boolean-literal operand", origin);
     }
 
     private Condition dateComparison(DateRef left, ComparisonOperation op, IOperation right, ICondition origin) {

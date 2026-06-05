@@ -131,6 +131,14 @@ public final class KernelAdapter {
             return new Ingest.Converted(new ConditionConverter(model).convert(parseCondition(ruleFullName)));
         } catch (UnsupportedConstructException unconverted) {
             return new Ingest.Opaque(canonicalConditionText(ruleFullName), unconverted.getMessage());
+        } catch (RuntimeException unexpected) {
+            // Tolerant-by-design: a rule the kernel accepts must never crash whole-DM ingest. A
+            // reference the converter can't resolve in rulekit's content-only index (e.g. a header
+            // entity like /header/id, or a path form rulekit doesn't model) degrades to Opaque —
+            // preserved verbatim, never lost — rather than escaping as an exception.
+            return new Ingest.Opaque(canonicalConditionText(ruleFullName),
+                    "unresolved reference (" + unexpected.getClass().getSimpleName() + "): "
+                            + unexpected.getMessage());
         }
     }
 
