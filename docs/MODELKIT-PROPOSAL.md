@@ -1,6 +1,6 @@
 # modelkit — proposal addendum & knowledge-source evaluation
 
-> **Status: pre-spike.** This is an **addendum to [`PROJECT-PROPOSAL.md`](PROJECT-PROPOSAL.md)** — it does *not* supersede any of it. It captures the reasoning behind fork #8 (D9) / Phase 3 (§16) / the umbrella (D10) that outgrew the proposal's one-liner, and it records a **material-source evaluation** so the knowledge-gathering groundwork isn't forgotten before the spike runs. Nothing here is a commitment to build; the §9 status board ([`API-POC-STUDY.md`](API-POC-STUDY.md)) still owns *when*.
+> **Status: spike complete (2026-06-05) — see §H.** This is an **addendum to [`PROJECT-PROPOSAL.md`](PROJECT-PROPOSAL.md)** — it does *not* supersede any of it. It captures the reasoning behind fork #8 (D9) / Phase 3 (§16) / the umbrella (D10) that outgrew the proposal's one-liner, records a **material-source evaluation** (§E), and carries the **spike outcome** (§H): modelkit is feasible and unblocked, and foreign-rule ingest now resolves the majority of real models (kernel-mm 74%, Corpus-1 55%). Nothing here is a build commitment for modelkit itself; the §9 status board ([`API-POC-STUDY.md`](API-POC-STUDY.md)) still owns *when*.
 
 modelkit = a typed, kernel-validated builder for document-model **structure** (fields, groups, type-defs, includes), the peer of rulekit's rule builder. ARCHITECTURE [§5.2 + "the umbrella"](ARCHITECTURE.md) decides *where the code goes*; this doc argues *whether it's worth it* and *what knowledge it would be built from*.
 
@@ -108,7 +108,9 @@ The owner's priority: **use as many sources as possible** to extract document-mo
 
 ## F. The spike — focused, measurable, *not* a full-scale study
 
-modelkit is worthwhile **as the formalization vehicle**, not as "the next feature." Given that depth, the right next step is a **time-boxed feasibility spike, not a waterfall study** — because the load-bearing premises are *empirically checkable*, and the measurements reshape both the modelkit scope and the formalization strategy.
+> **Executed 2026-06-05 — results in §H.** This section records the spike's *design* (the questions and method); §H carries the outcome and the forward plan.
+
+modelkit is worthwhile **as the formalization vehicle**, not as "the next feature." Given that depth, the right next step was a **time-boxed feasibility spike, not a waterfall study** — because the load-bearing premises are *empirically checkable*, and the measurements reshape both the modelkit scope and the formalization strategy.
 
 Three measurable questions:
 
@@ -136,4 +138,58 @@ The spike honors the standing rules: kernel-mm is **read-only, own-words, EUPL**
 
 ---
 
-*Cross-refs: ARCHITECTURE [§5.2 + the umbrella](ARCHITECTURE.md); PROJECT-PROPOSAL D9/D10/N8/N10, fork #8, §16; [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §schema-oracle / §includes; [WORKSPACE-CORPUS-ANALYSIS](WORKSPACE-CORPUS-ANALYSIS.md); [MVK-LEDGER](MVK-LEDGER.md).*
+## H. Spike outcome — current state & what's next (2026-06-05)
+
+The §F spike ran (Q1–Q5, widened per owner direction with **Q4 betterbuilders**, **Q5 write-gate categories**, and a **Corpus-1** counterpart for Q1). Its headline result: foreign-rule ingest/explain now works on real models — the index resolves by name-path (the form conditions reference), so the kernel-mm metamodels *and* the A12 Tools apps ingest at the rates below. The earlier id-vs-name resolution gap that had blocked this, and its correction, are recorded as settled fact in [`KERNEL-INTEGRATION-NOTES.md`](KERNEL-INTEGRATION-NOTES.md) (the `getId()`≠path note) and [`KERNEL-FINDINGS.md`](KERNEL-FINDINGS.md) §10; this section keeps the **measured state and the forward plan**.
+
+### Where ingest stands now
+
+| Corpus | Loadable models | Rules | Typed-converted | Understood (incl. correctly-Opaque) |
+|---|---|---|---|---|
+| kernel-mm metamodels | 15 / 15 | 553 | **407 (74%)** | **83%** (+53 CustomCondition, host-delegated, preserved verbatim) |
+| A12 Tools apps (Corpus-1) | 43 / 107 | 200 | **111 (55%)** | — (64/107 not yet loadable — need the include resolver `F-RES`) |
+
+Both corpora resolve at majority-converted — general across the metamodels and the ordinary apps alike. Reproducible via the opt-in `adapter.KernelMmIngestCoverageTest` / `Corpus1IngestCoverageTest` (skip when the read-only corpus is absent; a coverage-floor gate keeps regressions loud). **Premise answered:** the kernel-mm rules *are* understandable — typed for the majority, and legible-as-text for the rest (the formatter emits readable conditions). Their `*_MISSING`/`*_INVALID`/`A12_*` rules are the structural constraint oracle in executable form — modelkit's kind-B target.
+
+### What's left to convert (the F10 tail)
+
+Everything blocking *understanding* is resolved; the remainder is either inherently opaque or genuine F10 **features**, each a normal increment (catalog + AST + handles + N7), prioritized by frequency:
+
+| Construct | kernel-mm | Verdict |
+|---|---|---|
+| `IApplicationCondition` (CustomCondition) | 53 | **Not a gap** — host-delegated, correctly Opaque |
+| combined entity+value lists, operand wrappers (`Length(…)`), group-scope aggregates, group-list predicates, root-group conditions | ~84 | F10 features — new AST/handles |
+| enum **category-navigation** comparisons (`[type→cat] == "…"`) | ~9 | converter wiring (needs `->` op detection); DSL already has `EnumRef.category` |
+
+Corpus-1's tail skews toward operand wrappers (`Length`) and date `Valid`/`Invalid` — the same F10 feature list, weighted differently.
+
+### Per-question results
+
+| Q | Source (§E row) | Result |
+|---|---|---|
+| **Q1** | operators / kernel-mm rules / Corpus-1 | Foreign-rule ingest resolves by name-path: **kernel-mm 74%, Corpus-1 55%** typed-converted (83% kernel-mm incl. correctly-Opaque); remaining tail is the F10 features above. |
+| **Q2** | MM_ metamodels (schema oracle) | Slot inventory captured for Field/Group/TypeDef/Header; **MVP minimum = `DM(id, locale) → Group(name) → Field(name, type+inline config)`**; typedefs/includes/annotations deferrable. |
+| **Q3** | KERNEL-SEMANTICS + FINDINGS | **78 behavioral laws**; ~33 locked, ~29 prose-only; **17 HIGH-trap** (silently wrong if unknown), of which only ~4 are locked. The prose-only HIGH-trap set (empty-as-0, rounding, date arithmetic, three-valued Boolean/Confirm, GroupFilled-on-empty-row, computation-as-validation) is the convert-to-executable-law priority — and the minimum the N1 skill must teach (the self-describing CLI can't expose them; they're invisible to parse-time validation). |
+| **Q4** | betterbuilders (kernel's own) | **Confirms** the construct set + high-level slots; **adds** DM-config slots (decimalSeparator, timeZone, `conditionLanguage` default `Locale.US`, `fieldRefByShortNameAllowed`). It's a thin facade over the kernel's autogenerated builders with a `modify(...)` escape hatch — the per-type attrs live in those, so the **metamodel stays the slot authority**. Borrowable: path-addressing + auto-vivify-parent, default-everything. Its MVP matches Q2's exactly. |
+| **Q5** | `BasicConsistencyCheck` (write gate) | The **16 `BasicDocumentModelConsistencyCategory`** entries are modelkit's runtime oracle (already classified, `SerializerTierParityTest`-locked). rulekit satisfies the rule/computation subset by construction; **modelkit must satisfy the structural subset** (`ID_EMPTY`, `NAME_EMPTY`, `ENUM_TYPE_DUPLICATE_*`, `INDEX/SORT_FIELD_NAME_EMPTY`, `TYPEDEF_*`, `LOCALIZED_TEXT_*`) — the make-illegal-unrepresentable target list. |
+
+### Verdict & grounded increment breakdown
+
+**modelkit is feasible and *not* blocked by the ingest finding** — it authors structure and emits DM-JSON (reusing `write.DmJson`), validated by `BasicConsistencyCheck`; it never ingests. The slot inventory (Q2, cross-checked by Q4) is clear, the MVP is small, both oracles exist (Q5 write-gate; the kernel for deep checks).
+
+Proposed increments (each: typed builder slice + DM-JSON emit + kernel-validated, own-domain fixtures):
+
+1. **M1 — skeleton:** `model(id, locale) → group(name, repeatable?) → field(name, easyType)` for the easy types (String/Number/Date/Boolean/Confirm/Unspecified, no mandatory type-slot per Q4). Emit DM-JSON; assert clean through `BasicConsistencyCheck` + `checkConsistency`. Closes the "stop hand-writing fixtures" loop.
+2. **M2 — type config + requiredness:** String(min/max/pattern), Number(digits/min/max), Enumeration(values+labels), requiredness mode. The 80% of real fields.
+3. **M3 — the hard field-types & metadata:** DateRange/DateFragment/Custom/TypeDef (the slots Q4 flagged mandatory), labels/descriptions/annotations via a typed-but-thin surface.
+4. **M4 — includes:** `modelAlias` mount + header `modelReferences` (kept in sync, per Q4's law), reusing the §includes finding. Pairs with the directory-resolver work below.
+
+**Open cross-cutting follow-ups (independent of modelkit):**
+- **Ingest tail:** raise typed coverage past 74%/55% by building the F10 features in the tail table (combined entity+value lists, operand wrappers, group-scope aggregates, root-group conditions, enum category-navigation) — each its own increment.
+- **F-RES:** a directory `IDocumentModelReferenceResolver` so multi-file real models load (64/107 Corpus-1 blocked; kernel-mm unaffected).
+- **F-LAW:** convert the prose-only HIGH-trap behavioral laws (Q3) to executable laws — needs a document-evaluating oracle harness (rulekit's CLI deliberately never executes validation).
+- **F-TEST:** dedicated unit test for the `ingest()` Opaque-on-unresolved-reference hardening (currently exercised by the opt-in coverage harness).
+
+---
+
+*Cross-refs: ARCHITECTURE [§5.2 + the umbrella](ARCHITECTURE.md); PROJECT-PROPOSAL D9/D10/N8/N10, fork #8, §16; [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §schema-oracle / §includes; [WORKSPACE-CORPUS-ANALYSIS](WORKSPACE-CORPUS-ANALYSIS.md); [MVK-LEDGER](MVK-LEDGER.md). Spike harnesses: `adapter.KernelMmIngestCoverageTest`, `adapter.Corpus1IngestCoverageTest`.*

@@ -40,4 +40,9 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    // Forward opt-in harness locations (read-only corpora) from the Gradle CLI to the test JVM, e.g.
+    // -Da12.kernel.mm.dir=... / -Da12.corpus1.dir=... — harnesses skip when their property is unset.
+    ['a12.kernel.mm.dir', 'a12.corpus1.dir'].each { k ->
+        if (System.getProperty(k) != null) systemProperty k, System.getProperty(k)
+    }
 }
