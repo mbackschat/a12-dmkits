@@ -145,8 +145,14 @@ const authorJudged = await parallel(candidates.map(r => () => {
   const valid = authoritative[key] === true
   if (!valid) return Promise.resolve({ key, model: r.model, taskId: r.task.id, valid: false, equivalent: false })
   return agent(
-    `Judge whether a candidate A12 rule is SEMANTICALLY EQUIVALENT to the reference (gold), i.e. it fires on
-exactly the same violations. Polarity matters: a rule that fires on the opposite case is NOT equivalent.
+    `Judge whether a candidate A12 rule is SEMANTICALLY EQUIVALENT to the reference (gold): do they fire on
+exactly the same documents? Polarity matters — a rule that fires on the opposite case is NOT equivalent.
+Judge WITHIN the field's ACTUAL value domain: two rules that differ only on values the field cannot hold
+ARE equivalent. The model is ${MODEL_FILE(r.task)} — first run \`${CLI} describe ${MODEL_FILE(r.task)}\` to
+see field types and enum value sets (e.g. an enum with only three possible values: "X not in {A,B}" then
+equals "X == C"). For pattern/regex operands, equivalence is about capturing the SAME intended format —
+treat trivially different regexes (anchors, equivalent character classes) that accept the same strings as
+equivalent; do not require byte-identical regex text.
 Reference gold: field="${r.task.gold.field}", condition=${JSON.stringify(r.task.gold.condition)}.
 Candidate: field="${r.out.field}", condition=${JSON.stringify(r.out.condition)}.
 Return ONLY JSON: {"equivalent": true|false, "why": "<one sentence>"}`,

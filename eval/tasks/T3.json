@@ -1,13 +1,13 @@
 {
   "id": "T3",
   "family": "authoring",
-  "model": "subscription",
+  "model": "order",
   "operators": ["FieldFilled", "PatternViolated", "And"],
-  "intent": "A subscription's invoice email, when one is given, must look like a real email address (a name, an @, then a host).",
+  "intent": "An order's product code, when present, must be a valid product code: two uppercase letters, a hyphen, then four digits (for example AB-1234).",
   "gold": {
-    "field": "/Subscription/Billing/InvoiceEmail",
-    "condition": "FieldFilled(InvoiceEmail) And [InvoiceEmail] PatternViolated \"[A-Za-z0-9._-]+@[A-Za-z0-9.-]+\"",
-    "code": "INVOICE_EMAIL_MALFORMED"
+    "field": "/Order/ProductCode",
+    "condition": "FieldFilled(ProductCode) And [ProductCode] PatternViolated \"[A-Z]{2}-[0-9]{4}\"",
+    "code": "PRODUCT_CODE_MALFORMED"
   },
-  "notes": "Pattern family. NON-iterating (error field in the non-repeatable Billing group). The violation is 'present but ill-formed', so it pairs a positive presence guard (FieldFilled) with PatternViolated (not PatternMatched) — getting the regex polarity right is the test: matching the pattern is the GOOD case, so the rule must fire on a violation of it. Bracketed ref on the left of the pattern op; bare ref inside FieldFilled."
+  "notes": "Pattern family with an UNAMBIGUOUS format — the intent fully specifies XX-9999, so equivalence to the gold regex is well-defined. (The earlier version checked an email address; there is no canonical email regex, so reasonable candidate regexes diverged from the gold and exact-match was the wrong bar — a false negative recorded in eval/RESULTS.md 2026-06-05. Fixed by choosing a crisp format + instructing the judge to treat trivially-different regexes that accept the same strings as equivalent.) NON-iterating (ProductCode is a top-level /Order field). Tests pattern polarity (PatternViolated, not PatternMatched — matching is the GOOD case) + a presence guard."
 }
