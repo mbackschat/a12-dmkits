@@ -190,7 +190,7 @@ modelkit and rulekit are **parallel layers over a shared model-core**, not one a
   └── cli · skill  (front-ends spanning all kits)
 ```
 
-In today's package graph (§2) this means `structure` sits **beside `dsl`**, both over `model`/`validate`/`write` — `structure` must not depend on `dsl`.
+In today's package graph (§2) this means `structure` sits **beside `dsl`**, both over `model`/`validate`/`write` — `structure` must not depend on `dsl`. **The `structure` package now exists (modelkit M1, 2026-06-05):** `DocumentModelDraft` authors a model from scratch and emits DM-JSON, kernel-validated through both gates — Jackson-only, zero kernel/`dsl` coupling, exactly the boundary the future module split formalizes. Detail: [`MODELKIT-PROPOSAL.md`](MODELKIT-PROPOSAL.md) §H.
 
 **The one prep that enables it — ✅ done 2026-06-05:** the generic, `dsl`-free half is now `write.DmJson` (`insertIntoGroup`/`groupElements`/`findElement`, include-preserving), and `write.ModelWriter` (the `Rule`-node knowledge) builds on it. modelkit's structural write reuses `DmJson` directly. Still TBD: **source-artifact provenance** on the index (mirror of D14) so include-aware editing later writes to the owning artifact.
 
