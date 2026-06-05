@@ -42,6 +42,8 @@ Write idiomatic modern Java 21, not Java 8 with newer syntax:
   - `validate/` keeps only F4 **mechanics** (`RuleValidatorTest`: injection, round-trip, problem mapping). The kernel-law locks are *executable `KERNEL-FINDINGS.md` entries* and live under **`validate/laws/`** (`…LawsTest`, one per findings section), sharing the `KernelLaws` accept/reject harness. Each `KERNEL-FINDINGS` §/ledger row points at its `…LawsTest` class.
   - Fixtures load once via the shared **`Fixtures`** util (`subscription()`/`order()`/`…Json()`) — no copied `@BeforeAll`, so a new file costs a few lines. `BoundModel` is an immutable snapshot (F0), safe to share.
 
+- **Running the self-sufficiency eval / benchmark (N6): use the `run-rulekit-eval` skill** (`.claude/skills/`). It loads the protocol guardrails (clean subagent, material boundary, neutral prompts, pinned model, cost model, targeted re-runs) at the moment of running — **don't run the benchmark from memory**, the guardrails are easy to violate silently. Method/rationale: [`docs/EVAL-SPEC.md`](docs/EVAL-SPEC.md); measured results: [`eval/RESULTS.md`](eval/RESULTS.md). (That operator skill is distinct from `skill/SKILL.md`, which is the *material under test* — never give the operator skill to the eval's subagents.)
+
 ## Build
 
 Build with an isolated, public-repos-only Gradle home so the machine's global config (private registry) is bypassed, on JDK 21 — see the README's "Build & test" section. The kernel must first be published to `mavenLocal` via the sibling `a12-kernel-bootstrap` kit.
