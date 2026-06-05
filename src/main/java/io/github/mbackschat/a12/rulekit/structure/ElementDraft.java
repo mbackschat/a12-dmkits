@@ -13,8 +13,8 @@ public sealed interface ElementDraft permits ElementDraft.Field, ElementDraft.Gr
     /** The element's short name — the last segment of its name-path. */
     String name();
 
-    /** A leaf field of a given {@link FieldKind}. */
-    record Field(String name, FieldKind kind) implements ElementDraft {}
+    /** A leaf field — its typed config ({@link FieldTypeSpec}) and how it must be filled. */
+    record Field(String name, FieldTypeSpec type, Requiredness requiredness) implements ElementDraft {}
 
     /** A group; {@code repeatability == 1} is single, {@code > 1} a repeatable list. */
     record Group(String name, int repeatability, List<ElementDraft> elements) implements ElementDraft {}

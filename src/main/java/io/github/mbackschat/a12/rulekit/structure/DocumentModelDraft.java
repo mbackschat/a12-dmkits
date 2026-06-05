@@ -1,7 +1,10 @@
 package io.github.mbackschat.a12.rulekit.structure;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -78,7 +81,7 @@ public final class DocumentModelDraft {
         config.put("fieldRefByShortNameAllowed", true);
 
         ArrayNode roots = content.putObject("modelRoot").putArray("rootGroups");
-        rootGroups.forEach(group -> roots.add(groupNode(group, "")));
+        rootGroups.forEach(group -> roots.add(groupNode(group, "", locales)));
 
         try {
             return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
@@ -87,7 +90,7 @@ public final class DocumentModelDraft {
         }
     }
 
-    private static ObjectNode groupNode(ElementDraft.Group group, String parentPath) {
+    private static ObjectNode groupNode(ElementDraft.Group group, String parentPath, List<String> locales) {
         String path = parentPath + "/" + group.name();
         ObjectNode node = MAPPER.createObjectNode();
         node.put("type", "Group");
@@ -98,27 +101,91 @@ public final class DocumentModelDraft {
         ArrayNode elements = body.putArray("elements");
         for (ElementDraft element : group.elements()) {
             elements.add(switch (element) {
-                case ElementDraft.Group sub -> groupNode(sub, path);
-                case ElementDraft.Field field -> fieldNode(field, path);
+                case ElementDraft.Group sub -> groupNode(sub, path, locales);
+                case ElementDraft.Field field -> fieldNode(field, path, locales);
             });
         }
         return node;
     }
 
-    private static ObjectNode fieldNode(ElementDraft.Field field, String parentPath) {
+    private static ObjectNode fieldNode(ElementDraft.Field field, String parentPath, List<String> locales) {
         ObjectNode node = MAPPER.createObjectNode();
         node.put("type", "Field");
         node.put("id", parentPath + "/" + field.name());
         node.put("name", field.name());
-        ObjectNode fieldType = node.putObject("Field").putObject("fieldType");
-        fieldType.put("type", field.kind().jsonType());
-        // Easy kinds need no type-specific slot; Number/Date carry a sensible default the kernel wants.
-        switch (field.kind()) {
-            case NUMBER -> fieldType.putObject("NumberType").put("maxFractionalDigits", 0);
-            case DATE -> fieldType.putObject("DateType").put("format", "yyyy-MM-dd");
-            default -> { /* String / Boolean / Confirm / Unspecified are bare */ }
+        ObjectNode body = node.putObject("Field");
+        ObjectNode fieldType = body.putObject("fieldType");
+        fieldType.put("type", field.type().jsonType());
+        writeTypeConfig(fieldType, field.type(), locales);
+        String mode = field.requiredness().mode();
+        if (mode != null) {
+            body.putObject("requirednessConfig").put("mode", mode);
         }
         return node;
+    }
+
+    /** Write the kernel {@code fieldType.<Type>} inner block for the configured slots (omitted when empty). */
+    private static void writeTypeConfig(ObjectNode fieldType, FieldTypeSpec spec, List<String> locales) {
+        switch (spec) {
+            case FieldTypeSpec.StringSpec s -> {
+                if (s.minLength() != null || s.maxLength() != null || s.pattern() != null) {
+                    ObjectNode inner = fieldType.putObject("StringType");
+                    // a pattern needs an error text for every declared locale (MVK_ERROR_MESSAGE_AND_PATTERN_INVALID)
+                    if (s.pattern() != null) {
+                        ArrayNode messages = inner.putArray("errorMessage");
+                        locales.forEach(loc -> messages.addObject().put("locale", loc).put("text", s.patternMessage()));
+                    }
+                    if (s.minLength() != null) {
+                        inner.put("minLength", s.minLength());
+                    }
+                    if (s.maxLength() != null) {
+                        inner.put("maxLength", s.maxLength());
+                    }
+                    if (s.pattern() != null) {
+                        inner.put("pattern", s.pattern());
+                    }
+                }
+            }
+            case FieldTypeSpec.NumberSpec n -> {
+                ObjectNode inner = fieldType.putObject("NumberType");
+                inner.put("maxFractionalDigits", n.fractionDigits() != null ? n.fractionDigits() : 0);
+                if (n.minValue() != null) {
+                    inner.put("minValue", n.minValue());
+                }
+                if (n.maxValue() != null) {
+                    inner.put("maxValue", n.maxValue());
+                }
+            }
+            case FieldTypeSpec.DateSpec d ->
+                    fieldType.putObject("DateType").put("format", d.format() != null ? d.format() : "yyyy-MM-dd");
+            case FieldTypeSpec.BooleanSpec b -> { /* bare */ }
+            case FieldTypeSpec.ConfirmSpec c -> { /* bare */ }
+            case FieldTypeSpec.EnumSpec e -> {
+                boolean labelled = e.values().stream().anyMatch(v -> !v.labels().isEmpty());
+                if (labelled) {
+                    // all-or-nothing: once any value is labelled, every value needs a label for every
+                    // declared locale, else MVK_COUNT_OF_VALUES_INVALID. Fail fast with a clear message.
+                    for (FieldTypeSpec.EnumValue v : e.values()) {
+                        for (String loc : locales) {
+                            if (!v.labels().containsKey(loc)) {
+                                throw new IllegalStateException("enum value '" + v.value()
+                                        + "' is missing a label for declared locale '" + loc
+                                        + "' (labels are all-or-nothing per locale)");
+                            }
+                        }
+                    }
+                }
+                ArrayNode values = fieldType.putObject("EnumerationType").putArray("values");
+                for (FieldTypeSpec.EnumValue v : e.values()) {
+                    ObjectNode valueNode = values.addObject();
+                    valueNode.put("value", v.value());
+                    if (!v.labels().isEmpty()) {
+                        ArrayNode labels = valueNode.putArray("label");
+                        locales.forEach(loc -> labels.addObject().put("locale", loc).put("text", v.labels().get(loc)));
+                    }
+                }
+            }
+        }
     }
 
     /** Fluent builder for a {@link DocumentModelDraft}. */
@@ -178,9 +245,38 @@ public final class DocumentModelDraft {
             return this;
         }
 
-        /** Add a field of the given easy kind. */
+        /** Add a bare, optional field of the given easy kind. */
         public GroupBuilder field(String name, FieldKind kind) {
-            elements.add(new ElementDraft.Field(name, kind));
+            return field(name, kind, Requiredness.OPTIONAL);
+        }
+
+        /** Add a bare field of the given easy kind with explicit requiredness. */
+        public GroupBuilder field(String name, FieldKind kind, Requiredness requiredness) {
+            elements.add(new ElementDraft.Field(name, bareSpec(kind), requiredness));
+            return this;
+        }
+
+        /** Add a string field with optional length/pattern config and requiredness. */
+        public GroupBuilder stringField(String name, Consumer<StringFieldBuilder> body) {
+            StringFieldBuilder b = new StringFieldBuilder();
+            body.accept(b);
+            elements.add(new ElementDraft.Field(name, b.spec(), b.requiredness));
+            return this;
+        }
+
+        /** Add a number field with optional scale/range config and requiredness. */
+        public GroupBuilder numberField(String name, Consumer<NumberFieldBuilder> body) {
+            NumberFieldBuilder b = new NumberFieldBuilder();
+            body.accept(b);
+            elements.add(new ElementDraft.Field(name, b.spec(), b.requiredness));
+            return this;
+        }
+
+        /** Add an enumeration field; needs at least one value. */
+        public GroupBuilder enumField(String name, Consumer<EnumFieldBuilder> body) {
+            EnumFieldBuilder b = new EnumFieldBuilder();
+            body.accept(b);
+            elements.add(new ElementDraft.Field(name, b.spec(), b.requiredness));
             return this;
         }
 
@@ -194,6 +290,138 @@ public final class DocumentModelDraft {
 
         private ElementDraft.Group toDraft() {
             return new ElementDraft.Group(name, repeatability, List.copyOf(elements));
+        }
+    }
+
+    private static FieldTypeSpec bareSpec(FieldKind kind) {
+        return switch (kind) {
+            case STRING -> new FieldTypeSpec.StringSpec(null, null, null, null);
+            case NUMBER -> new FieldTypeSpec.NumberSpec(null, null, null);
+            case DATE -> new FieldTypeSpec.DateSpec(null);
+            case BOOLEAN -> new FieldTypeSpec.BooleanSpec();
+            case CONFIRM -> new FieldTypeSpec.ConfirmSpec();
+        };
+    }
+
+    /** Configures a string field. Cross-kind nonsense (a numeric range) is simply not on this surface. */
+    public static final class StringFieldBuilder {
+        private Integer minLength;
+        private Integer maxLength;
+        private String pattern;
+        private String patternMessage;
+        private Requiredness requiredness = Requiredness.OPTIONAL;
+
+        public StringFieldBuilder minLength(int n) {
+            this.minLength = n;
+            return this;
+        }
+
+        public StringFieldBuilder maxLength(int n) {
+            this.maxLength = n;
+            return this;
+        }
+
+        /** Constrain to a pattern; the kernel requires an error {@code message} alongside it (§7). */
+        public StringFieldBuilder pattern(String regex, String message) {
+            this.pattern = regex;
+            this.patternMessage = message;
+            return this;
+        }
+
+        public StringFieldBuilder required() {
+            this.requiredness = Requiredness.REQUIRED;
+            return this;
+        }
+
+        public StringFieldBuilder requiredIfParentPresent() {
+            this.requiredness = Requiredness.REQUIRED_IF_PARENT_PRESENT;
+            return this;
+        }
+
+        private FieldTypeSpec spec() {
+            return new FieldTypeSpec.StringSpec(minLength, maxLength, pattern, patternMessage);
+        }
+    }
+
+    /** Configures a number field (scale = fraction digits, optional value range). */
+    public static final class NumberFieldBuilder {
+        private Integer fractionDigits;
+        private BigDecimal minValue;
+        private BigDecimal maxValue;
+        private Requiredness requiredness = Requiredness.OPTIONAL;
+
+        public NumberFieldBuilder fractionDigits(int n) {
+            this.fractionDigits = n;
+            return this;
+        }
+
+        public NumberFieldBuilder min(String value) {
+            this.minValue = new BigDecimal(value);
+            return this;
+        }
+
+        public NumberFieldBuilder max(String value) {
+            this.maxValue = new BigDecimal(value);
+            return this;
+        }
+
+        public NumberFieldBuilder required() {
+            this.requiredness = Requiredness.REQUIRED;
+            return this;
+        }
+
+        public NumberFieldBuilder requiredIfParentPresent() {
+            this.requiredness = Requiredness.REQUIRED_IF_PARENT_PRESENT;
+            return this;
+        }
+
+        private FieldTypeSpec spec() {
+            return new FieldTypeSpec.NumberSpec(fractionDigits, minValue, maxValue);
+        }
+    }
+
+    /** Configures an enumeration field — stored values, each with optional per-locale labels. */
+    public static final class EnumFieldBuilder {
+        private final List<FieldTypeSpec.EnumValue> values = new ArrayList<>();
+        private Requiredness requiredness = Requiredness.OPTIONAL;
+
+        public EnumFieldBuilder value(String value) {
+            values.add(new FieldTypeSpec.EnumValue(value, Map.of()));
+            return this;
+        }
+
+        public EnumFieldBuilder value(String value, Consumer<LabelBuilder> labels) {
+            LabelBuilder lb = new LabelBuilder();
+            labels.accept(lb);
+            values.add(new FieldTypeSpec.EnumValue(value, lb.labels));
+            return this;
+        }
+
+        public EnumFieldBuilder required() {
+            this.requiredness = Requiredness.REQUIRED;
+            return this;
+        }
+
+        public EnumFieldBuilder requiredIfParentPresent() {
+            this.requiredness = Requiredness.REQUIRED_IF_PARENT_PRESENT;
+            return this;
+        }
+
+        private FieldTypeSpec spec() {
+            if (values.isEmpty()) {
+                throw new IllegalStateException("an enumeration field needs at least one value");
+            }
+            return new FieldTypeSpec.EnumSpec(values);
+        }
+    }
+
+    /** Collects per-locale display labels for one enumeration value. */
+    public static final class LabelBuilder {
+        private final Map<String, String> labels = new LinkedHashMap<>();
+
+        public LabelBuilder label(String locale, String text) {
+            labels.put(locale, text);
+            return this;
         }
     }
 }
