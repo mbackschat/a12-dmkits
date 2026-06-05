@@ -88,6 +88,39 @@ public record NumberExpr(Calculation expression) {
         return cmp(CompareOp.NE, new NumberLiteral(literal));
     }
 
+    // --- expression-vs-expression comparison (e.g. [Quantity] < Sum(...), Sum(...) > [Cap]) ---------
+    // Scale-faithful equality isn't pre-checked here: an aggregate's declared scale isn't tracked, so
+    // == / != defer the kernel's decimal-scale check (F11 — the live kernel arbitrates). Ordering
+    // ignores scale anyway.
+
+    public Condition lt(NumberExpr other) {
+        return exprCmp(CompareOp.LT, other);
+    }
+
+    public Condition le(NumberExpr other) {
+        return exprCmp(CompareOp.LE, other);
+    }
+
+    public Condition gt(NumberExpr other) {
+        return exprCmp(CompareOp.GT, other);
+    }
+
+    public Condition ge(NumberExpr other) {
+        return exprCmp(CompareOp.GE, other);
+    }
+
+    public Condition eq(NumberExpr other) {
+        return exprCmp(CompareOp.EQ, other);
+    }
+
+    public Condition ne(NumberExpr other) {
+        return exprCmp(CompareOp.NE, other);
+    }
+
+    private Condition exprCmp(CompareOp op, NumberExpr other) {
+        return new ComparisonCondition(expression, op, other.expression());
+    }
+
     private Condition cmp(CompareOp op, NumberLiteral literal) {
         return new ComparisonCondition(expression, op, literal);
     }

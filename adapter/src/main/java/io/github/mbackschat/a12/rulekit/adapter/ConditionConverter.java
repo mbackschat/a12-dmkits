@@ -285,7 +285,47 @@ final class ConditionConverter {
                 default -> throw unsupported("aggregate comparison operator " + op, origin);
             };
         }
+        NumberExpr rightExpr = numericExpr(right);
+        if (rightExpr != null) {
+            return exprVsExpr(expr, op, rightExpr, origin);
+        }
         throw unsupported("aggregate compared against a non-constant operand", origin);
+    }
+
+    /** Convert {@code right} to a comparable numeric expression — an aggregate, a date-diff, a current
+     *  repetition, or a number field value — else {@code null} (so the caller can fall through). */
+    private NumberExpr numericExpr(IOperation operand) {
+        if (operand instanceof IEntityListOperation aggregate) {
+            return convertAggregate(aggregate);
+        }
+        if (operand instanceof IDateDiffOperation diff) {
+            return convertDateDiff(diff);
+        }
+        if (operand instanceof IGroupOperation groupOp
+                && groupOp.getOperatorName() == GroupOperationName.CurrentRepetition) {
+            return Dsl.currentRepetition(model.group(groupOp.getGroup().getFullName()));
+        }
+        if (operand instanceof IFieldIdOperation field
+                && field.getOperatorName() == FieldIdOperationName.FieldValue) {
+            String path = field.getField().getFullName();
+            if (model.fieldAt(path).map(info -> info.kind() == ValueKind.NUMBER).orElse(false)) {
+                return model.num(path).asNumber();
+            }
+        }
+        return null;
+    }
+
+    /** A comparison between two numeric expressions (field-vs-aggregate, aggregate-vs-field, …). */
+    private Condition exprVsExpr(NumberExpr left, ComparisonOperation op, NumberExpr right, ICondition origin) {
+        return switch (op) {
+            case LT -> left.lt(right);
+            case LE -> left.le(right);
+            case GT -> left.gt(right);
+            case GE -> left.ge(right);
+            case EQ -> left.eq(right);
+            case NE -> left.ne(right);
+            default -> throw unsupported("expression comparison operator " + op, origin);
+        };
     }
 
     private Condition numberComparison(NumberRef left, ComparisonOperation op, IOperation right,
@@ -313,6 +353,10 @@ final class ConditionConverter {
                 case NE -> left.ne(other);
                 default -> throw unsupported("number field comparison operator " + op, origin);
             };
+        }
+        NumberExpr rightExpr = numericExpr(right);
+        if (rightExpr != null) {
+            return exprVsExpr(left.asNumber(), op, rightExpr, origin);
         }
         throw unsupported("number comparison against a non-field, non-constant operand", origin);
     }

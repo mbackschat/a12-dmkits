@@ -144,6 +144,32 @@ public record NumberRef(FieldRef field, int scale) {
         return new ComparisonCondition(field.value(), op, other.field.value());
     }
 
+    // --- field-vs-expression comparison (e.g. [Quantity] < Sum(Items*/Count Having ...)) ----------
+
+    public Condition lt(NumberExpr other) {
+        return asNumber().lt(other);
+    }
+
+    public Condition le(NumberExpr other) {
+        return asNumber().le(other);
+    }
+
+    public Condition gt(NumberExpr other) {
+        return asNumber().gt(other);
+    }
+
+    public Condition ge(NumberExpr other) {
+        return asNumber().ge(other);
+    }
+
+    public Condition eq(NumberExpr other) {
+        return asNumber().eq(other);
+    }
+
+    public Condition ne(NumberExpr other) {
+        return asNumber().ne(other);
+    }
+
     private void requireSameScale(NumberRef other) {
         if (scale != other.scale) {
             throw new IllegalArgumentException("cannot compare number fields of different scale with == / !="

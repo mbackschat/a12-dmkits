@@ -136,12 +136,20 @@ class IngestRoundTripTest {
                 .and(Dsl.numberOfDifferentValues(base.flatten("/Order/Items*/Sku")).lt(2));
         Condition havingC = base.field(cust).filled().and(Dsl.sum(
                 base.flatten("/Order/Items*/Count").having(base.str("/Order/Items/Sku").eq("A"))).gt(5));
+        // field-vs-aggregate: [Quantity] < Sum(Items*/Count Having [Items/Sku] == "RUSH") — the F10 gap lift.
+        Condition fieldVsAggC = base.field(cust).filled().and(base.num("/Order/Quantity").lt(
+                Dsl.sum(base.flatten("/Order/Items*/Count").having(base.str("/Order/Items/Sku").eq("RUSH")))));
+        // aggregate-vs-field (the symmetric direction): Sum(Items*/Count) > [Quantity].
+        Condition aggVsFieldC = base.field(cust).filled().and(
+                Dsl.sum(base.flatten("/Order/Items*/Count")).gt(base.num("/Order/Quantity").asNumber()));
 
         BoundModel m = base
                 .add(orderRule(base, "SumRule", sumC, cases))
                 .add(orderRule(base, "MaxRule", maxC, cases))
                 .add(orderRule(base, "NdvRule", ndvC, cases))
-                .add(orderRule(base, "HavingRule", havingC, cases));
+                .add(orderRule(base, "HavingRule", havingC, cases))
+                .add(orderRule(base, "QuantityCoversRushRule", fieldVsAggC, cases))
+                .add(orderRule(base, "SumExceedsQuantityRule", aggVsFieldC, cases));
 
         KernelAdapter adapter = KernelAdapter.of(m);
         cases.forEach((fullName, original) ->
