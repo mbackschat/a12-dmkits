@@ -3,8 +3,10 @@ package io.github.mbackschat.a12.rulekit.structure;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -36,13 +38,19 @@ public final class DocumentModelDraft {
 
     private final String id;
     private final List<String> locales;
+    private final List<TypeDefDecl> typeDefs;
     private final List<ElementDraft.Group> rootGroups;
 
-    private DocumentModelDraft(String id, List<String> locales, List<ElementDraft.Group> rootGroups) {
+    private DocumentModelDraft(String id, List<String> locales, List<TypeDefDecl> typeDefs,
+            List<ElementDraft.Group> rootGroups) {
         this.id = id;
         this.locales = locales;
+        this.typeDefs = typeDefs;
         this.rootGroups = rootGroups;
     }
+
+    /** A reusable named type, declared once in {@code content.typeDefinitions} and referenced by fields. */
+    private record TypeDefDecl(String id, FieldTypeSpec type) {}
 
     /** Start a draft for the model with this id (also its info name). */
     public static Builder named(String id) {
@@ -80,6 +88,17 @@ public final class DocumentModelDraft {
         config.putObject("conditionLanguage").put("code", locales.get(0));
         config.put("fieldRefByShortNameAllowed", true);
 
+        checkTypeDefReferences();
+        if (!typeDefs.isEmpty()) {
+            ArrayNode defs = content.putArray("typeDefinitions");
+            for (TypeDefDecl def : typeDefs) {
+                ObjectNode node = defs.addObject();
+                node.put("id", def.id());
+                node.put("name", def.id());
+                writeFieldType(node.putObject("fieldType"), def.type(), locales);
+            }
+        }
+
         ArrayNode roots = content.putObject("modelRoot").putArray("rootGroups");
         rootGroups.forEach(group -> roots.add(groupNode(group, "", locales)));
 
@@ -114,14 +133,18 @@ public final class DocumentModelDraft {
         node.put("id", parentPath + "/" + field.name());
         node.put("name", field.name());
         ObjectNode body = node.putObject("Field");
-        ObjectNode fieldType = body.putObject("fieldType");
-        fieldType.put("type", field.type().jsonType());
-        writeTypeConfig(fieldType, field.type(), locales);
+        writeFieldType(body.putObject("fieldType"), field.type(), locales);
         String mode = field.requiredness().mode();
         if (mode != null) {
             body.putObject("requirednessConfig").put("mode", mode);
         }
         return node;
+    }
+
+    /** Write the {@code type} discriminator plus its inner config block. */
+    private static void writeFieldType(ObjectNode fieldType, FieldTypeSpec spec, List<String> locales) {
+        fieldType.put("type", spec.jsonType());
+        writeTypeConfig(fieldType, spec, locales);
     }
 
     /** Write the kernel {@code fieldType.<Type>} inner block for the configured slots (omitted when empty). */
@@ -158,6 +181,15 @@ public final class DocumentModelDraft {
             }
             case FieldTypeSpec.DateSpec d ->
                     fieldType.putObject("DateType").put("format", d.format() != null ? d.format() : "yyyy-MM-dd");
+            case FieldTypeSpec.DateRangeSpec dr -> {
+                ObjectNode inner = fieldType.putObject("DateRangeType");
+                inner.put("format", dr.format());
+                inner.put("rangeSeparator", dr.separator());
+            }
+            case FieldTypeSpec.DateFragmentSpec df ->
+                    fieldType.putObject("DateFragmentType").put("formatOfFragment", df.fragmentFormat());
+            case FieldTypeSpec.TypeDefRef ref ->
+                    fieldType.putObject("TypeDefType").put("typeDefinitionId", ref.typeDefinitionId());
             case FieldTypeSpec.BooleanSpec b -> { /* bare */ }
             case FieldTypeSpec.ConfirmSpec c -> { /* bare */ }
             case FieldTypeSpec.EnumSpec e -> {
@@ -193,6 +225,7 @@ public final class DocumentModelDraft {
 
         private final String id;
         private final List<String> locales = new ArrayList<>();
+        private final List<TypeDefDecl> typeDefs = new ArrayList<>();
         private final List<ElementDraft.Group> rootGroups = new ArrayList<>();
 
         private Builder(String id) {
@@ -202,6 +235,14 @@ public final class DocumentModelDraft {
         /** Add a declared locale (e.g. {@code "en_US"}); a full {@code language_COUNTRY} code (KERNEL-FINDINGS §13). */
         public Builder locale(String code) {
             locales.add(code);
+            return this;
+        }
+
+        /** Declare a reusable named type; reference it from fields with {@code typedefField(name, id)}. */
+        public Builder typeDef(String id, Consumer<TypeDefBuilder> body) {
+            TypeDefBuilder b = new TypeDefBuilder();
+            body.accept(b);
+            typeDefs.add(new TypeDefDecl(id, b.spec()));
             return this;
         }
 
@@ -221,7 +262,46 @@ public final class DocumentModelDraft {
             if (rootGroups.isEmpty()) {
                 throw new IllegalStateException("a model needs at least one root group");
             }
-            return new DocumentModelDraft(id, List.copyOf(locales), List.copyOf(rootGroups));
+            return new DocumentModelDraft(id, List.copyOf(locales), List.copyOf(typeDefs), List.copyOf(rootGroups));
+        }
+    }
+
+    /** Picks the single underlying type of a reusable type definition (config reused from the field builders). */
+    public static final class TypeDefBuilder {
+
+        private FieldTypeSpec spec;
+
+        public TypeDefBuilder string(Consumer<StringFieldBuilder> body) {
+            StringFieldBuilder b = new StringFieldBuilder();
+            body.accept(b);
+            return set(b.spec());
+        }
+
+        public TypeDefBuilder number(Consumer<NumberFieldBuilder> body) {
+            NumberFieldBuilder b = new NumberFieldBuilder();
+            body.accept(b);
+            return set(b.spec());
+        }
+
+        public TypeDefBuilder enumeration(Consumer<EnumFieldBuilder> body) {
+            EnumFieldBuilder b = new EnumFieldBuilder();
+            body.accept(b);
+            return set(b.spec());
+        }
+
+        private TypeDefBuilder set(FieldTypeSpec s) {
+            if (spec != null) {
+                throw new IllegalStateException("a type definition has exactly one underlying type");
+            }
+            spec = s;
+            return this;
+        }
+
+        private FieldTypeSpec spec() {
+            if (spec == null) {
+                throw new IllegalStateException("a type definition needs an underlying type");
+            }
+            return spec;
         }
     }
 
@@ -280,6 +360,41 @@ public final class DocumentModelDraft {
             return this;
         }
 
+        /** Add a date field with an explicit constant format and requiredness. */
+        public GroupBuilder dateField(String name, Consumer<DateFieldBuilder> body) {
+            DateFieldBuilder b = new DateFieldBuilder();
+            body.accept(b);
+            elements.add(new ElementDraft.Field(name, b.spec(), b.requiredness));
+            return this;
+        }
+
+        /** Add a date-range field (format + range separator, both required by the kernel). */
+        public GroupBuilder dateRangeField(String name, Consumer<DateRangeFieldBuilder> body) {
+            DateRangeFieldBuilder b = new DateRangeFieldBuilder();
+            body.accept(b);
+            elements.add(new ElementDraft.Field(name, b.spec(), b.requiredness));
+            return this;
+        }
+
+        /** Add a date-fragment field (e.g. year-month) with its fragment format. */
+        public GroupBuilder dateFragmentField(String name, Consumer<DateFragmentFieldBuilder> body) {
+            DateFragmentFieldBuilder b = new DateFragmentFieldBuilder();
+            body.accept(b);
+            elements.add(new ElementDraft.Field(name, b.spec(), b.requiredness));
+            return this;
+        }
+
+        /** Add a field whose type is a reusable {@code typeDef} (referenced by id), optional. */
+        public GroupBuilder typedefField(String name, String typeDefId) {
+            return typedefField(name, typeDefId, Requiredness.OPTIONAL);
+        }
+
+        /** Add a field whose type is a reusable {@code typeDef} (referenced by id), with requiredness. */
+        public GroupBuilder typedefField(String name, String typeDefId, Requiredness requiredness) {
+            elements.add(new ElementDraft.Field(name, new FieldTypeSpec.TypeDefRef(typeDefId), requiredness));
+            return this;
+        }
+
         /** Add a nested group, populated by {@code body}. */
         public GroupBuilder group(String name, Consumer<GroupBuilder> body) {
             GroupBuilder child = new GroupBuilder(name);
@@ -290,6 +405,28 @@ public final class DocumentModelDraft {
 
         private ElementDraft.Group toDraft() {
             return new ElementDraft.Group(name, repeatability, List.copyOf(elements));
+        }
+    }
+
+    /** Referential integrity: every {@code typedefField} must point at a declared {@code typeDef}. */
+    private void checkTypeDefReferences() {
+        Set<String> declared = new HashSet<>();
+        typeDefs.forEach(d -> declared.add(d.id()));
+        rootGroups.forEach(g -> checkTypeDefReferences(g, declared));
+    }
+
+    private static void checkTypeDefReferences(ElementDraft.Group group, Set<String> declared) {
+        for (ElementDraft element : group.elements()) {
+            switch (element) {
+                case ElementDraft.Group sub -> checkTypeDefReferences(sub, declared);
+                case ElementDraft.Field field -> {
+                    if (field.type() instanceof FieldTypeSpec.TypeDefRef ref
+                            && !declared.contains(ref.typeDefinitionId())) {
+                        throw new IllegalStateException("field '" + field.name()
+                                + "' references undeclared type definition '" + ref.typeDefinitionId() + "'");
+                    }
+                }
+            }
         }
     }
 
@@ -422,6 +559,93 @@ public final class DocumentModelDraft {
         public LabelBuilder label(String locale, String text) {
             labels.put(locale, text);
             return this;
+        }
+    }
+
+    /** Configures a date field's constant format and requiredness. */
+    public static final class DateFieldBuilder {
+        private String format;
+        private Requiredness requiredness = Requiredness.OPTIONAL;
+
+        public DateFieldBuilder format(String format) {
+            this.format = format;
+            return this;
+        }
+
+        public DateFieldBuilder required() {
+            this.requiredness = Requiredness.REQUIRED;
+            return this;
+        }
+
+        public DateFieldBuilder requiredIfParentPresent() {
+            this.requiredness = Requiredness.REQUIRED_IF_PARENT_PRESENT;
+            return this;
+        }
+
+        private FieldTypeSpec spec() {
+            return new FieldTypeSpec.DateSpec(format);
+        }
+    }
+
+    /** Configures a date-range field — both a format and a range separator are required by the kernel. */
+    public static final class DateRangeFieldBuilder {
+        private String format;
+        private String separator;
+        private Requiredness requiredness = Requiredness.OPTIONAL;
+
+        public DateRangeFieldBuilder format(String format) {
+            this.format = format;
+            return this;
+        }
+
+        public DateRangeFieldBuilder separator(String separator) {
+            this.separator = separator;
+            return this;
+        }
+
+        public DateRangeFieldBuilder required() {
+            this.requiredness = Requiredness.REQUIRED;
+            return this;
+        }
+
+        public DateRangeFieldBuilder requiredIfParentPresent() {
+            this.requiredness = Requiredness.REQUIRED_IF_PARENT_PRESENT;
+            return this;
+        }
+
+        private FieldTypeSpec spec() {
+            if (format == null || separator == null) {
+                throw new IllegalStateException("a date range needs both a format and a range separator");
+            }
+            return new FieldTypeSpec.DateRangeSpec(format, separator);
+        }
+    }
+
+    /** Configures a date-fragment field (e.g. year-month) — the fragment format is required. */
+    public static final class DateFragmentFieldBuilder {
+        private String fragmentFormat;
+        private Requiredness requiredness = Requiredness.OPTIONAL;
+
+        public DateFragmentFieldBuilder fragmentFormat(String format) {
+            this.fragmentFormat = format;
+            return this;
+        }
+
+        public DateFragmentFieldBuilder required() {
+            this.requiredness = Requiredness.REQUIRED;
+            return this;
+        }
+
+        public DateFragmentFieldBuilder requiredIfParentPresent() {
+            this.requiredness = Requiredness.REQUIRED_IF_PARENT_PRESENT;
+            return this;
+        }
+
+        private FieldTypeSpec spec() {
+            if (fragmentFormat == null) {
+                throw new IllegalStateException("a date fragment needs a fragment format");
+            }
+            return new FieldTypeSpec.DateFragmentSpec(fragmentFormat);
         }
     }
 }

@@ -18,6 +18,30 @@ public sealed interface FieldTypeSpec {
     /** The kernel DM-JSON {@code fieldType.type} discriminator (e.g. {@code "StringType"}). */
     String jsonType();
 
+    /** A date range with a constant format and a range separator (both required by the kernel, §6). */
+    record DateRangeSpec(String format, String separator) implements FieldTypeSpec {
+        @Override
+        public String jsonType() {
+            return "DateRangeType";
+        }
+    }
+
+    /** A date fragment (e.g. year-month) with its fragment format (§6). */
+    record DateFragmentSpec(String fragmentFormat) implements FieldTypeSpec {
+        @Override
+        public String jsonType() {
+            return "DateFragmentType";
+        }
+    }
+
+    /** A reference to a named {@code typeDefinitions[]} entry — the field's type is defined once, reused. */
+    record TypeDefRef(String typeDefinitionId) implements FieldTypeSpec {
+        @Override
+        public String jsonType() {
+            return "TypeDefType";
+        }
+    }
+
     /**
      * A string field: optional length bounds and an anchored pattern (KERNEL-SEMANTICS §7). A pattern
      * is inseparable from its {@code patternMessage} — the kernel rejects a pattern with no error text
