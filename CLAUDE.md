@@ -6,6 +6,10 @@ Design and rationale live under [`docs/`](docs/) — **[`docs/README.md`](docs/R
 
 English is the project default: code, identifiers, comments, docs, and the **default render target** (`DslRenderer` defaults to `ConditionLanguage.EN`) are English. **German is a supported render target, not the default** — the operator catalog carries verified `de` keywords and `new DslRenderer(ConditionLanguage.DE)` renders to it. Translations are welcome; English stays canonical.
 
+## Self-explaining surface (standing requirement, 2026-06-05)
+
+**Favor a self-explaining, explorable CLI over relying on the N1 skill.** A cold LLM agent — given only the binary — must be able to discover the verbs, their parameters, and what they mean, and to learn each output's shape, *without* the skill. The skill (`skill/SKILL.md`) is the material-under-test for the N6 eval and **must stay as simple as possible**; it teaches judgment (polarity, the traps), not the verb/parameter catalog the tool should describe about itself. So when adding or changing a verb: make it discoverable (help/usage + a machine-readable manifest) and schema-describe its I/O. Discoverability lives in the *tool*, not the skill. Detail + rationale: [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md).
+
 ## Test & sample document models
 
 - **Research freely; commit only own-domain re-expressions.** All three sources — **`a12-kernel-demo`**, the **A12 Tools workspaces** (`/Volumes/Buffer/Apps/A12 Tools/A12 Tools - 2025.06-ext5/workspaces`, the 2025.06-ext5 distribution = kernel `30.8.1`, our pin), and **`a12-kernel-mm`** — may be read and studied without limit. What gets **committed** must be our own original fixtures.

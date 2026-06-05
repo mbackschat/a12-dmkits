@@ -6,6 +6,18 @@ The component spec for the standalone CLI (N10). The proposal's [§14/§16](PROJ
 
 The CLI is the **modeller/BA's** interaction surface (N10): one engine (core + adapter), driven by an agent through **verbs with JSON in/out**, the JVM bundled and invisible. It is *not* the developer's surface — a developer uses rulekit as a library in their own project (no CLI). The CLI never shells out to `javac`; the agent authors a rule as **JSON**, which the CLI deserializes *through the typed builder*, so the BA gets the builder's pre-checks + the kernel `Diagnostic`s (F4a) at runtime — the runtime analogue of the developer's compile-time steering.
 
+## 1a. Design principle — self-explaining & explorable (standing requirement, 2026-06-05)
+
+**A cold agent, given only the binary, must be able to explore the tool.** Discoverability is a property of the *CLI*, not the N1 skill — the skill stays minimal (it teaches judgment: polarity, the empty-as-0 trap; not the verb/parameter catalog), so the tool has to carry its own description. Three layers, each a separate concern:
+
+| Layer | Question it answers | Mechanism |
+|---|---|---|
+| **Verbs** | "what can this tool do?" | `help` / a machine-readable verb manifest (verbs × summary) |
+| **Parameters** | "how do I call verb X, and what do the args mean?" | per-verb `--help` / the manifest's `args:[{name, required, meaning}]`; consistent `usage:` on error |
+| **I/O shape** | "what does verb X emit / expect?" | `schema <name>` (✅ outputs); input schemas (`add` rule-spec, `batch` ops) to follow |
+
+Rules of thumb when touching the CLI: a new verb ships with its help/manifest entry and an output schema in the same change; usage strings are uniformly rich (name + meaning per flag), not terse; nothing about the verb surface is discoverable *only* by reading the skill or the source. Drift is caught at build (verb↔manifest parity, schema↔output key coverage) — the F11 discipline. Status of the layers is in §4 (verb table) and the §9 board.
+
 ## 2. Module shape
 
 - **`:cli` Gradle subproject**, `application` plugin. Depends on **core + adapter** (the adapter, added 2026-06-05, powers the `ingest`/`explain` read-back verbs; it pulls the internal kernel read tier — fine for an *app*; N8 confines the internal tier to adapter/cli, never core).
