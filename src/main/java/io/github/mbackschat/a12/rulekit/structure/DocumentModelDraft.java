@@ -115,6 +115,7 @@ public final class DocumentModelDraft {
         node.put("type", "Group");
         node.put("id", path);
         node.put("name", group.name());
+        writeAnnotations(node, group.annotations());
         ObjectNode body = node.putObject("Group");
         body.put("repeatability", group.repeatability());
         ArrayNode elements = body.putArray("elements");
@@ -132,13 +133,36 @@ public final class DocumentModelDraft {
         node.put("type", "Field");
         node.put("id", parentPath + "/" + field.name());
         node.put("name", field.name());
+        writeAnnotations(node, field.annotations());
         ObjectNode body = node.putObject("Field");
         writeFieldType(body.putObject("fieldType"), field.type(), locales);
         String mode = field.requiredness().mode();
         if (mode != null) {
             body.putObject("requirednessConfig").put("mode", mode);
         }
+        if (!field.labels().isEmpty()) {
+            // a label, once present, must cover every declared locale (same rule as enum labels)
+            for (String loc : locales) {
+                if (!field.labels().containsKey(loc)) {
+                    throw new IllegalStateException("field '" + field.name()
+                            + "' label is missing declared locale '" + loc + "'");
+                }
+            }
+            ArrayNode label = body.putArray("label");
+            locales.forEach(loc -> label.addObject().put("locale", loc).put("text", field.labels().get(loc)));
+        }
         return node;
+    }
+
+    /** Emit element-level {@code annotations: [{name, value}]} (omitted when none). */
+    private static void writeAnnotations(ObjectNode elementNode, List<ElementDraft.Annotation> annotations) {
+        if (annotations.isEmpty()) {
+            return;
+        }
+        ArrayNode array = elementNode.putArray("annotations");
+        for (ElementDraft.Annotation a : annotations) {
+            array.addObject().put("name", a.name()).put("value", a.value());
+        }
     }
 
     /** Write the {@code type} discriminator plus its inner config block. */
@@ -311,6 +335,7 @@ public final class DocumentModelDraft {
         private final String name;
         private int repeatability = 1;
         private final List<ElementDraft> elements = new ArrayList<>();
+        private final List<ElementDraft.Annotation> annotations = new ArrayList<>();
 
         private GroupBuilder(String name) {
             this.name = name;
@@ -325,6 +350,12 @@ public final class DocumentModelDraft {
             return this;
         }
 
+        /** A name/value annotation on this group element. */
+        public GroupBuilder annotation(String name, String value) {
+            annotations.add(new ElementDraft.Annotation(name, value));
+            return this;
+        }
+
         /** Add a bare, optional field of the given easy kind. */
         public GroupBuilder field(String name, FieldKind kind) {
             return field(name, kind, Requiredness.OPTIONAL);
@@ -332,56 +363,50 @@ public final class DocumentModelDraft {
 
         /** Add a bare field of the given easy kind with explicit requiredness. */
         public GroupBuilder field(String name, FieldKind kind, Requiredness requiredness) {
-            elements.add(new ElementDraft.Field(name, bareSpec(kind), requiredness));
+            elements.add(new ElementDraft.Field(name, bareSpec(kind), requiredness, Map.of(), List.of()));
             return this;
         }
 
-        /** Add a string field with optional length/pattern config and requiredness. */
+        /** Add a string field with optional length/pattern config, requiredness, labels, annotations. */
         public GroupBuilder stringField(String name, Consumer<StringFieldBuilder> body) {
             StringFieldBuilder b = new StringFieldBuilder();
             body.accept(b);
-            elements.add(new ElementDraft.Field(name, b.spec(), b.requiredness));
-            return this;
+            return addField(name, b, b.spec());
         }
 
-        /** Add a number field with optional scale/range config and requiredness. */
+        /** Add a number field with optional scale/range config, requiredness, labels, annotations. */
         public GroupBuilder numberField(String name, Consumer<NumberFieldBuilder> body) {
             NumberFieldBuilder b = new NumberFieldBuilder();
             body.accept(b);
-            elements.add(new ElementDraft.Field(name, b.spec(), b.requiredness));
-            return this;
+            return addField(name, b, b.spec());
         }
 
         /** Add an enumeration field; needs at least one value. */
         public GroupBuilder enumField(String name, Consumer<EnumFieldBuilder> body) {
             EnumFieldBuilder b = new EnumFieldBuilder();
             body.accept(b);
-            elements.add(new ElementDraft.Field(name, b.spec(), b.requiredness));
-            return this;
+            return addField(name, b, b.spec());
         }
 
-        /** Add a date field with an explicit constant format and requiredness. */
+        /** Add a date field with an explicit constant format. */
         public GroupBuilder dateField(String name, Consumer<DateFieldBuilder> body) {
             DateFieldBuilder b = new DateFieldBuilder();
             body.accept(b);
-            elements.add(new ElementDraft.Field(name, b.spec(), b.requiredness));
-            return this;
+            return addField(name, b, b.spec());
         }
 
         /** Add a date-range field (format + range separator, both required by the kernel). */
         public GroupBuilder dateRangeField(String name, Consumer<DateRangeFieldBuilder> body) {
             DateRangeFieldBuilder b = new DateRangeFieldBuilder();
             body.accept(b);
-            elements.add(new ElementDraft.Field(name, b.spec(), b.requiredness));
-            return this;
+            return addField(name, b, b.spec());
         }
 
         /** Add a date-fragment field (e.g. year-month) with its fragment format. */
         public GroupBuilder dateFragmentField(String name, Consumer<DateFragmentFieldBuilder> body) {
             DateFragmentFieldBuilder b = new DateFragmentFieldBuilder();
             body.accept(b);
-            elements.add(new ElementDraft.Field(name, b.spec(), b.requiredness));
-            return this;
+            return addField(name, b, b.spec());
         }
 
         /** Add a field whose type is a reusable {@code typeDef} (referenced by id), optional. */
@@ -391,7 +416,8 @@ public final class DocumentModelDraft {
 
         /** Add a field whose type is a reusable {@code typeDef} (referenced by id), with requiredness. */
         public GroupBuilder typedefField(String name, String typeDefId, Requiredness requiredness) {
-            elements.add(new ElementDraft.Field(name, new FieldTypeSpec.TypeDefRef(typeDefId), requiredness));
+            elements.add(new ElementDraft.Field(name, new FieldTypeSpec.TypeDefRef(typeDefId),
+                    requiredness, Map.of(), List.of()));
             return this;
         }
 
@@ -403,8 +429,14 @@ public final class DocumentModelDraft {
             return this;
         }
 
+        private GroupBuilder addField(String name, FieldAttrs<?> attrs, FieldTypeSpec spec) {
+            elements.add(new ElementDraft.Field(name, spec, attrs.requiredness,
+                    Map.copyOf(attrs.labels), List.copyOf(attrs.annotations)));
+            return this;
+        }
+
         private ElementDraft.Group toDraft() {
-            return new ElementDraft.Group(name, repeatability, List.copyOf(elements));
+            return new ElementDraft.Group(name, repeatability, List.copyOf(elements), List.copyOf(annotations));
         }
     }
 
@@ -440,13 +472,50 @@ public final class DocumentModelDraft {
         };
     }
 
+    /**
+     * Field-element attributes shared by every field builder — {@code required(...)}, per-locale
+     * {@code label(...)}, and name/value {@code annotation(...)} — so they're written once and apply
+     * uniformly. The self-type {@code SELF} keeps the fluent chain in the concrete builder's type.
+     */
+    public abstract static class FieldAttrs<SELF extends FieldAttrs<SELF>> {
+        Requiredness requiredness = Requiredness.OPTIONAL;
+        final Map<String, String> labels = new LinkedHashMap<>();
+        final List<ElementDraft.Annotation> annotations = new ArrayList<>();
+
+        @SuppressWarnings("unchecked")
+        private SELF self() {
+            return (SELF) this;
+        }
+
+        public SELF required() {
+            requiredness = Requiredness.REQUIRED;
+            return self();
+        }
+
+        public SELF requiredIfParentPresent() {
+            requiredness = Requiredness.REQUIRED_IF_PARENT_PRESENT;
+            return self();
+        }
+
+        /** A per-locale display label; once any locale is set, all declared locales are required. */
+        public SELF label(String locale, String text) {
+            labels.put(locale, text);
+            return self();
+        }
+
+        /** A name/value annotation on the field element. */
+        public SELF annotation(String name, String value) {
+            annotations.add(new ElementDraft.Annotation(name, value));
+            return self();
+        }
+    }
+
     /** Configures a string field. Cross-kind nonsense (a numeric range) is simply not on this surface. */
-    public static final class StringFieldBuilder {
+    public static final class StringFieldBuilder extends FieldAttrs<StringFieldBuilder> {
         private Integer minLength;
         private Integer maxLength;
         private String pattern;
         private String patternMessage;
-        private Requiredness requiredness = Requiredness.OPTIONAL;
 
         public StringFieldBuilder minLength(int n) {
             this.minLength = n;
@@ -465,27 +534,16 @@ public final class DocumentModelDraft {
             return this;
         }
 
-        public StringFieldBuilder required() {
-            this.requiredness = Requiredness.REQUIRED;
-            return this;
-        }
-
-        public StringFieldBuilder requiredIfParentPresent() {
-            this.requiredness = Requiredness.REQUIRED_IF_PARENT_PRESENT;
-            return this;
-        }
-
         private FieldTypeSpec spec() {
             return new FieldTypeSpec.StringSpec(minLength, maxLength, pattern, patternMessage);
         }
     }
 
     /** Configures a number field (scale = fraction digits, optional value range). */
-    public static final class NumberFieldBuilder {
+    public static final class NumberFieldBuilder extends FieldAttrs<NumberFieldBuilder> {
         private Integer fractionDigits;
         private BigDecimal minValue;
         private BigDecimal maxValue;
-        private Requiredness requiredness = Requiredness.OPTIONAL;
 
         public NumberFieldBuilder fractionDigits(int n) {
             this.fractionDigits = n;
@@ -502,25 +560,14 @@ public final class DocumentModelDraft {
             return this;
         }
 
-        public NumberFieldBuilder required() {
-            this.requiredness = Requiredness.REQUIRED;
-            return this;
-        }
-
-        public NumberFieldBuilder requiredIfParentPresent() {
-            this.requiredness = Requiredness.REQUIRED_IF_PARENT_PRESENT;
-            return this;
-        }
-
         private FieldTypeSpec spec() {
             return new FieldTypeSpec.NumberSpec(fractionDigits, minValue, maxValue);
         }
     }
 
     /** Configures an enumeration field — stored values, each with optional per-locale labels. */
-    public static final class EnumFieldBuilder {
+    public static final class EnumFieldBuilder extends FieldAttrs<EnumFieldBuilder> {
         private final List<FieldTypeSpec.EnumValue> values = new ArrayList<>();
-        private Requiredness requiredness = Requiredness.OPTIONAL;
 
         public EnumFieldBuilder value(String value) {
             values.add(new FieldTypeSpec.EnumValue(value, Map.of()));
@@ -531,16 +578,6 @@ public final class DocumentModelDraft {
             LabelBuilder lb = new LabelBuilder();
             labels.accept(lb);
             values.add(new FieldTypeSpec.EnumValue(value, lb.labels));
-            return this;
-        }
-
-        public EnumFieldBuilder required() {
-            this.requiredness = Requiredness.REQUIRED;
-            return this;
-        }
-
-        public EnumFieldBuilder requiredIfParentPresent() {
-            this.requiredness = Requiredness.REQUIRED_IF_PARENT_PRESENT;
             return this;
         }
 
@@ -562,23 +599,12 @@ public final class DocumentModelDraft {
         }
     }
 
-    /** Configures a date field's constant format and requiredness. */
-    public static final class DateFieldBuilder {
+    /** Configures a date field's constant format. */
+    public static final class DateFieldBuilder extends FieldAttrs<DateFieldBuilder> {
         private String format;
-        private Requiredness requiredness = Requiredness.OPTIONAL;
 
         public DateFieldBuilder format(String format) {
             this.format = format;
-            return this;
-        }
-
-        public DateFieldBuilder required() {
-            this.requiredness = Requiredness.REQUIRED;
-            return this;
-        }
-
-        public DateFieldBuilder requiredIfParentPresent() {
-            this.requiredness = Requiredness.REQUIRED_IF_PARENT_PRESENT;
             return this;
         }
 
@@ -588,10 +614,9 @@ public final class DocumentModelDraft {
     }
 
     /** Configures a date-range field — both a format and a range separator are required by the kernel. */
-    public static final class DateRangeFieldBuilder {
+    public static final class DateRangeFieldBuilder extends FieldAttrs<DateRangeFieldBuilder> {
         private String format;
         private String separator;
-        private Requiredness requiredness = Requiredness.OPTIONAL;
 
         public DateRangeFieldBuilder format(String format) {
             this.format = format;
@@ -600,16 +625,6 @@ public final class DocumentModelDraft {
 
         public DateRangeFieldBuilder separator(String separator) {
             this.separator = separator;
-            return this;
-        }
-
-        public DateRangeFieldBuilder required() {
-            this.requiredness = Requiredness.REQUIRED;
-            return this;
-        }
-
-        public DateRangeFieldBuilder requiredIfParentPresent() {
-            this.requiredness = Requiredness.REQUIRED_IF_PARENT_PRESENT;
             return this;
         }
 
@@ -622,22 +637,11 @@ public final class DocumentModelDraft {
     }
 
     /** Configures a date-fragment field (e.g. year-month) — the fragment format is required. */
-    public static final class DateFragmentFieldBuilder {
+    public static final class DateFragmentFieldBuilder extends FieldAttrs<DateFragmentFieldBuilder> {
         private String fragmentFormat;
-        private Requiredness requiredness = Requiredness.OPTIONAL;
 
         public DateFragmentFieldBuilder fragmentFormat(String format) {
             this.fragmentFormat = format;
-            return this;
-        }
-
-        public DateFragmentFieldBuilder required() {
-            this.requiredness = Requiredness.REQUIRED;
-            return this;
-        }
-
-        public DateFragmentFieldBuilder requiredIfParentPresent() {
-            this.requiredness = Requiredness.REQUIRED_IF_PARENT_PRESENT;
             return this;
         }
 
