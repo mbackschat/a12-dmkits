@@ -1,0 +1,139 @@
+# modelkit — proposal addendum & knowledge-source evaluation
+
+> **Status: pre-spike.** This is an **addendum to [`PROJECT-PROPOSAL.md`](PROJECT-PROPOSAL.md)** — it does *not* supersede any of it. It captures the reasoning behind fork #8 (D9) / Phase 3 (§16) / the umbrella (D10) that outgrew the proposal's one-liner, and it records a **material-source evaluation** so the knowledge-gathering groundwork isn't forgotten before the spike runs. Nothing here is a commitment to build; the §9 status board ([`API-POC-STUDY.md`](API-POC-STUDY.md)) still owns *when*.
+
+modelkit = a typed, kernel-validated builder for document-model **structure** (fields, groups, type-defs, includes), the peer of rulekit's rule builder. ARCHITECTURE [§5.2 + "the umbrella"](ARCHITECTURE.md) decides *where the code goes*; this doc argues *whether it's worth it* and *what knowledge it would be built from*.
+
+---
+
+## A. Why modelkit — the asymmetry
+
+rulekit edits the **rules inside** a model. modelkit edits the **model itself**. They are **parallel layers over a shared model-core**, not stacked:
+
+```
+ model-core   (index · GENERIC dsl-free DM-JSON write · validate · diagnostics)   ← shared base
+  ├── rulekit    (catalog · AST/dsl · rule builders)        — over model-core
+  └── modelkit   (Field/Group/TypeDef/Include builders)     — over model-core, does NOT touch dsl
+```
+
+The asymmetry that makes it interesting: **rulekit presupposes a model exists.** Everything binds to a `BoundModel`. Today those models come from hand-written DM-JSON fixtures or the kernel demo. modelkit is the missing half — it lets the *structure* be authored typed-and-kernel-confirmed too.
+
+The case for it, in one table:
+
+| Argument | Substance |
+|---|---|
+| **Closes the authoring loop** | We can type-safely author *half* a document model (rules); the structure half is raw JSON text blocks. modelkit makes the whole model a typed, kernel-confirmed artifact — the completeness story for the OSS pitch. |
+| **The oracle already exists** | rulekit's edge is "confirmed by the engine, not just plausible." modelkit gets the *same* oracle free — `BasicConsistencyCheck` / the 16 `BasicDocumentModelConsistencyCategory` (the F6 work) already validate *structure*. No new oracle to build. |
+| **The hard prep is done** | `write.DmJson` (`insertIntoGroup`/`groupElements`/`findElement`, include-preserving) is the generic, dsl-free write half — extracted 2026-06-05 for exactly this. |
+| **Dogfoods the fixtures** | Our own-domain test fixtures could be *authored through modelkit* — typed, validated, a constant live proof the kit works (today they're hand-written DM-JSON). |
+| **Persona symmetry** | The BA gets whole-model authoring via the CLI (build a model from scratch), not just "add a rule to an existing model." |
+
+---
+
+## B. The thesis — modelkit *is* formalization
+
+The reframing that ties this addendum together: **modelkit is not "a Field/Group builder" — it is the vehicle for formalizing the structural half of the document-model knowhow.**
+
+Just as rulekit turned *"prose about valid rule conditions"* into a typed AST + a self-verifying operator catalog, modelkit turns *"prose about valid model structure"* into a **typed builder that makes invalid structure unrepresentable**. The bigger prize the project is circling isn't a feature — it's *capturing the document-model knowhow as formal, tool-/LLM-consumable artifacts instead of md prose.* modelkit is one pillar of that; the operator catalog is another; the executable kernel-laws a third.
+
+So "should we formalize the knowhow instead of md files?" is largely answered by:
+
+> **build modelkit** (formalizes structural validity into types) **+ extend the executable-laws pattern** (formalizes behavioral semantics) **+ keep the *why* in prose** (by design).
+
+---
+
+## C. Q1 — Why not `betterbuilders`, beyond the public-surface rule
+
+The owner's rule (ship against the kernel's **public** OSS surface only) is the load-bearing constraint. Worth seeing *why* the betterbuilders calculus differs from rules to structure:
+
+For **rules**, D9 rejected betterbuilders because *"the condition stays an opaque string — adds nothing to the AST work"* ([KERNEL-RULE-API-SURVEY](KERNEL-RULE-API-SURVEY.md) C). That argument is **weaker for structure** — betterbuilders genuinely *does* encode the slot knowledge for fields/groups. So the real disqualifiers are the boundary, not "it adds nothing":
+
+| Concern | Why it disqualifies betterbuilders for modelkit |
+|---|---|
+| **Internal tier** | Violates the §3 public-only core boundary (ARCHITECTURE). modelkit-on-betterbuilders would be **adapter-locked = Java-only** — it could not live in `model-core`. |
+| **Kills the TypeScript twin** | §4's data-only out-surface (the DM-JSON spine) is exactly what keeps the twin possible. betterbuilders is Java in-memory objects — no polyglot path, ever. |
+| **Mutability is "convenience, not contract" (D9)** | betterbuilders builds the *internal* model; D9 states internal mutation isn't a contract. Building modelkit's primary surface on a non-contract fights the F11 version-tolerance posture. |
+| **DM-JSON is already the only write path** | `IDocumentModel` exposes *no setters* (survey line 120) — DM-JSON *is* the public write surface, and `write.DmJson` already implements it. |
+
+**But** — like the metamodels — betterbuilders stays valuable as a **read-only reference/oracle**: study its API to *learn* the valid slots, then re-express through DM-JSON. "Reference, never dependency" (D9). That is the bridge to the knowledge-source evaluation below.
+
+---
+
+## D. Q2 — Formalize the knowhow: the gradient and the options
+
+The knowhow is **not homogeneous**, and the project already has a **formalization gradient**. The question is never "prose vs formal" — it's "for each *kind* of knowledge, what representation, and where does formalizing pay for itself?"
+
+| Knowledge kind | Today | Formalized? |
+|---|---|---|
+| **A. Operator semantics** (DSL vocabulary) | `operators.json` / `OperatorCatalog`, self-verified by N7, served via `cli operators` | ✅ **Fully** — and it's the *proof formalization pays*: CLI + skill + N7 all consume it |
+| **B. Structural validity** (what is a valid DM) | MVK ledger (CI-checked) · slot-parity tests · 16 `BasicConsistencyCheck` categories (reflectively locked) · MM_ metamodels (oracle) | ◐ Partly — and *the kernel already formalized it* (metamodel = the formal schema; validator = the executable check) |
+| **C. Behavioral semantics** (empty-as-0, polarity, path walk-up, date arg order) | prose in KERNEL-FINDINGS/SEMANTICS; *some* locked as executable `…LawsTest` | ◐ Partly — the **irreducibly-ours** part; *not* in the metamodel, it's engine behavior |
+| **D. Rule *patterns*** (how real rules are written) | prose in [WORKSPACE-CORPUS-ANALYSIS](WORKSPACE-CORPUS-ANALYSIS.md) | ✗ No (deliberately — it drives the backlog, not a runtime artifact) |
+| **E. Rationale / judgment** (the *why*) | prose | ✗ **By design** — CLAUDE.md: "keep prose for the rationale, which doesn't tabulate" |
+
+The options to formalize — **not exclusive; the right answer layers them by knowledge kind:**
+
+| Option | Pro | Con / when it's a trap | Best fit |
+|---|---|---|---|
+| **1. Executable laws** (extend `validate/laws/…LawsTest`) | can't go stale — the build catches drift; real-kernel-verified | tests *assert* facts, they don't *serve* them (you can't query "what happens to an empty number" from a test). Correctness-gating, not knowledge-serving | kind **C** |
+| **2. Machine-readable spine** (extend the operators.json model) | consumable by tool *and* LLM; one source can generate prose + skill + CLI help | needs a schema; **classic over-engineering trap** if nothing consumes it | the **C**-facts the skill teaches |
+| **3. Encode validity AS kernel rules** (self-hosting / meta) | maximally elegant — dogfoods rulekit on itself; the MM_ rules *already do exactly this* | huge; MM_ is EUPL (re-express); most of **C** (empty-as-0) isn't expressible as a rule — it's engine internals | aspirational |
+| **4. Derive-from-oracle** (generate from metamodel/validator/enums) | zero drift *by construction* | EUPL provenance on MM_ structure (re-express the mechanism, not the expression — standing rule); covers **B** only, never **C** | kind **B** |
+| **5. Literate prose, single-source + generate** | cheap, readable | prose-rot is the disease we're treating | kind **E** only |
+
+**The discipline that decides each row — name it loudly:** *formalize a fact only when a consumer exists* (the tool, the LLM, or a CI gate). The operators catalog works because three things consume it (CLI, N7, skill). A "DM knowledge ontology" that nothing queries would rot **worse** than prose — cost with no payoff. Formalization that only feeds other formalization is the trap.
+
+---
+
+## E. Material-source evaluation — *all* the knowledge on document models
+
+The owner's priority: **use as many sources as possible** to extract document-model knowledge. This is the inventory, so it isn't forgotten and the spike (and later analysis) can pick up each thread. Columns: what DM-knowledge it carries, the access/license constraint, how far it's been mined *today*, and its **untapped potential for modelkit / formalization.**
+
+| # | Source | DM-knowledge it carries | License / access | Mined today | Untapped potential |
+|---|---|---|---|---|---|
+| 1 | **Operator catalog** (`operators.json` + `OperatorCatalog`, self-verifying via N7; `cli operators`) | **A** — DSL vocabulary: keywords (EN/DE), operands, kinds, examples, gotchas | ours (MIT) | ✅ **Fully formalized** — the model to imitate | The *template* for a structural-construct catalog (Field-kind / Group / TypeDef catalog). Reuse the self-verify + serve-via-CLI pattern. |
+| 2 | **`a12-kernel-mm` metamodels** (`MM_Field_1`, `MM_Group_1`, `MM_Typedef_1`, `MM_Rule_1`, `MM_Computation_1`, `MM_Common_v2`, `CT_MODEL_HEADER_1`, …; 15 canonical, **547 rules**, **473 fields**) | **B (structure!)** — the *formal schema of document-model structure itself*: which slots a Field/Group/TypeDef has, their types, their constraints. **This is the kernel's own formalization of B.** | **EUPL-1.2** — read-only, own-words only; sibling clone `../a12-kernel-mm`, opt-in via `KernelMmIntegrationTest` (skips if absent) | ◐ **Loaded + validated only** — all 15 load/expand/`checkConsistency` under pinned 30.8.1; `CT_MODEL_HEADER` slots documented (KERNEL-FINDINGS §schema-oracle). **Slot inventory for Field/Group/TypeDef NOT yet extracted.** | **The richest, least-exploited source for modelkit.** The MM_Field/Group/Typedef models *are* modelkit's input schema (option-4 derive-from-oracle). Their **rules** encode the structural validity laws (constraint oracle). This is the spike's Q2. |
+| 3 | **`betterbuilders`** (kernel-internal `RuleBuilder` et al. — structure builders) | **B** — the kernel's own structure-builder API shape: what it lets you set on a field/group | **internal tier** — reference, never dependency (D9); read-only | ✗ Not mined | Cross-check the metamodel slot inventory against an *API* view of the same slots (two angles on B). Confirms we haven't missed a slot. Never linked/depended-on. |
+| 4 | **`KERNEL-SEMANTICS.md`** (a12-kernel-demo; 14 sections) | **C** — behavioral semantics: truth values, empty values, formal errors, *required*, decimals, dates, strings/patterns, enums, iteration, paths, computations, validation model, messages, CustomCondition | consult-only, **do not write** (owner policy) | ◐ Consulted per-increment; the canonical behavioral reference | The authoritative inventory of **C** (the executable-laws target, option 1). §4 "required" + §12 "validation model" are directly modelkit-relevant (field requiredness, formal vs rule validation). |
+| 5 | **`KERNEL-FINDINGS.md`** (ours; section-numbered to mirror #4; every entry test-locked) | **B + C** — experiment-verified facts the demo lacks: schema-oracle (B), includes/`modelAlias` mechanism (B), polarity, message-locale law, paths, AOT | ours (MIT) | ✅ The *already-formalized* end of **C** — each entry has a `…LawsTest` lock | The proven option-1 pattern. New structural findings from the spike land here, section-numbered, test-locked. The §schema-oracle + §includes entries are modelkit's starting structural facts. |
+| 6 | **`a12-kernel-mm` real models — the rules** (547 constraint conditions across the 15 metamodels) | **D + B** — how real-world rules are written *and* (because they constrain models) the structural validity laws in executable form | EUPL-1.2, read-only | ◐ Operator *histogram* extracted (FieldFilled 293, RNU 90, CustomCondition 53, Pattern 55, GroupFilled 41 …); the **ingest round-trip coverage is NOT measured** | The spike's Q1: run rulekit `ingest`/`explain` over these 547 → coverage % vs `Opaque` (F10 tail). Tests both "can we understand them?" *and* surfaces the structural laws they encode. |
+| 7 | **A12 Tools workspace corpus** (Corpus 1; ~150 conditions across application models) | **D** — application-domain rule patterns; **B** — real header/locale/include conventions at scale | **proprietary** — read-only, never commit/migrate; transform via own-domain re-expression | ◐ Operator histogram + the bare-locale finding (268 `en` vs 107 `en_US`) | Real-world structural conventions (how apps actually shape models) inform modelkit's *ergonomics* (defaults, common group shapes), not its laws. Patterns only; nothing committed. |
+| 8 | **`BasicConsistencyCheck` + the 16 `BasicDocumentModelConsistencyCategory`** | **B** — the executable structural validator: every category = a way a model can be structurally invalid | kernel public surface | ✅ All 16 categories classified + reflectively CI-locked (instrument 4) | modelkit's **runtime oracle** (the structural analogue of `RuleValidator`). Already the F6 output contract — modelkit asserts against it directly. |
+| 9 | **MVK ledger** ([MVK-LEDGER.md](MVK-LEDGER.md)) | **B** — every `MVK_*` rule-diagnostic classified (erased-by-types / pre-checked / kernel-delegated / pending) | ours (MIT), CI-locked | ✅ Complete + CI-gated | The *model* for a modelkit-side ledger of structural diagnostics (which `BasicConsistencyCheck` categories modelkit erases-by-types vs delegates). |
+| 10 | **Parsetree-api construct-name enums** (KERNEL-FINDINGS §238) | **A** — the kernel's machine-readable operator inventory (reverse-parity anchor) | kernel public surface | ✅ `KernelConstructParityTest` | Operator-side, not structural; listed for completeness. If a structural-construct enum exists (field-type registry), it's the parsetree-equivalent for **B**. |
+
+**The headline read of the table:** every source is *rules-mined* well (the rulekit work) but **structure-mined barely** — rows 2/3/6 (the metamodel slot inventory, the betterbuilders API shape, the structural laws the metamodel rules encode) are the under-exploited gold, and they are exactly what modelkit needs. The spike targets them.
+
+---
+
+## F. The spike — focused, measurable, *not* a full-scale study
+
+modelkit is worthwhile **as the formalization vehicle**, not as "the next feature." Given that depth, the right next step is a **time-boxed feasibility spike, not a waterfall study** — because the load-bearing premises are *empirically checkable*, and the measurements reshape both the modelkit scope and the formalization strategy.
+
+Three measurable questions:
+
+| Q | Question | Method | What the number decides |
+|---|---|---|---|
+| **Q1** | Can we extract DM knowledge from kernel-mm **now**? ("we understand these rules, right?") | Run rulekit `ingest`/`explain` over the 547 kernel-mm metamodel rules; report **coverage %** (clean ingest vs `Opaque`/F10 tail) | Whether "extract ALL knowledge" is real today or aspirational; sizes the F10 gap |
+| **Q2** | What does the metamodel actually constrain for **structure**? | Read MM_Field/Group/Typedef (+ CT_MODEL_HEADER) as the schema oracle; enumerate the slots each construct has, own-words | The modelkit-MVP input schema **and** the formalization target for kind B |
+| **Q3** | What behavioral knowledge (**C**) is *not* in the metamodel/validator? | Inventory KERNEL-SEMANTICS + KERNEL-FINDINGS for facts no oracle covers (empty-as-0 class) | The set that must become executable laws (option 1), because nothing else covers it |
+
+**Output** = a short feasibility memo (the three numbers/inventories) + a modelkit increment breakdown grounded in *measured* coverage, not speculation. Roughly a day, not a study. It either confirms the thesis (high ingest coverage + clean metamodel slots → modelkit is a short hop) or surfaces blockers cheaply.
+
+The spike honors the standing rules: kernel-mm is **read-only, own-words, EUPL** (no committed content); betterbuilders is **reference, never dependency**; KERNEL-SEMANTICS is **consult-only**. New verified facts land in KERNEL-FINDINGS (test-locked); patterns inform the backlog; nothing of either corpus is committed.
+
+---
+
+## G. Open decisions (deferred, recorded so they aren't lost)
+
+| Decision | Current lean | Trigger to revisit |
+|---|---|---|
+| **Module vs package** | Start as a **`structure` package** in core (crosses no kernel boundary → hasn't "earned" a module, §1). | Extract `:model-core` + `:modelkit` only when size/coupling justify it. |
+| **Repo + coordinate rename** (`a12-kernel-kits`, D10) | Keep `a12-rulekit` while rules-only. Maven-coordinate + Java-package-root rename is *cheapest pre-publish* — lock it in the pre-publish window even if the repo rename waits. | modelkit becomes a real peer. |
+| **Schema-oracle provenance** | MM_ metamodels are the schema oracle but **EUPL** — re-express the *mechanism* (slots, the include scheme) in our own domain; never commit their content. | Each structural increment (same discipline as the rule corpus). |
+| **Source-artifact provenance on the index** (mirror of D14) | TBD — needed so include-aware editing later writes to the *owning* artifact. | When modelkit gains include-editing (beyond the MVP). |
+| **Formalization target per kind** | B → derive-from-oracle (option 4) + the typed builder; C → executable laws (option 1); the skill's C-facts → modest machine-readable spine (option 2) only where a consumer exists; E → prose. | If a concrete consumer for a richer knowledge-spine appears. |
+
+---
+
+*Cross-refs: ARCHITECTURE [§5.2 + the umbrella](ARCHITECTURE.md); PROJECT-PROPOSAL D9/D10/N8/N10, fork #8, §16; [KERNEL-FINDINGS](KERNEL-FINDINGS.md) §schema-oracle / §includes; [WORKSPACE-CORPUS-ANALYSIS](WORKSPACE-CORPUS-ANALYSIS.md); [MVK-LEDGER](MVK-LEDGER.md).*

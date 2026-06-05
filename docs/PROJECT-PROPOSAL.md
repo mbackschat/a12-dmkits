@@ -154,7 +154,7 @@ The owner's goals, consolidated (original vision 2026-06-02; bidirectionality de
 - **Not a validation engine.** The kernel is the engine; rulekit is a typed front-end and edit layer over the language the engine consumes.
 - **Not a workbench over the kernel's AST.** The kernel's `ICondition` tree is effectively immutable, internal-tier, and ergonomically alien (survey §1) — it is the adapter's *transport format*, never the representation users or LLMs touch. All work happens on rulekit's own AST.
 - **Not a hand-written parser.** rulekit never parses DSL text itself; the read direction is delegated to the kernel's parser through the adapter (F10). (This retires v1's "not initially a parser" hedge — there will be *no* rulekit parser, by design.)
-- **v1 scope does not build model *structure*.** rulekit binds to an existing `DocumentModel`; if model construction is ever added, it emits public DM-JSON (fork #8, D9).
+- **v1 scope does not build model *structure*.** rulekit binds to an existing `DocumentModel`; if model construction is ever added, it emits public DM-JSON (fork #8, D9). *(The fork-#8 case — modelkit as the rulekit peer and the formalize-the-knowhow thesis behind it — is developed in the addendum [`MODELKIT-PROPOSAL.md`](MODELKIT-PROPOSAL.md); pre-spike, no build commitment.)*
 - **Not a new validation language.** 1:1 to the existing A12 DSL; no invented semantics.
 - **Not an editor.** No Monaco/UI work; if rulekit output ever feeds the official editor, the integration contract is the editor's existing string + async-callbacks API (survey §15).
 
