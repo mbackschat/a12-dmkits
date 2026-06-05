@@ -172,6 +172,49 @@ class LinterTest {
                 () -> "a guarded FieldFilled should not warn: " + linter.lint(m, rule));
     }
 
+    // --- pure-AST lint: an unguarded number comparison that fires on an empty value (KERNEL-SEMANTICS §2)
+
+    @Test
+    void flagsAnUnguardedNumberComparisonThatFiresOnEmpty() {
+        // [FEE] < 100 with FEE unguarded: an empty number reads as 0, and 0 < 100 fires — usually unintended.
+        Condition c = m.num(FEE).lt(100);
+
+        Diagnostic d = only(linter.lint(c), "RK_UNGUARDED_NUMBER_COMPARISON");
+        assertEquals(DiagnosticSource.LINT, d.source());
+        assertEquals(Severity.WARNING, d.severity());
+        assertTrue(d.summary().contains(FEE), () -> "summary should name the field: " + d.summary());
+        assertTrue(d.fix().orElse("").contains("FieldFilled(" + FEE + ")"),
+                () -> "fix should suggest the FieldFilled guard: " + d.fix());
+    }
+
+    @Test
+    void noUnguardedNumberLintWhenGuarded() {
+        // FieldFilled(FEE) And [FEE] < 100 — guarded, so an empty value can't reach the comparison.
+        Condition c = m.field(FEE).filled().and(m.num(FEE).lt(100));
+        assertTrue(noLint(c, "RK_UNGUARDED_NUMBER_COMPARISON"),
+                () -> "a guarded number comparison should not be flagged: " + linter.lint(c));
+    }
+
+    @Test
+    void noUnguardedNumberLintWhenAnEmptyValueCannotFire() {
+        // [FEE] > 100 — empty reads as 0, and 0 > 100 is false, so an empty value never fires: no surprise.
+        Condition c = m.num(FEE).gt(100);
+        assertTrue(noLint(c, "RK_UNGUARDED_NUMBER_COMPARISON"),
+                () -> "a comparison an empty-as-0 cannot trip should not be flagged: " + linter.lint(c));
+    }
+
+    @Test
+    void noUnguardedNumberLintForFieldVsFieldComparison() {
+        // [MonthlyFee] < [MonthlyFee]-style field-vs-field is out of scope (no constant operand).
+        Condition c = m.num(FEE).lt(m.num("/Subscription/Billing/BaseFee"));
+        assertTrue(noLint(c, "RK_UNGUARDED_NUMBER_COMPARISON"),
+                () -> "field-vs-field is out of the lint's conservative scope: " + linter.lint(c));
+    }
+
+    private boolean noLint(Condition c, String code) {
+        return linter.lint(c).stream().noneMatch(d -> d.code().filter(code::equals).isPresent());
+    }
+
     private static Diagnostic only(List<Diagnostic> diagnostics, String code) {
         List<Diagnostic> matches = diagnostics.stream()
                 .filter(d -> d.code().filter(code::equals).isPresent())

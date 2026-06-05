@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.rulekit.lint;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -8,19 +10,25 @@ import java.util.Set;
 import com.mgmtp.a12.model.notification.Severity;
 
 import io.github.mbackschat.a12.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.rulekit.dsl.Calculation;
+import io.github.mbackschat.a12.rulekit.dsl.CompareOp;
 import io.github.mbackschat.a12.rulekit.dsl.ComparisonCondition;
 import io.github.mbackschat.a12.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.rulekit.dsl.CustomConditionRef;
 import io.github.mbackschat.a12.rulekit.dsl.FieldListPredicate;
 import io.github.mbackschat.a12.rulekit.dsl.FieldListValueListCondition;
 import io.github.mbackschat.a12.rulekit.dsl.FieldPresenceCondition;
+import io.github.mbackschat.a12.rulekit.dsl.FieldRef;
+import io.github.mbackschat.a12.rulekit.dsl.FieldValue;
 import io.github.mbackschat.a12.rulekit.dsl.GroupListPredicate;
 import io.github.mbackschat.a12.rulekit.dsl.GroupPresenceCondition;
 import io.github.mbackschat.a12.rulekit.dsl.LogicCondition;
+import io.github.mbackschat.a12.rulekit.dsl.NumberLiteral;
 import io.github.mbackschat.a12.rulekit.dsl.PatternCondition;
 import io.github.mbackschat.a12.rulekit.dsl.RepetitionNotUniqueCondition;
 import io.github.mbackschat.a12.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.rulekit.dsl.ValueListCondition;
+import io.github.mbackschat.a12.rulekit.model.ValueKind;
 import io.github.mbackschat.a12.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.rulekit.validate.DiagnosticSource;
 
@@ -52,6 +60,7 @@ public final class Linter {
     public List<Diagnostic> lint(String rulePath, Condition condition) {
         List<Diagnostic> out = new ArrayList<>();
         visit(condition, null, rulePath, out);
+        unguardedNumberComparison(condition, rulePath, out);
         return List.copyOf(out);
     }
 
@@ -171,6 +180,123 @@ public final class Linter {
             case RepetitionNotUniqueCondition ignored -> { }
             case CustomConditionRef ignored -> { }
         }
+    }
+
+    /**
+     * An <em>ordering</em> comparison ({@code <} / {@code <=} / {@code >} / {@code >=}) of a
+     * <b>number</b> field against a numeric constant, with no presence guard on that field, where an
+     * <em>empty</em> field would actually fire. An unspecified number defaults to {@code 0} in a
+     * comparison (KERNEL-SEMANTICS §2), so {@code [Amount] < 100} fires on an EMPTY Amount
+     * ({@code 0 < 100}) — usually unintended. Conservative on three axes: only ordering ops (not
+     * {@code ==}/{@code !=}); only field-vs-constant (field-vs-field like {@code [A] < [B]} and
+     * field-vs-aggregate like {@code [Q] < Sum(...)} are left alone); and only when {@code 0} satisfies
+     * the comparison (so {@code [Amount] > 100} — which an empty value can't trip — is not flagged).
+     * Number is special: empty string/date/enum comparisons are simply not evaluated, so they need no
+     * guard. Pure-AST (the field kind is in the AST), so it fires on every lint entry point.
+     */
+    private void unguardedNumberComparison(Condition condition, String rulePath, List<Diagnostic> out) {
+        Set<String> guarded = new HashSet<>();
+        collectGuardedFields(condition, guarded);
+        collectUnguardedNumberCompares(condition, guarded, rulePath, out);
+    }
+
+    /** Field paths positively guarded somewhere in the condition (FieldFilled / AllFieldsFilled). */
+    private void collectGuardedFields(Condition c, Set<String> guarded) {
+        switch (c) {
+            case FieldPresenceCondition f -> {
+                if (f.filled()) {
+                    guarded.add(f.field().path());
+                }
+            }
+            case FieldListPredicate p -> {
+                if ("AllFieldsFilled".equals(p.operatorId())) {
+                    for (var operand : p.fields()) {
+                        if (operand instanceof FieldRef fr) {
+                            guarded.add(fr.path());
+                        }
+                    }
+                }
+            }
+            case LogicCondition l -> {
+                collectGuardedFields(l.left(), guarded);
+                collectGuardedFields(l.right(), guarded);
+            }
+            default -> { }
+        }
+    }
+
+    private void collectUnguardedNumberCompares(Condition c, Set<String> guarded, String rulePath,
+            List<Diagnostic> out) {
+        switch (c) {
+            case LogicCondition l -> {
+                collectUnguardedNumberCompares(l.left(), guarded, rulePath, out);
+                collectUnguardedNumberCompares(l.right(), guarded, rulePath, out);
+            }
+            case ComparisonCondition cmp -> maybeFlagComparison(cmp, guarded, rulePath, out);
+            default -> { }
+        }
+    }
+
+    private void maybeFlagComparison(ComparisonCondition cmp, Set<String> guarded, String rulePath,
+            List<Diagnostic> out) {
+        if (!isOrdering(cmp.operator())) {
+            return;
+        }
+        String leftField = numberFieldPath(cmp.left());
+        String rightField = numberFieldPath(cmp.right());
+        BigDecimal leftLit = numberLiteralValue(cmp.left());
+        BigDecimal rightLit = numberLiteralValue(cmp.right());
+        // exactly one operand a number field, the other a numeric constant — substitute 0 for the field
+        String field;
+        BigDecimal lhs;
+        BigDecimal rhs;
+        if (leftField != null && rightLit != null) {
+            field = leftField;
+            lhs = BigDecimal.ZERO;
+            rhs = rightLit;
+        } else if (rightField != null && leftLit != null) {
+            field = rightField;
+            lhs = leftLit;
+            rhs = BigDecimal.ZERO;
+        } else {
+            return;
+        }
+        if (!guarded.contains(field) && holds(lhs, cmp.operator(), rhs)) {
+            out.add(new Diagnostic(Severity.WARNING, DiagnosticSource.LINT,
+                    Optional.of("RK_UNGUARDED_NUMBER_COMPARISON"),
+                    "'" + field + "' is a number compared with an ordering operator but its presence isn't"
+                            + " guarded — an empty number reads as 0, so the rule also fires on an empty '" + field + "'",
+                    new Diagnostic.Where(rulePath, Optional.of(cmp.operatorId())),
+                    Optional.of("FieldFilled(" + field + ") And <the comparison>"),
+                    Optional.of("an unspecified number defaults to 0 in a comparison (KERNEL-SEMANTICS §2) — unlike an"
+                            + " empty string/date/enum, which is not evaluated — so guard the number with FieldFilled"
+                            + " if an empty value should not trip the rule")));
+        }
+    }
+
+    private static boolean isOrdering(CompareOp op) {
+        return op == CompareOp.LT || op == CompareOp.LE || op == CompareOp.GT || op == CompareOp.GE;
+    }
+
+    /** Whether {@code l op r} holds (used to ask "would an empty field, read as 0, fire?"). */
+    private static boolean holds(BigDecimal l, CompareOp op, BigDecimal r) {
+        int c = l.compareTo(r);
+        return switch (op) {
+            case LT -> c < 0;
+            case LE -> c <= 0;
+            case GT -> c > 0;
+            case GE -> c >= 0;
+            case EQ, NE -> false; // not ordering — guarded by isOrdering, never reached
+        };
+    }
+
+    private static String numberFieldPath(Calculation calc) {
+        return calc instanceof FieldValue fv && fv.field().kind() == ValueKind.NUMBER
+                ? fv.field().path() : null;
+    }
+
+    private static BigDecimal numberLiteralValue(Calculation calc) {
+        return calc instanceof NumberLiteral n ? n.value() : null;
     }
 
     /**
