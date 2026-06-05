@@ -23,9 +23,14 @@ export const meta = {
   ],
 }
 
-const MODELS = (args && args.models) || ['opus']
-const K = (args && args.k) || 3
-const TASKS = (args && args.tasks) || []
+// Defensive: args may arrive as an object or (per the Workflow docs' caveat) as a JSON string —
+// handle both so the run can never silently no-op on an empty TASKS again.
+const A = (typeof args === 'string') ? JSON.parse(args) : (args || {})
+const MODELS = A.models || ['opus']
+const K = A.k || 3
+const TASKS = A.tasks || []
+log(`benchmark inputs: ${MODELS.length} model(s) [${MODELS}], k=${K}, ${TASKS.length} task(s)`)
+if (TASKS.length === 0) throw new Error('no tasks passed in args.tasks — nothing to benchmark')
 const CLI = 'JAVA_HOME="$(/usr/libexec/java_home -v 21)" cli/build/install/cli/bin/cli'
 const CATALOG = 'src/main/resources/catalog/operators.json'
 const MODEL_FILE = t => `cli/src/test/resources/models/${t.model}.dm.json`
