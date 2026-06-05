@@ -98,6 +98,38 @@ The spec stays stable; measured results churn each run — so **all eval/benchma
 - **Layer 1 — the oracle (deterministic, CI):** `cli/.../eval/EvalGoldOracleTest` reads the corpus and asserts every gold *validates against the kernel* (via `RuleValidator.check`). Guards that tasks + golds are real; runs on every build.
 - **Layer 2 — the agent runner (soft, opt-in):** `eval/benchmark.workflow.js` (✅ runnable, 2026-06-05) — a Workflow that fans out `model × task × k` clean agents over **both** families (authoring → candidate; comprehension → explanation), then **Recheck** (one warm-JVM `cli batch` re-validates every authored candidate authoritatively — not the agents' self-report) → **Judge** (a judge agent scores semantic correctness vs the gold/rubric, which catches a kernel-valid-but-inverted rule) → aggregate pass@k. `pass = kernel-valid AND semantically-right`. Uses the **`batch` verb** (✅ CLI-SPEC §4) for the re-check. Token-heavy → run on demand, never per-commit; the caller passes the `eval/tasks/*.json` contents in via `args` (the script has no filesystem access). Prereq: `./gradlew :cli:installDist`.
 
+### 8a. Cost model — how many agents a run spawns
+
+A run's agent count is dominated by the three phases. With `A` authoring tasks, `C` comprehension tasks, `M` model tiers, and `k` runs per cell:
+
+| Phase | Agents | Why |
+|---|---|---|
+| **Produce** | `(A + C) × M × k` | One clean agent per (task, model, run) — the fan-out. |
+| **Recheck** | `1` (or `0` if no authoring candidates) | A **single** agent batches *all* authored candidates through one `cli batch` (the whole point of the `batch` verb — one warm JVM, not one process per candidate). |
+| **Judge** | `Vauth + (C × M × k)` | One judge per **kernel-valid** authoring candidate (`Vauth` ≤ `A × M × k`; an invalid candidate skips its judge — it's already a fail) + one per comprehension run. |
+| **Total** | `Produce + Recheck + Judge` | |
+
+The recheck is **flat at 1** by design — that's why scaling `k` or tasks grows produce + judge linearly but never multiplies the re-check cost.
+
+**Worked example — the 2026-06-05 run** (`A=6`, `C=1`, `M=2`, `k=2`):
+
+| Phase | Count | Computation |
+|---|--:|---|
+| Produce | 28 | `(6 + 1) × 2 × 2` |
+| Recheck | 1 | one batch agent |
+| Judge | 27 | `23` valid authoring candidates (one `sonnet/T1` run was kernel-invalid → no judge) `+ 4` comprehension `(1 × 2 × 2)` |
+| **Total** | **56** | |
+
+The **earlier failed run showed 29** because it aborted in the Recheck phase (the uncaught rescore agent): `28` produce `+ 1` rescore, with **no judges reached**. So `29` = produce + the one failed recheck agent; `56` = the full pipeline once recheck was fixed. (On a *resumed* run the produce agents replay from cache but still count toward the total.)
+
+### 8b. Targeted re-runs — confirm a fix cheaply
+
+Agents cost tokens, so **after fixing a gap a run surfaced, re-run only the affected cells, not the whole suite.** The runner fans out over exactly what you pass, so subsetting is free: pass just the relevant task(s) and model(s) in `args` at a low `k`. Re-running T4 on both tiers, for example, is `(1)×2×2 + 1 + ≤4 ≈ 9` agents vs 56 for the full suite (§8a).
+
+Two rules keep the cheap re-run honest:
+- **Material change ⇒ fresh run, not a resume.** A *resume* replays produce agents from cache — correct only when inputs are unchanged (e.g. recovering an aborted run). When the **material** changed (skill/catalog/CLI), the produce agents must re-run on the *new* material, so start a **fresh** run with the subset `args`.
+- **Full suite only periodically.** The targeted re-run proves *this* fix; run the whole suite occasionally to catch regressions elsewhere. Both land in `eval/RESULTS.md`, labelled (targeted vs full).
+
 Task schema (per file):
 ```json
 { "id": "T1", "family": "authoring", "model": "subscription",

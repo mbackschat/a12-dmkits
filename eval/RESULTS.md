@@ -15,11 +15,28 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
-### 2026-06-05 05:45 CEST — pass@k run `w35lyr1fd` FAILED (runner bug; recoverable)
+### 2026-06-05 05:51 CEST — first pass@k, full suite, opus + sonnet, k=2 (run `wx2sb6fin`)
 
-First live Layer-2 run (opus + sonnet, k=2, full suite). It **ran** — 29 agents, ~804k tokens, ~515s — but **aborted**: the rescore agent finished without calling `StructuredOutput`, and that `agent()` call wasn't wrapped in a catch, so it failed the whole workflow. Root cause: a runner bug (uncaught rescore), not a material/skill finding. The produce agents' work is cached, so the fix is to harden the runner (catch the rescore; fall back to the agents' self-reported `kernelAccepted`) and **resume from the run id** — the cached produce agents replay, only rescore + judge re-run. pass@k numbers will replace this entry once it completes.
+The first complete Layer-2 run. `pass = kernel-valid AND judge-equivalent to the gold` (comprehension: judge-correct vs the rubric). **56 agents** = 28 produce + 1 recheck + 27 judge (the agent-count formula is in EVAL-SPEC §8a; `A=6, C=1, M=2, k=2`), ~386k tokens, ~92s — resumed over the cached produce agents from the failed `w35lyr1fd`.
 
-*(An earlier attempt the same session no-opped on empty `args.tasks` — the script now parses string-or-object args and fails loud on an empty task list.)*
+| model | T1 | T2 | T3 | T4 | T5 | T6 | T7 |
+|---|---|---|---|---|---|---|---|
+| opus | 2/2 | 2/2 | 0/2 | 0/2 | 1/2 | 0/2 | 2/2 |
+| sonnet | 1/2 | 2/2 | 0/2 | 0/2 | 2/2 | 0/2 | 2/2 |
+
+Strong: **T1, T2, T7** (comprehension 4/4 — reading foreign rules back works well on both tiers). The failures split into two kinds — and telling them apart is the main result:
+
+**Real material gaps (the skill/catalog worklist):**
+- **T4 aggregate+Having — 0/4.** Both tiers mis-modelled the aggregate: used a *count of filled `Sku` fields* (`NumberOfFilledFields`) or reversed polarity, instead of `Sum(Items*/Count Having …)`. The material under-teaches "sum a field over a filtered repeatable group" vs "count items". **Next:** a worked aggregate+Having example in the skill.
+- **T5 date — 3/4.** One opus run inverted the `DifferenceInDays(A, B) = B − A` sign (fired on delivery *after* order). **Next:** state the sign convention explicitly in the skill.
+
+**Eval-design artifacts (NOT material gaps — fix the harness, not the skill):**
+- **T3 pattern — 0/4 is a false negative.** Both models wrote *valid, sensible* email regexes (`.+@.+`, `[^@]+@[^@]+`) that simply differ from the gold's specific pattern. There is no canonical email regex, so exact-equivalence is the wrong bar. **Fix:** T3's gold should accept any reasonable email pattern (judge on intent, not regex identity), or pick a task whose pattern is unambiguous (e.g. a 5-digit postal code).
+- **T6 value-list — 0/4 is a judge false negative.** Both used `Tier == "BASIC"`. The judge marked it non-equivalent, reasoning about "FREE/TRIAL" tiers — but the `Tier` enum is *exactly* `{BASIC, PRO, ENTERPRISE}`, so `== "BASIC"` **is** equivalent to "not in {PRO, ENTERPRISE}". The judge wasn't given the model, so it assumed an open enum domain. **Fix:** give the judge the field's enum domain (or the model card) so it can reason within the actual value set.
+
+**Meta-findings for the harness:** (1) the judge needs **model context** (at least enum domains) to avoid open-world false negatives; (2) golds for **open-ended** outputs (regex, free text) need intent-equivalence, not string identity. One flake: `sonnet/T1/1` produced no kernel-valid rule (n=2 is noisy — raise k for the cells that matter).
+
+*(Earlier same session: `w35lyr1fd` aborted on an uncaught rescore agent — runner bug, since fixed (best-effort rescore → self-report fallback); a first attempt no-opped on empty `args.tasks` — now parsed defensively. Neither was a material finding.)*
 
 ### 2026-06-05 — Sonnet matches Opus (+skill, pinned)
 
