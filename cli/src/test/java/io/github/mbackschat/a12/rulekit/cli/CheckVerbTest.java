@@ -54,6 +54,22 @@ class CheckVerbTest {
     }
 
     @Test
+    void warnsOnInvertedRequirednessInDiagnostics(@TempDir Path dir) throws Exception {
+        // The requirement written positively — FieldFilled on the error field — is kernel-valid but
+        // inverted polarity (it fires when the fee IS present). check accepts it (valid stays true)
+        // yet surfaces the RK_INVERTED_REQUIREDNESS lint warning in the diagnostics — the same silent
+        // gap the kernel can't catch and that `add` warns on, now caught at the check stage too.
+        var res = CliTestSupport.run("check", model(dir).toString(),
+                "--field", "/Subscription/Addons/MonthlyFee",
+                "--condition", "FieldFilled(MonthlyFee)", "--code", "FEE_PRESENT");
+        assertEquals(0, res.code(), res::err);
+        JsonNode j = MAPPER.readTree(res.out());
+        assertTrue(j.get("valid").asBoolean(), "the kernel accepts a well-formed (if inverted) candidate");
+        assertTrue(j.get("diagnostics").toString().contains("RK_INVERTED_REQUIREDNESS"),
+                () -> "the lint backstop surfaces the inverted polarity: " + res.out());
+    }
+
+    @Test
     void missingRequiredFlagFails(@TempDir Path dir) throws Exception {
         var res = CliTestSupport.run("check", model(dir).toString(),
                 "--field", "/Subscription/Addons/MonthlyFee", "--code", "X"); // no --condition

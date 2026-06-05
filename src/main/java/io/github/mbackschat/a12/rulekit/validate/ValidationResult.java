@@ -19,7 +19,7 @@ public record ValidationResult(boolean ok, List<Diagnostic> diagnostics) {
         diagnostics = List.copyOf(diagnostics);
     }
 
-    static ValidationResult of(List<Diagnostic> diagnostics) {
+    public static ValidationResult of(List<Diagnostic> diagnostics) {
         boolean ok = diagnostics.stream().noneMatch(d -> d.severity() == Severity.ERROR);
         return new ValidationResult(ok, diagnostics);
     }

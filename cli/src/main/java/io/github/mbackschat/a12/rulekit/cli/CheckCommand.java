@@ -3,11 +3,14 @@ package io.github.mbackschat.a12.rulekit.cli;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.github.mbackschat.a12.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.rulekit.validate.ValidationResult;
@@ -15,8 +18,10 @@ import io.github.mbackschat.a12.rulekit.validate.ValidationResult;
 /**
  * The {@code check} verb (CLI-SPEC §4) — the authoring feedback loop: submit a candidate rule
  * (condition + error field + code, in a group) and get the real kernel's verdict + diagnostics, with
- * no need to persist anything. This is what lets a BA's agent author *and self-verify* a rule. Thin
- * wrapper over core {@link RuleValidator#check}.
+ * no need to persist anything. This is what lets a BA's agent author *and self-verify* a rule. Wraps
+ * core {@link RuleValidator#check}; on a kernel-valid candidate it also runs the best-effort
+ * {@link LintBackstop} (temporary in-memory injection) so the silent inverted-polarity trap surfaces
+ * in the diagnostics here too, not only on {@code add}.
  *
  * <p>Usage: {@code check <model.json> --group <path> --field <relPath> --condition "<DSL>" --code <id>
  * [--severity ERROR|WARNING] [--name <name>]}.
@@ -90,11 +95,20 @@ final class CheckCommand {
         try {
             DraftRule draft = new DraftRule(group, name, errorEntityRelPath, condition, code, severity);
             ValidationResult result = new RuleValidator().check(json, draft);
+            // Best-effort lint backstop: on a kernel-valid candidate, surface valid-but-suspicious
+            // findings (chiefly the silent inverted-polarity trap). These are WARNINGs, so merging
+            // them never flips `valid`; advisory, and never run on an already-rejected candidate.
+            List<Diagnostic> all = new ArrayList<>(result.diagnostics());
+            if (result.ok()) {
+                all.addAll(LintBackstop.lintCandidate(json, group, name, errorEntityRelPath,
+                        code, condition, severity, field));
+            }
+            ValidationResult merged = ValidationResult.of(all);
             ObjectNode root = MAPPER.createObjectNode();
-            root.put("valid", result.ok());
-            root.set("diagnostics", MAPPER.readTree(result.toJson()));
+            root.put("valid", merged.ok());
+            root.set("diagnostics", MAPPER.readTree(merged.toJson()));
             append(out, pretty(root));
-            return result.ok() ? 0 : 1;
+            return merged.ok() ? 0 : 1;
         } catch (IOException e) {
             return fail(err, "check failed: " + e.getMessage());
         } catch (RuntimeException e) {
