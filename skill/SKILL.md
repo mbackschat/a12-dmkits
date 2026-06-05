@@ -49,6 +49,18 @@ A condition is evaluated relative to the rule's **group** (its iteration scope �
 - **Strict vs inclusive**: map the wording carefully. "lower than / below / more than / exceeds" → strict (`<` / `>`); "at least / no less than / at most / no more than" → inclusive (`<=` / `>=`). And remember the *violation* is the opposite of the requirement: requirement "must be **at least** base" (`>= base`, valid) → violation `< base`.
 - **Enums compare by stored value**, not the display label: `== "ACTIVE"`, not `== "Active"`. (`cli describe` lists the stored values.)
 
+## Empty values in a comparison
+
+How an **empty** (unspecified) field behaves in a comparison depends on its type — this catches people out:
+
+| Field type | Empty value in a comparison |
+|---|---|
+| **number** | substituted with **`0`** — so `[Amount] < 100` **fires** on an empty Amount (0 < 100) |
+| **confirm** | treated as **`False`** |
+| string · date · boolean · enum | the comparison is **not evaluated** (it doesn't fire, no error) |
+
+So **guard a number comparison** when an empty value shouldn't trip it — `FieldFilled(Amount) And [Amount] < 100`. Two corners: the `0` substitution does **not** apply to `Min`/`Max` (empties are ignored there), and there are no empty strings, so `[F] == ""` is never true — use `FieldNotFilled(F)` to test for absence.
+
 ## Per-row iteration & the negative guard
 
 - Putting the **error field inside a repeatable group** makes the rule fire **once per row** ("each …"). That happens automatically — you don't ask for it; you choose the error field.
