@@ -69,6 +69,7 @@ So **guard a number comparison** when an empty value shouldn't trip it — `Fiel
 
 - Putting the **error field inside a repeatable group** makes the rule fire **once per row** ("each …"). That happens automatically — you don't ask for it; you choose the error field.
 - A **negative** condition (`FieldNotFilled`, `NoFieldFilled`, …) inside an iterating rule is **rejected** (`MVK_NEG_CONDITION_IN_ITERATION`) unless guarded by a positive existence check on the row: `GroupFilled(<the repeatable group>) And <your negative condition>`.
+- **Guard row existence with `GroupFilled(<the repeatable group>)`, not `FieldFilled(<some sibling field>)`.** A sibling field can be empty while the row exists, so an arbitrary-field guard quietly changes *which* rows the rule covers — `GroupFilled` is the row-presence check.
 
 ## Aggregates over a repeatable group
 

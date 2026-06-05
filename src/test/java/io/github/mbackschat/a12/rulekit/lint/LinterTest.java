@@ -211,6 +211,30 @@ class LinterTest {
                 () -> "field-vs-field is out of the lint's conservative scope: " + linter.lint(c));
     }
 
+    @Test
+    void flagsAnUnguardedNumberComparedAgainstAnAggregate() {
+        // [BaseFee] < Sum(Addons*/MonthlyFee), BaseFee unguarded (the T4 shape). The aggregate's value is
+        // unknown, but an empty BaseFee reads as 0 and can make the comparison fire spuriously — flag it.
+        String base = "/Subscription/Billing/BaseFee";
+        Condition c = m.num(base).lt(Dsl.sum(m.flatten("/Subscription/Addons*/MonthlyFee")));
+
+        Diagnostic d = only(linter.lint(c), "RK_UNGUARDED_NUMBER_COMPARISON");
+        assertEquals(Severity.WARNING, d.severity());
+        assertTrue(d.summary().contains(base), () -> "summary should name the field: " + d.summary());
+        assertTrue(d.fix().orElse("").contains("FieldFilled(" + base + ")"),
+                () -> "fix should suggest the FieldFilled guard: " + d.fix());
+    }
+
+    @Test
+    void noAggregateNumberLintWhenGuarded() {
+        // FieldFilled(BaseFee) And [BaseFee] < Sum(...) — guarded, so the empty-as-0 can't reach it.
+        String base = "/Subscription/Billing/BaseFee";
+        Condition c = m.field(base).filled()
+                .and(m.num(base).lt(Dsl.sum(m.flatten("/Subscription/Addons*/MonthlyFee"))));
+        assertTrue(noLint(c, "RK_UNGUARDED_NUMBER_COMPARISON"),
+                () -> "a guarded field-vs-aggregate comparison should not be flagged: " + linter.lint(c));
+    }
+
     private boolean noLint(Condition c, String code) {
         return linter.lint(c).stream().noneMatch(d -> d.code().filter(code::equals).isPresent());
     }

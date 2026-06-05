@@ -246,32 +246,49 @@ public final class Linter {
         String rightField = numberFieldPath(cmp.right());
         BigDecimal leftLit = numberLiteralValue(cmp.left());
         BigDecimal rightLit = numberLiteralValue(cmp.right());
-        // exactly one operand a number field, the other a numeric constant — substitute 0 for the field
-        String field;
-        BigDecimal lhs;
-        BigDecimal rhs;
+
+        // Case A — number field vs numeric constant: precise. Substitute 0 for the field and flag only
+        // when 0 actually fires (e.g. [X] < 100 fires; [X] > 100 doesn't).
         if (leftField != null && rightLit != null) {
-            field = leftField;
-            lhs = BigDecimal.ZERO;
-            rhs = rightLit;
-        } else if (rightField != null && leftLit != null) {
-            field = rightField;
-            lhs = leftLit;
-            rhs = BigDecimal.ZERO;
-        } else {
+            if (!guarded.contains(leftField) && holds(BigDecimal.ZERO, cmp.operator(), rightLit)) {
+                flagUnguardedNumber(leftField, cmp, rulePath, out);
+            }
             return;
         }
-        if (!guarded.contains(field) && holds(lhs, cmp.operator(), rhs)) {
-            out.add(new Diagnostic(Severity.WARNING, DiagnosticSource.LINT,
-                    Optional.of("RK_UNGUARDED_NUMBER_COMPARISON"),
-                    "'" + field + "' is a number compared with an ordering operator but its presence isn't"
-                            + " guarded — an empty number reads as 0, so the rule also fires on an empty '" + field + "'",
-                    new Diagnostic.Where(rulePath, Optional.of(cmp.operatorId())),
-                    Optional.of("FieldFilled(" + field + ") And <the comparison>"),
-                    Optional.of("an unspecified number defaults to 0 in a comparison (KERNEL-SEMANTICS §2) — unlike an"
-                            + " empty string/date/enum, which is not evaluated — so guard the number with FieldFilled"
-                            + " if an empty value should not trip the rule")));
+        if (rightField != null && leftLit != null) {
+            if (!guarded.contains(rightField) && holds(leftLit, cmp.operator(), BigDecimal.ZERO)) {
+                flagUnguardedNumber(rightField, cmp, rulePath, out);
+            }
+            return;
         }
+
+        // Case B — number field vs a numeric aggregate/expression (Sum/Count/Length/… — the T4 shape).
+        // The aggregate's value is unknown, so we can't prove 0 fires; but the empty-as-0 substitution is
+        // a real trap, so flag advisorily. (Field-vs-field stays out of scope — both empties default to 0
+        // symmetrically, so it rarely surprises; only an aggregate operand gets this treatment.)
+        if (leftField != null && isComplexNumberOperand(cmp.right()) && !guarded.contains(leftField)) {
+            flagUnguardedNumber(leftField, cmp, rulePath, out);
+        } else if (rightField != null && isComplexNumberOperand(cmp.left()) && !guarded.contains(rightField)) {
+            flagUnguardedNumber(rightField, cmp, rulePath, out);
+        }
+    }
+
+    private void flagUnguardedNumber(String field, ComparisonCondition cmp, String rulePath, List<Diagnostic> out) {
+        out.add(new Diagnostic(Severity.WARNING, DiagnosticSource.LINT,
+                Optional.of("RK_UNGUARDED_NUMBER_COMPARISON"),
+                "'" + field + "' is a number compared with an ordering operator but its presence isn't"
+                        + " guarded — an empty number reads as 0, so the rule also fires on an empty '" + field + "'",
+                new Diagnostic.Where(rulePath, Optional.of(cmp.operatorId())),
+                Optional.of("FieldFilled(" + field + ") And <the comparison>"),
+                Optional.of("an unspecified number defaults to 0 in a comparison (KERNEL-SEMANTICS §2) — unlike an"
+                        + " empty string/date/enum, which is not evaluated — so guard the number with FieldFilled"
+                        + " if an empty value should not trip the rule")));
+    }
+
+    /** A numeric operand that is neither a plain field nor a literal — an aggregate/function (Sum, Count, Length, …). */
+    private static boolean isComplexNumberOperand(Calculation calc) {
+        return calc.kind() == ValueKind.NUMBER
+                && !(calc instanceof FieldValue) && !(calc instanceof NumberLiteral);
     }
 
     private static boolean isOrdering(CompareOp op) {
