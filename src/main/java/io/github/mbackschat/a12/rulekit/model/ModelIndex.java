@@ -34,15 +34,24 @@ public final class ModelIndex {
     /** Index an already-expanded, consistency-checked model (see {@link ModelLoader}). */
     public static ModelIndex of(IDocumentModel expandedModel) {
         Map<String, IElement> byPath = new LinkedHashMap<>();
-        index(expandedModel.getContent().getDocumentModelRoot(), byPath);
+        index(expandedModel.getContent().getDocumentModelRoot(), "", byPath);
         return new ModelIndex(expandedModel, byPath);
     }
 
-    private static void index(IGroup group, Map<String, IElement> byPath) {
+    /**
+     * Key every element by its <b>name-path</b> — the join of {@code getName()} segments, which is the
+     * path a rule condition references ({@code getFullName()}) and the form the renderer/handles use.
+     * <b>Not</b> {@code getId()}: an element's id is an opaque identifier (often a hash) that equals
+     * the path only in models authored that way (e.g. rulekit's own fixtures); real-world models —
+     * the kernel-mm metamodels, the A12 Tools apps — carry id ≠ name, so keying by id resolved ~0% of
+     * their references (F-IDX).
+     */
+    private static void index(IGroup group, String prefix, Map<String, IElement> byPath) {
         for (IElement element : group.getElements()) {
-            byPath.put(element.getId(), element);
+            String path = prefix + "/" + element.getName();
+            byPath.put(path, element);
             if (element instanceof IGroup childGroup) {
-                index(childGroup, byPath);
+                index(childGroup, path, byPath);
             }
         }
     }
@@ -143,7 +152,7 @@ public final class ModelIndex {
     public java.util.stream.Stream<String> fieldPaths(String groupPath) {
         return group(groupPath).getElements().stream()
                 .filter(IField.class::isInstance)
-                .map(IElement::getId);
+                .map(e -> groupPath + "/" + e.getName());
     }
 
     /** Whether a field exists at {@code path} (the non-throwing peek behind {@code fieldAt}). */

@@ -1,0 +1,46 @@
+{
+  "header": {
+    "id": "idmismatch",
+    "modelType": "document",
+    "modelVersion": "28.4.0",
+    "locales": [ { "code": "en_US" } ],
+    "labels": [],
+    "annotations": [],
+    "modelReferences": []
+  },
+  "content": {
+    "modelInfo": { "name": "idmismatch", "variant": "cockpit", "revision": "Arbeitsversion", "immutable": false },
+    "modelConfig": {
+      "decimalSeparator": ".",
+      "timeZone": "Europe/Berlin",
+      "conditionLanguage": { "code": "en_US" },
+      "fieldRefByShortNameAllowed": true
+    },
+    "modelRoot": {
+      "rootGroups": [
+        {
+          "type": "Group",
+          "id": "3b16e188fc65d64190ea4482a0336341",
+          "name": "Catalog",
+          "Group": {
+            "repeatability": 1,
+            "elements": [
+              {
+                "type": "Field",
+                "id": "b4c8890281890d66c079e5ccb2ae0b7a",
+                "name": "Sku",
+                "Field": { "fieldType": { "type": "StringType" } }
+              },
+              {
+                "type": "Field",
+                "id": "914eee50e04ba99a659a9ffa3661433d",
+                "name": "ListPrice",
+                "Field": { "fieldType": { "type": "NumberType", "NumberType": { "maxFractionalDigits": 2 } } }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
