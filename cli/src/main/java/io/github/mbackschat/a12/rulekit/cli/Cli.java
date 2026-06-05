@@ -20,7 +20,7 @@ public final class Cli {
     public static int run(String[] args, Appendable out, Appendable err) {
         if (args.length == 0) {
             return fail(err, "usage: rulekit <verb> [args]"
-                    + "   (verbs: dump, describe, validate, check, add, ingest, explain, batch)");
+                    + "   (verbs: dump, describe, validate, check, add, ingest, explain, diff, batch)");
         }
         String[] rest = Arrays.copyOfRange(args, 1, args.length);
         return switch (args[0]) {
@@ -31,9 +31,10 @@ public final class Cli {
             case "add" -> AddCommand.run(rest, out, err);
             case "ingest" -> IngestCommand.run(rest, out, err);
             case "explain" -> ExplainCommand.run(rest, out, err);
+            case "diff" -> DiffCommand.run(rest, out, err);
             case "batch" -> BatchCommand.run(rest, out, err);
             default -> fail(err, "unknown verb: " + args[0]
-                    + "   (verbs: dump, describe, validate, check, add, ingest, explain, batch)");
+                    + "   (verbs: dump, describe, validate, check, add, ingest, explain, diff, batch)");
         };
     }
 
