@@ -43,6 +43,18 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
         return compareTo(CompareOp.NE, value);
     }
 
+    /**
+     * Field-vs-field equality {@code [this] == [other]} — compared by stored value. Whether the two
+     * enums are type-compatible is the kernel's call (F4/N7), as for {@link StringRef#eq(StringRef)}.
+     */
+    public Condition is(EnumRef other) {
+        return new ComparisonCondition(field.value(), CompareOp.EQ, other.field.value());
+    }
+
+    public Condition isNot(EnumRef other) {
+        return new ComparisonCondition(field.value(), CompareOp.NE, other.field.value());
+    }
+
     private Condition compareTo(CompareOp op, String value) {
         if (!allowedValues.contains(value)) {
             throw new IllegalArgumentException(

@@ -1,6 +1,6 @@
 # modelkit — proposal addendum & knowledge-source evaluation
 
-> **Status: spike complete; modelkit M1–M6 landed (2026-06-06) — see §H.** This is an **addendum to [`PROJECT-PROPOSAL.md`](PROJECT-PROPOSAL.md)** — it does *not* supersede any of it. It captures the reasoning behind fork #8 (D9) / Phase 3 (§16) / the umbrella (D10) that outgrew the proposal's one-liner, records a **material-source evaluation** (§E), and carries the **spike outcome** (§H): modelkit is feasible, foreign-rule ingest now resolves the majority of real models (kernel-mm 74%, Corpus-1 55%), and the **M1–M6 builders** have shipped (skeleton, type config + requiredness, the full field-type system incl. typedef reuse, field/group metadata, includes, and repeatable-group keys + enum categories) (the `modelkit` package — see §H increment list). modelkit lives as a package in core for now; the `:modelkit` module extraction waits for the pre-publish rename (D10).
+> **Status: spike complete; modelkit M1–M6 landed (2026-06-06) — see §H.** This is an **addendum to [`PROJECT-PROPOSAL.md`](PROJECT-PROPOSAL.md)** — it does *not* supersede any of it. It captures the reasoning behind fork #8 (D9) / Phase 3 (§16) / the umbrella (D10) that outgrew the proposal's one-liner, records a **material-source evaluation** (§E), and carries the **spike outcome** (§H): modelkit is feasible, foreign-rule ingest now resolves the majority of real models (kernel-mm 75%, Corpus-1 55%), and the **M1–M6 builders** have shipped (skeleton, type config + requiredness, the full field-type system incl. typedef reuse, field/group metadata, includes, and repeatable-group keys + enum categories) (the `modelkit` package — see §H increment list). modelkit lives as a package in core for now; the `:modelkit` module extraction waits for the pre-publish rename (D10).
 
 modelkit = a typed, kernel-validated builder for document-model **structure** (fields, groups, type-defs, includes), the peer of rulekit's rule builder. ARCHITECTURE [§5.2 + "the umbrella"](ARCHITECTURE.md) decides *where the code goes*; this doc argues *whether it's worth it* and *what knowledge it would be built from*.
 
@@ -146,8 +146,10 @@ The §F spike ran (Q1–Q5, widened per owner direction with **Q4 betterbuilders
 
 | Corpus | Loadable models | Rules | Typed-converted | Understood (incl. correctly-Opaque) |
 |---|---|---|---|---|
-| kernel-mm metamodels | 15 / 15 | 553 | **407 (74%)** | **83%** (+53 CustomCondition, host-delegated, preserved verbatim) |
+| kernel-mm metamodels | 15 / 15 | 553 | **417 (75%)** | **85%** (+53 CustomCondition, host-delegated, preserved verbatim) |
 | A12 Tools apps (Corpus-1) | 43 / 107 | 200 | **111 (55%)** | — (64/107 not yet loadable — need the include resolver `F-RES`) |
+
+*Latest converter increment (2026-06-06): enum **field-to-field** comparison (`[A] == [B]` / `!=`) — kernel-mm 74%→75% (+10 rules); the `IComparisonCondition` opaque bucket dropped 22→12. Locked by `adapter.EnumFieldComparisonIngestTest` (round-trip + kernel-validity), DSL by `EnumConditionTest`.*
 
 Both corpora resolve at majority-converted — general across the metamodels and the ordinary apps alike. Reproducible via the opt-in `adapter.KernelMmIngestCoverageTest` / `Corpus1IngestCoverageTest` (skip when the read-only corpus is absent; a coverage-floor gate keeps regressions loud). **Premise answered:** the kernel-mm rules *are* understandable — typed for the majority, and legible-as-text for the rest (the formatter emits readable conditions). Their `*_MISSING`/`*_INVALID`/`A12_*` rules are the structural constraint oracle in executable form — modelkit's kind-B target.
 
@@ -155,19 +157,22 @@ Both corpora resolve at majority-converted — general across the metamodels and
 
 Everything blocking *understanding* is resolved; the remainder is either inherently opaque or genuine F10 **features**, each a normal increment (catalog + AST + handles + N7), prioritized by frequency:
 
-| Construct | kernel-mm | Verdict |
+| Construct (kernel node) | kernel-mm | Verdict |
 |---|---|---|
 | `IApplicationCondition` (CustomCondition) | 53 | **Not a gap** — host-delegated, correctly Opaque |
-| combined entity+value lists, operand wrappers (`Length(…)`), group-scope aggregates, group-list predicates, root-group conditions | ~84 | F10 features — new AST/handles |
-| enum **category-navigation** comparisons (`[type→cat] == "…"`) | ~9 | converter wiring (needs `->` op detection); DSL already has `EnumRef.category` |
+| `IEntityListAndValueListCondition` (combined entity + value lists) | 34 | F10 feature — new AST/handles |
+| `IEntityListOperation` (aggregates over a multi-field scope; `NumberOfFilledFields`) | 13 | F10 feature — extend the aggregate family |
+| `IComparisonCondition` (operand wrappers `Length`/`Round…`/`Abs`; enum **category-nav** `[type→cat]==…`; number vs non-field/non-constant) | 12 | F10 features — operand wrappers + `->` op detection (DSL already has `StringRef.length` / `EnumRef.category`) |
+| `IEntityListCondition` (group-scoped field-fill: `AllFieldsFilled`/`AtLeastOneFieldFilled`/`NoFieldFilled` over groups) | 9 | F10 feature — scoped quantifier |
+| `IRootGroupCondition` (root-group predicates) | 6 | F10 feature — new leaf condition |
 
-Corpus-1's tail skews toward operand wrappers (`Length`) and date `Valid`/`Invalid` — the same F10 feature list, weighted differently.
+Corpus-1's tail skews toward operand wrappers (`Length`) and date `Valid`/`Invalid` — the same F10 feature list, weighted differently. **Done so far:** enum field-to-field (above). Each remaining row is its own increment (catalog + AST + handles + N7 + converter wiring).
 
 ### Per-question results
 
 | Q | Source (§E row) | Result |
 |---|---|---|
-| **Q1** | operators / kernel-mm rules / Corpus-1 | Foreign-rule ingest resolves by name-path: **kernel-mm 74%, Corpus-1 55%** typed-converted (83% kernel-mm incl. correctly-Opaque); remaining tail is the F10 features above. |
+| **Q1** | operators / kernel-mm rules / Corpus-1 | Foreign-rule ingest resolves by name-path: **kernel-mm 75%, Corpus-1 55%** typed-converted (85% kernel-mm incl. correctly-Opaque); remaining tail is the F10 features above. |
 | **Q2** | MM_ metamodels (schema oracle) | Slot inventory captured for Field/Group/TypeDef/Header; **MVP minimum = `DM(id, locale) → Group(name) → Field(name, type+inline config)`**; typedefs/includes/annotations deferrable. |
 | **Q3** | KERNEL-SEMANTICS + FINDINGS | **78 behavioral laws**; ~33 locked, ~29 prose-only; **17 HIGH-trap** (silently wrong if unknown), of which only ~4 are locked. The prose-only HIGH-trap set (empty-as-0, rounding, date arithmetic, three-valued Boolean/Confirm, GroupFilled-on-empty-row, computation-as-validation) is the convert-to-executable-law priority — and the minimum the N1 skill must teach (the self-describing CLI can't expose them; they're invisible to parse-time validation). |
 | **Q4** | betterbuilders (kernel's own) | **Confirms** the construct set + high-level slots; **adds** DM-config slots (decimalSeparator, timeZone, `conditionLanguage` default `Locale.US`, `fieldRefByShortNameAllowed`). It's a thin facade over the kernel's autogenerated builders with a `modify(...)` escape hatch — the per-type attrs live in those, so the **metamodel stays the slot authority**. Borrowable: path-addressing + auto-vivify-parent, default-everything. Its MVP matches Q2's exactly. |
@@ -189,7 +194,7 @@ Increments (each: typed builder slice + DM-JSON emit + kernel-validated, own-dom
 **Dogfood — ✅ (2026-06-06):** the "stop hand-writing fixtures" loop is now closed end-to-end. Test models are authored with modelkit in `ModelDrafts` (the peer of `Fixtures`, which loads committed JSON): the **logistics** fixture dropped its hand-written `.dm.json` entirely — it lives only as modelkit Java now, proven by `IterationLawsTest` (which validates rules against it through the real kernel) and `modelkit.DogfoodTest`. The **order** fixture keeps its committed JSON (30+ consumers) but `DogfoodTest` proves the modelkit-authored version is *structurally equivalent* — same skeleton, kinds, number scales, enum domain + categories, and repetition — so it could be switched over too. M1–M6 together can reproduce every own-domain structure we hand-wrote.
 
 **Open cross-cutting follow-ups (independent of modelkit):**
-- **Ingest tail:** raise typed coverage past 74%/55% by building the F10 features in the tail table (combined entity+value lists, operand wrappers, group-scope aggregates, root-group conditions, enum category-navigation) — each its own increment.
+- **Ingest tail:** raise typed coverage past 75%/55% by building the F10 features in the tail table (combined entity+value lists, operand wrappers, group-scope aggregates, root-group conditions, enum category-navigation) — each its own increment. (Enum field-to-field comparison done 2026-06-06.)
 - **F-RES:** a directory `IDocumentModelReferenceResolver` so multi-file real models load (64/107 Corpus-1 blocked; kernel-mm unaffected).
 - **F-LAW:** convert the prose-only HIGH-trap behavioral laws (Q3) to executable laws — needs a document-evaluating oracle harness (rulekit's CLI deliberately never executes validation).
 - **F-TEST:** dedicated unit test for the `ingest()` Opaque-on-unresolved-reference hardening (currently exercised by the opt-in coverage harness).

@@ -397,6 +397,14 @@ final class ConditionConverter {
                 default -> throw unsupported("enum comparison operator " + op, origin);
             };
         }
+        if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
+            EnumRef other = model.enumOf(rf.getField().getFullName());
+            return switch (op) {
+                case EQ -> left.is(other);
+                case NE -> left.isNot(other);
+                default -> throw unsupported("enum field comparison operator " + op, origin);
+            };
+        }
         throw unsupported("enum comparison against a non-constant operand, operator " + op, origin);
     }
 

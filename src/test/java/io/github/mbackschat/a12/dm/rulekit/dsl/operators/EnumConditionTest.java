@@ -6,12 +6,23 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.*;
 
 /** Enums (corpus item 3): comparison by stored value + category navigation — KERNEL-FINDINGS §8. */
 class EnumConditionTest {
 
     private static final BoundModel m = Fixtures.subscription();
+
+    /** Two enum fields of the <em>same</em> type (a shared typeDef) — for field-to-field comparison. */
+    private static BoundModel approvals() {
+        return BoundModel.ofJson(DocumentModelDraft.named("approvals").locale("en_US")
+                .typeDef("Status", t -> t.enumeration(e -> e.value("DRAFT").value("FINAL")))
+                .rootGroup("Approval", a -> a
+                        .typedefField("Requested", "Status")
+                        .typedefField("Granted", "Status"))
+                .build().toJson());
+    }
 
     @Test
     void rendersEnumComparisonByStoredValue() {
@@ -38,6 +49,16 @@ class EnumConditionTest {
         // enum value instead of category value — MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON erased:
         assertThrows(IllegalArgumentException.class, () -> tier.category("Pricing").is("BASIC"));
         // -> on a non-enum is unrepresentable: only EnumRef has category() (MVK_NO_ENUMERATION erased)
+    }
+
+    @Test
+    void rendersEnumFieldToFieldComparison() {
+        BoundModel a = approvals();
+        EnumRef requested = a.enumOf("/Approval/Requested");
+        EnumRef granted = a.enumOf("/Approval/Granted");
+        assertEquals("[/Approval/Requested] == [/Approval/Granted]", new DslRenderer().render(requested.is(granted)));
+        assertEquals("[/Approval/Requested] != [/Approval/Granted]",
+                new DslRenderer(ConditionLanguage.DE).render(requested.isNot(granted)));
     }
 
     @Test
