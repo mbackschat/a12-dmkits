@@ -1,0 +1,12 @@
+{
+  "id": "T7",
+  "family": "comprehension",
+  "model": "order-ruled",
+  "rules": ["/Order/DeliveryNotBeforeOrder", "/Order/BillingAddress/PostalCodeFormat"],
+  "intent": "Read the two rules already on this order model and explain, for each: exactly what makes an order INVALID (the violation the rule fires on), and which field it guards.",
+  "expected": {
+    "DeliveryNotBeforeOrder": "Fires when the delivery date is before the order date (DifferenceInDays(OrderDate, DeliveryDate) is negative). Whole-order, non-iterating. Guarded so it only applies once both dates are present. A correct reading must note the condition is the VIOLATION, not the requirement.",
+    "PostalCodeFormat": "Fires when a present billing postal code is NOT exactly five digits — PatternViolated, so the rule fires on a value that fails to match the pattern (the opposite of PatternMatched). Guarded by FieldFilled so a missing postal code is not flagged. A correct reading must catch the violated-not-matched polarity and the presence guard."
+  },
+  "notes": "Comprehension family — the FIRST task that exercises reading foreign rules back (ingest -> explain), not authoring. Deterministic backbone: the gold oracle asserts each named rule INGESTS cleanly (Converted, not Opaque). The richer scoring (did the agent state the polarity and the guard correctly?) is the Layer-2 agent rubric in `expected` — agent-scored, not kernel-checkable. A date rule + a pattern rule, two distinct families, both reading-back cleanly. (An aggregate rule was considered but dropped: `[Quantity] < Sum(...)` is kernel-valid yet ingests to Opaque — the F10 converter does not yet handle an aggregate as a comparison's compared-against operand; see KERNEL-INTEGRATION-NOTES F10 backlog.)"
+}

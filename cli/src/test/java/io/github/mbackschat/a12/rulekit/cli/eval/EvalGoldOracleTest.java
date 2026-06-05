@@ -2,7 +2,7 @@ package io.github.mbackschat.a12.rulekit.cli.eval;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -18,15 +18,20 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import io.github.mbackschat.a12.rulekit.adapter.Ingest;
+import io.github.mbackschat.a12.rulekit.adapter.KernelAdapter;
+import io.github.mbackschat.a12.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.rulekit.validate.ValidationResult;
 
 /**
  * Layer 1 of the self-sufficiency benchmark (EVAL-SPEC §8) — the deterministic oracle. Reads every
- * task in {@code eval/tasks/} and asserts its <b>gold answer validates against the real kernel</b>,
- * so the curated corpus can't silently rot (a gold that stops validating is a red build). No LLM
- * involved — this is the stable, CI-able backbone the soft (agent) layer sits on.
+ * task in {@code eval/tasks/} and asserts its backbone holds against the real kernel, so the curated
+ * corpus can't silently rot (a task that stops holding is a red build). No LLM involved — this is the
+ * stable, CI-able backbone the soft (agent) layer sits on. Per family: <b>authoring</b> golds must
+ * <b>validate</b> (kernel accepts the rendered rule); <b>comprehension</b> rules must <b>ingest to
+ * {@code Converted}</b> (they're readable by {@code explain}). The richer agent scoring is layer 2.
  */
 class EvalGoldOracleTest {
 
@@ -59,12 +64,21 @@ class EvalGoldOracleTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("tasks")
-    void goldValidatesAgainstTheKernel(Path taskFile) throws IOException {
+    void taskBackboneHolds(Path taskFile) throws IOException {
         JsonNode task = MAPPER.readTree(Files.readString(taskFile));
-        assumeTrue("authoring".equals(task.path("family").asText()),
-                "oracle covers authoring golds; comprehension scored by the agent layer");
-
         String model = readModel(task.get("model").asText());
+        switch (task.path("family").asText()) {
+            // Authoring: the gold condition must validate against the real kernel.
+            case "authoring" -> assertGoldValidates(task, model, taskFile);
+            // Comprehension: the model's named rules must ingest cleanly (Converted, not Opaque) —
+            // i.e. they are actually readable by explain/ingest. The richer "did the agent explain
+            // it right?" scoring is the agent layer's job (the task's `expected` rubric).
+            case "comprehension" -> assertRulesIngest(task, model, taskFile);
+            default -> fail(taskFile.getFileName() + " has unknown family: " + task.path("family").asText());
+        }
+    }
+
+    private static void assertGoldValidates(JsonNode task, String model, Path taskFile) {
         JsonNode gold = task.get("gold");
         String field = gold.get("field").asText();
         int slash = field.lastIndexOf('/');
@@ -77,6 +91,18 @@ class EvalGoldOracleTest {
 
         assertTrue(result.ok(),
                 () -> taskFile.getFileName() + " gold must validate against the kernel, got: " + result.diagnostics());
+    }
+
+    private static void assertRulesIngest(JsonNode task, String modelJson, Path taskFile) {
+        BoundModel model = BoundModel.ofJson(modelJson);
+        KernelAdapter adapter = KernelAdapter.of(model);
+        for (JsonNode r : task.get("rules")) {
+            String rulePath = r.asText();
+            Ingest ingest = adapter.ingest(rulePath);
+            assertTrue(ingest instanceof Ingest.Converted,
+                    () -> taskFile.getFileName() + " rule " + rulePath
+                            + " must ingest to Converted (readable by explain), got: " + ingest);
+        }
     }
 
     private static String readModel(String name) throws IOException {
