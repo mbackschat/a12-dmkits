@@ -38,19 +38,24 @@ public final class DocumentModelDraft {
 
     private final String id;
     private final List<String> locales;
+    private final List<Include> includes;
     private final List<TypeDefDecl> typeDefs;
     private final List<ElementDraft.Group> rootGroups;
 
-    private DocumentModelDraft(String id, List<String> locales, List<TypeDefDecl> typeDefs,
-            List<ElementDraft.Group> rootGroups) {
+    private DocumentModelDraft(String id, List<String> locales, List<Include> includes,
+            List<TypeDefDecl> typeDefs, List<ElementDraft.Group> rootGroups) {
         this.id = id;
         this.locales = locales;
+        this.includes = includes;
         this.typeDefs = typeDefs;
         this.rootGroups = rootGroups;
     }
 
     /** A reusable named type, declared once in {@code content.typeDefinitions} and referenced by fields. */
     private record TypeDefDecl(String id, FieldTypeSpec type) {}
+
+    /** A header include: {@code alias} (used by mount groups) → {@code reference} (the included model id). */
+    private record Include(String alias, String reference) {}
 
     /** Start a draft for the model with this id (also its info name). */
     public static Builder named(String id) {
@@ -74,7 +79,15 @@ public final class DocumentModelDraft {
         locales.forEach(code -> locs.addObject().put("code", code));
         header.putArray("labels");
         header.putArray("annotations");
-        header.putArray("modelReferences");
+        checkMountReferences();
+        ArrayNode refs = header.putArray("modelReferences");
+        for (Include inc : includes) {
+            refs.addObject()
+                    .put("alias", inc.alias())
+                    .put("modelType", "document")
+                    .put("purpose", "include")
+                    .put("reference", inc.reference());
+        }
 
         ObjectNode content = root.putObject("content");
         ObjectNode info = content.putObject("modelInfo");
@@ -123,8 +136,22 @@ public final class DocumentModelDraft {
             elements.add(switch (element) {
                 case ElementDraft.Group sub -> groupNode(sub, path, locales);
                 case ElementDraft.Field field -> fieldNode(field, path, locales);
+                case ElementDraft.Mount mount -> mountNode(mount, path);
             });
         }
+        return node;
+    }
+
+    /** An include mount: a group carrying {@code modelAlias} and <b>no</b> inline elements (§10). */
+    private static ObjectNode mountNode(ElementDraft.Mount mount, String parentPath) {
+        ObjectNode node = MAPPER.createObjectNode();
+        node.put("type", "Group");
+        node.put("id", parentPath + "/" + mount.name());
+        node.put("name", mount.name());
+        writeAnnotations(node, mount.annotations());
+        ObjectNode body = node.putObject("Group");
+        body.put("repeatability", 1);
+        body.put("modelAlias", mount.alias());
         return node;
     }
 
@@ -249,6 +276,7 @@ public final class DocumentModelDraft {
 
         private final String id;
         private final List<String> locales = new ArrayList<>();
+        private final List<Include> includes = new ArrayList<>();
         private final List<TypeDefDecl> typeDefs = new ArrayList<>();
         private final List<ElementDraft.Group> rootGroups = new ArrayList<>();
 
@@ -259,6 +287,12 @@ public final class DocumentModelDraft {
         /** Add a declared locale (e.g. {@code "en_US"}); a full {@code language_COUNTRY} code (KERNEL-FINDINGS §13). */
         public Builder locale(String code) {
             locales.add(code);
+            return this;
+        }
+
+        /** Declare an include: {@code alias} (used by {@code mount(name, alias)}) → {@code reference} (the included model id). */
+        public Builder include(String alias, String reference) {
+            includes.add(new Include(alias, reference));
             return this;
         }
 
@@ -286,7 +320,8 @@ public final class DocumentModelDraft {
             if (rootGroups.isEmpty()) {
                 throw new IllegalStateException("a model needs at least one root group");
             }
-            return new DocumentModelDraft(id, List.copyOf(locales), List.copyOf(typeDefs), List.copyOf(rootGroups));
+            return new DocumentModelDraft(id, List.copyOf(locales), List.copyOf(includes),
+                    List.copyOf(typeDefs), List.copyOf(rootGroups));
         }
     }
 
@@ -429,6 +464,12 @@ public final class DocumentModelDraft {
             return this;
         }
 
+        /** Mount an included model here: a group named {@code name} that mounts the include {@code alias}. */
+        public GroupBuilder mount(String name, String alias) {
+            elements.add(new ElementDraft.Mount(name, alias, List.of()));
+            return this;
+        }
+
         private GroupBuilder addField(String name, FieldAttrs<?> attrs, FieldTypeSpec spec) {
             elements.add(new ElementDraft.Field(name, spec, attrs.requiredness,
                     Map.copyOf(attrs.labels), List.copyOf(attrs.annotations)));
@@ -456,6 +497,29 @@ public final class DocumentModelDraft {
                             && !declared.contains(ref.typeDefinitionId())) {
                         throw new IllegalStateException("field '" + field.name()
                                 + "' references undeclared type definition '" + ref.typeDefinitionId() + "'");
+                    }
+                }
+                case ElementDraft.Mount mount -> { /* mount aliases are checked separately */ }
+            }
+        }
+    }
+
+    /** Referential integrity: every mount's {@code alias} must match a declared {@code include}. */
+    private void checkMountReferences() {
+        Set<String> aliases = new HashSet<>();
+        includes.forEach(i -> aliases.add(i.alias()));
+        rootGroups.forEach(g -> checkMountReferences(g, aliases));
+    }
+
+    private static void checkMountReferences(ElementDraft.Group group, Set<String> aliases) {
+        for (ElementDraft element : group.elements()) {
+            switch (element) {
+                case ElementDraft.Group sub -> checkMountReferences(sub, aliases);
+                case ElementDraft.Field field -> { /* fields carry no mount alias */ }
+                case ElementDraft.Mount mount -> {
+                    if (!aliases.contains(mount.alias())) {
+                        throw new IllegalStateException("mount '" + mount.name()
+                                + "' references undeclared include alias '" + mount.alias() + "'");
                     }
                 }
             }
