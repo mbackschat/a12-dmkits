@@ -182,19 +182,21 @@ The CLI's heavy costs are **distribution, not code**: self-contained packaging a
 modelkit and rulekit are **parallel layers over a shared model-core**, not one atop the other. Target shape once modelkit ships as a peer:
 
 ```
- <umbrella: a12-kernel-kits>
-  ├── model-core   (index/read · GENERIC dsl-free DM-JSON write · validate · diagnostics)   ← shared base
-  ├── rulekit      (catalog · AST/dsl · rule builders)        ── over model-core
-  ├── modelkit     (Field/Group/TypeDef/Include builders)     ── over model-core (does NOT use dsl)
-  ├── adapter      (internal-tier read — serves both kits)
-  └── cli · skill  (front-ends spanning all kits)
+ <repo: a12-dmkits   ·   package root: io.github.mbackschat.a12.dm>
+  ├── :core      (dm.core)      index/read · GENERIC dsl-free DM-JSON write · validate · diagnostics   ← shared base
+  ├── :rulekit   (dm.rulekit)   catalog · AST/dsl · rule builders            ── over :core
+  ├── :modelkit  (dm.modelkit)  Field/Group/TypeDef builders (structure)     ── over :core (does NOT use rulekit)
+  ├── :adapter   (dm.adapter)   internal-tier read — serves the kits
+  └── :cli       (dm.cli) · skill   front-ends spanning the kits
 ```
 
 In today's package graph (§2) this means `structure` sits **beside `dsl`**, both over `model`/`validate`/`write` — `structure` must not depend on `dsl`. **The `structure` package now exists (modelkit M1, 2026-06-05):** `DocumentModelDraft` authors a model from scratch and emits DM-JSON, kernel-validated through both gates — Jackson-only, zero kernel/`dsl` coupling, exactly the boundary the future module split formalizes. Detail: [`MODELKIT-PROPOSAL.md`](MODELKIT-PROPOSAL.md) §H.
 
 **The one prep that enables it — ✅ done 2026-06-05:** the generic, `dsl`-free half is now `write.DmJson` (`insertIntoGroup`/`groupElements`/`findElement`, include-preserving), and `write.ModelWriter` (the `Rule`-node knowledge) builds on it. modelkit's structural write reuses `DmJson` directly. Still TBD: **source-artifact provenance** on the index (mirror of D14) so include-aware editing later writes to the owning artifact.
 
-**Rename trigger & timing (D10):** keep `a12-rulekit` while rules-only (accurate today); rename the repo + move the package root to the umbrella **when modelkit becomes a real peer**. Because renames of Maven coordinates + the Java package root are *cheapest before first publish*, lock those in the pre-publish window even if the repo rename waits. Don't module-split prematurely — modelkit starts as a **package** (`structure`) in core (it crosses no kernel boundary, so it hasn't "earned" a module, §1); extract `:model-core` + `:modelkit` only when size/coupling justify it.
+**Name — decided 2026-06-06:** repo **`a12-dmkits`** (plural: a collection of kits for the document model); Maven group **`io.github.mbackschat.a12.dm`**, artifacts `a12-dmkits-{core,rulekit,modelkit,adapter,cli}`; Java **package root `io.github.mbackschat.a12.dm`** — deliberately short (it prefixes every package; the longer descriptive name lives in the repo/Maven id, à la `spring-framework`/`org.springframework`). Sub-packages map 1:1 to the future subprojects: **`dm.core`** (shared — named `core`, not `model`, to avoid the `dm.model`/`dm.modelkit` look-alike) · **`dm.rulekit`** (catalog/dsl/context/lint/validate-`RuleValidator`/write-`ModelWriter`) · **`dm.modelkit`** (structure) · **`dm.adapter`** · **`dm.cli`**. The kits keep their names — no concept rename. `dm` = document model (the project's own vocabulary, DM-JSON).
+
+**Rename trigger & timing (D10):** keep `a12-rulekit` while rules-only; rename **when modelkit becomes a real peer** — which it now is (M1–M4, the `structure` builders). Renames of the Java package root + Maven coordinates are *cheapest before first publish*, so do them in the pre-publish window. The package-root rename is wide-but-mechanical and re-roots every file (`…a12.rulekit.dsl`→`…a12.dm.rulekit.dsl`, `…a12.rulekit.structure`→`…a12.dm.modelkit`, `…a12.rulekit.model`→`…a12.dm.core`); cost only grows with the codebase, so it's the gateway into publish prep and is best done on a clean tree. The layout **pre-stages the module split** (each `dm.<x>` = a future subproject), but the actual `:core`/`:rulekit`/`:modelkit` Gradle split — and the **repo rename** (touches CI/bootstrap) — can lag the package+coordinate rename (§1).
 
 ## 6. Maintenance
 
