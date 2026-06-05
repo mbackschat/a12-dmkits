@@ -12,7 +12,22 @@ Three things make it different from an ordinary unit test, and they shape everyt
 - **You score against a *gold*.** The **gold** (gold answer / gold standard) is the reference correct answer for a task, written and verified by us up front — the answer key. "Does the model's output match the gold?" is the scoring question. *(That's the "gold" you saw near the tests — it's the expected answer, nothing to do with the build.)*
 - **We're really testing the material, not the model.** This eval doesn't ask "is the LLM smart?" It asks: given **only what rulekit ships** (the CLI, the operator catalog, the skill), can a fresh LLM author and understand A12 rules? When the model fails, we treat the **shipped material** as the thing to fix — not the model (§1).
 
-In one breath: spawn a **fresh ("clean") LLM** that has never seen this project, hand it **only the shipped material** plus one task, let it work, then **score** its output — the real kernel is the **oracle** for "is this a valid rule?", and a **judge** model decides "does it mean the right thing?". Repeat across tasks and model tiers and report **pass@k** (how often it succeeds within k tries). Bold terms are defined in the [Glossary](#glossary) at the end.
+In one breath:
+
+```
+fresh "clean" LLM (has never seen this project)
+  ├─ gets ONLY: the CLI + the operator catalog + the N1 skill + the model file
+  └─ gets a task: a business requirement, stated neutrally (no technique hints)
+        │
+        ▼   produces a rule (authoring)  or  an explanation (comprehension)
+        │
+   scored by:   KERNEL oracle — is it a valid rule?  (deterministic)
+              + JUDGE model   — does it mean the right thing?  (semantic)
+        │
+        ▼   repeated across   tasks × model tiers × k runs   →   pass@k
+```
+
+Bold terms are defined in the [Glossary](#glossary) at the end.
 
 The rest is the full method: §1 the clean-subagent instrument · §2 the material boundary · §3 scoring · §4 the improvement loop · §5 running a probe · §6 the task suite · §7 results so far · §8 where the corpus and runner live.
 
@@ -128,9 +143,65 @@ The **earlier failed run showed 29** because it aborted in the Recheck phase (th
 
 Agents cost tokens, so **after fixing a gap a run surfaced, re-run only the affected cells, not the whole suite.** The runner fans out over exactly what you pass, so subsetting is free: pass just the relevant task(s) and model(s) in `args` at a low `k`. Re-running T4 on both tiers, for example, is `(1)×2×2 + 1 + ≤4 ≈ 9` agents vs 56 for the full suite (§8a).
 
-Two rules keep the cheap re-run honest:
-- **Material change ⇒ fresh run, not a resume.** A *resume* replays produce agents from cache — correct only when inputs are unchanged (e.g. recovering an aborted run). When the **material** changed (skill/catalog/CLI), the produce agents must re-run on the *new* material, so start a **fresh** run with the subset `args`.
-- **Full suite only periodically.** The targeted re-run proves *this* fix; run the whole suite occasionally to catch regressions elsewhere. Both land in `eval/RESULTS.md`, labelled (targeted vs full).
+Fresh run or resume? — it depends on what changed:
+
+| Situation | Run type | Why |
+|---|---|---|
+| **Material changed** (skill / catalog / CLI) | **Fresh** run with the subset `args` | produce must re-run on the *new* material |
+| **Recovering an aborted run**, inputs unchanged | **Resume** (`resumeFromRunId`) | cached produce agents replay — no re-spend |
+| **Want more samples**, same material | **Fresh**, higher `k` | new draws, not cached ones |
+
+The trap to avoid: resuming after a material change replays the **old** material from cache — silently measuring the thing you just changed away. And run the **full suite only periodically** (a targeted re-run proves *this* fix; the full sweep catches regressions elsewhere). Both land in `eval/RESULTS.md`, labelled targeted vs full.
+
+### 8c. Execution architecture — layers, isolation, and parameterization
+
+The run has **three layers**, each with a deliberate role. Getting the layering right is what keeps the eval *valid* (the right thing is isolated) and the results *usable* (the right thing shares context).
+
+```
+MAIN LOOP  (you, via the run-rulekit-eval skill)      — orchestration; shares your context
+  · invoke the skill   · ./gradlew :cli:installDist   · bundle tasks → args
+  · estimate cost (§8a)   · fold results → eval/RESULTS.md   · resume / cost-track (session-scoped)
+  │
+  │   Workflow({ scriptPath: "eval/benchmark.workflow.js", args: { models, k, tasks } })
+  ▼
+WORKFLOW  (eval/benchmark.workflow.js)                — fan-out + scoring; ONE allowed level of nesting
+  Produce ──► Recheck (1 batch agent) ──► Judge ──► aggregate pass@k
+  │
+  │   spawns N clean agents — model pinned, neutral prompt, material boundary enforced
+  ▼
+CLEAN SUBAGENTS  (the instrument)                     — ISOLATED BY DESIGN (a first-time consumer)
+  see ONLY: the CLI launcher + the operator catalog + the N1 skill + the model file under test
+  return:  a candidate rule / an explanation, via StructuredOutput
+```
+
+**Isolation belongs at exactly one layer — the clean subagents.** A walled-off, first-time consumer is the honest test (§1). **Orchestration must stay in the main loop** because it needs *shared* context: it writes `eval/RESULTS.md`, tracks token cost, and can `resumeFromRunId` (session-scoped). So **do not wrap orchestration in its own sub-agent** — it would (a) hit the nesting limit (Workflow can't nest; a sub-agent spawning sub-agents is unsupported), likely unable to launch the run at all; and (b) re-wall orchestration from your context, so pass@k detail + judge rationales return only as a lossy summary and write-back/resume/cost-tracking break. The skill is a **main-loop** playbook; the Workflow — not a sub-agent — provides the isolation.
+
+**How the run is assembled — who builds what, when.** Two artifacts, different actors and lifetimes:
+- The **script** `eval/benchmark.workflow.js` is a *committed, persistent file* — authored ahead of time, edited only when the orchestration logic changes. It never holds tasks or tiers; it reads them from the `args` global.
+- The **`Workflow(...)` call is built by the main loop** (you, following the skill) at run time. `scriptPath` just *references* that committed file; `args = {models, k, tasks}` is assembled fresh each run — read `eval/tasks/*.json`, trim each task, choose the tiers and `k` (a selective run includes only the affected task objects). You emit the call; the **harness launches it in the background** and the Workflow runtime executes the script, **injecting `args` as a global** — *that* is what spawns the clean subagents (you don't run the JS). On completion the return value (`{agg, …}`) comes back to the main loop to fold into `RESULTS.md`.
+
+This script-vs-`args` split is deliberate: the script is fixed, `args` varies per run — which is exactly what makes **selective runs** (vary `args`, never the script) and **resume** (same script + same `args` ⇒ cache hit) work.
+
+**What crosses each boundary (data flow):**
+
+| Boundary | Payload |
+|---|---|
+| Main → Workflow | `args = { models, k, tasks }` (plain JSON) |
+| Workflow → clean subagent | a neutral prompt + the path to the shipped material (never source/docs/this spec) |
+| Clean subagent → Workflow | `StructuredOutput` — authoring: `{field, condition, code, kernelAccepted}`; comprehension: `{explanations}` |
+| Recheck (inside Workflow) | all candidates → **one** agent runs `cli batch` (one warm JVM) → `{verdicts:[{id, valid}]}`; falls back to self-report on failure |
+| Judge → Workflow | `{equivalent\|correct, why}` per item |
+| Workflow → Main | `{agg, authorJudged, explainJudged}` — you fold `agg` + rationales into `RESULTS.md` |
+
+**Parameterization — the `args` object is the entire control surface:**
+
+| param | meaning | selective-run use |
+|---|---|---|
+| `models` | tiers to pin, e.g. `["opus","sonnet"]` | pass one tier to re-check just it |
+| `k` | runs per (model, task) cell | low `k` for a quick trial; higher for stable pass@k |
+| `tasks` | the trimmed task objects (`id/family/model/intent/gold/rules/expected`) | **pass only the affected tasks** → targeted re-run (§8b) |
+
+`tasks` and `models` are the only selectivity knobs — **the runner fans out over exactly what you pass, no filter flag.** An empty authoring *or* comprehension subset just skips that phase; a totally empty `tasks` throws (a guard against silent no-ops). Material changed ⇒ **fresh** run, not resume (§8b). Agent count for any `args` follows the §8a formula.
 
 Task schema (per file):
 ```json
