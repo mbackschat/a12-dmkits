@@ -1,28 +1,39 @@
 # a12-rulekit
 
-A **model-aware**, typed, combinator-style **rule kit** (Java first, TypeScript later) for A12 Kernel validation- and computation-rule conditions: **author** them through a typed builder, **read** existing rule text into the same typed representation, **modify** with reviewable diffs, and **render + validate** against the real kernel — replacing the fragile hand-written `errorCondition` strings. Think *"jOOQ for the A12 validation DSL"* — including the reverse direction, since the kernel's own parser supplies it.
+A **model-aware**, typed, combinator-style **rule kit** for A12 Kernel validation- and computation-rule conditions — think *"jOOQ for the A12 validation DSL"*, including the reverse direction, since the kernel's own parser supplies it. It replaces fragile hand-written `errorCondition` strings with a typed builder that lets you:
 
-> **Not an official A12 artifact.** A personal exploration; not affiliated with or endorsed by mgm. Shipped code binds only to the kernel's **public** OSS surface (no internal systems); an opt-in Java-only adapter module may read the kernel's internal AST tier under strict guardrails (proposal D15).
+- **Author** rules through a typed, model-bound builder.
+- **Read** existing rule text back into the same typed representation.
+- **Modify** them with reviewable diffs that disclose any lossiness up front.
+- **Render & validate** against the real kernel — confirmed by the engine, not just plausible.
+
+Java first; a TypeScript twin is a deferred, design-informing milestone.
+
+> **Not an official A12 artifact.** A personal exploration, not affiliated with or endorsed by mgm. Shipped code binds only to the kernel's **public** OSS surface — no internal systems. An opt-in, Java-only adapter module may read the kernel's internal AST tier under strict guardrails (proposal D15).
 
 ## Status
 
-**Phase 1 — the Java vertical slice — is complete** (2026-06-04): model index, the self-verifying operator catalog (full corpus operator coverage), the typed AST + EN/DE renderer with fork-9 group-relative paths, the real-kernel validator with the **complete F4a diagnostic surface** (KERNEL · LINT · PRECHECK · ENVIRONMENT in one `Diagnostic`, catalog-joined fixes, span-pointing, "did you mean", the gotcha/INFO channel, and the unifying `RuleDiagnostics`), the DM-JSON write path (incl. includes round-trip), the F9a `describe`/`find` context surface, and **F11 kernel-version tolerance** (kernel-semantic pre-checks deferred to the live kernel; a runtime version-skew advisory). Fork-9 renders group-relative paths and single-quotes keyword-named segments. Carried forward (small): N3's remaining parity directions (the forward keyword-parity anchor is in) and F2a message-interpolation sugar. **Phase 2 has begun:** the opt-in **kernel-adapter** module (`adapter` subproject, Java-only, N8 tier 3) is bootstrapped — `KernelAdapter` reaches the kernel's verified `a12internal` read chain (`getMvkServiceForModel` → the rule parser/formatter/meta) behind a boundary that keeps kernel types out of every public signature. **F10 ingest** reads existing rules back: `KernelAdapter.ingest(...)` parses a rule's stored condition through the kernel and a converter rebuilds it as a normal, re-renderable rulekit `Condition` — re-authored through the typed handle API (so it carries the same model refs as a hand-built one). Coverage spans the corpus core — logic, comparisons (incl. dates), patterns, field/group presence, quantifiers, value-lists, aggregates + `Having`, the iteration/uniqueness cluster — verified by a render→parse→convert→render round-trip oracle. Ingest is **tolerant** (F11): it returns a sealed `Ingest` (`Converted` / `Opaque`), and `ingestAll()` ingests a whole model, so a not-yet-modeled construct is **preserved verbatim with a reason, never lost or reported as corrupt**. **F9 explain** then projects any condition — built or ingested — into a structured `RuleExplanation` (operators with catalog meaning/gotchas, referenced fields, iteration scope, an NL gloss, JSON), the same mechanism for understanding a foreign rule and grounding new authoring. **F8 modify-by-re-express + diff** closes the read/write loop: re-express an ingested condition (compose or `transform`) and get a `RenderedDiff` — before/after with lossiness (comments/formatting) disclosed up front — re-validate against the kernel, and **write the reviewed change back** with `replaceCondition` (a new, re-validated binding; `writeTo` persists) — the loop fully closes: *ingest → re-express → diff → validate → write-back*.
+**Phase 1 (the Java vertical slice) is complete. Phase 2 is in progress.**
 
-The design is captured in **[`docs/PROJECT-PROPOSAL.md`](docs/PROJECT-PROPOSAL.md)** (**v2**, reworked 2026-06-03) — vision, requirements, architecture, the operator-catalog spine, the decision log (§17), and the phased roadmap (§16); the per-feature status board is [`docs/API-POC-STUDY.md` §9](docs/API-POC-STUDY.md). The kernel/editor API inventory is **[`docs/KERNEL-RULE-API-SURVEY.md`](docs/KERNEL-RULE-API-SURVEY.md)**; verified kernel facts in **[`docs/KERNEL-INTEGRATION-NOTES.md`](docs/KERNEL-INTEGRATION-NOTES.md)**.
+| Area | State |
+|---|---|
+| **Phase 1** — author → render (EN/DE) → validate against the real kernel: model index, self-verifying operator catalog, typed AST + fork-9 group-relative renderer, the F4a diagnostic surface, the DM-JSON write path, F11 kernel-version tolerance | ✅ complete |
+| **Phase 2** — the bidirectional loop over the opt-in kernel-adapter: *ingest → explain → modify → diff → validate → write-back* | ✅ landed |
+| **Phase 2** — standalone **CLI**, verbs `dump` · `describe` · `validate` · `check` · `add` · `ingest` · `explain` | ✅ landed |
+| **Phase 2** — modeller/BA **skill** + self-sufficiency eval | ✅ landed |
+| **Phase 2** — F9a exact `whereUsed`, `IProblem → Diagnostic`, the F10 long tail, the `batch`/`diff` verbs | 🔮 open |
 
-Working end-to-end today (capability snapshot — the per-feature status board is [`docs/API-POC-STUDY.md` §9](docs/API-POC-STUDY.md), and operator coverage / backlog is [`docs/WORKSPACE-CORPUS-ANALYSIS.md`](docs/WORKSPACE-CORPUS-ANALYSIS.md)):
+**Two personas, one engine** (proposal N10): a *developer* edits rulekit-the-library inside their own project; a *modeller/BA* uses the CLI, with no Java toolchain to install.
 
-- **Model index** (F0) — load DM-JSON → `expand` → `checkConsistency` → indexed group tree, field kinds, number scale, repeatability.
-- **Operator catalog** (§9) — bundled, bilingual, **self-verifying** JSON spine (every `SUPPORTED` example checked against the real kernel, N7); an `OperatorStatus` maps the whole operator space (`SUPPORTED` vs `PLANNED` stubs).
-- **Typed condition AST + renderer** — model-bound handles compose immutable `Condition`s carrying the **D14 invariant** (catalog operator-id + model-resolved refs + provenance); the renderer emits canonical EN/DE with no keyword knowledge outside the catalog, paths rendered relative to the rule's group (fork #9, `../` to siblings, keyword-named segments single-quoted). Coverage spans the corpus backlog's core — presence/group/enum predicates, patterns, value lists, count/list aggregates, `*`-flattened lists, uniqueness, `Having` filters, `CurrentRepetition`, semantic index, `CustomCondition`, dates, and field-vs-field comparison.
-- **Authoring objects** (F2/F2a) — `m.rule(group)…build()` / `m.computation(field)…build()` with computed rel-paths and build-time slot pre-checks that name the `MVK_*` they prevent, so illegal shapes are unrepresentable or fail fast.
-- **Ground-truth validation + rich diagnostics** (F4/F4a) — a rendered rule is injected as DM-JSON and run through `checkConsistency`; problems surface as LSP-shaped `Diagnostic`s (`severity·source·code·summary·where·fix·explain`, JSON-serializable) with a **catalog-joined** fix, an AST **lint** layer (valid-but-suspicious WARNINGs, incl. the negative-in-iteration pre-warning), and a **gotcha/INFO** channel surfacing the catalog's semantic traps. `lint.RuleDiagnostics.diagnose(model, rule)` returns all origins (KERNEL span-pointed + LINT + INFO + any deferred PRECHECK advisory) in one result. Per **F11**, rulekit biases to acceptance: kernel-semantic pre-checks (the `covers()` error-field heuristic) are deferred to the live kernel rather than hard-failing `build()`, and a one-shot ENVIRONMENT advisory flags when the running kernel differs from the catalog's verified floor — so a newer kernel never triggers a self-inflicted false positive.
-- **Model context** (F9a) — `context.ModelContext`: `describe()` gives an agent a compact model card (fields + kinds + enum domains + group repeatability, JSON) and `find(name)` resolves a name to fields (exact / substring / fuzzy) — the inverse of authoring, so an agent orients before it builds.
-- **DM-JSON write path** (F6) — `ofJson` → `add(Rule)` → re-validated new binding → `toJson`/`writeTo`, editing the authored JSON so includes/`modelReferences` are preserved (round-trip fixture-proven).
+This snapshot deliberately isn't a feature list, so it can't drift — the per-feature truth lives in the status board. Where to look:
 
-Next up in **Phase 2** (F10 ingest, F9 explain, and the F8 modify/diff/write-back loop have all landed — see Status): the **standalone CLI** and the **LLM skill** that together serve **two personas over one engine** (developer = Claude Code editing rulekit-the-library in their own project, no bespoke vehicle; modeller/BA = the CLI, no Java toolchain — proposal **N10**), plus **F9a exact `whereUsed`** and **`IProblem → Diagnostic`** (fold the adapter's kernel problems into the F4a surface), the **F9 rule-envelope enrichment** (role/severity), and the **F10 long tail** (custom conditions, operand wrappers, …). The small Phase-1 remainder rides alongside: N3's remaining parity directions and F2a message-interpolation sugar. *(The TypeScript twin (§13) is deferred — a very-future, design-informing milestone, not on the near agenda.)*
-
-Build the adapter module with `./gradlew :adapter:test`; `./gradlew :test` keeps the core build free of the internal tier. The standalone CLI (the modeller/BA front-end, N10) is scaffolded as `:cli` with its first `dump` verb — run it in dev via `./gradlew :cli:run --args="dump model.json fields"` (no packaging in the loop; see [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md)).
+| To find… | See |
+|---|---|
+| Per-feature implementation status (the canonical board) | [`docs/API-POC-STUDY.md` §9](docs/API-POC-STUDY.md) |
+| Vision, requirements, decision log (§17), roadmap (§16) | [`docs/PROJECT-PROPOSAL.md`](docs/PROJECT-PROPOSAL.md) |
+| Kernel/editor API inventory | [`docs/KERNEL-RULE-API-SURVEY.md`](docs/KERNEL-RULE-API-SURVEY.md) |
+| Verified kernel facts | [`docs/KERNEL-INTEGRATION-NOTES.md`](docs/KERNEL-INTEGRATION-NOTES.md) |
+| Every doc, indexed | [`docs/README.md`](docs/README.md) |
 
 ## Prerequisites
 
@@ -46,7 +57,23 @@ export JAVA_HOME="$(/usr/libexec/java_home -v 21)"   # macOS; or point at any JD
 ./gradlew test
 ```
 
-The suite covers kernel wiring, the model index, the renderer (EN/DE), the validator, the self-verifying catalog (each example checked against the real kernel), and the constraint-mining instruments (slot parity, MVK ledger) — so a green `test` means rulekit's output is confirmed by the engine, not just plausible. With the sibling `a12-kernel-mm` clone present, an opt-in harness additionally loads all 15 of the kernel's own metamodels through the index (skipped when absent).
+A green `test` means rulekit's output is confirmed by the engine, not just plausible. The suite covers:
+
+- kernel wiring and the model index
+- the renderer (EN/DE) and the validator
+- the self-verifying catalog — every example checked against the real kernel
+- the constraint-mining instruments (slot parity, MVK ledger)
+
+With a sibling `a12-kernel-mm` clone present, an opt-in harness also loads all 15 of the kernel's own metamodels through the index (skipped when absent).
+
+Other useful tasks:
+
+```sh
+./gradlew :adapter:test                              # the opt-in internal-tier module (Phase 2)
+./gradlew :cli:run --args="dump model.json fields"   # run the standalone CLI in dev (no packaging)
+```
+
+`./gradlew :test` keeps the core build free of the internal tier; see [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md) for the CLI.
 
 ## Commit hooks
 
@@ -56,8 +83,14 @@ A committed `commit-msg` hook (`.githooks/commit-msg`) enforces the repo's commi
 git config core.hooksPath .githooks
 ```
 
-It hard-rejects the mechanical violations and reminds on the judgment rule; bypass a single commit with `git commit --no-verify`. To apply the same check across all your repos, point your global git template at it (e.g. copy the hook into `~/.git-template/hooks` and set `git config --global init.templateDir ~/.git-template`).
+It hard-rejects the mechanical violations and reminds on the judgment rule; bypass a single commit with `git commit --no-verify`. To apply the same check across all your repos, point your global git template at it — copy the hook into `~/.git-template/hooks` and set `git config --global init.templateDir ~/.git-template`.
 
 ## License
 
-**MIT** — see [`LICENSE`](LICENSE). rulekit's source is its own original work and ships no kernel binary, so it carries no copyleft entanglement (consistent with the sibling `a12-kernel-demo` / `a12-kernel-bootstrap`, both MIT). The kernel itself is dual-licensed `EUPL-1.2 OR commercial`; the future standalone CLI, which *bundles* the kernel, will ship that distributable under **EUPL-1.2** (the source stays MIT). Full analysis: [`docs/LICENSING.md`](docs/LICENSING.md).
+**MIT** — see [`LICENSE`](LICENSE).
+
+- **rulekit source: MIT.** Its own original work, shipping no kernel binary, so it carries no copyleft entanglement — consistent with the sibling `a12-kernel-demo` / `a12-kernel-bootstrap` (both MIT).
+- **The kernel: dual `EUPL-1.2 OR commercial`** (upstream, not ours).
+- **The future standalone CLI distributable: EUPL-1.2**, because it *bundles* the kernel — the source stays MIT.
+
+Full analysis: [`docs/LICENSING.md`](docs/LICENSING.md).
