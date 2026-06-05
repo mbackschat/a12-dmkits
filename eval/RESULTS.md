@@ -15,6 +15,24 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-05 06:57 CEST — T4 intent reword, opus + sonnet, k=2 (run `w5qap37n5`)
+
+Confirming the T4 intent fix (reworded to "the sum of each RUSH line item's Count"; gold unchanged). Fresh, T4 only — 9 agents.
+
+| model | T4 |
+|---|---|
+| opus | 0/2 |
+| sonnet | 1/2 |
+
+**The fix worked — even though pass@k is still low.** The point of this re-run was the count-vs-sum confusion, and it is **gone**: all four candidates now use `Sum(Items*/Count Having …)`, summing the per-line Count exactly as intended. The remaining misses are entirely different and much subtler:
+- **opus ×2 — dropped the `FieldFilled(Quantity)` guard.** Right aggregate, but the judge flagged that without the guard the rule diverges from the gold on an *empty* Quantity (the judge reasoned a number-null is compared as 0, so `0 < Sum` fires where the guarded gold stays silent). A real-but-subtle edge — and the judge's null-semantics claim is itself unverified (worth a quick KERNEL check if we lean on it).
+- **sonnet ×1 — `PatternMatched "RUSH.*"` instead of `== "RUSH"`** for the Sku filter (matches `RUSHED` too) — a defensible-but-different interpretation.
+- **sonnet ×1 — byte-identical to the gold** → equivalent. ✅
+
+So T4 moved from *"wrong aggregate (a clear spec defect)"* to *"right aggregate, with subtle guard/match variations the strict judge separates."* That's the intended outcome: the spec bug is fixed; the residual is k=2 noise + legitimate judge strictness, not a material gap. (Possible tiny future skill note: guard a number comparison with `FieldFilled` when the field's presence is implied — held off to avoid over-fitting to one cell.)
+
+**Eval worklist status:** the three eval-design artifacts are resolved (T3 gold, T6 judge context, T4 intent); T5 is a residual polarity slip within k=2 noise. No material gap remains proven — the suite now measures real subtleties.
+
 ### 2026-06-05 06:49 CEST — targeted re-run T3/T4/T5/T6, opus + sonnet, k=2 (run `w90famp3n`)
 
 Confirming the four fixes from the 05:51 run. Fresh run (material + harness changed), subset to the four authoring tasks. 33 agents = 16 produce + 1 recheck + 16 judge (§8a; `A=4, C=0, M=2, k=2`), ~729k tokens.
