@@ -14,6 +14,7 @@ A read-only **analysis** of two real A12 model corpora, used to prioritize what 
 
 - **68 document models**, **150 rule conditions**, **27 models reference other models** (`modelReferences` — i.e. they exercise the `expand` + resolver path we have not yet integration-tested).
 - Rule-dense models reach ~29 rules each; conditions are frequently **multi-line** and contain `;;` **comments**, and keywords appear in **case variants** (`and` / `AND` as well as `And`).
+- **Header locale form: the bare, language-only code dominates here** — **268** models declare `[{"code":"en"},{"code":"de"}]` against **107** with full `en_US`. The opposite of our fixtures and `a12-kernel-mm` (which use the full `language_COUNTRY` form). Both are kernel-valid; see KERNEL-FINDINGS §13 supplement. Bearing for authoring against these models: message locale codes must match the header **exactly**, so `Dsl.en()`/`de()` (full-form sugar) don't fit — use `Dsl.text("en", …)`.
 
 ## Operator / construct frequency (across the 150 conditions)
 

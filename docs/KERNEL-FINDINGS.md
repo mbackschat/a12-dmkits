@@ -283,6 +283,8 @@ rulekit treatment + the write-separation guarantee live in `KERNEL-INTEGRATION-N
 
 Header `locales` are **arbitrary** valid Java locale codes (`fr_FR` is fine; a malformed code like `en_us` fails at *deserialization* — "Invalid locale format" — before any consistency check). English/German are not special here; only the *condition keyword* language is limited to the EN/DE bundles.
 
+**Language-only codes (`en`, `de`) are valid — and are the *common* form in the wild** (corpus check, 2026-06-05). A `Locale` needs only a language; the region is optional. Our own fixtures and `a12-kernel-mm` happen to use the full `language_COUNTRY` form (`en_US`/`de_DE`), but in the **A12 Tools workspaces** the bare form dominates: **268** models declare `[{"code":"en"},{"code":"de"}]` vs **107** using `en_US` (e.g. `advanced/models/CommonFieldDefinitions_TDM.json`). So don't assume `en_US`: the code is whatever the header declares, full or bare. What's rejected is a *malformed* code (`en_us` — lowercase region), not a short one. The message-coverage match is exact-string, so a message must carry the **same** code the header declares — an `en_US` message does **not** satisfy a declared `en`.
+
 - A rule/computation must carry an error message for **every declared locale** — a missing one is **`MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING`**; none at all is `MVK_ERROR_MESSAGE_MISSING`.
 - A message for an **undeclared** locale is **silently tolerated and ignored** — no diagnostic, so a typo'd locale code or dead text goes unnoticed (rulekit rejects it at build time for exactly that reason).
 
