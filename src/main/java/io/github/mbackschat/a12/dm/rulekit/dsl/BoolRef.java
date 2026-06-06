@@ -25,4 +25,18 @@ public record BoolRef(FieldRef field) {
     public Condition isFalse() {
         return new ComparisonCondition(field.value(), CompareOp.EQ, new BoolLiteral(false));
     }
+
+    /**
+     * {@code [field] != True} — the inequality direction, kept distinct from {@link #isFalse()} for
+     * faithful round-trip (real models write both). For a <em>filled</em> boolean it coincides with
+     * {@code == False}, but an unset boolean leaves either comparison not-evaluated (§5b).
+     */
+    public Condition isNotTrue() {
+        return new ComparisonCondition(field.value(), CompareOp.NE, new BoolLiteral(true));
+    }
+
+    /** {@code [field] != False} — the inequality peer of {@link #isTrue()}. */
+    public Condition isNotFalse() {
+        return new ComparisonCondition(field.value(), CompareOp.NE, new BoolLiteral(false));
+    }
 }

@@ -96,6 +96,10 @@ class IngestRoundTripTest {
                         m.bool("/Subscription/AutoRenew").isTrue(), cases))
                 .add(rule(m, "/Subscription", "AutoRenewOffRule", m.field("/Subscription/AutoRenew"),
                         m.bool("/Subscription/AutoRenew").isFalse(), cases))
+                .add(rule(m, "/Subscription", "AutoRenewNotOnRule", m.field("/Subscription/AutoRenew"),
+                        m.bool("/Subscription/AutoRenew").isNotTrue(), cases))
+                .add(rule(m, "/Subscription", "AutoRenewNotOffRule", m.field("/Subscription/AutoRenew"),
+                        m.bool("/Subscription/AutoRenew").isNotFalse(), cases))
                 .add(rule(m, "/Subscription", "TermsConfirmedRule", m.field("/Subscription/TermsAccepted"),
                         m.confirm("/Subscription/TermsAccepted").confirmed(), cases))
                 .add(rule(m, "/Subscription", "TermsNotConfirmedRule", m.field("/Subscription/TermsAccepted"),

@@ -728,10 +728,12 @@ final class ConditionConverter {
     /** {@code [bool] == True|False} → {@link io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef}. */
     private Condition booleanComparison(io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef left,
             ComparisonOperation op, IOperation right, ICondition origin) {
-        if (op == ComparisonOperation.EQ) {
-            return booleanConstant(right, origin) ? left.isTrue() : left.isFalse();
-        }
-        throw unsupported("boolean comparison operator " + op, origin);
+        boolean value = booleanConstant(right, origin);
+        return switch (op) {
+            case EQ -> value ? left.isTrue() : left.isFalse();
+            case NE -> value ? left.isNotTrue() : left.isNotFalse();
+            default -> throw unsupported("boolean comparison operator " + op, origin);
+        };
     }
 
     /**
