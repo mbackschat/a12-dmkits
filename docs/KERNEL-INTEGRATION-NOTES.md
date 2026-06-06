@@ -126,3 +126,21 @@ The read direction: `KernelAdapter.ingest(ruleFullName)` parses a rule's stored 
 - **Round-trip oracle.** `IngestRoundTripTest` proves render → kernel-parse → convert → render is the identity for the covered constructs (`render(authored) == render(ingest(...))`), the differential check that keeps the converter honest against the real engine.
 - **Boundary conversion holds.** `ingest` returns rulekit types (`Ingest`/`Condition`/preserved text); the kernel `ICondition`/`IRule` never escape (the `parseCondition` hook is package-private). The converter is the only place that touches the kernel transport AST.
 - **Aggregate as a comparison's *compared-against* operand — resolved 2026-06-05** (was an F10 gap, surfaced by the dev-path eval). `[Quantity] < Sum(Items*/Count Having …)` (field-vs-aggregate) and `Sum(…) > [Quantity]` (aggregate-vs-field) now ingest to **`Converted`** and round-trip; previously the converter threw *"number comparison against a non-field, non-constant operand"* → `Opaque`. The lift had two parts: (1) a typed **expression-vs-expression** comparison in the DSL — `NumberExpr.lt(NumberExpr)`/… plus `NumberRef` convenience, so `[field] < Sum(…)` is also *authorable*, not only ingestable; (2) `ConditionConverter.numericExpr` + `exprVsExpr` accept an aggregate / date-diff / current-repetition / number-field on **either** side of a comparison. Locked by `IngestRoundTripTest.roundTripsAggregatesAndHaving` (field-vs-aggregate + aggregate-vs-field cases).
+
+## Runtime behavioral-law oracle (F-LAW, 2026-06-06)
+
+Two tiers of "law" lock the kernel's behavior — keep them distinct:
+
+| tier | question | mechanism | location |
+|---|---|---|---|
+| **accept / reject** (structural) | does the kernel *accept* this condition? | `RuleValidator` + `checkConsistency` | `src/test/.../validate/laws/` ↔ `KERNEL-FINDINGS.md` |
+| **fires / does-not-fire** (behavioral, **runtime**) | does a valid rule *evaluate* as intended on data? | `IDocumentRtService.validateFull` over a built document instance | `adapter/src/test/.../adapter/laws/` (`RuntimeLaws` harness) |
+
+The runtime tier evaluates the **real engine** against a constructed document and reads back which rules fired (`IMessage.getErrorCode()`/`getRulePath()`), so a documented behavior changing under a kernel bump fails loudly. Wiring: a trivial `IDocumentModelResolver` (`id → model`) → `DocumentRtServiceFactory.createDocumentRtService(dynamicConfig)` (an `IDocumentDynamicServiceConfig` with a `HashMap`-backed `IModelCodeCache`) → build an `IDocument` via `IDocumentFactory` → `validateFull(doc, Locale)`.
+
+**Document construction — the V1 path (lesson learned, the one shared with the TypeScript runtime; DocumentV2 is new and a separate research item):** building the instance is the subtle part. The kernel converts a V1 `IDocument` to update actions via `DocumentV1V2ConverterImpl.docV1ToUpdateActions` → `DocumentPointer.of(pathParts, repetitions)`, and that contract is:
+- **one 1-based repetition index per path part** — group *and* field each get one: `/Order` → `{1}`, `/Order/Quantity` → `{1,1}`. A length mismatch makes the pointer build fail and surfaces as the opaque *"cannot convert entity instance … to update action"* (the error that blocked the first spike — root-caused from the kernel sources).
+- **values are read back as Strings** during the conversion (`metaField.convertWithOnlyBasicTypeCheck(sValue)`), so pass field values as text, not `BigDecimal`/`Long`.
+- **empty vs absent vs filled-row matters** — see the empty-value law and KERNEL-FINDINGS §2.
+
+First laws locked: `PolarityLawsTest` (a rule fires when its *error condition* holds — inverting it fires on the compliant case) and `EmptyValueLawsTest` (empty-number → 0 *within a filled row*). Remaining HIGH-trap laws (empty date/string/boolean/confirm, path walk-up, etc.) are the F-LAW backlog ([`MODELKIT-PROPOSAL.md`](MODELKIT-PROPOSAL.md) §H).

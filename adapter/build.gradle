@@ -33,6 +33,12 @@ dependencies {
     implementation "com.mgmtp.a12.kernel:kernel-md-serializer:${kernelVersion}"      // ExternalDocumentModelSerializerService.getInternDocumentModel
     implementation "com.mgmtp.a12.kernel:kernel-md-a12internal:${kernelVersion}"     // internal DocumentModel
 
+    // The runtime *evaluation* tier — TEST-only (F-LAW behavioral-law oracle): build a document
+    // instance and run the kernel's runtime validation to observe which rules actually FIRE on data.
+    testImplementation "com.mgmtp.a12.kernel:kernel-md-runtime-api:${kernelVersion}"   // IDocumentRtService, IDocumentValidationResult, IMessage
+    testImplementation "com.mgmtp.a12.kernel:kernel-md-document-api:${kernelVersion}"  // IDocument, IDocumentFactory, IEntityInstance
+    testRuntimeOnly "com.mgmtp.a12.kernel:kernel-md-runtime-service:${kernelVersion}"  // DocumentDynamicRtService impl behind the facade
+
     // modelkit (structure builder) — TEST-only: an ingest round-trip authors its model with it.
     testImplementation project(':modelkit')
 
