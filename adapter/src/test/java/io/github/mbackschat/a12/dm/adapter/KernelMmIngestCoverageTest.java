@@ -33,7 +33,7 @@ class KernelMmIngestCoverageTest {
         List<String> loadFailures = new ArrayList<>();
         Map<String, Integer> opaqueReasons = new TreeMap<>();       // construct → count (the F10 tail)
         Map<String, int[]> perModel = new LinkedHashMap<>();        // model → {rules, converted, opaque}
-        java.util.Set<String> distinctReasons = new java.util.TreeSet<>();
+        Map<String, Integer> distinctReasons = new TreeMap<>();   // full reason → count (fine-grained triage)
 
         for (Path file : canonicalModels(root)) {
             String name = file.getParent().getFileName().toString();
@@ -48,7 +48,7 @@ class KernelMmIngestCoverageTest {
                     } else if (ingest instanceof Ingest.Opaque o) {
                         opq++;
                         opaqueReasons.merge(normalizeReason(o.reason()), 1, Integer::sum);
-                        distinctReasons.add(o.reason());
+                        distinctReasons.merge(o.reason(), 1, Integer::sum);
                     }
                 }
                 totalRules += rules; converted += conv; opaque += opq;
@@ -68,8 +68,10 @@ class KernelMmIngestCoverageTest {
         opaqueReasons.entrySet().stream()
                 .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
                 .forEach(e -> report.append(String.format("    %4d  %s%n", e.getValue(), e.getKey())));
-        report.append("\n  Distinct full opaque reasons (triage):\n");
-        distinctReasons.forEach(s -> report.append("    · ").append(s).append('\n'));
+        report.append("\n  Distinct full opaque reasons (triage, by frequency):\n");
+        distinctReasons.entrySet().stream()
+                .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                .forEach(e -> report.append(String.format("    %4d  · %s%n", e.getValue(), e.getKey())));
         if (!loadFailures.isEmpty()) {
             report.append("\n  Models that failed to load via the adapter path:\n");
             loadFailures.forEach(f -> report.append("    ").append(f).append('\n'));
@@ -78,11 +80,11 @@ class KernelMmIngestCoverageTest {
 
         assertTrue(perModel.size() >= 10,
                 () -> "expected to ingest the canonical metamodel set, loaded " + perModel.size() + report);
-        // Regression floor: F-IDX (name-path keying) + boolean/confirm/!= + enum field-to-field converter
-        // wiring took foreign-rule ingest from 0 → ~75% (417/553). Lock it so a path-keying or converter
-        // regression is loud here (opt-in: this gate only runs where the kernel-mm clone is present).
+        // Regression floor: F-IDX (name-path keying) + boolean/confirm/!= + enum field-to-field + the
+        // field-list×value-list quantifiers took foreign-rule ingest from 0 → ~78% (429/553). Lock it so
+        // a path-keying or converter regression is loud here (opt-in: only runs where kernel-mm is present).
         int finalConverted = converted;
-        assertTrue(finalConverted >= 415,
+        assertTrue(finalConverted >= 427,
                 () -> "kernel-mm ingest coverage regressed below the floor (converted="
                         + finalConverted + " of " + 553 + ")" + report);
     }

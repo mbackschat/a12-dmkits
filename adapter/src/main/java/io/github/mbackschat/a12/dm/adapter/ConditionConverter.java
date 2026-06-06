@@ -9,6 +9,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.IParseTreeEntity;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IComparisonCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.ICompositeCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.ICondition;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IEntityListAndValueListCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IEntityListCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IValueListCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IBoolConstantOperation;
@@ -21,6 +22,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IPointInTim
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateDiffOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.BoolConstantOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ComparisonOperation;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListAndValueListConditionName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.DateDiffOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListConditionName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListOperationName;
@@ -81,6 +83,9 @@ final class ConditionConverter {
         }
         if (node instanceof IEntityListCondition entityList) {
             return convertEntityList(entityList);
+        }
+        if (node instanceof IEntityListAndValueListCondition entityAndValueList) {
+            return convertEntityListAndValueList(entityAndValueList);
         }
         if (node instanceof IValueListCondition valueList) {
             return convertValueList(valueList);
@@ -155,6 +160,97 @@ final class ConditionConverter {
 
     private FieldRef[] fieldRefs(List<String> paths) {
         return paths.stream().map(model::field).toArray(FieldRef[]::new);
+    }
+
+    /**
+     * A field-list × value-list quantifier: "(at least one / no / not all) of these fields' values are
+     * in this value list". The kernel carries the fields in {@code getEntityList()} and the constants in
+     * {@code getValueListAsStringList()}; we route to the {@code Dsl} factory by field kind (string-,
+     * enum-, or flattened-repetition list). Entity-valued value lists, mixed-kind field lists, and the
+     * two unmodeled names (date-range overlap, value-consistency) stay opaque.
+     */
+    private Condition convertEntityListAndValueList(IEntityListAndValueListCondition node) {
+        List<String> values = node.getValueListAsStringList();
+        if (values.isEmpty()) {
+            throw unsupported("entity+value-list with entity-valued (non-constant) values", node);
+        }
+        List<IEntityId> entities = node.getEntityList().getEntityIdList();
+        if (entities.isEmpty()) {
+            throw unsupported("empty entity+value-list condition", node);
+        }
+        EntityListAndValueListConditionName name = node.getConditionName();
+        if (entities.stream().allMatch(e -> e.isField() && !isWildcard(e))) {
+            List<String> paths = entities.stream().map(IEntityId::getFullName).toList();
+            return switch (homogeneousKind(paths, node)) {
+                case STRING -> {
+                    StringRef[] r = paths.stream().map(model::str).toArray(StringRef[]::new);
+                    StringRef[] rest = Arrays.copyOfRange(r, 1, r.length);
+                    yield switch (name) {
+                        case AtLeastOneFieldValueIncludedInValueList ->
+                                Dsl.atLeastOneFieldValueIncludedInValueList(values, r[0], rest);
+                        case NoFieldValueIncludedInValueList ->
+                                Dsl.noFieldValueIncludedInValueList(values, r[0], rest);
+                        case NotAllFieldValuesIncludedInValueList ->
+                                Dsl.notAllFieldValuesIncludedInValueList(values, r[0], rest);
+                        default -> throw unsupported("entity+value-list condition " + name, node);
+                    };
+                }
+                case ENUMERATION -> {
+                    EnumRef[] r = paths.stream().map(model::enumOf).toArray(EnumRef[]::new);
+                    EnumRef[] rest = Arrays.copyOfRange(r, 1, r.length);
+                    yield switch (name) {
+                        case AtLeastOneFieldValueIncludedInValueList ->
+                                Dsl.atLeastOneFieldValueIncludedInValueList(values, r[0], rest);
+                        case NoFieldValueIncludedInValueList ->
+                                Dsl.noFieldValueIncludedInValueList(values, r[0], rest);
+                        case NotAllFieldValuesIncludedInValueList ->
+                                Dsl.notAllFieldValuesIncludedInValueList(values, r[0], rest);
+                        default -> throw unsupported("entity+value-list condition " + name, node);
+                    };
+                }
+                default -> throw unsupported("entity+value-list over a non-string/enum field list", node);
+            };
+        }
+        if (entities.stream().allMatch(ConditionConverter::isWildcard)) {
+            FieldListRef[] r = entities.stream()
+                    .map(e -> model.flatten(reconstructStarPath(e))).toArray(FieldListRef[]::new);
+            FieldListRef[] rest = Arrays.copyOfRange(r, 1, r.length);
+            return switch (name) {
+                case AtLeastOneFieldValueIncludedInValueList ->
+                        Dsl.atLeastOneFieldValueIncludedInValueList(values, r[0], rest);
+                case NoFieldValueIncludedInValueList ->
+                        Dsl.noFieldValueIncludedInValueList(values, r[0], rest);
+                case NotAllFieldValuesIncludedInValueList ->
+                        Dsl.notAllFieldValuesIncludedInValueList(values, r[0], rest);
+                default -> throw unsupported("entity+value-list condition " + name, node);
+            };
+        }
+        throw unsupported("entity+value-list over a mixed (plain + wildcard) scope", node);
+    }
+
+    /** The single value kind shared by every field at {@code paths}, or fail if they disagree / are unknown. */
+    private ValueKind homogeneousKind(List<String> paths, ICondition origin) {
+        ValueKind kind = null;
+        for (String path : paths) {
+            ValueKind k = model.fieldAt(path)
+                    .orElseThrow(() -> unsupported("entity+value-list on unknown field " + path, origin)).kind();
+            if (kind == null) {
+                kind = k;
+            } else if (kind != k) {
+                throw unsupported("entity+value-list over a mixed-kind field list", origin);
+            }
+        }
+        return kind;
+    }
+
+    /** Whether an entity addresses a repetition wildcard (any segment index is {@code WILDCARD}). */
+    private static boolean isWildcard(IEntityId entity) {
+        for (long idx : entity.getIndices()) {
+            if (idx == IParseTreeEntity.WILDCARD) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private Condition convertValueList(IValueListCondition valueList) {
