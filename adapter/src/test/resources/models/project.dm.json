@@ -1,0 +1,123 @@
+{
+  "header": {
+    "id": "project",
+    "modelType": "document",
+    "modelVersion": "28.4.0",
+    "locales": [
+      {
+        "code": "en_US"
+      }
+    ],
+    "labels": [],
+    "annotations": [],
+    "modelReferences": []
+  },
+  "content": {
+    "modelInfo": {
+      "name": "project",
+      "variant": "cockpit",
+      "revision": "Arbeitsversion",
+      "immutable": false
+    },
+    "modelConfig": {
+      "decimalSeparator": ".",
+      "timeZone": "Europe/Berlin",
+      "conditionLanguage": {
+        "code": "en_US"
+      },
+      "fieldRefByShortNameAllowed": true
+    },
+    "modelRoot": {
+      "rootGroups": [
+        {
+          "type": "Group",
+          "id": "/Project",
+          "name": "Project",
+          "Group": {
+            "repeatability": 1,
+            "elements": [
+              {
+                "type": "Field",
+                "id": "/Project/ProjectName",
+                "name": "ProjectName",
+                "Field": {
+                  "fieldType": {
+                    "type": "StringType"
+                  }
+                }
+              },
+              {
+                "type": "Group",
+                "id": "/Project/Milestones",
+                "name": "Milestones",
+                "Group": {
+                  "repeatability": 20,
+                  "indexFieldName": "Phase",
+                  "elements": [
+                    {
+                      "type": "Field",
+                      "id": "/Project/Milestones/Phase",
+                      "name": "Phase",
+                      "Field": {
+                        "fieldType": {
+                          "type": "StringType"
+                        }
+                      }
+                    },
+                    {
+                      "type": "Field",
+                      "id": "/Project/Milestones/Budget",
+                      "name": "Budget",
+                      "Field": {
+                        "fieldType": {
+                          "type": "NumberType",
+                          "NumberType": {
+                            "maxFractionalDigits": 0
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "type": "Group",
+                      "id": "/Project/Milestones/Tasks",
+                      "name": "Tasks",
+                      "Group": {
+                        "repeatability": 20,
+                        "indexFieldName": "TaskId",
+                        "elements": [
+                          {
+                            "type": "Field",
+                            "id": "/Project/Milestones/Tasks/TaskId",
+                            "name": "TaskId",
+                            "Field": {
+                              "fieldType": {
+                                "type": "StringType"
+                              }
+                            }
+                          },
+                          {
+                            "type": "Field",
+                            "id": "/Project/Milestones/Tasks/Effort",
+                            "name": "Effort",
+                            "Field": {
+                              "fieldType": {
+                                "type": "NumberType",
+                                "NumberType": {
+                                  "maxFractionalDigits": 0
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

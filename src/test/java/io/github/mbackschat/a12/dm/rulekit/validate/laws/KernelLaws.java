@@ -21,6 +21,7 @@ final class KernelLaws {
     private static final String SUBSCRIPTION = Fixtures.subscriptionJson();
     private static final String ORDER = Fixtures.orderJson();
     private static final String LOGISTICS = ModelDrafts.logistics().toJson();
+    private static final String PROJECT = Fixtures.projectJson();
 
     private KernelLaws() {
     }
@@ -53,6 +54,15 @@ final class KernelLaws {
     /** Logistics-fixture variant (two index-keyed repeatable groups) — authored via modelkit, not JSON. */
     static void acceptsLogistics(String group, String errorField, String condition) {
         assertAccepts(LOGISTICS, group, errorField, condition);
+    }
+
+    /** Project-fixture variants (nested repeatable groups Milestones ▸ Tasks) — for §10 wildcard-path laws. */
+    static void acceptsProject(String group, String errorField, String condition) {
+        assertAccepts(PROJECT, group, errorField, condition);
+    }
+
+    static void rejectsProject(String group, String errorField, String condition, String expectedCode) {
+        assertRejects(PROJECT, group, errorField, condition, expectedCode);
     }
 
     private static void assertAccepts(String json, String group, String errorField, String condition) {

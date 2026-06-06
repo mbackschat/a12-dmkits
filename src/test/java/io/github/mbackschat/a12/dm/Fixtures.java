@@ -55,6 +55,11 @@ public final class Fixtures {
         return json("models/order.dm.json");
     }
 
+    /** The project model: nested repeatable groups (Milestones ▸ Tasks), for path/wildcard laws (§10). */
+    public static String projectJson() {
+        return json("models/project.dm.json");
+    }
+
     private static BoundModel bind(String classpathLocation) {
         try (Reader reader = new InputStreamReader(stream(classpathLocation), StandardCharsets.UTF_8)) {
             return BoundModel.of(ModelIndex.of(ModelLoader.loadSelfContained(reader)));
