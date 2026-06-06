@@ -82,10 +82,11 @@ class KernelMmIngestCoverageTest {
                 () -> "expected to ingest the canonical metamodel set, loaded " + perModel.size() + report);
         // Regression floor: F-IDX (name-path keying) + boolean/confirm/!= + enum field-to-field + the
         // field-list×value-list quantifiers (constant AND entity-valued) + NumberOfFilledFields/Groups +
-        // Length(field) + multi-field Sum took foreign-rule ingest from 0 → ~85% (471/553). Lock it so a
-        // path-keying or converter regression is loud here (opt-in: only runs where kernel-mm is present).
+        // Length(field) + multi-field Sum + enum category-navigation took foreign-rule ingest from 0 → ~86%
+        // (476/553). Lock it so a path-keying or converter regression is loud here (opt-in: only runs where
+        // the kernel-mm clone is present).
         int finalConverted = converted;
-        assertTrue(finalConverted >= 469,
+        assertTrue(finalConverted >= 474,
                 () -> "kernel-mm ingest coverage regressed below the floor (converted="
                         + finalConverted + " of " + 553 + ")" + report);
     }

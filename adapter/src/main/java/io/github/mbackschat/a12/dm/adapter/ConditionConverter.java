@@ -354,6 +354,11 @@ final class ConditionConverter {
             ValueKind kind = model.fieldAt(path)
                     .orElseThrow(() -> unsupported("comparison on unknown field " + path, comparison))
                     .kind();
+            // an enum field navigated to one of its categories ([field -> Cat]) rides on getCategoryName()
+            String category = field.getField().getCategoryName();
+            if (kind == ValueKind.ENUMERATION && category != null && !category.isEmpty()) {
+                return categoryComparison(model.enumOf(path).category(category), op, right, comparison);
+            }
             return switch (kind) {
                 case NUMBER -> numberComparison(model.num(path), op, right, comparison);
                 case STRING -> stringComparison(model.str(path), op, right, comparison);
@@ -540,6 +545,19 @@ final class ConditionConverter {
             };
         }
         throw unsupported("string comparison against a non-field, non-constant operand", origin);
+    }
+
+    /** {@code [field -> Category] == / != "value"} — compares the field's category against a constant. */
+    private Condition categoryComparison(io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef category,
+            ComparisonOperation op, IOperation right, ICondition origin) {
+        if (right instanceof IConstantOperation constant) {
+            return switch (op) {
+                case EQ -> category.is(constant.getValue());
+                case NE -> category.isNot(constant.getValue());
+                default -> throw unsupported("enum category comparison operator " + op, origin);
+            };
+        }
+        throw unsupported("enum category comparison against a non-constant operand", origin);
     }
 
     private Condition enumComparison(EnumRef left, ComparisonOperation op, IOperation right,
