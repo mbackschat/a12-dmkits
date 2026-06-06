@@ -128,18 +128,33 @@ public final class KernelAdapter {
      */
     public Ingest ingest(String ruleFullName) {
         try {
-            return new Ingest.Converted(new ConditionConverter(model).convert(parseCondition(ruleFullName)));
+            ConditionConverter converter = new ConditionConverter(model);
+            ICondition parsed = parseCondition(ruleFullName);
+            converter.refuseUnmodeledConstructs(parsed);   // loud detection of silently-droppable constructs (N8)
+            return new Ingest.Converted(converter.convert(parsed));
         } catch (UnsupportedConstructException unconverted) {
-            return new Ingest.Opaque(canonicalConditionText(ruleFullName), unconverted.getMessage());
+            return new Ingest.Opaque(verbatimConditionText(ruleFullName), unconverted.getMessage());
         } catch (RuntimeException unexpected) {
             // Tolerant-by-design: a rule the kernel accepts must never crash whole-DM ingest. A
             // reference the converter can't resolve in rulekit's content-only index (e.g. a header
             // entity like /header/id, or a path form rulekit doesn't model) degrades to Opaque —
             // preserved verbatim, never lost — rather than escaping as an exception.
-            return new Ingest.Opaque(canonicalConditionText(ruleFullName),
+            return new Ingest.Opaque(verbatimConditionText(ruleFullName),
                     "unresolved reference (" + unexpected.getClass().getSimpleName() + "): "
                             + unexpected.getMessage());
         }
+    }
+
+    /**
+     * The faithful text to preserve for an {@link Ingest.Opaque}: the rule's <b>raw stored</b> condition
+     * (verbatim), falling back to the kernel canonical form only if it's absent. Raw is required because
+     * the kernel's formatter can be lossy — it truncates a condition carrying a {@code $} correlation to
+     * its first conjunct (KERNEL-FINDINGS) — so preserving canonical would <em>lose</em> the rule on
+     * write-back, the opposite of "preserved verbatim".
+     */
+    private String verbatimConditionText(String ruleFullName) {
+        String raw = rule(ruleFullName).getErrorConditionText();
+        return raw != null && !raw.isBlank() ? raw : canonicalConditionText(ruleFullName);
     }
 
     /**

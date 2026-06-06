@@ -173,6 +173,16 @@ Two structural gates fire *outside* `checkConsistency`, found while scoping the 
 
 rulekit's authoring builders already satisfy the rule/computation subset (`ERROR_*`, `COMPUTED_FIELD/OPERATION`, `LOCALIZED_TEXT_ELEMENT`) by construction; the rest are model-structure concerns rulekit doesn't author (it only *adds rules/computations to an already-valid model*). *(Locked: `SerializerTierParityTest` — reflective parity over the category enum, so a kernel upgrade adding a category fails loudly.)*
 
+## `formatConditionText` is lossy for a `$` correlation (2026-06-06)
+
+The kernel's condition formatter (`IMVK_Service.formatConditionText`, the parse+format round-trip behind rulekit's `canonicalConditionText`) **truncates a condition that carries a `$` outer-iteration correlation to its first conjunct**. A rule the kernel *accepts* and reports as valid —
+
+```
+FieldFilled(CustomerName) And Sum(Items*/Count Having [$/Order/Quantity] == [Items/Count]) > 5
+```
+
+— formats back to just `FieldFilled(CustomerName)`. The `$`-bearing `Sum(… Having …)` conjunct is silently dropped. (`hasValidConditionText` still returns `true` for the rule.) So the canonical form is **not a safe verbatim source** for such rules. *(Consequence for rulekit: `Ingest.Opaque` preserves the **raw stored** `getErrorConditionText()`, not the canonical form — see KERNEL-INTEGRATION-NOTES. Observed while building the `$`-correlation ingest guard; not separately locked — the dependent behavior is locked by `adapter.OuterCorrelationIngestTest`.)*
+
 ## How `checkConsistency` actually works — structural laws ARE metamodel rules (2026-06-04)
 
 Found while repairing the MVK ledger's coverage hole (`MVK_ERROR_MESSAGE_MISSING`/`MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING` appear at runtime but in no kernel enum, no source file, and no plain string in any jar): `checkConsistency`'s `CodeGenerationRule` runs `generateValidationCode`, and part of that pipeline **validates the model itself as a document against the `MM_Common` metamodel** — using validators *code-generated from the metamodel's rules* (the `mmvalidators-extmpinternal-mm_common-v2-codegen` jar, transitively on the classpath). The two "missing" codes are ordinary **rule `errorCode`s authored in MM_Common**, alongside **103 more** — 105 structural laws expressed as A12 rules over the metamodel.

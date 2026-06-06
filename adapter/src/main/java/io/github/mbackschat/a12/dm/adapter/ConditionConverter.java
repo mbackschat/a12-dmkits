@@ -1,6 +1,9 @@
 package io.github.mbackschat.a12.dm.adapter;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.List;
 import java.util.function.BiFunction;
 
@@ -34,6 +37,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.GroupOperationN
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.LogOp;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.PointInTimeOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ValueListConditionName;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.ast.ASTVisitor;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
@@ -77,6 +81,43 @@ final class ConditionConverter {
 
     ConditionConverter(BoundModel model) {
         this.model = model;
+    }
+
+    /**
+     * Reject — up front, before any conversion — a construct the converter would otherwise <em>silently
+     * drop</em> (N8: never silently corrupt). Today that is the {@code $} outer-iteration correlation
+     * (D13, unmodeled): field-vs-field comparison round-trips, but the {@code $} rule-iteration marker
+     * has no AST node, so converting {@code [$/Order/Quantity]} would emit a non-correlated
+     * {@code [/Order/Quantity]} — a different rule. The kernel allows {@code $} only inside {@code Having}
+     * filters, and its {@code traverse()} does not descend into filters, so we walk filters explicitly
+     * (breadth-first, including filters nested inside filters).
+     *
+     * @throws UnsupportedConstructException if any reference is outer-correlated — caught by
+     *         {@link KernelAdapter#ingest} and surfaced as {@link Ingest.Opaque} (preserved verbatim).
+     */
+    void refuseUnmodeledConstructs(ICondition root) {
+        Deque<ICondition> filters = new ArrayDeque<>();
+        filters.add(root);
+        while (!filters.isEmpty()) {
+            List<ICondition> nested = new ArrayList<>();
+            filters.poll().traverse(new ASTVisitor() {
+                @Override
+                public boolean visit(IEntityId id) {
+                    if (id.isOuter()) {
+                        throw new UnsupportedConstructException("F10 converter does not model the '$' "
+                                + "outer-iteration correlation on '" + id.getFullName() + "' — field-vs-field "
+                                + "round-trips, but the $ rule-iteration marker (D13) has no AST node, so "
+                                + "converting would silently drop it [kernel node: outer correlation ($)]");
+                    }
+                    ICondition filter = id.getFilterCondition();
+                    if (filter != null) {
+                        nested.add(filter);
+                    }
+                    return true;
+                }
+            });
+            filters.addAll(nested);
+        }
     }
 
     Condition convert(ICondition node) {
