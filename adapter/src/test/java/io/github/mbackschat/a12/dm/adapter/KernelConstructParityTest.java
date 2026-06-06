@@ -157,9 +157,7 @@ class KernelConstructParityTest {
         put(m, "sub-day date-diff — not yet modeled",
                 "DateDiffOperationName.DifferenceInSeconds", "DateDiffOperationName.DifferenceInMinutes",
                 "DateDiffOperationName.DifferenceInHours");
-        put(m, "date/time field-extraction family — not yet modeled",
-                "DateExtractionOperationName.DayFromDate", "DateExtractionOperationName.MonthFromDate",
-                "DateExtractionOperationName.YearFromDate", "DateExtractionOperationName.QuarterFromDate",
+        put(m, "time-of-day + datetime extraction — not yet modeled (the date→number extractions are built)",
                 "DateExtractionOperationName.HoursFromTime", "DateExtractionOperationName.MinutesFromTime",
                 "DateExtractionOperationName.SecondsFromTime", "DateExtractionOperationName.DateFromDateTime",
                 "DateExtractionOperationName.TimeFromDateTime");

@@ -27,11 +27,14 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IFieldIdOperationWithParameters;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOpListOperationWithParameter;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IPointInTimeOperation;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateAddOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateDiffOperation;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateExtractionOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.BoolConstantOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ComparisonOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListAndValueListConditionName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.DateDiffOperationName;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.DateExtractionOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListConditionName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.FieldIdOperationName;
@@ -436,6 +439,9 @@ final class ConditionConverter {
         if (left instanceof IDateDiffOperation diff) {
             return numberExprComparison(convertDateDiff(diff), op, right, comparison);
         }
+        if (left instanceof IDateExtractionOperation ext) {
+            return numberExprComparison(convertDateExtraction(ext), op, right, comparison);
+        }
         if (left instanceof IFieldIdOperation lenOp && lenOp.getOperatorName() == FieldIdOperationName.Length) {
             return numberExprComparison(model.str(lenOp.getField().getFullName()).length(), op, right, comparison);
         }
@@ -577,6 +583,9 @@ final class ConditionConverter {
         }
         if (operand instanceof IDateDiffOperation diff) {
             return convertDateDiff(diff);
+        }
+        if (operand instanceof IDateExtractionOperation ext) {
+            return convertDateExtraction(ext);
         }
         if (operand instanceof IFieldIdOperation lenOp && lenOp.getOperatorName() == FieldIdOperationName.Length) {
             return model.str(lenOp.getField().getFullName()).length();
@@ -954,7 +963,54 @@ final class ConditionConverter {
         if (op instanceof IEntityListOperation aggregate) {
             return convertDateAggregate(aggregate);
         }
+        // AddDays/AddMonths/AddYears(date, n) → a shifted date
+        if (op instanceof IDateAddOperation add) {
+            return convertDateAdd(add);
+        }
         throw unsupported("date operand " + op.getClass().getSimpleName(), origin);
+    }
+
+    /** {@code YearFromDate/MonthFromDate/DayFromDate/QuarterFromDate(date)} — a numeric component of a date. */
+    private NumberExpr convertDateExtraction(IDateExtractionOperation ext) {
+        // resolve the number-valued extractions up front; time extractions (HoursFromTime, …) stay opaque
+        DateExtractionOperationName name = ext.getOperatorName();
+        if (name != DateExtractionOperationName.DayFromDate && name != DateExtractionOperationName.MonthFromDate
+                && name != DateExtractionOperationName.YearFromDate
+                && name != DateExtractionOperationName.QuarterFromDate) {
+            throw unsupported("date/time extraction " + name, ext);
+        }
+        DateOperand source = convertDateOperand(ext.getDateSpec(), ext);
+        return switch (name) {
+            case DayFromDate -> Dsl.dayFromDate(source);
+            case MonthFromDate -> Dsl.monthFromDate(source);
+            case YearFromDate -> Dsl.yearFromDate(source);
+            case QuarterFromDate -> Dsl.quarterFromDate(source);
+            default -> throw unsupported("date extraction " + name, ext);
+        };
+    }
+
+    /** {@code AddDays/AddMonths/AddYears(date, n)} — shift a date operand by an integer amount. */
+    private DateOperand convertDateAdd(IDateAddOperation add) {
+        DateOperand base = convertDateOperand(add.getDateSpec(), add);
+        long amount = dateAddAmount(add.getAmountSpec(), add);
+        return switch (add.getOperatorName()) {
+            case AddDays -> Dsl.addDays(base, amount);
+            case AddMonths -> Dsl.addMonths(base, amount);
+            case AddYears -> Dsl.addYears(base, amount);
+            default -> throw unsupported("date-add operator " + add.getOperatorName(), add);
+        };
+    }
+
+    /** The integer amount of a date-add (a numeric constant). */
+    private long dateAddAmount(IOperation op, Object origin) {
+        if (op instanceof IConstantOperation constant) {
+            try {
+                return Long.parseLong(constant.getValue().trim());
+            } catch (NumberFormatException e) {
+                throw unsupported("non-integer date-add amount '" + constant.getValue() + "'", origin);
+            }
+        }
+        throw unsupported("date-add amount that is not a constant", origin);
     }
 
     /** {@code MaxValue}/{@code MinValue} over a date repetition list, as a date operand (the date variant of the numeric aggregate). */

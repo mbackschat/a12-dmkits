@@ -27,6 +27,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.GroupPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LengthOf;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ListAggregate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Concatenation;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValueAsString;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledValue;
@@ -114,6 +115,9 @@ final class ExplanationTreeBuilder {
             case FirstFilledValue a -> List.of(leaf(a.operatorId(), a));
             case FieldValueAsString c -> List.of(leaf(c.operatorId(), c));
             case RangeAsString c -> List.of(leaf(c.operatorId(), c));
+            // date extraction nests its source date
+            case DateExtraction e -> List.of(new RuleExplanation.Node(e.operatorId(), renderer.render(e),
+                    operand(e.source())));
         };
     }
 

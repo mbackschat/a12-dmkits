@@ -110,6 +110,10 @@ public final class OperatorUsage {
             }
             case FieldValueAsString c -> ops.add(c.operatorId());
             case RangeAsString c -> ops.add(c.operatorId());
+            case DateExtraction e -> {
+                ops.add(e.operatorId());
+                collect(e.source(), ops);
+            }
         }
     }
 

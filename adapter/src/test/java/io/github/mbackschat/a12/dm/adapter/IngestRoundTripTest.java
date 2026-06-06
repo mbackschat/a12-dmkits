@@ -219,40 +219,50 @@ class IngestRoundTripTest {
         return r;
     }
 
+    /** A permanently-unconverted construct (D13 {@code $} outer correlation) — the durable opaque example. */
+    private static final String OPAQUE_CONDITION =
+            "FieldFilled(CustomerName) And Sum(Items*/Count Having [$/Order/Quantity] == [Items/Count]) > 5";
+
     @Test
     void preservesAnUnconvertedConstructAsOpaque() {
-        // A date shift (AddDays) isn't converted yet → preserved opaque, not lost, not corrupt.
-        // (Custom conditions are now CONVERTED — see CustomConditionIngestTest.)
-        BoundModel m = BoundModel.ofJson(read("models/order.dm.json"));
-        var ignore = new java.util.LinkedHashMap<String, Condition>();
-        Condition shift = m.field("/Order/CustomerName").filled()
-                .and(m.date("/Order/OrderDate").before(Dsl.addDays(Dsl.today(), 30)));
-        BoundModel withRule = m.add(orderRule(m, "ShiftRule", shift, ignore));
+        // The $ outer-iteration correlation (D13) stays unconverted → preserved opaque, not lost, not corrupt.
+        // (Date shifts, custom conditions, etc. are now CONVERTED; $ is the deliberate permanent gap.)
+        KernelAdapter adapter = KernelAdapter.ofJson(orderWith(OPAQUE_CONDITION, "OpaqueRule"));
 
-        Ingest result = KernelAdapter.of(withRule).ingest("/Order/ShiftRule");
+        Ingest result = adapter.ingest("/Order/OpaqueRule");
         Ingest.Opaque opaque = assertInstanceOf(Ingest.Opaque.class, result,
                 () -> "an unconverted construct should ingest as Opaque, got: " + result);
-        assertTrue(opaque.reason().contains("kernel node:"),
+        assertTrue(opaque.reason().toLowerCase().contains("$") || opaque.reason().toLowerCase().contains("outer"),
                 () -> "the reason should name the unconverted construct: " + opaque.reason());
-        // preserved verbatim: the rule's text survives (re-emit on write-back) and still references it
+        // preserved verbatim: the rule's text survives (re-emit on write-back), $ marker and all
         assertFalse(opaque.canonicalText().isBlank());
-        assertTrue(opaque.canonicalText().contains("AddDays"),
+        assertTrue(opaque.canonicalText().contains("$"),
                 () -> "opaque text should preserve the rule verbatim: " + opaque.canonicalText());
     }
 
     @Test
     void ingestAllReturnsTypedAndOpaqueOutcomesPerRule() {
-        BoundModel m = BoundModel.ofJson(read("models/order.dm.json"));
+        BoundModel m = BoundModel.ofJson(orderWith(OPAQUE_CONDITION, "OpaqueRule"));
         var ignore = new java.util.LinkedHashMap<String, Condition>();
-        BoundModel withRules = m
-                .add(orderRule(m, "OkRule", m.field("/Order/CustomerName").filled(), ignore))
-                .add(orderRule(m, "OpaqueRule", m.field("/Order/CustomerName").filled()
-                        .and(m.date("/Order/OrderDate").before(Dsl.addDays(Dsl.today(), 30))), ignore));
+        BoundModel withRules = m.add(orderRule(m, "OkRule", m.field("/Order/CustomerName").filled(), ignore));
 
         java.util.Map<String, Ingest> all = KernelAdapter.of(withRules).ingestAll();
         // a whole model ingests without throwing: supported rules typed, the rest preserved opaque
         assertInstanceOf(Ingest.Converted.class, all.get("/Order/OkRule"));
         assertInstanceOf(Ingest.Opaque.class, all.get("/Order/OpaqueRule"));
+    }
+
+    /** Inject a raw-text rule into the /Order group (the $ form can't be built via the typed DSL). */
+    private static String orderWith(String rawCondition, String name) {
+        String base = read("models/order.dm.json");
+        String escaped = rawCondition.replace("\\", "\\\\").replace("\"", "\\\"");
+        String rule = "{ \"type\": \"Rule\", \"id\": \"/Order/" + name + "\", \"name\": \"" + name + "\","
+                + " \"Rule\": { \"errorEntityRelPath\": \"../CustomerName\", \"errorCode\": \"OPAQUE\","
+                + " \"errorCondition\": \"" + escaped + "\", \"severity\": \"ERROR\","
+                + " \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" } ] } },\n";
+        int idx = base.indexOf("\"elements\"");
+        int br = base.indexOf('[', idx);
+        return base.substring(0, br + 1) + "\n" + rule + base.substring(br + 1);
     }
 
     /** Unwrap a {@link Ingest.Converted}, asserting the ingest converted (not opaque). */

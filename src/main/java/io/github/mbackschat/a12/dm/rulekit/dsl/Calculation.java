@@ -14,7 +14,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * ({@code Wahr}/{@code Falsch}), so it does carry a catalog id. Pattern-matching over the sealed
  * set is the dispatch mechanism either way.
  */
-public sealed interface Calculation permits FieldValue, NumberLiteral, StringLiteral, EnumValueLiteral, BoolLiteral, LengthOf, EnumCategoryAccess, CountAggregate, ListAggregate, CurrentRepetition, Today, DateDifference, DateShift, SemanticIndexValue, Arithmetic, Rounding, Concatenation, DateListAggregate, FirstFilledValue, FieldValueAsString, RangeAsString {
+public sealed interface Calculation permits FieldValue, NumberLiteral, StringLiteral, EnumValueLiteral, BoolLiteral, LengthOf, EnumCategoryAccess, CountAggregate, ListAggregate, CurrentRepetition, Today, DateDifference, DateShift, SemanticIndexValue, Arithmetic, Rounding, Concatenation, DateListAggregate, FirstFilledValue, FieldValueAsString, RangeAsString, DateExtraction {
 
     /** The value kind this expression yields (§5b) — the typed AST mirrors the lattice. */
     io.github.mbackschat.a12.dm.core.ValueKind kind();

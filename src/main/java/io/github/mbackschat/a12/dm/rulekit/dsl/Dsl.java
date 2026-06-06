@@ -166,6 +166,26 @@ public final class Dsl {
         return new NumberExpr(new DateDifference(DateDifference.Unit.YEARS, a.expression(), b.expression()));
     }
 
+    /** {@code YearFromDate(date)} — the year component as a number. */
+    public static NumberExpr yearFromDate(DateOperand date) {
+        return new NumberExpr(new DateExtraction(DateExtraction.Unit.YEAR, date.expression()));
+    }
+
+    /** {@code MonthFromDate(date)} — the month component (1-12) as a number. */
+    public static NumberExpr monthFromDate(DateOperand date) {
+        return new NumberExpr(new DateExtraction(DateExtraction.Unit.MONTH, date.expression()));
+    }
+
+    /** {@code DayFromDate(date)} — the day-of-month component as a number. */
+    public static NumberExpr dayFromDate(DateOperand date) {
+        return new NumberExpr(new DateExtraction(DateExtraction.Unit.DAY, date.expression()));
+    }
+
+    /** {@code QuarterFromDate(date)} — the calendar quarter (1-4) as a number. */
+    public static NumberExpr quarterFromDate(DateOperand date) {
+        return new NumberExpr(new DateExtraction(DateExtraction.Unit.QUARTER, date.expression()));
+    }
+
     /** {@code AddDays(date, n)} — shifts a date, yielding a date (comparable). */
     public static DateExpr addDays(DateOperand date, long amount) {
         return new DateExpr(new DateShift(DateShift.Unit.DAYS, date.expression(), amount));

@@ -267,6 +267,7 @@ public final class DslRenderer {
             case FieldValueAsString c -> keyword(c.operatorId()) + "(" + path(c.field().path()) + ")";
             case RangeAsString c -> keyword(c.operatorId()) + "(" + path(c.field().path())
                     + ", " + c.start() + ", " + c.end() + ")";
+            case DateExtraction e -> keyword(e.operatorId()) + "(" + renderArg(e.source()) + ")";
         };
     }
 
