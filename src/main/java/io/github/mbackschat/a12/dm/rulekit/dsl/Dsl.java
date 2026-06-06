@@ -96,6 +96,26 @@ public final class Dsl {
         return new DateExpr(new DateListAggregate(DateListAggregate.Mode.EARLIEST, dateScope));
     }
 
+    /** {@code FirstFilledValue(…)} over a number repetition list — the first specified value, as a number. */
+    public static NumberExpr firstFilledNumber(FieldListRef numberScope) {
+        requireKind(numberScope, io.github.mbackschat.a12.dm.core.ValueKind.NUMBER, "firstFilledNumber");
+        return new NumberExpr(new FirstFilledValue(numberScope));
+    }
+
+    /** {@code FirstFilledValue(…)} over a date repetition list — the first specified value, as a date. */
+    public static DateExpr firstFilledDate(FieldListRef dateScope) {
+        requireKind(dateScope, io.github.mbackschat.a12.dm.core.ValueKind.DATE, "firstFilledDate");
+        return new DateExpr(new FirstFilledValue(dateScope));
+    }
+
+    private static void requireKind(FieldListRef scope, io.github.mbackschat.a12.dm.core.ValueKind expected,
+            String method) {
+        if (scope.kind() != expected) {
+            throw new IllegalArgumentException(method + " needs a " + expected + " field list; "
+                    + scope.renderedPath() + " is " + scope.kind());
+        }
+    }
+
     private static NumberExpr listAggregate(ListAggregate.AggOp op, FieldOperand first, FieldOperand... rest) {
         var operands = new java.util.ArrayList<FieldOperand>();
         operands.add(first);

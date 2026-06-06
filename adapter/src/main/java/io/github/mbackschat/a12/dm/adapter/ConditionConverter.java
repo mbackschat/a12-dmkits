@@ -511,6 +511,7 @@ final class ConditionConverter {
             case MinValue -> Dsl.minValue(scope);
             case NumberOfDifferentValues -> Dsl.numberOfDifferentValues(scope);
             case NumberOfFilledFields -> Dsl.numberOfFilledFields(scope);
+            case FirstFilledValue -> Dsl.firstFilledNumber(scope);
             default -> throw unsupported("aggregate operator " + name, aggregate);
         };
     }
@@ -869,6 +870,7 @@ final class ConditionConverter {
         return switch (aggregate.getOperatorName()) {
             case MaxValue -> Dsl.latestOf(scope);
             case MinValue -> Dsl.earliestOf(scope);
+            case FirstFilledValue -> Dsl.firstFilledDate(scope);
             default -> throw unsupported("date aggregate operator " + aggregate.getOperatorName(), aggregate);
         };
     }

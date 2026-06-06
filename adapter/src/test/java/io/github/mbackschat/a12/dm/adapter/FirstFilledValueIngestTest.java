@@ -1,0 +1,78 @@
+package io.github.mbackschat.a12.dm.adapter;
+
+import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.Test;
+
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
+import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
+import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
+
+/**
+ * F10 ingest tail — {@code FirstFilledValue(…)} over a repetition list, both result types: a number scope
+ * yields a number, a date scope yields a date (Corpus-1's largest residual bucket after the comparison-RHS
+ * work). The converter routes the number variant through {@code NumberExpr} and the date variant through
+ * {@code DateExpr}, sharing one {@code FirstFilledValue} node whose kind follows its scope. Own domain: an
+ * employee whose stored "first contract" roll-ups must equal the first specified contract row.
+ */
+class FirstFilledValueIngestTest {
+
+    private static final DslRenderer RENDER = new DslRenderer(ConditionLanguage.EN);
+
+    private static String employeeJson() {
+        return DocumentModelDraft.named("employee").locale("en_US")
+                .rootGroup("Employee", e -> e
+                        .numberField("FirstContractValue", n -> { })
+                        .dateField("FirstContractDate", d -> d.format("yyyy-MM-dd"))
+                        .group("Contracts", g -> g
+                                .repeatable(20)
+                                .numberField("Value", n -> { })
+                                .dateField("StartDate", d -> d.format("yyyy-MM-dd"))))
+                .build().toJson();
+    }
+
+    @Test
+    void roundTripsNumberAndDateFirstFilledValue() {
+        BoundModel m = BoundModel.ofJson(employeeJson());
+        Condition num = m.num("/Employee/FirstContractValue")
+                .ne(Dsl.firstFilledNumber(m.flatten("/Employee/Contracts*/Value")));
+        Condition date = m.date("/Employee/FirstContractDate")
+                .ne(Dsl.firstFilledDate(m.flatten("/Employee/Contracts*/StartDate")));
+
+        KernelAdapter adapter = KernelAdapter.of(m
+                .add(rule(m, "FirstValueRule", "/Employee/FirstContractValue", num))
+                .add(rule(m, "FirstDateRule", "/Employee/FirstContractDate", date)));
+        assertEquals(RENDER.render(num), RENDER.render(converted(adapter.ingest("/Employee/FirstValueRule"))));
+        assertEquals(RENDER.render(date), RENDER.render(converted(adapter.ingest("/Employee/FirstDateRule"))));
+    }
+
+    @Test
+    void firstFilledValueIsKernelValid() {
+        ValidationResult r = new RuleValidator().check(employeeJson(),
+                new DraftRule("/Employee", "FirstValueRule", "../FirstContractValue",
+                        "FieldFilled(FirstContractValue) And [/Employee/FirstContractValue] != FirstFilledValue(Contracts*/Value)",
+                        "C", "ERROR"));
+        assertTrue(r.ok(), () -> "expected kernel acceptance, got: " + r.diagnostics());
+    }
+
+    private static Rule rule(BoundModel m, String name, String errorField, Condition cond) {
+        return m.rule(m.group("/Employee")).name(name).errorField(m.field(errorField)).when(cond)
+                .code("C").severity(Severity.ERROR).message(en("x")).build();
+    }
+
+    private static Condition converted(Ingest result) {
+        return assertInstanceOf(Ingest.Converted.class, result,
+                () -> "expected a converted ingest, got: " + result).condition();
+    }
+}

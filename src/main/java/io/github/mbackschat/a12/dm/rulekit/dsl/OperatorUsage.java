@@ -104,6 +104,10 @@ public final class OperatorUsage {
                 ops.add(a.operatorId());
                 collectOperand(a.scope(), ops);
             }
+            case FirstFilledValue a -> {
+                ops.add(a.operatorId());
+                collectOperand(a.scope(), ops);
+            }
         }
     }
 

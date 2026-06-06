@@ -894,10 +894,13 @@
     "id": "FirstFilledValue",
     "kind": "function",
     "keywords": { "en": "FirstFilledValue", "de": "ErsterAngegebenerWert" },
-    "returns": "any",
-    "meaning": "The first specified value among the operands, in order (a feldListenOp sibling of Sum).",
-    "constraints": [ "rulekit: PLANNED stub — no typed handle yet; keywords grounded in the lexer bundles (see WORKSPACE-CORPUS-ANALYSIS backlog)" ],
-    "status": "PLANNED",
+    "operands": [ { "type": "field-list" } ],
+    "returns": "the element type (number or date)",
+    "meaning": "The first specified value over a repetition list, in row order; unspecified rows are skipped (a feldListenOp sibling of Sum). Returns the scope's element type — a number over a number field list, a date over a date field list.",
+    "constraints": [
+      "a single field over a repetition list (a *-flattened scope)"
+    ],
+    "validExample": { "dsl": "FieldFilled(CustomerName) And FirstFilledValue(Items*/Count) > 10", "note": "fires when the first specified line count exceeds 10" },
     "sinceKernel": "30.8.x"
   },
   {
