@@ -41,7 +41,9 @@ final class DiffCommand extends BaseCommand {
                     + "(group path + rule name; NOT the short name 'SomeRule', the opaque element id, or a file path)")
     String ruleId;
 
-    @Option(names = "--condition", required = true, paramLabel = "<DSL>", description = "the new condition in A12 DSL")
+    @Option(names = "--condition", required = true, paramLabel = "<DSL>",
+            description = "the new condition in A12 DSL — true on a VIOLATION (the error scenario), "
+                    + "e.g. FieldNotFilled(X) not FieldFilled(X) for a requiredness rule")
     String condition;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",

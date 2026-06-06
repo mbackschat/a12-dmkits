@@ -42,7 +42,9 @@ final class CheckCommand extends BaseCommand {
     String field;
 
     @Option(names = "--condition", required = true, paramLabel = "<DSL>",
-            description = "the candidate condition in A12 DSL (true on a violation)")
+            description = "the candidate condition in A12 DSL — true on a VIOLATION (the error "
+                    + "scenario), so to enforce a requirement write its violation, e.g. "
+                    + "FieldNotFilled(X) not FieldFilled(X)")
     String condition;
 
     @Option(names = "--code", required = true, paramLabel = "<errorCode>", description = "the rule's error code")

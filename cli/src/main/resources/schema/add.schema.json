@@ -8,7 +8,7 @@
   "additionalProperties": false,
   "properties": {
     "field": { "type": "string", "description": "the error field's ABSOLUTE path, e.g. /Order/Quantity; its parent group is the rule's iteration scope" },
-    "condition": { "type": "string", "description": "the condition in A12 DSL — TRUE on a violation (the rule fires when it holds)" },
+    "condition": { "type": "string", "description": "the condition in A12 DSL — TRUE on a VIOLATION/the error scenario (the rule fires when it holds), so to enforce a requirement write its violation, e.g. FieldNotFilled(X) not FieldFilled(X)" },
     "code": { "type": "string", "description": "the rule's error code" },
     "messages": {
       "type": "array",
