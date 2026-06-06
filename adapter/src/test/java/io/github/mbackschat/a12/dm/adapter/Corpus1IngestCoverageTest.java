@@ -36,6 +36,7 @@ class Corpus1IngestCoverageTest {
         int models = 0, loaded = 0, totalRules = 0, converted = 0, opaque = 0;
         Map<String, Integer> loadFailures = new TreeMap<>();      // bucket → count
         Map<String, Integer> opaqueReasons = new TreeMap<>();
+        Map<String, Integer> outerByModel = new TreeMap<>();      // file → count of $-correlation opaques
         int cap = 150;
 
         List<Path> candidates;
@@ -59,6 +60,9 @@ class Corpus1IngestCoverageTest {
                     } else if (ingest instanceof Ingest.Opaque o) {
                         opaque++;
                         opaqueReasons.merge(bucketReason(o.reason()), 1, Integer::sum);
+                        if (o.reason() != null && o.reason().contains("outer correlation ($)")) {
+                            outerByModel.merge(file.getFileName().toString(), 1, Integer::sum);
+                        }
                     }
                 }
             } catch (Exception e) {
@@ -77,6 +81,11 @@ class Corpus1IngestCoverageTest {
         r.append("\n  Opaque reasons (the F10 tail), by frequency:\n");
         opaqueReasons.entrySet().stream().sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
                 .limit(25).forEach(e -> r.append(String.format("    %4d  %s%n", e.getValue(), e.getKey())));
+        int outerTotal = outerByModel.values().stream().mapToInt(Integer::intValue).sum();
+        r.append(String.format("%n  $ outer-correlation distribution: %d opaques across %d model(s):%n",
+                outerTotal, outerByModel.size()));
+        outerByModel.entrySet().stream().sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                .forEach(e -> r.append(String.format("    %4d  %s%n", e.getValue(), e.getKey())));
         System.out.println(r);
     }
 
