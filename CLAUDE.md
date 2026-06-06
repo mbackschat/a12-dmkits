@@ -42,6 +42,8 @@ Write idiomatic modern Java 21, not Java 8 with newer syntax:
 
 ## Testing strategy
 
+The conventions below are enforced; the **map of the whole testing approach** (the kinds of test, the two law tiers, the guardians, the corpus harnesses, how to run) lives in [`docs/TESTING.md`](docs/TESTING.md) — read it to place a new test.
+
 - **Example-based TDD is the primary spec** (red/green) — readable, intent-revealing tests drive each feature.
 - **The real kernel is the oracle.** `RuleValidator` + `checkConsistency` confirm that rendered output is actually accepted (F4); N7 runs every catalog example through it.
 - **Test layout: one file per operator family; hotspot files never grow** (decided 2026-06-04). A new increment adds a *new* small test file, it does not pile onto a monolith. The split:

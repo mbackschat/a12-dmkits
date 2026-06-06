@@ -22,6 +22,10 @@ What each document under `docs/` holds, so you can jump to the right one. This i
 - **[DSL-DERIVATION.md](DSL-DERIVATION.md)** — how the typed builder structure is derived, and the ANTLR grammar's indirect role in it.
 - **[WORKSPACE-CORPUS-ANALYSIS.md](WORKSPACE-CORPUS-ANALYSIS.md)** — read-only analysis of the real model corpora (A12 Tools workspaces + `a12-kernel-mm`): operator-usage histograms and the transform backlog that prioritizes what to build next. Usage facts only; nothing of either corpus is committed.
 
+## Testing
+
+- **[TESTING.md](TESTING.md)** — the testing-approach map: the one principle (the real kernel is the oracle), the kinds of test and where each lives, the **two law tiers** (accept/reject vs runtime fires/does-not-fire) that are easy to conflate, the structural-law guardians (anti-whack-a-mole), the opt-in corpus harnesses, layout conventions, and how to run. The navigation layer; enforced conventions stay in [`../CLAUDE.md`](../CLAUDE.md), per-area detail in its own doc.
+
 ## Experience study
 
 - **[API-POC-STUDY.md](API-POC-STUDY.md)** — the living study & review surface: what rulekit *feels like* to use, with numbered findings that feed the Phase-1/2 increments (and seed the LLM skill and self-sufficiency eval). Features flip 🔮→✅ here as they land.
