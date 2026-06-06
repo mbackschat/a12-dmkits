@@ -25,6 +25,17 @@ public record CategoryRef(FieldRef field, String name, List<String> values) {
         return compareTo(CompareOp.NE, value);
     }
 
+    /** {@code [field -> name] == [other -> name]} — category-vs-category (the kernel arbitrates compatibility). */
+    public Condition is(CategoryRef other) {
+        return new ComparisonCondition(new EnumCategoryAccess(field, name), CompareOp.EQ,
+                new EnumCategoryAccess(other.field, other.name));
+    }
+
+    public Condition isNot(CategoryRef other) {
+        return new ComparisonCondition(new EnumCategoryAccess(field, name), CompareOp.NE,
+                new EnumCategoryAccess(other.field, other.name));
+    }
+
     private Condition compareTo(CompareOp op, String value) {
         if (!values.contains(value)) {
             throw new IllegalArgumentException("'" + value + "' is not a value of category '" + name

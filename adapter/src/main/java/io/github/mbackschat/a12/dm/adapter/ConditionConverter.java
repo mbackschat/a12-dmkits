@@ -382,26 +382,48 @@ final class ConditionConverter {
             return numberExprComparison(model.str(lenOp.getField().getFullName()).length(), op, right, comparison);
         }
         if (left instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
-            String path = field.getField().getFullName();
-            ValueKind kind = model.fieldAt(path)
-                    .orElseThrow(() -> unsupported("comparison on unknown field " + path, comparison))
-                    .kind();
-            // an enum field navigated to one of its categories ([field -> Cat]) rides on getCategoryName()
-            String category = field.getField().getCategoryName();
-            if (kind == ValueKind.ENUMERATION && category != null && !category.isEmpty()) {
-                return categoryComparison(model.enumOf(path).category(category), op, right, comparison);
-            }
-            return switch (kind) {
-                case NUMBER -> numberComparison(model.num(path), op, right, comparison);
-                case STRING -> stringComparison(model.str(path), op, right, comparison);
-                case ENUMERATION -> enumComparison(model.enumOf(path), op, right, comparison);
-                case DATE -> dateComparison(model.date(path), op, right, comparison);
-                case BOOLEAN -> booleanComparison(model.bool(path), op, right, comparison);
-                case CONFIRM -> confirmComparison(model.confirm(path), op, right, comparison);
-                default -> throw unsupported("comparison on a " + kind + " field", comparison);
-            };
+            return fieldValueComparison(field, op, right, comparison);
+        }
+        // normalize "constant op [field]" → "[field] flip(op) constant" (rulekit handles are field-first)
+        if (left instanceof IConstantOperation && right instanceof IFieldIdOperation rf
+                && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
+            return fieldValueComparison(rf, flip(op), left, comparison);
         }
         throw unsupported("comparison whose left side is not a plain field value or an aggregate", comparison);
+    }
+
+    /** Dispatch a {@code [field] <op> other} comparison by the field's kind (other = the constant/field operand). */
+    private Condition fieldValueComparison(IFieldIdOperation field, ComparisonOperation op, IOperation other,
+            ICondition origin) {
+        String path = field.getField().getFullName();
+        ValueKind kind = model.fieldAt(path)
+                .orElseThrow(() -> unsupported("comparison on unknown field " + path, origin))
+                .kind();
+        // an enum field navigated to one of its categories ([field -> Cat]) rides on getCategoryName()
+        String category = field.getField().getCategoryName();
+        if (kind == ValueKind.ENUMERATION && category != null && !category.isEmpty()) {
+            return categoryComparison(model.enumOf(path).category(category), op, other, origin);
+        }
+        return switch (kind) {
+            case NUMBER -> numberComparison(model.num(path), op, other, origin);
+            case STRING -> stringComparison(model.str(path), op, other, origin);
+            case ENUMERATION -> enumComparison(model.enumOf(path), op, other, origin);
+            case DATE -> dateComparison(model.date(path), op, other, origin);
+            case BOOLEAN -> booleanComparison(model.bool(path), op, other, origin);
+            case CONFIRM -> confirmComparison(model.confirm(path), op, other, origin);
+            default -> throw unsupported("comparison on a " + kind + " field", origin);
+        };
+    }
+
+    /** Mirror a comparison operator for operand-swap normalization ({@code a < b} ⟺ {@code b > a}). */
+    private static ComparisonOperation flip(ComparisonOperation op) {
+        return switch (op) {
+            case LT -> ComparisonOperation.GT;
+            case GT -> ComparisonOperation.LT;
+            case LE -> ComparisonOperation.GE;
+            case GE -> ComparisonOperation.LE;
+            default -> op;   // EQ/NE are symmetric; others fall through to the per-kind unsupported
+        };
     }
 
     /** An aggregate operand (`Sum`/`MaxValue`/… over a wildcard field scope, optionally `Having`-filtered). */
@@ -614,13 +636,22 @@ final class ConditionConverter {
         throw unsupported("string comparison against a non-field, non-constant operand", origin);
     }
 
-    /** {@code [field -> Category] == / != "value"} — compares the field's category against a constant. */
+    /** {@code [field -> Category] == / != "value"} or {@code … == [other -> Category]} (category-vs-category). */
     private Condition categoryComparison(io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef category,
-            ComparisonOperation op, IOperation right, ICondition origin) {
+            ComparisonOperation op, IOperation right, Object origin) {
         if (right instanceof IConstantOperation constant) {
             return switch (op) {
                 case EQ -> category.is(constant.getValue());
                 case NE -> category.isNot(constant.getValue());
+                default -> throw unsupported("enum category comparison operator " + op, origin);
+            };
+        }
+        if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue
+                && rf.getField().getCategoryName() != null && !rf.getField().getCategoryName().isEmpty()) {
+            var other = model.enumOf(rf.getField().getFullName()).category(rf.getField().getCategoryName());
+            return switch (op) {
+                case EQ -> category.is(other);
+                case NE -> category.isNot(other);
                 default -> throw unsupported("enum category comparison operator " + op, origin);
             };
         }
