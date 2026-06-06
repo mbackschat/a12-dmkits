@@ -17,6 +17,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CustomConditionRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListEntityListCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListPredicate;
+import io.github.mbackschat.a12.dm.rulekit.dsl.GroupScopedFieldFill;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListValueListCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
@@ -169,6 +170,7 @@ public final class Linter {
                 }
             }
             case FieldListPredicate p -> hasPositiveGuard[0] |= POSITIVE_PRESENCE.contains(p.operatorId());
+            case GroupScopedFieldFill p -> hasPositiveGuard[0] |= POSITIVE_PRESENCE.contains(p.operatorId());
             case GroupListPredicate p -> hasPositiveGuard[0] |= POSITIVE_PRESENCE.contains(p.operatorId());
             case LogicCondition l -> {
                 collectPresence(l.left(), negatives, hasPositiveGuard);

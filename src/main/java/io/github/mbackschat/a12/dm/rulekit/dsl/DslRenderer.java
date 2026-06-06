@@ -194,6 +194,10 @@ public final class DslRenderer {
                     + v.valueFields().stream().map(this::operand)
                             .collect(java.util.stream.Collectors.joining(", "))
                     + ")";
+            case GroupScopedFieldFill v -> keyword(v.operatorId()) + "("
+                    + v.scopes().stream().map(s -> path(s.renderedPath()))
+                            .collect(java.util.stream.Collectors.joining(", "))
+                    + ")";
         };
     }
 

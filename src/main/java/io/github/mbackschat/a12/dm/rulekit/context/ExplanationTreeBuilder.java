@@ -18,6 +18,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.EnumValueLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListPredicate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListEntityListCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListValueListCondition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.GroupScopedFieldFill;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListPredicate;
@@ -68,6 +69,7 @@ final class ExplanationTreeBuilder {
             case ValueListCondition v -> List.of();
             case FieldListValueListCondition v -> List.of();
             case FieldListEntityListCondition v -> List.of();
+            case GroupScopedFieldFill v -> List.of();
             case RepetitionNotUniqueCondition r -> List.of();
             case CustomConditionRef c -> List.of();
         };

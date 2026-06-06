@@ -192,6 +192,31 @@ public final class BoundModel {
         return new FieldListRef(field(base.toString()), flattened);
     }
 
+    /**
+     * A group scope for the field-fill quantifiers from a (possibly starred) group path, e.g.
+     * {@code /MVK/Categories*&#47;Values*} or a bare {@code /MVK/SortFields}. Every starred segment must
+     * be a repeatable group ({@code MVK_INVALID_WILDCARD}); the path resolves to a group (the group
+     * analogue of {@link #flatten(String)}).
+     */
+    public GroupListRef flattenGroup(String starGroupPath) {
+        var flattened = new java.util.ArrayList<GroupRef>();
+        StringBuilder base = new StringBuilder();
+        for (String segment : starGroupPath.substring(1).split("/")) {
+            boolean starred = segment.endsWith("*");
+            String name = starred ? segment.substring(0, segment.length() - 1) : segment;
+            base.append('/').append(name);
+            if (starred) {
+                String groupPath = base.toString();
+                if (!index.isRepeating(groupPath)) {
+                    throw new IllegalArgumentException("'" + groupPath + "' is not repeatable —"
+                            + " a star is only allowed on repeatable groups (MVK_INVALID_WILDCARD)");
+                }
+                flattened.add(new GroupRef(groupPath, true));
+            }
+        }
+        return new GroupListRef(group(base.toString()), flattened);
+    }
+
     // --- navigation (Level 1, study finding 9): streams of info handles; filter is the matcher --
 
     /** Every field, in model order, as rich {@link FieldInfo} descriptors. */

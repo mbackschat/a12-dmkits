@@ -348,6 +348,30 @@ public final class Dsl {
         return new FieldListPredicate(quantifier, List.copyOf(fields));
     }
 
+    // --- group-scoped field-fill — the fields inside a group scope (optionally across all reps) ----
+
+    /** {@code AllFieldsFilled(Group*)} — all fields inside the group scope(s) are filled. */
+    public static Condition allFieldsFilled(GroupListRef first, GroupListRef... rest) {
+        return groupScopedFieldFill(Quantifier.ALL_FIELDS_FILLED, first, rest);
+    }
+
+    /** {@code NoFieldFilled(Group*)} — no field inside the group scope(s) is filled. */
+    public static Condition noFieldFilled(GroupListRef first, GroupListRef... rest) {
+        return groupScopedFieldFill(Quantifier.NO_FIELD_FILLED, first, rest);
+    }
+
+    /** {@code AtLeastOneFieldFilled(Group*)} — at least one field inside the group scope(s) is filled. */
+    public static Condition atLeastOneFieldFilled(GroupListRef first, GroupListRef... rest) {
+        return groupScopedFieldFill(Quantifier.AT_LEAST_ONE_FIELD_FILLED, first, rest);
+    }
+
+    private static Condition groupScopedFieldFill(Quantifier q, GroupListRef first, GroupListRef... rest) {
+        var scopes = new java.util.ArrayList<GroupListRef>();
+        scopes.add(first);
+        scopes.addAll(java.util.List.of(rest));
+        return new GroupScopedFieldFill(q, scopes);
+    }
+
     // --- localized error-message texts (F2a) ----------------------------------------------------
     // A model may declare ANY locales (header `locales`) — en/de are mere sugar for the common
     // codes; text(...) covers the rest. Builders check messages against the model's declared

@@ -55,6 +55,7 @@ public final class OperatorUsage {
                 v.fields().forEach(f -> collectOperand(f, ops));
                 v.valueFields().forEach(f -> collectOperand(f, ops));
             }
+            case GroupScopedFieldFill ignored -> { /* operatorId already added; group scopes add no ops */ }
             case RepetitionNotUniqueCondition r -> r.scope().ifPresent(s -> ops.add("FromScope"));
             case CustomConditionRef ignored -> { }
         }

@@ -41,6 +41,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
@@ -149,8 +150,20 @@ final class ConditionConverter {
             case AtLeastOneGroupFilled -> groups(paths, Dsl::atLeastOneGroupFilled);
             case NotAllGroupsFilled -> groups(paths, Dsl::notAllGroupsFilled);
             case GroupsNotCollectivelyFilled -> groups(paths, Dsl::groupsNotCollectivelyFilled);
+            // field-fill quantifiers over a GROUP scope (the fields inside the group, all reps if starred)
+            case AllFieldsFilled -> groupScopedFieldFill(entities, Dsl::allFieldsFilled);
+            case AtLeastOneFieldFilled -> groupScopedFieldFill(entities, Dsl::atLeastOneFieldFilled);
+            case NoFieldFilled -> groupScopedFieldFill(entities, Dsl::noFieldFilled);
             default -> throw unsupported("group-list condition " + name, entityList);
         };
+    }
+
+    /** Build group-scope field-fill: each entity → a {@link GroupListRef} (starred per the wildcard indices). */
+    private Condition groupScopedFieldFill(List<IEntityId> entities,
+            BiFunction<GroupListRef, GroupListRef[], Condition> factory) {
+        GroupListRef[] scopes = entities.stream()
+                .map(e -> model.flattenGroup(reconstructStarPath(e))).toArray(GroupListRef[]::new);
+        return factory.apply(scopes[0], Arrays.copyOfRange(scopes, 1, scopes.length));
     }
 
     /** Resolve group paths to {@code GroupRef}s and apply a {@code (first, rest…)} quantifier factory. */
