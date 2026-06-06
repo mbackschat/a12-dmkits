@@ -237,7 +237,7 @@ public final class DslRenderer {
     /** Renders a value expression — e.g. a computation slot's {@code operation}. */
     public String render(Calculation calculation) {
         return switch (calculation) {
-            case FieldValue v -> "[" + path(v.field().path()) + "]";
+            case FieldValue v -> "[" + (v.outer() ? "$" : "") + path(v.field().path()) + "]";
             case NumberLiteral n -> n.value().toPlainString();
             case StringLiteral s -> quote(s.value());
             case EnumValueLiteral e -> quote(e.value());

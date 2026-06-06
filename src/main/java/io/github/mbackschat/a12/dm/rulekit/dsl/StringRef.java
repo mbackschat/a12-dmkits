@@ -4,7 +4,24 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * A typed handle to a string field. Offers string equality (the kernel has no ordering on strings —
  * §5b) and {@code Length(...)} as a numeric expression. Obtain from {@link BoundModel#str(String)}.
  */
-public record StringRef(FieldRef field) {
+public record StringRef(FieldRef field, boolean correlated) {
+
+    public StringRef(FieldRef field) {
+        this(field, false);
+    }
+
+    /**
+     * Marks this reference as the {@code $} outer-iteration correlation ({@code [$path]}) — it binds
+     * to the enclosing rule iteration. Legal only on a reference used inside a {@code Having} filter
+     * (D13); the canonical form is {@code inner.eq(outer.outer())}.
+     */
+    public StringRef outer() {
+        return new StringRef(field, true);
+    }
+
+    private FieldValue value() {
+        return new FieldValue(field, correlated);
+    }
 
     public Condition filled() {
         return field.filled();
@@ -15,20 +32,20 @@ public record StringRef(FieldRef field) {
     }
 
     public Condition eq(String literal) {
-        return new ComparisonCondition(field.value(), CompareOp.EQ, new StringLiteral(literal));
+        return new ComparisonCondition(value(), CompareOp.EQ, new StringLiteral(literal));
     }
 
     public Condition ne(String literal) {
-        return new ComparisonCondition(field.value(), CompareOp.NE, new StringLiteral(literal));
+        return new ComparisonCondition(value(), CompareOp.NE, new StringLiteral(literal));
     }
 
     /** Field-vs-field equality {@code [this] == [other]} — strings have no scale, so no gate. */
     public Condition eq(StringRef other) {
-        return new ComparisonCondition(field.value(), CompareOp.EQ, other.field.value());
+        return new ComparisonCondition(value(), CompareOp.EQ, other.value());
     }
 
     public Condition ne(StringRef other) {
-        return new ComparisonCondition(field.value(), CompareOp.NE, other.field.value());
+        return new ComparisonCondition(value(), CompareOp.NE, other.value());
     }
 
     /** This field as a string expression — the entry point for concatenation ({@code asString().plus(…)}). */

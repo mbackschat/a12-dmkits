@@ -73,7 +73,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` | unclassified | — (experiment queue) |
 | `MVK_INVALID_LENGTH_OF_RAW_TYPE` | unclassified | — (experiment queue) |
 | `MVK_INVALID_NUMBER_FOR_EXP` | unclassified | — (experiment queue) |
-| `MVK_INVALID_OUTER_ITERATION` | pending | `$` correlation deferred (needs field-vs-field comparison, D13) — KERNEL-FINDINGS §9 |
+| `MVK_INVALID_OUTER_ITERATION` | kernel-delegated (authoring) / pending (ingest) | `$` correlation: **authoring** renders `[$path]` only inside a `Having` filter and the kernel arbitrates legality (kernel-valid example locked by `adapter.OuterCorrelationAuthoringTest`); **ingest** still degrades to Opaque (N8-safe) until outer-threading covers every comparison kind — KERNEL-FINDINGS §9, KERNEL-INTEGRATION-NOTES `$` item |
 | `MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON` | unclassified | — (experiment queue) |
 | `MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON` | erased | `PatternCondition` left side is always a bare string field value — expressions unrepresentable (KERNEL-FINDINGS §7) |
 | `MVK_INVALID_PARAMS_FOR_OP` | unclassified | — (experiment queue) |

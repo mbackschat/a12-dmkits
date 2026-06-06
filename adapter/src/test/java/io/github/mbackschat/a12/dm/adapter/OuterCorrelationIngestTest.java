@@ -19,8 +19,9 @@ import org.junit.jupiter.api.Test;
  * (KERNEL-FINDINGS), so canonical preservation would <em>lose</em> the rule on write-back.
  *
  * <p>Own-domain fixture: an order line whose item count is correlated (per outer iteration) with the
- * order's overall quantity. The {@code $} form can't be authored through the typed DSL (that's the
- * point — it's deferred), so the rule is injected as raw condition text the kernel accepts.
+ * order's overall quantity. The rule is injected as raw condition text (this exercises the <em>ingest</em>
+ * direction — reading a foreign rule back into the AST — which is the deferred half; the <em>authoring</em>
+ * direction now works, see {@code OuterCorrelationAuthoringTest}).
  */
 class OuterCorrelationIngestTest {
 
@@ -66,7 +67,7 @@ class OuterCorrelationIngestTest {
         assertInstanceOf(Ingest.Opaque.class, all.get("/Order/OuterRule"));
     }
 
-    /** Inject a raw-text rule into the /Order group (the $ form can't be built via the typed DSL). */
+    /** Inject a raw-text rule into the /Order group (we're testing the ingest/read path, not authoring). */
     private static String orderWith(String rawCondition) {
         String base = read("models/order.dm.json");
         String escaped = rawCondition.replace("\\", "\\\\").replace("\"", "\\\"");

@@ -9,7 +9,20 @@ import java.math.BigDecimal;
  * operands. All comparisons delegate to {@link NumberExpr} — one implementation, every overload
  * (long / scale-faithful String / BigDecimal).
  */
-public record NumberRef(FieldRef field, int scale) {
+public record NumberRef(FieldRef field, int scale, boolean correlated) {
+
+    public NumberRef(FieldRef field, int scale) {
+        this(field, scale, false);
+    }
+
+    /**
+     * Marks this reference as the {@code $} outer-iteration correlation ({@code [$path]}) — it binds
+     * to the enclosing rule iteration. Legal only on a reference used inside a {@code Having} filter
+     * (D13); the canonical form is {@code inner.eq(outer.outer())} (or {@code outer.outer().eq(inner)}).
+     */
+    public NumberRef outer() {
+        return new NumberRef(field, scale, true);
+    }
 
     public Condition filled() {
         return field.filled();
@@ -20,7 +33,7 @@ public record NumberRef(FieldRef field, int scale) {
     }
 
     public FieldValue value() {
-        return field.value();
+        return new FieldValue(field, correlated);
     }
 
     /** This field's value as a comparable numeric expression. */
@@ -141,7 +154,7 @@ public record NumberRef(FieldRef field, int scale) {
     }
 
     private Condition fieldCmp(CompareOp op, NumberRef other) {
-        return new ComparisonCondition(field.value(), op, other.field.value());
+        return new ComparisonCondition(value(), op, other.value());
     }
 
     // --- field-vs-expression comparison (e.g. [Quantity] < Sum(Items*/Count Having ...)) ----------
