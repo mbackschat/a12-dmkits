@@ -52,6 +52,17 @@ public final class Dsl {
         return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS, fields, java.util.List.of()));
     }
 
+    /**
+     * {@code NumberOfFilledFields(scope)} over a single flattened repetition list — counts the filled
+     * fields across one wildcard scope (e.g. the flatten of {@code IndexFields*} then {@code indexField}).
+     * The single-list form is valid on its own (the param law exempts a repetition list, verified — see
+     * {@link CountAggregate}).
+     */
+    public static NumberExpr numberOfFilledFields(FieldListRef scope) {
+        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_FIELDS,
+                java.util.List.of(scope), java.util.List.of()));
+    }
+
     /** {@code NumberOfFilledFields(group, …)} — counts the filled fields inside the group(s). */
     public static NumberExpr numberOfFilledFields(GroupRef first, GroupRef... rest) {
         var groups = new java.util.ArrayList<GroupRef>();

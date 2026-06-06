@@ -345,6 +345,7 @@ final class ConditionConverter {
             case MaxValue -> Dsl.maxValue(scope);
             case MinValue -> Dsl.minValue(scope);
             case NumberOfDifferentValues -> Dsl.numberOfDifferentValues(scope);
+            case NumberOfFilledFields -> Dsl.numberOfFilledFields(scope);
             default -> throw unsupported("aggregate operator " + name, aggregate);
         };
     }
