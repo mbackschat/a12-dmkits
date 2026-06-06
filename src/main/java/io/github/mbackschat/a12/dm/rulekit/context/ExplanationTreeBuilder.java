@@ -28,7 +28,9 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.LengthOf;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ListAggregate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Concatenation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValueAsString;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledValue;
+import io.github.mbackschat.a12.dm.rulekit.dsl.RangeAsString;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rounding;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral;
@@ -110,6 +112,8 @@ final class ExplanationTreeBuilder {
             case Concatenation c -> c.parts().stream().flatMap(p -> operand(p).stream()).toList();
             case DateListAggregate a -> List.of(leaf(a.operatorId(), a));
             case FirstFilledValue a -> List.of(leaf(a.operatorId(), a));
+            case FieldValueAsString c -> List.of(leaf(c.operatorId(), c));
+            case RangeAsString c -> List.of(leaf(c.operatorId(), c));
         };
     }
 

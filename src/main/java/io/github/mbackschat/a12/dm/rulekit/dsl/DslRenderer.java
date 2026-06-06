@@ -264,6 +264,9 @@ public final class DslRenderer {
                     .collect(java.util.stream.Collectors.joining(" + "));
             case DateListAggregate a -> keyword(a.operatorId()) + "(" + operand(a.scope()) + ")";
             case FirstFilledValue a -> keyword(a.operatorId()) + "(" + operand(a.scope()) + ")";
+            case FieldValueAsString c -> keyword(c.operatorId()) + "(" + path(c.field().path()) + ")";
+            case RangeAsString c -> keyword(c.operatorId()) + "(" + path(c.field().path())
+                    + ", " + c.start() + ", " + c.end() + ")";
         };
     }
 

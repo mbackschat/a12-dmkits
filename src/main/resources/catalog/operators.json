@@ -845,10 +845,22 @@
     "id": "RangeAsString",
     "kind": "function",
     "keywords": { "en": "RangeAsString", "de": "BereichAlsString" },
+    "operands": [ { "type": "string" }, { "type": "range-start" }, { "type": "range-end" } ],
     "returns": "string",
-    "meaning": "Renders a number/amount field's value as a locale-formatted string — typically to feed a string comparison or a message.",
-    "constraints": [ "rulekit: PLANNED stub — no typed handle yet; keywords grounded in the lexer bundles (see WORKSPACE-CORPUS-ANALYSIS backlog)" ],
-    "status": "PLANNED",
+    "meaning": "A substring of a string field's value, by character range (start, end). Typically feeds a string comparison or a concatenation.",
+    "constraints": [ "the first operand is a string field; the two range bounds are integers" ],
+    "validExample": { "dsl": "FieldFilled(ProductCode) And RangeAsString(ProductCode, 1, 3) == \"BAD\"", "note": "fires when the first three characters of the product code spell BAD" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "FieldValueAsString",
+    "kind": "function",
+    "keywords": { "en": "FieldValueAsString", "de": "FeldWertAlsString" },
+    "operands": [ { "type": "field" } ],
+    "returns": "string",
+    "meaning": "A field's value coerced to its string representation — typically to compare against, or concatenate with, other strings.",
+    "constraints": [ "the operand is a single field" ],
+    "validExample": { "dsl": "FieldFilled(Quantity) And FieldValueAsString(Quantity) == \"0\"", "note": "fires when the quantity's string form is exactly 0" },
     "sinceKernel": "30.8.x"
   },
   {

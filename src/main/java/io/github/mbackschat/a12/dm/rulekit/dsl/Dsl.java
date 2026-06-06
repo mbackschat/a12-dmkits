@@ -183,6 +183,16 @@ public final class Dsl {
         return new StringExpr(new StringLiteral(literal));
     }
 
+    /** {@code FieldValueAsString(field)} — a field's value coerced to its string form, as a string expression. */
+    public static StringExpr fieldValueAsString(FieldRef field) {
+        return new StringExpr(new FieldValueAsString(field));
+    }
+
+    /** {@code RangeAsString(field, start, end)} — a substring of a string field, as a string expression. */
+    public static StringExpr rangeAsString(FieldRef field, int start, int end) {
+        return new StringExpr(new RangeAsString(field, start, end));
+    }
+
     /** {@code CustomCondition <Name>} — the app-defined escape hatch (KERNEL-SEMANTICS §14). */
     public static Condition customCondition(String name) {
         return new CustomConditionRef(name);

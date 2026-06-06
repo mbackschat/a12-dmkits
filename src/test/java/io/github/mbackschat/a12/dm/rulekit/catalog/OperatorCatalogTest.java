@@ -63,11 +63,11 @@ class OperatorCatalogTest {
         assertTrue(CATALOG.entries().stream().anyMatch(e -> !e.supported()),
                 "the catalog should map known-but-unbuilt operators as PLANNED stubs");
 
-        OperatorEntry rangeAsString = CATALOG.byId("RangeAsString").orElseThrow();
-        assertFalse(rangeAsString.supported(), "RangeAsString is not built yet — it should be a PLANNED stub");
-        assertEquals("RangeAsString", rangeAsString.keywords().en());
-        assertEquals("BereichAlsString", rangeAsString.keywords().de());
-        assertNull(rangeAsString.validExample(), "a PLANNED stub carries no validExample");
+        OperatorEntry dateRange = CATALOG.byId("DateRange").orElseThrow();
+        assertFalse(dateRange.supported(), "DateRange is not built yet — it should be a PLANNED stub");
+        assertEquals("DateRange", dateRange.keywords().en());
+        assertEquals("DatumBereich", dateRange.keywords().de());
+        assertNull(dateRange.validExample(), "a PLANNED stub carries no validExample");
     }
 
     @Test

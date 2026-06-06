@@ -24,6 +24,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IEntityList
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IFieldIdOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IGroupOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOperation;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IFieldIdOperationWithParameters;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOpListOperationWithParameter;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IPointInTimeOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateDiffOperation;
@@ -438,6 +439,10 @@ final class ConditionConverter {
         if (left instanceof IFieldIdOperation lenOp && lenOp.getOperatorName() == FieldIdOperationName.Length) {
             return numberExprComparison(model.str(lenOp.getField().getFullName()).length(), op, right, comparison);
         }
+        // a string coercion on the left ([RangeAsString(...)] != "BD_") — compare the string expression
+        if (isStringCoercion(left)) {
+            return stringExprComparison(stringCoercion((IFieldIdOperation) left), op, right, comparison);
+        }
         if (left instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
             return fieldValueComparison(field, op, right, comparison);
         }
@@ -708,6 +713,15 @@ final class ConditionConverter {
                 default -> throw unsupported("string field comparison operator " + op, origin);
             };
         }
+        // [field] == / != FieldValueAsString(other) / RangeAsString(other, …) — a string coercion on the right
+        if (isStringCoercion(right)) {
+            StringExpr coerced = stringCoercion((IFieldIdOperation) right);
+            return switch (op) {
+                case EQ -> left.eq(coerced);
+                case NE -> left.ne(coerced);
+                default -> throw unsupported("string coercion comparison operator " + op, origin);
+            };
+        }
         // [field] == / != ([a] + " " + [b]) — string concatenation on the right (a string-typed composite)
         if (right instanceof ICompositeOperation comp && comp.getType() == OperationType.STRING) {
             StringExpr concat = convertConcatenation(comp);
@@ -741,10 +755,63 @@ final class ConditionConverter {
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
             return model.str(field.getField().getFullName()).asString();
         }
+        if (isStringCoercion(op)) {
+            return stringCoercion((IFieldIdOperation) op);
+        }
         if (op instanceof ICompositeOperation nested && nested.getType() == OperationType.STRING) {
             return convertConcatenation(nested);
         }
         throw unsupported("string concatenation operand " + op.getClass().getSimpleName(), origin);
+    }
+
+    /** Whether {@code op} is a string-coercion field operation ({@code FieldValueAsString} / {@code RangeAsString}). */
+    private static boolean isStringCoercion(IOperation op) {
+        return op instanceof IFieldIdOperation f
+                && (f.getOperatorName() == FieldIdOperationName.FieldValueAsString
+                        || f.getOperatorName() == FieldIdOperationName.RangeAsString);
+    }
+
+    /** Convert a string-coercion field operation to a {@link StringExpr}. */
+    private StringExpr stringCoercion(IFieldIdOperation field) {
+        String path = field.getField().getFullName();
+        return switch (field.getOperatorName()) {
+            case FieldValueAsString -> Dsl.fieldValueAsString(model.field(path));
+            case RangeAsString -> {
+                // the kernel stores a 0-based start; the rule-language syntax is 1-based (verified by round-trip)
+                IFieldIdOperationWithParameters params = (IFieldIdOperationWithParameters) field;
+                yield Dsl.rangeAsString(model.field(path), params.getRangeStart() + 1, params.getRangeEnd());
+            }
+            default -> throw unsupported("string coercion " + field.getOperatorName(), field);
+        };
+    }
+
+    /** A comparison whose left operand is a string expression (a coercion) — vs a constant, field, or coercion. */
+    private Condition stringExprComparison(StringExpr left, ComparisonOperation op, IOperation right,
+            ICondition origin) {
+        if (right instanceof IConstantOperation constant) {
+            return switch (op) {
+                case EQ -> left.eq(constant.getValue());
+                case NE -> left.ne(constant.getValue());
+                default -> throw unsupported("string-expression comparison operator " + op, origin);
+            };
+        }
+        if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
+            StringExpr other = model.str(rf.getField().getFullName()).asString();
+            return switch (op) {
+                case EQ -> left.eq(other);
+                case NE -> left.ne(other);
+                default -> throw unsupported("string-expression comparison operator " + op, origin);
+            };
+        }
+        if (isStringCoercion(right)) {
+            StringExpr other = stringCoercion((IFieldIdOperation) right);
+            return switch (op) {
+                case EQ -> left.eq(other);
+                case NE -> left.ne(other);
+                default -> throw unsupported("string-expression comparison operator " + op, origin);
+            };
+        }
+        throw unsupported("string-expression compared against an unsupported operand", origin);
     }
 
     /** {@code [field -> Category] == / != "value"} or {@code … == [other -> Category]} (category-vs-category). */

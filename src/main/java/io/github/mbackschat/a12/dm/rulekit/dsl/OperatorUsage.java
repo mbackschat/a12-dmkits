@@ -108,6 +108,8 @@ public final class OperatorUsage {
                 ops.add(a.operatorId());
                 collectOperand(a.scope(), ops);
             }
+            case FieldValueAsString c -> ops.add(c.operatorId());
+            case RangeAsString c -> ops.add(c.operatorId());
         }
     }
 

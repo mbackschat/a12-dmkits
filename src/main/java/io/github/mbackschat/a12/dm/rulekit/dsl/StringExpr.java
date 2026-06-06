@@ -30,4 +30,24 @@ public record StringExpr(Calculation expression) {
             acc.add(c);
         }
     }
+
+    /** {@code this == "literal"} — used when a string expression (e.g. a coercion) is the left operand. */
+    public Condition eq(String literal) {
+        return new ComparisonCondition(expression, CompareOp.EQ, new StringLiteral(literal));
+    }
+
+    /** {@code this != "literal"}. */
+    public Condition ne(String literal) {
+        return new ComparisonCondition(expression, CompareOp.NE, new StringLiteral(literal));
+    }
+
+    /** {@code this == <other string expression>}. */
+    public Condition eq(StringExpr other) {
+        return new ComparisonCondition(expression, CompareOp.EQ, other.expression);
+    }
+
+    /** {@code this != <other string expression>}. */
+    public Condition ne(StringExpr other) {
+        return new ComparisonCondition(expression, CompareOp.NE, other.expression);
+    }
 }

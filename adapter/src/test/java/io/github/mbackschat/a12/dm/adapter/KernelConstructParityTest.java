@@ -174,9 +174,9 @@ class KernelConstructParityTest {
         put(m, "field-level rounding/abs functions — not yet modeled",
                 "FieldIdOperationName.RoundAccountingValue", "FieldIdOperationName.RoundUpValue",
                 "FieldIdOperationName.RoundDownValue", "FieldIdOperationName.AbsValue");
-        put(m, "value-coercion functions — not yet modeled",
+        put(m, "value-coercion functions — not yet modeled (string coercions RangeAsString/FieldValueAsString are built)",
                 "FieldIdOperationName.RangeAsNumber", "FieldIdOperationName.FieldValueAsNumber",
-                "FieldIdOperationName.FieldValueAsString", "FieldIdOperationName.ValueAsDate");
+                "FieldIdOperationName.ValueAsDate");
         put(m, "base-year point-in-time — not yet modeled (Today/Now are modeled)", "PointInTimeOperationName.BaseYear");
         put(m, "bare field reference — structural in rulekit (typed handles), not a catalog construct",
                 "FieldIdOperationName.FieldValue");

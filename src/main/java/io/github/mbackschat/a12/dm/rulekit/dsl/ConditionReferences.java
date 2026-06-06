@@ -102,6 +102,8 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case Concatenation c -> c.parts().forEach(p -> collect(p, fields, groups));
             case DateListAggregate a -> collectOperand(a.scope(), fields, groups);
             case FirstFilledValue a -> collectOperand(a.scope(), fields, groups);
+            case FieldValueAsString c -> fields.add(c.field().path());
+            case RangeAsString c -> fields.add(c.field().path());
         }
     }
 
