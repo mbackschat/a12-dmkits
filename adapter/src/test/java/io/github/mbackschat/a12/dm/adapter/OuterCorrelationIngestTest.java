@@ -1,6 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -9,65 +9,72 @@ import java.nio.charset.StandardCharsets;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+
 /**
- * F10 tolerance — the {@code $} outer-iteration correlation (D13, unmodeled) must ingest as
- * {@link Ingest.Opaque}, <em>never</em> silently converted. The converter has field-vs-field
- * comparison (it round-trips), but no AST node for the {@code $} rule-iteration marker — so without a
- * guard it would emit a non-correlated reference ({@code [$/Order/Quantity]} → {@code [/Order/Quantity]}),
- * a silent meaning change that violates N8 ("never silently corrupt"). And the Opaque must preserve the
- * <b>raw stored text</b>: the kernel's canonical formatter truncates a {@code $} condition
- * (KERNEL-FINDINGS), so canonical preservation would <em>lose</em> the rule on write-back.
- *
- * <p>Own-domain fixture: an order line whose item count is correlated (per outer iteration) with the
- * order's overall quantity. The rule is injected as raw condition text (this exercises the <em>ingest</em>
- * direction — reading a foreign rule back into the AST — which is the deferred half; the <em>authoring</em>
- * direction now works, see {@code OuterCorrelationAuthoringTest}).
+ * F10 ingest of the {@code $} outer-iteration correlation (D13). A {@code $} reference inside a
+ * {@code Having} filter is converted faithfully for the comparison kinds whose handles thread the
+ * outer flag (number, string) — render → parse → convert → render round-trips with the {@code $}
+ * intact. The N8 safety net is the <b>count-check backstop</b>: if conversion produces fewer
+ * {@code $} markers than the source carries (a kind not yet threaded would silently drop one), the
+ * rule degrades to {@link Ingest.Opaque} (preserved verbatim) rather than being silently corrupted —
+ * see {@code OuterCorrelationBackstopTest} for the un-threaded-kind case.
  */
 class OuterCorrelationIngestTest {
 
-    /** A kernel-valid rule using the {@code $} outer correlation inside a Having filter. */
-    private static final String OUTER_CONDITION =
-            "FieldFilled(CustomerName) And Sum(Items*/Count Having [$/Order/Quantity] == [Items/Count]) > 5";
+    private static final DslRenderer RENDER = new DslRenderer(ConditionLanguage.EN);
 
     @Test
-    void outerCorrelationIngestsAsOpaqueAndIsNotSilentlyConverted() {
-        KernelAdapter adapter = KernelAdapter.ofJson(orderWith(OUTER_CONDITION));
+    void numberOuterCorrelationConvertsAndRoundTrips() {
+        BoundModel m = BoundModel.ofJson(read("models/order.dm.json"));
+        // sum the counts of the items sharing the current row's overall Quantity (outer correlation)
+        Condition authored = m.field("/Order/CustomerName").filled().and(
+                Dsl.sum(m.flatten("/Order/Items*/Count")
+                        .having(m.num("/Order/Quantity").outer().eq(m.num("/Order/Items/Count")))).gt(5));
+        String text = RENDER.render(authored);
 
-        // the rule is well-formed for the kernel — this is a converter gap, not an invalid rule
-        assertTrue(adapter.hasValidCondition("/Order/OuterRule"),
-                "the $ rule should be kernel-valid (the gap is in rulekit's converter, not the rule)");
-
-        Ingest result = adapter.ingest("/Order/OuterRule");
-        Ingest.Opaque opaque = assertInstanceOf(Ingest.Opaque.class, result,
-                () -> "a $ correlation must degrade to Opaque, never be silently converted, got: " + result);
-        assertTrue(opaque.reason().toLowerCase().contains("$")
-                        || opaque.reason().toLowerCase().contains("outer"),
-                () -> "the reason should name the $ / outer-iteration correlation: " + opaque.reason());
+        Condition converted = converted(KernelAdapter.ofJson(orderWith(text)).ingest("/Order/OuterRule"));
+        assertEquals(text, RENDER.render(converted), "the $ correlation must round-trip faithfully");
+        assertTrue(RENDER.render(converted).contains("[$/Order/Quantity]"),
+                () -> "the $ marker must survive ingest: " + RENDER.render(converted));
     }
 
     @Test
-    void opaquePreservesTheRawTextVerbatimIncludingTheDollarMarker() {
-        KernelAdapter adapter = KernelAdapter.ofJson(orderWith(OUTER_CONDITION));
-        Ingest.Opaque opaque = assertInstanceOf(Ingest.Opaque.class, adapter.ingest("/Order/OuterRule"));
+    void stringOuterCorrelationConvertsAndRoundTrips() {
+        BoundModel m = BoundModel.ofJson(read("models/order.dm.json"));
+        // keep only the items whose Sku equals the current row's outer ProductCode
+        Condition authored = m.field("/Order/CustomerName").filled().and(
+                Dsl.sum(m.flatten("/Order/Items*/Count")
+                        .having(m.str("/Order/Items/Sku").eq(m.str("/Order/ProductCode").outer()))).gt(0));
+        String text = RENDER.render(authored);
 
-        String preserved = opaque.canonicalText();
-        assertFalse(preserved.isBlank(), "the rule must be preserved, not lost");
-        // the $ marker survives verbatim (silent corruption would have dropped it)
-        assertTrue(preserved.contains("$"),
-                () -> "the $ correlation marker must be preserved verbatim: " + preserved);
-        // the whole rule survives — the kernel canonical form truncates a $ rule to FieldFilled(...) alone
-        assertTrue(preserved.contains("Sum") && preserved.contains("Having"),
-                () -> "the full rule must be preserved, not the kernel's truncated canonical form: " + preserved);
+        Condition converted = converted(KernelAdapter.ofJson(orderWith(text)).ingest("/Order/OuterRule"));
+        assertEquals(text, RENDER.render(converted), "the $ correlation must round-trip faithfully");
+        assertTrue(RENDER.render(converted).contains("[$/Order/ProductCode]"),
+                () -> "the $ marker must survive ingest: " + RENDER.render(converted));
     }
 
     @Test
-    void wholeModelIngestStaysTolerant() {
-        // ingestAll must not throw on a model carrying a $ rule — it degrades that one rule to Opaque.
-        var all = KernelAdapter.ofJson(orderWith(OUTER_CONDITION)).ingestAll();
-        assertInstanceOf(Ingest.Opaque.class, all.get("/Order/OuterRule"));
+    void wholeModelIngestConvertsTheCorrelatedRule() {
+        BoundModel m = BoundModel.ofJson(read("models/order.dm.json"));
+        Condition authored = m.field("/Order/CustomerName").filled().and(
+                Dsl.sum(m.flatten("/Order/Items*/Count")
+                        .having(m.num("/Order/Quantity").outer().eq(m.num("/Order/Items/Count")))).gt(5));
+        var all = KernelAdapter.ofJson(orderWith(RENDER.render(authored))).ingestAll();
+        assertInstanceOf(Ingest.Converted.class, all.get("/Order/OuterRule"));
     }
 
-    /** Inject a raw-text rule into the /Order group (we're testing the ingest/read path, not authoring). */
+    private static Condition converted(Ingest result) {
+        return assertInstanceOf(Ingest.Converted.class, result,
+                () -> "expected a converted ingest (the $ correlation should now convert), got: " + result)
+                .condition();
+    }
+
+    /** Inject a raw-text rule into the /Order group. */
     private static String orderWith(String rawCondition) {
         String base = read("models/order.dm.json");
         String escaped = rawCondition.replace("\\", "\\\\").replace("\"", "\\\"");

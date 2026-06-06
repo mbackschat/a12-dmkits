@@ -143,8 +143,10 @@ public final class KernelAdapter {
         try {
             ConditionConverter converter = new ConditionConverter(model);
             ICondition parsed = parseCondition(ruleFullName);
-            converter.refuseUnmodeledConstructs(parsed);   // loud detection of silently-droppable constructs (N8)
-            return new Ingest.Converted(converter.convert(parsed));
+            int outerRefs = converter.countOuterRefs(parsed);   // $ correlations the source carries (N8)
+            Condition converted = converter.convert(parsed);
+            converter.verifyOuterPreserved(converted, outerRefs);   // backstop: a dropped $ → Opaque, never silent
+            return new Ingest.Converted(converted);
         } catch (UnsupportedConstructException unconverted) {
             return new Ingest.Opaque(verbatimConditionText(ruleFullName), unconverted.getMessage());
         } catch (RuntimeException unexpected) {

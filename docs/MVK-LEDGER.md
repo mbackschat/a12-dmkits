@@ -73,7 +73,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` | unclassified | — (experiment queue) |
 | `MVK_INVALID_LENGTH_OF_RAW_TYPE` | unclassified | — (experiment queue) |
 | `MVK_INVALID_NUMBER_FOR_EXP` | unclassified | — (experiment queue) |
-| `MVK_INVALID_OUTER_ITERATION` | kernel-delegated (authoring) / pending (ingest) | `$` correlation: **authoring** renders `[$path]` only inside a `Having` filter and the kernel arbitrates legality (kernel-valid example locked by `adapter.OuterCorrelationAuthoringTest`); **ingest** still degrades to Opaque (N8-safe) until outer-threading covers every comparison kind — KERNEL-FINDINGS §9, KERNEL-INTEGRATION-NOTES `$` item |
+| `MVK_INVALID_OUTER_ITERATION` | kernel-delegated | `$` correlation: **authoring** renders `[$path]` only inside a `Having` filter, kernel arbitrates legality (`adapter.OuterCorrelationAuthoringTest`); **ingest** converts the number/string kinds faithfully (`adapter.OuterCorrelationIngestTest`) and the **count-check backstop** (`verifyOuterPreserved`) keeps any un-threaded kind Opaque/verbatim — never silent corruption (`adapter.OuterCorrelationBackstopTest`). Corpus-1 lift 87.0%→88.9%. KERNEL-FINDINGS §9, KERNEL-INTEGRATION-NOTES `$` item |
 | `MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON` | unclassified | — (experiment queue) |
 | `MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON` | erased | `PatternCondition` left side is always a bare string field value — expressions unrepresentable (KERNEL-FINDINGS §7) |
 | `MVK_INVALID_PARAMS_FOR_OP` | unclassified | — (experiment queue) |

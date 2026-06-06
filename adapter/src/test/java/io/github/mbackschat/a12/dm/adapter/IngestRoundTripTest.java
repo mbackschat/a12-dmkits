@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
@@ -219,17 +220,24 @@ class IngestRoundTripTest {
         return r;
     }
 
-    /** A permanently-unconverted construct (D13 {@code $} outer correlation) — the durable opaque example. */
+    /**
+     * A still-unconverted construct — a <b>date {@code $} outer correlation</b>, the un-threaded kind
+     * the N8 count-check backstop keeps Opaque (number/string correlations now <em>convert</em> — see
+     * {@code OuterCorrelationIngestTest}; the focused backstop is {@code OuterCorrelationBackstopTest}).
+     * Needs a repeatable date group, so these two cases use a small timesheet fixture rather than the
+     * order model.
+     */
     private static final String OPAQUE_CONDITION =
-            "FieldFilled(CustomerName) And Sum(Items*/Count Having [$/Order/Quantity] == [Items/Count]) > 5";
+            "FieldFilled(PeriodEnd) And [/Timesheet/PeriodEnd] != "
+                    + "MaxValue(Shifts*/ShiftDate Having [$/Timesheet/PeriodEnd] == [Shifts/ShiftDate])";
 
     @Test
     void preservesAnUnconvertedConstructAsOpaque() {
-        // The $ outer-iteration correlation (D13) stays unconverted → preserved opaque, not lost, not corrupt.
-        // (Date shifts, custom conditions, etc. are now CONVERTED; $ is the deliberate permanent gap.)
-        KernelAdapter adapter = KernelAdapter.ofJson(orderWith(OPAQUE_CONDITION, "OpaqueRule"));
+        // A date $ correlation (un-threaded kind) stays unconverted → preserved opaque, not lost, not corrupt.
+        KernelAdapter adapter = KernelAdapter.ofJson(
+                timesheetWith(timesheetRule("/Timesheet/OpaqueRule", "OpaqueRule", OPAQUE_CONDITION)));
 
-        Ingest result = adapter.ingest("/Order/OpaqueRule");
+        Ingest result = adapter.ingest("/Timesheet/OpaqueRule");
         Ingest.Opaque opaque = assertInstanceOf(Ingest.Opaque.class, result,
                 () -> "an unconverted construct should ingest as Opaque, got: " + result);
         assertTrue(opaque.reason().toLowerCase().contains("$") || opaque.reason().toLowerCase().contains("outer"),
@@ -242,27 +250,39 @@ class IngestRoundTripTest {
 
     @Test
     void ingestAllReturnsTypedAndOpaqueOutcomesPerRule() {
-        BoundModel m = BoundModel.ofJson(orderWith(OPAQUE_CONDITION, "OpaqueRule"));
-        var ignore = new java.util.LinkedHashMap<String, Condition>();
-        BoundModel withRules = m.add(orderRule(m, "OkRule", m.field("/Order/CustomerName").filled(), ignore));
-
-        java.util.Map<String, Ingest> all = KernelAdapter.of(withRules).ingestAll();
+        java.util.Map<String, Ingest> all = KernelAdapter.ofJson(timesheetWith(
+                timesheetRule("/Timesheet/OkRule", "OkRule", "FieldFilled(PeriodEnd)"),
+                timesheetRule("/Timesheet/OpaqueRule", "OpaqueRule", OPAQUE_CONDITION))).ingestAll();
         // a whole model ingests without throwing: supported rules typed, the rest preserved opaque
-        assertInstanceOf(Ingest.Converted.class, all.get("/Order/OkRule"));
-        assertInstanceOf(Ingest.Opaque.class, all.get("/Order/OpaqueRule"));
+        assertInstanceOf(Ingest.Converted.class, all.get("/Timesheet/OkRule"));
+        assertInstanceOf(Ingest.Opaque.class, all.get("/Timesheet/OpaqueRule"));
     }
 
-    /** Inject a raw-text rule into the /Order group (the $ form can't be built via the typed DSL). */
-    private static String orderWith(String rawCondition, String name) {
-        String base = read("models/order.dm.json");
+    /** A timesheet with a repeatable Shifts group (date field) — the smallest model carrying a date $ correlation. */
+    private static String timesheetJson() {
+        return DocumentModelDraft.named("timesheet").locale("en_US")
+                .rootGroup("Timesheet", t -> t
+                        .dateField("PeriodEnd", d -> d.format("yyyy-MM-dd"))
+                        .group("Shifts", g -> g
+                                .repeatable(50)
+                                .dateField("ShiftDate", d -> d.format("yyyy-MM-dd"))))
+                .build().toJson();
+    }
+
+    private static String timesheetRule(String id, String name, String rawCondition) {
         String escaped = rawCondition.replace("\\", "\\\\").replace("\"", "\\\"");
-        String rule = "{ \"type\": \"Rule\", \"id\": \"/Order/" + name + "\", \"name\": \"" + name + "\","
-                + " \"Rule\": { \"errorEntityRelPath\": \"../CustomerName\", \"errorCode\": \"OPAQUE\","
+        return "{ \"type\": \"Rule\", \"id\": \"" + id + "\", \"name\": \"" + name + "\","
+                + " \"Rule\": { \"errorEntityRelPath\": \"../PeriodEnd\", \"errorCode\": \"C\","
                 + " \"errorCondition\": \"" + escaped + "\", \"severity\": \"ERROR\","
-                + " \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" } ] } },\n";
+                + " \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" } ] } }";
+    }
+
+    /** Inject raw-text rules into the /Timesheet group (the unconverted form can't be built via the typed DSL). */
+    private static String timesheetWith(String... rules) {
+        String base = timesheetJson();
         int idx = base.indexOf("\"elements\"");
         int br = base.indexOf('[', idx);
-        return base.substring(0, br + 1) + "\n" + rule + base.substring(br + 1);
+        return base.substring(0, br + 1) + "\n" + String.join(",\n", rules) + ",\n" + base.substring(br + 1);
     }
 
     /** Unwrap a {@link Ingest.Converted}, asserting the ingest converted (not opaque). */

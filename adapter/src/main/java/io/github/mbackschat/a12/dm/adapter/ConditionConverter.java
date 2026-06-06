@@ -50,6 +50,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.ast.ASTVisitor;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
@@ -94,18 +95,16 @@ final class ConditionConverter {
     }
 
     /**
-     * Reject — up front, before any conversion — a construct the converter would otherwise <em>silently
-     * drop</em> (N8: never silently corrupt). Today that is the {@code $} outer-iteration correlation
-     * (D13, unmodeled): field-vs-field comparison round-trips, but the {@code $} rule-iteration marker
-     * has no AST node, so converting {@code [$/Order/Quantity]} would emit a non-correlated
-     * {@code [/Order/Quantity]} — a different rule. The kernel allows {@code $} only inside {@code Having}
-     * filters, and its {@code traverse()} does not descend into filters, so we walk filters explicitly
-     * (breadth-first, including filters nested inside filters).
-     *
-     * @throws UnsupportedConstructException if any reference is outer-correlated — caught by
-     *         {@link KernelAdapter#ingest} and surfaced as {@link Ingest.Opaque} (preserved verbatim).
+     * Count the {@code $} outer-iteration correlation markers in the source AST (D13). The kernel
+     * allows {@code $} only inside {@code Having} filters, and its {@code traverse()} does not descend
+     * into filters, so we walk filters explicitly (breadth-first, including filters nested inside
+     * filters). This count is the input to the N8 backstop {@link #verifyOuterPreserved}: the converter
+     * faithfully threads the marker through the comparison kinds whose handles expose {@code outer()}
+     * (number, string); a kind not yet threaded would silently drop a {@code $}, which the backstop
+     * catches by comparing this source count to the markers actually rendered after conversion.
      */
-    void refuseUnmodeledConstructs(ICondition root) {
+    int countOuterRefs(ICondition root) {
+        int[] count = {0};
         Deque<ICondition> filters = new ArrayDeque<>();
         filters.add(root);
         while (!filters.isEmpty()) {
@@ -114,10 +113,7 @@ final class ConditionConverter {
                 @Override
                 public boolean visit(IEntityId id) {
                     if (id.isOuter()) {
-                        throw new UnsupportedConstructException("F10 converter does not model the '$' "
-                                + "outer-iteration correlation on '" + id.getFullName() + "' — field-vs-field "
-                                + "round-trips, but the $ rule-iteration marker (D13) has no AST node, so "
-                                + "converting would silently drop it [kernel node: outer correlation ($)]");
+                        count[0]++;
                     }
                     ICondition filter = id.getFilterCondition();
                     if (filter != null) {
@@ -128,6 +124,38 @@ final class ConditionConverter {
             });
             filters.addAll(nested);
         }
+        return count[0];
+    }
+
+    /**
+     * N8 backstop: if the converted condition renders fewer {@code $} markers than the source carried
+     * ({@code expectedOuter}), a correlation was silently dropped (a comparison kind whose handle does
+     * not yet thread {@code outer()}) — so refuse the conversion, degrading the rule to a verbatim
+     * {@link Ingest.Opaque} rather than corrupting it into a non-correlated rule. {@code $} only ever
+     * renders as the {@code [$} value-bracket prefix, so counting that substring is exact.
+     *
+     * @throws UnsupportedConstructException when a marker was dropped — caught by {@link KernelAdapter#ingest}.
+     */
+    void verifyOuterPreserved(Condition converted, int expectedOuter) {
+        if (expectedOuter == 0) {
+            return;
+        }
+        String rendered = new DslRenderer().render(converted);
+        int renderedOuter = countOccurrences(rendered, "[$");
+        if (renderedOuter < expectedOuter) {
+            throw new UnsupportedConstructException("F10 converter would silently drop a '$' outer-iteration "
+                    + "correlation (D13): the source carries " + expectedOuter + " marker(s) but conversion "
+                    + "rendered only " + renderedOuter + " — the comparison kind is not yet outer-threaded, "
+                    + "so the rule is preserved verbatim [kernel node: outer correlation ($)]");
+        }
+    }
+
+    private static int countOccurrences(String haystack, String needle) {
+        int n = 0;
+        for (int i = haystack.indexOf(needle); i >= 0; i = haystack.indexOf(needle, i + needle.length())) {
+            n++;
+        }
+        return n;
     }
 
     Condition convert(ICondition node) {
@@ -473,9 +501,13 @@ final class ConditionConverter {
         if (kind == ValueKind.ENUMERATION && category != null && !category.isEmpty()) {
             return categoryComparison(model.enumOf(path).category(category), op, other, origin);
         }
+        // a $ outer-iteration correlation on the left operand (D13) — threaded for the kinds whose
+        // handles expose outer(); other kinds leave the marker unset and the N8 backstop (verifyOuterPreserved)
+        // catches the silent drop and degrades the rule to Opaque.
+        boolean leftOuter = field.getField().isOuter();
         return switch (kind) {
-            case NUMBER -> numberComparison(model.num(path), op, other, origin);
-            case STRING -> stringComparison(model.str(path), op, other, origin);
+            case NUMBER -> numberComparison(leftOuter ? model.num(path).outer() : model.num(path), op, other, origin);
+            case STRING -> stringComparison(leftOuter ? model.str(path).outer() : model.str(path), op, other, origin);
             case ENUMERATION -> enumComparison(model.enumOf(path), op, other, origin);
             case DATE -> dateComparison(model.date(path), op, other, origin);
             case BOOLEAN -> booleanComparison(model.bool(path), op, other, origin);
@@ -690,6 +722,9 @@ final class ConditionConverter {
         }
         if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
             NumberRef other = model.num(rf.getField().getFullName());
+            if (rf.getField().isOuter()) {
+                other = other.outer();   // $ correlation on the right operand (D13)
+            }
             return switch (op) {
                 case GT -> left.gt(other);
                 case LT -> left.lt(other);
@@ -721,6 +756,9 @@ final class ConditionConverter {
         }
         if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
             StringRef other = model.str(rf.getField().getFullName());
+            if (rf.getField().isOuter()) {
+                other = other.outer();   // $ correlation on the right operand (D13)
+            }
             return switch (op) {
                 case EQ -> left.eq(other);
                 case NE -> left.ne(other);
