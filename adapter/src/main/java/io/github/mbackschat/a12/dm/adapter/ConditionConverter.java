@@ -314,6 +314,9 @@ final class ConditionConverter {
         if (left instanceof IDateDiffOperation diff) {
             return numberExprComparison(convertDateDiff(diff), op, right, comparison);
         }
+        if (left instanceof IFieldIdOperation lenOp && lenOp.getOperatorName() == FieldIdOperationName.Length) {
+            return numberExprComparison(model.str(lenOp.getField().getFullName()).length(), op, right, comparison);
+        }
         if (left instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
             String path = field.getField().getFullName();
             ValueKind kind = model.fieldAt(path)
@@ -399,13 +402,16 @@ final class ConditionConverter {
     }
 
     /** Convert {@code right} to a comparable numeric expression — an aggregate, a date-diff, a current
-     *  repetition, or a number field value — else {@code null} (so the caller can fall through). */
+     *  repetition, a string length, or a number field value — else {@code null} (so the caller falls through). */
     private NumberExpr numericExpr(IOperation operand) {
         if (operand instanceof IEntityListOperation aggregate) {
             return convertAggregate(aggregate);
         }
         if (operand instanceof IDateDiffOperation diff) {
             return convertDateDiff(diff);
+        }
+        if (operand instanceof IFieldIdOperation lenOp && lenOp.getOperatorName() == FieldIdOperationName.Length) {
+            return model.str(lenOp.getField().getFullName()).length();
         }
         if (operand instanceof IGroupOperation groupOp
                 && groupOp.getOperatorName() == GroupOperationName.CurrentRepetition) {
