@@ -100,6 +100,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             }
             case Rounding r -> collect(r.operand(), fields, groups);
             case Concatenation c -> c.parts().forEach(p -> collect(p, fields, groups));
+            case DateListAggregate a -> collectOperand(a.scope(), fields, groups);
         }
     }
 

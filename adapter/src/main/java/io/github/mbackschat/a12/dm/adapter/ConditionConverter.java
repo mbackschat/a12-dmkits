@@ -826,6 +826,7 @@ final class ConditionConverter {
             case GT -> left.after(other);
             case GE -> left.onOrAfter(other);
             case EQ -> left.eq(other);
+            case NE -> left.ne(other);
             default -> throw unsupported("date comparison operator " + op, origin);
         };
     }
@@ -851,7 +852,25 @@ final class ConditionConverter {
         if (op instanceof IPointInTimeOperation pit && pit.getOperatorName() == PointInTimeOperationName.Today) {
             return Dsl.today();
         }
+        // MaxValue/MinValue over a date repetition list → a date-valued operand (latest/earliest)
+        if (op instanceof IEntityListOperation aggregate) {
+            return convertDateAggregate(aggregate);
+        }
         throw unsupported("date operand " + op.getClass().getSimpleName(), origin);
+    }
+
+    /** {@code MaxValue}/{@code MinValue} over a date repetition list, as a date operand (the date variant of the numeric aggregate). */
+    private DateOperand convertDateAggregate(IEntityListOperation aggregate) {
+        List<IEntityId> entities = aggregate.getEntityList().getEntityIdList();
+        if (entities.size() != 1 || !entities.get(0).isField()) {
+            throw unsupported("date aggregate over a non-single-field scope", aggregate);
+        }
+        FieldListRef scope = flattenScope(entities.get(0));
+        return switch (aggregate.getOperatorName()) {
+            case MaxValue -> Dsl.latestOf(scope);
+            case MinValue -> Dsl.earliestOf(scope);
+            default -> throw unsupported("date aggregate operator " + aggregate.getOperatorName(), aggregate);
+        };
     }
 
     private static UnsupportedConstructException unsupported(String what, Object node) {

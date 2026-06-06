@@ -585,9 +585,9 @@
     "keywords": { "en": "MaxValue", "de": "MaxWert" },
     "operands": [ { "type": "number-field-list" } ],
     "returns": "number",
-    "meaning": "The largest of the listed number fields' values; unspecified fields are ignored.",
+    "meaning": "The largest of the listed values; unspecified fields are ignored. Over number fields it returns a number; over a date repetition list it returns the latest date.",
     "constraints": [
-      "numbers (or dates — not yet covered by rulekit) only (MVK_NOT_SORTABLE)",
+      "sortable types only — numbers or dates (MVK_NOT_SORTABLE)",
       "more than one field or a repetition list; no duplicates"
     ],
     "gotchas": [
@@ -603,9 +603,9 @@
     "keywords": { "en": "MinValue", "de": "MinWert" },
     "operands": [ { "type": "number-field-list" } ],
     "returns": "number",
-    "meaning": "The smallest of the listed number fields' values; unspecified fields are ignored.",
+    "meaning": "The smallest of the listed values; unspecified fields are ignored. Over number fields it returns a number; over a date repetition list it returns the earliest date.",
     "constraints": [
-      "same slot rules as MaxValue"
+      "same slot rules as MaxValue (sortable types — numbers or dates)"
     ],
     "gotchas": [  ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And MinValue(Items*/Count) >= 1", "note": "fires only when every specified line count is at least 1" },

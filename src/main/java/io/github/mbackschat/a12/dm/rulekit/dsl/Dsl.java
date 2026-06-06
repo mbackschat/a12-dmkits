@@ -86,6 +86,16 @@ public final class Dsl {
         return listAggregate(ListAggregate.AggOp.MIN_VALUE, first, rest);
     }
 
+    /** {@code MaxValue(…)} over a date repetition list — the latest specified date (a date operand). */
+    public static DateExpr latestOf(FieldListRef dateScope) {
+        return new DateExpr(new DateListAggregate(DateListAggregate.Mode.LATEST, dateScope));
+    }
+
+    /** {@code MinValue(…)} over a date repetition list — the earliest specified date (a date operand). */
+    public static DateExpr earliestOf(FieldListRef dateScope) {
+        return new DateExpr(new DateListAggregate(DateListAggregate.Mode.EARLIEST, dateScope));
+    }
+
     private static NumberExpr listAggregate(ListAggregate.AggOp op, FieldOperand first, FieldOperand... rest) {
         var operands = new java.util.ArrayList<FieldOperand>();
         operands.add(first);

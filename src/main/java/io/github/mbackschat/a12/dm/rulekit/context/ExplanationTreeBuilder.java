@@ -27,6 +27,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.GroupPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LengthOf;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ListAggregate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Concatenation;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rounding;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral;
@@ -106,6 +107,7 @@ final class ExplanationTreeBuilder {
                     operand(r.operand())));
             // concatenation has no operator keyword (the + is intrinsic) — flatten its parts' nodes
             case Concatenation c -> c.parts().stream().flatMap(p -> operand(p).stream()).toList();
+            case DateListAggregate a -> List.of(leaf(a.operatorId(), a));
         };
     }
 

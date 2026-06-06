@@ -100,6 +100,10 @@ public final class OperatorUsage {
             }
             // concatenation's + is intrinsic (no catalog keyword) — just recurse into the parts
             case Concatenation c -> c.parts().forEach(p -> collect(p, ops));
+            case DateListAggregate a -> {
+                ops.add(a.operatorId());
+                collectOperand(a.scope(), ops);
+            }
         }
     }
 

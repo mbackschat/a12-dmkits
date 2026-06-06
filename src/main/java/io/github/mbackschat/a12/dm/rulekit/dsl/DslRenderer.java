@@ -262,6 +262,7 @@ public final class DslRenderer {
             case Rounding r -> keyword(r.operatorId()) + "(" + render(r.operand()) + ", " + r.decimalPlaces() + ")";
             case Concatenation c -> c.parts().stream().map(this::render)
                     .collect(java.util.stream.Collectors.joining(" + "));
+            case DateListAggregate a -> keyword(a.operatorId()) + "(" + operand(a.scope()) + ")";
         };
     }
 
