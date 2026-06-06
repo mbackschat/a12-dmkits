@@ -249,6 +249,20 @@
                 "text" : "The delivery date must not be earlier than the order date."
               } ]
             }
+          }, {
+            "type" : "Rule",
+            "id" : "/Order/EligibilityCheck",
+            "name" : "EligibilityCheck",
+            "Rule" : {
+              "errorEntityRelPath" : "../CustomerName",
+              "errorCode" : "INELIGIBLE_ORDER",
+              "errorCondition" : "FieldFilled(CustomerName) And CustomCondition ExternalEligibility",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "The order failed the external eligibility check."
+              } ]
+            }
           } ]
         }
       } ]

@@ -336,6 +336,24 @@
     "sinceKernel": "30.8.x"
   },
   {
+    "id": "Arithmetic",
+    "kind": "operator",
+    "keywords": { "en": "+", "de": "+" },
+    "operands": [ { "type": "number" }, { "type": "number" } ],
+    "returns": "number",
+    "meaning": "Arithmetic on numeric operands: addition (+), subtraction (-), multiplication (*), division (/), and power (^). The result is a number expression, usable wherever a number is — most often one side of a comparison, e.g. [a] < [b] + 2.",
+    "constraints": [
+      "operands must be numeric: number fields, numeric literals, Length, aggregates, or nested arithmetic",
+      "the result is a number, not a condition — wrap it in a comparison to form a rule's errorCondition"
+    ],
+    "gotchas": [
+      { "text": "the symbols (+ - * / ^) are language-independent — identical in every condition language, not localized keywords", "kind": "RENDERING" }
+    ],
+    "validExample": { "dsl": "FieldFilled(CustomerName) And [Quantity] < [BackorderQuantity] + 2", "note": "fires when Quantity is below the backorder count plus two" },
+    "invalidExample": { "dsl": "FieldFilled(CustomerName) And [Quantity] < [ProductCode] + 1", "error": "arithmetic needs numeric operands", "fix": "ProductCode is a string; arithmetic operands must be numeric" },
+    "sinceKernel": "30.8.x"
+  },
+  {
     "id": "PatternMatched",
     "kind": "operator",
     "keywords": { "en": "PatternMatched", "de": "WieMuster" },
@@ -465,7 +483,7 @@
     "returns": "number",
     "meaning": "The number of listed fields that currently hold a value; with group arguments, the number of filled fields inside the group(s).",
     "constraints": [
-      "more than one field OR at least one group (MVK_PARAMSIZE_INVALIDN)",
+      "more than one field, OR a single flattened repetition list (Group*/field), OR at least one group (MVK_PARAMSIZE_INVALIDN)",
       "field kinds may be mixed (it counts presence, not values)",
       "root groups are not allowed (MVK_ROOT_GROUP_REFERENCED); no enum-category arguments"
     ],
@@ -484,7 +502,7 @@
     "returns": "number",
     "meaning": "The number of listed groups that are filled (exist).",
     "constraints": [
-      "more than one group (MVK_PARAMSIZE_INVALIDGN); groups only (MVK_NO_FIELDS_ALLOWED); no root groups"
+      "more than one group, OR a single repeatable group as a wildcard (Group*) counting its filled repetitions (MVK_PARAMSIZE_INVALIDGN); groups only (MVK_NO_FIELDS_ALLOWED); no root groups"
     ],
     "gotchas": [
       { "text": "'filled' means the group row exists, not that it has data (same trap as GroupFilled)", "kind": "SURPRISE" }
