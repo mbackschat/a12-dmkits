@@ -3,9 +3,11 @@ package io.github.mbackschat.a12.dm.adapter.laws;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -47,8 +49,11 @@ import com.mgmtp.a12.kernel.md.rt.api.IModelCodeCache;
  * verbatim, <b>boolean as {@code "true"}/{@code "false"}</b> (lowercase; other tokens are a formal
  * error), <b>confirm as {@code "true"} or empty</b> (a confirm has no {@code false} — that's a formal
  * error; unspecified counts as {@code False}). An <em>absent</em> field models an empty value.
- * (Repeatable groups beyond the first row aren't modeled here yet — the current laws use single-row
- * root groups; extend the index handling when a law needs more.)
+ *
+ * <p>For single-row root-group laws use the {@code Set}/{@code Map} convenience overloads (all indices
+ * default to 1); for <b>multi-row</b> iteration (§9) use the explicit {@link Doc} builder (one index
+ * per path part). {@link #messages(String, Doc)} also returns each message's row pointer, so a law can
+ * assert <em>which</em> row a per-row rule fired on.
  */
 final class RuntimeLaws {
 
@@ -100,10 +105,106 @@ final class RuntimeLaws {
     /**
      * As {@link #firedCodes(String, Set, Map)}, but {@code emptyFields} are added as <em>present but
      * valueless</em> instances — how a real form renders an unfilled field (distinct from a field that
-     * is wholly absent from the document).
+     * is wholly absent from the document). Single-row convenience over {@link #firedCodes(String, Doc)}.
      */
     static Set<String> firedCodes(String modelJson, Set<String> groupPaths, Set<String> emptyFields,
             Map<String, String> fieldValues) {
+        Doc doc = doc();
+        Set<String> groups = new LinkedHashSet<>(groupPaths);
+        fieldValues.keySet().forEach(f -> groups.addAll(ancestorGroups(f)));
+        emptyFields.forEach(f -> groups.addAll(ancestorGroups(f)));
+        groups.forEach(g -> doc.group(g, ones(depth(g))));
+        emptyFields.forEach(f -> doc.emptyField(f, ones(depth(f))));
+        fieldValues.forEach((f, v) -> doc.field(f, v, ones(depth(f))));
+        return firedCodes(modelJson, doc);
+    }
+
+    /** Whether the rule with {@code errorCode} fires for the given instance. */
+    static boolean fires(String modelJson, String errorCode, Set<String> groupPaths, Map<String, String> fieldValues) {
+        return firedCodes(modelJson, groupPaths, fieldValues).contains(errorCode);
+    }
+
+    /** As {@link #fires(String, String, Set, Map)}, with {@code emptyFields} present-but-valueless. */
+    static boolean fires(String modelJson, String errorCode, Set<String> groupPaths, Set<String> emptyFields,
+            Map<String, String> fieldValues) {
+        return firedCodes(modelJson, groupPaths, emptyFields, fieldValues).contains(errorCode);
+    }
+
+    // ---- explicit multi-row document instances (§9 iteration) -----------------------------------
+
+    /**
+     * A document instance built from explicit group/field placements, each with <em>one 1-based
+     * repetition index per path part</em> — so multiple repeatable rows are addressable (e.g.
+     * {@code /Order/Items} row 2 is {@code group("/Order/Items", 1, 2)} and its Count is
+     * {@code field("/Order/Items/Count", "80", 1, 2, 1)}).
+     */
+    static final class Doc {
+        private final List<Inst> insts = new ArrayList<>();
+
+        /** A group row at the given 1-based repetition indices (one per path part). */
+        Doc group(String path, int... reps) {
+            insts.add(new Inst(path, reps, true, false, null));
+            return this;
+        }
+
+        /** A field with a value at the given indices (one per path part, the field included). */
+        Doc field(String path, String value, int... reps) {
+            insts.add(new Inst(path, reps, false, true, value));
+            return this;
+        }
+
+        /** A present-but-valueless (unfilled) field. */
+        Doc emptyField(String path, int... reps) {
+            insts.add(new Inst(path, reps, false, false, null));
+            return this;
+        }
+    }
+
+    static Doc doc() {
+        return new Doc();
+    }
+
+    private record Inst(String path, int[] reps, boolean group, boolean hasValue, String value) {
+    }
+
+    /** One validation message: its error code and the row/field pointer it attached to (for per-row checks). */
+    record Msg(String code, String errorField) {
+    }
+
+    /** Evaluate an explicit document instance; return every message (code + pointer) the kernel raised. */
+    static List<Msg> messages(String modelJson, Doc doc) {
+        IDocumentModel model = expandedModel(modelJson);
+        IDocumentModelResolver resolver = id -> model;
+        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
+        IDocumentFactory df = new DocumentServiceFactory(resolver).createDocumentFactory();
+
+        IDocument d = df.createDocument(modelId(modelJson));
+        for (Inst i : doc.insts) {
+            if (i.group()) {
+                d.addEntityInstance(df.createGroupInstance(i.path(), i.reps()));
+            } else if (i.hasValue()) {
+                d.addEntityInstance(df.createFieldInstance(i.path(), i.reps(), i.value()));
+            } else {
+                d.addEntityInstance(df.createFieldInstance(i.path(), i.reps()));   // present, no value = unfilled
+            }
+        }
+        IDocumentValidationResult result = rt.validateFull(d, Locale.US);
+        return result.getMessages().stream()
+                .map(m -> new Msg(m.getErrorCode(), String.valueOf(m.getErrorFieldPointer())))
+                .toList();
+    }
+
+    static Set<String> firedCodes(String modelJson, Doc doc) {
+        return messages(modelJson, doc).stream().map(Msg::code).collect(Collectors.toCollection(HashSet::new));
+    }
+
+    /** Whether the rule with {@code errorCode} fires for the given explicit instance. */
+    static boolean fires(String modelJson, String errorCode, Doc doc) {
+        return firedCodes(modelJson, doc).contains(errorCode);
+    }
+
+    /** Deserialize + expand (self-contained) the model JSON. */
+    private static IDocumentModel expandedModel(String modelJson) {
         var factory = new DocumentModelServiceFactory();
         IDocumentModelSerializer serializer = factory.createDocumentModelSerializer();
         IDocumentModelService modelService = factory.createDocumentModelService();
@@ -116,42 +217,7 @@ final class RuntimeLaws {
         modelService.expand(model, (IDocumentModelReferenceResolver) ref -> {
             throw new IllegalStateException("self-contained, unexpected reference: " + ref);
         });
-
-        IDocumentModelResolver resolver = id -> model;
-        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
-        IDocumentFactory df = new DocumentServiceFactory(resolver).createDocumentFactory();
-
-        IDocument doc = df.createDocument(modelId(modelJson));
-
-        Set<String> groups = new LinkedHashSet<>(groupPaths);
-        for (String fieldPath : fieldValues.keySet()) {
-            groups.addAll(ancestorGroups(fieldPath));
-        }
-        for (String fieldPath : emptyFields) {
-            groups.addAll(ancestorGroups(fieldPath));
-        }
-        for (String groupPath : groups) {
-            doc.addEntityInstance(df.createGroupInstance(groupPath, ones(depth(groupPath))));
-        }
-        for (String path : emptyFields) {
-            doc.addEntityInstance(df.createFieldInstance(path, ones(depth(path))));   // present, no value = unfilled
-        }
-        fieldValues.forEach((path, value) ->
-                doc.addEntityInstance(df.createFieldInstance(path, ones(depth(path)), value)));
-
-        IDocumentValidationResult result = rt.validateFull(doc, Locale.US);
-        return result.getMessages().stream().map(m -> m.getErrorCode()).collect(Collectors.toCollection(HashSet::new));
-    }
-
-    /** Whether the rule with {@code errorCode} fires for the given instance. */
-    static boolean fires(String modelJson, String errorCode, Set<String> groupPaths, Map<String, String> fieldValues) {
-        return firedCodes(modelJson, groupPaths, fieldValues).contains(errorCode);
-    }
-
-    /** As {@link #fires(String, String, Set, Map)}, with {@code emptyFields} present-but-valueless. */
-    static boolean fires(String modelJson, String errorCode, Set<String> groupPaths, Set<String> emptyFields,
-            Map<String, String> fieldValues) {
-        return firedCodes(modelJson, groupPaths, emptyFields, fieldValues).contains(errorCode);
+        return model;
     }
 
     private static IDocumentDynamicServiceConfig dynamicConfig() {

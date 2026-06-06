@@ -128,6 +128,13 @@ Five operators in two grammar shapes, not covered by KERNEL-SEMANTICS. **Shape A
 
 *(Locked: `validate.laws.ValueListLawsTest` + N7 examples of all five operators. Field-valued lists and `*`-path field lists are deferred — the latter to the iteration cluster.)*
 
+## §9 supplement — per-row iteration + aggregation of missing rows (runtime, 2026-06-06)
+
+The first **runtime** (fires/does-not-fire) checks of §9, via the multi-row `RuntimeLaws.Doc` builder:
+
+- **Per-row iteration.** A rule whose error field reaches *through* a repeatable group is evaluated **once per existing row**, and each message attaches to **that row** (the pointer carries the row index). Verified: rule in `/Order`, error field `Items/Count`, condition `[Items/Count] > 50` over three rows `10/80/90` → fires **twice**, on `/Order/Items/Count [1, 2, 1]` and `[1, 3, 1]` (rows 2 and 3); rows `10/20/30` → fires nowhere.
+- **Aggregation of missing rows.** `Sum` substitutes `0` for an empty field (so empties neither error nor suppress the aggregate): `Sum(Items*/Count)` over `40, _, 40` is `80`; over an all-empty list is `0`. `MaxValue` ignores empties: over `40, _, 10` it is `40`. *(Locked: `adapter.laws.RepetitionLawsTest`.)*
+
 ## §9 supplement — field/group predicates are type-directional
 
 `GroupFilled(field)` → **`MVK_NO_FIELDS_ALLOWED`** ("Only groups or root groups are allowed"); `FieldFilled(group)` → **`MVK_NO_GROUPS_ALLOWED`**. Also re-confirmed experimentally: an enclosing group reference (`GroupFilled(G)`) satisfies the error-field-referenced rule for a field inside `G` — a bare `GroupFilled(ShippingAddress)` condition with error field `ShippingAddress/Street` validates. *(Locked: N7 `GroupFilled`/`FieldFilled` invalid examples + `RuleAuthoringTest.acceptsAnEnclosingGroupReferenceAsErrorFieldReference`.)*
