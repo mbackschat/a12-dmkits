@@ -12,7 +12,8 @@ A read-only **analysis** of two real A12 model corpora, used to prioritize what 
 
 ## Corpus stats
 
-- **68 document models**, **150 rule conditions**, **27 models reference other models** (`modelReferences` — i.e. they exercise the `expand` + resolver path we have not yet integration-tested).
+- **68 document models**, **150 rule conditions**, **27 models reference other models** (`modelReferences` — the `expand` + resolver path, **now integration-tested via F-RES**, see below).
+- **Ingest re-measured with the directory resolver (F-RES, 2026-06-06): 107 document models, 106 load, 1289 rules → 839 converted (65.1%), 450 opaque.** (Supersedes the stale ~55% from before the F10 build-out + before references resolved.) The single load failure is a genuine model-consistency error, not a resolver miss. The opaque tail is **all F10 operator coverage** (no resolver gaps left): the big buckets are unmodeled comparison forms (~257 `IComparisonCondition`), the **`$` outer-iteration correlation (~127, correctly preserved verbatim** — D13, not silently converted), and group/list aggregates (~57). Next coverage lever = the comparison bucket. Measured by `adapter.Corpus1IngestCoverageTest` (opt-in, `-Da12.corpus1.dir=…`, proprietary — prints, asserts nothing, commits nothing).
 - Rule-dense models reach ~29 rules each; conditions are frequently **multi-line** and contain `;;` **comments**, and keywords appear in **case variants** (`and` / `AND` as well as `And`).
 - **Header locale form: the bare, language-only code dominates here** — **268** models declare `[{"code":"en"},{"code":"de"}]` against **107** with full `en_US` (the opposite of our fixtures and `a12-kernel-mm`, which use the full `language_COUNTRY` form). **Practical bearing:** these bare-locale models **deserialize** but our validate/author path **rejects** them — `checkConsistency` doesn't support the bare validation language `en` (KERNEL-FINDINGS §13 supplement; `dsl.BareLocaleTest`). So validating/authoring against a workspace model needs the locale normalized to a supported full code (`en`→`en_US`) first — a real prerequisite if we ever target this corpus, not just a message-tagging detail.
 
@@ -48,6 +49,16 @@ A read-only **analysis** of two real A12 model corpora, used to prioritize what 
 - **Date thresholds:** `AllFieldsFilled(Start, End) And DifferenceInDays(Start, End) > N`; `[Date] >= Today`
 - **Aggregate-driven:** `NumberOfFilledFields(a, b, c) <op> N`
 - **Filtered aggregate / correlation:** `Sum(G*/X) Having (…)`, `[$/Other/Field]` correlated refs
+
+## Reference scheme & the directory resolver (F-RES, 2026-06-06)
+
+A multi-file app's rules reach into other models — so loading one needs the others. The mechanism (verified against the workspaces, kernel `30.8.1`):
+
+- **`header.modelReferences[]`** entries carry `{ alias, modelType, purpose, reference }`. The **`reference`** value is the target's **`header.id`** (a bare model id, not a filename/path/hash); `alias` is the local name the condition text uses.
+- **Two `purpose` kinds matter for loading:** `include` pulls in a **full document model's structure** (groups/fields/rules); `typeDefinitions` imports the **type definitions** from a referenced model. (Other purposes — `data binding`, `bindingReference`, `…-for-overview/tree/query` — bind non-document model types and aren't resolved through the document-only resolver.) Both loading kinds funnel through the **same** `IDocumentModelReferenceResolver.getDocumentModel(reference)` — `expand` drives includes, `extractImportedTypeDefinitions` drives typedef imports.
+- **Detect document models by `header.modelType == "document"`** — *not* by a filename convention. (The `_DM`/`_TDM`/`_CDM` suffixes happen to be the `document`-typed files and `_OM`/`_FM`/`_TM`/… the others, but the suffix is incidental; `modelType` is the contract.) A type-definition model is itself `modelType: "document"`, so one id-keyed index of all `document` models serves both `include` and `typeDefinitions`.
+
+`ReferenceResolvers.directory(root…)` implements exactly this: walk the tree, index every `modelType=="document"` file by `header.id`, and deserialize a fresh instance per `getDocumentModel` call (expansion mutates in place). `KernelAdapter.ofJson(json, resolver)` / `BoundModel.ofJson(json, resolver)` thread it through both the MVK bootstrap and the index. All Corpus-1 references resolve within the one tree (no external/system targets).
 
 ## Parser-relevant findings (for the future text→AST round-trip, #3)
 

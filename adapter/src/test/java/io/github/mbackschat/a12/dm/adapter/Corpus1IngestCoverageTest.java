@@ -29,6 +29,10 @@ class Corpus1IngestCoverageTest {
         assumeTrue(dir != null && Files.isDirectory(Path.of(dir)),
                 "a12.corpus1.dir not set / absent — skipping proprietary Corpus-1 harness");
 
+        // F-RES: a directory resolver over the whole workspaces tree, so a multi-file app's includes /
+        // type-def imports resolve (otherwise selfContained() throws and the app is a load failure).
+        var resolver = io.github.mbackschat.a12.dm.core.ReferenceResolvers.directory(Path.of(dir));
+
         int models = 0, loaded = 0, totalRules = 0, converted = 0, opaque = 0;
         Map<String, Integer> loadFailures = new TreeMap<>();      // bucket → count
         Map<String, Integer> opaqueReasons = new TreeMap<>();
@@ -46,7 +50,7 @@ class Corpus1IngestCoverageTest {
             models++;
             try {
                 String json = Files.readString(file, StandardCharsets.UTF_8);
-                Map<String, Ingest> outcomes = KernelAdapter.ofJson(json).ingestAll();
+                Map<String, Ingest> outcomes = KernelAdapter.ofJson(json, resolver).ingestAll();
                 loaded++;
                 for (Ingest ingest : outcomes.values()) {
                     totalRules++;

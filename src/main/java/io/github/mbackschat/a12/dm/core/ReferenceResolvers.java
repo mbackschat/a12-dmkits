@@ -1,6 +1,21 @@
 package io.github.mbackschat.a12.dm.core;
 
+import java.io.IOException;
+import java.io.StringReader;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Stream;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
+import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
 
 /** Factory methods for the kernel's {@link IDocumentModelReferenceResolver}. */
 public final class ReferenceResolvers {
@@ -19,5 +34,66 @@ public final class ReferenceResolvers {
                     "model references a separate model (\"" + reference + "\") but was treated as "
                             + "self-contained; supply a resolver that can resolve it");
         };
+    }
+
+    /**
+     * A resolver that loads referenced models from one or more directory trees (F-RES) — what a
+     * multi-file application needs: its rules {@code include} other document models and import
+     * type-definitions ({@code _TDM}) by reference. The kernel's {@code expand} and
+     * {@code extractImportedTypeDefinitions} both call {@link IDocumentModelReferenceResolver#getDocumentModel}
+     * with the target's <em>model id</em>, so this indexes every <b>document model</b> in the trees by
+     * {@code header.id} and serves it on demand.
+     *
+     * <p><b>Document-model detection is by {@code header.modelType == "document"}</b>, not a filename
+     * convention — the trees also hold {@code form}/{@code overview}/{@code tree}/… models that are not
+     * resolvable through this (document-only) interface. A {@code _TDM} type-definition model is itself
+     * {@code modelType: "document"}, so the one id-keyed index covers both {@code include} and
+     * {@code typeDefinitions} references. Each {@code getDocumentModel} deserializes a <em>fresh</em>
+     * model instance (expansion mutates in place, so a shared instance would corrupt repeated includes).
+     *
+     * @throws UncheckedIOException if a tree can't be walked
+     */
+    public static IDocumentModelReferenceResolver directory(Path... roots) {
+        Map<String, String> modelsById = indexDocumentModels(roots);
+        IDocumentModelSerializer serializer = new DocumentModelServiceFactory().createDocumentModelSerializer();
+        return reference -> {
+            String json = modelsById.get(reference);
+            if (json == null) {
+                throw new IllegalStateException("no document model with id \"" + reference + "\" found in "
+                        + modelsById.size() + " indexed models under " + java.util.Arrays.toString(roots));
+            }
+            try {
+                return serializer.deserialize(new StringReader(json));
+            } catch (IOException e) {
+                throw new UncheckedIOException("failed to deserialize referenced model \"" + reference + "\"", e);
+            }
+        };
+    }
+
+    /** Walk the trees, parse each {@code *.json} header, and index {@code modelType=="document"} files by id. */
+    private static Map<String, String> indexDocumentModels(Path... roots) {
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, String> byId = new HashMap<>();
+        for (Path root : roots) {
+            try (Stream<Path> walk = Files.walk(root)) {
+                walk.filter(p -> p.toString().endsWith(".json")).forEach(p -> {
+                    try {
+                        String json = Files.readString(p, StandardCharsets.UTF_8);
+                        JsonNode header = mapper.readTree(json).path("header");
+                        if ("document".equals(header.path("modelType").asText())) {
+                            String id = header.path("id").asText();
+                            if (!id.isEmpty()) {
+                                byId.putIfAbsent(id, json);   // first wins on a duplicate id
+                            }
+                        }
+                    } catch (IOException | RuntimeException ignored) {
+                        // a file that isn't valid DM-JSON is simply not an indexable model
+                    }
+                });
+            } catch (IOException e) {
+                throw new UncheckedIOException("failed to walk reference directory " + root, e);
+            }
+        }
+        return byId;
     }
 }

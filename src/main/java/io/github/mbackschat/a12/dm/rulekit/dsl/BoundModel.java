@@ -104,6 +104,15 @@ public final class BoundModel {
         return sourceJson;
     }
 
+    /**
+     * The reference resolver this binding loads / re-binds against (F-RES) — used so a consumer (e.g.
+     * the kernel adapter) expands the model against the <em>same</em> resolver. Null for a binding made
+     * directly from a {@code ModelIndex} (no source JSON); non-null whenever {@link #toJson()} works.
+     */
+    public com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver resolver() {
+        return resolver;
+    }
+
     /** A generic handle to the field at {@code path} (any kind). Throws if the path is not a field. */
     public FieldRef field(String path) {
         return new FieldRef(path, index.kindOf(path));
