@@ -612,6 +612,50 @@
     "sinceKernel": "30.8.x"
   },
   {
+    "id": "RoundDown",
+    "kind": "function",
+    "keywords": { "en": "RoundDown", "de": "Abrunden" },
+    "operands": [ { "type": "number" }, { "type": "decimal-places" } ],
+    "returns": "number",
+    "meaning": "Rounds a numeric expression DOWN (toward zero) to the given number of decimal places. The first operand is any numeric expression (a field, an arithmetic expression, an aggregate), not just a field.",
+    "constraints": [
+      "the first operand is a numeric expression; the second is the integer count of decimal places"
+    ],
+    "gotchas": [
+      { "text": "distinct from the field-only RoundDownValue family — this operand-list form rounds the result of an expression", "kind": "AUTHORING" }
+    ],
+    "validExample": { "dsl": "FieldFilled(UnitPrice) And RoundDown([UnitPrice], 0) < 1", "note": "fires when the unit price rounds down to less than one whole currency unit" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "RoundUp",
+    "kind": "function",
+    "keywords": { "en": "RoundUp", "de": "Aufrunden" },
+    "operands": [ { "type": "number" }, { "type": "decimal-places" } ],
+    "returns": "number",
+    "meaning": "Rounds a numeric expression UP (away from zero) to the given number of decimal places.",
+    "constraints": [
+      "the first operand is a numeric expression; the second is the integer count of decimal places"
+    ],
+    "gotchas": [ ],
+    "validExample": { "dsl": "FieldFilled(UnitPrice) And RoundUp([UnitPrice], 1) > 1000", "note": "fires when the unit price rounded up to one decimal exceeds 1000" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "RoundAccounting",
+    "kind": "function",
+    "keywords": { "en": "RoundAccounting", "de": "Runden" },
+    "operands": [ { "type": "number" }, { "type": "decimal-places" } ],
+    "returns": "number",
+    "meaning": "Rounds a numeric expression to the given number of decimal places using commercial (accounting) rounding.",
+    "constraints": [
+      "the first operand is a numeric expression; the second is the integer count of decimal places"
+    ],
+    "gotchas": [ ],
+    "validExample": { "dsl": "AllFieldsFilled(Quantity, UnitPrice) And RoundAccounting([UnitPrice] * [Quantity], 2) > 10000", "note": "fires when the commercially-rounded line total exceeds 10000" },
+    "sinceKernel": "30.8.x"
+  },
+  {
     "id": "NumberOfDifferentValues",
     "kind": "function",
     "keywords": { "en": "NumberOfDifferentValues", "de": "AnzahlVerschiedenerWerte" },

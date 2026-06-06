@@ -93,6 +93,23 @@ public final class Dsl {
         return new NumberExpr(new ListAggregate(op, operands));
     }
 
+    // --- rounding (operand-list, over an arbitrary numeric expression) -------------------------
+
+    /** {@code RoundDown(expr, n)} — round a numeric expression down to {@code n} decimal places. */
+    public static NumberExpr roundDown(NumberExpr operand, int decimalPlaces) {
+        return new NumberExpr(new Rounding(Rounding.Mode.DOWN, operand.expression(), decimalPlaces));
+    }
+
+    /** {@code RoundUp(expr, n)} — round a numeric expression up to {@code n} decimal places. */
+    public static NumberExpr roundUp(NumberExpr operand, int decimalPlaces) {
+        return new NumberExpr(new Rounding(Rounding.Mode.UP, operand.expression(), decimalPlaces));
+    }
+
+    /** {@code RoundAccounting(expr, n)} — round a numeric expression to {@code n} decimal places (commercial rounding). */
+    public static NumberExpr roundAccounting(NumberExpr operand, int decimalPlaces) {
+        return new NumberExpr(new Rounding(Rounding.Mode.ACCOUNTING, operand.expression(), decimalPlaces));
+    }
+
     // --- date family (item 9) — Today, differences (→ number), shifts (→ date) ----------------
 
     /** {@code Today} — the current date constant (DE {@code Heute}). */

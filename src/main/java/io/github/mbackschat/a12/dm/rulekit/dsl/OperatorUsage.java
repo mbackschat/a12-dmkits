@@ -94,6 +94,10 @@ public final class OperatorUsage {
                 collect(a.left(), ops);
                 collect(a.right(), ops);
             }
+            case Rounding r -> {
+                ops.add(r.operatorId());
+                collect(r.operand(), ops);
+            }
         }
     }
 

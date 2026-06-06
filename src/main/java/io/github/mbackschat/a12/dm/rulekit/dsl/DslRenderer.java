@@ -259,6 +259,7 @@ public final class DslRenderer {
             case DateShift s -> keyword(s.operatorId())
                     + "(" + renderArg(s.date()) + ", " + s.amount() + ")";
             case Arithmetic a -> render(a.left()) + " " + a.op().symbol() + " " + render(a.right());
+            case Rounding r -> keyword(r.operatorId()) + "(" + render(r.operand()) + ", " + r.decimalPlaces() + ")";
         };
     }
 

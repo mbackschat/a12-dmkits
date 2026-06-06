@@ -171,9 +171,7 @@ class KernelConstructParityTest {
         put(m, "count-of-value aggregate — not yet modeled", "EntityListOperationName.NumberOfValueInFields");
         put(m, "operand-list min/max — not yet modeled (distinct from field-list MaxValue/MinValue)",
                 "OpListOperationName.Max", "OpListOperationName.Min");
-        put(m, "operand-list rounding/abs functions — not yet modeled",
-                "OpListOperationName.RoundAccounting", "OpListOperationName.RoundUp",
-                "OpListOperationName.RoundDown", "OpListOperationName.Abs");
+        put(m, "operand-list abs function — not yet modeled", "OpListOperationName.Abs");
         put(m, "field-level rounding/abs functions — not yet modeled",
                 "FieldIdOperationName.RoundAccountingValue", "FieldIdOperationName.RoundUpValue",
                 "FieldIdOperationName.RoundDownValue", "FieldIdOperationName.AbsValue");

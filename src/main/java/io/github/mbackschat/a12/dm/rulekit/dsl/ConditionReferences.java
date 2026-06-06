@@ -98,6 +98,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 collect(a.left(), fields, groups);
                 collect(a.right(), fields, groups);
             }
+            case Rounding r -> collect(r.operand(), fields, groups);
         }
     }
 

@@ -26,6 +26,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListPredicate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LengthOf;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ListAggregate;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Rounding;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.PatternCondition;
@@ -99,6 +100,9 @@ final class ExplanationTreeBuilder {
                     operand(s.date())));
             case Arithmetic a -> List.of(new RuleExplanation.Node(a.op().symbol(), renderer.render(a),
                     concat(operand(a.left()), operand(a.right()))));
+            // rounding nests the expression it rounds — recurse into it
+            case Rounding r -> List.of(new RuleExplanation.Node(r.operatorId(), renderer.render(r),
+                    operand(r.operand())));
         };
     }
 

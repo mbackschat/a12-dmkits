@@ -24,6 +24,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IEntityList
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IFieldIdOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IGroupOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOperation;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOpListOperationWithParameter;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IPointInTimeOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateDiffOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.BoolConstantOperationName;
@@ -35,6 +36,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListOpera
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.FieldIdOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.GroupOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.LogOp;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.OpListOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.PointInTimeOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ValueListConditionName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.ast.ASTVisitor;
@@ -568,6 +570,9 @@ final class ConditionConverter {
         if (operand instanceof ICompositeOperation arithmetic) {
             return convertArithmetic(arithmetic);
         }
+        if (operand instanceof IOpListOperationWithParameter rounding) {
+            return convertRounding(rounding);
+        }
         if (operand instanceof IGroupOperation groupOp
                 && groupOp.getOperatorName() == GroupOperationName.CurrentRepetition) {
             return Dsl.currentRepetition(model.group(groupOp.getGroup().getFullName()));
@@ -580,6 +585,20 @@ final class ConditionConverter {
             }
         }
         return null;
+    }
+
+    /** {@code RoundDown/RoundUp/RoundAccounting(expr, n)} — the kernel's operand-list rounding over an expression. */
+    private NumberExpr convertRounding(IOpListOperationWithParameter rounding) {
+        // The rounding op-list always wraps exactly one operation (the value to round); n = decimal places.
+        NumberExpr operand = arithmeticOperand(rounding.getOperations().get(0), rounding);
+        int places = rounding.getNumberOfDecimalPlaces();
+        OpListOperationName name = rounding.getOperatorName();
+        return switch (name) {
+            case RoundDown -> Dsl.roundDown(operand, places);
+            case RoundUp -> Dsl.roundUp(operand, places);
+            case RoundAccounting -> Dsl.roundAccounting(operand, places);
+            default -> throw unsupported("operand-list operator " + name, rounding);
+        };
     }
 
     /** An arithmetic expression ({@code a + b}, {@code a - b}, …) — the kernel's n-ary {@code ICompositeOperation}. */
