@@ -55,6 +55,17 @@ KERNEL-SEMANTICS §3: a value violating its data-type config produces a **formal
 
 Observed for `[UnitPrice] > 5` (UnitPrice scale-2) in a filled row: `"10.00"` → the author rule fires; `"10.999"` (three decimals) → **`zahlFalscheAnzahlNachkommastellen`**, author rule **not** fired; `"abc"` → **`zahlHatUngueltigeZeichen`**, not fired; a string `" ABC "` → **`fuehrendesBlank`** (leading-space formal error). These runtime formal-error codes are German internal identifiers (not `MVK_*`); they're locked as the observed contract so a kernel change surfaces in the build. *(Locked: `adapter.laws.FormalErrorLawsTest`.)*
 
+## §4 supplement — the "required" property and its two modes (runtime, 2026-06-06)
+
+The field-editor "required" checkbox is encoded in DM-JSON as `Field.requirednessConfig: {mode: …}` (kernel enum `IRequirednessConfig.Mode`). An unfilled required field raises the `mandatoryField` **formal error**, so the field is **"unknown"** (§3). The two modes — and the gotcha the BA docs flag — verified at runtime:
+
+| mode (DM-JSON) | BA "Only if parent filled" | when required |
+|---|---|---|
+| `absoluteOrRelativeToNextRepAncestor` | **no** | a non-repeatable field is **always** required; a field under a repeatable ancestor is required once that ancestor is filled |
+| `relativeToParent` | **yes** | required **only when the parent group is filled** |
+
+**The gotcha — what "filled" means here.** For `relativeToParent`, "the parent is filled" means **at least one descendant field of the parent is filled** (`IRequirednessConfig` Javadoc), **not** the §9 "row exists" `GroupFilled` notion. Verified on a sub-group field (`/Order/ShippingAddress/Street`): a created-but-empty `ShippingAddress` row → **not** required (no `mandatoryField`); once a sibling (`City`) is filled → required → empty Street raises `mandatoryField`. Under `absoluteOrRelativeToNextRepAncestor` the same empty sub-group still requires Street (always). The requiredness is **stronger than `FieldNotFilled`**: it makes the field unknown, so e.g. a required-but-empty **number** is *not* the §2 empty-as-0 — a `[Quantity] < 100` rule does not fire on it (only `mandatoryField` does). *(Locked: `adapter.laws.RequiredPropertyLawsTest`.)*
+
 ## §5 supplement — numeric literals are exempt from the scale check
 
 The `==`/`!=` decimal-scale gate applies to **field/expression operands only**. Against a scale-2 field, `== 0`, `== 0.0`, `== 0.00`, `!= 0`, and `<= 0.000` are all accepted — only field-vs-field/expression comparisons of differing declared scale draw `MVK_INVALID_COMPARE_DEC_PLACES`. Consequence: scale-explicit literals (`0.00`) are a rendering-fidelity nicety, not a correctness requirement. *(Locked: `validate.laws.NumberLawsTest`.)*
