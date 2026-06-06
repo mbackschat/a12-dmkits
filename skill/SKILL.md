@@ -68,6 +68,7 @@ So **guard a number comparison** when an empty value shouldn't trip it — `Fiel
 ## Per-row iteration & the negative guard
 
 - Putting the **error field inside a repeatable group** makes the rule fire **once per row** ("each …"). That happens automatically — you don't ask for it; you choose the error field.
+- **"Each X must …" is a per-row rule — don't recast it as one document-level count/aggregate.** The error field's location *is* the decision: a field inside the repeatable group → the rule fires per offending row and points at *that* row. Rewriting (e.g.) "each line item needs a ShippedDate" as a single whole-document check over `Lines*/ShippedDate` (a count, or `NotAllFieldsFilled(Lines*/ShippedDate)` on a top-level field) is a **different rule** — it fires once for the whole document and flags the wrong locus. When the requirement says "each", keep the error field in the row.
 - A **negative** condition (`FieldNotFilled`, `NoFieldFilled`, …) inside an iterating rule is **rejected** (`MVK_NEG_CONDITION_IN_ITERATION`) unless guarded by a positive existence check on the row: `GroupFilled(<the repeatable group>) And <your negative condition>`.
 - **Guard row existence with `GroupFilled(<the repeatable group>)`, not `FieldFilled(<some sibling field>)`.** A sibling field can be empty while the row exists, so an arbitrary-field guard quietly changes *which* rows the rule covers — `GroupFilled` is the row-presence check.
 
@@ -103,6 +104,13 @@ cli check ticket.json --field /Ticket/ResolvedDate \
   --condition "AllFieldsFilled(RaisedDate, ResolvedDate) And DifferenceInDays(RaisedDate, ResolvedDate) > 5" \
   --code RESOLVED_TOO_LATE
 ```
+
+## Custom conditions (host-delegated)
+
+`CustomCondition <Name>` is an **escape hatch**: the named check runs in the host application's code, **not** in the rule language — its logic is *not visible in the model*. Two rules:
+
+- **Don't guess what it decides.** Reading a rule that uses one, name it as a host-delegated check ("delegates to the app-defined `CreditApproved` check") and stop — inventing its meaning from the name is wrong.
+- **Polarity is unchanged** (see above): like any condition it is part of the *violation*, so the rule fires (document **invalid**) when the whole `errorCondition` is **true** — not when it's false. `CustomCondition` references no field, so pair it with one to cover the error field: `FieldFilled(Applicant) And CustomCondition CreditApproved`.
 
 ## Worked example (a *different* model, to show the pattern)
 

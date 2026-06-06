@@ -1,0 +1,13 @@
+{
+  "id": "T11",
+  "family": "authoring",
+  "model": "person",
+  "operators": ["AllFieldsFilled", "NotEqual", "And"],
+  "intent": "A person's full name must read exactly as their first name, a space, then their last name.",
+  "gold": {
+    "field": "/Person/FullName",
+    "condition": "AllFieldsFilled(FirstName, LastName) And [FullName] != [FirstName] + \" \" + [LastName]",
+    "code": "FULLNAME_MISMATCH"
+  },
+  "notes": "String CONCATENATION family (new 2026-06-06): the violation of a computed-string consistency rule ('FullName must equal first + space + last') is the inequality [FullName] != [FirstName] + \" \" + [LastName]. The '+' is the intrinsic string-concat operator (no catalog keyword, like arithmetic). Tests (a) building a string expression on the right of a comparison, (b) the error-scenario polarity (!= for 'must equal'), and (c) guarding both parts present first. NON-iterating; uses the dedicated `person` fixture (FirstName/LastName/FullName). Gold kernel-verified."
+}

@@ -1,0 +1,13 @@
+{
+  "id": "T9",
+  "family": "authoring",
+  "model": "order",
+  "operators": ["FieldFilled", "YearFromDate", "LessThan", "And"],
+  "intent": "An order placed before the year 2020 is invalid.",
+  "gold": {
+    "field": "/Order/OrderDate",
+    "condition": "FieldFilled(OrderDate) And YearFromDate(OrderDate) < 2020",
+    "code": "ORDER_BEFORE_2020"
+  },
+  "notes": "Date-EXTRACTION family (new 2026-06-06). YearFromDate(date) extracts the year as a NUMBER, so it compares like one (< 2020). Tests reaching for the extraction operator (vs a date-vs-date comparison or a date literal, which the kernel rejects for ordering) and guarding presence first (a date op on an absent date is a formal error). NON-iterating; OrderDate is a top-level /Order field referenced bare inside the function. Gold kernel-verified."
+}
