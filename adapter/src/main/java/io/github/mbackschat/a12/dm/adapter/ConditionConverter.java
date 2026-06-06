@@ -23,6 +23,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IConstantOp
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IEntityListOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IFieldIdOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IGroupOperation;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.INumberOfRootGroupsOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IFieldIdOperationWithParameters;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOpListOperationWithParameter;
@@ -586,6 +587,10 @@ final class ConditionConverter {
         }
         if (operand instanceof IDateExtractionOperation ext) {
             return convertDateExtraction(ext);
+        }
+        // NumberOfFilledGroups(/RootGroup*) — count of a repeatable root group's filled repetitions
+        if (operand instanceof INumberOfRootGroupsOperation rootCount) {
+            return Dsl.numberOfFilledRootGroups(model.group("/" + rootCount.getRootGroupName()));
         }
         if (operand instanceof IFieldIdOperation lenOp && lenOp.getOperatorName() == FieldIdOperationName.Length) {
             return model.str(lenOp.getField().getFullName()).length();

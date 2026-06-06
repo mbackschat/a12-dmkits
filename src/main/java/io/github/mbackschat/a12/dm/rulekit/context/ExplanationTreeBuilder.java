@@ -32,6 +32,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValueAsString;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RangeAsString;
+import io.github.mbackschat.a12.dm.rulekit.dsl.RootGroupCount;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rounding;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral;
@@ -118,6 +119,7 @@ final class ExplanationTreeBuilder {
             // date extraction nests its source date
             case DateExtraction e -> List.of(new RuleExplanation.Node(e.operatorId(), renderer.render(e),
                     operand(e.source())));
+            case RootGroupCount c -> List.of(leaf(c.operatorId(), c));
         };
     }
 

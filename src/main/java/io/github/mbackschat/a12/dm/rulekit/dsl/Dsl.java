@@ -108,6 +108,11 @@ public final class Dsl {
         return new DateExpr(new FirstFilledValue(dateScope));
     }
 
+    /** {@code NumberOfFilledGroups(/RootGroup*)} — the count of a repeatable root group's filled repetitions. */
+    public static NumberExpr numberOfFilledRootGroups(GroupRef rootGroup) {
+        return new NumberExpr(new RootGroupCount(rootGroup));
+    }
+
     /** {@code FirstFilledValue(…)} over a string repetition list — the first specified value, as a string. */
     public static StringExpr firstFilledString(FieldListRef stringScope) {
         requireKind(stringScope, io.github.mbackschat.a12.dm.core.ValueKind.STRING, "firstFilledString");
