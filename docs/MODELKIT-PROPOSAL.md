@@ -194,7 +194,8 @@ Increments (each: typed builder slice + DM-JSON emit + kernel-validated, own-dom
 - **Ingest tail:** ✅ **fully closed for kernel-mm (2026-06-06) — 100% typed (553/553)**, custom conditions included (typed, editable `CustomConditionRef`). *(Corpus-1 still sits at 55% — its remaining tail is the same feature set plus the `F-RES` multi-file loader gap; re-measure when those land.)*
 - **F-RES:** a directory `IDocumentModelReferenceResolver` so multi-file real models load (64/107 Corpus-1 blocked; kernel-mm unaffected).
 - **F-LAW:** convert the prose-only HIGH-trap behavioral laws (Q3) to executable laws — needs a document-evaluating oracle harness (rulekit's CLI deliberately never executes validation).
-- **F-TEST:** dedicated unit test for the `ingest()` Opaque-on-unresolved-reference hardening (currently exercised by the opt-in coverage harness).
+- **F-TEST:** dedicated unit test for the `ingest()` Opaque-on-unresolved-reference hardening (currently exercised only by the opt-in coverage harness — no focused unit test yet).
+- **Operator tail (authoring + ingest):** the low-demand operators still deferred as catalog stubs — `RangeAsString` (the one everyday Corpus-1 gap, count 4), `Date(…)` construction / `Now` / `DateRange` / `DateRangesOverlap`, `SumOfProducts`, `FirstFilledValue`, `Valid`/`Invalid` (custom-field-type validity), date **shifts** ingest (`AddDays`/…, authorable but not yet ingested), and `$` correlation (needs field-vs-field in `Having`, D13). All absent from kernel-mm (hence 100% there); some appear in Corpus-1. Frequency-ordered in [`WORKSPACE-CORPUS-ANALYSIS.md`](WORKSPACE-CORPUS-ANALYSIS.md) §backlog — build on real demand.
 
 ---
 
