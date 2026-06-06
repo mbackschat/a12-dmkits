@@ -15,6 +15,30 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-06 22:54 CEST — full pass@k after the F10 ingest build-out (+11 catalog operators) — no regression (opus + sonnet, k=2)
+
+First full sweep (now **T1–T8**, T8 added) after this session's large converter/catalog growth: the comparison-RHS family, `FirstFilledValue` (number/date/string), group-scope `Not*`/`MoreThanOne` quantifiers, string coercions `RangeAsString`/`FieldValueAsString`, date shifts + date→number extraction, and root-group counting — **~11 new operators in the catalog** (Corpus-1 ingest 65.1% → 87.0% this session). Material changed → fresh run `wf_deff5a53-caa` (**63 agents, 1.32M subagent tokens, 8m19s**). Question: did the enlarged `cli operators` catalog regress self-sufficiency on the existing families?
+
+| Task | opus | sonnet | family |
+|---|---|---|---|
+| T1 | 1/2 | 0/2 | authoring — iteration guard + cross-group enum |
+| T2 | 2/2 | 2/2 | authoring — field-vs-field |
+| T3 | 2/2 | 1/2 | authoring — pattern |
+| T4 | 2/2 | 2/2 | authoring — aggregate + Having |
+| T5 | 2/2 | 1/2 | authoring — date |
+| T6 | 2/2 | 2/2 | authoring — value-list + boolean |
+| T7 | 2/2 | 2/2 | comprehension — date + pattern read-back |
+| T8 | 1/2 | 1/2 | comprehension — custom condition |
+
+**Verdict: no regression from the +11 operators.** opus **13/16**, sonnet **11/16**; the self-describing CLI absorbed the bigger catalog (smoke-checked: `cli operators` surfaces `RoundDown`/`FirstFilledValue`/`RangeAsString`/`YearFromDate`/`MoreThanOneFieldFilled`/`FieldValueAsString`). Notably **T4 opus 1/2 → 2/2** vs the 2026-06-05 run (both opus runs now byte-match / bare-equivalent to the gold; the empty-number-guard subtlety didn't bite this draw). Every non-perfect cell is explained and **none is caused by a new operator**:
+
+- **The 2 sonnet kernel-invalid runs (T3/1, T5/1) share ONE root cause — a CLI argument confusion, not a rule-language gap.** Both put the **model file path in the `--field` slot** (`field=/Users/…/cli/src/test/resources/models/order.dm.json`) instead of a model entity path (`/Order/ProductCode` / `/Order/DeliveryDate`). The condition text was correct in both (T3 byte-identical to gold; T5 a valid `[DeliveryDate] < [OrderDate]`); the kernel only rejected because the error entity was a filesystem path. **GAP (actionable):** `check`/`add` accept any `--field` string and defer to the kernel — a cheap pre-flight lint ("`--field` must be a model entity path: starts with `/`, resolves in the model; you passed a file path") would catch this at the tool boundary and is the clearest material/tooling fix this run surfaced.
+- **T1 (opus 1/2, sonnet 0/2) — the iteration-scope idiom, a known wobble.** opus's miss used `FieldFilled(Name)` as the row guard instead of `GroupFilled(Addons)` (diverge on a row filled via another field with empty Name — judge correctly non-equivalent). **Both sonnet runs** authored a *document-level aggregate* instead of the per-Addon-instance rule — and one reached for the **new `NotAllFieldsFilled`** operator (`NotAllFieldsFilled(Addons*/MonthlyFee)`) at whole-document scope. So the new vocabulary is *discoverable and used* — just misapplied on granularity. **GAP:** the skill could sharpen "a per-row error field ⇒ a per-row rule (instance scope), not a document-level count."
+- **T8 (1/2 each tier) — custom-condition comprehension slips, distinct per tier.** opus hallucinated what `ExternalEligibility` decides ("signals the order is ineligible / rejects the order") — the exact guessing the rubric forbids. sonnet inverted polarity (called the doc invalid when the condition is *false*). Both otherwise correctly flagged the host-delegation + the `FieldFilled` guard. **GAP:** reinforce "name the delegation, don't guess its logic" + the fires-when-true polarity for custom conditions.
+- **T5 note (not a gap):** agents on both tiers author a **direct `[DeliveryDate] < [OrderDate]`** rather than the gold's `DifferenceInDays(OrderDate, DeliveryDate) < 0`; the judge correctly rules them equivalent (an empty-date comparison doesn't fire, matching the gold's `AllFieldsFilled` guard). The simpler form is what agents naturally reach for — the gold over-specifies. Consider relaxing the T5 gold or accepting both.
+
+**On the new operators:** T1–T8 exercise the *older* families, so this run measures **regression only** — it does not directly author a rounding/concat/date-extraction/`FirstFilledValue` rule. The catalog-level surface kept pace (all six new ops listed; one used spontaneously). To measure the new operators' *authorability* we need **T9+ tasks** (e.g. a `RoundAccounting` computed-field rule, a `RangeAsString`/concat consistency rule, a `YearFromDate`/`FirstFilledValue` rule) — the recommended next addition to the suite.
+
 ### 2026-06-05 19:12 CEST — targeted T1 re-run confirms the judge path-resolution fix (opus, k=2)
 
 After fixing the judge prompt (it now knows bare field names resolve **up** ancestor groups — GAP 1 from the 19:06 run), a fresh **T1-only** re-run (`w8700u6m0`, 5 agents) flips **opus T1 → 2/2**. Both judges now resolve bare `[Tier]` to `/Subscription/Tier` and rule the candidates equivalent to the gold (*"the only difference is path notation … both denote the same field"*). Confirms the 19:06 T1 0/2 was a **judge false-negative**, not an authoring gap — opus authors T1 correctly from the self-describing CLI alone. (Did not re-judge sonnet's separate `FieldFilled(Name)` vs `GroupFilled(Addons)` guard divergence — that one is a real, subtle slip, left as-is.)
