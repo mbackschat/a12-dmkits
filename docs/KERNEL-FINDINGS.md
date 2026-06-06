@@ -20,6 +20,18 @@ A `Boolean` has three distinct states (unset / `True` / `False`), and the runtim
 
 Traps pinned: `[Flag] == True` is **not** `FieldFilled(Flag)` (they diverge on a `False` value), and `[Flag] == False` ≠ "unchecked" (an unset Boolean satisfies neither equality). Contrast a Confirm, whose unset value *is* `False` (§2 supplement). *(Locked: `adapter.laws.BooleanThreeStateLawsTest`.)*
 
+## §1 supplement — the "not …" field-list quantifiers are not complements (runtime, 2026-06-06)
+
+Over a two-field list, the three negative fill-quantifiers disagree at the edges (fires? by filled-count):
+
+| filled (of 2) | `NotAllFieldsFilled` | `FieldsNotCollectivelyFilled` | `NotExactlyOneFieldFilled` |
+|---|---|---|---|
+| 0 (none) | ✓ | **—** | ✓ |
+| 1 | ✓ | ✓ | — |
+| 2 (all) | — | — | ✓ |
+
+The trap is the all-empty column: `NotAllFieldsFilled` and `NotExactlyOneFieldFilled` **include** it, but `FieldsNotCollectivelyFilled` **excludes** it (needs ≥1 filled). Picking the wrong member changes which documents the rule reports. (Verified with the row filled by a sibling, so the list fields' emptiness is what's measured.) *(Locked: `adapter.laws.FieldListQuantifierLawsTest`.)*
+
 ## §2 supplement — empty-as-0 is a *filled-row* behavior (runtime, 2026-06-06)
 
 KERNEL-SEMANTICS §2 says an empty **number** field has `0` substituted in a comparison, so `[Quantity] < 100` fires on an empty Quantity. Verified against the **runtime** engine (`IDocumentRtService.validateFull`) with one refinement the spec doesn't spell out: **the substitution applies to an empty field within a *filled* group row** — a row made non-empty by at least one sibling value. An **entirely empty row** (a group instance with no field values at all) is **not evaluated**, so the same rule does *not* fire there.
