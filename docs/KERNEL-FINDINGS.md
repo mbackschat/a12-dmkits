@@ -133,7 +133,9 @@ Five operators in two grammar shapes, not covered by KERNEL-SEMANTICS. **Shape A
 The first **runtime** (fires/does-not-fire) checks of §9, via the multi-row `RuntimeLaws.Doc` builder:
 
 - **Per-row iteration.** A rule whose error field reaches *through* a repeatable group is evaluated **once per existing row**, and each message attaches to **that row** (the pointer carries the row index). Verified: rule in `/Order`, error field `Items/Count`, condition `[Items/Count] > 50` over three rows `10/80/90` → fires **twice**, on `/Order/Items/Count [1, 2, 1]` and `[1, 3, 1]` (rows 2 and 3); rows `10/20/30` → fires nowhere.
-- **Aggregation of missing rows.** `Sum` substitutes `0` for an empty field (so empties neither error nor suppress the aggregate): `Sum(Items*/Count)` over `40, _, 40` is `80`; over an all-empty list is `0`. `MaxValue` ignores empties: over `40, _, 10` it is `40`. *(Locked: `adapter.laws.RepetitionLawsTest`.)*
+- **Aggregation of missing rows.** `Sum` substitutes `0` for an empty field (so empties neither error nor suppress the aggregate): `Sum(Items*/Count)` over `40, _, 40` is `80`; over an all-empty list is `0`. `MaxValue` ignores empties: over `40, _, 10` it is `40`.
+- **`GroupFilled` = the row exists, not that it has data.** `GroupFilled(Items)` fires for a created Items row whose `Count` is empty, and not when there is no Items row at all.
+- **`RepetitionNotUnique`** (no `*` wildcard — the asterisk draws `MVK_NO_WILDCARDS_ALLOWED`) fires on each duplicate row of a non-index field: `Count` values `5, 5, 9` → fires on rows 1 and 2, not row 3. The **index field** already carries *built-in* uniqueness — duplicate index values raise the kernel's own `uniqueIndex` formal error regardless of any author rule, so `RepetitionNotUnique` on the index field is redundant. *(Locked: `adapter.laws.RepetitionLawsTest`, `adapter.laws.RepetitionNotUniqueLawsTest`.)*
 
 ## §9 supplement — field/group predicates are type-directional
 

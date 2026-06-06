@@ -83,4 +83,22 @@ class RepetitionLawsTest {
         assertTrue(RuntimeLaws.fires(max40, "MAX_40", items("40", null, "10")),
                 "MaxValue ignores the empty row, so Max(40, _, 10) == 40");
     }
+
+    @Test
+    void groupFilledIsSatisfiedByACreatedRowEvenWithoutData() {
+        // "filled" means the ROW EXISTS, not that it has data — GroupFilled(Items) fires for a created
+        // row whose Count is empty, but not when there is no Items row at all
+        String model = RuntimeLaws.withRule(ORDER, "/Order", "RowExists", "../Items/Count", "ROW_EXISTS",
+                "GroupFilled(Items)");
+
+        RuntimeLaws.Doc rowExists = RuntimeLaws.doc().group("/Order", 1).field("/Order/CustomerName", "Acme", 1, 1)
+                .group("/Order/Items", 1, 1).field("/Order/Items/Sku", "A", 1, 1, 1)
+                .emptyField("/Order/Items/Count", 1, 1, 1);
+        RuntimeLaws.Doc noRow = RuntimeLaws.doc().group("/Order", 1).field("/Order/CustomerName", "Acme", 1, 1);
+
+        assertTrue(RuntimeLaws.fires(model, "ROW_EXISTS", rowExists),
+                "GroupFilled fires for a created row (its Count is empty — 'filled' = the row exists)");
+        assertEquals(false, RuntimeLaws.fires(model, "ROW_EXISTS", noRow),
+                "GroupFilled does not fire when no Items row exists");
+    }
 }
