@@ -25,6 +25,12 @@ The **type-asymmetry** of the empty case (the trap — the same comparison shape
 
 **Value-token representation (runtime document instances).** A boolean's value token is `true`/`false` (lowercase) — any other token (`TRUE`, `X`, `1`, `yes`) is a formal error (`feldJaNeinFalsch`), so the field becomes "unknown" and is not evaluated (§3). A **confirm** accepts only `true` or unspecified; `false` is a formal error (`feldJaFalsch`) — consistent with "a Confirm is a checkbox whose single value is True". *(Locked: `adapter.laws.EmptyValueLawsTest`; the runtime oracle is `adapter.laws.RuntimeLaws` — KERNEL-INTEGRATION-NOTES "Runtime behavioral-law oracle".)*
 
+## §3 supplement — a formal error silently suppresses the author's rule (runtime, 2026-06-06)
+
+KERNEL-SEMANTICS §3: a value violating its data-type config produces a **formal error**, and while it stands the field is **"unknown"** and cannot be evaluated in any rule. Verified at runtime with the **trap consequence made explicit**: a malformed value doesn't just raise the formal error — it **silently suppresses** an author rule that references the field (the rule's condition is never evaluated, so it does not fire, even when the would-be value clearly violates it). The kernel emits its own formal-error code; the author's code stays quiet.
+
+Observed for `[UnitPrice] > 5` (UnitPrice scale-2) in a filled row: `"10.00"` → the author rule fires; `"10.999"` (three decimals) → **`zahlFalscheAnzahlNachkommastellen`**, author rule **not** fired; `"abc"` → **`zahlHatUngueltigeZeichen`**, not fired; a string `" ABC "` → **`fuehrendesBlank`** (leading-space formal error). These runtime formal-error codes are German internal identifiers (not `MVK_*`); they're locked as the observed contract so a kernel change surfaces in the build. *(Locked: `adapter.laws.FormalErrorLawsTest`.)*
+
 ## §5 supplement — numeric literals are exempt from the scale check
 
 The `==`/`!=` decimal-scale gate applies to **field/expression operands only**. Against a scale-2 field, `== 0`, `== 0.0`, `== 0.00`, `!= 0`, and `<= 0.000` are all accepted — only field-vs-field/expression comparisons of differing declared scale draw `MVK_INVALID_COMPARE_DEC_PLACES`. Consequence: scale-explicit literals (`0.00`) are a rendering-fidelity nicety, not a correctness requirement. *(Locked: `validate.laws.NumberLawsTest`.)*
