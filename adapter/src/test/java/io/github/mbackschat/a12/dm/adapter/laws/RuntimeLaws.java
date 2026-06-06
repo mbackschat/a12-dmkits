@@ -43,9 +43,12 @@ import com.mgmtp.a12.kernel.md.rt.api.IModelCodeCache;
  * <p><b>Document construction (the V1 path — the one shared with the TypeScript runtime).</b> Each
  * entity instance needs <em>one 1-based repetition index per path part</em> (group <em>and</em> field):
  * {@code /Order} → {@code [1]}, {@code /Order/Quantity} → {@code [1,1]}. Field values are read back as
- * strings during the V1→update-action conversion, so values are passed as text. An <em>absent</em>
- * field models an empty value. (Repeatable groups beyond the first row aren't modeled here yet — the
- * current laws use single-row root groups; extend the index handling when a law needs more.)
+ * strings during the V1→update-action conversion, so values are passed as text — numbers/strings
+ * verbatim, <b>boolean as {@code "true"}/{@code "false"}</b> (lowercase; other tokens are a formal
+ * error), <b>confirm as {@code "true"} or empty</b> (a confirm has no {@code false} — that's a formal
+ * error; unspecified counts as {@code False}). An <em>absent</em> field models an empty value.
+ * (Repeatable groups beyond the first row aren't modeled here yet — the current laws use single-row
+ * root groups; extend the index handling when a law needs more.)
  */
 final class RuntimeLaws {
 

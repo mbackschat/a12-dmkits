@@ -12,7 +12,18 @@ The Boolean≠Confirm split is enforced at parse time with distinct codes: a Boo
 
 KERNEL-SEMANTICS §2 says an empty **number** field has `0` substituted in a comparison, so `[Quantity] < 100` fires on an empty Quantity. Verified against the **runtime** engine (`IDocumentRtService.validateFull`) with one refinement the spec doesn't spell out: **the substitution applies to an empty field within a *filled* group row** — a row made non-empty by at least one sibling value. An **entirely empty row** (a group instance with no field values at all) is **not evaluated**, so the same rule does *not* fire there.
 
-Observed for `[Quantity] < 100` on `/Order[1]`: sibling `CustomerName="Acme"` + empty Quantity → **fires** (0 < 100); empty-string Quantity, valueless Quantity, or an otherwise-empty row → **does not fire**; `Quantity="200"` → does not fire (200 ≮ 100). The `FieldFilled(Quantity)` guard suppresses the empty-as-0 case even in a filled row. *(Locked: `adapter.laws.EmptyValueLawsTest`; the runtime oracle is `adapter.laws.RuntimeLaws` — KERNEL-INTEGRATION-NOTES "Runtime behavioral-law oracle".)*
+Observed for `[Quantity] < 100` on `/Order[1]`: sibling `CustomerName="Acme"` + empty Quantity → **fires** (0 < 100); empty-string Quantity, valueless Quantity, or an otherwise-empty row → **does not fire**; `Quantity="200"` → does not fire (200 ≮ 100). The `FieldFilled(Quantity)` guard suppresses the empty-as-0 case even in a filled row.
+
+The **type-asymmetry** of the empty case (the trap — the same comparison shape behaves differently by type), all verified in a filled row:
+
+| field type | example | empty behaviour |
+|---|---|---|
+| number | `[Quantity] < 100` | **fires** — `0` substituted |
+| confirm | `[TermsConfirmed] != True` | **fires** — treated as `False` |
+| boolean | `[ExpressShipping] == True` | **not evaluated** |
+| string | `[ProductCode] == "ABC"` | **not evaluated** |
+
+**Value-token representation (runtime document instances).** A boolean's value token is `true`/`false` (lowercase) — any other token (`TRUE`, `X`, `1`, `yes`) is a formal error (`feldJaNeinFalsch`), so the field becomes "unknown" and is not evaluated (§3). A **confirm** accepts only `true` or unspecified; `false` is a formal error (`feldJaFalsch`) — consistent with "a Confirm is a checkbox whose single value is True". *(Locked: `adapter.laws.EmptyValueLawsTest`; the runtime oracle is `adapter.laws.RuntimeLaws` — KERNEL-INTEGRATION-NOTES "Runtime behavioral-law oracle".)*
 
 ## §5 supplement — numeric literals are exempt from the scale check
 
