@@ -10,6 +10,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
@@ -31,22 +32,25 @@ final class CheckCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @Parameters(index = "0", paramLabel = "<model.json>", description = "the DM-JSON model file")
+    @Parameters(index = "0", paramLabel = "<model.json>",
+            description = "the DM-JSON model FILE (a file path) — distinct from --field, which is a path inside it")
     String model;
 
-    @Option(names = "--field", required = true, paramLabel = "<absolutePath>",
-            description = "the error field's absolute path, e.g. /Group/Field")
+    @Option(names = "--field", required = true, paramLabel = "<fieldPathInModel>",
+            description = "the error field as a path INSIDE the model, e.g. /Group/Field "
+                    + "(a model entity path, NOT a file path — the model file is the positional <model.json> argument)")
     String field;
 
     @Option(names = "--condition", required = true, paramLabel = "<DSL>",
             description = "the candidate condition in A12 DSL (true on a violation)")
     String condition;
 
-    @Option(names = "--code", required = true, paramLabel = "<id>", description = "the rule's error code")
+    @Option(names = "--code", required = true, paramLabel = "<errorCode>", description = "the rule's error code")
     String code;
 
-    @Option(names = "--group", paramLabel = "<path>",
-            description = "the rule's iteration scope; defaults to the field's parent group")
+    @Option(names = "--group", paramLabel = "<groupPathInModel>",
+            description = "the rule's iteration scope as a group path INSIDE the model, e.g. /Group "
+                    + "(a model entity path, not a file path); defaults to the field's parent group")
     String group;
 
     @Option(names = "--severity", defaultValue = "ERROR", paramLabel = "ERROR|WARNING",
@@ -78,6 +82,21 @@ final class CheckCommand extends BaseCommand {
             json = Files.readString(Path.of(model));
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
+        }
+        // Pre-flight: --field/--group name a path INSIDE the model, not a file. A file path also starts with
+        // '/', so resolve them against the loaded model and fail fast with a clear message (best-effort —
+        // if the model can't load standalone, e.g. unresolved includes, skip and let RuleValidator report).
+        try {
+            BoundModel bound = BoundModel.ofJson(json);
+            String problem = ModelPaths.fieldProblem(bound, field);
+            if (problem == null && group != null) {
+                problem = ModelPaths.groupProblem(bound, effectiveGroup);
+            }
+            if (problem != null) {
+                return fail(problem);
+            }
+        } catch (RuntimeException skip) {
+            // model didn't bind standalone — defer to the kernel validation below
         }
         try {
             DraftRule draft = new DraftRule(effectiveGroup, name, errorEntityRelPath, condition, code, severity);

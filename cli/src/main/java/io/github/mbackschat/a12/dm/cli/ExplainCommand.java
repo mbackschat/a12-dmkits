@@ -28,11 +28,13 @@ final class ExplainCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @Parameters(index = "0", paramLabel = "<model.json>", description = "the DM-JSON model file")
+    @Parameters(index = "0", paramLabel = "<model.json>",
+            description = "the DM-JSON model FILE (a file path) — distinct from --rule, which is a path inside it")
     String model;
 
-    @Option(names = "--rule", required = true, paramLabel = "<ruleFullName>",
-            description = "full name of the rule to explain, e.g. /Order/SomeRule")
+    @Option(names = "--rule", required = true, paramLabel = "<rulePathInModel>",
+            description = "the rule's full name — its slash-path in the model, e.g. /Order/SomeRule "
+                    + "(group path + rule name; NOT the short name 'SomeRule', the opaque element id, or a file path)")
     String rule;
 
     @Override
@@ -45,7 +47,12 @@ final class ExplainCommand extends BaseCommand {
         }
         try {
             BoundModel boundModel = BoundModel.ofJson(modelJson);
-            Ingest ingest = KernelAdapter.of(boundModel).ingest(rule);
+            KernelAdapter adapter = KernelAdapter.of(boundModel);
+            String ruleProblem = ModelPaths.ruleProblem(adapter.ruleFullNames(), rule);
+            if (ruleProblem != null) {
+                return fail(ruleProblem);
+            }
+            Ingest ingest = adapter.ingest(rule);
             if (ingest instanceof Ingest.Converted converted) {
                 out().print(new ModelContext(boundModel).explain(converted.condition()).toJson() + "\n");
             } else if (ingest instanceof Ingest.Opaque opaque) {

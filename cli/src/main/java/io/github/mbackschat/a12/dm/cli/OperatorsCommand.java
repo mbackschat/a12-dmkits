@@ -27,7 +27,7 @@ final class OperatorsCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @Parameters(index = "0", arity = "0..1", paramLabel = "<id>",
+    @Parameters(index = "0", arity = "0..1", paramLabel = "<operatorId>",
             description = "an operator id (e.g. DifferenceInDays) for its full semantics; omit to list all")
     String id;
 

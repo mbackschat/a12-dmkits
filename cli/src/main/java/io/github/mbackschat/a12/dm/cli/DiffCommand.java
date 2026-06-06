@@ -32,10 +32,13 @@ final class DiffCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @Parameters(index = "0", paramLabel = "<model.json>", description = "the DM-JSON model file")
+    @Parameters(index = "0", paramLabel = "<model.json>",
+            description = "the DM-JSON model FILE (a file path) — distinct from --rule, which is a path inside it")
     String model;
 
-    @Option(names = "--rule", required = true, paramLabel = "<id>", description = "full name of the rule to re-express")
+    @Option(names = "--rule", required = true, paramLabel = "<rulePathInModel>",
+            description = "the rule's full name to re-express — its slash-path in the model, e.g. /Order/SomeRule "
+                    + "(group path + rule name; NOT the short name 'SomeRule', the opaque element id, or a file path)")
     String ruleId;
 
     @Option(names = "--condition", required = true, paramLabel = "<DSL>", description = "the new condition in A12 DSL")

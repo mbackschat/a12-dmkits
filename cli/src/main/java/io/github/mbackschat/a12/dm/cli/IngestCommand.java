@@ -28,11 +28,13 @@ final class IngestCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @Parameters(index = "0", paramLabel = "<model.json>", description = "the DM-JSON model file")
+    @Parameters(index = "0", paramLabel = "<model.json>",
+            description = "the DM-JSON model FILE (a file path) — distinct from --rule, which is a path inside it")
     String model;
 
-    @Option(names = "--rule", required = true, paramLabel = "<ruleFullName>",
-            description = "full name of the rule to read back, e.g. /Order/SomeRule")
+    @Option(names = "--rule", required = true, paramLabel = "<rulePathInModel>",
+            description = "the rule's full name — its slash-path in the model, e.g. /Order/SomeRule "
+                    + "(group path + rule name; NOT the short name 'SomeRule', the opaque element id, or a file path)")
     String rule;
 
     @Override
@@ -44,7 +46,12 @@ final class IngestCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         try {
-            Ingest ingest = KernelAdapter.ofJson(modelJson).ingest(rule);
+            KernelAdapter adapter = KernelAdapter.ofJson(modelJson);
+            String ruleProblem = ModelPaths.ruleProblem(adapter.ruleFullNames(), rule);
+            if (ruleProblem != null) {
+                return fail(ruleProblem);
+            }
+            Ingest ingest = adapter.ingest(rule);
             ObjectNode root = MAPPER.createObjectNode();
             root.put("rule", rule);
             if (ingest instanceof Ingest.Converted converted) {

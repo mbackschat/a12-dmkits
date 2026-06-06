@@ -184,6 +184,15 @@ public final class KernelAdapter {
         return out;
     }
 
+    /** The full names of every rule in the model — cheap (no conversion); for resolving a {@code --rule} argument. */
+    public java.util.Set<String> ruleFullNames() {
+        java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>();
+        for (IRule r : elements.getAllRules()) {
+            names.add(r.getFullName());
+        }
+        return names;
+    }
+
     /**
      * Modify-by-re-express diff (F8 #2): render the rule's current condition (as ingested) against a
      * re-expressed {@code modified} one, disclosing lossiness up front (study finding 8). The
