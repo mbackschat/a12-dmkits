@@ -47,6 +47,16 @@
                 }
               },
               {
+                "type": "Field",
+                "id": "/Project/Date",
+                "name": "Date",
+                "Field": {
+                  "fieldType": {
+                    "type": "StringType"
+                  }
+                }
+              },
+              {
                 "type": "Group",
                 "id": "/Project/Milestones",
                 "name": "Milestones",

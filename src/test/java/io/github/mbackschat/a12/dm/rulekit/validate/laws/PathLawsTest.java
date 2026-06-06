@@ -29,4 +29,13 @@ class PathLawsTest {
         KernelLaws.acceptsProject("/Project", "../ProjectName",
                 "FieldFilled(ProjectName) And Sum(Milestones*/Budget) > 0");
     }
+
+    @Test
+    void aFieldNamedLikeAKeywordMustBeSingleQuotedInAPath() {
+        // the project fixture has a field literally named "Date" (a language keyword)
+        // unquoted → the parser reads the keyword and rejects
+        KernelLaws.rejectsProject("/Project", "../Date", "FieldFilled(Date)", "MVK_UNEXPECTED_TOKEN");
+        // single-quoting it makes it a plain identifier → accepted
+        KernelLaws.acceptsProject("/Project", "../Date", "FieldFilled('Date')");
+    }
 }
