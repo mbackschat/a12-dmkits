@@ -26,6 +26,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListPredicate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LengthOf;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ListAggregate;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Concatenation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rounding;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral;
@@ -103,6 +104,8 @@ final class ExplanationTreeBuilder {
             // rounding nests the expression it rounds — recurse into it
             case Rounding r -> List.of(new RuleExplanation.Node(r.operatorId(), renderer.render(r),
                     operand(r.operand())));
+            // concatenation has no operator keyword (the + is intrinsic) — flatten its parts' nodes
+            case Concatenation c -> c.parts().stream().flatMap(p -> operand(p).stream()).toList();
         };
     }
 

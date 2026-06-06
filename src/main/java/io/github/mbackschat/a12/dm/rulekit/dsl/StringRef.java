@@ -31,6 +31,21 @@ public record StringRef(FieldRef field) {
         return new ComparisonCondition(field.value(), CompareOp.NE, other.field.value());
     }
 
+    /** This field as a string expression — the entry point for concatenation ({@code asString().plus(…)}). */
+    public StringExpr asString() {
+        return new StringExpr(field.value());
+    }
+
+    /** {@code [this] == <string expression>}, e.g. against a {@code [First] + " " + [Last]} concatenation. */
+    public Condition eq(StringExpr other) {
+        return new ComparisonCondition(field.value(), CompareOp.EQ, other.expression());
+    }
+
+    /** {@code [this] != <string expression>} — the consistency form (stored name vs a derived one). */
+    public Condition ne(StringExpr other) {
+        return new ComparisonCondition(field.value(), CompareOp.NE, other.expression());
+    }
+
     /** {@code Length(field)} as a numeric expression for comparison. */
     public NumberExpr length() {
         return new NumberExpr(new LengthOf(field));

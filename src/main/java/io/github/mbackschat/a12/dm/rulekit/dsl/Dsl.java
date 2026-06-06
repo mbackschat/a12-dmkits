@@ -148,6 +148,11 @@ public final class Dsl {
         return new NumberExpr(NumberLiteral.of(literal));
     }
 
+    /** A string literal as a string expression — e.g. a concatenation part ({@code first.plus(text(" "))}). */
+    public static StringExpr text(String literal) {
+        return new StringExpr(new StringLiteral(literal));
+    }
+
     /** {@code CustomCondition <Name>} — the app-defined escape hatch (KERNEL-SEMANTICS §14). */
     public static Condition customCondition(String name) {
         return new CustomConditionRef(name);

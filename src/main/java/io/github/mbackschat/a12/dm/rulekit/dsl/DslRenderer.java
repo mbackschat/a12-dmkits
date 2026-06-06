@@ -260,6 +260,8 @@ public final class DslRenderer {
                     + "(" + renderArg(s.date()) + ", " + s.amount() + ")";
             case Arithmetic a -> render(a.left()) + " " + a.op().symbol() + " " + render(a.right());
             case Rounding r -> keyword(r.operatorId()) + "(" + render(r.operand()) + ", " + r.decimalPlaces() + ")";
+            case Concatenation c -> c.parts().stream().map(this::render)
+                    .collect(java.util.stream.Collectors.joining(" + "));
         };
     }
 

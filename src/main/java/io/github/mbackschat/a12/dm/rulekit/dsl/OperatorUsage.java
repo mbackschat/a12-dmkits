@@ -98,6 +98,8 @@ public final class OperatorUsage {
                 ops.add(r.operatorId());
                 collect(r.operand(), ops);
             }
+            // concatenation's + is intrinsic (no catalog keyword) — just recurse into the parts
+            case Concatenation c -> c.parts().forEach(p -> collect(p, ops));
         }
     }
 

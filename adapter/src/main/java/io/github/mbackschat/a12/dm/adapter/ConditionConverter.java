@@ -35,8 +35,10 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListCondi
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.FieldIdOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.GroupOperationName;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.CalcOp;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.LogOp;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.OpListOperationName;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.OperationType;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.PointInTimeOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ValueListConditionName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.ast.ASTVisitor;
@@ -55,6 +57,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RepetitionNotUniqueCondition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringRef;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
@@ -699,7 +702,43 @@ final class ConditionConverter {
                 default -> throw unsupported("string field comparison operator " + op, origin);
             };
         }
+        // [field] == / != ([a] + " " + [b]) — string concatenation on the right (a string-typed composite)
+        if (right instanceof ICompositeOperation comp && comp.getType() == OperationType.STRING) {
+            StringExpr concat = convertConcatenation(comp);
+            return switch (op) {
+                case EQ -> left.eq(concat);
+                case NE -> left.ne(concat);
+                default -> throw unsupported("string concatenation comparison operator " + op, origin);
+            };
+        }
         throw unsupported("string comparison against a non-field, non-constant operand", origin);
+    }
+
+    /** {@code [a] + " " + [b]} — the kernel's string-typed {@code +} composite, flattened into a concatenation. */
+    private StringExpr convertConcatenation(ICompositeOperation comp) {
+        if (comp.getCalcOp() != CalcOp.ADD) {
+            throw unsupported("string composite with operator " + comp.getCalcOp(), comp);
+        }
+        List<IOperation> ops = comp.getOperations();
+        StringExpr acc = stringOperand(ops.get(0), comp);
+        for (int i = 1; i < ops.size(); i++) {
+            acc = acc.plus(stringOperand(ops.get(i), comp));
+        }
+        return acc;
+    }
+
+    /** One operand of a concatenation: a string literal, a string field value, or a nested concatenation. */
+    private StringExpr stringOperand(IOperation op, Object origin) {
+        if (op instanceof IConstantOperation constant) {
+            return Dsl.text(constant.getValue());
+        }
+        if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
+            return model.str(field.getField().getFullName()).asString();
+        }
+        if (op instanceof ICompositeOperation nested && nested.getType() == OperationType.STRING) {
+            return convertConcatenation(nested);
+        }
+        throw unsupported("string concatenation operand " + op.getClass().getSimpleName(), origin);
     }
 
     /** {@code [field -> Category] == / != "value"} or {@code … == [other -> Category]} (category-vs-category). */

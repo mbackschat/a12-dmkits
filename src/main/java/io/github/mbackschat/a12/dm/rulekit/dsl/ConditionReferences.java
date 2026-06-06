@@ -99,6 +99,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 collect(a.right(), fields, groups);
             }
             case Rounding r -> collect(r.operand(), fields, groups);
+            case Concatenation c -> c.parts().forEach(p -> collect(p, fields, groups));
         }
     }
 
