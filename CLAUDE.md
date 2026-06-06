@@ -1,4 +1,4 @@
-# a12-rulekit — project instructions
+# a12-dmkits — project instructions
 
 Design and rationale live under [`docs/`](docs/) — **[`docs/README.md`](docs/README.md) indexes every document** (the proposal, the kernel findings/notes, the CI-locked MVK ledger, the API/DSL/grammar surveys, the corpus analysis, and the API experience study). Read it to find the right doc; the conventions below stay here.
 

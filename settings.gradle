@@ -1,4 +1,4 @@
-rootProject.name = 'a12-rulekit'
+rootProject.name = 'a12-dmkits'
 
 // modelkit (docs/MODELKIT-PROPOSAL / ARCHITECTURE §5.2): the standalone, Jackson-only document-model
 // *structure* builder. Its own module so the structure⊥dsl boundary (D10) is compiler-enforced — its

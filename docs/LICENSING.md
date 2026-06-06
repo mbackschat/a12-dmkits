@@ -1,4 +1,4 @@
-# a12-rulekit — licensing & IP
+# a12-dmkits — licensing & IP
 
 The settled licensing decision and the reasoning behind it. The proposal's [§19](PROJECT-PROPOSAL.md) states the decision in one line and points here for the full analysis.
 
@@ -7,7 +7,7 @@ The settled licensing decision and the reasoning behind it. The proposal's [§19
 - **rulekit source — MIT.** Every file in this repository is rulekit's own original work and ships **no kernel binary**, so the source carries no copyleft entanglement. MIT keeps the whole A12-consuming repo family consistent (`a12-kernel-demo` and `a12-kernel-bootstrap` are both MIT © mbackschat).
 - **The bundled CLI distributable — EUPL-1.2.** The standalone CLI (N10) embeds the kernel for a zero-install experience; the moment kernel bytecode is in a thing we hand out, that *artifact* must be offered under EUPL-1.2. rulekit's source stays MIT regardless.
 
-The governing rule, one line: **MIT for our source that resolves the kernel at build time; EUPL-1.2 for any artifact in which we bundle the kernel.** This same rule covers `a12-rulekit`, `a12-kernel-demo`, and the future CLI.
+The governing rule, one line: **MIT for our source that resolves the kernel at build time; EUPL-1.2 for any artifact in which we bundle the kernel.** This same rule covers `a12-dmkits`, `a12-kernel-demo`, and the future CLI.
 
 ## Why this is sound — the facts
 

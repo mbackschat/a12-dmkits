@@ -1,4 +1,4 @@
-# a12-rulekit docs — index
+# a12-dmkits docs — index
 
 What each document under `docs/` holds, so you can jump to the right one. This is an *index*, not policy: the project's working conventions (language, fixture sourcing, coding style, documentation discipline, testing strategy, build) live in [`../CLAUDE.md`](../CLAUDE.md).
 

@@ -1,9 +1,9 @@
 ---
 name: run-rulekit-eval
-description: Run the a12-rulekit self-sufficiency eval / Layer-2 benchmark correctly. Use this whenever you (the main assistant) are about to run, resume, or score the N6 eval in this repo — e.g. the user says "run the benchmark", "run the eval", "re-run T4". It loads the protocol guardrails (clean subagent, material boundary, neutral prompts, pinned model, cost model, targeted re-runs) and the run procedure. This is the OPERATOR'S playbook — it is NOT shipped material and must never be given to the eval's subagents (those get only the self-describing CLI + the N1 skill; the CLI exposes the operator catalog via `cli operators`).
+description: Run the a12-dmkits self-sufficiency eval / Layer-2 benchmark correctly. Use this whenever you (the main assistant) are about to run, resume, or score the N6 eval in this repo — e.g. the user says "run the benchmark", "run the eval", "re-run T4". It loads the protocol guardrails (clean subagent, material boundary, neutral prompts, pinned model, cost model, targeted re-runs) and the run procedure. This is the OPERATOR'S playbook — it is NOT shipped material and must never be given to the eval's subagents (those get only the self-describing CLI + the N1 skill; the CLI exposes the operator catalog via `cli operators`).
 ---
 
-# Running the a12-rulekit self-sufficiency eval (N6)
+# Running the a12-dmkits self-sufficiency eval (N6)
 
 Operator's playbook. **The guidelines live once in [`docs/EVAL-SPEC.md`](../../../docs/EVAL-SPEC.md) — read §5 (protocol) and §8a/§8b/§8c (cost, targeted re-runs, architecture) before running.** This file is the in-context checklist + the non-negotiables; the spec carries the detail and rationale. Results go in [`eval/RESULTS.md`](../../../eval/RESULTS.md).
 

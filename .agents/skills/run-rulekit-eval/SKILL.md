@@ -1,9 +1,9 @@
 ---
 name: run-rulekit-eval
-description: Run the a12-rulekit self-sufficiency eval / Layer-2 benchmark correctly. Use whenever you are about to run, resume, or score the N6 eval in this repo (e.g. "run the benchmark", "run the eval", "re-run T4"). It enforces the protocol guardrails (clean subagent, material boundary, neutral prompts, pinned model, cost model, targeted re-runs). The full procedure is maintained once, in the Claude skill — this file points to it.
+description: Run the a12-dmkits self-sufficiency eval / Layer-2 benchmark correctly. Use whenever you are about to run, resume, or score the N6 eval in this repo (e.g. "run the benchmark", "run the eval", "re-run T4"). It enforces the protocol guardrails (clean subagent, material boundary, neutral prompts, pinned model, cost model, targeted re-runs). The full procedure is maintained once, in the Claude skill — this file points to it.
 ---
 
-# Running the a12-rulekit self-sufficiency eval (N6)
+# Running the a12-dmkits self-sufficiency eval (N6)
 
 This skill is intentionally a **pointer**, to avoid drift between agents. The canonical, maintained procedure — guardrails, run steps, cost model, and how to read results honestly — lives in **one place**:
 

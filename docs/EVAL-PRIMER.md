@@ -1,4 +1,4 @@
-# a12-rulekit — LLM eval primer & glossary
+# a12-dmkits — LLM eval primer & glossary
 
 A gentle on-ramp to the self-sufficiency eval: *the idea* (below) plus a [glossary](#glossary) of terms. The detail lives elsewhere — **method, scoring, task suite, runbook** in [`EVAL-SPEC.md`](EVAL-SPEC.md); **measured results** in [`../eval/RESULTS.md`](../eval/RESULTS.md).
 

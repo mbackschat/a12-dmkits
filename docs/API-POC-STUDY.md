@@ -502,7 +502,7 @@ Authoring direction: *"ENTERPRISE needs ≥ 2 add-ons"* → agent queries the in
 ## 8. Polyglot peek (N2, §13) 🔮 deferred (very-future, design-informing only — not on the near agenda) — the same catalog, a Zod-flavored skin
 
 ```typescript
-import { bind } from "@a12-rulekit/core";                       // reads the SAME catalog JSON + DM-JSON
+import { bind } from "@a12-dmkits/core";                       // reads the SAME catalog JSON + DM-JSON
 
 const m = bind(dmJson);
 const fee = m.num("/Subscription/Addons/MonthlyFee");

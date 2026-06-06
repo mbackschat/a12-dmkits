@@ -1,11 +1,13 @@
-# a12-rulekit
+# a12-dmkits
 
-A **model-aware**, typed, combinator-style **rule kit** for A12 Kernel validation- and computation-rule conditions — think *"jOOQ for the A12 validation DSL"*, including the reverse direction, since the kernel's own parser supplies it. It replaces fragile hand-written `errorCondition` strings with a typed builder that lets you:
+**Model-aware**, typed, combinator-style kits for the A12 Kernel document model. The mature kit, **rulekit**, targets validation- and computation-rule conditions — think *"jOOQ for the A12 validation DSL"*, including the reverse direction, since the kernel's own parser supplies it. It replaces fragile hand-written `errorCondition` strings with a typed builder that lets you:
 
 - **Author** rules through a typed, model-bound builder.
 - **Read** existing rule text back into the same typed representation.
 - **Modify** them with reviewable diffs that disclose any lossiness up front.
 - **Render & validate** against the real kernel — confirmed by the engine, not just plausible.
+
+A companion kit, **modelkit**, authors document-model *structure* (fields, groups, types, includes) and emits DM-JSON the kernel accepts — the same typed, kernel-confirmed approach applied to the model itself.
 
 Java first; a TypeScript twin is a deferred, design-informing milestone.
 

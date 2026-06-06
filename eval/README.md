@@ -1,4 +1,4 @@
-# a12-rulekit — self-sufficiency benchmark corpus
+# a12-dmkits — self-sufficiency benchmark corpus
 
 The curated task set for the N6 self-sufficiency eval. Method, scoring, and protocol live in [`../docs/EVAL-SPEC.md`](../docs/EVAL-SPEC.md); measured **results** are logged in [`RESULTS.md`](RESULTS.md) (dated, newest first); this directory holds the **corpus** and the **runner entry points** (`benchmark.workflow.js`).
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/mbackschat/a12-rulekit/schema/batch.schema.json",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/batch.schema.json",
   "title": "BatchOps",
   "description": "INPUT of `rulekit batch <ops.json>` — a JSON array of verb invocations run in one process. Each op's result echoes its `id`/`verb`/`args` so diagnostics are never mis-attributed.",
   "type": "array",

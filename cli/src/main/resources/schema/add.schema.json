@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/mbackschat/a12-rulekit/schema/add.schema.json",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/add.schema.json",
   "title": "AddRuleSpec",
   "description": "INPUT of `rulekit add <model.json> <rule-spec.json>` — the rule envelope to persist. The condition is validated against the real kernel before writing, and the persisted model is re-validated (so every declared message locale must be covered).",
   "type": "object",

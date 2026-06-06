@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/mbackschat/a12-rulekit/schema/explain.schema.json",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/explain.schema.json",
   "title": "RuleExplanation",
   "description": "Output of `rulekit explain` — a rule's condition projected for understanding. `operators` is the glossary (each distinct construct once, with meaning/gotchas); `tree` is the structure, and every tree node's `operator` is a BACKLINK into `operators[].id` (meanings are not repeated per node).",
   "type": "object",

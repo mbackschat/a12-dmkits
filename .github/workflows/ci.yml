@@ -23,7 +23,7 @@ jobs:
       - name: Checkout rulekit
         uses: actions/checkout@v4
         with:
-          path: a12-rulekit
+          path: a12-dmkits
 
       # The bootstrap clones the kernel sources as siblings under its parent dir, so checking it out
       # next to rulekit makes A12_ROOT = the workspace (the layout the script expects locally).
@@ -61,7 +61,7 @@ jobs:
         run: ./bootstrap.sh
 
       - name: Build & test rulekit (core + adapter + cli)
-        working-directory: a12-rulekit
+        working-directory: a12-dmkits
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
           # Public-repos-only Gradle home, as the README's build does (here it also gives a clean,

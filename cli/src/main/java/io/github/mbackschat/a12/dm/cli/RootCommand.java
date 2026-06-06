@@ -15,7 +15,7 @@ import picocli.CommandLine.Spec;
 @Command(
         name = "rulekit",
         mixinStandardHelpOptions = true,
-        version = "a12-rulekit CLI",
+        version = "a12-dmkits CLI",
         synopsisSubcommandLabel = "<verb>",
         description = "Typed, model-aware authoring & edit kit for A12 validation rules. JSON in / JSON out.",
         subcommands = {

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/mbackschat/a12-rulekit/schema/describe.schema.json",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/describe.schema.json",
   "title": "ModelCard",
   "description": "Output of `rulekit describe` — the model's fields (with kind, and scale/enum-domain where applicable) and groups (with repeatability). An agent's map of a model without reading raw DM-JSON.",
   "type": "object",

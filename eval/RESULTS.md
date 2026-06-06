@@ -1,4 +1,4 @@
-# a12-rulekit — eval & benchmark results log
+# a12-dmkits — eval & benchmark results log
 
 The dated record of self-sufficiency eval runs. **The method, scoring, task suite, and glossary live in [`../docs/EVAL-SPEC.md`](../docs/EVAL-SPEC.md)** — this file holds only *measured results*, because results churn every run while the spec should stay stable. Append new entries at the top of the probe log, each stamped with **date + time-of-day** (we run several per day). *The early 2026-06-05 single-probes predate per-run time-stamping — they are in session order, exact clock times unrecorded.*
 

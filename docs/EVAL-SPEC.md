@@ -1,4 +1,4 @@
-# a12-rulekit — self-sufficiency eval & benchmark (N6/N1)
+# a12-dmkits — self-sufficiency eval & benchmark (N6/N1)
 
 How we measure — and improve — whether rulekit's bundled material lets an LLM author and understand A12 rules **without the kernel's BA docs**. This operationalizes the existing requirement **N6** (semantic self-sufficiency, proposal §14) and drives **N1** (the LLM skill). The proposal states the intent; this spec is the method, the scoring, and the living task suite.
 
