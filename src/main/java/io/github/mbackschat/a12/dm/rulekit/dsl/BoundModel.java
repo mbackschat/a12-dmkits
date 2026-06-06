@@ -330,6 +330,10 @@ public final class BoundModel {
         return fieldList(Quantifier.NOT_EXACTLY_ONE_FIELD_FILLED, paths);
     }
 
+    public Condition moreThanOneFieldFilled(String... paths) {
+        return fieldList(Quantifier.MORE_THAN_ONE_FIELD_FILLED, paths);
+    }
+
     private Condition fieldList(Quantifier quantifier, String[] paths) {
         if (paths.length == 0) {
             throw new IllegalArgumentException(quantifier.operatorId() + " needs at least one field");

@@ -167,7 +167,6 @@ class KernelConstructParityTest {
                 "DateRangeExtractionOperationName.StartOfDateRange", "DateRangeExtractionOperationName.EndOfDateRange");
         put(m, "value-list date-range overlap — not yet modeled", "EntityListAndValueListConditionName.AtLeastOneDateRangeOverlaps");
         put(m, "value-consistency condition — not yet modeled", "EntityListAndValueListConditionName.ValueNotConsistent");
-        put(m, "field-list quantifier — not yet modeled", "EntityListConditionName.MoreThanOneFieldFilled");
         put(m, "count-of-value aggregate — not yet modeled", "EntityListOperationName.NumberOfValueInFields");
         put(m, "operand-list min/max — not yet modeled (distinct from field-list MaxValue/MinValue)",
                 "OpListOperationName.Max", "OpListOperationName.Min");

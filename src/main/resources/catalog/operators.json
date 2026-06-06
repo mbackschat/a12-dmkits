@@ -199,6 +199,17 @@
     "sinceKernel": "30.8.x"
   },
   {
+    "id": "MoreThanOneFieldFilled",
+    "kind": "predicate",
+    "keywords": { "en": "MoreThanOneFieldFilled", "de": "MehrAlsEinFeldAngegeben" },
+    "operands": [ { "type": "field-list" } ],
+    "returns": "boolean",
+    "meaning": "True iff two or more of the listed fields are filled. Also applies over a group scope (the fields inside the group).",
+    "constraints": [ "the operand is a list of field references, or a group whose fields are the scope" ],
+    "validExample": { "dsl": "MoreThanOneFieldFilled(CustomerName, ProductCode)", "note": "true when both are filled" },
+    "sinceKernel": "30.8.x"
+  },
+  {
     "id": "GroupFilled",
     "kind": "predicate",
     "keywords": { "en": "GroupFilled", "de": "KontextAngegeben" },

@@ -375,6 +375,11 @@ public final class Dsl {
         return fieldList(Quantifier.NOT_EXACTLY_ONE_FIELD_FILLED, first, rest);
     }
 
+    /** {@code MoreThanOneFieldFilled(f1, f2, …)} — true when two or more of the listed fields are filled. */
+    public static Condition moreThanOneFieldFilled(FieldOperand first, FieldOperand... rest) {
+        return fieldList(Quantifier.MORE_THAN_ONE_FIELD_FILLED, first, rest);
+    }
+
     /** {@code FieldValuesNotUnique(f1, f2, …)} — true when the listed values are not all distinct. */
     public static Condition fieldValuesNotUnique(FieldOperand first, FieldOperand... rest) {
         return fieldList(Quantifier.FIELD_VALUES_NOT_UNIQUE, first, rest);
@@ -420,6 +425,26 @@ public final class Dsl {
     /** {@code AtLeastOneFieldFilled(Group*)} — at least one field inside the group scope(s) is filled. */
     public static Condition atLeastOneFieldFilled(GroupListRef first, GroupListRef... rest) {
         return groupScopedFieldFill(Quantifier.AT_LEAST_ONE_FIELD_FILLED, first, rest);
+    }
+
+    /** {@code NotAllFieldsFilled(Group*)} — at least one field inside the group scope(s) is empty. */
+    public static Condition notAllFieldsFilled(GroupListRef first, GroupListRef... rest) {
+        return groupScopedFieldFill(Quantifier.NOT_ALL_FIELDS_FILLED, first, rest);
+    }
+
+    /** {@code FieldsNotCollectivelyFilled(Group*)} — the group scope's fields are partially filled. */
+    public static Condition fieldsNotCollectivelyFilled(GroupListRef first, GroupListRef... rest) {
+        return groupScopedFieldFill(Quantifier.FIELDS_NOT_COLLECTIVELY_FILLED, first, rest);
+    }
+
+    /** {@code NotExactlyOneFieldFilled(Group*)} — not exactly one field inside the group scope(s) is filled. */
+    public static Condition notExactlyOneFieldFilled(GroupListRef first, GroupListRef... rest) {
+        return groupScopedFieldFill(Quantifier.NOT_EXACTLY_ONE_FIELD_FILLED, first, rest);
+    }
+
+    /** {@code MoreThanOneFieldFilled(Group*)} — two or more fields inside the group scope(s) are filled. */
+    public static Condition moreThanOneFieldFilled(GroupListRef first, GroupListRef... rest) {
+        return groupScopedFieldFill(Quantifier.MORE_THAN_ONE_FIELD_FILLED, first, rest);
     }
 
     private static Condition groupScopedFieldFill(Quantifier q, GroupListRef first, GroupListRef... rest) {

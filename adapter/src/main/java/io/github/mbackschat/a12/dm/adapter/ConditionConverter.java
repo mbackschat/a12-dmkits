@@ -184,6 +184,7 @@ final class ConditionConverter {
                 case NotAllFieldsFilled -> model.notAllFieldsFilled(p);
                 case FieldsNotCollectivelyFilled -> model.fieldsNotCollectivelyFilled(p);
                 case NotExactlyOneFieldFilled -> model.notExactlyOneFieldFilled(p);
+                case MoreThanOneFieldFilled -> model.moreThanOneFieldFilled(p);
                 case FieldValuesNotUnique -> {
                     FieldRef[] keys = fieldRefs(paths);
                     yield Dsl.fieldValuesNotUnique(keys[0], Arrays.copyOfRange(keys, 1, keys.length));
@@ -211,6 +212,10 @@ final class ConditionConverter {
             case AllFieldsFilled -> groupScopedFieldFill(entities, Dsl::allFieldsFilled);
             case AtLeastOneFieldFilled -> groupScopedFieldFill(entities, Dsl::atLeastOneFieldFilled);
             case NoFieldFilled -> groupScopedFieldFill(entities, Dsl::noFieldFilled);
+            case NotAllFieldsFilled -> groupScopedFieldFill(entities, Dsl::notAllFieldsFilled);
+            case FieldsNotCollectivelyFilled -> groupScopedFieldFill(entities, Dsl::fieldsNotCollectivelyFilled);
+            case NotExactlyOneFieldFilled -> groupScopedFieldFill(entities, Dsl::notExactlyOneFieldFilled);
+            case MoreThanOneFieldFilled -> groupScopedFieldFill(entities, Dsl::moreThanOneFieldFilled);
             default -> throw unsupported("group-list condition " + name, entityList);
         };
     }

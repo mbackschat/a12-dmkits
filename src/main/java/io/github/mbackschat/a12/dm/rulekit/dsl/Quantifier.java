@@ -11,6 +11,7 @@ public enum Quantifier {
     NOT_ALL_FIELDS_FILLED("NotAllFieldsFilled"),
     FIELDS_NOT_COLLECTIVELY_FILLED("FieldsNotCollectivelyFilled"),
     NOT_EXACTLY_ONE_FIELD_FILLED("NotExactlyOneFieldFilled"),
+    MORE_THAN_ONE_FIELD_FILLED("MoreThanOneFieldFilled"),
     FIELD_VALUES_NOT_UNIQUE("FieldValuesNotUnique");
 
     private final String operatorId;

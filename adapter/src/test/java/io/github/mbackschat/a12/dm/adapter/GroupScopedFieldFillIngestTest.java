@@ -90,6 +90,41 @@ class GroupScopedFieldFillIngestTest {
     }
 
     @Test
+    void roundTripsTheNotAndMoreThanOneQuantifiersOverAGroupScope() {
+        BoundModel m = order();
+        String scope = "/Order/ShippingAddress";   // a bare group — the fields inside it are the scope
+        Condition notAll = m.field("/Order/CustomerName").filled()
+                .and(Dsl.notAllFieldsFilled(m.flattenGroup(scope)));
+        Condition notColl = m.field("/Order/CustomerName").filled()
+                .and(Dsl.fieldsNotCollectivelyFilled(m.flattenGroup(scope)));
+        Condition notOne = m.field("/Order/CustomerName").filled()
+                .and(Dsl.notExactlyOneFieldFilled(m.flattenGroup(scope)));
+        Condition moreOne = m.field("/Order/CustomerName").filled()
+                .and(Dsl.moreThanOneFieldFilled(m.flattenGroup(scope)));
+
+        KernelAdapter adapter = KernelAdapter.of(m
+                .add(orderRule(m, "NotAllScopeRule", notAll))
+                .add(orderRule(m, "NotCollScopeRule", notColl))
+                .add(orderRule(m, "NotOneScopeRule", notOne))
+                .add(orderRule(m, "MoreOneScopeRule", moreOne)));
+
+        assertTrue(RENDER.render(notAll).contains("NotAllFieldsFilled(/Order/ShippingAddress)"), RENDER.render(notAll));
+        assertEquals(RENDER.render(notAll), RENDER.render(converted(adapter.ingest("/Order/NotAllScopeRule"))));
+        assertEquals(RENDER.render(notColl), RENDER.render(converted(adapter.ingest("/Order/NotCollScopeRule"))));
+        assertEquals(RENDER.render(notOne), RENDER.render(converted(adapter.ingest("/Order/NotOneScopeRule"))));
+        assertEquals(RENDER.render(moreOne), RENDER.render(converted(adapter.ingest("/Order/MoreOneScopeRule"))));
+    }
+
+    @Test
+    void roundTripsMoreThanOneFieldFilledOverAFieldList() {
+        BoundModel m = order();
+        // the field-list form (not a group scope): MoreThanOneFieldFilled(a, b)
+        Condition c = Dsl.moreThanOneFieldFilled(m.field("/Order/CustomerName"), m.field("/Order/ProductCode"));
+        KernelAdapter adapter = KernelAdapter.of(m.add(orderRule(m, "MoreOneFieldRule", c)));
+        assertEquals(RENDER.render(c), RENDER.render(converted(adapter.ingest("/Order/MoreOneFieldRule"))));
+    }
+
+    @Test
     void groupScopedFieldFillIsKernelValid() {
         BoundModel m = order();
         Condition c = m.field("/Order/CustomerName").filled()
