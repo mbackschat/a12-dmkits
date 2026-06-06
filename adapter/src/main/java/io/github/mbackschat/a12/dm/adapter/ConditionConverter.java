@@ -11,6 +11,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.ICompositeC
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.ICondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IEntityListAndValueListCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IEntityListCondition;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IRootGroupCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IValueListCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IBoolConstantOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IConstantOperation;
@@ -85,6 +86,9 @@ final class ConditionConverter {
         }
         if (node instanceof IEntityListCondition entityList) {
             return convertEntityList(entityList);
+        }
+        if (node instanceof IRootGroupCondition rootGroup) {
+            return convertRootGroup(rootGroup);
         }
         if (node instanceof IEntityListAndValueListCondition entityAndValueList) {
             return convertEntityListAndValueList(entityAndValueList);
@@ -164,6 +168,20 @@ final class ConditionConverter {
         GroupListRef[] scopes = entities.stream()
                 .map(e -> model.flattenGroup(reconstructStarPath(e))).toArray(GroupListRef[]::new);
         return factory.apply(scopes[0], Arrays.copyOfRange(scopes, 1, scopes.length));
+    }
+
+    /**
+     * A root-group presence predicate — the kernel routes {@code GroupFilled}/{@code GroupNotFilled} on a
+     * <em>root</em> group (e.g. {@code /MVK}) to {@code IRootGroupCondition} (a {@code Vordruck} check).
+     * Maps to the same {@link io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef#filled()} as a nested group.
+     */
+    private Condition convertRootGroup(IRootGroupCondition root) {
+        GroupRef group = model.group("/" + root.getRootGroupName());
+        return switch (root.getConditionName()) {
+            case MindestensEinVordruckAngegeben -> group.filled();   // GroupFilled(/RootGroup)
+            case KeinVordruckAngegeben -> group.notFilled();         // GroupNotFilled(/RootGroup)
+            default -> throw unsupported("root-group condition " + root.getConditionName(), root);
+        };
     }
 
     /** Resolve group paths to {@code GroupRef}s and apply a {@code (first, rest…)} quantifier factory. */
