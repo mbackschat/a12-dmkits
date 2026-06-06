@@ -27,10 +27,11 @@ import org.junit.jupiter.api.Test;
  *   <tr><td>confirm</td><td>{@code [TermsConfirmed] != True}</td><td>fires — treated as {@code False}</td></tr>
  *   <tr><td>boolean</td><td>{@code [ExpressShipping] == True}</td><td>not evaluated</td></tr>
  *   <tr><td>string</td><td>{@code [ProductCode] == "ABC"}</td><td>not evaluated</td></tr>
+ *   <tr><td>date</td><td>{@code DifferenceInDays(OrderDate, DeliveryDate) < 0}</td><td>not evaluated</td></tr>
  * </table>
  *
- * <p>The empty <b>date</b> case (also "not evaluated") additionally needs the date-literal syntax of
- * KERNEL-FINDINGS §6 and is deferred to its own increment.
+ * <p>The empty <b>date</b> case is exercised via {@code DifferenceInDays} (a date-to-date comparison),
+ * sidestepping the date-literal syntax of KERNEL-FINDINGS §6.
  */
 class EmptyValueLawsTest {
 
@@ -101,6 +102,24 @@ class EmptyValueLawsTest {
         assertTrue(RuntimeLaws.fires(model, "CODE_ABC", ORDER_ROW,
                 Map.of("/Order/CustomerName", "Acme", "/Order/ProductCode", "ABC")),
                 "a matching string value fires");
+    }
+
+    @Test
+    void emptyDateIsNotEvaluated() {
+        // an empty DATE is not evaluated (like string/boolean, unlike number=0). DifferenceInDays avoids
+        // the §6 date-literal syntax: DifferenceInDays(a, b) = b - a (verified), so Delivery before Order
+        // gives a negative diff.
+        String model = RuntimeLaws.withRule(ORDER, "/Order", "DeliveryBeforeOrder", "../OrderDate",
+                "DELIVERY_BEFORE", "DifferenceInDays(OrderDate, DeliveryDate) < 0");
+
+        // both dates filled, DeliveryDate before OrderDate → diff < 0 → fires
+        assertTrue(RuntimeLaws.fires(model, "DELIVERY_BEFORE", ORDER_ROW, Map.of("/Order/CustomerName", "Acme",
+                "/Order/OrderDate", "2023-06-10", "/Order/DeliveryDate", "2023-06-05")),
+                "with both dates filled the comparison evaluates and fires");
+        // OrderDate empty (filled row) → the date comparison is NOT evaluated → does not fire
+        assertFalse(RuntimeLaws.fires(model, "DELIVERY_BEFORE", ORDER_ROW, Set.of("/Order/OrderDate"),
+                Map.of("/Order/CustomerName", "Acme", "/Order/DeliveryDate", "2023-06-05")),
+                "an empty date is not evaluated, so the comparison does not fire (unlike an empty number → 0)");
     }
 
     @Test

@@ -31,6 +31,17 @@ class PathLawsTest {
     }
 
     @Test
+    void aStarOnTheRelativeUpNavigationIsRejected_useAbsolute() {
+        // "In a relative path with ..-notation, the '..' parts may not use the '*'." Starring the ..
+        // itself (to reach all repetitions of an ancestor repeatable) → rejected; use the absolute form.
+        KernelLaws.rejectsProject("/Project/Milestones/Tasks", "../Effort",
+                "FieldFilled(Effort) And Sum(..*/Budget) > 0", "MVK_INVALID_WILDCARD_REL");
+        // a star on a *named* segment (not the ..) is fine, and the absolute form expresses the intent
+        KernelLaws.acceptsProject("/Project/Milestones/Tasks", "../Effort",
+                "FieldFilled(Effort) And Sum(/Project/Milestones*/Budget) > 0");
+    }
+
+    @Test
     void aFieldNamedLikeAKeywordMustBeSingleQuotedInAPath() {
         // the project fixture has a field literally named "Date" (a language keyword)
         // unquoted → the parser reads the keyword and rejects
