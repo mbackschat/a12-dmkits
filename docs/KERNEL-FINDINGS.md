@@ -8,6 +8,18 @@ Kernel-behavior facts **verified by experiment against kernel `30.8.1`** that ar
 
 The Boolean≠Confirm split is enforced at parse time with distinct codes: a Boolean compares only to `True`/`False` or another Boolean — anything else (e.g. a string) is **`MVK_INVALID_COMPARE_TO_YESNO`**; a Confirm compares only to `True` or another Confirm — `[Confirm] == False` and Boolean↔Confirm cross-comparisons are **`MVK_INVALID_COMPARE_TO_YES`**. "Not confirmed" is written `[Confirm] != True` (an unset confirm counts as not confirmed). *(Locked: `validate.laws.BooleanConfirmLawsTest`.)*
 
+## §1 supplement — Boolean three-state matrix (runtime, 2026-06-06)
+
+A `Boolean` has three distinct states (unset / `True` / `False`), and the runtime honors them as the spec says — verified in a filled row:
+
+| state | `== True` | `== False` | `FieldFilled` |
+|---|---|---|---|
+| unset | — | — | — |
+| `True` | ✓ | — | ✓ |
+| `False` | — | ✓ | ✓ |
+
+Traps pinned: `[Flag] == True` is **not** `FieldFilled(Flag)` (they diverge on a `False` value), and `[Flag] == False` ≠ "unchecked" (an unset Boolean satisfies neither equality). Contrast a Confirm, whose unset value *is* `False` (§2 supplement). *(Locked: `adapter.laws.BooleanThreeStateLawsTest`.)*
+
 ## §2 supplement — empty-as-0 is a *filled-row* behavior (runtime, 2026-06-06)
 
 KERNEL-SEMANTICS §2 says an empty **number** field has `0` substituted in a comparison, so `[Quantity] < 100` fires on an empty Quantity. Verified against the **runtime** engine (`IDocumentRtService.validateFull`) with one refinement the spec doesn't spell out: **the substitution applies to an empty field within a *filled* group row** — a row made non-empty by at least one sibling value. An **entirely empty row** (a group instance with no field values at all) is **not evaluated**, so the same rule does *not* fire there.
