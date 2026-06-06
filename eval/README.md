@@ -36,7 +36,7 @@ Claude Code (the main loop) never runs the agents itself — it **orchestrates**
 
 The script is three phases over `model × task × k`:
 
-1. **Produce** — one **clean subagent** per (model, task, run), model pinned. Neutral prompt + ONLY the self-describing CLI + the model file (no skill/docs/source — the material boundary *is* the measurement). Returns a candidate rule (authoring) or an explanation (comprehension) via StructuredOutput.
+1. **Produce** — one **clean subagent** per (model, task, run), model pinned. Neutral prompt + ONLY the self-describing CLI + the model file (no skill/docs/source — the material boundary *is* the measurement). This is the **bare-tool** mode and it is the only one wired here — it measures whether the CLI's self-explaining surface *alone* suffices; the skill-equipped **production** mode is a separate boundary (EVAL-SPEC §2a). Returns a candidate rule (authoring) or an explanation (comprehension) via StructuredOutput.
 2. **Recheck** — **one** warm-JVM `cli batch` re-validates every authored candidate against the real kernel (the agents' self-reported `kernelAccepted` is not trusted). This is `batch`'s reason to exist: N checks in one process, paying the kernel's StringTemplate warm-up once.
 3. **Judge** — a separate agent scores each kernel-valid candidate for **semantic equivalence** to the gold (authoring) / correctness vs the rubric (comprehension) — catching kernel-valid-but-*wrong* rules (e.g. inverted polarity). `pass = kernel-valid AND judge-equivalent`.
 

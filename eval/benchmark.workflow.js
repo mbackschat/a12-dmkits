@@ -3,7 +3,7 @@
 // deterministic Layer-1 backbone (golds validate / comprehension rules ingest) is EvalGoldOracleTest.
 //
 // What it measures: given ONLY the shipped material (the self-describing CLI launcher — verbs, --help,
-// `cli operators`; no raw catalog file, no skill), can a
+// `cli operators`; no raw catalog file, no skill — this is BARE-TOOL mode, EVAL-SPEC §2a), can a
 // clean agent (a) AUTHOR a rule the kernel accepts AND that is semantically right, and (b) READ BACK
 // foreign rules correctly? Kernel-accepts is necessary but NOT sufficient — the kernel accepts an
 // inverted-polarity rule too, so a judge re-scores semantic correctness against the task gold/rubric.

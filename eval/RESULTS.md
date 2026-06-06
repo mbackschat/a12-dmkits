@@ -43,9 +43,11 @@ First full sweep (now **T1–T8**, T8 added) after this session's large converte
 
 After fixing the judge prompt (it now knows bare field names resolve **up** ancestor groups — GAP 1 from the 19:06 run), a fresh **T1-only** re-run (`w8700u6m0`, 5 agents) flips **opus T1 → 2/2**. Both judges now resolve bare `[Tier]` to `/Subscription/Tier` and rule the candidates equivalent to the gold (*"the only difference is path notation … both denote the same field"*). Confirms the 19:06 T1 0/2 was a **judge false-negative**, not an authoring gap — opus authors T1 correctly from the self-describing CLI alone. (Did not re-judge sonnet's separate `FieldFilled(Name)` vs `GroupFilled(Addons)` guard divergence — that one is a real, subtle slip, left as-is.)
 
-### 2026-06-05 19:06 CEST — full pass@k under the self-explaining CLI + trimmed skill (opus + sonnet, k=2)
+### 2026-06-05 19:06 CEST — full pass@k under the self-explaining CLI, bare-tool (opus + sonnet, k=2)
 
-First run under the **new material boundary**: produce agents get ONLY the self-describing CLI (`--help` / `manifest` / `cli operators`) — **no `operators.json` hand-off** — plus the judgment-only (trimmed) skill. Question: did dropping the raw catalog + trimming the skill regress self-sufficiency? Run `wxltzni75` (57 agents, 1.17M subagent tokens, 7m43s).
+First run under the **new material boundary**: produce agents get ONLY the self-describing CLI (`--help` / `manifest` / `cli operators`) and the model file — **no `operators.json` hand-off, and no skill** (`benchmark.workflow.js` forbids `*.md`; it always has). Question: did dropping the raw catalog hand-off in favor of the self-describing CLI regress self-sufficiency? Run `wxltzni75` (57 agents, 1.17M subagent tokens, 7m43s).
+
+> **Correction (2026-06-07):** this entry originally read "*plus the judgment-only (trimmed) skill*." That was wrong — the benchmark workflow has never handed the skill to the produce agents (git-verified across all 7 commits; the prompt forbids `*.md`). The phrasing conflated a dual-purpose commit (`5ffc660` trimmed `skill/SKILL.md` *and* dropped the catalog file from the workflow) — only the catalog change touched what agents see. This run was **bare-tool**: CLI-self-describing, no raw catalog, no skill. See EVAL-SPEC §2 "Two run modes."
 
 | Task | opus | sonnet | family |
 |---|---|---|---|
@@ -57,7 +59,7 @@ First run under the **new material boundary**: produce agents get ONLY the self-
 | T6 | 2/2 | 2/2 | authoring — value-list + boolean |
 | T7 | 2/2 | 2/2 | comprehension |
 
-**Verdict: no regression from the self-explaining changes.** With the raw catalog withheld, agents discovered the vocabulary via `cli operators` and authored T2/T3/T5/T6 perfectly and read T7 perfectly — so the catalog-via-CLI swap and the skill trim hold. The two non-perfect cells are *not* caused by the change:
+**Verdict: no regression from the self-explaining changes.** With the raw catalog withheld, agents discovered the vocabulary via `cli operators` and authored T2/T3/T5/T6 perfectly and read T7 perfectly — so the catalog-via-CLI swap holds (this bare-tool run does not exercise the skill, so it says nothing about the skill trim). The two non-perfect cells are *not* caused by the change:
 
 - **T1 0/2 — mostly a judge false-negative (eval-design), kernel-verified.** Every opus judge marked the candidate non-equivalent *solely* because it used bare `[Tier]` instead of absolute `[/Subscription/Tier]`, claiming bare resolves to a non-existent `/Subscription/Addons/Tier`. **Not so:** `cli check` proves bare `[Tier]` from the `/Subscription/Addons` rule context is **valid** and binds to the ancestor `/Subscription/Tier` (a bogus bare name → `MVK_INVALID_ENTITY`) — bare names **walk up ancestor groups**. So opus's candidates are correct; the judge's path model is wrong (GAP 1). Sonnet additionally used `FieldFilled(Name)` as the row guard instead of `GroupFilled(Addons)` — a genuine, subtle divergence (they differ when an add-on row has an empty Name), so sonnet's T1 misses are partly real.
 - **T4 1/2 — the known empty-number-guard subtlety** (consistent with prior runs, not new). The passing run guards `FieldFilled(Quantity)`; the failing run omits it, so per KERNEL-SEMANTICS §2 the empty number reads as 0 and the rule fires on an empty Quantity — genuinely ≠ the gold. The `RK_UNGUARDED_NUMBER_COMPARISON` lint does **not** fire here (it skips field-vs-aggregate), so the agent gets no nudge.

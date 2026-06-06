@@ -16,14 +16,39 @@ How we measure — and improve — whether rulekit's bundled material lets an LL
 
 The agent gets exactly the **shipped** material for the persona under test, and **nothing else**:
 
-- **BA/CLI path:** the **self-describing CLI** — its verbs plus their `--help`/`manifest`/`schema` output and the operator catalog reached through **`cli operators`** (since 2026-06-05; no separate `operators.json` hand-off) — and the **N1 skill** (`skill/SKILL.md`). The agent uses the `installDist` launcher (the JVM "java starter" — current code, identical behavior to native; the native binary is a stale spike artifact, never the eval vehicle). *(The bare-tool benchmark workflow withholds even the skill — it measures whether the self-describing CLI **alone** suffices.)*
+- **BA/CLI path:** the **self-describing CLI** — its verbs plus their `--help`/`manifest`/`schema` output and the operator catalog reached through **`cli operators`** (since 2026-06-05; no separate `operators.json` hand-off) — and, *in production*, the **N1 skill** (`skill/SKILL.md`). The agent uses the `installDist` launcher (the JVM "java starter" — current code, identical behavior to native; the native binary is a stale spike artifact, never the eval vehicle). Whether the skill is included is the **run-mode** distinction in §2a.
 - **Developer path:** rulekit-the-library's **public API + javadoc** + the catalog, with the **compiler + lint (`RuleDiagnostics`)** as the feedback (N10 — no bespoke vehicle). *Harness:* a clean agent in a **git worktree** authors a rule via the typed builder and validates with `RuleValidator`, iterating against `javac`/gradle. (First probe 2026-06-05 — see [`../eval/RESULTS.md`](../eval/RESULTS.md); harness distinct from the CLI Workflow runner.)
 
 **Hard boundary — per persona** (no design notes, no answer keys; that's what makes the eval measure the *product*):
-- **BA/CLI:** only the CLI (which self-describes its operator catalog via `cli operators`) + the N1 skill — **not** rulekit's source, `docs/`, or tests.
+- **BA/CLI:** only the CLI (which self-describes its operator catalog via `cli operators`) + (in production mode) the N1 skill — **not** rulekit's source, `docs/`, or tests.
 - **Developer:** the public API **source + javadoc** + catalog + `README` *are* the material (that's what a library user sees) — but `skill/`, `docs/` (design notes), and **`eval/` (the golds)** are off-limits.
 
 Either way, reading the model file under test is allowed — it's the input.
+
+### 2a. Two run modes of the BA/CLI path — bare-tool vs production
+
+The BA/CLI persona has **two distinct material boundaries** that measure different things. They are easy to conflate (the RESULTS log did, once — see the 2026-06-05 19:06 correction); keep them separate.
+
+| Mode | The agent sees | The question it answers | Runnable today? |
+|---|---|---|---|
+| **Bare-tool** | self-describing CLI + the model file — **no skill, no catalog file, no docs** | Does the CLI's *self-explaining surface alone* let a cold agent discover the verbs/operators and author/read rules? (the discoverability bar in CLAUDE.md "Self-explaining surface") | ✅ **`eval/benchmark.workflow.js`** — the only wired Workflow; **every pass@k run in RESULTS has been this mode** |
+| **Production** | self-describing CLI + **`skill/SKILL.md`** + the model file | Does the *full shipped material* (the real BA/LLM experience) get polarity / iteration / the traps right? — this is the mode whose number moves when a **skill note** is added | ⚠️ **not a Workflow yet** — only ever measured by early **manual, n=1** probes (RESULTS "Add the skill" lift rows) |
+
+Why bare-tool is the default instrument, not an afterthought: CLAUDE.md's standing requirement is to **favor a self-explaining CLI over relying on the skill** — the skill must stay minimal and teach only *judgment* (polarity, the traps), never the verb/parameter catalog the tool should describe about itself. Bare-tool is the forcing function for that: it isolates **"does the tool describe itself?"** from **"does the judgment layer land?"**. So the two modes also split the worklist cleanly:
+
+- a bare-tool failure the **skill would fix** (a polarity flip, a missed iteration guard) → a **skill-worklist** item (N1), *not* a CLI defect;
+- a bare-tool failure about an **undiscoverable verb/param/operator** → a **CLI/catalog** defect (fix the self-description).
+
+`benchmark.workflow.js` has **always** been bare-tool: from its first commit the produce/explain prompts say *"Do NOT read any … `*.md` files"*, and the script never references `SKILL.md` (git-verified). To run **production mode** you must extend the workflow to inject the skill — the script has no filesystem access, so the main loop reads `skill/SKILL.md` and passes its contents inline via `args` (e.g. an `args.skill`), and the prompt hands that text to the agent while still forbidding docs/source/tests/golds/other `*.md`. Until that exists, *all* "skill lift" evidence is the early manual probes, not pass@k.
+
+**Decision (2026-06-07): keep the benchmark bare-tool; production mode stays defined-but-unwired.** Bare-tool is not a compromise — it is the instrument we *want*, for four reasons:
+
+1. **It enforces the self-explaining requirement.** CLAUDE.md's standing rule is to favor a self-explaining CLI over relying on the skill. Bare-tool is the forcing function: a miss a cold agent makes from the CLI alone is a **CLI/catalog defect to fix** (a missing `--help` detail, an operator without a usable example), not something to paper over by handing it the skill. A skill-equipped run would *mask* exactly the gaps we most want surfaced.
+2. **It measures the floor, honestly.** A real consumer may or may not have the skill loaded; bare-tool is the worst-case "just the binary" baseline. If that passes, the skill is pure upside.
+3. **It splits the worklist cleanly** (the two bullets above): a miss the skill would fix → a *skill* (N1) item; a miss about an undiscoverable verb/param/operator → a *CLI/catalog* item. A skill-equipped run can't make that distinction.
+4. **Comparability + simplicity:** every historical run is bare-tool, so the trend line stays intact, and there's no skill-injection plumbing to maintain.
+
+The accepted tradeoff: the benchmark then **never measures the skill notes** (e.g. the T1/T8 ones stay backed only by reasoning + the early manual probes). That's deliberate — we treat the minimal skill as judgment-layer *insurance* (polarity, the traps), not something needing continuous pass@k. Revisit only if a consumer appears that needs the skill-equipped number measured continuously; until then, leave production mode unwired.
 
 ## 3. Task families & scoring
 
@@ -153,7 +178,8 @@ WORKFLOW  (eval/benchmark.workflow.js)                — fan-out + scoring; ONE
   │   spawns N clean agents — model pinned, neutral prompt, material boundary enforced
   ▼
 CLEAN SUBAGENTS  (the instrument)                     — ISOLATED BY DESIGN (a first-time consumer)
-  see ONLY: the self-describing CLI launcher (verbs · --help · cli operators) + the N1 skill + the model file under test
+  see ONLY: the self-describing CLI launcher (verbs · --help · cli operators) + the model file under test
+            (bare-tool mode, §2a — the wired default; production mode would also inject skill/SKILL.md)
   return:  a candidate rule / an explanation, via StructuredOutput
 ```
 

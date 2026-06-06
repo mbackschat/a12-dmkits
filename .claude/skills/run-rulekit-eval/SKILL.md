@@ -1,6 +1,6 @@
 ---
 name: run-rulekit-eval
-description: Run the a12-dmkits self-sufficiency eval / Layer-2 benchmark correctly. Use this whenever you (the main assistant) are about to run, resume, or score the N6 eval in this repo — e.g. the user says "run the benchmark", "run the eval", "re-run T4". It loads the protocol guardrails (clean subagent, material boundary, neutral prompts, pinned model, cost model, targeted re-runs) and the run procedure. This is the OPERATOR'S playbook — it is NOT shipped material and must never be given to the eval's subagents (those get only the self-describing CLI + the N1 skill; the CLI exposes the operator catalog via `cli operators`).
+description: Run the a12-dmkits self-sufficiency eval / Layer-2 benchmark correctly. Use this whenever you (the main assistant) are about to run, resume, or score the N6 eval in this repo — e.g. the user says "run the benchmark", "run the eval", "re-run T4". It loads the protocol guardrails (clean subagent, material boundary, neutral prompts, pinned model, cost model, targeted re-runs) and the run procedure. This is the OPERATOR'S playbook — it is NOT shipped material and must never be given to the eval's subagents (in the wired **bare-tool** mode they get only the self-describing CLI + the model file — no skill; EVAL-SPEC §2a — and the CLI exposes the operator catalog via `cli operators`).
 ---
 
 # Running the a12-dmkits self-sufficiency eval (N6)
@@ -9,13 +9,13 @@ Operator's playbook. **The guidelines live once in [`docs/EVAL-SPEC.md`](../../.
 
 ## Two things not to confuse
 
-- This is the **operator's** playbook (main loop). **Never** give it, `docs/`, or source to the eval's subagents — they get ONLY the **self-describing CLI** (verbs + `--help`/`manifest`/`schema`/`cli operators` — the operator catalog is reached *through* the CLI, no raw `operators.json` hand-off) + the N1 skill ([`skill/SKILL.md`](../../../skill/SKILL.md), which **is** the material under test).
+- This is the **operator's** playbook (main loop). **Never** give it, `docs/`, or source to the eval's subagents. In the wired **bare-tool** mode (the only runnable one — `benchmark.workflow.js`, which forbids `*.md`) they get ONLY the **self-describing CLI** (verbs + `--help`/`manifest`/`schema`/`cli operators` — the operator catalog is reached *through* the CLI, no raw `operators.json` hand-off) + the model file. The N1 skill ([`skill/SKILL.md`](../../../skill/SKILL.md), the **material under test**) is added **only in production mode** (EVAL-SPEC §2a), which is **not wired yet** — to run it you inject the skill's contents inline via `args` (the script has no filesystem access). Don't claim a run measured the skill unless you ran production mode.
 - Run it **in the main loop, not a sub-agent** — orchestration needs shared context (write `RESULTS.md`, track cost, `resumeFromRunId`) and agent nesting is restricted; the isolation the eval needs is provided one layer down by the Workflow's clean subagents. Layers + data flow: EVAL-SPEC §8c.
 
 ## Guardrails — violating any silently invalidates the run (detail: EVAL-SPEC §1–§5)
 
 1. **Clean subagent** is the instrument — never self-evaluate.
-2. **Material boundary** — the subagent reads only the CLI (which self-describes its operator catalog via `cli operators`) + N1 skill + the model file under test; never source, `docs/`, the raw `operators.json`, or tests.
+2. **Material boundary** — the subagent reads only the CLI (which self-describes its operator catalog via `cli operators`) + the model file under test (bare-tool, the wired default), plus `skill/SKILL.md` *only* if you've explicitly enabled production mode (§2a); never the operator playbook, source, `docs/`, the raw `operators.json`, or tests.
 3. **Neutral prompt** — state the requirement, never hint at the technique; keep skill examples structurally distinct from tasks.
 4. **Pin the model** (`opus`/`sonnet`/`haiku`) explicitly; label results by tier.
 5. **Require a GAPS section** — that, not pass/fail, is the deliverable.
