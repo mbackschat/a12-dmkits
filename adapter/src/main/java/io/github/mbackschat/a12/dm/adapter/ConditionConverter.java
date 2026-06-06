@@ -376,6 +376,20 @@ final class ConditionConverter {
                 && entities.size() == 1 && !entities.get(0).isField()) {
             return Dsl.numberOfFilledGroups(model.group(entities.get(0).getFullName()));
         }
+        // Multi-field explicit scope, e.g. Sum(a, b) — each operand a plain field or a wildcard list.
+        if (entities.size() > 1 && entities.stream().allMatch(IEntityId::isField)) {
+            FieldOperand[] ops = entities.stream().map(this::toFieldOperand).toArray(FieldOperand[]::new);
+            FieldOperand[] rest = Arrays.copyOfRange(ops, 1, ops.length);
+            return switch (name) {
+                case Sum -> Dsl.sum(ops[0], rest);
+                case MaxValue -> Dsl.maxValue(ops[0], rest);
+                case MinValue -> Dsl.minValue(ops[0], rest);
+                case NumberOfDifferentValues -> Dsl.numberOfDifferentValues(ops[0], rest);
+                case NumberOfFilledFields ->
+                        Dsl.numberOfFilledFields(ops[0], ops[1], Arrays.copyOfRange(ops, 2, ops.length));
+                default -> throw unsupported("aggregate operator " + name + " over a multi-field scope", aggregate);
+            };
+        }
         if (entities.size() != 1 || !entities.get(0).isField()) {
             throw unsupported("aggregate " + name + " over a non-single-field scope", aggregate);
         }

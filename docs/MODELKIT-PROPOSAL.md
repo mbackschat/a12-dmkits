@@ -146,10 +146,10 @@ The §F spike ran (Q1–Q5, widened per owner direction with **Q4 betterbuilders
 
 | Corpus | Loadable models | Rules | Typed-converted | Understood (incl. correctly-Opaque) |
 |---|---|---|---|---|
-| kernel-mm metamodels | 15 / 15 | 553 | **470 (85%)** | **95%** (+53 CustomCondition, host-delegated, preserved verbatim) |
+| kernel-mm metamodels | 15 / 15 | 553 | **471 (85%)** | **95%** (+53 CustomCondition, host-delegated, preserved verbatim) |
 | A12 Tools apps (Corpus-1) | 43 / 107 | 200 | **111 (55%)** | — (64/107 not yet loadable — need the include resolver `F-RES`) |
 
-*Converter increments (2026-06-06), each round-trip + kernel-validity locked: (1) enum **field-to-field** comparison `[A] == [B]` / `!=` (+10; `adapter.EnumFieldComparisonIngestTest`); (2) **field-list × value-list quantifiers** — `(at least one / no / not all) of these fields' values in this value list`, string/enum lists with constant values (+12; `adapter.EntityListValueListIngestTest`); (3) **count aggregates** `NumberOfFilledFields` over a repetition list and `NumberOfFilledGroups` over a single repeatable group `Group*` (+12; `adapter.FilledCountIngestTest`) — the latter corrected a too-strict rulekit invariant (the kernel accepts the wildcard single-group form; see KERNEL-FINDINGS §2 supplement). kernel-mm 73.6%→79.7%.*
+*Converter increments (2026-06-06), each round-trip + kernel-validity locked, taking kernel-mm 73.6%→85.2%: (1) enum **field-to-field** comparison `[A] == [B]` / `!=` (+10; `EnumFieldComparisonIngestTest`); (2) **field-list × value-list quantifiers** — constant value lists (+12; `EntityListValueListIngestTest`) and entity-valued value lists, i.e. a field list checked against another field list (+22; `EntityValuedListIngestTest`); (3) **count aggregates** `NumberOfFilledFields` over a repetition list and `NumberOfFilledGroups` over a single repeatable group `Group*` (+12; `FilledCountIngestTest`) — the latter corrected a too-strict rulekit invariant (KERNEL-FINDINGS §2 supplement); (4) the **`Length(field)`** operand wrapper (+7; `LengthIngestTest`); (5) **`Sum` over an explicit multi-field scope** (+1; `MultiFieldSumIngestTest`).*
 
 Both corpora resolve at majority-converted — general across the metamodels and the ordinary apps alike. Reproducible via the opt-in `adapter.KernelMmIngestCoverageTest` / `Corpus1IngestCoverageTest` (skip when the read-only corpus is absent; a coverage-floor gate keeps regressions loud). **Premise answered:** the kernel-mm rules *are* understandable — typed for the majority, and legible-as-text for the rest (the formatter emits readable conditions). Their `*_MISSING`/`*_INVALID`/`A12_*` rules are the structural constraint oracle in executable form — modelkit's kind-B target.
 
@@ -160,10 +160,13 @@ Everything blocking *understanding* is resolved; the remainder is either inheren
 | Construct (kernel node) | kernel-mm | Verdict |
 |---|---|---|
 | `IApplicationCondition` (CustomCondition) | 53 | **Not a gap** — host-delegated, correctly Opaque |
-| `IEntityListOperation` — `Sum` over a multi-field (non-repetition-list) scope | 1 | rare; explicit multi-field sum. (`NumberOfFilledFields`/`NumberOfFilledGroups` single-scope **done**.) |
-| `IComparisonCondition` — number vs a non-field/non-constant operand that isn't yet a recognised numeric expr (5 left; `Length` **done**, `Round`/`Abs`/category-nav absent from kernel-mm) | 5 | per-shape; low frequency |
-| `IEntityListCondition` (group-scoped field-fill: `AllFieldsFilled`/`AtLeastOneFieldFilled`/`NoFieldFilled` over groups) | 9 | F10 feature — scoped quantifier |
-| `IRootGroupCondition` (root-group predicates) | 6 | F10 feature — new leaf condition |
+| `IEntityListCondition` (group-scoped field-fill: `AllFieldsFilled`/`AtLeastOneFieldFilled`/`NoFieldFilled` over groups) | 9 | F10-C — `GroupListRef` (group-repetition-list) |
+| `IRootGroupCondition` (root-group predicates) | 6 | F10-D — new leaf condition |
+| enum **category-navigation** comparisons (`[type→cat] == "…"`) — surface as `unresolved reference` (the category value isn't an enum value) | 6 | F10-B — DSL `EnumRef.category` exists; wire the parse-tree operand |
+| `IComparisonCondition` — number vs an unrecognised numeric expr | 5 | F10-E — per-shape (gate: investigate) |
+| `'False'` not a `DateType/format` value | 3 | F10-F — investigate; likely malformed (correctly-opaque) |
+
+*Plan to close the addressable tail (A done): A `Sum` multi-field ✅ → B category-nav → C group-scoped field-fill → D root-group → E number-vs-expr → F the `'False'` audit. Ceiling ≈ 497/553 (90%) typed, ~100% accounted-for; the 53 CustomConditions stay correctly-opaque by design.*
 
 Corpus-1's tail skews toward date `Valid`/`Invalid` — the same F10 feature list, weighted differently. **Done so far:** enum field-to-field; the field-list × value-list quantifiers (constant **and** entity-valued value lists); both count aggregates (`NumberOfFilledFields` over a repetition list, `NumberOfFilledGroups` over a single repeatable group); and the `Length(field)` operand wrapper. Each remaining row is its own increment (catalog + AST + handles + N7 + converter wiring).
 
