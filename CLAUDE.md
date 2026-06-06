@@ -23,6 +23,7 @@ Write idiomatic modern Java 21, not Java 8 with newer syntax:
 - **Records** for immutable data (AST nodes, value objects, results). **Sealed interfaces + exhaustive pattern-matching `switch`** for closed hierarchies — model the AST this way and let the renderer/visitors dispatch with a switch that the compiler proves exhaustive (no `default`). See proposal §18.5.
 - Record/`instanceof` **deconstruction patterns**, `var` for obvious locals, **text blocks** for multi-line strings (DM-JSON fixtures, expected output), enhanced `switch` expressions, `Optional` over nulls in APIs, `List.of`/`List.copyOf` for immutability.
 - Prefer making illegal states unrepresentable in the type system over runtime checks — that is the whole point of the typed builder.
+- **Javadoc `*/` trap:** never write a literal `*/` inside a Javadoc block comment — most often a wildcard path in `{@code …}` like `Group*/field` — it ends the comment early and breaks compilation. Reword (e.g. "the flatten of `Group*` then `field`", or a space: `Group* / field`). This recurs whenever documenting repetition-list syntax.
 
 ## Documentation discipline
 

@@ -186,6 +186,14 @@ public final class DslRenderer {
                     + " In "
                     + v.values().stream().map(this::render).collect(java.util.stream.Collectors.joining(", "))
                     + ")";
+            case FieldListEntityListCondition v -> keyword(v.operatorId()) + "("
+                    + v.fields().stream().map(this::operand)
+                            .collect(java.util.stream.Collectors.joining(", "))
+                    + " In "
+                    // entity-valued: the value list is bare field/repetition-list paths, not quoted values
+                    + v.valueFields().stream().map(this::operand)
+                            .collect(java.util.stream.Collectors.joining(", "))
+                    + ")";
         };
     }
 

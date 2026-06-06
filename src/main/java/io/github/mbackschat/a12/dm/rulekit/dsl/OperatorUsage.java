@@ -51,6 +51,10 @@ public final class OperatorUsage {
                 v.fields().forEach(f -> collectOperand(f, ops));
                 v.values().forEach(value -> collect(value, ops));
             }
+            case FieldListEntityListCondition v -> {
+                v.fields().forEach(f -> collectOperand(f, ops));
+                v.valueFields().forEach(f -> collectOperand(f, ops));
+            }
             case RepetitionNotUniqueCondition r -> r.scope().ifPresent(s -> ops.add("FromScope"));
             case CustomConditionRef ignored -> { }
         }

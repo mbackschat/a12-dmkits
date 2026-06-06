@@ -266,6 +266,32 @@ public final class Dsl {
         return ref;
     }
 
+    // shape C — the value list is itself a field list (entity-valued, not constants), e.g.
+    // `Name(f1, f2 In g1, g2)` where g* are fields/repetition lists. Type compatibility is the kernel's.
+
+    public static Condition atLeastOneFieldValueIncludedInValueList(
+            java.util.List<FieldOperand> valueFields, FieldOperand first, FieldOperand... rest) {
+        return entityListQuantifier(ValueListQuantifier.AT_LEAST_ONE_FIELD_VALUE_INCLUDED, valueFields, first, rest);
+    }
+
+    public static Condition noFieldValueIncludedInValueList(
+            java.util.List<FieldOperand> valueFields, FieldOperand first, FieldOperand... rest) {
+        return entityListQuantifier(ValueListQuantifier.NO_FIELD_VALUE_INCLUDED, valueFields, first, rest);
+    }
+
+    public static Condition notAllFieldValuesIncludedInValueList(
+            java.util.List<FieldOperand> valueFields, FieldOperand first, FieldOperand... rest) {
+        return entityListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, valueFields, first, rest);
+    }
+
+    private static Condition entityListQuantifier(ValueListQuantifier q,
+            java.util.List<FieldOperand> valueFields, FieldOperand first, FieldOperand... rest) {
+        var fields = new java.util.ArrayList<FieldOperand>();
+        fields.add(first);
+        fields.addAll(java.util.List.of(rest));
+        return new FieldListEntityListCondition(q, fields, valueFields);
+    }
+
     // --- field-list quantifiers — at least one field by signature ------------------------------
 
     public static Condition allFieldsFilled(FieldOperand first, FieldOperand... rest) {

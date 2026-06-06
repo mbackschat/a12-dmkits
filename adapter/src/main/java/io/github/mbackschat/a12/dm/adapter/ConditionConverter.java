@@ -39,6 +39,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DateRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
@@ -170,15 +171,16 @@ final class ConditionConverter {
      * two unmodeled names (date-range overlap, value-consistency) stay opaque.
      */
     private Condition convertEntityListAndValueList(IEntityListAndValueListCondition node) {
-        List<String> values = node.getValueListAsStringList();
-        if (values.isEmpty()) {
-            throw unsupported("entity+value-list with entity-valued (non-constant) values", node);
-        }
         List<IEntityId> entities = node.getEntityList().getEntityIdList();
         if (entities.isEmpty()) {
             throw unsupported("empty entity+value-list condition", node);
         }
         EntityListAndValueListConditionName name = node.getConditionName();
+        List<String> values = node.getValueListAsStringList();
+        if (values.isEmpty()) {
+            // entity-valued value list (field list checked against another field list)
+            return convertEntityValuedList(node, name, entities);
+        }
         if (entities.stream().allMatch(e -> e.isField() && !isWildcard(e))) {
             List<String> paths = entities.stream().map(IEntityId::getFullName).toList();
             return switch (homogeneousKind(paths, node)) {
@@ -226,6 +228,36 @@ final class ConditionConverter {
             };
         }
         throw unsupported("entity+value-list over a mixed (plain + wildcard) scope", node);
+    }
+
+    /**
+     * The entity-valued form: the value list is itself a list of fields/repetition lists (a field {@code In}
+     * a starred repetition list). Both sides become {@link FieldOperand}s (a plain field or a flattened
+     * wildcard list); type compatibility is the kernel's call (F4/N7).
+     */
+    private Condition convertEntityValuedList(IEntityListAndValueListCondition node,
+            EntityListAndValueListConditionName name, List<IEntityId> entities) {
+        List<IEntityId> valueEntities = node.getValueListAsEntityList().getEntityIdList();
+        if (valueEntities.isEmpty()) {
+            throw unsupported("entity+value-list with neither constant nor entity values", node);
+        }
+        FieldOperand[] f = entities.stream().map(this::toFieldOperand).toArray(FieldOperand[]::new);
+        FieldOperand[] rest = Arrays.copyOfRange(f, 1, f.length);
+        List<FieldOperand> valueFields = valueEntities.stream().map(this::toFieldOperand).toList();
+        return switch (name) {
+            case AtLeastOneFieldValueIncludedInValueList ->
+                    Dsl.atLeastOneFieldValueIncludedInValueList(valueFields, f[0], rest);
+            case NoFieldValueIncludedInValueList ->
+                    Dsl.noFieldValueIncludedInValueList(valueFields, f[0], rest);
+            case NotAllFieldValuesIncludedInValueList ->
+                    Dsl.notAllFieldValuesIncludedInValueList(valueFields, f[0], rest);
+            default -> throw unsupported("entity+value-list condition " + name, node);
+        };
+    }
+
+    /** A field entity to a {@link FieldOperand}: a flattened repetition list if it wildcards, else a plain field. */
+    private FieldOperand toFieldOperand(IEntityId entity) {
+        return isWildcard(entity) ? model.flatten(reconstructStarPath(entity)) : model.field(entity.getFullName());
     }
 
     /** The single value kind shared by every field at {@code paths}, or fail if they disagree / are unknown. */

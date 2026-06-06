@@ -15,6 +15,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CustomConditionRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListEntityListCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListPredicate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListValueListCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldPresenceCondition;
@@ -177,6 +178,7 @@ public final class Linter {
             case PatternCondition ignored -> { }
             case ValueListCondition ignored -> { }
             case FieldListValueListCondition ignored -> { }
+            case FieldListEntityListCondition ignored -> { }
             case RepetitionNotUniqueCondition ignored -> { }
             case CustomConditionRef ignored -> { }
         }
