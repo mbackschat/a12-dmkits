@@ -289,56 +289,42 @@ Condition widened = proNeedsFee.transform(node -> switch (node) {
 // bottom-up; untouched subtrees keep reference identity; D14 ids make the guards readable
 ```
 
-### 5.2 Ingest a foreign, BA-authored rule — the full loop, load to save (F10) 🔮 Phase 2
+### 5.2 Ingest a foreign, BA-authored rule — the full loop, load to save (F10) ✅ 2026-06-06
+
+`ingest` is **kernel-mm-complete** (553/553 typed) — including `X And CustomCondition Y`, which converts to a typed, editable AST (the custom condition is the name-only `CustomConditionRef`). The loop below is the real API.
 
 ```java
-// LOAD — deserialize → expand → checkConsistency → bind (F0); the binding is an immutable snapshot
-BoundModel m = BoundModel.load(Path.of("subscription.dm.json"));
+// LOAD — deserialize → expand → checkConsistency → bind (F0); an immutable snapshot
+BoundModel m = BoundModel.ofJson(Files.readString(Path.of("subscription.dm.json")));
+KernelAdapter adapter = KernelAdapter.of(m);
 
-ExistingRule legacy = m.existingRule("/Subscription/Addons/LegacyFeeRule");   // fetch ≠ m.rule(group) (build)
-// its errorCondition (hand-written, with comments and short names):
-//   ;; fee must be set for paid tiers
-//   FieldFilled(MonthlyFee) AND [/Subscription/Tier] != "BASIC"
+// its errorCondition (hand-written): FieldFilled(MonthlyFee) And CustomCondition LegacyFeeCheck
 
-// INGEST — kernel parses → converter visitor → rulekit AST (fail-fast on gaps, never silent loss)
-Condition ast = switch (KernelAdapter.ingest(legacy, m)) {
-    case Ingest.Converted(Condition c)         -> c;
-    case Ingest.Gap(String construct, var loc) -> throw new UnsupportedOperationException(construct);
+// INGEST — kernel parses → ConditionConverter → rulekit AST; tolerant sealed result (never throws,
+// never silent loss). An unmodeled construct (e.g. a date shift) would arrive as Opaque, preserved verbatim.
+Condition ast = switch (adapter.ingest("/Subscription/Addons/LegacyFeeRule")) {
+    case Ingest.Converted c -> c.condition();                  // FieldFilled(MonthlyFee) And CustomCondition LegacyFeeCheck
+    case Ingest.Opaque o    -> throw new UnsupportedOperationException(o.reason());
 };
-// FieldRefs carry authored PathStyle hints (SHORT, ABSOLUTE); comments are flagged as lost-on-re-render
 
-// WORK — extend the rule so the fee must also be positive. A plain extension COMPOSES:
-// the immutable original becomes a subtree, the addition is appended — intent on the surface.
-NumberRef fee = m.num("/Subscription/Addons/MonthlyFee");
-Condition changed = ast.and(fee.gt(0));            // … And [MonthlyFee] > 0
+// EDIT — compose (append a guard) …
+Condition extended = ast.and(m.num("/Subscription/Addons/MonthlyFee").gt(0));
 
-// transform (#1, ✅ today) is the SURGICAL tool — reach for it when the edit happens INSIDE the
-// tree (node replacement, bulk rewrites). Sensible change: [Tier] != "BASIC" hardcodes the tier
-// list — re-express it via the Pricing category so future paid tiers are covered automatically.
-// Composing can't do this: the old comparison node must be REPLACED where it sits.
-Condition modernized = changed.transform(node -> switch (node) {
-    case ComparisonCondition(FieldValue(var f), var op, EnumValueLiteral v)
-            when f.path().endsWith("/Tier")
-        -> tier.category("Pricing").is("PAID");    // [Tier] != "BASIC" → [Tier -> Pricing] == "PAID"
-    default -> node;                               // untouched subtrees are reused by reference
-});
+// … or transform surgically INSIDE the tree — e.g. rename the custom condition (now possible because
+// it's typed, not opaque): CustomCondition LegacyFeeCheck → CustomCondition FeeEligibility
+Condition renamed = ast.transform(node -> node instanceof CustomConditionRef
+        ? Dsl.customCondition("FeeEligibility") : node);
 
-// REVIEW → VALIDATE → PERSIST — snapshot semantics (F0): a write yields a NEW model + binding
-RenderedDiff diff = m.diff(legacy, changed);                       // the human gate; discloses lost comments
-ValidationResult vr = m.validate(legacy.withCondition(changed));   // kernel confirms before anything is written
-BoundModel m2 = m.replaceCondition(legacy, changed);               // new binding over the updated model
-m2.writeTo(Path.of("subscription.dm.json"));                       // SAVE — DM-JSON, the portable artifact
-// m still sees the old snapshot; m2 the new one — no in-place mutation, no staleness (F0)
+// VALIDATE + PERSIST — snapshot semantics (F0): replaceCondition re-binds + re-checkConsistency’s,
+// then a NEW model is written; the original binding stays valid.
+BoundModel m2 = m.replaceCondition("/Subscription/Addons/LegacyFeeRule", renamed);
+m2.writeTo(Path.of("subscription.dm.json"));   // SAVE — DM-JSON, the portable artifact
+// (KernelAdapter.diff renders a before/after RenderedDiff for the human gate; see the F8 row.)
 ```
 
 ```text
---- /Subscription/Addons/LegacyFeeRule (authored text; 1 comment will be dropped on write)
-+++ modified via rulekit (composed: appended at the end)
-- ;; fee must be set for paid tiers
-- FieldFilled(MonthlyFee) AND [/Subscription/Tier] != "BASIC"
-+ FieldFilled(MonthlyFee) And [/Subscription/Tier] != "BASIC" And [/Subscription/Addons/MonthlyFee] > 0
-(with the transform's category replacement on top, `modernized` renders:
- FieldFilled(MonthlyFee) And [/Subscription/Tier -> Pricing] == "PAID" And [/Subscription/Addons/MonthlyFee] > 0)
+- FieldFilled(MonthlyFee) And CustomCondition LegacyFeeCheck
++ FieldFilled(MonthlyFee) And CustomCondition FeeEligibility      (renamed via transform)
 ```
 
 ### 5.3 Explain (F9) ✅ 2026-06-04 (structural `tree` added 2026-06-05) — same projection for built and ingested rules
@@ -522,7 +508,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 | Handles (`num/str/enumOf/bool/confirm/group/date`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–6, 8, 9a + iteration 7a–7f — patterns, value lists, count + list aggregates, `*` lists, `repetitionNotUnique(...).from(...)`, `flatten(...).having(filter)`, `currentRepetition`, `num(f).forIndex(...)`, parallel iteration, `customCondition`, dates, field-vs-field) |
 | §3.1 fragments, §3.3 library pattern, §6 catalog queries, §2 type-steering | ✅ pattern works today on covered operators |
 | §3.2 domain fragments (`withinTolerance`, `chronological`, `uniqueBy`) | `uniqueBy` ✅ (7b); `chronological` now buildable (dates ✅); `withinTolerance` 🔮 (tolerance ops unmodeled) |
-| §3.4a `sameAddress` (field-vs-field equality) | ✅ string + number (finding 18); enum-vs-enum 🔮 |
+| §3.4a `sameAddress` (field-vs-field equality) | ✅ string + number (finding 18) + **enum-vs-enum** (`EnumRef.is(EnumRef)`, 2026-06-06) |
 | §6c navigation (Level 1: `fields()`/`groups()`/`fieldAt` + strict narrowing), §3.5 `allOf`/`anyOf` | ✅ implemented 2026-06-04 (findings 9–10) |
 | §3.4 rule templates | ✅ full form works (navigation + `Rule` object) |
 | `Rule` + `Computation` authoring objects (computed relPaths, slot-rule pre-checks, validator bridges, `Calculation.kind()`) | ✅ implemented 2026-06-04 |
@@ -541,7 +527,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 | N3 reverse construct-name parity — every parsetree-api construct-name enum member is cataloged or explicitly excluded (`adapter.KernelConstructParityTest`) | ✅ 2026-06-04 (the "foresee new operators" early-warning: a kernel-added construct fails the test; self-cleaning on stale exclusions; exclusions double as the coverage backlog). MVK error-code parity = the MVK ledger; reverse *keyword* parity still 🔮 |
 | F11 kernel-version tolerance — bias to acceptance, never a self-inflicted false positive | ✅ 2026-06-04: pre-check split (semantic `MVK_ERROR_FIELD_NOT_REFERENCED` deferred to the kernel); runtime skew advisory (`validate.KernelVersion` via `Package.getImplementationVersion()` vs the catalog's `verifiedAgainst`, ENVIRONMENT INFO, once per instance). Ingest opaque passthrough ✅ 2026-06-04 (sealed `Ingest` `Converted`/`Opaque`, `ingestAll` — preserve-the-unknown); CI version matrix 🔮 (single-version until a newer kernel publishes) |
 | Kernel-adapter bootstrap — opt-in `adapter` module, `KernelAdapter` over the a12internal read chain (`getMvkServiceForModel` → `ElementContainer.getAllRules`), boundary-converting | ✅ 2026-06-04 (Phase 2 start): `referencedFields` (exact F9a whereUsed), `canonicalConditionText` (kernel parse+format round-trip), `hasValidCondition` (per-rule fast lane); canary = N8 pin+canary |
-| F10 ingest — text→AST converter (`adapter.ConditionConverter`, `KernelAdapter.ingest`) | ✅ 2026-06-04: composite And/Or, comparisons (num/str/enum vs constant/field), string patterns (`matches`/`violates`), field/group presence, the field-list + group-list quantifier families, value-list membership (`in`/`notIn`), **aggregates + `Having`** (`Sum`/`MaxValue`/`MinValue`/`NumberOfDifferentValues` over a flattened wildcard scope, `*`-path rebuilt from the kernel indices, recursive Having filter), the **iteration/uniqueness cluster** (`CurrentRepetition`, `RepetitionNotUnique` + `.from`, `FieldValuesNotUnique`), and **dates** (date comparisons vs `Today`/another date, `DifferenceInDays`/`Months`/`Years`); re-authored through the handle API (D14-preserving); render→parse→convert→render round-trip oracle. **Tolerant: returns a sealed `Ingest` (`Converted`/`Opaque`), `ingestAll()` for a whole DM — an unmodeled construct is preserved verbatim, never lost/corrupt (F11).** Preserved-opaque (the converter's internal `UnsupportedConstructException` reason): `CustomCondition`, `Now`/`BaseYear`/date construction/`AddDays`, tolerance comparisons, operand wrappers, count-of-filled aggregates |
+| F10 ingest — text→AST converter (`adapter.ConditionConverter`, `KernelAdapter.ingest`) | ✅ **kernel-mm ingest is 100% (553/553), 2026-06-06**: composite And/Or; comparisons (num/str/enum vs constant/field, **enum field-to-field**, **enum category-navigation** incl. category-vs-category, **constant-on-the-left** normalization); string patterns; field/group/**root-group** presence; the field-list + group-list quantifier families **and group-scoped field-fill** (`AllFieldsFilled(Group*)` via the new `GroupListRef`, nested wildcards faithful); value-list membership (constant **and entity-valued** — field-list vs field-list); **aggregates + `Having`** (`Sum`/`MaxValue`/`MinValue`/`NumberOfDifferentValues`, multi-field + wildcard scope) plus the **count aggregates** `NumberOfFilledFields`/`NumberOfFilledGroups`; the iteration/uniqueness cluster; **dates** (vs `Today`/another date, `DifferenceIn…`); the **`Length`** operand wrapper; **arithmetic** (`+`/`-`/`*`/`/`/`^` → `Arithmetic`); and **custom conditions** (`CustomCondition Y` → the typed, editable `CustomConditionRef`). Re-authored through the handle API (D14-preserving); render→parse→convert→render round-trip oracle. **Tolerant: returns a sealed `Ingest` (`Converted`/`Opaque`), `ingestAll()` for a whole DM — an unmodeled construct is preserved verbatim, never lost/corrupt (F11).** Still preserved-opaque (absent from kernel-mm, not yet wired): date **shifts** (`AddDays`/…)/`Now`/date construction/`Valid`/`Invalid`, tolerance comparisons, `SumOfProducts`/`FirstFilledValue`, `DateRangesOverlap`, semantic index |
 | F9 explain — structured projection of a condition (`context.ModelContext.explain` → `RuleExplanation`) | ✅ 2026-06-04: operators (catalog meaning + gotchas), references (+model kind), iteration scope, NL gloss, JSON. One mechanism, two consumers — works identically on built and **ingested** conditions (demonstrated end-to-end on a foreign aggregate rule) |
 | F8 modify-by-re-express + diff + write-back (`dsl.RenderedDiff`, `KernelAdapter.diff`, `BoundModel.replaceCondition`) | ✅ 2026-06-04: re-express a built/ingested condition (compose/`transform`), `RenderedDiff` (before/after/changed/lossiness, `unified()` + JSON) discloses comment/formatting loss, and **`replaceCondition` writes the reviewed change back** (new binding, re-validated, `writeTo` persists). Full loop *ingest → re-express → diff → validate → write-back* tested. LLM loop + `IProblem→Diagnostic` 🔮 |
 | CLI — the modeller/BA standalone front-end (N10, `:cli` subproject, [CLI-SPEC](./CLI-SPEC.md)): pure-testable `Cli.run(args,out,err)` seam + `CliMain` shell; `application` plugin (dev via `:cli:run`/`installDist`, jlink/jpackage Phase-B only) | ✅ scaffold + `dump`/`describe`/`validate` verbs (2026-06-05): `dump` (fields/groups/rules JSONL + model-card.md, stdout or `--output dir`), `describe` (F9a model card JSON), `validate` (real-kernel consistency → `{valid,diagnostics[]}`, exit 0/1); serialization in `:cli`, not core; SLF4J silenced; verb behavior unit-tested at the `Cli.run` seam (sub-second, no packaging). **`check`** (candidate → kernel verdict), **`add`** (JSON rule-spec → persisted DM-JSON; built on the dsl-free `write.DmJson`), and the read-back pair **`ingest`** (rule → AST, tolerant `Converted`/`Opaque`) + **`explain`** (→ `RuleExplanation`) all landed 2026-06-05 — `:cli` now bundles `:adapter`. **`batch`** ✅ (2026-06-05) runs a JSON array of ops in one warm-JVM process (amortizing the kernel's per-process StringTemplate warm-up — the N6 runner enabler); each result is self-describing (`op` index + echoed `id`/`args`) so diagnostics are never mis-attributed. **`diff`** ✅ (2026-06-05) — the F8 re-express loop over the CLI (`--rule` + `--condition` → `RenderedDiff`; structured when `Converted`, textual when `Opaque`; `--output` writes back). **`schema`** ✅ (2026-06-05) emits the **JSON Schema** of a verb's I/O on demand (`schema explain|describe|validate|ingest` outputs, `add|batch` inputs) — drift-locked by `SchemaVerbTest`; `schema explain` documents the `tree.operator → operators[].id` backlink. **Self-explaining surface (2026-06-05, CLI-SPEC §1a — standing requirement):** migrated to **picocli** (one `@Command` per verb → parsing + `--help` + manifest from one source); **`operators`** browses the DSL catalog (list/filter + one operator's full semantics — the proactive complement to `explain`); **`manifest`** emits the machine-readable verb×param map (drift-guarded by `ManifestVerbTest`). So the tool describes its verbs, parameters, I/O shapes, and DSL vocabulary itself — the N1 skill no longer needs to. **Full surface: dump·describe·validate·check·add·ingest·explain·diff·batch·schema·operators·manifest — complete.** **Inverted-requiredness lint backstop ✅ on `add` and `check`** (2026-06-05): the shared `LintBackstop` ingests a rule → AST → `Linter` → warns `RK_INVERTED_REQUIREDNESS` (best-effort) — `add` on the persisted rule (stderr), `check` via a temporary in-memory injection (merged into its diagnostics, WARNING so `valid` is unaffected). The #1 silent-polarity gap is now caught automatically at both BA entry points, not only taught by the skill |

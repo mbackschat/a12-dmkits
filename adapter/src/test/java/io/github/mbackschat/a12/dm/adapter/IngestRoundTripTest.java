@@ -217,39 +217,38 @@ class IngestRoundTripTest {
 
     @Test
     void preservesAnUnconvertedConstructAsOpaque() {
-        BoundModel m = base();
+        // A date shift (AddDays) isn't converted yet → preserved opaque, not lost, not corrupt.
+        // (Custom conditions are now CONVERTED — see CustomConditionIngestTest.)
+        BoundModel m = BoundModel.ofJson(read("models/order.dm.json"));
         var ignore = new java.util.LinkedHashMap<String, Condition>();
-        // A custom (application) condition isn't converted yet → preserved opaque, not lost, not corrupt.
-        BoundModel withRule = m.add(rule(m, "/Subscription", "CustomRule",
-                m.field("/Subscription/Tier"),
-                m.field("/Subscription/Tier").filled().and(Dsl.customCondition("ExternalEligibility")), ignore));
-        KernelAdapter adapter = KernelAdapter.of(withRule);
+        Condition shift = m.field("/Order/CustomerName").filled()
+                .and(m.date("/Order/OrderDate").before(Dsl.addDays(Dsl.today(), 30)));
+        BoundModel withRule = m.add(orderRule(m, "ShiftRule", shift, ignore));
 
-        Ingest result = adapter.ingest("/Subscription/CustomRule");
+        Ingest result = KernelAdapter.of(withRule).ingest("/Order/ShiftRule");
         Ingest.Opaque opaque = assertInstanceOf(Ingest.Opaque.class, result,
                 () -> "an unconverted construct should ingest as Opaque, got: " + result);
         assertTrue(opaque.reason().contains("kernel node:"),
                 () -> "the reason should name the unconverted construct: " + opaque.reason());
         // preserved verbatim: the rule's text survives (re-emit on write-back) and still references it
         assertFalse(opaque.canonicalText().isBlank());
-        assertTrue(opaque.canonicalText().contains("ExternalEligibility"),
+        assertTrue(opaque.canonicalText().contains("AddDays"),
                 () -> "opaque text should preserve the rule verbatim: " + opaque.canonicalText());
     }
 
     @Test
     void ingestAllReturnsTypedAndOpaqueOutcomesPerRule() {
-        BoundModel m = base();
+        BoundModel m = BoundModel.ofJson(read("models/order.dm.json"));
         var ignore = new java.util.LinkedHashMap<String, Condition>();
         BoundModel withRules = m
-                .add(rule(m, "/Subscription", "OkRule", m.field("/Subscription/Tier"),
-                        m.field("/Subscription/Tier").filled(), ignore))
-                .add(rule(m, "/Subscription", "OpaqueRule", m.field("/Subscription/Tier"),
-                        m.field("/Subscription/Tier").filled().and(Dsl.customCondition("X")), ignore));
+                .add(orderRule(m, "OkRule", m.field("/Order/CustomerName").filled(), ignore))
+                .add(orderRule(m, "OpaqueRule", m.field("/Order/CustomerName").filled()
+                        .and(m.date("/Order/OrderDate").before(Dsl.addDays(Dsl.today(), 30))), ignore));
 
         java.util.Map<String, Ingest> all = KernelAdapter.of(withRules).ingestAll();
         // a whole model ingests without throwing: supported rules typed, the rest preserved opaque
-        assertInstanceOf(Ingest.Converted.class, all.get("/Subscription/OkRule"));
-        assertInstanceOf(Ingest.Opaque.class, all.get("/Subscription/OpaqueRule"));
+        assertInstanceOf(Ingest.Converted.class, all.get("/Order/OkRule"));
+        assertInstanceOf(Ingest.Opaque.class, all.get("/Order/OpaqueRule"));
     }
 
     /** Unwrap a {@link Ingest.Converted}, asserting the ingest converted (not opaque). */

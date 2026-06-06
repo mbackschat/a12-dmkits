@@ -82,12 +82,12 @@ class KernelMmIngestCoverageTest {
                 () -> "expected to ingest the canonical metamodel set, loaded " + perModel.size() + report);
         // Regression floor: F-IDX (name-path keying) + boolean/confirm/!= + enum field-to-field + the
         // field-list×value-list quantifiers (constant AND entity-valued) + NumberOfFilledFields/Groups +
-        // The full addressable tail is converted: foreign-rule ingest is at 500/553 (90.4%) — every
-        // remaining opaque is an IApplicationCondition (host-defined CustomCondition), correctly opaque
-        // and preserved verbatim. Lock the floor near the ceiling so any converter/path-keying regression
-        // is loud here (opt-in: only runs where the kernel-mm clone is present).
+        // Foreign-rule ingest is now FULLY typed: 553/553 (100%) — custom conditions convert to
+        // CustomConditionRef (name-only), so nothing in kernel-mm stays opaque. Lock the floor near the
+        // ceiling so any converter/path-keying regression is loud here (opt-in: only runs where the
+        // kernel-mm clone is present).
         int finalConverted = converted;
-        assertTrue(finalConverted >= 498,
+        assertTrue(finalConverted >= 551,
                 () -> "kernel-mm ingest coverage regressed below the floor (converted="
                         + finalConverted + " of " + 553 + ")" + report);
     }

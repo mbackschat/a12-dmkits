@@ -6,6 +6,7 @@ import java.util.function.BiFunction;
 
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.IEntityId;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.IParseTreeEntity;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IApplicationCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IComparisonCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.ICompositeCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.ICompositeOperation;
@@ -90,6 +91,11 @@ final class ConditionConverter {
         }
         if (node instanceof IRootGroupCondition rootGroup) {
             return convertRootGroup(rootGroup);
+        }
+        if (node instanceof IApplicationCondition application) {
+            // a custom (host-delegated) condition is name-only (IApplicationCondition.getName()); the typed
+            // CustomConditionRef captures it exactly, so "X And CustomCondition Y" stays fully editable.
+            return Dsl.customCondition(application.getName());
         }
         if (node instanceof IEntityListAndValueListCondition entityAndValueList) {
             return convertEntityListAndValueList(entityAndValueList);
