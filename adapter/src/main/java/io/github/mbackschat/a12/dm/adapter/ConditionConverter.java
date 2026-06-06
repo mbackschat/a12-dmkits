@@ -8,6 +8,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.IEntityId;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.IParseTreeEntity;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IComparisonCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.ICompositeCondition;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.ICompositeOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.ICondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IEntityListAndValueListCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IEntityListCondition;
@@ -495,6 +496,9 @@ final class ConditionConverter {
         if (operand instanceof IFieldIdOperation lenOp && lenOp.getOperatorName() == FieldIdOperationName.Length) {
             return model.str(lenOp.getField().getFullName()).length();
         }
+        if (operand instanceof ICompositeOperation arithmetic) {
+            return convertArithmetic(arithmetic);
+        }
         if (operand instanceof IGroupOperation groupOp
                 && groupOp.getOperatorName() == GroupOperationName.CurrentRepetition) {
             return Dsl.currentRepetition(model.group(groupOp.getGroup().getFullName()));
@@ -507,6 +511,38 @@ final class ConditionConverter {
             }
         }
         return null;
+    }
+
+    /** An arithmetic expression ({@code a + b}, {@code a - b}, …) — the kernel's n-ary {@code ICompositeOperation}. */
+    private NumberExpr convertArithmetic(ICompositeOperation comp) {
+        List<IOperation> ops = comp.getOperations();
+        if (ops.isEmpty()) {
+            throw unsupported("empty arithmetic operation", comp);
+        }
+        NumberExpr acc = arithmeticOperand(ops.get(0), comp);
+        for (int i = 1; i < ops.size(); i++) {
+            NumberExpr next = arithmeticOperand(ops.get(i), comp);
+            acc = switch (comp.getCalcOp()) {
+                case ADD -> acc.plus(next);
+                case SUBTRACT -> acc.minus(next);
+                case MULTIPLY -> acc.times(next);
+                case DIVIDE -> acc.dividedBy(next);
+                case POWER -> acc.toThePowerOf(next);
+            };
+        }
+        return acc;
+    }
+
+    /** One operand of an arithmetic expression: a numeric constant or any recognised numeric expression. */
+    private NumberExpr arithmeticOperand(IOperation op, Object origin) {
+        if (op instanceof IConstantOperation constant) {
+            return Dsl.number(constant.getValue());
+        }
+        NumberExpr expr = numericExpr(op);
+        if (expr != null) {
+            return expr;
+        }
+        throw unsupported("arithmetic operand " + op.getClass().getSimpleName(), origin);
     }
 
     /** A comparison between two numeric expressions (field-vs-aggregate, aggregate-vs-field, …). */

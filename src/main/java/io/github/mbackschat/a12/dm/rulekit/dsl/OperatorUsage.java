@@ -90,6 +90,10 @@ public final class OperatorUsage {
                 collect(s.date(), ops);
             }
             case SemanticIndexValue v -> ops.add(v.operatorId());
+            case Arithmetic a -> {
+                collect(a.left(), ops);
+                collect(a.right(), ops);
+            }
         }
     }
 

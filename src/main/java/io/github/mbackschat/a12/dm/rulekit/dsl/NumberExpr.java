@@ -117,6 +117,40 @@ public record NumberExpr(Calculation expression) {
         return exprCmp(CompareOp.NE, other);
     }
 
+    // --- arithmetic (e.g. [maxLength] < [minFractionalDigits] + 2) — yields a comparable expression ---
+
+    public NumberExpr plus(NumberExpr other) {
+        return arith(Arithmetic.Op.ADD, other);
+    }
+
+    public NumberExpr minus(NumberExpr other) {
+        return arith(Arithmetic.Op.SUBTRACT, other);
+    }
+
+    public NumberExpr times(NumberExpr other) {
+        return arith(Arithmetic.Op.MULTIPLY, other);
+    }
+
+    public NumberExpr dividedBy(NumberExpr other) {
+        return arith(Arithmetic.Op.DIVIDE, other);
+    }
+
+    public NumberExpr toThePowerOf(NumberExpr other) {
+        return arith(Arithmetic.Op.POWER, other);
+    }
+
+    public NumberExpr plus(long literal) {
+        return plus(new NumberExpr(NumberLiteral.of(literal)));
+    }
+
+    public NumberExpr minus(long literal) {
+        return minus(new NumberExpr(NumberLiteral.of(literal)));
+    }
+
+    private NumberExpr arith(Arithmetic.Op op, NumberExpr other) {
+        return new NumberExpr(new Arithmetic(op, expression, other.expression()));
+    }
+
     private Condition exprCmp(CompareOp op, NumberExpr other) {
         return new ComparisonCondition(expression, op, other.expression());
     }

@@ -126,6 +126,11 @@ public final class Dsl {
         return new DateExpr(new DateShift(DateShift.Unit.YEARS, date.expression(), amount));
     }
 
+    /** A numeric literal as a comparable expression — e.g. an arithmetic operand ({@code … + 2}). */
+    public static NumberExpr number(String literal) {
+        return new NumberExpr(NumberLiteral.of(literal));
+    }
+
     /** {@code CustomCondition <Name>} — the app-defined escape hatch (KERNEL-SEMANTICS §14). */
     public static Condition customCondition(String name) {
         return new CustomConditionRef(name);

@@ -16,6 +16,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumCategoryAccess;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumValueLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListPredicate;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Arithmetic;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListEntityListCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListValueListCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupScopedFieldFill;
@@ -96,6 +97,8 @@ final class ExplanationTreeBuilder {
                     concat(operand(d.left()), operand(d.right()))));
             case DateShift s -> List.of(new RuleExplanation.Node(s.operatorId(), renderer.render(s),
                     operand(s.date())));
+            case Arithmetic a -> List.of(new RuleExplanation.Node(a.op().symbol(), renderer.render(a),
+                    concat(operand(a.left()), operand(a.right()))));
         };
     }
 
