@@ -40,6 +40,18 @@ class AggregateConditionTest {
     }
 
     @Test
+    void rendersNumberOfFilledGroupsOverASingleRepeatableGroupAsAWildcardScope() {
+        // a lone repeatable group is the wildcard form Group* — counts that group's filled repetitions
+        Condition c = Dsl.numberOfFilledGroups(m.group("/Subscription/Addons")).gt(1);
+        assertEquals("NumberOfFilledGroups(/Subscription/Addons*) > 1", new DslRenderer().render(c));
+        assertEquals("AnzahlAngegebenerKontexte(/Subscription/Addons*) > 1",
+                new DslRenderer(ConditionLanguage.DE).render(c));
+        // a single non-repeating group is still rejected (only the wildcard form is meaningful)
+        assertThrows(IllegalArgumentException.class,
+                () -> Dsl.numberOfFilledGroups(m.group("/Subscription/Billing")));
+    }
+
+    @Test
     void filledCountAggregatesRejectRootGroups() {
         // Verified 2026-06-04: a root group draws MVK_ROOT_GROUP_REFERENCED — pre-checked here.
         assertThrows(IllegalArgumentException.class,

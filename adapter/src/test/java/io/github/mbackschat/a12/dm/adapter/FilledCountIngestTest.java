@@ -22,11 +22,12 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
 /**
- * F10 ingest tail — the {@code NumberOfFilledFields} aggregate over a single flattened repetition list
- * (kernel {@code IEntityListOperation}, e.g. counting filled reps of an {@code IndexFields} index field).
- * The count node already permits a lone repetition list; this adds the {@code Dsl} single-scope factory
- * and wires the converter. (The {@code NumberOfFilledGroups} single-wildcard-group form is deferred: it
- * needs the {@code CountAggregate} two-or-more-groups invariant corrected plus kernel re-verification.)
+ * F10 ingest tail — the filled-count aggregates over a single wildcard scope (kernel
+ * {@code IEntityListOperation}): {@code NumberOfFilledFields} over a flattened repetition list (e.g.
+ * counting filled reps of an {@code IndexFields} index field), and {@code NumberOfFilledGroups} over a
+ * single repeatable group ({@code Group*}, counting that group's filled repetitions). The latter
+ * corrected the {@code CountAggregate} ≥2-groups invariant — the kernel accepts the wildcard single-group
+ * form, confirmed by {@link #numberOfFilledGroupsIsKernelValid()}.
  */
 class FilledCountIngestTest {
 
@@ -49,6 +50,31 @@ class FilledCountIngestTest {
 
         assertTrue(RENDER.render(c).contains("NumberOfFilledFields(/Order/Items*/Count)"), RENDER.render(c));
         assertEquals(RENDER.render(c), RENDER.render(converted(adapter.ingest("/Order/FilledCountRule"))));
+    }
+
+    @Test
+    void roundTripsNumberOfFilledGroupsOverARepeatableGroup() {
+        BoundModel m = order();
+        // [CustomerName] filled And NumberOfFilledGroups(/Order/Items*) > 1   (Items repeats)
+        Condition c = m.field("/Order/CustomerName").filled()
+                .and(Dsl.numberOfFilledGroups(m.group("/Order/Items")).gt(1));
+
+        Rule r = m.rule(m.group("/Order")).name("GroupCountRule").errorField(m.field("/Order/CustomerName"))
+                .when(c).code("C").severity(Severity.ERROR).message(en("x")).build();
+        KernelAdapter adapter = KernelAdapter.of(m.add(r));
+
+        assertTrue(RENDER.render(c).contains("NumberOfFilledGroups(/Order/Items*)"), RENDER.render(c));
+        assertEquals(RENDER.render(c), RENDER.render(converted(adapter.ingest("/Order/GroupCountRule"))));
+    }
+
+    @Test
+    void numberOfFilledGroupsOverASingleRepeatableGroupIsKernelValid() {
+        BoundModel m = order();
+        Condition c = m.field("/Order/CustomerName").filled()
+                .and(Dsl.numberOfFilledGroups(m.group("/Order/Items")).gt(1));
+        ValidationResult r = new RuleValidator().check(read("models/order.dm.json"),
+                new DraftRule("/Order", "GroupCountRule", "../CustomerName", RENDER.render(c), "C", "ERROR"));
+        assertTrue(r.ok(), () -> "expected kernel acceptance, got: " + r.diagnostics());
     }
 
     @Test

@@ -336,6 +336,11 @@ final class ConditionConverter {
     private NumberExpr convertAggregate(IEntityListOperation aggregate) {
         List<IEntityId> entities = aggregate.getEntityList().getEntityIdList();
         EntityListOperationName name = aggregate.getOperatorName();
+        // NumberOfFilledGroups(Group*): a single repeatable group, all reps — a group scope, not a field.
+        if (name == EntityListOperationName.NumberOfFilledGroups
+                && entities.size() == 1 && !entities.get(0).isField()) {
+            return Dsl.numberOfFilledGroups(model.group(entities.get(0).getFullName()));
+        }
         if (entities.size() != 1 || !entities.get(0).isField()) {
             throw unsupported("aggregate " + name + " over a non-single-field scope", aggregate);
         }

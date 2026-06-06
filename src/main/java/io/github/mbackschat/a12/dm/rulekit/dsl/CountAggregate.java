@@ -9,9 +9,10 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * entity list (the kernel's {@code feldListenAnzahlOp}). The kernel's slot rules (verified
  * 2026-06-04, KERNEL-FINDINGS): {@code NumberOfFilledFields} needs more than one field <em>or</em>
  * at least one group ({@code MVK_PARAMSIZE_INVALIDN}); {@code NumberOfFilledGroups} needs more than
- * one group, groups only ({@code MVK_PARAMSIZE_INVALIDGN}, {@code MVK_NO_FIELDS_ALLOWED}); root
- * groups are banned in both ({@code MVK_ROOT_GROUP_REFERENCED}). The {@link Dsl} entry points
- * enforce all of that by signature + pre-check; field kinds may be mixed.
+ * one group <em>or</em> a single repeatable group as a wildcard scope ({@code Group*}, counting that
+ * group's filled repetitions), groups only ({@code MVK_PARAMSIZE_INVALIDGN}, {@code
+ * MVK_NO_FIELDS_ALLOWED}); root groups are banned in both ({@code MVK_ROOT_GROUP_REFERENCED}). The
+ * {@link Dsl} entry points enforce all of that by signature + pre-check; field kinds may be mixed.
  */
 public record CountAggregate(CountOp op, List<FieldOperand> fields, List<GroupRef> groups)
         implements Calculation {
@@ -45,9 +46,16 @@ public record CountAggregate(CountOp op, List<FieldOperand> fields, List<GroupRe
                 }
             }
             case FILLED_GROUPS -> {
-                if (!fields.isEmpty() || groups.size() < 2) {
+                if (!fields.isEmpty()) {
                     throw new IllegalArgumentException(
-                            "NumberOfFilledGroups needs more than one group (MVK_PARAMSIZE_INVALIDGN)");
+                            "NumberOfFilledGroups takes groups only, no fields (MVK_NO_FIELDS_ALLOWED)");
+                }
+                // ≥2 distinct groups, OR a single repeatable group as a wildcard scope (Group*) —
+                // the latter counts that group's filled repetitions (kernel-accepted, verified).
+                boolean singleWildcard = groups.size() == 1 && groups.get(0).repeating();
+                if (groups.size() < 2 && !singleWildcard) {
+                    throw new IllegalArgumentException("NumberOfFilledGroups needs more than one group, or a"
+                            + " single repeatable group as a wildcard scope (MVK_PARAMSIZE_INVALIDGN)");
                 }
             }
         }

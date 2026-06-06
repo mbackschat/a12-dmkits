@@ -144,6 +144,19 @@ public final class Dsl {
         return new NumberExpr(new CountAggregate(CountAggregate.CountOp.DIFFERENT_VALUES, fields, java.util.List.of()));
     }
 
+    /**
+     * {@code NumberOfFilledGroups(group*)} — counts the filled repetitions of one repeatable group (the
+     * wildcard scope). The group must repeat; for distinct groups use the ≥2-group form.
+     */
+    public static NumberExpr numberOfFilledGroups(GroupRef repeatableGroup) {
+        if (!repeatableGroup.repeating()) {
+            throw new IllegalArgumentException("NumberOfFilledGroups over a single group needs a repeatable"
+                    + " group (its wildcard scope): " + repeatableGroup.path());
+        }
+        return new NumberExpr(new CountAggregate(CountAggregate.CountOp.FILLED_GROUPS,
+                java.util.List.of(), java.util.List.of(repeatableGroup)));
+    }
+
     /** {@code NumberOfFilledGroups(g1, g2, …)} — ≥2 groups by signature. */
     public static NumberExpr numberOfFilledGroups(GroupRef first, GroupRef second, GroupRef... rest) {
         var groups = new java.util.ArrayList<GroupRef>();

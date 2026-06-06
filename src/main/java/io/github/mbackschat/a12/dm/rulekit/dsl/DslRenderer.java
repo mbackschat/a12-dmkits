@@ -189,6 +189,22 @@ public final class DslRenderer {
         };
     }
 
+    /**
+     * The operand list of a count aggregate. A lone repeatable group is the wildcard form
+     * {@code NumberOfFilledGroups(Group*)} — count its filled repetitions; every other shape renders
+     * its fields/groups bare (distinct entities).
+     */
+    private String countOperands(CountAggregate a) {
+        if (a.op() == CountAggregate.CountOp.FILLED_GROUPS
+                && a.fields().isEmpty() && a.groups().size() == 1 && a.groups().get(0).repeating()) {
+            return path(a.groups().get(0).path()) + "*";
+        }
+        return java.util.stream.Stream.concat(
+                        a.fields().stream().map(this::operand),
+                        a.groups().stream().map(g -> path(g.path())))
+                .collect(java.util.stream.Collectors.joining(", "));
+    }
+
     /** A field-list operand: its path, plus a {@code Having <filter>} clause for a filtered list. */
     private String operand(FieldOperand op) {
         if (op instanceof FieldListRef list && list.filter().isPresent()) {
@@ -221,12 +237,7 @@ public final class DslRenderer {
                     + a.operands().stream().map(this::operand)
                             .collect(java.util.stream.Collectors.joining(", "))
                     + ")";
-            case CountAggregate a -> keyword(a.operatorId()) + "("
-                    + java.util.stream.Stream.concat(
-                            a.fields().stream().map(this::operand),
-                            a.groups().stream().map(g -> path(g.path())))
-                    .collect(java.util.stream.Collectors.joining(", "))
-                    + ")";
+            case CountAggregate a -> keyword(a.operatorId()) + "(" + countOperands(a) + ")";
             case CurrentRepetition r -> keyword(r.operatorId()) + "(" + path(r.group().path()) + ")";
             case SemanticIndexValue v ->
                     "[" + path(v.field().path()) + " " + keyword(v.operatorId()) + " " + quote(v.indexValue()) + "]";
