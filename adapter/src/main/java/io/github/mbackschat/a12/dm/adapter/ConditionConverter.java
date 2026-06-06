@@ -722,6 +722,15 @@ final class ConditionConverter {
                 default -> throw unsupported("string coercion comparison operator " + op, origin);
             };
         }
+        // [field] == / != FirstFilledValue(/Group*/StringField) — a string-valued aggregate on the right
+        if (right instanceof IEntityListOperation aggregate) {
+            StringExpr agg = stringAggregate(aggregate);
+            return switch (op) {
+                case EQ -> left.eq(agg);
+                case NE -> left.ne(agg);
+                default -> throw unsupported("string aggregate comparison operator " + op, origin);
+            };
+        }
         // [field] == / != ([a] + " " + [b]) — string concatenation on the right (a string-typed composite)
         if (right instanceof ICompositeOperation comp && comp.getType() == OperationType.STRING) {
             StringExpr concat = convertConcatenation(comp);
@@ -758,10 +767,26 @@ final class ConditionConverter {
         if (isStringCoercion(op)) {
             return stringCoercion((IFieldIdOperation) op);
         }
+        if (op instanceof IEntityListOperation aggregate) {
+            return stringAggregate(aggregate);
+        }
         if (op instanceof ICompositeOperation nested && nested.getType() == OperationType.STRING) {
             return convertConcatenation(nested);
         }
         throw unsupported("string concatenation operand " + op.getClass().getSimpleName(), origin);
+    }
+
+    /** A string-valued aggregate ({@code FirstFilledValue} over a string repetition list) as a {@link StringExpr}. */
+    private StringExpr stringAggregate(IEntityListOperation aggregate) {
+        List<IEntityId> entities = aggregate.getEntityList().getEntityIdList();
+        if (entities.size() != 1 || !entities.get(0).isField()) {
+            throw unsupported("string aggregate over a non-single-field scope", aggregate);
+        }
+        FieldListRef scope = flattenScope(entities.get(0));
+        return switch (aggregate.getOperatorName()) {
+            case FirstFilledValue -> Dsl.firstFilledString(scope);
+            default -> throw unsupported("string aggregate operator " + aggregate.getOperatorName(), aggregate);
+        };
     }
 
     /** Whether {@code op} is a string-coercion field operation ({@code FieldValueAsString} / {@code RangeAsString}). */

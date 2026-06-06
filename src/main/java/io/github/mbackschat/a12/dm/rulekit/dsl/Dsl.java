@@ -108,6 +108,12 @@ public final class Dsl {
         return new DateExpr(new FirstFilledValue(dateScope));
     }
 
+    /** {@code FirstFilledValue(…)} over a string repetition list — the first specified value, as a string. */
+    public static StringExpr firstFilledString(FieldListRef stringScope) {
+        requireKind(stringScope, io.github.mbackschat.a12.dm.core.ValueKind.STRING, "firstFilledString");
+        return new StringExpr(new FirstFilledValue(stringScope));
+    }
+
     private static void requireKind(FieldListRef scope, io.github.mbackschat.a12.dm.core.ValueKind expected,
             String method) {
         if (scope.kind() != expected) {

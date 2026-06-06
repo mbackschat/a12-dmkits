@@ -35,10 +35,12 @@ class FirstFilledValueIngestTest {
                 .rootGroup("Employee", e -> e
                         .numberField("FirstContractValue", n -> { })
                         .dateField("FirstContractDate", d -> d.format("yyyy-MM-dd"))
+                        .stringField("FirstContractCode", s -> { })
                         .group("Contracts", g -> g
                                 .repeatable(20)
                                 .numberField("Value", n -> { })
-                                .dateField("StartDate", d -> d.format("yyyy-MM-dd"))))
+                                .dateField("StartDate", d -> d.format("yyyy-MM-dd"))
+                                .stringField("Code", s -> { })))
                 .build().toJson();
     }
 
@@ -55,6 +57,23 @@ class FirstFilledValueIngestTest {
                 .add(rule(m, "FirstDateRule", "/Employee/FirstContractDate", date)));
         assertEquals(RENDER.render(num), RENDER.render(converted(adapter.ingest("/Employee/FirstValueRule"))));
         assertEquals(RENDER.render(date), RENDER.render(converted(adapter.ingest("/Employee/FirstDateRule"))));
+    }
+
+    @Test
+    void roundTripsStringFirstFilledValueAsComparandAndConcatPart() {
+        BoundModel m = BoundModel.ofJson(employeeJson());
+        // string FirstFilledValue on the right of a string comparison
+        Condition cmp = m.str("/Employee/FirstContractCode")
+                .ne(Dsl.firstFilledString(m.flatten("/Employee/Contracts*/Code")));
+        // string FirstFilledValue as a concatenation part
+        Condition concat = m.str("/Employee/FirstContractCode")
+                .ne(Dsl.firstFilledString(m.flatten("/Employee/Contracts*/Code")).plus("-X"));
+
+        KernelAdapter adapter = KernelAdapter.of(m
+                .add(rule(m, "FirstCodeRule", "/Employee/FirstContractCode", cmp))
+                .add(rule(m, "FirstCodeConcatRule", "/Employee/FirstContractCode", concat)));
+        assertEquals(RENDER.render(cmp), RENDER.render(converted(adapter.ingest("/Employee/FirstCodeRule"))));
+        assertEquals(RENDER.render(concat), RENDER.render(converted(adapter.ingest("/Employee/FirstCodeConcatRule"))));
     }
 
     @Test
