@@ -2,6 +2,21 @@
 
 Working notes gathered while scaffolding Phase 1 against the A12 kernel **`30.8.1`** public surface (sibling repo `a12-kernel`, resolved from `mavenLocal`). These are verified against the kernel source unless marked otherwise. They complement the design in [`PROJECT-PROPOSAL.md`](./PROJECT-PROPOSAL.md); when something here contradicts the proposal, this file reflects what the code actually does.
 
+## The kernel SOURCE is the primary oracle — read it, don't decompile jars (2026-06-07)
+
+The **full kernel source** is checked out at the sibling repo **`../a12-kernel/kernel-tool/`** (consult-only — never edit). For any question about DSL syntax, rendering, or validation semantics, **read the source first** — it's authoritative and far cheaper than decompiling the `mavenLocal` jars or guessing from the BA doc. The high-value oracles, all under `kernel-core-parser/src/main/`:
+
+| Question | Source | What it gives |
+|---|---|---|
+| **Exact DSL syntax** of any construct | `antlr4/.../grammar/gen/GrammarOnly_ConditionParser.g4` + `Base_ConditionLexer.g4` | the authoritative grammar productions + every keyword terminal (e.g. `fieldAndValueListCondition: name '(' entitySpec toOp feldUndStringListenSpezifier ')'`) |
+| **Canonical rendering** (AST → text) | `java/.../parsebaum/util/formatter/FormatterVisitor.java` + `FormatterUtil.java` | how the kernel formats each node — the truth our `DslRenderer` should match (verified: tolerance via `getComparisonOperator`, `ValueAsDate` → `, FirstDay`, `RangeAsNumber` start+1, `NumberOfValueInFields` ` In ` separator) |
+| **Validation semantics** (why an MVK_* fires) | `java/.../check/bedingung/Check*Impl.java` (+ `check/operation`, `check/entity`) | the per-construct checkers, with **javadoc** stating the rules (e.g. `CheckFieldAndValueListConditionImpl`: `ValueNotConsistent`'s first param must be a table-backed enum, the rest match its dependent columns) |
+| **Parse-tree construction** | `java/.../parsebaum/creation/creators/.../*Creator.java` | how text becomes the `IXxx` parse-tree nodes the adapter consumes |
+| **Localized keywords** (EN/DE) | `java/.../grammar/languages/LexerTerminals_en.java` / `_de.java` | the keyword ↔ terminal mapping (source form of the `LexerTerminals` ResourceBundle the `KeywordParityTest` checks); grep these instead of the compiled `.class` |
+| **Field-type / model structure** | `../a12-kernel`'s `kernel-md-model*` source, or its jars' `-sources` | `IDateType.DatePrecision`, `IDocumentModelInfo.getBaseYear()`, serializer mixins (the DM-JSON keys) |
+
+This source tree resolved `DatePrecision`, `baseYear`, the `ValueAsDate`/`Now`/`BaseYear` node shapes, and `ValueNotConsistent`'s real semantics far faster than jar archaeology would. **Probing the live kernel** (a throwaway validate-and-dump test, as in the family work) stays the way to confirm *behavior* (what validates, what an operation parses to); the source is the way to learn *syntax, rendering, and the rules*.
+
 ## Validating a rule via `checkConsistency` (F4 — verified by experiment)
 
 **Enum comparison by stored value works for text-bearing enums.** `[Tier] == "PRO"` validates against the kernel even though `Tier` is a text-bearing enum (BASIC/PRO/ENTERPRISE with labels). This clarifies the §5b "text-bearing enum ↔ string: no" rule: it forbids comparing an enum to an actual **string field/expression**, not to its own **enum-value literal** (the quoted stored value). So rulekit's `EnumRef.is("PRO")` → `[Tier] == "PRO"` is correct; the value is checked against the model's enum domain at build time.
