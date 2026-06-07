@@ -506,6 +506,11 @@ final class ConditionConverter {
         ComparisonOperation op = comparison.getCmpOp();
         IOperation right = comparison.getOperation2();
         if (left instanceof IEntityListOperation aggregate) {
+            // a date-valued aggregate (MaxValue/MinValue/FirstFilledValue over a DATE scope) compares as a date
+            if (isDateValuedAggregate(aggregate)) {
+                return dateComparison(convertDateAggregate(aggregate), op, convertDateOperand(right, comparison),
+                        comparison);
+            }
             return numberExprComparison(convertAggregate(aggregate), op, right, comparison);
         }
         if (left instanceof IGroupOperation groupOp
@@ -1198,6 +1203,22 @@ final class ConditionConverter {
             }
         }
         throw unsupported("date-add amount that is not a constant", origin);
+    }
+
+    /**
+     * True when an aggregate is <em>date-valued</em>: an order/first-filled aggregate
+     * ({@code MaxValue}/{@code MinValue}/{@code FirstFilledValue}) over a single {@code DATE} field scope.
+     * Such an aggregate compares as a date, not a number — {@link #convertDateAggregate} builds it.
+     */
+    private boolean isDateValuedAggregate(IEntityListOperation aggregate) {
+        EntityListOperationName name = aggregate.getOperatorName();
+        if (name != EntityListOperationName.MaxValue && name != EntityListOperationName.MinValue
+                && name != EntityListOperationName.FirstFilledValue) {
+            return false;
+        }
+        List<IEntityId> entities = aggregate.getEntityList().getEntityIdList();
+        return entities.size() == 1 && entities.get(0).isField()
+                && model.fieldAt(entities.get(0).getFullName()).map(i -> i.kind() == ValueKind.DATE).orElse(false);
     }
 
     /** {@code MaxValue}/{@code MinValue} over a date repetition list, as a date operand (the date variant of the numeric aggregate). */

@@ -60,6 +60,18 @@ class FirstFilledValueIngestTest {
     }
 
     @Test
+    void roundTripsADateFirstFilledValueOnTheLeftOfAComparison() {
+        // Corpus shape: FirstFilledValue(dates*) > [dateField] — the date-valued aggregate is the LEFT
+        // operand (was mis-routed to the number builder and rejected: "needs a NUMBER field list").
+        BoundModel m = BoundModel.ofJson(employeeJson());
+        Condition full = m.date("/Employee/FirstContractDate").filled()
+                .and(Dsl.firstFilledDate(m.flatten("/Employee/Contracts*/StartDate"))
+                        .after(m.date("/Employee/FirstContractDate")));
+        KernelAdapter adapter = KernelAdapter.of(m.add(rule(m, "FirstDateLeftRule", "/Employee/FirstContractDate", full)));
+        assertEquals(RENDER.render(full), RENDER.render(converted(adapter.ingest("/Employee/FirstDateLeftRule"))));
+    }
+
+    @Test
     void roundTripsStringFirstFilledValueAsComparandAndConcatPart() {
         BoundModel m = BoundModel.ofJson(employeeJson());
         // string FirstFilledValue on the right of a string comparison
