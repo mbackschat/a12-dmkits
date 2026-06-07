@@ -62,6 +62,39 @@ class WritePathTest {
         // reaching here means the re-bind re-ran checkConsistency and the write validated
     }
 
+    @Test
+    void addComputationYieldsANewBindingThatRendersIntoTheJson() {
+        BoundModel m = bind();
+        Computation comp = m.computation(m.num("/Subscription/Billing/EffectiveFee"))
+                .name("EffectiveFeeComp")
+                .calc(m.num("/Subscription/Billing/BaseFee").value())
+                .message(Dsl.en("EffectiveFee must equal BaseFee."), Dsl.de("Effektivgebühr = Basisgebühr."))
+                .build();
+
+        BoundModel m2 = m.add(comp);
+        String json = m2.toJson();
+        assertTrue(json.contains("EffectiveFeeComp"), "new binding carries the computation");
+        assertTrue(json.contains("computationAlternatives"), "in the computation DM-JSON shape");
+        assertTrue(json.contains("EffectiveFee must equal BaseFee."), "with its real message text");
+        assertFalse(m.toJson().contains("EffectiveFeeComp"), "original binding untouched (F0)");
+        // re-binding ran checkConsistency (a broken computation would have thrown), and it round-trips
+        assertTrue(BoundModel.ofJson(json).toJson().contains("EffectiveFeeComp"));
+    }
+
+    @Test
+    void removeRuleDropsTheRuleAndReValidates() {
+        BoundModel withRule = bind().add(feePositive(bind()));
+        String rulePath = "/Subscription/Addons/FeePositiveRule";
+        assertTrue(withRule.toJson().contains("FeePositiveRule"), "precondition: the rule is present");
+
+        BoundModel without = withRule.removeRule(rulePath);
+        assertFalse(without.toJson().contains("FeePositiveRule"), "the rule is gone");
+        assertTrue(withRule.toJson().contains("FeePositiveRule"), "prior binding untouched (F0)");
+        // removing a non-existent rule fails loudly
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> bind().removeRule("/Subscription/Addons/NoSuchRule"));
+    }
+
     private static Rule feePositive(BoundModel m) {
         return m.rule(m.group("/Subscription/Addons"))
                 .name("FeePositiveRule").errorField(m.num("/Subscription/Addons/MonthlyFee"))

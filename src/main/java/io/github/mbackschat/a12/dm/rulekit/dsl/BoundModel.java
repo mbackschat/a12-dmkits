@@ -69,6 +69,25 @@ public final class BoundModel {
     }
 
     /**
+     * Adds {@code computation} to the model (in its computed field's group) and returns a <em>new</em>
+     * binding over the updated DM-JSON; this binding is unchanged. Re-validated on re-bind (a write that
+     * breaks the model fails loudly here), the computation twin of {@link #add(Rule)}.
+     */
+    public BoundModel add(Computation computation) {
+        return ofJson(io.github.mbackschat.a12.dm.rulekit.write.ModelWriter.addComputation(requireWritable(),
+                computation), resolver);
+    }
+
+    /**
+     * Removes the rule at {@code ruleFullName}, returning a <em>new</em> binding (this one is unchanged).
+     * Re-validated on re-bind. Throws if no rule exists at that path.
+     */
+    public BoundModel removeRule(String ruleFullName) {
+        return ofJson(io.github.mbackschat.a12.dm.rulekit.write.ModelWriter.removeRule(requireWritable(),
+                ruleFullName), resolver);
+    }
+
+    /**
      * Replaces the condition of the rule at {@code ruleFullName} with {@code newCondition}, returning
      * a <em>new</em> binding (this one is unchanged); the F8 #3 write-back that applies a reviewed
      * re-express. The condition is rendered relative to the rule's group (fork-9), like any authored

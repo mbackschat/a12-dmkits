@@ -8,8 +8,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
+import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 
 /**
  * The F6 DM-JSON write path for <b>rules</b> (D9: the public, polyglot write surface — no internal
@@ -59,6 +63,69 @@ public final class ModelWriter {
         } catch (IOException e) {
             throw new UncheckedIOException("failed to read/write the model DM-JSON", e);
         }
+    }
+
+    /** Returns {@code modelJson} with {@code computation} (a built {@link Computation}) added to its computed field's group (F6). */
+    public static String addComputation(String modelJson, Computation computation) {
+        return DmJson.insertIntoGroup(modelJson, computation.groupPath(),
+                computationNode(computation.draft(), computation.messages()));
+    }
+
+    /** Returns {@code modelJson} with the Rule element at {@code ruleFullName} removed from its group. */
+    public static String removeRule(String modelJson, String ruleFullName) {
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(modelJson);
+            String groupPath = ruleFullName.substring(0, ruleFullName.lastIndexOf('/'));
+            ArrayNode elements = DmJson.groupElements(root, groupPath);
+            if (elements == null) {
+                throw new IllegalArgumentException("no group at path: " + groupPath);
+            }
+            int idx = -1;
+            for (int i = 0; i < elements.size(); i++) {
+                JsonNode el = elements.get(i);
+                if ("Rule".equals(el.path("type").asText()) && ruleFullName.equals(el.path("id").asText())) {
+                    idx = i;
+                    break;
+                }
+            }
+            if (idx < 0) {
+                throw new IllegalArgumentException("no rule at path: " + ruleFullName);
+            }
+            elements.remove(idx);
+            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
+        } catch (IOException e) {
+            throw new UncheckedIOException("failed to read/write the model DM-JSON", e);
+        }
+    }
+
+    /** Build a {@code Computation} element node from its rendered slots + real messages (the DM-JSON computation shape). */
+    private static ObjectNode computationNode(DraftComputation c, List<LocalizedText> messages) {
+        ObjectNode node = MAPPER.createObjectNode();
+        node.put("type", "Computation");
+        node.put("id", c.groupPath() + "/" + c.name());
+        node.put("name", c.name());
+
+        ObjectNode body = node.putObject("Computation");
+        body.put("computedFieldRelPath", c.computedFieldRelPath());
+        if (c.commonPrecondition() != null) {
+            body.put("commonPrecondition", c.commonPrecondition());
+        }
+        ArrayNode alternatives = body.putArray("computationAlternatives");
+        for (DraftComputation.Alternative alternative : c.alternatives()) {
+            ObjectNode alt = alternatives.addObject();
+            if (alternative.precondition() != null) {
+                alt.put("precondition", alternative.precondition());
+            }
+            alt.put("operation", alternative.operation());
+        }
+
+        ArrayNode messageArray = body.putArray("errorMessage");
+        for (LocalizedText text : messages) {
+            ObjectNode message = messageArray.addObject();
+            message.put("locale", text.locale());
+            message.put("text", text.text());
+        }
+        return node;
     }
 
     /** Build a {@code Rule} element node from its slots (the one place that knows the DM-JSON rule shape). */
