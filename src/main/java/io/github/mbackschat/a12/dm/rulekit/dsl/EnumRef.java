@@ -10,11 +10,29 @@ import java.util.Map;
  * later rejects. {@link #category(String)} navigates to a model-declared category
  * ({@code [field -> Category]}). Obtain from {@link BoundModel#enumOf(String)}.
  */
-public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, List<String>> categories) {
+public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, List<String>> categories,
+        boolean correlated) {
 
     public EnumRef {
         allowedValues = List.copyOf(allowedValues);
         categories = Map.copyOf(categories);
+    }
+
+    public EnumRef(FieldRef field, List<String> allowedValues, Map<String, List<String>> categories) {
+        this(field, allowedValues, categories, false);
+    }
+
+    /**
+     * Marks this reference as the {@code $} outer-iteration correlation ({@code [$path]}) — it binds
+     * to the enclosing rule iteration. Legal only inside a {@code Having} filter (D13); the canonical
+     * form is {@code inner.is(outer.outer())}.
+     */
+    public EnumRef outer() {
+        return new EnumRef(field, allowedValues, categories, true);
+    }
+
+    private FieldValue value() {
+        return new FieldValue(field, correlated);
     }
 
     /** The category named {@code name} — fails fast if the model declares no such category. */
@@ -48,11 +66,11 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
      * enums are type-compatible is the kernel's call (F4/N7), as for {@link StringRef#eq(StringRef)}.
      */
     public Condition is(EnumRef other) {
-        return new ComparisonCondition(field.value(), CompareOp.EQ, other.field.value());
+        return new ComparisonCondition(value(), CompareOp.EQ, other.value());
     }
 
     public Condition isNot(EnumRef other) {
-        return new ComparisonCondition(field.value(), CompareOp.NE, other.field.value());
+        return new ComparisonCondition(value(), CompareOp.NE, other.value());
     }
 
     private Condition compareTo(CompareOp op, String value) {
@@ -61,7 +79,7 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
                     "'" + value + "' is not a value of " + field.path() + " — allowed: " + allowedValues
                             + io.github.mbackschat.a12.dm.core.Suggest.hint(value, allowedValues));
         }
-        return new ComparisonCondition(field.value(), op, new EnumValueLiteral(value));
+        return new ComparisonCondition(value(), op, new EnumValueLiteral(value));
     }
 
     /**

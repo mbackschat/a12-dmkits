@@ -9,10 +9,26 @@ import java.util.List;
  * domain — comparing to a plain enum value is the kernel-rejected mistake
  * ({@code MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON}, verified) this handle erases.
  */
-public record CategoryRef(FieldRef field, String name, List<String> values) {
+public record CategoryRef(FieldRef field, String name, List<String> values, boolean correlated) {
 
     public CategoryRef {
         values = List.copyOf(values);
+    }
+
+    public CategoryRef(FieldRef field, String name, List<String> values) {
+        this(field, name, values, false);
+    }
+
+    /**
+     * Marks this reference as the {@code $} outer-iteration correlation ({@code [$field -> name]}) — it
+     * binds to the enclosing rule iteration. Legal only inside a {@code Having} filter (D13).
+     */
+    public CategoryRef outer() {
+        return new CategoryRef(field, name, values, true);
+    }
+
+    private EnumCategoryAccess access() {
+        return new EnumCategoryAccess(field, name, correlated);
     }
 
     /** {@code [field -> name] == value}. */
@@ -27,13 +43,11 @@ public record CategoryRef(FieldRef field, String name, List<String> values) {
 
     /** {@code [field -> name] == [other -> name]} — category-vs-category (the kernel arbitrates compatibility). */
     public Condition is(CategoryRef other) {
-        return new ComparisonCondition(new EnumCategoryAccess(field, name), CompareOp.EQ,
-                new EnumCategoryAccess(other.field, other.name));
+        return new ComparisonCondition(access(), CompareOp.EQ, other.access());
     }
 
     public Condition isNot(CategoryRef other) {
-        return new ComparisonCondition(new EnumCategoryAccess(field, name), CompareOp.NE,
-                new EnumCategoryAccess(other.field, other.name));
+        return new ComparisonCondition(access(), CompareOp.NE, other.access());
     }
 
     private Condition compareTo(CompareOp op, String value) {
@@ -42,6 +56,6 @@ public record CategoryRef(FieldRef field, String name, List<String> values) {
                     + "' on " + field.path() + " — allowed: " + values
                     + " (comparing to a plain enum value is MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON)");
         }
-        return new ComparisonCondition(new EnumCategoryAccess(field, name), op, new EnumValueLiteral(value));
+        return new ComparisonCondition(access(), op, new EnumValueLiteral(value));
     }
 }

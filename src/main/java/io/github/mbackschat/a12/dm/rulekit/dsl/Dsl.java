@@ -234,6 +234,15 @@ public final class Dsl {
         return new NumberExpr(new CurrentRepetition(group));
     }
 
+    /**
+     * {@code CurrentRepetition($group)} — the <em>outer</em> iteration's index (the {@code $}
+     * correlation, D13), for a self-exclusion like {@code CurrentRepetition(G) != CurrentRepetition($G)}
+     * inside a {@code Having} filter.
+     */
+    public static NumberExpr currentRepetition(GroupRef group, boolean outer) {
+        return new NumberExpr(new CurrentRepetition(group, outer));
+    }
+
     /** {@code NumberOfDifferentValues(…)} — distinct-value count over type-homogeneous operands. */
     public static NumberExpr numberOfDifferentValues(FieldOperand first, FieldOperand... rest) {
         var fields = new java.util.ArrayList<FieldOperand>();

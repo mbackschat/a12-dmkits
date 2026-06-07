@@ -49,6 +49,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ValueListCondit
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.ast.ASTVisitor;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand;
@@ -140,8 +141,11 @@ final class ConditionConverter {
         if (expectedOuter == 0) {
             return;
         }
-        String rendered = new DslRenderer().render(converted);
-        int renderedOuter = countOccurrences(rendered, "[$");
+        // The $ marker renders in several positions — "[$path]" (value/category), "($group)"
+        // (CurrentRepetition), and bare "$path" (presence predicates, value-list operands). $ is the DSL's
+        // ONLY use of the character outside a string literal, so: drop string literals, then count every $.
+        String rendered = new DslRenderer().render(converted).replaceAll("\"[^\"]*\"", "");
+        int renderedOuter = countOccurrences(rendered, "$");
         if (renderedOuter < expectedOuter) {
             throw new UnsupportedConstructException("F10 converter would silently drop a '$' outer-iteration "
                     + "correlation (D13): the source carries " + expectedOuter + " marker(s) but conversion "
@@ -209,6 +213,41 @@ final class ConditionConverter {
         boolean single = paths.size() == 1;
         String[] p = paths.toArray(String[]::new);
         if (entities.get(0).isField()) {
+            // A wildcard scope with a Having filter (e.g. AtLeastOneFieldFilled(Group*/Field Having …)):
+            // build the filtered FieldListRef (flattenScope converts the filter — threading any $) and apply
+            // the quantifier over it. The plain path form below drops the wildcard + filter, so it must not
+            // be taken here.
+            if (single && entities.get(0).getFilterCondition() != null) {
+                FieldListRef scope = flattenScope(entities.get(0));
+                return switch (name) {
+                    case AllFieldsFilled -> Dsl.allFieldsFilled(scope);
+                    case NoFieldFilled -> Dsl.noFieldFilled(scope);
+                    case AtLeastOneFieldFilled -> Dsl.atLeastOneFieldFilled(scope);
+                    case NotAllFieldsFilled -> Dsl.notAllFieldsFilled(scope);
+                    case FieldsNotCollectivelyFilled -> Dsl.fieldsNotCollectivelyFilled(scope);
+                    case NotExactlyOneFieldFilled -> Dsl.notExactlyOneFieldFilled(scope);
+                    case MoreThanOneFieldFilled -> Dsl.moreThanOneFieldFilled(scope);
+                    default -> throw unsupported("filtered field-list quantifier " + name, entityList);
+                };
+            }
+            // $-correlated presence predicate (e.g. NoFieldFilled($a, $b) inside a filter, D13): build
+            // outer-marked field operands so the $ survives — else the count-check refuses the conversion.
+            if (entities.stream().anyMatch(IEntityId::isOuter)) {
+                FieldOperand[] ops = entities.stream()
+                        .map(e -> e.isOuter() ? model.field(e.getFullName()).asOuter() : model.field(e.getFullName()))
+                        .toArray(FieldOperand[]::new);
+                FieldOperand[] rest = Arrays.copyOfRange(ops, 1, ops.length);
+                return switch (name) {
+                    case AllFieldsFilled -> Dsl.allFieldsFilled(ops[0], rest);
+                    case NoFieldFilled -> Dsl.noFieldFilled(ops[0], rest);
+                    case AtLeastOneFieldFilled -> Dsl.atLeastOneFieldFilled(ops[0], rest);
+                    case NotAllFieldsFilled -> Dsl.notAllFieldsFilled(ops[0], rest);
+                    case FieldsNotCollectivelyFilled -> Dsl.fieldsNotCollectivelyFilled(ops[0], rest);
+                    case NotExactlyOneFieldFilled -> Dsl.notExactlyOneFieldFilled(ops[0], rest);
+                    case MoreThanOneFieldFilled -> Dsl.moreThanOneFieldFilled(ops[0], rest);
+                    default -> throw unsupported("$-correlated field-list condition " + name, entityList);
+                };
+            }
             return switch (name) {
                 // single-field FieldFilled/FieldNotFilled canonicalize to AllFieldsFilled/NoFieldFilled[x]
                 case AllFieldsFilled -> single ? model.field(p[0]).filled() : model.allFieldsFilled(p);
@@ -462,7 +501,8 @@ final class ConditionConverter {
         }
         if (left instanceof IGroupOperation groupOp
                 && groupOp.getOperatorName() == GroupOperationName.CurrentRepetition) {
-            NumberExpr expr = Dsl.currentRepetition(model.group(groupOp.getGroup().getFullName()));
+            NumberExpr expr = Dsl.currentRepetition(model.group(groupOp.getGroup().getFullName()),
+                    groupOp.getGroup().isOuter());   // $ self-exclusion correlation (D13)
             return numberExprComparison(expr, op, right, comparison);
         }
         if (left instanceof IDateDiffOperation diff) {
@@ -496,20 +536,21 @@ final class ConditionConverter {
         ValueKind kind = model.fieldAt(path)
                 .orElseThrow(() -> unsupported("comparison on unknown field " + path, origin))
                 .kind();
-        // an enum field navigated to one of its categories ([field -> Cat]) rides on getCategoryName()
-        String category = field.getField().getCategoryName();
-        if (kind == ValueKind.ENUMERATION && category != null && !category.isEmpty()) {
-            return categoryComparison(model.enumOf(path).category(category), op, other, origin);
-        }
         // a $ outer-iteration correlation on the left operand (D13) — threaded for the kinds whose
         // handles expose outer(); other kinds leave the marker unset and the N8 backstop (verifyOuterPreserved)
         // catches the silent drop and degrades the rule to Opaque.
         boolean leftOuter = field.getField().isOuter();
+        // an enum field navigated to one of its categories ([field -> Cat]) rides on getCategoryName()
+        String category = field.getField().getCategoryName();
+        if (kind == ValueKind.ENUMERATION && category != null && !category.isEmpty()) {
+            CategoryRef cat = model.enumOf(path).category(category);
+            return categoryComparison(leftOuter ? cat.outer() : cat, op, other, origin);
+        }
         return switch (kind) {
             case NUMBER -> numberComparison(leftOuter ? model.num(path).outer() : model.num(path), op, other, origin);
             case STRING -> stringComparison(leftOuter ? model.str(path).outer() : model.str(path), op, other, origin);
-            case ENUMERATION -> enumComparison(model.enumOf(path), op, other, origin);
-            case DATE -> dateComparison(model.date(path), op, other, origin);
+            case ENUMERATION -> enumComparison(leftOuter ? model.enumOf(path).outer() : model.enumOf(path), op, other, origin);
+            case DATE -> dateComparison(leftOuter ? model.date(path).outer() : model.date(path), op, other, origin);
             case BOOLEAN -> booleanComparison(model.bool(path), op, other, origin);
             case CONFIRM -> confirmComparison(model.confirm(path), op, other, origin);
             default -> throw unsupported("comparison on a " + kind + " field", origin);
@@ -635,7 +676,8 @@ final class ConditionConverter {
         }
         if (operand instanceof IGroupOperation groupOp
                 && groupOp.getOperatorName() == GroupOperationName.CurrentRepetition) {
-            return Dsl.currentRepetition(model.group(groupOp.getGroup().getFullName()));
+            return Dsl.currentRepetition(model.group(groupOp.getGroup().getFullName()),
+                    groupOp.getGroup().isOuter());   // $ self-exclusion correlation (D13)
         }
         if (operand instanceof IFieldIdOperation field
                 && field.getOperatorName() == FieldIdOperationName.FieldValue) {
@@ -904,6 +946,9 @@ final class ConditionConverter {
         if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue
                 && rf.getField().getCategoryName() != null && !rf.getField().getCategoryName().isEmpty()) {
             var other = model.enumOf(rf.getField().getFullName()).category(rf.getField().getCategoryName());
+            if (rf.getField().isOuter()) {
+                other = other.outer();   // $ correlation on the right operand (D13)
+            }
             return switch (op) {
                 case EQ -> category.is(other);
                 case NE -> category.isNot(other);
@@ -924,6 +969,9 @@ final class ConditionConverter {
         }
         if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
             EnumRef other = model.enumOf(rf.getField().getFullName());
+            if (rf.getField().isOuter()) {
+                other = other.outer();   // $ correlation on the right operand (D13)
+            }
             return switch (op) {
                 case EQ -> left.is(other);
                 case NE -> left.isNot(other);
@@ -997,7 +1045,8 @@ final class ConditionConverter {
     /** A date-valued operand: a date field ({@code FieldValue}) or a point-in-time ({@code Today}). */
     private DateOperand convertDateOperand(IOperation op, Object origin) {
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
-            return model.date(field.getField().getFullName());
+            DateRef date = model.date(field.getField().getFullName());
+            return field.getField().isOuter() ? date.outer() : date;   // $ correlation (D13)
         }
         if (op instanceof IPointInTimeOperation pit && pit.getOperatorName() == PointInTimeOperationName.Today) {
             return Dsl.today();

@@ -156,7 +156,8 @@ public final class DslRenderer {
 
     public String render(Condition condition) {
         return switch (condition) {
-            case FieldPresenceCondition f -> keyword(f.operatorId()) + "(" + path(f.field().path()) + ")";
+            case FieldPresenceCondition f ->
+                    keyword(f.operatorId()) + "(" + (f.field().outer() ? "$" : "") + path(f.field().path()) + ")";
             case FieldListPredicate p -> keyword(p.operatorId()) + "("
                     + p.fields().stream().map(this::operand)
                             .collect(java.util.stream.Collectors.joining(", "))
@@ -222,6 +223,10 @@ public final class DslRenderer {
         if (op instanceof FieldListRef list && list.filter().isPresent()) {
             return path(list.renderedPath()) + " " + keyword("Having") + " " + render(list.filter().get());
         }
+        // a $ outer-iteration correlation on a bare reference (e.g. NoFieldFilled($a, $b) in a filter, D13)
+        if (op instanceof FieldRef f && f.outer()) {
+            return "$" + path(f.renderedPath());
+        }
         return path(op.renderedPath());
     }
 
@@ -244,13 +249,15 @@ public final class DslRenderer {
             case BoolLiteral b -> keyword(b.operatorId());
             case LengthOf l -> keyword(l.operatorId()) + "(" + path(l.field().path()) + ")";
             case EnumCategoryAccess c ->
-                    "[" + path(c.field().path()) + " " + keyword(c.operatorId()) + " " + c.category() + "]";
+                    "[" + (c.outer() ? "$" : "") + path(c.field().path()) + " " + keyword(c.operatorId())
+                            + " " + c.category() + "]";
             case ListAggregate a -> keyword(a.operatorId()) + "("
                     + a.operands().stream().map(this::operand)
                             .collect(java.util.stream.Collectors.joining(", "))
                     + ")";
             case CountAggregate a -> keyword(a.operatorId()) + "(" + countOperands(a) + ")";
-            case CurrentRepetition r -> keyword(r.operatorId()) + "(" + path(r.group().path()) + ")";
+            case CurrentRepetition r ->
+                    keyword(r.operatorId()) + "(" + (r.outer() ? "$" : "") + path(r.group().path()) + ")";
             case SemanticIndexValue v ->
                     "[" + path(v.field().path()) + " " + keyword(v.operatorId()) + " " + quote(v.indexValue()) + "]";
             case Today t -> keyword(t.operatorId());

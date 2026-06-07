@@ -9,7 +9,12 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * group, else {@code MVK_NO_WILDCARD} — position-dependent, so kernel-delegated (KERNEL-FINDINGS §9).
  * A non-repeatable group is tolerated (its index is constant).
  */
-public record CurrentRepetition(GroupRef group) implements Calculation {
+public record CurrentRepetition(GroupRef group, boolean outer) implements Calculation {
+
+    /** A non-correlated current-repetition index. */
+    public CurrentRepetition(GroupRef group) {
+        this(group, false);
+    }
 
     public String operatorId() {
         return "CurrentRepetition";

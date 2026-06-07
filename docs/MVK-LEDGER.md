@@ -70,10 +70,10 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_INVALID_DIGIT_FOR_ROUNDING` | unclassified | — (experiment queue) |
 | `MVK_INVALID_ENTITY` | unclassified | — (experiment queue) |
 | `MVK_INVALID_INTERVAL` | unclassified | — (experiment queue) |
-| `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` | unclassified | — (experiment queue) |
+| `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` | kernel-delegated | a filter may iterate only over levels the filtered field stars; a ref to a field iterating over a different group needs the `$` operator (`[$L/F2]`) — the typed API renders `$` correctly and the kernel arbitrates. KERNEL-FINDINGS §9 (cross-checked vs the kernel-team BA doc), `adapter.laws.CorrelationLawsTest` |
 | `MVK_INVALID_LENGTH_OF_RAW_TYPE` | unclassified | — (experiment queue) |
 | `MVK_INVALID_NUMBER_FOR_EXP` | unclassified | — (experiment queue) |
-| `MVK_INVALID_OUTER_ITERATION` | kernel-delegated | `$` correlation: **authoring** renders `[$path]` only inside a `Having` filter, kernel arbitrates legality (`adapter.OuterCorrelationAuthoringTest`); **ingest** converts the number/string kinds faithfully (`adapter.OuterCorrelationIngestTest`) and the **count-check backstop** (`verifyOuterPreserved`) keeps any un-threaded kind Opaque/verbatim — never silent corruption (`adapter.OuterCorrelationBackstopTest`). Corpus-1 lift 87.0%→88.9%. KERNEL-FINDINGS §9, KERNEL-INTEGRATION-NOTES `$` item |
+| `MVK_INVALID_OUTER_ITERATION` | kernel-delegated | `$` correlation: **authoring** renders `[$path]` only inside a `Having` filter, kernel arbitrates legality (`adapter.OuterCorrelationAuthoringTest`); **ingest** converts all field-vs-field kinds + `CurrentRepetition($)` + presence predicates (`NoFieldFilled($a,$b)`) and routes filtered field-list quantifiers through `flattenScope` (`OuterCorrelationIngestTest`/`OuterCorrelationQuantifierIngestTest`); the **count-check backstop** (`verifyOuterPreserved`) keeps any un-threaded construct Opaque/verbatim — never silent corruption (`adapter.OuterCorrelationBackstopTest`). Corpus-1 lift 87.0%→95.0% (lone residual: a wildcard value-list `$` operand). KERNEL-FINDINGS §9, KERNEL-INTEGRATION-NOTES `$` item |
 | `MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON` | unclassified | — (experiment queue) |
 | `MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON` | erased | `PatternCondition` left side is always a bare string field value — expressions unrepresentable (KERNEL-FINDINGS §7) |
 | `MVK_INVALID_PARAMS_FOR_OP` | unclassified | — (experiment queue) |
@@ -112,7 +112,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_NOT_IN_RULEGROUP` | unclassified | — (experiment queue) |
 | `MVK_NOT_IN_SAME_PATH` | unclassified | — (experiment queue) |
 | `MVK_NOT_ON_ERRORFIELD_PATH` | unclassified | — (experiment queue) |
-| `MVK_NOT_SORTABLE` | pre-checked | `ListAggregate` Max/Min require NUMBER operands (date variant pending, item 9; locked: N7 `MaxValue` invalidExample) |
+| `MVK_NOT_SORTABLE` | pre-checked | `ListAggregate` Max/Min require NUMBER operands; the **date** variant (`Dsl.latestOf`/`earliestOf` → `DateListAggregate`) is implemented (`adapter.DateAggregateIngestTest`). Locked: N7 `MaxValue` invalidExample |
 | `MVK_NO_BASE_YEAR` | unclassified | — (experiment queue) |
 | `MVK_NO_BOOLY_ALLOWED` | unclassified | — (experiment queue) |
 | `MVK_NO_CONST` | unclassified | — (experiment queue) |
@@ -126,7 +126,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_NO_FIELDS_ALLOWED` | erased | `GroupRef` ≠ `FieldRef` — group predicates take groups only |
 | `MVK_NO_GROUPS_ALLOWED` | erased | field predicates take `FieldRef` only |
 | `MVK_NO_INDEX_FIELD` | kernel-delegated | semantic index `[Field For …]` needs the group to declare `indexFieldName`; rulekit index does not yet expose it (slice 7f) — locked: N7 `SemanticIndex` invalidExample |
-| `MVK_NO_ITERATION_FOR_WILDCARD` | pending | `$` correlation deferred (rides field-vs-field comparison) |
+| `MVK_NO_ITERATION_FOR_WILDCARD` | kernel-delegated | `$` correlation is implemented (2026-06-07); a `$` on the filtered side needs a non-`$` inner ref, which the typed `[inner] == [$outer]` form produces — the kernel arbitrates the degenerate case. KERNEL-FINDINGS §9, `adapter.laws.CorrelationLawsTest` |
 | `MVK_NO_NUMBER` | pre-checked | `ListAggregate` Sum requires NUMBER operands (locked: N7 `Sum` invalidExample) |
 | `MVK_NO_NUMBER_FOR_CALC` | unclassified | — (experiment queue) |
 | `MVK_NO_STRING` | unclassified | — (experiment queue) |

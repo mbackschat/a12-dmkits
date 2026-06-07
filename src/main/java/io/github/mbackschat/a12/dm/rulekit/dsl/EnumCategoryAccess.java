@@ -5,7 +5,12 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * category value (positional mapping in the model: {@code categories[i].values[i]} pairs with
  * {@code values[i]}). Yields an enumeration-kind value drawn from the category's value domain.
  */
-public record EnumCategoryAccess(FieldRef field, String category) implements Calculation {
+public record EnumCategoryAccess(FieldRef field, String category, boolean outer) implements Calculation {
+
+    /** A non-correlated category access. */
+    public EnumCategoryAccess(FieldRef field, String category) {
+        this(field, category, false);
+    }
 
     /** The catalog operator-id (D14); the {@code ->} symbol is the same in every language. */
     public String operatorId() {

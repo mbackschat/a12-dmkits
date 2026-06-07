@@ -221,30 +221,27 @@ class IngestRoundTripTest {
     }
 
     /**
-     * A still-unconverted construct — a <b>date {@code $} outer correlation</b>, the un-threaded kind
-     * the N8 count-check backstop keeps Opaque (number/string correlations now <em>convert</em> — see
-     * {@code OuterCorrelationIngestTest}; the focused backstop is {@code OuterCorrelationBackstopTest}).
-     * Needs a repeatable date group, so these two cases use a small timesheet fixture rather than the
-     * order model.
+     * A still-unconverted construct — {@code SumOfProducts} (a real kernel operator rulekit does not
+     * model yet), which ingests as Opaque, preserved verbatim. ({@code $} correlations are no longer a
+     * good opaque example — they now convert; the count-check that guards the un-threaded ones is tested
+     * directly in {@code OuterCorrelationBackstopTest}.) Uses a small timesheet fixture with the number
+     * fields the operator needs.
      */
     private static final String OPAQUE_CONDITION =
-            "FieldFilled(PeriodEnd) And [/Timesheet/PeriodEnd] != "
-                    + "MaxValue(Shifts*/ShiftDate Having [$/Timesheet/PeriodEnd] == [Shifts/ShiftDate])";
+            "FieldFilled(PeriodEnd) And [/Timesheet/Total] != SumOfProducts(Shifts*/Hours, Shifts*/Rate)";
 
     @Test
     void preservesAnUnconvertedConstructAsOpaque() {
-        // A date $ correlation (un-threaded kind) stays unconverted → preserved opaque, not lost, not corrupt.
+        // SumOfProducts is unmodeled → the rule stays unconverted → preserved opaque, not lost, not corrupt.
         KernelAdapter adapter = KernelAdapter.ofJson(
                 timesheetWith(timesheetRule("/Timesheet/OpaqueRule", "OpaqueRule", OPAQUE_CONDITION)));
 
         Ingest result = adapter.ingest("/Timesheet/OpaqueRule");
         Ingest.Opaque opaque = assertInstanceOf(Ingest.Opaque.class, result,
                 () -> "an unconverted construct should ingest as Opaque, got: " + result);
-        assertTrue(opaque.reason().toLowerCase().contains("$") || opaque.reason().toLowerCase().contains("outer"),
-                () -> "the reason should name the unconverted construct: " + opaque.reason());
-        // preserved verbatim: the rule's text survives (re-emit on write-back), $ marker and all
+        // preserved verbatim: the rule's text survives (re-emit on write-back)
         assertFalse(opaque.canonicalText().isBlank());
-        assertTrue(opaque.canonicalText().contains("$"),
+        assertTrue(opaque.canonicalText().contains("SumOfProducts"),
                 () -> "opaque text should preserve the rule verbatim: " + opaque.canonicalText());
     }
 
@@ -258,14 +255,16 @@ class IngestRoundTripTest {
         assertInstanceOf(Ingest.Opaque.class, all.get("/Timesheet/OpaqueRule"));
     }
 
-    /** A timesheet with a repeatable Shifts group (date field) — the smallest model carrying a date $ correlation. */
+    /** A timesheet with a repeatable Shifts group (number fields) — carries a SumOfProducts over two lists. */
     private static String timesheetJson() {
         return DocumentModelDraft.named("timesheet").locale("en_US")
                 .rootGroup("Timesheet", t -> t
                         .dateField("PeriodEnd", d -> d.format("yyyy-MM-dd"))
+                        .numberField("Total", n -> { })
                         .group("Shifts", g -> g
                                 .repeatable(50)
-                                .dateField("ShiftDate", d -> d.format("yyyy-MM-dd"))))
+                                .numberField("Hours", n -> { })
+                                .numberField("Rate", n -> { })))
                 .build().toJson();
     }
 

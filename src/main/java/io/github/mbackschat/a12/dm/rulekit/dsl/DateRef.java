@@ -6,11 +6,23 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * (and {@code Date(...)} construction) are format/fragment-finicky and deferred (KERNEL-FINDINGS §6);
  * compare to another date field or {@link Dsl#today()} instead.
  */
-public record DateRef(FieldRef field) implements DateOperand {
+public record DateRef(FieldRef field, boolean correlated) implements DateOperand {
+
+    public DateRef(FieldRef field) {
+        this(field, false);
+    }
+
+    /**
+     * Marks this reference as the {@code $} outer-iteration correlation ({@code [$path]}) — it binds
+     * to the enclosing rule iteration. Legal only inside a {@code Having} filter (D13).
+     */
+    public DateRef outer() {
+        return new DateRef(field, true);
+    }
 
     @Override
     public Calculation expression() {
-        return field.value();
+        return new FieldValue(field, correlated);
     }
 
     public Condition filled() {
