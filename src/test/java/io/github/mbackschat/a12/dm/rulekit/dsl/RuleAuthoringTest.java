@@ -46,6 +46,27 @@ class RuleAuthoringTest {
     }
 
     @Test
+    void buildsARuleWithAnInterpolatedMessageTheKernelAccepts() {
+        // F2a: a $Field.value$ placeholder in the message — typed via Dsl.fieldValue (no-asterisk by
+        // construction); the field is referenced in the condition (the kernel's other requirement).
+        NumberRef fee = m.num("/Subscription/Addons/MonthlyFee");
+        String token = Dsl.fieldValue(fee.field());
+        assertEquals("$/Subscription/Addons/MonthlyFee.value$", token);
+        Rule rule = m.rule(m.group("/Subscription/Addons"))
+                .name("FeeCapRule")
+                .errorField(fee)
+                .when(fee.filled().and(fee.gt(1000)))
+                .code("FEE_CAP")
+                .severity(Severity.ERROR)
+                .message(en("The fee " + token + " exceeds the cap."),
+                        de("Die Gebühr " + token + " überschreitet das Limit."))
+                .build();
+
+        ValidationResult vr = new RuleValidator().check(modelJson, rule.draft());
+        assertTrue(vr.ok(), () -> "kernel should accept the interpolated message, got: " + vr.diagnostics());
+    }
+
+    @Test
     void buildsARuleWithComputedErrorEntityRelPath() {
         NumberRef fee = m.num("/Subscription/Addons/MonthlyFee");
         Rule rule = m.rule(m.group("/Subscription/Addons"))

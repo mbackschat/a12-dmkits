@@ -804,6 +804,18 @@ public final class Dsl {
         return new LocalizedText(locale, text);
     }
 
+    /**
+     * A field-value <em>interpolation token</em> for an error message (F2a) — renders {@code $<path>.value$},
+     * the kernel's placeholder for the field's runtime value (BA error-text §). Typed to {@link FieldRef}
+     * (never a wildcard {@code FieldListRef}), so the <b>no-asterisk rule</b> holds by construction; the
+     * kernel additionally requires the field to be referenced in the condition at least once without an
+     * asterisk (its call, F4). Compose into message text:
+     * {@code en("Fee " + fieldValue(fee) + " exceeds the cap.")}.
+     */
+    public static String fieldValue(FieldRef field) {
+        return "$" + field.path() + ".value$";
+    }
+
     /** Sugar for the common {@code en_US} — only valid if the model declares it. */
     public static LocalizedText en(String text) {
         return new LocalizedText("en_US", text);

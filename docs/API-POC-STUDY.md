@@ -168,7 +168,7 @@ public final class SubscriptionIdioms {
 
 No framework, no registry — a fragment library is a Java class; discoverability comes from javadoc + the skill. (This is the Zod lesson: schemas-are-code.)
 
-### 3.4 Parameterized *rules* — templates over the model ✅ (message interpolation still 🔮)
+### 3.4 Parameterized *rules* — templates over the model ✅ (message interpolation ✅ — `Dsl.fieldValue`)
 
 ```java
 /** One rule per monetary field: never negative. Navigation (§6c) drives the loop. */
@@ -221,7 +221,7 @@ Condition d = allOf(r1, anyOf(r2, r3));     // "r1 And (r2 Or r3)" — parens pe
 
 ## 4. Authoring a rule end-to-end (F1, F2, F2a, F3, F4, F6)
 
-### 4.1 The rule object — slots from typed handles (F2a) ✅ — implemented 2026-06-04 (`RuleAuthoringTest`; message *interpolation* still 🔮)
+### 4.1 The rule object — slots from typed handles (F2a) ✅ — implemented 2026-06-04 (`RuleAuthoringTest`; message *interpolation* ✅ 2026-06-07 — `Dsl.fieldValue`)
 
 ```java
 Rule rule = m.rule(addons)                        // model-aware entry: rule lives in a group by construction
@@ -520,7 +520,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 | "Did you mean" suggestions — nearest path / enum value on fail-fast handle errors (`model.Suggest`) | ✅ 2026-06-04 (Levenshtein, typo-plausible threshold) |
 | Lint layer — valid-but-suspicious WARNINGs over the AST (`lint.Linter`, `RK_*` codes) | ✅ pure-AST (contradictory/non-complementary presence, duplicate operand, `RK_UNGUARDED_NUMBER_COMPARISON` empty-number-as-0) + rule-context (`RK_NEG_CONDITION_IN_ITERATION`, `RK_INVERTED_REQUIREDNESS`) (2026-06-04; unguarded-number 2026-06-05, from the dev-path eval) |
 | Gotcha/INFO channel — catalog `gotchas` keyed by operators a rule uses (`lint.Advisor`, `RK_GOTCHA`) | ✅ 2026-06-04 (descends nested `Calculation`s via `dsl.OperatorUsage`); gotcha-relevance curation ✅ (`GotchaKind` SURPRISE/AUTHORING/RENDERING, suppresses trivia) |
-| Message *interpolation* (F2a), `advice()` | 🔮 Phase-1 remainder (fork-9 path policy and F9 explain — once grouped here — have since shipped; see their own rows) |
+| Message *interpolation* (F2a) | ✅ 2026-06-07 — `Dsl.fieldValue(FieldRef)` renders the kernel `$<path>.value$` placeholder (the no-asterisk rule holds by typing — a `FieldRef` is never a wildcard list; the "referenced in the condition" rule stays the kernel's call, verified end-to-end via `RuleAuthoringTest`). `advice()` was never specified (no spec anywhere) — dropped, not a remainder |
 | F9a model-context: `describe()` model card + `find()` name resolution (`context.ModelContext`) | ✅ Phase-1 half (2026-06-04); `explain` ✅ (F9, its own row); `dump` ✅ (CLI verb, 2026-06-05); **`whereUsed` ✅** (2026-06-07, exact via the adapter's `getDirectlyReferencedEntities` — `KernelAdapter.whereUsed` + the `where-used` CLI verb) |
 | fork #9 / F3a path policy — relative-to-group paths (`../` to siblings) + keyword-segment quoting | ✅ 2026-06-04 (kernel-verified): relative rendering + single-quoting keyword-named segments (catalog keywords; full lexer set rides N3) |
 | N3 keyword-parity anchor — catalog keywords ↔ kernel lexer terminals (`catalog.KeywordParityTest`) | ✅ 2026-06-04 (forward: every catalog/stub keyword is a real terminal, or a language-independent symbol) |
