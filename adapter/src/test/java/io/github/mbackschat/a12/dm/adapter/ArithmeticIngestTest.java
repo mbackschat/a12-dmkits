@@ -55,6 +55,17 @@ class ArithmeticIngestTest {
     }
 
     @Test
+    void roundTripsArithmeticOnBothSides() {
+        // the corpus tail: an arithmetic expression on the LEFT too — ([a] + 1) == ([b] - 2).
+        // The left composite isn't a plain field/aggregate, so it took the catch-all before.
+        BoundModel m = order();
+        Condition both = m.num("/Order/Quantity").asNumber().plus(1)
+                .eq(m.num("/Order/BackorderQuantity").asNumber().minus(2));
+        KernelAdapter adapter = KernelAdapter.of(m.add(orderRule(m, "BothRule", both)));
+        assertEquals(RENDER.render(both), RENDER.render(converted(adapter.ingest("/Order/BothRule"))));
+    }
+
+    @Test
     void arithmeticComparisonIsKernelValid() {
         BoundModel m = order();
         Condition c = m.num("/Order/Quantity").lt(m.num("/Order/BackorderQuantity").asNumber().plus(2));

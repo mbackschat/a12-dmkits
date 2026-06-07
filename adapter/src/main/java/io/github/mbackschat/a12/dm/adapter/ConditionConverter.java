@@ -516,6 +516,10 @@ final class ConditionConverter {
         if (left instanceof IDateExtractionOperation ext) {
             return numberExprComparison(convertDateExtraction(ext), op, right, comparison);
         }
+        // a date shift on the left ([AddDays(date, n)] <op> [field] / Today) — compare it as a date operand
+        if (left instanceof IDateAddOperation add) {
+            return dateComparison(convertDateAdd(add), op, convertDateOperand(right, comparison), comparison);
+        }
         if (left instanceof IFieldIdOperation lenOp && lenOp.getOperatorName() == FieldIdOperationName.Length) {
             return numberExprComparison(model.str(lenOp.getField().getFullName()).length(), op, right, comparison);
         }
@@ -530,6 +534,16 @@ final class ConditionConverter {
         if (left instanceof IConstantOperation && right instanceof IFieldIdOperation rf
                 && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
             return fieldValueComparison(rf, flip(op), left, comparison);
+        }
+        // a numeric expression on the left not matched above (e.g. arithmetic on both sides, ([a]+1) == ([b]-2)
+        // or a rounding/root-group count) — compare it expression-vs-expression
+        NumberExpr leftExpr = numericExpr(left);
+        if (leftExpr != null) {
+            NumberExpr rightExpr = right instanceof IConstantOperation c ? Dsl.number(c.getValue())
+                    : numericExpr(right);
+            if (rightExpr != null) {
+                return exprVsExpr(leftExpr, op, rightExpr, comparison);
+            }
         }
         throw unsupported("comparison whose left side is not a plain field value or an aggregate", comparison);
     }
@@ -1022,7 +1036,11 @@ final class ConditionConverter {
     }
 
     private Condition dateComparison(DateRef left, ComparisonOperation op, IOperation right, ICondition origin) {
-        DateOperand other = convertDateOperand(right, origin);
+        return dateComparison(left, op, convertDateOperand(right, origin), origin);
+    }
+
+    /** Compare two date operands (the left may be a field or a computed shift) — the shared op dispatch. */
+    private Condition dateComparison(DateOperand left, ComparisonOperation op, DateOperand other, ICondition origin) {
         return switch (op) {
             case LT -> left.before(other);
             case LE -> left.onOrBefore(other);

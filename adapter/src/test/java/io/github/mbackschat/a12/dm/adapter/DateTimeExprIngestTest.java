@@ -49,6 +49,21 @@ class DateTimeExprIngestTest {
     }
 
     @Test
+    void roundTripsADateShiftOnTheLeftOfAComparison() {
+        // the corpus's dominant comparison-tail form: AddDays(date, n) <op> [field] — the shift is the
+        // left operand, not the right. EQ is the most common; LE also occurs (vs Today, below).
+        BoundModel m = order();
+        Condition eq = Dsl.addDays(m.date("/Order/OrderDate"), 7).eq(m.date("/Order/DeliveryDate"));
+        Condition leToday = Dsl.addDays(m.date("/Order/OrderDate"), 30).onOrBefore(Dsl.today());
+
+        KernelAdapter adapter = KernelAdapter.of(m
+                .add(orderRule(m, "ShiftEqRule", "/Order/DeliveryDate", eq))
+                .add(orderRule(m, "ShiftLeRule", "/Order/OrderDate", leToday)));
+        assertEquals(RENDER.render(eq), RENDER.render(converted(adapter.ingest("/Order/ShiftEqRule"))));
+        assertEquals(RENDER.render(leToday), RENDER.render(converted(adapter.ingest("/Order/ShiftLeRule"))));
+    }
+
+    @Test
     void dateExpressionsAreKernelValid() {
         ValidationResult r = new RuleValidator().check(read("models/order.dm.json"),
                 new DraftRule("/Order", "ExtractRule", "../OrderDate",
