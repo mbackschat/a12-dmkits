@@ -73,6 +73,15 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
         return new ComparisonCondition(value(), CompareOp.NE, other.value());
     }
 
+    /** {@code [this] == <enum expression>} (e.g. a {@link Dsl#firstFilledEnum}) — compared by stored value. */
+    public Condition is(EnumExpr other) {
+        return new ComparisonCondition(value(), CompareOp.EQ, other.expression());
+    }
+
+    public Condition isNot(EnumExpr other) {
+        return new ComparisonCondition(value(), CompareOp.NE, other.expression());
+    }
+
     private Condition compareTo(CompareOp op, String value) {
         if (!allowedValues.contains(value)) {
             throw new IllegalArgumentException(

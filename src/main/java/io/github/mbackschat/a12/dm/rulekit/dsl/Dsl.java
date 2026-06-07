@@ -124,6 +124,12 @@ public final class Dsl {
         return new StringExpr(new FirstFilledValue(stringScope));
     }
 
+    /** {@code FirstFilledValue(…)} over an enum repetition list — the first specified value, as an enum. */
+    public static EnumExpr firstFilledEnum(FieldListRef enumScope) {
+        requireKind(enumScope, io.github.mbackschat.a12.dm.core.ValueKind.ENUMERATION, "firstFilledEnum");
+        return new EnumExpr(new FirstFilledValue(enumScope));
+    }
+
     private static void requireKind(FieldListRef scope, io.github.mbackschat.a12.dm.core.ValueKind expected,
             String method) {
         if (scope.kind() != expected) {

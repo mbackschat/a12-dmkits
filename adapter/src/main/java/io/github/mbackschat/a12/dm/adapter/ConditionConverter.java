@@ -59,6 +59,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.EnumExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand;
@@ -1011,6 +1012,16 @@ final class ConditionConverter {
                 case EQ -> left.is(other);
                 case NE -> left.isNot(other);
                 default -> throw unsupported("enum field comparison operator " + op, origin);
+            };
+        }
+        // an enum-valued FirstFilledValue over an enum repetition list ([enum] != FirstFilledValue(items*/Cat))
+        if (right instanceof IEntityListOperation aggregate
+                && aggregate.getOperatorName() == EntityListOperationName.FirstFilledValue) {
+            EnumExpr other = Dsl.firstFilledEnum(flattenScope(aggregate.getEntityList().getEntityIdList().get(0)));
+            return switch (op) {
+                case EQ -> left.is(other);
+                case NE -> left.isNot(other);
+                default -> throw unsupported("enum aggregate comparison operator " + op, origin);
             };
         }
         throw unsupported("enum comparison against a non-constant operand, operator " + op, origin);

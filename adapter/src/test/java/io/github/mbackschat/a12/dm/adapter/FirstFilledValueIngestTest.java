@@ -36,11 +36,13 @@ class FirstFilledValueIngestTest {
                         .numberField("FirstContractValue", n -> { })
                         .dateField("FirstContractDate", d -> d.format("yyyy-MM-dd"))
                         .stringField("FirstContractCode", s -> { })
+                        .enumField("FirstContractType", t -> t.value("FULL").value("PART"))
                         .group("Contracts", g -> g
                                 .repeatable(20)
                                 .numberField("Value", n -> { })
                                 .dateField("StartDate", d -> d.format("yyyy-MM-dd"))
-                                .stringField("Code", s -> { })))
+                                .stringField("Code", s -> { })
+                                .enumField("Type", t -> t.value("FULL").value("PART"))))
                 .build().toJson();
     }
 
@@ -86,6 +88,17 @@ class FirstFilledValueIngestTest {
                 .add(rule(m, "FirstCodeConcatRule", "/Employee/FirstContractCode", concat)));
         assertEquals(RENDER.render(cmp), RENDER.render(converted(adapter.ingest("/Employee/FirstCodeRule"))));
         assertEquals(RENDER.render(concat), RENDER.render(converted(adapter.ingest("/Employee/FirstCodeConcatRule"))));
+    }
+
+    @Test
+    void roundTripsEnumFirstFilledValue() {
+        // Corpus shape: [enumField] != FirstFilledValue(enums*) — the enum-valued FirstFilledValue on the right.
+        BoundModel m = BoundModel.ofJson(employeeJson());
+        Condition full = m.enumOf("/Employee/FirstContractType").filled()
+                .and(m.enumOf("/Employee/FirstContractType")
+                        .isNot(Dsl.firstFilledEnum(m.flatten("/Employee/Contracts*/Type"))));
+        KernelAdapter adapter = KernelAdapter.of(m.add(rule(m, "FirstTypeRule", "/Employee/FirstContractType", full)));
+        assertEquals(RENDER.render(full), RENDER.render(converted(adapter.ingest("/Employee/FirstTypeRule"))));
     }
 
     @Test
