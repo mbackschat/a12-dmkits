@@ -166,9 +166,7 @@ class KernelConstructParityTest {
         put(m, "operand-list min/max — not yet modeled (distinct from field-list MaxValue/MinValue)",
                 "OpListOperationName.Max", "OpListOperationName.Min");
         put(m, "operand-list abs function — not yet modeled", "OpListOperationName.Abs");
-        put(m, "field-level rounding/abs functions — not yet modeled",
-                "FieldIdOperationName.RoundAccountingValue", "FieldIdOperationName.RoundUpValue",
-                "FieldIdOperationName.RoundDownValue", "FieldIdOperationName.AbsValue");
+        // field-level RoundDownValue/RoundUpValue/RoundAccountingValue/AbsValue are now cataloged (FieldRounding).
         put(m, "value-coercion functions — not yet modeled (string coercions RangeAsString/FieldValueAsString are built)",
                 "FieldIdOperationName.RangeAsNumber", "FieldIdOperationName.FieldValueAsNumber",
                 "FieldIdOperationName.ValueAsDate");

@@ -59,7 +59,9 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateValidity;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue;
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ValueListCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand;
@@ -233,6 +235,21 @@ final class ConditionConverter {
         EntityListConditionName name = entityList.getConditionName();
         boolean single = paths.size() == 1;
         String[] p = paths.toArray(String[]::new);
+        // a field-fill quantifier over a MIXED group+field scope (FieldsNotCollectivelyFilled(A, B/G2), where A
+        // is a group and B/G2 a field): the kernel expands each group to its contained fields — make that
+        // explicit and build a field-list quantifier over the flattened field paths.
+        if (isFieldFillQuantifier(name) && entities.stream().anyMatch(e -> !e.isField())
+                && entities.stream().anyMatch(IEntityId::isField)) {
+            List<String> fieldPaths = new ArrayList<>();
+            for (IEntityId e : entities) {
+                if (e.isField()) {
+                    fieldPaths.add(e.getFullName());
+                } else {
+                    model.fields(model.group(e.getFullName())).forEach(f -> fieldPaths.add(f.path()));
+                }
+            }
+            return fieldFillQuantifier(name, fieldPaths.toArray(String[]::new), entityList);
+        }
         if (entities.get(0).isField()) {
             // A wildcard scope with a Having filter (e.g. AtLeastOneFieldFilled(Group*/Field Having …)):
             // build the filtered FieldListRef (flattenScope converts the filter — threading any $) and apply
@@ -310,6 +327,29 @@ final class ConditionConverter {
             case NotExactlyOneFieldFilled -> groupScopedFieldFill(entities, Dsl::notExactlyOneFieldFilled);
             case MoreThanOneFieldFilled -> groupScopedFieldFill(entities, Dsl::moreThanOneFieldFilled);
             default -> throw unsupported("group-list condition " + name, entityList);
+        };
+    }
+
+    /** The seven field-fill quantifier names (over fields, not groups). */
+    private static boolean isFieldFillQuantifier(EntityListConditionName name) {
+        return switch (name) {
+            case AllFieldsFilled, NoFieldFilled, AtLeastOneFieldFilled, NotAllFieldsFilled,
+                    FieldsNotCollectivelyFilled, NotExactlyOneFieldFilled, MoreThanOneFieldFilled -> true;
+            default -> false;
+        };
+    }
+
+    /** A field-fill quantifier over explicit field paths (used for the mixed group+field expansion). */
+    private Condition fieldFillQuantifier(EntityListConditionName name, String[] p, ICondition origin) {
+        return switch (name) {
+            case AllFieldsFilled -> model.allFieldsFilled(p);
+            case NoFieldFilled -> model.noFieldFilled(p);
+            case AtLeastOneFieldFilled -> model.atLeastOneFieldFilled(p);
+            case NotAllFieldsFilled -> model.notAllFieldsFilled(p);
+            case FieldsNotCollectivelyFilled -> model.fieldsNotCollectivelyFilled(p);
+            case NotExactlyOneFieldFilled -> model.notExactlyOneFieldFilled(p);
+            case MoreThanOneFieldFilled -> model.moreThanOneFieldFilled(p);
+            default -> throw unsupported("field-fill quantifier " + name, origin);
         };
     }
 
@@ -477,11 +517,20 @@ final class ConditionConverter {
         ValueKind kind = model.fieldAt(path)
                 .orElseThrow(() -> unsupported("value-list on unknown field " + path, valueList))
                 .kind();
-        List<String> values = valueList.getValueList().stream().map(op -> constantValue(op, valueList)).toList();
-        if (values.isEmpty()) {
+        boolean included = valueList.getConditionName() == ValueListConditionName.FieldValueIncludedInValueList;
+        if (valueList.getValueList().isEmpty()) {
             throw unsupported("empty value list", valueList);
         }
-        boolean included = valueList.getConditionName() == ValueListConditionName.FieldValueIncludedInValueList;
+        // a value list whose entries include a FIELD (not a constant), e.g.
+        // FieldValueIncludedInValueList(Product, [Other]) — build the node with mixed value operands.
+        boolean anyFieldEntry = valueList.getValueList().stream().anyMatch(op ->
+                op instanceof IFieldIdOperation f && f.getOperatorName() == FieldIdOperationName.FieldValue);
+        if (anyFieldEntry) {
+            List<Calculation> vals = valueList.getValueList().stream()
+                    .map(op -> valueListEntry(op, kind, valueList)).toList();
+            return new ValueListCondition(model.field(path), included, vals);
+        }
+        List<String> values = valueList.getValueList().stream().map(op -> constantValue(op, valueList)).toList();
         return switch (kind) {
             case STRING -> {
                 StringRef r = model.str(path);
@@ -516,6 +565,18 @@ final class ConditionConverter {
             return constant.getValue();
         }
         throw unsupported("value-list entry that is not a constant", origin);
+    }
+
+    /** One entry of a value list — a field reference ({@code [Other]}) or a literal matching the field's kind. */
+    private Calculation valueListEntry(IOperation op, ValueKind fieldKind, ICondition origin) {
+        if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
+            return new FieldValue(model.field(field.getField().getFullName()));
+        }
+        if (op instanceof IConstantOperation constant) {
+            return fieldKind == ValueKind.NUMBER ? NumberLiteral.of(constant.getValue())
+                    : new StringLiteral(constant.getValue());
+        }
+        throw unsupported("value-list entry " + op.getClass().getSimpleName(), origin);
     }
 
     private Condition convertComparison(IComparisonCondition comparison) {
@@ -749,6 +810,23 @@ final class ConditionConverter {
         }
         if (operand instanceof IFieldIdOperation lenOp && lenOp.getOperatorName() == FieldIdOperationName.Length) {
             return model.str(lenOp.getField().getFullName()).length();
+        }
+        // field-level rounding/abs: RoundDownValue(f)/RoundUpValue(f)/RoundAccountingValue(f)/AbsValue(f)
+        if (operand instanceof IFieldIdOperation fieldOp) {
+            NumberRef field = switch (fieldOp.getOperatorName()) {
+                case RoundDownValue, RoundUpValue, RoundAccountingValue, AbsValue ->
+                        model.num(fieldOp.getField().getFullName());
+                default -> null;
+            };
+            if (field != null) {
+                return switch (fieldOp.getOperatorName()) {
+                    case RoundDownValue -> Dsl.roundDownValue(field);
+                    case RoundUpValue -> Dsl.roundUpValue(field);
+                    case RoundAccountingValue -> Dsl.roundAccountingValue(field);
+                    case AbsValue -> Dsl.absValue(field);
+                    default -> null;
+                };
+            }
         }
         if (operand instanceof ICompositeOperation arithmetic) {
             return convertArithmetic(arithmetic);

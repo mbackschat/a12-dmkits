@@ -132,6 +132,7 @@ public final class OperatorUsage {
                 collect(dc.year1(), ops);
                 dc.year2().ifPresent(y -> collect(y, ops));
             }
+            case FieldRounding r -> ops.add(r.operatorId());
             case RootGroupCount c -> ops.add(c.operatorId());
         }
     }

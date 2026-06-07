@@ -155,7 +155,12 @@ Five operators in two grammar shapes, not covered by KERNEL-SEMANTICS. **Shape A
 - **Shape B field lists must be type-homogeneous** — mixing a string and a number (or enum) field → **`MVK_VARYING_TYPES_NOT_ALLOWED`** ("All fields must be the same type"). A single-field list is legal.
 - The field slot is a **bare path** (a bracketed `[Field]` is a parse error); the value list may also contain **field references** (`[OtherField]`) and may mix them with literals; shape B's right side accepts an entity list or strings (no numbers, per grammar).
 
-*(Locked: `validate.laws.ValueListLawsTest` + N7 examples of all five operators. **Field-valued (entity) lists are now implemented** — the value-list quantifiers take `FieldListRef` operands (incl. `*`-flattened scopes), locked by `adapter.EntityListValueListIngestTest`.)*
+*(Locked: `validate.laws.ValueListLawsTest` + N7 examples of all five operators. **Field-valued (entity) lists are now implemented** — the value-list quantifiers take `FieldListRef` operands (incl. `*`-flattened scopes), locked by `adapter.EntityListValueListIngestTest`. **Shape A with a field entry** — `FieldValueIncludedInValueList(Choice, [Allowed])`, where a value-list entry is a field rather than a constant — is also ingested, `adapter.ValueListFieldEntryIngestTest`.)*
+
+## field-level numeric functions + mixed-scope field-fill (corpus tail, 2026-06-07)
+
+- **Field-level rounding/abs** — `RoundDownValue(f)`/`RoundUpValue(f)`/`RoundAccountingValue(f)` (round a field's value to an integer) and `AbsValue(f)` (absolute value): the kernel's `FieldIdOperationWithParameters` numeric ops, **distinct from the operand-list `RoundDown(expr, n)`** (which carries explicit decimal places). They take a single field and render it bare, with **no decimal-places argument** in the surface form. Modeled as `FieldRounding`; locked by `adapter.FieldRoundingIngestTest`.
+- **A field-fill quantifier accepts a *mixed* group+field scope** — `FieldsNotCollectivelyFilled(Section, Other/Note)` (a group operand alongside a field): the kernel expands each group to its contained fields. Ingest makes that explicit (a field-list quantifier over the flattened fields); locked by `adapter.MixedScopeFieldFillIngestTest`.
 
 ## §9 supplement — per-row iteration + aggregation of missing rows (runtime, 2026-06-06)
 

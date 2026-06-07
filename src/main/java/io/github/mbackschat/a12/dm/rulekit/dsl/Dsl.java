@@ -81,6 +81,26 @@ public final class Dsl {
         return new NumberExpr(new SumOfProducts(left, right));
     }
 
+    /** {@code RoundDownValue(field)} — the field's value rounded down to an integer. */
+    public static NumberExpr roundDownValue(NumberRef field) {
+        return new NumberExpr(new FieldRounding(FieldRounding.Mode.ROUND_DOWN, field.field()));
+    }
+
+    /** {@code RoundUpValue(field)} — the field's value rounded up to an integer. */
+    public static NumberExpr roundUpValue(NumberRef field) {
+        return new NumberExpr(new FieldRounding(FieldRounding.Mode.ROUND_UP, field.field()));
+    }
+
+    /** {@code RoundAccountingValue(field)} — the field's value rounded to an integer (banker's rounding). */
+    public static NumberExpr roundAccountingValue(NumberRef field) {
+        return new NumberExpr(new FieldRounding(FieldRounding.Mode.ROUND_ACCOUNTING, field.field()));
+    }
+
+    /** {@code AbsValue(field)} — the absolute value of the field. */
+    public static NumberExpr absValue(NumberRef field) {
+        return new NumberExpr(new FieldRounding(FieldRounding.Mode.ABS, field.field()));
+    }
+
     /** {@code MaxValue(…)} over number fields/repetition lists — unspecified fields are ignored. */
     public static NumberExpr maxValue(FieldOperand first, FieldOperand... rest) {
         return listAggregate(ListAggregate.AggOp.MAX_VALUE, first, rest);

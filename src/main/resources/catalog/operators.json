@@ -639,6 +639,50 @@
     "sinceKernel": "30.8.x"
   },
   {
+    "id": "RoundDownValue",
+    "kind": "function",
+    "keywords": { "en": "RoundDownValue", "de": "AbrundenWert" },
+    "operands": [ { "type": "number" } ],
+    "returns": "number",
+    "meaning": "A field's value rounded DOWN to an integer. The field-level sibling of the operand-list RoundDown(expr, n) — it takes a single field and renders it bare.",
+    "constraints": [ "the operand is a single number field" ],
+    "validExample": { "dsl": "FieldFilled(Quantity) And [Quantity] != RoundDownValue(BackorderQuantity)", "note": "fires when the quantity disagrees with the backorder quantity rounded down" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "RoundUpValue",
+    "kind": "function",
+    "keywords": { "en": "RoundUpValue", "de": "AufrundenWert" },
+    "operands": [ { "type": "number" } ],
+    "returns": "number",
+    "meaning": "A field's value rounded UP to an integer (the field-level sibling of RoundUp).",
+    "constraints": [ "the operand is a single number field" ],
+    "validExample": { "dsl": "FieldFilled(Quantity) And [Quantity] != RoundUpValue(BackorderQuantity)", "note": "fires when the quantity disagrees with the backorder quantity rounded up" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "RoundAccountingValue",
+    "kind": "function",
+    "keywords": { "en": "RoundAccountingValue", "de": "RundenWert" },
+    "operands": [ { "type": "number" } ],
+    "returns": "number",
+    "meaning": "A field's value rounded to an integer using banker's rounding (the field-level sibling of RoundAccounting).",
+    "constraints": [ "the operand is a single number field" ],
+    "validExample": { "dsl": "FieldFilled(Quantity) And [Quantity] != RoundAccountingValue(BackorderQuantity)", "note": "fires when the quantity disagrees with the backorder quantity rounded to nearest" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "AbsValue",
+    "kind": "function",
+    "keywords": { "en": "AbsValue", "de": "AbsWert" },
+    "operands": [ { "type": "number" } ],
+    "returns": "number",
+    "meaning": "The absolute value of a field.",
+    "constraints": [ "the operand is a single number field" ],
+    "validExample": { "dsl": "FieldFilled(Quantity) And [Quantity] != AbsValue(BackorderQuantity)", "note": "fires when the quantity disagrees with the absolute backorder quantity" },
+    "sinceKernel": "30.8.x"
+  },
+  {
     "id": "RoundUp",
     "kind": "function",
     "keywords": { "en": "RoundUp", "de": "Aufrunden" },

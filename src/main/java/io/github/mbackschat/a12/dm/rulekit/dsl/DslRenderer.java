@@ -281,6 +281,7 @@ public final class DslRenderer {
             case DateConstruction dc -> keyword(dc.operatorId()) + "(" + renderArg(dc.day()) + ", "
                     + renderArg(dc.month()) + ", " + renderArg(dc.year1())
                     + dc.year2().map(y -> ", " + renderArg(y)).orElse("") + ")";
+            case FieldRounding r -> keyword(r.operatorId()) + "(" + path(r.field().path()) + ")";
             case RootGroupCount c -> keyword(c.operatorId()) + "(" + path(c.rootGroup().path()) + "*)";
         };
     }
