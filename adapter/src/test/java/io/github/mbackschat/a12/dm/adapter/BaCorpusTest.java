@@ -84,6 +84,9 @@ class BaCorpusTest {
             // --- DateTime / Time construction (family 3) ------------------------------------------------
             new R("TimeConstruct", "PickupTime", "FieldFilled(PickupTime) And [PickupTime] == Time(\"10\", \"30\", \"50\")"),
             new R("DateTimeConstruct", "ScheduledAt", "FieldFilled(ScheduledAt) And [ScheduledAt] == DateTime(DispatchDateLocal, PickupTime)"),
+            // --- numeric coercions (family 4) -----------------------------------------------------------
+            new R("FieldValAsNumber", "RushLevel", "FieldFilled(RushLevel) And FieldValueAsNumber(RushLevel) >= 2"),
+            new R("RangeAsNum", "ShipmentRef", "FieldFilled(ShipmentRef) And RangeAsNumber(ShipmentRef, 1, 2) == 0"),
 
             // --- known-opaque: unmodeled families (kernel-valid, ingest preserved verbatim) --------------
             new R("NumValueInFields", "TermsAccepted", "FieldFilled(TermsAccepted) And NumberOfValueInFields(True IN OptInA, OptInB, OptInC) >= 2", false));

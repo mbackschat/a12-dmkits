@@ -37,8 +37,10 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.ListAggregate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Concatenation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateExtraction;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateListAggregate;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValueAsNumber;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValueAsString;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FirstFilledValue;
+import io.github.mbackschat.a12.dm.rulekit.dsl.RangeAsNumber;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RangeAsString;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RootGroupCount;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rounding;
@@ -129,6 +131,8 @@ final class ExplanationTreeBuilder {
             case FirstFilledValue a -> List.of(leaf(a.operatorId(), a));
             case FieldValueAsString c -> List.of(leaf(c.operatorId(), c));
             case RangeAsString c -> List.of(leaf(c.operatorId(), c));
+            case FieldValueAsNumber c -> List.of(leaf(c.operatorId(), c));
+            case RangeAsNumber c -> List.of(leaf(c.operatorId(), c));
             // date/time extraction nests its source
             case DateExtraction e -> List.of(new RuleExplanation.Node(e.operatorId(), renderer.render(e),
                     operand(e.source())));

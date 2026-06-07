@@ -88,6 +88,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValueAsNumber;
+import io.github.mbackschat.a12.dm.rulekit.dsl.RangeAsNumber;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
@@ -831,6 +833,17 @@ final class ConditionConverter {
         }
         if (operand instanceof IFieldIdOperation lenOp && lenOp.getOperatorName() == FieldIdOperationName.Length) {
             return model.str(lenOp.getField().getFullName()).length();
+        }
+        // numeric coercions (family 4): RangeAsNumber(field, s, e) — 1-based syntax over the kernel's 0-based start
+        if (operand instanceof IFieldIdOperationWithParameters params
+                && params.getOperatorName() == FieldIdOperationName.RangeAsNumber) {
+            return new NumberExpr(new RangeAsNumber(model.field(params.getField().getFullName()),
+                    params.getRangeStart() + 1, params.getRangeEnd()));
+        }
+        // FieldValueAsNumber(field) — a string/enum field's value coerced to a number
+        if (operand instanceof IFieldIdOperation fvn
+                && fvn.getOperatorName() == FieldIdOperationName.FieldValueAsNumber) {
+            return new NumberExpr(new FieldValueAsNumber(model.field(fvn.getField().getFullName())));
         }
         // field-level rounding/abs: RoundDownValue(f)/RoundUpValue(f)/RoundAccountingValue(f)/AbsValue(f)
         if (operand instanceof IFieldIdOperation fieldOp) {

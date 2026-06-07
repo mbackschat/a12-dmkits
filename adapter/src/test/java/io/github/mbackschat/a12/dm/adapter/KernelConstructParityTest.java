@@ -162,8 +162,8 @@ class KernelConstructParityTest {
                 "OpListOperationName.Max", "OpListOperationName.Min");
         put(m, "operand-list abs function — not yet modeled", "OpListOperationName.Abs");
         // field-level RoundDownValue/RoundUpValue/RoundAccountingValue/AbsValue are now cataloged (FieldRounding).
-        put(m, "value-coercion functions — not yet modeled (string coercions RangeAsString/FieldValueAsString are built)",
-                "FieldIdOperationName.RangeAsNumber", "FieldIdOperationName.FieldValueAsNumber",
+        // FieldValueAsNumber/RangeAsNumber are now cataloged (numeric coercions, family 4).
+        put(m, "ValueAsDate — not yet modeled (needs a partially-known-date fixture field: a DateType with a date precision)",
                 "FieldIdOperationName.ValueAsDate");
         put(m, "base-year point-in-time — not yet modeled (Today/Now are modeled)", "PointInTimeOperationName.BaseYear");
         put(m, "bare field reference — structural in rulekit (typed handles), not a catalog construct",

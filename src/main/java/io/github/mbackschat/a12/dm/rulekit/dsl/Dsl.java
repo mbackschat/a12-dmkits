@@ -399,6 +399,16 @@ public final class Dsl {
         return new StringExpr(new RangeAsString(field, start, end));
     }
 
+    /** {@code FieldValueAsNumber(field)} — a string/enum field's value coerced to a number (it must always convert). */
+    public static NumberExpr fieldValueAsNumber(FieldRef field) {
+        return new NumberExpr(new FieldValueAsNumber(field));
+    }
+
+    /** {@code RangeAsNumber(field, start, end)} — a substring of a string field read as a number (non-numeric → 0). */
+    public static NumberExpr rangeAsNumber(FieldRef field, int start, int end) {
+        return new NumberExpr(new RangeAsNumber(field, start, end));
+    }
+
     /** {@code CustomCondition <Name>} — the app-defined escape hatch (KERNEL-SEMANTICS §14). */
     public static Condition customCondition(String name) {
         return new CustomConditionRef(name);

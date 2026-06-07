@@ -324,6 +324,23 @@
               },
               {
                 "type": "Field",
+                "id": "/Order/RushLevel",
+                "name": "RushLevel",
+                "Field": {
+                  "fieldType": {
+                    "type": "EnumerationType",
+                    "EnumerationType": {
+                      "values": [
+                        { "value": "1" },
+                        { "value": "2" },
+                        { "value": "3" }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
                 "id": "/Order/BirthDay",
                 "name": "BirthDay",
                 "Field": {

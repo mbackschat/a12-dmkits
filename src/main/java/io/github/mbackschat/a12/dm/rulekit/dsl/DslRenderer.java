@@ -277,6 +277,9 @@ public final class DslRenderer {
             case FieldValueAsString c -> keyword(c.operatorId()) + "(" + path(c.field().path()) + ")";
             case RangeAsString c -> keyword(c.operatorId()) + "(" + path(c.field().path())
                     + ", " + c.start() + ", " + c.end() + ")";
+            case FieldValueAsNumber c -> keyword(c.operatorId()) + "(" + path(c.field().path()) + ")";
+            case RangeAsNumber c -> keyword(c.operatorId()) + "(" + path(c.field().path())
+                    + ", " + c.start() + ", " + c.end() + ")";
             case DateExtraction e -> keyword(e.operatorId()) + "(" + renderArg(e.source()) + ")";
             case DateTimePart e -> keyword(e.operatorId()) + "(" + renderArg(e.source()) + ")";
             case SumOfProducts s -> keyword(s.operatorId()) + "(" + operand(s.left()) + ", " + operand(s.right()) + ")";

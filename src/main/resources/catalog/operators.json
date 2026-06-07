@@ -1123,6 +1123,29 @@
     "sinceKernel": "30.8.x"
   },
   {
+    "id": "RangeAsNumber",
+    "kind": "function",
+    "keywords": { "en": "RangeAsNumber", "de": "BereichAlsZahl" },
+    "operands": [ { "type": "string" }, { "type": "range-start" }, { "type": "range-end" } ],
+    "returns": "number",
+    "meaning": "A substring of a string field's value (by character range), read as a number — for numeric comparison/arithmetic.",
+    "constraints": [ "the first operand is a string field; the two range bounds are integers (1-based)" ],
+    "gotchas": [ { "text": "a non-numeric substring (or an empty field) yields 0, not an error", "kind": "SURPRISE" } ],
+    "validExample": { "dsl": "FieldFilled(ProductCode) And RangeAsNumber(ProductCode, 1, 2) == 0", "note": "fires when the first two characters are not a number (so 0)" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "FieldValueAsNumber",
+    "kind": "function",
+    "keywords": { "en": "FieldValueAsNumber", "de": "FeldWertAlsZahl" },
+    "operands": [ { "type": "string-enum-or-number-field" } ],
+    "returns": "number",
+    "meaning": "A string or enum field's value coerced to a number — for numeric comparison/arithmetic.",
+    "constraints": [ "the field's values (or category values) must always convert to a number, else MVK_NO_CONVERT_IN_NUMBER (e.g. an enum whose values are all numeric)" ],
+    "validExample": { "dsl": "FieldFilled(RushLevel) And FieldValueAsNumber(RushLevel) >= 2", "note": "fires for the higher rush levels (the enum's values are numeric)" },
+    "sinceKernel": "30.8.x"
+  },
+  {
     "id": "Date",
     "kind": "function",
     "keywords": { "en": "Date", "de": "Datum" },

@@ -36,7 +36,8 @@ class StringCoercionIngestTest {
                         .stringField("ErpCode", s -> { })
                         .stringField("Prefix", s -> { })
                         .numberField("Quantity", n -> { })
-                        .stringField("QuantityText", s -> { }))
+                        .stringField("QuantityText", s -> { })
+                        .enumField("Grade", e -> e.value("1").value("2").value("3")))
                 .build().toJson();
     }
 
@@ -58,6 +59,22 @@ class StringCoercionIngestTest {
         assertEquals(RENDER.render(rangeLeft), RENDER.render(converted(adapter.ingest("/Product/RangeLeftRule"))));
         assertEquals(RENDER.render(asStringRight), RENDER.render(converted(adapter.ingest("/Product/AsStringRule"))));
         assertEquals(RENDER.render(concatPart), RENDER.render(converted(adapter.ingest("/Product/ConcatPartRule"))));
+    }
+
+    @Test
+    void roundTripsNumberCoercions() {
+        // family 4: FieldValueAsNumber(enum-with-numeric-values) and RangeAsNumber(stringField, s, e).
+        BoundModel m = BoundModel.ofJson(productJson());
+        Condition asNumber = Dsl.fieldValueAsNumber(m.field("/Product/Grade")).ge(2);
+        Condition rangeNumber = Dsl.rangeAsNumber(m.field("/Product/ErpCode"), 1, 2).eq(0);
+        assertEquals("FieldValueAsNumber(/Product/Grade) >= 2", RENDER.render(asNumber));
+        assertEquals("RangeAsNumber(/Product/ErpCode, 1, 2) == 0", RENDER.render(rangeNumber));
+
+        KernelAdapter adapter = KernelAdapter.of(m
+                .add(rule(m, "AsNumberRule", "/Product/Grade", asNumber))
+                .add(rule(m, "RangeNumberRule", "/Product/ErpCode", rangeNumber)));
+        assertEquals(RENDER.render(asNumber), RENDER.render(converted(adapter.ingest("/Product/AsNumberRule"))));
+        assertEquals(RENDER.render(rangeNumber), RENDER.render(converted(adapter.ingest("/Product/RangeNumberRule"))));
     }
 
     @Test
