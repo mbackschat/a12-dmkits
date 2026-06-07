@@ -23,7 +23,7 @@ Java first; a TypeScript twin is a deferred, design-informing milestone.
 | **Phase 2** — the bidirectional loop over the opt-in kernel-adapter: *ingest → explain → modify → diff → validate → write-back* | ✅ landed |
 | **Phase 2** — standalone **CLI** — the modeller/BA front-end (verbs + JSON I/O), **self-describing** (`--help` · `manifest` · `operators` · `schema`) so an agent explores it without docs | ✅ landed |
 | **Phase 2** — modeller/BA **skill** + self-sufficiency eval | ✅ landed |
-| **Phase 2** — F9a exact `whereUsed`, `IProblem → Diagnostic`, the F10 long tail | 🔮 open |
+| **Phase 2** — F9a exact `whereUsed` ✅, `IProblem → Diagnostic` ✅ (per-rule + candidate-condition diagnostics via the adapter); the F10 long tail = a few specialized constructs, parked | ✅ landed |
 
 **Two personas, one engine** (proposal N10): a *developer* edits rulekit-the-library inside their own project; a *modeller/BA* uses the CLI, with no Java toolchain to install.
 

@@ -3,6 +3,8 @@ package io.github.mbackschat.a12.dm.adapter;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -27,6 +29,9 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RenderedDiff;
+import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
+import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
+import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 
 /**
@@ -146,6 +151,34 @@ public final class KernelAdapter {
     /** Whether the kernel accepts the rule's condition — the per-rule fast lane (no whole-model check). */
     public boolean hasValidCondition(String ruleFullName) {
         return mvk.hasValidConditionText(rule(ruleFullName), SILENT);
+    }
+
+    /**
+     * The structured form of {@link #hasValidCondition}: the kernel's problems for the rule's <b>stored</b>
+     * condition, mapped to enriched core {@link Diagnostic}s (the IProblem→Diagnostic wiring, F4a). A
+     * collecting reporter captures the kernel {@code IProblem}s (each is a {@code RankedNotification}) and
+     * {@link KernelDiagnostics} runs the same catalog-join the whole-model {@code RuleValidator} uses. On a
+     * loaded model a stored condition is normally ERROR-free (the model wouldn't have loaded otherwise),
+     * so this mainly surfaces lower-severity notes — for a <em>proposed</em> condition use the overload.
+     */
+    public ValidationResult diagnose(String ruleFullName) {
+        List<Diagnostic> diagnostics = new ArrayList<>();
+        mvk.hasValidConditionText(rule(ruleFullName), p -> diagnostics.add(KernelDiagnostics.enriched(p, ruleFullName)));
+        return ValidationResult.of(diagnostics);
+    }
+
+    /**
+     * Validate a <b>candidate</b> condition for {@code ruleFullName} <em>without mutating the model</em> —
+     * the F8 modify-loop's pre-write check. The kernel parses {@code candidateConditionText} in the rule's
+     * context ({@code parseConditionNoExpand}) and its problems become enriched {@link Diagnostic}s, so the
+     * caller gets a structured verdict (what's wrong + the curated fix) instead of an exception. This is the
+     * loaded-model fast lane complementing the whole-model {@code RuleValidator.check}.
+     */
+    public ValidationResult diagnose(String ruleFullName, String candidateConditionText) {
+        List<Diagnostic> diagnostics = new ArrayList<>();
+        mvk.parseConditionNoExpand(rule(ruleFullName), candidateConditionText,
+                p -> diagnostics.add(KernelDiagnostics.enriched(p, ruleFullName)));
+        return ValidationResult.of(diagnostics);
     }
 
     /**

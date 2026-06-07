@@ -16,6 +16,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
+import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
 /**
  * Adapter bootstrap canary (Phase 2, proposal §16). Proves the full a12internal read chain wires up
@@ -67,6 +68,14 @@ class KernelAdapterBootstrapTest {
                 () -> "whereUsed(" + feePath + ") should include " + RULE_PATH + ", got: " + adapter.whereUsed(feePath));
         assertTrue(adapter.whereUsed("/Subscription/NoSuchField").isEmpty(),
                 "whereUsed of an unreferenced entity should be empty");
+
+        // (5) IProblem → Diagnostic: the stored condition is valid (no error diagnostics)…
+        assertTrue(adapter.diagnose(RULE_PATH).ok(),
+                () -> "stored condition is valid: " + adapter.diagnose(RULE_PATH).diagnostics());
+        // …and a bad CANDIDATE condition's kernel problems are surfaced as structured Diagnostics (no mutation)
+        ValidationResult bad = adapter.diagnose(RULE_PATH, "[MonthlyFee] PatternMatched \"abc\"");
+        assertFalse(bad.ok(), () -> "a type-illegal candidate must produce diagnostics, got: " + bad.diagnostics());
+        assertFalse(bad.diagnostics().isEmpty(), "the kernel problem must map to at least one Diagnostic");
     }
 
     private static String readResource(String path) {
