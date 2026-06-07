@@ -51,7 +51,8 @@ public final class ModelDrafts {
                                 .repeatable(50).indexField("Sku")
                                 .field("Sku", FieldKind.STRING)
                                 .field("Count", FieldKind.NUMBER)
-                                .numberField("UnitWeight", n -> n.fractionDigits(2)))
+                                .numberField("UnitWeight", n -> n.fractionDigits(2))
+                                .dateRangeField("ItemCoverage", r -> r.format("dd.MM.yyyy").separator("-")))
                         .enumField("Priority", e -> e
                                 .value("STANDARD").value("EXPRESS").value("OVERNIGHT")
                                 .category("SpeedClass", "NORMAL", "FAST", "FAST"))

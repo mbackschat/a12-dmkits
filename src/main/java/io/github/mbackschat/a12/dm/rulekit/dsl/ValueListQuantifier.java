@@ -7,7 +7,8 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 public enum ValueListQuantifier {
     AT_LEAST_ONE_FIELD_VALUE_INCLUDED("AtLeastOneFieldValueIncludedInValueList"),
     NO_FIELD_VALUE_INCLUDED("NoFieldValueIncludedInValueList"),
-    NOT_ALL_FIELD_VALUES_INCLUDED("NotAllFieldValuesIncludedInValueList");
+    NOT_ALL_FIELD_VALUES_INCLUDED("NotAllFieldValuesIncludedInValueList"),
+    AT_LEAST_ONE_DATE_RANGE_OVERLAPS("AtLeastOneDateRangeOverlaps");
 
     private final String operatorId;
 

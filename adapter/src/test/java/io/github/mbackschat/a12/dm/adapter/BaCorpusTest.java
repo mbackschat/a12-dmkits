@@ -71,6 +71,8 @@ class BaCorpusTest {
             new R("DateConstruct", "Day", "FieldFilled(Day) And Valid(Date(Day, Month, Year))"),
             new R("DateRangeStart", "DispatchDate", "FieldFilled(DispatchDate) And YearFromDate(StartOfDateRange(CoverPeriod)) > 2020"),
             new R("DateRangeEndDay", "ParcelCount", "FieldFilled(ParcelCount) And [ParcelCount] != DayFromDate(EndOfDateRange(CoverPeriod))"),
+            new R("RangesOverlap", "DispatchDate", "FieldFilled(DispatchDate) And DateRangesOverlap(CoverPeriod, Parcels*/ParcelCoverage)"),
+            new R("AnyRangeOverlaps", "DispatchDate", "FieldFilled(DispatchDate) And AtLeastOneDateRangeOverlaps(CoverPeriod IN Parcels*/ParcelCoverage)"),
 
             // --- known-opaque: unmodeled families (kernel-valid, ingest preserved verbatim) --------------
             new R("DateLiteral", "DispatchDateLocal", "FieldFilled(DispatchDateLocal) And [DispatchDateLocal] > \"01.01.2022\"", false),

@@ -952,6 +952,28 @@
     "sinceKernel": "30.8.x"
   },
   {
+    "id": "DateRangesOverlap",
+    "kind": "predicate",
+    "keywords": { "en": "DateRangesOverlap", "de": "DatumsBereicheUeberlappend" },
+    "operands": [ { "type": "date-range" } ],
+    "returns": "boolean",
+    "meaning": "True iff the date ranges of the listed date-range fields overlap (start and end inclusive).",
+    "constraints": [ "the operands are date-range fields (or a flattened repetition list of them)" ],
+    "validExample": { "dsl": "FieldFilled(OrderDate) And DateRangesOverlap(CoverageWindow, Items*/ItemCoverage)", "note": "fires when the order's coverage window overlaps a line-item coverage" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "AtLeastOneDateRangeOverlaps",
+    "kind": "predicate",
+    "keywords": { "en": "AtLeastOneDateRangeOverlaps", "de": "MindestensEinDatumsBereichUeberlappend" },
+    "operands": [ { "type": "date-range" } ],
+    "returns": "boolean",
+    "meaning": "True iff the first date-range field's interval overlaps at least one date-range field in the list (start and end inclusive).",
+    "constraints": [ "a date-range field, then In, then a date-range field list (often a flattened repetition list)" ],
+    "validExample": { "dsl": "FieldFilled(OrderDate) And AtLeastOneDateRangeOverlaps(CoverageWindow IN Items*/ItemCoverage)", "note": "fires when the coverage window overlaps any line-item coverage" },
+    "sinceKernel": "30.8.x"
+  },
+  {
     "id": "HoursFromTime",
     "kind": "function",
     "keywords": { "en": "HoursFromTime", "de": "StundenAusZeit" },
@@ -1101,16 +1123,6 @@
     "keywords": { "en": "DateRange", "de": "DatumBereich" },
     "returns": "date-range",
     "meaning": "Constructs a date range from a start and an end date.",
-    "constraints": [ "rulekit: PLANNED stub — no typed handle yet; keywords grounded in the lexer bundles (see WORKSPACE-CORPUS-ANALYSIS backlog)" ],
-    "status": "PLANNED",
-    "sinceKernel": "30.8.x"
-  },
-  {
-    "id": "DateRangesOverlap",
-    "kind": "predicate",
-    "keywords": { "en": "DateRangesOverlap", "de": "DatumsBereicheUeberlappend" },
-    "returns": "boolean",
-    "meaning": "True iff two date ranges overlap.",
     "constraints": [ "rulekit: PLANNED stub — no typed handle yet; keywords grounded in the lexer bundles (see WORKSPACE-CORPUS-ANALYSIS backlog)" ],
     "status": "PLANNED",
     "sinceKernel": "30.8.x"

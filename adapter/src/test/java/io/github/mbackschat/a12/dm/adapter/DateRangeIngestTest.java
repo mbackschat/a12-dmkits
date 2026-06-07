@@ -33,8 +33,11 @@ class DateRangeIngestTest {
         return DocumentModelDraft.named("booking").locale("en_US")
                 .rootGroup("Booking", b -> b
                         .dateRangeField("Coverage", r -> r.format("dd.MM.yyyy").separator("-"))
+                        .dateRangeField("Blackout", r -> r.format("dd.MM.yyyy").separator("-"))
                         .dateField("RequestedStart", d -> d.format("dd.MM.yyyy"))
-                        .numberField("EndDay", n -> { }))
+                        .numberField("EndDay", n -> { })
+                        .group("Periods", g -> g.repeatable(20)
+                                .dateRangeField("Span", r -> r.format("dd.MM.yyyy").separator("-"))))
                 .build().toJson();
     }
 
@@ -55,6 +58,23 @@ class DateRangeIngestTest {
         assertTrue(RENDER.render(endDay).contains("DayFromDate(EndOfDateRange(/Booking/Coverage))"), RENDER.render(endDay));
         assertEquals(RENDER.render(startCmp), RENDER.render(converted(adapter.ingest("/Booking/StartRule"))));
         assertEquals(RENDER.render(endDay), RENDER.render(converted(adapter.ingest("/Booking/EndDayRule"))));
+    }
+
+    @Test
+    void roundTripsDateRangeOverlapConditions() {
+        BoundModel m = BoundModel.ofJson(bookingJson());
+        // DateRangesOverlap(Coverage, Blackout) — the two intervals overlap
+        Condition overlap = m.dateRange("/Booking/Coverage").filled()
+                .and(Dsl.dateRangesOverlap(m.field("/Booking/Coverage"), m.field("/Booking/Blackout")));
+        // AtLeastOneDateRangeOverlaps(Coverage IN Periods*/Span) — Coverage overlaps at least one period
+        Condition anyOverlap = m.dateRange("/Booking/Coverage").filled()
+                .and(Dsl.atLeastOneDateRangeOverlaps(m.field("/Booking/Coverage"),
+                        m.flatten("/Booking/Periods*/Span")));
+        KernelAdapter adapter = KernelAdapter.of(m
+                .add(rule(m, "OverlapRule", "/Booking/Coverage", overlap))
+                .add(rule(m, "AnyOverlapRule", "/Booking/Coverage", anyOverlap)));
+        assertEquals(RENDER.render(overlap), RENDER.render(converted(adapter.ingest("/Booking/OverlapRule"))));
+        assertEquals(RENDER.render(anyOverlap), RENDER.render(converted(adapter.ingest("/Booking/AnyOverlapRule"))));
     }
 
     @Test

@@ -408,6 +408,23 @@ public final class Dsl {
         return enumListQuantifier(ValueListQuantifier.NOT_ALL_FIELD_VALUES_INCLUDED, values, first, rest);
     }
 
+    /** {@code DateRangesOverlap(r1, r2, …)} — true iff the date ranges of the listed fields overlap. */
+    public static Condition dateRangesOverlap(FieldOperand first, FieldOperand... rest) {
+        var fields = new java.util.ArrayList<FieldOperand>();
+        fields.add(first);
+        fields.addAll(java.util.List.of(rest));
+        return new FieldListPredicate(Quantifier.DATE_RANGES_OVERLAP, fields);
+    }
+
+    /** {@code AtLeastOneDateRangeOverlaps(range IN r1, r2, …)} — {@code range} overlaps at least one listed range. */
+    public static Condition atLeastOneDateRangeOverlaps(FieldOperand range, FieldOperand first, FieldOperand... rest) {
+        var values = new java.util.ArrayList<FieldOperand>();
+        values.add(first);
+        values.addAll(java.util.List.of(rest));
+        return new FieldListEntityListCondition(ValueListQuantifier.AT_LEAST_ONE_DATE_RANGE_OVERLAPS,
+                java.util.List.of(range), values);
+    }
+
     private static Condition stringListQuantifier(
             ValueListQuantifier q, java.util.List<String> values, StringRef first, StringRef... rest) {
         var fields = new java.util.ArrayList<FieldOperand>();

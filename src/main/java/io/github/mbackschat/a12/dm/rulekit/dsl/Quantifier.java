@@ -12,7 +12,8 @@ public enum Quantifier {
     FIELDS_NOT_COLLECTIVELY_FILLED("FieldsNotCollectivelyFilled"),
     NOT_EXACTLY_ONE_FIELD_FILLED("NotExactlyOneFieldFilled"),
     MORE_THAN_ONE_FIELD_FILLED("MoreThanOneFieldFilled"),
-    FIELD_VALUES_NOT_UNIQUE("FieldValuesNotUnique");
+    FIELD_VALUES_NOT_UNIQUE("FieldValuesNotUnique"),
+    DATE_RANGES_OVERLAP("DateRangesOverlap");
 
     private final String operatorId;
 

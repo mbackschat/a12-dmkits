@@ -206,6 +206,20 @@
                           }
                         }
                       }
+                    },
+                    {
+                      "type": "Field",
+                      "id": "/Order/Items/ItemCoverage",
+                      "name": "ItemCoverage",
+                      "Field": {
+                        "fieldType": {
+                          "type": "DateRangeType",
+                          "DateRangeType": {
+                            "format": "dd.MM.yyyy",
+                            "rangeSeparator": "-"
+                          }
+                        }
+                      }
                     }
                   ]
                 }

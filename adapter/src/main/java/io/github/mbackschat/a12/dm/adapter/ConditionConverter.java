@@ -302,6 +302,10 @@ final class ConditionConverter {
                     FieldRef[] keys = fieldRefs(paths);
                     yield Dsl.fieldValuesNotUnique(keys[0], Arrays.copyOfRange(keys, 1, keys.length));
                 }
+                case DateRangesOverlap -> {
+                    FieldOperand[] ops = entities.stream().map(this::toFieldOperand).toArray(FieldOperand[]::new);
+                    yield Dsl.dateRangesOverlap(ops[0], Arrays.copyOfRange(ops, 1, ops.length));
+                }
                 case RepetitionNotUnique -> {
                     FieldRef[] keys = fieldRefs(paths);
                     RepetitionNotUniqueCondition rnu =
@@ -476,6 +480,10 @@ final class ConditionConverter {
                     Dsl.noFieldValueIncludedInValueList(valueFields, f[0], rest);
             case NotAllFieldValuesIncludedInValueList ->
                     Dsl.notAllFieldValuesIncludedInValueList(valueFields, f[0], rest);
+            case AtLeastOneDateRangeOverlaps -> {
+                FieldOperand[] vf = valueFields.toArray(FieldOperand[]::new);
+                yield Dsl.atLeastOneDateRangeOverlaps(f[0], vf[0], Arrays.copyOfRange(vf, 1, vf.length));
+            }
             default -> throw unsupported("entity+value-list condition " + name, node);
         };
     }
