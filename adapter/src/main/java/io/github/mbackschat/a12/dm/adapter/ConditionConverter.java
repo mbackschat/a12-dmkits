@@ -58,8 +58,10 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.PointInTimeOper
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ValueListConditionName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.ast.ASTVisitor;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.BaseYear;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Now;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction;
@@ -866,6 +868,11 @@ final class ConditionConverter {
         if (operand instanceof INumberOfRootGroupsOperation rootCount) {
             return Dsl.numberOfFilledRootGroups(model.group("/" + rootCount.getRootGroupName()));
         }
+        // BaseYear compared to a number field acts as the year number
+        if (operand instanceof IPointInTimeOperation pit
+                && pit.getOperatorName() == PointInTimeOperationName.BaseYear) {
+            return new NumberExpr(new BaseYear());
+        }
         if (operand instanceof IFieldIdOperation lenOp && lenOp.getOperatorName() == FieldIdOperationName.Length) {
             return model.str(lenOp.getField().getFullName()).length();
         }
@@ -1329,6 +1336,14 @@ final class ConditionConverter {
         if (op instanceof IDateAddOperation add) {
             return new DateTimeExpr(convertDateAdd(add).expression());
         }
+        // Now / BaseYear as a date-time operand (both compare to a date-time field)
+        if (op instanceof IPointInTimeOperation pit) {
+            return switch (pit.getOperatorName()) {
+                case Now -> new DateTimeExpr(new Now());
+                case BaseYear -> new DateTimeExpr(new BaseYear());
+                default -> throw unsupported("date-time point-in-time " + pit.getOperatorName(), origin);
+            };
+        }
         throw unsupported("date-time operand " + op.getClass().getSimpleName(), origin);
     }
 
@@ -1380,8 +1395,13 @@ final class ConditionConverter {
                 && vad.getOperatorName() == FieldIdOperationName.ValueAsDate) {
             return new DateExpr(new ValueAsDate(model.field(vad.getField().getFullName()), vad.isFirstDay()));
         }
-        if (op instanceof IPointInTimeOperation pit && pit.getOperatorName() == PointInTimeOperationName.Today) {
-            return Dsl.today();
+        if (op instanceof IPointInTimeOperation pit) {
+            return switch (pit.getOperatorName()) {
+                case Today -> Dsl.today();
+                case Now -> new DateExpr(new Now());          // Now compares to a date field too (day-truncated)
+                case BaseYear -> new DateExpr(new BaseYear()); // the base-year start, as a date
+                default -> throw unsupported("point-in-time " + pit.getOperatorName(), origin);
+            };
         }
         // MaxValue/MinValue over a date repetition list → a date-valued operand (latest/earliest)
         if (op instanceof IEntityListOperation aggregate) {

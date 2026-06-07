@@ -91,6 +91,8 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case ListAggregate a -> a.operands().forEach(o -> collectOperand(o, fields, groups));
             case CurrentRepetition r -> groups.add(r.group().path());
             case Today ignored -> { }
+            case Now ignored -> { }
+            case BaseYear ignored -> { }
             case DateDifference d -> {
                 collect(d.left(), fields, groups);
                 collect(d.right(), fields, groups);

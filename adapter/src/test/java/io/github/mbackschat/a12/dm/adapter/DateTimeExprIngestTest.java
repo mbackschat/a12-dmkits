@@ -138,6 +138,27 @@ class DateTimeExprIngestTest {
     }
 
     @Test
+    void roundTripsNowAndBaseYear() {
+        // Now (date-time field) + BaseYear in its three contexts (date / date-time / number). The order
+        // fixture declares a base year, so BaseYear is valid.
+        BoundModel m = order();
+        Condition now = m.dateTime("/Order/ScheduledAt").after(Dsl.now());
+        Condition byDate = m.date("/Order/OrderDate").after(Dsl.baseYear());
+        Condition byNum = m.num("/Order/Quantity").gt(Dsl.baseYearNumber());
+        assertEquals("[/Order/ScheduledAt] > Now", RENDER.render(now));
+        assertEquals("[/Order/OrderDate] > BaseYear", RENDER.render(byDate));
+        assertEquals("[/Order/Quantity] > BaseYear", RENDER.render(byNum));
+
+        KernelAdapter adapter = KernelAdapter.of(m
+                .add(orderRule(m, "NowRule", "/Order/ScheduledAt", now))
+                .add(orderRule(m, "ByDateRule", "/Order/OrderDate", byDate))
+                .add(orderRule(m, "ByNumRule", "/Order/Quantity", byNum)));
+        assertEquals(RENDER.render(now), RENDER.render(converted(adapter.ingest("/Order/NowRule"))));
+        assertEquals(RENDER.render(byDate), RENDER.render(converted(adapter.ingest("/Order/ByDateRule"))));
+        assertEquals(RENDER.render(byNum), RENDER.render(converted(adapter.ingest("/Order/ByNumRule"))));
+    }
+
+    @Test
     void dateExpressionsAreKernelValid() {
         ValidationResult r = new RuleValidator().check(read("models/order.dm.json"),
                 new DraftRule("/Order", "ExtractRule", "../OrderDate",

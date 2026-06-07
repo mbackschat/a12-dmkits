@@ -3,7 +3,9 @@ package io.github.mbackschat.a12.dm.rulekit.context;
 import java.util.ArrayList;
 import java.util.List;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.BaseYear;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoolLiteral;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Now;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
@@ -118,6 +120,8 @@ final class ExplanationTreeBuilder {
             case CurrentRepetition r -> List.of(leaf(r.operatorId(), r));
             case SemanticIndexValue v -> List.of(leaf(v.operatorId(), v));
             case Today t -> List.of(leaf(t.operatorId(), t));
+            case Now n -> List.of(leaf(n.operatorId(), n));
+            case BaseYear b -> List.of(leaf(b.operatorId(), b));
             // date arithmetic nests further dates (Today, fields, other shifts) — recurse into them
             case DateDifference d -> List.of(new RuleExplanation.Node(d.operatorId(), renderer.render(d),
                     concat(operand(d.left()), operand(d.right()))));

@@ -215,6 +215,25 @@ public final class Dsl {
         return new DateExpr(new Today());
     }
 
+    /** {@code Now} — the current date-time (DE {@code Jetzt}); the date-time sibling of {@link #today()}. */
+    public static DateTimeExpr now() {
+        return new DateTimeExpr(new Now());
+    }
+
+    /**
+     * {@code BaseYear} — the model's configured base year (DE {@code Basisjahr}), as a comparable date
+     * (the start of the base year). Only valid in a model declaring a base year. To compare it as the
+     * year <em>number</em>, use {@link #baseYearNumber()}.
+     */
+    public static DateExpr baseYear() {
+        return new DateExpr(new BaseYear());
+    }
+
+    /** {@code BaseYear} as the year <em>number</em> — for a numeric comparison against a number field. */
+    public static NumberExpr baseYearNumber() {
+        return new NumberExpr(new BaseYear());
+    }
+
     /**
      * A date constant for comparison/shift — {@code [DispatchDate] > dateValue("01.01.2022")}. The text is
      * the kernel's German {@code dd.MM.yyyy} form (with or without the year, e.g. {@code "13.07."}),

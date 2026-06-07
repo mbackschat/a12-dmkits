@@ -17,6 +17,7 @@
       "name": "order",
       "variant": "cockpit",
       "revision": "Arbeitsversion",
+      "baseYear": "2020",
       "immutable": false
     },
     "modelConfig": {

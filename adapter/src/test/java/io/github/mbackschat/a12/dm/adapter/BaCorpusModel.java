@@ -17,7 +17,7 @@ final class BaCorpusModel {
     }
 
     static String json() {
-        return DocumentModelDraft.named("shipment").locale("en_US")
+        return DocumentModelDraft.named("shipment").locale("en_US").baseYear(2020)
                 .rootGroup("Shipment", s -> s
                         .stringField("ShipmentRef", b -> { })
                         .stringField("Recipient", b -> { })

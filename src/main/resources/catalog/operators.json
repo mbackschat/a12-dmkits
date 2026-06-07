@@ -1268,9 +1268,19 @@
     "kind": "constant",
     "keywords": { "en": "Now", "de": "Jetzt" },
     "returns": "date-time",
-    "meaning": "The current date-time — the date-time sibling of Today (discouraged with ==, forbidden in computations).",
-    "constraints": [ "rulekit: PLANNED stub — no typed handle yet; keywords grounded in the lexer bundles (see WORKSPACE-CORPUS-ANALYSIS backlog)" ],
-    "status": "PLANNED",
+    "meaning": "The current date-time — the date-time sibling of Today. Compares to a date-time field, and (truncated to the day) to a date field.",
+    "constraints": [ "discouraged with == (a moving target); forbidden in computations" ],
+    "validExample": { "dsl": "FieldFilled(ScheduledAt) And [ScheduledAt] > Now", "note": "fires when the scheduled date-time is in the future" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "BaseYear",
+    "kind": "constant",
+    "keywords": { "en": "BaseYear", "de": "Referenzjahr" },
+    "returns": "date",
+    "meaning": "The model's configured base year, as a point-in-time. Polymorphic: a date (the base-year start) against a date/date-time field, or the year number against a number field.",
+    "constraints": [ "only valid in a model that declares a base year (modelInfo.baseYear), else MVK_NO_BASE_YEAR" ],
+    "validExample": { "dsl": "FieldFilled(OrderDate) And [OrderDate] > BaseYear", "note": "fires when the order date is after the start of the base year" },
     "sinceKernel": "30.8.x"
   },
   {

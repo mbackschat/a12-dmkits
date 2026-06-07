@@ -264,6 +264,8 @@ public final class DslRenderer {
             case SemanticIndexValue v ->
                     "[" + path(v.field().path()) + " " + keyword(v.operatorId()) + " " + quote(v.indexValue()) + "]";
             case Today t -> keyword(t.operatorId());
+            case Now n -> keyword(n.operatorId());
+            case BaseYear b -> keyword(b.operatorId());
             case DateDifference d -> keyword(d.operatorId())
                     + "(" + renderArg(d.left()) + ", " + renderArg(d.right()) + ")";
             case DateShift s -> keyword(s.operatorId())

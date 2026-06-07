@@ -83,6 +83,8 @@ public final class OperatorUsage {
             }
             case CurrentRepetition r -> ops.add(r.operatorId());
             case Today t -> ops.add(t.operatorId());
+            case Now n -> ops.add(n.operatorId());
+            case BaseYear b -> ops.add(b.operatorId());
             case DateDifference d -> {
                 ops.add(d.operatorId());
                 collect(d.left(), ops);

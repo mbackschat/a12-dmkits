@@ -161,7 +161,7 @@ class KernelConstructParityTest {
         // Abs/Min/Max (operand-list math, distinct from field-list MaxValue/MinValue) are now cataloged (OpListMath, family 5).
         // field-level RoundDownValue/RoundUpValue/RoundAccountingValue/AbsValue are now cataloged (FieldRounding).
         // FieldValueAsNumber/RangeAsNumber (family 4) and ValueAsDate (over a partially-known-date field) are now cataloged.
-        put(m, "base-year point-in-time — not yet modeled (Today/Now are modeled)", "PointInTimeOperationName.BaseYear");
+        // Today/Now/BaseYear are all cataloged now (BaseYear over a model with a base year).
         put(m, "bare field reference — structural in rulekit (typed handles), not a catalog construct",
                 "FieldIdOperationName.FieldValue");
         // Legacy German-only aliases (superseded by an English-named construct, or never modeled).

@@ -33,7 +33,7 @@ public final class ModelDrafts {
 
     /** The order model — every field kind, address groups, an index-keyed item list, a categorized enum. */
     public static DocumentModelDraft order() {
-        return DocumentModelDraft.named("order").locale("en_US")
+        return DocumentModelDraft.named("order").locale("en_US").baseYear(2020)
                 .rootGroup("Order", o -> o
                         .field("CustomerName", FieldKind.STRING)
                         .field("ProductCode", FieldKind.STRING)

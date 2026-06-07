@@ -41,14 +41,16 @@ public final class DocumentModelDraft {
     private final List<Include> includes;
     private final List<TypeDefDecl> typeDefs;
     private final List<ElementDraft.Group> rootGroups;
+    private final Integer baseYear;
 
     private DocumentModelDraft(String id, List<String> locales, List<Include> includes,
-            List<TypeDefDecl> typeDefs, List<ElementDraft.Group> rootGroups) {
+            List<TypeDefDecl> typeDefs, List<ElementDraft.Group> rootGroups, Integer baseYear) {
         this.id = id;
         this.locales = locales;
         this.includes = includes;
         this.typeDefs = typeDefs;
         this.rootGroups = rootGroups;
+        this.baseYear = baseYear;
     }
 
     /** A reusable named type, declared once in {@code content.typeDefinitions} and referenced by fields. */
@@ -94,6 +96,10 @@ public final class DocumentModelDraft {
         info.put("name", id);
         info.put("variant", "cockpit");
         info.put("revision", "Arbeitsversion");
+        if (baseYear != null) {
+            // the model-level base year (handles year-less date inputs and enables the BaseYear point-in-time)
+            info.put("baseYear", String.valueOf(baseYear));
+        }
         info.put("immutable", false);
         ObjectNode config = content.putObject("modelConfig");
         config.put("decimalSeparator", ".");
@@ -303,9 +309,19 @@ public final class DocumentModelDraft {
         private final List<Include> includes = new ArrayList<>();
         private final List<TypeDefDecl> typeDefs = new ArrayList<>();
         private final List<ElementDraft.Group> rootGroups = new ArrayList<>();
+        private Integer baseYear;
 
         private Builder(String id) {
             this.id = id;
+        }
+
+        /**
+         * Set the model's base year. Required for year-less date inputs (date fragments without a year
+         * part) and for the {@code BaseYear} point-in-time construct (else {@code MVK_NO_BASE_YEAR}).
+         */
+        public Builder baseYear(int year) {
+            this.baseYear = year;
+            return this;
         }
 
         /** Add a declared locale (e.g. {@code "en_US"}); a full {@code language_COUNTRY} code (KERNEL-FINDINGS §13). */
@@ -345,7 +361,7 @@ public final class DocumentModelDraft {
                 throw new IllegalStateException("a model needs at least one root group");
             }
             return new DocumentModelDraft(id, List.copyOf(locales), List.copyOf(includes),
-                    List.copyOf(typeDefs), List.copyOf(rootGroups));
+                    List.copyOf(typeDefs), List.copyOf(rootGroups), baseYear);
         }
     }
 
