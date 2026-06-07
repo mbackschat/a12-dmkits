@@ -149,7 +149,9 @@ class KernelConstructParityTest {
                 "ComparisonOperation.EQ", "ComparisonOperation.GE", "ComparisonOperation.LE");
         put(m, "pattern comparison; modeled as catalog PatternMatched/PatternViolated",
                 "ComparisonOperation.WM", "ComparisonOperation.NM");
-        put(m, "tolerance comparison (DiffersWithToleranceRange…) — NOT YET MODELED (coverage backlog)",
+        // tolerance comparisons render as a worded keyword, so the enum member name (NEn) doesn't match the
+        // catalog id — excluded-from-auto-match like the symbol comparisons above, but now MODELED:
+        put(m, "tolerance comparison; modeled as catalog DiffersWithToleranceRange1/2/5/10 (CompareOp + Tolerance)",
                 "ComparisonOperation.NE1", "ComparisonOperation.NE2", "ComparisonOperation.NE5", "ComparisonOperation.NE10");
         // Not-yet-modeled operator families (coverage backlog — WORKSPACE-CORPUS-ANALYSIS).
         // AddHours/Minutes/Seconds + DifferenceInHours/Minutes/Seconds are now cataloged (sub-day time arithmetic, family 2).

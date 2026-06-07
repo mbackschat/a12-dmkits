@@ -157,6 +157,11 @@ public record NumberRef(FieldRef field, int scale, boolean correlated) {
         return new ComparisonCondition(value(), op, other.value());
     }
 
+    /** {@code [field] DiffersWithToleranceRange{N} [other]} — unequal within a tolerance (see {@link NumberExpr#differsWithTolerance}). */
+    public Condition differsWithTolerance(Tolerance t, NumberRef other) {
+        return asNumber().differsWithTolerance(t, other.asNumber());
+    }
+
     // --- field-vs-expression comparison (e.g. [Quantity] < Sum(Items*/Count Having ...)) ----------
 
     public Condition lt(NumberExpr other) {

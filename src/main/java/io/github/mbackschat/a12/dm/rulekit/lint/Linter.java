@@ -309,7 +309,8 @@ public final class Linter {
             case LE -> c <= 0;
             case GT -> c > 0;
             case GE -> c >= 0;
-            case EQ, NE -> false; // not ordering — guarded by isOrdering, never reached
+            // not ordering — guarded by isOrdering, never reached
+            case EQ, NE, TOLERANCE_1, TOLERANCE_2, TOLERANCE_5, TOLERANCE_10 -> false;
         };
     }
 

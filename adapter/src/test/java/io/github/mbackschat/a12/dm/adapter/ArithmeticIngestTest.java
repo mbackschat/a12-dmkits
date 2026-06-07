@@ -85,6 +85,17 @@ class ArithmeticIngestTest {
     }
 
     @Test
+    void roundTripsToleranceComparison() {
+        // [Quantity] DiffersWithToleranceRange5 [BackorderQuantity] — unequal within a tolerance of 5.
+        BoundModel m = order();
+        Condition c = m.num("/Order/Quantity").differsWithTolerance(
+                io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance.RANGE_5, m.num("/Order/BackorderQuantity"));
+        assertEquals("[/Order/Quantity] DiffersWithToleranceRange5 [/Order/BackorderQuantity]", RENDER.render(c));
+        KernelAdapter adapter = KernelAdapter.of(m.add(orderRule(m, "TolRule", c)));
+        assertEquals(RENDER.render(c), RENDER.render(converted(adapter.ingest("/Order/TolRule"))));
+    }
+
+    @Test
     void arithmeticComparisonIsKernelValid() {
         BoundModel m = order();
         Condition c = m.num("/Order/Quantity").lt(m.num("/Order/BackorderQuantity").asNumber().plus(2));

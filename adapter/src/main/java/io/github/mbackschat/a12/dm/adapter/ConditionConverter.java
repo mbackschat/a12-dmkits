@@ -103,6 +103,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoolLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RepetitionNotUniqueCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ValueAsDate;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
@@ -995,8 +996,35 @@ final class ConditionConverter {
         };
     }
 
+    /** Map a kernel tolerance comparison operator ({@code NE1/NE2/NE5/NE10}) to a {@link Tolerance}, else {@code null}. */
+    private static Tolerance toleranceOf(ComparisonOperation op) {
+        return switch (op) {
+            case NE1 -> Tolerance.RANGE_1;
+            case NE2 -> Tolerance.RANGE_2;
+            case NE5 -> Tolerance.RANGE_5;
+            case NE10 -> Tolerance.RANGE_10;
+            default -> null;
+        };
+    }
+
     private Condition numberComparison(NumberRef left, ComparisonOperation op, IOperation right,
             ICondition origin) {
+        // tolerance comparison ([a] DiffersWithToleranceRange{N} [b]) — unequal within a tolerance
+        Tolerance tol = toleranceOf(op);
+        if (tol != null) {
+            if (right instanceof IConstantOperation c) {
+                return left.asNumber().differsWithTolerance(tol, Dsl.number(c.getValue()));
+            }
+            if (right instanceof IFieldIdOperation rf && rf.getOperatorName() == FieldIdOperationName.FieldValue) {
+                NumberRef other = model.num(rf.getField().getFullName());
+                return left.differsWithTolerance(tol, rf.getField().isOuter() ? other.outer() : other);
+            }
+            NumberExpr rightExpr = numericExpr(right);
+            if (rightExpr != null) {
+                return left.asNumber().differsWithTolerance(tol, rightExpr);
+            }
+            throw unsupported("tolerance comparison against an unsupported operand", origin);
+        }
         if (right instanceof IConstantOperation constant) {
             String v = constant.getValue();
             return switch (op) {

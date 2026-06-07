@@ -130,6 +130,50 @@
     "sinceKernel": "30.8.x"
   },
   {
+    "id": "DiffersWithToleranceRange1",
+    "kind": "operator",
+    "keywords": { "en": "DiffersWithToleranceRange1", "de": "UngleichMitToleranz1" },
+    "operands": [ { "type": "number" }, { "type": "number" } ],
+    "returns": "boolean",
+    "meaning": "True iff the two numbers differ by more than 1 (unequal within a tolerance of 1). Only for numbers/amounts.",
+    "constraints": [ "both operands are numeric (fields or expressions)" ],
+    "validExample": { "dsl": "AllFieldsFilled(Quantity, BackorderQuantity) And [Quantity] DiffersWithToleranceRange1 [BackorderQuantity]", "note": "fires when the two counts differ by more than 1" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "DiffersWithToleranceRange2",
+    "kind": "operator",
+    "keywords": { "en": "DiffersWithToleranceRange2", "de": "UngleichMitToleranz2" },
+    "operands": [ { "type": "number" }, { "type": "number" } ],
+    "returns": "boolean",
+    "meaning": "True iff the two numbers differ by more than 2 (unequal within a tolerance of 2).",
+    "constraints": [ "both operands are numeric (fields or expressions)" ],
+    "validExample": { "dsl": "AllFieldsFilled(Quantity, BackorderQuantity) And [Quantity] DiffersWithToleranceRange2 [BackorderQuantity]", "note": "fires when the two counts differ by more than 2" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "DiffersWithToleranceRange5",
+    "kind": "operator",
+    "keywords": { "en": "DiffersWithToleranceRange5", "de": "UngleichMitToleranz5" },
+    "operands": [ { "type": "number" }, { "type": "number" } ],
+    "returns": "boolean",
+    "meaning": "True iff the two numbers differ by more than 5 (unequal within a tolerance of 5).",
+    "constraints": [ "both operands are numeric (fields or expressions)" ],
+    "validExample": { "dsl": "AllFieldsFilled(Quantity, BackorderQuantity) And [Quantity] DiffersWithToleranceRange5 [BackorderQuantity]", "note": "fires when the two counts differ by more than 5" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "DiffersWithToleranceRange10",
+    "kind": "operator",
+    "keywords": { "en": "DiffersWithToleranceRange10", "de": "UngleichMitToleranz10" },
+    "operands": [ { "type": "number" }, { "type": "number" } ],
+    "returns": "boolean",
+    "meaning": "True iff the two numbers differ by more than 10 (unequal within a tolerance of 10).",
+    "constraints": [ "both operands are numeric (fields or expressions)" ],
+    "validExample": { "dsl": "AllFieldsFilled(Quantity, BackorderQuantity) And [Quantity] DiffersWithToleranceRange10 [BackorderQuantity]", "note": "fires when the two counts differ by more than 10" },
+    "sinceKernel": "30.8.x"
+  },
+  {
     "id": "AllFieldsFilled",
     "kind": "predicate",
     "keywords": { "en": "AllFieldsFilled", "de": "AlleFelderAngegeben" },

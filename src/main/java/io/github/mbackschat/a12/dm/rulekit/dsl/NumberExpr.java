@@ -117,6 +117,14 @@ public record NumberExpr(Calculation expression) {
         return exprCmp(CompareOp.NE, other);
     }
 
+    /**
+     * {@code [a] DiffersWithToleranceRange{N} [b]} — true when the two numbers differ by more than the
+     * tolerance {@code t} (the kernel's "unequal within a tolerance"). Only for numbers/amounts.
+     */
+    public Condition differsWithTolerance(Tolerance t, NumberExpr other) {
+        return new ComparisonCondition(expression, t.operator(), other.expression());
+    }
+
     // --- arithmetic (e.g. [maxLength] < [minFractionalDigits] + 2) — yields a comparable expression ---
 
     public NumberExpr plus(NumberExpr other) {

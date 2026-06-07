@@ -91,6 +91,8 @@ class BaCorpusTest {
             // --- point-in-time: Now / BaseYear (the model declares a base year) -------------------------
             new R("NowCmp", "ScheduledAt", "FieldFilled(ScheduledAt) And [ScheduledAt] > Now"),
             new R("BaseYearCmp", "DispatchDate", "FieldFilled(DispatchDate) And [DispatchDate] > BaseYear"),
+            // --- tolerance comparison -------------------------------------------------------------------
+            new R("ToleranceCmp", "ParcelCount", "AllFieldsFilled(ParcelCount, BackorderCount) And [ParcelCount] DiffersWithToleranceRange5 [BackorderCount]"),
             // --- operand-list math: Abs / Min / Max (family 5) ------------------------------------------
             new R("AbsDiff", "Weight", "AllFieldsFilled(Weight, DeclaredValue) And Abs([Weight] - [DeclaredValue]) < 1"),
             new R("MinOf", "Weight", "AllFieldsFilled(Weight, DeclaredValue) And Min([Weight], [DeclaredValue]) > 0"),

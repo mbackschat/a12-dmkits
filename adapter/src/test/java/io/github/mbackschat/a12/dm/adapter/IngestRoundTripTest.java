@@ -221,19 +221,20 @@ class IngestRoundTripTest {
     }
 
     /**
-     * A still-unconverted construct — a <em>tolerance</em> comparison ({@code [Total]
-     * DiffersWithToleranceRange5 [Budget]}, kernel {@code ComparisonOperation.NE5}). The tolerance
-     * comparison family is deliberately unmodeled (coverage backlog), so it has no typed handle and
-     * ingests as Opaque, preserved verbatim. (Earlier this used {@code SumOfProducts}, then a direct
-     * {@code DATE_TIME} comparison — both convert now; {@code $} correlations convert too, with the
+     * A still-unconverted construct — a direct <em>boolean field-vs-field</em> comparison
+     * ({@code [Approved] == [Reviewed]}). It is kernel-valid (a boolean compares to another boolean
+     * field), but rulekit deliberately models booleans only against the {@code True}/{@code False}
+     * literals, so a bool-field right operand has no typed handle and ingests as Opaque, preserved
+     * verbatim. (Earlier this used {@code SumOfProducts}, then a direct {@code DATE_TIME} comparison,
+     * then a tolerance comparison — all convert now; {@code $} correlations convert too, with the
      * count-check for un-threaded ones tested in {@code OuterCorrelationBackstopTest}.)
      */
     private static final String OPAQUE_CONDITION =
-            "FieldFilled(PeriodEnd) And [Total] DiffersWithToleranceRange5 [Budget]";
+            "FieldFilled(PeriodEnd) And [Approved] == [Reviewed]";
 
     @Test
     void preservesAnUnconvertedConstructAsOpaque() {
-        // a tolerance comparison is unmodeled → the rule stays unconverted → preserved opaque, not lost, not corrupt.
+        // a boolean field-vs-field comparison is unmodeled → preserved opaque, not lost, not corrupt.
         KernelAdapter adapter = KernelAdapter.ofJson(
                 timesheetWith(timesheetRule("/Timesheet/OpaqueRule", "OpaqueRule", OPAQUE_CONDITION)));
 
@@ -242,7 +243,7 @@ class IngestRoundTripTest {
                 () -> "an unconverted construct should ingest as Opaque, got: " + result);
         // preserved verbatim: the rule's text survives (re-emit on write-back)
         assertFalse(opaque.canonicalText().isBlank());
-        assertTrue(opaque.canonicalText().contains("Total"),
+        assertTrue(opaque.canonicalText().contains("Approved"),
                 () -> "opaque text should preserve the rule verbatim: " + opaque.canonicalText());
     }
 
@@ -256,13 +257,15 @@ class IngestRoundTripTest {
         assertInstanceOf(Ingest.Opaque.class, all.get("/Timesheet/OpaqueRule"));
     }
 
-    /** A timesheet model — two number fields (Total/Budget) for the tolerance comparison, plus date/date-time fields. */
+    /** A timesheet model — two boolean fields (Approved/Reviewed) for the opaque field-vs-field comparison, plus number/date/date-time fields. */
     private static String timesheetJson() {
         return DocumentModelDraft.named("timesheet").locale("en_US")
                 .rootGroup("Timesheet", t -> t
                         .dateField("PeriodEnd", d -> d.format("yyyy-MM-dd"))
                         .numberField("Total", n -> { })
                         .numberField("Budget", n -> { })
+                        .field("Approved", io.github.mbackschat.a12.dm.modelkit.FieldKind.BOOLEAN)
+                        .field("Reviewed", io.github.mbackschat.a12.dm.modelkit.FieldKind.BOOLEAN)
                         .dateTimeField("ClockIn", dt -> dt.format("yyyy-MM-dd'T'HH:mm:ss"))
                         .dateTimeField("ClockOut", dt -> dt.format("yyyy-MM-dd'T'HH:mm:ss")))
                 .build().toJson();
