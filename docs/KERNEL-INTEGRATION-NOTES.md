@@ -17,6 +17,18 @@ The **full kernel source** is checked out at the sibling repo **`../a12-kernel/k
 
 This source tree resolved `DatePrecision`, `baseYear`, the `ValueAsDate`/`Now`/`BaseYear` node shapes, and `ValueNotConsistent`'s real semantics far faster than jar archaeology would. **Probing the live kernel** (a throwaway validate-and-dump test, as in the family work) stays the way to confirm *behavior* (what validates, what an operation parses to); the source is the way to learn *syntax, rendering, and the rules*.
 
+### Renderer ↔ kernel canonical-parity guardian (`adapter.CatalogRenderCanonicalParityTest`, 2026-06-07)
+
+A guardian that pins our `DslRenderer` to the kernel's `FormatterVisitor` (the canonical formatter, reached via `KernelAdapter.canonicalConditionText`). For **every** SUPPORTED catalog `validExample` (106): ingest it → re-render our AST (relative to the rule group, the kernel's own path form) → assert the kernel canonicalizes *our render* identically to the example. Both sides pass through the kernel formatter, so path-form/whitespace differences cancel and only a real token/structure divergence survives. This is **strictly stronger than the render→parse→convert→render round-trip** (which is our-renderer-on-both-sides, so it can't see a loss that's consistent on read *and* write). Standing at **106 checked, 0 mismatched, 0 opaque**.
+
+Building it immediately caught **four** ingest defects no other test saw — two **silent losses** (the cardinal F10/N8 sin) and two coverage gaps:
+- **`FieldValuesNotUnique(Items*/Sku)` dropped the `*`** — it converted the keys via plain `fieldRefs` (which strips the wildcard) instead of the wildcard-aware `toFieldOperand`, so write-back drew `MVK_NO_WILDCARD`. (silent loss → fixed)
+- **A semantic index `[field For "x"]` was silently dropped** — the `FieldValue` path ignored `IEntityId.getSemanticIndex()` (a `List<Object>` of quoted strings / entity refs), so it rendered a bare `[field]`. Now ingested as `SemanticIndexValue` for the single-string-index-on-a-number-field case; anything richer stays Opaque (never silently dropped). (silent loss → fixed)
+- **`NumberOfFilledGroups(g1, g2)` over multiple distinct groups** wasn't ingested (only the single `Group*` form) → Opaque. (coverage gap → fixed)
+- **`DateFromDateTime(...)`/`TimeFromDateTime(...)` on the *left* of a comparison** was routed to the numeric-extraction path (which rejects the date/time-valued part) → Opaque. Now routed to date/time comparison. (coverage gap → fixed)
+
+Lesson: an our-renderer-on-both-sides round-trip proves *stability*, not *fidelity* — comparing against the kernel's canonical form is what catches a consistent read+write loss. (Task #9.)
+
 ## Validating a rule via `checkConsistency` (F4 — verified by experiment)
 
 **Enum comparison by stored value works for text-bearing enums.** `[Tier] == "PRO"` validates against the kernel even though `Tier` is a text-bearing enum (BASIC/PRO/ENTERPRISE with labels). This clarifies the §5b "text-bearing enum ↔ string: no" rule: it forbids comparing an enum to an actual **string field/expression**, not to its own **enum-value literal** (the quoted stored value). So rulekit's `EnumRef.is("PRO")` → `[Tier] == "PRO"` is correct; the value is checked against the model's enum domain at build time.

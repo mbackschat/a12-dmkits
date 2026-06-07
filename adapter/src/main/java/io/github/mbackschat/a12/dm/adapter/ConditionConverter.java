@@ -318,7 +318,9 @@ final class ConditionConverter {
                 case NotExactlyOneFieldFilled -> model.notExactlyOneFieldFilled(p);
                 case MoreThanOneFieldFilled -> model.moreThanOneFieldFilled(p);
                 case FieldValuesNotUnique -> {
-                    FieldRef[] keys = fieldRefs(paths);
+                    // keys may wildcard a repeatable group (FieldValuesNotUnique(Items*/Sku)) — use the
+                    // wildcard-aware operand conversion so the '*' survives (else MVK_NO_WILDCARD on write-back)
+                    FieldOperand[] keys = entities.stream().map(this::toFieldOperand).toArray(FieldOperand[]::new);
                     yield Dsl.fieldValuesNotUnique(keys[0], Arrays.copyOfRange(keys, 1, keys.length));
                 }
                 case DateRangesOverlap -> {
@@ -646,7 +648,13 @@ final class ConditionConverter {
             return numberExprComparison(convertDateDiff(diff), op, right, comparison);
         }
         if (left instanceof IDateExtractionOperation ext) {
-            return numberExprComparison(convertDateExtraction(ext), op, right, comparison);
+            // the value-valued parts (DateFromDateTime/TimeFromDateTime) compare as a date/time, not a number
+            return switch (ext.getOperatorName()) {
+                case DateFromDateTime -> dateComparison(convertDateOperand(left, comparison), op,
+                        convertDateOperand(right, comparison), comparison);
+                case TimeFromDateTime -> timeComparison(convertTimeOperand(left, comparison), op, right, comparison);
+                default -> numberExprComparison(convertDateExtraction(ext), op, right, comparison);
+            };
         }
         // a date shift on the left ([AddDays(date, n)] <op> [field] / Today) — compare it as a date operand
         if (left instanceof IDateAddOperation add) {
@@ -697,6 +705,16 @@ final class ConditionConverter {
         // handles expose outer(); other kinds leave the marker unset and the N8 backstop (verifyOuterPreserved)
         // catches the silent drop and degrades the rule to Opaque.
         boolean leftOuter = field.getField().isOuter();
+        // a semantic index ([field For "x"]) reads the field's value in the repetition whose index field
+        // equals "x" — it rides on getSemanticIndex(). We model the single-string index on a number field
+        // (SemanticIndexValue); a multi-element or entity-valued index stays Opaque (never a silent drop).
+        java.util.List<Object> semIdx = field.getField().getSemanticIndex();
+        if (semIdx != null && !semIdx.isEmpty()) {
+            if (semIdx.size() == 1 && semIdx.get(0) instanceof String idx && kind == ValueKind.NUMBER) {
+                return numberExprComparison(model.num(path).forIndex(idx), op, other, origin);
+            }
+            throw unsupported("semantic index ([field For …]) — only a single string index on a number field is modeled", origin);
+        }
         // an enum field navigated to one of its categories ([field -> Cat]) rides on getCategoryName()
         String category = field.getField().getCategoryName();
         if (kind == ValueKind.ENUMERATION && category != null && !category.isEmpty()) {
@@ -744,6 +762,12 @@ final class ConditionConverter {
         if (name == EntityListOperationName.NumberOfFilledGroups
                 && entities.size() == 1 && !entities.get(0).isField()) {
             return Dsl.numberOfFilledGroups(model.group(entities.get(0).getFullName()));
+        }
+        // NumberOfFilledGroups(g1, g2, …): two or more distinct groups — count how many are filled.
+        if (name == EntityListOperationName.NumberOfFilledGroups
+                && entities.size() > 1 && entities.stream().noneMatch(IEntityId::isField)) {
+            GroupRef[] g = entities.stream().map(e -> model.group(e.getFullName())).toArray(GroupRef[]::new);
+            return Dsl.numberOfFilledGroups(g[0], g[1], Arrays.copyOfRange(g, 2, g.length));
         }
         // Multi-field explicit scope, e.g. Sum(a, b) — each operand a plain field or a wildcard list.
         if (entities.size() > 1 && entities.stream().allMatch(IEntityId::isField)) {
