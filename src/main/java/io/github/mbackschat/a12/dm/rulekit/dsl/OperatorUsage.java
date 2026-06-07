@@ -88,6 +88,7 @@ public final class OperatorUsage {
             case DateShift s -> {
                 ops.add(s.operatorId());
                 collect(s.date(), ops);
+                collect(s.amount(), ops);
             }
             case SemanticIndexValue v -> ops.add(v.operatorId());
             case Arithmetic a -> {

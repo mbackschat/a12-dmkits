@@ -64,6 +64,18 @@ class DateTimeExprIngestTest {
     }
 
     @Test
+    void roundTripsADateShiftByAFieldAmount() {
+        // the corpus shape: the shift amount is a field/expression, not a constant —
+        // [DeliveryDate] > AddDays(OrderDate, [BackorderQuantity]).
+        BoundModel m = order();
+        Condition c = m.date("/Order/DeliveryDate")
+                .after(Dsl.addDays(m.date("/Order/OrderDate"), m.num("/Order/BackorderQuantity").asNumber()));
+        KernelAdapter adapter = KernelAdapter.of(m.add(orderRule(m, "FieldShiftRule", "/Order/DeliveryDate", c)));
+        assertTrue(RENDER.render(c).contains("AddDays(/Order/OrderDate, [/Order/BackorderQuantity])"), RENDER.render(c));
+        assertEquals(RENDER.render(c), RENDER.render(converted(adapter.ingest("/Order/FieldShiftRule"))));
+    }
+
+    @Test
     void dateExpressionsAreKernelValid() {
         ValidationResult r = new RuleValidator().check(read("models/order.dm.json"),
                 new DraftRule("/Order", "ExtractRule", "../OrderDate",

@@ -264,7 +264,7 @@ public final class DslRenderer {
             case DateDifference d -> keyword(d.operatorId())
                     + "(" + renderArg(d.left()) + ", " + renderArg(d.right()) + ")";
             case DateShift s -> keyword(s.operatorId())
-                    + "(" + renderArg(s.date()) + ", " + s.amount() + ")";
+                    + "(" + renderArg(s.date()) + ", " + render(s.amount()) + ")";
             case Arithmetic a -> render(a.left()) + " " + a.op().symbol() + " " + render(a.right());
             case Rounding r -> keyword(r.operatorId()) + "(" + render(r.operand()) + ", " + r.decimalPlaces() + ")";
             case Concatenation c -> c.parts().stream().map(this::render)

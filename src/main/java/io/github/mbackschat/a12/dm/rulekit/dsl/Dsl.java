@@ -216,17 +216,30 @@ public final class Dsl {
         return new TimeExpr(new DateTimePart(DateTimePart.Unit.TIME, dateTime.expression()));
     }
 
-    /** {@code AddDays(date, n)} — shifts a date, yielding a date (comparable). */
+    /** {@code AddDays(date, n)} — shifts a date by an integer constant, yielding a date (comparable). */
     public static DateExpr addDays(DateOperand date, long amount) {
-        return new DateExpr(new DateShift(DateShift.Unit.DAYS, date.expression(), amount));
+        return addDays(date, number(Long.toString(amount)));
     }
 
     public static DateExpr addMonths(DateOperand date, long amount) {
-        return new DateExpr(new DateShift(DateShift.Unit.MONTHS, date.expression(), amount));
+        return addMonths(date, number(Long.toString(amount)));
     }
 
     public static DateExpr addYears(DateOperand date, long amount) {
-        return new DateExpr(new DateShift(DateShift.Unit.YEARS, date.expression(), amount));
+        return addYears(date, number(Long.toString(amount)));
+    }
+
+    /** {@code AddDays(date, n)} where the amount is a numeric expression (e.g. a field, {@code AddDays(d, [n])}). */
+    public static DateExpr addDays(DateOperand date, NumberExpr amount) {
+        return new DateExpr(new DateShift(DateShift.Unit.DAYS, date.expression(), amount.expression()));
+    }
+
+    public static DateExpr addMonths(DateOperand date, NumberExpr amount) {
+        return new DateExpr(new DateShift(DateShift.Unit.MONTHS, date.expression(), amount.expression()));
+    }
+
+    public static DateExpr addYears(DateOperand date, NumberExpr amount) {
+        return new DateExpr(new DateShift(DateShift.Unit.YEARS, date.expression(), amount.expression()));
     }
 
     /** A numeric literal as a comparable expression — e.g. an arithmetic operand ({@code … + 2}). */

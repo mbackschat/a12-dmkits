@@ -105,7 +105,7 @@ final class ExplanationTreeBuilder {
             case DateDifference d -> List.of(new RuleExplanation.Node(d.operatorId(), renderer.render(d),
                     concat(operand(d.left()), operand(d.right()))));
             case DateShift s -> List.of(new RuleExplanation.Node(s.operatorId(), renderer.render(s),
-                    operand(s.date())));
+                    concat(operand(s.date()), operand(s.amount()))));
             case Arithmetic a -> List.of(new RuleExplanation.Node(a.op().symbol(), renderer.render(a),
                     concat(operand(a.left()), operand(a.right()))));
             // rounding nests the expression it rounds — recurse into it

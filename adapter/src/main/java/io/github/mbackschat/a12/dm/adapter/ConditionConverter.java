@@ -1181,28 +1181,16 @@ final class ConditionConverter {
         throw unsupported("date-time extraction source " + op.getClass().getSimpleName(), origin);
     }
 
-    /** {@code AddDays/AddMonths/AddYears(date, n)} — shift a date operand by an integer amount. */
+    /** {@code AddDays/AddMonths/AddYears(date, n)} — shift a date by an amount (a constant or a numeric expression). */
     private DateOperand convertDateAdd(IDateAddOperation add) {
         DateOperand base = convertDateOperand(add.getDateSpec(), add);
-        long amount = dateAddAmount(add.getAmountSpec(), add);
+        NumberExpr amount = arithmeticOperand(add.getAmountSpec(), add);   // constant, field, or expression
         return switch (add.getOperatorName()) {
             case AddDays -> Dsl.addDays(base, amount);
             case AddMonths -> Dsl.addMonths(base, amount);
             case AddYears -> Dsl.addYears(base, amount);
             default -> throw unsupported("date-add operator " + add.getOperatorName(), add);
         };
-    }
-
-    /** The integer amount of a date-add (a numeric constant). */
-    private long dateAddAmount(IOperation op, Object origin) {
-        if (op instanceof IConstantOperation constant) {
-            try {
-                return Long.parseLong(constant.getValue().trim());
-            } catch (NumberFormatException e) {
-                throw unsupported("non-integer date-add amount '" + constant.getValue() + "'", origin);
-            }
-        }
-        throw unsupported("date-add amount that is not a constant", origin);
     }
 
     /**
