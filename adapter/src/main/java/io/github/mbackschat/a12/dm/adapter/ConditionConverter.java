@@ -54,6 +54,10 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand;
+import io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand;
+import io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
@@ -570,6 +574,7 @@ final class ConditionConverter {
             case STRING -> stringComparison(leftOuter ? model.str(path).outer() : model.str(path), op, other, origin);
             case ENUMERATION -> enumComparison(leftOuter ? model.enumOf(path).outer() : model.enumOf(path), op, other, origin);
             case DATE -> dateComparison(leftOuter ? model.date(path).outer() : model.date(path), op, other, origin);
+            case TIME -> timeComparison(leftOuter ? model.time(path).outer() : model.time(path), op, other, origin);
             case BOOLEAN -> booleanComparison(model.bool(path), op, other, origin);
             case CONFIRM -> confirmComparison(model.confirm(path), op, other, origin);
             default -> throw unsupported("comparison on a " + kind + " field", origin);
@@ -1052,6 +1057,20 @@ final class ConditionConverter {
         };
     }
 
+    /** {@code [time] <op> other} — a time field vs another time field or {@code TimeFromDateTime(dt)}. */
+    private Condition timeComparison(TimeOperand left, ComparisonOperation op, IOperation right, ICondition origin) {
+        TimeOperand other = convertTimeOperand(right, origin);
+        return switch (op) {
+            case LT -> left.before(other);
+            case LE -> left.onOrBefore(other);
+            case GT -> left.after(other);
+            case GE -> left.onOrAfter(other);
+            case EQ -> left.eq(other);
+            case NE -> left.ne(other);
+            default -> throw unsupported("time comparison operator " + op, origin);
+        };
+    }
+
     /** {@code DifferenceInDays/Months/Years(a, b)} as a numeric operand. */
     private NumberExpr convertDateDiff(IDateDiffOperation diff) {
         DateOperand a = convertDateOperand(diff.getDateSpec1(), diff);
@@ -1082,26 +1101,79 @@ final class ConditionConverter {
         if (op instanceof IDateAddOperation add) {
             return convertDateAdd(add);
         }
+        // DateFromDateTime(dt) → the date part of a date-time, as a date operand
+        if (op instanceof IDateExtractionOperation ext
+                && ext.getOperatorName() == DateExtractionOperationName.DateFromDateTime) {
+            return Dsl.dateFromDateTime(dateTimeSource(ext.getDateSpec(), ext));
+        }
         throw unsupported("date operand " + op.getClass().getSimpleName(), origin);
     }
 
-    /** {@code YearFromDate/MonthFromDate/DayFromDate/QuarterFromDate(date)} — a numeric component of a date. */
-    private NumberExpr convertDateExtraction(IDateExtractionOperation ext) {
-        // resolve the number-valued extractions up front; time extractions (HoursFromTime, …) stay opaque
-        DateExtractionOperationName name = ext.getOperatorName();
-        if (name != DateExtractionOperationName.DayFromDate && name != DateExtractionOperationName.MonthFromDate
-                && name != DateExtractionOperationName.YearFromDate
-                && name != DateExtractionOperationName.QuarterFromDate) {
-            throw unsupported("date/time extraction " + name, ext);
+    /** A time-valued operand: a time field ({@code FieldValue}) or {@code TimeFromDateTime(dt)}. */
+    private TimeOperand convertTimeOperand(IOperation op, Object origin) {
+        if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue
+                && model.fieldAt(field.getField().getFullName()).map(i -> i.kind() == ValueKind.TIME).orElse(false)) {
+            TimeRef time = model.time(field.getField().getFullName());
+            return field.getField().isOuter() ? time.outer() : time;   // $ correlation (D13)
         }
-        DateOperand source = convertDateOperand(ext.getDateSpec(), ext);
+        // TimeFromDateTime(dt) → the time part of a date-time, as a time operand
+        if (op instanceof IDateExtractionOperation ext
+                && ext.getOperatorName() == DateExtractionOperationName.TimeFromDateTime) {
+            return Dsl.timeFromDateTime(dateTimeSource(ext.getDateSpec(), ext));
+        }
+        throw unsupported("time operand " + op.getClass().getSimpleName(), origin);
+    }
+
+    /**
+     * The number-valued date/time component extractions — {@code YearFromDate}/…/{@code QuarterFromDate}
+     * (from a date or date-time) and {@code HoursFromTime}/{@code MinutesFromTime}/{@code SecondsFromTime}
+     * (from a time or date-time). The date/time-valued {@code Date|TimeFromDateTime} are handled as
+     * date/time operands, not here.
+     */
+    private NumberExpr convertDateExtraction(IDateExtractionOperation ext) {
+        DateExtractionOperationName name = ext.getOperatorName();
+        TemporalOperand source = convertTemporalSource(ext.getDateSpec(), ext);
         return switch (name) {
             case DayFromDate -> Dsl.dayFromDate(source);
             case MonthFromDate -> Dsl.monthFromDate(source);
             case YearFromDate -> Dsl.yearFromDate(source);
             case QuarterFromDate -> Dsl.quarterFromDate(source);
-            default -> throw unsupported("date extraction " + name, ext);
+            case HoursFromTime -> Dsl.hoursFromTime(source);
+            case MinutesFromTime -> Dsl.minutesFromTime(source);
+            case SecondsFromTime -> Dsl.secondsFromTime(source);
+            default -> throw unsupported("date/time extraction " + name, ext);
         };
+    }
+
+    /** A temporal extraction source — a date, time, or date-time field, or {@code Today}. */
+    private TemporalOperand convertTemporalSource(IOperation op, Object origin) {
+        if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
+            String path = field.getField().getFullName();
+            ValueKind kind = model.fieldAt(path)
+                    .orElseThrow(() -> unsupported("extraction over unknown field " + path, origin)).kind();
+            boolean outer = field.getField().isOuter();   // $ correlation (D13)
+            return switch (kind) {
+                case DATE -> outer ? model.date(path).outer() : model.date(path);
+                case TIME -> outer ? model.time(path).outer() : model.time(path);
+                case DATE_TIME -> outer ? model.dateTime(path).outer() : model.dateTime(path);
+                default -> throw unsupported("extraction over a " + kind + " field", origin);
+            };
+        }
+        if (op instanceof IPointInTimeOperation pit && pit.getOperatorName() == PointInTimeOperationName.Today) {
+            return Dsl.today();
+        }
+        throw unsupported("temporal extraction source " + op.getClass().getSimpleName(), origin);
+    }
+
+    /** A date-time field source for {@code Date|TimeFromDateTime} — must be a {@code DATE_TIME} field. */
+    private DateTimeRef dateTimeSource(IOperation op, Object origin) {
+        if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue
+                && model.fieldAt(field.getField().getFullName())
+                        .map(i -> i.kind() == ValueKind.DATE_TIME).orElse(false)) {
+            DateTimeRef dt = model.dateTime(field.getField().getFullName());
+            return field.getField().isOuter() ? dt.outer() : dt;   // $ correlation (D13)
+        }
+        throw unsupported("date-time extraction source " + op.getClass().getSimpleName(), origin);
     }
 
     /** {@code AddDays/AddMonths/AddYears(date, n)} — shift a date operand by an integer amount. */

@@ -171,24 +171,49 @@ public final class Dsl {
         return new NumberExpr(new DateDifference(DateDifference.Unit.YEARS, a.expression(), b.expression()));
     }
 
-    /** {@code YearFromDate(date)} — the year component as a number. */
-    public static NumberExpr yearFromDate(DateOperand date) {
+    /** {@code YearFromDate(date)} — the year component of a date (or date-time) as a number. */
+    public static NumberExpr yearFromDate(TemporalOperand date) {
         return new NumberExpr(new DateExtraction(DateExtraction.Unit.YEAR, date.expression()));
     }
 
     /** {@code MonthFromDate(date)} — the month component (1-12) as a number. */
-    public static NumberExpr monthFromDate(DateOperand date) {
+    public static NumberExpr monthFromDate(TemporalOperand date) {
         return new NumberExpr(new DateExtraction(DateExtraction.Unit.MONTH, date.expression()));
     }
 
     /** {@code DayFromDate(date)} — the day-of-month component as a number. */
-    public static NumberExpr dayFromDate(DateOperand date) {
+    public static NumberExpr dayFromDate(TemporalOperand date) {
         return new NumberExpr(new DateExtraction(DateExtraction.Unit.DAY, date.expression()));
     }
 
     /** {@code QuarterFromDate(date)} — the calendar quarter (1-4) as a number. */
-    public static NumberExpr quarterFromDate(DateOperand date) {
+    public static NumberExpr quarterFromDate(TemporalOperand date) {
         return new NumberExpr(new DateExtraction(DateExtraction.Unit.QUARTER, date.expression()));
+    }
+
+    /** {@code HoursFromTime(time)} — the hour-of-day component (0-23) of a time (or date-time) as a number. */
+    public static NumberExpr hoursFromTime(TemporalOperand time) {
+        return new NumberExpr(new DateExtraction(DateExtraction.Unit.HOURS, time.expression()));
+    }
+
+    /** {@code MinutesFromTime(time)} — the minute component (0-59) as a number. */
+    public static NumberExpr minutesFromTime(TemporalOperand time) {
+        return new NumberExpr(new DateExtraction(DateExtraction.Unit.MINUTES, time.expression()));
+    }
+
+    /** {@code SecondsFromTime(time)} — the second component (0-59) as a number. */
+    public static NumberExpr secondsFromTime(TemporalOperand time) {
+        return new NumberExpr(new DateExtraction(DateExtraction.Unit.SECONDS, time.expression()));
+    }
+
+    /** {@code DateFromDateTime(dt)} — the date part of a date-time, as a comparable date. */
+    public static DateExpr dateFromDateTime(DateTimeRef dateTime) {
+        return new DateExpr(new DateTimePart(DateTimePart.Unit.DATE, dateTime.expression()));
+    }
+
+    /** {@code TimeFromDateTime(dt)} — the time-of-day part of a date-time, as a comparable time. */
+    public static TimeExpr timeFromDateTime(DateTimeRef dateTime) {
+        return new TimeExpr(new DateTimePart(DateTimePart.Unit.TIME, dateTime.expression()));
     }
 
     /** {@code AddDays(date, n)} — shifts a date, yielding a date (comparable). */

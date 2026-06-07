@@ -235,6 +235,11 @@ public final class DocumentModelDraft {
             }
             case FieldTypeSpec.DateSpec d ->
                     fieldType.putObject("DateType").put("format", d.format() != null ? d.format() : "yyyy-MM-dd");
+            case FieldTypeSpec.TimeSpec t ->
+                    fieldType.putObject("TimeType").put("format", t.format() != null ? t.format() : "HH:mm:ss");
+            case FieldTypeSpec.DateTimeSpec dt ->
+                    fieldType.putObject("DateTimeType")
+                            .put("format", dt.format() != null ? dt.format() : "yyyy-MM-dd'T'HH:mm:ss");
             case FieldTypeSpec.DateRangeSpec dr -> {
                 ObjectNode inner = fieldType.putObject("DateRangeType");
                 inner.put("format", dr.format());
@@ -450,6 +455,20 @@ public final class DocumentModelDraft {
         /** Add a date field with an explicit constant format. */
         public GroupBuilder dateField(String name, Consumer<DateFieldBuilder> body) {
             DateFieldBuilder b = new DateFieldBuilder();
+            body.accept(b);
+            return addField(name, b, b.spec());
+        }
+
+        /** Add a time-of-day field with an explicit constant format. */
+        public GroupBuilder timeField(String name, Consumer<TimeFieldBuilder> body) {
+            TimeFieldBuilder b = new TimeFieldBuilder();
+            body.accept(b);
+            return addField(name, b, b.spec());
+        }
+
+        /** Add a date-time field with an explicit constant format. */
+        public GroupBuilder dateTimeField(String name, Consumer<DateTimeFieldBuilder> body) {
+            DateTimeFieldBuilder b = new DateTimeFieldBuilder();
             body.accept(b);
             return addField(name, b, b.spec());
         }
@@ -724,6 +743,34 @@ public final class DocumentModelDraft {
 
         private FieldTypeSpec spec() {
             return new FieldTypeSpec.DateSpec(format);
+        }
+    }
+
+    /** Configures a time-of-day field's constant format. */
+    public static final class TimeFieldBuilder extends FieldAttrs<TimeFieldBuilder> {
+        private String format;
+
+        public TimeFieldBuilder format(String format) {
+            this.format = format;
+            return this;
+        }
+
+        private FieldTypeSpec spec() {
+            return new FieldTypeSpec.TimeSpec(format);
+        }
+    }
+
+    /** Configures a date-time field's constant format. */
+    public static final class DateTimeFieldBuilder extends FieldAttrs<DateTimeFieldBuilder> {
+        private String format;
+
+        public DateTimeFieldBuilder format(String format) {
+            this.format = format;
+            return this;
+        }
+
+        private FieldTypeSpec spec() {
+            return new FieldTypeSpec.DateTimeSpec(format);
         }
     }
 

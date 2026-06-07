@@ -114,6 +114,10 @@ public final class OperatorUsage {
                 ops.add(e.operatorId());
                 collect(e.source(), ops);
             }
+            case DateTimePart e -> {
+                ops.add(e.operatorId());
+                collect(e.source(), ops);
+            }
             case RootGroupCount c -> ops.add(c.operatorId());
         }
     }

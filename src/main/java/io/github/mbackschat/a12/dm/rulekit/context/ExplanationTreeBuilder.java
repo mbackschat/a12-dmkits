@@ -12,6 +12,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.CurrentRepetition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CustomConditionRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateShift;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimePart;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumCategoryAccess;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumValueLiteral;
@@ -116,8 +117,10 @@ final class ExplanationTreeBuilder {
             case FirstFilledValue a -> List.of(leaf(a.operatorId(), a));
             case FieldValueAsString c -> List.of(leaf(c.operatorId(), c));
             case RangeAsString c -> List.of(leaf(c.operatorId(), c));
-            // date extraction nests its source date
+            // date/time extraction nests its source
             case DateExtraction e -> List.of(new RuleExplanation.Node(e.operatorId(), renderer.render(e),
+                    operand(e.source())));
+            case DateTimePart e -> List.of(new RuleExplanation.Node(e.operatorId(), renderer.render(e),
                     operand(e.source())));
             case RootGroupCount c -> List.of(leaf(c.operatorId(), c));
         };

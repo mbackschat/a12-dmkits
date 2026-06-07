@@ -105,6 +105,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case FieldValueAsString c -> fields.add(c.field().path());
             case RangeAsString c -> fields.add(c.field().path());
             case DateExtraction e -> collect(e.source(), fields, groups);
+            case DateTimePart e -> collect(e.source(), fields, groups);
             case RootGroupCount c -> groups.add(c.rootGroup().path());
         }
     }

@@ -55,7 +55,9 @@ public final class ModelDrafts {
                                 .value("STANDARD").value("EXPRESS").value("OVERNIGHT")
                                 .category("SpeedClass", "NORMAL", "FAST", "FAST"))
                         .dateField("OrderDate", d -> d.format("yyyy-MM-dd"))
-                        .dateField("DeliveryDate", d -> d.format("yyyy-MM-dd")))
+                        .dateField("DeliveryDate", d -> d.format("yyyy-MM-dd"))
+                        .timeField("PickupTime", t -> t.format("HH:mm:ss"))
+                        .dateTimeField("ScheduledAt", dt -> dt.format("yyyy-MM-dd'T'HH:mm:ss")))
                 .build();
     }
 }

@@ -255,6 +255,32 @@
                     }
                   }
                 }
+              },
+              {
+                "type": "Field",
+                "id": "/Order/PickupTime",
+                "name": "PickupTime",
+                "Field": {
+                  "fieldType": {
+                    "type": "TimeType",
+                    "TimeType": {
+                      "format": "HH:mm:ss"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Order/ScheduledAt",
+                "name": "ScheduledAt",
+                "Field": {
+                  "fieldType": {
+                    "type": "DateTimeType",
+                    "DateTimeType": {
+                      "format": "yyyy-MM-dd'T'HH:mm:ss"
+                    }
+                  }
+                }
               }
             ]
           }

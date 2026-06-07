@@ -92,6 +92,22 @@ public sealed interface FieldTypeSpec {
         }
     }
 
+    /** A time-of-day field with a constant format (§6). */
+    record TimeSpec(String format) implements FieldTypeSpec {
+        @Override
+        public String jsonType() {
+            return "TimeType";
+        }
+    }
+
+    /** A date-time field with a constant format (§6). */
+    record DateTimeSpec(String format) implements FieldTypeSpec {
+        @Override
+        public String jsonType() {
+            return "DateTimeType";
+        }
+    }
+
     /** A boolean (three-state, §1). */
     record BooleanSpec() implements FieldTypeSpec {
         @Override

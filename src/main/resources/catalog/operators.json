@@ -886,6 +886,61 @@
     "sinceKernel": "30.8.x"
   },
   {
+    "id": "HoursFromTime",
+    "kind": "function",
+    "keywords": { "en": "HoursFromTime", "de": "StundenAusZeit" },
+    "operands": [ { "type": "time" } ],
+    "returns": "number",
+    "meaning": "The hour-of-day component (0-23) of a time or date-time, as a number.",
+    "constraints": [ "the operand is a time or date-time (a field or expression), rendered as a bare entity ref" ],
+    "validExample": { "dsl": "FieldFilled(PickupTime) And HoursFromTime(PickupTime) < 9", "note": "fires for pickups before 9am" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "MinutesFromTime",
+    "kind": "function",
+    "keywords": { "en": "MinutesFromTime", "de": "MinutenAusZeit" },
+    "operands": [ { "type": "time" } ],
+    "returns": "number",
+    "meaning": "The minute component (0-59) of a time or date-time, as a number.",
+    "constraints": [ "the operand is a time or date-time (a field or expression)" ],
+    "validExample": { "dsl": "FieldFilled(PickupTime) And MinutesFromTime(PickupTime) != 0", "note": "fires when the pickup minute is not on the hour" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "SecondsFromTime",
+    "kind": "function",
+    "keywords": { "en": "SecondsFromTime", "de": "SekundenAusZeit" },
+    "operands": [ { "type": "time" } ],
+    "returns": "number",
+    "meaning": "The second component (0-59) of a time or date-time, as a number.",
+    "constraints": [ "the operand is a time or date-time (a field or expression)" ],
+    "validExample": { "dsl": "FieldFilled(PickupTime) And SecondsFromTime(PickupTime) == 0", "note": "fires when the pickup time has no seconds offset" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "DateFromDateTime",
+    "kind": "function",
+    "keywords": { "en": "DateFromDateTime", "de": "DatumAusDateTime" },
+    "operands": [ { "type": "date-time" } ],
+    "returns": "date",
+    "meaning": "The date part of a date-time, as a comparable date.",
+    "constraints": [ "the operand is a date-time (a field or expression), rendered as a bare entity ref" ],
+    "validExample": { "dsl": "FieldFilled(ScheduledAt) And DateFromDateTime(ScheduledAt) > Today", "note": "fires when the scheduled date part is in the future" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "TimeFromDateTime",
+    "kind": "function",
+    "keywords": { "en": "TimeFromDateTime", "de": "ZeitAusDateTime" },
+    "operands": [ { "type": "date-time" } ],
+    "returns": "time",
+    "meaning": "The time-of-day part of a date-time, as a comparable time.",
+    "constraints": [ "the operand is a date-time (a field or expression)" ],
+    "validExample": { "dsl": "FieldFilled(ScheduledAt) And FieldFilled(PickupTime) And [PickupTime] != TimeFromDateTime(ScheduledAt)", "note": "fires when the pickup time differs from the scheduled time part" },
+    "sinceKernel": "30.8.x"
+  },
+  {
     "id": "RangeAsString",
     "kind": "function",
     "keywords": { "en": "RangeAsString", "de": "BereichAlsString" },

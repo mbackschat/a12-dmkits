@@ -145,6 +145,24 @@ public final class BoundModel {
         return new DateRef(field(path));
     }
 
+    /** A typed time-of-day handle. Throws if the field at {@code path} is not a time. */
+    public TimeRef time(String path) {
+        ValueKind kind = index.kindOf(path);
+        if (kind != ValueKind.TIME) {
+            throw new IllegalArgumentException(path + " is not a time field (kind=" + kind + ")");
+        }
+        return new TimeRef(field(path));
+    }
+
+    /** A typed date-time handle (the source a date-time is decomposed from). Throws if not a date-time. */
+    public DateTimeRef dateTime(String path) {
+        ValueKind kind = index.kindOf(path);
+        if (kind != ValueKind.DATE_TIME) {
+            throw new IllegalArgumentException(path + " is not a date-time field (kind=" + kind + ")");
+        }
+        return new DateTimeRef(field(path));
+    }
+
     /** A typed group handle (knows repeatability from the model). Throws if the path is not a group. */
     public GroupRef group(String path) {
         return new GroupRef(path, index.isRepeating(path));

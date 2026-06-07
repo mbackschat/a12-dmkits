@@ -6,9 +6,10 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * they carry no scale, so field-vs-field date comparison needs none of the D13 scale machinery.
  * The comparison builders are default methods so every date operand compares the same way.
  */
-public sealed interface DateOperand permits DateRef, DateExpr {
+public sealed interface DateOperand extends TemporalOperand permits DateRef, DateExpr {
 
     /** This operand as a value expression (a date {@link FieldValue}, {@link Today}, or {@link DateShift}). */
+    @Override
     Calculation expression();
 
     default Condition before(DateOperand other) {

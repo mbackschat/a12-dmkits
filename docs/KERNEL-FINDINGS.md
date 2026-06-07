@@ -102,9 +102,24 @@ In DM-JSON, a category's `values` list pairs **positionally** with the enumerati
 - **Bare vs bracketed by position** — a date field is bracketed `[OrderDate]` as a *value* (in comparisons) but **bare** `OrderDate` as an *entity argument* inside `DifferenceInDays(…)`/`AddMonths(…)`. (rulekit's renderer has a `renderArg` for argument position.)
 - `DifferenceIn*` returns a **number** (comparable/arithmetic); `Add*` returns a **date** (comparable). Semantics caveats (kernel, §6): differences are a *floor* not a calendar count; `AddMonths` preserves the day while `AddYears` maps end-of-February — they disagree across leap years.
 
-**Deferred to slice 9b — format-finicky / need special operand fields.** A **date constant literal** (`31.12.2020`) against a `yyyy-MM-dd` `DateType` field is rejected (`MVK_INVALID_COMPARE_TO_DATE`) — and at **runtime** an ISO-looking literal `[OrderDate] > "2022-01-01"` is read as a *string*, so codegen rejects it with `MVK_INVALID_TYPE_FOR_COMPARISON` ("'greater than' only for numbers, amounts and dates"); the empty-date "not evaluated" law (KERNEL-SEMANTICS §2) is therefore locked via a **date-to-date** comparison (`DifferenceInDays`) instead of a literal — see the §2 supplement — the comparable-fragment rules (§6: both formats include the year or both omit) make literal constants format-dependent. **`Date(d,m,y)` construction** needs bounded-integer / digit-patterned operand fields (a plain scale-0 number draws `MVK_WRONG_DATE_FORMAT_FOR_OP`), as do `Valid(...)`/`Invalid(...)` over constructed dates. `Now`, `DateRange`/`DateRangesOverlap`, `DateTime`/`Time` also deferred. Low marginal demand; build on need.
+**Deferred to slice 9b — format-finicky / need special operand fields.** A **date constant literal** (`31.12.2020`) against a `yyyy-MM-dd` `DateType` field is rejected (`MVK_INVALID_COMPARE_TO_DATE`) — and at **runtime** an ISO-looking literal `[OrderDate] > "2022-01-01"` is read as a *string*, so codegen rejects it with `MVK_INVALID_TYPE_FOR_COMPARISON` ("'greater than' only for numbers, amounts and dates"); the empty-date "not evaluated" law (KERNEL-SEMANTICS §2) is therefore locked via a **date-to-date** comparison (`DifferenceInDays`) instead of a literal — see the §2 supplement — the comparable-fragment rules (§6: both formats include the year or both omit) make literal constants format-dependent. **`Date(d,m,y)` construction** needs bounded-integer / digit-patterned operand fields (a plain scale-0 number draws `MVK_WRONG_DATE_FORMAT_FOR_OP`), as do `Valid(...)`/`Invalid(...)` over constructed dates. `Now`, `DateRange`/`DateRangesOverlap` also deferred. Low marginal demand; build on need.
 
 *(Locked: N7 examples of Today + all three Difference*/Add* operators + the `Today` number-vs-date invalid; `dsl.operators.DateConditionTest` for rendering + the non-date-field handle rejection. The order fixture gained `OrderDate`/`DeliveryDate` DateType fields.)*
+
+### §6 supplement — TIME and DATE_TIME value kinds (implemented 2026-06-07)
+
+**`TIME` is orderable exactly like `DATE`** (no scale, no D13 machinery): `[ServiceWindowStart] >= [ServiceWindowEnd]` is kernel-valid (a time field vs another time field). Modeled as `TimeRef`/`TimeOperand`/`TimeExpr`, obtained from `BoundModel.time(path)`; the same six order operators as dates. Time constant literals stay deferred (format-finicky, like date literals).
+
+**`DATE_TIME` decomposes into its parts and components** — the kernel's `DateExtractionOperationName` covers the whole lattice, and **the extractions accept a `DATE_TIME` source, not only their nominal kind** (verified against the workspace `DateTimeValues_DM` model, where a single `DateTimeType Source` feeds every extraction):
+
+| operator | source kind(s) | result |
+|---|---|---|
+| `YearFromDate`/`MonthFromDate`/`DayFromDate`/`QuarterFromDate` | DATE **or** DATE_TIME | number |
+| `HoursFromTime`/`MinutesFromTime`/`SecondsFromTime` | TIME **or** DATE_TIME | number |
+| `DateFromDateTime` | DATE_TIME | date |
+| `TimeFromDateTime` | DATE_TIME | time |
+
+rulekit models the numeric ones as `DateExtraction` (kind NUMBER), the part-extractions as `DateTimePart` (kind DATE/TIME), with a common `TemporalOperand` source supertype (`DateOperand`/`TimeOperand`/`DateTimeRef`). DATE_TIME itself is a source-only kind (no direct DATE_TIME comparison consumer in Corpus-1) — decompose first, then compare the part. *(Locked: `adapter.TimeAndDateTimeIngestTest` — render + kernel-valid + round-trip for TIME ordering, time-of-day extraction, year-from-DATE_TIME, and Date/TimeFromDateTime; N7 catalog examples for all five new operators. The order fixture gained `PickupTime` TimeType + `ScheduledAt` DateTimeType fields; modelkit gained `timeField`/`dateTimeField`.)*
 
 ## §14 supplement — CustomCondition's two forbidden contexts (corpus item 8, 2026-06-04 experiments)
 
