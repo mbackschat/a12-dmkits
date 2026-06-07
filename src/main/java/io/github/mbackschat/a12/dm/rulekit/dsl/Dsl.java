@@ -165,6 +165,32 @@ public final class Dsl {
         return new NumberExpr(new ListAggregate(op, operands));
     }
 
+    // --- operand-list math (over numeric value expressions) ------------------------------------
+
+    /** {@code Abs(value)} — the absolute value of a numeric expression (e.g. {@code Abs([A] - [B])}). */
+    public static NumberExpr abs(NumberExpr value) {
+        return new NumberExpr(new OpListMath(OpListMath.Op.ABS, List.of(value.expression())));
+    }
+
+    /** {@code Min(v1, v2, …)} — the minimum of one or more numeric expressions. */
+    public static NumberExpr min(NumberExpr first, NumberExpr... rest) {
+        return new NumberExpr(new OpListMath(OpListMath.Op.MIN, operandList(first, rest)));
+    }
+
+    /** {@code Max(v1, v2, …)} — the maximum of one or more numeric expressions. */
+    public static NumberExpr max(NumberExpr first, NumberExpr... rest) {
+        return new NumberExpr(new OpListMath(OpListMath.Op.MAX, operandList(first, rest)));
+    }
+
+    private static List<Calculation> operandList(NumberExpr first, NumberExpr... rest) {
+        var ops = new ArrayList<Calculation>();
+        ops.add(first.expression());
+        for (NumberExpr e : rest) {
+            ops.add(e.expression());
+        }
+        return ops;
+    }
+
     // --- rounding (operand-list, over an arbitrary numeric expression) -------------------------
 
     /** {@code RoundDown(expr, n)} — round a numeric expression down to {@code n} decimal places. */

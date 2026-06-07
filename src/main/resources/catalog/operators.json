@@ -683,6 +683,40 @@
     "sinceKernel": "30.8.x"
   },
   {
+    "id": "Abs",
+    "kind": "function",
+    "keywords": { "en": "Abs", "de": "Abs" },
+    "operands": [ { "type": "number" } ],
+    "returns": "number",
+    "meaning": "The absolute value of a numeric expression — the operand-list form (Abs([A] - [B])), distinct from the field-only AbsValue.",
+    "constraints": [ "exactly one numeric value expression (a field, arithmetic, or other numeric function)" ],
+    "gotchas": [ { "text": "Abs([Field]) and AbsValue(Field) are equivalent; Abs also accepts an arbitrary expression", "kind": "SURPRISE" } ],
+    "validExample": { "dsl": "AllFieldsFilled(Quantity, UnitPrice) And Abs([Quantity] - [UnitPrice]) < 1", "note": "fires when quantity and unit price are within 1 of each other" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "Min",
+    "kind": "function",
+    "keywords": { "en": "Min", "de": "Min" },
+    "operands": [ { "type": "number" }, { "type": "number" } ],
+    "returns": "number",
+    "meaning": "The minimum of two or more numeric value expressions — the operand-list form, distinct from the field-list MinValue (which aggregates a repetition list).",
+    "constraints": [ "one or more numeric value expressions (fields, arithmetic, …)" ],
+    "validExample": { "dsl": "AllFieldsFilled(Quantity, UnitPrice) And Min([Quantity], [UnitPrice]) > 0", "note": "fires when both are positive (the smaller is above 0)" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "Max",
+    "kind": "function",
+    "keywords": { "en": "Max", "de": "Max" },
+    "operands": [ { "type": "number" }, { "type": "number" } ],
+    "returns": "number",
+    "meaning": "The maximum of two or more numeric value expressions — the operand-list form, distinct from the field-list MaxValue (which aggregates a repetition list).",
+    "constraints": [ "one or more numeric value expressions (fields, arithmetic, …)" ],
+    "validExample": { "dsl": "AllFieldsFilled(Quantity, UnitPrice) And Max([Quantity], [UnitPrice]) > 100", "note": "fires when either exceeds 100" },
+    "sinceKernel": "30.8.x"
+  },
+  {
     "id": "RoundUp",
     "kind": "function",
     "keywords": { "en": "RoundUp", "de": "Aufrunden" },

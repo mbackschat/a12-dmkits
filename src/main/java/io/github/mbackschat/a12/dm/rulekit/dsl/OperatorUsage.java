@@ -116,6 +116,10 @@ public final class OperatorUsage {
             case RangeAsString c -> ops.add(c.operatorId());
             case FieldValueAsNumber c -> ops.add(c.operatorId());
             case RangeAsNumber c -> ops.add(c.operatorId());
+            case OpListMath m -> {
+                ops.add(m.operatorId());
+                m.operands().forEach(o -> collect(o, ops));
+            }
             case DateExtraction e -> {
                 ops.add(e.operatorId());
                 collect(e.source(), ops);

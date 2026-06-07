@@ -158,9 +158,7 @@ class KernelConstructParityTest {
         // AtLeastOneDateRangeOverlaps + DateRangesOverlap are now cataloged (reusing FieldListPredicate/FieldListEntityListCondition).
         put(m, "value-consistency condition — not yet modeled", "EntityListAndValueListConditionName.ValueNotConsistent");
         put(m, "count-of-value aggregate — not yet modeled", "EntityListOperationName.NumberOfValueInFields");
-        put(m, "operand-list min/max — not yet modeled (distinct from field-list MaxValue/MinValue)",
-                "OpListOperationName.Max", "OpListOperationName.Min");
-        put(m, "operand-list abs function — not yet modeled", "OpListOperationName.Abs");
+        // Abs/Min/Max (operand-list math, distinct from field-list MaxValue/MinValue) are now cataloged (OpListMath, family 5).
         // field-level RoundDownValue/RoundUpValue/RoundAccountingValue/AbsValue are now cataloged (FieldRounding).
         // FieldValueAsNumber/RangeAsNumber are now cataloged (numeric coercions, family 4).
         put(m, "ValueAsDate — not yet modeled (needs a partially-known-date fixture field: a DateType with a date precision)",

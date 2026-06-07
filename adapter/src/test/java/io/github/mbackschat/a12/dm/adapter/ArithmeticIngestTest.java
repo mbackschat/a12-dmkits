@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
@@ -63,6 +64,24 @@ class ArithmeticIngestTest {
                 .eq(m.num("/Order/BackorderQuantity").asNumber().minus(2));
         KernelAdapter adapter = KernelAdapter.of(m.add(orderRule(m, "BothRule", both)));
         assertEquals(RENDER.render(both), RENDER.render(converted(adapter.ingest("/Order/BothRule"))));
+    }
+
+    @Test
+    void roundTripsOperandListMath() {
+        // family 5: Abs(expr) over an arithmetic, and Min/Max over two numeric value expressions.
+        BoundModel m = order();
+        Condition abs = Dsl.abs(m.num("/Order/Quantity").asNumber().minus(m.num("/Order/UnitPrice").asNumber())).lt(1);
+        Condition min = Dsl.min(m.num("/Order/Quantity").asNumber(), m.num("/Order/UnitPrice").asNumber()).gt(0);
+        Condition max = Dsl.max(m.num("/Order/Quantity").asNumber(), m.num("/Order/UnitPrice").asNumber()).gt(100);
+        assertEquals("Abs([/Order/Quantity] - [/Order/UnitPrice]) < 1", RENDER.render(abs));
+        assertEquals("Min([/Order/Quantity], [/Order/UnitPrice]) > 0", RENDER.render(min));
+        assertEquals("Max([/Order/Quantity], [/Order/UnitPrice]) > 100", RENDER.render(max));
+
+        KernelAdapter adapter = KernelAdapter.of(m
+                .add(orderRule(m, "AbsRule", abs)).add(orderRule(m, "MinRule", min)).add(orderRule(m, "MaxRule", max)));
+        assertEquals(RENDER.render(abs), RENDER.render(converted(adapter.ingest("/Order/AbsRule"))));
+        assertEquals(RENDER.render(min), RENDER.render(converted(adapter.ingest("/Order/MinRule"))));
+        assertEquals(RENDER.render(max), RENDER.render(converted(adapter.ingest("/Order/MaxRule"))));
     }
 
     @Test

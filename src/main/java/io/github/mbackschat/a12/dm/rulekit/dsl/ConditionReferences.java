@@ -112,6 +112,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case RangeAsString c -> fields.add(c.field().path());
             case FieldValueAsNumber c -> fields.add(c.field().path());
             case RangeAsNumber c -> fields.add(c.field().path());
+            case OpListMath m -> m.operands().forEach(o -> collect(o, fields, groups));
             case DateExtraction e -> collect(e.source(), fields, groups);
             case DateTimePart e -> collect(e.source(), fields, groups);
             case SumOfProducts s -> {

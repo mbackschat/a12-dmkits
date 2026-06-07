@@ -28,6 +28,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IGroupOpera
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.INumberOfRootGroupsOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IFieldIdOperationWithParameters;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOpListOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOpListOperationWithParameter;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IPointInTimeOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateAddOperation;
@@ -867,6 +868,17 @@ final class ConditionConverter {
         }
         if (operand instanceof IOpListOperationWithParameter rounding) {
             return convertRounding(rounding);
+        }
+        // operand-list math (family 5): Abs(value) / Min(v1, …) / Max(v1, …) over numeric expressions
+        if (operand instanceof IOpListOperation oplist) {
+            List<NumberExpr> args = oplist.getOperations().stream().map(o -> arithmeticOperand(o, oplist)).toList();
+            NumberExpr[] rest = args.subList(1, args.size()).toArray(NumberExpr[]::new);
+            return switch (oplist.getOperatorName()) {
+                case Abs -> Dsl.abs(args.get(0));
+                case Min -> Dsl.min(args.get(0), rest);
+                case Max -> Dsl.max(args.get(0), rest);
+                default -> throw unsupported("operand-list operator " + oplist.getOperatorName(), oplist);
+            };
         }
         if (operand instanceof IGroupOperation groupOp
                 && groupOp.getOperatorName() == GroupOperationName.CurrentRepetition) {

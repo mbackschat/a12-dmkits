@@ -46,6 +46,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.RootGroupCount;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rounding;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral;
+import io.github.mbackschat.a12.dm.rulekit.dsl.OpListMath;
 import io.github.mbackschat.a12.dm.rulekit.dsl.PatternCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RepetitionNotUniqueCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexValue;
@@ -133,6 +134,8 @@ final class ExplanationTreeBuilder {
             case RangeAsString c -> List.of(leaf(c.operatorId(), c));
             case FieldValueAsNumber c -> List.of(leaf(c.operatorId(), c));
             case RangeAsNumber c -> List.of(leaf(c.operatorId(), c));
+            case OpListMath m -> List.of(new RuleExplanation.Node(m.operatorId(), renderer.render(m),
+                    m.operands().stream().flatMap(o -> operand(o).stream()).toList()));
             // date/time extraction nests its source
             case DateExtraction e -> List.of(new RuleExplanation.Node(e.operatorId(), renderer.render(e),
                     operand(e.source())));
