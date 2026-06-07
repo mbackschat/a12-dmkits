@@ -73,9 +73,12 @@ class BaCorpusTest {
             new R("DateRangeEndDay", "ParcelCount", "FieldFilled(ParcelCount) And [ParcelCount] != DayFromDate(EndOfDateRange(CoverPeriod))"),
             new R("RangesOverlap", "DispatchDate", "FieldFilled(DispatchDate) And DateRangesOverlap(CoverPeriod, Parcels*/ParcelCoverage)"),
             new R("AnyRangeOverlaps", "DispatchDate", "FieldFilled(DispatchDate) And AtLeastOneDateRangeOverlaps(CoverPeriod IN Parcels*/ParcelCoverage)"),
+            // --- date / time constant literals (family 1) -----------------------------------------------
+            new R("DateLiteral", "DispatchDateLocal", "FieldFilled(DispatchDateLocal) And [DispatchDateLocal] > \"01.01.2022\""),
+            new R("TimeLiteral", "PickupTime", "FieldFilled(PickupTime) And [PickupTime] > \"17:00:00\""),
+            new R("DateLiteralDiff", "DispatchDate", "FieldFilled(DispatchDate) And DifferenceInDays(DispatchDate, \"01.01.2022\") > 7"),
 
             // --- known-opaque: unmodeled families (kernel-valid, ingest preserved verbatim) --------------
-            new R("DateLiteral", "DispatchDateLocal", "FieldFilled(DispatchDateLocal) And [DispatchDateLocal] > \"01.01.2022\"", false),
             new R("NumValueInFields", "TermsAccepted", "FieldFilled(TermsAccepted) And NumberOfValueInFields(True IN OptInA, OptInB, OptInC) >= 2", false));
 
     private static final String MODEL = BaCorpusModel.json();

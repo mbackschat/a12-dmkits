@@ -55,7 +55,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_INVALID_COMPARE_ENUM_TO_ENUM` | unclassified | — (experiment queue) |
 | `MVK_INVALID_COMPARE_ENUM_TO_STRING` | unclassified | — (experiment queue) |
 | `MVK_INVALID_COMPARE_TO_CONST` | erased | handles always put a field value on one side; constant-vs-constant unrepresentable (verified via pattern experiments 2026-06-04) |
-| `MVK_INVALID_COMPARE_TO_DATE` | erased + pre-checked | only `DateRef`/date expressions compare as dates (`DateOperand`); a number/string field has no date comparison method (locked: N7 `Today` invalidExample). Date constant literals deferred (9b) |
+| `MVK_INVALID_COMPARE_TO_DATE` | erased + pre-checked | only `DateRef`/date expressions compare as dates (`DateOperand`); a number/string field has no date comparison method (locked: N7 `Today` invalidExample). German-format date/time constant literals now implemented (family 1); this code still fires (kernel-delegated) for an ISO-format literal (lexed as a string) and a DATE_TIME field vs a bare string literal |
 | `MVK_INVALID_COMPARE_TO_DATE_RANGE` | unclassified | — (experiment queue) |
 | `MVK_INVALID_COMPARE_TO_ENUM_OR_STRING` | pre-checked | operation kind must match the computed field (`Calculation.kind()`) |
 | `MVK_INVALID_COMPARE_TO_YES` | erased | `ConfirmRef` has no `isFalse()`; Boolean↔Confirm cross-compare unrepresentable |

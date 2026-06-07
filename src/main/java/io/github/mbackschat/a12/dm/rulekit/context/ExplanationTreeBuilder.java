@@ -20,6 +20,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding;
 import io.github.mbackschat.a12.dm.rulekit.dsl.SumOfProducts;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumCategoryAccess;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumValueLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListPredicate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Arithmetic;
@@ -46,6 +47,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.PatternCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RepetitionNotUniqueCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral;
+import io.github.mbackschat.a12.dm.rulekit.dsl.TimeLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Today;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ValueListCondition;
 
@@ -98,6 +100,8 @@ final class ExplanationTreeBuilder {
             case FieldValue v -> List.of();
             case NumberLiteral n -> List.of();
             case StringLiteral s -> List.of();
+            case DateLiteral d -> List.of();
+            case TimeLiteral t -> List.of();
             case EnumValueLiteral e -> List.of();
             case BoolLiteral b -> List.of();
             case LengthOf l -> List.of(leaf(l.operatorId(), l));

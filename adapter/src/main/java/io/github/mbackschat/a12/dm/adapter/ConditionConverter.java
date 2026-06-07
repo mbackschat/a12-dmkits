@@ -66,11 +66,14 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ValueListCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand;
+import io.github.mbackschat.a12.dm.rulekit.dsl.TimeExpr;
+import io.github.mbackschat.a12.dm.rulekit.dsl.TimeLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.TimeOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
@@ -1241,11 +1244,16 @@ final class ConditionConverter {
         };
     }
 
-    /** A date-valued operand: a date field ({@code FieldValue}) or a point-in-time ({@code Today}). */
+    /** A date-valued operand: a date field ({@code FieldValue}), a date constant, or a point-in-time ({@code Today}). */
     private DateOperand convertDateOperand(IOperation op, Object origin) {
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
             DateRef date = model.date(field.getField().getFullName());
             return field.getField().isOuter() ? date.outer() : date;   // $ correlation (D13)
+        }
+        // a date constant — [date] > "01.01.2022", or a DifferenceInDays(date, "01.01.2022") operand (the
+        // kernel stores it German-format, type DATE, independent of the field's display format)
+        if (op instanceof IConstantOperation constant) {
+            return new DateExpr(new DateLiteral(constant.getValue()));
         }
         if (op instanceof IPointInTimeOperation pit && pit.getOperatorName() == PointInTimeOperationName.Today) {
             return Dsl.today();
@@ -1294,12 +1302,16 @@ final class ConditionConverter {
         throw unsupported("date-construction component " + op.getClass().getSimpleName(), origin);
     }
 
-    /** A time-valued operand: a time field ({@code FieldValue}) or {@code TimeFromDateTime(dt)}. */
+    /** A time-valued operand: a time field ({@code FieldValue}), a time constant, or {@code TimeFromDateTime(dt)}. */
     private TimeOperand convertTimeOperand(IOperation op, Object origin) {
         if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue
                 && model.fieldAt(field.getField().getFullName()).map(i -> i.kind() == ValueKind.TIME).orElse(false)) {
             TimeRef time = model.time(field.getField().getFullName());
             return field.getField().isOuter() ? time.outer() : time;   // $ correlation (D13)
+        }
+        // a time constant — [time] > "17:00:00" (kernel: an IConstantOperation typed DATE, value HH:mm:ss)
+        if (op instanceof IConstantOperation constant) {
+            return new TimeExpr(new TimeLiteral(constant.getValue()));
         }
         // TimeFromDateTime(dt) → the time part of a date-time, as a time operand
         if (op instanceof IDateExtractionOperation ext

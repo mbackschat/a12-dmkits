@@ -76,6 +76,24 @@ class DateTimeExprIngestTest {
     }
 
     @Test
+    void roundTripsDateAndTimeConstantLiterals() {
+        // family 1: [date] > "01.01.2022", [time] > "17:00:00", and a date constant as a diff operand.
+        // The kernel stores the constant German-format (type DATE) regardless of the field's display format.
+        BoundModel m = order();
+        Condition dateCmp = m.date("/Order/OrderDate").after(Dsl.dateValue("01.01.2022"));
+        Condition timeCmp = m.time("/Order/PickupTime").after(Dsl.timeValue("17:00:00"));
+        Condition diff = Dsl.differenceInDays(m.date("/Order/OrderDate"), Dsl.dateValue("01.01.2022")).gt(7);
+
+        KernelAdapter adapter = KernelAdapter.of(m
+                .add(orderRule(m, "DateLitRule", "/Order/OrderDate", dateCmp))
+                .add(orderRule(m, "TimeLitRule", "/Order/PickupTime", timeCmp))
+                .add(orderRule(m, "DiffLitRule", "/Order/OrderDate", diff)));
+        assertEquals(RENDER.render(dateCmp), RENDER.render(converted(adapter.ingest("/Order/DateLitRule"))));
+        assertEquals(RENDER.render(timeCmp), RENDER.render(converted(adapter.ingest("/Order/TimeLitRule"))));
+        assertEquals(RENDER.render(diff), RENDER.render(converted(adapter.ingest("/Order/DiffLitRule"))));
+    }
+
+    @Test
     void dateExpressionsAreKernelValid() {
         ValidationResult r = new RuleValidator().check(read("models/order.dm.json"),
                 new DraftRule("/Order", "ExtractRule", "../OrderDate",

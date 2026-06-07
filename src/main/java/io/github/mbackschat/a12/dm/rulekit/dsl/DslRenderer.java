@@ -246,6 +246,8 @@ public final class DslRenderer {
             case FieldValue v -> "[" + (v.outer() ? "$" : "") + path(v.field().path()) + "]";
             case NumberLiteral n -> n.value().toPlainString();
             case StringLiteral s -> quote(s.value());
+            case DateLiteral d -> quote(d.value());
+            case TimeLiteral t -> quote(t.value());
             case EnumValueLiteral e -> quote(e.value());
             case BoolLiteral b -> keyword(b.operatorId());
             case LengthOf l -> keyword(l.operatorId()) + "(" + path(l.field().path()) + ")";

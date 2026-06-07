@@ -79,6 +79,8 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case LengthOf l -> fields.add(l.field().path());
             case NumberLiteral n -> { }
             case StringLiteral s -> { }
+            case DateLiteral d -> { }
+            case TimeLiteral t -> { }
             case EnumValueLiteral e -> { }
             case BoolLiteral b -> { }
             case EnumCategoryAccess c -> fields.add(c.field().path());

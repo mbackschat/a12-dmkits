@@ -23,6 +23,20 @@ class DateConditionTest {
     }
 
     @Test
+    void rendersDateAndTimeConstantLiterals() {
+        // family 1: a date/time constant renders as a quoted literal (German dd.MM.yyyy / HH:mm:ss),
+        // the same in EN and DE (the quote syntax is intrinsic, not a catalog keyword).
+        Condition date = m.date(ORDER).after(Dsl.dateValue("01.01.2022"));
+        assertEquals("[/Order/OrderDate] > \"01.01.2022\"", new DslRenderer().render(date));
+        assertEquals("[/Order/OrderDate] > \"01.01.2022\"", new DslRenderer(ConditionLanguage.DE).render(date));
+        Condition time = m.time("/Order/PickupTime").after(Dsl.timeValue("17:00:00"));
+        assertEquals("[/Order/PickupTime] > \"17:00:00\"", new DslRenderer().render(time));
+        // a date constant also renders bare-quoted in argument position (a DifferenceInDays operand)
+        Condition diff = Dsl.differenceInDays(m.date(ORDER), Dsl.dateValue("01.01.2022")).gt(7);
+        assertEquals("DifferenceInDays(/Order/OrderDate, \"01.01.2022\") > 7", new DslRenderer().render(diff));
+    }
+
+    @Test
     void rendersDateFieldVsFieldOrdering() {
         // dates have no scale, so field-vs-field ordering needs no D13 machinery (verified 2026-06-04)
         assertEquals("[/Order/DeliveryDate] < [/Order/OrderDate]",

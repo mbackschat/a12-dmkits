@@ -189,6 +189,20 @@ public final class Dsl {
         return new DateExpr(new Today());
     }
 
+    /**
+     * A date constant for comparison/shift — {@code [DispatchDate] > dateValue("01.01.2022")}. The text is
+     * the kernel's German {@code dd.MM.yyyy} form (with or without the year, e.g. {@code "13.07."}),
+     * independent of the compared field's display format.
+     */
+    public static DateExpr dateValue(String ddMMyyyy) {
+        return new DateExpr(new DateLiteral(ddMMyyyy));
+    }
+
+    /** A time-of-day constant for comparison — {@code [PickupTime] > timeValue("17:00:00")} ({@code HH:mm:ss}). */
+    public static TimeExpr timeValue(String hhmmss) {
+        return new TimeExpr(new TimeLiteral(hhmmss));
+    }
+
     /** {@code DifferenceInDays(a, b)} — a numeric date difference (a floor, not a calendar count). */
     public static NumberExpr differenceInDays(DateOperand a, DateOperand b) {
         return new NumberExpr(new DateDifference(DateDifference.Unit.DAYS, a.expression(), b.expression()));
