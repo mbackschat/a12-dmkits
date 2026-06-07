@@ -32,6 +32,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOpListOper
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IPointInTimeOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateAddOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateConstructionOperation;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateRangeExtractionOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateDiffOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateExtractionOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.BoolConstantOperationName;
@@ -39,6 +40,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ComparisonOpera
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListAndValueListConditionName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.DateDiffOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.DateExtractionOperationName;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.DateRangeExtractionOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ValidityConditionName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListConditionName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListOperationName;
@@ -65,6 +67,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.ValueListCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.TemporalOperand;
@@ -1252,6 +1255,12 @@ final class ConditionConverter {
                 && ext.getOperatorName() == DateExtractionOperationName.DateFromDateTime) {
             return Dsl.dateFromDateTime(dateTimeSource(ext.getDateSpec(), ext));
         }
+        // StartOfDateRange(range) / EndOfDateRange(range) → a bound of a date-range, as a date operand
+        if (op instanceof IDateRangeExtractionOperation rangeExt) {
+            DateRangeRef range = dateRangeSource(rangeExt.getDateRangeSpec(), rangeExt);
+            return rangeExt.getOperatorName() == DateRangeExtractionOperationName.StartOfDateRange
+                    ? Dsl.startOfDateRange(range) : Dsl.endOfDateRange(range);
+        }
         // Date(day, month, year[, decade]) → a constructed date operand
         if (op instanceof IDateConstructionOperation date) {
             Optional<Calculation> year2 = date.getYear2() == null ? Optional.empty()
@@ -1331,7 +1340,22 @@ final class ConditionConverter {
         if (op instanceof IPointInTimeOperation pit && pit.getOperatorName() == PointInTimeOperationName.Today) {
             return Dsl.today();
         }
+        // a date-valued bound of a date-range as the extraction source, e.g. DayFromDate(EndOfDateRange(range))
+        if (op instanceof IDateRangeExtractionOperation) {
+            return convertDateOperand(op, origin);
+        }
         throw unsupported("temporal extraction source " + op.getClass().getSimpleName(), origin);
+    }
+
+    /** The {@code DATE_RANGE} field source of {@code Start|EndOfDateRange} (a {@code BaseYear} point-in-time stays opaque). */
+    private DateRangeRef dateRangeSource(IOperation op, Object origin) {
+        if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue
+                && model.fieldAt(field.getField().getFullName())
+                        .map(i -> i.kind() == ValueKind.DATE_RANGE).orElse(false)) {
+            DateRangeRef r = model.dateRange(field.getField().getFullName());
+            return field.getField().isOuter() ? r.outer() : r;
+        }
+        throw unsupported("date-range source " + op.getClass().getSimpleName(), origin);
     }
 
     /** A date-time field source for {@code Date|TimeFromDateTime} — must be a {@code DATE_TIME} field. */

@@ -69,6 +69,8 @@ class BaCorpusTest {
             new R("TimeOrder", "WindowStart", "AllFieldsFilled(WindowStart, WindowEnd) And [WindowStart] >= [WindowEnd]"),
             new R("HoursFrom", "ScheduledAt", "FieldFilled(ScheduledAt) And HoursFromTime(ScheduledAt) > 17"),
             new R("DateConstruct", "Day", "FieldFilled(Day) And Valid(Date(Day, Month, Year))"),
+            new R("DateRangeStart", "DispatchDate", "FieldFilled(DispatchDate) And YearFromDate(StartOfDateRange(CoverPeriod)) > 2020"),
+            new R("DateRangeEndDay", "ParcelCount", "FieldFilled(ParcelCount) And [ParcelCount] != DayFromDate(EndOfDateRange(CoverPeriod))"),
 
             // --- known-opaque: unmodeled families (kernel-valid, ingest preserved verbatim) --------------
             new R("DateLiteral", "DispatchDateLocal", "FieldFilled(DispatchDateLocal) And [DispatchDateLocal] > \"01.01.2022\"", false),

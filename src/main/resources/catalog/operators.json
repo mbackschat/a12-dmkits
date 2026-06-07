@@ -930,6 +930,28 @@
     "sinceKernel": "30.8.x"
   },
   {
+    "id": "StartOfDateRange",
+    "kind": "function",
+    "keywords": { "en": "StartOfDateRange", "de": "StartAusDatumBereich" },
+    "operands": [ { "type": "date-range" } ],
+    "returns": "date",
+    "meaning": "The start bound of a date-range field, as a comparable date.",
+    "constraints": [ "the operand is a date-range field, rendered as a bare entity ref" ],
+    "validExample": { "dsl": "FieldFilled(OrderDate) And YearFromDate(StartOfDateRange(CoverageWindow)) > 2020", "note": "fires when the coverage window starts after 2020" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "EndOfDateRange",
+    "kind": "function",
+    "keywords": { "en": "EndOfDateRange", "de": "EndeAusDatumBereich" },
+    "operands": [ { "type": "date-range" } ],
+    "returns": "date",
+    "meaning": "The end bound of a date-range field, as a comparable date (feeds comparisons or DayFromDate/MonthFromDate/...).",
+    "constraints": [ "the operand is a date-range field" ],
+    "validExample": { "dsl": "FieldFilled(OrderDate) And DayFromDate(EndOfDateRange(CoverageWindow)) > 28", "note": "fires when the coverage window ends late in the month" },
+    "sinceKernel": "30.8.x"
+  },
+  {
     "id": "HoursFromTime",
     "kind": "function",
     "keywords": { "en": "HoursFromTime", "de": "StundenAusZeit" },

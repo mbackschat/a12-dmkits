@@ -258,6 +258,16 @@ public final class Dsl {
         return new DateValidity(false, dateConstruct.expression());
     }
 
+    /** {@code StartOfDateRange(range)} — the start bound of a date-range, as a comparable date. */
+    public static DateExpr startOfDateRange(DateRangeRef range) {
+        return new DateExpr(new DateRangeBound(DateRangeBound.Bound.START, range.expression()));
+    }
+
+    /** {@code EndOfDateRange(range)} — the end bound of a date-range, as a comparable date. */
+    public static DateExpr endOfDateRange(DateRangeRef range) {
+        return new DateExpr(new DateRangeBound(DateRangeBound.Bound.END, range.expression()));
+    }
+
     /** {@code DateFromDateTime(dt)} — the date part of a date-time, as a comparable date. */
     public static DateExpr dateFromDateTime(DateTimeRef dateTime) {
         return new DateExpr(new DateTimePart(DateTimePart.Unit.DATE, dateTime.expression()));

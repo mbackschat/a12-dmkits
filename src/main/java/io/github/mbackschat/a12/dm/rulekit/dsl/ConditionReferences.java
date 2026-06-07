@@ -121,6 +121,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 dc.year2().ifPresent(y -> collect(y, fields, groups));
             }
             case FieldRounding r -> fields.add(r.field().path());
+            case DateRangeBound b -> collect(b.source(), fields, groups);
             case RootGroupCount c -> groups.add(c.rootGroup().path());
         }
     }

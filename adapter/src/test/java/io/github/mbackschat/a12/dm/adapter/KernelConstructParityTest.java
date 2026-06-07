@@ -158,8 +158,7 @@ class KernelConstructParityTest {
                 "DateDiffOperationName.DifferenceInSeconds", "DateDiffOperationName.DifferenceInMinutes",
                 "DateDiffOperationName.DifferenceInHours");
         // HoursFromTime/MinutesFromTime/SecondsFromTime + Date/TimeFromDateTime are now cataloged (TIME/DATE_TIME value kinds).
-        put(m, "date-range bound extraction — not yet modeled",
-                "DateRangeExtractionOperationName.StartOfDateRange", "DateRangeExtractionOperationName.EndOfDateRange");
+        // StartOfDateRange/EndOfDateRange are now cataloged (DateRangeBound).
         put(m, "value-list date-range overlap — not yet modeled", "EntityListAndValueListConditionName.AtLeastOneDateRangeOverlaps");
         put(m, "value-consistency condition — not yet modeled", "EntityListAndValueListConditionName.ValueNotConsistent");
         put(m, "count-of-value aggregate — not yet modeled", "EntityListOperationName.NumberOfValueInFields");

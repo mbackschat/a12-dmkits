@@ -282,6 +282,7 @@ public final class DslRenderer {
                     + renderArg(dc.month()) + ", " + renderArg(dc.year1())
                     + dc.year2().map(y -> ", " + renderArg(y)).orElse("") + ")";
             case FieldRounding r -> keyword(r.operatorId()) + "(" + path(r.field().path()) + ")";
+            case DateRangeBound b -> keyword(b.operatorId()) + "(" + renderArg(b.source()) + ")";
             case RootGroupCount c -> keyword(c.operatorId()) + "(" + path(c.rootGroup().path()) + "*)";
         };
     }

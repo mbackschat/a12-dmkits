@@ -336,6 +336,20 @@
                     }
                   }
                 }
+              },
+              {
+                "type": "Field",
+                "id": "/Order/CoverageWindow",
+                "name": "CoverageWindow",
+                "Field": {
+                  "fieldType": {
+                    "type": "DateRangeType",
+                    "DateRangeType": {
+                      "format": "dd.MM.yyyy",
+                      "rangeSeparator": "-"
+                    }
+                  }
+                }
               }
             ]
           }

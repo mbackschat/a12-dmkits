@@ -13,6 +13,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.CustomConditionRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateShift;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeBound;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimePart;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateValidity;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding;
@@ -129,6 +130,8 @@ final class ExplanationTreeBuilder {
                     operand(e.source())));
             case SumOfProducts s -> List.of(leaf(s.operatorId(), s));
             case FieldRounding r -> List.of(leaf(r.operatorId(), r));
+            case DateRangeBound b -> List.of(new RuleExplanation.Node(b.operatorId(), renderer.render(b),
+                    operand(b.source())));
             case DateConstruction dc -> List.of(new RuleExplanation.Node(dc.operatorId(), renderer.render(dc),
                     concat(concat(operand(dc.day()), operand(dc.month())),
                             concat(operand(dc.year1()), dc.year2().map(this::operand).orElse(List.of())))));

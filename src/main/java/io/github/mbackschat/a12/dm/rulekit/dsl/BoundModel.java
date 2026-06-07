@@ -172,6 +172,15 @@ public final class BoundModel {
         return new DateFragmentRef(field(path));
     }
 
+    /** A typed date-range handle (an interval of two dates; source of Start/EndOfDateRange). Throws if not a date range. */
+    public DateRangeRef dateRange(String path) {
+        ValueKind kind = index.kindOf(path);
+        if (kind != ValueKind.DATE_RANGE) {
+            throw new IllegalArgumentException(path + " is not a date-range field (kind=" + kind + ")");
+        }
+        return new DateRangeRef(field(path));
+    }
+
     /** A typed group handle (knows repeatability from the model). Throws if the path is not a group. */
     public GroupRef group(String path) {
         return new GroupRef(path, index.isRepeating(path));
