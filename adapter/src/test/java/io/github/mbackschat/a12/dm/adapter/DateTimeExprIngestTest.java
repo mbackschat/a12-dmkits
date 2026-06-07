@@ -108,6 +108,20 @@ class DateTimeExprIngestTest {
     }
 
     @Test
+    void roundTripsTimeAndDateTimeConstruction() {
+        // family 3: Time("h","m","s") compared to a time field, and DateTime(date, time) to a date-time field.
+        BoundModel m = order();
+        Condition time = m.time("/Order/PickupTime").eq(Dsl.time("10", "30", "50"));
+        Condition dt = m.dateTime("/Order/ScheduledAt").eq(Dsl.dateTime(m.date("/Order/OrderDate"), m.time("/Order/PickupTime")));
+
+        KernelAdapter adapter = KernelAdapter.of(m
+                .add(orderRule(m, "TimeCtorRule", "/Order/PickupTime", time))
+                .add(orderRule(m, "DateTimeCtorRule", "/Order/ScheduledAt", dt)));
+        assertEquals(RENDER.render(time), RENDER.render(converted(adapter.ingest("/Order/TimeCtorRule"))));
+        assertEquals(RENDER.render(dt), RENDER.render(converted(adapter.ingest("/Order/DateTimeCtorRule"))));
+    }
+
+    @Test
     void dateExpressionsAreKernelValid() {
         ValidationResult r = new RuleValidator().check(read("models/order.dm.json"),
                 new DraftRule("/Order", "ExtractRule", "../OrderDate",

@@ -122,6 +122,15 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 collect(dc.year1(), fields, groups);
                 dc.year2().ifPresent(y -> collect(y, fields, groups));
             }
+            case TimeConstruction tc -> {
+                collect(tc.hour(), fields, groups);
+                collect(tc.minute(), fields, groups);
+                collect(tc.second(), fields, groups);
+            }
+            case DateTimeConstruction dtc -> {
+                collect(dtc.date(), fields, groups);
+                collect(dtc.time(), fields, groups);
+            }
             case FieldRounding r -> fields.add(r.field().path());
             case DateRangeBound b -> collect(b.source(), fields, groups);
             case RootGroupCount c -> groups.add(c.rootGroup().path());

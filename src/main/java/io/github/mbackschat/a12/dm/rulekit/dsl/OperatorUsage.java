@@ -134,6 +134,17 @@ public final class OperatorUsage {
                 collect(dc.year1(), ops);
                 dc.year2().ifPresent(y -> collect(y, ops));
             }
+            case TimeConstruction tc -> {
+                ops.add(tc.operatorId());
+                collect(tc.hour(), ops);
+                collect(tc.minute(), ops);
+                collect(tc.second(), ops);
+            }
+            case DateTimeConstruction dtc -> {
+                ops.add(dtc.operatorId());
+                collect(dtc.date(), ops);
+                collect(dtc.time(), ops);
+            }
             case FieldRounding r -> ops.add(r.operatorId());
             case DateRangeBound b -> {
                 ops.add(b.operatorId());

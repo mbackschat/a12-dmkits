@@ -277,6 +277,26 @@ public final class Dsl {
                 century.expression(), java.util.Optional.of(decade.expression())));
     }
 
+    /**
+     * {@code Time("10", "30", "50")} — construct a time-of-day from hour/minute/second constants (a
+     * comparable time). The kernel takes the components as quoted constants here (a bracketed value
+     * {@code [H]} is rejected); for field components use {@link #time(FieldRef, FieldRef, FieldRef)}.
+     */
+    public static TimeExpr time(String hour, String minute, String second) {
+        return new TimeExpr(new TimeConstruction(new StringLiteral(hour), new StringLiteral(minute),
+                new StringLiteral(second)));
+    }
+
+    /** {@code Time(H, M, S)} — construct a time-of-day from three number fields (rendered as bare entity refs). */
+    public static TimeExpr time(FieldRef hour, FieldRef minute, FieldRef second) {
+        return new TimeExpr(new TimeConstruction(new FieldValue(hour), new FieldValue(minute), new FieldValue(second)));
+    }
+
+    /** {@code DateTime(date, time)} — combine a date and a time into a comparable date-time. */
+    public static DateTimeExpr dateTime(DateOperand date, TimeOperand time) {
+        return new DateTimeExpr(new DateTimeConstruction(date.expression(), time.expression()));
+    }
+
     /** {@code Valid(dateConstruct)} — true iff the constructed date is a real calendar date. */
     public static Condition valid(DateOperand dateConstruct) {
         return new DateValidity(true, dateConstruct.expression());

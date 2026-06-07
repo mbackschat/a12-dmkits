@@ -21,6 +21,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.SumOfProducts;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumCategoryAccess;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateLiteral;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeConstruction;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumValueLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListPredicate;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Arithmetic;
@@ -47,6 +48,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.PatternCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RepetitionNotUniqueCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral;
+import io.github.mbackschat.a12.dm.rulekit.dsl.TimeConstruction;
 import io.github.mbackschat.a12.dm.rulekit.dsl.TimeLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Today;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ValueListCondition;
@@ -140,6 +142,10 @@ final class ExplanationTreeBuilder {
                     concat(concat(operand(dc.day()), operand(dc.month())),
                             concat(operand(dc.year1()), dc.year2().map(this::operand).orElse(List.of())))));
             case RootGroupCount c -> List.of(leaf(c.operatorId(), c));
+            case TimeConstruction tc -> List.of(new RuleExplanation.Node(tc.operatorId(), renderer.render(tc),
+                    concat(concat(operand(tc.hour()), operand(tc.minute())), operand(tc.second()))));
+            case DateTimeConstruction dtc -> List.of(new RuleExplanation.Node(dtc.operatorId(), renderer.render(dtc),
+                    concat(operand(dtc.date()), operand(dtc.time()))));
         };
     }
 

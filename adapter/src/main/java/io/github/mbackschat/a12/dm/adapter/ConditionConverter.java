@@ -32,6 +32,8 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOpListOper
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IPointInTimeOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateAddOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateConstructionOperation;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateTimeConstructionOperation;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.ITimeConstructionOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateRangeExtractionOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateDiffOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateExtractionOperation;
@@ -68,6 +70,10 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeConstruction;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeExpr;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeOperand;
+import io.github.mbackschat.a12.dm.rulekit.dsl.TimeConstruction;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeRef;
@@ -672,6 +678,7 @@ final class ConditionConverter {
             case ENUMERATION -> enumComparison(leftOuter ? model.enumOf(path).outer() : model.enumOf(path), op, other, origin);
             case DATE -> dateComparison(leftOuter ? model.date(path).outer() : model.date(path), op, other, origin);
             case TIME -> timeComparison(leftOuter ? model.time(path).outer() : model.time(path), op, other, origin);
+            case DATE_TIME -> dateTimeComparison(leftOuter ? model.dateTime(path).outer() : model.dateTime(path), op, other, origin);
             case BOOLEAN -> booleanComparison(model.bool(path), op, other, origin);
             case CONFIRM -> confirmComparison(model.confirm(path), op, other, origin);
             default -> throw unsupported("comparison on a " + kind + " field", origin);
@@ -1231,6 +1238,41 @@ final class ConditionConverter {
         };
     }
 
+    /** {@code [dateTime] <op> other} — a date-time field vs another date-time value (field, {@code DateTime(...)}, or shift). */
+    private Condition dateTimeComparison(DateTimeOperand left, ComparisonOperation op, IOperation right, ICondition origin) {
+        DateTimeOperand other = convertDateTimeOperand(right, origin);
+        return switch (op) {
+            case LT -> left.before(other);
+            case LE -> left.onOrBefore(other);
+            case GT -> left.after(other);
+            case GE -> left.onOrAfter(other);
+            case EQ -> left.eq(other);
+            case NE -> left.ne(other);
+            default -> throw unsupported("date-time comparison operator " + op, origin);
+        };
+    }
+
+    /** A date-time-valued operand: a date-time field, a {@code DateTime(date, time)} construction, or a sub-day shift. */
+    private DateTimeOperand convertDateTimeOperand(IOperation op, Object origin) {
+        if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue
+                && model.fieldAt(field.getField().getFullName())
+                        .map(i -> i.kind() == ValueKind.DATE_TIME).orElse(false)) {
+            DateTimeRef dt = model.dateTime(field.getField().getFullName());
+            return field.getField().isOuter() ? dt.outer() : dt;   // $ correlation (D13)
+        }
+        // DateTime(date, time) — the date is a date value (field/literal/Date(...)), the time a time value
+        if (op instanceof IDateTimeConstructionOperation dtc) {
+            Calculation date = convertDateOperand(dtc.getDate(), dtc).expression();
+            Calculation time = convertTimeOperand(dtc.getTime(), dtc).expression();
+            return new DateTimeExpr(new DateTimeConstruction(date, time));
+        }
+        // a sub-day shift (AddHours/Minutes/Seconds) yields a date-time
+        if (op instanceof IDateAddOperation add) {
+            return new DateTimeExpr(convertDateAdd(add).expression());
+        }
+        throw unsupported("date-time operand " + op.getClass().getSimpleName(), origin);
+    }
+
     /** {@code DifferenceInDays/Months/Years(a, b)} (dates) or {@code DifferenceInHours/Minutes/Seconds(a, b)} (date-times). */
     private NumberExpr convertDateDiff(IDateDiffOperation diff) {
         TemporalOperand a = temporalOperand(diff.getDateSpec1(), diff);
@@ -1331,6 +1373,11 @@ final class ConditionConverter {
         // a time constant — [time] > "17:00:00" (kernel: an IConstantOperation typed DATE, value HH:mm:ss)
         if (op instanceof IConstantOperation constant) {
             return new TimeExpr(new TimeLiteral(constant.getValue()));
+        }
+        // Time(hour, minute, second) — a constructed time-of-day (components are quoted constants or fields)
+        if (op instanceof ITimeConstructionOperation tc) {
+            return new TimeExpr(new TimeConstruction(convertDateComponent(tc.getHour(), tc),
+                    convertDateComponent(tc.getMinute(), tc), convertDateComponent(tc.getSecond(), tc)));
         }
         // TimeFromDateTime(dt) → the time part of a date-time, as a time operand
         if (op instanceof IDateExtractionOperation ext

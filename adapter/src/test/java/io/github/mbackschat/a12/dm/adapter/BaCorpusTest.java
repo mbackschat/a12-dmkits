@@ -81,6 +81,9 @@ class BaCorpusTest {
             new R("DiffInHours", "ScheduledAt", "AllFieldsFilled(ScheduledAt, DeliveredAt) And DifferenceInHours(ScheduledAt, DeliveredAt) > 24"),
             new R("DiffInMinutes", "ScheduledAt", "AllFieldsFilled(ScheduledAt, DeliveredAt) And DifferenceInMinutes(ScheduledAt, DeliveredAt) > 90"),
             new R("AddMinutesShift", "ScheduledAt", "FieldFilled(ScheduledAt) And MinutesFromTime(AddMinutes(ScheduledAt, 30)) < 60"),
+            // --- DateTime / Time construction (family 3) ------------------------------------------------
+            new R("TimeConstruct", "PickupTime", "FieldFilled(PickupTime) And [PickupTime] == Time(\"10\", \"30\", \"50\")"),
+            new R("DateTimeConstruct", "ScheduledAt", "FieldFilled(ScheduledAt) And [ScheduledAt] == DateTime(DispatchDateLocal, PickupTime)"),
 
             // --- known-opaque: unmodeled families (kernel-valid, ingest preserved verbatim) --------------
             new R("NumValueInFields", "TermsAccepted", "FieldFilled(TermsAccepted) And NumberOfValueInFields(True IN OptInA, OptInB, OptInC) >= 2", false));

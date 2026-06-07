@@ -221,19 +221,19 @@ class IngestRoundTripTest {
     }
 
     /**
-     * A still-unconverted construct — a <em>direct</em> {@code DATE_TIME}-field comparison
-     * ({@code [ClockIn] != [ClockOut]}). rulekit models DATE_TIME as a source-only kind (decompose it
-     * to a date/time/number, then compare that), so a direct date-time comparison has no typed handle and
-     * ingests as Opaque, preserved verbatim. (Earlier this used {@code SumOfProducts}, which now converts;
-     * {@code $} correlations also convert now — the count-check guarding un-threaded ones is tested in
-     * {@code OuterCorrelationBackstopTest}.)
+     * A still-unconverted construct — a <em>tolerance</em> comparison ({@code [Total]
+     * DiffersWithToleranceRange5 [Budget]}, kernel {@code ComparisonOperation.NE5}). The tolerance
+     * comparison family is deliberately unmodeled (coverage backlog), so it has no typed handle and
+     * ingests as Opaque, preserved verbatim. (Earlier this used {@code SumOfProducts}, then a direct
+     * {@code DATE_TIME} comparison — both convert now; {@code $} correlations convert too, with the
+     * count-check for un-threaded ones tested in {@code OuterCorrelationBackstopTest}.)
      */
     private static final String OPAQUE_CONDITION =
-            "FieldFilled(PeriodEnd) And [ClockIn] != [ClockOut]";
+            "FieldFilled(PeriodEnd) And [Total] DiffersWithToleranceRange5 [Budget]";
 
     @Test
     void preservesAnUnconvertedConstructAsOpaque() {
-        // SumOfProducts is unmodeled → the rule stays unconverted → preserved opaque, not lost, not corrupt.
+        // a tolerance comparison is unmodeled → the rule stays unconverted → preserved opaque, not lost, not corrupt.
         KernelAdapter adapter = KernelAdapter.ofJson(
                 timesheetWith(timesheetRule("/Timesheet/OpaqueRule", "OpaqueRule", OPAQUE_CONDITION)));
 
@@ -242,7 +242,7 @@ class IngestRoundTripTest {
                 () -> "an unconverted construct should ingest as Opaque, got: " + result);
         // preserved verbatim: the rule's text survives (re-emit on write-back)
         assertFalse(opaque.canonicalText().isBlank());
-        assertTrue(opaque.canonicalText().contains("ClockIn"),
+        assertTrue(opaque.canonicalText().contains("Total"),
                 () -> "opaque text should preserve the rule verbatim: " + opaque.canonicalText());
     }
 
@@ -256,12 +256,13 @@ class IngestRoundTripTest {
         assertInstanceOf(Ingest.Opaque.class, all.get("/Timesheet/OpaqueRule"));
     }
 
-    /** A timesheet with two date-time fields (ClockIn/ClockOut) — carries a direct DATE_TIME comparison. */
+    /** A timesheet model — two number fields (Total/Budget) for the tolerance comparison, plus date/date-time fields. */
     private static String timesheetJson() {
         return DocumentModelDraft.named("timesheet").locale("en_US")
                 .rootGroup("Timesheet", t -> t
                         .dateField("PeriodEnd", d -> d.format("yyyy-MM-dd"))
                         .numberField("Total", n -> { })
+                        .numberField("Budget", n -> { })
                         .dateTimeField("ClockIn", dt -> dt.format("yyyy-MM-dd'T'HH:mm:ss"))
                         .dateTimeField("ClockOut", dt -> dt.format("yyyy-MM-dd'T'HH:mm:ss")))
                 .build().toJson();
