@@ -2,6 +2,10 @@
 
 A read-only **analysis** of two real A12 model corpora, used to prioritize what rulekit builds next and to *pattern-transform* (not copy) realistic rules into our own fixtures. This file records **facts about DSL usage** (operator names, frequencies, abstract skeletons) — **never** the corpora's domains, field names, or rules. The two corpora are complementary: **A12 Tools** (Corpus 1) shows *everyday application* rules; **`a12-kernel-mm`** (Corpus 2) shows *power-user / type-system* rules and is far denser in the advanced operators.
 
+## Corpus 3 — the BA-reference DSL corpus (committed, own-domain)
+
+A third corpus, **committed** (unlike 1 & 2): rules *transferred* from the kernel-team BA reference's ~965 worked examples (`a12-kernel/documentation/_merged/kernel-ba.md`, consult-only) into one unified own-domain **Shipment** model — mechanism preserved, text never copied (license-safe rule). It exists as a **breadth corpus of working rules**: `adapter.BaCorpusModel` (the model) + `adapter.BaCorpusTest`, which (a) asserts **every rule is kernel-valid** (the "working rules" guarantee) and (b) measures **honest ingest coverage** — each rule tagged `modeled` (must convert to a typed AST) or `OPAQUE` (an unmodeled family), the split held by the test and flipped as each family lands. This is the measurement instrument a keyword estimate can't be (e.g. it caught that `[date] == "DD.MM.YYYY"` literals are an unmodeled family the keyword check hid). Seeded with the modeled breadth + the unmodeled families as the work-list (see the families list below). Curated, one rule per distinct construct — not the full 965.
+
 # Corpus 1 — A12 Tools application models
 
 ## Source & provenance (read-only; do not commit corpus content)
