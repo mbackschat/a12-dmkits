@@ -227,11 +227,11 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 
 ## §9 supplement — list-aggregate slot laws (slice 7c, 2026-06-04 experiments)
 
-`Sum`/`MaxValue`/`MinValue` (DE `Summe`/`MaxWert`/`MinWert`; grammar `feldListenOp`, sibling `SumOfProducts` still deferred — `FirstFilledValue` is now implemented for number/date/string, `adapter.FirstFilledValueIngestTest`) and `NumberOfDifferentValues` (DE `AnzahlVerschiedenerWerte`; third member of the count family):
+`Sum`/`MaxValue`/`MinValue` (DE `Summe`/`MaxWert`/`MinWert`; grammar `feldListenOp` — its sibling `SumOfProducts` is now implemented, `adapter.SumOfProductsIngestTest`; `FirstFilledValue` is implemented for number/date/string/enum, `adapter.FirstFilledValueIngestTest`) and `NumberOfDifferentValues` (DE `AnzahlVerschiedenerWerte`; third member of the count family):
 
 - **Param law is shared with the count aggregates** — more than one field or a group (`MVK_PARAMSIZE_INVALIDN`); **a single flattened (`*`) operand satisfies it** (it expands to many fields), so `Sum(Items*/Count)` is the canonical shape. Mixed starred + plain operands and mixed scales are legal.
 - **Duplicate operands are rejected** — `Sum(A, A)` draws **`MVK_DUPLICATE_PARAM1`** (fires before the type checks; applies to the whole entity-list family incl. `NumberOfFilledFields`).
-- **Type laws**: `Sum` takes numbers only (**`MVK_NO_NUMBER`** — "Only numbers and amounts"); `MaxValue`/`MinValue` take numbers **or dates** (**`MVK_NOT_SORTABLE`** — "Only numbers, amounts or dates"); a **group argument** is expanded to its contained fields and type-checked the same way.
+- **Type laws**: `Sum` takes numbers only (**`MVK_NO_NUMBER`** — "Only numbers and amounts"); `MaxValue`/`MinValue` take numbers **or dates** (**`MVK_NOT_SORTABLE`** — "Only numbers, amounts or dates"); a **group argument** (`Sum(Group*)`, where the entity is a group not a field) is expanded to its contained number fields and type-checked the same way — valid over a single- *or* multi-number-field group. **Ingest makes the expansion explicit**: `Sum(Group*)` converts to a Sum over each contained number field's list (single field → one operand; several → `Sum(Group*/A, Group*/B)`), and that expanded form is itself kernel-valid — a sound rewrite (`adapter.SumOverGroupIngestTest`).
 - **`NumberOfDifferentValues` is value-comparing**, so its operands must be type-homogeneous: string/enum together (**`MVK_STRING_ENUM_AND_NON_STRING_ENUM`**) or all numbers (**`MVK_NUMBER_AND_NON_NUMBER`**); booleans/confirms never (**`MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED`**).
 - Missing-row semantics (KERNEL-SEMANTICS §9): `Sum` substitutes 0 for unspecified fields; `MaxValue`/`MinValue` ignore them.
 

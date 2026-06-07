@@ -643,8 +643,21 @@ final class ConditionConverter {
                 default -> throw unsupported("aggregate operator " + name + " over a multi-field scope", aggregate);
             };
         }
-        if (entities.size() != 1 || !entities.get(0).isField()) {
+        if (entities.size() != 1) {
             throw unsupported("aggregate " + name + " over a non-single-field scope", aggregate);
+        }
+        // a single GROUP wildcard scope (Sum(Group*)) — the kernel expands it to the group's contained number
+        // fields (KERNEL-FINDINGS §9), so we make that explicit: Sum(Group*/f1, Group*/f2, …).
+        if (!entities.get(0).isField()) {
+            FieldOperand[] ops = groupNumberFieldOperands(entities.get(0), aggregate);
+            FieldOperand[] rest = Arrays.copyOfRange(ops, 1, ops.length);
+            return switch (name) {
+                case Sum -> Dsl.sum(ops[0], rest);
+                case MaxValue -> Dsl.maxValue(ops[0], rest);
+                case MinValue -> Dsl.minValue(ops[0], rest);
+                case NumberOfDifferentValues -> Dsl.numberOfDifferentValues(ops[0], rest);
+                default -> throw unsupported("group-scope aggregate operator " + name, aggregate);
+            };
         }
         FieldListRef scope = flattenScope(entities.get(0));
         return switch (name) {
@@ -663,6 +676,23 @@ final class ConditionConverter {
         FieldListRef scope = model.flatten(reconstructStarPath(entity));
         ICondition filter = entity.getFilterCondition();
         return filter == null ? scope : scope.having(convert(filter));
+    }
+
+    /**
+     * The contained number fields of a group, each as a flattened wildcard list — the explicit expansion
+     * of a group-scoped aggregate ({@code Sum(Group*)} becomes a Sum over each {@code Group* / fN} list),
+     * matching the kernel's "a group argument is expanded to its contained fields" semantic (KERNEL-FINDINGS §9).
+     */
+    private FieldOperand[] groupNumberFieldOperands(IEntityId groupEntity, IEntityListOperation origin) {
+        String star = reconstructStarPath(groupEntity);
+        FieldOperand[] ops = model.fields(model.group(groupEntity.getFullName()))
+                .filter(f -> f.kind() == ValueKind.NUMBER)
+                .map(f -> (FieldOperand) model.flatten(star + "/" + f.name()))
+                .toArray(FieldOperand[]::new);
+        if (ops.length == 0) {
+            throw unsupported("group-scope aggregate over a group with no number fields", origin);
+        }
+        return ops;
     }
 
     /** {@code getFullName()} drops the wildcard; re-insert {@code *} after each segment marked WILDCARD in indices. */
