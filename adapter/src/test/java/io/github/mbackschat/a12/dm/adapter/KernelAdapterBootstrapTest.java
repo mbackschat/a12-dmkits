@@ -60,6 +60,13 @@ class KernelAdapterBootstrapTest {
         Set<String> refs = adapter.referencedFields(RULE_PATH);
         assertTrue(refs.stream().anyMatch(p -> p.endsWith("MonthlyFee")),
                 () -> "referenced fields should include MonthlyFee, got: " + refs);
+
+        // (4) exact whereUsed — the inverse: the field's rule shows up; a non-referenced entity is empty
+        String feePath = refs.stream().filter(p -> p.endsWith("MonthlyFee")).findFirst().orElseThrow();
+        assertTrue(adapter.whereUsed(feePath).contains(RULE_PATH),
+                () -> "whereUsed(" + feePath + ") should include " + RULE_PATH + ", got: " + adapter.whereUsed(feePath));
+        assertTrue(adapter.whereUsed("/Subscription/NoSuchField").isEmpty(),
+                "whereUsed of an unreferenced entity should be empty");
     }
 
     private static String readResource(String path) {

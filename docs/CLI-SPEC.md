@@ -56,6 +56,7 @@ JSON/JSONL out on stdout (pipeable, `jq`/`grep`-able); non-zero exit on error wi
 | **`add`** | model.json + rule-spec JSON [`--output`] | the persisted DM-JSON (stdout) | ✅ 2026-06-05 | core (`write`) |
 | **`ingest`** | model.json `--rule <rulePathInModel>` | `{converted, condition}` or `{converted:false, canonicalText, reason}` | ✅ 2026-06-05 | adapter |
 | **`explain`** | model.json `--rule <rulePathInModel>` | `RuleExplanation` JSON (structural `tree` + flat operators with meaning/gotchas, refs, iteration, gloss) | ✅ 2026-06-05 | adapter + core |
+| **`where-used`** | model.json `--entity <entityPath>` | `{entity, rules[], count}` — rules whose condition directly references the field/group (F9a exact, `getDirectlyReferencedEntities`) | ✅ 2026-06-07 | adapter |
 | **`schema`** | `[<name>]` (explain/describe/validate/ingest outputs; add/batch inputs) | the JSON Schema of that verb's I/O, **on demand** (lists names when bare); documents the explain `tree.operator → operators[].id` backlink | ✅ 2026-06-05 | cli (resources) |
 | **`operators`** | `[<id>] [--kind] [--keyword]` | the DSL **operator catalog** — a filterable list, or one operator's full semantics (keywords EN/DE, operands, meaning, constraints, gotchas, valid/invalid example). The proactive complement to `explain` | ✅ 2026-06-05 | core catalog |
 | **`manifest`** | — | machine-readable map of **every verb + its parameters** (name, required, meaning), derived from the picocli model so it can't drift | ✅ 2026-06-05 | cli (picocli) |

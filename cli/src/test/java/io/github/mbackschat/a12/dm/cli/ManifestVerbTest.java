@@ -24,7 +24,7 @@ class ManifestVerbTest {
 
     private static final List<String> EXPECTED_VERBS = List.of(
             "dump", "describe", "validate", "check", "add", "ingest", "explain",
-            "diff", "batch", "schema", "operators", "manifest");
+            "where-used", "diff", "batch", "schema", "operators", "manifest");
 
     @Test
     void listsEveryVerbWithADescription() throws Exception {

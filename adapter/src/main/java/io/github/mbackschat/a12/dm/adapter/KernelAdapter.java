@@ -120,6 +120,24 @@ public final class KernelAdapter {
         return paths;
     }
 
+    /**
+     * The exact <b>whereUsed</b> (F9a): the full names of every rule whose condition <em>directly</em>
+     * references the entity at {@code entityFullName} (a field or group, as a resolved absolute path) —
+     * the inverse of {@link #referencedFields}, built from the kernel's own
+     * {@code getDirectlyReferencedEntities} (no converter coverage needed). Insertion-ordered by rule.
+     * "Direct" is exact: a rule that references an enclosing <em>group</em> is not listed for a field
+     * inside it (it references the group, which {@code whereUsed("/…/group")} would surface).
+     */
+    public java.util.Set<String> whereUsed(String entityFullName) {
+        java.util.LinkedHashSet<String> rules = new java.util.LinkedHashSet<>();
+        for (String ruleName : ruleFullNames()) {
+            if (referencedFields(ruleName).contains(entityFullName)) {
+                rules.add(ruleName);
+            }
+        }
+        return rules;
+    }
+
     /** The kernel's canonical text for a rule's condition (a parse + format round-trip through the kernel). */
     public String canonicalConditionText(String ruleFullName) {
         return mvk.formatConditionText(rule(ruleFullName), SILENT);
