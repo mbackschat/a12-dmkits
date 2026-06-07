@@ -157,7 +157,7 @@ class KernelConstructParityTest {
         // StartOfDateRange/EndOfDateRange are now cataloged (DateRangeBound).
         // AtLeastOneDateRangeOverlaps + DateRangesOverlap are now cataloged (reusing FieldListPredicate/FieldListEntityListCondition).
         put(m, "value-consistency condition — not yet modeled", "EntityListAndValueListConditionName.ValueNotConsistent");
-        put(m, "count-of-value aggregate — not yet modeled", "EntityListOperationName.NumberOfValueInFields");
+        // NumberOfValueInFields (count-of-value aggregate) is now cataloged (family 6).
         // Abs/Min/Max (operand-list math, distinct from field-list MaxValue/MinValue) are now cataloged (OpListMath, family 5).
         // field-level RoundDownValue/RoundUpValue/RoundAccountingValue/AbsValue are now cataloged (FieldRounding).
         // FieldValueAsNumber/RangeAsNumber are now cataloged (numeric coercions, family 4).

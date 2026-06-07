@@ -120,6 +120,11 @@ public final class OperatorUsage {
                 ops.add(m.operatorId());
                 m.operands().forEach(o -> collect(o, ops));
             }
+            case NumberOfValueInFields n -> {
+                ops.add(n.operatorId());
+                collect(n.value(), ops);
+                n.fields().forEach(f -> collectOperand(f, ops));
+            }
             case DateExtraction e -> {
                 ops.add(e.operatorId());
                 collect(e.source(), ops);

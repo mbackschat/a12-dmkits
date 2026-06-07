@@ -92,8 +92,8 @@ class BaCorpusTest {
             new R("MinOf", "Weight", "AllFieldsFilled(Weight, DeclaredValue) And Min([Weight], [DeclaredValue]) > 0"),
             new R("MaxOf", "Weight", "AllFieldsFilled(Weight, DeclaredValue) And Max([Weight], [DeclaredValue]) > 1000"),
 
-            // --- known-opaque: unmodeled families (kernel-valid, ingest preserved verbatim) --------------
-            new R("NumValueInFields", "TermsAccepted", "FieldFilled(TermsAccepted) And NumberOfValueInFields(True IN OptInA, OptInB, OptInC) >= 2", false));
+            // --- count-of-value aggregate (family 6) ----------------------------------------------------
+            new R("NumValueInFields", "TermsAccepted", "FieldFilled(TermsAccepted) And NumberOfValueInFields(True IN OptInA, OptInB, OptInC) >= 2"));
 
     private static final String MODEL = BaCorpusModel.json();
     private static final RuleValidator VALIDATOR = new RuleValidator();

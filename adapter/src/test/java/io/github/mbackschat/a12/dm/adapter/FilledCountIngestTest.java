@@ -78,6 +78,21 @@ class FilledCountIngestTest {
     }
 
     @Test
+    void roundTripsNumberOfValueInFields() {
+        // family 6: NumberOfValueInFields(0 In Quantity, BackorderQuantity) > 0 — count of the two amounts equal to 0.
+        BoundModel m = order();
+        Condition c = m.field("/Order/Quantity").filled().and(
+                Dsl.numberOfValueInFields(0, m.field("/Order/Quantity"), m.field("/Order/BackorderQuantity")).gt(0));
+        Rule r = m.rule(m.group("/Order")).name("ValueCountRule").errorField(m.field("/Order/Quantity"))
+                .when(c).code("C").severity(Severity.ERROR).message(en("x")).build();
+        KernelAdapter adapter = KernelAdapter.of(m.add(r));
+
+        assertTrue(RENDER.render(c).contains("NumberOfValueInFields(0 In /Order/Quantity, /Order/BackorderQuantity)"),
+                RENDER.render(c));
+        assertEquals(RENDER.render(c), RENDER.render(converted(adapter.ingest("/Order/ValueCountRule"))));
+    }
+
+    @Test
     void numberOfFilledFieldsIsKernelValid() {
         BoundModel m = order();
         // the kernel requires the error field to appear in the condition (MVK_ERROR_FIELD_NOT_REFERENCED)

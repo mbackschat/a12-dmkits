@@ -454,6 +454,36 @@ public final class Dsl {
         return new NumberExpr(new CurrentRepetition(group, outer));
     }
 
+    /**
+     * {@code NumberOfValueInFields(value IN f1, f2, …)} — the count of the listed fields equal to a
+     * boolean constant (e.g. {@code NumberOfValueInFields(True IN OptInA, OptInB, OptInC)}). The kernel
+     * needs at least two fields (or a group).
+     */
+    public static NumberExpr numberOfValueInFields(boolean value, FieldOperand first, FieldOperand second,
+            FieldOperand... rest) {
+        return new NumberExpr(new NumberOfValueInFields(new BoolLiteral(value), valueInFields(first, second, rest)));
+    }
+
+    /** {@code NumberOfValueInFields(constant IN f1, f2, …)} — count of the listed fields equal to a string constant. */
+    public static NumberExpr numberOfValueInFields(String value, FieldOperand first, FieldOperand second,
+            FieldOperand... rest) {
+        return new NumberExpr(new NumberOfValueInFields(new StringLiteral(value), valueInFields(first, second, rest)));
+    }
+
+    /** {@code NumberOfValueInFields(n IN f1, f2, …)} — count of the listed fields equal to an integer constant. */
+    public static NumberExpr numberOfValueInFields(long value, FieldOperand first, FieldOperand second,
+            FieldOperand... rest) {
+        return new NumberExpr(new NumberOfValueInFields(NumberLiteral.of(value), valueInFields(first, second, rest)));
+    }
+
+    private static List<FieldOperand> valueInFields(FieldOperand first, FieldOperand second, FieldOperand... rest) {
+        var fields = new ArrayList<FieldOperand>();
+        fields.add(first);
+        fields.add(second);
+        fields.addAll(List.of(rest));
+        return fields;
+    }
+
     /** {@code NumberOfDifferentValues(…)} — distinct-value count over type-homogeneous operands. */
     public static NumberExpr numberOfDifferentValues(FieldOperand first, FieldOperand... rest) {
         var fields = new java.util.ArrayList<FieldOperand>();

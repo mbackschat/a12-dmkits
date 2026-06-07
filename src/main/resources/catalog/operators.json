@@ -762,6 +762,20 @@
     "sinceKernel": "30.8.x"
   },
   {
+    "id": "NumberOfValueInFields",
+    "kind": "function",
+    "keywords": { "en": "NumberOfValueInFields", "de": "AnzahlWertInFeldliste" },
+    "operands": [ { "type": "literal" }, { "type": "field-list" } ],
+    "returns": "number",
+    "meaning": "The count of the listed fields whose value equals a given constant — NumberOfValueInFields(value In f1, f2, …). The constant may be a boolean, number, string, or date.",
+    "constraints": [
+      "at least two fields (or at least one group), else MVK_PARAMSIZE_INVALIDN",
+      "the constant follows the 'In' grammar literal; the fields are bare entity refs"
+    ],
+    "validExample": { "dsl": "FieldFilled(Quantity) And NumberOfValueInFields(0 In Quantity, BackorderQuantity) > 0", "note": "fires when at least one of the two amounts is zero" },
+    "sinceKernel": "30.8.x"
+  },
+  {
     "id": "Having",
     "kind": "path-op",
     "keywords": { "en": "Having", "de": "Mit" },

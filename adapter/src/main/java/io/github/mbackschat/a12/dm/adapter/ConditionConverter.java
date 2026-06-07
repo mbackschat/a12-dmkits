@@ -23,6 +23,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IValueListC
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IBoolConstantOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IConstantOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IEntityListOperation;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IEntityListOperationWithValue;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IFieldIdOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IGroupOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.INumberOfRootGroupsOperation;
@@ -94,7 +95,9 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.RangeAsNumber;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberOfValueInFields;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoolLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RepetitionNotUniqueCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringRef;
@@ -500,6 +503,21 @@ final class ConditionConverter {
         };
     }
 
+    /** A constant operand to a literal {@link Calculation} — a boolean, or a number/string/date by its kernel type. */
+    private Calculation constantOperand(IOperation op, Object origin) {
+        if (op instanceof IBoolConstantOperation b) {
+            return new BoolLiteral(b.getValue() == BoolConstantOperationName.True);
+        }
+        if (op instanceof IConstantOperation c) {
+            return switch (c.getType()) {
+                case DATE -> new DateLiteral(c.getValue());
+                case NUMBER -> NumberLiteral.of(c.getValue());
+                default -> new StringLiteral(c.getValue());   // STRING (DATE_RANGE never appears here)
+            };
+        }
+        throw unsupported("constant operand " + op.getClass().getSimpleName(), origin);
+    }
+
     /** A field entity to a {@link FieldOperand}: a flattened repetition list if it wildcards, else a plain field. */
     private FieldOperand toFieldOperand(IEntityId entity) {
         FieldOperand op = isWildcard(entity)
@@ -703,6 +721,15 @@ final class ConditionConverter {
     private NumberExpr convertAggregate(IEntityListOperation aggregate) {
         List<IEntityId> entities = aggregate.getEntityList().getEntityIdList();
         EntityListOperationName name = aggregate.getOperatorName();
+        // NumberOfValueInFields(constant IN f1, f2, …) — a count-of-value aggregate carrying a constant (family 6)
+        if (aggregate instanceof IEntityListOperationWithValue withValue) {
+            Calculation value = constantOperand(withValue.getConstantOperation(), aggregate);
+            if (entities.stream().anyMatch(e -> !e.isField())) {
+                throw unsupported("NumberOfValueInFields over a group scope", aggregate);
+            }
+            FieldOperand[] fields = entities.stream().map(this::toFieldOperand).toArray(FieldOperand[]::new);
+            return new NumberExpr(new NumberOfValueInFields(value, java.util.List.of(fields)));
+        }
         // NumberOfFilledGroups(Group*): a single repeatable group, all reps — a group scope, not a field.
         if (name == EntityListOperationName.NumberOfFilledGroups
                 && entities.size() == 1 && !entities.get(0).isField()) {
