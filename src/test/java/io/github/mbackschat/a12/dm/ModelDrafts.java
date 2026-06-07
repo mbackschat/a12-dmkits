@@ -50,7 +50,8 @@ public final class ModelDrafts {
                         .group("Items", i -> i
                                 .repeatable(50).indexField("Sku")
                                 .field("Sku", FieldKind.STRING)
-                                .field("Count", FieldKind.NUMBER))
+                                .field("Count", FieldKind.NUMBER)
+                                .numberField("UnitWeight", n -> n.fractionDigits(2)))
                         .enumField("Priority", e -> e
                                 .value("STANDARD").value("EXPRESS").value("OVERNIGHT")
                                 .category("SpeedClass", "NORMAL", "FAST", "FAST"))

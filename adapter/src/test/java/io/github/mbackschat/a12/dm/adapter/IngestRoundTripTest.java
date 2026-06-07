@@ -221,14 +221,15 @@ class IngestRoundTripTest {
     }
 
     /**
-     * A still-unconverted construct — {@code SumOfProducts} (a real kernel operator rulekit does not
-     * model yet), which ingests as Opaque, preserved verbatim. ({@code $} correlations are no longer a
-     * good opaque example — they now convert; the count-check that guards the un-threaded ones is tested
-     * directly in {@code OuterCorrelationBackstopTest}.) Uses a small timesheet fixture with the number
-     * fields the operator needs.
+     * A still-unconverted construct — a <em>direct</em> {@code DATE_TIME}-field comparison
+     * ({@code [ClockIn] != [ClockOut]}). rulekit models DATE_TIME as a source-only kind (decompose it
+     * to a date/time/number, then compare that), so a direct date-time comparison has no typed handle and
+     * ingests as Opaque, preserved verbatim. (Earlier this used {@code SumOfProducts}, which now converts;
+     * {@code $} correlations also convert now — the count-check guarding un-threaded ones is tested in
+     * {@code OuterCorrelationBackstopTest}.)
      */
     private static final String OPAQUE_CONDITION =
-            "FieldFilled(PeriodEnd) And [/Timesheet/Total] != SumOfProducts(Shifts*/Hours, Shifts*/Rate)";
+            "FieldFilled(PeriodEnd) And [ClockIn] != [ClockOut]";
 
     @Test
     void preservesAnUnconvertedConstructAsOpaque() {
@@ -241,7 +242,7 @@ class IngestRoundTripTest {
                 () -> "an unconverted construct should ingest as Opaque, got: " + result);
         // preserved verbatim: the rule's text survives (re-emit on write-back)
         assertFalse(opaque.canonicalText().isBlank());
-        assertTrue(opaque.canonicalText().contains("SumOfProducts"),
+        assertTrue(opaque.canonicalText().contains("ClockIn"),
                 () -> "opaque text should preserve the rule verbatim: " + opaque.canonicalText());
     }
 
@@ -255,16 +256,14 @@ class IngestRoundTripTest {
         assertInstanceOf(Ingest.Opaque.class, all.get("/Timesheet/OpaqueRule"));
     }
 
-    /** A timesheet with a repeatable Shifts group (number fields) — carries a SumOfProducts over two lists. */
+    /** A timesheet with two date-time fields (ClockIn/ClockOut) — carries a direct DATE_TIME comparison. */
     private static String timesheetJson() {
         return DocumentModelDraft.named("timesheet").locale("en_US")
                 .rootGroup("Timesheet", t -> t
                         .dateField("PeriodEnd", d -> d.format("yyyy-MM-dd"))
                         .numberField("Total", n -> { })
-                        .group("Shifts", g -> g
-                                .repeatable(50)
-                                .numberField("Hours", n -> { })
-                                .numberField("Rate", n -> { })))
+                        .dateTimeField("ClockIn", dt -> dt.format("yyyy-MM-dd'T'HH:mm:ss"))
+                        .dateTimeField("ClockOut", dt -> dt.format("yyyy-MM-dd'T'HH:mm:ss")))
                 .build().toJson();
     }
 

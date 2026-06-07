@@ -617,6 +617,12 @@ final class ConditionConverter {
                 case NumberOfDifferentValues -> Dsl.numberOfDifferentValues(ops[0], rest);
                 case NumberOfFilledFields ->
                         Dsl.numberOfFilledFields(ops[0], ops[1], Arrays.copyOfRange(ops, 2, ops.length));
+                case SumOfProducts -> {
+                    if (ops.length != 2) {
+                        throw unsupported("SumOfProducts over " + ops.length + " operands (expects 2)", aggregate);
+                    }
+                    yield Dsl.sumOfProducts(ops[0], ops[1]);
+                }
                 default -> throw unsupported("aggregate operator " + name + " over a multi-field scope", aggregate);
             };
         }

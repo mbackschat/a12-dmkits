@@ -76,6 +76,11 @@ public final class Dsl {
         return listAggregate(ListAggregate.AggOp.SUM, first, rest);
     }
 
+    /** {@code SumOfProducts(a, b)} — Σ aᵢ·bᵢ over two parallel number field lists. */
+    public static NumberExpr sumOfProducts(FieldOperand left, FieldOperand right) {
+        return new NumberExpr(new SumOfProducts(left, right));
+    }
+
     /** {@code MaxValue(…)} over number fields/repetition lists — unspecified fields are ignored. */
     public static NumberExpr maxValue(FieldOperand first, FieldOperand... rest) {
         return listAggregate(ListAggregate.AggOp.MAX_VALUE, first, rest);

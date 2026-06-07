@@ -13,6 +13,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.CustomConditionRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateShift;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimePart;
+import io.github.mbackschat.a12.dm.rulekit.dsl.SumOfProducts;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumCategoryAccess;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumValueLiteral;
@@ -122,6 +123,7 @@ final class ExplanationTreeBuilder {
                     operand(e.source())));
             case DateTimePart e -> List.of(new RuleExplanation.Node(e.operatorId(), renderer.render(e),
                     operand(e.source())));
+            case SumOfProducts s -> List.of(leaf(s.operatorId(), s));
             case RootGroupCount c -> List.of(leaf(c.operatorId(), c));
         };
     }

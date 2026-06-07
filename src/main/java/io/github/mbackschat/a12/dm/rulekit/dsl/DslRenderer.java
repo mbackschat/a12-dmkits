@@ -276,6 +276,7 @@ public final class DslRenderer {
                     + ", " + c.start() + ", " + c.end() + ")";
             case DateExtraction e -> keyword(e.operatorId()) + "(" + renderArg(e.source()) + ")";
             case DateTimePart e -> keyword(e.operatorId()) + "(" + renderArg(e.source()) + ")";
+            case SumOfProducts s -> keyword(s.operatorId()) + "(" + operand(s.left()) + ", " + operand(s.right()) + ")";
             case RootGroupCount c -> keyword(c.operatorId()) + "(" + path(c.rootGroup().path()) + "*)";
         };
     }

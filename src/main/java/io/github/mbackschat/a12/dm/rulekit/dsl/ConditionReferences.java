@@ -109,6 +109,10 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case RangeAsString c -> fields.add(c.field().path());
             case DateExtraction e -> collect(e.source(), fields, groups);
             case DateTimePart e -> collect(e.source(), fields, groups);
+            case SumOfProducts s -> {
+                collectOperand(s.left(), fields, groups);
+                collectOperand(s.right(), fields, groups);
+            }
             case RootGroupCount c -> groups.add(c.rootGroup().path());
         }
     }

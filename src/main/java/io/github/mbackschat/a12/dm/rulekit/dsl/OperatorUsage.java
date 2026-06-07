@@ -119,6 +119,11 @@ public final class OperatorUsage {
                 ops.add(e.operatorId());
                 collect(e.source(), ops);
             }
+            case SumOfProducts s -> {
+                ops.add(s.operatorId());
+                collectOperand(s.left(), ops);
+                collectOperand(s.right(), ops);
+            }
             case RootGroupCount c -> ops.add(c.operatorId());
         }
     }

@@ -1006,10 +1006,11 @@
     "id": "SumOfProducts",
     "kind": "function",
     "keywords": { "en": "SumOfProducts", "de": "SummeVonProdukten" },
+    "operands": [ { "type": "number" }, { "type": "number" } ],
     "returns": "number",
-    "meaning": "The sum of the element-wise products across two or more repetition lists (a feldListenOp sibling of Sum).",
-    "constraints": [ "rulekit: PLANNED stub — no typed handle yet; keywords grounded in the lexer bundles (see WORKSPACE-CORPUS-ANALYSIS backlog)" ],
-    "status": "PLANNED",
+    "meaning": "The element-wise sum of products across two parallel number field lists: Σ aᵢ·bᵢ (typically two wildcard repetition lists over the same group). Both operands render as bare entity refs.",
+    "constraints": [ "exactly two operands, both number fields or wildcard repetition lists" ],
+    "validExample": { "dsl": "FieldFilled(UnitPrice) And [UnitPrice] != SumOfProducts(Items*/Count, Items*/UnitWeight)", "note": "fires when the stored price disagrees with the summed count-weighted line items (both scale 2)" },
     "sinceKernel": "30.8.x"
   },
   {
