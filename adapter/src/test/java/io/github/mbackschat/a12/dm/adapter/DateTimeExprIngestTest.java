@@ -122,6 +122,22 @@ class DateTimeExprIngestTest {
     }
 
     @Test
+    void roundTripsValueAsDate() {
+        // family 4 tail: ValueAsDate(partiallyKnownDate, FirstDay|LastDay) resolves to a concrete date.
+        BoundModel m = order();
+        Condition first = Dsl.valueAsDateFirstDay(m.field("/Order/ApproxDate")).after(Dsl.dateValue("01.01.2020"));
+        Condition last = Dsl.valueAsDateLastDay(m.field("/Order/ApproxDate")).before(Dsl.dateValue("31.12.2030"));
+        assertEquals("ValueAsDate(/Order/ApproxDate, FirstDay) > \"01.01.2020\"", RENDER.render(first));
+        assertEquals("ValueAsDate(/Order/ApproxDate, LastDay) < \"31.12.2030\"", RENDER.render(last));
+
+        KernelAdapter adapter = KernelAdapter.of(m
+                .add(orderRule(m, "VadFirstRule", "/Order/ApproxDate", first))
+                .add(orderRule(m, "VadLastRule", "/Order/ApproxDate", last)));
+        assertEquals(RENDER.render(first), RENDER.render(converted(adapter.ingest("/Order/VadFirstRule"))));
+        assertEquals(RENDER.render(last), RENDER.render(converted(adapter.ingest("/Order/VadLastRule"))));
+    }
+
+    @Test
     void dateExpressionsAreKernelValid() {
         ValidationResult r = new RuleValidator().check(read("models/order.dm.json"),
                 new DraftRule("/Order", "ExtractRule", "../OrderDate",

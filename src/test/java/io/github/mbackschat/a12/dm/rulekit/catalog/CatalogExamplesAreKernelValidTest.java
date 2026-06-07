@@ -33,7 +33,7 @@ class CatalogExamplesAreKernelValidTest {
                     "ExpressShipping", "TermsConfirmed", "Priority",
                     "ShippingAddress/Street", "BillingAddress/PostalCode",
                     "Items/Sku", "Items/Count", "OrderDate", "DeliveryDate", "PickupTime", "ScheduledAt",
-                    "CompletedAt", "RushLevel", "BirthDay", "BirthMonth", "BirthYear");
+                    "CompletedAt", "RushLevel", "ApproxDate", "BirthDay", "BirthMonth", "BirthYear");
 
     /**
      * Group names → a representative contained field, for examples that reference only groups.

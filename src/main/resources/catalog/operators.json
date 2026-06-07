@@ -1194,6 +1194,42 @@
     "sinceKernel": "30.8.x"
   },
   {
+    "id": "ValueAsDate",
+    "kind": "function",
+    "keywords": { "en": "ValueAsDate", "de": "WertAlsDatum" },
+    "operands": [ { "type": "field" }, { "type": "day-specification" } ],
+    "returns": "date",
+    "meaning": "Resolves a partially known date field (a DateType with a date precision other than FULL) to a concrete date — the earliest (FirstDay) or latest (LastDay) real date matching the known parts.",
+    "constraints": [
+      "the field must be a partially known date (date precision DAY_OPTIONAL / MONTH_OPTIONAL / YEAR_OPTIONAL), else MVK_INVALID_DATE_TYPE_FOR_OP",
+      "the second argument is the FirstDay or LastDay keyword"
+    ],
+    "validExample": { "dsl": "FieldFilled(ApproxDate) And ValueAsDate(ApproxDate, FirstDay) > \"01.01.2020\"", "note": "fires when the earliest possible date is after the start of 2020" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "FirstDay",
+    "kind": "constant",
+    "keywords": { "en": "FirstDay", "de": "ErsterTag" },
+    "operands": [],
+    "returns": "day-specification",
+    "meaning": "The day specification for ValueAsDate selecting the earliest concrete date of a partially known date.",
+    "constraints": [ "only valid as the second argument of ValueAsDate" ],
+    "validExample": { "dsl": "FieldFilled(ApproxDate) And ValueAsDate(ApproxDate, FirstDay) > \"01.01.2020\"", "note": "the earliest possible date is after the start of 2020" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "LastDay",
+    "kind": "constant",
+    "keywords": { "en": "LastDay", "de": "LetzterTag" },
+    "operands": [],
+    "returns": "day-specification",
+    "meaning": "The day specification for ValueAsDate selecting the latest concrete date of a partially known date.",
+    "constraints": [ "only valid as the second argument of ValueAsDate" ],
+    "validExample": { "dsl": "FieldFilled(ApproxDate) And ValueAsDate(ApproxDate, LastDay) < \"31.12.2030\"", "note": "the latest possible date is before the end of 2030" },
+    "sinceKernel": "30.8.x"
+  },
+  {
     "id": "Date",
     "kind": "function",
     "keywords": { "en": "Date", "de": "Datum" },

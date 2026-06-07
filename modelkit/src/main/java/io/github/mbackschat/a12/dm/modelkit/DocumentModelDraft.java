@@ -233,8 +233,14 @@ public final class DocumentModelDraft {
                     inner.put("maxValue", n.maxValue());
                 }
             }
-            case FieldTypeSpec.DateSpec d ->
-                    fieldType.putObject("DateType").put("format", d.format() != null ? d.format() : "yyyy-MM-dd");
+            case FieldTypeSpec.DateSpec d -> {
+                ObjectNode inner = fieldType.putObject("DateType");
+                inner.put("format", d.format() != null ? d.format() : "yyyy-MM-dd");
+                // datePrecision is omitted for FULL (the kernel default), matching its serializer
+                if (d.datePrecision() != null && !d.datePrecision().equals("FULL")) {
+                    inner.put("datePrecision", d.datePrecision());
+                }
+            }
             case FieldTypeSpec.TimeSpec t ->
                     fieldType.putObject("TimeType").put("format", t.format() != null ? t.format() : "HH:mm:ss");
             case FieldTypeSpec.DateTimeSpec dt ->
@@ -586,7 +592,7 @@ public final class DocumentModelDraft {
         return switch (kind) {
             case STRING -> new FieldTypeSpec.StringSpec(null, null, null, null);
             case NUMBER -> new FieldTypeSpec.NumberSpec(null, null, null);
-            case DATE -> new FieldTypeSpec.DateSpec(null);
+            case DATE -> new FieldTypeSpec.DateSpec(null, "FULL");
             case BOOLEAN -> new FieldTypeSpec.BooleanSpec();
             case CONFIRM -> new FieldTypeSpec.ConfirmSpec();
         };
@@ -735,14 +741,25 @@ public final class DocumentModelDraft {
     /** Configures a date field's constant format. */
     public static final class DateFieldBuilder extends FieldAttrs<DateFieldBuilder> {
         private String format;
+        private DatePrecision datePrecision = DatePrecision.FULL;
 
         public DateFieldBuilder format(String format) {
             this.format = format;
             return this;
         }
 
+        /**
+         * The date precision. Any value other than {@link DatePrecision#FULL} makes this a
+         * <em>partially known date</em> (a day/month/year part may be unknown) — the field
+         * {@code ValueAsDate(field, FirstDay|LastDay)} then resolves it to a concrete date.
+         */
+        public DateFieldBuilder datePrecision(DatePrecision precision) {
+            this.datePrecision = precision;
+            return this;
+        }
+
         private FieldTypeSpec spec() {
-            return new FieldTypeSpec.DateSpec(format);
+            return new FieldTypeSpec.DateSpec(format, datePrecision.jsonValue());
         }
     }
 

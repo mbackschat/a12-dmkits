@@ -62,6 +62,8 @@ public final class ModelDrafts {
                         .dateTimeField("ScheduledAt", dt -> dt.format("yyyy-MM-dd'T'HH:mm:ss"))
                         .dateTimeField("CompletedAt", dt -> dt.format("yyyy-MM-dd'T'HH:mm:ss"))
                         .enumField("RushLevel", e -> e.value("1").value("2").value("3"))
+                        .dateField("ApproxDate", d -> d.format("dd.MM.yyyy")
+                                .datePrecision(io.github.mbackschat.a12.dm.modelkit.DatePrecision.DAY_OPTIONAL))
                         .numberField("BirthDay", n -> n.min("1").max("31"))
                         .numberField("BirthMonth", n -> n.min("1").max("12"))
                         .numberField("BirthYear", n -> n.min("1900").max("2100"))

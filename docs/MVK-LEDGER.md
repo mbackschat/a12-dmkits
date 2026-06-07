@@ -66,7 +66,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_INVALID_DATE_RANGE_FORMAT` | unclassified | — (experiment queue) |
 | `MVK_INVALID_DATE_STRING` | unclassified | — (experiment queue) |
 | `MVK_INVALID_DATE_TYPE` | unclassified | — (experiment queue) |
-| `MVK_INVALID_DATE_TYPE_FOR_OP` | unclassified | — (experiment queue) |
+| `MVK_INVALID_DATE_TYPE_FOR_OP` | kernel-delegated | `ValueAsDate` requires a *partially known date* field (a `DateType` with a date precision other than FULL); a plain `DateType` / `DATE_FRAGMENT` draws this. rulekit does not pre-check the field's precision — the kernel arbitrates (F4/N7). Verified 2026-06-07 (family 4 / `ValueAsDate`) |
 | `MVK_INVALID_DIGIT_FOR_ROUNDING` | unclassified | — (experiment queue) |
 | `MVK_INVALID_ENTITY` | unclassified | — (experiment queue) |
 | `MVK_INVALID_INTERVAL` | unclassified | — (experiment queue) |

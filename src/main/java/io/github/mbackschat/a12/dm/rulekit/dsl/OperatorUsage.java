@@ -125,6 +125,10 @@ public final class OperatorUsage {
                 collect(n.value(), ops);
                 n.fields().forEach(f -> collectOperand(f, ops));
             }
+            case ValueAsDate v -> {
+                ops.add(v.operatorId());
+                ops.add(v.dayKeywordId());
+            }
             case DateExtraction e -> {
                 ops.add(e.operatorId());
                 collect(e.source(), ops);

@@ -343,6 +343,19 @@ public final class Dsl {
         return new DateExpr(new DateRangeBound(DateRangeBound.Bound.END, range.expression()));
     }
 
+    /**
+     * {@code ValueAsDate(field, FirstDay)} — the earliest concrete date of a partially known date field
+     * (a {@code DateType} with a date precision other than FULL), as a comparable date.
+     */
+    public static DateExpr valueAsDateFirstDay(FieldRef partiallyKnownDate) {
+        return new DateExpr(new ValueAsDate(partiallyKnownDate, true));
+    }
+
+    /** {@code ValueAsDate(field, LastDay)} — the latest concrete date of a partially known date field. */
+    public static DateExpr valueAsDateLastDay(FieldRef partiallyKnownDate) {
+        return new DateExpr(new ValueAsDate(partiallyKnownDate, false));
+    }
+
     /** {@code DateFromDateTime(dt)} — the date part of a date-time, as a comparable date. */
     public static DateExpr dateFromDateTime(DateTimeRef dateTime) {
         return new DateExpr(new DateTimePart(DateTimePart.Unit.DATE, dateTime.expression()));

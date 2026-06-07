@@ -87,6 +87,7 @@ class BaCorpusTest {
             // --- numeric coercions (family 4) -----------------------------------------------------------
             new R("FieldValAsNumber", "RushLevel", "FieldFilled(RushLevel) And FieldValueAsNumber(RushLevel) >= 2"),
             new R("RangeAsNum", "ShipmentRef", "FieldFilled(ShipmentRef) And RangeAsNumber(ShipmentRef, 1, 2) == 0"),
+            new R("ValueAsDateRule", "BirthDateApprox", "FieldFilled(BirthDateApprox) And ValueAsDate(BirthDateApprox, FirstDay) > \"01.01.2000\""),
             // --- operand-list math: Abs / Min / Max (family 5) ------------------------------------------
             new R("AbsDiff", "Weight", "AllFieldsFilled(Weight, DeclaredValue) And Abs([Weight] - [DeclaredValue]) < 1"),
             new R("MinOf", "Weight", "AllFieldsFilled(Weight, DeclaredValue) And Min([Weight], [DeclaredValue]) > 0"),

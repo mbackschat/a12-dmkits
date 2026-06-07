@@ -101,6 +101,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoolLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RepetitionNotUniqueCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ValueAsDate;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
@@ -650,6 +651,12 @@ final class ConditionConverter {
         }
         if (left instanceof IFieldIdOperation lenOp && lenOp.getOperatorName() == FieldIdOperationName.Length) {
             return numberExprComparison(model.str(lenOp.getField().getFullName()).length(), op, right, comparison);
+        }
+        // a ValueAsDate(field, FirstDay|LastDay) on the left — compare it as a date operand
+        if (left instanceof IFieldIdOperationWithParameters vad
+                && vad.getOperatorName() == FieldIdOperationName.ValueAsDate) {
+            return dateComparison(convertDateOperand(left, comparison), op, convertDateOperand(right, comparison),
+                    comparison);
         }
         // a string coercion on the left ([RangeAsString(...)] != "BD_") — compare the string expression
         if (isStringCoercion(left)) {
@@ -1367,6 +1374,11 @@ final class ConditionConverter {
         // kernel stores it German-format, type DATE, independent of the field's display format)
         if (op instanceof IConstantOperation constant) {
             return new DateExpr(new DateLiteral(constant.getValue()));
+        }
+        // ValueAsDate(field, FirstDay|LastDay) — resolves a partially-known-date field to a concrete date
+        if (op instanceof IFieldIdOperationWithParameters vad
+                && vad.getOperatorName() == FieldIdOperationName.ValueAsDate) {
+            return new DateExpr(new ValueAsDate(model.field(vad.getField().getFullName()), vad.isFirstDay()));
         }
         if (op instanceof IPointInTimeOperation pit && pit.getOperatorName() == PointInTimeOperationName.Today) {
             return Dsl.today();

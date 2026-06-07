@@ -341,6 +341,20 @@
               },
               {
                 "type": "Field",
+                "id": "/Order/ApproxDate",
+                "name": "ApproxDate",
+                "Field": {
+                  "fieldType": {
+                    "type": "DateType",
+                    "DateType": {
+                      "format": "dd.MM.yyyy",
+                      "datePrecision": "DAY_OPTIONAL"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
                 "id": "/Order/BirthDay",
                 "name": "BirthDay",
                 "Field": {

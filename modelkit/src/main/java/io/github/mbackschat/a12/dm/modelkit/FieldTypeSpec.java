@@ -84,8 +84,12 @@ public sealed interface FieldTypeSpec {
         }
     }
 
-    /** A date field with a constant format (day-first constants, §6). */
-    record DateSpec(String format) implements FieldTypeSpec {
+    /**
+     * A date field with a constant format (day-first constants, §6) and an optional <em>date precision</em>.
+     * A precision other than {@code FULL} makes it a <em>partially known date</em> (a day/month/year part may
+     * be unknown, e.g. {@code 00.02.2024}) — the field {@code ValueAsDate} resolves to a concrete date.
+     */
+    record DateSpec(String format, String datePrecision) implements FieldTypeSpec {
         @Override
         public String jsonType() {
             return "DateType";

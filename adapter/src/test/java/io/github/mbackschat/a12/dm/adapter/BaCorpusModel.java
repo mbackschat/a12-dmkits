@@ -43,6 +43,8 @@ final class BaCorpusModel {
                         .dateTimeField("ScheduledAt", dt -> dt.format("yyyy-MM-dd'T'HH:mm:ss"))
                         .dateTimeField("DeliveredAt", dt -> dt.format("yyyy-MM-dd'T'HH:mm:ss"))
                         .enumField("RushLevel", e -> e.value("1").value("2").value("3"))
+                        .dateField("BirthDateApprox", d -> d.format("dd.MM.yyyy")
+                                .datePrecision(io.github.mbackschat.a12.dm.modelkit.DatePrecision.DAY_OPTIONAL))
                         .dateRangeField("CoverPeriod", r -> r.format("dd.MM.yyyy").separator("-"))
                         .dateFragmentField("BillingMonth", f -> f.fragmentFormat("yyyy-MM"))
                         .numberField("Day", n -> n.min("1").max("31"))
