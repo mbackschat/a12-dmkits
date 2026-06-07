@@ -89,6 +89,42 @@ class OuterCorrelationQuantifierIngestTest {
                 () -> "the $ on a presence-predicate operand must survive ingest: " + rendered);
     }
 
+    /** Filters (outer, with a repeatable Allowed/Code list) + Responses (inner) — for the value-list $ case. */
+    private static String surveyJson() {
+        return DocumentModelDraft.named("survey").locale("en_US")
+                .rootGroup("Survey", s -> s
+                        .group("Filters", g -> g.repeatable(20)
+                                .numberField("Total", n -> { })
+                                .group("Allowed", a -> a.repeatable(20).stringField("Code", c -> { })))
+                        .group("Responses", g -> g.repeatable(50)
+                                .stringField("Tag", c -> { })
+                                .numberField("Score", n -> { })))
+                .build().toJson();
+    }
+
+    @Test
+    void outerWildcardInAnEntityValuedValueListRoundTrips() {
+        BoundModel m = BoundModel.ofJson(surveyJson());
+        // a $-correlated wildcard value-list operand (the Order_DM residual shape): each response's Tag
+        // checked against the current (outer) Filter's Allowed codes — value side is $Filters/Allowed*/Code.
+        Condition authored = m.field("/Survey/Filters/Total").filled().and(
+                m.num("/Survey/Filters/Total").ne(
+                        Dsl.sum(m.flatten("/Survey/Responses*/Score").having(
+                                Dsl.atLeastOneFieldValueIncludedInValueList(
+                                        java.util.List.of(m.flatten("/Survey/Filters/Allowed*/Code").asOuter()),
+                                        m.field("/Survey/Responses/Tag"))))));
+
+        Rule rule = m.rule(m.group("/Survey/Filters")).name("ValueListCorr")
+                .errorField(m.field("/Survey/Filters/Total")).when(authored)
+                .code("C").severity(Severity.ERROR).message(en("x")).build();
+
+        Condition converted = converted(KernelAdapter.of(m.add(rule)).ingest("/Survey/Filters/ValueListCorr"));
+        String rendered = RENDER.render(converted);
+        assertEquals(RENDER.render(authored), rendered, "the $ on a value-list operand must round-trip");
+        assertTrue(rendered.contains("$") && rendered.contains("Allowed*/Code"),
+                () -> "the $ wildcard value-list operand must survive ingest: " + rendered);
+    }
+
     private static Condition converted(Ingest result) {
         return assertInstanceOf(Ingest.Converted.class, result,
                 () -> "expected a converted ingest, got: " + result).condition();

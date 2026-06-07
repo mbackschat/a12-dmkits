@@ -220,14 +220,14 @@ public final class DslRenderer {
 
     /** A field-list operand: its path, plus a {@code Having <filter>} clause for a filtered list. */
     private String operand(FieldOperand op) {
+        // a $ outer-iteration correlation on a bare reference (D13): NoFieldFilled($a, $b), or the value
+        // side of an entity-valued value-list ($Group*/field). Applies to both FieldRef and FieldListRef.
+        String dollar = (op instanceof FieldRef fr && fr.outer()) || (op instanceof FieldListRef fl && fl.outer())
+                ? "$" : "";
         if (op instanceof FieldListRef list && list.filter().isPresent()) {
-            return path(list.renderedPath()) + " " + keyword("Having") + " " + render(list.filter().get());
+            return dollar + path(list.renderedPath()) + " " + keyword("Having") + " " + render(list.filter().get());
         }
-        // a $ outer-iteration correlation on a bare reference (e.g. NoFieldFilled($a, $b) in a filter, D13)
-        if (op instanceof FieldRef f && f.outer()) {
-            return "$" + path(f.renderedPath());
-        }
-        return path(op.renderedPath());
+        return dollar + path(op.renderedPath());
     }
 
     private String child(LogicCondition parent, Condition child) {

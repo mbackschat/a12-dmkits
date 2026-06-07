@@ -16,11 +16,15 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * field ({@code MVK_WILDCARDS_REQUIRED} — satisfied structurally, since only {@code FieldListRef}
  * offers it).
  */
-public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Condition> filter)
+public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Condition> filter, boolean outer)
         implements FieldOperand {
 
     public FieldListRef(FieldRef field, List<GroupRef> flattened) {
-        this(field, flattened, Optional.empty());
+        this(field, flattened, Optional.empty(), false);
+    }
+
+    public FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Condition> filter) {
+        this(field, flattened, filter, false);
     }
 
     public FieldListRef {
@@ -32,6 +36,14 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
     }
 
     /**
+     * This list as the {@code $} outer-iteration correlation ({@code $Group*}{@code /field}, D13) — the
+     * value side of an entity-valued value-list inside a {@code Having} filter binds to the outer iteration.
+     */
+    public FieldListRef asOuter() {
+        return new FieldListRef(field, flattened, filter, true);
+    }
+
+    /**
      * Narrows this list to the repetitions where {@code filter} holds ({@code … Having <filter>}).
      * The kernel forbids certain constructs inside a filter condition (KERNEL-SEMANTICS §9): the
      * representable ones — {@code RepetitionNotUnique} and a nested {@code Having} — are pre-checked
@@ -40,7 +52,7 @@ public record FieldListRef(FieldRef field, List<GroupRef> flattened, Optional<Co
      */
     public FieldListRef having(Condition filter) {
         rejectForbiddenInFilter(filter);
-        return new FieldListRef(field, flattened, Optional.of(filter));
+        return new FieldListRef(field, flattened, Optional.of(filter), outer);
     }
 
     private static void rejectForbiddenInFilter(Condition c) {

@@ -418,7 +418,12 @@ final class ConditionConverter {
 
     /** A field entity to a {@link FieldOperand}: a flattened repetition list if it wildcards, else a plain field. */
     private FieldOperand toFieldOperand(IEntityId entity) {
-        return isWildcard(entity) ? model.flatten(reconstructStarPath(entity)) : model.field(entity.getFullName());
+        FieldOperand op = isWildcard(entity)
+                ? model.flatten(reconstructStarPath(entity)) : model.field(entity.getFullName());
+        if (entity.isOuter()) {   // $ correlation (D13): e.g. the value side of an entity-valued value-list
+            op = (op instanceof FieldListRef list) ? list.asOuter() : ((FieldRef) op).asOuter();
+        }
+        return op;
     }
 
     /** The single value kind shared by every field at {@code paths}, or fail if they disagree / are unknown. */
