@@ -27,6 +27,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.GroupPresenceCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LogicCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.PatternCondition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateValidity;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RepetitionNotUniqueCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ValueListCondition;
@@ -183,6 +184,7 @@ public final class Linter {
             case FieldListEntityListCondition ignored -> { }
             case RepetitionNotUniqueCondition ignored -> { }
             case CustomConditionRef ignored -> { }
+            case DateValidity ignored -> { }
         }
     }
 

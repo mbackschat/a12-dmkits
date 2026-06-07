@@ -69,6 +69,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             // kernel's error-field rule honors it; keys are what the condition reads)
             case RepetitionNotUniqueCondition r -> r.keys().forEach(k -> fields.add(k.path()));
             case CustomConditionRef ignored -> { /* references nothing — host-defined */ }
+            case DateValidity v -> collect(v.dateConstruct(), fields, groups);
         }
     }
 
@@ -112,6 +113,12 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case SumOfProducts s -> {
                 collectOperand(s.left(), fields, groups);
                 collectOperand(s.right(), fields, groups);
+            }
+            case DateConstruction dc -> {
+                collect(dc.day(), fields, groups);
+                collect(dc.month(), fields, groups);
+                collect(dc.year1(), fields, groups);
+                dc.year2().ifPresent(y -> collect(y, fields, groups));
             }
             case RootGroupCount c -> groups.add(c.rootGroup().path());
         }

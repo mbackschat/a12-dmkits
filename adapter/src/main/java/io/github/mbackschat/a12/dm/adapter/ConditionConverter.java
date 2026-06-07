@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.BiFunction;
 
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.IEntityId;
@@ -12,6 +13,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.IParseTreeEntity;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IApplicationCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IComparisonCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.ICompositeCondition;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IDateValidityCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.ICompositeOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.ICondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IEntityListAndValueListCondition;
@@ -29,6 +31,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IFieldIdOpe
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOpListOperationWithParameter;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IPointInTimeOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateAddOperation;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateConstructionOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateDiffOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateExtractionOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.BoolConstantOperationName;
@@ -36,6 +39,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ComparisonOpera
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListAndValueListConditionName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.DateDiffOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.DateExtractionOperationName;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.ValidityConditionName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListConditionName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.EntityListOperationName;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.types.FieldIdOperationName;
@@ -50,8 +54,14 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.ast.ASTVisitor;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateValidity;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue;
+import io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeRef;
@@ -190,6 +200,12 @@ final class ConditionConverter {
         }
         if (node instanceof IValueListCondition valueList) {
             return convertValueList(valueList);
+        }
+        if (node instanceof IDateValidityCondition validity) {
+            // Valid(Date(...)) / Invalid(...) — the date-validity condition over a constructed date
+            boolean valid = validity.getConditionName() == ValidityConditionName.Valid;
+            DateOperand date = convertDateOperand(validity.getDateConstruct(), validity);
+            return valid ? Dsl.valid(date) : Dsl.invalid(date);
         }
         throw unsupported("condition", node);
     }
@@ -1128,7 +1144,29 @@ final class ConditionConverter {
                 && ext.getOperatorName() == DateExtractionOperationName.DateFromDateTime) {
             return Dsl.dateFromDateTime(dateTimeSource(ext.getDateSpec(), ext));
         }
+        // Date(day, month, year[, decade]) → a constructed date operand
+        if (op instanceof IDateConstructionOperation date) {
+            Optional<Calculation> year2 = date.getYear2() == null ? Optional.empty()
+                    : Optional.of(convertDateComponent(date.getYear2(), date));
+            return new DateExpr(new DateConstruction(convertDateComponent(date.getDay(), date),
+                    convertDateComponent(date.getMonth(), date), convertDateComponent(date.getYear1(), date), year2));
+        }
         throw unsupported("date operand " + op.getClass().getSimpleName(), origin);
+    }
+
+    /** One component of a {@code Date(...)} construction — a numeric field/extraction or a (zero-padded) constant. */
+    private Calculation convertDateComponent(IOperation op, Object origin) {
+        if (op instanceof IConstantOperation constant) {
+            // the kernel renders date-component literals quoted (e.g. Date("01", …)) — preserve verbatim
+            return new StringLiteral(constant.getValue());
+        }
+        if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue) {
+            return new FieldValue(model.field(field.getField().getFullName()));
+        }
+        if (op instanceof IDateExtractionOperation ext) {
+            return convertDateExtraction(ext).expression();
+        }
+        throw unsupported("date-construction component " + op.getClass().getSimpleName(), origin);
     }
 
     /** A time-valued operand: a time field ({@code FieldValue}) or {@code TimeFromDateTime(dt)}. */
@@ -1178,6 +1216,7 @@ final class ConditionConverter {
                 case DATE -> outer ? model.date(path).outer() : model.date(path);
                 case TIME -> outer ? model.time(path).outer() : model.time(path);
                 case DATE_TIME -> outer ? model.dateTime(path).outer() : model.dateTime(path);
+                case DATE_FRAGMENT -> outer ? model.dateFragment(path).outer() : model.dateFragment(path);
                 default -> throw unsupported("extraction over a " + kind + " field", origin);
             };
         }

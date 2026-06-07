@@ -58,6 +58,7 @@ public final class OperatorUsage {
             case GroupScopedFieldFill ignored -> { /* operatorId already added; group scopes add no ops */ }
             case RepetitionNotUniqueCondition r -> r.scope().ifPresent(s -> ops.add("FromScope"));
             case CustomConditionRef ignored -> { }
+            case DateValidity v -> collect(v.dateConstruct(), ops);
         }
     }
 
@@ -123,6 +124,13 @@ public final class OperatorUsage {
                 ops.add(s.operatorId());
                 collectOperand(s.left(), ops);
                 collectOperand(s.right(), ops);
+            }
+            case DateConstruction dc -> {
+                ops.add(dc.operatorId());
+                collect(dc.day(), ops);
+                collect(dc.month(), ops);
+                collect(dc.year1(), ops);
+                dc.year2().ifPresent(y -> collect(y, ops));
             }
             case RootGroupCount c -> ops.add(c.operatorId());
         }

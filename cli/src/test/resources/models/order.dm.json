@@ -294,6 +294,48 @@
                     }
                   }
                 }
+              },
+              {
+                "type": "Field",
+                "id": "/Order/BirthDay",
+                "name": "BirthDay",
+                "Field": {
+                  "fieldType": {
+                    "type": "NumberType",
+                    "NumberType": {
+                      "minValue": 1,
+                      "maxValue": 31
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Order/BirthMonth",
+                "name": "BirthMonth",
+                "Field": {
+                  "fieldType": {
+                    "type": "NumberType",
+                    "NumberType": {
+                      "minValue": 1,
+                      "maxValue": 12
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Order/BirthYear",
+                "name": "BirthYear",
+                "Field": {
+                  "fieldType": {
+                    "type": "NumberType",
+                    "NumberType": {
+                      "minValue": 1900,
+                      "maxValue": 2100
+                    }
+                  }
+                }
               }
             ]
           }

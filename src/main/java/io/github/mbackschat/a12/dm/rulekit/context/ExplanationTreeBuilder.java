@@ -12,7 +12,9 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.CurrentRepetition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CustomConditionRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateShift;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimePart;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateValidity;
 import io.github.mbackschat.a12.dm.rulekit.dsl.SumOfProducts;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumCategoryAccess;
@@ -83,6 +85,7 @@ final class ExplanationTreeBuilder {
             case GroupScopedFieldFill v -> List.of();
             case RepetitionNotUniqueCondition r -> List.of();
             case CustomConditionRef c -> List.of();
+            case DateValidity v -> operand(v.dateConstruct());
         };
         return new RuleExplanation.Node(condition.operatorId(), renderer.render(condition), children);
     }
@@ -124,6 +127,9 @@ final class ExplanationTreeBuilder {
             case DateTimePart e -> List.of(new RuleExplanation.Node(e.operatorId(), renderer.render(e),
                     operand(e.source())));
             case SumOfProducts s -> List.of(leaf(s.operatorId(), s));
+            case DateConstruction dc -> List.of(new RuleExplanation.Node(dc.operatorId(), renderer.render(dc),
+                    concat(concat(operand(dc.day()), operand(dc.month())),
+                            concat(operand(dc.year1()), dc.year2().map(this::operand).orElse(List.of())))));
             case RootGroupCount c -> List.of(leaf(c.operatorId(), c));
         };
     }

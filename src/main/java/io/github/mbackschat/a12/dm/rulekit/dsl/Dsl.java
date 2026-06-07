@@ -217,6 +217,27 @@ public final class Dsl {
         return new NumberExpr(new DateExtraction(DateExtraction.Unit.SECONDS, time.expression()));
     }
 
+    /** {@code Date(day, month, year)} — construct a date from numeric components (a comparable date). */
+    public static DateExpr date(NumberExpr day, NumberExpr month, NumberExpr year) {
+        return new DateExpr(new DateConstruction(day.expression(), month.expression(), year.expression()));
+    }
+
+    /** {@code Date(day, month, century, decade)} — a date whose year is split into century + 2-digit decade. */
+    public static DateExpr date(NumberExpr day, NumberExpr month, NumberExpr century, NumberExpr decade) {
+        return new DateExpr(new DateConstruction(day.expression(), month.expression(),
+                century.expression(), java.util.Optional.of(decade.expression())));
+    }
+
+    /** {@code Valid(dateConstruct)} — true iff the constructed date is a real calendar date. */
+    public static Condition valid(DateOperand dateConstruct) {
+        return new DateValidity(true, dateConstruct.expression());
+    }
+
+    /** {@code Invalid(dateConstruct)} — true iff the constructed date is not a real calendar date. */
+    public static Condition invalid(DateOperand dateConstruct) {
+        return new DateValidity(false, dateConstruct.expression());
+    }
+
     /** {@code DateFromDateTime(dt)} — the date part of a date-time, as a comparable date. */
     public static DateExpr dateFromDateTime(DateTimeRef dateTime) {
         return new DateExpr(new DateTimePart(DateTimePart.Unit.DATE, dateTime.expression()));

@@ -163,6 +163,15 @@ public final class BoundModel {
         return new DateTimeRef(field(path));
     }
 
+    /** A typed date-fragment handle (a year-month partial date; an extraction source). Throws if not a date fragment. */
+    public DateFragmentRef dateFragment(String path) {
+        ValueKind kind = index.kindOf(path);
+        if (kind != ValueKind.DATE_FRAGMENT) {
+            throw new IllegalArgumentException(path + " is not a date-fragment field (kind=" + kind + ")");
+        }
+        return new DateFragmentRef(field(path));
+    }
+
     /** A typed group handle (knows repeatability from the model). Throws if the path is not a group. */
     public GroupRef group(String path) {
         return new GroupRef(path, index.isRepeating(path));

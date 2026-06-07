@@ -966,10 +966,11 @@
     "id": "Date",
     "kind": "function",
     "keywords": { "en": "Date", "de": "Datum" },
+    "operands": [ { "type": "number" }, { "type": "number" }, { "type": "number" } ],
     "returns": "date",
-    "meaning": "Constructs a date from day, month, and year operands (needs bounded-integer / digit-patterned operand fields).",
-    "constraints": [ "rulekit: PLANNED stub — no typed handle yet; keywords grounded in the lexer bundles (see WORKSPACE-CORPUS-ANALYSIS backlog)" ],
-    "status": "PLANNED",
+    "meaning": "Constructs a date from day, month, and year (optionally century + 2-digit decade) operands — a comparable date. Components render as bare entity refs.",
+    "constraints": [ "the operands must be bounded-integer / digit-patterned number fields (the kernel rejects a plain scale-0 number: MVK_WRONG_DATE_FORMAT_FOR_OP)" ],
+    "validExample": { "dsl": "FieldFilled(BirthDay) And [OrderDate] != Date(BirthDay, BirthMonth, BirthYear)", "note": "fires when the order date disagrees with the entered birth-date parts" },
     "sinceKernel": "30.8.x"
   },
   {
@@ -986,20 +987,22 @@
     "id": "Valid",
     "kind": "predicate",
     "keywords": { "en": "Valid", "de": "Gueltig" },
+    "operands": [ { "type": "date" } ],
     "returns": "boolean",
-    "meaning": "True iff the field holds a valid instance of the named registered custom field type (delegates to a runtime type verifier).",
-    "constraints": [ "rulekit: PLANNED stub — no typed handle yet; keywords grounded in the lexer bundles (see WORKSPACE-CORPUS-ANALYSIS backlog)" ],
-    "status": "PLANNED",
+    "meaning": "True iff a constructed date is a real calendar date (e.g. Date(31, 2, 2024) is invalid). rulekit models the date-construct validity (IDateValidityCondition); the custom-field-type validity overload is not modeled.",
+    "constraints": [ "the operand is a Date(...) construction (or a date)" ],
+    "validExample": { "dsl": "FieldFilled(BirthDay) And Valid(Date(BirthDay, BirthMonth, BirthYear))", "note": "fires when the entered birth-date parts form a real calendar date" },
     "sinceKernel": "30.8.x"
   },
   {
     "id": "Invalid",
     "kind": "predicate",
     "keywords": { "en": "Invalid", "de": "Ungueltig" },
+    "operands": [ { "type": "date" } ],
     "returns": "boolean",
-    "meaning": "True iff the field is not a valid instance of the named registered custom field type (the negation of Valid).",
-    "constraints": [ "rulekit: PLANNED stub — no typed handle yet; keywords grounded in the lexer bundles (see WORKSPACE-CORPUS-ANALYSIS backlog)" ],
-    "status": "PLANNED",
+    "meaning": "True iff a constructed date is not a real calendar date (the negation of Valid over a Date(...) construction).",
+    "constraints": [ "the operand is a Date(...) construction (or a date)" ],
+    "validExample": { "dsl": "FieldFilled(BirthDay) And Invalid(Date(BirthDay, BirthMonth, BirthYear))", "note": "fires when the entered birth-date parts do not form a real calendar date" },
     "sinceKernel": "30.8.x"
   },
   {

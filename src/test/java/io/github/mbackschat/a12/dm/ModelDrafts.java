@@ -58,7 +58,10 @@ public final class ModelDrafts {
                         .dateField("OrderDate", d -> d.format("yyyy-MM-dd"))
                         .dateField("DeliveryDate", d -> d.format("yyyy-MM-dd"))
                         .timeField("PickupTime", t -> t.format("HH:mm:ss"))
-                        .dateTimeField("ScheduledAt", dt -> dt.format("yyyy-MM-dd'T'HH:mm:ss")))
+                        .dateTimeField("ScheduledAt", dt -> dt.format("yyyy-MM-dd'T'HH:mm:ss"))
+                        .numberField("BirthDay", n -> n.min("1").max("31"))
+                        .numberField("BirthMonth", n -> n.min("1").max("12"))
+                        .numberField("BirthYear", n -> n.min("1900").max("2100")))
                 .build();
     }
 }

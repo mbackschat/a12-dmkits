@@ -199,6 +199,7 @@ public final class DslRenderer {
                     + v.scopes().stream().map(s -> path(s.renderedPath()))
                             .collect(java.util.stream.Collectors.joining(", "))
                     + ")";
+            case DateValidity v -> keyword(v.operatorId()) + "(" + renderArg(v.dateConstruct()) + ")";
         };
     }
 
@@ -277,6 +278,9 @@ public final class DslRenderer {
             case DateExtraction e -> keyword(e.operatorId()) + "(" + renderArg(e.source()) + ")";
             case DateTimePart e -> keyword(e.operatorId()) + "(" + renderArg(e.source()) + ")";
             case SumOfProducts s -> keyword(s.operatorId()) + "(" + operand(s.left()) + ", " + operand(s.right()) + ")";
+            case DateConstruction dc -> keyword(dc.operatorId()) + "(" + renderArg(dc.day()) + ", "
+                    + renderArg(dc.month()) + ", " + renderArg(dc.year1())
+                    + dc.year2().map(y -> ", " + renderArg(y)).orElse("") + ")";
             case RootGroupCount c -> keyword(c.operatorId()) + "(" + path(c.rootGroup().path()) + "*)";
         };
     }

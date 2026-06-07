@@ -32,7 +32,8 @@ class CatalogExamplesAreKernelValidTest {
             List.of("CustomerName", "ProductCode", "Quantity", "UnitPrice", "BackorderQuantity",
                     "ExpressShipping", "TermsConfirmed", "Priority",
                     "ShippingAddress/Street", "BillingAddress/PostalCode",
-                    "Items/Sku", "Items/Count", "OrderDate", "DeliveryDate", "PickupTime", "ScheduledAt");
+                    "Items/Sku", "Items/Count", "OrderDate", "DeliveryDate", "PickupTime", "ScheduledAt",
+                    "BirthDay", "BirthMonth", "BirthYear");
 
     /**
      * Group names → a representative contained field, for examples that reference only groups.
