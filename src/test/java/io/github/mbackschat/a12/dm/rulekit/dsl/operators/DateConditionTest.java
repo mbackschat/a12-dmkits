@@ -37,6 +37,19 @@ class DateConditionTest {
     }
 
     @Test
+    void rendersSubDayTimeArithmeticBilingually() {
+        // family 2: DifferenceInHours/Minutes/Seconds and AddHours/Minutes/Seconds over date-times.
+        Condition diff = Dsl.differenceInHours(m.dateTime("/Order/ScheduledAt"), m.dateTime("/Order/CompletedAt")).gt(24);
+        assertEquals("DifferenceInHours(/Order/ScheduledAt, /Order/CompletedAt) > 24", new DslRenderer().render(diff));
+        assertEquals("DifferenzInStunden(/Order/ScheduledAt, /Order/CompletedAt) > 24",
+                new DslRenderer(ConditionLanguage.DE).render(diff));
+        Condition add = Dsl.minutesFromTime(Dsl.addMinutes(m.dateTime("/Order/ScheduledAt"), 30)).lt(60);
+        assertEquals("MinutesFromTime(AddMinutes(/Order/ScheduledAt, 30)) < 60", new DslRenderer().render(add));
+        assertEquals("MinutenAusZeit(AddiereMinuten(/Order/ScheduledAt, 30)) < 60",
+                new DslRenderer(ConditionLanguage.DE).render(add));
+    }
+
+    @Test
     void rendersDateFieldVsFieldOrdering() {
         // dates have no scale, so field-vs-field ordering needs no D13 machinery (verified 2026-06-04)
         assertEquals("[/Order/DeliveryDate] < [/Order/OrderDate]",

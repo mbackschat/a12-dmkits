@@ -311,6 +311,19 @@
               },
               {
                 "type": "Field",
+                "id": "/Order/CompletedAt",
+                "name": "CompletedAt",
+                "Field": {
+                  "fieldType": {
+                    "type": "DateTimeType",
+                    "DateTimeType": {
+                      "format": "yyyy-MM-dd'T'HH:mm:ss"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
                 "id": "/Order/BirthDay",
                 "name": "BirthDay",
                 "Field": {

@@ -77,6 +77,10 @@ class BaCorpusTest {
             new R("DateLiteral", "DispatchDateLocal", "FieldFilled(DispatchDateLocal) And [DispatchDateLocal] > \"01.01.2022\""),
             new R("TimeLiteral", "PickupTime", "FieldFilled(PickupTime) And [PickupTime] > \"17:00:00\""),
             new R("DateLiteralDiff", "DispatchDate", "FieldFilled(DispatchDate) And DifferenceInDays(DispatchDate, \"01.01.2022\") > 7"),
+            // --- sub-day time arithmetic (family 2) -----------------------------------------------------
+            new R("DiffInHours", "ScheduledAt", "AllFieldsFilled(ScheduledAt, DeliveredAt) And DifferenceInHours(ScheduledAt, DeliveredAt) > 24"),
+            new R("DiffInMinutes", "ScheduledAt", "AllFieldsFilled(ScheduledAt, DeliveredAt) And DifferenceInMinutes(ScheduledAt, DeliveredAt) > 90"),
+            new R("AddMinutesShift", "ScheduledAt", "FieldFilled(ScheduledAt) And MinutesFromTime(AddMinutes(ScheduledAt, 30)) < 60"),
 
             // --- known-opaque: unmodeled families (kernel-valid, ingest preserved verbatim) --------------
             new R("NumValueInFields", "TermsAccepted", "FieldFilled(TermsAccepted) And NumberOfValueInFields(True IN OptInA, OptInB, OptInC) >= 2", false));

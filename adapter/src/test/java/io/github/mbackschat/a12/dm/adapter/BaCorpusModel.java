@@ -41,6 +41,7 @@ final class BaCorpusModel {
                         .timeField("WindowStart", t -> t.format("HH:mm:ss"))
                         .timeField("WindowEnd", t -> t.format("HH:mm:ss"))
                         .dateTimeField("ScheduledAt", dt -> dt.format("yyyy-MM-dd'T'HH:mm:ss"))
+                        .dateTimeField("DeliveredAt", dt -> dt.format("yyyy-MM-dd'T'HH:mm:ss"))
                         .dateRangeField("CoverPeriod", r -> r.format("dd.MM.yyyy").separator("-"))
                         .dateFragmentField("BillingMonth", f -> f.fragmentFormat("yyyy-MM"))
                         .numberField("Day", n -> n.min("1").max("31"))

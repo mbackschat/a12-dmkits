@@ -94,6 +94,20 @@ class DateTimeExprIngestTest {
     }
 
     @Test
+    void roundTripsSubDayTimeArithmetic() {
+        // family 2: DifferenceInHours over two date-times, and AddMinutes inside a MinutesFromTime extraction.
+        BoundModel m = order();
+        Condition diff = Dsl.differenceInHours(m.dateTime("/Order/ScheduledAt"), m.dateTime("/Order/CompletedAt")).gt(24);
+        Condition add = Dsl.minutesFromTime(Dsl.addMinutes(m.dateTime("/Order/ScheduledAt"), 30)).lt(60);
+
+        KernelAdapter adapter = KernelAdapter.of(m
+                .add(orderRule(m, "DiffHoursRule", "/Order/ScheduledAt", diff))
+                .add(orderRule(m, "AddMinutesRule", "/Order/ScheduledAt", add)));
+        assertEquals(RENDER.render(diff), RENDER.render(converted(adapter.ingest("/Order/DiffHoursRule"))));
+        assertEquals(RENDER.render(add), RENDER.render(converted(adapter.ingest("/Order/AddMinutesRule"))));
+    }
+
+    @Test
     void dateExpressionsAreKernelValid() {
         ValidationResult r = new RuleValidator().check(read("models/order.dm.json"),
                 new DraftRule("/Order", "ExtractRule", "../OrderDate",

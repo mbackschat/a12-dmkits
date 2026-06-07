@@ -152,11 +152,7 @@ class KernelConstructParityTest {
         put(m, "tolerance comparison (DiffersWithToleranceRange…) — NOT YET MODELED (coverage backlog)",
                 "ComparisonOperation.NE1", "ComparisonOperation.NE2", "ComparisonOperation.NE5", "ComparisonOperation.NE10");
         // Not-yet-modeled operator families (coverage backlog — WORKSPACE-CORPUS-ANALYSIS).
-        put(m, "time-of-day date-add — not yet modeled (date family covers years/months/days)",
-                "DateAddOperationName.AddHours", "DateAddOperationName.AddMinutes", "DateAddOperationName.AddSeconds");
-        put(m, "sub-day date-diff — not yet modeled",
-                "DateDiffOperationName.DifferenceInSeconds", "DateDiffOperationName.DifferenceInMinutes",
-                "DateDiffOperationName.DifferenceInHours");
+        // AddHours/Minutes/Seconds + DifferenceInHours/Minutes/Seconds are now cataloged (sub-day time arithmetic, family 2).
         // HoursFromTime/MinutesFromTime/SecondsFromTime + Date/TimeFromDateTime are now cataloged (TIME/DATE_TIME value kinds).
         // StartOfDateRange/EndOfDateRange are now cataloged (DateRangeBound).
         // AtLeastOneDateRangeOverlaps + DateRangesOverlap are now cataloged (reusing FieldListPredicate/FieldListEntityListCondition).

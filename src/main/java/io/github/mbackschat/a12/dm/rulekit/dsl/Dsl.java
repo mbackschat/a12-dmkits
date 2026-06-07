@@ -204,16 +204,31 @@ public final class Dsl {
     }
 
     /** {@code DifferenceInDays(a, b)} — a numeric date difference (a floor, not a calendar count). */
-    public static NumberExpr differenceInDays(DateOperand a, DateOperand b) {
+    public static NumberExpr differenceInDays(TemporalOperand a, TemporalOperand b) {
         return new NumberExpr(new DateDifference(DateDifference.Unit.DAYS, a.expression(), b.expression()));
     }
 
-    public static NumberExpr differenceInMonths(DateOperand a, DateOperand b) {
+    public static NumberExpr differenceInMonths(TemporalOperand a, TemporalOperand b) {
         return new NumberExpr(new DateDifference(DateDifference.Unit.MONTHS, a.expression(), b.expression()));
     }
 
-    public static NumberExpr differenceInYears(DateOperand a, DateOperand b) {
+    public static NumberExpr differenceInYears(TemporalOperand a, TemporalOperand b) {
         return new NumberExpr(new DateDifference(DateDifference.Unit.YEARS, a.expression(), b.expression()));
+    }
+
+    /** {@code DifferenceInHours(dt1, dt2)} — the whole-hours difference between two date-times, as a number. */
+    public static NumberExpr differenceInHours(TemporalOperand a, TemporalOperand b) {
+        return new NumberExpr(new DateDifference(DateDifference.Unit.HOURS, a.expression(), b.expression()));
+    }
+
+    /** {@code DifferenceInMinutes(dt1, dt2)} — the whole-minutes difference between two date-times. */
+    public static NumberExpr differenceInMinutes(TemporalOperand a, TemporalOperand b) {
+        return new NumberExpr(new DateDifference(DateDifference.Unit.MINUTES, a.expression(), b.expression()));
+    }
+
+    /** {@code DifferenceInSeconds(dt1, dt2)} — the whole-seconds difference between two date-times. */
+    public static NumberExpr differenceInSeconds(TemporalOperand a, TemporalOperand b) {
+        return new NumberExpr(new DateDifference(DateDifference.Unit.SECONDS, a.expression(), b.expression()));
     }
 
     /** {@code YearFromDate(date)} — the year component of a date (or date-time) as a number. */
@@ -293,29 +308,55 @@ public final class Dsl {
     }
 
     /** {@code AddDays(date, n)} — shifts a date by an integer constant, yielding a date (comparable). */
-    public static DateExpr addDays(DateOperand date, long amount) {
+    public static DateExpr addDays(TemporalOperand date, long amount) {
         return addDays(date, number(Long.toString(amount)));
     }
 
-    public static DateExpr addMonths(DateOperand date, long amount) {
+    public static DateExpr addMonths(TemporalOperand date, long amount) {
         return addMonths(date, number(Long.toString(amount)));
     }
 
-    public static DateExpr addYears(DateOperand date, long amount) {
+    public static DateExpr addYears(TemporalOperand date, long amount) {
         return addYears(date, number(Long.toString(amount)));
     }
 
     /** {@code AddDays(date, n)} where the amount is a numeric expression (e.g. a field, {@code AddDays(d, [n])}). */
-    public static DateExpr addDays(DateOperand date, NumberExpr amount) {
+    public static DateExpr addDays(TemporalOperand date, NumberExpr amount) {
         return new DateExpr(new DateShift(DateShift.Unit.DAYS, date.expression(), amount.expression()));
     }
 
-    public static DateExpr addMonths(DateOperand date, NumberExpr amount) {
+    public static DateExpr addMonths(TemporalOperand date, NumberExpr amount) {
         return new DateExpr(new DateShift(DateShift.Unit.MONTHS, date.expression(), amount.expression()));
     }
 
-    public static DateExpr addYears(DateOperand date, NumberExpr amount) {
+    public static DateExpr addYears(TemporalOperand date, NumberExpr amount) {
         return new DateExpr(new DateShift(DateShift.Unit.YEARS, date.expression(), amount.expression()));
+    }
+
+    /** {@code AddHours(dateTime, n)} — shifts a date-time by {@code n} hours, yielding a date-time ({@code n} may be negative). */
+    public static DateExpr addHours(TemporalOperand dateTime, long amount) {
+        return addHours(dateTime, number(Long.toString(amount)));
+    }
+
+    public static DateExpr addMinutes(TemporalOperand dateTime, long amount) {
+        return addMinutes(dateTime, number(Long.toString(amount)));
+    }
+
+    public static DateExpr addSeconds(TemporalOperand dateTime, long amount) {
+        return addSeconds(dateTime, number(Long.toString(amount)));
+    }
+
+    /** {@code AddHours(dateTime, n)} where the amount is a numeric expression. */
+    public static DateExpr addHours(TemporalOperand dateTime, NumberExpr amount) {
+        return new DateExpr(new DateShift(DateShift.Unit.HOURS, dateTime.expression(), amount.expression()));
+    }
+
+    public static DateExpr addMinutes(TemporalOperand dateTime, NumberExpr amount) {
+        return new DateExpr(new DateShift(DateShift.Unit.MINUTES, dateTime.expression(), amount.expression()));
+    }
+
+    public static DateExpr addSeconds(TemporalOperand dateTime, NumberExpr amount) {
+        return new DateExpr(new DateShift(DateShift.Unit.SECONDS, dateTime.expression(), amount.expression()));
     }
 
     /** A numeric literal as a comparable expression — e.g. an arithmetic operand ({@code … + 2}). */

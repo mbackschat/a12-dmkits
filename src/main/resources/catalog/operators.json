@@ -850,6 +850,42 @@
     "sinceKernel": "30.8.x"
   },
   {
+    "id": "DifferenceInHours",
+    "kind": "function",
+    "keywords": { "en": "DifferenceInHours", "de": "DifferenzInStunden" },
+    "operands": [ { "type": "date-time" }, { "type": "date-time" } ],
+    "returns": "number",
+    "meaning": "The whole-hours difference between two date-times (second minus first).",
+    "constraints": [ "both operands are date-times (fields or date-time expressions), rendered as bare entity refs" ],
+    "gotchas": [ { "text": "a floor, not a rounded count; the sign follows operand order (DifferenceIn*(a,b) = b - a)", "kind": "SURPRISE" } ],
+    "validExample": { "dsl": "AllFieldsFilled(ScheduledAt, CompletedAt) And DifferenceInHours(ScheduledAt, CompletedAt) > 24", "note": "fires when completion is more than a day after scheduling" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "DifferenceInMinutes",
+    "kind": "function",
+    "keywords": { "en": "DifferenceInMinutes", "de": "DifferenzInMinuten" },
+    "operands": [ { "type": "date-time" }, { "type": "date-time" } ],
+    "returns": "number",
+    "meaning": "The whole-minutes difference between two date-times (second minus first).",
+    "constraints": [ "both operands are date-times" ],
+    "gotchas": [ { "text": "a floor, not a rounded count", "kind": "SURPRISE" } ],
+    "validExample": { "dsl": "AllFieldsFilled(ScheduledAt, CompletedAt) And DifferenceInMinutes(ScheduledAt, CompletedAt) > 90", "note": "fires when more than 90 minutes elapsed" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "DifferenceInSeconds",
+    "kind": "function",
+    "keywords": { "en": "DifferenceInSeconds", "de": "DifferenzInSekunden" },
+    "operands": [ { "type": "date-time" }, { "type": "date-time" } ],
+    "returns": "number",
+    "meaning": "The whole-seconds difference between two date-times (second minus first).",
+    "constraints": [ "both operands are date-times" ],
+    "gotchas": [ { "text": "a floor, not a rounded count", "kind": "SURPRISE" } ],
+    "validExample": { "dsl": "AllFieldsFilled(ScheduledAt, CompletedAt) And DifferenceInSeconds(ScheduledAt, CompletedAt) > 0", "note": "fires when completion is strictly after scheduling" },
+    "sinceKernel": "30.8.x"
+  },
+  {
     "id": "AddDays",
     "kind": "function",
     "keywords": { "en": "AddDays", "de": "AddiereTage" },
@@ -883,6 +919,42 @@
     "constraints": [ "the first operand is a date; the second an integer amount" ],
     "gotchas": [ { "text": "differs from AddMonths across leap years (§6)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And [DeliveryDate] > AddYears(OrderDate, 1)", "note": "fires when delivery is more than a year out" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "AddHours",
+    "kind": "function",
+    "keywords": { "en": "AddHours", "de": "AddiereStunden" },
+    "operands": [ { "type": "date-time" }, { "type": "integer" } ],
+    "returns": "date-time",
+    "meaning": "The date-time shifted by the given number of hours (may roll over the date; the amount may be negative).",
+    "constraints": [ "the first operand is a date-time (bare entity ref); the second an integer amount" ],
+    "gotchas": [ { "text": "operates on (and returns) a date-time, not a date — it can roll the calendar day over", "kind": "SURPRISE" } ],
+    "validExample": { "dsl": "FieldFilled(ScheduledAt) And HoursFromTime(AddHours(ScheduledAt, 2)) < 23", "note": "the scheduled time, two hours on, is before 23:00" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "AddMinutes",
+    "kind": "function",
+    "keywords": { "en": "AddMinutes", "de": "AddiereMinuten" },
+    "operands": [ { "type": "date-time" }, { "type": "integer" } ],
+    "returns": "date-time",
+    "meaning": "The date-time shifted by the given number of minutes (amount may be negative).",
+    "constraints": [ "the first operand is a date-time; the second an integer amount" ],
+    "gotchas": [ { "text": "returns a date-time; can roll over the hour and day", "kind": "SURPRISE" } ],
+    "validExample": { "dsl": "FieldFilled(ScheduledAt) And MinutesFromTime(AddMinutes(ScheduledAt, 30)) < 60", "note": "the scheduled time, half an hour on" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "AddSeconds",
+    "kind": "function",
+    "keywords": { "en": "AddSeconds", "de": "AddiereSekunden" },
+    "operands": [ { "type": "date-time" }, { "type": "integer" } ],
+    "returns": "date-time",
+    "meaning": "The date-time shifted by the given number of seconds (amount may be negative).",
+    "constraints": [ "the first operand is a date-time; the second an integer amount" ],
+    "gotchas": [ { "text": "returns a date-time; can roll over the minute, hour and day", "kind": "SURPRISE" } ],
+    "validExample": { "dsl": "FieldFilled(ScheduledAt) And SecondsFromTime(AddSeconds(ScheduledAt, 45)) < 60", "note": "the scheduled time, 45 seconds on" },
     "sinceKernel": "30.8.x"
   },
   {
@@ -1065,7 +1137,7 @@
     "id": "Now",
     "kind": "constant",
     "keywords": { "en": "Now", "de": "Jetzt" },
-    "returns": "datetime",
+    "returns": "date-time",
     "meaning": "The current date-time — the date-time sibling of Today (discouraged with ==, forbidden in computations).",
     "constraints": [ "rulekit: PLANNED stub — no typed handle yet; keywords grounded in the lexer bundles (see WORKSPACE-CORPUS-ANALYSIS backlog)" ],
     "status": "PLANNED",

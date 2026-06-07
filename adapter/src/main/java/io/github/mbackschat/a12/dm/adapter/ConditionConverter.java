@@ -1231,17 +1231,36 @@ final class ConditionConverter {
         };
     }
 
-    /** {@code DifferenceInDays/Months/Years(a, b)} as a numeric operand. */
+    /** {@code DifferenceInDays/Months/Years(a, b)} (dates) or {@code DifferenceInHours/Minutes/Seconds(a, b)} (date-times). */
     private NumberExpr convertDateDiff(IDateDiffOperation diff) {
-        DateOperand a = convertDateOperand(diff.getDateSpec1(), diff);
-        DateOperand b = convertDateOperand(diff.getDateSpec2(), diff);
+        TemporalOperand a = temporalOperand(diff.getDateSpec1(), diff);
+        TemporalOperand b = temporalOperand(diff.getDateSpec2(), diff);
         DateDiffOperationName name = diff.getOperatorName();
         return switch (name) {
             case DifferenceInDays -> Dsl.differenceInDays(a, b);
             case DifferenceInMonths -> Dsl.differenceInMonths(a, b);
             case DifferenceInYears -> Dsl.differenceInYears(a, b);
+            case DifferenceInHours -> Dsl.differenceInHours(a, b);
+            case DifferenceInMinutes -> Dsl.differenceInMinutes(a, b);
+            case DifferenceInSeconds -> Dsl.differenceInSeconds(a, b);
             default -> throw unsupported("date-diff operator " + name, diff);
         };
+    }
+
+    /**
+     * A temporal operand for a difference/shift — a {@code DATE_TIME} field (the sub-day {@code Add*}/
+     * {@code DifferenceIn*Hours/Minutes/Seconds} operate on date-times), else a {@link DateOperand} (a
+     * date field, {@code Today}, an aggregate, a shift, a range bound, or a date constant). Both are
+     * {@link TemporalOperand}s, so they render as a bare entity ref in argument position either way.
+     */
+    private TemporalOperand temporalOperand(IOperation op, Object origin) {
+        if (op instanceof IFieldIdOperation field && field.getOperatorName() == FieldIdOperationName.FieldValue
+                && model.fieldAt(field.getField().getFullName())
+                        .map(i -> i.kind() == ValueKind.DATE_TIME).orElse(false)) {
+            DateTimeRef dt = model.dateTime(field.getField().getFullName());
+            return field.getField().isOuter() ? dt.outer() : dt;   // $ correlation (D13)
+        }
+        return convertDateOperand(op, origin);
     }
 
     /** A date-valued operand: a date field ({@code FieldValue}), a date constant, or a point-in-time ({@code Today}). */
@@ -1360,6 +1379,10 @@ final class ConditionConverter {
         if (op instanceof IPointInTimeOperation pit && pit.getOperatorName() == PointInTimeOperationName.Today) {
             return Dsl.today();
         }
+        // a shifted date-time as the extraction source, e.g. HoursFromTime(AddHours(scheduledAt, 2))
+        if (op instanceof IDateAddOperation add) {
+            return convertDateAdd(add);
+        }
         // a date-valued bound of a date-range as the extraction source, e.g. DayFromDate(EndOfDateRange(range))
         if (op instanceof IDateRangeExtractionOperation) {
             return convertDateOperand(op, origin);
@@ -1389,14 +1412,17 @@ final class ConditionConverter {
         throw unsupported("date-time extraction source " + op.getClass().getSimpleName(), origin);
     }
 
-    /** {@code AddDays/AddMonths/AddYears(date, n)} — shift a date by an amount (a constant or a numeric expression). */
+    /** {@code AddDays/Months/Years(date, n)} (→ date) or {@code AddHours/Minutes/Seconds(dateTime, n)} (→ date-time). */
     private DateOperand convertDateAdd(IDateAddOperation add) {
-        DateOperand base = convertDateOperand(add.getDateSpec(), add);
+        TemporalOperand base = temporalOperand(add.getDateSpec(), add);
         NumberExpr amount = arithmeticOperand(add.getAmountSpec(), add);   // constant, field, or expression
         return switch (add.getOperatorName()) {
             case AddDays -> Dsl.addDays(base, amount);
             case AddMonths -> Dsl.addMonths(base, amount);
             case AddYears -> Dsl.addYears(base, amount);
+            case AddHours -> Dsl.addHours(base, amount);
+            case AddMinutes -> Dsl.addMinutes(base, amount);
+            case AddSeconds -> Dsl.addSeconds(base, amount);
             default -> throw unsupported("date-add operator " + add.getOperatorName(), add);
         };
     }
