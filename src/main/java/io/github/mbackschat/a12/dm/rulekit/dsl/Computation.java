@@ -124,18 +124,18 @@ public record Computation(
                         "the operation '" + new DslRenderer().render(a.operation()) + "' yields "
                                 + a.operation().kind() + " but the computed field " + computedPath
                                 + " is " + computedField.kind() + " — kinds must match");
-                require(!ConditionReferences.of(a.operation()).covers(computedPath),
+                require(!ConditionReferences.of(a.operation()).referencesField(computedPath),
                         "the computed field " + computedPath + " must not be referenced in its own"
                                 + " operation (MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD)");
                 a.precondition().ifPresent(p -> {
-                    require(!ConditionReferences.of(p).covers(computedPath),
+                    require(!ConditionReferences.of(p).referencesField(computedPath),
                             "the computed field " + computedPath + " must not be referenced in a"
                                     + " precondition (MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD)");
                     requireNoCustomCondition(p);
                 });
             }
             if (commonPrecondition != null) {
-                require(!ConditionReferences.of(commonPrecondition).covers(computedPath),
+                require(!ConditionReferences.of(commonPrecondition).referencesField(computedPath),
                         "the computed field " + computedPath + " must not be referenced in the"
                                 + " common precondition (MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD)");
                 requireNoCustomCondition(commonPrecondition);

@@ -37,6 +37,18 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 || groupPaths.stream().anyMatch(g -> fieldPath.startsWith(g + "/"));
     }
 
+    /**
+     * Whether {@code fieldPath} is referenced as a <b>field</b> (exact) — <em>not</em> merely via its
+     * containing group. The calculated-field-reference prohibition
+     * ({@code MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD}) uses this rather than {@link #covers}: guarding a
+     * repeatable computed field with {@code GroupFilled}/{@code CurrentRepetition} on its <em>containing
+     * group</em> is kernel-legal (the BA doc's current-repetition pattern), so a group reference must not
+     * count as referencing the field.
+     */
+    public boolean referencesField(String fieldPath) {
+        return fieldPaths.contains(fieldPath);
+    }
+
     private static void collect(Condition condition, Set<String> fields, Set<String> groups) {
         switch (condition) {
             case FieldPresenceCondition f -> fields.add(f.field().path());

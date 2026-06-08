@@ -259,7 +259,7 @@ BoundModel m2 = m.add(rule);                               // ✅ snapshot (F0):
 m2.writeTo(path);                                          // ✅ DM-JSON write path — authored JSON, includes preserved (D9, F6)
 ```
 
-### 4.3 A computation, same materials (F2) ✅ — implemented 2026-06-04 (`ComputationAuthoringTest`; aggregates/arithmetic in operations are corpus items 6–7); **ingest + full cycle ✅ 2026-06-08** (`ingestComputation`/`replaceComputation`; kernel-mm 100%, Corpus-1 100% — §9 board)
+### 4.3 A computation, same materials (F2) ✅ — implemented 2026-06-04 (`ComputationAuthoringTest`; aggregates/arithmetic in operations are corpus items 6–7); **ingest + full cycle ✅ 2026-06-08** (`ingestComputation`/`replaceComputation`; kernel-mm 100%, Corpus-1 100% — §9 board); **BA-doc worked-example shapes transferred** (`BaComputationCorpusTest`: concat, tiered+rounding, division/grouping, common-precondition, current-repetition, parallel-iteration — the current-repetition one surfaced + fixed an over-strict calculated-field pre-check, KERNEL-FINDINGS §11)
 
 ```java
 Computation tiered = m.computation(m.num("/Subscription/Billing/EffectiveFee"))   // element placed in the

@@ -282,11 +282,11 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 ## §11 supplement — computation alternatives and the calculated-field ban
 
 - **Alternatives are all-or-nothing about preconditions**: either a single alternative *without* a precondition, or several that *all* carry one — mixing a precondition-less "otherwise" in is rejected with **`MVK_ERROR_EMPTY_PRECONDITION`**. The default branch must be an explicit complementary precondition (as the demo's `BonusComp` does with `[WeekPay] < 500`).
-- The computed field may not be referenced in preconditions **nor in operations** — both directions draw the same **`MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD`** (KERNEL-SEMANTICS §11 states the precondition half).
+- The computed field may not be referenced in preconditions **nor in operations** — both directions draw the same **`MVK_ERROR_REFERENCE_TO_CALCULATED_FIELD`** (KERNEL-SEMANTICS §11 states the precondition half). **The ban is on a *direct field* reference, not the field's containing group** (BA-doc cross-check, 2026-06-08): guarding a *repeatable* computed field with `GroupFilled`/`CurrentRepetition` on its **containing group** is kernel-legal — it's exactly the BA doc's current-repetition pattern (`CurrentRepetition(RuleGroup) == 1 → "…"` where the computed field lives in `RuleGroup`). rulekit's pre-check therefore uses **exact field-match** (`ConditionReferences.referencesField`), not the group-prefix `covers()` it uses for the rule error-field check — the earlier `covers()` over-rejected this valid shape.
 - A wrong-kind operation (string expression into a number computed field) is **`MVK_INVALID_COMPARE_TO_ENUM_OR_STRING`**.
 - Computations require error text like rules do (`MVK_ERROR_MESSAGE_MISSING`).
 
-*(Locked: `ComputationAuthoringTest`.)*
+*(Locked: `ComputationAuthoringTest`; the BA-doc worked-example shapes — concat, tiered+rounding, division/grouping, common-precondition concat, current-repetition, parallel-iteration — transferred to own domains in `adapter.BaComputationCorpusTest`.)*
 
 ## The pre-`checkConsistency` tiers — the write path's output contract (instrument 4, 2026-06-04)
 
