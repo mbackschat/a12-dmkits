@@ -43,6 +43,18 @@ class CheckVerbTest {
     }
 
     @Test
+    void filePathFieldSuggestsTheFieldTheConditionReferences(@TempDir Path dir) throws Exception {
+        // Beyond "you passed a file": name the concrete field the --condition references, so a weaker
+        // agent has a value to copy, not just a rule to re-read. BaseFee is unique in the model.
+        Path m = model(dir);
+        var res = CliTestSupport.run("check", m.toString(),
+                "--field", m.toString(), "--condition", "[BaseFee] > 100", "--code", "FEE_CAP");
+        assertNotEquals(0, res.code(), "a file path in --field must fail");
+        assertTrue(res.err().contains("Did you mean") && res.err().contains("/Subscription/Billing/BaseFee"),
+                () -> "should suggest the field the condition references: " + res.err());
+    }
+
+    @Test
     void acceptsAValidCandidateRule(@TempDir Path dir) throws Exception {
         // --field is the error field's absolute path; --group defaults to its parent (iterate per add-on).
         var res = CliTestSupport.run("check", model(dir).toString(),

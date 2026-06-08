@@ -28,6 +28,42 @@ final class ModelPaths {
         return model.fieldAt(path).isPresent() ? null : problem(path, "field", "/Group/Field");
     }
 
+    /**
+     * A concrete "did you mean" cue for a rejected {@code --field}: the field(s) the rule's
+     * {@code condition} references, resolved to their full model paths. The generic {@link #fieldProblem}
+     * message tells the agent <em>what</em> {@code --field} must be (an entity path); this hands it a
+     * <em>value to copy</em> — the recurring N6 slip is a weaker model that re-reads the rule but never
+     * acts, so naming the path it already wrote in the condition closes the loop. A field is referenced
+     * if its full path or its short name appears as a word in the condition. Returns {@code null} when the
+     * condition names no model field (no confident suggestion to make).
+     */
+    static String suggestField(BoundModel model, String condition) {
+        if (condition == null || condition.isBlank()) {
+            return null;
+        }
+        java.util.List<String> refs = model.fields()
+                .map(io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo::path)
+                .filter(p -> conditionReferences(condition, p))
+                .distinct()
+                .toList();
+        if (refs.isEmpty()) {
+            return null;
+        }
+        if (refs.size() == 1) {
+            return "Did you mean --field " + refs.get(0) + "? (it is the field your --condition references).";
+        }
+        return "Did you mean one of the fields your --condition references: " + refs + "?";
+    }
+
+    private static boolean conditionReferences(String condition, String fieldPath) {
+        if (condition.contains(fieldPath)) {
+            return true;   // the full /Group/Field path is written out verbatim
+        }
+        String shortName = fieldPath.substring(fieldPath.lastIndexOf('/') + 1);
+        return java.util.regex.Pattern.compile("\\b" + java.util.regex.Pattern.quote(shortName) + "\\b")
+                .matcher(condition).find();
+    }
+
     static String groupProblem(BoundModel model, String path) {
         boolean resolves = model.groups().anyMatch(g -> g.path().equals(path));
         return resolves ? null : problem(path, "group", "/Group");

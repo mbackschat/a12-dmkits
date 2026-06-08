@@ -96,12 +96,16 @@ final class CheckCommand extends BaseCommand {
         IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
         try {
             BoundModel bound = BoundModel.ofJson(json, resolver);
-            String problem = ModelPaths.fieldProblem(bound, field);
-            if (problem == null && group != null) {
-                problem = ModelPaths.groupProblem(bound, effectiveGroup);
+            String fieldProblem = ModelPaths.fieldProblem(bound, field);
+            if (fieldProblem != null) {
+                String suggestion = ModelPaths.suggestField(bound, condition);
+                return fail(suggestion == null ? fieldProblem : fieldProblem + " " + suggestion);
             }
-            if (problem != null) {
-                return fail(problem);
+            if (group != null) {
+                String groupProblem = ModelPaths.groupProblem(bound, effectiveGroup);
+                if (groupProblem != null) {
+                    return fail(groupProblem);
+                }
             }
         } catch (RuntimeException skip) {
             // model didn't bind standalone — defer to the kernel validation below
