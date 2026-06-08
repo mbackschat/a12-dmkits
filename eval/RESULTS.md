@@ -15,6 +15,10 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-08 22:50 CEST — diff-retirement spot-check: no dent (T7/T13/T15, opus + sonnet, k=2)
+
+Confirming the retired `diff` verb (manifest 14 → 13) didn't dent self-sufficiency. Fresh run `wf_46603311-672` (**24 agents, 0.56M tokens, 4m45s**) over a comprehension (T7), an author-computation (T13), and a multi-file authoring (T15) task — the surfaces nearest the verb-list change. **Results identical to the pre-retirement 22:16 baseline: opus 6/6, sonnet 4/6** — T7 2/2 and T13 2/2 on **both** tiers, T15 opus 2/2 / sonnet 0/2. The two sonnet/T15 misses are the same pre-existing `--field` file-path slip (kernel-invalid; an authoring task that touches no re-express verb), not a retirement effect. Removing `diff` from the self-describing manifest left cold-agent orientation and the read/computation/multi-file surfaces unchanged.
+
 ### 2026-06-08 22:30 CEST — T16 recheck switched to `modify --dry-run`; then `diff` retired (targeted, opus + sonnet, k=2)
 
 The 22:16 run validated the `modify-computation` family with `diff --computation` — so the `modify` verb itself wasn't eval-exercised. The recheck + prompt now use `cli modify --computation … --spec --dry-run` (read-only — writes nothing, but drives the verb under test). Fresh T16-only run `wf_2d440657-493` (**9 agents, 0.22M tokens, 2m09s**): **opus 2/2, sonnet 2/2** — unchanged from the `diff` gate, confirming `modify --dry-run` is equivalent (same shared core) and the `modify` verb is now under eval coverage. Following this, the read-only **`diff` verb was retired entirely** — it was redundant with `modify --dry-run` (identical code path + output); `modify` is now the sole re-express verb (default writes, `--dry-run` previews). Verb surface 14 → 13.
