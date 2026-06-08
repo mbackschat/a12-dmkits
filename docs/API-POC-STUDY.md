@@ -181,7 +181,7 @@ static List<Rule> nonNegativeMoneyRules(BoundModel m) {
                     .when(f.asNum().filled().and(f.asNum().lt(0)))
                     .code("NON_NEGATIVE_" + f.name().toUpperCase())
                     .severity(Severity.ERROR)
-                    .message(en(f.name() + " must not be negative."))   // 🔮 {0}→$Field.value$ interpolation
+                    .message(en(f.name() + " must not be negative."))   // ✅ F2a: interpolate the value via Dsl.fieldValue(f) → $path.value$
                     .build())
             .toList();
 }
@@ -231,7 +231,7 @@ Rule rule = m.rule(addons)                        // model-aware entry: rule liv
         .code("ADDON_FEE_REQUIRED_FOR_PRO")
         .severity(Severity.ERROR)
         .message(en("A PRO subscription requires a monthly fee per add-on."),
-                 de("Ein PRO-Abo erfordert eine Monatsgebühr je Zusatzoption."))   // 🔮 {0}→$Name.value$ interpolation: F2a follow-up
+                 de("Ein PRO-Abo erfordert eine Monatsgebühr je Zusatzoption."))   // ✅ F2a landed: interpolate via Dsl.fieldValue(name) → $Name.value$
         .build();   // pre-checks at build(): error field under the group; error-field-referenced
                     // (directly or via enclosing group ref — kernel-verified); the LOCALE LAW:
                     // a message for EVERY declared locale (MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING),
@@ -509,7 +509,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 |---|---|
 | Handles (`num/str/enumOf/bool/confirm/group/date`), typed conditions, EN/DE render, validator, D14 ids + `PathStyle`, `Dsl.*`, literal overloads, `transform` | ✅ (Phase 1; operator coverage = corpus items 1–6, 8, 9a + iteration 7a–7f — patterns, value lists, count + list aggregates, `*` lists, `repetitionNotUnique(...).from(...)`, `flatten(...).having(filter)`, `currentRepetition`, `num(f).forIndex(...)`, parallel iteration, `customCondition`, dates, field-vs-field) |
 | §3.1 fragments, §3.3 library pattern, §6 catalog queries, §2 type-steering | ✅ pattern works today on covered operators |
-| §3.2 domain fragments (`withinTolerance`, `chronological`, `uniqueBy`) | `uniqueBy` ✅ (7b); `chronological` now buildable (dates ✅); `withinTolerance` 🔮 (tolerance ops unmodeled) |
+| §3.2 domain fragments (`withinTolerance`, `chronological`, `uniqueBy`) | all now **buildable** from shipped operators (these are user-side combinators, not a rulekit API): `uniqueBy` ✅ (7b), `chronological` ✅ (dates), `withinTolerance` ✅ (tolerance ops landed 2026-06-07 — `NumberExpr.differsWithTolerance`) |
 | §3.4a `sameAddress` (field-vs-field equality) | ✅ string + number (finding 18) + **enum-vs-enum** (`EnumRef.is(EnumRef)`, 2026-06-06) |
 | §6c navigation (Level 1: `fields()`/`groups()`/`fieldAt` + strict narrowing), §3.5 `allOf`/`anyOf` | ✅ implemented 2026-06-04 (findings 9–10) |
 | §3.4 rule templates | ✅ full form works (navigation + `Rule` object) |

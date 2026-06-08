@@ -3,8 +3,9 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 /**
  * One localized error-message text, keyed by the DM-JSON locale code (e.g. {@code en_US}). A model
  * may declare <em>any</em> locales — build via {@link Dsl#text(String, String)}, with
- * {@link Dsl#en(String)} / {@link Dsl#de(String)} as sugar for the common codes. The typed
- * interpolation helper ({@code $Field.value$}) is the F2a follow-up — texts are plain for now.
+ * {@link Dsl#en(String)} / {@link Dsl#de(String)} as sugar for the common codes. Interpolate a field's
+ * runtime value with {@link Dsl#fieldValue(FieldRef)} (F2a) — e.g. {@code en("Fee " + fieldValue(fee) +
+ * " exceeds the cap.")} renders the kernel's {@code $<path>.value$} placeholder.
  */
 public record LocalizedText(String locale, String text) {
 
