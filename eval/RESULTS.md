@@ -15,6 +15,33 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-08 17:25 CEST — full pass@k after the computation/CLI/operator build-out — no regression; two real gaps (opus + sonnet, k=2)
+
+First full sweep after this session's large surface growth: computations first-class read+write (`ingestModel`/`where-used`/`explain --computation`/`ingest --all`, `add` a computation, `diff --computation`), CLI-over-includes (`--include-dir` on every verb, F-RES), `Valid/Invalid(field,"Type")`, and the `DateRange` constructor (catalog now zero PLANNED stubs). Material changed → **fresh** full run `wf_478a0cb7-3c0` (**80 agents, 2.07M subagent tokens, 11m36s**), now **T1–T11** (T9–T11 = the date-extraction / group-scope-quantifier / string-concat authoring tasks). Bare-tool mode (no skill). Question: did the enlarged CLI/catalog regress self-sufficiency, and where are the gaps?
+
+| Task | opus | sonnet | family |
+|---|---|---|---|
+| T1 | 2/2 | 2/2 | authoring — iteration guard + cross-group enum |
+| T2 | 2/2 | 2/2 | authoring — field-vs-field |
+| T3 | 2/2 | **0/2** | authoring — pattern |
+| T4 | 2/2 | 1/2 | authoring — aggregate + Having |
+| T5 | 2/2 | 1/2 | authoring — date |
+| T6 | 2/2 | 2/2 | authoring — value-list + boolean |
+| T7 | 2/2 | 2/2 | comprehension — date + pattern read-back |
+| T8 | 2/2 | 2/2 | comprehension — custom condition |
+| T9 | 2/2 | 1/2 | authoring — date extraction (`YearFromDate`) |
+| T10 | 1/2 | 1/2 | authoring — group-scope quantifier (`NotAllFieldsFilled(group)`) |
+| T11 | **0/2** | **0/2** | authoring — string concatenation |
+
+**Totals: opus 19/22, sonnet 14/22.** **No regression** — on the T1–T8 overlap with 2026-06-06, opus *improved* to **16/16** (was 13/16) and sonnet held at **12/16** (was 11/16); comprehension T7/T8 are 2/2 on both tiers. The enlarged CLI/catalog (new verbs + ~2 new operator families this session) did not degrade the existing families. Two gaps, one recurring and one new:
+
+- **GAP 1 (recurring, #1 cause of sonnet's misses) — the `--field` file-path confusion persists.** Across **T3 (sonnet 0/2), T11, T10/1, and the sonnet T4/T5/T9 misses**, the produced *condition was correct* but the agent put the **model file path** (`/Users/…/models/order.dm.json`) into the `field` slot instead of a model entity path (`/Order/ProductCode`). This is the exact gap the 2026-06-06 run surfaced; the `ModelPaths` pre-flight guard (added since) reduced but did **not eliminate** it — sonnet still lands a file path there and doesn't recover within the run. It's a pure tool-boundary confusion, not a rule-language gap. **Actionable (tooling):** make it impossible to ignore — reject a `--field`/`--group`/`--rule` value that **is an existing file** or **equals the positional `<model.json>` arg** with a laser-specific message ("you passed the model FILE; --field is a path INSIDE it, e.g. /Order/ProductCode — see `describe`"), upstream of the generic resolution error. opus did not hit this at all.
+- **GAP 2 (new, genuine semantic — both tiers on T11) — string concatenation does NOT inherit "empty ⇒ not evaluated".** opus authored `[FullName] != [FirstName] + " " + [LastName]` **without** the gold's `AllFieldsFilled(FirstName, LastName)` guard → kernel-valid but **not equivalent**: empty number/date operands make a comparison "not evaluated" (KERNEL-FINDINGS §2), but an empty *string* still concatenates to `" "`, so the comparison **is** evaluated and mis-fires on an all-empty person. (sonnet's T11 misses were the file-path confusion on top.) One agent even guarded the wrong field — `FieldFilled(FullName)` instead of the concatenated *operands*. **Actionable (skill/catalog):** a `Concatenation`/`+` gotcha — *a string field that participates in a concatenation needs an explicit presence guard on the operands; it does not get the empty-as-not-evaluated free pass numbers/dates do.* This is the most valuable new finding — the string-concat operator's specific trap.
+
+**Not gaps:** **T10** — agents reached for the field-list enumeration `NotAllFieldsFilled(ShippingAddress/Street, ShippingAddress/City)` rather than the new group-scope `NotAllFieldsFilled(ShippingAddress)`; the judge correctly ruled them equivalent (same field set), so the new group-scope operator is discoverable and the enumeration is a valid alternative. **T9** (`YearFromDate(OrderDate) < 2020`) — opus byte-identical to gold both runs; the date-extraction family authors cleanly. **T5** — agents again prefer the direct `[DeliveryDate] < [OrderDate]` over the gold's `DifferenceInDays`; judge rules equivalent (the gold's guard is redundant for dates).
+
+**On this session's new surface:** T1–T11 exercise the *older* + the three 2026-06-06 families; this run therefore measures **regression + the existing suite**, not the brand-new verbs (computation authoring/diff over the CLI, `--include-dir`, `Valid(field,"Type")`, `DateRange`) — there are no tasks for those. Measuring *their* authorability needs **new tasks** (a computation-authoring task; a multi-file/`--include-dir` task; a `Valid(field,"Type")` task; a `DateRange` computed-field task) — the recommended next suite addition.
+
 ### 2026-06-06 22:54 CEST — full pass@k after the F10 ingest build-out (+11 catalog operators) — no regression (opus + sonnet, k=2)
 
 First full sweep (now **T1–T8**, T8 added) after this session's large converter/catalog growth: the comparison-RHS family, `FirstFilledValue` (number/date/string), group-scope `Not*`/`MoreThanOne` quantifiers, string coercions `RangeAsString`/`FieldValueAsString`, date shifts + date→number extraction, and root-group counting — **~11 new operators in the catalog** (Corpus-1 ingest 65.1% → 87.0% this session). Material changed → fresh run `wf_deff5a53-caa` (**63 agents, 1.32M subagent tokens, 8m19s**). Question: did the enlarged `cli operators` catalog regress self-sufficiency on the existing families?
