@@ -36,6 +36,7 @@ const CLI = 'JAVA_HOME="$(/usr/libexec/java_home -v 21)" cli/build/install/cli/b
 const MODEL_FILE = t => `cli/src/test/resources/models/${t.model}.dm.json`
 
 const AUTHORING = TASKS.filter(t => t.family === 'authoring')
+const AUTHORING_COMP = TASKS.filter(t => t.family === 'authoring-computation')
 const COMPREHENSION = TASKS.filter(t => t.family === 'comprehension')
 
 // ---- prompts (EVAL-SPEC §5: neutral, material-only, no leaking the technique/polarity) ------------
@@ -47,6 +48,16 @@ function authorPrompt(task) {
 Do NOT read any rulekit source, docs, tests, or *.md files. Requirement to enforce: "${task.intent}".
 Author the rule and CONFIRM the kernel accepts it via the CLI. Return ONLY JSON:
   {"field":"<absolute path>","condition":"<DSL>","code":"<ID>","kernelAccepted":true|false}`
+}
+
+function authorComputationPrompt(task) {
+  return `You help a business analyst author an A12 COMPUTATION — a rule that COMPUTES (fills in) a field's value
+from other fields, rather than validating one. Assume NO prior A12/rulekit knowledge; use ONLY:
+  - the CLI:  ${CLI} <args>   (it is self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <verb> --help\` shows a verb's parameters, \`${CLI} schema add\` shows the input shapes, \`${CLI} operators\` lists the DSL operators and \`${CLI} operators <id>\` gives one in full)
+  - the model file: ${MODEL_FILE(task)}
+Do NOT read any rulekit source, docs, tests, or *.md files. Requirement to implement: "${task.intent}".
+Author the computation and CONFIRM the kernel accepts it via the CLI. Return ONLY JSON:
+  {"computedField":"<absolute path>","commonPrecondition":"<DSL or omit>","alternatives":[{"precondition":"<DSL or omit>","operation":"<DSL value expression>"}],"messages":[{"locale":"<code>","text":"..."}],"kernelAccepted":true|false}`
 }
 
 function explainPrompt(task) {
@@ -64,6 +75,22 @@ const AUTHOR_SCHEMA = {
   properties: { field: { type: 'string' }, condition: { type: 'string' },
     code: { type: 'string' }, kernelAccepted: { type: 'boolean' } },
   required: ['field', 'condition'],
+}
+const AUTHOR_COMP_SCHEMA = {
+  type: 'object', additionalProperties: true,
+  properties: {
+    computedField: { type: 'string' },
+    commonPrecondition: { type: 'string' },
+    alternatives: { type: 'array', items: {
+      type: 'object', additionalProperties: true,
+      properties: { precondition: { type: 'string' }, operation: { type: 'string' } },
+      required: ['operation'] } },
+    messages: { type: 'array', items: {
+      type: 'object', additionalProperties: true,
+      properties: { locale: { type: 'string' }, text: { type: 'string' } } } },
+    kernelAccepted: { type: 'boolean' },
+  },
+  required: ['computedField', 'alternatives'],
 }
 const EXPLAIN_SCHEMA = {
   type: 'object', additionalProperties: true,
@@ -93,6 +120,16 @@ const explained = await parallel(explainRuns.map(r => () =>
   agent(explainPrompt(r.task), { label: `explain ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: EXPLAIN_SCHEMA })
     .then(out => ({ kind: 'comprehension', model: r.model, task: r.task, i: r.i, out }))
     .catch(() => ({ kind: 'comprehension', model: r.model, task: r.task, i: r.i, out: null }))))
+
+const compRuns = []
+for (const model of MODELS)
+  for (const task of AUTHORING_COMP)
+    for (let i = 0; i < K; i++) compRuns.push({ model, task, i })
+
+const authoredComp = await parallel(compRuns.map(r => () =>
+  agent(authorComputationPrompt(r.task), { label: `comp ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: AUTHOR_COMP_SCHEMA })
+    .then(out => ({ kind: 'authoring-computation', model: r.model, task: r.task, i: r.i, out }))
+    .catch(() => ({ kind: 'authoring-computation', model: r.model, task: r.task, i: r.i, out: null }))))
 
 // ---- Recheck: ONE warm-JVM `cli batch` authoritatively re-validates every authored candidate -------
 // (Don't trust the agents' self-reported kernelAccepted.) This is the batch verb's reason to exist:
@@ -132,6 +169,53 @@ Report every op via the structured-output tool: one {id, valid} per op.`,
   } catch (e) {
     log('batch recheck failed (' + e.message + ') — falling back to agent self-report')
     authoritative = selfReport()
+  }
+}
+
+// ---- Recheck (computations): authoritatively persist each via `cli add` (which validates first) ------
+// A computation isn't a rule, so it can't ride the `check` batch above; `add` is the kernel-authoritative
+// gate (it rejects with {persisted:false} + exit 1 before writing). Few comp candidates → one agent does
+// all the adds; falls back to the agents' self-reported kernelAccepted if it can't emit the verdicts.
+
+const compSpec = (out) => {
+  const s = { computedField: out.computedField,
+    alternatives: (out.alternatives || []).map(a => a.precondition
+      ? { precondition: a.precondition, operation: a.operation } : { operation: a.operation }) }
+  if (out.commonPrecondition) s.commonPrecondition = out.commonPrecondition
+  if (out.messages) s.messages = out.messages
+  return s
+}
+const compCandidates = authoredComp.filter(r => r && r.out && r.out.computedField && (r.out.alternatives || []).length)
+let compAuthoritative = {}
+if (compCandidates.length) {
+  const entries = compCandidates.map(r => {
+    const id = `${r.model}/${r.task.id}/${r.i}`
+    return { id, file: `/tmp/rk-comp-${id.replace(/[^a-zA-Z0-9]/g, '_')}.json`,
+      model: MODEL_FILE(r.task), spec: compSpec(r.out) }
+  })
+  const compSelfReport = () => {
+    const m = {}
+    for (const r of compCandidates) m[`${r.model}/${r.task.id}/${r.i}`] = !!(r.out && r.out.kernelAccepted)
+    return m
+  }
+  try {
+    const rescore = await agent(
+      `Authoritatively re-validate candidate A12 COMPUTATIONS against the real kernel. For EACH entry below:
+write its \`spec\` (verbatim JSON) to its \`file\`, then run:  ${CLI} add <entry.model> <entry.file>
+The kernel validates before writing: on ACCEPT it prints the new model JSON and exits 0; on REJECT it
+prints {"persisted":false,...} and exits non-zero. Entries:
+${JSON.stringify(entries)}
+Report every entry via the structured-output tool: one {id, valid} per entry (valid = accepted/persisted).`,
+      { label: 'comp recheck', phase: 'Recheck',
+        schema: { type: 'object', additionalProperties: false, required: ['verdicts'],
+          properties: { verdicts: { type: 'array', items: {
+            type: 'object', additionalProperties: false, required: ['id', 'valid'],
+            properties: { id: { type: 'string' }, valid: { type: 'boolean' } } } } } } })
+    for (const v of (rescore && rescore.verdicts) || []) compAuthoritative[v.id] = v.valid
+    if (Object.keys(compAuthoritative).length === 0) compAuthoritative = compSelfReport()
+  } catch (e) {
+    log('comp recheck failed (' + e.message + ') — falling back to agent self-report')
+    compAuthoritative = compSelfReport()
   }
 }
 
@@ -176,6 +260,26 @@ Return ONLY JSON: {"correct": true|false, "why": "<one sentence>"}`,
     .then(v => ({ key: `${r.model}/${r.task.id}/${r.i}`, model: r.model, taskId: r.task.id, correct: !!(v && v.correct), why: v && v.why }))
     .catch(() => ({ key: `${r.model}/${r.task.id}/${r.i}`, model: r.model, taskId: r.task.id, correct: false }))))
 
+const compJudged = await parallel(compCandidates.map(r => () => {
+  const key = `${r.model}/${r.task.id}/${r.i}`
+  const valid = compAuthoritative[key] === true
+  if (!valid) return Promise.resolve({ key, model: r.model, taskId: r.task.id, valid: false, equivalent: false })
+  return agent(
+    `Judge whether a candidate A12 COMPUTATION is SEMANTICALLY EQUIVALENT to the reference (gold): do they
+assign the SAME value to the SAME computed field under the SAME conditions? A computation is a computed
+field + an optional common precondition + one or more (precondition, operation) alternatives. Two are
+equivalent iff, for every document, they compute the same value (or both compute nothing). The model is
+${MODEL_FILE(r.task)} — run \`${CLI} describe ${MODEL_FILE(r.task)}\` to see field types. A difference that
+is only path notation, conjunct order, or an equivalent value expression is NOT a semantic difference.
+Reference gold: ${JSON.stringify(r.task.gold)}.
+Candidate: ${JSON.stringify({ computedField: r.out.computedField, commonPrecondition: r.out.commonPrecondition, alternatives: r.out.alternatives })}.
+Return ONLY JSON: {"equivalent": true|false, "why": "<one sentence>"}`,
+    { label: `judge ${key}`, phase: 'Judge',
+      schema: { type: 'object', additionalProperties: true, properties: { equivalent: { type: 'boolean' }, why: { type: 'string' } }, required: ['equivalent'] } })
+    .then(v => ({ key, model: r.model, taskId: r.task.id, valid: true, equivalent: !!(v && v.equivalent), why: v && v.why }))
+    .catch(() => ({ key, model: r.model, taskId: r.task.id, valid: true, equivalent: false }))
+}))
+
 // ---- Aggregate pass@k per (model, task). pass = kernel-valid AND semantically right ----------------
 
 const agg = {}
@@ -186,7 +290,8 @@ function bump(model, taskId, passed) {
   if (passed) agg[k].passed++
 }
 for (const r of authorJudged) bump(r.model, r.taskId, r.valid && r.equivalent)
+for (const r of compJudged) bump(r.model, r.taskId, r.valid && r.equivalent)
 for (const r of explainJudged) bump(r.model, r.taskId, r.correct)
 
 log('pass@k by (model, task): ' + JSON.stringify(agg))
-return { agg, authorJudged, explainJudged }
+return { agg, authorJudged, compJudged, explainJudged }

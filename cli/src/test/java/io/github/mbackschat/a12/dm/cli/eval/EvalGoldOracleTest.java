@@ -21,9 +21,12 @@ import org.junit.jupiter.params.provider.MethodSource;
 import io.github.mbackschat.a12.dm.adapter.Ingest;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
+
+import java.util.ArrayList;
 
 /**
  * Layer 1 of the self-sufficiency benchmark (EVAL-SPEC §8) — the deterministic oracle. Reads every
@@ -70,6 +73,8 @@ class EvalGoldOracleTest {
         switch (task.path("family").asText()) {
             // Authoring: the gold condition must validate against the real kernel.
             case "authoring" -> assertGoldValidates(task, model, taskFile);
+            // Authoring a computation: the gold computation (computed field + alternatives) must validate.
+            case "authoring-computation" -> assertComputationGoldValidates(task, model, taskFile);
             // Comprehension: the model's named rules must ingest cleanly (Converted, not Opaque) —
             // i.e. they are actually readable by explain/ingest. The richer "did the agent explain
             // it right?" scoring is the agent layer's job (the task's `expected` rubric).
@@ -91,6 +96,30 @@ class EvalGoldOracleTest {
 
         assertTrue(result.ok(),
                 () -> taskFile.getFileName() + " gold must validate against the kernel, got: " + result.diagnostics());
+    }
+
+    private static void assertComputationGoldValidates(JsonNode task, String model, Path taskFile) {
+        JsonNode gold = task.get("gold");
+        String computedField = gold.get("computedField").asText();
+        int slash = computedField.lastIndexOf('/');
+        String group = computedField.substring(0, slash);
+        String relPath = "../" + computedField.substring(slash + 1);
+
+        List<DraftComputation.Alternative> alternatives = new ArrayList<>();
+        for (JsonNode alt : gold.get("alternatives")) {
+            String precondition = alt.hasNonNull("precondition") ? alt.get("precondition").asText() : null;
+            alternatives.add(new DraftComputation.Alternative(precondition, alt.get("operation").asText()));
+        }
+        String commonPrecondition = gold.hasNonNull("commonPrecondition")
+                ? gold.get("commonPrecondition").asText() : null;
+
+        DraftComputation draft = new DraftComputation(group, task.get("id").asText() + "Gold", relPath,
+                commonPrecondition, alternatives);
+        ValidationResult result = new RuleValidator().check(model, draft);
+
+        assertTrue(result.ok(),
+                () -> taskFile.getFileName() + " computation gold must validate against the kernel, got: "
+                        + result.diagnostics());
     }
 
     private static void assertRulesIngest(JsonNode task, String modelJson, Path taskFile) {

@@ -15,6 +15,21 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-08 18:07 CEST — first computation-authoring run (T13–T14) — the Layer-2 runner extension works (opus + sonnet, k=2)
+
+First run of the new **`authoring-computation`** family — the Layer-2 runner gained a computation path (author a computation-spec → authoritative `cli add` recheck → computation-equivalence judge). Fresh run `wf_791e1c12-b15` (**17 agents, 0.48M tokens, 4m02s**). Two tasks: **T13** the `DateRange` constructor (`CoverageWindow = DateRange(OrderDate, DeliveryDate)`), **T14** a numeric computation (`EffectiveFee = [BaseFee] * 2`).
+
+| Task | opus | sonnet | exercises |
+|---|---|---|---|
+| T13 | 2/2 | 1/2 | computation authoring — the `DateRange` constructor |
+| T14 | 2/2 | 2/2 | computation authoring — numeric value expression |
+
+**The extension works end-to-end** (the deliverable): clean agents discovered the computation-spec shape from the self-describing CLI (`schema add`), authored a computation, the `cli add` recheck validated it against the kernel, and the judge scored equivalence. **opus 4/4, sonnet 3/4** — the computation write surface (incl. the `DateRange` constructor) is authorable by a cold agent from the CLI alone.
+
+**The one miss is an eval-design observation, not a model/tool gap.** sonnet/T13 split 1/2 because one run added `commonPrecondition FieldFilled(OrderDate) And FieldFilled(DeliveryDate)` and the **two judges contradicted each other** on whether that guard is equivalent to the unguarded gold: judge A said non-equivalent (a non-repeatable computed field "is always calculated even with empty inputs", so the guard changes behavior on missing dates), judge B said equivalent (a `DateRange` over an empty bound "computes nothing", so the guard is redundant). They are *guessing* the empty-operand-in-computation semantic — which neither the gold nor the judge prompt pins. **Follow-up:** verify the kernel behavior (does an unguarded `DateRange` computation with an empty date operand compute a value or nothing?) and either pin the gold with the guard or feed the semantic to the judge — the same gold-ambiguity class as T5/T11. (The runner change itself is sound; only the T13 equivalence bar is fuzzy.)
+
+**Still uncovered:** multi-file (`--include-dir`) authoring — needs multi-file model staging in the runner (the next Layer-2 extension).
+
 ### 2026-06-08 17:46 CEST — targeted re-run confirming the two gap fixes (T3, T11; opus + sonnet, k=2)
 
 Fresh targeted run `wf_de96c275-459` (**14 agents, 0.37M tokens, 3m07s**) after committing the two fixes from the 17:25 sweep: the `RK_UNGUARDED_STRING_CONCAT` lint (GAP 2) and the `ModelPaths` file-path guard (GAP 1). Re-ran only the affected cells (§8b): **T3** (the GAP-1 `--field` case) and **T11** (the GAP-2 concat case).
