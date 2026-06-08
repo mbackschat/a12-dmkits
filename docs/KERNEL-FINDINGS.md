@@ -94,6 +94,14 @@ The condition lexer's rule is `StringLiteral : '"' ( '""' | ~["] )* '"'` — an 
 
 In DM-JSON, a category's `values` list pairs **positionally** with the enumeration's `values` (entry *i* categorizes enum value *i*); the comparison domain is the category's distinct value set. Codes: comparing to one of the *enum's own* values instead of a *category* value → **`MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON`**; an unknown category name → **`MVK_CATEGORY_UNKOWN`** (the kernel's spelling); `->` on a non-enumeration field → **`MVK_NO_ENUMERATION`**. Curiosity: `[Enum -> Category] == [Enum]` (category vs. plain enum field) is *accepted*. *(Locked: N7 `EnumCategory` examples + `dsl.operators.EnumConditionTest`.)*
 
+## §8 supplement — table-backed (dynamic) enums are NOT DM-JSON-serializable ⇒ `ValueNotConsistent` is un-buildable (2026-06-08)
+
+`ValueNotConsistent(enumField <toOp> col1, col2, …)` (DE `WertNichtKonsistent`) checks a row's dependent columns against a **table-backed** enumeration. The checker (`CheckFieldAndValueListConditionImpl`) requires its first operand to be an enum field **with a table reference** (`IEnumerationType.getTableName()`/`getDependentColumns()` present), and verifies the dependent-param arity against the column count (value checks are skipped when the runtime data table is absent).
+
+**But that field type cannot be expressed in a document model's DM-JSON.** The public a12internal `EnumerationType` DTO declares exactly **6 properties** — `values`, `annotations`, `categories`, `sValue`, `errorMessage`, `alphabeticalSorting` — and the deserializer is **strict**: injecting `tableName`/`columnName`/`dependentColumns` raises `UnrecognizedPropertyException` (*"not marked as ignorable"*, probed 2026-06-08). The table backing is materialized at **runtime** from a separate enumeration/table catalog (`IEnumerationType` returns empty Optionals when loaded from a plain document model), not from the field's type JSON.
+
+**Consequence:** no self-contained document model can mark a field table-backed, so the checker's precondition can never be met, so rulekit's "author DM-JSON → `checkConsistency`" oracle **cannot author or verify** a `ValueNotConsistent` rule. It is **un-buildable within single-document-model scope** — same root cause as multi-form/Vordruck (needs infrastructure outside the document model), and it makes the would-be "dynamic-enum modelkit authoring" moot (there is nothing in DM-JSON to emit). Stays a tolerant `Ingest.Opaque` if ever encountered. *(Demonstrated by probe; not locked by a test — there is no expressible fixture to lock.)*
+
 ## §6 supplement — the date family (corpus item 9 slice 9a, 2026-06-04 experiments)
 
 `Today` (DE `Heute`), `DifferenceInDays|Months|Years` (DE `DifferenzIn{Tagen,Monaten,Jahren}`), `AddDays|Months|Years` (DE `Addiere{Tage,Monate,Jahre}`):
