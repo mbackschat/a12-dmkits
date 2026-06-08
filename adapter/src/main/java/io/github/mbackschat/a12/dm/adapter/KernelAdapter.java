@@ -423,8 +423,42 @@ public final class KernelAdapter {
         return RenderedDiff.between(render(current.condition()), render(modified), lossiness);
     }
 
+    /**
+     * Modify-by-re-express diff for a <b>computation</b> (F8 #2, the {@link #diff} peer): render the
+     * computation's current shape (as ingested) against a re-expressed {@code modified} one, so the caller
+     * reviews the intended change before writing it back. Both sides are rulekit renderings of the whole
+     * computation — computed field, common precondition, and each {@code (precondition, operation)}
+     * alternative — so the diff is the change, not cosmetics.
+     *
+     * @throws IllegalStateException if the computation didn't ingest cleanly (it is {@code Opaque}) — you
+     *         can't re-express a shape you don't have.
+     */
+    public RenderedDiff diffComputation(String computationFullName, Computation modified) {
+        if (!(ingestComputation(computationFullName) instanceof IngestedComputation.Converted current)) {
+            throw new IllegalStateException("cannot diff a computation that did not ingest cleanly: "
+                    + computationFullName);
+        }
+        return RenderedDiff.between(renderComputation(current.computation()), renderComputation(modified),
+                java.util.List.of());
+    }
+
     private static String render(Condition condition) {
         return new DslRenderer(ConditionLanguage.EN).render(condition);
+    }
+
+    /** A canonical multi-line rendering of a whole computation — the before/after unit for {@link #diffComputation}. */
+    private static String renderComputation(Computation computation) {
+        DslRenderer renderer = new DslRenderer(ConditionLanguage.EN);
+        StringBuilder text = new StringBuilder("computes ").append(computation.computedField().path());
+        computation.commonPrecondition().ifPresent(p -> text.append("\nwhen ").append(renderer.render(p)));
+        for (Computation.Alternative alternative : computation.alternatives()) {
+            text.append('\n');
+            alternative.precondition().ifPresentOrElse(
+                    p -> text.append("when ").append(renderer.render(p)).append(" => "),
+                    () -> text.append("always => "));
+            text.append(renderer.render(alternative.operation()));
+        }
+        return text.toString();
     }
 
     /** Parse a rule's own stored condition into the kernel transport AST (adapter-internal, for F10 ingest). */

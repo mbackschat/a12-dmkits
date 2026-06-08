@@ -71,6 +71,25 @@ public final class ModelWriter {
                 computationNode(computation.draft(), computation.messages()));
     }
 
+    /**
+     * Returns {@code modelJson} with a computation added from its raw slots ({@link DraftComputation}) plus
+     * real localized messages — the polyglot/CLI authoring path (the {@code addRule}-from-slots peer). The
+     * caller is expected to have validated it first ({@code RuleValidator.check}).
+     */
+    public static String addComputation(String modelJson, DraftComputation computation, List<LocalizedText> messages) {
+        return DmJson.insertIntoGroup(modelJson, computation.groupPath(), computationNode(computation, messages));
+    }
+
+    /**
+     * Returns {@code modelJson} with the computation at {@code computationFullName} replaced by a re-expressed
+     * one given as raw slots + messages (the slot-based {@link #replaceComputation(String, String, Computation)}
+     * peer for the CLI) — remove the old element, add the re-expressed one.
+     */
+    public static String replaceComputation(String modelJson, String computationFullName,
+            DraftComputation computation, List<LocalizedText> messages) {
+        return addComputation(removeComputation(modelJson, computationFullName), computation, messages);
+    }
+
     /** Returns {@code modelJson} with the Rule element at {@code ruleFullName} removed from its group. */
     public static String removeRule(String modelJson, String ruleFullName) {
         return removeElement(modelJson, "Rule", ruleFullName);

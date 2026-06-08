@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
@@ -32,10 +33,12 @@ import picocli.CommandLine.Parameters;
  *
  * <p>The rule-spec carries the full envelope: {@code field} (absolute), {@code condition} (DSL),
  * {@code code}, {@code messages} (≥1, each {@code {locale,text}}), optional {@code severity} (default
- * ERROR) and {@code name}. See {@code schema add} for the JSON Schema.
+ * ERROR) and {@code name}. A <b>computation-spec</b> (detected by a {@code computedField} key) persists a
+ * computation instead: {@code computedField}, {@code alternatives} (≥1 {@code (precondition?, operation)}),
+ * {@code messages}, optional {@code commonPrecondition}/{@code name}. See {@code schema add} for both shapes.
  */
 @Command(name = "add", mixinStandardHelpOptions = true,
-        description = "Persist a rule from a JSON rule-spec (kernel-validated before + after writing). See `schema add`.")
+        description = "Persist a rule (rule-spec) or computation (computation-spec) from JSON, kernel-validated before + after. See `schema add`.")
 final class AddCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -63,6 +66,10 @@ final class AddCommand extends BaseCommand {
             spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
         } catch (IOException e) {
             return fail("cannot read input: " + e.getMessage());
+        }
+
+        if (ComputationSpec.looksLikeComputation(spec)) {
+            return addComputation(modelJson, spec);
         }
 
         String field = text(spec, "field");
@@ -114,6 +121,47 @@ final class AddCommand extends BaseCommand {
                 ObjectNode ok = MAPPER.createObjectNode();
                 ok.put("persisted", true);
                 ok.put("rule", group + "/" + name);
+                ok.put("file", outputPath);
+                out().print(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(ok) + "\n");
+            } else {
+                out().print(persisted);
+            }
+            return 0;
+        } catch (IOException e) {
+            return fail("cannot write output: " + e.getMessage());
+        }
+    }
+
+    /** Persist a computation from a computation-spec — the {@code add} computation path (kernel-validated before + after). */
+    private Integer addComputation(String modelJson, JsonNode spec) {
+        ComputationSpec.Parsed parsed = ComputationSpec.parse(spec);
+        if (!parsed.ok()) {
+            return fail(parsed.error());
+        }
+        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+
+        // 1) validate the computation against the real kernel
+        ValidationResult check = new RuleValidator().check(modelJson, parsed.draft(), resolver);
+        if (!check.ok()) {
+            return reject("computation rejected by the kernel", check);
+        }
+
+        // 2) persist with the real messages, then re-validate (catches message/locale coverage)
+        String persisted = ModelWriter.addComputation(modelJson, parsed.draft(), parsed.messages());
+        try {
+            BoundModel.ofJson(persisted, resolver);
+        } catch (RuntimeException e) {
+            return fail("persisted computation is invalid (e.g. missing a message for a declared locale): "
+                    + e.getMessage());
+        }
+
+        // 3) emit
+        try {
+            if (outputPath != null) {
+                Files.writeString(Path.of(outputPath), persisted);
+                ObjectNode ok = MAPPER.createObjectNode();
+                ok.put("persisted", true);
+                ok.put("computation", parsed.fullName());
                 ok.put("file", outputPath);
                 out().print(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(ok) + "\n");
             } else {

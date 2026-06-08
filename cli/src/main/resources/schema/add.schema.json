@@ -1,15 +1,37 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/add.schema.json",
-  "title": "AddRuleSpec",
-  "description": "INPUT of `rulekit add <model.json> <rule-spec.json>` — the rule envelope to persist. The condition is validated against the real kernel before writing, and the persisted model is re-validated (so every declared message locale must be covered).",
+  "title": "AddSpec",
+  "description": "INPUT of `rulekit add <model.json> <spec.json>` — the element to persist. Two shapes (chosen by the keys present): a RULE-spec (field/condition/code) or a COMPUTATION-spec (computedField/alternatives, detected by `computedField`). The element is validated against the real kernel before writing, and the persisted model is re-validated (so every declared message locale must be covered).",
   "type": "object",
-  "required": ["field", "condition", "code", "messages"],
   "additionalProperties": false,
+  "oneOf": [
+    { "title": "rule-spec", "required": ["field", "condition", "code", "messages"] },
+    { "title": "computation-spec", "required": ["computedField", "alternatives", "messages"] }
+  ],
   "properties": {
-    "field": { "type": "string", "description": "the error field's ABSOLUTE path, e.g. /Order/Quantity; its parent group is the rule's iteration scope" },
-    "condition": { "type": "string", "description": "the condition in A12 DSL — TRUE on a VIOLATION/the error scenario (the rule fires when it holds), so to enforce a requirement write its violation, e.g. FieldNotFilled(X) not FieldFilled(X)" },
-    "code": { "type": "string", "description": "the rule's error code" },
+    "field": { "type": "string", "description": "(rule) the error field's ABSOLUTE path, e.g. /Order/Quantity; its parent group is the rule's iteration scope" },
+    "condition": { "type": "string", "description": "(rule) the condition in A12 DSL — TRUE on a VIOLATION/the error scenario (the rule fires when it holds), so to enforce a requirement write its violation, e.g. FieldNotFilled(X) not FieldFilled(X)" },
+    "code": { "type": "string", "description": "(rule) the rule's error code" },
+    "severity": { "type": "string", "description": "(rule) ERROR | WARNING (default ERROR)" },
+
+    "computedField": { "type": "string", "description": "(computation) the calculated field's ABSOLUTE path; the computation element is placed in its group" },
+    "commonPrecondition": { "type": "string", "description": "(computation) optional guard (A12 DSL) shared by all alternatives" },
+    "alternatives": {
+      "type": "array",
+      "description": "(computation) ≥1 (precondition?, operation) tier — either one unconditional {operation} or all preconditioned {precondition, operation} (the kernel rejects mixing)",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["operation"],
+        "additionalProperties": false,
+        "properties": {
+          "precondition": { "type": "string", "description": "the tier's guard in A12 DSL (omit for the single unconditional alternative)" },
+          "operation": { "type": "string", "description": "the value-expression in A12 DSL, assigned to the computed field when the precondition holds" }
+        }
+      }
+    },
+
     "messages": {
       "type": "array",
       "description": "≥1 localized message; cover every locale the model declares",
@@ -24,7 +46,6 @@
         }
       }
     },
-    "severity": { "type": "string", "description": "ERROR | WARNING (default ERROR)" },
-    "name": { "type": "string", "description": "the rule's name (default: the code)" }
+    "name": { "type": "string", "description": "the element's name (rule: default = the code; computation: default = <Field>Comp)" }
   }
 }
