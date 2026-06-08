@@ -125,29 +125,67 @@ public final class KernelAdapter {
      * needed, so it lands with the bootstrap).
      */
     public Set<String> referencedFields(String ruleFullName) {
+        return referencedEntities(rule(ruleFullName));
+    }
+
+    /** The kernel's directly-referenced entities for any rule element, as full-name paths (null-tolerant). */
+    private Set<String> referencedEntities(IRule rule) {
         Set<String> paths = new TreeSet<>();
-        for (IEntity entity : mvk.getDirectlyReferencedEntities(rule(ruleFullName), SILENT)) {
-            paths.add(entity.getFullName());
+        Set<IEntity> refs = mvk.getDirectlyReferencedEntities(rule, SILENT);
+        if (refs != null) {                                  // ParserService returns null on a parse failure
+            for (IEntity entity : refs) {
+                paths.add(entity.getFullName());
+            }
         }
         return paths;
     }
 
     /**
-     * The exact <b>whereUsed</b> (F9a): the full names of every rule whose condition <em>directly</em>
-     * references the entity at {@code entityFullName} (a field or group, as a resolved absolute path) —
-     * the inverse of {@link #referencedFields}, built from the kernel's own
+     * The exact <b>whereUsed</b> (F9a): the full names of every <em>validation rule</em> whose condition
+     * <em>directly</em> references the entity at {@code entityFullName} (a field or group, as a resolved
+     * absolute path) — the inverse of {@link #referencedFields}, built from the kernel's own
      * {@code getDirectlyReferencedEntities} (no converter coverage needed). Insertion-ordered by rule.
      * "Direct" is exact: a rule that references an enclosing <em>group</em> is not listed for a field
      * inside it (it references the group, which {@code whereUsed("/…/group")} would surface).
+     *
+     * <p>This is validation rules only — a computation that reads the entity is surfaced by
+     * {@link #whereUsedInComputations} instead, so the two element kinds stay attributed correctly
+     * (a computation is also a rule in the kernel's {@code getAllRules()}, but a different thing).
      */
     public java.util.Set<String> whereUsed(String entityFullName) {
         java.util.LinkedHashSet<String> rules = new java.util.LinkedHashSet<>();
-        for (String ruleName : ruleFullNames()) {
+        for (String ruleName : ruleFullNames()) {            // ruleFullNames() already excludes computations
             if (referencedFields(ruleName).contains(entityFullName)) {
                 rules.add(ruleName);
             }
         }
         return rules;
+    }
+
+    /**
+     * The <b>computation</b> peer of {@link #whereUsed}: the full names of every computation that
+     * <em>directly</em> references {@code entityFullName} — in its calculated field, common precondition,
+     * an alternative's precondition, or an operation (the kernel's {@code getDirectlyReferencedEntities}
+     * over the computation rule captures all of these, operands included). A field read only inside a
+     * computation's operation — invisible to {@link #whereUsed} — shows up here. Insertion-ordered.
+     */
+    public java.util.Set<String> whereUsedInComputations(String entityFullName) {
+        java.util.LinkedHashSet<String> comps = new java.util.LinkedHashSet<>();
+        for (ICalculationRule cr : elements.getAllCalculations()) {
+            if (referencedEntities(cr.getRule()).contains(entityFullName)) {
+                comps.add(cr.getRule().getFullName());
+            }
+        }
+        return comps;
+    }
+
+    /**
+     * The entities a computation <em>directly</em> references — the {@link #referencedFields} peer for a
+     * computation (the kernel's own answer over the computation rule: calculated field + every operand and
+     * precondition field). The seed of {@link #whereUsedInComputations}.
+     */
+    public Set<String> referencedFieldsOfComputation(String computationFullName) {
+        return referencedEntities(calculationRule(computationFullName).getRule());
     }
 
     /** The kernel's canonical text for a rule's condition (a parse + format round-trip through the kernel). */
@@ -231,29 +269,59 @@ public final class KernelAdapter {
     }
 
     /**
-     * Ingest every rule in the model — the publishing-safe whole-DM entry point. Returns each rule's
-     * outcome keyed by full name (insertion-ordered); never throws on an unmodeled construct (those
-     * become {@link Ingest.Opaque}). The caller sees exactly which rules are typed and which are
-     * preserved opaque.
+     * Ingest every <em>validation rule</em> in the model — the publishing-safe whole-DM entry point.
+     * Returns each rule's outcome keyed by full name (insertion-ordered); never throws on an unmodeled
+     * construct (those become {@link Ingest.Opaque}). The caller sees exactly which rules are typed and
+     * which are preserved opaque.
+     *
+     * <p>Computations are <em>excluded</em>: a computation is stored as a rule (so it appears in the
+     * kernel's {@code getAllRules()}), but its condition is the generated self-validation of a calculated
+     * field — a computation, not a hand-authored rule. Computations ingest via
+     * {@link #ingestAllComputations}; {@link #ingestModel} unifies both into one disjoint view.
      */
     public java.util.Map<String, Ingest> ingestAll() {
+        java.util.Set<String> computations = computationFullNames();
         java.util.Map<String, Ingest> out = new java.util.LinkedHashMap<>();
         for (IRule r : elements.getAllRules()) {
-            out.put(r.getFullName(), ingest(r.getFullName()));
+            if (!computations.contains(r.getFullName())) {   // skip computation rules — see ingestAllComputations
+                out.put(r.getFullName(), ingest(r.getFullName()));
+            }
         }
         return out;
     }
 
-    /** The full names of every rule in the model — cheap (no conversion); for resolving a {@code --rule} argument. */
+    /**
+     * The full names of every <em>validation rule</em> in the model — cheap (no conversion); for resolving
+     * a {@code --rule} argument. Computations are excluded (see {@link #computationFullNames}); a
+     * {@code --rule} that names a computation should be rejected so it isn't ingested as a rule.
+     */
     public java.util.Set<String> ruleFullNames() {
+        java.util.Set<String> computations = computationFullNames();
         java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>();
         for (IRule r : elements.getAllRules()) {
-            names.add(r.getFullName());
+            if (!computations.contains(r.getFullName())) {
+                names.add(r.getFullName());
+            }
         }
         return names;
     }
 
     // ── Computations (the calculated-field read path; the IngestedComputation peer of ingest) ───────
+
+    /**
+     * The full names of every <b>computation</b> in the model — the discriminator that partitions
+     * {@link #ruleFullNames()} into true validation rules and computation rules. A computation is stored
+     * as a rule (so it appears in {@code getAllRules()} too), but its "condition" is the kernel-generated
+     * self-validation of a calculated field — semantically a computation, ingested via
+     * {@link #ingestComputation}, not {@link #ingest}.
+     */
+    public java.util.Set<String> computationFullNames() {
+        java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>();
+        for (ICalculationRule cr : elements.getAllCalculations()) {
+            names.add(cr.getRule().getFullName());
+        }
+        return names;
+    }
 
     /** The kernel's calculation service, built lazily from the MVK service (which is also its config). */
     private ICalculationService calcService() {
@@ -271,9 +339,14 @@ public final class KernelAdapter {
      * {@link IngestedComputation.Opaque} rather than throwing.
      */
     public IngestedComputation ingestComputation(String computationFullName) {
+        return ingestOne(calculationRule(computationFullName));
+    }
+
+    /** Look up a computation's {@code ICalculationRule} by full name (read-only — the {@link #rule} peer). */
+    private ICalculationRule calculationRule(String computationFullName) {
         for (ICalculationRule cr : elements.getAllCalculations()) {
             if (computationFullName.equals(cr.getRule().getFullName())) {
-                return ingestOne(cr);
+                return cr;
             }
         }
         throw new IllegalArgumentException("no computation in model at: " + computationFullName);
@@ -289,6 +362,17 @@ public final class KernelAdapter {
             out.put(cr.getRule().getFullName(), ingestOne(cr));
         }
         return out;
+    }
+
+    /**
+     * The unified whole-model read (F10): every <em>validation rule</em> ({@link #ingestAll}) and every
+     * <em>computation</em> ({@link #ingestAllComputations}) of the model as one {@link ModelIngest} — two
+     * disjoint maps, no double-counting (a computation appears under {@code computations}, never under
+     * {@code rules}). The single entry point for round-tripping a foreign model completely; tolerant, so
+     * it never throws on an unmodeled construct (those stay {@code Opaque}).
+     */
+    public ModelIngest ingestModel() {
+        return new ModelIngest(ingestAll(), ingestAllComputations());
     }
 
     private IngestedComputation ingestOne(ICalculationRule cr) {

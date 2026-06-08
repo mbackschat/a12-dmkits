@@ -17,12 +17,14 @@ import picocli.CommandLine.Parameters;
 
 /**
  * The {@code where-used} verb (F9a, CLI-SPEC §4) — the exact inverse of a rule's referenced entities:
- * given a field or group, list every rule whose condition <em>directly</em> references it. Uses the
- * kernel's own {@code getDirectlyReferencedEntities} via the adapter (no converter coverage needed), so
- * it works on every rule regardless of whether ingest models its construct.
+ * given a field or group, list every <b>rule</b> and every <b>computation</b> whose condition
+ * <em>directly</em> references it. Uses the kernel's own {@code getDirectlyReferencedEntities} via the
+ * adapter (no converter coverage needed), so it works regardless of whether ingest models its construct.
+ * Rules and computations are reported in separate arrays so the two element kinds stay distinguishable —
+ * a field read only inside a computation's operation appears under {@code computations}, not {@code rules}.
  */
 @Command(name = "where-used", mixinStandardHelpOptions = true,
-        description = "List the rules whose condition directly references a given field or group.")
+        description = "List the rules and computations whose condition directly references a given field or group.")
 final class WhereUsedCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -46,11 +48,14 @@ final class WhereUsedCommand extends BaseCommand {
         try {
             KernelAdapter adapter = KernelAdapter.ofJson(modelJson);
             Set<String> rules = adapter.whereUsed(entity);
+            Set<String> computations = adapter.whereUsedInComputations(entity);
             ObjectNode root = MAPPER.createObjectNode();
             root.put("entity", entity);
-            ArrayNode arr = root.putArray("rules");
-            rules.forEach(arr::add);
-            root.put("count", rules.size());
+            ArrayNode rulesArr = root.putArray("rules");
+            rules.forEach(rulesArr::add);
+            ArrayNode compsArr = root.putArray("computations");
+            computations.forEach(compsArr::add);
+            root.put("count", rules.size() + computations.size());
             out().print(pretty(root));
             return 0;
         } catch (RuntimeException e) {

@@ -30,8 +30,22 @@ final class ModelPaths {
     }
 
     static String ruleProblem(Set<String> ruleFullNames, String path) {
+        return ruleProblem(ruleFullNames, Set.of(), path);
+    }
+
+    /**
+     * As {@link #ruleProblem(Set, String)}, but if {@code path} names a <em>computation</em> (a calculated
+     * field, not a validation rule) the error says so and points at the computation-aware verbs, instead
+     * of the misleading "not a rule" — computations are a distinct element kind.
+     */
+    static String ruleProblem(Set<String> ruleFullNames, Set<String> computationFullNames, String path) {
         if (ruleFullNames.contains(path)) {
             return null;
+        }
+        if (computationFullNames.contains(path)) {
+            return "'" + path + "' is a computation (a calculated field), not a validation rule — use"
+                    + " `explain --computation " + path + "` to inspect it, or `ingest --all` to read the"
+                    + " whole model (rules and computations).";
         }
         return "'" + path + "' is not a rule in this model — pass the rule's full name (its slash-path, e.g."
                 + " /Group/RuleName), not its short name, not the opaque element id, and not a file path. The model"

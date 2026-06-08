@@ -43,9 +43,50 @@ class IngestVerbTest {
     }
 
     @Test
-    void missingRuleFlagFails(@TempDir Path dir) throws Exception {
+    void missingModeFails(@TempDir Path dir) throws Exception {
         var res = CliTestSupport.run("ingest", modelWithRule(dir).toString());
-        assertNotEquals(0, res.code(), "ingest needs --rule");
-        assertTrue(res.err().toLowerCase().contains("rule"), () -> "names the gap: " + res.err());
+        assertNotEquals(0, res.code(), "ingest needs --rule or --all");
+        assertTrue(res.err().toLowerCase().contains("rule") && res.err().contains("--all"),
+                () -> "names the two modes: " + res.err());
+    }
+
+    @Test
+    void bothModesFail(@TempDir Path dir) throws Exception {
+        var res = CliTestSupport.run("ingest", modelWithRule(dir).toString(),
+                "--rule", CliTestSupport.RULE_FULL_NAME, "--all");
+        assertNotEquals(0, res.code(), "--rule and --all are mutually exclusive");
+    }
+
+    @Test
+    void allReadsRulesAndComputationsAsDisjointSections(@TempDir Path dir) throws Exception {
+        Path f = dir.resolve("m.dm.json");
+        Files.writeString(f, CliTestSupport.modelWithRuleAndComputationJson());
+        var res = CliTestSupport.run("ingest", f.toString(), "--all");
+        assertEquals(0, res.code(), res::err);
+        JsonNode j = MAPPER.readTree(res.out());
+        assertTrue(j.path("rules").has(CliTestSupport.RULE_FULL_NAME), () -> "rule section: " + res.out());
+        assertTrue(j.path("computations").has(CliTestSupport.COMPUTATION_FULL_NAME),
+                () -> "computation section: " + res.out());
+        // the computation is NOT listed as a rule (disjoint)
+        assertTrue(j.path("rules").path(CliTestSupport.COMPUTATION_FULL_NAME).isMissingNode(),
+                () -> "the computation must not appear under rules: " + res.out());
+        assertTrue(j.path("summary").get("fullyTyped").asBoolean(), () -> "every element typed: " + res.out());
+        assertEquals(CliTestSupport.COMPUTATION_FULL_NAME, computationKey(j),
+                () -> "the computation reports its calculated field: " + res.out());
+    }
+
+    @Test
+    void ruleFlagOnAComputationRedirects(@TempDir Path dir) throws Exception {
+        Path f = dir.resolve("m.dm.json");
+        Files.writeString(f, CliTestSupport.modelWithRuleAndComputationJson());
+        var res = CliTestSupport.run("ingest", f.toString(), "--rule", CliTestSupport.COMPUTATION_FULL_NAME);
+        assertNotEquals(0, res.code(), "a computation is not a validation rule");
+        assertTrue(res.err().contains("computation") && res.err().contains("--all"),
+                () -> "redirects to the computation-aware verbs: " + res.err());
+    }
+
+    private static String computationKey(JsonNode j) {
+        JsonNode comps = j.path("computations");
+        return comps.fieldNames().hasNext() ? comps.fieldNames().next() : "";
     }
 }

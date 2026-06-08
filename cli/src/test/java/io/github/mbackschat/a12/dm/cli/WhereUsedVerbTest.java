@@ -57,4 +57,23 @@ class WhereUsedVerbTest {
         var res = CliTestSupport.run("where-used", modelWithRule(dir).toString());
         assertNotEquals(0, res.code(), "where-used needs --entity");
     }
+
+    @Test
+    void surfacesComputationsSeparatelyFromRules(@TempDir Path dir) throws Exception {
+        Path model = dir.resolve("m.dm.json");
+        Files.writeString(model, CliTestSupport.modelWithRuleAndComputationJson());
+        // BaseFee is read only by the computation EffectiveFee = BaseFee — no validation rule touches it
+        var res = CliTestSupport.run("where-used", model.toString(),
+                "--entity", "/Subscription/Billing/BaseFee");
+        assertEquals(0, res.code(), res::err);
+        JsonNode j = MAPPER.readTree(res.out());
+        assertTrue(j.path("rules").isEmpty(), () -> "no validation rule references BaseFee: " + res.out());
+        boolean inComputations = false;
+        for (JsonNode c : j.path("computations")) {
+            inComputations |= CliTestSupport.COMPUTATION_FULL_NAME.equals(c.asText());
+        }
+        assertTrue(inComputations,
+                () -> "where-used should list the computation under 'computations': " + res.out());
+        assertEquals(1, j.get("count").asInt(), () -> "count spans rules + computations: " + res.out());
+    }
 }

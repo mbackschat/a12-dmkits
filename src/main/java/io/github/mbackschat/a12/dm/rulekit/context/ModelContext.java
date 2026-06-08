@@ -10,6 +10,8 @@ import java.util.stream.Collectors;
 import io.github.mbackschat.a12.dm.rulekit.catalog.GotchaKind;
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionReferences;
@@ -51,8 +53,51 @@ public final class ModelContext {
         DslRenderer renderer = new DslRenderer(ConditionLanguage.EN);
         String text = renderer.render(condition);
 
+        List<RuleExplanation.Operator> operators = glossary(OperatorUsage.of(condition));
+        ConditionReferences refs = ConditionReferences.of(condition);
+        List<RuleExplanation.Reference> references = references(refs);
+
+        Optional<String> iterationGroup = iterationScope(refs);
+        RuleExplanation.Node tree = new ExplanationTreeBuilder(renderer).build(condition);
+        return new RuleExplanation(text, operators, references,
+                iterationGroup.isPresent(), iterationGroup, tree, gloss(operators, references, iterationGroup));
+    }
+
+    /**
+     * Explain a computation (F9, the calculated-field peer of {@link #explain}) — the field it computes
+     * (path + model kind), the common precondition and each alternative's {@code (precondition, operation)}
+     * projected like a rule (operators with catalog meaning/gotchas + referenced fields), the self-validation
+     * messages, and a one-line gloss. Feed {@code adapter.ingestComputation(name)}'s {@code Converted}
+     * computation straight in — it is an ordinary rulekit {@link Computation} by the time it reaches here.
+     */
+    public ComputationExplanation explainComputation(Computation computation) {
+        String field = computation.computedField().path();
+        String kind = model.fieldAt(field).map(f -> f.kind().name()).orElse("?");
+
+        Optional<RuleExplanation> commonPrecondition = computation.commonPrecondition().map(this::explain);
+        List<ComputationExplanation.Alternative> alternatives = computation.alternatives().stream()
+                .map(a -> new ComputationExplanation.Alternative(
+                        a.precondition().map(this::explain), explainOperation(a.operation())))
+                .toList();
+        List<ComputationExplanation.Message> messages = computation.messages().stream()
+                .map(t -> new ComputationExplanation.Message(t.locale(), t.text()))
+                .toList();
+
+        return new ComputationExplanation(field, kind, commonPrecondition, alternatives, messages,
+                computationGloss(field, commonPrecondition, alternatives));
+    }
+
+    /** Project one computation operation (a value expression) — its rendered formula, operators, and references. */
+    private ComputationExplanation.OperationExplanation explainOperation(Calculation operation) {
+        String text = new DslRenderer(ConditionLanguage.EN).render(operation);
+        return new ComputationExplanation.OperationExplanation(text,
+                glossary(OperatorUsage.of(operation)), references(ConditionReferences.of(operation)));
+    }
+
+    /** Look up each operator-id in the catalog → keyword/kind/meaning/author-relevant gotchas (rendering elided). */
+    private static List<RuleExplanation.Operator> glossary(Set<String> operatorIds) {
         List<RuleExplanation.Operator> operators = new ArrayList<>();
-        for (String id : OperatorUsage.of(condition)) {
+        for (String id : operatorIds) {
             CATALOG.byId(id).ifPresentOrElse(
                     e -> operators.add(new RuleExplanation.Operator(
                             e.id(), e.keywords().en(), e.kind().name(),
@@ -63,19 +108,27 @@ public final class ModelContext {
                                     .toList())),
                     () -> operators.add(new RuleExplanation.Operator(id, id, "?", "", List.of())));
         }
+        return operators;
+    }
 
-        ConditionReferences refs = ConditionReferences.of(condition);
+    /** The referenced fields (with model kind) and groups (kind {@code GROUP}), sorted. */
+    private List<RuleExplanation.Reference> references(ConditionReferences refs) {
         List<RuleExplanation.Reference> references = new ArrayList<>();
         refs.fieldPaths().stream().sorted().forEach(p ->
                 references.add(new RuleExplanation.Reference(p,
                         model.fieldAt(p).map(f -> f.kind().name()).orElse("?"))));
         refs.groupPaths().stream().sorted().forEach(g ->
                 references.add(new RuleExplanation.Reference(g, "GROUP")));
+        return references;
+    }
 
-        Optional<String> iterationGroup = iterationScope(refs);
-        RuleExplanation.Node tree = new ExplanationTreeBuilder(renderer).build(condition);
-        return new RuleExplanation(text, operators, references,
-                iterationGroup.isPresent(), iterationGroup, tree, gloss(operators, references, iterationGroup));
+    private static String computationGloss(String field, Optional<RuleExplanation> commonPrecondition,
+            List<ComputationExplanation.Alternative> alternatives) {
+        String tiers = alternatives.size() == 1 && alternatives.get(0).precondition().isEmpty()
+                ? "unconditionally"
+                : alternatives.size() + " alternative" + (alternatives.size() == 1 ? "" : "s");
+        return "Computes " + field + " " + tiers
+                + commonPrecondition.map(p -> " (when " + p.text() + ")").orElse("") + ".";
     }
 
     /** The repeatable group the condition ranges over, if any (a referenced field's repeatable ancestor, or a repeatable referenced group). */

@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
@@ -15,6 +16,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 final class CliTestSupport {
 
     static final String RULE_FULL_NAME = "/Subscription/Addons/FeeCapRule";
+    static final String COMPUTATION_FULL_NAME = "/Subscription/Billing/EffectiveFeeComp";
 
     private CliTestSupport() {
     }
@@ -46,6 +48,23 @@ final class CliTestSupport {
     static Path modelWithRule(Path dir) throws IOException {
         Path file = dir.resolve("subscription.dm.json");
         Files.writeString(file, modelWithRuleJson());
+        return file;
+    }
+
+    /** The subscription fixture + the {@link #modelWithRuleJson()} rule + a computation (EffectiveFee = BaseFee). */
+    static String modelWithRuleAndComputationJson() {
+        BoundModel base = BoundModel.ofJson(modelWithRuleJson());
+        Computation comp = base.computation(base.num("/Subscription/Billing/EffectiveFee"))
+                .name("EffectiveFeeComp")
+                .calc(base.num("/Subscription/Billing/BaseFee").value())
+                .message(Dsl.en("EffectiveFee equals BaseFee."), Dsl.de("Effektivgebühr = Basisgebühr.")).build();
+        return base.add(comp).toJson();
+    }
+
+    /** Write {@link #modelWithRuleAndComputationJson()} to a temp file the CLI can read. */
+    static Path modelWithRuleAndComputation(Path dir) throws IOException {
+        Path file = dir.resolve("subscription.dm.json");
+        Files.writeString(file, modelWithRuleAndComputationJson());
         return file;
     }
 
