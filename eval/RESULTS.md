@@ -15,6 +15,27 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-08 22:16 CEST — post-rename confirmation (ingest→read, dump→export) — no regression (opus + sonnet, k=2, 6-task subset)
+
+Targeted run after the verb/API rename (`ingest`→`read`, `dump`→`export`, `export --out-dir`) and the `diff`(preview)/`modify`(write) split. The rename's only self-sufficiency risk is **discovery**: a cold agent now sees `read`/`export` in `manifest`/`--help`/`schema` instead of `ingest`/`dump`. A representative subset spanning every family was run **bare-tool** (no skill). Fresh run `wf_50b7b5d6-632` (**46 agents, 1.14M tokens, 9m23s**).
+
+| Task | opus | sonnet | family — rename relevance |
+|---|---|---|---|
+| T1 | 1/2 | 1/2 | authoring — iteration row-guard idiom (unchanged verbs) |
+| T3 | 2/2 | **0/2** | authoring — pattern (unchanged verbs) |
+| T7 | 2/2 | 2/2 | **comprehension — read-back via `explain`** |
+| T13 | 2/2 | 2/2 | **authoring-computation — `schema add` + `DateRange`** |
+| T15 | 2/2 | **0/2** | authoring (multi-file) — `--include-dir` |
+| T16 | 2/2 | 2/2 | **modify-computation — discovery via `read --all`/`explain --computation` + `diff --computation`** |
+
+**Totals: opus 11/12, sonnet 7/12. No regression from the rename.** The rename-sensitive surface is **2/2 on both tiers**: T7 (read foreign rules back via `explain`), T13 (`schema add` + the computation write path), and T16 (the agent discovers the *existing* computation through the renamed `read --all`/`explain --computation`, re-expresses it, and `diff --computation` validates). The self-describing CLI absorbed the new verb names — agents found `read`/`export` from the manifest with no help. **opus T15 2/2** further confirms the multi-file `--include-dir` path works after the rename.
+
+Every miss is pre-existing and **naming-independent**:
+- **sonnet T3 0/2 and T15 0/2 — both kernel-*invalid*: the documented `--field` file-path slip** (GAP 1, persists). The condition is right; sonnet puts the model *file* path in the `--field` slot. opus got both 2/2 (incl. the multi-file T15). Neither task touches a renamed verb in its authoring path (they use `describe`/`operators`/`check` + `--include-dir`). A sonnet-tier self-correction limit, not the rename.
+- **T1 1/2 both tiers — the `GroupFilled` vs `FieldFilled(sibling)` row-guard idiom** (opus's miss is kernel-valid-but-non-equivalent on the blank-row case; sonnet's is kernel-invalid). The known iteration wobble; flaky at k=2.
+
+**Bonus: the T13 judge split from the 18:07 run is settled.** That run had sonnet/T13 1/2 because two judges disagreed on whether an `AllFieldsFilled` guard is equivalent to the unguarded gold. This run is **sonnet/T13 2/2**, both judges ruling the guard redundant and citing the kernel empty-operand rule — i.e. the empty-operand semantic fed into the judge prompt (+ the `DateRangeComputationLawsTest` finding) resolved the ambiguity.
+
 ### 2026-06-08 18:07 CEST — first computation-authoring run (T13–T14) — the Layer-2 runner extension works (opus + sonnet, k=2)
 
 First run of the new **`authoring-computation`** family — the Layer-2 runner gained a computation path (author a computation-spec → authoritative `cli add` recheck → computation-equivalence judge). Fresh run `wf_791e1c12-b15` (**17 agents, 0.48M tokens, 4m02s**). Two tasks: **T13** the `DateRange` constructor (`CoverageWindow = DateRange(OrderDate, DeliveryDate)`), **T14** a numeric computation (`EffectiveFee = [BaseFee] * 2`).
