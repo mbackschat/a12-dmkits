@@ -40,9 +40,28 @@ const MODEL_FILE = t => t.modelPath || `cli/src/test/resources/models/${t.model}
 const INCLUDE_ARGS = t => t.includeDir ? ['--include-dir', t.includeDir] : []
 const INCLUDE_HINT = t => t.includeDir ? ` --include-dir ${t.includeDir}` : ''
 
+// Run-mode (EVAL-SPEC §2a). Bare-tool is the DEFAULT instrument (and the only one CI/historical runs use).
+// PRODUCTION mode is opt-in: the caller injects the N1 skill's CONTENTS inline via args.skill (the script
+// has no filesystem access, so the main loop reads skill/SKILL.md and passes the text). The skill is handed
+// to the PRODUCER agents as trusted background — it never relaxes the "no source/docs/tests/other *.md"
+// boundary (the agent reads no files; the text is in the prompt). Judges stay skill-free (they score against
+// the gold, not the technique). Label every result with the mode — a production number is NOT comparable to
+// the bare-tool trend line.
+const SKILL = (typeof A.skill === 'string' && A.skill.trim()) ? A.skill.trim() : null
+log(`run mode: ${SKILL ? 'PRODUCTION (N1 skill injected into producers)' : 'bare-tool (no skill)'}`)
+function skillBlock() {
+  return SKILL ? `
+  - the A12 authoring SKILL below — expert-distilled judgment (polarity, the traps, iteration). Treat it as
+    trusted background and APPLY it; this is the only extra material you get — do not seek other docs.
+<<<SKILL
+${SKILL}
+SKILL>>>` : ''
+}
+
 const AUTHORING = TASKS.filter(t => t.family === 'authoring')
 const AUTHORING_COMP = TASKS.filter(t => t.family === 'authoring-computation')
 const MODIFY_COMP = TASKS.filter(t => t.family === 'modify-computation')
+const MODIFY_RULE = TASKS.filter(t => t.family === 'modify-rule')
 const COMPREHENSION = TASKS.filter(t => t.family === 'comprehension')
 
 // ---- prompts (EVAL-SPEC §5: neutral, material-only, no leaking the technique/polarity) ------------
@@ -55,10 +74,11 @@ function authorPrompt(task) {
     : ''
   return `You help a business analyst author an A12 validation rule. Assume NO prior A12/rulekit knowledge; use ONLY:
   - the CLI:  ${CLI} <args>   (it is self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <verb> --help\` shows a verb's parameters, \`${CLI} operators\` lists the DSL operators and \`${CLI} operators <id>\` gives one in full)
-  - the model file: ${MODEL_FILE(task)}${multifile}
-Do NOT read any rulekit source, docs, tests, or *.md files. Requirement to enforce: "${task.intent}".
-Author the rule and CONFIRM the kernel accepts it via the CLI. Return ONLY JSON:
-  {"field":"<absolute path>","condition":"<DSL>","code":"<ID>","kernelAccepted":true|false}`
+  - the model file: ${MODEL_FILE(task)}${multifile}${skillBlock()}
+Do NOT read any rulekit source, docs, tests, or *.md FILES (beyond any skill text already given above). Requirement to enforce: "${task.intent}".
+Author the rule and CONFIRM the kernel accepts it via the CLI. Return ONLY JSON — and note that "field" is
+the error field's path INSIDE the model (e.g. /Group/Field), NOT the model FILE path you pass on the command line:
+  {"field":"<the error field's path inside the model>","condition":"<DSL>","code":"<ID>","kernelAccepted":true|false}`
 }
 
 function modifyComputationPrompt(task) {
@@ -70,7 +90,22 @@ new requirement, KEEPING THE SAME computed field. Assume NO prior A12/rulekit kn
 Do NOT read any rulekit source, docs, tests, or *.md files. The existing computation to change: ${task.computation}.
 New requirement: "${task.intent}".
 Re-express the computation and CONFIRM the kernel accepts the CHANGE by PREVIEWING it (read-only) — do NOT write the model file. Return ONLY JSON:
-  {"computedField":"<absolute path>","commonPrecondition":"<DSL or omit>","alternatives":[{"precondition":"<DSL or omit>","operation":"<DSL value expression>"}],"messages":[{"locale":"<code>","text":"..."}],"kernelAccepted":true|false}`
+  {"computedField":"<the computed field's path inside the model, e.g. /Group/Field — NOT the model FILE path>","commonPrecondition":"<DSL or omit>","alternatives":[{"precondition":"<DSL or omit>","operation":"<DSL value expression>"}],"messages":[{"locale":"<code>","text":"..."}],"kernelAccepted":true|false}`
+}
+
+function modifyRulePrompt(task) {
+  return `You help a business analyst CHANGE an EXISTING A12 validation RULE on a model. A validation rule's
+condition is TRUE exactly when a document is INVALID (it describes the VIOLATION, not the requirement). The
+model ALREADY has a rule; re-express its CONDITION to meet a new requirement, KEEPING THE SAME rule (same
+error field). Assume NO prior A12/rulekit knowledge; use ONLY:
+  - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <verb> --help\` a verb's parameters; \`${CLI} explain ${MODEL_FILE(task)} --rule ${task.rule}\` shows the existing rule, \`${CLI} modify --help\` (its \`--dry-run\` PREVIEWS a re-expression read-only), \`${CLI} operators\` the DSL operators)
+  - the model file: ${MODEL_FILE(task)}${skillBlock()}
+Do NOT read any rulekit source, docs, tests, or *.md FILES (beyond any skill text already given above). The existing rule to change: ${task.rule}.
+New requirement: "${task.intent}".
+Re-express the rule's CONDITION (true on a VIOLATION) and CONFIRM the kernel accepts the CHANGE by PREVIEWING it
+(read-only, e.g. \`${CLI} modify ${MODEL_FILE(task)} --rule ${task.rule} --condition "<DSL>" --dry-run\`) — do NOT
+write the model file. Return ONLY JSON ("condition" = the new DSL condition that is true on a violation):
+  {"condition":"<DSL>","kernelAccepted":true|false}`
 }
 
 function authorComputationPrompt(task) {
@@ -80,7 +115,7 @@ from other fields, rather than validating one. Assume NO prior A12/rulekit knowl
   - the model file: ${MODEL_FILE(task)}
 Do NOT read any rulekit source, docs, tests, or *.md files. Requirement to implement: "${task.intent}".
 Author the computation and CONFIRM the kernel accepts it via the CLI. Return ONLY JSON:
-  {"computedField":"<absolute path>","commonPrecondition":"<DSL or omit>","alternatives":[{"precondition":"<DSL or omit>","operation":"<DSL value expression>"}],"messages":[{"locale":"<code>","text":"..."}],"kernelAccepted":true|false}`
+  {"computedField":"<the computed field's path inside the model, e.g. /Group/Field — NOT the model FILE path>","commonPrecondition":"<DSL or omit>","alternatives":[{"precondition":"<DSL or omit>","operation":"<DSL value expression>"}],"messages":[{"locale":"<code>","text":"..."}],"kernelAccepted":true|false}`
 }
 
 function explainPrompt(task) {
@@ -98,6 +133,11 @@ const AUTHOR_SCHEMA = {
   properties: { field: { type: 'string' }, condition: { type: 'string' },
     code: { type: 'string' }, kernelAccepted: { type: 'boolean' } },
   required: ['field', 'condition'],
+}
+const MODIFY_RULE_SCHEMA = {
+  type: 'object', additionalProperties: true,
+  properties: { condition: { type: 'string' }, kernelAccepted: { type: 'boolean' } },
+  required: ['condition'],
 }
 const AUTHOR_COMP_SCHEMA = {
   type: 'object', additionalProperties: true,
@@ -163,6 +203,16 @@ const authoredMod = await parallel(modRuns.map(r => () =>
   agent(modifyComputationPrompt(r.task), { label: `modify ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: AUTHOR_COMP_SCHEMA })
     .then(out => ({ kind: 'modify-computation', model: r.model, task: r.task, i: r.i, out }))
     .catch(() => ({ kind: 'modify-computation', model: r.model, task: r.task, i: r.i, out: null }))))
+
+const modRuleRuns = []
+for (const model of MODELS)
+  for (const task of MODIFY_RULE)
+    for (let i = 0; i < K; i++) modRuleRuns.push({ model, task, i })
+
+const authoredModRule = await parallel(modRuleRuns.map(r => () =>
+  agent(modifyRulePrompt(r.task), { label: `modrule ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: MODIFY_RULE_SCHEMA })
+    .then(out => ({ kind: 'modify-rule', model: r.model, task: r.task, i: r.i, out }))
+    .catch(() => ({ kind: 'modify-rule', model: r.model, task: r.task, i: r.i, out: null }))))
 
 // ---- Recheck: ONE warm-JVM `cli batch` authoritatively re-validates every authored candidate -------
 // (Don't trust the agents' self-reported kernelAccepted.) This is the batch verb's reason to exist:
@@ -300,6 +350,49 @@ actually differs from the current computation).`,
   }
 }
 
+// ---- Recheck (modify-rule): authoritatively re-express each RULE via `cli modify --rule … --dry-run` ---
+// The rule-side counterpart of the modify-computation recheck. We BATCH the `modify … --dry-run` ops
+// (JSON args, so the DSL condition needs no shell-quoting) — READ-ONLY, so the committed fixture is never
+// mutated by the parallel agents. A modify passes the kernel gate only when ACCEPTED (exit 0, no
+// "valid":false) AND an actual change (changed:true). Falls back to the agents' self-report on failure.
+
+const modRuleCandidates = authoredModRule.filter(r => r && r.out && r.out.condition)
+let modRuleAuthoritative = {}
+if (modRuleCandidates.length) {
+  const ops = modRuleCandidates.map(r => ({
+    id: `${r.model}/${r.task.id}/${r.i}`,
+    verb: 'modify',
+    args: [MODEL_FILE(r.task), '--rule', r.task.rule, '--condition', r.out.condition, '--dry-run', ...INCLUDE_ARGS(r.task)],
+  }))
+  const modRuleSelfReport = () => {
+    const m = {}
+    for (const r of modRuleCandidates) m[`${r.model}/${r.task.id}/${r.i}`] = !!(r.out && r.out.kernelAccepted)
+    return m
+  }
+  try {
+    const rescore = await agent(
+      `Re-validate candidate A12 RULE re-expressions against the real kernel in ONE process using the batch verb.
+Each op runs \`modify <model> --rule <name> --condition <DSL> --dry-run\` (READ-ONLY — writes nothing): on ACCEPT
+it returns a diff {"before","after","changed",…} with exit 0; on REJECT it returns {"valid":false,…} with a
+non-zero exit. Steps: (1) write this JSON array verbatim to /tmp/rk-modrule-ops.json:
+${JSON.stringify(ops)}
+(2) run:  ${CLI} batch /tmp/rk-modrule-ops.json
+(3) the output is a JSON array; each element echoes its "id" and carries "exit" and (on accept) result.changed.
+Report every op via the structured-output tool: one {id, valid, changed} per op — valid = (exit is 0 AND the
+result does NOT have "valid":false), changed = (result.changed === true).`,
+      { label: 'modify-rule recheck', phase: 'Recheck',
+        schema: { type: 'object', additionalProperties: false, required: ['verdicts'],
+          properties: { verdicts: { type: 'array', items: {
+            type: 'object', additionalProperties: false, required: ['id', 'valid', 'changed'],
+            properties: { id: { type: 'string' }, valid: { type: 'boolean' }, changed: { type: 'boolean' } } } } } } })
+    for (const v of (rescore && rescore.verdicts) || []) modRuleAuthoritative[v.id] = v.valid && v.changed
+    if (Object.keys(modRuleAuthoritative).length === 0) modRuleAuthoritative = modRuleSelfReport()
+  } catch (e) {
+    log('modify-rule recheck failed (' + e.message + ') — falling back to agent self-report')
+    modRuleAuthoritative = modRuleSelfReport()
+  }
+}
+
 // ---- Judge: semantic correctness (catches kernel-valid-but-wrong, e.g. inverted polarity) ----------
 
 phase('Judge')
@@ -320,6 +413,15 @@ no nearer match exists — e.g. bare [Tier] from a rule scoped to /Subscription/
 difference. For pattern/regex operands, equivalence is about capturing the SAME intended format —
 treat trivially different regexes (anchors, equivalent character classes) that accept the same strings as
 equivalent; do not require byte-identical regex text.
+KERNEL FACT (empty operands): how an EMPTY field behaves in a comparison depends on its TYPE. A NUMBER empties
+to 0 (so \`[N] < k\` FIRES on an empty N — a \`FieldFilled(N)\` guard there CHANGES the fire set, NOT redundant);
+a confirm empties to False; but for STRING / DATE / BOOLEAN / ENUM the comparison is simply NOT EVALUATED on an
+empty operand (it cannot fire). Therefore a presence guard (\`FieldFilled\`/\`AllFieldsFilled\`) over the very
+field(s) a STRING/DATE/ENUM/BOOLEAN comparison ALREADY references is REDUNDANT — it does not change which
+documents fire — so a candidate that ADDS (or drops) such a guard over the gold's own compared field IS
+equivalent to the gold. This redundancy does NOT extend to (a) NUMBER comparisons, nor (b) date/aggregate
+FUNCTIONS like \`DifferenceInDays\`/\`YearFromDate\` on an ABSENT date, which are formal errors and so genuinely
+REQUIRE the presence guard — keep flagging a real difference there.
 Reference gold: field="${r.task.gold.field}", condition=${JSON.stringify(r.task.gold.condition)}.
 Candidate: field="${r.out.field}", condition=${JSON.stringify(r.out.condition)}.
 Return ONLY JSON: {"equivalent": true|false, "why": "<one sentence>"}`,
@@ -392,6 +494,27 @@ Return ONLY JSON: {"equivalent": true|false, "why": "<one sentence>"}`,
     .catch(() => ({ key, model: r.model, taskId: r.task.id, valid: true, equivalent: false }))
 }))
 
+const modRuleJudged = await parallel(modRuleCandidates.map(r => () => {
+  const key = `${r.model}/${r.task.id}/${r.i}`
+  const valid = modRuleAuthoritative[key] === true   // accepted by the kernel AND an actual change
+  if (!valid) return Promise.resolve({ key, model: r.model, taskId: r.task.id, valid: false, equivalent: false })
+  return agent(
+    `Judge whether a candidate A12 RULE CONDITION re-expression matches the reference (gold) modification: do the
+two conditions fire on exactly the same documents (mark the same documents INVALID)? A rule's condition is TRUE
+on a VIOLATION — polarity matters; a condition that fires on the OPPOSITE case is NOT equivalent. The candidate
+has already been confirmed by the kernel to be a CHANGE from the original rule — judge only whether it is the
+RIGHT change (semantically equivalent to the gold). The model is ${MODEL_FILE(r.task)} — run \`${CLI} describe
+${MODEL_FILE(r.task)}\` to see field types and value domains. Judge WITHIN the field's ACTUAL value domain; a
+difference that is only path notation or an equivalent value expression is NOT a semantic difference.
+Reference gold (the intended modified rule): error field "${r.task.gold.field}", condition=${JSON.stringify(r.task.gold.condition)}.
+Candidate condition: ${JSON.stringify(r.out.condition)}.
+Return ONLY JSON: {"equivalent": true|false, "why": "<one sentence>"}`,
+    { label: `judge ${key}`, phase: 'Judge',
+      schema: { type: 'object', additionalProperties: true, properties: { equivalent: { type: 'boolean' }, why: { type: 'string' } }, required: ['equivalent'] } })
+    .then(v => ({ key, model: r.model, taskId: r.task.id, valid: true, equivalent: !!(v && v.equivalent), why: v && v.why }))
+    .catch(() => ({ key, model: r.model, taskId: r.task.id, valid: true, equivalent: false }))
+}))
+
 // ---- Aggregate pass@k per (model, task). pass = kernel-valid AND semantically right ----------------
 
 const agg = {}
@@ -404,7 +527,8 @@ function bump(model, taskId, passed) {
 for (const r of authorJudged) bump(r.model, r.taskId, r.valid && r.equivalent)
 for (const r of compJudged) bump(r.model, r.taskId, r.valid && r.equivalent)
 for (const r of modJudged) bump(r.model, r.taskId, r.valid && r.equivalent)
+for (const r of modRuleJudged) bump(r.model, r.taskId, r.valid && r.equivalent)
 for (const r of explainJudged) bump(r.model, r.taskId, r.correct)
 
 log('pass@k by (model, task): ' + JSON.stringify(agg))
-return { agg, authorJudged, compJudged, modJudged, explainJudged }
+return { agg, authorJudged, compJudged, modJudged, modRuleJudged, explainJudged }

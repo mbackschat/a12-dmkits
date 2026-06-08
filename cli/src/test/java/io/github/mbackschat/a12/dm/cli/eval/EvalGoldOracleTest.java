@@ -83,6 +83,9 @@ class EvalGoldOracleTest {
             // Modify a computation: replacing the named existing computation with the gold must re-bind
             // (kernel-accept) — the deterministic backbone of the F8 `modify` loop.
             case "modify-computation" -> assertModifiedComputationGoldValidates(task, model, taskFile);
+            // Modify a rule: replacing the named existing rule's condition with the gold must re-bind
+            // (kernel-accept) — the rule-side counterpart of modify-computation.
+            case "modify-rule" -> assertModifiedRuleGoldValidates(task, model, taskFile);
             // Comprehension: the model's named rules must read cleanly (Converted, not Opaque) —
             // i.e. they are actually readable by explain/read. The richer "did the agent explain
             // it right?" scoring is the agent layer's job (the task's `expected` rubric).
@@ -138,6 +141,23 @@ class EvalGoldOracleTest {
             BoundModel.ofJson(replaced);   // binds + checkConsistency; throws if the kernel rejects
         } catch (RuntimeException e) {
             fail(taskFile.getFileName() + " modify-computation gold must re-bind (kernel-accept), got: " + e.getMessage());
+        }
+    }
+
+    /**
+     * A modify-rule gold: REPLACE the named existing rule's CONDITION with the gold re-expression and
+     * assert the result re-binds (kernel-accepts). Mirrors {@code cli modify --rule … --condition …
+     * --dry-run}'s gate (replaceCondition + BoundModel.ofJson) — the in-place re-expression of an
+     * existing rule, not the authoring of a new one.
+     */
+    private static void assertModifiedRuleGoldValidates(JsonNode task, String model, Path taskFile) {
+        String fullName = task.get("rule").asText();          // e.g. /Order/DeliveryNotBeforeOrder
+        String condition = task.get("gold").get("condition").asText();
+        String replaced = ModelWriter.replaceCondition(model, fullName, condition);
+        try {
+            BoundModel.ofJson(replaced, resolverFor(task));   // binds + checkConsistency; throws if rejected
+        } catch (RuntimeException e) {
+            fail(taskFile.getFileName() + " modify-rule gold must re-bind (kernel-accept), got: " + e.getMessage());
         }
     }
 
