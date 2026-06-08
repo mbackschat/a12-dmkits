@@ -1333,7 +1333,7 @@
     "keywords": { "en": "Valid", "de": "Gueltig" },
     "operands": [ { "type": "date" } ],
     "returns": "boolean",
-    "meaning": "True iff a constructed date is a real calendar date (e.g. Date(31, 2, 2024) is invalid). rulekit models the date-construct validity (IDateValidityCondition); the custom-field-type validity overload is not modeled.",
+    "meaning": "True iff a constructed date is a real calendar date (e.g. Date(31, 2, 2024) is invalid). This is the date-construct overload (IDateValidityCondition); the custom-field-type overload Valid(field, \"Type\") is the separate ValidType entry.",
     "constraints": [ "the operand is a Date(...) construction (or a date)" ],
     "validExample": { "dsl": "FieldFilled(BirthDay) And Valid(Date(BirthDay, BirthMonth, BirthYear))", "note": "fires when the entered birth-date parts form a real calendar date" },
     "sinceKernel": "30.8.x"
@@ -1347,6 +1347,30 @@
     "meaning": "True iff a constructed date is not a real calendar date (the negation of Valid over a Date(...) construction).",
     "constraints": [ "the operand is a Date(...) construction (or a date)" ],
     "validExample": { "dsl": "FieldFilled(BirthDay) And Invalid(Date(BirthDay, BirthMonth, BirthYear))", "note": "fires when the entered birth-date parts do not form a real calendar date" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "ValidType",
+    "kind": "predicate",
+    "keywords": { "en": "Valid", "de": "Gueltig" },
+    "operands": [ { "type": "string" }, { "type": "string" } ],
+    "returns": "boolean",
+    "meaning": "True iff the field's value is a valid instance of the named predefined custom field type (e.g. \"IBAN\", \"Steuernummer\"). The custom-field-type overload of Valid — distinct from the date-construct Valid (separate catalog id). Operand 1 is a STRING or ENUMERATION field; operand 2 is the type name as a string literal.",
+    "constraints": [ "operand 1 is a STRING or ENUMERATION field; operand 2 is a string-literal type name" ],
+    "gotchas": [ { "text": "the type name is NOT validated when the model is checked — checkConsistency accepts any string (even a misspelled or unregistered type); a wrong type name only fails at runtime evaluation, because the predefined types are a runtime client-SPI (IPredefinedType), not a model-time registry", "kind": "SURPRISE" } ],
+    "validExample": { "dsl": "FieldFilled(CustomerName) And Valid(CustomerName, \"Steuernummer\")", "note": "fires when the customer name is present and a valid Steuernummer" },
+    "sinceKernel": "30.8.x"
+  },
+  {
+    "id": "InvalidType",
+    "kind": "predicate",
+    "keywords": { "en": "Invalid", "de": "Ungueltig" },
+    "operands": [ { "type": "string" }, { "type": "string" } ],
+    "returns": "boolean",
+    "meaning": "True iff the field's value is NOT a valid instance of the named predefined custom field type — the negation of ValidType. The custom-field-type overload of Invalid, distinct from the date-construct Invalid.",
+    "constraints": [ "operand 1 is a STRING or ENUMERATION field; operand 2 is a string-literal type name" ],
+    "gotchas": [ { "text": "the type name is NOT validated when the model is checked (see ValidType)", "kind": "SURPRISE" } ],
+    "validExample": { "dsl": "FieldFilled(ProductCode) And Invalid(ProductCode, \"IBAN\")", "note": "fires when the product code is present but not a valid IBAN" },
     "sinceKernel": "30.8.x"
   },
   {

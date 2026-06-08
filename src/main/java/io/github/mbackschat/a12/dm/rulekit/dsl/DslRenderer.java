@@ -200,6 +200,8 @@ public final class DslRenderer {
                             .collect(java.util.stream.Collectors.joining(", "))
                     + ")";
             case DateValidity v -> keyword(v.operatorId()) + "(" + renderArg(v.dateConstruct()) + ")";
+            case CustomTypeValidity v ->
+                    keyword(v.operatorId()) + "(" + path(v.field().path()) + ", " + quote(v.typeName()) + ")";
         };
     }
 

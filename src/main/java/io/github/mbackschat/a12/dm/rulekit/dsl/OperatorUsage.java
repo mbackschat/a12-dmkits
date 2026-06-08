@@ -59,6 +59,7 @@ public final class OperatorUsage {
             case RepetitionNotUniqueCondition r -> r.scope().ifPresent(s -> ops.add("FromScope"));
             case CustomConditionRef ignored -> { }
             case DateValidity v -> collect(v.dateConstruct(), ops);
+            case CustomTypeValidity ignored -> { /* operatorId already added; the field adds no operators */ }
         }
     }
 

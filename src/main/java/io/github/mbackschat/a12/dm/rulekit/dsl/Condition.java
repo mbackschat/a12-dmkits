@@ -17,7 +17,7 @@ public sealed interface Condition
         permits FieldPresenceCondition, FieldListPredicate, ComparisonCondition, LogicCondition,
         GroupPresenceCondition, GroupListPredicate, PatternCondition, ValueListCondition,
         FieldListValueListCondition, FieldListEntityListCondition, GroupScopedFieldFill,
-        RepetitionNotUniqueCondition, CustomConditionRef, DateValidity {
+        RepetitionNotUniqueCondition, CustomConditionRef, DateValidity, CustomTypeValidity {
 
     /** The catalog operator-id this node applies — the renderer's only source of keywords. */
     String operatorId();
@@ -60,6 +60,7 @@ public sealed interface Condition
             case RepetitionNotUniqueCondition r -> r;
             case CustomConditionRef c -> c;
             case DateValidity v -> v;
+            case CustomTypeValidity v -> v;
         };
         return rewriter.apply(rebuilt);
     }

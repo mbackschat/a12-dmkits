@@ -3,6 +3,8 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 import java.util.ArrayList;
 import java.util.List;
 
+import io.github.mbackschat.a12.dm.core.ValueKind;
+
 /**
  * The static-import facade (proposal §10, jOOQ-style): free-standing factories for composing
  * conditions, made for reusable combinators — {@code gate.and(fieldNotFilled(field))} instead of a
@@ -350,6 +352,30 @@ public final class Dsl {
     /** {@code Invalid(dateConstruct)} — true iff the constructed date is not a real calendar date. */
     public static Condition invalid(DateOperand dateConstruct) {
         return new DateValidity(false, dateConstruct.expression());
+    }
+
+    /**
+     * {@code Valid(field, "TypeName")} — true iff {@code field}'s value is a valid instance of the
+     * predefined custom field type {@code typeName} (e.g. {@code "IBAN"}, {@code "Steuernummer"}). The
+     * field must be STRING or ENUMERATION. <b>The type name is not validated at model-check time</b> — the
+     * predefined types are a runtime client-SPI, so a wrong name only fails at evaluation (see
+     * {@link CustomTypeValidity}).
+     */
+    public static Condition validType(FieldRef field, String typeName) {
+        return customTypeValidity(true, field, typeName);
+    }
+
+    /** {@code Invalid(field, "TypeName")} — the negation of {@link #validType} (the field is NOT a valid {@code typeName}). */
+    public static Condition invalidType(FieldRef field, String typeName) {
+        return customTypeValidity(false, field, typeName);
+    }
+
+    private static Condition customTypeValidity(boolean valid, FieldRef field, String typeName) {
+        if (field.kind() != ValueKind.STRING && field.kind() != ValueKind.ENUMERATION) {
+            throw new IllegalArgumentException("Valid/Invalid(field, \"Type\") needs a STRING or ENUMERATION field, but "
+                    + field.path() + " is " + field.kind());
+        }
+        return new CustomTypeValidity(valid, field, typeName);
     }
 
     /** {@code StartOfDateRange(range)} — the start bound of a date-range, as a comparable date. */

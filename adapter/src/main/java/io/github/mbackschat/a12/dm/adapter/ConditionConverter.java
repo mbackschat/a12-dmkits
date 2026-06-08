@@ -14,6 +14,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IApplicatio
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IComparisonCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.ICompositeCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IDateValidityCondition;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IPredefinedTypeValidityCondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.ICompositeOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.ICondition;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.condition.IEntityListAndValueListCondition;
@@ -238,6 +239,14 @@ final class ConditionConverter {
             boolean valid = validity.getConditionName() == ValidityConditionName.Valid;
             DateOperand date = convertDateOperand(validity.getDateConstruct(), validity);
             return valid ? Dsl.valid(date) : Dsl.invalid(date);
+        }
+        if (node instanceof IPredefinedTypeValidityCondition typeValidity) {
+            // Valid(field, "Type") / Invalid(field, "Type") — the custom-field-type validity condition
+            boolean valid = typeValidity.getConditionName() == ValidityConditionName.Valid;
+            FieldRef field = model.field(typeValidity.getField().getFullName());
+            return valid
+                    ? Dsl.validType(field, typeValidity.getPredefinedTypeConstant())
+                    : Dsl.invalidType(field, typeValidity.getPredefinedTypeConstant());
         }
         throw unsupported("condition", node);
     }

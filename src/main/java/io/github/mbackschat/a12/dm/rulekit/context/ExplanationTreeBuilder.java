@@ -17,6 +17,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DateShift;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeBound;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimePart;
+import io.github.mbackschat.a12.dm.rulekit.dsl.CustomTypeValidity;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateValidity;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRounding;
 import io.github.mbackschat.a12.dm.rulekit.dsl.SumOfProducts;
@@ -99,6 +100,7 @@ final class ExplanationTreeBuilder {
             case RepetitionNotUniqueCondition r -> List.of();
             case CustomConditionRef c -> List.of();
             case DateValidity v -> operand(v.dateConstruct());
+            case CustomTypeValidity v -> List.of();
         };
         return new RuleExplanation.Node(condition.operatorId(), renderer.render(condition), children);
     }

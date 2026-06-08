@@ -82,6 +82,7 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case RepetitionNotUniqueCondition r -> r.keys().forEach(k -> fields.add(k.path()));
             case CustomConditionRef ignored -> { /* references nothing — host-defined */ }
             case DateValidity v -> collect(v.dateConstruct(), fields, groups);
+            case CustomTypeValidity v -> fields.add(v.field().path());
         }
     }
 
