@@ -81,7 +81,7 @@ class EvalGoldOracleTest {
             // Authoring a computation: the gold computation (computed field + alternatives) must validate.
             case "authoring-computation" -> assertComputationGoldValidates(task, model, taskFile);
             // Modify a computation: replacing the named existing computation with the gold must re-bind
-            // (kernel-accept) — the deterministic backbone of the F8 `diff --computation` modify loop.
+            // (kernel-accept) — the deterministic backbone of the F8 `modify` loop.
             case "modify-computation" -> assertModifiedComputationGoldValidates(task, model, taskFile);
             // Comprehension: the model's named rules must read cleanly (Converted, not Opaque) —
             // i.e. they are actually readable by explain/read. The richer "did the agent explain
@@ -108,7 +108,7 @@ class EvalGoldOracleTest {
 
     /**
      * A modify-computation gold: REPLACE the named existing computation with the gold re-expression and
-     * assert the result re-binds (kernel-accepts). Mirrors {@code cli diff --computation}'s gate
+     * assert the result re-binds (kernel-accepts). Mirrors {@code cli modify --dry-run}'s gate
      * (replaceComputation + BoundModel.ofJson) — the in-place modification, not an add of a second
      * computation on the already-computed field.
      */

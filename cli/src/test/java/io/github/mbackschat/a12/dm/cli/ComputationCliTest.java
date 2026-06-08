@@ -17,7 +17,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 
 /**
  * The CLI computation write/modify verbs: {@code add} a computation from a computation-spec and
- * {@code diff --computation} to re-express one — the authoring + modify half of the computation loop
+ * {@code modify --computation} to re-express one — the authoring + modify half of the computation loop
  * over the CLI, working on self-contained and multi-file (include-resolving) models alike.
  */
 class ComputationCliTest {
@@ -71,7 +71,7 @@ class ComputationCliTest {
     }
 
     @Test
-    void diffComputationReExpresses(@TempDir Path dir) throws Exception {
+    void modifyDryRunReExpressesAComputation(@TempDir Path dir) throws Exception {
         Path model = write(dir, "m.dm.json", CliTestSupport.modelWithRuleAndComputationJson());
         Path spec = write(dir, "modified.json", """
                 { "computedField": "/Subscription/Billing/EffectiveFee", "name": "EffectiveFeeComp",
@@ -79,31 +79,33 @@ class ComputationCliTest {
                   "messages": [ {"locale":"en_US","text":"EffectiveFee is double BaseFee."},
                                 {"locale":"de_DE","text":"Effektivgebühr ist doppelte Basisgebühr."} ] }
                 """);
-        var res = CliTestSupport.run("diff", model.toString(),
-                "--computation", CliTestSupport.COMPUTATION_FULL_NAME, "--spec", spec.toString());
+        String before = Files.readString(model);
+        var res = CliTestSupport.run("modify", model.toString(),
+                "--computation", CliTestSupport.COMPUTATION_FULL_NAME, "--spec", spec.toString(), "--dry-run");
         assertEquals(0, res.code(), res::err);
         JsonNode j = MAPPER.readTree(res.out());
         assertTrue(j.get("changed").asBoolean(), () -> "the re-expression is a change: " + res.out());
         assertTrue(j.get("after").asText().contains("2"), () -> "after carries the markup: " + res.out());
+        assertEquals(before, Files.readString(model), "--dry-run writes nothing");
     }
 
     @Test
-    void diffComputationSpecMustMatchTheTarget(@TempDir Path dir) throws Exception {
+    void modifySpecMustMatchTheComputation(@TempDir Path dir) throws Exception {
         Path model = write(dir, "m.dm.json", CliTestSupport.modelWithRuleAndComputationJson());
         Path spec = write(dir, "spec.json", EFFECTIVE_FEE_SPEC);   // derives EffectiveFeeComp
-        var res = CliTestSupport.run("diff", model.toString(),
-                "--computation", "/Subscription/Billing/SomeOtherComp", "--spec", spec.toString());
+        var res = CliTestSupport.run("modify", model.toString(),
+                "--computation", "/Subscription/Billing/SomeOtherComp", "--spec", spec.toString(), "--dry-run");
         assertNotEquals(0, res.code(), "the spec must re-express the same computation named by --computation");
     }
 
     @Test
-    void diffNeedsExactlyOneMode(@TempDir Path dir) throws Exception {
+    void modifyNeedsExactlyOneMode(@TempDir Path dir) throws Exception {
         Path model = write(dir, "m.dm.json", CliTestSupport.modelWithRuleAndComputationJson());
-        var both = CliTestSupport.run("diff", model.toString(),
-                "--rule", CliTestSupport.RULE_FULL_NAME, "--computation", CliTestSupport.COMPUTATION_FULL_NAME);
+        var both = CliTestSupport.run("modify", model.toString(),
+                "--rule", CliTestSupport.RULE_FULL_NAME, "--computation", CliTestSupport.COMPUTATION_FULL_NAME, "--dry-run");
         assertNotEquals(0, both.code(), "--rule and --computation are mutually exclusive");
-        var neither = CliTestSupport.run("diff", model.toString());
-        assertNotEquals(0, neither.code(), "diff needs a mode");
+        var neither = CliTestSupport.run("modify", model.toString());
+        assertNotEquals(0, neither.code(), "modify needs a mode");
     }
 
     @Test

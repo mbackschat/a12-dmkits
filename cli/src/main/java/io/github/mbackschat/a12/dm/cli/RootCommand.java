@@ -27,7 +27,6 @@ import picocli.CommandLine.Spec;
             ReadCommand.class,
             ExplainCommand.class,
             WhereUsedCommand.class,
-            DiffCommand.class,
             ModifyCommand.class,
             BatchCommand.class,
             SchemaCommand.class,

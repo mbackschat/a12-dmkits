@@ -21,7 +21,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
  * The {@code modify} verb — the WRITE end of the F8 modify-by-re-express loop: re-express a rule's
  * condition (or a computation) and write the modified model back. In place by default, {@code -o}
  * redirects, {@code --dry-run} previews only (the read-only {@code diff} behavior). An invalid
- * re-expression is rejected before any write. Shares {@link ReExpressCommand} with {@code diff}.
+ * re-expression is rejected before any write. The only re-express verb (diff was retired; --dry-run is the read-only preview).
  */
 class ModifyVerbTest {
 
