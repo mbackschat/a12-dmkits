@@ -72,5 +72,5 @@ Two demos cover the read and the write/edit workflows; the method scales to more
 
 Two cross-cutting follow-ups:
 
-- **CI doc-drift gate** — run `uvx showboat@0.6.1 verify` on each demo in CI (after `:cli:installDist`), joining the F11 "loud detection at build" guardians. This is the highest-value next step: it turns the demos into a guard that the CLI's contract hasn't silently changed.
+- ✅ **CI doc-drift gate** — `.github/workflows/ci.yml` runs `uvx showboat@0.6.1 verify` on both demos (after `:cli:installDist`, reusing the bootstrapped kernel in the same job), joining the F11 "loud detection at build" guardians. A verb rename or output-shape change that wasn't carried into the demos now fails CI instead of rotting silently (the read/export rename bit them twice before this existed).
 - **Reuse the verified snippets** — they can seed the README quickstart and the N1 skill examples. Mind the eval material boundary: keep any skill example structurally distinct from the eval tasks ([`EVAL-SPEC.md`](EVAL-SPEC.md) §3).

@@ -68,3 +68,26 @@ jobs:
           # cacheable home on the runner).
           GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated
         run: ./gradlew --no-daemon test :adapter:test :cli:test
+
+      # Doc-drift gate (F11 "loud detection at build"): the examples/ Showboat demos are executable
+      # docs — `verify` re-runs each captured CLI invocation and exact-matches its recorded output. A
+      # verb rename or output-shape change that wasn't reflected in the demos fails CI here instead of
+      # rotting silently (the read/export rename bit them twice before this gate existed). Needs the CLI
+      # launcher (installDist, which `bin/rk` resolves to) + uv (for `uvx showboat`); jq is on the runner.
+      - name: Build the CLI launcher (for the demos)
+        working-directory: a12-dmkits
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
+          GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated
+        run: ./gradlew --no-daemon :cli:installDist
+
+      - name: Set up uv (for uvx showboat)
+        uses: astral-sh/setup-uv@v6
+
+      - name: Verify the Showboat demos still match the live CLI
+        working-directory: a12-dmkits
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
+        run: |
+          uvx showboat@0.6.1 verify examples/cli-tour.md
+          uvx showboat@0.6.1 verify examples/cli-edit-loop.md
