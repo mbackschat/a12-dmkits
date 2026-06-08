@@ -22,7 +22,7 @@ The three you lean on:
 
 ## The loop
 
-1. **Orient** — `cli describe` / `cli dump` to learn the fields, their kinds, enum values, and which groups repeat.
+1. **Orient** — `cli describe` / `cli export` to learn the fields, their kinds, enum values, and which groups repeat.
 2. **Pick operators** — from `cli operators`, by meaning.
 3. **Compose** the condition — minding **polarity**, **paths**, and **iteration** below.
 4. **Check** — `cli check …`. If `valid:true`, done. If not, read each diagnostic.

@@ -55,8 +55,8 @@ Plain-language definitions. The first group is general LLM-eval vocabulary; the 
 
 | Term | What it means here |
 |---|---|
-| **Task family** | The kind of task. **Authoring** = intent → write a rule (scored by kernel-accepts + judge). **Comprehension** = existing rule → explain it (scored by ingest-cleanly + judge vs the rubric). |
-| **Layer 1 / Layer 2** | *Layer 1* = the deterministic backbone (`EvalGoldOracleTest`: golds validate, comprehension rules ingest) — runs in CI. *Layer 2* = the soft agent runner (`benchmark.workflow.js`: clean agents → pass@k) — opt-in, on demand. |
+| **Task family** | The kind of task. **Authoring** = intent → write a rule (scored by kernel-accepts + judge). **Comprehension** = existing rule → explain it (scored by read-cleanly + judge vs the rubric). |
+| **Layer 1 / Layer 2** | *Layer 1* = the deterministic backbone (`EvalGoldOracleTest`: golds validate, comprehension rules read) — runs in CI. *Layer 2* = the soft agent runner (`benchmark.workflow.js`: clean agents → pass@k) — opt-in, on demand. |
 | **GAPS section** | The required closing section of a probe report: what the agent found missing, confusing, or had to guess. This — not the pass/fail — is the real deliverable, because it names the material to improve. |
 | **N6 / N1 / N7** | Proposal requirement codes. **N6** = semantic self-sufficiency (what this eval measures). **N1** = the LLM skill (what it drives). **N7** = the catalog-examples-validate test (the deterministic guard this composes with). |
 | **`RK_INVERTED_REQUIREDNESS`** | The lint code for the recurring trap this eval surfaced: a rule written in the wrong *polarity* (fires on the requirement being *met* instead of *violated*). Kernel-valid, so only a judge or the lint catches it. |

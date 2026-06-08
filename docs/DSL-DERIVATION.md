@@ -48,7 +48,7 @@ So the *shape* is: catalog (the operator vocabulary) × model index (the field t
 
 ## Even the reverse direction never touches the grammar directly (updated 2026-06-03)
 
-v1 of this doc expected the **text → AST round-trip** (#3) to be the one feature consuming the kernel's ANTLR parse tree programmatically. The kernel API survey ([`KERNEL-RULE-API-SURVEY.md`](./KERNEL-RULE-API-SURVEY.md)) showed otherwise: **ingest (F10, proposal §12 — now Phase 2)** goes through the kernel's own **high-level, ANTLR-free AST** (`IRuleParser` → `ICondition` → converter visitor → rulekit AST, via the N8 kernel-adapter tier). So the claim above strengthens: rulekit never consumes the `.g4`, the generated parser classes, *or* the ANTLR parse tree — in **either** direction. The grammar stays strictly upstream (it shapes the kernel's parser and the curated docs) and downstream (that parser judges rulekit's output and parses rulekit's input).
+v1 of this doc expected the **text → AST round-trip** (#3) to be the one feature consuming the kernel's ANTLR parse tree programmatically. The kernel API survey ([`KERNEL-RULE-API-SURVEY.md`](./KERNEL-RULE-API-SURVEY.md)) showed otherwise: **read (F10, proposal §12 — now Phase 2)** goes through the kernel's own **high-level, ANTLR-free AST** (`IRuleParser` → `ICondition` → converter visitor → rulekit AST, via the N8 kernel-adapter tier). So the claim above strengthens: rulekit never consumes the `.g4`, the generated parser classes, *or* the ANTLR parse tree — in **either** direction. The grammar stays strictly upstream (it shapes the kernel's parser and the curated docs) and downstream (that parser judges rulekit's output and parses rulekit's input).
 
 ## Worked example: `<=` and `Length`, end to end
 

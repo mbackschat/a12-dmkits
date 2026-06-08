@@ -4,7 +4,7 @@ The stable **method** for the rulekit CLI demos: how to author, verify, and exte
 
 The demos are authored with [showboat](https://github.com/simonw/showboat): each `examples/*.md` interleaves prose, a command, and its **captured output**, and `showboat verify` re-runs every command to prove the output still matches the live CLI. So a demo is documentation *and* a doc-drift regression test.
 
-Started as a spike (2026-06-05). [`../examples/cli-tour.md`](../examples/cli-tour.md) is the first demo: a verb tour (`describe`·`validate`·`ingest`·`explain`·`check`) that opens with the model it guards, then shows each verb with a "what just happened" note.
+Two demos so far, split by workflow: [`../examples/cli-tour.md`](../examples/cli-tour.md) — the **read/inspect** surface (`manifest`·`describe`·`validate`·`read`·`explain`·`check`), opening with the model it guards; and [`../examples/cli-edit-loop.md`](../examples/cli-edit-loop.md) — the **write/edit** surface (`where-used`·`explain --computation`·`diff`·`modify`·`add`·`--include-dir`·`batch`·`operators`/`schema`), the F8 modify-by-re-express loop end to end.
 
 ## Run / verify / regenerate
 
@@ -18,7 +18,27 @@ uvx showboat@0.6.1 verify examples/cli-tour.md
 uvx showboat@0.6.1 extract examples/cli-tour.md
 ```
 
-Run from the **repo root** — commands use repo-root-relative paths (`bin/rk …`, `cli/src/test/...`).
+Run from the **repo root** — commands use repo-root-relative paths (`bin/rk …`, `cli/src/test/...`). `JAVA_HOME` must point at JDK 21 for **both** build and `verify` (`bin/rk` → the JVM launcher); export it first: `export JAVA_HOME="$(/usr/libexec/java_home -v 21)"`.
+
+## Authoring model — how showboat builds a demo (so you never have to re-derive it)
+
+A demo is **built by an append-only sequence of commands**, not hand-written. The full command set (`showboat <cmd> --help`):
+
+| command | what it does |
+|---|---|
+| `showboat init <file> <title>` | start a new demo (one H1 title) |
+| `showboat note <file> [text]` | append prose (markdown). Reads **stdin** when `text` is omitted — use a `<<'EOF'` heredoc for multi-line/punctuated prose |
+| `showboat exec <file> <lang> [code]` | run `code` and append the command **and its captured output**. Reads **stdin** when `code` is omitted — *always pass code via stdin heredoc*, it sidesteps all nested-quote pain (`printf '%s' '{json}'`, `$(grep …)`, `"x"` survive verbatim) |
+| `showboat pop <file>` | remove the **most recent** entry (the only edit primitive) |
+| `showboat verify <file> [--output <new>]` | re-run every code block, **exact-match** diff (no normalization — issue #13) |
+| `showboat extract <file> [--filename <name>]` | print the commands that recreate the file (output blocks omitted) |
+
+Key behaviors that bite if you forget them:
+
+- **`exec` appends regardless of exit code** — a failing command still lands a block; `pop` it and retry. Author a demo by driving these from a **build script** (see [`../examples/`](../examples/) — `cli-edit-loop.md` was built by one), so it's reproducible and re-runnable, not typed by hand.
+- **Append-only ⇒ no in-place edit of an early block.** Two ways to fix a block that isn't last: **(a)** manually edit its ```` ```output ```` fence to match the live output, then `verify` to confirm byte-equality (cheapest for a one-line drift, e.g. a new verb in the `manifest` list); **(b)** `extract` → edit the command list → rebuild from scratch (for structural change). You cannot `pop` to a middle block without discarding everything after it.
+- **State across blocks:** each `exec` is a **fresh shell** — shell variables do **not** persist between blocks, but **files do** (e.g. a `/tmp` file one block writes, the next reads). `verify` re-runs blocks **in order**, so a later block may depend on a file an earlier one created.
+- **Write-verb determinism (the gotcha for `add`/`modify`):** `add` prints the new model to **stdout** → redirect to a fixed `/tmp` path. `modify` writes **in place** → first `cp` the fixture to a fixed `/tmp` path and modify *that*, so a re-run never mutates a committed fixture (and the path stays byte-stable). Don't rely on `2>&1` to show a verb's stderr note — stdout/stderr flush order isn't guaranteed; redirect stderr to `/dev/null` and prove the effect another way (e.g. `grep -c` the written file), or capture the streams separately.
 
 ## The `bin/rk` shim
 
@@ -33,7 +53,7 @@ Demos call the CLI through [`../bin/rk`](../bin/rk), never a packaging artifact,
 
 | Volatile source | In-band fix |
 |---|---|
-| absolute paths (`dump --output`) | pipe through `sed 's#/Users/[^"]*/#<repo>/#g'` |
+| absolute paths (`export --out-dir`) | pipe through `sed 's#/Users/[^"]*/#<repo>/#g'` |
 | German kernel messages (a failing model) | prefix `LANG=en_US.UTF-8` |
 | field/array ordering, extra keys | project with `jq` (as the model section does) |
 
@@ -41,13 +61,14 @@ A fork of showboat to add a redaction hook is the wrong bet — in-band scrubbin
 
 ## Expanding this approach (backlog)
 
-The spike proved one demo; the method scales to a small suite, one demo per workflow:
+Two demos cover the read and the write/edit workflows; the method scales to more, one demo per workflow:
 
-- **Authoring loop** — `check` → `add` → re-`validate` → `ingest` (show the write path round-trips).
-- **Edit loop** — `ingest` → re-express → `diff` → write-back (the F8 loop end-to-end).
+- ✅ **Authoring loop** — `check` → `add` → re-`validate` (`cli-edit-loop.md`).
+- ✅ **Edit loop** — `explain --computation` → re-express → `diff` (preview) → `modify` (write-back); the F8 loop end-to-end (`cli-edit-loop.md`).
+- ✅ **`batch`** — the self-describing, per-op-attributable output in one warm JVM (`cli-edit-loop.md`).
+- ✅ **Multi-file** — `--include-dir` resolving an included model (`cli-edit-loop.md`).
 - **Comprehension** — read foreign rules back and explain them (the T7 family).
 - **Teaching / error paths** — deliberately author a wrong rule (inverted polarity, unguarded number) and show the lint/diagnostics fire. Needs the `LANG` pin above for the kernel's German messages.
-- **`batch`** — show the self-describing, per-op-attributable output in one warm JVM.
 
 Two cross-cutting follow-ups:
 

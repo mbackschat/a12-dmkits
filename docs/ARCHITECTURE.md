@@ -10,8 +10,8 @@ Gradle units (core + adapter) plus the CLI — the standalone front-end — and 
 |---|---|---|---|---|---|
 | **core + rulekit** | root project (`:`) | public kernel only | `kernel-md-facade` + public model API + serializer — **must not** touch `kernel-md-model`/`kernel-md-a12internal` (D15, enforced) | the library: typed builder, renderer, validator, diagnostics, context projections, DM-JSON write path (`dm.core` + `dm.rulekit.*`; the core↔rulekit Gradle split stays deferred) | Phase 1 ✅ |
 | **modelkit** | `:modelkit` subproject | **none** — Jackson only (no kernel, no core/rulekit) | none | the standalone structure builder (`DocumentModelDraft`); compiler-enforces structure⊥dsl (D10). Test-only consumer of `:` (tests share fixtures + the kernel oracle) | Phase 3 — M1–M6 ✅, extracted 2026-06-06 |
-| **adapter** | `:adapter` subproject | `api project(':')` + kernel internal-read modules | the `a12internal` **read** tier (`parsetree-api`, `tool-api`, `DocumentModelService`) under N8 guardrails | opt-in Java-only module: ingest, explain-support, whereUsed, diff helper | Phase 2, bootstrapped ✅ |
-| **cli** | `:cli` subproject (`application` plugin) | core now (**+ adapter** as ingest/explain verbs land) | inherits adapter's once added (bundled inside the binary, not a library surface) | the **standalone, zero-toolchain front-end for the modeller/BA (N10)** — verbs + JSON in/out; self-contained app-image (JVM bundled). Detail: [`CLI-SPEC.md`](CLI-SPEC.md) | Phase 2 — `dump`/`describe`/`validate`/`check`/`add` ✅ |
+| **adapter** | `:adapter` subproject | `api project(':')` + kernel internal-read modules | the `a12internal` **read** tier (`parsetree-api`, `tool-api`, `DocumentModelService`) under N8 guardrails | opt-in Java-only module: read, explain-support, whereUsed, diff helper | Phase 2, bootstrapped ✅ |
+| **cli** | `:cli` subproject (`application` plugin) | core now (**+ adapter** as read/explain verbs land) | inherits adapter's once added (bundled inside the binary, not a library surface) | the **standalone, zero-toolchain front-end for the modeller/BA (N10)** — verbs + JSON in/out; self-contained app-image (JVM bundled). Detail: [`CLI-SPEC.md`](CLI-SPEC.md) | Phase 2 — `export`/`describe`/`validate`/`check`/`add` ✅ |
 | **skill** | *(no module)* | — | — | the N1 Claude Code skill (`skill/SKILL.md`): teaching material for **both** persona loops (dev in-repo; BA via CLI) + the `MVK_*` fix table; read by the agent, not a code dep | Phase 2 — first draft ✅ |
 
 `settings.gradle` includes `adapter` and `cli`. `./gradlew :test` runs the core in isolation (no internal tier on the classpath — the D15 boundary is build-checked by construction); `./gradlew :adapter:test` runs the adapter; `./gradlew :cli:test` runs the CLI (incl. the N6 gold-oracle over `eval/tasks/`); `./gradlew test` runs all.
@@ -25,12 +25,12 @@ How the Gradle units stack, what each depends on, and where the kernel coupling 
 ```
   front-ends            ┌──────────────────────────┐   ┌──────────────────────────────┐
   (who drives it)       │  :cli  (application)      │   │  Claude Code in the dev's    │
-                        │  verbs: dump describe     │   │  OWN project (rulekit as a   │
+                        │  verbs: export describe   │   │  OWN project (rulekit as a   │
                         │  validate check add       │   │  library dependency)         │
                         └───────┬──────────────────┘   └───────────────┬──────────────┘
                                 │ implementation               depends on │
         skill/SKILL.md ┄┄┄┄┄┄┄┄┄┤ (+ :adapter — powers                    │
-        (read by agent,         │  ingest/explain)                        │
+        (read by agent,         │  read/explain)                          │
          not a code dep)        ▼                                         ▼
                         ┌──────────────┐   api    ┌───────────────────────────────────┐
                         │  :adapter    │─────────▶│  core  (root project ` : `)        │
@@ -58,10 +58,10 @@ The same engine, three consumer paths:
 ```
  (A) DEVELOPER            Claude Code ──edits──▶ dev's project ──depends on──▶ core ──▶ public kernel
      (in-repo library)    feedback = the project's own javac + RuleValidator diagnostics.
-                          No CLI, no adapter (unless ingesting foreign rules). N10 "no bespoke vehicle".
+                          No CLI, no adapter (unless reading foreign rules). N10 "no bespoke vehicle".
 
- (B) MODELLER / BA        BA's agent ──runs──▶ :cli launcher ──▶ core (+ :adapter for ingest/explain)
-     (standalone CLI)        describe/dump → orient   check → kernel verdict   add → persist DM-JSON
+ (B) MODELLER / BA        BA's agent ──runs──▶ :cli launcher ──▶ core (+ :adapter for read/explain)
+     (standalone CLI)        describe/export → orient check → kernel verdict   add → persist DM-JSON
                           feedback = kernel Diagnostics (runtime). JVM bundled & invisible (N10).
 
  (C) EVAL / N6            clean subagent ──reads──▶ skill/SKILL.md + catalog ; ──runs──▶ :cli ──▶ core ──▶ kernel
@@ -73,7 +73,7 @@ The same engine, three consumer paths:
 ```
 
 
-**Decision (2026-06-04, superseding the earlier "ship-with-skill" framing): the file/JSONL dump emitter is a CLI verb, not core and not a separate JBang script.** The agent-facing artifacts (finding 13 — `fields.jsonl`/`groups.jsonl`/`rules.jsonl`/`model-card.md`) are emitted by the CLI (`rulekit dump model.json fields`), which consumes core's public projections (`m.fields()`, `m.groups()`, `ModelContext`/`ModelCard`) and serializes them. The serialization/IO concern stays out of the core library; core exposes the programmatic projections (also directly usable by an in-repo developer), the CLI renders them to files. *(The standalone-vehicle question collapsed to a single answer — the CLI — once we recognized developers don't need a bespoke vehicle, N10; that supersedes the brief skill-tools/JBang-script home.)*
+**Decision (2026-06-04, superseding the earlier "ship-with-skill" framing): the file/JSONL export emitter is a CLI verb, not core and not a separate JBang script.** The agent-facing artifacts (finding 13 — `fields.jsonl`/`groups.jsonl`/`rules.jsonl`/`model-card.md`) are emitted by the CLI (`rulekit export model.json fields`), which consumes core's public projections (`m.fields()`, `m.groups()`, `ModelContext`/`ModelCard`) and serializes them. The serialization/IO concern stays out of the core library; core exposes the programmatic projections (also directly usable by an in-repo developer), the CLI renders them to files. *(The standalone-vehicle question collapsed to a single answer — the CLI — once we recognized developers don't need a bespoke vehicle, N10; that supersedes the brief skill-tools/JBang-script home.)*
 
 ## 2. Core package layering
 
@@ -130,7 +130,7 @@ Three tiers of access to the kernel API, per proposal §N8:
 
 - **Core — public only.** Binds `IDocumentModel`, `checkConsistency`, the public model API and serializer. The compile-time guarantee: the core classpath has no `a12internal` module on it, so the boundary can't be crossed by accident. This is what keeps the core polyglot-ready (a future TS twin builds the *same* index from the *same* DM-JSON content).
 - **Tests — internal allowed.** Fixtures, oracles, and parity sources may read the internal tier, provided nothing internal leaks into `src/main` or a public signature.
-- **Adapter — internal read, guarded.** The `a12internal` read tier (the kernel's own AST: `parsetree-api` conditions/operations, `tool-api` `IRule`/`IEC`, `DocumentModelService`) reachable in one call from the md-tier model. Guardrails: **boundary conversion** (kernel types never escape a public signature — `KernelAdapter` returns rulekit `Condition`/`Ingest`/`String`, never an `ICondition`), **read-only** (no kernel-AST *construction*, ever — D15), **pin + CI canary** (the `a12internal` modules carry no stability guarantee, so a bump fails loudly), **fail-fast coverage** (an unmodeled construct throws inside the converter and surfaces as a tolerant `Ingest.Opaque`, never a silent miss).
+- **Adapter — internal read, guarded.** The `a12internal` read tier (the kernel's own AST: `parsetree-api` conditions/operations, `tool-api` `IRule`/`IEC`, `DocumentModelService`) reachable in one call from the md-tier model. Guardrails: **boundary conversion** (kernel types never escape a public signature — `KernelAdapter` returns rulekit `Condition`/`ReadResult`/`String`, never an `ICondition`), **read-only** (no kernel-AST *construction*, ever — D15), **pin + CI canary** (the `a12internal` modules carry no stability guarantee, so a bump fails loudly), **fail-fast coverage** (an unmodeled construct throws inside the converter and surfaces as a tolerant `ReadResult.Opaque`, never a silent miss).
 
 The kernel's `ICondition` tree is the adapter's **transport format**, never the representation users or LLMs touch — all work happens on rulekit's own AST (§N8, "not a workbench over the kernel's AST").
 
@@ -145,7 +145,7 @@ rulekit deliberately emits **plain data**, never kernel objects — so every art
 | `Diagnostic` | record (LSP-shaped, JSON) | `validate` / `lint.RuleDiagnostics` | core → caller/LLM |
 | `RuleExplanation` | record (JSON) | `context.ModelContext.explain` | core → caller/LLM |
 | `RenderedDiff` | record (unified text / JSON) | `dsl.RenderedDiff` / `adapter.KernelAdapter.diff` | core/adapter → caller |
-| `Ingest` (`Converted`/`Opaque`) | sealed record | `adapter.KernelAdapter.ingest` | adapter → core types |
+| `ReadResult` (`Converted`/`Opaque`) | sealed record | `adapter.KernelAdapter.read` | adapter → core types |
 | `ModelCard` / context JSONL | JSON / JSONL / markdown | `context` (programmatic) → CLI (files) | core → CLI → agent |
 
 ## 5. Proposed components (TBD)
@@ -158,12 +158,12 @@ Everything below is **not yet built** — it's laid out here so the home of each
 |---|---|---|
 | **CLI** — the standalone, zero-toolchain front-end for the modeller/BA (N10); verbs + JSON in/out, JVM bundled | **new `:cli` subproject** (core + adapter) | JSON-in deserializes *through the typed builder*; never shells out to `javac`; kernel stays bundled-inside, not a library surface |
 | **JSON rule-spec + deserializer** — the language-neutral authoring contract the CLI accepts | **`cli`** (schema) → **core** typed builder (compile) | the BA's "type safety" = schema validation + builder pre-checks + kernel `Diagnostic`s (F4a) |
-| **JSONL/file dump emitter** — `fields.jsonl`/`groups.jsonl`/`rules.jsonl`/`model-card.md` (finding 13) | **CLI verb** (`rulekit dump …`, decided 2026-06-04, §1) | serializes `context` projections + a DM-JSON rule walk; **stays out of core** |
+| **JSONL/file export emitter** — `fields.jsonl`/`groups.jsonl`/`rules.jsonl`/`model-card.md` (finding 13) | **CLI verb** (`rulekit export …`, decided 2026-06-04, §1) | serializes `context` projections + a DM-JSON rule walk; **stays out of core** |
 | **N1 skill** — teaches *both* persona loops (dev in-repo via the library; BA via the CLI) + the `MVK_*` fix table | **skill** (no module; Claude Code skill bundle) | teaching material only; the runnable engine is core/adapter/CLI |
 | **`whereUsed` exact resolver** (F9a) | **API in core `context`** (pluggable reference-resolver seam) + **exact resolver in `adapter`** (`getDirectlyReferencedEntities`) | core ships a labeled heuristic today; the adapter contributes the exact one — N8-clean |
 | **`IProblem → Diagnostic`** — fold the adapter's discarded kernel problems into F4a | **`adapter`** (produces) reusing **core `validate.Diagnostic`** (the type) | adapter emits core `Diagnostic` records, not kernel `IProblem` — boundary conversion |
 | **F9 rule-envelope enrichment** — error-field role labels, severity, `referencesIteration` cross-check | **core `context`** (the projection) + **`adapter`** (the kernel cross-check oracles) | enrichment data crosses as plain record fields |
-| **F10 long tail** — the residual unmodeled constructs (the multi-form/Vordruck root-group conditions, `MaximalAngegebenerZeilenindex`, `AktuelleVordruckNummer`) and the **un-buildable** `ValueNotConsistent` (table-backed enums aren't DM-JSON-serializable — KERNEL-FINDINGS §8) | **`adapter.ConditionConverter`** | each stays a tolerant `Ingest.Opaque`; the un-buildable ones permanently so (out of single-document-model scope) |
+| **F10 long tail** — the residual unmodeled constructs (the multi-form/Vordruck root-group conditions, `MaximalAngegebenerZeilenindex`, `AktuelleVordruckNummer`) and the **un-buildable** `ValueNotConsistent` (table-backed enums aren't DM-JSON-serializable — KERNEL-FINDINGS §8) | **`adapter.ConditionConverter`** | each stays a tolerant `ReadResult.Opaque`; the un-buildable ones permanently so (out of single-document-model scope) |
 | **CI version matrix** (F11 carry-forward) — second-kernel canary | **build infra** (`adapter`'s pin+canary) | triggers when a 2nd kernel publishes |
 
 The CLI's heavy costs are **distribution, not code**: self-contained packaging and code-signing/notarization (macOS Gatekeeper / Windows SmartScreen on a downloaded binary). Two viable packaging paths (decided in [`CLI-SPEC.md`](CLI-SPEC.md) §B1/§B2 after the 2026-06-05 native-image spike): **B1 — jlink/jpackage app-image** (~JRE-sized) **ships first**, zero AOT risk; **B2 — GraalVM native-image** is **proven feasible** for rulekit's `checkConsistency`/parse verbs (spike: byte-identical output, ~37 ms startup vs ~600 ms JVM, 36 MB) and is the startup-win **upgrade**, gated on bundling the kernel's StringTemplate resources and never crossing into the kernel's validation-*execution* path (the one AOT-hostile boundary — Groovy runtime compilation; rulekit never uses it). Root-cause in [`KERNEL-FINDINGS.md`](KERNEL-FINDINGS.md) ("`checkConsistency` runs runtime code generation"). **Licensing is settled** ([`LICENSING.md`](LICENSING.md)): the kernel LICENSE grants redistribution, so bundling is permitted; the bundled distributable ships under **EUPL-1.2** (notices + source pointer) while rulekit source stays MIT — no longer an open gate, just an EUPL-compliance obligation on the artifact. A JVM-resident fat jar proves the verb surface first; self-contained packaging follows.

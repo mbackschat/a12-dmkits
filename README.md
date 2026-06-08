@@ -20,7 +20,7 @@ Java first; a TypeScript twin is a deferred, design-informing milestone.
 | Area | State |
 |---|---|
 | **Phase 1** — author → render (EN/DE) → validate against the real kernel: model index, self-verifying operator catalog, typed AST + fork-9 group-relative renderer, the F4a diagnostic surface, the DM-JSON write path, F11 kernel-version tolerance | ✅ complete |
-| **Phase 2** — the bidirectional loop over the opt-in kernel-adapter: *ingest → explain → modify → diff → validate → write-back*, for **rules and computations** alike (computations are first-class across read *and* write: `ingestModel`/`where-used`/`explain --computation`, plus `add` a computation + `diff --computation`) | ✅ landed |
+| **Phase 2** — the bidirectional loop over the opt-in kernel-adapter: *ingest → explain → modify → diff → validate → write-back*, for **rules and computations** alike (computations are first-class across read *and* write: `ingestModel`/`where-used`/`explain --computation`, plus `add` a computation, `diff` to preview a re-expression, and `modify` to write it back) | ✅ landed |
 | **Phase 2** — standalone **CLI** — the modeller/BA front-end (verbs + JSON I/O), **self-describing** (`--help` · `manifest` · `operators` · `schema`) so an agent explores it without docs; works on **multi-file** apps (`--include-dir` resolves `include`d / typedef models, F-RES) | ✅ landed |
 | **Phase 2** — modeller/BA **skill** + self-sufficiency eval | ✅ landed |
 | **Phase 2** — F9a exact `whereUsed` ✅, `IProblem → Diagnostic` ✅ (per-rule + candidate-condition diagnostics via the adapter); the F10 long tail = a few specialized constructs, parked | ✅ landed |
@@ -72,7 +72,7 @@ Other useful tasks:
 
 ```sh
 ./gradlew :adapter:test                              # the opt-in internal-tier module (Phase 2)
-./gradlew :cli:run --args="dump model.json fields"   # run the standalone CLI in dev (no packaging)
+./gradlew :cli:run --args="export model.json fields"   # run the standalone CLI in dev (no packaging)
 ```
 
 `./gradlew :test` keeps the core build free of the internal tier; see [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md) for the CLI.

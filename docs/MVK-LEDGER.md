@@ -73,7 +73,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` | kernel-delegated | a filter may iterate only over levels the filtered field stars; a ref to a field iterating over a different group needs the `$` operator (`[$L/F2]`) — the typed API renders `$` correctly and the kernel arbitrates. KERNEL-FINDINGS §9 (cross-checked vs the kernel-team BA doc), `adapter.laws.CorrelationLawsTest` |
 | `MVK_INVALID_LENGTH_OF_RAW_TYPE` | unclassified | — (experiment queue) |
 | `MVK_INVALID_NUMBER_FOR_EXP` | unclassified | — (experiment queue) |
-| `MVK_INVALID_OUTER_ITERATION` | kernel-delegated | `$` correlation: **authoring** renders `[$path]` only inside a `Having` filter, kernel arbitrates legality (`adapter.OuterCorrelationAuthoringTest`); **ingest** converts all field-vs-field kinds + `CurrentRepetition($)` + presence predicates (`NoFieldFilled($a,$b)`) + value-list operands (`FieldListRef.outer`) and routes filtered field-list quantifiers through `flattenScope` (`OuterCorrelationIngestTest`/`OuterCorrelationQuantifierIngestTest`); the **count-check backstop** (`verifyOuterPreserved`) keeps any un-threaded construct Opaque/verbatim — never silent corruption (`adapter.OuterCorrelationBackstopTest`). Corpus-1 lift 87.0%→95.0% with **0 `$` opaques** (every `$` rule converts). KERNEL-FINDINGS §9, KERNEL-INTEGRATION-NOTES `$` item |
+| `MVK_INVALID_OUTER_ITERATION` | kernel-delegated | `$` correlation: **authoring** renders `[$path]` only inside a `Having` filter, kernel arbitrates legality (`adapter.OuterCorrelationAuthoringTest`); **read** converts all field-vs-field kinds + `CurrentRepetition($)` + presence predicates (`NoFieldFilled($a,$b)`) + value-list operands (`FieldListRef.outer`) and routes filtered field-list quantifiers through `flattenScope` (`OuterCorrelationReadTest`/`OuterCorrelationQuantifierReadTest`); the **count-check backstop** (`verifyOuterPreserved`) keeps any un-threaded construct Opaque/verbatim — never silent corruption (`adapter.OuterCorrelationBackstopTest`). Corpus-1 lift 87.0%→95.0% with **0 `$` opaques** (every `$` rule converts). KERNEL-FINDINGS §9, KERNEL-INTEGRATION-NOTES `$` item |
 | `MVK_INVALID_PARAMETER_FOR_DATE_RANGE_COMPARISON` | unclassified | — (experiment queue) |
 | `MVK_INVALID_PARAMETER_FOR_PATTERN_COMPARISON` | erased | `PatternCondition` left side is always a bare string field value — expressions unrepresentable (KERNEL-FINDINGS §7) |
 | `MVK_INVALID_PARAMS_FOR_OP` | unclassified | — (experiment queue) |
@@ -112,7 +112,7 @@ Buckets: **erased** — unrepresentable in the typed API · **pre-checked** — 
 | `MVK_NOT_IN_RULEGROUP` | unclassified | — (experiment queue) |
 | `MVK_NOT_IN_SAME_PATH` | unclassified | — (experiment queue) |
 | `MVK_NOT_ON_ERRORFIELD_PATH` | unclassified | — (experiment queue) |
-| `MVK_NOT_SORTABLE` | pre-checked | `ListAggregate` Max/Min require NUMBER operands; the **date** variant (`Dsl.latestOf`/`earliestOf` → `DateListAggregate`) is implemented (`adapter.DateAggregateIngestTest`). Locked: N7 `MaxValue` invalidExample |
+| `MVK_NOT_SORTABLE` | pre-checked | `ListAggregate` Max/Min require NUMBER operands; the **date** variant (`Dsl.latestOf`/`earliestOf` → `DateListAggregate`) is implemented (`adapter.DateAggregateReadTest`). Locked: N7 `MaxValue` invalidExample |
 | `MVK_NO_BASE_YEAR` | unclassified | — (experiment queue) |
 | `MVK_NO_BOOLY_ALLOWED` | unclassified | — (experiment queue) |
 | `MVK_NO_CONST` | unclassified | — (experiment queue) |

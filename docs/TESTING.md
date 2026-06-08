@@ -12,7 +12,7 @@ Consequence: the kernel is an unstable dependency, so the suite is also an **ear
 
 ```
 :            (core)      src/test/…        — DSL render, F4 mechanics, accept/reject laws, structural guardians
-:adapter     (opt-in)    adapter/src/test/… — ingest round-trip, runtime laws, kernel-coupling canaries, corpus harnesses
+:adapter     (opt-in)    adapter/src/test/… — read round-trip, runtime laws, kernel-coupling canaries, corpus harnesses
 :cli                     cli/src/test/…     — verb I/O contract, batch, explain
 :modelkit                (tests run in the aggregate :test set)
 ```
@@ -27,9 +27,9 @@ The aggregate `./gradlew test` runs core + modelkit; `:adapter:test` and `:cli:t
 | **F4 mechanics** | does injection → validate → problem-mapping work? | `validate/RuleValidatorTest` | real kernel `checkConsistency` |
 | **Law tier 1 — accept / reject** | does the kernel *accept* this condition (and reject the bad one with which `MVK_*`)? | `validate/laws/…LawsTest` (`NumberLawsTest`, `BooleanConfirmLawsTest`, …) via the `KernelLaws` harness | real kernel parse + `checkConsistency` |
 | **Law tier 2 — fires / does-not-fire** | does a *valid* rule *evaluate* as intended on data? | `adapter/…/laws/…LawsTest` (`PolarityLawsTest`, `EmptyValueLawsTest`) via the `RuntimeLaws` oracle | real kernel `IDocumentRtService.validateFull` |
-| **Ingest round-trip** | does render → kernel-parse → convert → render round-trip (F10)? | `adapter/…/IngestRoundTripTest` + per-construct `…IngestTest` | real kernel parser + the converter |
+| **Read round-trip** | does render → kernel-parse → convert → render round-trip (F10)? | `adapter/…/ReadRoundTripTest` + per-construct `…ReadTest` | real kernel parser + the converter |
 | **Structural-law guardians** | did the kernel *add/move/rename* a construct, code, slot, or category we must track? | see the guardian table below | reflective parity vs the kernel's own enums/accessors |
-| **Coverage harnesses** (opt-in) | what fraction of real foreign rules do we ingest? | `KernelMmIngestCoverageTest`, `Corpus1IngestCoverageTest` | real corpora (gated; commit nothing) |
+| **Coverage harnesses** (opt-in) | what fraction of real foreign rules do we read? | `KernelMmReadCoverageTest`, `Corpus1ReadCoverageTest` | real corpora (gated; commit nothing) |
 | **Catalog examples (N7)** | is every catalog `validExample` actually kernel-valid? | `catalog/CatalogExamplesAreKernelValidTest` | real kernel |
 | **Self-sufficiency eval (N6)** | can a cold LLM author/read rules from the CLI + skill alone? | the Workflow runner | clean subagent + judge — [`EVAL-SPEC.md`](EVAL-SPEC.md) |
 
@@ -64,7 +64,7 @@ Rather than discover kernel constraints by tripping over them, these sweep the k
 | `KernelConstructParityTest` | every parsetree construct-name enum member is cataloged or excluded (catches operators the kernel *adds*) |
 | `KeywordParityTest` / `OperatorCatalogTest` | the operator catalog's keywords/shape stay aligned with the kernel bundle |
 | `KernelVersionTest` | the running kernel version vs the catalog's `verifiedAgainst` floor (F11 skew INFO) |
-| `ModelIndexNamePathTest` | element keying is by name-path (the F-IDX fix foreign-model ingest depends on) |
+| `ModelIndexNamePathTest` | element keying is by name-path (the F-IDX fix foreign-model read depends on) |
 
 When any of these fails after a kernel bump, [`KERNEL-UPGRADE.md`](KERNEL-UPGRADE.md) maps the failure to its meaning and realignment.
 
@@ -75,8 +75,8 @@ These read the **real** model corpora to measure coverage; they skip when their 
 | harness | corpus | gate | asserts |
 |---|---|---|---|
 | `KernelMmIntegrationTest` | `../a12-kernel-mm` | sibling clone present | all canonical metamodels load/expand/`checkConsistency`; every field classifies |
-| `KernelMmIngestCoverageTest` | `../a12-kernel-mm` | sibling clone present | ingest coverage ≥ a floor (regression gate) |
-| `Corpus1IngestCoverageTest` | A12 Tools workspaces | `-Da12.corpus1.dir=…` | prints coverage only (proprietary) |
+| `KernelMmReadCoverageTest` | `../a12-kernel-mm` | sibling clone present | read coverage ≥ a floor (regression gate) |
+| `Corpus1ReadCoverageTest` | A12 Tools workspaces | `-Da12.corpus1.dir=…` | prints coverage only (proprietary) |
 
 ## Layout conventions (so hotspots never grow)
 
@@ -92,8 +92,8 @@ Build with an isolated, public-repos-only Gradle home on JDK 21 (the kernel must
 ROOT="$(cd .. && pwd)"; export GRADLE_USER_HOME="$ROOT/.gradle-isolated"; export JAVA_HOME="$(/usr/libexec/java_home -v 21)"
 ./gradlew test :adapter:test :cli:test                      # full suite across modules
 ./gradlew :adapter:test --tests "*.PolarityLawsTest"        # one class
-./gradlew :adapter:test --tests "*.KernelMmIngestCoverageTest" -Da12.kernel.mm.dir=../a12-kernel-mm   # opt-in
-./gradlew :adapter:test --tests "*.Corpus1IngestCoverageTest" -Da12.corpus1.dir="…/workspaces"        # opt-in
+./gradlew :adapter:test --tests "*.KernelMmReadCoverageTest" -Da12.kernel.mm.dir=../a12-kernel-mm   # opt-in
+./gradlew :adapter:test --tests "*.Corpus1ReadCoverageTest" -Da12.corpus1.dir="…/workspaces"        # opt-in
 ```
 
 The self-sufficiency eval (N6) is **not** run from here — use the `run-rulekit-eval` skill (it loads the protocol guardrails at run time); method in [`EVAL-SPEC.md`](EVAL-SPEC.md), results in [`../eval/RESULTS.md`](../eval/RESULTS.md).

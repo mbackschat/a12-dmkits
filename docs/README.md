@@ -4,9 +4,9 @@ What each document under `docs/` holds, so you can jump to the right one. This i
 
 ## Design & vision
 
-- **[PROJECT-PROPOSAL.md](PROJECT-PROPOSAL.md)** — the one argument: vision (the bidirectional *ingest → explain → modify → diff → validate* loop), requirements (`Fn`/`Nn`/`Dn`), architecture, the operator-catalog spine, the decision log (§17), and the phased roadmap (§16). Densely cross-referenced by stable anchors; specs split out of it on implementation boundaries rather than fragmenting the argument.
+- **[PROJECT-PROPOSAL.md](PROJECT-PROPOSAL.md)** — the one argument: vision (the bidirectional *read → explain → modify → diff → validate* loop), requirements (`Fn`/`Nn`/`Dn`), architecture, the operator-catalog spine, the decision log (§17), and the phased roadmap (§16). Densely cross-referenced by stable anchors; specs split out of it on implementation boundaries rather than fragmenting the argument.
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — the *physical* view: the Gradle subprojects (core / opt-in `adapter` / `cli`) and the skill, their artifacts, the core's acyclic package layering, the N8/D15 kernel-coupling boundary, what crosses each boundary as plain data, and the **proposed parts laid out as TBD** with each one's intended home. Complements the proposal's conceptual component view (§15).
-- **[CLI-SPEC.md](CLI-SPEC.md)** — the standalone CLI (the modeller/BA front-end, N10): the verb surface, the JSON I/O contract, the **dev/test workflow that keeps the inner loop fast** (JUnit verb tests; packaging out of the loop), the `dump` verb detail, sizing, and the dev-vs-distribution packaging phases.
+- **[CLI-SPEC.md](CLI-SPEC.md)** — the standalone CLI (the modeller/BA front-end, N10): the verb surface, the JSON I/O contract, the **dev/test workflow that keeps the inner loop fast** (JUnit verb tests; packaging out of the loop), the `export` verb detail, sizing, and the dev-vs-distribution packaging phases.
 - **[MODELKIT-PROPOSAL.md](MODELKIT-PROPOSAL.md)** — addendum to the proposal for fork #8 (model-*structure* authoring, the rulekit peer): why modelkit is worth it (and why it *is* the formalization vehicle), why not `betterbuilders`, the **formalize-the-knowhow** outcome (the per-kind gradient + five options + the consumer-exists discipline), a **material-source evaluation** of every document-model knowledge source, and the focused 3-question feasibility spike. **Spike complete; modelkit M1–M6 landed** (own `:modelkit` module, dogfooded) — it authors structure incl. includes + typedefs and emits kernel-valid DM-JSON.
 
 ## Kernel truth (verified facts & their treatment)
@@ -18,7 +18,7 @@ What each document under `docs/` holds, so you can jump to the right one. This i
 
 ## Surveys, derivations & corpus
 
-- **[KERNEL-RULE-API-SURVEY.md](KERNEL-RULE-API-SURVEY.md)** — the comprehensive kernel/editor API inventory behind the bidirectional-modification goal (the Phase-2 adapter surface: ingest, explain, modify).
+- **[KERNEL-RULE-API-SURVEY.md](KERNEL-RULE-API-SURVEY.md)** — the comprehensive kernel/editor API inventory behind the bidirectional-modification goal (the Phase-2 adapter surface: read, explain, modify).
 - **[DSL-DERIVATION.md](DSL-DERIVATION.md)** — how the typed builder structure is derived, and the ANTLR grammar's indirect role in it.
 - **[WORKSPACE-CORPUS-ANALYSIS.md](WORKSPACE-CORPUS-ANALYSIS.md)** — read-only analysis of the real model corpora (A12 Tools workspaces + `a12-kernel-mm`): operator-usage histograms and the transform backlog that prioritizes what to build next. Usage facts only; nothing of either corpus is committed.
 

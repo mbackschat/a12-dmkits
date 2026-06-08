@@ -14,21 +14,23 @@ bin/rk manifest | jq -r '.verbs[].verb'
 ```
 
 ```output
-dump
+export
 describe
 validate
 check
 add
-ingest
+read
 explain
+where-used
 diff
+modify
 batch
 schema
 operators
 manifest
 ```
 
-→ Twelve self-describing verbs. Each verb's parameters + meanings live in that same `manifest` (and in `bin/rk <verb> --help`); `bin/rk operators` lists the DSL operators with their semantics, `bin/rk operators <id>` one in full. The tool describes itself — the N1 skill teaches *judgment* (polarity, the traps), not this catalog.
+→ Fourteen self-describing verbs. Each verb's parameters + meanings live in that same `manifest` (and in `bin/rk <verb> --help`); `bin/rk operators` lists the DSL operators with their semantics, `bin/rk operators <id>` one in full. The tool describes itself — the N1 skill teaches *judgment* (polarity, the traps), not this catalog.
 
 ## The model — `order-ruled`
 
@@ -63,12 +65,12 @@ bin/rk validate cli/src/test/resources/models/order-ruled.dm.json
 
 → `valid: true` with an empty `diagnostics` array means the kernel accepts the model as-is: every rule's condition parsed, typed, and passed consistency. A failing model would list diagnostics here (each with a `code`, `severity`, and message) and exit `1`.
 
-## ingest
+## read
 
-Reads a rule already stored in the model and renders its condition back as DSL — the kernel's own canonical text. A partial parse would return a tolerant `Opaque` passthrough instead. Use it to inspect a foreign rule before editing it.
+Reads a rule already stored in the model and renders its condition back as DSL — the kernel's own canonical text. A partial parse would return a tolerant `Opaque` passthrough instead. Use it to inspect a foreign rule before editing it. (`read` was named `ingest` until the verb-naming pass; it is a read, not an import.)
 
 ```bash
-bin/rk ingest cli/src/test/resources/models/order-ruled.dm.json --rule /Order/DeliveryNotBeforeOrder
+bin/rk read cli/src/test/resources/models/order-ruled.dm.json --rule /Order/DeliveryNotBeforeOrder
 ```
 
 ```output
