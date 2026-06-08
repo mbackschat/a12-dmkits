@@ -28,7 +28,13 @@ import org.junit.jupiter.api.Test;
  *   <tr><td>boolean</td><td>{@code [ExpressShipping] == True}</td><td>not evaluated</td></tr>
  *   <tr><td>string</td><td>{@code [ProductCode] == "ABC"}</td><td>not evaluated</td></tr>
  *   <tr><td>date</td><td>{@code DifferenceInDays(OrderDate, DeliveryDate) < 0}</td><td>not evaluated</td></tr>
+ *   <tr><td>string in a <b>concatenation</b></td><td>{@code [Full] != [First] + " " + [Last]}</td><td><b>evaluated</b> — empty concats to {@code ""}</td></tr>
  * </table>
+ *
+ * <p>The concatenation row is the subtle one (KERNEL-FINDINGS §2): an empty string in a <em>comparison</em>
+ * is not evaluated, but an empty string <em>operand of a concatenation</em> concatenates as {@code ""}, so
+ * the concatenated expression is a real value and the comparison <b>is</b> evaluated — the guard the other
+ * string case doesn't need becomes necessary here.
  *
  * <p>The empty <b>date</b> case is exercised via {@code DifferenceInDays} (a date-to-date comparison),
  * sidestepping the date-literal syntax of KERNEL-FINDINGS §6.
@@ -120,6 +126,36 @@ class EmptyValueLawsTest {
         assertFalse(RuntimeLaws.fires(model, "DELIVERY_BEFORE", ORDER_ROW, Set.of("/Order/OrderDate"),
                 Map.of("/Order/CustomerName", "Acme", "/Order/DeliveryDate", "2023-06-05")),
                 "an empty date is not evaluated, so the comparison does not fire (unlike an empty number → 0)");
+    }
+
+    @Test
+    void emptyStringInAConcatenationIsEvaluated() {
+        // The asymmetry trap (N6 2026-06-08): a plain string comparison is NOT evaluated when empty
+        // (emptyStringIsNotEvaluated above), but an empty string OPERAND OF A CONCATENATION concatenates
+        // as "", so [Full] != [First] + " " + [Last] with empty First/Last becomes [Full] != " " — a real
+        // value the comparison evaluates and fires on. The mitigation is an AllFieldsFilled guard on the
+        // concatenated operands (NOT the empty-as-not-evaluated free pass the direct comparison gets).
+        String PERSON = RuntimeLaws.model("models/person.dm.json");
+        Set<String> row = Set.of("/Person");
+        Set<String> emptyNames = Set.of("/Person/FirstName", "/Person/LastName");
+
+        String unguarded = RuntimeLaws.withRule(PERSON, "/Person", "FullNameMismatch", "../FullName",
+                "FULLNAME_MISMATCH", "[FullName] != [FirstName] + \" \" + [LastName]");
+        // FullName filled, FirstName/LastName empty → " " concat ≠ "Alice Smith" → FIRES (the trap)
+        assertTrue(RuntimeLaws.fires(unguarded, "FULLNAME_MISMATCH", row, emptyNames,
+                Map.of("/Person/FullName", "Alice Smith")),
+                "an empty string in a concatenation is evaluated (concats to \"\"), so the comparison fires");
+        // all three consistent → no violation
+        assertFalse(RuntimeLaws.fires(unguarded, "FULLNAME_MISMATCH", row,
+                Map.of("/Person/FullName", "Alice Smith", "/Person/FirstName", "Alice", "/Person/LastName", "Smith")),
+                "consistent first+space+last does not fire");
+
+        String guarded = RuntimeLaws.withRule(PERSON, "/Person", "FullNameMismatchGuarded", "../FullName",
+                "FULLNAME_MISMATCH_G", "AllFieldsFilled(FirstName, LastName) And [FullName] != [FirstName] + \" \" + [LastName]");
+        // the gold's guard suppresses the empty-operand false positive
+        assertFalse(RuntimeLaws.fires(guarded, "FULLNAME_MISMATCH_G", row, emptyNames,
+                Map.of("/Person/FullName", "Alice Smith")),
+                "the AllFieldsFilled guard on the operands suppresses the empty-concatenation false positive");
     }
 
     @Test

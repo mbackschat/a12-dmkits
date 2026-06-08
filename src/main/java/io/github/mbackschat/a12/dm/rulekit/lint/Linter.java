@@ -13,6 +13,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CompareOp;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ComparisonCondition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Concatenation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CustomConditionRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListEntityListCondition;
@@ -65,7 +66,68 @@ public final class Linter {
         List<Diagnostic> out = new ArrayList<>();
         visit(condition, null, rulePath, out);
         unguardedNumberComparison(condition, rulePath, out);
+        unguardedStringConcatComparison(condition, rulePath, out);
         return List.copyOf(out);
+    }
+
+    /**
+     * Pre-warn the <b>empty-string-in-concatenation</b> trap (KERNEL-FINDINGS §2, surfaced by an N6 run):
+     * a plain string comparison is not evaluated when empty, but a string field that is an <em>operand of
+     * a concatenation</em> concatenates as {@code ""}, so {@code [Full] != [First] + " " + [Last]} fires on
+     * an empty {@code First}/{@code Last} (it reads {@code [Full] != " "}). Flags a comparison whose operand
+     * is a concatenation containing a string field with no presence guard. Advisory (the other operand's
+     * value is unknown, so we can't prove it fires — but the substitution is a real trap). Pure-AST.
+     */
+    private void unguardedStringConcatComparison(Condition condition, String rulePath, List<Diagnostic> out) {
+        Set<String> guarded = new HashSet<>();
+        collectGuardedFields(condition, guarded);
+        collectUnguardedConcatCompares(condition, guarded, rulePath, out);
+    }
+
+    private void collectUnguardedConcatCompares(Condition c, Set<String> guarded, String rulePath,
+            List<Diagnostic> out) {
+        switch (c) {
+            case LogicCondition l -> {
+                collectUnguardedConcatCompares(l.left(), guarded, rulePath, out);
+                collectUnguardedConcatCompares(l.right(), guarded, rulePath, out);
+            }
+            case ComparisonCondition cmp -> {
+                List<String> unguarded = new ArrayList<>();
+                concatUnguardedStringFields(cmp.left(), guarded, unguarded);
+                concatUnguardedStringFields(cmp.right(), guarded, unguarded);
+                if (!unguarded.isEmpty()) {
+                    flagUnguardedConcat(unguarded, cmp, rulePath, out);
+                }
+            }
+            default -> { }
+        }
+    }
+
+    /** If {@code op} is a concatenation, collect its string field parts that aren't presence-guarded. */
+    private static void concatUnguardedStringFields(Calculation op, Set<String> guarded, List<String> out) {
+        if (op instanceof Concatenation concat) {
+            for (Calculation part : concat.parts()) {
+                if (part instanceof FieldValue fv && fv.field().kind() == ValueKind.STRING
+                        && !guarded.contains(fv.field().path()) && !out.contains(fv.field().path())) {
+                    out.add(fv.field().path());
+                }
+            }
+        }
+    }
+
+    private void flagUnguardedConcat(List<String> fields, ComparisonCondition cmp, String rulePath,
+            List<Diagnostic> out) {
+        String list = String.join(", ", fields);
+        out.add(new Diagnostic(Severity.WARNING, DiagnosticSource.LINT,
+                Optional.of("RK_UNGUARDED_STRING_CONCAT"),
+                "the concatenation compares string field(s) " + list + " whose presence isn't guarded — an"
+                        + " empty string concatenates as \"\" (it is NOT 'not evaluated' like a plain string"
+                        + " comparison), so the rule also fires when " + list + " is empty",
+                new Diagnostic.Where(rulePath, Optional.of(cmp.operatorId())),
+                Optional.of("AllFieldsFilled(" + list + ") And <the comparison>"),
+                Optional.of("unlike a plain string comparison (an empty string is not evaluated), a string in a"
+                        + " concatenation concatenates as \"\" (KERNEL-FINDINGS §2), so guard the concatenated"
+                        + " operands with AllFieldsFilled if an empty value should not trip the rule")));
     }
 
     /**

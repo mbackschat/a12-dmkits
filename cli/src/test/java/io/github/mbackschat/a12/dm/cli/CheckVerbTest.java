@@ -31,6 +31,18 @@ class CheckVerbTest {
     }
 
     @Test
+    void fieldThatIsAFilePathGetsATailoredError(@TempDir Path dir) throws Exception {
+        // the recurring N6 slip: the <model.json> file path pasted into --field. The ModelPaths guard
+        // now names the exact confusion instead of a generic "not a field".
+        Path m = model(dir);
+        var res = CliTestSupport.run("check", m.toString(),
+                "--field", m.toString(), "--condition", "FieldFilled(MonthlyFee)", "--code", "X");
+        assertNotEquals(0, res.code(), "a file path in --field must fail");
+        assertTrue(res.err().contains("looks like a FILE path") && res.err().contains("--field"),
+                () -> "the error should name the file-vs-entity confusion: " + res.err());
+    }
+
+    @Test
     void acceptsAValidCandidateRule(@TempDir Path dir) throws Exception {
         // --field is the error field's absolute path; --group defaults to its parent (iterate per add-on).
         var res = CliTestSupport.run("check", model(dir).toString(),

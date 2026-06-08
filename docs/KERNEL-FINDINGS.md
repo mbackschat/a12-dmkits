@@ -46,7 +46,10 @@ The **type-asymmetry** of the empty case (the trap — the same comparison shape
 | confirm | `[TermsConfirmed] != True` | **fires** — treated as `False` |
 | boolean | `[ExpressShipping] == True` | **not evaluated** |
 | string | `[ProductCode] == "ABC"` | **not evaluated** |
+| string in a **concatenation** | `[FullName] != [FirstName] + " " + [LastName]` | **evaluated** — an empty operand concats as `""`, so `[First] + " " + [Last]` = `" "` (a real value) and the comparison fires (verified 2026-06-08, N6) |
 | date | `DifferenceInDays(OrderDate, DeliveryDate) < 0` | **not evaluated** (verified via date-to-date diff, avoiding §6 literals; `DifferenceInDays(a,b) = b − a`) |
+
+**The concatenation row is the trap an N6 run surfaced (2026-06-08).** A string field in a *comparison* gets the empty-as-not-evaluated free pass; the **same field as an operand of a `+` concatenation does not** — an unfilled string concatenates as `""`, so the concatenated expression is a real value and the comparison **is** evaluated. So a "must equal `first + space + last`" rule (`[Full] != [First] + " " + [Last]`) **mis-fires when `Full` is present but `First`/`Last` are empty** (it sees `[Full] != " "` → true) unless its operands are guarded with `AllFieldsFilled(First, Last)` — the guard a plain string comparison wouldn't need. (Verified at runtime: with `Full="Alice Smith"` and `First`/`Last` empty the unguarded rule fires; the guarded form does not; a consistent first+space+last does not fire.)
 
 **Value-token representation (runtime document instances).** A boolean's value token is `true`/`false` (lowercase) — any other token (`TRUE`, `X`, `1`, `yes`) is a formal error (`feldJaNeinFalsch`), so the field becomes "unknown" and is not evaluated (§3). A **confirm** accepts only `true` or unspecified; `false` is a formal error (`feldJaFalsch`) — consistent with "a Confirm is a checkbox whose single value is True". *(Locked: `adapter.laws.EmptyValueLawsTest`; the runtime oracle is `adapter.laws.RuntimeLaws` — KERNEL-INTEGRATION-NOTES "Runtime behavioral-law oracle".)*
 

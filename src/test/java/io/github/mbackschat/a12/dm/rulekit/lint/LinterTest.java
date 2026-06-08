@@ -235,6 +235,42 @@ class LinterTest {
                 () -> "a guarded field-vs-aggregate comparison should not be flagged: " + linter.lint(c));
     }
 
+    // --- pure-AST lint: an unguarded string CONCATENATION comparison (KERNEL-FINDINGS §2, N6 2026-06-08) ---
+
+    @Test
+    void flagsAnUnguardedStringConcatComparison() {
+        // [CustomerName] != [Street] + " " + [City]: empty Street/City concat to "" (NOT 'not evaluated'),
+        // so the comparison evaluates and fires on empty operands — usually unintended.
+        BoundModel order = Fixtures.order();
+        Condition c = orderStr(order, "/Order/CustomerName").ne(
+                orderStr(order, "/Order/ShippingAddress/Street").plus(" ")
+                        .plus(orderStr(order, "/Order/ShippingAddress/City")));
+
+        Diagnostic d = only(linter.lint(c), "RK_UNGUARDED_STRING_CONCAT");
+        assertEquals(DiagnosticSource.LINT, d.source());
+        assertEquals(Severity.WARNING, d.severity());
+        assertTrue(d.summary().contains("Street") && d.summary().contains("City"),
+                () -> "summary should name the unguarded concat fields: " + d.summary());
+        assertTrue(d.fix().orElse("").contains("AllFieldsFilled("),
+                () -> "fix should suggest an AllFieldsFilled guard: " + d.fix());
+    }
+
+    @Test
+    void noConcatLintWhenOperandsAreGuarded() {
+        BoundModel order = Fixtures.order();
+        Condition c = order.allFieldsFilled("/Order/ShippingAddress/Street", "/Order/ShippingAddress/City")
+                .and(orderStr(order, "/Order/CustomerName").ne(
+                        orderStr(order, "/Order/ShippingAddress/Street").plus(" ")
+                                .plus(orderStr(order, "/Order/ShippingAddress/City"))));
+        assertTrue(noLint(c, "RK_UNGUARDED_STRING_CONCAT"),
+                () -> "a guarded concatenation comparison should not be flagged: " + linter.lint(c));
+    }
+
+    private static io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr orderStr(BoundModel m, String path) {
+        return new io.github.mbackschat.a12.dm.rulekit.dsl.StringExpr(
+                new io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue(m.field(path)));
+    }
+
     private boolean noLint(Condition c, String code) {
         return linter.lint(c).stream().noneMatch(d -> d.code().filter(code::equals).isPresent());
     }
