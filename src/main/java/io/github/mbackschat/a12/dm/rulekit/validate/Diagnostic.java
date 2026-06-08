@@ -13,7 +13,7 @@ import com.mgmtp.a12.model.notification.Severity;
  * the lingua franca editors and agents already parse (proposal §F4a).
  *
  * <p>The fields answer <b>what / where / how / why</b>: {@code summary} (what), {@code where} (which
- * rule, plus the AST operator-id once ingest lands), {@code fix} (an applicable DSL replacement or
+ * rule, plus the AST operator-id once read lands), {@code fix} (an applicable DSL replacement or
  * curated prose), {@code explain} (the operator meaning / rationale). {@code code} carries the
  * {@code MVK_*} (kernel) or {@code RK_*} (rulekit) identifier when classifiable.
  */

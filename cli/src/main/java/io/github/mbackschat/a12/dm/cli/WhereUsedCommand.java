@@ -20,7 +20,7 @@ import picocli.CommandLine.Parameters;
  * The {@code where-used} verb (F9a, CLI-SPEC §4) — the exact inverse of a rule's referenced entities:
  * given a field or group, list every <b>rule</b> and every <b>computation</b> whose condition
  * <em>directly</em> references it. Uses the kernel's own {@code getDirectlyReferencedEntities} via the
- * adapter (no converter coverage needed), so it works regardless of whether ingest models its construct.
+ * adapter (no converter coverage needed), so it works regardless of whether read models its construct.
  * Rules and computations are reported in separate arrays so the two element kinds stay distinguishable —
  * a field read only inside a computation's operation appears under {@code computations}, not {@code rules}.
  */

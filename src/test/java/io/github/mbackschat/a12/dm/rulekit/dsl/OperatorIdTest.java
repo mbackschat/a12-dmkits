@@ -100,7 +100,7 @@ class OperatorIdTest {
     @Test
     void fieldRefsDefaultToCanonicalPathStyle() {
         // Provenance hook (D14/F10): builder-made refs are CANONICAL (renderer decides the path
-        // form per §18 fork 9); the ingest converter will construct refs carrying authored styles.
+        // form per §18 fork 9); the read converter will construct refs carrying authored styles.
         assertEquals(PathStyle.CANONICAL, NUM.styleHint());
         assertEquals(PathStyle.RELATIVE,
                 new FieldRef("/Order/Quantity", ValueKind.NUMBER, PathStyle.RELATIVE).styleHint());

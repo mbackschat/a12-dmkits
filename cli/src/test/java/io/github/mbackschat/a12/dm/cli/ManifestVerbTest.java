@@ -23,8 +23,8 @@ class ManifestVerbTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private static final List<String> EXPECTED_VERBS = List.of(
-            "dump", "describe", "validate", "check", "add", "ingest", "explain",
-            "where-used", "diff", "batch", "schema", "operators", "manifest");
+            "export", "describe", "validate", "check", "add", "read", "explain",
+            "where-used", "diff", "modify", "batch", "schema", "operators", "manifest");
 
     @Test
     void listsEveryVerbWithADescription() throws Exception {

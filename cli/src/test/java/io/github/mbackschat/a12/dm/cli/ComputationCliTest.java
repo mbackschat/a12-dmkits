@@ -48,13 +48,13 @@ class ComputationCliTest {
         assertTrue(res.out().contains("\"Computation\"") && res.out().contains("EffectiveFeeComp"),
                 () -> "persisted model should hold the computation: " + res.out());
 
-        // and it round-trips: ingest the persisted model and the computation is typed
+        // and it round-trips: read the persisted model and the computation is typed
         Path persisted = write(dir, "persisted.dm.json", res.out());
-        var ingest = CliTestSupport.run("ingest", persisted.toString(), "--all");
-        assertEquals(0, ingest.code(), ingest::err);
-        JsonNode j = MAPPER.readTree(ingest.out());
+        var read = CliTestSupport.run("read", persisted.toString(), "--all");
+        assertEquals(0, read.code(), read::err);
+        JsonNode j = MAPPER.readTree(read.out());
         assertTrue(j.path("computations").path("/Subscription/Billing/EffectiveFeeComp").path("converted").asBoolean(),
-                () -> "the added computation ingests as Converted: " + ingest.out());
+                () -> "the added computation reads as Converted: " + read.out());
     }
 
     @Test

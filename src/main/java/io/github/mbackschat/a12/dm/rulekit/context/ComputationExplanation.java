@@ -11,7 +11,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 /**
  * A structured projection of one computation (F9 explain, the calculated-field peer of
  * {@link RuleExplanation}) — what it computes, under which conditions, in human- and machine-readable
- * form. Works identically on a rulekit-built computation and a converted-foreign one (F10 ingest); both
+ * form. Works identically on a rulekit-built computation and a converted-foreign one (F10 read); both
  * are ordinary rulekit {@code Computation}s by the time they reach here.
  *
  * <ul>

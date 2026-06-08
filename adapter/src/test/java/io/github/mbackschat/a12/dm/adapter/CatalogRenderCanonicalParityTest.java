@@ -17,7 +17,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
- * Renderer-vs-kernel parity (task #9): every SUPPORTED catalog {@code validExample} is ingested, our
+ * Renderer-vs-kernel parity (task #9): every SUPPORTED catalog {@code validExample} is read, our
  * {@link DslRenderer} re-renders it, and the kernel's canonical formatter (its {@code FormatterVisitor},
  * reached via {@code KernelAdapter.canonicalConditionText}) must format <em>our render</em> identically
  * to the original example. Both sides pass through the kernel formatter, so kernel-side formatting
@@ -25,7 +25,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
  * our render survives. This is the strong form of the round-trip oracle: not just "our render re-parses
  * to our AST" but "the kernel sees our render as the same condition as the curated example".
  *
- * <p>Examples that ingest {@code Opaque} (a deliberately-unmodeled construct) are preserved verbatim, so
+ * <p>Examples that read {@code Opaque} (a deliberately-unmodeled construct) are preserved verbatim, so
  * their render is the example text — trivially equal; they are reported, not asserted.
  */
 class CatalogRenderCanonicalParityTest {
@@ -66,8 +66,8 @@ class CatalogRenderCanonicalParityTest {
                 // K1: the kernel's canonical form of the curated example
                 KernelAdapter a1 = KernelAdapter.ofJson(inject(MODEL, "Ex", field, dsl, "en_US"));
                 String k1 = norm(a1.canonicalConditionText("/Order/Ex"));
-                Ingest ing = a1.ingest("/Order/Ex");
-                if (!(ing instanceof Ingest.Converted converted)) {
+                ReadResult ing = a1.read("/Order/Ex");
+                if (!(ing instanceof ReadResult.Converted converted)) {
                     opaque.add(e.id());
                     continue;
                 }
@@ -81,12 +81,12 @@ class CatalogRenderCanonicalParityTest {
                             e.id(), k1, k2, ourRender));
                 }
                 // DE parity: render the SAME AST in German, parse it back through the kernel's DE model, and
-                // assert it re-ingests to the same condition — its EN render equals our EN render. Catches a
+                // assert it re-reads to the same condition — its EN render equals our EN render. Catches a
                 // bad/unparseable German keyword or structure that the EN check can't see.
                 String deRender = RENDER_DE.render(converted.condition());
                 KernelAdapter aDe = KernelAdapter.ofJson(inject(MODEL_DE, "De", field, deRender, "de_DE"));
-                Ingest deIng = aDe.ingest("/Order/De");
-                String reEn = deIng instanceof Ingest.Converted c2 ? RENDER.render(c2.condition()) : "(opaque)";
+                ReadResult deIng = aDe.read("/Order/De");
+                String reEn = deIng instanceof ReadResult.Converted c2 ? RENDER.render(c2.condition()) : "(opaque)";
                 if (!reEn.equals(ourRender)) {
                     deMismatches.add(String.format("%n  [%s] our DE render: %s%n        DE→kernel→EN: %s%n        expected EN: %s",
                             e.id(), deRender, reEn, ourRender));

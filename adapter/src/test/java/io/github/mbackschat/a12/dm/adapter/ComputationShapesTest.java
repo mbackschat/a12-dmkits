@@ -18,7 +18,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral;
  * Own-domain transfer of the computation <b>shapes</b> the real corpora use — kernel-mm and the A12
  * Tools workspaces (license-safe: copy the mechanism, re-express the domain). The computation peer of
  * {@code BaCorpusTest}: committed + always-run (not gated like the coverage harnesses), each shape
- * authored → added → ingested back to an identical {@link Computation} (render → extract → convert is
+ * authored → added → read back to an identical {@link Computation} (render → extract → convert is
  * the identity). The corpora's vocabulary, in an invoice domain:
  *
  * <ul>
@@ -27,7 +27,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral;
  *   <li><b>boolean constant</b> ({@code Flagged = True}) — the kernel-mm {@code IBoolConstantOperation} shape.</li>
  * </ul>
  *
- * (Numeric field-value, arithmetic, and tiered/preconditioned shapes are covered by {@code ComputationIngestTest}.)
+ * (Numeric field-value, arithmetic, and tiered/preconditioned shapes are covered by {@code ComputationReadTest}.)
  */
 class ComputationShapesTest {
 
@@ -66,8 +66,8 @@ class ComputationShapesTest {
     }
 
     private static void roundTrips(BoundModel m, Computation comp, String fullName) {
-        IngestedComputation result = KernelAdapter.of(m.add(comp)).ingestComputation(fullName);
-        Computation got = assertInstanceOf(IngestedComputation.Converted.class, result,
+        ReadComputation result = KernelAdapter.of(m.add(comp)).readComputation(fullName);
+        Computation got = assertInstanceOf(ReadComputation.Converted.class, result,
                 () -> "expected a converted computation, got: " + result).computation();
         assertEquals(comp.draft(), got.draft());
     }

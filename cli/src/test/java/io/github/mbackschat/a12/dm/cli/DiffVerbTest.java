@@ -15,8 +15,6 @@ import org.junit.jupiter.api.io.TempDir;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
-
 /**
  * The {@code diff} verb — the F8 modify-by-re-express loop over the CLI: re-express an existing
  * rule's condition and review the before/after (with lossiness disclosed) before writing it back.
@@ -62,15 +60,18 @@ class DiffVerbTest {
     }
 
     @Test
-    void writesTheModifiedModelWithOutput(@TempDir Path dir) throws Exception {
-        Path out = dir.resolve("modified.dm.json");
-        var res = CliTestSupport.run("diff", model(dir).toString(),
-                "--rule", CliTestSupport.RULE_FULL_NAME, "--condition", "[MonthlyFee] > 2000",
-                "--output", out.toString());
+    void diffIsPreviewOnlyAndNeverWritesTheModel(@TempDir Path dir) throws Exception {
+        Path m = model(dir);
+        String before = Files.readString(m);
+        var res = CliTestSupport.run("diff", m.toString(),
+                "--rule", CliTestSupport.RULE_FULL_NAME, "--condition", "[MonthlyFee] > 2000");
         assertEquals(0, res.code(), res::err);
-        String written = Files.readString(out);
-        assertTrue(written.contains("2000"), "the written model carries the new condition");
-        // it is a valid, reloadable model that still holds the rule
-        assertTrue(BoundModel.ofJson(written).toJson().contains("FeeCapRule"), "round-trips through the kernel");
+        assertTrue(MAPPER.readTree(res.out()).get("changed").asBoolean(), "shows the change");
+        assertEquals(before, Files.readString(m), "diff is read-only: the model file is untouched");
+        // diff has no --output (it is preview-only; `modify` writes) — passing it is an error.
+        var withOutput = CliTestSupport.run("diff", m.toString(),
+                "--rule", CliTestSupport.RULE_FULL_NAME, "--condition", "[MonthlyFee] > 2000",
+                "--output", dir.resolve("x.json").toString());
+        assertNotEquals(0, withOutput.code(), "diff does not accept --output");
     }
 }

@@ -52,7 +52,7 @@ final class ModelPaths {
         }
         if (computationFullNames.contains(path)) {
             return "'" + path + "' is a computation (a calculated field), not a validation rule — use"
-                    + " `explain --computation " + path + "` to inspect it, or `ingest --all` to read the"
+                    + " `explain --computation " + path + "` to inspect it, or `read --all` to read the"
                     + " whole model (rules and computations).";
         }
         return "'" + path + "' is not a rule in this model — pass the rule's full name (its slash-path, e.g."

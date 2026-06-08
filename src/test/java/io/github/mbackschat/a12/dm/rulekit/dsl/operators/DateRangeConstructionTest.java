@@ -17,7 +17,7 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
 /**
  * The {@code DateRange(start, end)} constructor (the lone former catalog PLANNED stub) — a date-range
  * value built from two dates. Computation-only (no condition form): rendered + reference-collected here;
- * its computation round-trip is {@code adapter.DateRangeComputationIngestTest}.
+ * its computation round-trip is {@code adapter.DateRangeComputationReadTest}.
  */
 class DateRangeConstructionTest {
 

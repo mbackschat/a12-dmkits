@@ -19,7 +19,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
  * F9 explain for <b>computations</b> ({@link ModelContext#explainComputation}, the calculated-field peer
  * of {@code explain(Condition)}): a computation projects to its computed field (+kind), the common
  * precondition and each alternative's precondition/operation (operators with catalog meaning + referenced
- * fields), its messages, and a gloss — the same projection whether built or ingested-foreign.
+ * fields), its messages, and a gloss — the same projection whether built or read-foreign.
  */
 class ComputationExplanationTest {
 

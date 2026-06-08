@@ -12,7 +12,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * A structured projection of one rule's condition (F9 explain) — what it checks, in human- and
  * machine-readable form. The same mechanism serves both consumers (§14): understanding/rewriting an
  * existing rule and grounding new authoring. It works identically on a rulekit-built condition and a
- * <b>converted-foreign one (F10 ingest)</b> — both are ordinary rulekit ASTs by the time they reach here.
+ * <b>converted-foreign one (F10 read)</b> — both are ordinary rulekit ASTs by the time they reach here.
  *
  * <ul>
  *   <li>{@code text} — the canonical (EN) rendering of the condition.</li>

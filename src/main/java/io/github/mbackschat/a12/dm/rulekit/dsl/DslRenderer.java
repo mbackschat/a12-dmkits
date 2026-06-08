@@ -14,7 +14,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Span;
  * <p>Path policy (§18 fork 9, F3a): with a {@code baseGroup} set the renderer emits paths
  * <em>relative</em> to the rule's group (bare under the group, {@code ../} up to a sibling — both
  * kernel-verified, KERNEL-FINDINGS §paths), which is how {@code Rule}/{@code Computation} render;
- * without one it emits absolute paths. Keyword-segment quoting and honoring ingested
+ * without one it emits absolute paths. Keyword-segment quoting and honoring read
  * {@link PathStyle} hints are the remaining refinements.
  */
 public final class DslRenderer {

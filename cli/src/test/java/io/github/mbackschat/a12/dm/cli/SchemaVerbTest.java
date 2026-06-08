@@ -44,14 +44,14 @@ class SchemaVerbTest {
 
         assertSchemaCovers("describe", CliTestSupport.run("describe", model.toString()));
         assertSchemaCovers("validate", CliTestSupport.run("validate", model.toString()));
-        assertSchemaCovers("ingest",
-                CliTestSupport.run("ingest", model.toString(), "--rule", CliTestSupport.RULE_FULL_NAME));
+        assertSchemaCovers("read",
+                CliTestSupport.run("read", model.toString(), "--rule", CliTestSupport.RULE_FULL_NAME));
         assertSchemaCovers("explain",
                 CliTestSupport.run("explain", model.toString(), "--rule", CliTestSupport.RULE_FULL_NAME));
 
         // the computation-aware modes (2026-06-08) — same drift guard over the new output shapes
         Path withComp = CliTestSupport.modelWithRuleAndComputation(dir);
-        assertSchemaCovers("ingest", CliTestSupport.run("ingest", withComp.toString(), "--all"));
+        assertSchemaCovers("read", CliTestSupport.run("read", withComp.toString(), "--all"));
         assertSchemaCovers("explain",
                 CliTestSupport.run("explain", withComp.toString(), "--computation", CliTestSupport.COMPUTATION_FULL_NAME));
     }

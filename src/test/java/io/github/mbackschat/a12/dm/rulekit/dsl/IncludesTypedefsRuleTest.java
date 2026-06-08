@@ -29,8 +29,8 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
  *       {@code checkConsistency}, so a successful {@code add} <em>is</em> the kernel accepting the rule.</li>
  * </ul>
  *
- * <p>Read-direction (ingest) coverage of the same fixture lives in
- * {@code adapter.IncludesTypedefsIngestTest}; this is the author/render/validate half.
+ * <p>Read-direction (read) coverage of the same fixture lives in
+ * {@code adapter.IncludesTypedefsReadTest}; this is the author/render/validate half.
  */
 class IncludesTypedefsRuleTest {
 

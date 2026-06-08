@@ -25,14 +25,14 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
 /**
  * The <b>full modify loop over a composed model</b> (2026-06-08) — the headline bidirectional path
- * (ingest → re-express → diff → write-back → re-ingest) run over a model that uses both an
+ * (read → re-express → diff → write-back → re-read) run over a model that uses both an
  * <b>include</b> and a <b>typedef</b>, which {@code ModifyAndDiffTest} (plain model) doesn't reach.
  * It exercises the resolver-threaded write-back specifically: {@link BoundModel#replaceCondition}
  * re-binds with the same resolver → re-expands the include → {@code checkConsistency}, so a write that
  * broke the include would fail loudly here.
  *
- * <p>Same {@code storefront}/{@code pricelist} fixture as {@code IncludesTypedefsIngestTest}: a rule
- * capping the <em>included</em> {@code ListPrice} is ingested, then re-expressed to also require the
+ * <p>Same {@code storefront}/{@code pricelist} fixture as {@code IncludesTypedefsReadTest}: a rule
+ * capping the <em>included</em> {@code ListPrice} is read, then re-expressed to also require the
  * <em>typedef</em> {@code ProductSku} — so the modified rule spans both composition mechanisms.
  */
 class ModifyIncludedRuleTest {
@@ -79,7 +79,7 @@ class ModifyIncludedRuleTest {
     }
 
     @Test
-    void ingestReExpressDiffWriteBackOverAnIncludeAndTypedefModel() {
+    void readReExpressDiffWriteBackOverAnIncludeAndTypedefModel() {
         BoundModel base = BoundModel.ofJson(storefront().toJson(), resolver());
         Condition cap = base.num(INCLUDED_FIELD).filled().and(base.num(INCLUDED_FIELD).gt(100000));
         BoundModel model = base.add(base.rule(base.group("/Storefront")).name("PriceCapRule")
@@ -87,8 +87,8 @@ class ModifyIncludedRuleTest {
                 .code("PRICE_CAP").severity(Severity.ERROR).message(en("The list price exceeds the cap.")).build());
         KernelAdapter adapter = KernelAdapter.of(model);   // reuses the model's resolver
 
-        // ingest the rule that references the included field, back to a rulekit AST
-        Condition current = assertInstanceOf(Ingest.Converted.class, adapter.ingest(RULE)).condition();
+        // read the rule that references the included field, back to a rulekit AST
+        Condition current = assertInstanceOf(ReadResult.Converted.class, adapter.read(RULE)).condition();
         // re-express: also require the typedef SKU — the modified rule now spans include + typedef
         Condition modified = current.and(base.str(TYPEDEF_FIELD).filled());
 
@@ -108,9 +108,9 @@ class ModifyIncludedRuleTest {
         assertFalse(applied.toJson().contains("/Pricelist/ListPrice"),
                 "included content must not be inlined into the base on write-back");
 
-        // round-trips: re-ingesting the applied rule yields the modified AST verbatim
-        Condition reingested = assertInstanceOf(Ingest.Converted.class,
-                KernelAdapter.of(applied).ingest(RULE)).condition();
-        assertEquals(RENDER.render(modified), RENDER.render(reingested));
+        // round-trips: re-reading the applied rule yields the modified AST verbatim
+        Condition reread = assertInstanceOf(ReadResult.Converted.class,
+                KernelAdapter.of(applied).read(RULE)).condition();
+        assertEquals(RENDER.render(modified), RENDER.render(reread));
     }
 }

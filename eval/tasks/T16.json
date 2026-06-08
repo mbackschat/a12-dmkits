@@ -1,0 +1,15 @@
+{
+  "id": "T16",
+  "family": "modify-computation",
+  "model": "subscription-computed",
+  "computation": "/Subscription/Billing/EffectiveFeeComp",
+  "operators": ["Sum"],
+  "intent": "Change the effective-fee computation so the effective fee is the base fee PLUS the total of all add-on monthly fees (instead of just the base fee).",
+  "gold": {
+    "computedField": "/Subscription/Billing/EffectiveFee",
+    "alternatives": [
+      { "operation": "[BaseFee] + Sum(/Subscription/Addons*/MonthlyFee)" }
+    ]
+  },
+  "notes": "MODIFY-COMPUTATION over the CLI (the F8 modify-by-re-express loop, `diff --computation`, built 2026-06-08). The `subscription-computed` fixture already carries the computation EffectiveFeeComp = `[BaseFee]` (generated via the real `cli add` write path); the agent must (1) discover the existing computation (`explain --computation` / `read --all`), (2) KEEP the same computed field /Subscription/Billing/EffectiveFee, and (3) re-express it to add the add-on total. The runner's recheck runs `cli diff --computation /Subscription/Billing/EffectiveFeeComp --spec <file>` — the kernel-authoritative gate that replaces-then-binds (rejecting an invalid re-expression) and reports `changed`; a modify passes only when ACCEPTED and an actual CHANGE (changed:true), then the judge scores equivalence to the gold. Gold verified via `cli diff`: the re-expression is accepted (changed:true; before `always => [BaseFee]`, after `always => [BaseFee] + Sum(/Subscription/Addons*/MonthlyFee)`). The Sum reaches the Addons repetition list by ABSOLUTE path (`/Subscription/Addons*/MonthlyFee`) because Addons is a sibling group of Billing, not reachable by a bare name from the Billing context."
+}

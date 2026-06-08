@@ -1,6 +1,6 @@
 // Layer-2 of the self-sufficiency benchmark (EVAL-SPEC §8). RUNNABLE, but RUN ON DEMAND — it is
 // token-heavy (model × task × k clean agents + judges) and so is opt-in, never per-commit. The
-// deterministic Layer-1 backbone (golds validate / comprehension rules ingest) is EvalGoldOracleTest.
+// deterministic Layer-1 backbone (golds validate / comprehension rules read) is EvalGoldOracleTest.
 //
 // What it measures: given ONLY the shipped material (the self-describing CLI launcher — verbs, --help,
 // `cli operators`; no raw catalog file, no skill — this is BARE-TOOL mode, EVAL-SPEC §2a), can a
@@ -33,21 +33,44 @@ const TASKS = A.tasks || []
 log(`benchmark inputs: ${MODELS.length} model(s) [${MODELS}], k=${K}, ${TASKS.length} task(s)`)
 if (TASKS.length === 0) throw new Error('no tasks passed in args.tasks — nothing to benchmark')
 const CLI = 'JAVA_HOME="$(/usr/libexec/java_home -v 21)" cli/build/install/cli/bin/cli'
-const MODEL_FILE = t => `cli/src/test/resources/models/${t.model}.dm.json`
+// A task names its model by stem (cli/src/test/resources/models/<model>.dm.json) OR carries an explicit
+// `modelPath` (repo-relative) for nested multi-file layouts. `includeDir` (repo-relative) is threaded to
+// every verb as `--include-dir` so the recheck/judge can resolve a multi-file model's includes/typedefs.
+const MODEL_FILE = t => t.modelPath || `cli/src/test/resources/models/${t.model}.dm.json`
+const INCLUDE_ARGS = t => t.includeDir ? ['--include-dir', t.includeDir] : []
+const INCLUDE_HINT = t => t.includeDir ? ` --include-dir ${t.includeDir}` : ''
 
 const AUTHORING = TASKS.filter(t => t.family === 'authoring')
 const AUTHORING_COMP = TASKS.filter(t => t.family === 'authoring-computation')
+const MODIFY_COMP = TASKS.filter(t => t.family === 'modify-computation')
 const COMPREHENSION = TASKS.filter(t => t.family === 'comprehension')
 
 // ---- prompts (EVAL-SPEC §5: neutral, material-only, no leaking the technique/polarity) ------------
 
 function authorPrompt(task) {
+  // For a multi-file model, the boundary permits resolving the models it references (neutral — it does
+  // NOT name the flag; the agent discovers `--include-dir` from the CLI error + `<verb> --help`).
+  const multifile = task.includeDir
+    ? `\n  - this model is part of a multi-file workspace: it REFERENCES other model files located elsewhere in the workspace, which you may read/resolve as needed to validate it.`
+    : ''
   return `You help a business analyst author an A12 validation rule. Assume NO prior A12/rulekit knowledge; use ONLY:
   - the CLI:  ${CLI} <args>   (it is self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <verb> --help\` shows a verb's parameters, \`${CLI} operators\` lists the DSL operators and \`${CLI} operators <id>\` gives one in full)
-  - the model file: ${MODEL_FILE(task)}
+  - the model file: ${MODEL_FILE(task)}${multifile}
 Do NOT read any rulekit source, docs, tests, or *.md files. Requirement to enforce: "${task.intent}".
 Author the rule and CONFIRM the kernel accepts it via the CLI. Return ONLY JSON:
   {"field":"<absolute path>","condition":"<DSL>","code":"<ID>","kernelAccepted":true|false}`
+}
+
+function modifyComputationPrompt(task) {
+  return `You help a business analyst CHANGE an EXISTING A12 COMPUTATION on a model. A computation COMPUTES
+(fills in) a field's value from other fields. The model ALREADY has a computation; re-express it to meet a
+new requirement, KEEPING THE SAME computed field. Assume NO prior A12/rulekit knowledge; use ONLY:
+  - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <verb> --help\` a verb's parameters; \`${CLI} explain ${MODEL_FILE(task)} --computation ${task.computation}\` shows the existing computation, \`${CLI} schema add\` the computation-spec shape, \`${CLI} diff --help\` how to PREVIEW a re-expression read-only, \`${CLI} operators\` the DSL operators)
+  - the model file: ${MODEL_FILE(task)}
+Do NOT read any rulekit source, docs, tests, or *.md files. The existing computation to change: ${task.computation}.
+New requirement: "${task.intent}".
+Re-express the computation and CONFIRM the kernel accepts the CHANGE by PREVIEWING it (read-only) — do NOT write the model file. Return ONLY JSON:
+  {"computedField":"<absolute path>","commonPrecondition":"<DSL or omit>","alternatives":[{"precondition":"<DSL or omit>","operation":"<DSL value expression>"}],"messages":[{"locale":"<code>","text":"..."}],"kernelAccepted":true|false}`
 }
 
 function authorComputationPrompt(task) {
@@ -131,6 +154,16 @@ const authoredComp = await parallel(compRuns.map(r => () =>
     .then(out => ({ kind: 'authoring-computation', model: r.model, task: r.task, i: r.i, out }))
     .catch(() => ({ kind: 'authoring-computation', model: r.model, task: r.task, i: r.i, out: null }))))
 
+const modRuns = []
+for (const model of MODELS)
+  for (const task of MODIFY_COMP)
+    for (let i = 0; i < K; i++) modRuns.push({ model, task, i })
+
+const authoredMod = await parallel(modRuns.map(r => () =>
+  agent(modifyComputationPrompt(r.task), { label: `modify ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: AUTHOR_COMP_SCHEMA })
+    .then(out => ({ kind: 'modify-computation', model: r.model, task: r.task, i: r.i, out }))
+    .catch(() => ({ kind: 'modify-computation', model: r.model, task: r.task, i: r.i, out: null }))))
+
 // ---- Recheck: ONE warm-JVM `cli batch` authoritatively re-validates every authored candidate -------
 // (Don't trust the agents' self-reported kernelAccepted.) This is the batch verb's reason to exist:
 // N checks in one process, paying the kernel's StringTemplate warm-up once.
@@ -141,7 +174,8 @@ if (candidates.length) {
   const ops = candidates.map(r => ({
     id: `${r.model}/${r.task.id}/${r.i}`,
     verb: 'check',
-    args: [MODEL_FILE(r.task), '--field', r.out.field, '--condition', r.out.condition, '--code', r.out.code || 'EVAL'],
+    args: [MODEL_FILE(r.task), '--field', r.out.field, '--condition', r.out.condition, '--code', r.out.code || 'EVAL',
+      ...INCLUDE_ARGS(r.task)],
   }))
   const selfReport = () => {
     const m = {}
@@ -219,6 +253,51 @@ Report every entry via the structured-output tool: one {id, valid} per entry (va
   }
 }
 
+// ---- Recheck (modify-computation): authoritatively re-express each via `cli diff --computation` -------
+// A MODIFY isn't an add — it re-expresses an EXISTING computation in place. `diff --computation <name>
+// --spec <file>` is the kernel-authoritative gate: it `replaceComputation`s, re-binds (rejecting an
+// invalid re-expression with {valid:false} + exit 1), and emits the before/after with `changed`. A modify
+// "passes" recheck only when the kernel ACCEPTS it AND it is an actual change (changed:true) — a no-op
+// re-expression isn't a modification. Falls back to the agents' self-report if the rescore agent fails.
+
+const modCandidates = authoredMod.filter(r => r && r.out && r.out.computedField && (r.out.alternatives || []).length)
+let modAuthoritative = {}
+if (modCandidates.length) {
+  const entries = modCandidates.map(r => {
+    const id = `${r.model}/${r.task.id}/${r.i}`
+    return { id, file: `/tmp/rk-mod-${id.replace(/[^a-zA-Z0-9]/g, '_')}.json`,
+      model: MODEL_FILE(r.task), computation: r.task.computation, spec: compSpec(r.out) }
+  })
+  const modSelfReport = () => {
+    const m = {}
+    for (const r of modCandidates) m[`${r.model}/${r.task.id}/${r.i}`] = !!(r.out && r.out.kernelAccepted)
+    return m
+  }
+  try {
+    const rescore = await agent(
+      `Authoritatively re-validate candidate A12 COMPUTATION MODIFICATIONS against the real kernel. For EACH
+entry below: write its \`spec\` (verbatim JSON) to its \`file\`, then run:
+  ${CLI} diff <entry.model> --computation <entry.computation> --spec <entry.file>
+This re-expresses the named existing computation. On ACCEPT it prints a diff JSON {"before","after","changed",…}
+and exits 0; on REJECT it prints {"valid":false,…} and exits non-zero. Entries:
+${JSON.stringify(entries)}
+Report every entry via the structured-output tool: one {id, valid, changed} per entry — valid = the kernel
+ACCEPTED the re-expression (exit 0, no "valid":false), changed = the diff's "changed" field (true if it
+actually differs from the current computation).`,
+      { label: 'modify recheck', phase: 'Recheck',
+        schema: { type: 'object', additionalProperties: false, required: ['verdicts'],
+          properties: { verdicts: { type: 'array', items: {
+            type: 'object', additionalProperties: false, required: ['id', 'valid', 'changed'],
+            properties: { id: { type: 'string' }, valid: { type: 'boolean' }, changed: { type: 'boolean' } } } } } } })
+    // A modify passes the kernel gate only if accepted AND an actual change.
+    for (const v of (rescore && rescore.verdicts) || []) modAuthoritative[v.id] = v.valid && v.changed
+    if (Object.keys(modAuthoritative).length === 0) modAuthoritative = modSelfReport()
+  } catch (e) {
+    log('modify recheck failed (' + e.message + ') — falling back to agent self-report')
+    modAuthoritative = modSelfReport()
+  }
+}
+
 // ---- Judge: semantic correctness (catches kernel-valid-but-wrong, e.g. inverted polarity) ----------
 
 phase('Judge')
@@ -230,7 +309,7 @@ const authorJudged = await parallel(candidates.map(r => () => {
     `Judge whether a candidate A12 rule is SEMANTICALLY EQUIVALENT to the reference (gold): do they fire on
 exactly the same documents? Polarity matters — a rule that fires on the opposite case is NOT equivalent.
 Judge WITHIN the field's ACTUAL value domain: two rules that differ only on values the field cannot hold
-ARE equivalent. The model is ${MODEL_FILE(r.task)} — first run \`${CLI} describe ${MODEL_FILE(r.task)}\` to
+ARE equivalent. The model is ${MODEL_FILE(r.task)} — first run \`${CLI} describe ${MODEL_FILE(r.task)}${INCLUDE_HINT(r.task)}\` to
 see field types and enum value sets (e.g. an enum with only three possible values: "X not in {A,B}" then
 equals "X == C"). PATH RESOLUTION: a bare field name resolves against the rule's group AND its ancestor
 groups (the kernel walks UP the hierarchy), so a bare ref and an absolute ref denote the SAME field when
@@ -271,7 +350,38 @@ field + an optional common precondition + one or more (precondition, operation) 
 equivalent iff, for every document, they compute the same value (or both compute nothing). The model is
 ${MODEL_FILE(r.task)} — run \`${CLI} describe ${MODEL_FILE(r.task)}\` to see field types. A difference that
 is only path notation, conjunct order, or an equivalent value expression is NOT a semantic difference.
+KERNEL FACT (empty operands): a computation operation that references an EMPTY operand is NOT evaluated —
+it computes no value, and clears any previously-computed value. Therefore a precondition that merely
+guards the PRESENCE of operands the operation already uses (e.g. \`AllFieldsFilled\`/\`FieldFilled\` over
+exactly the fields in the value expression) is REDUNDANT: it does not change the result for any document.
+So a candidate that ADDS such a presence guard over the gold's own operands IS equivalent to the unguarded
+gold (and vice versa). (This does not hold for string CONCATENATION operands, which concat empties as "".)
 Reference gold: ${JSON.stringify(r.task.gold)}.
+Candidate: ${JSON.stringify({ computedField: r.out.computedField, commonPrecondition: r.out.commonPrecondition, alternatives: r.out.alternatives })}.
+Return ONLY JSON: {"equivalent": true|false, "why": "<one sentence>"}`,
+    { label: `judge ${key}`, phase: 'Judge',
+      schema: { type: 'object', additionalProperties: true, properties: { equivalent: { type: 'boolean' }, why: { type: 'string' } }, required: ['equivalent'] } })
+    .then(v => ({ key, model: r.model, taskId: r.task.id, valid: true, equivalent: !!(v && v.equivalent), why: v && v.why }))
+    .catch(() => ({ key, model: r.model, taskId: r.task.id, valid: true, equivalent: false }))
+}))
+
+const modJudged = await parallel(modCandidates.map(r => () => {
+  const key = `${r.model}/${r.task.id}/${r.i}`
+  const valid = modAuthoritative[key] === true   // accepted by the kernel AND an actual change
+  if (!valid) return Promise.resolve({ key, model: r.model, taskId: r.task.id, valid: false, equivalent: false })
+  return agent(
+    `Judge whether a candidate A12 computation MODIFICATION matches the reference (gold) modification: does
+the re-expressed computation assign the SAME value to the SAME computed field under the SAME conditions as
+the gold? A computation is a computed field + an optional common precondition + one or more (precondition,
+operation) alternatives. The candidate has already been confirmed (by the kernel) to be a CHANGE from the
+original computation — judge only whether it is the RIGHT change (equivalent to the gold). Two are
+equivalent iff, for every document, they compute the same value (or both compute nothing). The model is
+${MODEL_FILE(r.task)} — run \`${CLI} describe ${MODEL_FILE(r.task)}\` to see field types. A difference that
+is only path notation, conjunct order, or an equivalent value expression is NOT a semantic difference.
+KERNEL FACT (empty operands): a computation operation referencing an EMPTY operand is NOT evaluated (no
+value; clears any stale value), so a precondition that merely guards the PRESENCE of operands the operation
+already uses is REDUNDANT and does not change the result. (Not for string CONCATENATION, which concats "".)
+Reference gold (the intended modified computation): ${JSON.stringify(r.task.gold)}.
 Candidate: ${JSON.stringify({ computedField: r.out.computedField, commonPrecondition: r.out.commonPrecondition, alternatives: r.out.alternatives })}.
 Return ONLY JSON: {"equivalent": true|false, "why": "<one sentence>"}`,
     { label: `judge ${key}`, phase: 'Judge',
@@ -291,7 +401,8 @@ function bump(model, taskId, passed) {
 }
 for (const r of authorJudged) bump(r.model, r.taskId, r.valid && r.equivalent)
 for (const r of compJudged) bump(r.model, r.taskId, r.valid && r.equivalent)
+for (const r of modJudged) bump(r.model, r.taskId, r.valid && r.equivalent)
 for (const r of explainJudged) bump(r.model, r.taskId, r.correct)
 
 log('pass@k by (model, task): ' + JSON.stringify(agg))
-return { agg, authorJudged, compJudged, explainJudged }
+return { agg, authorJudged, compJudged, modJudged, explainJudged }

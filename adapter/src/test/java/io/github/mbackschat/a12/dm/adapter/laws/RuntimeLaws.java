@@ -26,6 +26,7 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolve
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelResolver;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
+import com.mgmtp.a12.kernel.md.rt.api.IDocumentComputationResult;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentDynamicServiceConfig;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentModelIdProvider;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentRtService;
@@ -196,6 +197,60 @@ final class RuntimeLaws {
 
     static Set<String> firedCodes(String modelJson, Doc doc) {
         return messages(modelJson, doc).stream().map(Msg::code).collect(Collectors.toCollection(HashSet::new));
+    }
+
+    // ---- computations (compute(): does a computed field get a value, get cleared, or error?) -----
+
+    /**
+     * One computed-field outcome of a {@code compute()} run: its path and which bucket the kernel put it
+     * in — {@code value} present means it computed a value; {@code cleared} means the kernel set it empty
+     * (computed nothing); {@code errored} means an operand/computation error.
+     */
+    record Computed(String path, Optional<String> value, boolean cleared, boolean errored) {
+    }
+
+    /**
+     * Run the kernel's {@code compute()} over an explicit document instance and return every
+     * computed-field outcome (value / cleared / errored). The discriminator for "does an empty operand
+     * yield a value or nothing": a field in {@link #cleared(List, String)} computed nothing, a field with
+     * a {@code value} computed a value.
+     */
+    static List<Computed> compute(String modelJson, Doc doc) {
+        IDocumentModel model = expandedModel(modelJson);
+        IDocumentModelResolver resolver = id -> model;
+        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
+        IDocumentFactory df = new DocumentServiceFactory(resolver).createDocumentFactory();
+
+        IDocument d = df.createDocument(modelId(modelJson));
+        for (Inst i : doc.insts) {
+            if (i.group()) {
+                d.addEntityInstance(df.createGroupInstance(i.path(), i.reps()));
+            } else if (i.hasValue()) {
+                d.addEntityInstance(df.createFieldInstance(i.path(), i.reps(), i.value()));
+            } else {
+                d.addEntityInstance(df.createFieldInstance(i.path(), i.reps()));
+            }
+        }
+        IDocumentComputationResult result = rt.compute(d, Locale.US);
+        List<Computed> out = new ArrayList<>();
+        result.getComputedFieldInstancesWithChanges().forEach(c ->
+                out.add(new Computed(c.getPath(), c.getStringValue(), false, false)));
+        result.getComputedFieldInstancesWithErrors().forEach(c ->
+                out.add(new Computed(c.getPath(), c.getStringValue(), false, true)));
+        result.getClearedFieldInstances().forEach(c ->
+                out.add(new Computed(c.getPath(), Optional.empty(), true, false)));
+        return out;
+    }
+
+    /** Whether {@code path} computed a (non-empty) value under {@code compute()}. */
+    static Optional<String> computedValue(List<Computed> outcomes, String path) {
+        return outcomes.stream().filter(c -> c.path().equals(path) && c.value().isPresent())
+                .map(c -> c.value().get()).findFirst();
+    }
+
+    /** Whether {@code path} was cleared (computed nothing) under {@code compute()}. */
+    static boolean cleared(List<Computed> outcomes, String path) {
+        return outcomes.stream().anyMatch(c -> c.path().equals(path) && c.cleared());
     }
 
     /** Whether the rule with {@code errorCode} fires for the given explicit instance. */

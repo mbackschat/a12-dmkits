@@ -18,7 +18,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
 /**
- * The unified whole-model read (F10): {@link KernelAdapter#ingestModel} returns the model's validation
+ * The unified whole-model read (F10): {@link KernelAdapter#readModel} returns the model's validation
  * rules and its computations as two disjoint, fully-attributed maps — a foreign model round-trips
  * completely (rules <em>and</em> computations) with nothing double-counted.
  */
@@ -43,8 +43,8 @@ class UnifiedModelReadTest {
     }
 
     @Test
-    void ingestModelPartitionsRulesAndComputationsDisjointly() {
-        ModelIngest model = KernelAdapter.of(orderWithRuleAndComputation()).ingestModel();
+    void readModelPartitionsRulesAndComputationsDisjointly() {
+        ModelRead model = KernelAdapter.of(orderWithRuleAndComputation()).readModel();
 
         assertEquals(Set.of("/Order/SubtotalCap"), model.rules().keySet(),
                 "rules carries only the validation rule");
@@ -56,11 +56,11 @@ class UnifiedModelReadTest {
     }
 
     @Test
-    void ingestModelTypesEveryElementOfACoveredModel() {
-        ModelIngest model = KernelAdapter.of(orderWithRuleAndComputation()).ingestModel();
+    void readModelTypesEveryElementOfACoveredModel() {
+        ModelRead model = KernelAdapter.of(orderWithRuleAndComputation()).readModel();
 
-        assertInstanceOf(Ingest.Converted.class, model.rules().get("/Order/SubtotalCap"));
-        assertInstanceOf(IngestedComputation.Converted.class, model.computations().get("/Order/TotalComp"));
+        assertInstanceOf(ReadResult.Converted.class, model.rules().get("/Order/SubtotalCap"));
+        assertInstanceOf(ReadComputation.Converted.class, model.computations().get("/Order/TotalComp"));
         assertEquals(1, model.convertedRules());
         assertEquals(1, model.convertedComputations());
         assertTrue(model.fullyTyped(), "every rule and computation converted — the model round-trips fully typed");
@@ -71,7 +71,7 @@ class UnifiedModelReadTest {
         // a model whose only rule is converted, but force the not-fully-typed branch by checking counts
         BoundModel m = BoundModel.ofJson(DocumentModelDraft.named("plain").locale("en_US")
                 .rootGroup("Plain", p -> p.numberField("A", n -> { })).build().toJson());
-        ModelIngest model = KernelAdapter.of(m).ingestModel();
+        ModelRead model = KernelAdapter.of(m).readModel();
         assertTrue(model.rules().isEmpty(), "no rules");
         assertTrue(model.computations().isEmpty(), "no computations");
         assertTrue(model.fullyTyped(), "an empty model is vacuously fully typed");

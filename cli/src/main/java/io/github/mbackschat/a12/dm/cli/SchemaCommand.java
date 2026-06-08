@@ -23,10 +23,10 @@ import picocli.CommandLine.Parameters;
 final class SchemaCommand extends BaseCommand {
 
     /** The verb I/O structures that have a published schema (CI-locked against drift). */
-    static final List<String> NAMES = List.of("explain", "describe", "validate", "ingest", "add", "batch");
+    static final List<String> NAMES = List.of("explain", "describe", "validate", "read", "add", "batch");
 
     @Parameters(index = "0", arity = "0..1", paramLabel = "<verb>",
-            description = "one of: explain, describe, validate, ingest (outputs); add, batch (inputs)")
+            description = "one of: explain, describe, validate, read (outputs); add, batch (inputs)")
     String name;
 
     @Override

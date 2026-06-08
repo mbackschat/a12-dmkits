@@ -147,7 +147,7 @@ public final class Linter {
 
     /**
      * Lint a candidate condition for a rule whose error field is {@code errorFieldPath}, without a
-     * built {@link Rule} — the entry the CLI's {@code add} uses on a condition ingested from text
+     * built {@link Rule} — the entry the CLI's {@code add} uses on a condition read from text
      * (F10), so the model-context lints (inverted requiredness, negative-under-iteration) can fire on
      * the BA path. The rule's group is taken as the error field's parent (the {@code add} default).
      */

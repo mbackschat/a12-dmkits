@@ -181,10 +181,10 @@ final class ConditionConverter {
      * N8 backstop: if the converted condition renders fewer {@code $} markers than the source carried
      * ({@code expectedOuter}), a correlation was silently dropped (a comparison kind whose handle does
      * not yet thread {@code outer()}) — so refuse the conversion, degrading the rule to a verbatim
-     * {@link Ingest.Opaque} rather than corrupting it into a non-correlated rule. {@code $} only ever
+     * {@link ReadResult.Opaque} rather than corrupting it into a non-correlated rule. {@code $} only ever
      * renders as the {@code [$} value-bracket prefix, so counting that substring is exact.
      *
-     * @throws UnsupportedConstructException when a marker was dropped — caught by {@link KernelAdapter#ingest}.
+     * @throws UnsupportedConstructException when a marker was dropped — caught by {@link KernelAdapter#read}.
      */
     void verifyOuterPreserved(Condition converted, int expectedOuter) {
         if (expectedOuter == 0) {
@@ -1663,7 +1663,7 @@ final class ConditionConverter {
      * Convert a computation's value-expression (the kernel's {@link IOperation}) to a rulekit
      * {@link Calculation}, reusing the comparison-operand machinery ({@link #numericExpr}). rulekit's
      * computation surface is numeric, so a non-NUMBER computed field, or an operation {@code numericExpr}
-     * doesn't recognise, raises the strict signal (→ a tolerant {@link IngestedComputation.Opaque}).
+     * doesn't recognise, raises the strict signal (→ a tolerant {@link ReadComputation.Opaque}).
      */
     Calculation convertOperation(IOperation op, ValueKind computedKind) {
         // The kernel wraps each computation alternative's value-expression with its assignment operator
@@ -1716,7 +1716,7 @@ final class ConditionConverter {
      * Assemble a rulekit {@link Computation} from the kernel's extracted {@link ICalculationInfo}
      * (calculated field + common precondition + {@code (precondition, operation)} alternatives) plus the
      * computation's recovered error {@code messages}. Non-{@code EXACT} rounding is unmodeled — rulekit
-     * authors exact computations only — so it raises the strict signal (→ {@link IngestedComputation.Opaque}).
+     * authors exact computations only — so it raises the strict signal (→ {@link ReadComputation.Opaque}).
      */
     Computation convertComputation(ICalculationInfo info, List<LocalizedText> messages) {
         if (info.getRoundingMode() != RoundingMode.EXACT) {

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/read.schema.json",
+  "title": "Read",
+  "description": "Output of `rulekit read`. Two modes. With --rule: one stored rule's condition read back — `converted` true = rulekit fully modeled every construct (an ordinary AST, ready for explain/diff); false = a tolerant Opaque passthrough preserving the kernel's text verbatim. With --all: the unified whole-model read — `rules` and `computations` (disjoint maps keyed by full name; a computation is stored as a rule in the kernel's getAllRules() but is reported only under `computations`) plus a `summary`.",
+  "type": "object",
+  "additionalProperties": false,
+  "oneOf": [
+    { "title": "one rule (--rule)", "required": ["rule", "converted"] },
+    { "title": "whole model (--all)", "required": ["rules", "computations", "summary"] }
+  ],
+  "properties": {
+    "rule": { "type": "string", "description": "(--rule) the rule's full name" },
+    "converted": { "type": "boolean", "description": "(--rule) true = Converted (full rulekit AST); false = Opaque (verbatim passthrough)" },
+    "condition": { "type": "string", "description": "(--rule, Converted) the rendered DSL of the condition" },
+    "canonicalText": { "type": "string", "description": "(--rule, Opaque) the raw kernel condition text, preserved verbatim" },
+    "reason": { "type": "string", "description": "(--rule, Opaque) the not-yet-modeled construct" },
+    "rules": {
+      "type": "object",
+      "description": "(--all) validation rules keyed by full name; each value is a per-rule outcome",
+      "additionalProperties": { "$ref": "#/$defs/ruleOutcome" }
+    },
+    "computations": {
+      "type": "object",
+      "description": "(--all) computations keyed by full name; each value is a per-computation outcome",
+      "additionalProperties": { "$ref": "#/$defs/computationOutcome" }
+    },
+    "summary": {
+      "type": "object",
+      "description": "(--all) counts across the whole model",
+      "additionalProperties": false,
+      "properties": {
+        "rules": { "type": "integer" },
+        "convertedRules": { "type": "integer" },
+        "computations": { "type": "integer" },
+        "convertedComputations": { "type": "integer" },
+        "fullyTyped": { "type": "boolean", "description": "every rule and computation converted to a typed AST" }
+      }
+    }
+  },
+  "$defs": {
+    "ruleOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "converted": { "type": "boolean" },
+        "condition": { "type": "string", "description": "Converted: the rendered DSL" },
+        "canonicalText": { "type": "string", "description": "Opaque: the raw kernel text" },
+        "reason": { "type": "string", "description": "Opaque: the not-yet-modeled construct" }
+      }
+    },
+    "computationOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "converted": { "type": "boolean" },
+        "calculatedField": { "type": "string", "description": "Converted: the computed field's path" },
+        "reason": { "type": "string", "description": "Opaque: the not-yet-modeled construct" }
+      }
+    }
+  }
+}

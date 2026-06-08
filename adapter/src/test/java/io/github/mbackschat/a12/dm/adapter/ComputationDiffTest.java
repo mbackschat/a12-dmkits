@@ -20,7 +20,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.RenderedDiff;
 
 /**
  * F8 modify-by-re-express diff for <b>computations</b> ({@link KernelAdapter#diffComputation}, the
- * {@code diff} peer): re-express an ingested computation and review the before/after rendering of the
+ * {@code diff} peer): re-express an read computation and review the before/after rendering of the
  * whole computation (computed field + common precondition + alternatives) before writing it back.
  */
 class ComputationDiffTest {

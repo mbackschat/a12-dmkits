@@ -19,8 +19,8 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 /**
  * The {@code $} outer-iteration correlation, <b>authoring direction</b> (D13): a rule built through
  * the typed DSL with an outer-marked reference inside a {@code Having} filter renders to {@code [$path]}
- * and is accepted by the real kernel. (The <em>ingest</em> direction — reading a foreign {@code $} rule
- * back into the AST — stays {@link Ingest.Opaque} for now, guarded by {@code OuterCorrelationIngestTest};
+ * and is accepted by the real kernel. (The <em>read</em> direction — reading a foreign {@code $} rule
+ * back into the AST — stays {@link ReadResult.Opaque} for now, guarded by {@code OuterCorrelationReadTest};
  * faithful conversion there is the N8-sensitive follow-on increment.)
  */
 class OuterCorrelationAuthoringTest {

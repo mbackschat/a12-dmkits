@@ -47,7 +47,7 @@ public final class ModelContext {
      * Explain a condition (F9) — the operators it uses (with catalog meaning + relevant gotchas), the
      * fields/groups it references (with model kind), whether it iterates over a repeatable group, and
      * a one-line gloss. Works identically for a rulekit-built condition and a converted-foreign one
-     * (F10 ingest): feed {@code adapter.ingest(rule)}'s {@code Converted.condition()} straight in.
+     * (F10 read): feed {@code adapter.read(rule)}'s {@code Converted.condition()} straight in.
      */
     public RuleExplanation explain(Condition condition) {
         DslRenderer renderer = new DslRenderer(ConditionLanguage.EN);
@@ -67,7 +67,7 @@ public final class ModelContext {
      * Explain a computation (F9, the calculated-field peer of {@link #explain}) — the field it computes
      * (path + model kind), the common precondition and each alternative's {@code (precondition, operation)}
      * projected like a rule (operators with catalog meaning/gotchas + referenced fields), the self-validation
-     * messages, and a one-line gloss. Feed {@code adapter.ingestComputation(name)}'s {@code Converted}
+     * messages, and a one-line gloss. Feed {@code adapter.readComputation(name)}'s {@code Converted}
      * computation straight in — it is an ordinary rulekit {@link Computation} by the time it reaches here.
      */
     public ComputationExplanation explainComputation(Computation computation) {

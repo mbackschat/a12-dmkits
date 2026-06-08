@@ -11,12 +11,12 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 
 /**
- * The N8 safety net for {@code $} outer-iteration correlation ingest (D13): {@code verifyOuterPreserved}.
+ * The N8 safety net for {@code $} outer-iteration correlation read (D13): {@code verifyOuterPreserved}.
  * The supported comparison kinds (number/string/date/enum/category) and {@code CurrentRepetition($)}
  * are threaded, but the guarantee that an <em>un</em>-threaded kind can never silently drop a {@code $}
  * does not depend on which kinds happen to be threaded — it is this count-check: if the converted
  * condition renders fewer {@code $} markers than the source carried, the conversion is refused (the
- * rule degrades to verbatim {@link Ingest.Opaque}). This white-box test drives the check directly, so
+ * rule degrades to verbatim {@link ReadResult.Opaque}). This white-box test drives the check directly, so
  * it stays valid no matter how many kinds get threaded later.
  */
 class OuterCorrelationBackstopTest {

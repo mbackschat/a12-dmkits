@@ -21,7 +21,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral;
  * Own-domain transfer of the <b>kernel-team BA doc's worked Computation-Rule examples</b>
  * ({@code kernel-ba.md} "Computation Rules", license-safe: mechanism re-expressed, not the text) — the
  * BA-doc peer of {@code ComputationShapesTest} (which transferred the kernel-mm + workspaces shapes).
- * Each BA example is re-expressed and ingested through the full cycle (render → extract → convert
+ * Each BA example is re-expressed and read through the full cycle (render → extract → convert
  * identity), confirming the converter handles the shapes the prose documents:
  *
  * <ul>
@@ -36,8 +36,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral;
 class BaComputationCorpusTest {
 
     private static void roundTrips(BoundModel m, Computation comp, String fullName) {
-        IngestedComputation result = KernelAdapter.of(m.add(comp)).ingestComputation(fullName);
-        Computation got = assertInstanceOf(IngestedComputation.Converted.class, result,
+        ReadComputation result = KernelAdapter.of(m.add(comp)).readComputation(fullName);
+        Computation got = assertInstanceOf(ReadComputation.Converted.class, result,
                 () -> "expected a converted computation, got: " + result).computation();
         assertEquals(comp.draft(), got.draft());
     }

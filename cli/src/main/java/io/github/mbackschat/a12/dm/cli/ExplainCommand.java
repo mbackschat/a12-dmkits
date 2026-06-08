@@ -8,8 +8,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import io.github.mbackschat.a12.dm.adapter.Ingest;
-import io.github.mbackschat.a12.dm.adapter.IngestedComputation;
+import io.github.mbackschat.a12.dm.adapter.ReadResult;
+import io.github.mbackschat.a12.dm.adapter.ReadComputation;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.rulekit.context.ModelContext;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -30,7 +30,7 @@ import picocli.CommandLine.Parameters;
  *       common precondition + per-alternative precondition/operation, messages, gloss).</li>
  * </ul>
  *
- * <p>Ingests the element first (F10), then explains the resulting AST — the same mechanism that works on a
+ * <p>Reads the element first (F10), then explains the resulting AST — the same mechanism that works on a
  * hand-built condition.
  */
 @Command(name = "explain", mixinStandardHelpOptions = true,
@@ -80,10 +80,10 @@ final class ExplainCommand extends BaseCommand {
         if (problem != null) {
             return fail(problem);
         }
-        Ingest ingest = adapter.ingest(rule);
-        if (ingest instanceof Ingest.Converted converted) {
+        ReadResult read = adapter.read(rule);
+        if (read instanceof ReadResult.Converted converted) {
             out().print(new ModelContext(boundModel).explain(converted.condition()).toJson() + "\n");
-        } else if (ingest instanceof Ingest.Opaque opaque) {
+        } else if (read instanceof ReadResult.Opaque opaque) {
             out().print(notExplained("rule", rule, opaque.reason(), opaque.canonicalText()));
         }
         return 0;
@@ -94,10 +94,10 @@ final class ExplainCommand extends BaseCommand {
             return fail("'" + computation + "' is not a computation in this model — pass a computation's full"
                     + " name (its slash-path). Computations in this model: " + adapter.computationFullNames() + ".");
         }
-        IngestedComputation ingest = adapter.ingestComputation(computation);
-        if (ingest instanceof IngestedComputation.Converted converted) {
+        ReadComputation read = adapter.readComputation(computation);
+        if (read instanceof ReadComputation.Converted converted) {
             out().print(new ModelContext(boundModel).explainComputation(converted.computation()).toJson() + "\n");
-        } else if (ingest instanceof IngestedComputation.Opaque opaque) {
+        } else if (read instanceof ReadComputation.Opaque opaque) {
             out().print(notExplained("computation", computation, opaque.reason(), null));
         }
         return 0;

@@ -15,7 +15,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * The {@code explain} verb — ingest an existing rule ({@code --rule}) or computation ({@code --computation}),
+ * The {@code explain} verb — read an existing rule ({@code --rule}) or computation ({@code --computation}),
  * then project it to a structured explanation.
  */
 class ExplainVerbTest {

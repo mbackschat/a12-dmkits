@@ -17,11 +17,11 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * license-safe rule). Two guarantees:
  * <ul>
  *   <li><b>Working rules</b> — every rule is accepted by the real kernel ({@code everyRuleIsKernelValid}).</li>
- *   <li><b>Honest ingest coverage</b> — each rule is tagged {@code modeled} (must convert to a typed AST) or
- *       {@code OPAQUE} (a construct rulekit doesn't model yet); {@code ingestCoverage} prints the split and
+ *   <li><b>Honest read coverage</b> — each rule is tagged {@code modeled} (must convert to a typed AST) or
+ *       {@code OPAQUE} (a construct rulekit doesn't model yet); {@code readCoverage} prints the split and
  *       holds the line. As each unmodeled family lands, its rules flip {@code OPAQUE → modeled}.</li>
  * </ul>
- * This is the measurement instrument a text/keyword estimate can't be: a rule only counts as ingestable when
+ * This is the measurement instrument a text/keyword estimate can't be: a rule only counts as readable when
  * the real converter turns it into a typed condition.
  */
 class BaCorpusTest {
@@ -114,13 +114,13 @@ class BaCorpusTest {
     }
 
     @Test
-    void ingestCoverageMatchesExpectations() {
+    void readCoverageMatchesExpectations() {
         var adapter = KernelAdapter.ofJson(inject(MODEL, RULES));
         int converted = 0;
         StringBuilder mismatches = new StringBuilder();
         for (R r : RULES) {
-            Ingest ing = adapter.ingest("/Shipment/" + r.name());
-            boolean isConverted = ing instanceof Ingest.Converted;
+            ReadResult ing = adapter.read("/Shipment/" + r.name());
+            boolean isConverted = ing instanceof ReadResult.Converted;
             if (isConverted) {
                 converted++;
             }
@@ -130,9 +130,9 @@ class BaCorpusTest {
                         .append(isConverted ? "Converted" : "Opaque");
             }
         }
-        System.out.printf("%n=== BA-corpus ingest coverage: %d/%d converted (%.0f%%) ===%n",
+        System.out.printf("%n=== BA-corpus read coverage: %d/%d converted (%.0f%%) ===%n",
                 converted, RULES.size(), 100.0 * converted / RULES.size());
-        assertTrue(mismatches.length() == 0, () -> "ingest outcome mismatches:" + mismatches);
+        assertTrue(mismatches.length() == 0, () -> "read outcome mismatches:" + mismatches);
     }
 
     /** Inject the corpus rules as raw Rule elements into the /Shipment group. */
