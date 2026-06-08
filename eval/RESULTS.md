@@ -15,6 +15,21 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-08 17:46 CEST — targeted re-run confirming the two gap fixes (T3, T11; opus + sonnet, k=2)
+
+Fresh targeted run `wf_de96c275-459` (**14 agents, 0.37M tokens, 3m07s**) after committing the two fixes from the 17:25 sweep: the `RK_UNGUARDED_STRING_CONCAT` lint (GAP 2) and the `ModelPaths` file-path guard (GAP 1). Re-ran only the affected cells (§8b): **T3** (the GAP-1 `--field` case) and **T11** (the GAP-2 concat case).
+
+| Task | opus before → after | sonnet before → after |
+|---|---|---|
+| T3 (pattern / `--field`) | 2/2 → **2/2** | 0/2 → **0/2** |
+| T11 (string concat) | **0/2 → 2/2** | **0/2 → 1/2** |
+
+**GAP 2 (concat guard) — fixed on both tiers.** opus flipped **0/2 → 2/2**; sonnet now adds the presence guard in *every* T11 run (all carry `AllFieldsFilled`/`FieldFilled` on the operands). The lint steers the author to guard the concatenation — exactly the build-measure-learn close (eval found the trap → KERNEL-FINDINGS §2 recorded it → the `RK_UNGUARDED_STRING_CONCAT` lint now pre-warns it on `add`/`check`).
+
+**GAP 1 (`--field` file-path) — the tooling fix is correct but does not rescue sonnet.** sonnet/T3 stayed **0/2**: the condition was right both times, but sonnet **still reported the model file path in the `field` slot** despite the new laser-specific error (`'…order.dm.json' looks like a FILE path, but --field must be a path INSIDE the model…`). The one remaining sonnet/T11 failure is the *same* slip (file-path field + a correctly-guarded condition). So the failure is upstream of the tool — sonnet commits the file path as its final answer rather than acting on the boundary error. It is **tier-correlated**: opus slipped on `--field` only **once** all day (the full-sweep T10/1) and not on T3 (byte-identical to gold both runs), whereas sonnet slips persistently (T3 ×2, one T11 run). The guard is strictly better UX (kept), but a tool-boundary message can't force a weaker agent's self-correction. The durable mitigation is the **production-mode skill** teaching the field-vs-file distinction — which bare-tool mode (the only wired one) can't measure. Net: **mostly a sonnet-tier self-correction limit, not a tooling gap.**
+
+**Outcome:** GAP 2 closed on both tiers; GAP 1 mitigated as far as the tool boundary allows (clear error), the residual being model-tier self-correction (sonnet-heavy). After the fixes, opus's only remaining miss today is the single T10/1 `--field` slip; sonnet's persistent miss is the same slip.
+
 ### 2026-06-08 17:25 CEST — full pass@k after the computation/CLI/operator build-out — no regression; two real gaps (opus + sonnet, k=2)
 
 First full sweep after this session's large surface growth: computations first-class read+write (`ingestModel`/`where-used`/`explain --computation`/`ingest --all`, `add` a computation, `diff --computation`), CLI-over-includes (`--include-dir` on every verb, F-RES), `Valid/Invalid(field,"Type")`, and the `DateRange` constructor (catalog now zero PLANNED stubs). Material changed → **fresh** full run `wf_478a0cb7-3c0` (**80 agents, 2.07M subagent tokens, 11m36s**), now **T1–T11** (T9–T11 = the date-extraction / group-scope-quantifier / string-concat authoring tasks). Bare-tool mode (no skill). Question: did the enlarged CLI/catalog regress self-sufficiency, and where are the gaps?
