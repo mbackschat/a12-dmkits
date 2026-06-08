@@ -300,6 +300,8 @@ public final class DslRenderer {
                     + renderArg(tc.minute()) + ", " + renderArg(tc.second()) + ")";
             case DateTimeConstruction dtc -> keyword(dtc.operatorId()) + "(" + renderArg(dtc.date()) + ", "
                     + renderArg(dtc.time()) + ")";
+            case DateRangeConstruction dr -> keyword(dr.operatorId()) + "(" + renderArg(dr.start()) + ", "
+                    + renderArg(dr.end()) + ")";
             case FieldRounding r -> keyword(r.operatorId()) + "(" + path(r.field().path()) + ")";
             case DateRangeBound b -> keyword(b.operatorId()) + "(" + renderArg(b.source()) + ")";
             case RootGroupCount c -> keyword(c.operatorId()) + "(" + path(c.rootGroup().path()) + "*)";

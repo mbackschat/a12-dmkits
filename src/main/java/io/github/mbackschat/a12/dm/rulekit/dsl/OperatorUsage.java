@@ -169,6 +169,11 @@ public final class OperatorUsage {
                 collect(b.source(), ops);
             }
             case RootGroupCount c -> ops.add(c.operatorId());
+            case DateRangeConstruction dr -> {
+                ops.add(dr.operatorId());
+                collect(dr.start(), ops);
+                collect(dr.end(), ops);
+            }
         }
     }
 

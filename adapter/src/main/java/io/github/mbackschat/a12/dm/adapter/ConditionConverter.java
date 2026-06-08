@@ -36,6 +36,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOpListOper
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IPointInTimeOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateAddOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateConstructionOperation;
+import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateRangeConstructionOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateTimeConstructionOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.ITimeConstructionOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.date.IDateRangeExtractionOperation;
@@ -1693,6 +1694,11 @@ final class ConditionConverter {
         }
         if (computedKind == ValueKind.DATE && convertDateOperand(op, op) instanceof DateExpr date) {
             return date.expression();
+        }
+        // SomeRange = DateRange(StartDate, EndDate) — the date-range constructor (computation-only)
+        if (computedKind == ValueKind.DATE_RANGE && op instanceof IDateRangeConstructionOperation range) {
+            return Dsl.dateRange(model.date(range.getDate1Id().getFullName()),
+                    model.date(range.getDate2Id().getFullName()));
         }
         if (computedKind == ValueKind.TIME && convertTimeOperand(op, op) instanceof TimeExpr time) {
             return time.expression();   // e.g. SomeTime = TimeFromDateTime(dt)

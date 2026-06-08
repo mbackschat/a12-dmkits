@@ -1401,10 +1401,11 @@
     "id": "DateRange",
     "kind": "function",
     "keywords": { "en": "DateRange", "de": "DatumBereich" },
+    "operands": [ { "type": "date" }, { "type": "date" } ],
     "returns": "date-range",
-    "meaning": "Constructs a date range from a start and an end date.",
-    "constraints": [ "rulekit: PLANNED stub — no typed handle yet; keywords grounded in the lexer bundles (see WORKSPACE-CORPUS-ANALYSIS backlog)" ],
-    "status": "PLANNED",
+    "meaning": "Constructs a date range from a start and an end date. Computation-only: it assigns a DATE_RANGE field in a computation operation; it has no condition form (the overlap predicates take date-range FIELDS, and a constructed range cannot be nested or compared). Both operands must be format-compatible date fields.",
+    "constraints": [ "computation-only — the operation of a computation that assigns a DATE_RANGE field; both operands are date fields with identical date format" ],
+    "computationExample": { "operation": "DateRange(OrderDate, DeliveryDate)", "computedField": "/Order/CoverageWindow", "note": "the coverage window spans the order date through the delivery date" },
     "sinceKernel": "30.8.x"
   }
 ]

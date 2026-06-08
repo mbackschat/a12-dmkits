@@ -23,6 +23,7 @@ public record OperatorEntry(
         List<Gotcha> gotchas,
         Example validExample,
         InvalidExample invalidExample,
+        ComputationExample computationExample,
         OperatorStatus status,
         String sinceKernel) {
 
@@ -69,5 +70,15 @@ public record OperatorEntry(
     /** A deliberately-rejected example with the kernel error class and the fix. */
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record InvalidExample(String dsl, String error, String fix) {
+    }
+
+    /**
+     * A valid usage example for a <b>computation-only</b> operator — one that has no legal condition form
+     * (e.g. the {@code DateRange} constructor), so it can't carry a condition {@link Example}. The
+     * {@code operation} DSL is verified by injecting it as a computation assigning {@code computedField}
+     * and running the real kernel (the N7 peer, {@code CatalogComputationExamplesAreKernelValidTest}).
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record ComputationExample(String operation, String computedField, String note) {
     }
 }

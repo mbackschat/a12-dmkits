@@ -43,31 +43,44 @@ class OperatorCatalogTest {
     }
 
     /**
-     * The stub-entries policy (proposal §9): a {@code SUPPORTED} operator must carry a
-     * {@code validExample} so it can't silently escape the N7 kernel-validation harness; only
-     * {@code PLANNED} stubs are exempt.
+     * The stub-entries policy (proposal §9): a {@code SUPPORTED} operator must carry a runnable example so
+     * it can't silently escape the kernel-validation harness — a condition {@code validExample} (N7) or,
+     * for a <b>computation-only</b> operator with no condition form (the {@code DateRange} constructor), a
+     * {@code computationExample} (its N7 peer). Only {@code PLANNED} stubs are exempt.
      */
     @Test
-    void everySupportedEntryHasAValidExample() {
+    void everySupportedEntryHasARunnableExample() {
         for (OperatorEntry e : CATALOG.entries()) {
-            if (e.supported()) {
-                assertNotNull(e.validExample(), () -> e.id() + ": SUPPORTED entry missing validExample");
-                assertFalse(isBlank(e.validExample().dsl()), () -> e.id() + ": validExample has no dsl");
+            if (!e.supported()) {
+                continue;
             }
+            boolean hasCondition = e.validExample() != null && !isBlank(e.validExample().dsl());
+            boolean hasComputation = e.computationExample() != null
+                    && !isBlank(e.computationExample().operation()) && !isBlank(e.computationExample().computedField());
+            assertTrue(hasCondition || hasComputation,
+                    () -> e.id() + ": SUPPORTED entry needs a validExample (condition) or a computationExample");
         }
     }
 
-    /** Stubs map the kernel operator space rulekit hasn't built — described, but example-free. */
+    /**
+     * A PLANNED stub (if any) is described but example-free. The {@code DateRange} <em>constructor</em> is
+     * the one built-but-condition-inexpressible operator: SUPPORTED via a {@code computationExample}, with
+     * no {@code validExample} (a constructed date range has no condition use site).
+     */
     @Test
-    void plannedStubsAreCataloguedButCarryNoExample() {
-        assertTrue(CATALOG.entries().stream().anyMatch(e -> !e.supported()),
-                "the catalog should map known-but-unbuilt operators as PLANNED stubs");
-
+    void plannedStubsCarryNoExampleAndDateRangeIsComputationOnly() {
+        for (OperatorEntry e : CATALOG.entries()) {
+            if (!e.supported()) {
+                assertNull(e.validExample(), () -> e.id() + ": a PLANNED stub carries no validExample");
+                assertNull(e.computationExample(), () -> e.id() + ": a PLANNED stub carries no computationExample");
+            }
+        }
         OperatorEntry dateRange = CATALOG.byId("DateRange").orElseThrow();
-        assertFalse(dateRange.supported(), "DateRange is not built yet — it should be a PLANNED stub");
+        assertTrue(dateRange.supported(), "the DateRange constructor is built (2026-06-08)");
         assertEquals("DateRange", dateRange.keywords().en());
         assertEquals("DatumBereich", dateRange.keywords().de());
-        assertNull(dateRange.validExample(), "a PLANNED stub carries no validExample");
+        assertNull(dateRange.validExample(), "DateRange has no condition form — no validExample");
+        assertNotNull(dateRange.computationExample(), "DateRange is verified via a computationExample");
     }
 
     @Test

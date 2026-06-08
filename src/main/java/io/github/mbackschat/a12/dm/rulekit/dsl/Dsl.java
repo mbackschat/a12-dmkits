@@ -344,6 +344,16 @@ public final class Dsl {
         return new DateTimeExpr(new DateTimeConstruction(date.expression(), time.expression()));
     }
 
+    /**
+     * {@code DateRange(start, end)} — construct a date-range value from two dates (the kernel's
+     * {@code IDateRangeConstructionOperation}). Computation-only: its sole legal home is a computation
+     * operation assigning a {@code DATE_RANGE} field (it has no condition use site — see
+     * {@link DateRangeConstruction}).
+     */
+    public static DateRangeConstruction dateRange(DateOperand start, DateOperand end) {
+        return new DateRangeConstruction(start.expression(), end.expression());
+    }
+
     /** {@code Valid(dateConstruct)} — true iff the constructed date is a real calendar date. */
     public static Condition valid(DateOperand dateConstruct) {
         return new DateValidity(true, dateConstruct.expression());

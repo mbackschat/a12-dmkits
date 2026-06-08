@@ -157,6 +157,10 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
             case FieldRounding r -> fields.add(r.field().path());
             case DateRangeBound b -> collect(b.source(), fields, groups);
             case RootGroupCount c -> groups.add(c.rootGroup().path());
+            case DateRangeConstruction dr -> {
+                collect(dr.start(), fields, groups);
+                collect(dr.end(), fields, groups);
+            }
         }
     }
 

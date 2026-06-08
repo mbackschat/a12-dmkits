@@ -15,6 +15,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.CustomConditionRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateDifference;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateShift;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateConstruction;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeConstruction;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeBound;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimePart;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CustomTypeValidity;
@@ -163,6 +164,8 @@ final class ExplanationTreeBuilder {
                     concat(concat(operand(tc.hour()), operand(tc.minute())), operand(tc.second()))));
             case DateTimeConstruction dtc -> List.of(new RuleExplanation.Node(dtc.operatorId(), renderer.render(dtc),
                     concat(operand(dtc.date()), operand(dtc.time()))));
+            case DateRangeConstruction dr -> List.of(new RuleExplanation.Node(dr.operatorId(), renderer.render(dr),
+                    concat(operand(dr.start()), operand(dr.end()))));
         };
     }
 
