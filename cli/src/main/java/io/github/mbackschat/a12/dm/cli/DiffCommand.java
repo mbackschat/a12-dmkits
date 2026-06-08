@@ -15,7 +15,9 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RenderedDiff;
 import io.github.mbackschat.a12.dm.rulekit.write.DmJson;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
+import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
@@ -50,6 +52,9 @@ final class DiffCommand extends BaseCommand {
             description = "write the modified model back to this file")
     String outputPath;
 
+    @Mixin
+    IncludeDirOption includes = new IncludeDirOption();
+
     @Override
     public Integer call() {
         String modelJson;
@@ -74,16 +79,17 @@ final class DiffCommand extends BaseCommand {
         } catch (RuntimeException e) {
             return fail("cannot apply the new condition: " + e.getMessage());
         }
+        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
         try {
-            BoundModel.ofJson(modifiedJson);
+            BoundModel.ofJson(modifiedJson, resolver);
         } catch (RuntimeException e) {
             return reject(ruleId, e.getMessage());
         }
 
         RenderedDiff diff;
         try {
-            KernelAdapter original = KernelAdapter.ofJson(modelJson);
-            KernelAdapter modified = KernelAdapter.ofJson(modifiedJson);
+            KernelAdapter original = KernelAdapter.ofJson(modelJson, resolver);
+            KernelAdapter modified = KernelAdapter.ofJson(modifiedJson, resolver);
             if (original.ingest(ruleId) instanceof Ingest.Converted
                     && modified.ingest(ruleId) instanceof Ingest.Converted modConverted) {
                 diff = original.diff(ruleId, modConverted.condition());

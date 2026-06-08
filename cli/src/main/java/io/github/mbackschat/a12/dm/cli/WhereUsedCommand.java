@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
@@ -37,6 +38,9 @@ final class WhereUsedCommand extends BaseCommand {
             description = "the field or group's full (absolute) path inside the model, e.g. /Order/Quantity")
     String entity;
 
+    @Mixin
+    IncludeDirOption includes = new IncludeDirOption();
+
     @Override
     public Integer call() {
         String modelJson;
@@ -46,7 +50,7 @@ final class WhereUsedCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         try {
-            KernelAdapter adapter = KernelAdapter.ofJson(modelJson);
+            KernelAdapter adapter = KernelAdapter.ofJson(modelJson, includes.resolverFor(model));
             Set<String> rules = adapter.whereUsed(entity);
             Set<String> computations = adapter.whereUsedInComputations(entity);
             ObjectNode root = MAPPER.createObjectNode();

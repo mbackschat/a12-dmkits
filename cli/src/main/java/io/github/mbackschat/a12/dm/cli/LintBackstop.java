@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 
 import io.github.mbackschat.a12.dm.adapter.Ingest;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
@@ -50,12 +51,12 @@ final class LintBackstop {
      */
     static List<Diagnostic> lintCandidate(String modelJson, String group, String name,
             String errorEntityRelPath, String code, String condition, String severity,
-            String errorFieldPath) {
+            String errorFieldPath, IDocumentModelReferenceResolver resolver) {
         try {
             List<LocalizedText> placeholders = placeholderMessages(modelJson, name);
             String persisted = ModelWriter.addRule(modelJson, group, name, errorEntityRelPath,
                     code, condition, severity, placeholders);
-            BoundModel model = BoundModel.ofJson(persisted);
+            BoundModel model = BoundModel.ofJson(persisted, resolver);
             return lintPersisted(model, group + "/" + name, errorFieldPath);
         } catch (RuntimeException e) {
             return List.of();

@@ -14,6 +14,7 @@ import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.rulekit.context.ModelContext;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
@@ -51,6 +52,9 @@ final class ExplainCommand extends BaseCommand {
             description = "a computation's full name — its slash-path in the model, e.g. /Order/TotalComp")
     String computation;
 
+    @Mixin
+    IncludeDirOption includes = new IncludeDirOption();
+
     @Override
     public Integer call() {
         if ((rule != null) == (computation != null)) {       // exactly one of --rule / --computation
@@ -63,8 +67,8 @@ final class ExplainCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         try {
-            BoundModel boundModel = BoundModel.ofJson(modelJson);
-            KernelAdapter adapter = KernelAdapter.of(boundModel);
+            BoundModel boundModel = BoundModel.ofJson(modelJson, includes.resolverFor(model));
+            KernelAdapter adapter = KernelAdapter.of(boundModel);   // reuses the BoundModel's resolver
             return rule != null ? explainRule(adapter, boundModel) : explainComputation(adapter, boundModel);
         } catch (RuntimeException e) {
             return fail("explain failed: " + e.getMessage());

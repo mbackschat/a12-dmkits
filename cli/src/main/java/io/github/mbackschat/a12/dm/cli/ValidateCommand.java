@@ -14,6 +14,7 @@ import com.mgmtp.a12.model.notification.RankedNotification;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Parameters;
 import picocli.CommandLine.Unmatched;
 
@@ -32,6 +33,9 @@ final class ValidateCommand extends BaseCommand {
     @Parameters(index = "0", paramLabel = "<model.json>",
             description = "the DM-JSON model file (re-checks its existing rules)")
     String model;
+
+    @Mixin
+    IncludeDirOption includes = new IncludeDirOption();
 
     @Unmatched
     String[] extra = new String[0];
@@ -53,7 +57,7 @@ final class ValidateCommand extends BaseCommand {
         ObjectNode root = MAPPER.createObjectNode();
         ArrayNode diagnostics = MAPPER.createArrayNode();
         try {
-            BoundModel.ofJson(json);
+            BoundModel.ofJson(json, includes.resolverFor(model));
             root.put("valid", true);
             root.set("diagnostics", diagnostics);
             out().print(pretty(root));

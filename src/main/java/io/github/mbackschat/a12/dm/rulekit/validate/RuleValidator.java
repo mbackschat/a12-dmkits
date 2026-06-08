@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
+import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
 import com.mgmtp.a12.model.notification.RankedNotification;
@@ -37,18 +38,33 @@ public final class RuleValidator {
     private final ObjectMapper mapper = new ObjectMapper();
     private final DiagnosticEnricher enricher = new DiagnosticEnricher(OperatorCatalog.load());
 
-    /** Check {@code rule} against the model given as DM-JSON text. */
+    /** Check {@code rule} against the model given as DM-JSON text (self-contained model). */
     public ValidationResult check(String modelJson, DraftRule rule) {
-        return checkInjected(inject(modelJson, rule), rule.groupPath() + "/" + rule.name());
+        return check(modelJson, rule, ReferenceResolvers.selfContained());
     }
 
-    /** Check {@code computation} against the model given as DM-JSON text. */
+    /** Check {@code computation} against the model given as DM-JSON text (self-contained model). */
     public ValidationResult check(String modelJson, DraftComputation computation) {
-        return checkInjected(inject(modelJson, computation),
-                computation.groupPath() + "/" + computation.name());
+        return check(modelJson, computation, ReferenceResolvers.selfContained());
     }
 
-    private ValidationResult checkInjected(String injected, String rulePath) {
+    /**
+     * Check {@code rule} against a model whose {@code include}d / typedef-imported models are resolved by
+     * {@code resolver} (F-RES) — the multi-file-application path (use {@link ReferenceResolvers#directory}).
+     */
+    public ValidationResult check(String modelJson, DraftRule rule, IDocumentModelReferenceResolver resolver) {
+        return checkInjected(inject(modelJson, rule), rule.groupPath() + "/" + rule.name(), resolver);
+    }
+
+    /** Check {@code computation} against a model whose references are resolved by {@code resolver} (F-RES). */
+    public ValidationResult check(String modelJson, DraftComputation computation,
+            IDocumentModelReferenceResolver resolver) {
+        return checkInjected(inject(modelJson, computation),
+                computation.groupPath() + "/" + computation.name(), resolver);
+    }
+
+    private ValidationResult checkInjected(String injected, String rulePath,
+            IDocumentModelReferenceResolver resolver) {
 
         IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
         IDocumentModelService service = FACTORY.createDocumentModelService();
@@ -56,7 +72,7 @@ public final class RuleValidator {
         List<Diagnostic> diagnostics = new ArrayList<>();
         try {
             IDocumentModel model = serializer.deserialize(new StringReader(injected));
-            service.expand(model, ReferenceResolvers.selfContained());
+            service.expand(model, resolver);
             service.checkConsistency(model, (RankedNotification n) ->
                     diagnostics.add(enricher.enrich(Diagnostic.fromKernel(n, rulePath))));
         } catch (IOException e) {

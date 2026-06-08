@@ -17,6 +17,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
@@ -53,6 +54,9 @@ final class IngestCommand extends BaseCommand {
             description = "ingest the whole model: every validation rule and every computation")
     boolean all;
 
+    @Mixin
+    IncludeDirOption includes = new IncludeDirOption();
+
     @Override
     public Integer call() {
         if (all == (rule != null)) {                         // exactly one of --rule / --all
@@ -65,7 +69,7 @@ final class IngestCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         try {
-            KernelAdapter adapter = KernelAdapter.ofJson(modelJson);
+            KernelAdapter adapter = KernelAdapter.ofJson(modelJson, includes.resolverFor(model));
             return all ? ingestWholeModel(adapter) : ingestOneRule(adapter);
         } catch (RuntimeException e) {
             return fail("ingest failed: " + e.getMessage());

@@ -18,7 +18,9 @@ import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
+import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
@@ -48,6 +50,9 @@ final class AddCommand extends BaseCommand {
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the new DM-JSON to this file instead of stdout")
     String outputPath;
+
+    @Mixin
+    IncludeDirOption includes = new IncludeDirOption();
 
     @Override
     public Integer call() {
@@ -81,8 +86,9 @@ final class AddCommand extends BaseCommand {
         String errorEntityRelPath = "../" + field.substring(group.length() + 1);
 
         // 1) validate the condition against the real kernel (placeholders mask messages here)
+        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
         ValidationResult check = new RuleValidator().check(modelJson,
-                new DraftRule(group, name, errorEntityRelPath, condition, code, severity));
+                new DraftRule(group, name, errorEntityRelPath, condition, code, severity), resolver);
         if (!check.ok()) {
             return reject("condition rejected by the kernel", check);
         }
@@ -92,7 +98,7 @@ final class AddCommand extends BaseCommand {
                 code, condition, severity, messages);
         BoundModel reModel;
         try {
-            reModel = BoundModel.ofJson(persisted);
+            reModel = BoundModel.ofJson(persisted, resolver);
         } catch (RuntimeException e) {
             return fail("persisted rule is invalid (e.g. missing a message for a declared locale): "
                     + e.getMessage());

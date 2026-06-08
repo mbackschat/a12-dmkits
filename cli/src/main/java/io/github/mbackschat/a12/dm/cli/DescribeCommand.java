@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import io.github.mbackschat.a12.dm.rulekit.context.ModelContext;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Parameters;
 
 /**
@@ -20,10 +21,13 @@ final class DescribeCommand extends BaseCommand {
     @Parameters(index = "0", paramLabel = "<model.json>", description = "the DM-JSON model file")
     String model;
 
+    @Mixin
+    IncludeDirOption includes = new IncludeDirOption();
+
     @Override
     public Integer call() {
         try {
-            BoundModel m = BoundModel.ofJson(Files.readString(Path.of(model)));
+            BoundModel m = BoundModel.ofJson(Files.readString(Path.of(model)), includes.resolverFor(model));
             out().print(new ModelContext(m).describe().toJson() + "\n");
             return 0;
         } catch (IOException e) {

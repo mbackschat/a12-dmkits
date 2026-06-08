@@ -15,7 +15,9 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
+import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
@@ -63,6 +65,9 @@ final class CheckCommand extends BaseCommand {
             description = "candidate rule name (default: ${DEFAULT-VALUE})")
     String name;
 
+    @Mixin
+    IncludeDirOption includes = new IncludeDirOption();
+
     @Override
     public Integer call() {
         String effectiveGroup = group;
@@ -88,8 +93,9 @@ final class CheckCommand extends BaseCommand {
         // Pre-flight: --field/--group name a path INSIDE the model, not a file. A file path also starts with
         // '/', so resolve them against the loaded model and fail fast with a clear message (best-effort —
         // if the model can't load standalone, e.g. unresolved includes, skip and let RuleValidator report).
+        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
         try {
-            BoundModel bound = BoundModel.ofJson(json);
+            BoundModel bound = BoundModel.ofJson(json, resolver);
             String problem = ModelPaths.fieldProblem(bound, field);
             if (problem == null && group != null) {
                 problem = ModelPaths.groupProblem(bound, effectiveGroup);
@@ -102,11 +108,11 @@ final class CheckCommand extends BaseCommand {
         }
         try {
             DraftRule draft = new DraftRule(effectiveGroup, name, errorEntityRelPath, condition, code, severity);
-            ValidationResult result = new RuleValidator().check(json, draft);
+            ValidationResult result = new RuleValidator().check(json, draft, resolver);
             List<Diagnostic> all = new ArrayList<>(result.diagnostics());
             if (result.ok()) {
                 all.addAll(LintBackstop.lintCandidate(json, effectiveGroup, name, errorEntityRelPath,
-                        code, condition, severity, field));
+                        code, condition, severity, field, resolver));
             }
             ValidationResult merged = ValidationResult.of(all);
             ObjectNode root = MAPPER.createObjectNode();

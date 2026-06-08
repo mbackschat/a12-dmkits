@@ -14,6 +14,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupInfo;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
@@ -39,6 +40,9 @@ final class DumpCommand extends BaseCommand {
             description = "write all four artifacts into this directory instead of printing one")
     String outputDir;
 
+    @Mixin
+    IncludeDirOption includes = new IncludeDirOption();
+
     @Override
     public Integer call() {
         Artifact only = null;
@@ -51,7 +55,7 @@ final class DumpCommand extends BaseCommand {
         }
         try {
             String json = Files.readString(Path.of(model));
-            BoundModel bound = BoundModel.ofJson(json);
+            BoundModel bound = BoundModel.ofJson(json, includes.resolverFor(model));
             if (outputDir != null) {
                 Path dir = Path.of(outputDir);
                 Files.createDirectories(dir);
