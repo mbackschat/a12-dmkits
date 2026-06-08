@@ -15,6 +15,16 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-09 01:25 CEST — judge verify-by-execution wired + first production-mode probe (sonnet, k=1, T1+T11)
+
+Two firsts in one cheap probe (`wf_4ed74368`, 5 agents, 0.12M tokens): the rule judges now **verify equivalence by execution** (run `eval-doc` on discriminating documents for gold vs candidate, compare `rule.fired`), and this is the **first production-mode run** (the N1 skill injected via `args.skill` — confirmed present in the produce transcripts).
+
+**Result: sonnet 2/2** (T1 1/1, T11 1/1). The judge rationales show the execution actually happened, not reasoning:
+- **T1** — "the kernel fires identically on every test document (PRO+empty-fee fires; BASIC / filled-fee / absent-Tier do not)" — the judge built those docs and ran the kernel.
+- **T11** — the candidate's redundant `AllFieldsFilled(…, FullName)` guard ruled `equivalent:true` "verified by kernel execution across filled/equal, filled/differing, empty-FullName, empty-FirstName — all matched." **This is the exact shape that false-positived in the 22:50/23:19 bare-tool runs** (judge reasoned `equivalent:false`); verify-by-execution eliminates it at the source, not by a per-semantic prompt patch.
+
+Caveats (it's a probe): **k=1** (one sample/task — noisy), and the injected skill was a **faithfully-condensed** rendering of `skill/SKILL.md` (all judgment preserved — polarity, the iteration `GroupFilled` guard, empty-values, dates — but not byte-identical; a definitive production measurement should inject the file verbatim). Computation judges still use the type-aware empty-operand *reasoning* — first-class comp verify-by-execution awaits a `compute-doc --spec` candidate path. Also new this session: **T18** (comprehension over the awkward-as-authoring operators — operand-list `Max`, `RoundDownValue`, `FirstFilledValue` — on the `order-aggregates` fixture).
+
 ### 2026-06-08 23:19 CEST — the "`--field` file-path slip" is a HARNESS artifact, not a CLI misuse (sonnet, k=3, T11+T15)
 
 Chased the recurring sonnet authoring miss (blamed across earlier runs on a `--field` file-path slip) by adding a tool-side nudge, then **reading the produce transcripts**. Finding: the producers **author correctly at the CLI** — every `cli check` used the right entity path (`--field=/Person/FullName`, `FieldNotFilled(/Storefront/StoreName)`), all `valid:true`. The slip lives in the benchmark's **answer JSON**: the prompt asked for `{"field":"<absolute path>"}`, and to a model the model FILE path *is* an absolute path — so it reported `/Users/.../person.dm.json` there. Recheck then trusted `r.out.field`, re-ran with the file path, and failed. (That batch-recheck re-run is the *only* place the new nudge fired — never in produce.)

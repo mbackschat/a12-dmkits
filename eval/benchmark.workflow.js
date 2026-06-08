@@ -422,6 +422,14 @@ documents fire — so a candidate that ADDS (or drops) such a guard over the gol
 equivalent to the gold. This redundancy does NOT extend to (a) NUMBER comparisons, nor (b) date/aggregate
 FUNCTIONS like \`DifferenceInDays\`/\`YearFromDate\` on an ABSENT date, which are formal errors and so genuinely
 REQUIRE the presence guard — keep flagging a real difference there.
+VERIFY BY EXECUTION — the kernel is the arbiter; PREFER this over reasoning whenever equivalence hinges on a
+kernel semantic (empty operands, polarity, path resolution). You have the CLI: write 2-4 small documents to
+files (JSON \`{"fields":{…}}\` — a repeatable group is an array of row objects, a field its text value, \`null\`
+= present-but-empty; see \`${CLI} schema eval-doc\`) that exercise the fields BOTH conditions reference at their
+edges (empty vs filled, a boundary value, each enum value). For each doc run, for the GOLD then the CANDIDATE,
+\`${CLI} eval-doc ${MODEL_FILE(r.task)}${INCLUDE_HINT(r.task)} --condition '<that condition>' --field <that field> --doc <doc>\`
+and read \`rule.fired\`. They are EQUIVALENT iff \`rule.fired\` matches on EVERY document; a document where they
+differ is the witness that they are NOT. This runs the real kernel, so you needn't recall the empty/polarity rules.
 Reference gold: field="${r.task.gold.field}", condition=${JSON.stringify(r.task.gold.condition)}.
 Candidate: field="${r.out.field}", condition=${JSON.stringify(r.out.condition)}.
 Return ONLY JSON: {"equivalent": true|false, "why": "<one sentence>"}`,
@@ -509,6 +517,11 @@ has already been confirmed by the kernel to be a CHANGE from the original rule �
 RIGHT change (semantically equivalent to the gold). The model is ${MODEL_FILE(r.task)} — run \`${CLI} describe
 ${MODEL_FILE(r.task)}\` to see field types and value domains. Judge WITHIN the field's ACTUAL value domain; a
 difference that is only path notation or an equivalent value expression is NOT a semantic difference.
+VERIFY BY EXECUTION — the kernel is the arbiter; PREFER it over reasoning when equivalence hinges on a kernel
+semantic (empty operands, polarity). Write 2-4 small documents to files (\`{"fields":{…}}\`; see \`${CLI} schema
+eval-doc\`) exercising the referenced fields at their edges; for each, run for the GOLD then the CANDIDATE
+\`${CLI} eval-doc ${MODEL_FILE(r.task)}${INCLUDE_HINT(r.task)} --condition '<that condition>' --field ${r.task.gold.field} --doc <doc>\`
+and compare \`rule.fired\` — EQUIVALENT iff it matches on every document.
 Reference gold (the intended modified rule): error field "${r.task.gold.field}", condition=${JSON.stringify(r.task.gold.condition)}.
 Candidate condition: ${JSON.stringify(r.out.condition)}.
 Return ONLY JSON: {"equivalent": true|false, "why": "<one sentence>"}`,
