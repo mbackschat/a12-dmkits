@@ -1,0 +1,13 @@
+{
+  "id": "T12",
+  "family": "authoring",
+  "model": "person",
+  "operators": ["FieldFilled", "Invalid", "And"],
+  "intent": "A person's tax number, when provided, must be a valid German tax number (Steuernummer).",
+  "gold": {
+    "field": "/Person/TaxId",
+    "condition": "FieldFilled(TaxId) And Invalid(TaxId, \"Steuernummer\")",
+    "code": "TAX_ID_INVALID"
+  },
+  "notes": "Custom-field-TYPE validity (the ValidType/InvalidType operator, built 2026-06-08): Invalid(field, \"Type\") delegates to a registered custom field-type verifier. Chosen DELIBERATELY UNAMBIGUOUS — a Steuernummer has a checksum, so no regex (PatternViolated) captures it; the registered-type check is the only correct tool, so a regex candidate is genuinely non-equivalent (unlike the email case T3 avoided). Polarity: Invalid (the rule fires on a value that is NOT a valid Steuernummer), guarded by FieldFilled so a missing tax number is not flagged. The type name is NOT validated at model-check time (the kernel accepts any string and validates it only at runtime — see the ValidType catalog gotcha / WORKSPACE-CORPUS item 10), so this is a check-time-verifiable authoring task. Uses the person fixture (a TaxId string field was added for it)."
+}

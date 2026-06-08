@@ -65,6 +65,16 @@
                     "type": "StringType"
                   }
                 }
+              },
+              {
+                "type": "Field",
+                "id": "/Person/TaxId",
+                "name": "TaxId",
+                "Field": {
+                  "fieldType": {
+                    "type": "StringType"
+                  }
+                }
               }
             ]
           }
