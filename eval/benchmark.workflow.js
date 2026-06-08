@@ -454,12 +454,13 @@ field + an optional common precondition + one or more (precondition, operation) 
 equivalent iff, for every document, they compute the same value (or both compute nothing). The model is
 ${MODEL_FILE(r.task)} — run \`${CLI} describe ${MODEL_FILE(r.task)}\` to see field types. A difference that
 is only path notation, conjunct order, or an equivalent value expression is NOT a semantic difference.
-KERNEL FACT (empty operands): a computation operation that references an EMPTY operand is NOT evaluated —
-it computes no value, and clears any previously-computed value. Therefore a precondition that merely
-guards the PRESENCE of operands the operation already uses (e.g. \`AllFieldsFilled\`/\`FieldFilled\` over
-exactly the fields in the value expression) is REDUNDANT: it does not change the result for any document.
-So a candidate that ADDS such a presence guard over the gold's own operands IS equivalent to the unguarded
-gold (and vice versa). (This does not hold for string CONCATENATION operands, which concat empties as "".)
+KERNEL FACT (empty operands) — TYPE-DEPENDENT, get this right: an empty operand's effect on a computation
+depends on the operand's TYPE. For a DATE (or other not-evaluated type) the operation computes NO value and
+clears any stale value, so a precondition guarding the PRESENCE of such operands is REDUNDANT — a candidate
+ADDING it over the gold's own date operands IS equivalent to the unguarded gold (and vice versa). But an
+empty NUMBER operand is substituted with 0 (the operation IS evaluated, yielding 0), so a presence guard over
+a NUMBER operand is NOT redundant: the guarded form computes nothing (cleared) while the unguarded computes 0
+— a real difference, NOT equivalent. (String CONCATENATION also evaluates: empties concat as "".)
 Reference gold: ${JSON.stringify(r.task.gold)}.
 Candidate: ${JSON.stringify({ computedField: r.out.computedField, commonPrecondition: r.out.commonPrecondition, alternatives: r.out.alternatives })}.
 Return ONLY JSON: {"equivalent": true|false, "why": "<one sentence>"}`,
@@ -482,9 +483,11 @@ original computation — judge only whether it is the RIGHT change (equivalent t
 equivalent iff, for every document, they compute the same value (or both compute nothing). The model is
 ${MODEL_FILE(r.task)} — run \`${CLI} describe ${MODEL_FILE(r.task)}\` to see field types. A difference that
 is only path notation, conjunct order, or an equivalent value expression is NOT a semantic difference.
-KERNEL FACT (empty operands): a computation operation referencing an EMPTY operand is NOT evaluated (no
-value; clears any stale value), so a precondition that merely guards the PRESENCE of operands the operation
-already uses is REDUNDANT and does not change the result. (Not for string CONCATENATION, which concats "".)
+KERNEL FACT (empty operands) — TYPE-DEPENDENT: an empty DATE operand makes the operation compute NO value
+(clears), so a presence guard over date operands is REDUNDANT (guarded == unguarded). But an empty NUMBER
+operand is substituted with 0 (operation evaluated → 0), so a presence guard over a NUMBER operand is NOT
+redundant — guarded clears while unguarded computes 0 (a real difference). (String CONCATENATION also
+evaluates: empties concat "".)
 Reference gold (the intended modified computation): ${JSON.stringify(r.task.gold)}.
 Candidate: ${JSON.stringify({ computedField: r.out.computedField, commonPrecondition: r.out.commonPrecondition, alternatives: r.out.alternatives })}.
 Return ONLY JSON: {"equivalent": true|false, "why": "<one sentence>"}`,

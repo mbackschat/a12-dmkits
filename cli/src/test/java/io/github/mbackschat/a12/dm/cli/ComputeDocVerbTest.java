@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
@@ -58,6 +59,32 @@ class ComputeDocVerbTest {
         JsonNode cw = computedFor(res.out(), "/Subscription/Billing/EffectiveFee");
         assertTrue(cw != null && cw.get("outcome").asText().equals("value") && cw.get("value").asText().equals("0"),
                 () -> "an empty number operand is substituted with 0 in a computation: " + res.out());
+    }
+
+    @Test
+    void aGuardedNumberComputationClearsWhereUnguardedComputesZero(@TempDir Path dir) throws Exception {
+        // The premise behind the computation judge's TYPE-DEPENDENT empty-operand rule: for a NUMBER operand
+        // a presence guard is NOT redundant. Unguarded EffectiveFee=[BaseFee] computes 0 on an empty BaseFee
+        // (the other test); the SAME computation guarded by FieldFilled(BaseFee) computes NOTHING (cleared) —
+        // so guarded != unguarded for numbers (unlike a DATE operand, where the guard is redundant).
+        Path base = CliTestSupport.modelWithRule(dir);
+        Path spec = dir.resolve("guarded.json");
+        Files.writeString(spec, """
+                { "computedField": "/Subscription/Billing/EffectiveFee", "commonPrecondition": "FieldFilled(BaseFee)",
+                  "alternatives": [ { "operation": "[BaseFee]" } ],
+                  "messages": [ {"locale":"en_US","text":"x"}, {"locale":"de_DE","text":"y"} ] }""");
+        var added = CliTestSupport.run("add", base.toString(), spec.toString());
+        assertEquals(0, added.code(), added::err);
+        Path guarded = dir.resolve("guarded.dm.json");
+        Files.writeString(guarded, added.out());
+
+        Path doc = dir.resolve("empty.json");
+        Files.writeString(doc, """
+                { "fields": { "Subscription": { "Billing": { } } } }""");
+        var res = CliTestSupport.run("compute-doc", guarded.toString(), "--doc", doc.toString());
+        assertEquals(0, res.code(), res::err);
+        assertNull(computedFor(res.out(), "/Subscription/Billing/EffectiveFee"),
+                () -> "a guarded number computation computes nothing on an empty operand: " + res.out());
     }
 
     @Test
