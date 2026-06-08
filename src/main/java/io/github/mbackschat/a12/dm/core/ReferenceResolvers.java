@@ -8,7 +8,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -70,24 +69,31 @@ public final class ReferenceResolvers {
         };
     }
 
-    /** Walk the trees, parse each {@code *.json} header, and index {@code modelType=="document"} files by id. */
+    /**
+     * Walk the trees, parse each {@code *.json} header, and index {@code modelType=="document"} files by id.
+     * Uses {@code walkFileTree} (not {@code Files.walk}) so an <b>unreadable subdirectory</b> is skipped, not
+     * fatal: when the resolver is pointed at a broad tree (e.g. the include-dir defaults to the model file's
+     * parent, which can be a shared {@code /tmp} on a CI runner), traversal must tolerate sibling dirs it
+     * can't enter — {@code /tmp/systemd-private-*} is root-only and would otherwise throw
+     * {@code AccessDeniedException} and abort the whole index.
+     */
     private static Map<String, String> indexDocumentModels(Path... roots) {
         ObjectMapper mapper = new ObjectMapper();
         Map<String, String> byId = new HashMap<>();
         for (Path root : roots) {
-            try (Stream<Path> walk = Files.walk(root)) {
-                walk.filter(p -> p.toString().endsWith(".json")).forEach(p -> {
-                    try {
-                        String json = Files.readString(p, StandardCharsets.UTF_8);
-                        JsonNode header = mapper.readTree(json).path("header");
-                        if ("document".equals(header.path("modelType").asText())) {
-                            String id = header.path("id").asText();
-                            if (!id.isEmpty()) {
-                                byId.putIfAbsent(id, json);   // first wins on a duplicate id
-                            }
+            try {
+                Files.walkFileTree(root, new java.nio.file.SimpleFileVisitor<Path>() {
+                    @Override
+                    public java.nio.file.FileVisitResult visitFile(Path p, java.nio.file.attribute.BasicFileAttributes attrs) {
+                        if (p.toString().endsWith(".json")) {
+                            indexIfDocumentModel(mapper, byId, p);
                         }
-                    } catch (IOException | RuntimeException ignored) {
-                        // a file that isn't valid DM-JSON is simply not an indexable model
+                        return java.nio.file.FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public java.nio.file.FileVisitResult visitFileFailed(Path p, IOException exc) {
+                        return java.nio.file.FileVisitResult.CONTINUE;   // skip an unreadable file/dir, don't abort
                     }
                 });
             } catch (IOException e) {
@@ -95,5 +101,20 @@ public final class ReferenceResolvers {
             }
         }
         return byId;
+    }
+
+    private static void indexIfDocumentModel(ObjectMapper mapper, Map<String, String> byId, Path p) {
+        try {
+            String json = Files.readString(p, StandardCharsets.UTF_8);
+            JsonNode header = mapper.readTree(json).path("header");
+            if ("document".equals(header.path("modelType").asText())) {
+                String id = header.path("id").asText();
+                if (!id.isEmpty()) {
+                    byId.putIfAbsent(id, json);   // first wins on a duplicate id
+                }
+            }
+        } catch (IOException | RuntimeException ignored) {
+            // a file that isn't valid DM-JSON is simply not an indexable model
+        }
     }
 }

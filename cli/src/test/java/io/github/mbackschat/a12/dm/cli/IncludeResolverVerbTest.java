@@ -2,9 +2,12 @@ package io.github.mbackschat.a12.dm.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -84,6 +87,27 @@ class IncludeResolverVerbTest {
                 "--condition", "FieldNotFilled(StoreName)", "--code", "STORE_NAME_REQ");
         assertEquals(0, res.code(), () -> "the candidate should validate over the multi-file model: " + res.err() + res.out());
         assertTrue(MAPPER.readTree(res.out()).get("valid").asBoolean(), () -> "valid: " + res.out());
+    }
+
+    @Test
+    void resolverSkipsAnUnreadableSubdirectory(@TempDir Path dir) throws Exception {
+        // Reproduces the CI failure: the default --include-dir is the model's parent, which on a CI runner
+        // can be a shared /tmp containing root-only dirs (/tmp/systemd-private-*). The directory resolver
+        // must SKIP a subdir it can't enter, not abort the whole walk with AccessDeniedException.
+        assumeTrue(FileSystems.getDefault().supportedFileAttributeViews().contains("posix"),
+                "POSIX permissions needed to make a dir unreadable");
+        Path model = workspace(dir);                                  // pricelist + storefront siblings
+        Path locked = Files.createDirectory(dir.resolve("locked"));   // a sibling dir the walk will hit
+        Files.setPosixFilePermissions(locked, Set.of());              // chmod 000 → can't be entered
+        try {
+            var res = CliTestSupport.run("validate", model.toString());   // default include-dir = dir (holds `locked`)
+            assertEquals(0, res.code(), () -> "the unreadable sibling dir must be skipped, not fatal: " + res.err() + res.out());
+            assertTrue(MAPPER.readTree(res.out()).get("valid").asBoolean(), () -> "valid: " + res.out());
+        } finally {
+            Files.setPosixFilePermissions(locked, Set.of(java.nio.file.attribute.PosixFilePermission.OWNER_READ,
+                    java.nio.file.attribute.PosixFilePermission.OWNER_WRITE,
+                    java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE));   // restore so @TempDir can clean up
+        }
     }
 
     @Test

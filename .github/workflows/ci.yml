@@ -83,6 +83,8 @@ jobs:
 
       - name: Set up uv (for uvx showboat)
         uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false   # no Python deps to key a cache on (one-off `uvx showboat`); silences the cache-glob warning
 
       - name: Verify the Showboat demos still match the live CLI
         working-directory: a12-dmkits
