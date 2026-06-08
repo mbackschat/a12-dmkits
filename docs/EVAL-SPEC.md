@@ -39,7 +39,16 @@ Why bare-tool is the default instrument, not an afterthought: CLAUDE.md's standi
 - a bare-tool failure the **skill would fix** (a polarity flip, a missed iteration guard) → a **skill-worklist** item (N1), *not* a CLI defect;
 - a bare-tool failure about an **undiscoverable verb/param/operator** → a **CLI/catalog** defect (fix the self-description).
 
-`benchmark.workflow.js` has **always** been bare-tool by default: from its first commit the produce/explain prompts say *"Do NOT read any … `*.md` files"*, and the script never referenced `SKILL.md`. **Production mode is now wired as opt-in (2026-06-08):** pass the skill's CONTENTS via `args.skill` (the script has no filesystem access, so the main loop reads `skill/SKILL.md` and passes the text); the producer prompts then hand that text to the agent as trusted background while still forbidding docs/source/tests/golds/other `*.md` (the agent reads no files — the skill is inline). With no `args.skill`, the run is bare-tool exactly as before. **Bare-tool stays the default and the only mode CI / the historical trend line use** — a production number is labelled separately and is not comparable to the bare-tool series.
+`benchmark.workflow.js` has **always** been bare-tool by default: from its first commit the produce prompts say *"Do NOT read any … `*.md` files"*, and the script never referenced `SKILL.md`. **Production mode is opt-in (wired 2026-06-08; `skillPath` added 2026-06-09),** and gives **every** producer family (authoring, both computation families, both modify families, comprehension) the skill, two ways:
+
+- **`args.skillPath`** (PREFERRED, 2026-06-09) — a repo-relative path; the producer prompt tells the agent to **read that file itself** (it already runs in the repo with shell access). The **verbatim** skill thus needs no inline transcription by the main loop (the script has no filesystem access) and can't drift from the committed file. The prompt names that file as the **only** extra material the agent may read.
+- **`args.skill`** — the skill's CONTENTS inlined (the main loop pastes them). Kept for inlining callers; for a *definitive* run prefer `skillPath` so "verbatim" is trustworthy.
+
+With neither, the run is bare-tool exactly as before. The skill goes to **producers only** — judges stay skill-free (they score against the gold).
+
+**Mandatory boundary audit (production runs).** `skillPath` lets a producer agent read a file, so the run is only valid if the agents read **nothing but the skill**. After a production run, grep the producer transcripts (`…/subagents/workflows/wf_…/agent-*.jsonl`) for Read-tool `file_path` + bash read commands; the only files read may be `skill/SKILL.md`, the model `.dm.json`, and the agents' own `/tmp` docs — any `docs/` · `src/` · `*Test` · other `*.md` · `eval/tasks` read is a boundary breach that **invalidates the run**. (The grep + interpretation live in the `run-rulekit-eval` skill, checklist step 7.)
+
+**Bare-tool stays the default and the only mode CI / the historical trend line use** — a production number is labelled separately and is not comparable to the bare-tool series.
 
 **Decision (2026-06-07, revisited 2026-06-08): bare-tool is the default instrument; production mode is now wired but stays opt-in.** Bare-tool is not a compromise — it is the instrument we *want*, for four reasons:
 

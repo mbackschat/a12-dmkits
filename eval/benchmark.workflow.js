@@ -41,21 +41,38 @@ const INCLUDE_ARGS = t => t.includeDir ? ['--include-dir', t.includeDir] : []
 const INCLUDE_HINT = t => t.includeDir ? ` --include-dir ${t.includeDir}` : ''
 
 // Run-mode (EVAL-SPEC §2a). Bare-tool is the DEFAULT instrument (and the only one CI/historical runs use).
-// PRODUCTION mode is opt-in: the caller injects the N1 skill's CONTENTS inline via args.skill (the script
-// has no filesystem access, so the main loop reads skill/SKILL.md and passes the text). The skill is handed
-// to the PRODUCER agents as trusted background — it never relaxes the "no source/docs/tests/other *.md"
-// boundary (the agent reads no files; the text is in the prompt). Judges stay skill-free (they score against
-// the gold, not the technique). Label every result with the mode — a production number is NOT comparable to
-// the bare-tool trend line.
+// PRODUCTION mode is opt-in and gives every PRODUCER agent the N1 skill, two ways:
+//   • args.skillPath (PREFERRED) — a repo-relative path; the produce prompt tells the agent to READ that file
+//     itself. The agent already runs in the repo with shell access, so the VERBATIM skill needs no inline
+//     transcription by the main loop (the script has no filesystem access) and can't drift from the committed
+//     file. The prompt names that file as the ONLY extra material the agent may read.
+//   • args.skill — the skill's CONTENTS inlined (the main loop pastes them). Kept for callers that prefer
+//     inlining; for a definitive run prefer skillPath so "verbatim" is trustworthy.
+// Either way the skill goes to PRODUCERS only; judges stay skill-free (they score against the gold). After a
+// production run, AUDIT the producer transcripts to confirm the agents read ONLY the skill — nothing else
+// (the material boundary IS the measurement): see EVAL-SPEC §2a / the run-rulekit-eval skill for the grep.
+// Label every result as production — it is NOT comparable to the bare-tool trend line.
 const SKILL = (typeof A.skill === 'string' && A.skill.trim()) ? A.skill.trim() : null
-log(`run mode: ${SKILL ? 'PRODUCTION (N1 skill injected into producers)' : 'bare-tool (no skill)'}`)
+const SKILL_PATH = (typeof A.skillPath === 'string' && A.skillPath.trim()) ? A.skillPath.trim() : null
+log(`run mode: ${(SKILL || SKILL_PATH)
+  ? `PRODUCTION (N1 skill ${SKILL_PATH ? 'read by the agent from ' + SKILL_PATH : 'inlined'})`
+  : 'bare-tool (no skill)'}`)
 function skillBlock() {
-  return SKILL ? `
+  if (SKILL_PATH) {
+    return `
+  - the A12 authoring SKILL (expert-distilled judgment — polarity, the traps, iteration): READ IT IN FULL from
+    the file \`${SKILL_PATH}\` before composing, and APPLY it. That file is the ONLY extra thing you may read —
+    do NOT read any other file (no docs, source, tests, other *.md, or test/eval fixtures).`
+  }
+  if (SKILL) {
+    return `
   - the A12 authoring SKILL below — expert-distilled judgment (polarity, the traps, iteration). Treat it as
     trusted background and APPLY it; this is the only extra material you get — do not seek other docs.
 <<<SKILL
 ${SKILL}
-SKILL>>>` : ''
+SKILL>>>`
+  }
+  return ''
 }
 
 const AUTHORING = TASKS.filter(t => t.family === 'authoring')
@@ -75,7 +92,7 @@ function authorPrompt(task) {
   return `You help a business analyst author an A12 validation rule. Assume NO prior A12/rulekit knowledge; use ONLY:
   - the CLI:  ${CLI} <args>   (it is self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <verb> --help\` shows a verb's parameters, \`${CLI} operators\` lists the DSL operators and \`${CLI} operators <id>\` gives one in full)
   - the model file: ${MODEL_FILE(task)}${multifile}${skillBlock()}
-Do NOT read any rulekit source, docs, tests, or *.md FILES (beyond any skill text already given above). Requirement to enforce: "${task.intent}".
+Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). Requirement to enforce: "${task.intent}".
 Author the rule and CONFIRM the kernel accepts it via the CLI. Return ONLY JSON — and note that "field" is
 the error field's path INSIDE the model (e.g. /Group/Field), NOT the model FILE path you pass on the command line:
   {"field":"<the error field's path inside the model>","condition":"<DSL>","code":"<ID>","kernelAccepted":true|false}`
@@ -86,8 +103,8 @@ function modifyComputationPrompt(task) {
 (fills in) a field's value from other fields. The model ALREADY has a computation; re-express it to meet a
 new requirement, KEEPING THE SAME computed field. Assume NO prior A12/rulekit knowledge; use ONLY:
   - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <verb> --help\` a verb's parameters; \`${CLI} explain ${MODEL_FILE(task)} --computation ${task.computation}\` shows the existing computation, \`${CLI} schema add\` the computation-spec shape, \`${CLI} modify --help\` (its \`--dry-run\` PREVIEWS a re-expression read-only), \`${CLI} operators\` the DSL operators)
-  - the model file: ${MODEL_FILE(task)}
-Do NOT read any rulekit source, docs, tests, or *.md files. The existing computation to change: ${task.computation}.
+  - the model file: ${MODEL_FILE(task)}${skillBlock()}
+Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). The existing computation to change: ${task.computation}.
 New requirement: "${task.intent}".
 Re-express the computation and CONFIRM the kernel accepts the CHANGE by PREVIEWING it (read-only) — do NOT write the model file. Return ONLY JSON:
   {"computedField":"<the computed field's path inside the model, e.g. /Group/Field — NOT the model FILE path>","commonPrecondition":"<DSL or omit>","alternatives":[{"precondition":"<DSL or omit>","operation":"<DSL value expression>"}],"messages":[{"locale":"<code>","text":"..."}],"kernelAccepted":true|false}`
@@ -100,7 +117,7 @@ model ALREADY has a rule; re-express its CONDITION to meet a new requirement, KE
 error field). Assume NO prior A12/rulekit knowledge; use ONLY:
   - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <verb> --help\` a verb's parameters; \`${CLI} explain ${MODEL_FILE(task)} --rule ${task.rule}\` shows the existing rule, \`${CLI} modify --help\` (its \`--dry-run\` PREVIEWS a re-expression read-only), \`${CLI} operators\` the DSL operators)
   - the model file: ${MODEL_FILE(task)}${skillBlock()}
-Do NOT read any rulekit source, docs, tests, or *.md FILES (beyond any skill text already given above). The existing rule to change: ${task.rule}.
+Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). The existing rule to change: ${task.rule}.
 New requirement: "${task.intent}".
 Re-express the rule's CONDITION (true on a VIOLATION) and CONFIRM the kernel accepts the CHANGE by PREVIEWING it
 (read-only, e.g. \`${CLI} modify ${MODEL_FILE(task)} --rule ${task.rule} --condition "<DSL>" --dry-run\`) — do NOT
@@ -112,8 +129,8 @@ function authorComputationPrompt(task) {
   return `You help a business analyst author an A12 COMPUTATION — a rule that COMPUTES (fills in) a field's value
 from other fields, rather than validating one. Assume NO prior A12/rulekit knowledge; use ONLY:
   - the CLI:  ${CLI} <args>   (it is self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <verb> --help\` shows a verb's parameters, \`${CLI} schema add\` shows the input shapes, \`${CLI} operators\` lists the DSL operators and \`${CLI} operators <id>\` gives one in full)
-  - the model file: ${MODEL_FILE(task)}
-Do NOT read any rulekit source, docs, tests, or *.md files. Requirement to implement: "${task.intent}".
+  - the model file: ${MODEL_FILE(task)}${skillBlock()}
+Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). Requirement to implement: "${task.intent}".
 Author the computation and CONFIRM the kernel accepts it via the CLI. Return ONLY JSON:
   {"computedField":"<the computed field's path inside the model, e.g. /Group/Field — NOT the model FILE path>","commonPrecondition":"<DSL or omit>","alternatives":[{"precondition":"<DSL or omit>","operation":"<DSL value expression>"}],"messages":[{"locale":"<code>","text":"..."}],"kernelAccepted":true|false}`
 }
@@ -122,8 +139,8 @@ function explainPrompt(task) {
   return `You help a business analyst understand the validation rules already on an A12 model. Assume NO prior
 A12/rulekit knowledge; use ONLY:
   - the CLI:  ${CLI} <args>   (it is self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <verb> --help\` shows a verb's parameters, \`${CLI} operators\` lists the DSL operators and \`${CLI} operators <id>\` gives one in full)
-  - the model file: ${MODEL_FILE(task)}
-Do NOT read any rulekit source, docs, tests, or *.md files. For each of these rules: ${JSON.stringify(task.rules)}
+  - the model file: ${MODEL_FILE(task)}${skillBlock()}
+Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). For each of these rules: ${JSON.stringify(task.rules)}
 explain exactly what makes a document INVALID (the violation the rule fires on) and which field it guards.
 Return ONLY JSON: {"explanations": { "<ruleName>": "<your explanation>", ... }}`
 }
