@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/compute-doc.schema.json",
+  "title": "ComputeDocResult",
+  "description": "Output of `rulekit compute-doc` — the real kernel's runtime computation over a document INSTANCE: what each computed field becomes (compute). Read-only — the input --doc is never modified. The INPUT --doc is the same nested tree `eval-doc` takes (under \"fields\": repeatable group = array of rows, field = its text value).",
+  "type": "object",
+  "required": ["computed"],
+  "additionalProperties": false,
+  "properties": {
+    "computed": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/computedField" },
+      "description": "each computed field and what the kernel made of it, in kernel order"
+    }
+  },
+  "$defs": {
+    "computedField": {
+      "type": "object",
+      "required": ["field", "outcome"],
+      "additionalProperties": false,
+      "properties": {
+        "field": { "type": "string", "description": "the computed field's absolute path" },
+        "outcome": { "type": "string", "description": "value (computed a value) | cleared (computed nothing, e.g. an empty operand) | error" },
+        "value": { "type": "string", "description": "the computed value when outcome is 'value' (or a partial on 'error'); absent when cleared" }
+      }
+    }
+  }
+}

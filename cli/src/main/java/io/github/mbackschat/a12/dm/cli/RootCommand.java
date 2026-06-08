@@ -23,6 +23,8 @@ import picocli.CommandLine.Spec;
             DescribeCommand.class,
             ValidateCommand.class,
             CheckCommand.class,
+            EvalDocCommand.class,
+            ComputeDocCommand.class,
             AddCommand.class,
             ReadCommand.class,
             ExplainCommand.class,

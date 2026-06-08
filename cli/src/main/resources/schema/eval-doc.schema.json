@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/eval-doc.schema.json",
+  "title": "EvalDocResult",
+  "description": "Output of `rulekit eval-doc` — the real kernel's runtime verdict over a document INSTANCE: which rules fired on the data (validateFull). Computations are NOT run; a computed field reads as whatever the document supplies. The INPUT --doc is a nested tree under \"fields\" (repeatable group = array of row objects, non-repeatable group = nested object, field = its text value; null/\"\" = present-but-unfilled, an absent key = no instance).",
+  "type": "object",
+  "required": ["fired", "messages"],
+  "additionalProperties": false,
+  "properties": {
+    "fired": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "the distinct error codes that fired, in first-seen order"
+    },
+    "messages": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/message" },
+      "description": "every message the kernel raised, in kernel order"
+    },
+    "rule": {
+      "type": "object",
+      "description": "present only when narrowed to one rule (--rule or a candidate --condition/--field)",
+      "additionalProperties": false,
+      "required": ["name", "fired"],
+      "properties": {
+        "name": { "type": "string", "description": "the targeted rule's full name" },
+        "fired": { "type": "boolean", "description": "whether that rule fired on the document" }
+      }
+    }
+  },
+  "$defs": {
+    "message": {
+      "type": "object",
+      "required": ["code", "field", "severity", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "code": { "type": "string", "description": "the rule's error code, or a kernel formal-error code" },
+        "rule": { "type": "string", "description": "the firing rule's full slash-path (e.g. /Order/X); a kernel FORMAL check reports the sentinel 'formalePruefung' — a leading '/' is the author-rule discriminator" },
+        "field": { "type": "string", "description": "the error field's instance pointer (field path + repetition indices, e.g. [/Order/Items/Count, [1, 2, 1]]) — the row it hit" },
+        "severity": { "type": "string", "description": "ERROR | WARNING | INFO" },
+        "type": { "type": "string", "description": "VALUE_ERROR | OMISSION_ERROR" }
+      }
+    }
+  }
+}

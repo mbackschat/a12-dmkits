@@ -69,8 +69,23 @@ final class CliTestSupport {
     }
 
     static String subscriptionJson() {
-        try (InputStream in = CliTestSupport.class.getClassLoader()
-                .getResourceAsStream("models/subscription.dm.json")) {
+        return resource("models/subscription.dm.json");
+    }
+
+    /** The committed {@code order-ruled} fixture (rules: POSTAL_CODE_MALFORMED, DELIVERY_BEFORE_ORDER, INELIGIBLE_ORDER). */
+    static String orderRuledJson() {
+        return resource("models/order-ruled.dm.json");
+    }
+
+    /** Write the {@code order-ruled} fixture to a temp file the CLI can read. */
+    static Path orderRuled(Path dir) throws IOException {
+        Path file = dir.resolve("order-ruled.dm.json");
+        Files.writeString(file, orderRuledJson());
+        return file;
+    }
+
+    private static String resource(String classpathPath) {
+        try (InputStream in = CliTestSupport.class.getClassLoader().getResourceAsStream(classpathPath)) {
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         } catch (Exception e) {
             throw new RuntimeException(e);

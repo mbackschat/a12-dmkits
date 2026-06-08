@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
 
@@ -54,6 +55,17 @@ class SchemaVerbTest {
         assertSchemaCovers("read", CliTestSupport.run("read", withComp.toString(), "--all"));
         assertSchemaCovers("explain",
                 CliTestSupport.run("explain", withComp.toString(), "--computation", CliTestSupport.COMPUTATION_FULL_NAME));
+
+        // the runtime verbs (2026-06-09) — eval-doc (with --rule so the `rule` key is exercised) + compute-doc
+        Path evalDoc = dir.resolve("eval.json");
+        Files.writeString(evalDoc, """
+                { "fields": { "Subscription": { "Addons": [ { "MonthlyFee": "2000" } ] } } }""");
+        assertSchemaCovers("eval-doc", CliTestSupport.run("eval-doc", model.toString(), "--doc", evalDoc.toString(),
+                "--rule", CliTestSupport.RULE_FULL_NAME));
+        Path computeDoc = dir.resolve("compute.json");
+        Files.writeString(computeDoc, """
+                { "fields": { "Subscription": { "Billing": { "BaseFee": "50" } } } }""");
+        assertSchemaCovers("compute-doc", CliTestSupport.run("compute-doc", withComp.toString(), "--doc", computeDoc.toString()));
     }
 
     /** Every top-level property of the verb's real output must be declared in the schema's `properties`. */

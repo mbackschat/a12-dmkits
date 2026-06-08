@@ -1,0 +1,23 @@
+package io.github.mbackschat.a12.dm.adapter;
+
+import java.util.Optional;
+
+/**
+ * One validation message the kernel's runtime raised when {@link KernelAdapter#evaluate evaluating} a
+ * document instance — the rulekit-level projection of a kernel {@code IMessage} (boundary conversion,
+ * N8: kernel types never escape). An <b>author rule</b>'s message carries that rule's full slash-path in
+ * {@code rulePath} (e.g. {@code /Order/DeliveryNotBeforeOrder}); a kernel <b>formal check</b> (e.g. a
+ * malformed value) reports the sentinel {@code rulePath} {@code "formalePruefung"} with a kernel
+ * formal-error {@code errorCode} — so a {@code rulePath} starting with {@code /} is the author-rule
+ * discriminator the consumer needs.
+ *
+ * @param errorCode   the rule's error code (or the kernel's formal-error code)
+ * @param rulePath    the firing rule's full slash-path, or {@code "formalePruefung"} for a formal check
+ * @param fieldPointer the error field's instance pointer as text (field path + repetition indices, e.g.
+ *                     {@code [/Order/Items/Count, [1, 2, 1]]}) — the row it hit
+ * @param severity    {@code ERROR} | {@code WARNING} | {@code INFO}
+ * @param messageType {@code VALUE_ERROR} | {@code OMISSION_ERROR}
+ */
+public record EvalMessage(String errorCode, Optional<String> rulePath, String fieldPointer,
+        String severity, String messageType) {
+}

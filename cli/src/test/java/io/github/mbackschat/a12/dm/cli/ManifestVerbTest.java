@@ -23,7 +23,7 @@ class ManifestVerbTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private static final List<String> EXPECTED_VERBS = List.of(
-            "export", "describe", "validate", "check", "add", "read", "explain",
+            "export", "describe", "validate", "check", "eval-doc", "compute-doc", "add", "read", "explain",
             "where-used", "modify", "batch", "schema", "operators", "manifest");
 
     @Test

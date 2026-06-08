@@ -81,7 +81,15 @@ public final class RuleValidator {
         return ValidationResult.of(diagnostics);
     }
 
-    private String inject(String modelJson, DraftRule rule) {
+    /**
+     * Inject {@code rule} into the model as DM-JSON and return the new model text — the same step
+     * {@link #check} runs before validating, exposed for callers that need the rule-bearing model
+     * <em>without</em> persisting it: e.g. evaluating a CANDIDATE rule against a document instance
+     * ({@code eval-doc --condition}), where the draft must be present in the model the kernel runs but is
+     * never written back. A placeholder error message per declared locale is added (so the kernel's
+     * message-required check doesn't mask the condition).
+     */
+    public String inject(String modelJson, DraftRule rule) {
         return injectInto(modelJson, rule.groupPath(), (root, elements) ->
                 elements.add(ruleNode(rule, localeCodes(root))));
     }
