@@ -32,6 +32,8 @@ dependencies {
     implementation "com.mgmtp.a12.kernel:kernel-md-model:${kernelVersion}"           // DocumentModelService.getMvkServiceForModel, ElementContainer
     implementation "com.mgmtp.a12.kernel:kernel-md-serializer:${kernelVersion}"      // ExternalDocumentModelSerializerService.getInternDocumentModel
     implementation "com.mgmtp.a12.kernel:kernel-md-a12internal:${kernelVersion}"     // internal DocumentModel
+    implementation "com.mgmtp.a12.kernel:kernel-core-facade:${kernelVersion}"        // ServiceFactory.getCalculationService — the read surface for COMPUTATIONS (ICalculationService.extractCalculationInfo)
+    implementation "com.mgmtp.a12.kernel:kernel-core-calc:${kernelVersion}"          // IWithComparisonOperation.getOriginalOperation — unwrap a computation alternative's value-expression from its assignment wrapper
 
     // The runtime *evaluation* tier — TEST-only (F-LAW behavioral-law oracle): build a document
     // instance and run the kernel's runtime validation to observe which rules actually FIRE on data.

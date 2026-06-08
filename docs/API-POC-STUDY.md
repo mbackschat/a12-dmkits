@@ -259,7 +259,7 @@ BoundModel m2 = m.add(rule);                               // ✅ snapshot (F0):
 m2.writeTo(path);                                          // ✅ DM-JSON write path — authored JSON, includes preserved (D9, F6)
 ```
 
-### 4.3 A computation, same materials (F2) ✅ — implemented 2026-06-04 (`ComputationAuthoringTest`; aggregates/arithmetic in operations are corpus items 6–7)
+### 4.3 A computation, same materials (F2) ✅ — implemented 2026-06-04 (`ComputationAuthoringTest`; aggregates/arithmetic in operations are corpus items 6–7); **ingest + full cycle ✅ 2026-06-08** (`ingestComputation`/`replaceComputation`; kernel-mm 100%, Corpus-1 100% — §9 board)
 
 ```java
 Computation tiered = m.computation(m.num("/Subscription/Billing/EffectiveFee"))   // element placed in the
@@ -512,7 +512,8 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 | §6c navigation (Level 1: `fields()`/`groups()`/`fieldAt` + strict narrowing), §3.5 `allOf`/`anyOf` | ✅ implemented 2026-06-04 (findings 9–10) |
 | §3.4 rule templates | ✅ full form works (navigation + `Rule` object) |
 | `Rule` + `Computation` authoring objects (computed relPaths, slot-rule pre-checks, validator bridges, `Calculation.kind()`) | ✅ implemented 2026-06-04 |
-| DM-JSON write path: `ofJson`/`add(Rule)`/`toJson`/`writeTo` (snapshot, re-validated, includes-preserving) | ✅ F6 (2026-06-04); `replaceCondition` ✅; **`add(Computation)` ✅ + `removeRule` ✅** (2026-06-07, `ModelWriter`; snapshot + re-validated, `removeRule` throws on a missing path) |
+| DM-JSON write path: `ofJson`/`add(Rule)`/`toJson`/`writeTo` (snapshot, re-validated, includes-preserving) | ✅ F6 (2026-06-04); `replaceCondition` ✅; **`add(Computation)` ✅ + `removeRule` ✅** (2026-06-07, `ModelWriter`; snapshot + re-validated, `removeRule` throws on a missing path); **`replaceComputation`/`removeComputation` ✅** (2026-06-08 — the computation write-back twins) |
+| **Computation ingest — the calculated-field read path** (`KernelAdapter.ingestComputation`/`ingestAllComputations` → `IngestedComputation`) | ✅ **2026-06-08**: the full cycle (ingest → modify → write-back → re-ingest identity) over computations, via `ICalculationService.extractCalculationInfo`; the operation vocabulary (constants of any kind, field values, numeric arithmetic/aggregates/coercions, string concat, dates) reuses the comparison-operand converters; non-EXACT rounding → tolerant `Opaque`. **kernel-mm 100% (6/6), Corpus-1 100% (626/626)**; own-domain shape locks `ComputationShapesTest`/`ComputationIngestTest`. Detail: KERNEL-INTEGRATION-NOTES "Computation ingest" |
 | Structured `Diagnostic` (`severity·source·code·summary·where·fix·explain`) + catalog-join + JSON | ✅ F4a first increment (2026-06-04) — KERNEL, LINT, PRECHECK origins land (ENVIRONMENT added with F11) |
 | PRECHECK diagnostics — pre-checks carry a structured `Diagnostic` (`PrecheckException`) | ✅ 2026-06-04 (Rule.Builder; still an `IllegalStateException` so fail-fast is unchanged; Computation.Builder + handle refs follow). **F11 split (2026-06-04):** completeness/structural pre-checks stay hard; the kernel-semantic `MVK_ERROR_FIELD_NOT_REFERENCED` (`covers()` heuristic) is *deferred* to the live kernel (`Rule.deferredChecks()`, advisory WARNING) — never a hard `build()` throw |
 | Unified diagnose — one call returns KERNEL+LINT+INFO (+deferred PRECHECK, +ENVIRONMENT) for a rule (`lint.RuleDiagnostics`) | ✅ 2026-06-04 (`diagnose(model, rule) → ValidationResult`; KERNEL span-pointed; deferred prechecks deduped against the kernel verdict; F11 kernel-version advisory once per instance) |

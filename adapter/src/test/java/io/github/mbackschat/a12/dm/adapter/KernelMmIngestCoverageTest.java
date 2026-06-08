@@ -92,6 +92,62 @@ class KernelMmIngestCoverageTest {
                         + finalConverted + " of " + 553 + ")" + report);
     }
 
+    @Test
+    void measuresComputationIngestCoverageAcrossTheCanonicalMetamodels() throws IOException {
+        Path root = locateKernelMm();
+        assumeTrue(root != null, "a12-kernel-mm not present — skipping spike coverage harness");
+
+        int total = 0, converted = 0, opaque = 0;
+        Map<String, Integer> opaqueReasons = new TreeMap<>();
+        Map<String, Integer> distinctReasons = new TreeMap<>();
+        Map<String, int[]> perModel = new LinkedHashMap<>();
+
+        for (Path file : canonicalModels(root)) {
+            String name = file.getParent().getFileName().toString();
+            try {
+                String json = Files.readString(file, StandardCharsets.UTF_8);
+                Map<String, IngestedComputation> outcomes = KernelAdapter.ofJson(json).ingestAllComputations();
+                if (outcomes.isEmpty()) {
+                    continue;
+                }
+                int t = 0, c = 0, o = 0;
+                for (IngestedComputation ic : outcomes.values()) {
+                    t++;
+                    if (ic instanceof IngestedComputation.Converted) {
+                        c++;
+                    } else if (ic instanceof IngestedComputation.Opaque op) {
+                        o++;
+                        opaqueReasons.merge(normalizeReason(op.reason()), 1, Integer::sum);
+                        distinctReasons.merge(op.reason(), 1, Integer::sum);
+                    }
+                }
+                total += t; converted += c; opaque += o;
+                perModel.put(name, new int[] {t, c, o});
+            } catch (Exception ignored) {
+                // load failures are already reported by the rule-coverage test
+            }
+        }
+
+        double pct = total == 0 ? 0 : 100.0 * converted / total;
+        StringBuilder report = new StringBuilder("\n=== kernel-mm COMPUTATION ingest coverage ===\n");
+        perModel.forEach((m, t) -> report.append(String.format("  %-34s %4d computations  %4d converted  %4d opaque%n",
+                m, t[0], t[1], t[2])));
+        report.append(String.format("%n  TOTAL: %d computations across %d models  →  %d converted (%.1f%%), %d opaque%n",
+                total, perModel.size(), converted, pct, opaque));
+        report.append("\n  Opaque reasons (by frequency):\n");
+        opaqueReasons.entrySet().stream().sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                .forEach(e -> report.append(String.format("    %4d  %s%n", e.getValue(), e.getKey())));
+        report.append("\n  Distinct full opaque reasons (triage):\n");
+        distinctReasons.entrySet().stream().sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                .forEach(e -> report.append(String.format("    %4d  · %s%n", e.getValue(), e.getKey())));
+        System.out.println(report);
+
+        int finalConverted = converted, finalTotal = total;
+        assertTrue(finalTotal >= 6 && finalConverted == finalTotal,
+                () -> "kernel-mm computation ingest should be complete (converted " + finalConverted
+                        + " of " + finalTotal + ")" + report);
+    }
+
     /** Collapse an Opaque reason to the construct that caused it, so similar causes group in the histogram. */
     private static String normalizeReason(String reason) {
         if (reason == null) {

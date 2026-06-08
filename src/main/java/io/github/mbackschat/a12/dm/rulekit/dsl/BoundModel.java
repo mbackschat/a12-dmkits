@@ -88,6 +88,26 @@ public final class BoundModel {
     }
 
     /**
+     * Removes the computation at {@code computationFullName}, returning a <em>new</em> binding (this one
+     * is unchanged). Re-validated on re-bind. The computation twin of {@link #removeRule(String)}.
+     */
+    public BoundModel removeComputation(String computationFullName) {
+        return ofJson(io.github.mbackschat.a12.dm.rulekit.write.ModelWriter.removeComputation(requireWritable(),
+                computationFullName), resolver);
+    }
+
+    /**
+     * Replaces the computation at {@code computationFullName} with the re-expressed {@code computation},
+     * returning a <em>new</em> binding (this one is unchanged); the F8 #3 write-back for computations
+     * (remove the old element, add the new). Re-validated on re-bind, so a write that breaks the
+     * computation fails loudly here. The computation twin of {@link #replaceCondition(String, Condition)}.
+     */
+    public BoundModel replaceComputation(String computationFullName, Computation computation) {
+        return ofJson(io.github.mbackschat.a12.dm.rulekit.write.ModelWriter.replaceComputation(
+                requireWritable(), computationFullName, computation), resolver);
+    }
+
+    /**
      * Replaces the condition of the rule at {@code ruleFullName} with {@code newCondition}, returning
      * a <em>new</em> binding (this one is unchanged); the F8 #3 write-back that applies a reviewed
      * re-express. The condition is rendered relative to the rule's group (fork-9), like any authored

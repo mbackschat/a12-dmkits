@@ -14,6 +14,10 @@ import com.mgmtp.a12.kernel.core.tool.a12internal.api.ado.IEntity;
 import com.mgmtp.a12.kernel.core.tool.a12internal.api.ado.IRule;
 import com.mgmtp.a12.kernel.core.tool.a12internal.api.error.IProblemReporter;
 import com.mgmtp.a12.kernel.core.tool.a12internal.api.services.IMVK_Service;
+import com.mgmtp.a12.kernel.core.tool.a12internal.api.services.ICalculationService;
+import com.mgmtp.a12.kernel.core.tool.a12internal.api.services.IBaseCalculationService.ICalculationRule;
+import com.mgmtp.a12.kernel.core.tool.a12internal.api.ado.serviceparams.ICalculationInfo;
+import com.mgmtp.a12.kernel.core.facade.a12internal.ServiceFactory;
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.model.a12internal.DocumentModel;
 import com.mgmtp.a12.kernel.md.model.a12internal.services.DocumentModelService;
@@ -25,7 +29,9 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
 import com.mgmtp.a12.kernel.md.serializer.model.internal.service.ExternalDocumentModelSerializerService;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RenderedDiff;
@@ -63,6 +69,7 @@ public final class KernelAdapter {
     private final IMVK_Service mvk;
     private final ElementContainer elements;
     private final BoundModel model;
+    private ICalculationService calc;   // lazily built (from the MVK service, which is its config) — only computations need it
 
     private KernelAdapter(IMVK_Service mvk, BoundModel model) {
         this.mvk = mvk;
@@ -244,6 +251,68 @@ public final class KernelAdapter {
             names.add(r.getFullName());
         }
         return names;
+    }
+
+    // ── Computations (the calculated-field read path; the IngestedComputation peer of ingest) ───────
+
+    /** The kernel's calculation service, built lazily from the MVK service (which is also its config). */
+    private ICalculationService calcService() {
+        if (calc == null) {
+            calc = new ServiceFactory().getCalculationService(mvk);
+        }
+        return calc;
+    }
+
+    /**
+     * Ingest one computation (F10, the calculated-field direction): convert the kernel's computation —
+     * calculated field, common precondition, and {@code (precondition, operation)} alternatives — into a
+     * typed rulekit {@link Computation}, carrying the recovered error messages so it survives the full
+     * ingest → modify → write-back cycle. Tolerant: a not-yet-modeled computation degrades to
+     * {@link IngestedComputation.Opaque} rather than throwing.
+     */
+    public IngestedComputation ingestComputation(String computationFullName) {
+        for (ICalculationRule cr : elements.getAllCalculations()) {
+            if (computationFullName.equals(cr.getRule().getFullName())) {
+                return ingestOne(cr);
+            }
+        }
+        throw new IllegalArgumentException("no computation in model at: " + computationFullName);
+    }
+
+    /**
+     * Ingest every computation in the model, keyed by full name (insertion-ordered) — the computation
+     * peer of {@link #ingestAll()}; never throws on an unmodeled computation (those become Opaque).
+     */
+    public java.util.Map<String, IngestedComputation> ingestAllComputations() {
+        java.util.Map<String, IngestedComputation> out = new java.util.LinkedHashMap<>();
+        for (ICalculationRule cr : elements.getAllCalculations()) {
+            out.put(cr.getRule().getFullName(), ingestOne(cr));
+        }
+        return out;
+    }
+
+    private IngestedComputation ingestOne(ICalculationRule cr) {
+        try {
+            java.util.Optional<ICalculationInfo> info = calcService().extractCalculationInfo(cr, SILENT);
+            if (info.isEmpty()) {
+                return new IngestedComputation.Opaque("the kernel could not extract calculation info");
+            }
+            Computation computation = new ConditionConverter(model)
+                    .convertComputation(info.get(), recoverMessages(cr.getRule()));
+            return new IngestedComputation.Converted(computation);
+        } catch (UnsupportedConstructException unconverted) {
+            return new IngestedComputation.Opaque(unconverted.getMessage());
+        } catch (RuntimeException unexpected) {
+            return new IngestedComputation.Opaque("unresolved reference (" + unexpected.getClass().getSimpleName()
+                    + "): " + unexpected.getMessage());
+        }
+    }
+
+    /** Recover a computation's error messages (the kernel requires them) as rulekit {@link LocalizedText}. */
+    private static List<LocalizedText> recoverMessages(IRule rule) {
+        List<LocalizedText> messages = new ArrayList<>();
+        rule.getErrorMessages().forEach((locale, text) -> messages.add(new LocalizedText(locale.toString(), text)));
+        return messages;
     }
 
     /**

@@ -34,8 +34,10 @@ class Corpus1IngestCoverageTest {
         var resolver = io.github.mbackschat.a12.dm.core.ReferenceResolvers.directory(Path.of(dir));
 
         int models = 0, loaded = 0, totalRules = 0, converted = 0, opaque = 0;
+        int compTotal = 0, compConverted = 0, compOpaque = 0;     // computation ingest coverage
         Map<String, Integer> loadFailures = new TreeMap<>();      // bucket → count
         Map<String, Integer> opaqueReasons = new TreeMap<>();
+        Map<String, Integer> compOpaqueReasons = new TreeMap<>(); // computation F10 tail
         Map<String, Integer> outerByModel = new TreeMap<>();      // file → count of $-correlation opaques
         int cap = 150;
 
@@ -51,7 +53,8 @@ class Corpus1IngestCoverageTest {
             models++;
             try {
                 String json = Files.readString(file, StandardCharsets.UTF_8);
-                Map<String, Ingest> outcomes = KernelAdapter.ofJson(json, resolver).ingestAll();
+                KernelAdapter adapter = KernelAdapter.ofJson(json, resolver);
+                Map<String, Ingest> outcomes = adapter.ingestAll();
                 loaded++;
                 for (Ingest ingest : outcomes.values()) {
                     totalRules++;
@@ -63,6 +66,15 @@ class Corpus1IngestCoverageTest {
                         if (o.reason() != null && o.reason().contains("outer correlation ($)")) {
                             outerByModel.merge(file.getFileName().toString(), 1, Integer::sum);
                         }
+                    }
+                }
+                for (IngestedComputation ic : adapter.ingestAllComputations().values()) {
+                    compTotal++;
+                    if (ic instanceof IngestedComputation.Converted) {
+                        compConverted++;
+                    } else if (ic instanceof IngestedComputation.Opaque o) {
+                        compOpaque++;
+                        compOpaqueReasons.merge(o.reason(), 1, Integer::sum);   // full reason (small tail) → exact shape
                     }
                 }
             } catch (Exception e) {
@@ -86,6 +98,11 @@ class Corpus1IngestCoverageTest {
                 outerTotal, outerByModel.size()));
         outerByModel.entrySet().stream().sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
                 .forEach(e -> r.append(String.format("    %4d  %s%n", e.getValue(), e.getKey())));
+        double compPct = compTotal == 0 ? 0 : 100.0 * compConverted / compTotal;
+        r.append(String.format("%n  COMPUTATIONS in loaded models: %d  →  %d converted (%.1f%%), %d opaque%n",
+                compTotal, compConverted, compPct, compOpaque));
+        compOpaqueReasons.entrySet().stream().sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                .limit(20).forEach(e -> r.append(String.format("    %4d  %s%n", e.getValue(), e.getKey())));
         System.out.println(r);
     }
 

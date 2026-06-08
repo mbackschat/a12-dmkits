@@ -28,6 +28,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IFieldIdOpe
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IGroupOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.INumberOfRootGroupsOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOperation;
+import com.mgmtp.a12.kernel.core.calc.internal.util.compOp.IWithComparisonOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IFieldIdOperationWithParameters;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOpListOperation;
 import com.mgmtp.a12.kernel.core.parsetree.a12internal.api.operation.IOpListOperationWithParameter;
@@ -92,6 +93,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValue;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldValueAsNumber;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RangeAsNumber;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
@@ -106,6 +108,12 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.StringRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ValueAsDate;
 import io.github.mbackschat.a12.dm.core.ValueKind;
+
+import org.apache.commons.lang3.tuple.Pair;
+import com.mgmtp.a12.kernel.core.tool.a12internal.api.ado.serviceparams.ICalculationInfo;
+import com.mgmtp.a12.kernel.core.tool.a12internal.api.services.IBaseCalculationService.RoundingMode;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
+import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 
 /**
  * The F10 read direction: a kernel {@link ICondition} (parsed by the adapter) → rulekit's typed
@@ -1639,6 +1647,81 @@ final class ConditionConverter {
             case FirstFilledValue -> Dsl.firstFilledDate(scope);
             default -> throw unsupported("date aggregate operator " + aggregate.getOperatorName(), aggregate);
         };
+    }
+
+    /**
+     * Convert a computation's value-expression (the kernel's {@link IOperation}) to a rulekit
+     * {@link Calculation}, reusing the comparison-operand machinery ({@link #numericExpr}). rulekit's
+     * computation surface is numeric, so a non-NUMBER computed field, or an operation {@code numericExpr}
+     * doesn't recognise, raises the strict signal (→ a tolerant {@link IngestedComputation.Opaque}).
+     */
+    Calculation convertOperation(IOperation op, ValueKind computedKind) {
+        // The kernel wraps each computation alternative's value-expression with its assignment operator
+        // (CalcOperationWithCompOp). getOriginalOperation() unwraps it to the bare value-expression
+        // (and strips any auto-added rounding — exactness is enforced in convertComputation).
+        if (op instanceof IWithComparisonOperation withOp) {
+            return convertOperation(withOp.getOriginalOperation(), computedKind);
+        }
+        // A constant assignment of any kind — number/string/date literal, or a boolean True/False
+        // (the common metamodel shape: a default value computed into a string/boolean field).
+        if (op instanceof IConstantOperation || op instanceof IBoolConstantOperation) {
+            return constantOperand(op, op);
+        }
+        // A plain field value of any kind ([OtherField]) → the field's value as a Calculation.
+        if (op instanceof IFieldIdOperation fv && fv.getOperatorName() == FieldIdOperationName.FieldValue) {
+            return new FieldValue(model.field(fv.getField().getFullName()), fv.getField().isOuter());
+        }
+        // A value-expression, dispatched by the computed field's kind — reusing the same operand
+        // converters the comparison side uses (arithmetic/concat, aggregates, coercions, date math, …).
+        if (computedKind == ValueKind.STRING) {
+            return stringOperand(op, op).expression();
+        }
+        if (computedKind == ValueKind.NUMBER) {
+            NumberExpr expr = numericExpr(op);
+            if (expr != null) {
+                return expr.expression();
+            }
+        }
+        if (computedKind == ValueKind.DATE && convertDateOperand(op, op) instanceof DateExpr date) {
+            return date.expression();
+        }
+        if (computedKind == ValueKind.TIME && convertTimeOperand(op, op) instanceof TimeExpr time) {
+            return time.expression();   // e.g. SomeTime = TimeFromDateTime(dt)
+        }
+        // an enum-valued FirstFilledValue over an enum repetition list (SomeEnum = FirstFilledValue(items*/Cat))
+        if (computedKind == ValueKind.ENUMERATION && op instanceof IEntityListOperation enumAgg
+                && enumAgg.getOperatorName() == EntityListOperationName.FirstFilledValue) {
+            return Dsl.firstFilledEnum(flattenScope(enumAgg.getEntityList().getEntityIdList().get(0))).expression();
+        }
+        throw unsupported("computation operation " + op.getClass().getSimpleName()
+                + " into a " + computedKind + " field", op);
+    }
+
+    /**
+     * Assemble a rulekit {@link Computation} from the kernel's extracted {@link ICalculationInfo}
+     * (calculated field + common precondition + {@code (precondition, operation)} alternatives) plus the
+     * computation's recovered error {@code messages}. Non-{@code EXACT} rounding is unmodeled — rulekit
+     * authors exact computations only — so it raises the strict signal (→ {@link IngestedComputation.Opaque}).
+     */
+    Computation convertComputation(ICalculationInfo info, List<LocalizedText> messages) {
+        if (info.getRoundingMode() != RoundingMode.EXACT) {
+            throw unsupported("computation with non-EXACT rounding (" + info.getRoundingMode()
+                    + ") — rulekit models exact computations only", info.getCalculatedField());
+        }
+        String computedPath = info.getCalculatedField().getFullName();
+        FieldRef computed = model.field(computedPath);
+        ValueKind kind = computed.kind();
+        Optional<Condition> common = info.getCommonPrecondition().map(this::convert);
+        List<Computation.Alternative> alternatives = new ArrayList<>();
+        for (Pair<ICondition, IOperation> partial : info.getPartialCalculations()) {
+            ICondition pre = partial.getLeft();
+            Optional<Condition> precondition = pre == null ? Optional.empty() : Optional.of(convert(pre));
+            alternatives.add(new Computation.Alternative(precondition, convertOperation(partial.getRight(), kind)));
+        }
+        String groupPath = computedPath.substring(0, computedPath.lastIndexOf('/'));
+        // info.getName() is the computation's full path; Computation.name is the short (last-segment) name
+        String name = info.getName().substring(info.getName().lastIndexOf('/') + 1);
+        return new Computation(groupPath, name, computed, common, alternatives, messages);
     }
 
     private static UnsupportedConstructException unsupported(String what, Object node) {

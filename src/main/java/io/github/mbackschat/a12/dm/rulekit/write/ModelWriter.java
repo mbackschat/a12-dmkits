@@ -73,9 +73,27 @@ public final class ModelWriter {
 
     /** Returns {@code modelJson} with the Rule element at {@code ruleFullName} removed from its group. */
     public static String removeRule(String modelJson, String ruleFullName) {
+        return removeElement(modelJson, "Rule", ruleFullName);
+    }
+
+    /** Returns {@code modelJson} with the Computation element at {@code computationFullName} removed from its group. */
+    public static String removeComputation(String modelJson, String computationFullName) {
+        return removeElement(modelJson, "Computation", computationFullName);
+    }
+
+    /**
+     * Returns {@code modelJson} with the computation at {@code computationFullName} replaced by
+     * {@code computation} (F8 #3 write-back) — remove the old element, add the re-expressed one.
+     */
+    public static String replaceComputation(String modelJson, String computationFullName, Computation computation) {
+        return addComputation(removeComputation(modelJson, computationFullName), computation);
+    }
+
+    /** Remove the element of {@code type} at {@code fullName} from its group (the shared half of removeRule/removeComputation). */
+    private static String removeElement(String modelJson, String type, String fullName) {
         try {
             ObjectNode root = (ObjectNode) MAPPER.readTree(modelJson);
-            String groupPath = ruleFullName.substring(0, ruleFullName.lastIndexOf('/'));
+            String groupPath = fullName.substring(0, fullName.lastIndexOf('/'));
             ArrayNode elements = DmJson.groupElements(root, groupPath);
             if (elements == null) {
                 throw new IllegalArgumentException("no group at path: " + groupPath);
@@ -83,13 +101,13 @@ public final class ModelWriter {
             int idx = -1;
             for (int i = 0; i < elements.size(); i++) {
                 JsonNode el = elements.get(i);
-                if ("Rule".equals(el.path("type").asText()) && ruleFullName.equals(el.path("id").asText())) {
+                if (type.equals(el.path("type").asText()) && fullName.equals(el.path("id").asText())) {
                     idx = i;
                     break;
                 }
             }
             if (idx < 0) {
-                throw new IllegalArgumentException("no rule at path: " + ruleFullName);
+                throw new IllegalArgumentException("no " + type.toLowerCase(java.util.Locale.ROOT) + " at path: " + fullName);
             }
             elements.remove(idx);
             return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
