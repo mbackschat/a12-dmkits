@@ -25,7 +25,7 @@ Operator's playbook. **The guidelines live once in [`docs/EVAL-SPEC.md`](../../.
 1. `./gradlew :cli:installDist`, then smoke-test: `cli check <model> --field … --condition … --code …` → `{"valid": true}`.
 2. Bundle tasks: read `eval/tasks/*.json`, trim each to `id/family/model/intent/gold/rules/expected` **plus** the routing keys the runner needs — `modelPath`/`includeDir` (multi-file tasks, e.g. T15) and `computation` (modify-computation tasks, e.g. T16). Pass as `args.tasks` — **actual JSON, not a string**.
 3. Estimate cost (EVAL-SPEC §8a) and tell the user — it's opt-in / token-heavy, only on explicit request.
-4. Launch: `Workflow({ scriptPath: "eval/benchmark.workflow.js", args: { models, k, tasks } })` → Produce → Recheck (`cli batch` for rules · `cli add` for computations · `cli diff --computation` for modify) → Judge → pass@k. Four families: authoring · authoring-computation · modify-computation · comprehension.
+4. Launch: `Workflow({ scriptPath: "eval/benchmark.workflow.js", args: { models, k, tasks } })` → Produce → Recheck (`cli batch` for rules · `cli add` for computations · `cli modify --dry-run` for modify) → Judge → pass@k. Four families: authoring · authoring-computation · modify-computation · comprehension.
 5. **Selective re-run after a fix** (EVAL-SPEC §8b): subset `args.tasks` / `args.models` at low `k`. Material changed ⇒ **fresh** run, not resume.
 6. Record pass@k + analysis in `eval/RESULTS.md` (date **+ time-of-day** via `date`, newest first; label targeted vs full).
 

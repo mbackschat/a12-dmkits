@@ -15,6 +15,10 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-08 22:30 CEST — T16 recheck switched to `modify --dry-run`; then `diff` retired (targeted, opus + sonnet, k=2)
+
+The 22:16 run validated the `modify-computation` family with `diff --computation` — so the `modify` verb itself wasn't eval-exercised. The recheck + prompt now use `cli modify --computation … --spec --dry-run` (read-only — writes nothing, but drives the verb under test). Fresh T16-only run `wf_2d440657-493` (**9 agents, 0.22M tokens, 2m09s**): **opus 2/2, sonnet 2/2** — unchanged from the `diff` gate, confirming `modify --dry-run` is equivalent (same shared core) and the `modify` verb is now under eval coverage. Following this, the read-only **`diff` verb was retired entirely** — it was redundant with `modify --dry-run` (identical code path + output); `modify` is now the sole re-express verb (default writes, `--dry-run` previews). Verb surface 14 → 13.
+
 ### 2026-06-08 22:16 CEST — post-rename confirmation (ingest→read, dump→export) — no regression (opus + sonnet, k=2, 6-task subset)
 
 Targeted run after the verb/API rename (`ingest`→`read`, `dump`→`export`, `export --out-dir`) and the `diff`(preview)/`modify`(write) split. The rename's only self-sufficiency risk is **discovery**: a cold agent now sees `read`/`export` in `manifest`/`--help`/`schema` instead of `ingest`/`dump`. A representative subset spanning every family was run **bare-tool** (no skill). Fresh run `wf_50b7b5d6-632` (**46 agents, 1.14M tokens, 9m23s**).

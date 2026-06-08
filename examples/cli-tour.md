@@ -22,7 +22,6 @@ add
 read
 explain
 where-used
-diff
 modify
 batch
 schema
@@ -30,7 +29,7 @@ operators
 manifest
 ```
 
-→ Fourteen self-describing verbs. Each verb's parameters + meanings live in that same `manifest` (and in `bin/rk <verb> --help`); `bin/rk operators` lists the DSL operators with their semantics, `bin/rk operators <id>` one in full. The tool describes itself — the N1 skill teaches *judgment* (polarity, the traps), not this catalog.
+→ Thirteen self-describing verbs. Each verb's parameters + meanings live in that same `manifest` (and in `bin/rk <verb> --help`); `bin/rk operators` lists the DSL operators with their semantics, `bin/rk operators <id>` one in full. The tool describes itself — the N1 skill teaches *judgment* (polarity, the traps), not this catalog.
 
 ## The model — `order-ruled`
 

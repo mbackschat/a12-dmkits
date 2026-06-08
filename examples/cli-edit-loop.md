@@ -3,9 +3,9 @@
 *2026-06-08T17:07:32Z by Showboat 0.6.1*
 <!-- showboat-id: 2b98deb6-9a76-414a-b7cc-b8d840adeca7 -->
 
-The companion to [`cli-tour.md`](cli-tour.md) (which reads & inspects): this demo **writes**. It walks the F8 modify-by-re-express loop and the write surface on the `subscription-computed` fixture (which already carries a computation `EffectiveFeeComp = [BaseFee]`) — `where-used` · `explain --computation` · `diff` (preview, read-only) · `modify` (`--dry-run` then write) · `add` · `--include-dir` (multi-file) · `batch`. Every command runs through `bin/rk`; re-check with `uvx showboat@0.6.1 verify examples/cli-edit-loop.md`.
+The companion to [`cli-tour.md`](cli-tour.md) (which reads & inspects): this demo **writes**. It walks the F8 modify-by-re-express loop and the write surface on the `subscription-computed` fixture (which already carries a computation `EffectiveFeeComp = [BaseFee]`) — `where-used` · `explain --computation` · `modify` (`--dry-run` previews, then write) · `add` · `--include-dir` (multi-file) · `batch`. Every command runs through `bin/rk`; re-check with `uvx showboat@0.6.1 verify examples/cli-edit-loop.md`.
 
-**`diff` vs `modify` — the one rule to remember:** `diff` is **preview-only** (never writes); `modify` **writes** (in place by default, `-o` redirects, `--dry-run` falls back to preview).
+**`modify` — the one rule to remember:** it's the sole re-express verb. By default it **writes** the modified model (in place; `-o` redirects); **`--dry-run`** previews read-only (writes nothing).
 
 ## where-used — what depends on a field
 
@@ -46,32 +46,12 @@ bin/rk explain cli/src/test/resources/models/subscription-computed.dm.json --com
 
 → `EffectiveFee` (a `NUMBER`) is computed **unconditionally** as `[BaseFee]` — a plain pass-through. That's the thing we'll re-express next.
 
-## diff — preview a re-expression (read-only)
+## modify — re-express a computation (preview, then write)
 
-`diff` shows the **before/after** of a candidate change and **writes nothing**. Re-express the computation as *base fee + the total of all add-on monthly fees*.
+`modify` is the re-express verb: by default it **writes** the modified model back; **`--dry-run`** previews read-only (writes nothing, shows the before/after). Re-express the computation as *base fee + the total of all add-on monthly fees*. We work on a `/tmp` copy so the fixture stays put, and count `Sum(` occurrences to prove what was written.
 
 ```bash
 printf '%s' '{ "computedField":"/Subscription/Billing/EffectiveFee", "alternatives":[{"operation":"[BaseFee] + Sum(/Subscription/Addons*/MonthlyFee)"}], "messages":[{"locale":"en_US","text":"Base plus add-ons."},{"locale":"de_DE","text":"Basis plus Zusatz."}] }' > /tmp/rk-eff.json
-bin/rk diff cli/src/test/resources/models/subscription-computed.dm.json --computation /Subscription/Billing/EffectiveFeeComp --spec /tmp/rk-eff.json
-
-```
-
-```output
-{
-  "before" : "computes /Subscription/Billing/EffectiveFee\nalways => [/Subscription/Billing/BaseFee]",
-  "after" : "computes /Subscription/Billing/EffectiveFee\nalways => [/Subscription/Billing/BaseFee] + Sum(/Subscription/Addons*/MonthlyFee)",
-  "changed" : true,
-  "lossiness" : [ ]
-}
-```
-
-→ `changed: true`, with the old and new operations side by side and `lossiness: []` (a faithful round-trip). The model file on disk is **untouched** — `diff` is a preview. The kernel still validates the candidate here: an invalid re-expression would be rejected (exit 1, `{"valid": false, …}`) instead of diffed.
-
-## modify — write the change (`--dry-run` previews)
-
-`modify` applies the same re-expression and **writes the modified model back**. `--dry-run` makes it behave exactly like `diff` (preview, no write). We work on a `/tmp` copy so the fixture stays put, and count `Sum(` occurrences in the file to prove what was written.
-
-```bash
 cp cli/src/test/resources/models/subscription-computed.dm.json /tmp/rk-sub.json
 bin/rk modify /tmp/rk-sub.json --computation /Subscription/Billing/EffectiveFeeComp --spec /tmp/rk-eff.json --dry-run 2>/dev/null
 echo "--- Sum( occurrences in the file after --dry-run: $(grep -c 'Sum(' /tmp/rk-sub.json)"
@@ -88,7 +68,7 @@ echo "--- Sum( occurrences in the file after --dry-run: $(grep -c 'Sum(' /tmp/rk
 --- Sum( occurrences in the file after --dry-run: 0
 ```
 
-→ `--dry-run` prints the before/after (identical to `diff`) and the file still has **0** occurrences of `Sum(` — nothing was written. Now drop `--dry-run`:
+→ `--dry-run` prints the before/after (read-only) and the file still has **0** occurrences of `Sum(` — nothing was written. Now drop `--dry-run`:
 
 ```bash
 bin/rk modify /tmp/rk-sub.json --computation /Subscription/Billing/EffectiveFeeComp --spec /tmp/rk-eff.json 2>/dev/null
@@ -108,7 +88,7 @@ echo "--- the written model still validates: $(bin/rk validate /tmp/rk-sub.json 
 --- the written model still validates: true
 ```
 
-→ Same diff, but now the file carries the new operation (`Sum(` count is **1**) and the written model re-validates against the kernel (`true`). `modify` wrote in place; `-o <file>` would redirect the write and leave the source untouched.
+→ Same before/after, but now the file carries the new operation (`Sum(` count is **1**) and the written model re-validates against the kernel (`true`). `modify` wrote in place; `-o <file>` would redirect the write and leave the source untouched.
 
 ## add — persist a brand-new rule
 
@@ -146,7 +126,7 @@ bin/rk describe cli/src/test/resources/models/multifile/app/storefront.dm.json -
 {"path":"/Storefront/Inventory/ListPrice","kind":"NUMBER"}
 ```
 
-→ The mounted `catalog`'s fields (`/Storefront/Inventory/Sku`, `/Storefront/Inventory/ListPrice`) resolve — but **only** because `--include-dir` pointed at the `lib/` tree. Without it the model can't expand (the include is unresolved) and every verb fails until you supply it. `--include-dir` is a shared option on every model-loading verb (`check`, `diff`, `modify`, `describe`, …).
+→ The mounted `catalog`'s fields (`/Storefront/Inventory/Sku`, `/Storefront/Inventory/ListPrice`) resolve — but **only** because `--include-dir` pointed at the `lib/` tree. Without it the model can't expand (the include is unresolved) and every verb fails until you supply it. `--include-dir` is a shared option on every model-loading verb (`check`, `modify`, `describe`, …).
 
 ## batch — many ops in one warm JVM
 

@@ -4,7 +4,7 @@ The stable **method** for the rulekit CLI demos: how to author, verify, and exte
 
 The demos are authored with [showboat](https://github.com/simonw/showboat): each `examples/*.md` interleaves prose, a command, and its **captured output**, and `showboat verify` re-runs every command to prove the output still matches the live CLI. So a demo is documentation *and* a doc-drift regression test.
 
-Two demos so far, split by workflow: [`../examples/cli-tour.md`](../examples/cli-tour.md) — the **read/inspect** surface (`manifest`·`describe`·`validate`·`read`·`explain`·`check`), opening with the model it guards; and [`../examples/cli-edit-loop.md`](../examples/cli-edit-loop.md) — the **write/edit** surface (`where-used`·`explain --computation`·`diff`·`modify`·`add`·`--include-dir`·`batch`·`operators`/`schema`), the F8 modify-by-re-express loop end to end.
+Two demos so far, split by workflow: [`../examples/cli-tour.md`](../examples/cli-tour.md) — the **read/inspect** surface (`manifest`·`describe`·`validate`·`read`·`explain`·`check`), opening with the model it guards; and [`../examples/cli-edit-loop.md`](../examples/cli-edit-loop.md) — the **write/edit** surface (`where-used`·`explain --computation`·`modify`·`add`·`--include-dir`·`batch`·`operators`/`schema`), the F8 modify-by-re-express loop end to end.
 
 ## Run / verify / regenerate
 
@@ -64,7 +64,7 @@ A fork of showboat to add a redaction hook is the wrong bet — in-band scrubbin
 Two demos cover the read and the write/edit workflows; the method scales to more, one demo per workflow:
 
 - ✅ **Authoring loop** — `check` → `add` → re-`validate` (`cli-edit-loop.md`).
-- ✅ **Edit loop** — `explain --computation` → re-express → `diff` (preview) → `modify` (write-back); the F8 loop end-to-end (`cli-edit-loop.md`).
+- ✅ **Edit loop** — `explain --computation` → re-express → `modify --dry-run` (preview) → `modify` (write-back); the F8 loop end-to-end (`cli-edit-loop.md`).
 - ✅ **`batch`** — the self-describing, per-op-attributable output in one warm JVM (`cli-edit-loop.md`).
 - ✅ **Multi-file** — `--include-dir` resolving an included model (`cli-edit-loop.md`).
 - **Comprehension** — read foreign rules back and explain them (the T7 family).

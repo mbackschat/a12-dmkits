@@ -65,7 +65,7 @@ function modifyComputationPrompt(task) {
   return `You help a business analyst CHANGE an EXISTING A12 COMPUTATION on a model. A computation COMPUTES
 (fills in) a field's value from other fields. The model ALREADY has a computation; re-express it to meet a
 new requirement, KEEPING THE SAME computed field. Assume NO prior A12/rulekit knowledge; use ONLY:
-  - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <verb> --help\` a verb's parameters; \`${CLI} explain ${MODEL_FILE(task)} --computation ${task.computation}\` shows the existing computation, \`${CLI} schema add\` the computation-spec shape, \`${CLI} diff --help\` how to PREVIEW a re-expression read-only, \`${CLI} operators\` the DSL operators)
+  - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <verb> --help\` a verb's parameters; \`${CLI} explain ${MODEL_FILE(task)} --computation ${task.computation}\` shows the existing computation, \`${CLI} schema add\` the computation-spec shape, \`${CLI} modify --help\` (its \`--dry-run\` PREVIEWS a re-expression read-only), \`${CLI} operators\` the DSL operators)
   - the model file: ${MODEL_FILE(task)}
 Do NOT read any rulekit source, docs, tests, or *.md files. The existing computation to change: ${task.computation}.
 New requirement: "${task.intent}".
@@ -253,12 +253,14 @@ Report every entry via the structured-output tool: one {id, valid} per entry (va
   }
 }
 
-// ---- Recheck (modify-computation): authoritatively re-express each via `cli diff --computation` -------
-// A MODIFY isn't an add — it re-expresses an EXISTING computation in place. `diff --computation <name>
-// --spec <file>` is the kernel-authoritative gate: it `replaceComputation`s, re-binds (rejecting an
-// invalid re-expression with {valid:false} + exit 1), and emits the before/after with `changed`. A modify
-// "passes" recheck only when the kernel ACCEPTS it AND it is an actual change (changed:true) — a no-op
-// re-expression isn't a modification. Falls back to the agents' self-report if the rescore agent fails.
+// ---- Recheck (modify-computation): authoritatively re-express each via `cli modify … --dry-run` -------
+// A MODIFY re-expresses an EXISTING computation in place. `modify --computation <name> --spec <file>
+// --dry-run` is the kernel-authoritative gate run READ-ONLY: it `replaceComputation`s, re-binds (rejecting
+// an invalid re-expression with {valid:false} + exit 1), emits the before/after with `changed`, and writes
+// NOTHING (so the committed fixture is never mutated by the ~N parallel agents). A modify "passes" recheck
+// only when the kernel ACCEPTS it AND it is an actual change (changed:true) — a no-op isn't a modification.
+// (We drive the `modify` verb under test, read-only via --dry-run.)
+// Falls back to the agents' self-report if the rescore agent fails.
 
 const modCandidates = authoredMod.filter(r => r && r.out && r.out.computedField && (r.out.alternatives || []).length)
 let modAuthoritative = {}
@@ -276,8 +278,8 @@ if (modCandidates.length) {
   try {
     const rescore = await agent(
       `Authoritatively re-validate candidate A12 COMPUTATION MODIFICATIONS against the real kernel. For EACH
-entry below: write its \`spec\` (verbatim JSON) to its \`file\`, then run:
-  ${CLI} diff <entry.model> --computation <entry.computation> --spec <entry.file>
+entry below: write its \`spec\` (verbatim JSON) to its \`file\`, then run (READ-ONLY — \`--dry-run\` writes nothing):
+  ${CLI} modify <entry.model> --computation <entry.computation> --spec <entry.file> --dry-run
 This re-expresses the named existing computation. On ACCEPT it prints a diff JSON {"before","after","changed",…}
 and exits 0; on REJECT it prints {"valid":false,…} and exits non-zero. Entries:
 ${JSON.stringify(entries)}
