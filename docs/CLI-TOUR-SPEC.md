@@ -69,6 +69,7 @@ Two demos cover the read and the write/edit workflows; the method scales to more
 - ✅ **Multi-file** — `--include-dir` resolving an included model (`cli-edit-loop.md`).
 - **Comprehension** — read foreign rules back and explain them (the T7 family).
 - **Teaching / error paths** — deliberately author a wrong rule (inverted polarity, unguarded number) and show the lint/diagnostics fire. Needs the `LANG` pin above for the kernel's German messages.
+- **Runtime evaluation** — `eval-doc` a rule against a document instance that *should* and *should not* fire (the empirical polarity check `check` can't give), and `compute-doc` to show a field's computed value (and the empty-operand value/cleared cases). A strong fit for the teaching demo above — it makes "does this fire on real data?" visible.
 
 Two cross-cutting follow-ups:
 
