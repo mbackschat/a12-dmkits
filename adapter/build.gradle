@@ -41,7 +41,7 @@ dependencies {
     testImplementation "com.mgmtp.a12.kernel:kernel-md-document-api:${kernelVersion}"  // IDocument, IDocumentFactory, IEntityInstance
     testRuntimeOnly "com.mgmtp.a12.kernel:kernel-md-runtime-service:${kernelVersion}"  // DocumentDynamicRtService impl behind the facade
 
-    // modelkit (structure builder) — TEST-only: an ingest round-trip authors its model with it.
+    // modelkit (structure builder) — TEST-only: a read round-trip authors its model with it.
     testImplementation project(':modelkit')
 
     testImplementation platform('org.junit:junit-bom:5.11.4')

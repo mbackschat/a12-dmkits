@@ -13,5 +13,5 @@ include 'adapter'
 
 // The standalone CLI (proposal N10, docs/CLI-SPEC.md): the modeller/BA front-end — verbs + JSON I/O
 // over the engine. `application` plugin so dev runs go through `:cli:run`/`:cli:installDist` (no
-// jlink/jpackage in the inner loop). Depends on core now; +adapter when ingest/explain verbs land.
+// jlink/jpackage in the inner loop). Depends on core now; +adapter when read/explain verbs land.
 include 'cli'

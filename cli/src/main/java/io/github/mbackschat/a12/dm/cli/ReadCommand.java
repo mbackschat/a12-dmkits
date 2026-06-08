@@ -38,7 +38,7 @@ import picocli.CommandLine.Parameters;
  * richer, annotated read — {@code show} is the plain canonical render).
  */
 @Command(name = "read", mixinStandardHelpOptions = true,
-        description = "Show existing conditions as DSL, read back into rulekit's typed AST (one --rule, or --all for the whole model).")
+        description = "Read existing conditions as DSL, read back into rulekit's typed AST (one --rule, or --all for the whole model).")
 final class ReadCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

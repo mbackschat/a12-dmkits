@@ -21,7 +21,7 @@ dependencies {
     implementation project(':')
 
     // the opt-in kernel-adapter (internal a12internal read tier) — powers the read-back verbs
-    // (ingest/explain). Fine to bundle here: the CLI is an *app*, not a published library, so the
+    // (read/explain). Fine to bundle here: the CLI is an *app*, not a published library, so the
     // N8/D15 "no internal tier in core" rule doesn't apply to it; kernel types stay inside the adapter.
     implementation project(':adapter')
 

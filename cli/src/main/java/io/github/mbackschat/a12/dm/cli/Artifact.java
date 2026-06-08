@@ -3,7 +3,7 @@ package io.github.mbackschat.a12.dm.cli;
 import java.util.Optional;
 
 /**
- * The agent-facing dump artifacts (finding 13). Three JSONL (one self-contained JSON object per
+ * The agent-facing export artifacts (finding 13). Three JSONL (one self-contained JSON object per
  * line — {@code grep}/{@code jq} both work) plus the read-whole markdown skeleton. See CLI-SPEC §5.
  */
 enum Artifact {
