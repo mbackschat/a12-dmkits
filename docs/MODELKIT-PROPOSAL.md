@@ -4,7 +4,7 @@
 >
 > **Direction change (2026-06-09 — D10 superseded by Architecture A):** the kernel-free wall is being **dropped**. modelkit becomes a **sibling over a shared `core`** (may use `core` + the kernel), unified with rulekit on the `BoundModel` rep. The next increments (**M7+**) turn modelkit from build-from-scratch into the structure half of the **unified read → edit → write-back** goal (read · edit-in-place · delete · doc-config), structure constraints riding the kernel `checkConsistency` gate. The TS-twin guarantee rides **D9** (DM-JSON), not the wall. See §H "Direction" + ARCHITECTURE "the umbrella".
 
-modelkit = a typed, kernel-validated builder for document-model **structure** (fields, groups, type-defs, includes), the peer of rulekit's rule builder. ARCHITECTURE [§5.2 + "the umbrella"](ARCHITECTURE.md) decides *where the code goes*; this doc argues *whether it's worth it* and *what knowledge it would be built from*.
+modelkit = a typed, kernel-validated kit for document-model **structure** (fields, groups, type-defs, includes, doc config), the peer of rulekit's rule kit. It began as a build-from-scratch authoring builder (M1–M6); its go-forward scope is **read → edit → write-back** of an existing model (M7+, "Direction" §H — the use case). ARCHITECTURE [§5.2 + "the umbrella"](ARCHITECTURE.md) decides *where the code goes* (now: the `dm.modelkit` sibling package over `dm.core`); this doc argues *whether it's worth it* and *what knowledge it's built from*.
 
 ---
 
@@ -132,7 +132,7 @@ The spike honors the standing rules: kernel-mm is **read-only, own-words, EUPL**
 
 | Decision | Current lean | Trigger to revisit |
 |---|---|---|
-| **Module vs package** | Start as a **`structure` package** in core (crosses no kernel boundary → hasn't "earned" a module, §1). | Extract `:model-core` + `:modelkit` only when size/coupling justify it. |
+| **Module vs package** — *resolved 2026-06-09* | Extracted as `:modelkit` (2026-06-06), then **folded back into the root project as the `dm.modelkit` package** (D10 superseded — siblings over a shared core; the kernel-free wall is dropped). `dm.modelkit ⊥ dm.rulekit` is held by `SiblingBoundaryTest` (a package import sweep). The `:core`/`:rulekit` split stays deferred. | *Resolved* — see "Direction (2026-06-09)" + ARCHITECTURE "the umbrella". |
 | **Umbrella name — decided 2026-06-06** | Repo **`a12-dmkits`**; Maven group **`io.github.mbackschat.a12.dm`**; **package root `a12.dm`** with sub-packages `dm.core`/`dm.rulekit`/`dm.modelkit`/`dm.adapter`/`dm.cli` (1:1 to future subprojects); kits keep their names. Full rationale + diagram: [`ARCHITECTURE.md`](ARCHITECTURE.md) "the umbrella". The package-root rename (cheapest pre-publish) is the gateway; the repo rename + Gradle module split can lag. | modelkit is now a real peer (M1–M4) — the rename is the next pre-publish gate. |
 | **Schema-oracle provenance** | MM_ metamodels are the schema oracle but **EUPL** — re-express the *mechanism* (slots, the include scheme) in our own domain; never commit their content. | Each structural increment (same discipline as the rule corpus). |
 | **Source-artifact provenance on the index** (mirror of D14) | TBD — needed so include-aware editing later writes to the *owning* artifact. | When modelkit gains include-editing (beyond the MVP). |
@@ -140,7 +140,9 @@ The spike honors the standing rules: kernel-mm is **read-only, own-words, EUPL**
 
 ---
 
-## H. Spike outcome — current state & what's next (2026-06-05)
+## H. Spike outcome, and the go-forward plan (2026-06-05; plan extended 2026-06-09)
+
+> The spike result (M1–M6, read coverage) is below; **the current go-forward plan is the "Direction (2026-06-09)" subsection at the end** — read→edit→write-back, M7+.
 
 The §F spike ran (Q1–Q5, widened per owner direction with **Q4 betterbuilders**, **Q5 write-gate categories**, and a **Corpus-1** counterpart for Q1). Its headline result: foreign-rule read/explain now works on real models — the index resolves by name-path (the form conditions reference), so the kernel-mm metamodels *and* the A12 Tools apps read at the rates below. The earlier id-vs-name resolution gap that had blocked this, and its correction, are recorded as settled fact in [`KERNEL-INTEGRATION-NOTES.md`](KERNEL-INTEGRATION-NOTES.md) (the `getId()`≠path note) and [`KERNEL-FINDINGS.md`](KERNEL-FINDINGS.md) §10; this section keeps the **measured state and the forward plan**.
 
@@ -179,7 +181,9 @@ Corpus-1's tail skews toward date `Valid`/`Invalid` — the same F10 feature lis
 
 ### Verdict & grounded increment breakdown
 
-**modelkit is feasible and *not* blocked by the read finding** — it authors structure and emits DM-JSON (reusing `write.DmJson`), validated by `BasicConsistencyCheck`; it never reads. The slot inventory (Q2, cross-checked by Q4) is clear, the MVP is small, both oracles exist (Q5 write-gate; the kernel for deep checks).
+**modelkit is feasible and *not* blocked by the read finding** — it authors structure and emits DM-JSON (reusing `write.DmJson`), validated by `BasicConsistencyCheck`. The slot inventory (Q2, cross-checked by Q4) is clear, the MVP is small, both oracles exist (Q5 write-gate; the kernel for deep checks).
+
+> **Scope update (2026-06-09):** this verdict described the build-from-scratch MVP, which authored structure and **never read**. modelkit's scope now **expands to read → edit → write-back** (the use case) — see "Direction (2026-06-09)" below. The M1–M6 build-from-scratch foundation stands and is reused (the typed builders construct the nodes to insert); what's added is reading + in-place editing + delete over an existing model.
 
 Increments (each: typed builder slice + DM-JSON emit + kernel-validated, own-domain fixtures):
 
@@ -203,16 +207,28 @@ Increments (each: typed builder slice + DM-JSON emit + kernel-validated, own-dom
   - **Authoring — DONE:** (1) the marker is an `outer` flag on `FieldValue` (`[$path]`); (2) the DSL setters are `StringRef.outer()` / `NumberRef.outer()`; (3) `DslRenderer` emits `$` in the bracketed value form; (4) kernel-validity confirmed — an authored correlation is accepted by the real kernel (`adapter.OuterCorrelationAuthoringTest`; render EN/DE locked by `dsl.operators.CorrelationConditionTest`). Number + string handles carry it; date/enum ride the same `FieldValue.outer` mechanism once their handles expose `.outer()`.
   - **Read — complete 2026-06-07 (Corpus-1 87.0% → 95.0%, `$` opaques 127 → 0).** Three pieces: **(a)** thread the outer flag through every field-vs-field comparison kind (number/string/date/enum/category), `CurrentRepetition($group)`, **presence predicates** (`NoFieldFilled($a, $b)`, via `FieldRef.outer`), and **value-list operands** (`FieldListRef.outer`, threaded at the single `toFieldOperand` choke point); **(b)** the real lever — route a single field-list quantifier *with a `Having` filter* (`AtLeastOneFieldFilled(Group*/Field Having …)`) through `flattenScope`. That path previously converted by field-path only and **dropped the whole filter** — a silent corruption the N8 count-check caught (source `$`, rendered 0 → Opaque); fixing it converted the product-family overlap template (~60 rules). The blanket `refuseUnmodeledConstructs` guard is replaced by the **post-conversion count-check** `verifyOuterPreserved` (`countOuterRefs` vs rendered `[$`/`($`), so partial threading is **safe by construction** (`OuterCorrelationBackstopTest` drives it; `OuterCorrelationQuantifierReadTest` round-trips the overlap shape). **`$` correlation read is now complete — 0 `$` opaques in Corpus-1** (the last shape, a `$` on a wildcard value-list / multi-select operand, was cleared by `FieldListRef.outer`). The remaining opaques (64 then) are entirely unrelated constructs (firstFilled-resolution, `SumOfProducts`, date/time-extraction, …). **Follow-up (2026-06-07): the comparison tail — date-expression-on-the-left (`AddDays(date,n) == [field]`/`<= Today`) and arithmetic-on-both-sides (`([a]+1) == ([b]-2)`) — was cleared next, lifting Corpus-1 to 96.1% (1239/1289). Then the TIME + DATE_TIME value kinds (TIME ordering + DATE_TIME decomposition via `HoursFromTime`/`Date`/`TimeFromDateTime`/`*FromDate`) lifted it to 97.7% (1259/1289). The remaining tail then cleared completely — date-valued `FirstFilledValue`/`Max`/`Min` on the left, date shift by a field amount, `SumOfProducts`, `firstFilledEnum`, `Date(…)` construction + `Valid`/`Invalid`, group-scope `Sum`, field-level rounding (`RoundDownValue`/`AbsValue`), mixed group+field quantifiers, and field-valued value lists — reaching **100% (1289/1289, 0 opaque, 2026-06-07)**.**
 
-### Direction (2026-06-09) — M7+: from build-from-scratch to unified read → edit → write-back
+### Direction (2026-06-09) — M7+: the go-forward plan (read → edit → write-back)
 
-D10's kernel-free wall is **dropped** (ARCHITECTURE "the umbrella"; PROJECT-PROPOSAL D10 revised). modelkit becomes a **sibling over `core`** and joins rulekit on one shared `BoundModel` rep, turning the use case **read a DM → edit structure + rules → maybe delete → write back** into the Phase-3 deliverable. The next increments, earned iteratively:
+**This is the go-forward plan; the use case is the north star:** *read a DM → add fields/groups → add/modify rules → maybe delete → write back*, on one shared in-memory rep, reached **via iterations** and growing to **full support for ALL DM structures** (includes, typedefs, fields, groups, doc config, rules/computations) **and their constraints** (e.g. what's allowed at the top level). Today this is half-built — rulekit already does read→edit-rules→write-back (include-preserving); the gaps are **structure editing, a structure-read path, delete, full coverage,** and **unifying both kits on one rep.**
 
-- **M7 — read + round-trip identity:** enumerate an existing model's structure (fields/groups/includes/typedefs/config) off `BoundModel`; read → write-back with no edits = identity (modulo pretty-print).
-- **M8 — edit fields + groups:** add/modify/**delete** fields and groups over the source tree, surgically (the rulekit rule-edit pattern, extended), re-bound to the kernel gate.
-- **M9 — unify rules + structure in one edit session:** structure + rule/computation edits compose in a single read→edit→write-back flow.
-- **M10+ — full coverage:** includes, typedefs, **doc config** (`decimalSeparator`/`timeZone`/… currently hardcoded → settable), header metadata, and the placement/top-level constraints — mined from the MM_ metamodels + `BasicConsistencyCheck` categories, enforced by the kernel gate. Reaches "full support for ALL dm structures + their constraints."
+**Foundation — done (2026-06-09).** D10's kernel-free module wall is **dropped** (Architecture A — siblings over a shared `core`; ARCHITECTURE "the umbrella", PROJECT-PROPOSAL D10 revised). modelkit is now the `dm.modelkit` sibling **package** in the root project (folded in; `dm.modelkit ⊥ dm.rulekit` held by `SiblingBoundaryTest`), free to use `dm.core` + the kernel — the structural precondition for sharing rulekit's rep. TS portability rides **D9** (DM-JSON), not the wall.
 
-**Constraints — two tiers, no whack-a-mole:** make illegal states unrepresentable in the typed edit ops where cheap (as M1–M6 already do for build-from-scratch), and lean on the kernel `checkConsistency`/`BasicConsistencyCheck` gate for the full set — free on re-bind/write.
+**Design choice — edit the source tree, re-bind to the kernel.** Structure edits mutate the authored DM-JSON tree **surgically** (via `DmJson`, include-preserving) and **re-bind** through `ModelLoader`/`checkConsistency` to validate — the *same pattern rulekit already proves for rules*, extended to structure. modelkit's typed builders (M1–M6) are reused to **construct the node to insert**; the shared rep is the kernel-bound model (`BoundModel` / `ModelIndex` + the retained source), not a separate parallel draft tree (which would risk dropping unknown elements on re-emit).
+
+**Constraints — two tiers, no whack-a-mole.** (1) Make illegal states unrepresentable in the typed edit ops where cheap (as M1–M6 already do — `repeatable(<2)`, undeclared-typedef-ref, …). (2) Lean on the kernel `checkConsistency`/`BasicConsistencyCheck` gate for the **full** set — free on re-bind/write; map each `MVK_*`/category to a clear diagnostic. "What's allowed where" is **mined** from the existing oracles (the MM_ metamodels (Q2), the 16 `BasicDocumentModelConsistencyCategory` entries (Q5), the MVK ledger), per the anti-whack-a-mole rule.
+
+**The increments — earned iteratively, each runnable + red/green-locked:**
+
+| Increment | Plan phase | What |
+|---|---|---|
+| ✅ done | Phase 0 | record the decision — ARCHITECTURE / PROPOSAL / this doc carry Architecture A |
+| ✅ done | Phase 1 | siblings over core — modelkit folded into root; `SiblingBoundaryTest` guard; no behavior change |
+| **M7** | Phase 2 | **read structure + round-trip identity** — enumerate an existing model's structure off the bound model; read → write-back with no edits = identity (modulo pretty-print) |
+| **M8** | Phase 3 | **edit fields + groups** — add/modify/**delete** over the source tree (surgical + re-bind); CLI structure-edit verbs. Moves `DmJson` → `dm.core` (the first cross-kit consumer) |
+| **M9** | Phase 4 | **unify rules + structure in one edit session** — structure + rule/computation edits compose in a single read→edit→write-back flow |
+| **M10+** | Phase 5 | **full coverage** — includes, typedefs, **doc config** (`decimalSeparator`/`timeZone`/… hardcoded → settable), header metadata, placement/top-level constraints. Reaches "full support for ALL dm structures + their constraints" |
+
+**Deferred until first needed** (minimum code, nothing speculative): moving `DmJson` → `dm.core` lands with **M8**; extracting a `dm.core.BoundModel` substrate lands when **M9**'s unified session needs the shared type. Both are flagged pending in ARCHITECTURE (its core-box already shows the target).
 
 ---
 
