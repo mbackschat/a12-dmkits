@@ -9,7 +9,7 @@ Gradle units (core + adapter) plus the CLI — the standalone front-end — and 
 | Unit | Gradle | Depends on | Kernel coupling | Ships as | Status |
 |---|---|---|---|---|---|
 | **core + rulekit** | root project (`:`) | public kernel only | `kernel-md-facade` + public model API + serializer — **must not** touch `kernel-md-model`/`kernel-md-a12internal` (D15, enforced) | the library: typed builder, renderer, validator, diagnostics, context projections, DM-JSON write path (`dm.core` + `dm.rulekit.*`; the core↔rulekit Gradle split stays deferred) | Phase 1 ✅ |
-| **modelkit** | `:modelkit` subproject | **none** — Jackson only (no kernel, no core/rulekit) | none | the standalone structure builder (`DocumentModelDraft`); compiler-enforces structure⊥dsl (D10). Test-only consumer of `:` (tests share fixtures + the kernel oracle) | Phase 3 — M1–M6 ✅, extracted 2026-06-06 |
+| **modelkit** | `:modelkit` subproject | **none** — Jackson only (no kernel, no core/rulekit) | none | the standalone structure builder (`DocumentModelDraft`); compiler-enforces structure⊥dsl (D10). Test-only consumer of `:` (tests share fixtures + the kernel oracle). **→ target: sibling over `:core` (uses core+kernel); the D10 wall is dropped (2026-06-09, see "the umbrella" §5.2) — implementation pending** | Phase 3 — M1–M6 ✅, extracted 2026-06-06 |
 | **adapter** | `:adapter` subproject | `api project(':')` + kernel internal-read modules | the `a12internal` **read** tier (`parsetree-api`, `tool-api`, `DocumentModelService`) under N8 guardrails | opt-in Java-only module: read, explain-support, whereUsed, diff helper | Phase 2, bootstrapped ✅ |
 | **cli** | `:cli` subproject (`application` plugin) | core now (**+ adapter** as read/explain verbs land) | inherits adapter's once added (bundled inside the binary, not a library surface) | the **standalone, zero-toolchain front-end for the modeller/BA (N10)** — verbs + JSON in/out; self-contained app-image (JVM bundled). Detail: [`CLI-SPEC.md`](CLI-SPEC.md) | Phase 2 — `export`/`describe`/`validate`/`check`/`add` ✅ |
 | **skill** | *(no module)* | — | — | the N1 Claude Code skill (`skill/SKILL.md`): teaching material for **both** persona loops (dev in-repo; BA via CLI) + the `MVK_*` fix table; read by the agent, not a code dep | Phase 2 — first draft ✅ |
@@ -174,30 +174,46 @@ The CLI's heavy costs are **distribution, not code**: self-contained packaging a
 
 | Proposed part | TBD — home | Note |
 |---|---|---|
-| **modelkit** (Phase 3, fork #8) — build/edit document-model *structure* (fields, groups, type-defs, includes) and save back, include-preserving | **`structure` layer parallel to `dsl`**, over the shared base — *not* on top of rulekit | uses public DM-JSON only (D9; no `betterbuilders`); the MM_Common metamodels are its schema oracle. See "the umbrella" below. |
+| **modelkit** (Phase 3, fork #8) — read/build/edit document-model *structure* (fields, groups, type-defs, includes, doc config) and save back, include-preserving | **sibling over `:core`** (may use core + kernel) — *not* on top of rulekit; the shared rep is `BoundModel` | uses public DM-JSON only (D9; no `betterbuilders`); the MM_Common metamodels + `BasicConsistencyCheck` categories are its constraint oracle. D10 wall dropped 2026-06-09 — see "the umbrella" below. |
 | **Codegen refs** (Phase 3) — static navigation counterpart to `context` (generated schema handles) | **TBD: new `codegen` unit** | jOOQ's generated-schema analogue; the L2b static counterpart to runtime navigation |
 | **TypeScript twin** (Phase 4, **design-informing only — do not propose implementation**) | **TBD: parallel implementation** | builds the same `model` index from the same DM-JSON content, shares the catalog JSON spine + DM-JSON write path. The public-only core boundary (§3) and data-only out-surface (§4) are precisely what keep this possible — do not let kernel types or internal-tier coupling leak into core, or the twin becomes impossible |
 
-### The umbrella (D10 revisit, 2026-06-05) — parallel kits over one model-core
+### The umbrella — siblings over a shared core (D10 superseded by Architecture A, 2026-06-09)
 
-modelkit and rulekit are **parallel layers over a shared model-core**, not one atop the other. Target shape once modelkit ships as a peer:
+> **Decision (2026-06-09): drop D10, keep D9, unify on `BoundModel`.** modelkit and rulekit become **siblings over a shared `core` substrate** (Architecture A), each free to use `core` + the kernel; **neither imports the other**. This **supersedes** the earlier D10 framing where `:modelkit` was a kernel-free, Jackson-only island whose `structure⊥dsl` boundary was compiler-enforced by module isolation.
+>
+> **Why the wall didn't earn its keep.** It never fully held — all 8 modelkit tests already live in the *root* project and use `core.ModelLoader` + the kernel as the oracle, because "the real kernel is the oracle" can't coexist with a kernel-free module. And what the wall protected — a TypeScript twin — is remote ("design-informing only", §16 Phase 4) and, even if built, is build+render only (no read/validation, §13). The thing that actually keeps a TS twin possible is **D9** (DM-JSON as the public write surface), which is independent of the wall and survives untouched. Meanwhile the wall *cost* the unified read→edit→write-back goal: it forces a two-rep design (a JSON tree for structure + a transient `BoundModel` for rules) instead of one shared rep. So we trade the wall for the unified rep. The `a12-dmkits` umbrella name + `dm.*` package root **stay** — only the kernel-free isolation is dropped.
+>
+> **Status: decided, implementation pending.** The "(today)" sections above still describe the current module reality (`:modelkit` standalone) until the refactor lands; this section + the roadmap in [`MODELKIT-PROPOSAL.md` §H](MODELKIT-PROPOSAL.md) are the agreed target.
+
+**Target shape — siblings over `core`:**
 
 ```
  <repo: a12-dmkits   ·   package root: io.github.mbackschat.a12.dm>
-  ├── :core      (dm.core)      index/read · GENERIC dsl-free DM-JSON write · validate · diagnostics   ← shared base
-  ├── :rulekit   (dm.rulekit)   catalog · AST/dsl · rule builders            ── over :core
-  ├── :modelkit  (dm.modelkit)  Field/Group/TypeDef builders (structure)     ── standalone: Jackson only (no core, no rulekit) ✅ split out
-  ├── :adapter   (dm.adapter)   internal-tier read — serves the kits
-  └── :cli       (dm.cli) · skill   front-ends spanning the kits
+
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │ :core (dm.core)  BoundModel (kernel-bound rep) · ModelIndex (field/group  │
+  │   access) · ModelLoader · GENERIC DmJson write · the Rule/Computation     │
+  │   node · kernel-md-facade gate                              ← shared base │
+  └──────────────────────────▲────────────────────────▲─────────────────────┘
+                 depends on   │                        │   depends on
+        ┌─────────────────────┘                        └──────────────────────┐
+   :modelkit (dm.modelkit)                          :rulekit (dm.rulekit)
+   structure editing: fields · groups ·             condition/computation DSL —
+   includes · typedefs · doc config                 author/read/render/validate;
+                                                     fills the node's condition
+        :modelkit  ⊥  :rulekit   (siblings — neither imports the other)
+                              ▲
+        :adapter (internal-tier read, serves the kits) · :cli + skill (front-ends)
 ```
 
-In today's package graph (§2) this means `modelkit` sits **beside `dsl`**, both over `model`/`validate`/`write` — `modelkit` must not depend on `dsl`. **The `:modelkit` module now exists (M1–M6; extracted 2026-06-06):** `DocumentModelDraft` authors a model from scratch and emits DM-JSON, kernel-validated through both gates — Jackson-only, zero kernel/`dsl` coupling, and that boundary is now **compiler-enforced** by the separate module (its main can't import `dm.core`/`dm.rulekit`). Detail: [`MODELKIT-PROPOSAL.md`](MODELKIT-PROPOSAL.md) §H.
+modelkit is a **sibling over `core`** (may use `core` + the kernel), no longer a Jackson-only island. The shared in-memory rep is **`BoundModel`**; the *edit substrate* is its source DM-JSON tree — surgical, include-preserving, re-bound to the kernel gate (the same pattern rulekit proves for rules). Detail: [`MODELKIT-PROPOSAL.md`](MODELKIT-PROPOSAL.md) §H.
 
-**The one prep that enables it — ✅ done 2026-06-05:** the generic, `dsl`-free half is now `write.DmJson` (`insertIntoGroup`/`groupElements`/`findElement`, include-preserving), and `write.ModelWriter` (the `Rule`-node knowledge) builds on it. modelkit's structural write reuses `DmJson` directly. Still TBD: **source-artifact provenance** on the index (mirror of D14) so include-aware editing later writes to the owning artifact.
+**The prep that enables it — ✅ done 2026-06-05:** the generic, `dsl`-free write half is `write.DmJson` (`insertIntoGroup`/`groupElements`/`findElement`, include-preserving); `write.ModelWriter` (the `Rule`-node knowledge) builds on it. The refactor moves `DmJson` (and the Rule/Computation node) down into `:core` so both kits share it. Still TBD: **source-artifact provenance** on the index (mirror of D14) so include-aware editing later writes to the owning artifact.
 
-**Name — decided 2026-06-06:** repo **`a12-dmkits`** (plural: a collection of kits for the document model); Maven group **`io.github.mbackschat.a12.dm`**, artifacts `a12-dmkits-{core,rulekit,modelkit,adapter,cli}`; Java **package root `io.github.mbackschat.a12.dm`** — deliberately short (it prefixes every package; the longer descriptive name lives in the repo/Maven id, à la `spring-framework`/`org.springframework`). Sub-packages map 1:1 to the future subprojects: **`dm.core`** (shared — named `core`, not `model`, to avoid the `dm.model`/`dm.modelkit` look-alike) · **`dm.rulekit`** (catalog/dsl/context/lint/validate-`RuleValidator`/write-`ModelWriter`) · **`dm.modelkit`** (structure) · **`dm.adapter`** · **`dm.cli`**. The kits keep their names — no concept rename. `dm` = document model (the project's own vocabulary, DM-JSON).
+**Name — decided 2026-06-06 (unchanged):** repo **`a12-dmkits`** (plural: a collection of kits for the document model); Maven group **`io.github.mbackschat.a12.dm`**, artifacts `a12-dmkits-{core,rulekit,modelkit,adapter,cli}`; Java **package root `io.github.mbackschat.a12.dm`** — deliberately short (it prefixes every package; the longer descriptive name lives in the repo/Maven id, à la `spring-framework`/`org.springframework`). Sub-packages map 1:1 to the subprojects: **`dm.core`** (shared — named `core`, not `model`, to avoid the `dm.model`/`dm.modelkit` look-alike) · **`dm.rulekit`** (catalog/dsl/context/lint/validate-`RuleValidator`/write-`ModelWriter`) · **`dm.modelkit`** (structure) · **`dm.adapter`** · **`dm.cli`**. The kits keep their names — no concept rename. `dm` = document model (the project's own vocabulary, DM-JSON).
 
-**Rename trigger & timing (D10):** the trigger fired — modelkit is a real peer (M1–M6), so the rename to **`a12-dmkits`** is underway. **Done (2026-06-06):** the Java package root (`io.github.mbackschat.a12.dm.*`), the Maven group (`io.github.mbackschat.a12.dm`), the Gradle `rootProject.name` (`a12-dmkits`), the CI checkout dir, and all in-repo doc/text references. **Remaining (owner action — external, deferred):** the GitHub repo rename + the local on-disk directory rename, plus any sibling-clone references in `a12-kernel-bootstrap`. The in-repo config is name-independent of those (CI's `path:` is the runner's own checkout dir, not the GitHub repo name; the build reads the *parent* dir, not its own name), so nothing breaks in the window before the external rename. The layout **pre-stages the module split** (each `dm.<x>` = a future subproject). **`:modelkit` is now split out** (2026-06-06 — its main is Jackson-standalone, the cleanest boundary); the `:core`/`:rulekit` split stays deferred (tightly coupled, most-shared test fixtures — low boundary value).
+**D10 evolution (was: rename trigger & timing).** The `a12-dmkits` rename is **done (2026-06-06):** the Java package root (`io.github.mbackschat.a12.dm.*`), the Maven group, the Gradle `rootProject.name`, the CI checkout dir, and all in-repo doc references. **Remaining owner action (external, deferred):** the GitHub repo + local on-disk directory rename, plus any sibling-clone references in `a12-kernel-bootstrap` (the in-repo config is name-independent — CI's `path:` is the runner's own checkout dir; the build reads the *parent* dir, not its own name — so nothing breaks before the external rename). **What changed 2026-06-09:** the `structure⊥dsl` **kernel-free isolation is dropped** (Architecture A above) — `:modelkit` will depend on `:core` (+ kernel) and its tests move out of root into the module; the `:core`/`:rulekit` split stays deferred (tightly coupled, most-shared test fixtures — low boundary value).
 
 ## 6. Maintenance
 
