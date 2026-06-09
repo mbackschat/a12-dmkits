@@ -1,10 +1,10 @@
 rootProject.name = 'a12-dmkits'
 
-// modelkit (docs/MODELKIT-PROPOSAL / ARCHITECTURE §5.2): the standalone, Jackson-only document-model
-// *structure* builder. Its own module so the structure⊥dsl boundary (D10) is compiler-enforced — its
-// main can't import core/rulekit. Consumed in TEST scope by the root project and :adapter (nothing in
-// core/rulekit/adapter main uses it).
-include 'modelkit'
+// modelkit (docs/MODELKIT-PROPOSAL §H, ARCHITECTURE "the umbrella") folded into the root project as the
+// `dm.modelkit` package layer (2026-06-09 — D10 superseded by Architecture A: siblings over a shared
+// core). The `dm.modelkit ⊥ dm.rulekit` sibling boundary is enforced at the package level by the
+// import-sweep test `SiblingBoundaryTest` (no longer by module isolation). modelkit may now use
+// `dm.core` + the public kernel surface.
 
 // The kernel-adapter (proposal D15/N8): an opt-in, Java-only module that consumes the kernel's
 // a12internal *read* surface (parser/formatter/meta) — never part of the shipped, polyglot core.

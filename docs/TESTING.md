@@ -11,13 +11,14 @@ Consequence: the kernel is an unstable dependency, so the suite is also an **ear
 ## Where tests live (module map)
 
 ```
-:            (core)      src/test/…        — DSL render, F4 mechanics, accept/reject laws, structural guardians
-:adapter     (opt-in)    adapter/src/test/… — read round-trip, runtime laws, kernel-coupling canaries, corpus harnesses
-:cli                     cli/src/test/…     — verb I/O contract, batch, explain
-:modelkit                (tests run in the aggregate :test set)
+:            (core+rulekit+modelkit)  src/test/…        — DSL render, F4 mechanics, accept/reject laws,
+                                                          structural guardians, modelkit structure tests,
+                                                          SiblingBoundaryTest (dm.modelkit ⊥ dm.rulekit)
+:adapter     (opt-in)                 adapter/src/test/… — read round-trip, runtime laws, kernel-coupling canaries, corpus harnesses
+:cli                                  cli/src/test/…     — verb I/O contract, batch, explain
 ```
 
-The aggregate `./gradlew test` runs core + modelkit; `:adapter:test` and `:cli:test` are separate (the adapter is the opt-in kernel-coupling tier, kept out of core's `:test`).
+modelkit folded into the root `:` project (2026-06-09 — no longer a `:modelkit` module); its tests live in the root test set alongside rulekit's. The aggregate `./gradlew test` runs core + rulekit + modelkit; `:adapter:test` and `:cli:test` are separate (the adapter is the opt-in kernel-coupling tier, kept out of core's `:test`).
 
 ## The kinds of test
 

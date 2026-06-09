@@ -32,9 +32,9 @@ dependencies {
     // The operator catalog (proposal §9) is a bundled JSON resource parsed at load time.
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
 
-    // modelkit (the structure builder) is its own module (D10 boundary). Core/rulekit MAIN never use
-    // it — only tests do: the dogfood fixtures (ModelDrafts) and a few DSL tests author models with it.
-    testImplementation project(':modelkit')
+    // modelkit (the structure builder) now lives in this module's `dm.modelkit` package (folded in
+    // 2026-06-09 — D10 superseded). Its dogfood fixtures (ModelDrafts) + tests are in this project's
+    // test set; the `dm.modelkit ⊥ dm.rulekit` boundary is held by `SiblingBoundaryTest`.
 
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'

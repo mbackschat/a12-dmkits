@@ -45,8 +45,8 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-    // build multi-file include/typedef workspaces in tests (the modeller's authoring kit)
-    testImplementation project(':modelkit')
+    // modelkit (the modeller's authoring kit, used to build multi-file include/typedef workspaces in
+    // tests) folded into the root project (2026-06-09) — its classes arrive via `implementation project(':')`.
 }
 
 application {
