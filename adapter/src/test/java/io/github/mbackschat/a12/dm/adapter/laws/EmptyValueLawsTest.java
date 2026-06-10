@@ -127,6 +127,42 @@ class EmptyValueLawsTest {
     }
 
     @Test
+    void emptyStringDoesNotViolateAPattern() {
+        // the pattern comparisons ride the string column of the §2 table: an empty value is NOT
+        // evaluated (RuntimeController.vergleichePatternSTRING returns unknown on no-value) — so
+        // PatternViolated does NOT fire on an empty field, the polarity-adjacent trap ("empty
+        // surely violates my format" — no: absence needs FieldNotFilled, not a pattern)
+        String model = RuntimeLaws.withRule(ORDER, "/Order", "CodeFormat", "../ProductCode", "CODE_FORMAT",
+                "[ProductCode] PatternViolated \"[A-Z]{3}\"");
+
+        assertFalse(RuntimeLaws.fires(model, "CODE_FORMAT", ORDER_ROW, Set.of("/Order/ProductCode"), FILLED_ROW),
+                "an empty string does not violate the pattern — the comparison is not evaluated");
+        assertTrue(RuntimeLaws.fires(model, "CODE_FORMAT", ORDER_ROW,
+                Map.of("/Order/CustomerName", "Acme", "/Order/ProductCode", "abc")),
+                "a filled value that misses the (anchored) pattern fires");
+        assertFalse(RuntimeLaws.fires(model, "CODE_FORMAT", ORDER_ROW,
+                Map.of("/Order/CustomerName", "Acme", "/Order/ProductCode", "ABC")),
+                "a conforming value does not fire");
+    }
+
+    @Test
+    void operandListMinSeesAnEmptyNumberAsZero() {
+        // the starred aggregates SKIP empty operands (MinValue ignores missing rows — canonical §2,
+        // locked in RepetitionLawsTest); the operand-list Min/Max take every operand, so an empty
+        // number operand arrives as the substituted 0 and WINS the Min — the families differ exactly
+        // on empty handling (the Combiner contract's testValidity flag)
+        String model = RuntimeLaws.withRule(ORDER, "/Order", "MinZero", "../Quantity", "MIN_ZERO",
+                "Min([Quantity], [BackorderQuantity]) == 0");
+
+        assertTrue(RuntimeLaws.fires(model, "MIN_ZERO", ORDER_ROW, Set.of("/Order/Quantity"),
+                Map.of("/Order/CustomerName", "Acme", "/Order/BackorderQuantity", "5")),
+                "Min(∅→0, 5) = 0 — the operand-list form substitutes, it does not skip");
+        assertFalse(RuntimeLaws.fires(model, "MIN_ZERO", ORDER_ROW,
+                Map.of("/Order/CustomerName", "Acme", "/Order/Quantity", "3", "/Order/BackorderQuantity", "5")),
+                "Min(3, 5) = 3 — no empty operand, no zero");
+    }
+
+    @Test
     void emptyDateIsNotEvaluated() {
         // an empty DATE is not evaluated (like string/boolean, unlike number=0). DifferenceInDays avoids
         // the §6 date-literal syntax: DifferenceInDays(a, b) = b - a (verified), so Delivery before Order

@@ -128,6 +128,15 @@ In DM-JSON, a category's `values` list pairs **positionally** with the enumerati
 - **The rounding operators are directional, not truncation** (`BigDecimalUtils`, second drain): `RoundDown` is **FLOOR** (toward −∞: `RoundDown(−1.4) = −2`), `RoundUp` is **CEILING** (`RoundUp(−1.4) = −1`), `RoundAccounting` is **HALF_UP** (away from zero on the .5 boundary, both signs). The negative-value behavior is the modeller trap — "down" does not mean "toward zero".
 - **A scale-19 `HALF_UP` pre-rounding precedes every target-scale rounding** — and here it *is* observable: division artifacts can't leak through a rounding, `RoundDown([q]/3*3, 0) == [q]` fires for `q=1` (without the pre-round, the internal `0.99…9` would floor to 0). *(Locked: `adapter.laws.RoundingLawsTest`.)*
 
+## §2 supplement — patterns skip empties; operand-list `Min`/`Max` do not (runtime, 2026-06-10, RT-semantics drain)
+
+Two more edges of the §2 empty-value table, drained from `RuntimeController` and the `Combiner` contract's `testValidity` flag:
+
+- **An empty string does not violate a pattern** — `PatternViolated` rides the string column (not evaluated on empty; `vergleichePatternSTRING` returns unknown), so it does **not** fire on an absent value. "Empty surely violates my format" is the trap — absence needs `FieldNotFilled`, not a pattern. (A fired pattern comparison is always a *value* error — there is no fillable branch.)
+- **The operand-list `Min`/`Max` substitute an empty number as 0; the starred aggregates skip it.** `Min([A], [B])` with `A` empty evaluates `Min(0, B)` — the 0 wins — while `MinValue(G*/F)` ignores unspecified operands (canonical §2). The two list-op families differ exactly on empty handling (the kernel's `EntityListOperations` vs `ListOperOps` split).
+
+*(Locked: `adapter.laws.EmptyValueLawsTest.emptyStringDoesNotViolateAPattern` / `operandListMinSeesAnEmptyNumberAsZero`.)*
+
 ## §2 supplement — `Length("")` is 0, evaluated (runtime, 2026-06-10, RT-semantics drain)
 
 The §2 table says an empty **string** leaves a comparison *not evaluated* — but `Length()` coerces the string to a NUMBER, and the kernel returns **0 for an empty string rather than the unknown state** (`BigDecimalUtils.laenge`, whose comment states exactly this design choice). So `Length(F) < 5` **fires** on an empty `F` in a filled row — the string family has its own empty-as-0 backdoor, the same trap as the number column, needing the same `FieldFilled` guard. *(Locked: `adapter.laws.EmptyValueLawsTest.lengthOfAnEmptyStringIsZero_evaluatedUnlikeAComparison`.)*
