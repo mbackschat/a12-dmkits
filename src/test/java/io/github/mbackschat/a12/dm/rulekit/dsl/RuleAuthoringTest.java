@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
+import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
@@ -180,6 +181,38 @@ class RuleAuthoringTest {
                 .message(en("ok"), de("ok"), Dsl.text("fr_FR", "d'accord"));
         IllegalStateException ex = assertThrows(IllegalStateException.class, builder::build);
         assertTrue(ex.getMessage().contains("fr_FR"), ex::getMessage);
+    }
+
+    @Test
+    void rejectsAReservedVkVkRuleName() {
+        // The kernel reserves names beginning vk_vk, any letter case (MVK_RULE_NAME_INVALID;
+        // KERNEL-FINDINGS "Reserved rule-name prefix") — pre-checked with the code named.
+        NumberRef fee = m.num("/Subscription/Addons/MonthlyFee");
+        var builder = m.rule(m.group("/Subscription/Addons"))
+                .name("VK_VK_FeeRule")
+                .errorField(fee)
+                .when(fee.filled().and(fee.le(0)))
+                .code("RESERVED")
+                .severity(Severity.ERROR)
+                .message(en("x"), de("x"));
+        PrecheckException ex = assertThrows(PrecheckException.class, builder::build);
+        assertEquals(java.util.Optional.of("MVK_RULE_NAME_INVALID"), ex.diagnostic().code());
+    }
+
+    @Test
+    void rejectsDuplicateMessageLocales() {
+        // The kernel rejects two messages for one locale (MVK_LANGUAGE_DUPLICATE) — pre-checked,
+        // where the old behavior let the coverage check silently pass duplicates through.
+        NumberRef fee = m.num("/Subscription/Addons/MonthlyFee");
+        var builder = m.rule(m.group("/Subscription/Addons"))
+                .name("DupLocaleRule")
+                .errorField(fee)
+                .when(fee.filled().and(fee.le(0)))
+                .code("DUP")
+                .severity(Severity.ERROR)
+                .message(en("first"), en("second"), de("ok"));
+        IllegalStateException ex = assertThrows(IllegalStateException.class, builder::build);
+        assertTrue(ex.getMessage().contains("MVK_LANGUAGE_DUPLICATE"), ex::getMessage);
     }
 
     @Test

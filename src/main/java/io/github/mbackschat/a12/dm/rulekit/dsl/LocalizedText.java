@@ -13,12 +13,21 @@ public record LocalizedText(String locale, String text) {
      * The locale law (kernel-verified): messages must cover <em>every</em> declared locale
      * ({@code MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING}); rulekit additionally rejects messages for
      * <em>undeclared</em> locales — the kernel tolerates those silently, which usually hides a typo
-     * or dead text.
+     * or dead text — and <em>duplicate</em> locales, which the DM-JSON load tier also tolerates
+     * silently (one text wins; {@code MVK_LANGUAGE_DUPLICATE} fires only in the model-as-document
+     * tier — {@code validate.laws.RuleSlotLawsTest}).
      */
     static void checkDeclared(java.util.List<String> declaredLocales,
             java.util.List<LocalizedText> messages, String what) {
         java.util.Set<String> used = new java.util.LinkedHashSet<>();
-        messages.forEach(m -> used.add(m.locale()));
+        for (LocalizedText message : messages) {
+            if (!used.add(message.locale())) {
+                throw new IllegalStateException("the " + what + " has more than one message for locale '"
+                        + message.locale() + "' (the kernel's model-as-document tier rejects duplicates with"
+                        + " MVK_LANGUAGE_DUPLICATE; the DM-JSON tier silently keeps one text)"
+                        + " — keep exactly one text per locale");
+            }
+        }
         for (String declared : declaredLocales) {
             if (!used.contains(declared)) {
                 throw new IllegalStateException("the " + what + " is missing an error message for"

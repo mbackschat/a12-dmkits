@@ -179,6 +179,10 @@ public record Rule(
         public Rule build() {
             check(name != null && !name.isBlank(), "RK_INCOMPLETE_RULE",
                     "a rule needs a name (the element name in its group)", null);
+            check(!name.regionMatches(true, 0, "vk_vk", 0, 5), "MVK_RULE_NAME_INVALID",
+                    "rule names beginning with vk_vk (any letter case) are reserved by the kernel"
+                            + " (it rejects them with MVK_RULE_NAME_INVALID) — pick a different name",
+                    "name(...) without the vk_vk prefix");
             check(errorField != null, "RK_INCOMPLETE_RULE",
                     "a rule needs an error field — errorField(...)", "errorField(...)");
             check(condition != null, "RK_INCOMPLETE_RULE",

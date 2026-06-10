@@ -87,7 +87,7 @@ Caveats that hold across all four paths:
 | `MVK_INVALID_DATE_TYPE_FOR_OP` | kernel-delegated | `ValueAsDate` requires a *partially known date* field (a `DateType` with a date precision other than FULL); a plain `DateType` / `DATE_FRAGMENT` draws this. rulekit does not pre-check the field's precision — the kernel arbitrates (F4/N7). Verified 2026-06-07 (family 4 / `ValueAsDate`) |
 | `MVK_INVALID_DIGIT_FOR_ROUNDING` | pre-checked + kernel-delegated | `Rounding` pre-checks decimal places ≥ 0 (typed `int`); the kernel’s upper bound (≤ 14) stays F4’s |
 | `MVK_INVALID_ENTITY` | pre-checked + kernel-delegated | handles + CLI pre-flight pre-check existence; the known exception is the included-field mount-path translation (KERNEL-FINDINGS §10, fork-9) where F4 arbitrates |
-| `MVK_INVALID_INTERVAL` | pre-checked + kernel-delegated | `RangeAsString/AsNumber` pre-check bounds ≥ 0; the kernel’s 0 < start ≤ end law stays F4’s. Candidate tightening |
+| `MVK_INVALID_INTERVAL` | pre-checked | `RangeAsString/AsNumber` enforce the full interval law (1-based, 0 < start ≤ end) with the code named (tightened from ≥ 0 on 2026-06-10; locked: `dsl.operators.RangeOperandTest`) |
 | `MVK_INVALID_ITERATION_IN_FILTER_CONDITION` | kernel-delegated | a filter may iterate only over levels the filtered field stars; a ref to a field iterating over a different group needs the `$` operator (`[$L/F2]`) — the typed API renders `$` correctly and the kernel arbitrates. KERNEL-FINDINGS §9 (cross-checked vs the kernel-team BA doc), `adapter.laws.CorrelationLawsTest` |
 | `MVK_INVALID_LENGTH_OF_RAW_TYPE` | kernel-delegated | law: no-value-validation fields allow only the strict `Length(f) > n` shape — model data, F4 arbitrates |
 | `MVK_INVALID_NUMBER_FOR_EXP` | kernel-delegated | law: an exponent must be a whole number (no fractional digits) — `Arithmetic POWER` operands are untyped `Calculation`s, F4 arbitrates |
@@ -263,7 +263,7 @@ Caveats that hold across all four paths:
 | `MVK_ERROR_MESSAGE_AND_NO_PATTERN` | n/a-structural | string-type law: a type-level error message is only allowed together with a pattern |
 | `MVK_ERROR_MESSAGE_AND_PATTERN_INVALID` | n/a-structural | string-type law: a pattern-bearing type must carry a custom error message |
 | `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING` | pre-checked + n/a-structural | typed builder requires a message per declared locale (KERNEL-FINDINGS §13; locked: `RuleAuthoringTest`); the CLI `add` path delegates the same law to post-write re-validation (never mutates on failure). Also carried as a string-type-messages law — n/a-structural there |
-| `MVK_ERROR_MESSAGE_MISSING` | pre-checked | builders require ≥1 message (locked: `RuleAuthoringTest`); a blank-text message serializes as missing and draws this code at F4 instead (probe-verified 2026-06-10, KERNEL-FINDINGS §13) |
+| `MVK_ERROR_MESSAGE_MISSING` | pre-checked | builders require ≥1 message (locked: `RuleAuthoringTest`); a blank-text message serializes as missing and draws this code at F4 instead (KERNEL-FINDINGS §13; locked: `validate.laws.RuleSlotLawsTest`) |
 | `MVK_FORMAT_DATE_RANGE_MISSING` | n/a-structural | date-type law: a date-range type needs a range format |
 | `MVK_FORMAT_MISSING` | n/a-structural | date-type law: a date type needs a format |
 | `MVK_FRACT_DIGITS_INVALID` | n/a-structural | number-type law: the fixed/max fractional-digits pair must be consistent |
@@ -278,7 +278,7 @@ Caveats that hold across all four paths:
 | `MVK_INVALID_SORTINFO` | n/a-structural | (root-)group law: sort info is only allowed on a repeatable group |
 | `MVK_INVALID_SORT_PRIO` | n/a-structural | sort law: a priority must not exceed the number of sort entries (priorities form 1..n) |
 | `MVK_LANGUAGES_DUPLICATE` | n/a-structural | type-text law: message/hint-list languages unique per type |
-| `MVK_LANGUAGE_DUPLICATE` | kernel-delegated | duplicate message locales are representable (messages are a list; the coverage check tracks a set) — F4 arbitrates. Candidate pre-check |
+| `MVK_LANGUAGE_DUPLICATE` | pre-checked | `LocalizedText.checkDeclared` rejects duplicate locales with the code named (locked: `RuleAuthoringTest`). **Corrected 2026-06-10:** the DM-JSON load tier silently tolerates duplicates (one text wins) — this metamodel rule fires only in the model-as-document tier; tolerance locked: `validate.laws.RuleSlotLawsTest` |
 | `MVK_LANGUAGE_FOR_VALUES_MISSING` | n/a-structural | hint-list law: a list with values must name its language |
 | `MVK_LANGUAGE_INVALID` | pre-checked + n/a-structural | rule carrier: `LocalizedText.checkDeclared` rejects a message locale the model does not declare (stricter than runtime, which ignores extra-locale texts; locked: `RuleAuthoringTest`); the type-level text carriers are n/a-structural |
 | `MVK_LANGUAGE_MISSING` | n/a-structural | type-text law: a type-level message/values block must name its language |
@@ -304,7 +304,7 @@ Caveats that hold across all four paths:
 | `MVK_NAME_INVALID_H_DV` | n/a-structural | field law: name character/format validity (custom check, legacy variant) |
 | `MVK_NAME_MISSING` | pre-checked + n/a-structural | rule carrier: `Rule.build()` requires a non-blank name (`RK_INCOMPLETE_RULE`; locked: `RuleAuthoringTest`/`PrecheckDiagnosticTest`); the field/group/root-group/enum-category name carriers are n/a-structural |
 | `MVK_NAME_ROOT_GROUP_DUPLICATE` | n/a-structural | model law: root-group names must be unique |
-| `MVK_NAME_RULES_DUPLICATE` | kernel-delegated | `add` does not pre-check a name collision with an existing rule in the group — the post-write re-validation arbitrates (never mutates on failure). Candidate pre-check via `ModelIndex` |
+| `MVK_NAME_RULES_DUPLICATE` | kernel-delegated | a same-group name collision is rejected by the kernel’s deserialize/convert tier (“two child elements with the same name”, an `IllegalArgumentException`) **before** this metamodel rule can fire — the earlier tier shadows it (locked: `validate.laws.RuleSlotLawsTest`); `add` never mutates on failure. Candidate friendlier pre-check via `ModelIndex` |
 | `MVK_NAME_STARTS_WITH_DIGIT` | n/a-structural | root-group law: names must not begin with a digit (new-world models) |
 | `MVK_NAME_STARTS_WITH_DIGIT_A12_DV` | n/a-structural | field law: new-world names must not start with a digit |
 | `MVK_NAME_STARTS_WITH_DIGIT_H_DV` | n/a-structural | field law (legacy): qualified names must not start with a digit |
@@ -318,7 +318,7 @@ Caveats that hold across all four paths:
 | `MVK_ROOT_GROUP_NAME_INVALID` | n/a-structural | root-group law: must not be named "id" (case-insensitive) |
 | `MVK_ROW_INVALID` | n/a-structural | field law: multi-row fields are legacy-only — forbidden in new-world models |
 | `MVK_ROW_TOO_BIG` | n/a-structural | field law (legacy): multi-row fields capped at 100 000 rows |
-| `MVK_RULE_NAME_INVALID` | kernel-delegated | the kernel reserves rule names beginning `vk_vk` (case-insensitive); the builder accepts any non-blank name and F4 arbitrates pre-persist, nothing written (probe-verified 2026-06-10, KERNEL-FINDINGS). Candidate cheap pre-check |
+| `MVK_RULE_NAME_INVALID` | pre-checked | `Rule.build()` rejects the reserved `vk_vk` prefix (any letter case) with the code named (locked: `RuleAuthoringTest`); the kernel law itself locked in `validate.laws.RuleSlotLawsTest` (KERNEL-FINDINGS “Reserved rule-name prefix”) |
 | `MVK_SEVERITY_MISSING` | pre-checked | `Rule.build()` requires `severity(...)`; the typed `Severity` enum makes invalid values unrepresentable (locked: `RuleAuthoringTest`) |
 | `MVK_SORT_FIELD_DUPLICATE` | n/a-structural | sort law: sort fields unique within a sort info |
 | `MVK_SORT_INFO_MISSING` | n/a-structural | sort law: field, type, and priority of a sort entry fill together (all-or-none) |

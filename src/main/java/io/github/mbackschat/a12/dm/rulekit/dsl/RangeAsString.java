@@ -11,8 +11,10 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
 public record RangeAsString(FieldRef field, int start, int end) implements Calculation {
 
     public RangeAsString {
-        if (start < 0 || end < 0) {
-            throw new IllegalArgumentException("RangeAsString bounds must be >= 0, was " + start + ", " + end);
+        if (start < 1 || end < start) {
+            throw new IllegalArgumentException("RangeAsString bounds are 1-based and must satisfy"
+                    + " 0 < start <= end (the kernel rejects others with MVK_INVALID_INTERVAL),"
+                    + " was " + start + ", " + end);
         }
     }
 
