@@ -64,7 +64,7 @@ A green `test` means rulekit's output is confirmed by the engine, not just plaus
 - kernel wiring and the model index
 - the renderer (EN/DE) and the validator
 - the self-verifying catalog — every example checked against the real kernel
-- the constraint-mining instruments (slot parity, MVK ledger)
+- the constraint-mining instruments (slot parity, the MVK / RT-semantics / grammar-production ledgers)
 
 With a sibling `a12-kernel-mm` clone present, an opt-in harness also loads all 15 of the kernel's own metamodels through the index (skipped when absent).
 
