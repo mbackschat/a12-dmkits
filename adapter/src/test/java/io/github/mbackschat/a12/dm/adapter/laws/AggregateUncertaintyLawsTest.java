@@ -25,7 +25,10 @@ import com.mgmtp.a12.kernel.md.rt.api.IMessage.MessageType;
  *       is an omitted, fillable tail ({@code Combiner.setOmittedTail}); the probe corrected the
  *       naive source-read here (VALUE_ERROR was expected for the filled instance);</li>
  *   <li>only <b>exhausting the repetition</b> (all declared rows instantiated and filled) makes the
- *       aggregate certain → {@code VALUE_ERROR}.</li>
+ *       aggregate certain → {@code VALUE_ERROR};</li>
+ *   <li>the <b>date</b> aggregates ({@code DateCombiner}) follow the same laws — incl. the empty
+ *       operand, whose not-given flag travels inside the {@code VkDate} value (probe-corrected: the
+ *       combiner itself has no per-operand tracking, yet the typing comes out the same).</li>
  * </ul>
  */
 class AggregateUncertaintyLawsTest {
@@ -104,5 +107,76 @@ class AggregateUncertaintyLawsTest {
         Optional<MessageType> uncertain = RuntimeLaws.typeOf(model, "TOTAL_LOW", rows("5", null, "7"));
         assertEquals(Optional.of(MessageType.OMISSION_ERROR), uncertain,
                 "a sum with an empty operand can still grow → OMISSION_ERROR");
+    }
+
+    // ---- the DATE combiner (DateCombiner) — same tail law, but NO per-operand empty tracking ----
+
+    /** {@code count} Items rows, each with a Sku and a PromiseDate ({@code null} = present-but-empty). */
+    private static RuntimeLaws.Doc dateRows(String... promiseDates) {
+        RuntimeLaws.Doc doc = RuntimeLaws.doc().group("/Order", 1)
+                .field("/Order/CustomerName", "Acme", 1, 1)
+                .field("/Order/DeliveryDate", "2026-07-01", 1, 1);
+        for (int i = 1; i <= promiseDates.length; i++) {
+            doc.group("/Order/Items", 1, i).field("/Order/Items/Sku", "S" + i, 1, i, 1);
+            if (promiseDates[i - 1] == null) {
+                doc.emptyField("/Order/Items/PromiseDate", 1, i, 1);
+            } else {
+                doc.field("/Order/Items/PromiseDate", promiseDates[i - 1], 1, i, 1);
+            }
+        }
+        return doc;
+    }
+
+    @Test
+    void theLatestDateWins() {
+        String model = withAggRule("LatePromise", "LATE_PROMISE",
+                "MaxValue(Items*/PromiseDate) > [DeliveryDate]");
+
+        assertTrue(RuntimeLaws.fires(model, "LATE_PROMISE",
+                dateRows("2026-06-15", "2026-07-20", "2026-06-20")),
+                "the latest promise (2026-07-20) is after the delivery date → fires");
+        assertFalse(RuntimeLaws.fires(model, "LATE_PROMISE",
+                dateRows("2026-06-15", "2026-06-20", "2026-06-25")),
+                "every promise is before the delivery date → does not fire");
+    }
+
+    @Test
+    void aDateAggregateIsFillableUntilTheRepetitionIsExhausted() {
+        String model = withAggRule("LatePromise", "LATE_PROMISE",
+                "MaxValue(Items*/PromiseDate) > [DeliveryDate]");
+
+        Optional<MessageType> tail = RuntimeLaws.typeOf(model, "LATE_PROMISE",
+                dateRows("2026-07-20", "2026-07-21", "2026-07-22"));
+        assertEquals(Optional.of(MessageType.OMISSION_ERROR), tail,
+                "3 of 50 declared rows instantiated → the omitted tail keeps the max fillable");
+    }
+
+    @Test
+    void anEmptyDateOperandAlsoMakesTheAggregateFillable() {
+        // Probe-corrected: the naive source-read expected VALUE_ERROR (DateCombiner itself tracks
+        // only the filter/omitted-tail bits, unlike NumberCombiner's per-operand tracking) — but the
+        // kernel types this OMISSION_ERROR: the not-given flag travels inside the VkDate value
+        // through max/min, so dates behave like numbers after all.
+        String model = withAggRule("LatePromise", "LATE_PROMISE",
+                "MaxValue(Items*/PromiseDate) > [DeliveryDate]");
+
+        String[] dates = new String[50];
+        java.util.Arrays.fill(dates, "2026-07-20");
+        dates[24] = null;                                      // one present-but-empty operand
+        assertEquals(Optional.of(MessageType.OMISSION_ERROR),
+                RuntimeLaws.typeOf(model, "LATE_PROMISE", dateRows(dates)),
+                "an empty date operand keeps the max fillable → OMISSION_ERROR (all 50 rows present)");
+    }
+
+    @Test
+    void exhaustingTheRepetitionMakesTheDateAggregateCertainToo() {
+        String model = withAggRule("LatePromise", "LATE_PROMISE",
+                "MaxValue(Items*/PromiseDate) > [DeliveryDate]");
+
+        String[] dates = new String[50];
+        java.util.Arrays.fill(dates, "2026-07-20");
+        assertEquals(Optional.of(MessageType.VALUE_ERROR),
+                RuntimeLaws.typeOf(model, "LATE_PROMISE", dateRows(dates)),
+                "all 50 rows instantiated and filled → no fillable tail → VALUE_ERROR");
     }
 }

@@ -111,6 +111,22 @@ class EmptyValueLawsTest {
     }
 
     @Test
+    void lengthOfAnEmptyStringIsZero_evaluatedUnlikeAComparison() {
+        // a direct comparison on an empty string is not evaluated (above) — but Length() coerces to
+        // a NUMBER, and the kernel returns 0 for an empty string rather than the unknown state
+        // (RT-SEMANTICS-LEDGER: BigDecimalUtils.laenge — the comment says exactly this). So the
+        // string family has its own "empty-as-0" backdoor, the same trap as the number column.
+        String model = RuntimeLaws.withRule(ORDER, "/Order", "CodeShort", "../ProductCode", "CODE_SHORT",
+                "Length(ProductCode) < 5");
+
+        assertTrue(RuntimeLaws.fires(model, "CODE_SHORT", ORDER_ROW, Set.of("/Order/ProductCode"), FILLED_ROW),
+                "Length of an empty string is 0 (0 < 5), so the rule fires — unlike [F] == \"…\"");
+        assertFalse(RuntimeLaws.fires(model, "CODE_SHORT", ORDER_ROW,
+                Map.of("/Order/CustomerName", "Acme", "/Order/ProductCode", "ABCDEF")),
+                "a 6-char value is not < 5, so the rule does not fire");
+    }
+
+    @Test
     void emptyDateIsNotEvaluated() {
         // an empty DATE is not evaluated (like string/boolean, unlike number=0). DifferenceInDays avoids
         // the §6 date-literal syntax: DifferenceInDays(a, b) = b - a (verified), so Delivery before Order

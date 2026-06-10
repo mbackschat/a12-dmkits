@@ -29,9 +29,9 @@ Classifications:
 | `NumberCombiner` | mined | `Sum`/`MinValue`/`MaxValue` skip empty operands and track growable/shrinkable per operator (Sum can shrink only for signed types). The 0-substitution / min-max-ignore halves are §2 canonical, already locked (`RepetitionLawsTest`); the uncertainty typing is `AggregateUncertaintyLawsTest`. |
 | `FirstValueCombiner` | mined | `FirstFilledValue` is prefix-sensitive: operands after the first filled one are never read (a formal error there is invisible); an empty operand *before* it types the result omission; a formal-error operand before it suppresses the rule (`FirstFilledValueLawsTest`). |
 | `NumberOfDifferentValuesCombiner` | mined | Distinct **filled** values only — an empty operand never bumps the count but marks it growable (`AggregateUncertaintyLawsTest`). Distinctness by value equality; type-homogeneity is parse-tier (MVK ledger). |
-| `DateCombiner` | queued | Date `MaxValue`/`MinValue`; filter/omitted-tail mark the result not-given (read path locked in `adapter.DateAggregateReadTest`; the runtime typing law is the queue item). |
+| `DateCombiner` | mined | Date `MaxValue`/`MinValue` follow the number-combiner uncertainty laws: omitted tail ⇒ fillable, exhausted repetition ⇒ certain, and an empty operand keeps the result fillable — probe-corrected: the combiner has no per-operand tracking, the not-given flag travels inside the `VkDate` value (`AggregateUncertaintyLawsTest`; read path `adapter.DateAggregateReadTest`). |
 | `FormalChecker` | already-locked | The formal-error gate: a formally invalid value puts the field in the unknown state and suppresses rules over it — `FormalErrorLawsTest`, KERNEL-FINDINGS §3 supplement. |
-| `BigDecimalUtils` | queued | Rounding helpers (`RoundDown`/`RoundUp`/`Round` at digit positions), `Length`, `Abs`. Rounding modes are §5 canonical; the runtime edge (rounding of already-scale-rounded values) is the queue item. |
+| `BigDecimalUtils` | mined | `RoundDown` = FLOOR and `RoundUp` = CEILING (directional, **not** truncation: `RoundDown(−1.4) = −2`); `RoundAccounting` = HALF_UP (away from zero on .5); a scale-19 HALF_UP pre-rounding absorbs repeating-decimal artifacts (`RoundDown(q/3·3) = q`) — `RoundingLawsTest`. `Length("")` returns **0, not unknown** — the string family's empty-as-0 backdoor — `EmptyValueLawsTest`. |
 | `MainValidatorController` | queued | Rule-evaluation orchestration: iteration, error landing, per-row message attribution. Large parts already locked via §9 laws (`RepetitionLawsTest`, `ParallelIterationLawsTest`, `CorrelationLawsTest`, `RepetitionNotUniqueLawsTest`); remaining queue: evaluation order/short-circuit observability. |
 | `RuntimeController` | queued | The per-operator evaluation dispatcher (3.4k lines). Drain continues here family-by-family; next candidates: pattern-match null handling, string concatenation edge semantics, `EntityListOperation` vs `ListOperOp` validity testing (the `testValidity` flag). |
 | `CalculationController` | queued | Computation evaluation; partially locked (`DateRangeComputationLawsTest`, the §2 empty-operand-computation finding, the `compute()` seam in `RuntimeLaws`). |
@@ -62,3 +62,9 @@ Mined from the comparison engine and the combiner family, each law-locked the sa
 - **`FirstFilledValue` never reads past the first filled operand** — a formal error after it is invisible; before it, it suppresses the rule.
 - **`NumberOfDifferentValues` counts filled values only** — empties don't count but keep the count growable.
 - **`AddYears`/`AddMonths` are calendar-corrected**: Feb-28 + years lands on a leap day where one exists; end-of-month overflow clamps, never carries.
+
+Second drain (same day, the `DateCombiner`/`BigDecimalUtils` rows):
+
+- **Rounding is directional, not truncation**: `RoundDown` = FLOOR (`−1.4 → −2`), `RoundUp` = CEILING, `RoundAccounting` = HALF_UP away from zero; a scale-19 pre-rounding keeps `RoundDown(q/3·3) = q`.
+- **`Length("")` is 0, evaluated** — a bare comparison on an empty string is skipped, but `Length()` coerces it to the number 0 (the string family's empty-as-0 backdoor).
+- **Date aggregates follow the number-aggregate uncertainty laws** — including the empty operand, whose not-given flag travels inside the value (a probe-corrected source-read: the date combiner itself has no per-operand tracking).

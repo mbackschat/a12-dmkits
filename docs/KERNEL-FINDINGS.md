@@ -125,6 +125,12 @@ In DM-JSON, a category's `values` list pairs **positionally** with the enumerati
 
 - **`DiffersWithToleranceRange{N}` fires strictly beyond the tolerance**: satisfied iff `|a − b| > N` — a difference of *exactly* N is still within tolerance and does **not** fire, in either direction. The boundary is the trap a modeller would guess either way. *(Locked: `adapter.laws.ToleranceComparisonLawsTest`.)*
 - **Source-only (not externally observable):** the comparison engine rescales both numeric operands to scale 19 `HALF_UP` before comparing (`BedingungsOperatorHelper.vergleiche`). Model number types cap fractional digits far below 19, so no legal model can surface the rounding — recorded as a source fact, deliberately not law-locked (nothing observable to lock).
+- **The rounding operators are directional, not truncation** (`BigDecimalUtils`, second drain): `RoundDown` is **FLOOR** (toward −∞: `RoundDown(−1.4) = −2`), `RoundUp` is **CEILING** (`RoundUp(−1.4) = −1`), `RoundAccounting` is **HALF_UP** (away from zero on the .5 boundary, both signs). The negative-value behavior is the modeller trap — "down" does not mean "toward zero".
+- **A scale-19 `HALF_UP` pre-rounding precedes every target-scale rounding** — and here it *is* observable: division artifacts can't leak through a rounding, `RoundDown([q]/3*3, 0) == [q]` fires for `q=1` (without the pre-round, the internal `0.99…9` would floor to 0). *(Locked: `adapter.laws.RoundingLawsTest`.)*
+
+## §2 supplement — `Length("")` is 0, evaluated (runtime, 2026-06-10, RT-semantics drain)
+
+The §2 table says an empty **string** leaves a comparison *not evaluated* — but `Length()` coerces the string to a NUMBER, and the kernel returns **0 for an empty string rather than the unknown state** (`BigDecimalUtils.laenge`, whose comment states exactly this design choice). So `Length(F) < 5` **fires** on an empty `F` in a filled row — the string family has its own empty-as-0 backdoor, the same trap as the number column, needing the same `FieldFilled` guard. *(Locked: `adapter.laws.EmptyValueLawsTest.lengthOfAnEmptyStringIsZero_evaluatedUnlikeAComparison`.)*
 
 ## Condition directives — `@SuppressWarning` + `RuleGroup` (2026-06-10, grammar-ledger drain)
 
@@ -326,6 +332,7 @@ The aggregate combiners track whether their result *could still change if more f
 - **A starred aggregate over a repeatable group stays omission-typed even when every *instantiated* row is filled** — the un-instantiated remainder of the declared repeatability counts as an omitted, fillable tail. Only **exhausting the repetition** (all declared rows instantiated and filled) makes the fired comparison a value error. *(The probe corrected the naive source-read here, which expected the filled instance to be certain.)*
 - **`NumberOfDifferentValues` counts distinct *filled* values only** — an empty operand never bumps the count, but it keeps the count growable (omission-typed).
 - **`FirstFilledValue` is prefix-sensitive — operands after the first filled one are never read.** A formal error *after* the first filled operand is invisible to the rule; *before* it, it suppresses the rule (unknown state); an *empty* operand before it types the fired comparison as an omission error.
+- **The date aggregates (`MaxValue`/`MinValue` over a DATE scope) follow the same uncertainty laws** — omitted tail ⇒ fillable, exhausted repetition ⇒ certain, and an empty operand keeps the result fillable. Probe-corrected source-read (second drain, 2026-06-10): the date combiner has *no* per-operand empty tracking, yet the typing comes out like the number combiner's — the not-given flag travels inside the `VkDate` value through `max`/`min`.
 
 *(Locked: `adapter.laws.AggregateUncertaintyLawsTest` + `adapter.laws.FirstFilledValueLawsTest`.)*
 

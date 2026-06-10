@@ -221,6 +221,19 @@
                           }
                         }
                       }
+                    },
+                    {
+                      "type": "Field",
+                      "id": "/Order/Items/PromiseDate",
+                      "name": "PromiseDate",
+                      "Field": {
+                        "fieldType": {
+                          "type": "DateType",
+                          "DateType": {
+                            "format": "yyyy-MM-dd"
+                          }
+                        }
+                      }
                     }
                   ]
                 }
