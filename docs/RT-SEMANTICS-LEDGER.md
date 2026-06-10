@@ -6,7 +6,7 @@ The classified inventory of the kernel's **runtime evaluation core**: every top-
 
 ## How a row resolves
 
-The resolution path is the proven MVK-ledger loop, with one addition learned the hard way: **source-read proposes, law test confirms.** A row is drained by (1) reading the class and extracting its semantics in our own words, (2) cross-checking against the two kernel-team oracles (`KERNEL-SEMANTICS.md`, `kernel-ba.md`), (3) locking each observable behavior as a `RuntimeLaws` law (`adapter/…/laws/`), (4) recording the fact in [`KERNEL-FINDINGS.md`](KERNEL-FINDINGS.md). Twice already the kernel corrected a plausible source-read (the aggregate omitted-tail typing here; `MVK_LANGUAGE_DUPLICATE` in the MVK drain) — an unlocked source-read is a hypothesis, not a finding.
+The resolution path is the proven MVK-ledger loop, with one addition learned the hard way: **source-read proposes, law test confirms.** A row is drained by (1) reading the class and extracting its semantics in our own words, (2) cross-checking against the two kernel-team oracles (`KERNEL-SEMANTICS.md`, `kernel-ba.md`), (3) locking each observable behavior as a `RuntimeLaws` law (`adapter/…/laws/`), (4) recording the fact in [`KERNEL-FINDINGS.md`](KERNEL-FINDINGS.md) — and (5) when the fact is an *authoring judgment trap* (a valid condition that misbehaves on data), adding it to the affected operators' catalog `gotchas`, so it rides `cli operators` into an agent's context (study finding 20). Twice already the kernel corrected a plausible source-read (the aggregate omitted-tail typing here; `MVK_LANGUAGE_DUPLICATE` in the MVK drain) — an unlocked source-read is a hypothesis, not a finding.
 
 Classifications:
 

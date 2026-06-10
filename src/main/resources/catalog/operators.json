@@ -136,6 +136,7 @@
     "operands": [ { "type": "number" }, { "type": "number" } ],
     "returns": "boolean",
     "meaning": "True iff the two numbers differ by more than 1 (unequal within a tolerance of 1). Only for numbers/amounts.",
+    "gotchas": [ { "text": "fires strictly beyond the tolerance: a difference of exactly 1 is still within it and does NOT fire", "kind": "SURPRISE" } ],
     "constraints": [ "both operands are numeric (fields or expressions)" ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, BackorderQuantity) And [Quantity] DiffersWithToleranceRange1 [BackorderQuantity]", "note": "fires when the two counts differ by more than 1" },
     "sinceKernel": "30.8.x"
@@ -147,6 +148,7 @@
     "operands": [ { "type": "number" }, { "type": "number" } ],
     "returns": "boolean",
     "meaning": "True iff the two numbers differ by more than 2 (unequal within a tolerance of 2).",
+    "gotchas": [ { "text": "fires strictly beyond the tolerance: a difference of exactly 2 is still within it and does NOT fire", "kind": "SURPRISE" } ],
     "constraints": [ "both operands are numeric (fields or expressions)" ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, BackorderQuantity) And [Quantity] DiffersWithToleranceRange2 [BackorderQuantity]", "note": "fires when the two counts differ by more than 2" },
     "sinceKernel": "30.8.x"
@@ -158,6 +160,7 @@
     "operands": [ { "type": "number" }, { "type": "number" } ],
     "returns": "boolean",
     "meaning": "True iff the two numbers differ by more than 5 (unequal within a tolerance of 5).",
+    "gotchas": [ { "text": "fires strictly beyond the tolerance: a difference of exactly 5 is still within it and does NOT fire", "kind": "SURPRISE" } ],
     "constraints": [ "both operands are numeric (fields or expressions)" ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, BackorderQuantity) And [Quantity] DiffersWithToleranceRange5 [BackorderQuantity]", "note": "fires when the two counts differ by more than 5" },
     "sinceKernel": "30.8.x"
@@ -169,6 +172,7 @@
     "operands": [ { "type": "number" }, { "type": "number" } ],
     "returns": "boolean",
     "meaning": "True iff the two numbers differ by more than 10 (unequal within a tolerance of 10).",
+    "gotchas": [ { "text": "fires strictly beyond the tolerance: a difference of exactly 10 is still within it and does NOT fire", "kind": "SURPRISE" } ],
     "constraints": [ "both operands are numeric (fields or expressions)" ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, BackorderQuantity) And [Quantity] DiffersWithToleranceRange10 [BackorderQuantity]", "note": "fires when the two counts differ by more than 10" },
     "sinceKernel": "30.8.x"
@@ -385,7 +389,7 @@
     "returns": "number",
     "meaning": "The character length of a string field's value.",
     "constraints": [ "the operand must be a string field" ],
-    "gotchas": [ { "text": "applying Length to a non-string field is a type error", "kind": "SURPRISE" } ],
+    "gotchas": [ { "text": "applying Length to a non-string field is a type error", "kind": "SURPRISE" } , { "text": "Length of an EMPTY string is 0 (evaluated!) — unlike a bare string comparison, which is skipped on empty; guard with FieldFilled to avoid firing on absent values", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "Length(CustomerName) > 10", "note": "fires when CustomerName is longer than 10 characters" },
     "invalidExample": { "dsl": "Length(Quantity) > 10", "error": "operand type", "fix": "Length needs a string field, not a number" },
     "sinceKernel": "30.8.x"
@@ -403,7 +407,7 @@
     ],
     "gotchas": [
       { "text": "the symbols (+ - * / ^) are language-independent — identical in every condition language, not localized keywords", "kind": "RENDERING" }
-    ],
+    , { "text": "division by zero evaluates quietly: the condition becomes unknown (no fire), a computation computes nothing and clears a stale value; a bare division also has unknown scale — wrap it in RoundAccounting(expr, n) to assign to a scaled field", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And [Quantity] < [BackorderQuantity] + 2", "note": "fires when Quantity is below the backorder count plus two" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And [Quantity] < [ProductCode] + 1", "error": "arithmetic needs numeric operands", "fix": "ProductCode is a string; arithmetic operands must be numeric" },
     "sinceKernel": "30.8.x"
@@ -424,7 +428,7 @@
       { "text": "the match is anchored over the WHOLE value — '@' does not find an @ somewhere, use '.*@.*'", "kind": "SURPRISE" },
       { "text": "in DSL string literals a backslash is a plain character and an embedded quote is doubled (\"\"), so regex character classes like \\d are written as-is", "kind": "SURPRISE" },
       { "text": "a backtracking-prone pattern such as (a+)+ is a performance/security risk (KERNEL-SEMANTICS §7)", "kind": "SURPRISE" }
-    ],
+    , { "text": "an empty field is not evaluated — the match never fires on absence", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(ProductCode) And [ProductCode] PatternMatched \"[A-Z]{2}-[0-9]{4}\"", "note": "fires when ProductCode has the legacy XX-9999 format" },
     "invalidExample": { "dsl": "[Quantity] PatternMatched \".*\"", "error": "MVK_INVALID_TYPE_FOR_PATTERN_COMPARISON", "fix": "pattern comparison works on string fields only" },
     "sinceKernel": "30.8.x"
@@ -463,7 +467,7 @@
     ],
     "gotchas": [
       { "text": "field-value entries ([OtherField]) are also legal in the list — mixing them with literals is fine", "kind": "AUTHORING" }
-    ],
+    , { "text": "no empty matches anywhere: an empty subject field never fires, and an empty FIELD ENTRY in the list can never be matched (the number 0-substitution does not apply inside value lists)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldValueIncludedInValueList(Priority, \"EXPRESS\", \"OVERNIGHT\")", "note": "true when Priority is one of the rush classes" },
     "invalidExample": { "dsl": "FieldValueIncludedInValueList(ExpressShipping, \"x\")", "error": "MVK_ONLY_STRING_ENUM_NUMBER_ALLOWED", "fix": "value lists work on string/enum/number fields — compare a boolean with == True/False" },
     "sinceKernel": "30.8.x"
@@ -480,7 +484,7 @@
     ],
     "gotchas": [
       { "text": "an empty field is not evaluated — guard with FieldFilled when the rule should fire only on present values", "kind": "SURPRISE" }
-    ],
+    , { "text": "an empty subject field is not evaluated — 'not included' does NOT fire on absence; test absence with FieldNotFilled", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(ProductCode) And FieldValueNotIncludedInValueList(ProductCode, \"LEGACY-1\", \"LEGACY-2\")", "note": "fires when a present product code is outside the supported set" },
     "invalidExample": { "dsl": "FieldValueNotIncludedInValueList(Quantity, \"x\")", "error": "MVK_INVALID_TYPES_FOR_COMPARISON", "fix": "a number field needs integer values: FieldValueNotIncludedInValueList(Quantity, 1, 2)" },
     "sinceKernel": "30.8.x"
@@ -544,7 +548,7 @@
     ],
     "gotchas": [
       { "text": "the result is an ordinary number expression — compare it, or use it in arithmetic", "kind": "AUTHORING" }
-    ],
+    , { "text": "a listed field carrying a formal error makes the whole count non-evaluable — the rule is suppressed, the broken field is neither counted nor skipped", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "NumberOfFilledFields(CustomerName, ProductCode, Quantity) < 2", "note": "fires when fewer than two of the three are filled" },
     "invalidExample": { "dsl": "NumberOfFilledFields(CustomerName) < 1", "error": "MVK_PARAMSIZE_INVALIDN", "fix": "list at least two fields (or one group) — for a single field use FieldFilled/FieldNotFilled" },
     "sinceKernel": "30.8.x"
@@ -561,7 +565,7 @@
     ],
     "gotchas": [
       { "text": "'filled' means the group row exists, not that it has data (same trap as GroupFilled)", "kind": "SURPRISE" }
-    ],
+    , { "text": "a counted field in the formal-error state suppresses the count entirely", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "NumberOfFilledGroups(ShippingAddress, BillingAddress) == 2", "note": "true when both address groups exist" },
     "invalidExample": { "dsl": "NumberOfFilledGroups(ShippingAddress, CustomerName) < 1", "error": "MVK_NO_FIELDS_ALLOWED", "fix": "NumberOfFilledGroups takes groups — count fields with NumberOfFilledFields" },
     "sinceKernel": "30.8.x"
@@ -678,7 +682,7 @@
     ],
     "gotchas": [
       { "text": "distinct from the field-only RoundDownValue family — this operand-list form rounds the result of an expression", "kind": "AUTHORING" }
-    ],
+    , { "text": "rounds toward minus infinity (floor), not toward zero: RoundDown(-1.4, 0) = -2", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(UnitPrice) And RoundDown([UnitPrice], 0) < 1", "note": "fires when the unit price rounds down to less than one whole currency unit" },
     "sinceKernel": "30.8.x"
   },
@@ -745,6 +749,7 @@
     "operands": [ { "type": "number" }, { "type": "number" } ],
     "returns": "number",
     "meaning": "The minimum of two or more numeric value expressions — the operand-list form, distinct from the field-list MinValue (which aggregates a repetition list).",
+    "gotchas": [ { "text": "an empty number operand is substituted as 0 and can WIN the Min — unlike the starred MinValue, which skips empties; guard operands with AllFieldsFilled", "kind": "SURPRISE" } ],
     "constraints": [ "one or more numeric value expressions (fields, arithmetic, …)" ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, UnitPrice) And Min([Quantity], [UnitPrice]) > 0", "note": "fires when both are positive (the smaller is above 0)" },
     "sinceKernel": "30.8.x"
@@ -756,6 +761,7 @@
     "operands": [ { "type": "number" }, { "type": "number" } ],
     "returns": "number",
     "meaning": "The maximum of two or more numeric value expressions — the operand-list form, distinct from the field-list MaxValue (which aggregates a repetition list).",
+    "gotchas": [ { "text": "an empty number operand is substituted as 0 (it can win a Max over negatives) — unlike the starred MaxValue, which skips empties", "kind": "SURPRISE" } ],
     "constraints": [ "one or more numeric value expressions (fields, arithmetic, …)" ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, UnitPrice) And Max([Quantity], [UnitPrice]) > 100", "note": "fires when either exceeds 100" },
     "sinceKernel": "30.8.x"
@@ -770,7 +776,7 @@
     "constraints": [
       "the first operand is a numeric expression; the second is the integer count of decimal places"
     ],
-    "gotchas": [ ],
+    "gotchas": [ { "text": "rounds toward plus infinity (ceiling): RoundUp(-1.4, 0) = -1", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(UnitPrice) And RoundUp([UnitPrice], 1) > 1000", "note": "fires when the unit price rounded up to one decimal exceeds 1000" },
     "sinceKernel": "30.8.x"
   },
@@ -784,7 +790,7 @@
     "constraints": [
       "the first operand is a numeric expression; the second is the integer count of decimal places"
     ],
-    "gotchas": [ ],
+    "gotchas": [ { "text": "half-up, away from zero on the .5 boundary in both signs: RoundAccounting(-2.5, 0) = -3", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, UnitPrice) And RoundAccounting([UnitPrice] * [Quantity], 2) > 10000", "note": "fires when the commercially-rounded line total exceeds 10000" },
     "sinceKernel": "30.8.x"
   },
@@ -887,7 +893,7 @@
     ],
     "gotchas": [
       { "text": "selects a specific repetition by key — distinct from '*' (all repetitions) and the rule's own iteration", "kind": "AUTHORING" }
-    ],
+    , { "text": "when no repetition carries the index value the comparison is not evaluated (no fire) — it does not fall back to the empty-number 0", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And [Items/Count For \"SKU-1\"] > 0", "note": "the ordered count of the line item keyed SKU-1" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And [BillingAddress/PostalCode For \"x\"] == \"y\"", "error": "MVK_NO_INDEX_FIELD", "fix": "semantic index needs a repeatable group with an index field; BillingAddress has none" },
     "sinceKernel": "30.8.x"
@@ -1122,6 +1128,7 @@
     "operands": [ { "type": "date-range" } ],
     "returns": "boolean",
     "meaning": "True iff the date ranges of the listed date-range fields overlap (start and end inclusive).",
+    "gotchas": [ { "text": "ranges are closed intervals: periods that merely TOUCH (one ends the day the other starts) overlap — seamless periods must start the day after the previous end", "kind": "SURPRISE" } ],
     "constraints": [ "the operands are date-range fields (or a flattened repetition list of them)" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And DateRangesOverlap(CoverageWindow, Items*/ItemCoverage)", "note": "fires when the order's coverage window overlaps a line-item coverage" },
     "sinceKernel": "30.8.x"
@@ -1133,6 +1140,7 @@
     "operands": [ { "type": "date-range" } ],
     "returns": "boolean",
     "meaning": "True iff the first date-range field's interval overlaps at least one date-range field in the list (start and end inclusive).",
+    "gotchas": [ { "text": "ranges are closed intervals: periods sharing one boundary day count as overlapping", "kind": "SURPRISE" } ],
     "constraints": [ "a date-range field, then In, then a date-range field list (often a flattened repetition list)" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And AtLeastOneDateRangeOverlaps(CoverageWindow IN Items*/ItemCoverage)", "note": "fires when the coverage window overlaps any line-item coverage" },
     "sinceKernel": "30.8.x"
@@ -1391,6 +1399,7 @@
     "operands": [ { "type": "field-list" } ],
     "returns": "the element type (number or date)",
     "meaning": "The first specified value over a repetition list, in row order; unspecified rows are skipped (a feldListenOp sibling of Sum). Returns the scope's element type — a number over a number field list, a date over a date field list.",
+    "gotchas": [ { "text": "operands after the first filled one are never read (a formal error there is invisible) — but a formal error BEFORE the first filled operand suppresses the rule", "kind": "SURPRISE" } ],
     "constraints": [
       "a single field over a repetition list (a *-flattened scope)"
     ],
