@@ -75,6 +75,8 @@ Observed for `[UnitPrice] > 5` (UnitPrice scale-2) in a filled row: `"10.00"` �
 
 A formal error is **attributed to a sentinel rule path** — the runtime message reports `rulePath = "formalePruefung"` (not the author rule, and not empty). So in the `eval-doc` output the discriminator between an author-rule violation and a kernel formal check is the **leading `/`**: an author rule's `rule` is its slash-path (`/Order/X`), a formal check's is `formalePruefung`. *(Verified 2026-06-09: `Quantity` scale-0 `"1.5"` → `zahlHatDezimalTrenner` with `rule = formalePruefung`; locked: `cli.EvalDocVerbTest.aFormalErrorIsReportedAsAKernelCheck`.)*
 
+**Refinement (2026-06-10, RT-semantics drain — probe-corrected): the suppression is *branch-scoped*, not rule-scoped.** The unknown state makes the affected *comparison* evaluate to false-or-unknown; the ordinary `And`/`Or` three-state algebra then decides the rule. So `healthyTrue Or [broken] > 0` **still fires** via its healthy branch — a formal error does not take the whole rule out — while `healthyTrue And [broken] > 0` is absorbed (the single-branch case above, where branch- and rule-scoped look identical). KERNEL-SEMANTICS §1's "removes the rules over it from evaluation" reads stricter than the engine behaves. *(Locked: `adapter.laws.FormalErrorScopeLawsTest`.)*
+
 ## §4 supplement — the "required" property and its two modes (runtime, 2026-06-06)
 
 The field-editor "required" checkbox is encoded in DM-JSON as `Field.requirednessConfig: {mode: …}` (kernel enum `IRequirednessConfig.Mode`). An unfilled required field raises the `mandatoryField` **formal error**, so the field is **"unknown"** (§3). The two modes — and the gotcha the BA docs flag — verified at runtime:
