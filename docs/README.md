@@ -13,7 +13,7 @@ What each document under `docs/` holds, so you can jump to the right one. This i
 
 - **[KERNEL-FINDINGS.md](KERNEL-FINDINGS.md)** — experiment-verified kernel behaviors that **complement** `a12-kernel-demo`'s canonical, consult-only `KERNEL-SEMANTICS.md` (checked out as `../../a12-kernel-demo/KERNEL-SEMANTICS.md`). Section-numbered to mirror it; every entry is test-locked in this repo.
 - **[KERNEL-INTEGRATION-NOTES.md](KERNEL-INTEGRATION-NOTES.md)** — rulekit's *treatment* of each verified kernel/build/environment fact: how the kit validates (F4), writes (F6), and diagnoses (F4a) against the real engine.
-- **[MVK-LEDGER.md](MVK-LEDGER.md)** — the classified inventory of every kernel `MVK_*` rule-diagnostic (erased-by-types / pre-checked / kernel-delegated / pending / unknown→experiment-queue). CI-locked, so a new code can't slip through unclassified.
+- **[MVK-LEDGER.md](MVK-LEDGER.md)** — the classified inventory of every kernel `MVK_*` rule-diagnostic (erased-by-types / pre-checked / kernel-delegated / pending / unknown→experiment-queue). CI-locked, so a new code can't slip through unclassified. Its "How the queue resolves" section maps the resolution path per source (the MM_Common rows via the rule-explanation dogfood; the enum rows via kernel-source reading + probes).
 - **[KERNEL-UPGRADE.md](KERNEL-UPGRADE.md)** — the runbook for *when a12-kernel(-mm) changes*: the coupling map (each guardian test ↔ what its failure means ↔ the realignment), the bump procedure, and the dry-run negative-controls that rehearse a change. Embodies F11's "quiet runtime tolerance, loud build-time detection".
 
 ## Surveys, derivations & corpus
