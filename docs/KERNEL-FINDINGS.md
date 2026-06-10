@@ -343,6 +343,8 @@ Consequences:
 - The MVK ledger gained MM_Common's 105 codes as its fourth source (`MvkLedgerTest` checks it opt-in against the sibling clone); the other text-bearing source found en route: `FehlertextErrorType` (kernel-core-service — error-text parameter checks; mostly non-`MVK_` codes like `RULE_HAS_NO_ERRORTEXT`, confirming the earlier "not every code is `MVK_*`" note).
 - The kernel eats its own dogfood: the validation language validates the validation models. rulekit's catalog/read work on metamodel rules (already exercised by the harness) therefore covers the kernel's own usage of its language.
 
+**Supplement (2026-06-10, sweep of the whole clone):** the MVK-coded rules live in **exactly one model** — `MM_Common_v2/codegen-mm_common-v2-19.8.json` carries **134 rules covering exactly the 105 distinct codes** (some codes have several rules); none of the other document models in `../a12-kernel-mm/documentModels` (MM_Computation, MM_SMM_FieldTypeChecks, SelectionModel, the CT_* models, …) carries any `MVK_*` errorCode. Two consequences: `MvkLedgerTest`'s single-model parity check covers the entire metamodel corpus, and each metamodel-section ledger code is resolvable by explaining its carrier rule(s) — the resolution paths are mapped in [`MVK-LEDGER.md`](MVK-LEDGER.md) §"How the queue resolves".
+
 ## Rule-condition polarity is fixed — `errorCondition` fires on TRUE, no configuration (2026-06-05 investigation)
 
 A validation rule's condition has **one fixed polarity**: the sole condition slot is `errorCondition`, and the rule fires (= the document is invalid for the error field) exactly when the condition evaluates **TRUE**. So a *requirement* must be authored as its *violation* — to require "X is filled", the `errorCondition` is "X is **not** filled". Confirmed configurable in **no** way:
@@ -455,8 +457,17 @@ Header `locales` are **arbitrary** valid Java locale codes (`fr_FR` is fine; a m
 
 - A rule/computation must carry an error message for **every declared locale** — a missing one is **`MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING`**; none at all is `MVK_ERROR_MESSAGE_MISSING`.
 - A message for an **undeclared** locale is **silently tolerated and ignored** — no diagnostic, so a typo'd locale code or dead text goes unnoticed (rulekit rejects it at build time for exactly that reason).
+- **A blank message text counts as no message at all** (probe-verified 2026-06-10): a rule whose only message has `text: ""` draws `MVK_ERROR_MESSAGE_MISSING` from `checkConsistency` plus a per-language `RULE_HAS_NO_ERRORTEXT` (the non-`MVK_` FehlertextErrorType tier) — the blank text serializes as an absent message, it does not survive as an empty one. The metamodel's `MVK_MESSAGE_FOR_LANGUAGE_MISSING` (a language row without its text) never appeared — that shape isn't producible through rulekit's surfaces. The CLI `add` path catches all of this at its post-write re-validation and leaves the model file untouched.
 
 *(Locked: `RuleAuthoringTest.requiresAMessageForEveryDeclaredLocale` / `rejectsMessagesForUndeclaredLocales`.)*
+
+## Dormant MVK codes — declared but never fired in 30.8.1 (source-verified 2026-06-10)
+
+An exhaustive grep of the kernel-tool sources (during the MVK-ledger drain) found **four codes with no firing site**: `MVK_INVALID_PREDEFINED_TYPE`, `MVK_NOT_ON_ERRORFIELD_PATH`, `MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED_NO_FIELD` (ParserErrorTypesEnum) and `MVK_CALCULATION_FIELD_AND_NO_CALCULATION_RULE` (CalculationErrorType). They exist only as enum members — nothing to pre-check or delegate; a kernel bump re-activating one would surface through the ledger's classified rows. *(Source-level fact, not a behavior finding — no probe possible by definition.)*
+
+## Reserved rule-name prefix — `vk_vk` is the kernel's namespace (probe-verified 2026-06-10)
+
+`checkConsistency` rejects any rule whose **name** begins with `vk_vk` in any letter case (`MVK_RULE_NAME_INVALID`, an MM_Common metamodel rule) — the prefix is reserved by the kernel. Found while resolving the MVK ledger's metamodel section via the rule-explanation dogfood; confirmed by a live probe: `cli add` with `name: "vk_vk_probe"` is rejected pre-persist by the F4 validation with exactly this code, and nothing is written. rulekit's `Rule.build()` deliberately does not duplicate the check (any non-blank name passes) — F4 arbitrates; the ledger row notes it as a candidate cheap pre-check.
 
 ## Structure-authoring consistency laws — field types & requiredness (modelkit M1/M2, 2026-06-05)
 
