@@ -115,6 +115,8 @@ The condition lexer's rule is `StringLiteral : '"' ( '""' | ~["] )* '"'` — an 
 
 In DM-JSON, a category's `values` list pairs **positionally** with the enumeration's `values` (entry *i* categorizes enum value *i*); the comparison domain is the category's distinct value set. Codes: comparing to one of the *enum's own* values instead of a *category* value → **`MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON`**; an unknown category name → **`MVK_CATEGORY_UNKOWN`** (the kernel's spelling); `->` on a non-enumeration field → **`MVK_NO_ENUMERATION`**. Curiosity: `[Enum -> Category] == [Enum]` (category vs. plain enum field) is *accepted*. *(Locked: N7 `EnumCategory` examples + `dsl.operators.EnumConditionTest`.)*
 
+**Runtime (2026-06-10, RT-semantics drain):** the many-to-one mapping fires for *every* value sharing the category value (`STANDARD,EXPRESS,OVERNIGHT → NORMAL,FAST,FAST`: both `EXPRESS` and `OVERNIGHT` satisfy `== "FAST"`, `STANDARD` does not), and an empty enum rides the not-evaluated track — the category hop doesn't change that. *(Locked: `adapter.laws.EnumCategoryLawsTest`.)*
+
 ## §8 supplement — table-backed (dynamic) enums are NOT DM-JSON-serializable ⇒ `ValueNotConsistent` is un-buildable (2026-06-08)
 
 `ValueNotConsistent(enumField <toOp> col1, col2, …)` (DE `WertNichtKonsistent`) checks a row's dependent columns against a **table-backed** enumeration. The checker (`CheckFieldAndValueListConditionImpl`) requires its first operand to be an enum field **with a table reference** (`IEnumerationType.getTableName()`/`getDependentColumns()` present), and verifies the dependent-param arity against the column count (value checks are skipped when the runtime data table is absent).
@@ -326,6 +328,8 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 - **`MVK_NO_WILDCARD` (missing asterisk) confirmed correctly kernel-delegated**: under parallel iteration a *plain* cross-group reference is **legal** (`FieldFilled(OrderedQty) And FieldFilled(/Shipment/Picks/PickedQty)` validates) — so a naive "repeatable group needs `*`" pre-check would false-positive. The pre-check would require full iteration-model analysis (does the rule parallel-iterate?); deliberately left to F4.
 
 *(Locked: N7 `SemanticIndex` valid + `MVK_NO_INDEX_FIELD` invalid; `dsl.operators.IterationConditionTest` (render) + `validate.laws.IterationLawsTest.parallelIterationOverIndexKeyedGroupsIsSupportedNotBlocked`.)*
+
+**Runtime resolution (2026-06-10, RT-semantics drain):** `[Items/Count For "SKU-1"]` reads the `Count` of exactly the row whose index field (`Sku`) carries `"SKU-1"` — siblings are not read — and when **no row carries the index value, the comparison is not evaluated** (no fire), it does not fall back to the empty-number 0-substitution. *(Locked: `adapter.laws.SemanticIndexLawsTest`.)*
 
 *(Locked: N7 `CurrentRepetition` valid (iterating) + invalid (non-iterating `MVK_NO_WILDCARD`); the iterating-position law in `validate.laws.IterationLawsTest`. Groups-only is structural.)*
 
