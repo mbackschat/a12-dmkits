@@ -61,7 +61,7 @@ Caveats that hold across all four paths:
 | `MVK_ERROR_FIELD_NO_INDEX` | kernel-delegated | law (parallel iteration): the error-field path needs an index field in an ancestor group — F4 arbitrates |
 | `MVK_EXTRACT_OP_NOT_ALLOWED_4_DATE_CONSTRUCT_WITH_4_PARAMS` | erased | the four-parameter (split-year) date construction is an H-model shape — legacy-only |
 | `MVK_FIELDNAME_NOT_UNIQUE` | erased | references render as qualified name-paths from handles — ambiguous short-name references are not emitted |
-| `MVK_FIELD_REF_OP` | kernel-delegated | law: the bare `[field]` value op forbids wildcards and category access on partly-known dates — F4 arbitrates |
+| `MVK_FIELD_REF_OP` | kernel-delegated | **message label, not a fireable law** (corrected by the 2026-06-10 `Check*Impl` cross-validation): its text ("Feldwert-Operation") only *names* the `[]` op inside other codes' messages — `CheckFeldWertOpImpl` fires `MVK_NO_GROUPS_ALLOWED`/`MVK_NO_WILDCARDS_ALLOWED`/`MVK_INVALID_DATE_TYPE` for the actual laws (field-only, no wildcards, no partly-known date) |
 | `MVK_GROUP_IS_EMPTY` | kernel-delegated | law: a referenced non-root group must contain a field — model data, F4 arbitrates |
 | `MVK_GROUP_NOT_REPEATABLE` | pre-checked | `RepetitionNotUniqueCondition.from` requires a repeatable reference group (locked: `dsl.operators.IterationConditionTest` + N7 `FromScope` invalidExample) |
 | `MVK_INCONSISTENT_TYPES_COMPARED` | erased | cross-kind comparisons (number vs boolean, …) are unrepresentable — comparison methods are kind-typed per ref |
