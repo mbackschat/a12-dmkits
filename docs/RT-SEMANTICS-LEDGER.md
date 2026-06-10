@@ -34,7 +34,7 @@ Classifications:
 | `BigDecimalUtils` | mined | `RoundDown` = FLOOR and `RoundUp` = CEILING (directional, **not** truncation: `RoundDown(−1.4) = −2`); `RoundAccounting` = HALF_UP (away from zero on .5); a scale-19 HALF_UP pre-rounding absorbs repeating-decimal artifacts (`RoundDown(q/3·3) = q`) — `RoundingLawsTest`. `Length("")` returns **0, not unknown** — the string family's empty-as-0 backdoor — `EmptyValueLawsTest`. |
 | `MainValidatorController` | queued | Rule-evaluation orchestration: iteration, error landing, per-row message attribution. Large parts already locked via §9 laws (`RepetitionLawsTest`, `ParallelIterationLawsTest`, `CorrelationLawsTest`, `RepetitionNotUniqueLawsTest`); remaining queue: evaluation order/short-circuit observability. |
 | `RuntimeController` | queued | The per-operator evaluation dispatcher (3.4k lines). Drained so far: pattern empties (`vergleichePatternSTRING` — empty never violates, fired patterns are always value errors) and the `EntityListOperations`-vs-`ListOperOps` empty split (operand-list `Min`/`Max` substitute 0, starred aggregates skip) — `EmptyValueLawsTest`; concat edges were already locked there. Remaining queue: evaluation-order/short-circuit observability, the long per-operator dispatch tail. |
-| `CalculationController` | queued | Computation evaluation; partially locked (`DateRangeComputationLawsTest`, the §2 empty-operand-computation finding, the `compute()` seam in `RuntimeLaws`). |
+| `CalculationController` | mined | Overlapping preconditions → first declared alternative wins; division by zero computes nothing and clears a stale value (probe-corrected: the invalid number never surfaces as an error outcome); computed values are scale-normalized; a bare division has unknown scale (assignment needs an explicit rounding) — `ComputationEvaluationLawsTest`, plus the earlier `DateRangeComputationLawsTest` / §2 empty-operand finding. |
 | `CalculationCommand` | infrastructure | Command wrapper around a computation run. |
 | `CheckCommand` | infrastructure | Command wrapper around a partial-validation check run. |
 | `ValidationCommand` | infrastructure | Command wrapper around a validation run (orchestration, no operator semantics). |
@@ -68,3 +68,9 @@ Second drain (same day, the `DateCombiner`/`BigDecimalUtils` rows):
 - **Rounding is directional, not truncation**: `RoundDown` = FLOOR (`−1.4 → −2`), `RoundUp` = CEILING, `RoundAccounting` = HALF_UP away from zero; a scale-19 pre-rounding keeps `RoundDown(q/3·3) = q`.
 - **`Length("")` is 0, evaluated** — a bare comparison on an empty string is skipped, but `Length()` coerces it to the number 0 (the string family's empty-as-0 backdoor).
 - **Date aggregates follow the number-aggregate uncertainty laws** — including the empty operand, whose not-given flag travels inside the value (a probe-corrected source-read: the date combiner itself has no per-operand tracking).
+
+Third drain (same day, the `RuntimeController` empty edges + `CalculationController`):
+
+- **An empty string never violates a pattern** (absence needs `FieldNotFilled`); fired pattern comparisons are always value errors.
+- **Operand-list `Min`/`Max` substitute an empty number as 0; the starred aggregates skip it** — the `EntityListOperations` vs `ListOperOps` split, observable.
+- **Computations: first declared alternative wins on overlapping preconditions; division by zero computes nothing fresh and clears a stale value** (probe-corrected — the invalid number never surfaces as an error outcome); a bare division has unknown scale, so assignment to a scaled field needs an explicit rounding.
