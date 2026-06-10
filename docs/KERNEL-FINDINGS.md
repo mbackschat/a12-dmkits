@@ -136,8 +136,9 @@ Two more edges of the §2 empty-value table, drained from `RuntimeController` an
 
 - **An empty string does not violate a pattern** — `PatternViolated` rides the string column (not evaluated on empty; `vergleichePatternSTRING` returns unknown), so it does **not** fire on an absent value. "Empty surely violates my format" is the trap — absence needs `FieldNotFilled`, not a pattern. (A fired pattern comparison is always a *value* error — there is no fillable branch.)
 - **The operand-list `Min`/`Max` substitute an empty number as 0; the starred aggregates skip it.** `Min([A], [B])` with `A` empty evaluates `Min(0, B)` — the 0 wins — while `MinValue(G*/F)` ignores unspecified operands (canonical §2). The two list-op families differ exactly on empty handling (the kernel's `EntityListOperations` vs `ListOperOps` split).
+- **Value lists and empties, both directions** (third drain): an empty *subject* field is never in any value list (not evaluated, no fire); and an empty *field entry* of a numeric value list can **never be matched** — the empty-as-0 substitution does *not* apply to list entries (`feldWertInWerteListe`: an entry that could still change never equals), so `FieldValueIncludedInValueList(Q, [Allowed])` with `Q = 0` and `Allowed` empty does **not** fire.
 
-*(Locked: `adapter.laws.EmptyValueLawsTest.emptyStringDoesNotViolateAPattern` / `operandListMinSeesAnEmptyNumberAsZero`.)*
+*(Locked: `adapter.laws.EmptyValueLawsTest` — `emptyStringDoesNotViolateAPattern` / `operandListMinSeesAnEmptyNumberAsZero` / `anEmptyFieldIsNeverInAValueList` / `anEmptyListEntryFieldNeverMatches_noZeroSubstitution`.)*
 
 ## §2 supplement — `Length("")` is 0, evaluated (runtime, 2026-06-10, RT-semantics drain)
 
@@ -176,6 +177,16 @@ KERNEL-SEMANTICS §6 notes the shifts "disagree across leap years"; the drained 
 - **`AddMonths` clamps end-of-month overflow**: `31.01.2008 + 1 month = 29.02.2008` — clamped to the shorter month's last day, never a carry into March.
 
 *(Locked: `adapter.laws.DateArithmeticLawsTest`.)*
+
+### §6 supplement — date ranges are closed intervals: touching ranges overlap (runtime, 2026-06-10, RT-semantics drain)
+
+`DateRangesOverlap` / `AtLeastOneDateRangeOverlaps` treat both the start **and** the end day as belonging to the range (`DatumBereich.ueberlappt`: overlap ⇔ `end1 ≥ start2 ∧ end2 ≥ start1`). Consequences, both probe-locked:
+
+- **Back-to-back periods sharing a boundary day overlap** — a window ending 31.01 and a coverage starting 31.01 fire the overlap. Seamless non-overlapping periods must start the day *after* the previous end.
+- Adjacent-day ranges (end 31.01, start 01.02) do not overlap; a contained range does.
+- Source note: an *inverted* range (start after end) silently never overlaps — defensively handled, though the format tier normally prevents one from existing.
+
+*(Locked: `adapter.laws.DateRangeOverlapLawsTest`.)*
 
 ### §6 supplement — TIME and DATE_TIME value kinds (implemented 2026-06-07)
 
@@ -218,6 +229,13 @@ rulekit models the numeric ones as `DateExtraction` (kind NUMBER), the part-extr
 - Comparing the count to a **decimal literal** (`<= 1.5`) is accepted (consistent with the §5 literal-scale exemption).
 
 *(Locked: N7 examples of both operators incl. the param-size/type-direction invalids; root-group ban pre-checked in `CountAggregate` — `dsl.operators.AggregateConditionTest`.)*
+
+**Runtime counting semantics (2026-06-10, RT-semantics drain — `anzahlAngegebenerEntities`):**
+
+- **A formal-error operand makes the whole count non-evaluable** — the rule is suppressed; the broken field is neither counted as filled nor skipped (contrast `FirstFilledValue`, where a broken operand *after* the first filled one is invisible).
+- **The count can grow but never shrink**: with unfilled operands left, a fired comparison is an `OMISSION_ERROR`; with every operand filled, a `VALUE_ERROR` — a plain field list has no omitted-tail problem (unlike the starred aggregates, §9 supplement).
+
+*(Locked: `adapter.laws.FilledCountLawsTest`.)*
 
 ## §8 supplement — the value-list membership family (2026-06-04 experiments)
 

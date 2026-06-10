@@ -163,6 +163,36 @@ class EmptyValueLawsTest {
     }
 
     @Test
+    void anEmptyFieldIsNeverInAValueList() {
+        // value-list membership rides the not-evaluated track on an empty subject — even though the
+        // membership is "value error" by nature, absence simply yields no fire
+        String model = RuntimeLaws.withRule(ORDER, "/Order", "CodeListed", "../ProductCode", "CODE_LISTED",
+                "FieldValueIncludedInValueList(ProductCode, \"A\", \"B\")");
+
+        assertFalse(RuntimeLaws.fires(model, "CODE_LISTED", ORDER_ROW, Set.of("/Order/ProductCode"), FILLED_ROW),
+                "an empty field's value is never in a value list — not evaluated");
+        assertTrue(RuntimeLaws.fires(model, "CODE_LISTED", ORDER_ROW,
+                Map.of("/Order/CustomerName", "Acme", "/Order/ProductCode", "A")),
+                "a listed value fires");
+    }
+
+    @Test
+    void anEmptyListEntryFieldNeverMatches_noZeroSubstitution() {
+        // the inverse direction is the trap: a FIELD entry of a numeric value list that is itself
+        // empty can never be matched — the empty-as-0 substitution does NOT apply to list entries
+        // (RuntimeController.feldWertInWerteListe: an entry that could grow/shrink never equals)
+        String model = RuntimeLaws.withRule(ORDER, "/Order", "QtyAllowed", "../Quantity", "QTY_ALLOWED",
+                "FieldValueIncludedInValueList(Quantity, [BackorderQuantity])");
+
+        assertFalse(RuntimeLaws.fires(model, "QTY_ALLOWED", ORDER_ROW, Set.of("/Order/BackorderQuantity"),
+                Map.of("/Order/CustomerName", "Acme", "/Order/Quantity", "0")),
+                "Quantity 0 does NOT match an empty list-entry field — no 0-substitution in lists");
+        assertTrue(RuntimeLaws.fires(model, "QTY_ALLOWED", ORDER_ROW,
+                Map.of("/Order/CustomerName", "Acme", "/Order/Quantity", "0", "/Order/BackorderQuantity", "0")),
+                "a filled list-entry field with the same value matches");
+    }
+
+    @Test
     void emptyDateIsNotEvaluated() {
         // an empty DATE is not evaluated (like string/boolean, unlike number=0). DifferenceInDays avoids
         // the §6 date-literal syntax: DifferenceInDays(a, b) = b - a (verified), so Delivery before Order
