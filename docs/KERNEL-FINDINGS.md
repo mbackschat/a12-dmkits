@@ -236,7 +236,7 @@ The first **runtime** (fires/does-not-fire) checks of §9, via the multi-row `Ru
 - **A repeatable group referenced from a *non-iterating* rule needs the asterisk** — `FieldFilled(Tier) And GroupNotFilled(Addons)` with error field `Tier` is rejected with **`MVK_NO_WILDCARD`** ("Missing specification of an asterisk for 'Addons'"). A previously unknown law; pre-checkable once the iteration model lands (rulekit knows both the error-field iteration and the group's repeatability).
 - **Root groups work with both group predicates** — `GroupFilled(/Subscription)` and `GroupNotFilled(/Subscription)` (non-repeatable root, non-iterating rule) both validate; the kernel parses root-group references into a distinct AST node (`IRootGroupCondition`) but the surface syntax is uniform.
 
-*(No locks yet — pre-checks deferred to the iteration cluster; the codes are classified kernel-delegated in `MVK-LEDGER.md`.)*
+*(Lock status (sweep 2026-06-10, was "no locks yet"): the `MVK_NO_WILDCARD` position law is locked in `validate.laws.IterationLawsTest` (and slice 7f showed a naive missing-asterisk pre-check would false-positive under parallel iteration — deliberately kernel-delegated); the unguarded-negativity case is pre-warned by the linter (`lint.LinterTest`) and stays kernel-delegated per the §"negativity law" note; both codes are classified in `MVK-LEDGER.md`.)*
 
 ## §9 supplement — wildcard slot laws (slice 7a, 2026-06-04 experiments)
 
@@ -254,7 +254,7 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 
 *(Locked: `validate.laws.IterationLawsTest`; rulekit treatment: `FieldOperand` = `FieldRef` | `FieldListRef`, list slots take the operand union, scalar slots take `FieldRef` — `BoundModel.flatten(starPath)` validates star placement.)*
 
-## §9 supplement — `CurrentRepetition` and the deferred index-field cluster (slice 7e, 2026-06-04 experiments)
+## §9 supplement — `CurrentRepetition` + the index-field/semantic-index cluster (slices 7e/7f, 2026-06-04 experiments; retitled 2026-06-10 — the constant-form semantic index IS supported, only the entity/`$` forms stay kernel-delegated)
 
 `CurrentRepetition` (DE `AktuelleWiederholung`; grammar `groupOp: 'AktuelleWiederholung' '(' entitySpec ')'`) is a **numeric expression** — the current iteration index of a group.
 
@@ -294,7 +294,7 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 - **`NumberOfDifferentValues` is value-comparing**, so its operands must be type-homogeneous: string/enum together (**`MVK_STRING_ENUM_AND_NON_STRING_ENUM`**) or all numbers (**`MVK_NUMBER_AND_NON_NUMBER`**); booleans/confirms never (**`MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED`**).
 - Missing-row semantics (KERNEL-SEMANTICS §9): `Sum` substitutes 0 for unspecified fields; `MaxValue`/`MinValue` ignore them.
 
-*(Locked: N7 examples of all four operators incl. three invalids; the pre-checks live in `ListAggregate`/`CountAggregate` — `dsl.operators.AggregateConditionTest`. The date variant of Max/Min rides the date family, item 9.)*
+*(Locked: N7 examples of all four operators incl. three invalids; the pre-checks live in `ListAggregate`/`CountAggregate` — `dsl.operators.AggregateConditionTest`. The date variant of Max/Min landed with the date family — `DateListAggregate` via `Dsl.latestOf`/`earliestOf`, locked `adapter.DateAggregateReadTest` (stale "rides item 9" flipped 2026-06-10).)*
 
 ## §9 supplement — `RepetitionNotUnique` slot laws (slice 7b, 2026-06-04 experiments)
 

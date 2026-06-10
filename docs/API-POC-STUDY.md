@@ -85,13 +85,13 @@ Condition r2 = mandatoryWhen(renew.isTrue().and(terms.confirmed()), m.field("/Su
 Condition r3 = groupNotBlank(addons, m.field("/Subscription/Addons/Name"));
 ```
 
-### 3.2 Fragments with domain parameters 🔮 (needs the named operators from the backlog)
+### 3.2 Fragments with domain parameters ✅ / 🔮 (tolerance ✅ — operator landed, marker flipped on the 2026-06-10 sweep; the chronology composite still 🔮)
 
 ```java
 /** Tolerance check — only the fixed 1/2/5/10 variants exist (the catalog teaches this; the enum enforces it). */
 static Condition withinTolerance(NumberRef actual, NumberRef expected, Tolerance t) {
     return allFieldsFilled(actual.field(), expected.field())
-            .and(actual.value().differsWithTolerance(t, expected.value()));   // 🔮 DiffersWithToleranceRange{N}
+            .and(actual.differsWithTolerance(t, expected));   // ✅ DiffersWithToleranceRange{N} (NumberRef.differsWithTolerance)
 }
 
 /** Chronology over a repeating group — composes the iteration cluster (backlog item 7).

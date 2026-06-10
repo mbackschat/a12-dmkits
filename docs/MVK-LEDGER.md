@@ -115,7 +115,7 @@ Caveats that hold across all four paths:
 | `MVK_INVALID_UNSPECIFIED_TYPE` | erased | H-model law about unspecified-type fields — legacy-only |
 | `MVK_INVALID_WILDCARD` | pre-checked | `BoundModel.flatten` rejects a star on a non-repeatable group with the code named (locked: `validate.laws.IterationLawsTest`) |
 | `MVK_INVALID_WILDCARD_FOR_RULEGROUP` | erased | the rule group is a plain `GroupRef` — a starred rule-group reference is unrepresentable |
-| `MVK_INVALID_WILDCARD_REL` | pending | fork-9 path policy: `..`+`*` forces absolute paths |
+| `MVK_INVALID_WILDCARD_REL` | erased | `DslRenderer.relativize` emits plain `../` segments — a starred `..` is unrepresentable in rendered output; the kernel law itself is locked (`validate.laws.PathLawsTest.aStarOnTheRelativeUpNavigationIsRejected_useAbsolute`). Stale "pending" flipped 2026-06-10 |
 | `MVK_ITERATION_RESTRICTION_IN_A12_MODEL` | erased | bounded iteration ranges are unrepresentable — rulekit renders only the unrestricted star |
 | `MVK_MAX_GROUP_RESTRICTION_TO_ONE` | erased | context-restriction rules are not a rulekit authoring surface (rules + computations only) |
 | `MVK_MAX_LFDNR_RESTRICTION_TO_ONE` | erased | H-model form-count restriction — legacy-only |

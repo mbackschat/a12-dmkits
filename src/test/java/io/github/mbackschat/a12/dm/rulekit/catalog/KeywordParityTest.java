@@ -17,8 +17,9 @@ import org.junit.jupiter.api.Test;
  * keyword that drifts from the grammar fails CI — covering both SUPPORTED operators and PLANNED
  * stubs (whose keywords were hand-sourced from these same bundles).
  *
- * <p>Forward direction (catalog → terminals). The reverse (every lexer terminal mapped or excluded)
- * and the parsetree construct-name / error-type parity are the remaining N3 work.
+ * <p>Forward direction (catalog → terminals). The reverse direction is {@link KeywordReverseParityTest};
+ * the parsetree construct-name parity is {@code adapter.KernelConstructParityTest} and the error-type
+ * parity is {@code MvkLedgerTest} — the N3 anchor set is complete (stale "remaining work" note flipped 2026-06-10).
  */
 class KeywordParityTest {
 
