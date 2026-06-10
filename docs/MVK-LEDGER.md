@@ -104,7 +104,7 @@ Caveats that hold across all four paths:
 | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_CATEGORY` | kernel-delegated | law: a constant compared under category access must be a valid value of that category — model data, F4 arbitrates |
 | `MVK_INVALID_STRING_CONSTANT_FOR_ENUMERATION_OR_CATEGORY` | pre-checked | the `Dsl` enum value-list quantifiers check every value against every listed field's domain |
 | `MVK_INVALID_STRING_CONSTANT_FOR_ENUM_COMPARISON` | pre-checked | `EnumRef.is`/`CategoryRef.is` validate against the model domain |
-| `MVK_INVALID_SUPPRESSED_WARNING` | pending | no `@SuppressWarning` surface yet (only MVK_INVALID_COMPARE_DEC_PLACES is suppressible) |
+| `MVK_INVALID_SUPPRESSED_WARNING` | kernel-delegated | `@SuppressWarning(NAME)` supports exactly one warning — `MVK_INVALID_COMPARE_DEC_PLACES` (the equality scale gate's escape hatch); any other name is rejected. Quirk: the rejection surfaces the *attempted* name as the diagnostic code, this code's text arrives as the message. rulekit never authors the directive (probe-verified 2026-06-10; locked: `validate.laws.DirectiveLawsTest`) |
 | `MVK_INVALID_TABLE_ENUM` | erased | table-backed (dynamic) enums are not DM-JSON-serializable (KERNEL-FINDINGS §8) — no loadable model can carry one |
 | `MVK_INVALID_TIME` | kernel-delegated | law: day/month/year shifts and differences need a date component (not time-only operands) — F4 arbitrates |
 | `MVK_INVALID_TYPE` | kernel-delegated | law: substring/interval ops take string, predefined-type, or extensible-enum fields — `RangeAs*` takes an untyped `FieldRef`, F4 arbitrates |

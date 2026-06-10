@@ -126,6 +126,15 @@ In DM-JSON, a category's `values` list pairs **positionally** with the enumerati
 - **`DiffersWithToleranceRange{N}` fires strictly beyond the tolerance**: satisfied iff `|a − b| > N` — a difference of *exactly* N is still within tolerance and does **not** fire, in either direction. The boundary is the trap a modeller would guess either way. *(Locked: `adapter.laws.ToleranceComparisonLawsTest`.)*
 - **Source-only (not externally observable):** the comparison engine rescales both numeric operands to scale 19 `HALF_UP` before comparing (`BedingungsOperatorHelper.vergleiche`). Model number types cap fractional digits far below 19, so no legal model can surface the rounding — recorded as a source fact, deliberately not law-locked (nothing observable to lock).
 
+## Condition directives — `@SuppressWarning` + `RuleGroup` (2026-06-10, grammar-ledger drain)
+
+Two raw-DSL forms the grammar carries outside the operator surface (productions `preamble` / `regelKontextEntity`), both probe-verified; rulekit authors neither but the read path may meet them:
+
+- **`@SuppressWarning(NAME)`** (DE `@UnterdrueckeWarnung`) prefixes a condition and suppresses exactly **one** supported warning: `MVK_INVALID_COMPARE_DEC_PLACES` — i.e. it is the kernel's own escape hatch for the field-vs-field **equality scale gate** (§5 finding 18). `@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) [Quantity] == [UnitPrice]` validates across scales 0 vs 2. Any other name is rejected — with the quirk that the diagnostic's *code* is the attempted name itself (`MVK_INVALID_SUPPRESSED_WARNING` supplies only the message text). Treatment note: rulekit's `NumberRef.eq/ne` *pre-check* equal scale — a raw-DSL rule using the directive is therefore kernel-legal but not typed-builder-expressible; the directive matters for read tolerance, not authoring.
+- **`RuleGroup`** (DE `RegelKontext`) references the rule's **containing group** as an entity — `GroupFilled(RuleGroup)` validates, and the enclosing group counts as referencing the error field. A star on it draws `MVK_INVALID_WILDCARD_FOR_RULEGROUP` (the grammar admits the token solely for the nicer error). rulekit renders qualified group paths instead.
+
+*(Locked: `validate.laws.DirectiveLawsTest`.)*
+
 ## §6 supplement — the date family (corpus item 9 slice 9a, 2026-06-04 experiments)
 
 `Today` (DE `Heute`), `DifferenceInDays|Months|Years` (DE `DifferenzIn{Tagen,Monaten,Jahren}`), `AddDays|Months|Years` (DE `Addiere{Tage,Monate,Jahre}`):

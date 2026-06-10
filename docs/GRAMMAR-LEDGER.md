@@ -12,6 +12,7 @@ Classifications:
 | **plumbing** | a sub-production serving a rendered family (operands, separators, name/path parts) — no independent operator identity |
 | **entry** | a parser entry point / snippet wrapper |
 | **legacy** | H-model / multi-form (Vordruck/USB) / multi-row / bounded-iteration constructs — same exclusion reasons as the construct-parity exclusions; unreachable from rulekit-authored new-world models |
+| **directive** | a raw-DSL form rulekit never authors but whose laws are probe-verified and locked at the validate tier |
 | **queued** | classification or read-tolerance not yet verified — the work-list |
 
 ## The ledger (kernel 30.8.1 — 119 productions)
@@ -98,8 +99,8 @@ Classifications:
 | `datumParam` | plumbing | `Date(…)` component (field / constant / extraction) |
 | `datumAngabe` / `datumAngabe2` | plumbing | date argument forms (bare entity vs literal) |
 | `datumBereichAngabe` | plumbing | date-range argument |
-| `regelKontextEntity` | queued | `RegelKontext` — the rule-context entity reference; verify reachability from new-world DM-JSON rules and the adapter's read tolerance |
-| `preamble` | queued | `@UnterdrueckeWarnung(name)` — the suppress-warning directive; verify read tolerance (never authored) |
+| `regelKontextEntity` | directive | `RuleGroup` (`RegelKontext`) — the rule's containing group as an entity; works in group predicates (counts as referencing the error field), a star on it draws `MVK_INVALID_WILDCARD_FOR_RULEGROUP`. rulekit renders qualified paths instead (probe-verified 2026-06-10; locked: `validate.laws.DirectiveLawsTest`) |
+| `preamble` | directive | `@SuppressWarning(NAME)` (`@UnterdrueckeWarnung`) — suppresses exactly one warning, `MVK_INVALID_COMPARE_DEC_PLACES` (the equality scale gate's escape hatch); any other name rejected (locked: `validate.laws.DirectiveLawsTest`; MVK ledger row `MVK_INVALID_SUPPRESSED_WARNING`) |
 
 ### Entry points
 

@@ -1,0 +1,52 @@
+package io.github.mbackschat.a12.dm.rulekit.validate.laws;
+
+import org.junit.jupiter.api.Test;
+
+/**
+ * Kernel laws — <b>the condition directives the grammar carries outside the operator surface</b>
+ * (GRAMMAR-LEDGER queue: {@code preamble}, {@code regelKontextEntity}; source:
+ * {@code CheckPreambleImpl}, {@code CheckRegelKontextEntityImpl}).
+ *
+ * <ul>
+ *   <li>{@code @SuppressWarning(NAME)} (DE {@code @UnterdrueckeWarnung}) prefixes a condition and
+ *       suppresses exactly <b>one</b> supported warning: {@code MVK_INVALID_COMPARE_DEC_PLACES} —
+ *       the field-vs-field equality scale gate (NumberLawsTest locks the unsuppressed rejection).
+ *       Any other name draws {@code MVK_INVALID_SUPPRESSED_WARNING}.</li>
+ *   <li>{@code RuleGroup} (DE {@code RegelKontext}) references the rule's containing group as an
+ *       entity; a star on it is rejected (the grammar permits the token only for a nicer error).</li>
+ * </ul>
+ */
+class DirectiveLawsTest {
+
+    @Test
+    void suppressWarningLiftsTheEqualityScaleGate() {
+        // Quantity (scale 0) == UnitPrice (scale 2) is the locked MVK_INVALID_COMPARE_DEC_PLACES
+        // rejection (NumberLawsTest); the directive is the kernel's own escape hatch for it
+        KernelLaws.acceptsOrder("/Order", "../Quantity",
+                "@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) [Quantity] == [UnitPrice]");
+    }
+
+    @Test
+    void onlyTheScaleGateIsSuppressible() {
+        // quirk (probe-corrected expectation): the rejection's diagnostic CODE is the attempted
+        // warning name itself — the MVK_INVALID_SUPPRESSED_WARNING text arrives as the message only
+        // ("The warning to be suppressed 'MVK_NO_WILDCARD' …")
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                "@SuppressWarning(MVK_NO_WILDCARD) [Quantity] == [UnitPrice]",
+                "MVK_NO_WILDCARD");
+    }
+
+    @Test
+    void ruleGroupReferencesTheRulesContainingGroup() {
+        // the enclosing group counts as referencing the error field
+        KernelLaws.accepts("/Subscription/Billing", "../InvoiceEmail",
+                "GroupFilled(RuleGroup)");
+    }
+
+    @Test
+    void aStarOnRuleGroupIsRejected() {
+        KernelLaws.rejects("/Subscription/Billing", "../InvoiceEmail",
+                "GroupFilled(RuleGroup*)",
+                "MVK_INVALID_WILDCARD_FOR_RULEGROUP");
+    }
+}
