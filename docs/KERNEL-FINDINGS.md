@@ -121,6 +121,11 @@ In DM-JSON, a category's `values` list pairs **positionally** with the enumerati
 
 **Consequence:** no self-contained document model can mark a field table-backed, so the checker's precondition can never be met, so rulekit's "author DM-JSON → `checkConsistency`" oracle **cannot author or verify** a `ValueNotConsistent` rule. It is **un-buildable within single-document-model scope** — same root cause as multi-form/Vordruck (needs infrastructure outside the document model), and it makes the would-be "dynamic-enum modelkit authoring" moot (there is nothing in DM-JSON to emit). Stays a tolerant `ReadResult.Opaque` if ever encountered. *(Demonstrated by probe; not locked by a test — there is no expressible fixture to lock.)*
 
+## §5 supplement — tolerance boundary + comparison rescaling (runtime, 2026-06-10, RT-semantics drain)
+
+- **`DiffersWithToleranceRange{N}` fires strictly beyond the tolerance**: satisfied iff `|a − b| > N` — a difference of *exactly* N is still within tolerance and does **not** fire, in either direction. The boundary is the trap a modeller would guess either way. *(Locked: `adapter.laws.ToleranceComparisonLawsTest`.)*
+- **Source-only (not externally observable):** the comparison engine rescales both numeric operands to scale 19 `HALF_UP` before comparing (`BedingungsOperatorHelper.vergleiche`). Model number types cap fractional digits far below 19, so no legal model can surface the rounding — recorded as a source fact, deliberately not law-locked (nothing observable to lock).
+
 ## §6 supplement — the date family (corpus item 9 slice 9a, 2026-06-04 experiments)
 
 `Today` (DE `Heute`), `DifferenceInDays|Months|Years` (DE `DifferenzIn{Tagen,Monaten,Jahren}`), `AddDays|Months|Years` (DE `Addiere{Tage,Monate,Jahre}`):
@@ -136,6 +141,15 @@ In DM-JSON, a category's `values` list pairs **positionally** with the enumerati
 **`Date(d,m,y)` construction + `Valid`/`Invalid` are implemented (2026-06-07) — was deferred, now landed.** `Date(day, month, year[, century, decade])` builds a date from numeric components; the kernel requires **bounded-integer** component fields (a plain scale-0 number draws `MVK_WRONG_DATE_FORMAT_FOR_OP`, so the order fixture's `BirthDay`/`BirthMonth`/`BirthYear` carry `minValue`/`maxValue`). `Valid(Date(…))`/`Invalid(Date(…))` test whether the constructed date is a real calendar date (the kernel's `IDateValidityCondition` — distinct from the custom-field-type validity overload, which stays unmodeled). Components may be number fields, constants (a quoted literal like `"01"`, preserved verbatim), or extractions — including `MonthFromDate`/`YearFromDate` over a **`DATE_FRAGMENT`** source (a year-month partial date; `BoundModel.dateFragment`, a fourth `TemporalOperand` source kind alongside DATE/TIME/DATE_TIME). Modeled as `DateConstruction` (Calculation) + `DateValidity` (Condition). *(Locked: `adapter.DateConstructionReadTest` — kernel-valid + round-trip for construction, `Valid`/`Invalid`, and the date-fragment extraction; N7 catalog examples for `Date`/`Valid`/`Invalid`.)*
 
 *(Locked: N7 examples of Today + all three Difference*/Add* operators + the `Today` number-vs-date invalid; `dsl.operators.DateConditionTest` for rendering + the non-date-field handle rejection. The order fixture gained `OrderDate`/`DeliveryDate` DateType fields.)*
+
+### §6 supplement — `AddYears`/`AddMonths` calendar corrections (runtime, 2026-06-10, RT-semantics drain)
+
+KERNEL-SEMANTICS §6 notes the shifts "disagree across leap years"; the drained source (`BedingungsOperatorHelper.addiereJahre/addiereMonate`) pins the exact corrections, both probe-confirmed:
+
+- **`AddYears` corrects the Feb-28 boundary**: a Feb-28 in a non-leap year shifted into a leap year lands on the **leap day** — `28.02.1999 + 1 year = 29.02.2000`, *not* the plain-`Calendar.add` answer `28.02.2000`.
+- **`AddMonths` clamps end-of-month overflow**: `31.01.2008 + 1 month = 29.02.2008` — clamped to the shorter month's last day, never a carry into March.
+
+*(Locked: `adapter.laws.DateArithmeticLawsTest`.)*
 
 ### §6 supplement — TIME and DATE_TIME value kinds (implemented 2026-06-07)
 
@@ -296,6 +310,16 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 
 *(Locked: N7 examples of all four operators incl. three invalids; the pre-checks live in `ListAggregate`/`CountAggregate` — `dsl.operators.AggregateConditionTest`. The date variant of Max/Min landed with the date family — `DateListAggregate` via `Dsl.latestOf`/`earliestOf`, locked `adapter.DateAggregateReadTest` (stale "rides item 9" flipped 2026-06-10).)*
 
+## §9 supplement — aggregate uncertainty + `FirstFilledValue` prefix sensitivity (runtime, 2026-06-10, RT-semantics drain)
+
+The aggregate combiners track whether their result *could still change if more fields were filled*, and that uncertainty is observable through the message typing (§12 supplement below). Drained from `Combiner`/`NumberCombiner`/`FirstValueCombiner`/`NumberOfDifferentValuesCombiner`:
+
+- **A starred aggregate over a repeatable group stays omission-typed even when every *instantiated* row is filled** — the un-instantiated remainder of the declared repeatability counts as an omitted, fillable tail. Only **exhausting the repetition** (all declared rows instantiated and filled) makes the fired comparison a value error. *(The probe corrected the naive source-read here, which expected the filled instance to be certain.)*
+- **`NumberOfDifferentValues` counts distinct *filled* values only** — an empty operand never bumps the count, but it keeps the count growable (omission-typed).
+- **`FirstFilledValue` is prefix-sensitive — operands after the first filled one are never read.** A formal error *after* the first filled operand is invisible to the rule; *before* it, it suppresses the rule (unknown state); an *empty* operand before it types the fired comparison as an omission error.
+
+*(Locked: `adapter.laws.AggregateUncertaintyLawsTest` + `adapter.laws.FirstFilledValueLawsTest`.)*
+
 ## §9 supplement — `RepetitionNotUnique` slot laws (slice 7b, 2026-06-04 experiments)
 
 - **The rule sits at the parent**: every key field must have at least one repeatable group **between the rule group and the field** (or sit directly in a repeatable root group) — `RepetitionNotUnique(Addons/Name)` from *inside* `Addons` draws **`MVK_REPEATABLE_GROUP_MISSING`**; the same condition from the parent validates. Position-dependent → kernel-delegated, not pre-checked.
@@ -314,6 +338,20 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 - Computations require error text like rules do (`MVK_ERROR_MESSAGE_MISSING`).
 
 *(Locked: `ComputationAuthoringTest`; the BA-doc worked-example shapes — concat, tiered+rounding, division/grouping, common-precondition concat, current-repetition, parallel-iteration — transferred to own domains in `adapter.BaComputationCorpusTest`.)*
+
+## §12 supplement — every fired message is typed value-vs-omission (runtime, 2026-06-10, RT-semantics drain)
+
+A dimension KERNEL-SEMANTICS doesn't cover (it presents the logic as two-valued): every message `validateFull` raises carries a **`MessageType`** — `OMISSION_ERROR` when the rule could be satisfied by *filling* one or more additional fields, `VALUE_ERROR` when only changing a value can satisfy it. Public surface: `IMessage.getMessageType()` (kernel-md-runtime-api). Internally this is the three-state `ValidierungsErgebnis` (`TRUE_WF` / `TRUE_AF` / `FALSE_OR_UNKNOWN`) with a combination algebra:
+
+| combination | result | intuition |
+|---|---|---|
+| comparison over filled values | `VALUE_ERROR` | only changing the value helps |
+| comparison fired on an empty-field substitution (number→0, confirm→False) | `OMISSION_ERROR` | filling the field could flip it |
+| presence predicate (`FieldNotFilled`, …) | `OMISSION_ERROR` | filling satisfies it by definition |
+| `And` of a value branch and an omission branch | `OMISSION_ERROR` | **omission wins** — filling could still rescue the whole rule |
+| `Or` of a value branch and an omission branch | `VALUE_ERROR` | **value wins** — the value branch alone convicts |
+
+*(Locked: `adapter.laws.ErrorTypeLawsTest`; the aggregate corollary — the omitted-tail typing — in `AggregateUncertaintyLawsTest`, §9 supplement above. Source: `ValidierungsErgebnis.combineUND/combineODER`, `BedingungsOperatorHelper.vergleiche`.)*
 
 ## The pre-`checkConsistency` tiers — the write path's output contract (instrument 4, 2026-06-04)
 

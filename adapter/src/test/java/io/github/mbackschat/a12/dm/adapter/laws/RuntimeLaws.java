@@ -32,6 +32,7 @@ import com.mgmtp.a12.kernel.md.rt.api.IDocumentModelIdProvider;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentRtService;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentValidationResult;
 import com.mgmtp.a12.kernel.md.rt.api.ILabelProvider;
+import com.mgmtp.a12.kernel.md.rt.api.IMessage;
 import com.mgmtp.a12.kernel.md.rt.api.IModelCode;
 import com.mgmtp.a12.kernel.md.rt.api.IModelCodeCache;
 
@@ -168,8 +169,32 @@ final class RuntimeLaws {
     private record Inst(String path, int[] reps, boolean group, boolean hasValue, String value) {
     }
 
-    /** One validation message: its error code and the row/field pointer it attached to (for per-row checks). */
-    record Msg(String code, String errorField) {
+    /**
+     * One validation message: its error code, the row/field pointer it attached to (for per-row
+     * checks), and its {@link IMessage.MessageType} — the kernel's value-vs-omission typing
+     * (OMISSION_ERROR = the rule could be satisfied by <em>filling</em> more fields; VALUE_ERROR
+     * otherwise). The typing channel is what the error-type laws lock.
+     */
+    record Msg(String code, String errorField, IMessage.MessageType type) {
+    }
+
+    /** The {@link IMessage.MessageType} of the fired {@code errorCode} (empty when it did not fire). */
+    static Optional<IMessage.MessageType> typeOf(String modelJson, String errorCode, Doc doc) {
+        return messages(modelJson, doc).stream().filter(m -> m.code().equals(errorCode))
+                .map(Msg::type).findFirst();
+    }
+
+    /** Single-row convenience for {@link #typeOf(String, String, Doc)} (same building as firedCodes). */
+    static Optional<IMessage.MessageType> typeOf(String modelJson, String errorCode, Set<String> groupPaths,
+            Set<String> emptyFields, Map<String, String> fieldValues) {
+        Doc doc = doc();
+        Set<String> groups = new LinkedHashSet<>(groupPaths);
+        fieldValues.keySet().forEach(f -> groups.addAll(ancestorGroups(f)));
+        emptyFields.forEach(f -> groups.addAll(ancestorGroups(f)));
+        groups.forEach(g -> doc.group(g, ones(depth(g))));
+        emptyFields.forEach(f -> doc.emptyField(f, ones(depth(f))));
+        fieldValues.forEach((f, v) -> doc.field(f, v, ones(depth(f))));
+        return typeOf(modelJson, errorCode, doc);
     }
 
     /** Evaluate an explicit document instance; return every message (code + pointer) the kernel raised. */
@@ -191,7 +216,7 @@ final class RuntimeLaws {
         }
         IDocumentValidationResult result = rt.validateFull(d, Locale.US);
         return result.getMessages().stream()
-                .map(m -> new Msg(m.getErrorCode(), String.valueOf(m.getErrorFieldPointer())))
+                .map(m -> new Msg(m.getErrorCode(), String.valueOf(m.getErrorFieldPointer()), m.getMessageType()))
                 .toList();
     }
 
