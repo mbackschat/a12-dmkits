@@ -157,7 +157,7 @@ The forward-useful spike results — the inputs M7–M10+ consume:
 | **M9** | Phase 4 | **unify rules + structure in one edit session** — structure + rule/computation edits compose in a single read→edit→write-back flow |
 | **M10+** | Phase 5 | **full coverage** — includes, typedefs, **doc config** (`decimalSeparator`/`timeZone`/… hardcoded → settable), header metadata, placement/top-level constraints. Reaches "full support for ALL dm structures + their constraints" |
 
-**Deferred until first needed** (minimum code, nothing speculative): moving `DmJson` → `dm.core` lands with **M8**; extracting a `dm.core.BoundModel` substrate lands when **M9**'s unified session needs the shared type. Both are flagged pending in ARCHITECTURE (its core-box already shows the target).
+**Deferred until first needed** (minimum code, nothing speculative): moving `DmJson` → `dm.core` lands with **M8**; extracting a `dm.core.BoundModel` substrate lands when **M9**'s unified session needs the shared type. Both are flagged pending in ARCHITECTURE (its core-box already shows the target). **M7's opening step is a source-mining pass over the kernel's Jackson/model-impl tier** (DM-JSON defaults, optional slots, `@JsonTypeInfo` discriminators in `kernel-md-model`/`kernel-md-a12internal`) — deliberately deferred until then per the consumer-exists discipline (§B/§D): the read→edit→write-back path is that knowledge's first consumer.
 
 ---
 
