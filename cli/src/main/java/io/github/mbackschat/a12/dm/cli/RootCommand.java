@@ -28,6 +28,7 @@ import picocli.CommandLine.Spec;
             GroupCommand.class,
             TypedefCommand.class,
             IncludeCommand.class,
+            ConfigCommand.class,
             ExportCommand.class,
             DescribeCommand.class,
             ValidateCommand.class,
