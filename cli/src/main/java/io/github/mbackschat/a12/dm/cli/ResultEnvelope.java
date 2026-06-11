@@ -43,12 +43,24 @@ record ResultEnvelope(
 
     /** A mutating op that succeeded and wrote the model. */
     static ResultEnvelope applied(String target, String op, String summary, JsonNode changed, String output) {
-        return new ResultEnvelope(target, op, Outcome.APPLIED, summary, changed, null, List.of(), null, true, output);
+        return applied(target, op, summary, changed, List.of(), output);
+    }
+
+    /** A mutating op that succeeded, carrying advisory diagnostics (e.g. lint warnings) alongside the write. */
+    static ResultEnvelope applied(String target, String op, String summary, JsonNode changed,
+            List<Diagnostic> diagnostics, String output) {
+        return new ResultEnvelope(target, op, Outcome.APPLIED, summary, changed, null, diagnostics, null, true, output);
     }
 
     /** A mutating op previewed under {@code --dry-run} — nothing written. */
     static ResultEnvelope preview(String target, String op, String summary, JsonNode changed) {
-        return new ResultEnvelope(target, op, Outcome.PREVIEW, summary, changed, null, List.of(), null, false, null);
+        return preview(target, op, summary, changed, List.of());
+    }
+
+    /** A mutating op previewed under {@code --dry-run} — nothing written — carrying advisory diagnostics. */
+    static ResultEnvelope preview(String target, String op, String summary, JsonNode changed,
+            List<Diagnostic> diagnostics) {
+        return new ResultEnvelope(target, op, Outcome.PREVIEW, summary, changed, null, diagnostics, null, false, null);
     }
 
     /** The safe-delete gate fired (still referenced, no {@code --cascade}) — nothing written, exit 2. */

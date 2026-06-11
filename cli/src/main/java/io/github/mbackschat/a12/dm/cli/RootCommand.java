@@ -22,6 +22,7 @@ import picocli.CommandLine.Spec;
         description = "Typed, model-aware authoring & edit kit for A12 validation rules. JSON in / JSON out.",
         subcommands = {
             DocCommand.class,
+            RuleCommand.class,
             ExportCommand.class,
             DescribeCommand.class,
             ValidateCommand.class,
