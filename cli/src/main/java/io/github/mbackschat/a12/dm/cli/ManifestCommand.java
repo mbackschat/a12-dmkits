@@ -30,7 +30,7 @@ final class ManifestCommand extends BaseCommand {
     @Override
     public Integer call() {
         ObjectNode root = MAPPER.createObjectNode();
-        root.put("tool", "rulekit");
+        root.put("tool", "dmtool");
         // every verb's output conforms to the result envelope — point the agent at its schema
         root.put("resultSchema", "result");
         // the -m/--model context option is inherited by every verb — list it once, globally

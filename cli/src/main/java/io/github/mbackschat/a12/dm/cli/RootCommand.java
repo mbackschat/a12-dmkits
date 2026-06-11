@@ -15,11 +15,11 @@ import picocli.CommandLine.Spec;
  * class; nothing else needs to know.
  */
 @Command(
-        name = "rulekit",
+        name = "dmtool",
         mixinStandardHelpOptions = true,
         version = "a12-dmkits CLI",
-        synopsisSubcommandLabel = "<verb>",
-        description = "Typed, model-aware authoring & edit kit for A12 validation rules. JSON in / JSON out.",
+        synopsisSubcommandLabel = "<target> <op>",
+        description = "Typed, model-aware authoring & edit kit for A12 document models. JSON in / JSON out.",
         subcommands = {
             DocCommand.class,
             RuleCommand.class,
