@@ -120,6 +120,19 @@ The kernel facts live in `KERNEL-FINDINGS.md` §7; rulekit's treatment:
 
 **Distinct from `BoundModel`'s write path (above).** `BoundModel` retains the authored source *string* verbatim, so an unmodified `ofJson(json).toJson()` is **byte-for-byte** identical (and a *modified* model reformats). `ModelDocument` always re-serializes the tree, so even an unmodified round-trip is content-identical-but-reformatted — the right behavior for an edit substrate (edited or not, output is uniform), and exactly the path M8's surgical edits exercise.
 
+## Structure edits + the delete-safety rule (M8/M9, 2026-06-10)
+
+Structure edits (`ModelDocument.addField`/`addGroup`/`removeField`/`removeGroup`/`setRepeatable`) are **surgical tree mutations**; the single validity gate is `validate()` (re-bind → `checkConsistency`), which funnels both kernel rejection tiers — deserialize/expand (e.g. a duplicate id → `IllegalArgumentException`) and `checkConsistency` (ERROR notifications) — into one `ModelConsistencyException`. `EditSession` (the layer above the ⊥ kits) composes structure + rule edits over one DM-JSON and validates once.
+
+**Delete is deliberately *not* reference-checked at the call site** (decided 2026-06-10, locked by `EditSessionTest.removingAFieldARuleReferencesIsRejectedByTheGate`):
+- **The kernel gate is the authoritative dangling-reference check.** Removing a field a rule still references leaves the condition pointing at a missing entity, so `validate()` rejects it (`ModelConsistencyException`). We don't reimplement reference analysis — the engine arbitrates.
+- **An edit session must tolerate invalid *intermediate* states.** Deleting a field *and* the rule that references it has no globally-valid per-step ordering if each step self-validates; batch-then-validate-once is the model, so `remove()` never auto-validates.
+- **Reference analysis lives in the adapter, above the kits.** `KernelAdapter.whereUsed(path)` (F9a) is the "what references this?" oracle; `modelkit`/`EditSession` sit *below* the adapter (and `dm.modelkit ⊥ dm.rulekit`), so a proactive check there would mean reimplementing kernel reference resolution — forbidden.
+
+**Client feedback shape.** `removeX(path)` throws `IllegalArgumentException` *only* for an absent path (a usage error); the dangling-reference problem surfaces at `validate()` as `ModelConsistencyException` (`.getMessage()` = the kernel diagnostic; `.notifications()` carries the `MVK_*` `RankedNotification`s on the `checkConsistency` tier, else the wrapped `cause`). Same gate `BoundModel.add` uses — uniform across the edit surface.
+
+**Deferred to the CLI remove verb** (which has the adapter): a *proactive* `whereUsed`-based check that lists referencing rules and **refuses without `--force`** / offers an **explicit `--cascade`** (never a silent cascade-delete). That's where the capability lives; it's a UX layer over the same gate.
+
 ## Catalog examples are CI-validated against the real kernel (N7 — done)
 
 Every catalog `validExample`/`invalidExample` is now executed against the real kernel by `CatalogExamplesAreKernelValidTest`: each example is embedded as a rule's `errorCondition` in the `order.dm.json` fixture and run through `RuleValidator` — valid examples must be accepted, invalid ones rejected (with the stated `MVK_*` code where the catalog names one). So the bundled semantics can't silently drift from the engine. This also confirmed the hand-authored examples are correct, including the `Length(<stringField>) > N` syntax. The fixture must provide every field an example references (by name + type); the harness picks the rule's error field as the first fixture field referenced (whole-word match) so the error-field-referenced rule is satisfied.
