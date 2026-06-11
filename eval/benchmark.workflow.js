@@ -90,7 +90,7 @@ function authorPrompt(task) {
     ? `\n  - this model is part of a multi-file workspace: it REFERENCES other model files located elsewhere in the workspace, which you may read/resolve as needed to validate it.`
     : ''
   return `You help a business analyst author an A12 validation rule. Assume NO prior A12/rulekit knowledge; use ONLY:
-  - the CLI:  ${CLI} <args>   (it is self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <verb> --help\` shows a verb's parameters, \`${CLI} operators\` lists the DSL operators and \`${CLI} operators <id>\` gives one in full)
+  - the CLI:  ${CLI} <args>   (it is self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <target> <op> --help\` shows an op's parameters, \`${CLI} operators\` lists the DSL operators and \`${CLI} operators <id>\` gives one in full)
   - the model file: ${MODEL_FILE(task)}${multifile}${skillBlock()}
 Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). Requirement to enforce: "${task.intent}".
 Author the rule and CONFIRM the kernel accepts it via the CLI. Return ONLY JSON — and note that "field" is
@@ -102,7 +102,7 @@ function modifyComputationPrompt(task) {
   return `You help a business analyst CHANGE an EXISTING A12 COMPUTATION on a model. A computation COMPUTES
 (fills in) a field's value from other fields. The model ALREADY has a computation; re-express it to meet a
 new requirement, KEEPING THE SAME computed field. Assume NO prior A12/rulekit knowledge; use ONLY:
-  - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <verb> --help\` a verb's parameters; \`${CLI} explain ${MODEL_FILE(task)} --computation ${task.computation}\` shows the existing computation, \`${CLI} schema add\` the computation-spec shape, \`${CLI} modify --help\` (its \`--dry-run\` PREVIEWS a re-expression read-only), \`${CLI} operators\` the DSL operators)
+  - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <target> <op> --help\` an op's parameters; \`${CLI} -m ${MODEL_FILE(task)} computation explain ${task.computation}\` shows the existing computation, \`${CLI} schema computation add\` the computation-spec shape, \`${CLI} computation modify --help\` (its \`--dry-run\` PREVIEWS a re-expression read-only), \`${CLI} operators\` the DSL operators)
   - the model file: ${MODEL_FILE(task)}${skillBlock()}
 Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). The existing computation to change: ${task.computation}.
 New requirement: "${task.intent}".
@@ -115,12 +115,12 @@ function modifyRulePrompt(task) {
 condition is TRUE exactly when a document is INVALID (it describes the VIOLATION, not the requirement). The
 model ALREADY has a rule; re-express its CONDITION to meet a new requirement, KEEPING THE SAME rule (same
 error field). Assume NO prior A12/rulekit knowledge; use ONLY:
-  - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <verb> --help\` a verb's parameters; \`${CLI} explain ${MODEL_FILE(task)} --rule ${task.rule}\` shows the existing rule, \`${CLI} modify --help\` (its \`--dry-run\` PREVIEWS a re-expression read-only), \`${CLI} operators\` the DSL operators)
+  - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <target> <op> --help\` an op's parameters; \`${CLI} -m ${MODEL_FILE(task)} rule explain ${task.rule}\` shows the existing rule, \`${CLI} rule modify --help\` (its \`--dry-run\` PREVIEWS a re-expression read-only), \`${CLI} operators\` the DSL operators)
   - the model file: ${MODEL_FILE(task)}${skillBlock()}
 Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). The existing rule to change: ${task.rule}.
 New requirement: "${task.intent}".
 Re-express the rule's CONDITION (true on a VIOLATION) and CONFIRM the kernel accepts the CHANGE by PREVIEWING it
-(read-only, e.g. \`${CLI} modify ${MODEL_FILE(task)} --rule ${task.rule} --condition "<DSL>" --dry-run\`) — do NOT
+(read-only, e.g. \`${CLI} -m ${MODEL_FILE(task)} rule modify ${task.rule} --condition "<DSL>" --dry-run\`) — do NOT
 write the model file. Return ONLY JSON ("condition" = the new DSL condition that is true on a violation):
   {"condition":"<DSL>","kernelAccepted":true|false}`
 }
@@ -128,7 +128,7 @@ write the model file. Return ONLY JSON ("condition" = the new DSL condition that
 function authorComputationPrompt(task) {
   return `You help a business analyst author an A12 COMPUTATION — a rule that COMPUTES (fills in) a field's value
 from other fields, rather than validating one. Assume NO prior A12/rulekit knowledge; use ONLY:
-  - the CLI:  ${CLI} <args>   (it is self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <verb> --help\` shows a verb's parameters, \`${CLI} schema add\` shows the input shapes, \`${CLI} operators\` lists the DSL operators and \`${CLI} operators <id>\` gives one in full)
+  - the CLI:  ${CLI} <args>   (it is self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <target> <op> --help\` shows an op's parameters, \`${CLI} schema computation add\` shows the input shapes, \`${CLI} operators\` lists the DSL operators and \`${CLI} operators <id>\` gives one in full)
   - the model file: ${MODEL_FILE(task)}${skillBlock()}
 Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). Requirement to implement: "${task.intent}".
 Author the computation and CONFIRM the kernel accepts it via the CLI. Return ONLY JSON:
@@ -138,7 +138,7 @@ Author the computation and CONFIRM the kernel accepts it via the CLI. Return ONL
 function explainPrompt(task) {
   return `You help a business analyst understand the validation rules already on an A12 model. Assume NO prior
 A12/rulekit knowledge; use ONLY:
-  - the CLI:  ${CLI} <args>   (it is self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <verb> --help\` shows a verb's parameters, \`${CLI} operators\` lists the DSL operators and \`${CLI} operators <id>\` gives one in full)
+  - the CLI:  ${CLI} <args>   (it is self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <target> <op> --help\` shows an op's parameters, \`${CLI} operators\` lists the DSL operators and \`${CLI} operators <id>\` gives one in full)
   - the model file: ${MODEL_FILE(task)}${skillBlock()}
 Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). For each of these rules: ${JSON.stringify(task.rules)}
 explain exactly what makes a document INVALID (the violation the rule fires on) and which field it guards.
@@ -302,7 +302,7 @@ if (compCandidates.length) {
   try {
     const rescore = await agent(
       `Authoritatively re-validate candidate A12 COMPUTATIONS against the real kernel. For EACH entry below:
-write its \`spec\` (verbatim JSON) to its \`file\`, then run:  ${CLI} add <entry.model> <entry.file>
+write its \`spec\` (verbatim JSON) to its \`file\`, then run:  ${CLI} -m <entry.model> computation add <entry.file>
 The kernel validates before writing: on ACCEPT it prints the new model JSON and exits 0; on REJECT it
 prints {"persisted":false,...} and exits non-zero. Entries:
 ${JSON.stringify(entries)}
@@ -346,7 +346,7 @@ if (modCandidates.length) {
     const rescore = await agent(
       `Authoritatively re-validate candidate A12 COMPUTATION MODIFICATIONS against the real kernel. For EACH
 entry below: write its \`spec\` (verbatim JSON) to its \`file\`, then run (READ-ONLY — \`--dry-run\` writes nothing):
-  ${CLI} modify <entry.model> --computation <entry.computation> --spec <entry.file> --dry-run
+  ${CLI} -m <entry.model> computation modify <entry.computation> --spec <entry.file> --dry-run
 This re-expresses the named existing computation. On ACCEPT it prints a diff JSON {"before","after","changed",…}
 and exits 0; on REJECT it prints {"valid":false,…} and exits non-zero. Entries:
 ${JSON.stringify(entries)}
@@ -389,7 +389,7 @@ if (modRuleCandidates.length) {
   try {
     const rescore = await agent(
       `Re-validate candidate A12 RULE re-expressions against the real kernel in ONE process using the batch verb.
-Each op runs \`modify <model> --rule <name> --condition <DSL> --dry-run\` (READ-ONLY — writes nothing): on ACCEPT
+Each op runs \`-m <model> rule modify <name> --condition <DSL> --dry-run\` (READ-ONLY — writes nothing): on ACCEPT
 it returns a diff {"before","after","changed",…} with exit 0; on REJECT it returns {"valid":false,…} with a
 non-zero exit. Steps: (1) write this JSON array verbatim to /tmp/rk-modrule-ops.json:
 ${JSON.stringify(ops)}
@@ -421,7 +421,7 @@ const authorJudged = await parallel(candidates.map(r => () => {
     `Judge whether a candidate A12 rule is SEMANTICALLY EQUIVALENT to the reference (gold): do they fire on
 exactly the same documents? Polarity matters — a rule that fires on the opposite case is NOT equivalent.
 Judge WITHIN the field's ACTUAL value domain: two rules that differ only on values the field cannot hold
-ARE equivalent. The model is ${MODEL_FILE(r.task)} — first run \`${CLI} describe ${MODEL_FILE(r.task)}${INCLUDE_HINT(r.task)}\` to
+ARE equivalent. The model is ${MODEL_FILE(r.task)} — first run \`${CLI} -m ${MODEL_FILE(r.task)} doc describe${INCLUDE_HINT(r.task)}\` to
 see field types and enum value sets (e.g. an enum with only three possible values: "X not in {A,B}" then
 equals "X == C"). PATH RESOLUTION: a bare field name resolves against the rule's group AND its ancestor
 groups (the kernel walks UP the hierarchy), so a bare ref and an absolute ref denote the SAME field when
@@ -442,9 +442,9 @@ REQUIRE the presence guard — keep flagging a real difference there.
 VERIFY BY EXECUTION — the kernel is the arbiter; PREFER this over reasoning whenever equivalence hinges on a
 kernel semantic (empty operands, polarity, path resolution). You have the CLI: write 2-4 small documents to
 files (JSON \`{"fields":{…}}\` — a repeatable group is an array of row objects, a field its text value, \`null\`
-= present-but-empty; see \`${CLI} schema eval-doc\`) that exercise the fields BOTH conditions reference at their
+= present-but-empty; see \`${CLI} schema doc eval\`) that exercise the fields BOTH conditions reference at their
 edges (empty vs filled, a boundary value, each enum value). For each doc run, for the GOLD then the CANDIDATE,
-\`${CLI} eval-doc ${MODEL_FILE(r.task)}${INCLUDE_HINT(r.task)} --condition '<that condition>' --field <that field> --doc <doc>\`
+\`${CLI} -m ${MODEL_FILE(r.task)} doc eval${INCLUDE_HINT(r.task)} --condition '<that condition>' --field <that field> --doc <doc>\`
 and read \`rule.fired\`. They are EQUIVALENT iff \`rule.fired\` matches on EVERY document; a document where they
 differ is the witness that they are NOT. This runs the real kernel, so you needn't recall the empty/polarity rules.
 Reference gold: field="${r.task.gold.field}", condition=${JSON.stringify(r.task.gold.condition)}.
@@ -477,7 +477,7 @@ const compJudged = await parallel(compCandidates.map(r => () => {
 assign the SAME value to the SAME computed field under the SAME conditions? A computation is a computed
 field + an optional common precondition + one or more (precondition, operation) alternatives. Two are
 equivalent iff, for every document, they compute the same value (or both compute nothing). The model is
-${MODEL_FILE(r.task)} — run \`${CLI} describe ${MODEL_FILE(r.task)}\` to see field types. A difference that
+${MODEL_FILE(r.task)} — run \`${CLI} -m ${MODEL_FILE(r.task)} doc describe\` to see field types. A difference that
 is only path notation, conjunct order, or an equivalent value expression is NOT a semantic difference.
 KERNEL FACT (empty operands) — TYPE-DEPENDENT, get this right: an empty operand's effect on a computation
 depends on the operand's TYPE. For a DATE (or other not-evaluated type) the operation computes NO value and
@@ -506,7 +506,7 @@ the gold? A computation is a computed field + an optional common precondition + 
 operation) alternatives. The candidate has already been confirmed (by the kernel) to be a CHANGE from the
 original computation — judge only whether it is the RIGHT change (equivalent to the gold). Two are
 equivalent iff, for every document, they compute the same value (or both compute nothing). The model is
-${MODEL_FILE(r.task)} — run \`${CLI} describe ${MODEL_FILE(r.task)}\` to see field types. A difference that
+${MODEL_FILE(r.task)} — run \`${CLI} -m ${MODEL_FILE(r.task)} doc describe\` to see field types. A difference that
 is only path notation, conjunct order, or an equivalent value expression is NOT a semantic difference.
 KERNEL FACT (empty operands) — TYPE-DEPENDENT: an empty DATE operand makes the operation compute NO value
 (clears), so a presence guard over date operands is REDUNDANT (guarded == unguarded). But an empty NUMBER
@@ -531,13 +531,13 @@ const modRuleJudged = await parallel(modRuleCandidates.map(r => () => {
 two conditions fire on exactly the same documents (mark the same documents INVALID)? A rule's condition is TRUE
 on a VIOLATION — polarity matters; a condition that fires on the OPPOSITE case is NOT equivalent. The candidate
 has already been confirmed by the kernel to be a CHANGE from the original rule — judge only whether it is the
-RIGHT change (semantically equivalent to the gold). The model is ${MODEL_FILE(r.task)} — run \`${CLI} describe
-${MODEL_FILE(r.task)}\` to see field types and value domains. Judge WITHIN the field's ACTUAL value domain; a
+RIGHT change (semantically equivalent to the gold). The model is ${MODEL_FILE(r.task)} — run \`${CLI} -m
+${MODEL_FILE(r.task)} doc describe\` to see field types and value domains. Judge WITHIN the field's ACTUAL value domain; a
 difference that is only path notation or an equivalent value expression is NOT a semantic difference.
 VERIFY BY EXECUTION — the kernel is the arbiter; PREFER it over reasoning when equivalence hinges on a kernel
 semantic (empty operands, polarity). Write 2-4 small documents to files (\`{"fields":{…}}\`; see \`${CLI} schema
-eval-doc\`) exercising the referenced fields at their edges; for each, run for the GOLD then the CANDIDATE
-\`${CLI} eval-doc ${MODEL_FILE(r.task)}${INCLUDE_HINT(r.task)} --condition '<that condition>' --field ${r.task.gold.field} --doc <doc>\`
+doc eval\`) exercising the referenced fields at their edges; for each, run for the GOLD then the CANDIDATE
+\`${CLI} -m ${MODEL_FILE(r.task)} doc eval${INCLUDE_HINT(r.task)} --condition '<that condition>' --field ${r.task.gold.field} --doc <doc>\`
 and compare \`rule.fired\` — EQUIVALENT iff it matches on every document.
 Reference gold (the intended modified rule): error field "${r.task.gold.field}", condition=${JSON.stringify(r.task.gold.condition)}.
 Candidate condition: ${JSON.stringify(r.out.condition)}.
