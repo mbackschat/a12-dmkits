@@ -64,6 +64,28 @@ class ApplyVerbTest {
     }
 
     @Test
+    void appliesStructureThenRuleInOneSession(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path ops = dir.resolve("ops.json");
+        // the north-star: add a field, then author a rule that guards it — atomically, one write
+        Files.writeString(ops, """
+                [ {"target":"field","op":"add","group":"/Order","name":"Discount","kind":"NUMBER"},
+                  {"target":"rule","op":"add","field":"/Order/Discount","code":"DISCOUNT_NEGATIVE",
+                   "condition":"FieldFilled(/Order/Discount) And [/Order/Discount] < 0",
+                   "messages":[{"locale":"en_US","text":"Discount cannot be negative."}]} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertTrue(j.path("written").asBoolean());
+        assertEquals("staged", j.path("results").get(1).path("outcome").asText());
+        assertEquals("/Order/DISCOUNT_NEGATIVE", j.path("results").get(1).path("changed").path("rule").asText());
+        String written = Files.readString(model);
+        assertTrue(written.contains("Discount") && written.contains("DISCOUNT_NEGATIVE"));
+    }
+
+    @Test
     void previewWritesNothing(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         String before = Files.readString(model);

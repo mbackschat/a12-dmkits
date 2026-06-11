@@ -5,6 +5,7 @@ import java.io.StringReader;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.function.Function;
 
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
@@ -17,7 +18,9 @@ import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
+import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 
 /**
  * A single read → edit → write-back session over one document model, composing <b>structure</b> edits
@@ -112,6 +115,23 @@ public final class EditSession {
     public EditSession modifyRule(String ruleFullName, Function<BoundModel, Condition> builder) {
         BoundModel m = BoundModel.ofJson(json, resolver);
         json = m.replaceCondition(ruleFullName, builder.apply(m)).toJson();
+        return this;
+    }
+
+    /**
+     * Add a rule from its spec parts (raw condition <em>text</em>) — the {@code apply}/spec path, distinct
+     * from the DSL-builder {@link #addRule(Function)}. Text injection only (no per-op kernel gate), so a
+     * sequence can stay transiently invalid until {@link #validate()} confirms the whole model.
+     */
+    public EditSession addRule(String groupPath, String name, String errorEntityRelPath,
+            String code, String condition, String severity, List<LocalizedText> messages) {
+        json = ModelWriter.addRule(json, groupPath, name, errorEntityRelPath, code, condition, severity, messages);
+        return this;
+    }
+
+    /** Re-express a rule's condition from raw DSL <em>text</em> (the {@code apply}/spec path; no per-op gate). */
+    public EditSession modifyRule(String ruleFullName, String condition) {
+        json = ModelWriter.replaceCondition(json, ruleFullName, condition);
         return this;
     }
 

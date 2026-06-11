@@ -17,6 +17,7 @@ import com.mgmtp.a12.model.notification.RankedNotification;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
 import picocli.CommandLine.Command;
@@ -163,8 +164,31 @@ final class ApplyCommand extends BaseCommand {
                 session.removeGroup(path);
                 changed.put("removed", path);
             }
+            case "rule add" -> {
+                String field = req(op, "field");
+                int s = field.lastIndexOf('/');
+                if (s <= 0) {
+                    throw new IllegalArgumentException("rule add 'field' must be an absolute path (e.g. /Group/Field)");
+                }
+                String group = field.substring(0, s);
+                String errorEntityRelPath = "../" + field.substring(group.length() + 1);
+                String code = req(op, "code");
+                String ruleName = op.hasNonNull("name") ? op.get("name").asText() : code;
+                String severity = op.hasNonNull("severity") ? op.get("severity").asText() : "ERROR";
+                List<LocalizedText> messages = messages(op);
+                if (messages.isEmpty()) {
+                    throw new IllegalArgumentException("rule add needs messages [{locale,text}, …]");
+                }
+                session.addRule(group, ruleName, errorEntityRelPath, code, req(op, "condition"), severity, messages);
+                changed.put("rule", group + "/" + ruleName);
+            }
+            case "rule modify" -> {
+                String rule = req(op, "rule");
+                session.modifyRule(rule, req(op, "condition"));
+                changed.put("modified", rule);
+            }
             default -> throw new IllegalArgumentException("apply does not yet support op '" + target + " " + name
-                    + "' (this increment: field/group add/remove)");
+                    + "' (this increment: field/group add/remove, rule add/modify)");
         }
         return changed;
     }
@@ -174,6 +198,16 @@ final class ApplyCommand extends BaseCommand {
             throw new IllegalArgumentException("op missing required arg '" + key + "'");
         }
         return op.get(key).asText();
+    }
+
+    private static List<LocalizedText> messages(JsonNode op) {
+        List<LocalizedText> messages = new ArrayList<>();
+        for (JsonNode m : op.path("messages")) {
+            if (m.hasNonNull("locale") && m.hasNonNull("text")) {
+                messages.add(new LocalizedText(m.get("locale").asText(), m.get("text").asText()));
+            }
+        }
+        return messages;
     }
 
     /** A failing op's per-op envelope — corrective: names the op index, the cause, and the offending locus. */
