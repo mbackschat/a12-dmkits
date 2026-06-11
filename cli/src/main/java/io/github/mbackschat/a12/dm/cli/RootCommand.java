@@ -23,6 +23,7 @@ import picocli.CommandLine.Spec;
         subcommands = {
             DocCommand.class,
             RuleCommand.class,
+            ComputationCommand.class,
             ExportCommand.class,
             DescribeCommand.class,
             ValidateCommand.class,
