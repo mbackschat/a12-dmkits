@@ -86,6 +86,40 @@ class ApplyVerbTest {
     }
 
     @Test
+    void aTypoedArgSelfCorrectsWithDidYouMean(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        String before = Files.readString(model);
+        Path ops = dir.resolve("ops.json");
+        // 'grop' instead of 'group' — apply must name it (RK_UNKNOWN_ARG) + suggest 'group', not fail opaquely
+        Files.writeString(ops, """
+                [ {"target":"field","op":"add","grop":"/Order","name":"Discount","kind":"NUMBER"} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(1, res.code());
+        JsonNode j = M.readTree(res.out());
+        assertFalse(j.path("committed").asBoolean());
+        assertEquals(0, j.path("failedAt").asInt());
+        JsonNode diag = j.path("results").get(0).path("diagnostics").get(0);
+        assertEquals("RK_UNKNOWN_ARG", diag.path("code").asText());
+        assertEquals("grop", diag.path("where").path("arg").asText());
+        assertTrue(diag.path("fix").asText().contains("group"), () -> "did-you-mean suggests 'group': " + diag);
+        assertEquals(before, Files.readString(model), "the model is untouched (rollback)");
+    }
+
+    @Test
+    void anUnsupportedOpForTheTargetIsNamed(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, """
+                [ {"target":"field","op":"bogus","group":"/Order","name":"X"} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(1, res.code());
+        JsonNode diag = M.readTree(res.out()).path("results").get(0).path("diagnostics").get(0);
+        assertEquals("RK_UNKNOWN_OP", diag.path("code").asText());
+    }
+
+    @Test
     void previewWritesNothing(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         String before = Files.readString(model);

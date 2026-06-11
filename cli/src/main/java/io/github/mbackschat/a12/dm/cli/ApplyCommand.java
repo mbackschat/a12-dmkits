@@ -4,8 +4,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -40,6 +44,15 @@ import picocli.CommandLine.Parameters;
 final class ApplyCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    /** The op-record keys each {@code target op} accepts — the param model op-arg validation checks against. */
+    private static final Map<String, Set<String>> KNOWN_KEYS = Map.of(
+            "field add", Set.of("group", "name", "kind", "typedef"),
+            "field remove", Set.of("fieldPathInModel"),
+            "group add", Set.of("parent", "name", "repeatable"),
+            "group remove", Set.of("groupPathInModel"),
+            "rule add", Set.of("field", "condition", "code", "severity", "name", "messages"),
+            "rule modify", Set.of("rule", "condition"));
 
     @Parameters(index = "0", paramLabel = "<ops.json>",
             description = "a JSON array of op-records: [{\"target\":\"field\",\"op\":\"add\",\"group\":…,\"name\":…,\"kind\":…}, …]")
@@ -79,6 +92,12 @@ final class ApplyCommand extends BaseCommand {
         Integer failedAt = null;
         int i = 0;
         for (JsonNode op : ops) {
+            List<Diagnostic> argProblems = validateArgs(op);
+            if (!argProblems.isEmpty()) {
+                results.add(argRejection(op, i, argProblems).toJson());
+                failedAt = i;
+                break; // a typo'd/unknown arg self-corrects via the diagnostic — roll back, write nothing
+            }
             try {
                 ObjectNode changed = dispatch(session, op);
                 String label = op.path("target").asText() + " " + op.path("op").asText();
@@ -198,6 +217,80 @@ final class ApplyCommand extends BaseCommand {
             throw new IllegalArgumentException("op missing required arg '" + key + "'");
         }
         return op.get(key).asText();
+    }
+
+    /**
+     * Op-arg validation (CLI-SPEC §7) — check the op-record's keys against the verb's param model and emit a
+     * corrective diagnostic (the most common batch mistake self-corrects instead of failing opaquely): an
+     * {@code op} not valid for its {@code target} → {@code RK_UNKNOWN_OP}; a typo'd/unknown key →
+     * {@code RK_UNKNOWN_ARG} with a {@code where.arg} and a did-you-mean {@code fix}.
+     */
+    private static List<Diagnostic> validateArgs(JsonNode op) {
+        List<Diagnostic> out = new ArrayList<>();
+        String label = op.path("target").asText() + " " + op.path("op").asText();
+        Set<String> valid = KNOWN_KEYS.get(label);
+        if (valid == null) {
+            out.add(Diagnostic.precheck(Optional.of("RK_UNKNOWN_OP"),
+                    "apply does not support op '" + label + "'",
+                    new Diagnostic.Where((String) null, Optional.empty()),
+                    Optional.of("supported ops: " + String.join(", ", new TreeSet<>(KNOWN_KEYS.keySet()))),
+                    Optional.empty()));
+            return out;
+        }
+        for (Iterator<String> it = op.fieldNames(); it.hasNext();) {
+            String f = it.next();
+            if (f.equals("target") || f.equals("op") || valid.contains(f)) {
+                continue;
+            }
+            String near = nearest(f, valid);
+            out.add(Diagnostic.precheck(Optional.of("RK_UNKNOWN_ARG"),
+                    "unknown arg '" + f + "' for op '" + label + "'",
+                    Diagnostic.Where.arg(null, f),
+                    Optional.of(near != null ? "did you mean '" + near + "'?"
+                            : "valid args: " + String.join(", ", new TreeSet<>(valid))),
+                    Optional.empty()));
+        }
+        return out;
+    }
+
+    /** A failing op-arg envelope (the offending op rolled the sequence back). */
+    private ResultEnvelope argRejection(JsonNode op, int index, List<Diagnostic> diagnostics) {
+        return new ResultEnvelope(op.path("target").asText(), op.path("op").asText(),
+                ResultEnvelope.Outcome.REJECTED, "op " + index + " has an invalid arg — sequence rolled back",
+                null, null, diagnostics, null, false, null);
+    }
+
+    /** The closest valid key to {@code key} by edit distance, if reasonably near (else null — no false suggestion). */
+    private static String nearest(String key, Set<String> valid) {
+        String best = null;
+        int bestD = Integer.MAX_VALUE;
+        for (String v : valid) {
+            int d = levenshtein(key, v);
+            if (d < bestD) {
+                bestD = d;
+                best = v;
+            }
+        }
+        return (best != null && bestD <= Math.max(2, best.length() / 2)) ? best : null;
+    }
+
+    private static int levenshtein(String a, String b) {
+        int[] prev = new int[b.length() + 1];
+        int[] cur = new int[b.length() + 1];
+        for (int j = 0; j <= b.length(); j++) {
+            prev[j] = j;
+        }
+        for (int i = 1; i <= a.length(); i++) {
+            cur[0] = i;
+            for (int j = 1; j <= b.length(); j++) {
+                int cost = a.charAt(i - 1) == b.charAt(j - 1) ? 0 : 1;
+                cur[j] = Math.min(Math.min(cur[j - 1] + 1, prev[j] + 1), prev[j - 1] + cost);
+            }
+            int[] t = prev;
+            prev = cur;
+            cur = t;
+        }
+        return prev[b.length()];
     }
 
     private static List<LocalizedText> messages(JsonNode op) {
