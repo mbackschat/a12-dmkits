@@ -157,7 +157,46 @@ bin/rk validate /tmp/rk-combined.dm.json | jq -c '.valid'
 true
 ```
 
-## Includes & type-definitions
+## Type definitions & includes
 
-Multi-file models (a base that `include`s another, or reuses a `typeDefinition`) resolve through **`--include-dir`** on every verb — including these structure-edit verbs — exactly as in [`cli-edit-loop.md`](cli-edit-loop.md). The structure-level *edits* of includes and type-definitions (`addInclude`/`mount`/`addTypeDefinition`) are available in the library and shown in [`API-POC-STUDY.md` §5b](../docs/API-POC-STUDY.md); CLI verbs for them are the next increment.
+Declare a reusable **type definition**, then type a field with it (`add-field --typedef`):
 
+```bash
+bin/rk add-typedef /tmp/rk-struct.dm.json --id Money --kind NUMBER 2>/dev/null
+bin/rk add-field /tmp/rk-struct.dm.json --group /Order --name Credit --typedef Money 2>/dev/null
+echo "--- /Order/Credit is a TypeDefType: $(grep -c TypeDefType /tmp/rk-struct.dm.json)"
+
+```
+
+```output
+{
+  "added" : "Money",
+  "kind" : "NUMBER",
+  "written" : true
+}
+{
+  "added" : "/Order/Credit",
+  "kind" : "TypeDefType",
+  "written" : true
+}
+--- /Order/Credit is a TypeDefType: 2
+```
+
+Declare an **include** and mount another model under a group — resolved + kernel-validated via `--include-dir`:
+
+```bash
+mkdir -p /tmp/rk-lib && cp cli/src/test/resources/models/multifile/lib/catalog.dm.json /tmp/rk-lib/
+bin/rk add-include /tmp/rk-struct.dm.json --alias catalog --reference catalog --parent /Order --name Catalog --include-dir /tmp/rk-lib 2>/dev/null
+echo "--- mounted + still kernel-valid: $(bin/rk validate /tmp/rk-struct.dm.json --include-dir /tmp/rk-lib | jq -c '.valid')"
+
+```
+
+```output
+{
+  "added" : "catalog",
+  "reference" : "catalog",
+  "mountedAt" : "/Order/Catalog",
+  "written" : true
+}
+--- mounted + still kernel-valid: true
+```

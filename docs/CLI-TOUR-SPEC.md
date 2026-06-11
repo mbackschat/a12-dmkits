@@ -67,7 +67,7 @@ Three demos cover the read, write/edit, and structure-edit workflows; the method
 - ✅ **Edit loop** — `explain --computation` → re-express → `modify --dry-run` (preview) → `modify` (write-back); the F8 loop end-to-end (`cli-edit-loop.md`).
 - ✅ **`batch`** — the self-describing, per-op-attributable output in one warm JVM (`cli-edit-loop.md`).
 - ✅ **Multi-file** — `--include-dir` resolving an included model (`cli-edit-loop.md`).
-- ✅ **Structure edit** — `add-field` · `add-group` · `remove` with the safe-delete gate (refuse + `--cascade`) (`cli-structure-edit.md`).
+- ✅ **Structure edit** — `add-field`/`add-group`/`remove` (safe-delete refuse + `--cascade`), the **combined rulekit+modelkit** flow, and **type definitions + includes** (`add-typedef`/`add-field --typedef`/`add-include`) (`cli-structure-edit.md`).
 - **Comprehension** — read foreign rules back and explain them (the T7 family).
 - **Teaching / error paths** — deliberately author a wrong rule (inverted polarity, unguarded number) and show the lint/diagnostics fire. Needs the `LANG` pin above for the kernel's German messages.
 - **Runtime evaluation** — `eval-doc` a rule against a document instance that *should* and *should not* fire (the empirical polarity check `check` can't give), and `compute-doc` to show a field's computed value (and the empty-operand value/cleared cases). A strong fit for the teaching demo above — it makes "does this fire on real data?" visible.

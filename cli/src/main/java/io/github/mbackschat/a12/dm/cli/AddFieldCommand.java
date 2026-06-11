@@ -11,20 +11,22 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolve
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import picocli.CommandLine.ArgGroup;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
- * The {@code add-field} verb (CLI-SPEC §4/§5d) — add a field of an easy kind to an existing group and
- * <b>write the model back</b> (in place; {@code -o} redirects, {@code --dry-run} previews — the {@code
- * modify} convention). The result is re-bound through the kernel; a missing group fails fast (exit 2),
- * a kernel-invalid result surfaces the kernel diagnostics (exit 1).
+ * The {@code add-field} verb (CLI-SPEC §4/§5d) — add a field to an existing group (an easy {@code --kind},
+ * or typed by an existing type definition via {@code --typedef}) and <b>write the model back</b> (in
+ * place; {@code -o} redirects, {@code --dry-run} previews — the {@code modify} convention). The result is
+ * re-bound through the kernel; a missing group fails fast (exit 2), a kernel-invalid result surfaces the
+ * kernel diagnostics (exit 1).
  */
 @Command(name = "add-field", mixinStandardHelpOptions = true,
-        description = "Add a field of --kind (STRING|NUMBER|DATE|BOOLEAN|CONFIRM) to --group and WRITE the model "
-                + "back (in place; -o redirects, --dry-run previews).")
+        description = "Add a field (--kind STRING|NUMBER|DATE|BOOLEAN|CONFIRM, or --typedef <id>) to --group and "
+                + "WRITE the model back (in place; -o redirects, --dry-run previews).")
 final class AddFieldCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -39,9 +41,19 @@ final class AddFieldCommand extends BaseCommand {
     @Option(names = "--name", required = true, paramLabel = "<name>", description = "the new field's name")
     String name;
 
-    @Option(names = "--kind", required = true, paramLabel = "<kind>",
-            description = "the field kind: STRING | NUMBER | DATE | BOOLEAN | CONFIRM")
-    FieldKind kind;
+    @ArgGroup(multiplicity = "1")
+    FieldType type;
+
+    /** Exactly one of: an easy kind, or a type-definition reference. */
+    static final class FieldType {
+        @Option(names = "--kind", paramLabel = "<kind>",
+                description = "the field kind: STRING | NUMBER | DATE | BOOLEAN | CONFIRM")
+        FieldKind kind;
+
+        @Option(names = "--typedef", paramLabel = "<typeDefId>",
+                description = "type the field by an existing type definition (declared with `add-typedef`)")
+        String typedef;
+    }
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the result here instead of in place (overwriting <model.json>)")
@@ -66,7 +78,13 @@ final class AddFieldCommand extends BaseCommand {
 
         String resultJson;
         try {
-            resultJson = ModelDocument.read(modelJson).addField(group, name, kind).validate(resolver).toJson();
+            ModelDocument doc = ModelDocument.read(modelJson);
+            if (type.typedef != null) {
+                doc.addTypedefField(group, name, type.typedef);
+            } else {
+                doc.addField(group, name, type.kind);
+            }
+            resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
             return StructureWrite.reject(this, target, e);
         } catch (RuntimeException e) {
@@ -75,7 +93,7 @@ final class AddFieldCommand extends BaseCommand {
 
         ObjectNode summary = MAPPER.createObjectNode();
         summary.put("added", target);
-        summary.put("kind", kind.name());
+        summary.put("kind", type.typedef != null ? "TypeDefType" : type.kind.name());
         return StructureWrite.write(this, summary, resultJson, target, model, outputPath, dryRun);
     }
 }

@@ -13,6 +13,9 @@ import org.junit.jupiter.api.io.TempDir;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+
 /**
  * The {@code schema} verb (CLI-SPEC §4) — on-demand JSON Schema of a verb's output, the CLI's
  * self-describing surface. The drift guard is the point (F11 "loud detection at build"): each schema
@@ -74,6 +77,15 @@ class SchemaVerbTest {
                 "--group", "/Subscription", "--name", "Discount", "--kind", "NUMBER", "--dry-run"));
         assertSchemaCovers("add-group", CliTestSupport.run("add-group", model.toString(),
                 "--parent", "/Subscription", "--name", "Notes", "--dry-run"));
+        assertSchemaCovers("add-typedef", CliTestSupport.run("add-typedef", model.toString(),
+                "--id", "Money", "--kind", "NUMBER", "--dry-run"));
+        // add-include validates the mounted model, so a referenced model must sit in --include-dir
+        Files.writeString(dir.resolve("catalog.dm.json"),
+                DocumentModelDraft.named("catalog").locale("en_US").locale("de_DE")
+                        .rootGroup("Catalog", g -> g.field("Sku", FieldKind.STRING)).build().toJson());
+        assertSchemaCovers("add-include", CliTestSupport.run("add-include", model.toString(),
+                "--alias", "catalog", "--reference", "catalog", "--parent", "/Subscription", "--name", "Catalog",
+                "--include-dir", dir.toString(), "--dry-run"));
     }
 
     /** Every top-level property of the verb's real output must be declared in the schema's `properties`. */

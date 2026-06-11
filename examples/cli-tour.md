@@ -27,6 +27,8 @@ where-used
 modify
 add-field
 add-group
+add-typedef
+add-include
 remove
 batch
 schema
