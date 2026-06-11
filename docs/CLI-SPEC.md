@@ -165,6 +165,8 @@ Two batch verbs, because they solve different problems — conflating them would
 - **Cross-type corrective.** Feeding `batch` an `apply`-shaped op (or vice versa) is detected and named (*"this op has `target`/`op` — did you mean `apply`?"*).
 - **Examples can't rot.** Every schema `examples` block is CI-executed through the tool (a drift guard alongside the manifest/schema guardians) — a stale example actively misleads an agent, so an unverified one cannot ship.
 
+**Implementation status.** `batch` is the long-standing dispatcher. `apply` is **built**: ordered surgery on one `EditSession` → one terminal gate → one write, atomic rollback, per-op `staged` envelopes + the `{ops, committed, failedAt, written, results[]}` summary; ops cover **field/group add·remove and rule/computation add·modify**; op-arg validation (`RK_UNKNOWN_ARG`/`RK_UNKNOWN_OP` + did-you-mean), the cross-type corrective, and `schema apply`/`schema batch` (CI-executed examples) all land. **Remaining follow-on:** read ops inside `apply` (a read op's payload in its envelope `data`) — minor, since `apply` is a write flow; and `config`/`typedef`/`include` ops (the `EditSession` removes exist; config setters would route via `ModelDocument`).
+
 ## 8. Module shape
 
 - **`:cli` Gradle subproject**, `application` plugin, **builds the `dmtool` binary** (`applicationName = "dmtool"`; the gradle module stays `:cli`). Depends on **core + adapter + the kits**; the adapter pulls the internal kernel read tier — fine for an *app* (N8 confines the internal tier to adapter/cli, never core).
