@@ -194,6 +194,28 @@ class ApplyVerbTest {
     }
 
     @Test
+    void readOpsReturnCurrentSessionStateInData(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path ops = dir.resolve("ops.json");
+        // a read op mid-sequence sees the just-staged field (unified read+edit in one apply call)
+        Files.writeString(ops, """
+                [ {"target":"field","op":"add","group":"/Order","name":"Discount","kind":"NUMBER"},
+                  {"target":"field","op":"read","fieldPathInModel":"/Order/Discount"},
+                  {"target":"config","op":"read"} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
+        JsonNode fieldRead = j.path("results").get(1);
+        assertEquals("read", fieldRead.path("outcome").asText());
+        assertEquals("/Order/Discount", fieldRead.path("data").path("field").asText());
+        JsonNode configRead = j.path("results").get(2);
+        assertEquals("read", configRead.path("outcome").asText());
+        assertTrue(configRead.path("data").has("decimalSeparator"), () -> "config read returns the config: " + configRead);
+    }
+
+    @Test
     void previewWritesNothing(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         String before = Files.readString(model);

@@ -20,6 +20,7 @@ import com.mgmtp.a12.model.notification.RankedNotification;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
@@ -63,7 +64,12 @@ final class ApplyCommand extends BaseCommand {
         TYPEDEF_REMOVE("typedef", "remove", Set.of("typeDefId")),
         INCLUDE_ADD("include", "add", Set.of("alias", "reference", "parent", "name")),
         INCLUDE_REMOVE("include", "remove", Set.of("alias")),
-        CONFIG_MODIFY("config", "modify", Set.of("decimal-separator", "time-zone", "condition-language"));
+        CONFIG_MODIFY("config", "modify", Set.of("decimal-separator", "time-zone", "condition-language")),
+        FIELD_READ("field", "read", Set.of("fieldPathInModel")),
+        GROUP_READ("group", "read", Set.of("groupPathInModel")),
+        TYPEDEF_READ("typedef", "read", Set.of()),
+        INCLUDE_READ("include", "read", Set.of()),
+        CONFIG_READ("config", "read", Set.of());
 
         final String target;
         final String op;
@@ -136,11 +142,7 @@ final class ApplyCommand extends BaseCommand {
                 break; // a typo'd/unknown arg self-corrects via the diagnostic — roll back, write nothing
             }
             try {
-                ObjectNode changed = dispatch(session, op);
-                String label = op.path("target").asText() + " " + op.path("op").asText();
-                results.add(new ResultEnvelope(op.path("target").asText(), op.path("op").asText(),
-                        ResultEnvelope.Outcome.STAGED, "staged " + label, changed, null, List.of(), null, false, null)
-                        .toJson());
+                results.add(dispatch(session, op).toJson());
             } catch (RuntimeException e) {
                 results.add(opFailure(op, i, e).toJson());
                 failedAt = i;
@@ -191,22 +193,23 @@ final class ApplyCommand extends BaseCommand {
      * (→ rollback). {@code Op.of} is non-null here — {@link #validateArgs} has already rejected an unknown
      * {@code target}/{@code op}; the switch is a compiler-checked exhaustive expression over {@link Op}.
      */
-    private ObjectNode dispatch(EditSession session, JsonNode op) {
+    private ResultEnvelope dispatch(EditSession session, JsonNode op) {
+        Op which = Op.of(op);
         ObjectNode changed = MAPPER.createObjectNode();
-        return switch (Op.of(op)) {
+        return switch (which) {
             case FIELD_ADD -> {
                 String group = req(op, "group");
                 String field = req(op, "name");
                 session.addField(group, field, FieldKind.valueOf(req(op, "kind")));
                 changed.put("added", group + "/" + field);
                 changed.put("kind", req(op, "kind"));
-                yield changed;
+                yield staged(which, changed);
             }
             case FIELD_REMOVE -> {
                 String path = req(op, "fieldPathInModel");
                 session.removeField(path);
                 changed.put("removed", path);
-                yield changed;
+                yield staged(which, changed);
             }
             case GROUP_ADD -> {
                 String parent = req(op, "parent");
@@ -218,13 +221,13 @@ final class ApplyCommand extends BaseCommand {
                     session.addGroup(parent, groupName);
                 }
                 changed.put("added", parent + "/" + groupName);
-                yield changed;
+                yield staged(which, changed);
             }
             case GROUP_REMOVE -> {
                 String path = req(op, "groupPathInModel");
                 session.removeGroup(path);
                 changed.put("removed", path);
-                yield changed;
+                yield staged(which, changed);
             }
             case RULE_ADD -> {
                 String field = req(op, "field");
@@ -243,13 +246,13 @@ final class ApplyCommand extends BaseCommand {
                 }
                 session.addRule(group, ruleName, errorEntityRelPath, code, req(op, "condition"), severity, messages);
                 changed.put("rule", group + "/" + ruleName);
-                yield changed;
+                yield staged(which, changed);
             }
             case RULE_MODIFY -> {
                 String rule = req(op, "rule");
                 session.modifyRule(rule, req(op, "condition"));
                 changed.put("modified", rule);
-                yield changed;
+                yield staged(which, changed);
             }
             case COMPUTATION_ADD -> {
                 ComputationSpec.Parsed parsed = ComputationSpec.parse(op);
@@ -258,7 +261,7 @@ final class ApplyCommand extends BaseCommand {
                 }
                 session.addComputation(parsed.draft(), parsed.messages());
                 changed.put("computation", parsed.fullName());
-                yield changed;
+                yield staged(which, changed);
             }
             case COMPUTATION_MODIFY -> {
                 String comp = req(op, "computation");
@@ -268,32 +271,32 @@ final class ApplyCommand extends BaseCommand {
                 }
                 session.modifyComputation(comp, parsed.draft(), parsed.messages());
                 changed.put("modified", comp);
-                yield changed;
+                yield staged(which, changed);
             }
             case TYPEDEF_ADD -> {
                 String id = req(op, "id");
                 session.addTypeDefinition(id, FieldKind.valueOf(req(op, "kind")));
                 changed.put("added", id);
-                yield changed;
+                yield staged(which, changed);
             }
             case TYPEDEF_REMOVE -> {
                 String id = req(op, "typeDefId");
                 session.removeTypeDefinition(id);
                 changed.put("removed", id);
-                yield changed;
+                yield staged(which, changed);
             }
             case INCLUDE_ADD -> {
                 String alias = req(op, "alias");
                 session.addInclude(alias, req(op, "reference"), req(op, "parent"), req(op, "name"));
                 changed.put("added", alias);
                 changed.put("mountedAt", op.get("parent").asText() + "/" + op.get("name").asText());
-                yield changed;
+                yield staged(which, changed);
             }
             case INCLUDE_REMOVE -> {
                 String alias = req(op, "alias");
                 session.removeInclude(alias);
                 changed.put("removed", alias);
-                yield changed;
+                yield staged(which, changed);
             }
             case CONFIG_MODIFY -> {
                 if (op.hasNonNull("decimal-separator")) {
@@ -312,9 +315,63 @@ final class ApplyCommand extends BaseCommand {
                     throw new IllegalArgumentException("config modify needs one of "
                             + "decimal-separator, time-zone, condition-language");
                 }
-                yield changed;
+                yield staged(which, changed);
+            }
+            case FIELD_READ -> {
+                String path = req(op, "fieldPathInModel");
+                String type = ModelDocument.read(session.toJson()).fieldType(path)
+                        .orElseThrow(() -> new IllegalArgumentException("no field '" + path + "' in the model"));
+                ObjectNode data = MAPPER.createObjectNode();
+                data.put("field", path);
+                data.put("type", type);
+                yield readEnv(which, data);
+            }
+            case GROUP_READ -> {
+                String path = req(op, "groupPathInModel");
+                ModelDocument doc = ModelDocument.read(session.toJson());
+                if (!doc.groupPaths().contains(path)) {
+                    throw new IllegalArgumentException("no group '" + path + "' in the model");
+                }
+                ObjectNode data = MAPPER.createObjectNode();
+                data.put("group", path);
+                data.put("repeatable", doc.isRepeating(path));
+                yield readEnv(which, data);
+            }
+            case TYPEDEF_READ -> {
+                ObjectNode data = MAPPER.createObjectNode();
+                ArrayNode arr = data.putArray("typedefs");
+                ModelDocument.read(session.toJson()).typeDefinitionIds().forEach(arr::add);
+                yield readEnv(which, data);
+            }
+            case INCLUDE_READ -> {
+                ObjectNode data = MAPPER.createObjectNode();
+                ArrayNode arr = data.putArray("includes");
+                for (ModelDocument.Include inc : ModelDocument.read(session.toJson()).includes()) {
+                    arr.addObject().put("alias", inc.alias()).put("reference", inc.reference());
+                }
+                yield readEnv(which, data);
+            }
+            case CONFIG_READ -> {
+                ModelDocument.DocConfig c = ModelDocument.read(session.toJson()).config();
+                ObjectNode data = MAPPER.createObjectNode();
+                data.put("decimalSeparator", c.decimalSeparator());
+                data.put("timeZone", c.timeZone());
+                data.put("conditionLanguage", c.conditionLanguage());
+                data.put("fieldRefByShortNameAllowed", c.fieldRefByShortNameAllowed());
+                yield readEnv(which, data);
             }
         };
+    }
+
+    /** An edit op's per-op envelope — its mutation is {@code staged} until the terminal gate commits the sequence. */
+    private static ResultEnvelope staged(Op which, ObjectNode changed) {
+        return new ResultEnvelope(which.target, which.op, ResultEnvelope.Outcome.STAGED,
+                "staged " + which.label(), changed, null, List.of(), null, false, null);
+    }
+
+    /** A read op's per-op envelope — its payload (the current session state) rides {@code data}. */
+    private static ResultEnvelope readEnv(Op which, ObjectNode data) {
+        return ResultEnvelope.read(which.target, which.op, "read " + which.label(), true, List.of(), data);
     }
 
     private static String req(JsonNode op, String key) {
