@@ -52,7 +52,9 @@ final class ApplyCommand extends BaseCommand {
             "group add", Set.of("parent", "name", "repeatable"),
             "group remove", Set.of("groupPathInModel"),
             "rule add", Set.of("field", "condition", "code", "severity", "name", "messages"),
-            "rule modify", Set.of("rule", "condition"));
+            "rule modify", Set.of("rule", "condition"),
+            "computation add", Set.of("computedField", "alternatives", "commonPrecondition", "name", "messages"),
+            "computation modify", Set.of("computation", "computedField", "alternatives", "commonPrecondition", "name", "messages"));
 
     @Parameters(index = "0", paramLabel = "<ops.json>",
             description = "a JSON array of op-records: [{\"target\":\"field\",\"op\":\"add\",\"group\":…,\"name\":…,\"kind\":…}, …]")
@@ -206,8 +208,25 @@ final class ApplyCommand extends BaseCommand {
                 session.modifyRule(rule, req(op, "condition"));
                 changed.put("modified", rule);
             }
+            case "computation add" -> {
+                ComputationSpec.Parsed parsed = ComputationSpec.parse(op);
+                if (parsed.error() != null) {
+                    throw new IllegalArgumentException(parsed.error());
+                }
+                session.addComputation(parsed.draft(), parsed.messages());
+                changed.put("computation", parsed.fullName());
+            }
+            case "computation modify" -> {
+                String comp = req(op, "computation");
+                ComputationSpec.Parsed parsed = ComputationSpec.parse(op);
+                if (parsed.error() != null) {
+                    throw new IllegalArgumentException(parsed.error());
+                }
+                session.modifyComputation(comp, parsed.draft(), parsed.messages());
+                changed.put("modified", comp);
+            }
             default -> throw new IllegalArgumentException("apply does not yet support op '" + target + " " + name
-                    + "' (this increment: field/group add/remove, rule add/modify)");
+                    + "' (this increment: field/group add/remove, rule/computation add/modify)");
         }
         return changed;
     }

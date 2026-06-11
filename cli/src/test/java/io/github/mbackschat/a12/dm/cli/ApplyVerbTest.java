@@ -135,6 +135,25 @@ class ApplyVerbTest {
     }
 
     @Test
+    void appliesAComputationOp(@TempDir Path dir) throws Exception {
+        Path model = dir.resolve("subscription.dm.json");
+        Files.writeString(model, CliTestSupport.subscriptionJson());
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, """
+                [ {"target":"computation","op":"add","computedField":"/Subscription/Billing/EffectiveFee",
+                   "alternatives":[{"operation":"[BaseFee] * 2"}],
+                   "messages":[{"locale":"en_US","text":"Double base."},{"locale":"de_DE","text":"Doppelte Basis."}]} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertEquals("staged", j.path("results").get(0).path("outcome").asText());
+        assertEquals("/Subscription/Billing/EffectiveFeeComp",
+                j.path("results").get(0).path("changed").path("computation").asText());
+    }
+
+    @Test
     void previewWritesNothing(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         String before = Files.readString(model);

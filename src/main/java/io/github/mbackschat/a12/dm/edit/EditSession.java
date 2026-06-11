@@ -20,6 +20,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 
 /**
@@ -132,6 +133,18 @@ public final class EditSession {
     /** Re-express a rule's condition from raw DSL <em>text</em> (the {@code apply}/spec path; no per-op gate). */
     public EditSession modifyRule(String ruleFullName, String condition) {
         json = ModelWriter.replaceCondition(json, ruleFullName, condition);
+        return this;
+    }
+
+    /** Add a computation from a parsed spec (the {@code apply}/spec path; text injection, no per-op gate). */
+    public EditSession addComputation(DraftComputation draft, List<LocalizedText> messages) {
+        json = ModelWriter.addComputation(json, draft, messages);
+        return this;
+    }
+
+    /** Re-express the computation at {@code computationFullName} from a parsed spec (the {@code apply}/spec path). */
+    public EditSession modifyComputation(String computationFullName, DraftComputation draft, List<LocalizedText> messages) {
+        json = ModelWriter.replaceComputation(json, computationFullName, draft, messages);
         return this;
     }
 
