@@ -153,7 +153,8 @@ public final class DocumentModelDraft {
     }
 
     /** An include mount: a group carrying {@code modelAlias} and <b>no</b> inline elements (§10). */
-    private static ObjectNode mountNode(ElementDraft.Mount mount, String parentPath) {
+    // package-private: reused by ModelDocument (M10+ include editing)
+    static ObjectNode mountNode(ElementDraft.Mount mount, String parentPath) {
         ObjectNode node = MAPPER.createObjectNode();
         node.put("type", "Group");
         node.put("id", parentPath + "/" + mount.name());
@@ -204,7 +205,8 @@ public final class DocumentModelDraft {
     }
 
     /** Write the {@code type} discriminator plus its inner config block. */
-    private static void writeFieldType(ObjectNode fieldType, FieldTypeSpec spec, List<String> locales) {
+    // package-private: reused by ModelDocument (M10+ type-definition editing)
+    static void writeFieldType(ObjectNode fieldType, FieldTypeSpec spec, List<String> locales) {
         fieldType.put("type", spec.jsonType());
         writeTypeConfig(fieldType, spec, locales);
     }

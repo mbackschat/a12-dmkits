@@ -14,9 +14,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+
 import io.github.mbackschat.a12.dm.core.DmJson;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
+import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 
 /**
  * An existing document model, read from DM-JSON into its <em>authored source tree</em> (M7) — the read
@@ -211,14 +214,95 @@ public final class ModelDocument {
         return this;
     }
 
+    // --- doc config (content.modelConfig) -------------------------------------------------------
+
+    /** Set the decimal separator (e.g. {@code "."} or {@code ","} — the comma-vs-point concern). */
+    public ModelDocument setDecimalSeparator(String separator) {
+        modelConfig().put("decimalSeparator", separator);
+        return this;
+    }
+
+    /** Set the model's time zone (e.g. {@code "Europe/Berlin"}, {@code "UTC"}). */
+    public ModelDocument setTimeZone(String timeZone) {
+        modelConfig().put("timeZone", timeZone);
+        return this;
+    }
+
+    /** Set the condition language code (e.g. {@code "en_US"}, {@code "de_DE"}). */
+    public ModelDocument setConditionLanguage(String localeCode) {
+        ObjectNode config = modelConfig();
+        JsonNode cl = config.path("conditionLanguage");
+        ObjectNode node = cl.isObject() ? (ObjectNode) cl : config.putObject("conditionLanguage");
+        node.put("code", localeCode);
+        return this;
+    }
+
+    private ObjectNode modelConfig() {
+        JsonNode config = root.path("content").path("modelConfig");
+        if (!config.isObject()) {
+            throw new IllegalStateException("model has no content.modelConfig object");
+        }
+        return (ObjectNode) config;
+    }
+
+    // --- type definitions (content.typeDefinitions) ---------------------------------------------
+
+    /** Declare a reusable type definition {@code id} over an easy {@code underlying} kind. */
+    public ModelDocument addTypeDefinition(String id, FieldKind underlying) {
+        JsonNode tds = root.path("content").path("typeDefinitions");
+        ArrayNode array = tds.isArray() ? (ArrayNode) tds
+                : ((ObjectNode) root.path("content")).putArray("typeDefinitions");
+        ObjectNode node = array.addObject();
+        node.put("id", id);
+        node.put("name", id);
+        DocumentModelDraft.writeFieldType(node.putObject("fieldType"),
+                DocumentModelDraft.bareSpec(underlying), locales());
+        return this;
+    }
+
+    /** Add a field at {@code groupPath} typed by the type definition {@code typeDefId}. */
+    public ModelDocument addTypedefField(String groupPath, String name, String typeDefId) {
+        ElementDraft.Field field = new ElementDraft.Field(
+                name, new FieldTypeSpec.TypeDefRef(typeDefId), Requiredness.OPTIONAL, Map.of(), List.of());
+        containerElements(groupPath).add(DocumentModelDraft.fieldNode(field, groupPath, locales()));
+        return this;
+    }
+
+    // --- includes (header.modelReferences + mount groups) ---------------------------------------
+
+    /** Declare a model include: a header {@code modelReference} aliased {@code alias} → {@code reference}. */
+    public ModelDocument addInclude(String alias, String reference) {
+        JsonNode refs = root.path("header").path("modelReferences");
+        ArrayNode array = refs.isArray() ? (ArrayNode) refs
+                : ((ObjectNode) root.path("header")).putArray("modelReferences");
+        array.addObject()
+                .put("alias", alias)
+                .put("modelType", "document")
+                .put("purpose", "include")
+                .put("reference", reference);
+        return this;
+    }
+
+    /** Mount a declared include at {@code parentPath} as a group named {@code name} (a {@code modelAlias} group). */
+    public ModelDocument mount(String parentPath, String name, String alias) {
+        ArrayNode container = parentPath.isEmpty() ? rootGroups() : containerElements(parentPath);
+        container.add(DocumentModelDraft.mountNode(new ElementDraft.Mount(name, alias, List.of()), parentPath));
+        return this;
+    }
+
     /**
      * The kernel gate (tier 2): re-bind the edited model through {@code checkConsistency} (self-contained).
      * Throws {@link ModelConsistencyException} if any edit made the model invalid — the full structural
      * constraint set, enforced by the engine rather than reimplemented here. Returns this on success.
      */
     public ModelDocument validate() {
+        return validate(ReferenceResolvers.selfContained());
+    }
+
+    /** As {@link #validate()}, resolving includes / type-def imports via {@code resolver}. */
+    public ModelDocument validate(IDocumentModelReferenceResolver resolver) {
         try {
-            ModelLoader.loadSelfContained(new StringReader(toJson()));
+            ModelLoader.load(new StringReader(toJson()), resolver);
         } catch (ModelConsistencyException e) {
             throw e; // checkConsistency tier — already the uniform "model invalid" type
         } catch (IOException | RuntimeException e) {
