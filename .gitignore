@@ -10,7 +10,7 @@ build/
 .classpath
 .project
 bin/*
-!bin/rk
+!bin/dmtool
 
 # OS
 .DS_Store

@@ -1,223 +1,145 @@
-# rulekit CLI — editing model structure (add-field · add-group · remove)
+# dmtool CLI — editing model structure (field add · group add · field remove)
 
-*2026-06-11T14:46:56Z by Showboat 0.6.1*
-<!-- showboat-id: a4fb4303-58f2-4e05-8754-c2c20da7259d -->
+*2026-06-11T21:02:45Z by Showboat 0.6.1*
+<!-- showboat-id: af0727e1-6f18-458a-ba7a-84938e1b2b93 -->
 
-The structure-edit companion to [`cli-edit-loop.md`](cli-edit-loop.md) (which edits *rules*): this demo **edits the model's structure** — add a field, add a group, and **safely remove** a referenced field. Like `modify`, these verbs write **in place** (`-o` redirects, `--dry-run` previews) and re-bind through the real kernel. Every command runs through `bin/rk`; re-check with `uvx showboat@0.6.1 verify examples/cli-structure-edit.md`.
+The structure-edit companion to the [verb tour](cli-tour.md) (which reads rules): this demo **edits the model's structure** — add a field, add a group, and **safely remove** a referenced field. These mutating verbs write **in place** (`-o` redirects, `--dry-run` previews) and carry the result envelope's `.changed`. Every command is `bin/dmtool -m <model> <target> <op>`, run from the repo root; some steps also use `jq`. Re-check the captured output with `uvx showboat@0.6.1 verify examples/cli-structure-edit.md` (exit 0 = it still matches the live CLI).
 
-We work on a `/tmp` copy of the `order-ruled` fixture (its `DeliveryNotBeforeOrder` rule references `/Order/DeliveryDate`) so the fixture stays put.
+We work on a `/tmp` copy of the `order-ruled` fixture — its `DeliveryNotBeforeOrder` rule references `/Order/DeliveryDate`, which is what arms the safe-delete gate below — so the committed fixture stays put.
 
 ```bash
-cp cli/src/test/resources/models/order-ruled.dm.json /tmp/rk-struct.dm.json
-echo "copied order-ruled → /tmp/rk-struct.dm.json"
-
+cp cli/src/test/resources/models/order-ruled.dm.json /tmp/struct.dm.json && echo "copied order-ruled → /tmp/struct.dm.json"
 ```
 
 ```output
-copied order-ruled → /tmp/rk-struct.dm.json
+copied order-ruled → /tmp/struct.dm.json
 ```
 
-## add-field — add a typed field to a group
+## field add — a typed field into a group
+
+`field add` drops a `--kind`-typed field under a `--group`. It emits the result envelope: `outcome: applied`, the new path under `.changed.added`, and `written: true` with the `output` path — the write landed **in place** (a copy of the model file). `--dry-run` would preview the same envelope with `written: false`.
 
 ```bash
-bin/rk add-field /tmp/rk-struct.dm.json --group /Order --name Discount --kind NUMBER 2>/dev/null
-echo "--- /Order/Discount now in the model: $(grep -c '"/Order/Discount"' /tmp/rk-struct.dm.json)"
-
+bin/dmtool -m /tmp/struct.dm.json field add --group /Order --name Discount --kind NUMBER
 ```
 
 ```output
 {
-  "added" : "/Order/Discount",
-  "kind" : "NUMBER",
-  "written" : true
+  "target" : "field",
+  "op" : "add",
+  "outcome" : "applied",
+  "ok" : true,
+  "summary" : "added field /Order/Discount",
+  "changed" : {
+    "added" : "/Order/Discount",
+    "kind" : "NUMBER"
+  },
+  "diagnostics" : [ ],
+  "written" : true,
+  "output" : "/tmp/struct.dm.json"
 }
---- /Order/Discount now in the model: 1
 ```
 
-## add-group — add a repeatable group (--repeatable <max>)
+→ `outcome: applied` with `changed.added = /Order/Discount` is the whole story: the field exists now, and `written: true` / `output` says it was persisted to the file. The kernel re-binds the edited model on the way out, so a structurally invalid edit would surface as diagnostics rather than a silent write.
+
+## group add — a repeatable group
+
+`group add` attaches a child group to `--parent`. Pass `--repeatable <max>` to make it a repetition list (a line-item-style group that repeats up to `max` times); the envelope echoes `changed.repeatable: true`.
 
 ```bash
-bin/rk add-group /tmp/rk-struct.dm.json --parent /Order --name Notes --repeatable 5 2>/dev/null
-echo "--- /Order/Notes now in the model: $(grep -c '"/Order/Notes"' /tmp/rk-struct.dm.json)"
-
+bin/dmtool -m /tmp/struct.dm.json group add --parent /Order --name Notes --repeatable 5
 ```
 
 ```output
 {
-  "added" : "/Order/Notes",
-  "repeatable" : true,
-  "written" : true
+  "target" : "group",
+  "op" : "add",
+  "outcome" : "applied",
+  "ok" : true,
+  "summary" : "added group /Order/Notes",
+  "changed" : {
+    "added" : "/Order/Notes",
+    "repeatable" : true
+  },
+  "diagnostics" : [ ],
+  "written" : true,
+  "output" : "/tmp/struct.dm.json"
 }
---- /Order/Notes now in the model: 1
 ```
 
-## remove — the safe-delete gate
+→ `changed.added = /Order/Notes` and `changed.repeatable: true` confirm the new group is a repetition list. Omit `--repeatable` for a plain (single-occurrence) sub-group.
 
-Removing `/Order/DeliveryDate` would orphan the rule that references it (`DeliveryNotBeforeOrder`). `remove` runs `whereUsed` first and **refuses**, surfacing *which* rules block it (structured, on stderr, exit 2) — so an agent can decide.
+## field remove — the safe-delete gate
+
+Removing `/Order/DeliveryDate` would orphan the rule that references it (`DeliveryNotBeforeOrder`). `field remove` runs the reference check **first** and **refuses**: it returns a `refused` envelope (`ok: false`, `written: false`), an `RK_REFERENCED` diagnostic carrying the `fix`, and the blocking referrers under `data.referencedBy` — and it exits **2**. Never a silent cascade. We redirect the envelope to a file so the exit code prints alongside it.
 
 ```bash
-bin/rk remove /tmp/rk-struct.dm.json --field /Order/DeliveryDate 2>/tmp/rk-refusal.json; echo "(exit $?)"
-cat /tmp/rk-refusal.json
-
+bin/dmtool -m /tmp/struct.dm.json field remove /Order/DeliveryDate >/tmp/struct-refusal.json 2>&1; echo "(exit $?)"; cat /tmp/struct-refusal.json
 ```
 
 ```output
 (exit 2)
 {
-  "blocked" : "/Order/DeliveryDate",
-  "referencedBy" : {
-    "rules" : [ "/Order/DeliveryNotBeforeOrder" ],
-    "computations" : [ ]
+  "target" : "field",
+  "op" : "remove",
+  "outcome" : "refused",
+  "ok" : false,
+  "summary" : "/Order/DeliveryDate is referenced — refusing to remove",
+  "data" : {
+    "referencedBy" : {
+      "rules" : [ "/Order/DeliveryNotBeforeOrder" ],
+      "computations" : [ ]
+    }
   },
-  "hint" : "remove these first, or pass --cascade to remove them together with /Order/DeliveryDate"
+  "diagnostics" : [ {
+    "severity" : "ERROR",
+    "source" : "PRECHECK",
+    "code" : "RK_REFERENCED",
+    "summary" : "/Order/DeliveryDate is referenced by 1 element(s); removing it would dangle them",
+    "where" : {
+      "path" : "/Order/DeliveryDate"
+    },
+    "fix" : "pass --cascade to remove the referrers too, or remove them first"
+  } ],
+  "written" : false
 }
-
 ```
 
-Pass **`--cascade`** to remove the blocking rule(s) together with the field:
+→ `outcome: refused` and exit `2`. The `RK_REFERENCED` diagnostic names what blocks the delete (`data.referencedBy.rules`) and its `fix` spells out the choice: remove the referrers first, or pass `--cascade`. The field is still in the model — nothing was written.
+
+Pass **`--cascade`** to remove the blocking rule(s) together with the field — an explicit opt-in, so the cascade is never a surprise:
 
 ```bash
-bin/rk remove /tmp/rk-struct.dm.json --field /Order/DeliveryDate --cascade 2>/dev/null
-echo "--- DeliveryNotBeforeOrder remaining: $(grep -c DeliveryNotBeforeOrder /tmp/rk-struct.dm.json)"
-
+bin/dmtool -m /tmp/struct.dm.json field remove /Order/DeliveryDate --cascade
 ```
 
 ```output
 {
-  "removed" : "/Order/DeliveryDate",
-  "cascaded" : [ "/Order/DeliveryNotBeforeOrder" ],
-  "written" : true
-}
---- DeliveryNotBeforeOrder remaining: 0
-```
-
-The edited model still validates against the kernel:
-
-```bash
-bin/rk validate /tmp/rk-struct.dm.json | jq -c '.valid'
-
-```
-
-```output
-true
-```
-
-## Combined — rulekit + modelkit on one model
-
-Structure (modelkit) and rules (rulekit) edit the same model file, so they compose. Add a **rule** on the `Discount` field added above — `add` prints the new model, so redirect it to a fresh path:
-
-```bash
-printf '%s' '{"field":"/Order/Discount","condition":"FieldFilled(Discount) And [Discount] < 0","code":"DISCOUNT_NEGATIVE","messages":[{"locale":"en_US","text":"Discount must not be negative."}]}' > /tmp/rk-rule.json
-bin/rk add /tmp/rk-struct.dm.json /tmp/rk-rule.json > /tmp/rk-combined.dm.json 2>/dev/null
-echo "--- rule on the added field present: $(grep -c DISCOUNT_NEGATIVE /tmp/rk-combined.dm.json)"
-
-```
-
-```output
---- rule on the added field present: 3
-```
-
-Now  is referenced by that rule, so  refuses it — the safe-delete gate, triggered by a rule we just authored:
-
-```bash
-bin/rk remove /tmp/rk-combined.dm.json --field /Order/Discount 2>/tmp/rk-ref2.json; echo "(exit $?)"
-cat /tmp/rk-ref2.json
-
-```
-
-```output
-(exit 2)
-{
-  "blocked" : "/Order/Discount",
-  "referencedBy" : {
-    "rules" : [ "/Order/DISCOUNT_NEGATIVE" ],
-    "computations" : [ ]
+  "target" : "field",
+  "op" : "remove",
+  "outcome" : "applied",
+  "ok" : true,
+  "summary" : "removed /Order/DeliveryDate",
+  "changed" : {
+    "removed" : "/Order/DeliveryDate",
+    "cascaded" : [ "/Order/DeliveryNotBeforeOrder" ]
   },
-  "hint" : "remove these first, or pass --cascade to remove them together with /Order/Discount"
+  "diagnostics" : [ ],
+  "written" : true,
+  "output" : "/tmp/struct.dm.json"
 }
-
 ```
 
- removes the field and the rule it triggered, together — one model, both kits:
+→ Now `outcome: applied`: `changed.removed` is the field and `changed.cascaded` lists exactly what went with it (`/Order/DeliveryNotBeforeOrder`) — so the caller sees the blast radius. The write landed in place.
+
+The edited model still passes the real kernel consistency check:
 
 ```bash
-bin/rk remove /tmp/rk-combined.dm.json --field /Order/Discount --cascade 2>/dev/null
-echo "--- DISCOUNT_NEGATIVE remaining: $(grep -c DISCOUNT_NEGATIVE /tmp/rk-combined.dm.json)"
-bin/rk validate /tmp/rk-combined.dm.json | jq -c '.valid'
-
+bin/dmtool -m /tmp/struct.dm.json doc validate | jq -c "{outcome,valid,diagnostics}"
 ```
 
 ```output
-{
-  "removed" : "/Order/Discount",
-  "cascaded" : [ "/Order/DISCOUNT_NEGATIVE" ],
-  "written" : true
-}
---- DISCOUNT_NEGATIVE remaining: 0
-true
+{"outcome":"read","valid":true,"diagnostics":[]}
 ```
 
-## Type definitions & includes
-
-Declare a reusable **type definition**, then type a field with it (`add-field --typedef`):
-
-```bash
-bin/rk add-typedef /tmp/rk-struct.dm.json --id Money --kind NUMBER 2>/dev/null
-bin/rk add-field /tmp/rk-struct.dm.json --group /Order --name Credit --typedef Money 2>/dev/null
-echo "--- /Order/Credit is a TypeDefType: $(grep -c TypeDefType /tmp/rk-struct.dm.json)"
-
-```
-
-```output
-{
-  "added" : "Money",
-  "kind" : "NUMBER",
-  "written" : true
-}
-{
-  "added" : "/Order/Credit",
-  "kind" : "TypeDefType",
-  "written" : true
-}
---- /Order/Credit is a TypeDefType: 2
-```
-
-Declare an **include** and mount another model under a group — resolved + kernel-validated via `--include-dir`:
-
-```bash
-mkdir -p /tmp/rk-lib && cp cli/src/test/resources/models/multifile/lib/catalog.dm.json /tmp/rk-lib/
-bin/rk add-include /tmp/rk-struct.dm.json --alias catalog --reference catalog --parent /Order --name Catalog --include-dir /tmp/rk-lib 2>/dev/null
-echo "--- mounted + still kernel-valid: $(bin/rk validate /tmp/rk-struct.dm.json --include-dir /tmp/rk-lib | jq -c '.valid')"
-
-```
-
-```output
-{
-  "added" : "catalog",
-  "reference" : "catalog",
-  "mountedAt" : "/Order/Catalog",
-  "written" : true
-}
---- mounted + still kernel-valid: true
-```
-
-## Removing includes & typedefs — full CRUD
-
-Includes and type definitions delete too: `remove --include <alias>` drops the model-reference **and** its mount; `remove --typedef <id>` drops a definition (kernel-gated — refused if a field still uses it). Drop the catalog include we just mounted:
-
-```bash
-bin/rk remove /tmp/rk-struct.dm.json --include catalog 2>/dev/null
-echo "--- catalog mount remaining: $(grep -c modelAlias /tmp/rk-struct.dm.json)"
-bin/rk validate /tmp/rk-struct.dm.json | jq -c '.valid'
-
-```
-
-```output
-{
-  "removed" : "catalog",
-  "cascaded" : [ ],
-  "written" : true
-}
---- catalog mount remaining: 0
-true
-```
+→ `valid: true` with no diagnostics: adding two structures and cascading the date away left a model the kernel still accepts.

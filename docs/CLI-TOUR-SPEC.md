@@ -18,7 +18,7 @@ uvx showboat@0.6.1 verify examples/cli-tour.md
 uvx showboat@0.6.1 extract examples/cli-tour.md
 ```
 
-Run from the **repo root** — commands use repo-root-relative paths (`bin/rk …`, `cli/src/test/...`). `JAVA_HOME` must point at JDK 21 for **both** build and `verify` (`bin/rk` → the JVM launcher); export it first: `export JAVA_HOME="$(/usr/libexec/java_home -v 21)"`.
+Run from the **repo root** — commands use repo-root-relative paths (`bin/dmtool …`, `cli/src/test/...`). `JAVA_HOME` must point at JDK 21 for **both** build and `verify` (`bin/dmtool` → the JVM launcher); export it first: `export JAVA_HOME="$(/usr/libexec/java_home -v 21)"`.
 
 ## Authoring model — how showboat builds a demo (so you never have to re-derive it)
 
@@ -40,9 +40,9 @@ Key behaviors that bite if you forget them:
 - **State across blocks:** each `exec` is a **fresh shell** — shell variables do **not** persist between blocks, but **files do** (e.g. a `/tmp` file one block writes, the next reads). `verify` re-runs blocks **in order**, so a later block may depend on a file an earlier one created.
 - **Write-verb determinism (the gotcha for `add`/`modify`):** `add` prints the new model to **stdout** → redirect to a fixed `/tmp` path. `modify` writes **in place** → first `cp` the fixture to a fixed `/tmp` path and modify *that*, so a re-run never mutates a committed fixture (and the path stays byte-stable). Don't rely on `2>&1` to show a verb's stderr note — stdout/stderr flush order isn't guaranteed; redirect stderr to `/dev/null` and prove the effect another way (e.g. `grep -c` the written file), or capture the streams separately.
 
-## The `bin/rk` shim
+## The `bin/dmtool` shim
 
-Demos call the CLI through [`../bin/rk`](../bin/rk), never a packaging artifact, so the doc text is identical whatever built the CLI. `rk` resolves to the **installDist JVM launcher** by default (always current); set **`RK_NATIVE=1`** to opt into a native binary for the startup win. Native is opt-in, never auto-preferred — a stale native artifact would otherwise silently shadow freshly-built code. (Mirrors the packaging policy: [`ARCHITECTURE.md`](ARCHITECTURE.md) §5.1, [`CLI-SPEC.md`](CLI-SPEC.md) §B1/§B2.)
+Demos call the CLI through [`../bin/dmtool`](../bin/dmtool), never a packaging artifact, so the doc text is identical whatever built the CLI. `dmtool` resolves to the **installDist JVM launcher** by default (always current); set **`RK_NATIVE=1`** to opt into a native binary for the startup win. Native is opt-in, never auto-preferred — a stale native artifact would otherwise silently shadow freshly-built code. (Mirrors the packaging policy: [`ARCHITECTURE.md`](ARCHITECTURE.md) §5.1, [`CLI-SPEC.md`](CLI-SPEC.md) §B1/§B2.)
 
 ## Determinism — the contract for a passing `verify`
 

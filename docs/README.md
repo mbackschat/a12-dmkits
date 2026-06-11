@@ -37,7 +37,7 @@ What each document under `docs/` holds, so you can jump to the right one. This i
 
 ## Demos
 
-- **[CLI-TOUR-SPEC.md](CLI-TOUR-SPEC.md)** — the **method** for the verifiable CLI demos: how to author/verify/regenerate them, the `bin/rk` launcher shim, the determinism contract (showboat `verify` is exact-match), and the expansion backlog (more demos + a CI verify gate). The demos themselves are in **[../examples/](../examples/)** (outside `docs/`) — `EVAL-SPEC` ↔ `eval/` split.
+- **[CLI-TOUR-SPEC.md](CLI-TOUR-SPEC.md)** — the **method** for the verifiable CLI demos: how to author/verify/regenerate them, the `bin/dmtool` launcher shim, the determinism contract (showboat `verify` is exact-match), and the expansion backlog (more demos + a CI verify gate). The demos themselves are in **[../examples/](../examples/)** (outside `docs/`) — `EVAL-SPEC` ↔ `eval/` split.
 
 ## Licensing
 

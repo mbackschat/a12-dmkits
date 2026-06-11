@@ -73,7 +73,7 @@ jobs:
       # docs — `verify` re-runs each captured CLI invocation and exact-matches its recorded output. A
       # verb rename or output-shape change that wasn't reflected in the demos fails CI here instead of
       # rotting silently (the read/export rename bit them twice before this gate existed). Needs the CLI
-      # launcher (installDist, which `bin/rk` resolves to) + uv (for `uvx showboat`); jq is on the runner.
+      # launcher (installDist, which `bin/dmtool` resolves to) + uv (for `uvx showboat`); jq is on the runner.
       - name: Build the CLI launcher (for the demos)
         working-directory: a12-dmkits
         env:

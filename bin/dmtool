@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# rk — stable launcher shim for the rulekit CLI.
+# dmtool — stable launcher shim for the dmtool CLI.
 #
-# Docs, showboat demos, and any script call `rk <verb> …`; this shim resolves
-# that to the fastest CLI implementation present on the box, so the call site
-# never names a packaging artifact. Same stable-interface / swappable-impl split
-# as the packaging decision (ARCHITECTURE.md §5.1, CLI-SPEC §B1/§B2): jlink/JVM is
-# the dev default, the native image is an opt-in startup-win upgrade — the doc
+# Docs, showboat demos, and any script call `dmtool <target> <op> …`; this shim
+# resolves that to the fastest CLI implementation present on the box, so the call
+# site never names a packaging artifact. Same stable-interface / swappable-impl
+# split as the packaging decision (ARCHITECTURE.md §5.1, CLI-SPEC §B1/§B2): jlink/JVM
+# is the dev default, the native image is an opt-in startup-win upgrade — the doc
 # text is identical either way.
 #
 # Resolution order (first hit wins):
-#   1. $RULEKIT_CLI                         — explicit override (path to a binary/launcher)
+#   1. $DMTOOL_CLI                          — explicit override (path to a binary/launcher)
 #   2. native image, IF RK_NATIVE=1         — ~37 ms start, opt-in startup-win upgrade (CLI-SPEC §B2)
 #   3. installDist launcher                 — ~600 ms JVM, the dev DEFAULT (always current)
 #   4. (none) → exit 2 with a build hint
@@ -21,11 +21,11 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-candidates=("${RULEKIT_CLI:-}")
+candidates=("${DMTOOL_CLI:-}")
 if [[ "${RK_NATIVE:-}" == "1" ]]; then
   candidates+=(
-    "$ROOT/cli/build/native/rulekit"             # conventional native output (future :cli native task)
-    "$ROOT/build/native-spike/rulekit-cli-res"   # the CLI-SPEC §B2 spike's resource-bundled binary
+    "$ROOT/cli/build/native/dmtool"             # conventional native output (future :cli native task)
+    "$ROOT/build/native-spike/dmtool-cli-res"   # the CLI-SPEC §B2 spike's resource-bundled binary
   )
 fi
 candidates+=("$ROOT/cli/build/install/cli/bin/cli")  # installDist launcher — the default
@@ -34,8 +34,8 @@ for c in "${candidates[@]}"; do
 done
 
 cat >&2 <<'EOF'
-rk: no rulekit CLI found.
+dmtool: no dmtool CLI found.
   Build it once:   ./gradlew :cli:installDist
-  Or set RULEKIT_CLI=/path/to/cli, or build the native image (CLI-SPEC §B2).
+  Or set DMTOOL_CLI=/path/to/cli, or build the native image (CLI-SPEC §B2).
 EOF
 exit 2
