@@ -206,6 +206,8 @@ The CLI's heavy costs are **distribution, not code**: self-contained packaging a
                                                      fills the node's condition
         :modelkit  ⊥  :rulekit   (siblings — neither imports the other)
                               ▲
+        dm.edit.EditSession  (orchestration ABOVE both kits — the only layer that imports
+        both; threads one DM-JSON through structure + rule edits, validates once)
         :adapter (internal-tier read, serves the kits) · :cli + skill (front-ends)
 ```
 
