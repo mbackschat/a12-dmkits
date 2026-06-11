@@ -4,7 +4,7 @@ The stable **method** for the rulekit CLI demos: how to author, verify, and exte
 
 The demos are authored with [showboat](https://github.com/simonw/showboat): each `examples/*.md` interleaves prose, a command, and its **captured output**, and `showboat verify` re-runs every command to prove the output still matches the live CLI. So a demo is documentation *and* a doc-drift regression test.
 
-Two demos so far, split by workflow: [`../examples/cli-tour.md`](../examples/cli-tour.md) — the **read/inspect** surface (`manifest`·`describe`·`validate`·`read`·`explain`·`check`), opening with the model it guards; and [`../examples/cli-edit-loop.md`](../examples/cli-edit-loop.md) — the **write/edit** surface (`where-used`·`explain --computation`·`modify`·`add`·`--include-dir`·`batch`·`operators`/`schema`), the F8 modify-by-re-express loop end to end.
+Three demos so far, split by workflow: [`../examples/cli-tour.md`](../examples/cli-tour.md) — the **read/inspect** surface (`manifest`·`describe`·`validate`·`read`·`explain`·`check`), opening with the model it guards; [`../examples/cli-edit-loop.md`](../examples/cli-edit-loop.md) — the **write/edit** surface (`where-used`·`explain --computation`·`modify`·`add`·`--include-dir`·`batch`·`operators`/`schema`), the F8 modify-by-re-express loop end to end; and [`../examples/cli-structure-edit.md`](../examples/cli-structure-edit.md) — the **structure-edit** surface (`add-field`·`add-group`·`remove` with the safe-delete gate).
 
 ## Run / verify / regenerate
 
@@ -61,12 +61,13 @@ A fork of showboat to add a redaction hook is the wrong bet — in-band scrubbin
 
 ## Expanding this approach (backlog)
 
-Two demos cover the read and the write/edit workflows; the method scales to more, one demo per workflow:
+Three demos cover the read, write/edit, and structure-edit workflows; the method scales to more, one demo per workflow:
 
 - ✅ **Authoring loop** — `check` → `add` → re-`validate` (`cli-edit-loop.md`).
 - ✅ **Edit loop** — `explain --computation` → re-express → `modify --dry-run` (preview) → `modify` (write-back); the F8 loop end-to-end (`cli-edit-loop.md`).
 - ✅ **`batch`** — the self-describing, per-op-attributable output in one warm JVM (`cli-edit-loop.md`).
 - ✅ **Multi-file** — `--include-dir` resolving an included model (`cli-edit-loop.md`).
+- ✅ **Structure edit** — `add-field` · `add-group` · `remove` with the safe-delete gate (refuse + `--cascade`) (`cli-structure-edit.md`).
 - **Comprehension** — read foreign rules back and explain them (the T7 family).
 - **Teaching / error paths** — deliberately author a wrong rule (inverted polarity, unguarded number) and show the lint/diagnostics fire. Needs the `LANG` pin above for the kernel's German messages.
 - **Runtime evaluation** — `eval-doc` a rule against a document instance that *should* and *should not* fire (the empirical polarity check `check` can't give), and `compute-doc` to show a field's computed value (and the empty-operand value/cleared cases). A strong fit for the teaching demo above — it makes "does this fire on real data?" visible.

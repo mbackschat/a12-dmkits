@@ -67,9 +67,13 @@ class SchemaVerbTest {
                 { "fields": { "Subscription": { "Billing": { "BaseFee": "50" } } } }""");
         assertSchemaCovers("compute-doc", CliTestSupport.run("compute-doc", withComp.toString(), "--doc", computeDoc.toString()));
 
-        // remove (2026-06-10) — --dry-run so the verb emits its summary without writing
+        // the structure-edit verbs (2026-06-10) — --dry-run so they emit their summary without writing
         assertSchemaCovers("remove",
                 CliTestSupport.run("remove", model.toString(), "--rule", CliTestSupport.RULE_FULL_NAME, "--dry-run"));
+        assertSchemaCovers("add-field", CliTestSupport.run("add-field", model.toString(),
+                "--group", "/Subscription", "--name", "Discount", "--kind", "NUMBER", "--dry-run"));
+        assertSchemaCovers("add-group", CliTestSupport.run("add-group", model.toString(),
+                "--parent", "/Subscription", "--name", "Notes", "--dry-run"));
     }
 
     /** Every top-level property of the verb's real output must be declared in the schema's `properties`. */

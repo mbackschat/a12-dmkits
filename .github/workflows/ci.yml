@@ -93,3 +93,4 @@ jobs:
         run: |
           uvx showboat@0.6.1 verify examples/cli-tour.md
           uvx showboat@0.6.1 verify examples/cli-edit-loop.md
+          uvx showboat@0.6.1 verify examples/cli-structure-edit.md
