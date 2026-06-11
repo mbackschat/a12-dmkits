@@ -111,6 +111,11 @@ public final class EditSession {
         return this;
     }
 
+    public EditSession addInclude(String alias, String reference, String parentPath, String name) {
+        json = ModelDocument.read(json).addInclude(alias, reference).mount(parentPath, name, alias).toJson();
+        return this;
+    }
+
     public EditSession removeInclude(String alias) {
         json = ModelDocument.read(json).removeInclude(alias).toJson();
         return this;

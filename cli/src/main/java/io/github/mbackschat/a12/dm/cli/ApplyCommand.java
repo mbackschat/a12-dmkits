@@ -57,6 +57,8 @@ final class ApplyCommand extends BaseCommand {
             Map.entry("computation modify", Set.of("computation", "computedField", "alternatives", "commonPrecondition", "name", "messages")),
             Map.entry("typedef add", Set.of("id", "kind")),
             Map.entry("typedef remove", Set.of("typeDefId")),
+            Map.entry("include add", Set.of("alias", "reference", "parent", "name")),
+            Map.entry("include remove", Set.of("alias")),
             Map.entry("config modify", Set.of("decimal-separator", "time-zone", "condition-language")));
 
     @Parameters(index = "0", paramLabel = "<ops.json>",
@@ -237,6 +239,17 @@ final class ApplyCommand extends BaseCommand {
                 String id = req(op, "typeDefId");
                 session.removeTypeDefinition(id);
                 changed.put("removed", id);
+            }
+            case "include add" -> {
+                String alias = req(op, "alias");
+                session.addInclude(alias, req(op, "reference"), req(op, "parent"), req(op, "name"));
+                changed.put("added", alias);
+                changed.put("mountedAt", op.get("parent").asText() + "/" + op.get("name").asText());
+            }
+            case "include remove" -> {
+                String alias = req(op, "alias");
+                session.removeInclude(alias);
+                changed.put("removed", alias);
             }
             case "config modify" -> {
                 if (op.hasNonNull("decimal-separator")) {

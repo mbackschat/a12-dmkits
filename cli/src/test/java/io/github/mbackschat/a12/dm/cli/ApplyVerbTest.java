@@ -13,6 +13,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+
 /**
  * The {@code apply} session verb (CLI-SPEC §7) — the north-star: one read → ordered surgery on ONE
  * {@code EditSession} → one terminal kernel gate → one write, with <b>atomic rollback</b>. Distinct from
@@ -168,6 +171,26 @@ class ApplyVerbTest {
         assertEquals("MoneyAmount", j.path("results").get(0).path("changed").path("added").asText());
         assertEquals(",", j.path("results").get(1).path("changed").path("decimalSeparator").asText());
         assertTrue(Files.readString(model).contains("MoneyAmount"));
+    }
+
+    @Test
+    void appliesAnIncludeOpResolvedViaIncludeDir(@TempDir Path dir) throws Exception {
+        Path model = dir.resolve("subscription.dm.json");
+        Files.writeString(model, CliTestSupport.subscriptionJson());
+        Files.writeString(dir.resolve("catalog.dm.json"),
+                DocumentModelDraft.named("catalog").locale("en_US").locale("de_DE")
+                        .rootGroup("Catalog", g -> g.field("Sku", FieldKind.STRING)).build().toJson());
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, """
+                [ {"target":"include","op":"add","alias":"catalog","reference":"catalog",
+                   "parent":"/Subscription","name":"Catalog"} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString(), "--include-dir", dir.toString());
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertTrue(j.path("committed").asBoolean(), () -> "committed (resolved via --include-dir): " + res.out());
+        assertEquals("catalog", j.path("results").get(0).path("changed").path("added").asText());
+        assertTrue(Files.readString(model).contains("modelAlias"));
     }
 
     @Test
