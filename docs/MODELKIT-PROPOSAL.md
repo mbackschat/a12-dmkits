@@ -152,7 +152,7 @@ The forward-useful spike results — the inputs M7–M10+ consume:
 |---|---|---|
 | ✅ done | Phase 0 | record the decision — ARCHITECTURE / PROPOSAL / this doc carry Architecture A |
 | ✅ done | Phase 1 | siblings over core — modelkit folded into root; `SiblingBoundaryTest` guard; no behavior change |
-| **M7** | Phase 2 | **read structure + round-trip identity** — enumerate an existing model's structure off the bound model; read → write-back with no edits = identity (modulo pretty-print) |
+| ✅ **M7** | Phase 2 | **read structure + round-trip identity** — landed 2026-06-10: `ModelDocument.read(json)` reads the authored source tree (kernel-free), enumerates header/config/includes/typedef-ids + the group/field tree (name-path, field-type, repeatability), and round-trips it losslessly via the generic Jackson tree — content-equal + idempotent + still kernel-valid (`ModelDocumentTest`; fidelity finding in KERNEL-INTEGRATION-NOTES) |
 | **M8** | Phase 3 | **edit fields + groups** — add/modify/**delete** over the source tree (surgical + re-bind); CLI structure-edit verbs. Moves `DmJson` → `dm.core` (the first cross-kit consumer) |
 | **M9** | Phase 4 | **unify rules + structure in one edit session** — structure + rule/computation edits compose in a single read→edit→write-back flow |
 | **M10+** | Phase 5 | **full coverage** — includes, typedefs, **doc config** (`decimalSeparator`/`timeZone`/… hardcoded → settable), header metadata, placement/top-level constraints. Reaches "full support for ALL dm structures + their constraints" |
