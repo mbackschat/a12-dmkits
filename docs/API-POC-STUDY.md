@@ -520,9 +520,9 @@ Context.export(m, Path.of("ctx/"));               // 🔮 convenience: all four 
 ```bash
 # modeller/BA — the standalone CLI verb (JVM bundled; no jbang, no .m2):
 # one-shot question — pipe (mind JVM startup: seconds, not git-milliseconds):
-rulekit export model.json fields | grep -i birthdate
+dmtool export model.json fields | grep -i birthdate
 # repeated exploration — export once, then grep (the recommended loop):
-rulekit export model.json --output ctx/        # all artifacts
+dmtool export model.json --output ctx/        # all artifacts
 grep -i birthdate ctx/fields.jsonl
 # {"path":"/Customer/BirthDate","kind":"date","format":"dd.MM.yyyy","group":"/Customer","repeatsUnder":null}
 grep BirthDate ctx/rules.jsonl
@@ -562,7 +562,7 @@ Safe by F0's snapshot semantics (immutable binding → internal memoization, cli
 
 > **Skill status:** the first BA-path skill draft exists and was **eval-measured** (a clean Opus subagent, given only the CLI + catalog + skill, went from multi-attempt/medium-confidence to **first-attempt/high-confidence** on the T1 authoring task, with the silent-inversion polarity trap closed by the skill's polarity section). Method, lifts, and caveats in [`EVAL-SPEC.md`](./EVAL-SPEC.md). Structurally-distinct benchmark tasks **T2–T6** now span the families (field-vs-field, pattern, aggregate+Having, date, value-list+boolean; golds kernel-verified) — answering the "T1 ≈ the skill's worked example" caveat — and **T7** adds the first **comprehension** task (the `order-ruled` fixture; the oracle asserts its rules read to `Converted`, readable by `explain`). Remaining: the **Workflow pass@k runner** that drives the agent passes (T3–T6 authoring + T7 explanation).
 
-The **same loop, two surfaces** (N10 — one engine, two interactions): the **developer's** agent (Claude Code) runs these as ordinary calls on rulekit-the-library *inside the developer's own project* — the project compiler is the type-steering, no special vehicle. The **modeller/BA's** agent runs the equivalent **CLI verbs** (`rulekit read/explain/add/validate/modify …`, JSON in/out) against the standalone binary — no JDK, no `.m2`. The steps below show the developer's library calls; each maps 1:1 to a CLI verb the BA path uses.
+The **same loop, two surfaces** (N10 — one engine, two interactions): the **developer's** agent (Claude Code) runs these as ordinary calls on rulekit-the-library *inside the developer's own project* — the project compiler is the type-steering, no special vehicle. The **modeller/BA's** agent runs the equivalent **CLI verbs** target-first against the standalone binary (`dmtool -m model rule read/explain/add/modify`, `dmtool -m model doc validate …`, JSON in/out) — no JDK, no `.m2`. The steps below show the developer's library calls; each maps 1:1 to a CLI verb the BA path uses.
 
 > **User:** "Customers can't save BASIC subscriptions — something fires on add-ons without a fee. Find and fix it so only paid tiers require a fee."
 

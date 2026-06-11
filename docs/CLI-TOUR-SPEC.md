@@ -4,7 +4,7 @@ The stable **method** for the rulekit CLI demos: how to author, verify, and exte
 
 The demos are authored with [showboat](https://github.com/simonw/showboat): each `examples/*.md` interleaves prose, a command, and its **captured output**, and `showboat verify` re-runs every command to prove the output still matches the live CLI. So a demo is documentation *and* a doc-drift regression test.
 
-Three demos so far, split by workflow: [`../examples/cli-tour.md`](../examples/cli-tour.md) — the **read/inspect** surface (`manifest`·`describe`·`validate`·`read`·`explain`·`check`), opening with the model it guards; [`../examples/cli-edit-loop.md`](../examples/cli-edit-loop.md) — the **write/edit** surface (`where-used`·`explain --computation`·`modify`·`add`·`--include-dir`·`batch`·`operators`/`schema`), the F8 modify-by-re-express loop end to end; and [`../examples/cli-structure-edit.md`](../examples/cli-structure-edit.md) — the **structure-edit** surface (`add-field`·`add-group`·`remove` with the safe-delete gate).
+Three demos so far, split by workflow: [`../examples/cli-tour.md`](../examples/cli-tour.md) — the **read/inspect** surface (`manifest`·`doc describe`·`doc validate`·`rule read`·`rule explain`·`rule check`), opening with the model it guards; [`../examples/cli-edit-loop.md`](../examples/cli-edit-loop.md) — the **write/edit** surface (`where-used`·`computation explain`·`computation modify`·`rule add`·`doc describe --include-dir`·`batch`·`operators`/`schema`), the F8 modify-by-re-express loop end to end; and [`../examples/cli-structure-edit.md`](../examples/cli-structure-edit.md) — the **structure-edit** surface (`field add`·`group add`·`field remove` with the safe-delete gate).
 
 ## Run / verify / regenerate
 
@@ -38,7 +38,7 @@ Key behaviors that bite if you forget them:
 - **`exec` appends regardless of exit code** — a failing command still lands a block; `pop` it and retry. Author a demo by driving these from a **build script** (see [`../examples/`](../examples/) — `cli-edit-loop.md` was built by one), so it's reproducible and re-runnable, not typed by hand.
 - **Append-only ⇒ no in-place edit of an early block.** Two ways to fix a block that isn't last: **(a)** manually edit its ```` ```output ```` fence to match the live output, then `verify` to confirm byte-equality (cheapest for a one-line drift, e.g. a new verb in the `manifest` list); **(b)** `extract` → edit the command list → rebuild from scratch (for structural change). You cannot `pop` to a middle block without discarding everything after it.
 - **State across blocks:** each `exec` is a **fresh shell** — shell variables do **not** persist between blocks, but **files do** (e.g. a `/tmp` file one block writes, the next reads). `verify` re-runs blocks **in order**, so a later block may depend on a file an earlier one created.
-- **Write-verb determinism (the gotcha for `add`/`modify`):** `add` prints the new model to **stdout** → redirect to a fixed `/tmp` path. `modify` writes **in place** → first `cp` the fixture to a fixed `/tmp` path and modify *that*, so a re-run never mutates a committed fixture (and the path stays byte-stable). Don't rely on `2>&1` to show a verb's stderr note — stdout/stderr flush order isn't guaranteed; redirect stderr to `/dev/null` and prove the effect another way (e.g. `grep -c` the written file), or capture the streams separately.
+- **Write-verb determinism (the gotcha for every mutating op):** all mutating ops (`rule add`/`rule modify`/`field add`/`group add`/`field remove`/…) write **in place** by default and print the result **envelope** to stdout (not the model) → first `cp` the fixture to a fixed `/tmp` path and operate on *that* (`-m /tmp/copy`), so a re-run never mutates a committed fixture (and the path stays byte-stable). `--dry-run` previews read-only. Don't rely on `2>&1` to show a verb's stderr note — stdout/stderr flush order isn't guaranteed; redirect stderr to `/dev/null` and prove the effect another way (e.g. `grep -c` the written file), or capture the streams separately.
 
 ## The `bin/dmtool` shim
 
@@ -61,13 +61,14 @@ A fork of showboat to add a redaction hook is the wrong bet — in-band scrubbin
 
 ## Expanding this approach (backlog)
 
-Three demos cover the read, write/edit, and structure-edit workflows; **all three migrate to the `dmtool` target-first surface + the result envelope as the verbs flip** (the CI gate re-verifies them). The method scales to more, one demo per workflow:
+Three demos cover the read, write/edit, and structure-edit workflows; **all three now run on the `dmtool` target-first surface + the result envelope** (the CI gate re-verifies them). The method scales to more, one demo per workflow:
 
-- ✅ **Authoring loop** — `check` → `add` → re-`validate` (`cli-edit-loop.md`).
-- ✅ **Edit loop** — `explain --computation` → re-express → `modify --dry-run` (preview) → `modify` (write-back); the F8 loop end-to-end (`cli-edit-loop.md`).
+- ✅ **Authoring loop** — `rule check` → `rule add` → re-`doc validate` (`cli-edit-loop.md`).
+- ✅ **Edit loop** — `computation explain` → re-express → `computation modify --dry-run` (preview) → `computation modify` (write-back); the F8 loop end-to-end (`cli-edit-loop.md`).
 - ✅ **`batch`** — the self-describing, per-op-attributable output in one warm JVM (`cli-edit-loop.md`).
-- ✅ **Multi-file** — `--include-dir` resolving an included model (`cli-edit-loop.md`).
-- ✅ **Structure edit** — `add-field`/`add-group`/`remove` (safe-delete refuse + `--cascade`), the **combined rulekit+modelkit** flow, and **type definitions + includes** (`add-typedef`/`add-field --typedef`/`add-include`) (`cli-structure-edit.md`).
+- ✅ **Multi-file** — `doc describe --include-dir` resolving an included model (`cli-edit-loop.md`).
+- ✅ **Structure edit** — `field add`/`group add`/`field remove` (safe-delete refuse + `--cascade`) (`cli-structure-edit.md`).
+- **Typedef / include / config + combined flow** — `typedef add/read/remove`, `include add/read/remove`, `config read/modify`, and a rule authored on a just-added field then cascade-removed with it. New target-first ops with no demo yet (a showcase gap to fill: extend `cli-structure-edit.md` or add a companion).
 - **Comprehension** — read foreign rules back and explain them (the T7 family).
 - **Runtime evaluation** — `doc eval` a rule against a document instance that *should* and *should not* fire (the empirical polarity check `check` can't give), and `doc compute` to show a field's computed value (and the empty-operand value/cleared cases).
 
