@@ -46,15 +46,18 @@ final class ApplyCommand extends BaseCommand {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     /** The op-record keys each {@code target op} accepts — the param model op-arg validation checks against. */
-    private static final Map<String, Set<String>> KNOWN_KEYS = Map.of(
-            "field add", Set.of("group", "name", "kind", "typedef"),
-            "field remove", Set.of("fieldPathInModel"),
-            "group add", Set.of("parent", "name", "repeatable"),
-            "group remove", Set.of("groupPathInModel"),
-            "rule add", Set.of("field", "condition", "code", "severity", "name", "messages"),
-            "rule modify", Set.of("rule", "condition"),
-            "computation add", Set.of("computedField", "alternatives", "commonPrecondition", "name", "messages"),
-            "computation modify", Set.of("computation", "computedField", "alternatives", "commonPrecondition", "name", "messages"));
+    private static final Map<String, Set<String>> KNOWN_KEYS = Map.ofEntries(
+            Map.entry("field add", Set.of("group", "name", "kind", "typedef")),
+            Map.entry("field remove", Set.of("fieldPathInModel")),
+            Map.entry("group add", Set.of("parent", "name", "repeatable")),
+            Map.entry("group remove", Set.of("groupPathInModel")),
+            Map.entry("rule add", Set.of("field", "condition", "code", "severity", "name", "messages")),
+            Map.entry("rule modify", Set.of("rule", "condition")),
+            Map.entry("computation add", Set.of("computedField", "alternatives", "commonPrecondition", "name", "messages")),
+            Map.entry("computation modify", Set.of("computation", "computedField", "alternatives", "commonPrecondition", "name", "messages")),
+            Map.entry("typedef add", Set.of("id", "kind")),
+            Map.entry("typedef remove", Set.of("typeDefId")),
+            Map.entry("config modify", Set.of("decimal-separator", "time-zone", "condition-language")));
 
     @Parameters(index = "0", paramLabel = "<ops.json>",
             description = "a JSON array of op-records: [{\"target\":\"field\",\"op\":\"add\",\"group\":…,\"name\":…,\"kind\":…}, …]")
@@ -225,8 +228,36 @@ final class ApplyCommand extends BaseCommand {
                 session.modifyComputation(comp, parsed.draft(), parsed.messages());
                 changed.put("modified", comp);
             }
+            case "typedef add" -> {
+                String id = req(op, "id");
+                session.addTypeDefinition(id, FieldKind.valueOf(req(op, "kind")));
+                changed.put("added", id);
+            }
+            case "typedef remove" -> {
+                String id = req(op, "typeDefId");
+                session.removeTypeDefinition(id);
+                changed.put("removed", id);
+            }
+            case "config modify" -> {
+                if (op.hasNonNull("decimal-separator")) {
+                    session.setDecimalSeparator(op.get("decimal-separator").asText());
+                    changed.put("decimalSeparator", op.get("decimal-separator").asText());
+                }
+                if (op.hasNonNull("time-zone")) {
+                    session.setTimeZone(op.get("time-zone").asText());
+                    changed.put("timeZone", op.get("time-zone").asText());
+                }
+                if (op.hasNonNull("condition-language")) {
+                    session.setConditionLanguage(op.get("condition-language").asText());
+                    changed.put("conditionLanguage", op.get("condition-language").asText());
+                }
+                if (changed.isEmpty()) {
+                    throw new IllegalArgumentException("config modify needs one of "
+                            + "decimal-separator, time-zone, condition-language");
+                }
+            }
             default -> throw new IllegalArgumentException("apply does not yet support op '" + target + " " + name
-                    + "' (this increment: field/group add/remove, rule/computation add/modify)");
+                    + "' (built: field/group/typedef add·remove, config modify, rule/computation add·modify)");
         }
         return changed;
     }

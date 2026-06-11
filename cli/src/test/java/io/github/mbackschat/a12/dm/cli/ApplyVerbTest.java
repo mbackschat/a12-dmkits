@@ -154,6 +154,23 @@ class ApplyVerbTest {
     }
 
     @Test
+    void appliesTypedefAndConfigOps(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, """
+                [ {"target":"typedef","op":"add","id":"MoneyAmount","kind":"NUMBER"},
+                  {"target":"config","op":"modify","decimal-separator":","} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertEquals("MoneyAmount", j.path("results").get(0).path("changed").path("added").asText());
+        assertEquals(",", j.path("results").get(1).path("changed").path("decimalSeparator").asText());
+        assertTrue(Files.readString(model).contains("MoneyAmount"));
+    }
+
+    @Test
     void previewWritesNothing(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         String before = Files.readString(model);

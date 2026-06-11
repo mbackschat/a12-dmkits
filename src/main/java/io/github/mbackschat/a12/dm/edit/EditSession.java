@@ -86,8 +86,28 @@ public final class EditSession {
         return this;
     }
 
+    public EditSession addTypeDefinition(String id, FieldKind underlying) {
+        json = ModelDocument.read(json).addTypeDefinition(id, underlying).toJson();
+        return this;
+    }
+
     public EditSession removeTypeDefinition(String id) {
         json = ModelDocument.read(json).removeTypeDefinition(id).toJson();
+        return this;
+    }
+
+    public EditSession setDecimalSeparator(String separator) {
+        json = ModelDocument.read(json).setDecimalSeparator(separator).toJson();
+        return this;
+    }
+
+    public EditSession setTimeZone(String timeZone) {
+        json = ModelDocument.read(json).setTimeZone(timeZone).toJson();
+        return this;
+    }
+
+    public EditSession setConditionLanguage(String localeCode) {
+        json = ModelDocument.read(json).setConditionLanguage(localeCode).toJson();
         return this;
     }
 
