@@ -66,6 +66,10 @@ class SchemaVerbTest {
         Files.writeString(computeDoc, """
                 { "fields": { "Subscription": { "Billing": { "BaseFee": "50" } } } }""");
         assertSchemaCovers("compute-doc", CliTestSupport.run("compute-doc", withComp.toString(), "--doc", computeDoc.toString()));
+
+        // remove (2026-06-10) — --dry-run so the verb emits its summary without writing
+        assertSchemaCovers("remove",
+                CliTestSupport.run("remove", model.toString(), "--rule", CliTestSupport.RULE_FULL_NAME, "--dry-run"));
     }
 
     /** Every top-level property of the verb's real output must be declared in the schema's `properties`. */

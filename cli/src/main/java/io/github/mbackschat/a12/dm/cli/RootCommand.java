@@ -30,6 +30,7 @@ import picocli.CommandLine.Spec;
             ExplainCommand.class,
             WhereUsedCommand.class,
             ModifyCommand.class,
+            RemoveCommand.class,
             BatchCommand.class,
             SchemaCommand.class,
             OperatorsCommand.class,
