@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/result.schema.json",
+  "title": "ResultEnvelope",
+  "description": "The uniform OUTPUT of every dmtool verb and every `apply` op (CLI-SPEC §3b): one op-record in, one envelope out, so an agent learns a single output shape. `ok` = the operation executed as asked; `valid` (validate/check) = the subject model is kernel-valid — distinct from `ok`. Optional keys (valid/changed/output) are omitted when not applicable.",
+  "type": "object",
+  "required": ["target", "op", "outcome", "ok", "summary", "diagnostics", "written"],
+  "additionalProperties": false,
+  "properties": {
+    "target": { "type": "string", "description": "the element family acted on: doc | rule | computation | field | group | typedef | include | config" },
+    "op": { "type": "string", "description": "the operation: add | read | modify | remove | validate | check | explain | describe | export | eval | compute | …" },
+    "outcome": { "type": "string", "enum": ["applied", "preview", "refused", "rejected", "read", "staged"], "description": "the execution result class" },
+    "ok": { "type": "boolean", "description": "the operation executed as asked (outcome in applied | preview | read | staged)" },
+    "valid": { "type": "boolean", "description": "validate/check (and after a mutating op): the subject model is kernel-valid — distinct from `ok`" },
+    "summary": { "type": "string", "description": "one human-readable line (the agent's quick read / log line)" },
+    "changed": { "type": "object", "description": "(mutations) the delta on success — e.g. {added, kind}, a refactor's rewritten references" },
+    "data": { "description": "(reads/queries) the op's payload — explanation tree, model card, fired-list, …; shape is op-specific (see `schema <target> <op>`)" },
+    "diagnostics": { "type": "array", "items": { "$ref": "https://github.com/mbackschat/a12-dmkits/schema/diagnostic.schema.json" }, "description": "structured findings — see `schema diagnostic`" },
+    "written": { "type": "boolean", "description": "whether the model was written to disk" },
+    "output": { "type": "string", "description": "the path the model was written to; absent for read/preview/refused/rejected" }
+  }
+}

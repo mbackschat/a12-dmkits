@@ -4,6 +4,8 @@ import java.util.concurrent.Callable;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
+import picocli.CommandLine.Option;
+import picocli.CommandLine.ScopeType;
 import picocli.CommandLine.Spec;
 
 /**
@@ -19,6 +21,7 @@ import picocli.CommandLine.Spec;
         synopsisSubcommandLabel = "<verb>",
         description = "Typed, model-aware authoring & edit kit for A12 validation rules. JSON in / JSON out.",
         subcommands = {
+            DocCommand.class,
             ExportCommand.class,
             DescribeCommand.class,
             ValidateCommand.class,
@@ -44,6 +47,10 @@ final class RootCommand implements Callable<Integer> {
 
     @Spec
     CommandSpec spec;
+
+    @Option(names = {"-m", "--model"}, scope = ScopeType.INHERIT, paramLabel = "<model.json>",
+            description = "the DM-JSON model file to operate on (set once; accepted before or after the verb)")
+    String model;
 
     @Override
     public Integer call() {

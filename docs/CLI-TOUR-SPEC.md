@@ -61,7 +61,7 @@ A fork of showboat to add a redaction hook is the wrong bet — in-band scrubbin
 
 ## Expanding this approach (backlog)
 
-Three demos cover the read, write/edit, and structure-edit workflows; the method scales to more, one demo per workflow:
+Three demos cover the read, write/edit, and structure-edit workflows; **all three migrate to the `dmtool` target-first surface + the result envelope as the verbs flip** (the CI gate re-verifies them). The method scales to more, one demo per workflow:
 
 - ✅ **Authoring loop** — `check` → `add` → re-`validate` (`cli-edit-loop.md`).
 - ✅ **Edit loop** — `explain --computation` → re-express → `modify --dry-run` (preview) → `modify` (write-back); the F8 loop end-to-end (`cli-edit-loop.md`).
@@ -69,8 +69,13 @@ Three demos cover the read, write/edit, and structure-edit workflows; the method
 - ✅ **Multi-file** — `--include-dir` resolving an included model (`cli-edit-loop.md`).
 - ✅ **Structure edit** — `add-field`/`add-group`/`remove` (safe-delete refuse + `--cascade`), the **combined rulekit+modelkit** flow, and **type definitions + includes** (`add-typedef`/`add-field --typedef`/`add-include`) (`cli-structure-edit.md`).
 - **Comprehension** — read foreign rules back and explain them (the T7 family).
-- **Teaching / error paths** — deliberately author a wrong rule (inverted polarity, unguarded number) and show the lint/diagnostics fire. Needs the `LANG` pin above for the kernel's German messages.
-- **Runtime evaluation** — `eval-doc` a rule against a document instance that *should* and *should not* fire (the empirical polarity check `check` can't give), and `compute-doc` to show a field's computed value (and the empty-operand value/cleared cases). A strong fit for the teaching demo above — it makes "does this fire on real data?" visible.
+- **Runtime evaluation** — `doc eval` a rule against a document instance that *should* and *should not* fire (the empirical polarity check `check` can't give), and `doc compute` to show a field's computed value (and the empty-operand value/cleared cases).
+
+Target-first tours to add (they double as the executable counterparts of the new eval tasks):
+
+- **Discovery / schema tour** (the #1 self-describing showcase) — a cold start: `dmtool manifest` → `schema result`/`schema diagnostic` → `schema <target> <op>` → assemble and run a call **from the manifest alone**, proving an agent discovers the whole surface (verbs, params, the output envelope, the failure space) without the skill.
+- **`apply` session** (the north-star) — write an op-list *by composition* (manifest + the `schema apply` worked example), run it in one session (one gate, one write); show the per-op envelopes, then a seeded mid-sequence failure → **rollback** + the corrective `RK_UNKNOWN_ARG`/cross-op diagnostic → fix → green. Pairs with `N-session`/`N-batch-fix`.
+- **Self-correction** — a deliberately wrong call (typo'd field path, inverted polarity) → read the diagnostic's `fix` → recover. The headline agent-friendliness demo; pairs with `N-correct`. (Needs the `LANG` pin above for the kernel's German messages.)
 
 Two cross-cutting follow-ups:
 

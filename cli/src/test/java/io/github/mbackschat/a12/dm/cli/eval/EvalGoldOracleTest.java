@@ -76,8 +76,9 @@ class EvalGoldOracleTest {
         String model = readModelFromTask(task);
         switch (task.path("family").asText()) {
             // Authoring: the gold condition must validate against the real kernel (multi-file models
-            // resolve their includes via --include-dir → ReferenceResolvers.directory).
-            case "authoring" -> assertGoldValidates(task, model, taskFile);
+            // resolve their includes via --include-dir → ReferenceResolvers.directory). Self-correction
+            // shares the backbone: its gold is the *recovered* rule, which must likewise validate.
+            case "authoring", "self-correction" -> assertGoldValidates(task, model, taskFile);
             // Authoring a computation: the gold computation (computed field + alternatives) must validate.
             case "authoring-computation" -> assertComputationGoldValidates(task, model, taskFile);
             // Modify a computation: replacing the named existing computation with the gold must re-bind
@@ -90,6 +91,11 @@ class EvalGoldOracleTest {
             // i.e. they are actually readable by explain/read. The richer "did the agent explain
             // it right?" scoring is the agent layer's job (the task's `expected` rubric).
             case "comprehension" -> assertRulesRead(task, model, taskFile);
+            // Authored-but-not-yet-activatable families: their backbone needs verbs that arrive in a later
+            // phase (modelkit structure / apply session / rename refactor), so skip them until then.
+            case "structure", "delete-safety", "session", "refactor" ->
+                    org.junit.jupiter.api.Assumptions.assumeTrue(false,
+                            taskFile.getFileName() + ": backbone activates with its phase — skipped for now");
             default -> fail(taskFile.getFileName() + " has unknown family: " + task.path("family").asText());
         }
     }
@@ -101,7 +107,7 @@ class EvalGoldOracleTest {
         String group = field.substring(0, slash);
         String errorEntityRelPath = "../" + field.substring(group.length() + 1);
 
-        DraftRule draft = new DraftRule(group, task.get("id").asText() + "Gold",
+        DraftRule draft = new DraftRule(group, task.get("id").asText().replace('-', '_') + "Gold",
                 errorEntityRelPath, gold.get("condition").asText(), gold.get("code").asText(), "ERROR");
         ValidationResult result = new RuleValidator().check(model, draft, resolverFor(task));
 
@@ -176,7 +182,7 @@ class EvalGoldOracleTest {
         String commonPrecondition = gold.hasNonNull("commonPrecondition")
                 ? gold.get("commonPrecondition").asText() : null;
 
-        DraftComputation draft = new DraftComputation(group, task.get("id").asText() + "Gold", relPath,
+        DraftComputation draft = new DraftComputation(group, task.get("id").asText().replace('-', '_') + "Gold", relPath,
                 commonPrecondition, alternatives);
         ValidationResult result = new RuleValidator().check(model, draft);
 

@@ -1,0 +1,14 @@
+{
+  "id": "N-struct",
+  "family": "structure",
+  "model": "order",
+  "intent": "Add an optional whole-number field called LoyaltyPoints to the order.",
+  "gold": {
+    "op": "field add",
+    "group": "/Order",
+    "name": "LoyaltyPoints",
+    "kind": "NUMBER",
+    "expectField": "/Order/LoyaltyPoints"
+  },
+  "notes": "The first modelkit structure task: the agent must discover `field add` and its params from the self-describing CLI (`manifest` → params for 'field add'; no JSON spec — scalar flags) and assemble `dmtool -m <model> field add --group /Order --name LoyaltyPoints --kind NUMBER`. Scored: the result re-binds (the field exists, kernel-valid) AND matches intent (path + kind). Activates with the modelkit verbs (Phase 2); gold kernel-verified then."
+}

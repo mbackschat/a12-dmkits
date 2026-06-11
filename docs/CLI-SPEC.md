@@ -1,161 +1,198 @@
-# a12-dmkits — CLI spec (the modeller/BA standalone front-end)
+# a12-dmkits — CLI spec (`dmtool`, the modeller/BA front-end)
 
-The component spec for the standalone CLI (N10). The proposal's [§14/§16](PROJECT-PROPOSAL.md) state intent; [`ARCHITECTURE.md`](ARCHITECTURE.md) places it among the subprojects; this spec holds the detail — the verb surface, the JSON I/O contract, the **dev/test workflow that keeps the inner loop fast**, the sizing, and the two packaging phases. Status flips on the [`API-POC-STUDY.md` §9](API-POC-STUDY.md) board. Verifiable, runnable demos of the verbs: [`CLI-TOUR-SPEC.md`](CLI-TOUR-SPEC.md) ↔ [`../examples/`](../examples/).
+The component spec for the standalone CLI (N10). The proposal's [§14/§16](PROJECT-PROPOSAL.md) state intent; [`ARCHITECTURE.md`](ARCHITECTURE.md) places it among the subprojects; this spec holds the design — the **op model**, the **verb surface**, the **diagnostics contract**, the dev/test workflow, sizing, and packaging. Per-verb implementation status lives on the [`API-POC-STUDY.md` §9](API-POC-STUDY.md) board; runnable demos in [`CLI-TOUR-SPEC.md`](CLI-TOUR-SPEC.md) ↔ [`../examples/`](../examples/).
+
+> **Status.** This spec is the **target surface** — binary `dmtool`, target-first verbs (`dmtool -m <model> <target> <op>`), and the uniform result envelope (§3). The verb-first surface is mid-migration: the legacy names still resolve as hidden aliases until the flip completes (per-verb status on the §9 board). The rename/refactor ops (§6) are specced but deferred.
 
 ## 1. Purpose & persona
 
-The CLI is the **modeller/BA's** interaction surface (N10): one engine (core + adapter), driven by an agent through **verbs with JSON in/out**, the JVM bundled and invisible. It is *not* the developer's surface — a developer uses rulekit as a library in their own project (no CLI). The CLI never shells out to `javac`; the agent authors a rule as **JSON**, which the CLI deserializes *through the typed builder*, so the BA gets the builder's pre-checks + the kernel `Diagnostic`s (F4a) at runtime — the runtime analogue of the developer's compile-time steering.
+`dmtool` is the **modeller/BA's** interaction surface (N10): one engine (core + adapter + the modelkit/rulekit kits), driven by an **agent** through verbs with **JSON in / JSON out**, the JVM bundled and invisible. It is *not* the developer's surface — a developer uses the kits as libraries (no CLI). It edits the **whole document model** — structure (fields, groups, type definitions, includes, doc config) *and* rules/computations — validates, reads/explains, and batches. The CLI never shells out to `javac`; the agent authors via **JSON / flags**, which `dmtool` deserializes *through the typed builders*, so the BA gets the builder pre-checks **plus** the kernel `Diagnostic`s (F4a) at runtime — the runtime analogue of the developer's compile-time steering.
 
-## 1a. Design principle — self-explaining & explorable (standing requirement, 2026-06-05)
+## 2. Design principle — self-explaining **and** corrective diagnostics (the #1 priority)
 
-**A cold agent, given only the binary, must be able to explore the tool.** Discoverability is a property of the *CLI*, not the N1 skill — the skill stays minimal (it teaches judgment: polarity, the empty-as-0 trap; not the verb/parameter catalog), so the tool has to carry its own description. Three layers, each a separate concern:
+The tool exists to be driven by a cold LLM agent. Two properties, above all else, make that work — and they are the tie-breaker for every CLI decision:
 
-| Layer | Question it answers | Mechanism | State |
+1. **Self-explaining & explorable.** A cold agent, given only the binary, must discover the verbs, their parameters and meaning, and each verb's I/O shape — *without* the N1 skill. Discoverability is a property of the **tool**, not the skill (which stays minimal: it teaches judgment — polarity, the traps — not the verb catalog).
+2. **Corrective diagnostics.** Good diagnostics let the agent **fix its own mistakes**. Every error reaches *detect → locate → repair*: a stable `code`, a `where`, and a `fix`. Self-correction is a measured eval dimension (N-correct, [`EVAL-SPEC.md`](EVAL-SPEC.md) §3), not an aspiration.
+
+| Layer | Question | Mechanism |
+|---|---|---|
+| **Targets & ops** | "what can this tool do?" | `dmtool --help` (target list) · `dmtool <target> --help` (its ops) · `manifest` (the whole tree, machine-readable, one call) |
+| **Parameters** | "how do I call `<target> <op>`?" | per-op `--help` + the `manifest` `params[]` |
+| **I/O shape** | "what does it emit / expect?" | `schema` — the result envelope (§3) + per-op input schemas |
+| **Failure space** | "what can go wrong, and how do I fix it?" | each op advertises the `emits[]` codes in the manifest; every code has a `fix` (§4) |
+| **DSL vocabulary** | "what operators exist, what do they mean?" | `operators` (list + per-operator semantics + gotchas) |
+
+**Implementation: picocli** (§8). One `@Command`/`@Option(description=…)` declaration per op drives parsing, `--help`, *and* the `manifest` — help cannot drift from behavior. The manifest emits the **entire** target×op tree in one response, so an agent discovers everything without walking the subcommand tree interactively. Drift is caught at build: `ManifestVerbTest` (the verb tree), `SchemaVerbTest` (schema ↔ envelope coverage) — the F11 discipline.
+
+## 3. The op model — one record, two surfaces
+
+Every action is one **operation record** — `{ target, op, args }` — and every action returns one **result envelope**. A single CLI invocation is *one* record; a batch is an ordered *list* of them ([§7](#7-batching--dispatcher-batch-vs-session-apply)). Define the vocabulary once; render it onto both surfaces. Consistency on the two axes — **element family** (modelkit structure ⟂ rulekit rules) × **operation** — then holds by construction, in both the CLI and the batch.
+
+### 3a. Invocation shape — `dmtool -m <model> <target> <op> [args]`
+
+The model file is **context**, named once with `-m/--model`, like `git -C <dir>` / `kubectl -n <ns>` / `docker --context`. The per-op object (a field path, a rule name) is a positional on the op, like `docker image rm <image>`. So the op's own flags are never interrupted by the model path, and the op record carries **no model** — making single-verb and batch perfectly symmetric:
+
+```
+single:  dmtool -m order.dm.json field add --group /Order --name PromoCode --kind STRING
+batch:   dmtool -m order.dm.json apply --ops edits.json      # edits.json = [ {target,op,args}, … ]
+```
+
+`-m` is an **inherited, position-tolerant** option (accepted before or after the verb); if it's missing the diagnostic is corrective (`pass -m <model>`). We deliberately keep the model **explicit per call** rather than an ambient "use this model" state — a fully-specified, stateless invocation is easier for an agent to generate and to reproduce/debug.
+
+### 3b. The result envelope
+
+Every verb and every batch op emits the same shape. It **embeds the existing diagnostics array verbatim** (§4); the new part is only the wrapper around it.
+
+| field | meaning |
+|---|---|
+| `target`, `op` | echo the request — self-identifying, never mis-attributed |
+| `outcome` | `applied · preview · refused · rejected · read · staged` (the execution result class) |
+| `ok` | the operation executed as asked (`outcome ∈ {applied, preview, read, staged}`) |
+| `valid` | *(validate/check, and after a mutating op)* the **subject model** is kernel-valid — **distinct from `ok`** |
+| `summary` | one human-readable line (the agent's quick read / log line) |
+| `changed` | *(mutations)* the delta on success — e.g. `{added, kind}`, a refactor's rewritten refs |
+| `data` | *(reads/queries)* the op's payload — explanation tree · model card · fired-list · … ; shape is op-specific (`schema <target> <op>`) |
+| `diagnostics` | exactly `ValidationResult.toJson()` — an array of `Diagnostic` (§4) |
+| `written`, `output` | whether the model was written, and where (`null` for read/preview/refused/rejected) |
+
+**The `ok` / `valid` split fixes a real overload:** `ok` = "the tool did the job"; `valid` = "the model is kernel-valid." A `doc validate` that finds the model invalid is `ok:true, valid:false` — the tool worked, the model didn't. **Exit codes** key off this: **0** = `ok` and not `valid:false` (applied/preview/read of a valid subject); **1** = `rejected`, or a validate/check with `valid:false`; **2** = `refused` (safe-gate) or a usage error. Everything else lives in the envelope.
+
+## 4. Diagnostics — reuse, extend, correct
+
+The diagnostic is **already defined** — reuse it, don't reinvent it.
+
+- **`Diagnostic`** (LSP-modelled): `severity` (ERROR/WARNING/INFO) · `source` (PRECHECK/KERNEL/LINT/ENVIRONMENT) · `code` (optional; `MVK_*` kernel / `RK_*` rulekit-or-structure) · `summary` · `where` · `fix` (optional) · `explain` (optional).
+- **`ValidationResult{ok, diagnostics[]}`** with `toJson()` — the agent-parseable array (empty optionals omitted) that the envelope's `diagnostics` *is*.
+- **`DiagnosticEnricher`** — the **catalog-join**: an `MVK_*` code is matched to its operator-catalog entry, and that entry's curated `fix`/`explain` are attached. The fix database is the N7-locked catalog — one source, so kernel diagnostics and authoring examples never drift.
+
+Two extensions this redesign adds (minimal, deliberate):
+
+1. **`Where` gains `path` and `arg`.** Today `Where` only points at a `rule` (+`operator`/`span`). Structure ops and arg-level errors have no locus — so `Where` grows a **model-element `path`** (any field/group/typedef/include) and an optional input **`arg`/token**, keeping `rule`/`operator`/`span`.
+2. **An `RK_*` curated-fix source.** `DiagnosticEnricher` only fixes catalog `MVK_*` codes; the new structure/refusal codes (`RK_NO_SUCH_GROUP`, the safe-delete `RK_REFERENCED`, …) get a curated-fix table so **every error-severity code carries a `fix`** — CI-guarded.
+
+**The corrective bar — detect → locate → repair.** A diagnostic that only says *what's wrong* lets the agent report failure; one that says *how to fix it* lets the agent close the loop. The `fix` is the highest-value field (an applicable DSL/path replacement or a discovery command, e.g. *"list paths with `field read --all`"*). Discipline: a "did-you-mean" only appears above an edit-distance threshold — a wrong suggestion is worse than none. The structured machine-applicable `suggest` is **deferred** until a consumer (an apply-the-fix harness) exists.
+
+Worked shapes (the real `Diagnostic` fields, inside the envelope):
+
+```jsonc
+// kernel rejection — MVK_* verbatim, located, with a catalog-joined fix:
+{ "severity":"ERROR", "source":"KERNEL", "code":"MVK_UNKNOWN_FIELD",
+  "summary":"/Order/Quanity is not a field in the model",
+  "where": { "rule":"/Order/MinQuantity", "operator":"…", "span":[12,26] },
+  "fix":"replace /Order/Quanity with /Order/Quantity",
+  "explain":"…" }
+
+// structure precheck — the Where extension (path/arg) + an RK_* curated fix:
+{ "severity":"ERROR", "source":"PRECHECK", "code":"RK_NO_SUCH_GROUP",
+  "summary":"no group /Order/Lines in the model",
+  "where": { "path":"/Order/Lines", "arg":"--group" },
+  "fix":"list groups with `dmtool -m order.dm.json group read --all`" }
+```
+
+## 5. Verb surface — target × op
+
+Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ rulekit) is a **grouping in `--help`/manifest**, not a command level — the real two axes (kind × op) *are* the two command levels.
+
+| target | ops | family |
+|---|---|---|
+| `doc` | `describe · validate · export · eval --doc · compute --doc` | (whole document) |
+| `rule` | `add <spec> · read · explain · check · modify --condition · remove` | rulekit |
+| `computation` | `add <spec> · read · explain · modify --spec · remove` | rulekit |
+| `field` | `add · read · remove` *(rename → §6, deferred)* | modelkit |
+| `group` | `add · read · remove` *(rename/move → §6, deferred)* | modelkit |
+| `typedef` | `add · read · remove` | modelkit |
+| `include` | `add · read · remove` | modelkit |
+| `config` | `read · modify` | modelkit |
+| *(root meta)* | `manifest · schema · operators · batch · apply` | — |
+| *(cross-cutting)* | `where-used --entity` | adapter |
+
+**Legacy → target-first** (the migration map; legacy names stay as hidden aliases for one release):
+
+| legacy verb | target-first |
+|---|---|
+| `describe` / `validate` / `export` / `eval-doc` / `compute-doc` | `doc describe` / `doc validate` / `doc export` / `doc eval --doc` / `doc compute --doc` |
+| `add <spec>` (rule) / `add <spec>` (computation) | `rule add <spec>` / `computation add <spec>` |
+| `read --rule` / `read --all` / `explain --rule` / `explain --computation` | `rule read` / `doc read --all` / `rule explain` / `computation explain` |
+| `check` | `rule check` |
+| `modify --rule --condition` / `modify --computation --spec` | `rule modify --condition` / `computation modify --spec` |
+| `add-field` / `add-group` / `add-typedef` / `add-include` | `field add` / `group add` / `typedef add` / `include add` |
+| `remove --field/--group/--rule/--computation/--typedef/--include` | `field remove` / `group remove` / `rule remove` / `computation remove` / `typedef remove` / `include remove` |
+
+**The spec-vs-flags asymmetry is inherent and stated, not hidden.** A rule/computation is a rich JSON envelope (condition, code, messages, severity), so `rule add` takes a `--spec <file>`; a field/group is a few scalars, so `field add` takes `--group/--name/--kind` flags. Consistency lives at the **selector** (`<target> <op>`), uniform across the lifecycle (`field add` ↔ `field remove`, `rule add` ↔ `rule modify`); the *payload* differs by necessity.
+
+**Write convention.** Every mutating op writes the model **in place** by default, `-o <file>` redirects, `--dry-run` previews (read-only).
+
+### 5a. Schema discovery & the op-record
+
+`schema <X>` is addressed with the same tokens as the verbs:
+
+- `schema result` / `schema diagnostic` — the cross-cutting structures (raw JSON Schema).
+- `schema <target> <op>` — that op's **directional contract**, `{input?, returns:"result", data?}`: what it *consumes* (a rich JSON input like the rule-spec) and the shape of the `data` it *returns* (for reads). One call, unambiguous direction — never "is this what I send or what I get?". Flag-only ops carry no input schema (their params are in the manifest).
+
+The `manifest` is the index that makes assembly *copy, not infer*: every verb entry carries `target`, `op`, its params (each with the CLI `flag` **and** the op-record `key` = the `--`-stripped name an `apply` op uses), and a `schema` pointer; the root carries `resultSchema:"result"` and the global `-m`. So an agent builds any call — single or batched — straight from the manifest. (`schema add` is gone: it splits into `schema rule add` / `schema computation add`.)
+
+## 6. Op taxonomy — Local / Cascading / Refactor
+
+Classify every op by **blast radius** — this is the standing rule for adding ops, CRUD or not:
+
+| class | ops | semantics | mechanism |
 |---|---|---|---|
-| **Verbs** | "what can this tool do?" | `--help` (root) + `manifest` (machine-readable verbs × summary) | ✅ |
-| **Parameters** | "how do I call verb X, and what do the args mean?" | per-verb `--help` + the `manifest` `params:[{name, required, description}]` | ✅ |
-| **I/O shape** | "what does verb X emit / expect?" | `schema <name>` — outputs (explain/describe/validate/read) + inputs (add/batch) | ✅ |
-| **DSL vocabulary** | "what operators exist and what do they mean?" | `operators` (list + per-operator full semantics) | ✅ |
+| **Local** | add · read · modify · remove-leaf | one element only | plain surgery, gate at end |
+| **Cascading** | remove-referenced | element + *deletes* dependents | the `where-used` refuse-or-`--cascade` gate |
+| **Refactor** *(deferred)* | **rename · move** (·extract·inline) | rewrites element **and all references** atomically → valid→valid | a `where-used`-driven, AST-level reference rewrite |
 
-**Implementation: picocli** (§2) — one `@Command`/`@Option(description=…)` declaration per verb drives parsing, `--help`, *and* the `manifest`, so the help cannot drift from behavior (the most-stable option; the Java-standard, GraalVM-native-ready framework). Rules of thumb when touching the CLI: a new verb is a `@Command` class added to `RootCommand` (it gets `--help` + a manifest entry automatically) and ships an output schema in the same change; option descriptions are the single source of help text; nothing about the verb surface is discoverable *only* by reading the skill or the source. Drift is caught at build — `ManifestVerbTest` (verb-set discoverability), `SchemaVerbTest` (schema↔output key coverage) — the F11 discipline. Status of the layers is in §4 (verb table) and the §9 board.
+**Why rename is "not CRUD" — and why it's deferred.** A rename is a *reference-preserving refactor*: it must rewrite the declaration **and** every referencing site (conditions, error-entity paths, computations) **atomically**, token-precise via the AST (not string replace), and **refuse** when a referrer is `Opaque` (un-modellable, so unrewritable). That engine is the riskiest part of the design, so it's **specced here but built later**: the grammar slot (`field rename`, `group rename/move`) is reserved, the eval task (`N-rename`) is authored-but-skipped, and the safe-delete refusal's `fix` references **`--cascade` only** until rename ships.
 
-## 2. Module shape
+### Safe-delete — the Cascading gate (recorded so it isn't re-litigated)
 
-- **`:cli` Gradle subproject**, `application` plugin. Depends on **core + adapter** (the adapter, added 2026-06-05, powers the `read`/`explain` read-back verbs; it pulls the internal kernel read tier — fine for an *app*; N8 confines the internal tier to adapter/cli, never core).
-- **picocli** drives the command tree (added 2026-06-05, §1a): `RootCommand` + one `@Command` class per verb, each a `Callable<Integer>` extending `BaseCommand` (which supplies the `out`/`err` writers from the seam). `picocli-codegen` (annotation processor) auto-emits the GraalVM native-image reflection config under `META-INF/native-image/`, so the B2 native build needs no hand-written config.
-- **Testability split — the key to the fast loop:**
-  - `Cli.run(String[] args, Appendable out, Appendable err) -> int` — **pure and testable**: no `System.exit`, no `System.out` capture, returns an exit code, writes to the passed sinks.
-  - `CliMain.main(String[])` — the thin shell: `System.exit(Cli.run(args, System.out, System.err))`.
-  - Each verb is a function producing a `String`/stream — so the BA behavior is unit-testable in-process, no packaging, no spawned process.
+Removing a field/group a rule/computation still references would dangle a reference. So `field remove`/`group remove` run the adapter's exact **`where-used`** first. If anything references the target it **refuses** (`outcome:refused`, exit 2) and surfaces the references as a structured diagnostic (`RK_REFERENCED`, `where.referencedBy:{rules,computations}`, a `fix`), so an agent can act — remove them first, or pass **`--cascade`** (which removes the referrers, then the element). **Never a silent cascade.** The *proactive* "what references this?" check lives at the CLI (which has the adapter — `where-used` is an adapter capability above `EditSession`, and `dm.modelkit ⟂ dm.rulekit` means modelkit can't see rule knowledge); the *authoritative* dangling-reference check stays the kernel gate (`EditSession.validate()`). Layering rationale: [`KERNEL-INTEGRATION-NOTES.md`](KERNEL-INTEGRATION-NOTES.md) "Structure edits + the delete-safety rule".
 
-## 3. Dev/test workflow — keep packaging out of the inner loop
+## 7. Batching — dispatcher `batch` vs session `apply`
 
-The self-contained binary (jlink/jpackage) only *provisions a JVM*; it adds **zero behavior** and takes ~a minute to build. So it is **never** in the code-build-test cycle. Three speeds, by what's changing:
+Two batch verbs, because they solve different problems — conflating them would break the eval runner:
+
+| verb | op shape | model | semantics | for |
+|---|---|---|---|---|
+| **`batch`** | `{argv:[…], id?}` — the literal CLI token list | many ops, any verb, possibly **different models** | stateless dispatch — each op is a full `Cli.run`; never rolls back | independent checks/reads; **the N6 eval runner** ([`eval/benchmark.workflow.js`](../eval/benchmark.workflow.js)) |
+| **`apply`** | `{target, op, …args}` — the op-record | one model, ordered edits | one read → ordered surgery on one `EditSession` → **one terminal gate** → one write; **atomic rollback** | the north-star: read → add fields/groups → add/modify rules → delete → write back |
+
+**`apply` semantics.** It tolerates **transient-invalid states between ops** (defers the kernel gate to the end) and emits a **per-op result envelope** plus a batch summary (`{ops, committed, failedAt, results[]}`); a read op's payload rides its envelope's `data` (§3b). On a mid-sequence failure it **rolls back** (nothing written), the failing op's diagnostic cross-op aware (*"op f1 added /Order/Discount — fix the spelling"*). Rule ops carry **raw DSL/spec text** (the surgery path), so a transient-invalid model doesn't block authoring the fix; clean per-op attribution comes from validating per-op while the model is currently valid.
+
+**Writing a batch without prior knowledge — by composition.** A batch op *is* a CLI call as JSON, so discovering a verb (manifest + `schema <target> <op>`, §5a) *is* discovering how to batch it. `schema apply`/`schema batch` add only the list *frame* + a worked `examples` block; the per-op fields are the verb's params, copied from the manifest. The op schema is intentionally loose (`additionalProperties:true` — inlining every op's args would need an unreadable `oneOf`), so **validation moves to the runtime, and stays corrective:**
+
+- **Op-arg validation.** `apply`/`batch` validate each op's keys against that verb's param model and emit a corrective diagnostic in that op's envelope — `RK_UNKNOWN_ARG`, `where.arg`, a did-you-mean `fix`. The most common batch mistake (a typo'd/wrong key, or an `op` not valid for `target`) self-corrects instead of failing opaquely. This is the point: corrective diagnostics must reach *inside* batches, not just standalone calls.
+- **Cross-type corrective.** Feeding `batch` an `apply`-shaped op (or vice versa) is detected and named (*"this op has `target`/`op` — did you mean `apply`?"*).
+- **Examples can't rot.** Every schema `examples` block is CI-executed through the tool (a drift guard alongside the manifest/schema guardians) — a stale example actively misleads an agent, so an unverified one cannot ship.
+
+## 8. Module shape
+
+- **`:cli` Gradle subproject**, `application` plugin, **builds the `dmtool` binary** (`applicationName = "dmtool"`; the gradle module stays `:cli`). Depends on **core + adapter + the kits**; the adapter pulls the internal kernel read tier — fine for an *app* (N8 confines the internal tier to adapter/cli, never core).
+- **picocli** drives the command tree (§2): `RootCommand` (`name = "dmtool"`) + a target group per kind + one `@Command` op per cell, each a `Callable<Integer>` extending `BaseCommand` (the `out`/`err` seam). `picocli-codegen` auto-emits the GraalVM native-image reflection config.
+- **Testability split — the fast loop:** `Cli.run(String[] args, Appendable out, Appendable err) -> int` is **pure and testable** (no `System.exit`, returns an exit code, writes to passed sinks); `CliMain.main` is the thin `System.exit(Cli.run(…))` shell. Every op is unit-testable in-process — no packaging, no spawned process.
+
+## 9. Dev/test workflow — keep packaging out of the inner loop
+
+The self-contained binary (jlink/jpackage) only *provisions a JVM* — zero behavior, ~a minute to build — so it is **never** in the code-build-test cycle. Three speeds:
 
 | Changing | Command | Speed |
 |---|---|---|
-| **CLI/verb code** | `./gradlew :cli:test` — JUnit verb tests over `Cli.run(...)` | sub-second (warm daemon); the primary loop |
-| code, want a real process | `./gradlew -q :cli:run --args="export model.json fields"` | seconds (incremental; skips packaging) |
-| **only inputs** (model/rule JSON) | `./gradlew :cli:installDist` once, then `build/install/cli/bin/cli …` | ~1s JVM startup, no rebuild |
+| **CLI/verb code** | `./gradlew :cli:test` — JUnit over `Cli.run(...)` | sub-second (warm daemon); the primary loop |
+| code, want a real process | `./gradlew -q :cli:run --args="-m model.json doc validate"` | seconds (incremental; skips packaging) |
+| **only inputs** (model/spec JSON) | `./gradlew :cli:installDist` once, then `build/install/cli/bin/dmtool …` | ~1s JVM startup, no rebuild |
 
-Rules of the loop: never `clean`; never `installDist`/`shadowJar`/jlink/jpackage to test *behavior* (only to produce a distributable). Point an agent dry-run at the one-time `installDist` launcher so it re-invokes with no rebuild cost.
+Rules of the loop: never `clean`; never `installDist`/jlink/jpackage to test *behavior* (only to produce a distributable). Point an agent dry-run at the one-time `installDist` launcher. *Future option (if multi-call latency bites):* a resident/stdin mode (JVM startup paid once across many calls).
 
-*Future option (only if multi-call latency bites):* a **resident/stdin mode** — the CLI stays up and reads commands on stdin, paying JVM startup once across many agent calls (the "stdin → run" shape of study finding 6).
+## 10. Sizing
 
-## 4. Verb surface
+- **Application jars: ~18.5 MB** (51 jars — kernel subset + Jackson + commons + antlr4-runtime + Groovy; Groovy ~7–8 MB).
+- **jlink-trimmed JRE: ~45–70 MB**; jpackage launcher +1–3 MB. **Self-contained app-image: ~65–90 MB/OS; compressed download ~30–50 MB.**
+- **Shrink levers:** drop kernel jars the verbs never exercise (verify with `jdeps`/coverage — Groovy + `kernel-core-runtime`/codegen may be unused; biggest win); `jlink --compress=zip-9 --strip-debug …`; ship per-OS only → could approach ~25–35 MB.
 
-JSON/JSONL out on stdout (pipeable, `jq`/`grep`-able); non-zero exit on error with a `Diagnostic` JSON on stderr. Initial + planned:
+## 11. Packaging phases & licensing
 
-| Verb | In | Out | Status | Engine |
-|---|---|---|---|---|
-| **`export`** | model.json [+ artifact] [`--out-dir`] | JSONL / markdown (the finding-13 artifacts); one to stdout or all four to `--out-dir`. **Renamed from `dump` 2026-06-08** | ✅ 2026-06-05 | core |
-| **`describe`** | model.json | model card JSON (F9a) | ✅ 2026-06-05 | core |
-| **`validate`** | model.json | `{valid, diagnostics[]}` JSON (model-level; rule-level with the rule-spec) | ✅ 2026-06-05 | core |
-| **`check`** | model.json + `--field`/`--condition`/`--code` [`--group`] | `{valid, diagnostics[]}` JSON (authoring feedback, no persist) | ✅ 2026-06-05 | core |
-| **`eval-doc`** | model.json `--doc <document.json>` [`--rule` \| `--condition`+`--field`] [`--include-dir`] | `{fired[], messages[], rule?}` — the **runtime** verdict: which rules **fire on a document instance** (`validateFull`), optionally narrowed to one existing rule or an injected candidate. The peer of `check` (does it *fire*?) vs (does the kernel *accept* it?). Computations are NOT run (a computed field reads as the doc supplies it) | ✅ 2026-06-09 | adapter |
-| **`compute-doc`** | model.json `--doc <document.json>` [`--include-dir`] | `{computed[]}` — what each computed field **becomes** on a document instance (`compute`): value / cleared / error. Read-only (never writes `--doc`). The computation peer of `eval-doc` | ✅ 2026-06-09 | adapter |
-| `batch` | a JSON array of ops (file) | results array | ✅ (2026-06-05) — runs many ops in one process, amortizing JVM startup + the kernel's per-process StringTemplate warm-up (see KERNEL-FINDINGS); each result is self-describing for attribution | core |
-| **`add`** | model.json + spec JSON [`--output`] | the persisted DM-JSON (stdout) | ✅ 2026-06-05; **computation-spec ✅ 2026-06-08** (persists a computation when the spec has `computedField`) | core (`write`) |
-| **`read`** | model.json (`--rule <rulePathInModel>` \| `--all`) | one rule: `{converted, condition}` / `{converted:false, …}`; `--all`: `{rules{…}, computations{…}, summary}` — the unified whole-model read (validation rules + computations, disjoint). The F10 read-back, surfaced as a read verb. **Renamed from `ingest` 2026-06-08** (CLI verb + the `KernelAdapter.read`/`ReadResult` API alike — one vocabulary) | ✅ 2026-06-05; `--all` ✅ 2026-06-08 | adapter |
-| **`explain`** | model.json (`--rule <rulePathInModel>` \| `--computation <computationPathInModel>`) | rule: `RuleExplanation` JSON (structural `tree` + flat operators with meaning/gotchas, refs, iteration, gloss); computation: `ComputationExplanation` JSON (computed field+kind, common precondition + per-alternative precondition/operation, messages, gloss) | ✅ 2026-06-05; `--computation` ✅ 2026-06-08 | adapter + core |
-| **`where-used`** | model.json `--entity <entityPath>` | `{entity, rules[], computations[], count}` — rules **and** computations whose condition directly references the field/group (F9a exact, `getDirectlyReferencedEntities`); kept in separate arrays since `getAllRules()` ⊇ computations | ✅ 2026-06-07; computations ✅ 2026-06-08 | adapter |
-| **`schema`** | `[<name>]` (explain/describe/validate/read outputs; add/batch inputs) | the JSON Schema of that verb's I/O, **on demand** (lists names when bare); documents the explain `tree.operator → operators[].id` backlink | ✅ 2026-06-05 | cli (resources) |
-| **`operators`** | `[<id>] [--kind] [--keyword]` | the DSL **operator catalog** — a filterable list, or one operator's full semantics (keywords EN/DE, operands, meaning, constraints, gotchas, valid/invalid example). The proactive complement to `explain` | ✅ 2026-06-05 | core catalog |
-| **`manifest`** | — | machine-readable map of **every verb + its parameters** (name, required, meaning), derived from the picocli model so it can't drift | ✅ 2026-06-05 | cli (picocli) |
-| `modify` | model.json + (`--rule` + `--condition` \| `--computation` + `--spec`) [`-o`] [`--dry-run`] | `RenderedDiff` JSON + **writes the modified model** | ✅ 2026-06-08 — the F8 re-express loop, and the **sole** re-express verb: validates then writes **in place** by default (`-o <file>` redirects); **`--dry-run`** previews read-only (writes nothing). A separate read-only `diff` verb existed briefly (2026-06-08) but was retired the same day — redundant with `modify --dry-run` | adapter |
-| **`add-field`** | model.json `--group <path> --name <n>` (`--kind <STRING\|NUMBER\|DATE\|BOOLEAN\|CONFIRM>` \| `--typedef <id>`) [`-o`] [`--dry-run`] [`--include-dir`] | `{added, kind, written}`; **writes the model back** (in place; `-o` redirects) | ✅ 2026-06-10 — structure-add (modelkit); `--kind` for an easy kind or `--typedef` for a type-definition ref; re-bound through the kernel | core (`edit`/`modelkit`) |
-| **`add-group`** | model.json `--parent <path> --name <n>` [`--repeatable <max>`] [`-o`] [`--dry-run`] [`--include-dir`] | `{added, repeatable, written}`; **writes the model back** | ✅ 2026-06-10 — structure-add; `--repeatable <max>` (≥2) for a repeatable group | core (`edit`/`modelkit`) |
-| **`add-typedef`** | model.json `--id <id> --kind <KIND>` [`-o`] [`--dry-run`] [`--include-dir`] | `{added, kind, written}`; **writes the model back** | ✅ 2026-06-10 — declare a reusable type definition; reference it with `add-field --typedef <id>` | core (`modelkit`) |
-| **`add-include`** | model.json `--alias <a> --reference <r> --parent <path> --name <n>` [`-o`] [`--dry-run`] [`--include-dir`] | `{added, reference, mountedAt, written}`; **writes the model back** | ✅ 2026-06-10 — declare a model-reference + mount it; the mounted model is resolved + kernel-validated via `--include-dir` | adapter + core |
-| **`remove`** | model.json + (`--field` \| `--group` \| `--rule` \| `--computation` \| `--typedef` \| `--include` `<path/id/alias>`) [`--cascade`] [`-o`] [`--dry-run`] | `{removed, cascaded[], written}`; **writes the model back** (in place; `-o` redirects). A referenced field/group is **refused** with a structured `{blocked, referencedBy:{rules,computations}, hint}` (exit 2) unless **`--cascade`** removes the references too | ✅ 2026-06-10 — the delete verb; the safe-delete gate (§5d). Removal is re-bound through the kernel; an invalid result emits the kernel diagnostics (exit 1) | adapter + core (`edit`) |
+- **Phase A — dev/test:** `application` plugin → `run`/`installDist`/`distZip`. Dev JDK + kernel from `mavenLocal`. CI-testable; redistributes nothing.
+- **Phase B1 — distribution, default: jlink + jpackage app-image.** Self-contained, signed; real JVM (no closed-world issues). `jdeps`-measured JDK modules → ~50–65 MB runtime + the classpath jars. Adds no behavior.
+- **Phase B2 — GraalVM native-image: feasible** (GraalVM 21, `--no-fallback`): build ~36 MB / ~1m28s, startup ~37 ms vs ~600 ms JVM (~16×), output byte-identical **once template resources are bundled** (`-H:IncludeResources='internal/templates/.*'` — `checkConsistency` runs StringTemplate v4, native-compatible). **Hard ceiling:** never depend on the kernel's *runtime validation execution* (`GroovyClassLoader.parseClass` — not native-compilable); rulekit never executes validators, so it's clear. Full root cause: [`KERNEL-FINDINGS.md`](KERNEL-FINDINGS.md) "`checkConsistency` runs runtime code generation". **Decision:** B1 ships first; B2 is a proven upgrade gated on the resource-inclusion + held-out-model discipline.
 
-### 4a. Verb & option naming — decisions (2026-06-08 audit)
-
-A pass over every verb/option for intuition + CLI convention. **Changed** (the intuition-breakers):
-
-| Was | Now | Why |
-|---|---|---|
-| `ingest` | **`read`** | "ingest" means *import data in* — but the verb *reads/renders* a stored rule (the opposite). Renamed at the CLI **and** the adapter API (`KernelAdapter.read`, the `ReadResult` type) — one vocabulary, no porcelain/plumbing split. |
-| `dump` | **`export`** | "dump" read as a raw blob; the verb's job is to *export* the model's artifacts. |
-| `export --output <dir>` | **`--out-dir <dir>`** | the flag is a **directory** (all four artifacts); `add`/`modify` keep `--output`/`-o` for a **file**, so the same flag never means two target kinds. |
-| one re-express verb, write-default | **`modify`** (`--dry-run` previews) | a brief read-only `diff` verb (2026-06-08) was retired the same day — identical code path + output to `modify --dry-run`, so it was pure redundancy; see §5c. |
-
-**Reviewed, kept** (defensible — recorded so it isn't re-litigated): `check` vs `validate` (candidate vs existing — the names read alike, but `--help` carries the distinction); `add`/`modify` taking a computation as a `--spec` *file* but a rule *inline* (`--condition`) — a computation is multi-part + needs messages; `where-used --entity` vs `--field`/`--group`/`--rule` elsewhere (`--entity` is the field-*or*-group generalization that verb needs); noun-query verbs `schema`/`operators`/`manifest` mixed with action verbs (widely accepted — git/docker do it).
-
-## 5. The `export` verb (first)
-
-The agent-files-as-API surface (finding 13). Artifacts: three JSONL (one self-contained JSON object per line — `grep` and `jq` both work, only matching lines enter an agent's context) plus one read-whole markdown skeleton.
-
-```
-cli export <model.json> fields              # one artifact → stdout (pipe: | grep -i fee)
-cli export <model.json> groups|rules|card
-cli export <model.json> --out-dir ctx/      # all four artifacts → files in ctx/
-cli export <model.json>                     # no artifact, no --out-dir → model-card to stdout
-```
-
-Line shapes (JSONL stays pure data — the model id/version stamp lives in `model-card.md`, the read-whole artifact):
-
-- **fields.jsonl** — `{"path","name","kind","group","repeatsUnder",("scale"),("values")}` (`scale` for NUMBER, `values` for ENUMERATION; `repeatsUnder` = nearest repeatable ancestor or null).
-- **groups.jsonl** — `{"path","name","repeatable","repeatsUnder"}`.
-- **rules.jsonl** — `{"rule","group","slot":"errorCondition","code","errorField","severity","condition","referencedFields":null,"resolution":"heuristic"}`. The core cannot resolve refs from raw condition text (that needs the adapter's parse), so `referencedFields` is honestly `null` / `resolution:"heuristic"` until the adapter lands.
-- **model-card.md** — markdown, stamped with model id + version + counts + the group skeleton (repeatability) + enum domains.
-
-Implementation: fields/groups/card from core (`BoundModel.ofJson` → `fields()`/`groups()`/`nearestRepeatableAncestor()`); rules from a read-only walk of the authored DM-JSON (Jackson), since core does not enumerate existing rules. Serialization lives in `:cli`, **not** core (core exposes the programmatic projections; the CLI renders them to files).
-
-## 5b. The `check` and `add` verbs (the authoring loop)
-
-- **`check`** — submit a candidate rule, get the real kernel's verdict, persist nothing: `check <model.json> --field <fieldPathInModel> --condition "<DSL>" --code <errorCode> [--group <groupPathInModel>] [--severity] [--name]`. Wraps core `RuleValidator.check`; `--field` is the error field's path **inside the model** (e.g. `/Group/Field`) — a model entity path, **not** a file path (the model file is the positional `<model.json>`). The kernel's `../`-relative form and `--group` (the iteration scope, default = field's parent) are computed for you. **Help-term clarity (2026-06-06):** the metavars name the entity kind (`<fieldPathInModel>`/`<groupPathInModel>`/`<errorCode>`, and `--rule <rulePathInModel>` on `explain`/`read`/`modify`) rather than a generic `<path>`/`<id>`, and each model-entity option's description contrasts it with the model file — so an agent can't conflate the two (an N6 run had an agent pass the model file path into `--field`; the old `<absolutePath>` metavar read like a filesystem path, and the `startsWith("/")` guard let a Unix file path through). A pre-flight resolves `--field`/`--group`/`--rule` against the loaded model (`ModelPaths`) and fails fast when a path doesn't exist — catching the file-path slip and typos before the kernel's generic error. A rule/field is referenced by its **full name = the name-path** (`getFullName()`), **not** its `id` (an opaque hash in real models — see [`KERNEL-INTEGRATION-NOTES.md`](KERNEL-INTEGRATION-NOTES.md) §"getId is opaque" / F-IDX).
-- **`add`** — persist a rule from a JSON **rule-spec**, completing the loop (check → add → saved model): `add <model> <spec.json> [--output <file>]`. Spec carries the full envelope:
-  ```json
-  { "field": "/Subscription/Billing/EffectiveFee", "condition": "[EffectiveFee] < [BaseFee]",
-    "code": "EFFECTIVE_FEE_BELOW_BASE", "severity": "ERROR", "name": "…",
-    "messages": [ {"locale":"en_US","text":"…"}, {"locale":"de_DE","text":"…"} ] }
-  ```
-  Flow: kernel-validate the condition → if rejected, emit `{persisted:false,diagnostics}` to **stderr**, exit 1, persist nothing → else inject with the **real** messages and **re-validate the persisted model** (which catches message/locale-coverage that the condition-check masks with placeholders) → emit the new DM-JSON to **stdout** (or write `--output`), exit 0.
-- **`add` a computation — ✅ (2026-06-08).** When the spec carries a `computedField` (vs a rule-spec's `field`/`condition`), `add` persists a **computation** instead — same flow (kernel-validate → persist → re-validate). The computation-spec is the calculated field + `alternatives` (≥1 `{precondition?, operation}`, DSL text) + `messages`, optional `commonPrecondition`/`name`: `{ "computedField": "/Order/Total", "alternatives": [ {"operation":"[Subtotal] + [Tax]"} ], "messages": [ … ] }`. Parsed by `cli.ComputationSpec` into a `DraftComputation`, validated via `RuleValidator.check(…, DraftComputation, resolver)`, persisted via the slot-based `ModelWriter.addComputation(json, draft, messages)`. Both shapes are in `schema add` (a `oneOf`).
-- **Write path:** `add` builds on the generalized, **dsl-free `write.DmJson`** primitives (`insertIntoGroup`/`findElement`) — the shared model-core write surgery the future modelkit reuses (fork #8); the `Rule`/`Computation`-node shapes stay in `write.ModelWriter` (the computation node is built from a `DraftComputation`, so the typed and slot-based writers share it).
-- **Inverted-requiredness lint backstop — ✅ on `add` and `check` (2026-06-05).** The shared `LintBackstop` helper reads a rule's condition (F10) → AST → `Linter.lint(model, errorField, condition)` and surfaces any model-context findings (chiefly **`RK_INVERTED_REQUIREDNESS`** — the automated backstop for the skill's #1 polarity teaching; the kernel accepts both polarities silently). `add` runs it on the just-persisted rule and emits findings as **warnings on stderr**; `check`, which persists nothing, runs `LintBackstop.lintCandidate` — a **temporary in-memory injection** (persist with placeholder messages, load, read) — and merges the findings into its `diagnostics` array as WARNINGs, so `valid` never flips. Best-effort throughout: an `Opaque` (unmodeled) condition or any hiccup is silent — a kernel-valid rule is never blocked.
-- **`modify` — ✅ (2026-06-08).** The F8 modify-by-re-express loop over the CLI, and the **sole** re-express verb (rules + computations). `modify <model.json> --rule <rulePathInModel> --condition "<new DSL>"` re-expresses a rule's condition; `modify <model.json> --computation <name> --spec <computation-spec.json>` re-expresses a whole computation (the `--spec` is the same computation-spec `add` reads; it must re-express the *same* computation — its `computedField`/`name` derive `<name>`). It applies the change (`ModelWriter.replaceCondition`/`replaceComputation`), **validates** by loading the modified model (a kernel-rejected re-expression exits 1 with `{valid:false}`, nothing on stdout — use `check` for diagnostics), then emits a **`RenderedDiff`** (`before`/`after`/`changed`/`lossiness` — structured render-vs-render when `Converted`, kernel-canonical textual when `Opaque`, via the adapter's `diff`/`diffComputation`) and **writes the modified model back** — in place by default, to `-o <file>` if given, or — with **`--dry-run`** — not at all (a read-only preview). Exactly one mode is required. (A separate read-only `diff` verb existed briefly on 2026-06-08 — same `RenderedDiff`, it just never wrote — and was retired the same day as redundant with `modify --dry-run`.)
-### 5c. Multi-file models — `--include-dir` (F-RES, ✅ 2026-06-08)
-
-Every model-loading verb (`export`, `describe`, `validate`, `check`, `eval-doc`, `compute-doc`, `add`, `read`, `explain`, `where-used`, `modify`) accepts **`--include-dir <dir>`** (repeatable) — the directory tree(s) holding the document models a multi-file application `include`s / imports type-definitions from. A reference resolver indexes every document model under the tree(s) by `header.id` and serves it to the kernel's expand step.
-
-- **Default = the directory of `<model.json>`** — sibling models resolve with no flag (the common workspace layout). `--include-dir` points elsewhere when the included models live in a separate tree.
-- **Strictly safer than the old self-contained default** it replaces: a directory resolver is simply never called when the model has no references, so single-file models behave exactly as before; a multi-file model that used to fail to load (`"model references a separate model …"`) now resolves.
-- Wired via the `IncludeDirOption` picocli mixin (so it appears only on model-loading verbs, not `operators`/`manifest`/`schema`); `check`/`add` thread the resolver into `RuleValidator.check(modelJson, draft, resolver)` and the `LintBackstop`. `batch` inherits it per-op (each op is a full `Cli.run`, so pass `--include-dir` in the op's `args`). Locked by `cli.IncludeResolverVerbTest`.
-
-- **`batch` — ✅ (2026-06-05).** `batch <ops.json>` runs a JSON array of ops, each `{"verb","args":[…],"id"?}`, through the same `Cli.run` seam in **one process** — so the kernel's one-time StringTemplate warm-up (~497 classes on the first `checkConsistency`) and JVM startup are paid once, not once per spawned CLI. The enabler for the N6 benchmark runner (`eval/benchmark.workflow.js`, which batches the per-candidate re-checks). Emits a JSON array of per-op results; one op's failure never aborts the rest. **Exit:** batch-level errors (missing/malformed file, not an array) exit 2; otherwise exit 0 with each op's own exit in the array. **Attribution (the failure mode tested for):** each result is **self-describing** — an explicit `op` index, the caller's optional `id`, the `verb`, and the **echoed `args`** sit alongside that op's `result`/`stderr`, so a diagnostic is never mis-attributed even when results are reordered or diagnostics flattened. Diagnostics are scoped per op (each op runs against a fresh output buffer — no cross-op leakage). One residue: a verb's *own* diagnostics may still carry a synthetic rule path (e.g. `check`'s default `CheckRule`), so to disambiguate *inside* the diagnostic too, pass that op's `--name`.
-
-### 5d. The `remove` verb & `--cascade` — the safe-delete design (2026-06-10)
-
-Why `remove` is shaped the way it is (the design discussion, recorded so it isn't re-litigated):
-
-- **One verb, target flags — not per-target verbs.** `remove --field | --group | --rule | --computation <path>` is economical and discoverable (a single `--help`), and reuses the CLI's existing targeting vocabulary. It also closed a real gap: there had been **no CLI removal at all** (the library could remove; the CLI couldn't).
-- **It follows the `modify` convention, not `add`'s.** `remove` edits an *existing* model, so — like `modify` — it **writes in place** by default, `-o` redirects, `--dry-run` previews. (`add` defaults to stdout because it emits a *fresh* artifact; the edit-an-existing-model verbs mutate a file.)
-- **The safe-delete gate: refuse-or-cascade.** Removing a field/group that a rule or computation still references would leave a dangling reference. So `remove` runs the adapter's exact **`whereUsed`** first. If anything references the target it **refuses** (exit 2) and **surfaces the references, structured** — `{blocked, referencedBy:{rules,computations}, hint}` — so an agent can act: remove them first, or pass **`--cascade`** (which removes the referencing rules/computations, then the element). **Never a silent cascade** — deleting rules behind the user's back is surprising, so it must be explicit.
-- **Why the proactive gate lives at the CLI, not in modelkit.** Reference analysis (`whereUsed`, F9a `getDirectlyReferencedEntities`) is an **adapter** capability, *above* modelkit/`EditSession`; and `dm.modelkit ⊥ dm.rulekit` means modelkit can't see rule knowledge anyway. So the *proactive* "what references this?" check belongs at the CLI (which has the adapter); the *authoritative* dangling-reference check stays the kernel gate (`EditSession.validate()` → `ModelConsistencyException`). Full layering rationale: [`KERNEL-INTEGRATION-NOTES.md`](KERNEL-INTEGRATION-NOTES.md) "Structure edits + the delete-safety rule".
-- **Surface the problems, structured.** Both failure modes emit agent-parseable JSON, never a flat string: the refusal (above), and a kernel-invalid removal emits `{valid:false, element, diagnostics:[…]}` carrying the kernel's `MVK_*` notifications — the same vocabulary `validate`/`check` use.
-
-**Structure-add verbs — `add-field` (`--kind` \| `--typedef`), `add-group` (`--repeatable`), `add-typedef`, `add-include`** — all follow the same `modify` write convention (in place; `-o`/`--dry-run`) over the `ModelDocument`/`EditSession` engine, and re-bind through the kernel (`add-include` resolves its mounted model via `--include-dir`). The combined rulekit+modelkit flow (a rule authored on a just-added field, then cascade-removed with it) and the typedef/include edits are demoed in [`../examples/cli-structure-edit.md`](../examples/cli-structure-edit.md). *Still library-only (a `set`-style verb is the next CLI increment): element **labels/annotations** (`setLabel`/`setAnnotation`) and field **re-type** (`setFieldType`) — §5b of [`API-POC-STUDY.md`](API-POC-STUDY.md).*
-
-## 6. Sizing (measured 2026-06-05)
-
-- **Application jars: ~18.5 MB** (51 jars — kernel subset + Jackson + Apache commons + antlr4-runtime + Groovy; Groovy alone ~7–8 MB).
-- **jlink-trimmed JRE: ~45–70 MB**; jpackage launcher +1–3 MB.
-- **Self-contained app-image: ~65–90 MB / OS; compressed download ~30–50 MB** — unremarkable for a "download one thing" tool (smaller than a typical Electron app).
-- **Shrink levers:** drop kernel jars the verbs never exercise (verify with `jdeps`/coverage — Groovy + `kernel-core-runtime`/codegen may be unused by the verb paths; biggest win); jlink `--compress=zip-9 --strip-debug --no-man-pages --no-header-files`; ship per-OS only. With the Groovy/runtime trim the download could approach ~25–35 MB.
-
-## 7. Packaging phases & licensing
-
-- **Phase A — dev/test:** `application` plugin → `run` / `installDist` / `distZip`. Uses the dev's JDK + the kernel from `mavenLocal`. All CLI + LLM-support work happens here. CI-testable.
-- **Phase B1 — distribution, default: jlink + jpackage app-image.** A self-contained, signed app-image. Guaranteed to work (real JVM — no closed-world issues). Measured JDK-module footprint (`jdeps --print-module-deps`, 2026-06-05): `java.base, java.compiler, java.desktop, java.management, java.prefs, java.scripting, java.sql` → `jlink --add-modules …` builds a ~50–65 MB runtime; bundle the 53 classpath jars alongside (no app modularization needed). macOS notarization / Windows signing apply. Adds no behavior; only provisions the JVM.
-- **Phase B2 — GraalVM native-image: spiked 2026-06-05 → FEASIBLE for rulekit's checkConsistency/parse verbs, with care.** Full root-cause investigation in [`KERNEL-FINDINGS.md`](KERNEL-FINDINGS.md) "`checkConsistency` runs runtime code generation". Result (GraalVM 21.0.11, tracing agent + `--no-fallback`):
-  - **Build: ✅** real binary, **36 MB**, ~1m28s. **Startup: ✅ ~37 ms vs ~600 ms JVM (~16×)** — the payoff (an agent invoking the CLI many times).
-  - **Correctness: ✅ once template resources are bundled.** `checkConsistency` runs `CodeGenerationRule` → emits Groovy *source* via **ANTLR StringTemplate v4** (not Groovy's engine; "groovy" = target language) — StringTemplate compiles to its own *interpreted* form, so it's native-compatible. The first build crashed (`Error while instantiating template "…/StringParameter"`) on a **missing resource**: `base.stg`'s `import "baseDir"` loads `baseDir/*.st` *by name*, which the tracing agent misses. Rebuilding with `-H:IncludeResources='internal/templates/.*'` → the binary **passes on all self-contained models, output byte-identical to the JVM**. (The earlier "not viable / content-dependent" reading was wrong — an artifact of only testing one model on native.)
-  - **The one hard ceiling:** `checkConsistency` never compiles Groovy, but *executing* a model's validators (`getValidator`/on-the-fly testing) would — `GroovyClassLoader.parseClass`, which native-image can't do. rulekit never executes validation, so it's clear; but **a native rulekit must never depend on the kernel's runtime validation execution.**
-  - **Build requirements** (for productionizing B2): broad resource inclusion (`internal/templates/**`, not agent-only — the agent misses import-indirected `.st` files), agent-captured reflect/proxy config + the reachability-metadata repo, `--no-fallback`, and **held-out-model testing** (closed-world risk).
-  - **Decision:** **B1 (jlink) ships first** (zero AOT risk); **B2 (native-image) is a proven-feasible upgrade** for the startup win, gated on the resource-inclusion + held-out-test discipline above (and never crossing into validation execution). The resident/stdin mode (§3) remains the fallback if B2 is deferred. *(Spike artifacts/scripts live under the gitignored `build/native-spike/`; not committed — they hardcode a local GraalVM path.)*
-
-**Java Modules (JPMS) verdict (2026-06-05):** use **jlink** (the module *tooling* for runtime trimming, B1) — yes; **full app modularization** (`module-info` everywhere) — no: 53 non-modular jars (kernel + Groovy + commons + antlr) with near-certain split packages across the many `kernel-*` jars block JPMS, for ~zero payoff while everything below is non-modular. jlink runs fine in classpath/automatic-module mode.
-
-**Licensing (settled — [`LICENSING.md`](LICENSING.md)):** rulekit source is **MIT**; the bundled distributable (Phase B) embeds the kernel and so ships under **EUPL-1.2** (redistribution is granted by the kernel LICENSE), carrying the kernel `LICENSE`/`NOTICE`/`THIRD_PARTY_NOTICES`/`licenses/` + a source pointer, and no "mgm A12" branding. Phase A (run/installDist on a dev box) redistributes nothing, so it carries no EUPL obligation.
+**JPMS verdict:** use **jlink** (runtime trimming) — yes; full app modularization — no (53 non-modular jars with near-certain split packages, ~zero payoff). **Licensing** (settled — [`LICENSING.md`](LICENSING.md)): source is **MIT**; the bundled distributable embeds the kernel and ships under **EUPL-1.2** (carrying the kernel LICENSE/NOTICE/THIRD_PARTY + source pointer, **no "mgm A12" branding** — which the `dmtool` name respects).

@@ -1,0 +1,14 @@
+{
+  "id": "N-correct",
+  "family": "self-correction",
+  "model": "order",
+  "operators": ["FieldFilled", "GreaterThan"],
+  "intent": "An order's delivery date must be on or before 31 December 2024.",
+  "gold": {
+    "field": "/Order/DeliveryDate",
+    "condition": "FieldFilled(DeliveryDate) And [DeliveryDate] > \"31.12.2024\"",
+    "code": "DELIVERY_AFTER_DEADLINE"
+  },
+  "scoring": "recovery",
+  "notes": "The headline self-correction task (#1 priority): the obvious first attempt writes the date as an ISO literal (`[DeliveryDate] <= \"2024-12-31\"`), which the kernel lexes as a string and rejects with MVK_INVALID_TYPE_FOR_COMPARISON — whose catalog-joined fix names the real remedy (German `dd.MM.yyyy` format, not switching to `==`). Scored not on first-try success but on whether the agent reads the diagnostic's `fix` and RECOVERS within k turns (error → applied fix → kernel-valid). Polarity: requirement 'on or before' → violation 'after' (`>`). Activates when the self-correction family is wired into the runner; gold to be kernel-verified against `dmtool rule check` then."
+}

@@ -34,25 +34,49 @@ public record Diagnostic(
         explain = explain == null ? Optional.empty() : explain;
     }
 
-    /** Where a diagnostic points: the rule's path, the AST operator-id, and a rendered-text span. */
-    public record Where(String rule, Optional<String> operator, Optional<Span> span) {
+    /**
+     * Where a diagnostic points. Either a rule-condition locus — a rule's {@code rule} path, the AST
+     * {@code operator}-id, and a rendered-text {@code span} — or a structure locus — a model-element
+     * {@code path} and/or an input {@code arg} (modelkit/structure diagnostics and arg-level errors,
+     * which have no rule). Exactly one family is populated; the other fields stay empty.
+     */
+    public record Where(String rule, Optional<String> operator, Optional<Span> span,
+            Optional<String> path, Optional<String> arg) {
         public Where {
             operator = operator == null ? Optional.empty() : operator;
             span = span == null ? Optional.empty() : span;
+            path = path == null ? Optional.empty() : path;
+            arg = arg == null ? Optional.empty() : arg;
+        }
+
+        /** Rule + operator + span (the rule-condition locus). */
+        public Where(String rule, Optional<String> operator, Optional<Span> span) {
+            this(rule, operator, span, Optional.empty(), Optional.empty());
         }
 
         /** Rule + operator, no span (the common case before span-pointing attaches one). */
         public Where(String rule, Optional<String> operator) {
-            this(rule, operator, Optional.empty());
+            this(rule, operator, Optional.empty(), Optional.empty(), Optional.empty());
         }
 
         static Where rule(String rule) {
-            return new Where(rule, Optional.empty(), Optional.empty());
+            return new Where(rule, Optional.empty());
+        }
+
+        /** A structure locus: a model-element path, no rule. */
+        public static Where path(String path) {
+            return new Where(null, Optional.empty(), Optional.empty(), Optional.of(path), Optional.empty());
+        }
+
+        /** A structure locus tied to an input arg (e.g. {@code --group}); {@code path} may be null. */
+        public static Where arg(String path, String arg) {
+            return new Where(null, Optional.empty(), Optional.empty(),
+                    Optional.ofNullable(path), Optional.of(arg));
         }
 
         /** This locator with {@code span} attached (span-pointing, F4a). */
         public Where withSpan(Span span) {
-            return new Where(rule, operator, Optional.of(span));
+            return new Where(rule, operator, Optional.of(span), path, arg);
         }
     }
 

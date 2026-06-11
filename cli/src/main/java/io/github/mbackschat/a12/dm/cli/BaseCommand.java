@@ -32,4 +32,12 @@ abstract class BaseCommand implements Callable<Integer> {
         err().println(message);
         return 2;
     }
+
+    /**
+     * The {@code -m/--model} context option, read from the root command. It is an inherited option, so it
+     * binds to {@link RootCommand} wherever it appears — before or after the verb. {@code null} if absent.
+     */
+    protected String model() {
+        return spec.root().userObject() instanceof RootCommand root ? root.model : null;
+    }
 }

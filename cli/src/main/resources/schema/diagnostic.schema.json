@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/diagnostic.schema.json",
+  "title": "Diagnostic",
+  "description": "One structured finding (LSP-shaped) carried in a result envelope's `diagnostics` array (CLI-SPEC §4). Built to be corrective — detect → locate → repair: a stable `code`, a `where`, and (for recoverable errors) a `fix`.",
+  "type": "object",
+  "required": ["severity", "source", "summary", "where"],
+  "additionalProperties": false,
+  "properties": {
+    "severity": { "type": "string", "enum": ["ERROR", "WARNING", "INFO"] },
+    "source": { "type": "string", "enum": ["KERNEL", "PRECHECK", "LINT", "ENVIRONMENT"], "description": "KERNEL = checkConsistency problem; PRECHECK = a kit pre-check; LINT = valid-but-suspicious advisory; ENVIRONMENT = toolchain note" },
+    "code": { "type": "string", "description": "the MVK_* (kernel) or RK_* (rulekit/structure) code; absent for some kernel problems" },
+    "summary": { "type": "string", "description": "human-readable description (the `what`)" },
+    "where": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "the locus — a rule-condition site (rule/operator/span) OR a structure site (path/arg)",
+      "properties": {
+        "rule": { "type": "string", "description": "the rule's full name (rule-condition locus)" },
+        "path": { "type": "string", "description": "a model-element path (structure locus — modelkit ops)" },
+        "arg": { "type": "string", "description": "the input arg/token at fault (e.g. --group)" },
+        "operator": { "type": "string", "description": "the offending operator, when known" },
+        "span": { "type": "array", "items": { "type": "integer" }, "description": "[start, end] char offsets into the condition text, when known" }
+      }
+    },
+    "fix": { "type": "string", "description": "the actionable repair — an applicable replacement or a discovery command; present for recoverable errors" },
+    "explain": { "type": "string", "description": "the operator meaning / rationale (the `why`), when helpful" }
+  }
+}
