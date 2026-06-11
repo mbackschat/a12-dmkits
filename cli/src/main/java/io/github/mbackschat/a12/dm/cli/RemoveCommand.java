@@ -30,9 +30,9 @@ import picocli.CommandLine.Parameters;
  * element. The result is re-bound through the kernel, so a removal that breaks the model fails loudly.
  */
 @Command(name = "remove", mixinStandardHelpOptions = true,
-        description = "Remove a field/group/rule/computation and WRITE the model back (in place; -o redirects, "
-                + "--dry-run previews). A referenced field/group is refused unless --cascade (which also removes "
-                + "the rules/computations that reference it).")
+        description = "Remove a field/group/rule/computation/typedef/include and WRITE the model back (in place; "
+                + "-o redirects, --dry-run previews). A referenced field/group is refused unless --cascade (which "
+                + "also removes the rules/computations that reference it); typedef/include removals are kernel-gated.")
 final class RemoveCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -57,6 +57,14 @@ final class RemoveCommand extends BaseCommand {
             description = "remove the computation at this full name")
     String computation;
 
+    @Option(names = "--typedef", paramLabel = "<id>",
+            description = "remove the type definition with this id")
+    String typedef;
+
+    @Option(names = "--include", paramLabel = "<alias>",
+            description = "remove the include with this alias (its header model-reference + mount group(s))")
+    String includeAlias;
+
     @Option(names = "--cascade",
             description = "when removing a field/group: also remove the rules/computations that reference it "
                     + "(without this, a referenced field/group is refused, listing the references)")
@@ -74,10 +82,10 @@ final class RemoveCommand extends BaseCommand {
 
     @Override
     public Integer call() {
-        int targets = (field != null ? 1 : 0) + (group != null ? 1 : 0)
-                + (rule != null ? 1 : 0) + (computation != null ? 1 : 0);
+        int targets = (field != null ? 1 : 0) + (group != null ? 1 : 0) + (rule != null ? 1 : 0)
+                + (computation != null ? 1 : 0) + (typedef != null ? 1 : 0) + (includeAlias != null ? 1 : 0);
         if (targets != 1) {
-            return fail("pass exactly one of --field / --group / --rule / --computation <path>");
+            return fail("pass exactly one of --field / --group / --rule / --computation / --typedef / --include");
         }
         String modelJson;
         try {
@@ -87,12 +95,14 @@ final class RemoveCommand extends BaseCommand {
         }
         IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
 
-        String target = field != null ? field : group != null ? group : rule != null ? rule : computation;
+        String target = field != null ? field : group != null ? group : rule != null ? rule
+                : computation != null ? computation : typedef != null ? typedef : includeAlias;
         List<String> cascaded = new ArrayList<>();
         EditSession session = EditSession.read(modelJson, resolver);
 
         try {
             if (field != null || group != null) {
+                // the proactive safe-delete gate (rule/computation references resolved via whereUsed)
                 KernelAdapter adapter = KernelAdapter.ofJson(modelJson, resolver);
                 Set<String> refRules = new TreeSet<>(adapter.whereUsed(target));
                 Set<String> refComputations = new TreeSet<>(adapter.whereUsedInComputations(target));
@@ -116,8 +126,14 @@ final class RemoveCommand extends BaseCommand {
                 }
             } else if (rule != null) {
                 session.removeRule(target);
-            } else {
+            } else if (computation != null) {
                 session.removeComputation(target);
+            } else if (typedef != null) {
+                // typedef/include: no proactive whereUsed — the kernel gate (validate) rejects a removal
+                // that dangles a field's typedef ref or a rule on mounted content, with its MVK diagnostic
+                session.removeTypeDefinition(target);
+            } else {
+                session.removeInclude(target);
             }
         } catch (RuntimeException e) {
             // no element at path / unresolvable target — a usage error (the modelkit/rulekit IAE convention)

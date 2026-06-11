@@ -200,3 +200,24 @@ echo "--- mounted + still kernel-valid: $(bin/rk validate /tmp/rk-struct.dm.json
 }
 --- mounted + still kernel-valid: true
 ```
+
+## Removing includes & typedefs — full CRUD
+
+Includes and type definitions delete too: `remove --include <alias>` drops the model-reference **and** its mount; `remove --typedef <id>` drops a definition (kernel-gated — refused if a field still uses it). Drop the catalog include we just mounted:
+
+```bash
+bin/rk remove /tmp/rk-struct.dm.json --include catalog 2>/dev/null
+echo "--- catalog mount remaining: $(grep -c modelAlias /tmp/rk-struct.dm.json)"
+bin/rk validate /tmp/rk-struct.dm.json | jq -c '.valid'
+
+```
+
+```output
+{
+  "removed" : "catalog",
+  "cascaded" : [ ],
+  "written" : true
+}
+--- catalog mount remaining: 0
+true
+```

@@ -82,6 +82,16 @@ public final class EditSession {
         return this;
     }
 
+    public EditSession removeTypeDefinition(String id) {
+        json = ModelDocument.read(json).removeTypeDefinition(id).toJson();
+        return this;
+    }
+
+    public EditSession removeInclude(String alias) {
+        json = ModelDocument.read(json).removeInclude(alias).toJson();
+        return this;
+    }
+
     // --- rule / computation edits (rulekit) -----------------------------------------------------
 
     /** Add a rule; {@code builder} receives the model bound to the current state to author against it. */

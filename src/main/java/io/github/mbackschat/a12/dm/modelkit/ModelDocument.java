@@ -363,6 +363,62 @@ public final class ModelDocument {
         return this;
     }
 
+    /** Remove the type definition {@code id}. Fails fast if absent; {@link #validate()} catches a field still using it. */
+    public ModelDocument removeTypeDefinition(String id) {
+        JsonNode tds = root.path("content").path("typeDefinitions");
+        if (tds.isArray()) {
+            ArrayNode array = (ArrayNode) tds;
+            for (int i = 0; i < array.size(); i++) {
+                if (id.equals(array.get(i).path("id").asText())) {
+                    array.remove(i);
+                    return this;
+                }
+            }
+        }
+        throw new IllegalArgumentException("no type definition with id: " + id);
+    }
+
+    /**
+     * Remove the include aliased {@code alias} — its header {@code modelReference} <em>and</em> every mount
+     * group ({@code modelAlias == alias}). Fails fast if neither is present; {@link #validate()} catches a
+     * rule still referencing the mounted content.
+     */
+    public ModelDocument removeInclude(String alias) {
+        boolean removed = false;
+        JsonNode refs = root.path("header").path("modelReferences");
+        if (refs.isArray()) {
+            ArrayNode array = (ArrayNode) refs;
+            for (int i = array.size() - 1; i >= 0; i--) {
+                if (alias.equals(array.get(i).path("alias").asText())) {
+                    array.remove(i);
+                    removed = true;
+                }
+            }
+        }
+        boolean[] mountRemoved = {false};
+        removeMounts(rootGroups(), alias, mountRemoved);
+        if (!removed && !mountRemoved[0]) {
+            throw new IllegalArgumentException("no include with alias: " + alias);
+        }
+        return this;
+    }
+
+    private void removeMounts(ArrayNode elements, String alias, boolean[] any) {
+        for (int i = elements.size() - 1; i >= 0; i--) {
+            JsonNode el = elements.get(i);
+            if (!"Group".equals(el.path("type").asText())) {
+                continue;
+            }
+            JsonNode body = el.path("Group");
+            if (alias.equals(body.path("modelAlias").asText())) {
+                elements.remove(i);
+                any[0] = true;
+            } else if (body.path("elements").isArray()) {
+                removeMounts((ArrayNode) body.path("elements"), alias, any);
+            }
+        }
+    }
+
     /**
      * The kernel gate (tier 2): re-bind the edited model through {@code checkConsistency} (self-contained).
      * Throws {@link ModelConsistencyException} if any edit made the model invalid — the full structural

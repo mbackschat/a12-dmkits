@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.modelkit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.StringReader;
@@ -59,6 +60,26 @@ class ModelStructureCoverageTest {
         assertEquals(1, doc.includes().size());
         assertEquals("catalog", doc.includes().get(0).reference());
         assertTrue(doc.groupPaths().contains("/Subscription/Catalog"));
+    }
+
+    @Test
+    void removesATypeDefinition() {
+        ModelDocument doc = subscription().addTypeDefinition("Money", FieldKind.NUMBER).validate();
+        assertTrue(doc.typeDefinitionIds().contains("Money"));
+        doc.removeTypeDefinition("Money").validate();
+        assertFalse(doc.typeDefinitionIds().contains("Money"));
+    }
+
+    @Test
+    void removesAnIncludeAndItsMount() {
+        ModelDocument doc = subscription()
+                .addInclude("catalog", "catalog").mount("/Subscription", "Catalog", "catalog")
+                .validate(resolver());
+        assertTrue(doc.groupPaths().contains("/Subscription/Catalog"));
+
+        doc.removeInclude("catalog").validate();   // self-contained again — the reference + mount are gone
+        assertEquals(0, doc.includes().size());
+        assertFalse(doc.groupPaths().contains("/Subscription/Catalog"));
     }
 
     /** A tiny included model authored with modelkit (same locales as subscription). */
