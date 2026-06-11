@@ -101,3 +101,63 @@ bin/rk validate /tmp/rk-struct.dm.json | jq -c '.valid'
 ```output
 true
 ```
+
+## Combined — rulekit + modelkit on one model
+
+Structure (modelkit) and rules (rulekit) edit the same model file, so they compose. Add a **rule** on the `Discount` field added above — `add` prints the new model, so redirect it to a fresh path:
+
+```bash
+printf '%s' '{"field":"/Order/Discount","condition":"FieldFilled(Discount) And [Discount] < 0","code":"DISCOUNT_NEGATIVE","messages":[{"locale":"en_US","text":"Discount must not be negative."}]}' > /tmp/rk-rule.json
+bin/rk add /tmp/rk-struct.dm.json /tmp/rk-rule.json > /tmp/rk-combined.dm.json 2>/dev/null
+echo "--- rule on the added field present: $(grep -c DISCOUNT_NEGATIVE /tmp/rk-combined.dm.json)"
+
+```
+
+```output
+--- rule on the added field present: 3
+```
+
+Now  is referenced by that rule, so  refuses it — the safe-delete gate, triggered by a rule we just authored:
+
+```bash
+bin/rk remove /tmp/rk-combined.dm.json --field /Order/Discount 2>/tmp/rk-ref2.json; echo "(exit $?)"
+cat /tmp/rk-ref2.json
+
+```
+
+```output
+(exit 2)
+{
+  "blocked" : "/Order/Discount",
+  "referencedBy" : {
+    "rules" : [ "/Order/DISCOUNT_NEGATIVE" ],
+    "computations" : [ ]
+  },
+  "hint" : "remove these first, or pass --cascade to remove them together with /Order/Discount"
+}
+
+```
+
+ removes the field and the rule it triggered, together — one model, both kits:
+
+```bash
+bin/rk remove /tmp/rk-combined.dm.json --field /Order/Discount --cascade 2>/dev/null
+echo "--- DISCOUNT_NEGATIVE remaining: $(grep -c DISCOUNT_NEGATIVE /tmp/rk-combined.dm.json)"
+bin/rk validate /tmp/rk-combined.dm.json | jq -c '.valid'
+
+```
+
+```output
+{
+  "removed" : "/Order/Discount",
+  "cascaded" : [ "/Order/DISCOUNT_NEGATIVE" ],
+  "written" : true
+}
+--- DISCOUNT_NEGATIVE remaining: 0
+true
+```
+
+## Includes & type-definitions
+
+Multi-file models (a base that `include`s another, or reuses a `typeDefinition`) resolve through **`--include-dir`** on every verb — including these structure-edit verbs — exactly as in [`cli-edit-loop.md`](cli-edit-loop.md). The structure-level *edits* of includes and type-definitions (`addInclude`/`mount`/`addTypeDefinition`) are available in the library and shown in [`API-POC-STUDY.md` §5b](../docs/API-POC-STUDY.md); CLI verbs for them are the next increment.
+
