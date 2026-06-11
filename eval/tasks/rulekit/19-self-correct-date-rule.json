@@ -1,5 +1,5 @@
 {
-  "id": "N-correct",
+  "id": "19-self-correct-date-rule",
   "family": "self-correction",
   "model": "order",
   "operators": [

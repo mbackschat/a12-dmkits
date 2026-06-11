@@ -11,8 +11,8 @@
 // Prereq: build the launcher once — `./gradlew :cli:installDist` → cli/build/install/cli/bin/cli.
 // Invoke:
 //   Workflow({ scriptPath: "eval/benchmark.workflow.js",
-//     args: { models: ["opus","sonnet"], k: 3, tasks: [ /* contents of eval/tasks/*.json */ ] } })
-// (The script has no filesystem access, so the caller reads eval/tasks/*.json and passes them in.)
+//     args: { models: ["opus","sonnet"], k: 3, tasks: [ /* contents of eval/tasks/<kit>/*.json */ ] } })
+// (The script has no filesystem access, so the caller reads eval/tasks/*/*.json — the kit subfolders — and passes them in.)
 
 export const meta = {
   name: 'rulekit-self-sufficiency-benchmark',

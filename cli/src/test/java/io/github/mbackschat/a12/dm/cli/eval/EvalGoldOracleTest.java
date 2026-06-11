@@ -59,9 +59,14 @@ class EvalGoldOracleTest {
         if (dir == null) {
             throw new IllegalStateException("eval/tasks not found from " + Path.of("").toAbsolutePath());
         }
-        try (var s = Files.list(dir)) {
+        try (var s = Files.walk(dir)) {   // recurse the kit subfolders (rulekit/ modelkit/ mixed/)
             return s.filter(p -> p.toString().endsWith(".json")).sorted().toList();
         }
+    }
+
+    /** A valid kernel identifier for a task's gold element — ids are now slug stems (start with a digit), so prefix a letter. */
+    private static String goldName(JsonNode task) {
+        return "Gold_" + task.get("id").asText().replaceAll("[^A-Za-z0-9]", "_");
     }
 
     @Test
@@ -107,7 +112,7 @@ class EvalGoldOracleTest {
         String group = field.substring(0, slash);
         String errorEntityRelPath = "../" + field.substring(group.length() + 1);
 
-        DraftRule draft = new DraftRule(group, task.get("id").asText().replace('-', '_') + "Gold",
+        DraftRule draft = new DraftRule(group, goldName(task),
                 errorEntityRelPath, gold.get("condition").asText(), gold.get("code").asText(), "ERROR");
         ValidationResult result = new RuleValidator().check(model, draft, resolverFor(task));
 
@@ -182,7 +187,7 @@ class EvalGoldOracleTest {
         String commonPrecondition = gold.hasNonNull("commonPrecondition")
                 ? gold.get("commonPrecondition").asText() : null;
 
-        DraftComputation draft = new DraftComputation(group, task.get("id").asText().replace('-', '_') + "Gold", relPath,
+        DraftComputation draft = new DraftComputation(group, goldName(task), relPath,
                 commonPrecondition, alternatives);
         ValidationResult result = new RuleValidator().check(model, draft);
 

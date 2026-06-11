@@ -1,5 +1,5 @@
 {
-  "id": "N-rename",
+  "id": "03-rename-field",
   "family": "refactor",
   "status": "deferred",
   "model": "order-ruled",

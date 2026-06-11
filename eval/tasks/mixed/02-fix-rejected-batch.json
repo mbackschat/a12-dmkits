@@ -1,5 +1,5 @@
 {
-  "id": "N-batch-fix",
+  "id": "02-fix-rejected-batch",
   "family": "session",
   "model": "order",
   "intent": "Add a date field PromisedDate to the order, then add a rule that the delivery date must be on or before the promised date.",

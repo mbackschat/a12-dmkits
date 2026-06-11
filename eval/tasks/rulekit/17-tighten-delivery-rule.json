@@ -1,5 +1,5 @@
 {
-  "id": "T17",
+  "id": "17-tighten-delivery-rule",
   "family": "modify-rule",
   "model": "order-ruled",
   "rule": "/Order/DeliveryNotBeforeOrder",

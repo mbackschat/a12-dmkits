@@ -1,5 +1,5 @@
 {
-  "id": "N-session",
+  "id": "01-apply-add-field-and-rule",
   "family": "session",
   "model": "order",
   "intent": "Add a number field Discount to the order, then add a rule that the discount must not be negative.",

@@ -39,7 +39,7 @@ Plain-language definitions. The first group is general LLM-eval vocabulary; the 
 |---|---|
 | **Eval** | A repeatable test of a model's behaviour on a task — give it a prompt, score its output. Our eval tests the *shipped material*, with the model as a stand-in user. |
 | **Benchmark** | The eval run as a *suite* (many tasks) to produce comparable numbers — here, pass-rates per model tier. |
-| **Gold** (gold answer, gold standard) | The reference correct answer for a task, authored and kernel-verified by us in advance. Scoring asks "does the model's output match the gold?". Lives in each `eval/tasks/*.json`. |
+| **Gold** (gold answer, gold standard) | The reference correct answer for a task, authored and kernel-verified by us in advance. Scoring asks "does the model's output match the gold?". Lives in each task file under `eval/tasks/<kit>/` (the folder is the kit — rulekit/modelkit/mixed). |
 | **Oracle** | The trusted automatic judge of a *factual* property. Our oracle is the **real A12 kernel**: it says yes/no to "is this rule valid?" deterministically — no model judgement involved. |
 | **Judge** | A model used to score a *semantic* property the oracle can't — e.g. "does this rule mean the same as the gold?" (catches a rule that is kernel-valid but says the opposite thing). Softer and non-deterministic, so used in addition to the oracle. |
 | **Pass@k** | Run a task **k** times; report how often the model succeeds. Used because a single run is noisy. "pass@k = 2/3" means it passed on 2 of 3 attempts. |

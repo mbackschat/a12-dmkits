@@ -1,5 +1,5 @@
 {
-  "id": "T16",
+  "id": "16-modify-effective-fee-sum-addons",
   "family": "modify-computation",
   "model": "subscription-computed",
   "computation": "/Subscription/Billing/EffectiveFeeComp",

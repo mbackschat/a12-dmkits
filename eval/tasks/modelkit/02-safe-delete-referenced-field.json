@@ -1,5 +1,5 @@
 {
-  "id": "N-delete",
+  "id": "02-safe-delete-referenced-field",
   "family": "delete-safety",
   "model": "order-ruled",
   "intent": "Remove the order's delivery-date field, along with any rules that depend on it.",

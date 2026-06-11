@@ -1,5 +1,5 @@
 {
-  "id": "T15",
+  "id": "15-storefront-name-multifile",
   "family": "authoring",
   "model": "storefront",
   "modelPath": "cli/src/test/resources/models/multifile/app/storefront.dm.json",

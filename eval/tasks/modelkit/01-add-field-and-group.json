@@ -1,5 +1,5 @@
 {
-  "id": "N-struct",
+  "id": "01-add-field-and-group",
   "family": "structure",
   "model": "order",
   "intent": "Add an optional whole-number field called LoyaltyPoints to the order.",
