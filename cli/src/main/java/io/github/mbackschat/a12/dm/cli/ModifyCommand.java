@@ -35,7 +35,7 @@ import picocli.CommandLine.Parameters;
  * day — it was redundant with {@code modify --dry-run} (identical code path + output), so {@code modify}
  * is now the single re-express verb: default writes, {@code --dry-run} previews.
  */
-@Command(name = "modify", mixinStandardHelpOptions = true,
+@Command(name = "modify", hidden = true, mixinStandardHelpOptions = true,
         description = "Re-express a rule (--rule --condition) or computation (--computation --spec) and WRITE the "
                 + "modified model back (in place by default; -o redirects). --dry-run previews only (read-only).")
 final class ModifyCommand extends BaseCommand {

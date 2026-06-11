@@ -22,10 +22,17 @@ class ManifestVerbTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    // The canonical target-first surface (the legacy flat verbs are hidden aliases, absent from the manifest).
     private static final List<String> EXPECTED_VERBS = List.of(
-            "export", "describe", "validate", "check", "eval-doc", "compute-doc", "add", "read", "explain",
-            "where-used", "modify", "add-field", "add-group", "add-typedef", "add-include", "remove",
-            "batch", "schema", "operators", "manifest");
+            "doc validate", "doc describe", "doc read", "doc eval", "doc compute",
+            "rule check", "rule read", "rule explain", "rule add", "rule modify", "rule remove",
+            "computation add", "computation read", "computation explain", "computation modify", "computation remove",
+            "field add", "field read", "field remove",
+            "group add", "group read", "group remove",
+            "typedef add", "typedef read", "typedef remove",
+            "include add", "include read", "include remove",
+            "config read", "config modify",
+            "where-used", "export", "batch", "schema", "operators", "manifest");
 
     @Test
     void listsEveryVerbWithADescription() throws Exception {
@@ -46,19 +53,22 @@ class ManifestVerbTest {
 
     @Test
     void describesAVerbsParametersAndRequiredness() throws Exception {
-        JsonNode check = verb("check");
+        JsonNode check = verb("rule check");
+        assertEquals("rule", check.path("target").asText(), "the verb carries its op-record target");
+        assertEquals("check", check.path("op").asText(), "the verb carries its op-record op");
         boolean fieldRequired = false;
         boolean groupOptional = false;
         for (JsonNode p : check.path("params")) {
-            if ("--field".equals(p.path("name").asText())) {
+            if ("--field".equals(p.path("flag").asText())) {
                 fieldRequired = p.path("required").asBoolean();
+                assertEquals("field", p.path("key").asText(), "the op-record key strips the dashes");
             }
-            if ("--group".equals(p.path("name").asText())) {
+            if ("--group".equals(p.path("flag").asText())) {
                 groupOptional = !p.path("required").asBoolean();
             }
         }
-        assertTrue(fieldRequired, "check's --field is required");
-        assertTrue(groupOptional, "check's --group is optional");
+        assertTrue(fieldRequired, "rule check's --field is required");
+        assertTrue(groupOptional, "rule check's --group is optional");
     }
 
     private static JsonNode verb(String name) throws Exception {

@@ -21,7 +21,7 @@ import picocli.CommandLine.Parameters;
  * <b>write the model back</b> (in place; {@code -o} redirects, {@code --dry-run} previews). The mounted
  * model is resolved + kernel-validated via {@code --include-dir} (F-RES), so a missing reference fails.
  */
-@Command(name = "add-include", mixinStandardHelpOptions = true,
+@Command(name = "add-include", hidden = true, mixinStandardHelpOptions = true,
         description = "Declare a model include (--alias → --reference) and mount it as --name under --parent, "
                 + "then WRITE the model back. The referenced model is resolved + validated via --include-dir.")
 final class AddIncludeCommand extends BaseCommand {

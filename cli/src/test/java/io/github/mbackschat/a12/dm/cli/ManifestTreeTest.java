@@ -53,7 +53,7 @@ class ManifestTreeTest {
         JsonNode j = M.readTree(CliTestSupport.run("manifest").out());
         Set<String> globals = new HashSet<>();
         for (JsonNode o : j.path("globalOptions")) {
-            globals.add(o.path("name").asText());
+            globals.add(o.path("flag").asText());
         }
         assertTrue(globals.contains("--model"), () -> "manifest must expose -m/--model globally: " + globals);
     }

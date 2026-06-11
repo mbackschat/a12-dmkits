@@ -24,7 +24,7 @@ import picocli.CommandLine.Parameters;
  * re-bound through the kernel; a missing group fails fast (exit 2), a kernel-invalid result surfaces the
  * kernel diagnostics (exit 1).
  */
-@Command(name = "add-field", mixinStandardHelpOptions = true,
+@Command(name = "add-field", hidden = true, mixinStandardHelpOptions = true,
         description = "Add a field (--kind STRING|NUMBER|DATE|BOOLEAN|CONFIRM, or --typedef <id>) to --group and "
                 + "WRITE the model back (in place; -o redirects, --dry-run previews).")
 final class AddFieldCommand extends BaseCommand {

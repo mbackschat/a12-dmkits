@@ -51,10 +51,17 @@ final class ManifestCommand extends BaseCommand {
         }
     }
 
-    /** Walk the tree: emit each runnable leaf op under its qualified name, recursing into target groups. */
+    /**
+     * Walk the tree: emit each runnable leaf op under its qualified name, recursing into target groups.
+     * Hidden commands (the legacy flat verbs kept as aliases for one release) are skipped — the manifest is
+     * the canonical target-first surface.
+     */
     private void collect(String prefix, Map<String, CommandLine> subs, ArrayNode verbs) {
         for (Map.Entry<String, CommandLine> e : subs.entrySet()) {
             CommandSpec cmd = e.getValue().getCommandSpec();
+            if (cmd.usageMessage().hidden()) {
+                continue;
+            }
             String name = prefix.isEmpty() ? e.getKey() : prefix + " " + e.getKey();
             Map<String, CommandLine> children = cmd.subcommands();
             if (children.isEmpty()) {
@@ -65,14 +72,28 @@ final class ManifestCommand extends BaseCommand {
         }
     }
 
+    /**
+     * One verb entry. The qualified {@code name} carries the two op-record axes: {@code target} (the group,
+     * for a nested op) and {@code op} (the leaf). Root-level verbs (meta + cross-cutting) carry {@code op}
+     * only. Each param exposes both its CLI {@code flag} and the op-record {@code key} (the {@code --}-stripped
+     * name a batched {@code apply} op uses), so an agent assembles any call straight from the manifest.
+     */
     private ObjectNode verb(String name, CommandSpec cmd) {
         ObjectNode v = MAPPER.createObjectNode();
         v.put("verb", name);
+        int sp = name.lastIndexOf(' ');
+        if (sp >= 0) {
+            v.put("target", name.substring(0, sp));
+            v.put("op", name.substring(sp + 1));
+        } else {
+            v.put("op", name);
+        }
         v.put("description", String.join(" ", cmd.usageMessage().description()));
         ArrayNode params = v.putArray("params");
         for (PositionalParamSpec p : cmd.positionalParameters()) {
             ObjectNode n = params.addObject();
-            n.put("name", p.paramLabel());
+            n.put("flag", p.paramLabel());
+            n.put("key", strip(p.paramLabel()));
             n.put("positional", true);
             n.put("required", p.required());
             n.put("description", String.join(" ", p.description()));
@@ -88,10 +109,20 @@ final class ManifestCommand extends BaseCommand {
 
     private ObjectNode option(OptionSpec o) {
         ObjectNode n = MAPPER.createObjectNode();
-        n.put("name", o.longestName());
+        n.put("flag", o.longestName());
+        n.put("key", strip(o.longestName()));
         n.put("positional", false);
         n.put("required", o.required());
         n.put("description", String.join(" ", o.description()));
         return n;
+    }
+
+    /** The op-record key for a param: an option's {@code --name} → {@code name}; a positional {@code <label>} → {@code label}. */
+    private static String strip(String flag) {
+        String s = flag.replaceFirst("^-+", "");
+        if (s.startsWith("<") && s.endsWith(">")) {
+            s = s.substring(1, s.length() - 1);
+        }
+        return s;
     }
 }

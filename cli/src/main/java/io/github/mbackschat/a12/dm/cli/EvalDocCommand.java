@@ -44,7 +44,7 @@ import picocli.CommandLine.Parameters;
  * objects, a non-repeatable group a nested object, a field its text value ({@code null}/"" = present but
  * unfilled; an absent key = no instance). See {@code schema eval-doc}.
  */
-@Command(name = "eval-doc", mixinStandardHelpOptions = true,
+@Command(name = "eval-doc", hidden = true, mixinStandardHelpOptions = true,
         description = "Run the kernel over a document INSTANCE and report which rules fire (runtime; computations not run).")
 final class EvalDocCommand extends BaseCommand {
 

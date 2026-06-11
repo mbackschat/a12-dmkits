@@ -29,7 +29,7 @@ import picocli.CommandLine.Parameters;
  * referencing rules/computations first (found via the adapter's exact {@code whereUsed}) and then the
  * element. The result is re-bound through the kernel, so a removal that breaks the model fails loudly.
  */
-@Command(name = "remove", mixinStandardHelpOptions = true,
+@Command(name = "remove", hidden = true, mixinStandardHelpOptions = true,
         description = "Remove a field/group/rule/computation/typedef/include and WRITE the model back (in place; "
                 + "-o redirects, --dry-run previews). A referenced field/group is refused unless --cascade (which "
                 + "also removes the rules/computations that reference it); typedef/include removals are kernel-gated.")

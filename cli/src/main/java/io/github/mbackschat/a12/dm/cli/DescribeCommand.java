@@ -14,7 +14,7 @@ import picocli.CommandLine.Parameters;
  * The {@code describe} verb (CLI-SPEC §4) — emits the F9a model card as JSON, so an agent can orient
  * on a model (fields + kinds + enum domains + group repeatability) without reading raw DM-JSON.
  */
-@Command(name = "describe", mixinStandardHelpOptions = true,
+@Command(name = "describe", hidden = true, mixinStandardHelpOptions = true,
         description = "Emit the model card (fields + kinds + enum domains + group repeatability) as JSON.")
 final class DescribeCommand extends BaseCommand {
 

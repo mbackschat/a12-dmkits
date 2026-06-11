@@ -28,7 +28,7 @@ import picocli.CommandLine.Parameters;
  * also runs the best-effort {@link LintBackstop} so the silent inverted-polarity / unguarded-number
  * traps surface in the diagnostics here too, not only on {@code add}.
  */
-@Command(name = "check", mixinStandardHelpOptions = true,
+@Command(name = "check", hidden = true, mixinStandardHelpOptions = true,
         description = "Validate a candidate rule against the real kernel (+ lint), without persisting.")
 final class CheckCommand extends BaseCommand {
 

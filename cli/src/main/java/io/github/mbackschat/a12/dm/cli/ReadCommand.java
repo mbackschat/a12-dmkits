@@ -37,7 +37,7 @@ import picocli.CommandLine.Parameters;
  * verbatim + a reason), never an error. This is the read-back foundation {@code explain} builds on (the
  * richer, annotated read — {@code show} is the plain canonical render).
  */
-@Command(name = "read", mixinStandardHelpOptions = true,
+@Command(name = "read", hidden = true, mixinStandardHelpOptions = true,
         description = "Read existing conditions as DSL, read back into rulekit's typed AST (one --rule, or --all for the whole model).")
 final class ReadCommand extends BaseCommand {
 

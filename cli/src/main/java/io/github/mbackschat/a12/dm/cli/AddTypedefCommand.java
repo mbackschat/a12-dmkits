@@ -21,7 +21,7 @@ import picocli.CommandLine.Parameters;
  * <b>write the model back</b> (in place; {@code -o} redirects, {@code --dry-run} previews). Fields then
  * reference it via {@code add-field --typedef <id>}.
  */
-@Command(name = "add-typedef", mixinStandardHelpOptions = true,
+@Command(name = "add-typedef", hidden = true, mixinStandardHelpOptions = true,
         description = "Declare a reusable type definition (--id) over an easy --kind and WRITE the model back "
                 + "(in place; -o redirects, --dry-run previews). Use it on a field with `add-field --typedef <id>`.")
 final class AddTypedefCommand extends BaseCommand {

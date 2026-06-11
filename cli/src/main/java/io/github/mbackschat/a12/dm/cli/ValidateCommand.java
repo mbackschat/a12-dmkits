@@ -23,7 +23,7 @@ import picocli.CommandLine.Unmatched;
  * ground-truth step) and reports consistency as JSON: {@code {"valid":bool,"diagnostics":[...]}},
  * exit 0 if valid, 1 if not. Model-level today; rule-level validation arrives with the JSON rule-spec.
  */
-@Command(name = "validate", mixinStandardHelpOptions = true,
+@Command(name = "validate", hidden = true, mixinStandardHelpOptions = true,
         description = "Run the model through the real kernel; report {valid, diagnostics[]} (exit 0 valid, 1 not).")
 final class ValidateCommand extends BaseCommand {
 

@@ -33,7 +33,7 @@ import picocli.CommandLine.Parameters;
  * <p>Reads the element first (F10), then explains the resulting AST — the same mechanism that works on a
  * hand-built condition.
  */
-@Command(name = "explain", mixinStandardHelpOptions = true,
+@Command(name = "explain", hidden = true, mixinStandardHelpOptions = true,
         description = "Project an existing rule (--rule) or computation (--computation) as a structured explanation.")
 final class ExplainCommand extends BaseCommand {
 

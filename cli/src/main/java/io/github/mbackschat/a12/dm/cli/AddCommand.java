@@ -37,7 +37,7 @@ import picocli.CommandLine.Parameters;
  * computation instead: {@code computedField}, {@code alternatives} (≥1 {@code (precondition?, operation)}),
  * {@code messages}, optional {@code commonPrecondition}/{@code name}. See {@code schema add} for both shapes.
  */
-@Command(name = "add", mixinStandardHelpOptions = true,
+@Command(name = "add", hidden = true, mixinStandardHelpOptions = true,
         description = "Persist a rule (rule-spec) or computation (computation-spec) from JSON, kernel-validated before + after. See `schema add`.")
 final class AddCommand extends BaseCommand {
 

@@ -20,7 +20,7 @@ import picocli.CommandLine.Parameters;
  * model back</b> (in place; {@code -o} redirects, {@code --dry-run} previews). {@code --repeatable <max>}
  * makes it a repeatable group ({@code max >= 2}); omit it for a single group. Re-bound through the kernel.
  */
-@Command(name = "add-group", mixinStandardHelpOptions = true,
+@Command(name = "add-group", hidden = true, mixinStandardHelpOptions = true,
         description = "Add a group under --parent and WRITE the model back (in place; -o redirects, --dry-run "
                 + "previews). --repeatable <max> makes it repeatable (max >= 2).")
 final class AddGroupCommand extends BaseCommand {

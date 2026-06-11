@@ -32,7 +32,7 @@ import picocli.CommandLine.Parameters;
  * <p>The document is the same NESTED JSON tree {@code eval-doc} takes (under {@code "fields"}): a repeatable
  * group is an array of row objects, a field its text value. See {@code schema compute-doc}.
  */
-@Command(name = "compute-doc", mixinStandardHelpOptions = true,
+@Command(name = "compute-doc", hidden = true, mixinStandardHelpOptions = true,
         description = "Run the kernel's computations over a document INSTANCE and report each computed field's value (read-only).")
 final class ComputeDocCommand extends BaseCommand {
 
