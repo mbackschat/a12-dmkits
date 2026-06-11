@@ -381,6 +381,78 @@ BoundModel m2 = model.replaceCondition("/Subscription/Addons/FeeCapRule", fixed)
 
 Note how 3.3's fragment library closes the loop: **re-expression frequently means recognizing a known idiom** — the LLM maps a foreign rule onto `feeRequired(...)` and the diff shows the cleanup.
 
+## 5b. Editing the model — structure *and* rules (modelkit + `EditSession`) ✅ — 2026-06-10
+
+The use case in one place: **read a DM → add fields/groups → add/modify rules → maybe delete → write back.** modelkit (`ModelDocument`) edits *structure*; rulekit edits *rules*; they are siblings over `dm.core` that cannot see each other (`dm.modelkit ⊥ dm.rulekit`), so `dm.edit.EditSession` is the orchestration layer above both. Every edit is surgical on the **authored** DM-JSON tree (includes preserved, never inlined) and the **real kernel is the gate** — nothing structural is reimplemented.
+
+### Read & enumerate an existing model (M7)
+
+`ModelDocument.read(json)` reads the authored source tree — **kernel-free**, so a model with unresolved includes still reads — enumerates its structure name-path-addressed, and round-trips losslessly (the generic Jackson tree, not the kernel's `NON_EMPTY`/`NON_DEFAULT` typed serializer):
+
+```java
+ModelDocument doc = ModelDocument.read(json);
+doc.id();                              // "subscription"
+doc.locales();                         // [en_US, de_DE]
+doc.config().decimalSeparator();       // "."   (+ timeZone / conditionLanguage / fieldRefByShortNameAllowed)
+doc.includes();                        // [Include[alias=catalog, reference=catalog]]
+doc.typeDefinitionIds();               // [ShortText, …]
+doc.groupPaths();                      // [/Subscription, /Subscription/Addons, /Subscription/Billing]
+doc.fieldType("/Subscription/Tier");   // Optional["EnumerationType"]
+doc.isRepeating("/Subscription/Addons"); // true
+doc.toJson();                          // content-equal to the source, idempotent, still kernel-valid
+```
+*Locked by `modelkit.ModelDocumentTest`.*
+
+### Edit fields & groups (M8)
+
+```java
+ModelDocument.read(json)
+    .addField("/Subscription/Addons", "Discount", FieldKind.NUMBER)   // DATE carries its default format
+    .addRepeatableGroup("/Subscription", "History", 10)
+    .removeField("/Subscription/AutoRenew")
+    .removeGroup("/Subscription/Billing")
+    .setRepeatable("/Subscription/Billing", 5)
+    .validate();   // the kernel gate (checkConsistency); both rejection tiers → ModelConsistencyException
+```
+Add-ops reuse the build-from-scratch node emitter, so an *added* field is byte-shaped identically to a *built* one. A missing target path fails fast with `IllegalArgumentException`; the full constraint set rides `validate()`. *Locked by `modelkit.ModelEditTest`.*
+
+### The coverage tail — doc config, type definitions, includes (M10+)
+
+```java
+ModelDocument.read(json)
+    .setDecimalSeparator(",").setTimeZone("UTC")                       // doc config (comma vs point)
+    .addTypeDefinition("Money", FieldKind.NUMBER)                      // a reusable type
+    .addTypedefField("/Subscription", "Credit", "Money")
+    .addInclude("catalog", "catalog").mount("/Subscription", "Catalog", "catalog")  // an include + its mount
+    .validate(resolver);   // includes validate against the referenced model via a resolver
+```
+*Locked by `modelkit.ModelStructureCoverageTest`.*
+
+### Rules *along with* structure — one session (M9)
+
+`EditSession` threads one DM-JSON through both kits. The decisive case: a rule whose error field **is the field the structure step just added** — only kernel-valid if both edits composed over the same document.
+
+```java
+String edited = EditSession.read(json)
+    .addField("/Subscription/Addons", "Discount", FieldKind.NUMBER)            // structure (modelkit)
+    .addRule(m -> m.rule(m.group("/Subscription/Addons"))                      // rule (rulekit)
+        .name("DiscountNotNegative")
+        .errorField(m.num("/Subscription/Addons/Discount"))                    // ← the just-added field
+        .when(m.num("/Subscription/Addons/Discount").filled()
+              .and(m.num("/Subscription/Addons/Discount").lt(0)))
+        .code("DISCOUNT_NEGATIVE").severity(Severity.ERROR)
+        .message(Dsl.en("Discount must not be negative."), Dsl.de("Rabatt darf nicht negativ sein."))
+        .build())
+    .removeGroup("/Subscription/Billing")                                      // delete (modelkit)
+    .validate()                                                                // kernel gate, once
+    .toJson();
+```
+`addRule`'s builder receives the model bound to the *current* state, so it authors against the live structure (`m.num(".../Discount")` resolves only because `addField` already ran). Each rule edit also re-binds the whole model as it applies (fail-fast); `validate()` re-confirms. *Locked by `edit.EditSessionTest`.*
+
+### Delete safety — the gate, not a reimplementation
+
+Removing a field a rule still references is rejected at **`validate()`** (`ModelConsistencyException`, the kernel's own dangling-entity diagnostic), **not** at `remove()` — which tolerates the invalid intermediate state so the same session can drop the rule too (the safe ordering: remove the rule, then the field). A *proactive* "what references this?" check (`adapter.whereUsed`) is deferred to the CLI remove verb, where the capability lives — never a silent cascade. *Locked by `edit.EditSessionTest.removingAFieldARuleReferencesIsRejectedByTheGate`; rationale in [`KERNEL-INTEGRATION-NOTES.md`](KERNEL-INTEGRATION-NOTES.md) "Structure edits + the delete-safety rule".*
+
 ## 6. Semantics as data (F7, N6) ✅ — the catalog is queryable today
 
 ```java
@@ -534,6 +606,9 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 | F9 explain — structured projection of a condition (`context.ModelContext.explain` → `RuleExplanation`) | ✅ 2026-06-04: operators (catalog meaning + gotchas), references (+model kind), iteration scope, NL gloss, JSON. One mechanism, two consumers — works identically on built and **read** conditions (demonstrated end-to-end on a foreign aggregate rule). **`explainComputation` ✅ (2026-06-08)** — the calculated-field peer (`→ ComputationExplanation`: computed field+kind, common precondition + per-alternative precondition/operation with the catalog glossary, messages, gloss); CLI `explain --computation` (`context.ComputationExplanationTest`, `cli.ExplainVerbTest`) |
 | F8 modify-by-re-express + diff + write-back (`dsl.RenderedDiff`, `KernelAdapter.diff`, `BoundModel.replaceCondition`) | ✅ 2026-06-04: re-express a built/read condition (compose/`transform`), `RenderedDiff` (before/after/changed/lossiness, `unified()` + JSON) discloses comment/formatting loss, and **`replaceCondition` writes the reviewed change back** (new binding, re-validated, `writeTo` persists). Full loop *read → re-express → diff → validate → write-back* tested. **`IProblem→Diagnostic` ✅ (2026-06-07):** the adapter no longer discards the kernel's per-rule problems — `KernelAdapter.diagnose(rule)` (stored condition) and `diagnose(rule, candidateText)` (a proposed condition, via `parseConditionNoExpand`, no mutation) capture the `IProblem`s (each is a `RankedNotification`) and map them through the public core seam `validate.KernelDiagnostics` (the same `Diagnostic.fromKernel` + catalog-join the whole-model `RuleValidator` uses). The candidate overload is the modify-loop's loaded-model fast lane (structured verdict, not an exception) |
 | CLI — the modeller/BA standalone front-end (N10, `:cli` subproject, [CLI-SPEC](./CLI-SPEC.md)): pure-testable `Cli.run(args,out,err)` seam + `CliMain` shell; `application` plugin (dev via `:cli:run`/`installDist`, jlink/jpackage Phase-B only) | ✅ scaffold + `export`/`describe`/`validate` verbs (2026-06-05): `export` (fields/groups/rules JSONL + model-card.md, stdout or `--out-dir`), `describe` (F9a model card JSON), `validate` (real-kernel consistency → `{valid,diagnostics[]}`, exit 0/1); serialization in `:cli`, not core; SLF4J silenced; verb behavior unit-tested at the `Cli.run` seam (sub-second, no packaging). **`check`** (candidate → kernel verdict), **`add`** (JSON rule-spec → persisted DM-JSON; built on the dsl-free `write.DmJson`), and the read-back pair **`read`** (rule → AST, tolerant `Converted`/`Opaque`) + **`explain`** (→ `RuleExplanation`) all landed 2026-06-05 — `:cli` now bundles `:adapter`. **`batch`** ✅ (2026-06-05) runs a JSON array of ops in one warm-JVM process (amortizing the kernel's per-process StringTemplate warm-up — the N6 runner enabler); each result is self-describing (`op` index + echoed `id`/`args`) so diagnostics are never mis-attributed. **`modify`** ✅ (2026-06-08) — the F8 re-express loop over the CLI (`--rule` + `--condition` → `RenderedDiff`; structured when `Converted`, textual when `Opaque`): validates, then writes the modified model in place; `--dry-run` previews read-only (a brief read-only `diff` verb was retired the same day as redundant). **`schema`** ✅ (2026-06-05) emits the **JSON Schema** of a verb's I/O on demand (`schema explain|describe|validate|read` outputs, `add|batch` inputs) — drift-locked by `SchemaVerbTest`; `schema explain` documents the `tree.operator → operators[].id` backlink. **Self-explaining surface (2026-06-05, CLI-SPEC §1a — standing requirement):** migrated to **picocli** (one `@Command` per verb → parsing + `--help` + manifest from one source); **`operators`** browses the DSL catalog (list/filter + one operator's full semantics — the proactive complement to `explain`); **`manifest`** emits the machine-readable verb×param map (drift-guarded by `ManifestVerbTest`). So the tool describes its verbs, parameters, I/O shapes, and DSL vocabulary itself — the N1 skill no longer needs to. **Full surface: export·describe·validate·check·eval-doc·compute-doc·add·read·explain·where-used·modify·batch·schema·operators·manifest — complete.** **Inverted-requiredness lint backstop ✅ on `add` and `check`** (2026-06-05): the shared `LintBackstop` reads a rule → AST → `Linter` → warns `RK_INVERTED_REQUIREDNESS` (best-effort) — `add` on the persisted rule (stderr), `check` via a temporary in-memory injection (merged into its diagnostics, WARNING so `valid` is unaffected). The #1 silent-polarity gap is now caught automatically at both BA entry points, not only taught by the skill. **Multi-file models ✅ (2026-06-08, F-RES):** every model-loading verb takes `--include-dir` (repeatable; default = the directory of `<model.json>`, so siblings resolve with no flag) and threads a reference resolver through `BoundModel`/`KernelAdapter.ofJson` and `RuleValidator.check(…, resolver)` — so the CLI works on apps that `include`/import other models, not just self-contained ones (`IncludeDirOption` mixin; `cli.IncludeResolverVerbTest`). **Computation write/modify ✅ (2026-06-08):** `add` also persists a **computation** when the spec carries `computedField` (a computation-spec; `cli.ComputationSpec` → `DraftComputation`), and **`modify --computation <name> --spec <file>`** re-expresses a whole computation — so the computation loop (read/explain → add → modify → write-back) is complete over the CLI, on multi-file models too (`cli.ComputationCliTest`). **Runtime evaluation ✅ (2026-06-09):** **`eval-doc`** runs the kernel's `validateFull` over a document INSTANCE (which rules FIRE on the data — whole-model, or narrowed to an existing `--rule` or an injected candidate) and **`compute-doc`** runs `compute` (what each field COMPUTES — value/cleared/error); both read-only (never write `--doc`), mirroring the kernel's validate/compute split. The runtime tier (`IDocumentRtService.validateFull`/`compute`) was promoted from the test-only F-LAW oracle to a public `KernelAdapter.evaluate`/`compute` seam (JDK `Map` in, rulekit records out — N8 boundary held); lets a future N6 judge verify rule/computation equivalence by EXECUTION (`cli.EvalDocVerbTest`/`ComputeDocVerbTest`, `adapter.laws.EvalDocSeamLawsTest`) |
+| **modelkit structure read + round-trip** (`modelkit.ModelDocument`, M7) | ✅ 2026-06-10: read the authored tree (kernel-free), enumerate header/config/includes/typedef-ids + the group/field tree (name-path, field-type, repeatability), lossless `toJson()` round-trip (content-equal, idempotent, kernel-valid). `ModelDocumentTest`; §5b |
+| **modelkit structure edit** (`ModelDocument`, M8/M10+) | ✅ 2026-06-10: add/modify/delete fields + groups (`addField`/`addGroup`/`addRepeatableGroup`/`removeField`/`removeGroup`/`setRepeatable`); the tail — doc config (`setDecimalSeparator`/`setTimeZone`/`setConditionLanguage`), type definitions (`addTypeDefinition`/`addTypedefField`), includes (`addInclude`/`mount`); `validate()`/`validate(resolver)` = the kernel gate (both rejection tiers → `ModelConsistencyException`). `ModelEditTest`/`ModelStructureCoverageTest`; §5b. **Tail:** header metadata, enum/date field-type config, CLI structure-edit verbs (incl. safe-remove `whereUsed`) |
+| **unified edit session** (`edit.EditSession`, M9) | ✅ 2026-06-10: compose structure (modelkit) + rule/computation (rulekit) edits over one DM-JSON — the orchestration layer above the two ⊥ kits; validates once. `EditSessionTest`; §5b. Delete-safety (dangling-ref rejected at the gate) locked + documented (KERNEL-INTEGRATION-NOTES) |
 | TS twin | 🔮 **deferred — very-future; design-informing only, not on the near agenda** (Phase 4) |
 
 ## 10. Design findings (the review surface's output)
