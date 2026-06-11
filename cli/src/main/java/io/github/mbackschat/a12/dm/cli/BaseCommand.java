@@ -1,8 +1,16 @@
 package io.github.mbackschat.a12.dm.cli;
 
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 
+import com.mgmtp.a12.model.notification.RankedNotification;
+
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
+import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
+import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Spec;
@@ -39,5 +47,24 @@ abstract class BaseCommand implements Callable<Integer> {
      */
     protected String model() {
         return spec.root().userObject() instanceof RootCommand root ? root.model : null;
+    }
+
+    /**
+     * Emit a {@code rejected} result envelope from a kernel consistency failure — the {@code MVK_*}
+     * notifications surfaced as enriched {@link Diagnostic}s (catalog-joined fix/explain). Shared by the
+     * modelkit edit verbs, whose {@code EditSession.validate()} funnels both kernel tiers into this exception.
+     */
+    protected int emitKernelRejection(String target, String op, String summary, ModelConsistencyException e) {
+        List<Diagnostic> diagnostics = new ArrayList<>();
+        for (RankedNotification n : e.notifications()) {
+            diagnostics.add(KernelDiagnostics.enriched(n, null));
+        }
+        if (diagnostics.isEmpty()) {
+            diagnostics.add(Diagnostic.precheck(Optional.empty(), e.getMessage(),
+                    new Diagnostic.Where((String) null, Optional.empty()), Optional.empty(), Optional.empty()));
+        }
+        ResultEnvelope env = ResultEnvelope.rejected(target, op, summary, diagnostics);
+        out().print(env.toJsonString());
+        return env.exitCode();
     }
 }
