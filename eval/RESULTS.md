@@ -15,6 +15,27 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-12 00:27 CEST — first baseline on the dmtool target-first surface (sonnet, k=3, full 18, bare-tool)
+
+The first full N6 baseline after the `rulekit`→`dmtool` **target-first cutover** (`-m <model> <target> <op>`, the result envelope, hidden flat aliases). Bare-tool mode (no skill — measures the self-describing CLI alone). `wf_28f73d65`, 105 agents, **2.83M tokens**, ~38 min.
+
+**pass@3, sonnet, bare-tool: 16/18 clean** (45/54 runs).
+
+| result | tasks |
+|---|---|
+| **3/3** | T1, T3, T5, T6, T7, T8, T9, T10, T11, T12, T15, T16, T17, T18 |
+| **2/3** | T4 |
+| **1/3** | T2 |
+| **0/3** | T13, T14 |
+
+Headline: **the target-first self-describing CLI is broadly self-sufficient for a cold Sonnet agent** — every family (authoring, computation-authoring, modify-rule, modify-computation, comprehension) is reachable from `manifest`/`--help` alone, and the verb rename/re-parenting cost nothing. The four misses split cleanly into one harness bug (mine, fixed) and three real bare-tool difficulties:
+
+- **T14 0/3 — harness artifact, FIXED.** Zero judge entries → candidates marked kernel-invalid *at recheck*, never judged. Cause: the eval-runner migration pointed the comp-authoring recheck at `computation add` but kept the old prompt (old flat `add` printed the model / `{persisted:false}`); the new verb writes in place + emits the envelope, so the recheck misread *and* (no `--dry-run`) wrote into the committed `order`/`subscription` fixtures. Fixed (`7e7e768`): `computation add --dry-run` reading `outcome:"preview"`. Targeted re-run (`wf_baddb5f6`, sonnet k=3): **T14 0/3 → 3/3** (the only difference judged is bare-vs-absolute path notation). Fixtures restored.
+- **T13 0/3 — GENUINE bare-tool gap** (recheck now sound, T14 proves it; T13 re-run still 0/3, now *judged* kernel-invalid). The DateRange computation-authoring trap: agents bracket the constructor's operands (`DateRange([/Order/OrderDate], …)` → `MVK_UNEXPECTED_TOKEN`; it takes *bare* refs) and/or omit a model-locale message (`MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING` — a computation needs a message per declared locale). Skill/catalog candidates: the DateRange bare-operand gotcha + the all-locales-message rule.
+- **T2 1/3 + T4 2/3 — real bare-tool difficulty (the skill-lift targets), judge verified by kernel execution.** T2: 2/3 candidates added a `FieldFilled(EffectiveFee)` guard that *changes the fire set* (empty number = 0, so the gold fires on empty `< BaseFee` but the guarded candidate doesn't) — the empty-number trap the skill's "empty values in a comparison" section closes. T4 (aggregate + `Having`): one candidate kernel-invalid.
+
+Method note: this run also caught (and the log records) that a CLI redesign silently breaks an eval recheck whose prompt describes the old verb behavior — a reminder to re-verify the recheck commands, not just the agent-facing hints, after a grammar change.
+
 ### 2026-06-09 01:25 CEST — judge verify-by-execution wired + first production-mode probe (sonnet, k=1, T1+T11)
 
 Two firsts in one cheap probe (`wf_4ed74368`, 5 agents, 0.12M tokens): the rule judges now **verify equivalence by execution** (run `eval-doc` on discriminating documents for gold vs candidate, compare `rule.fired`), and this is the **first production-mode run** (the N1 skill injected via `args.skill` — confirmed present in the produce transcripts).
