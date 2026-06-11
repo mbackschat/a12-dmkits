@@ -162,11 +162,84 @@ public final class ModelDocument {
      * {@link #validate()} to confirm the result is kernel-valid. Fails fast if the group does not exist.
      */
     public ModelDocument addField(String groupPath, String name, FieldKind kind) {
-        // reuse the builder's node emitter so the shape is identical (e.g. DATE carries its format)
+        return addField(groupPath, name, DocumentModelDraft.bareSpec(kind));
+    }
+
+    /**
+     * Add a field with full type config — a {@link FieldTypeSpec} (string bounds/pattern, number scale,
+     * enum values + categories, date format/precision, a {@code TypeDefRef}, …). The richer peer of the
+     * {@link FieldKind} overload (which is just {@code addField(g, n, bareSpec(kind))}).
+     */
+    public ModelDocument addField(String groupPath, String name, FieldTypeSpec type) {
+        // reuse the builder's node emitter so the shape is identical to a built field
         ElementDraft.Field field = new ElementDraft.Field(
-                name, DocumentModelDraft.bareSpec(kind), Requiredness.OPTIONAL, Map.of(), List.of());
+                name, type, Requiredness.OPTIONAL, Map.of(), List.of());
         containerElements(groupPath).add(DocumentModelDraft.fieldNode(field, groupPath, locales()));
         return this;
+    }
+
+    /** Re-type an existing field — replace its {@code fieldType} with {@code type} (full config). */
+    public ModelDocument setFieldType(String fieldPath, FieldTypeSpec type) {
+        JsonNode field = locate(fieldPath, false);
+        if (field == null) {
+            throw new IllegalArgumentException("no field at path: " + fieldPath);
+        }
+        DocumentModelDraft.writeFieldType(((ObjectNode) field.path("Field")).putObject("fieldType"),
+                type, locales());
+        return this;
+    }
+
+    /**
+     * Set the per-locale display labels of a field or group. A label must cover <em>every</em> declared
+     * locale (the kernel's rule, uniform with the builder) — fails fast otherwise.
+     */
+    public ModelDocument setLabel(String elementPath, Map<String, String> localeToText) {
+        ObjectNode payload = elementPayload(elementPath);
+        ArrayNode label = payload.putArray("label");
+        for (String loc : locales()) {
+            if (!localeToText.containsKey(loc)) {
+                throw new IllegalArgumentException("label for " + elementPath
+                        + " is missing the declared locale '" + loc + "'");
+            }
+            label.addObject().put("locale", loc).put("text", localeToText.get(loc));
+        }
+        return this;
+    }
+
+    /** Set a name/value annotation on a field or group (replacing any existing entry with the same name). */
+    public ModelDocument setAnnotation(String elementPath, String name, String value) {
+        ObjectNode element = element(elementPath);
+        ArrayNode annotations = element.has("annotations")
+                ? (ArrayNode) element.get("annotations")
+                : element.putArray("annotations");
+        for (JsonNode a : annotations) {
+            if (name.equals(a.path("name").asText())) {
+                ((ObjectNode) a).put("value", value);
+                return this;
+            }
+        }
+        annotations.addObject().put("name", name).put("value", value);
+        return this;
+    }
+
+    /** The element node (field or group) at {@code path}; fails fast if absent. */
+    private ObjectNode element(String path) {
+        JsonNode[] found = new JsonNode[1];
+        walk((p, node, isGroup) -> {
+            if (found[0] == null && p.equals(path)) {
+                found[0] = node;
+            }
+        });
+        if (found[0] == null) {
+            throw new IllegalArgumentException("no element at path: " + path);
+        }
+        return (ObjectNode) found[0];
+    }
+
+    /** The typed payload object ({@code "Field"} or {@code "Group"}) of the element at {@code path}. */
+    private ObjectNode elementPayload(String path) {
+        ObjectNode element = element(path);
+        return (ObjectNode) element.path(element.path("type").asText());
     }
 
     /** Add a non-repeating group named {@code name} under {@code parentPath} ({@code ""} = a root group). */
