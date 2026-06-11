@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/batch.schema.json",
   "title": "BatchOps",
-  "description": "INPUT of `rulekit batch <ops.json>` — a JSON array of verb invocations run in one process. Each op's result echoes its `id`/`verb`/`args` so diagnostics are never mis-attributed.",
+  "description": "INPUT of `dmtool batch <ops.json>` — a JSON array of verb invocations run in one process (stateless per-op dispatch; never rolls back). Each op's result echoes its `id`/`verb`/`args` so diagnostics are never mis-attributed. Distinct from `apply` ({target,op,…} ordered surgery on one model with one terminal gate + rollback — see `schema apply`).",
   "type": "array",
   "items": {
     "type": "object",
@@ -13,5 +13,11 @@
       "args": { "type": "array", "items": { "type": "string" }, "description": "the verb's argv (as on the command line, minus the verb)" },
       "id": { "type": "string", "description": "optional caller tag, echoed back on the result for correlation" }
     }
-  }
+  },
+  "examples": [
+    [
+      { "id": "fee-check", "verb": "check",
+        "args": ["MODEL", "--field", "/Subscription/Billing/EffectiveFee", "--condition", "[EffectiveFee] < [BaseFee]", "--code", "FEE"] }
+    ]
+  ]
 }

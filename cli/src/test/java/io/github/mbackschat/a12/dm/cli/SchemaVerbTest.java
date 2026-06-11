@@ -34,6 +34,17 @@ class SchemaVerbTest {
     }
 
     @Test
+    void theApplyAndBatchFramesAreServedWithAWorkedExample() throws Exception {
+        for (String frame : new String[] {"apply", "batch"}) {
+            CliTestSupport.Result res = CliTestSupport.run("schema", frame);
+            assertEquals(0, res.code(), res::err);
+            JsonNode s = MAPPER.readTree(res.out());
+            assertTrue(s.path("examples").isArray() && s.path("examples").size() > 0,
+                    () -> frame + " frame carries a worked examples block: " + res.out());
+        }
+    }
+
+    @Test
     void unknownSchemaFails() {
         assertEquals(2, CliTestSupport.run("schema", "nope").code());
         assertEquals(2, CliTestSupport.run("schema", "rule", "bogus").code(), "a non-existent op has no contract");

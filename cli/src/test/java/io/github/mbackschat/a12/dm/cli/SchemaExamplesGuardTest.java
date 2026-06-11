@@ -55,6 +55,44 @@ class SchemaExamplesGuardTest {
     }
 
     @Test
+    void applyFrameExamplesAreAcceptedByTheTool(@TempDir Path dir) throws Exception {
+        Path model = dir.resolve("subscription.dm.json");
+        Files.writeString(model, CliTestSupport.subscriptionJson());
+
+        JsonNode examples = schema("apply").path("examples");
+        assertTrue(examples.isArray() && examples.size() > 0, "apply.schema declares examples");
+        int i = 0;
+        for (JsonNode ex : examples) {               // each example IS an ops array
+            Path ops = dir.resolve("apply-ex-" + i++ + ".json");
+            Files.writeString(ops, ex.toString());
+            CliTestSupport.Result res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString(), "--dry-run");
+            assertEquals(0, res.code(), () -> "apply frame example rejected: " + res.err() + res.out());
+            assertTrue(MAPPER.readTree(res.out()).path("committed").asBoolean(),
+                    () -> "the apply frame example commits cleanly: " + res.out());
+        }
+    }
+
+    @Test
+    void batchFrameExamplesAreAcceptedByTheTool(@TempDir Path dir) throws Exception {
+        Path model = dir.resolve("subscription.dm.json");
+        Files.writeString(model, CliTestSupport.subscriptionJson());
+
+        JsonNode examples = schema("batch").path("examples");
+        assertTrue(examples.isArray() && examples.size() > 0, "batch.schema declares examples");
+        int i = 0;
+        for (JsonNode ex : examples) {           // each example IS a batch-ops array; the MODEL placeholder → the fixture
+            String ops = ex.toString().replace("MODEL", model.toString());
+            Path opsFile = dir.resolve("batch-ex-" + i++ + ".json");
+            Files.writeString(opsFile, ops);
+            CliTestSupport.Result res = CliTestSupport.run("batch", opsFile.toString());
+            assertEquals(0, res.code(), () -> "batch frame example run failed: " + res.err());
+            for (JsonNode r : MAPPER.readTree(res.out())) {
+                assertEquals(0, r.path("exit").asInt(), () -> "batch frame example op exits 0: " + r);
+            }
+        }
+    }
+
+    @Test
     void resultExamplesConformToTheResultSchema() throws Exception {
         JsonNode resultSchema = schema("result");
         JsonNode diagnosticSchema = schema("diagnostic");

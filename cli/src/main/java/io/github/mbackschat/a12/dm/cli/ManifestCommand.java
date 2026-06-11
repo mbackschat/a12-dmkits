@@ -88,8 +88,8 @@ final class ManifestCommand extends BaseCommand {
         } else {
             v.put("op", name);
         }
-        // the directional-contract pointer: `schema <target> <op>` (the §5a ops) + the input-taking `batch`
-        if (sp >= 0 || "batch".equals(name)) {
+        // the schema pointer: `schema <target> <op>` (the §5a ops) + the batch frames (`apply`/`batch`)
+        if (sp >= 0 || "batch".equals(name) || "apply".equals(name)) {
             v.put("schema", name);
         }
         v.put("description", String.join(" ", cmd.usageMessage().description()));

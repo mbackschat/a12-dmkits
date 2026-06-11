@@ -42,12 +42,14 @@ final class SchemaCommand extends BaseCommand {
     /** The cross-cutting structures with a published raw JSON Schema (CI-locked against drift). */
     static final List<String> STRUCTURES = List.of("result", "diagnostic");
 
+    /** The batch op-record frames, served as raw JSON Schema (the list frame + a worked, CI-executed example). */
+    static final List<String> FRAMES = List.of("apply", "batch");
+
     /** Ops that consume a rich JSON input file → the input schema resource that documents it. */
     static final Map<String, String> INPUT_OPS = Map.of(
             "rule add", "add",
             "computation add", "add",
-            "computation modify", "add",
-            "batch", "batch");
+            "computation modify", "add");
 
     /** Leaf op-names whose verb returns a read payload in the envelope's {@code data}. */
     private static final Set<String> READ_OPS = Set.of("read", "explain", "describe", "eval", "compute");
@@ -61,10 +63,11 @@ final class SchemaCommand extends BaseCommand {
     public Integer call() {
         if (tokens.isEmpty()) {
             out().print("Structure schemas: " + String.join(", ", STRUCTURES)
+                    + "\nBatch frames: " + String.join(", ", FRAMES)
                     + "\nVerb contracts: `schema <target> <op>` (e.g. `schema rule add`, `schema field read`).\n");
             return 0;
         }
-        if (tokens.size() == 1 && STRUCTURES.contains(tokens.get(0))) {
+        if (tokens.size() == 1 && (STRUCTURES.contains(tokens.get(0)) || FRAMES.contains(tokens.get(0)))) {
             return serveStructure(tokens.get(0));
         }
         String verb = String.join(" ", tokens);
