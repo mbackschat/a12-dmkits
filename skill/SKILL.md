@@ -1,31 +1,31 @@
 ---
 name: a12-rules
-description: Author and validate A12 Kernel validation rules with the rulekit CLI. Use when a user (often a document modeller or business analyst) wants to add, check, or understand a validation rule on an A12 document model. Covers the rule envelope, the error-scenario polarity, field-path references, per-row iteration, and the explore→compose→check loop.
+description: Author and validate A12 Kernel validation rules with the dmtool CLI. Use when a user (often a document modeller or business analyst) wants to add, check, or understand a validation rule on an A12 document model. Covers the rule envelope, the error-scenario polarity, field-path references, per-row iteration, and the explore→compose→check loop.
 ---
 
-# Authoring A12 validation rules with rulekit
+# Authoring A12 validation rules with dmtool
 
-You help author **A12 validation rules** on a document model with the `rulekit` CLI. The CLI **describes itself** — you explore it rather than memorizing it — so this skill carries only the **judgment the tool can't give you** (polarity, the traps, the kernel's laws). You don't need A12 background docs: the CLI's self-description + its kernel-checked feedback are enough if you follow the rules below.
+You help author **A12 validation rules** on a document model with the `dmtool` CLI. The CLI **describes itself** — you explore it rather than memorizing it — so this skill carries only the **judgment the tool can't give you** (polarity, the traps, the kernel's laws). You don't need A12 background docs: the CLI's self-description + its kernel-checked feedback are enough if you follow the rules below.
 
 ## Your tools
 
 The CLI is **self-describing** — explore it:
 
-- `cli --help` — the verb list; `cli <verb> --help` — a verb's parameters and what they mean; `cli manifest` — the same, machine-readable.
+- `cli --help` — the verb list; every command is `cli -m <model.json> <target> <op>` (the model is set once with `-m`, before or after the verb); `cli <target> <op> --help` — that op's parameters and what they mean; `cli manifest` — the same, machine-readable (each verb's `target`/`op` + params).
 - `cli operators` — the DSL operator catalog (each operator's meaning, operands, examples, and **gotchas** — read the gotchas, they often name the exact fix for a rejection); `cli operators <id>` — one in full.
-- `cli schema <verb>` — the JSON a verb emits or expects.
+- `cli schema <target> <op>` — the JSON an op consumes/returns (and `cli schema result` — the universal output envelope every verb emits).
 
 The three you lean on:
-- **`cli describe <model.json>`** — orient: fields, kinds, enum values, groups, repeatability.
+- **`cli -m <model.json> doc describe`** — orient: fields, kinds, enum values, groups, repeatability.
 - **`cli operators`** — pick operators by meaning.
-- **`cli check <model.json> --field <ABSOLUTE field path> --condition "<DSL>" --code <ID>`** — submit a candidate and get the **real kernel's** verdict `{"valid": …, "diagnostics": […]}`. This is your ground truth. (`cli validate <model.json>` re-checks a model's *existing* rules.)
+- **`cli -m <model.json> rule check --field <ABSOLUTE field path> --condition "<DSL>" --code <ID>`** — submit a candidate and get the **real kernel's** verdict (the result envelope's `valid` + `diagnostics`). This is your ground truth. (`cli -m <model.json> doc validate` re-checks a model's *existing* rules.)
 
 ## The loop
 
-1. **Orient** — `cli describe` / `cli export` to learn the fields, their kinds, enum values, and which groups repeat.
+1. **Orient** — `cli -m <model> doc describe` (or `cli export <model>`) to learn the fields, their kinds, enum values, and which groups repeat.
 2. **Pick operators** — from `cli operators`, by meaning.
 3. **Compose** the condition — minding **polarity**, **paths**, and **iteration** below.
-4. **Check** — `cli check …`. If `valid:true`, done. If not, read each diagnostic.
+4. **Check** — `cli -m <model> rule check …`. If `valid:true`, done. If not, read each diagnostic.
 5. **Iterate** — the diagnostic `code`+`summary` name the problem; look the operator up in the catalog for the fix; adjust and re-check.
 
 ## ⚠️ Polarity — the single most important thing
@@ -51,7 +51,7 @@ A condition is evaluated relative to the rule's **group** (its iteration scope �
 - **Comparisons** bracket the value reference: `[Quantity] > 0`, `[/Customer/Status] == "ACTIVE"`. **Predicates** take bare refs: `FieldNotFilled(Quantity)`.
 - You can compare **field-to-field**, not just field-to-literal — bracket both: `[EffectiveFee] < [BaseFee]`.
 - **Strict vs inclusive**: map the wording carefully. "lower than / below / more than / exceeds" → strict (`<` / `>`); "at least / no less than / at most / no more than" → inclusive (`<=` / `>=`). And remember the *violation* is the opposite of the requirement: requirement "must be **at least** base" (`>= base`, valid) → violation `< base`.
-- **Enums compare by stored value**, not the display label: `== "ACTIVE"`, not `== "Active"`. (`cli describe` lists the stored values.)
+- **Enums compare by stored value**, not the display label: `== "ACTIVE"`, not `== "Active"`. (`doc describe` lists the stored values.)
 
 ## Empty values in a comparison
 
@@ -63,7 +63,7 @@ How an **empty** (unspecified) field behaves in a comparison depends on its type
 | **confirm** | treated as **`False`** |
 | string · date · boolean · enum | the comparison is **not evaluated** (it doesn't fire, no error) |
 
-So **guard a number comparison** when an empty value shouldn't trip it — `FieldFilled(Amount) And [Amount] < 100`. (`cli check` flags the unguarded case for you as `RK_UNGUARDED_NUMBER_COMPARISON`.) Two corners: the `0` substitution does **not** apply to `Min`/`Max` (empties are ignored there), and there are no empty strings, so `[F] == ""` is never true — use `FieldNotFilled(F)` to test for absence.
+So **guard a number comparison** when an empty value shouldn't trip it — `FieldFilled(Amount) And [Amount] < 100`. (`rule check` flags the unguarded case for you as `RK_UNGUARDED_NUMBER_COMPARISON`.) Two corners: the `0` substitution does **not** apply to `Min`/`Max` (empties are ignored there), and there are no empty strings, so `[F] == ""` is never true — use `FieldNotFilled(F)` to test for absence.
 
 ## Per-row iteration & the negative guard
 
@@ -84,7 +84,7 @@ When a rule reasons about **all the rows at once** (not one row), use an **aggre
 
 Example — *"the total of all FEE lines must not exceed 500"* (an invoice with repeatable `/Invoice/Lines`):
 ```
-cli check invoice.json --field /Invoice/Total \
+cli -m invoice.json rule check --field /Invoice/Total \
   --condition "Sum(Lines*/Amount Having [Lines/Type] == \"FEE\") > 500" --code FEE_TOTAL_TOO_HIGH
 ```
 
@@ -101,7 +101,7 @@ Date operators need **both operands present** and have a **fixed argument order*
 
 Example — *"a ticket must be resolved within 5 days of being raised"* (dates `/Ticket/RaisedDate`, `/Ticket/ResolvedDate`):
 ```
-cli check ticket.json --field /Ticket/ResolvedDate \
+cli -m ticket.json rule check --field /Ticket/ResolvedDate \
   --condition "AllFieldsFilled(RaisedDate, ResolvedDate) And DifferenceInDays(RaisedDate, ResolvedDate) > 5" \
   --code RESOLVED_TOO_LATE
 ```
@@ -125,11 +125,11 @@ Model has enum `/Order/Channel` (values `STANDARD, EXPRESS`) and a **repeatable*
   ```
 - Confirm:
   ```
-  cli check order.json \
+  cli -m order.json rule check \
     --field /Order/LineItems/DeliveryDate \
     --condition "GroupFilled(/Order/LineItems) And [/Order/Channel] == \"EXPRESS\" And FieldNotFilled(DeliveryDate)" \
     --code EXPRESS_ITEM_NEEDS_DELIVERY_DATE
-  # → {"valid": true, "diagnostics": []}
+  # → the envelope reports "valid": true, "diagnostics": []
   ```
 
 Apply the same shape to your own model: find the enum + the repeatable group with `describe`, choose the error field for the per-row scope, write the **violation**, guard it if it iterates with a negative, then `check`.
