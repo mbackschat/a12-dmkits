@@ -25,6 +25,9 @@ read
 explain
 where-used
 modify
+add-field
+add-group
+remove
 batch
 schema
 operators
