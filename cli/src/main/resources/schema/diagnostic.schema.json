@@ -25,5 +25,20 @@
     },
     "fix": { "type": "string", "description": "the actionable repair — an applicable replacement or a discovery command; present for recoverable errors" },
     "explain": { "type": "string", "description": "the operator meaning / rationale (the `why`), when helpful" }
-  }
+  },
+  "examples": [
+    {
+      "severity": "WARNING", "source": "LINT", "code": "RK_UNGUARDED_NUMBER_COMPARISON",
+      "summary": "'/Order/Quantity' is a number compared with an ordering operator but its presence isn't guarded",
+      "where": { "rule": "", "operator": "LessThan" },
+      "fix": "FieldFilled(/Order/Quantity) And <the comparison>",
+      "explain": "an unspecified number defaults to 0 in a comparison (KERNEL-SEMANTICS §2)"
+    },
+    {
+      "severity": "WARNING", "source": "PRECHECK", "code": "RK_REFERENCED",
+      "summary": "/Order/DeliveryDate is referenced by 1 element(s); removing it would dangle them",
+      "where": { "path": "/Order/DeliveryDate" },
+      "fix": "pass --cascade to remove the referrers too, or remove them first"
+    }
+  ]
 }

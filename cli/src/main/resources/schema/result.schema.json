@@ -18,5 +18,31 @@
     "diagnostics": { "type": "array", "items": { "$ref": "https://github.com/mbackschat/a12-dmkits/schema/diagnostic.schema.json" }, "description": "structured findings — see `schema diagnostic`" },
     "written": { "type": "boolean", "description": "whether the model was written to disk" },
     "output": { "type": "string", "description": "the path the model was written to; absent for read/preview/refused/rejected" }
-  }
+  },
+  "examples": [
+    {
+      "target": "field", "op": "add", "outcome": "applied", "ok": true,
+      "summary": "added field /Order/Discount",
+      "changed": { "added": "/Order/Discount", "kind": "NUMBER" },
+      "diagnostics": [], "written": true, "output": "/path/to/order.dm.json"
+    },
+    {
+      "target": "field", "op": "read", "outcome": "read", "ok": true, "valid": true,
+      "summary": "read /Order/Quantity",
+      "data": { "field": "/Order/Quantity", "type": "NumberType" },
+      "diagnostics": [], "written": false
+    },
+    {
+      "target": "field", "op": "remove", "outcome": "refused", "ok": false,
+      "summary": "/Order/DeliveryDate is referenced — refusing to remove",
+      "data": { "referencedBy": { "rules": ["/Order/DeliveryNotBeforeOrder"], "computations": [] } },
+      "diagnostics": [ {
+        "severity": "WARNING", "source": "PRECHECK", "code": "RK_REFERENCED",
+        "summary": "/Order/DeliveryDate is referenced by 1 element(s); removing it would dangle them",
+        "where": { "path": "/Order/DeliveryDate" },
+        "fix": "pass --cascade to remove the referrers too, or remove them first"
+      } ],
+      "written": false
+    }
+  ]
 }

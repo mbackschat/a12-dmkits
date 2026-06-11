@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/add.schema.json",
   "title": "AddSpec",
-  "description": "INPUT of `rulekit add <model.json> <spec.json>` — the element to persist. Two shapes (chosen by the keys present): a RULE-spec (field/condition/code) or a COMPUTATION-spec (computedField/alternatives, detected by `computedField`). The element is validated against the real kernel before writing, and the persisted model is re-validated (so every declared message locale must be covered).",
+  "description": "INPUT of `dmtool -m <model> rule add <spec.json>` / `dmtool -m <model> computation add <spec.json>` — the element to persist. Two shapes (chosen by the keys present): a RULE-spec (field/condition/code) or a COMPUTATION-spec (computedField/alternatives, detected by `computedField`). The element is validated against the real kernel before writing, and the persisted model is re-validated (so every declared message locale must be covered).",
   "type": "object",
   "additionalProperties": false,
   "oneOf": [
@@ -47,5 +47,24 @@
       }
     },
     "name": { "type": "string", "description": "the element's name (rule: default = the code; computation: default = <Field>Comp)" }
-  }
+  },
+  "examples": [
+    {
+      "field": "/Subscription/Addons/MonthlyFee",
+      "condition": "FieldFilled(/Subscription/Addons/MonthlyFee) And [/Subscription/Addons/MonthlyFee] > 1000",
+      "code": "FEE_CAP",
+      "messages": [
+        { "locale": "en_US", "text": "Monthly fee is too high." },
+        { "locale": "de_DE", "text": "Monatsgebühr zu hoch." }
+      ]
+    },
+    {
+      "computedField": "/Subscription/Billing/EffectiveFee",
+      "alternatives": [ { "operation": "[/Subscription/Billing/BaseFee]" } ],
+      "messages": [
+        { "locale": "en_US", "text": "Effective equals base." },
+        { "locale": "de_DE", "text": "Effektiv gleich Basis." }
+      ]
+    }
+  ]
 }
