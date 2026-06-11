@@ -302,11 +302,12 @@ if (compCandidates.length) {
   try {
     const rescore = await agent(
       `Authoritatively re-validate candidate A12 COMPUTATIONS against the real kernel. For EACH entry below:
-write its \`spec\` (verbatim JSON) to its \`file\`, then run:  ${CLI} -m <entry.model> computation add <entry.file>
-The kernel validates before writing: on ACCEPT it prints the new model JSON and exits 0; on REJECT it
-prints {"persisted":false,...} and exits non-zero. Entries:
+write its \`spec\` (verbatim JSON) to its \`file\`, then run (READ-ONLY — \`--dry-run\` writes NOTHING, so the
+committed fixture is never mutated):  ${CLI} -m <entry.model> computation add <entry.file> --dry-run
+The kernel validates the computation and prints the RESULT ENVELOPE: on ACCEPT \`outcome\` is "preview" (exit 0);
+on REJECT \`outcome\` is "rejected" (exit 1, with kernel diagnostics in \`diagnostics\`). Entries:
 ${JSON.stringify(entries)}
-Report every entry via the structured-output tool: one {id, valid} per entry (valid = accepted/persisted).`,
+Report every entry via the structured-output tool: one {id, valid} per entry (valid = accepted, i.e. \`outcome\` == "preview").`,
       { label: 'comp recheck', phase: 'Recheck',
         schema: { type: 'object', additionalProperties: false, required: ['verdicts'],
           properties: { verdicts: { type: 'array', items: {
