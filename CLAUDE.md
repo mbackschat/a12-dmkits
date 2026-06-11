@@ -10,6 +10,21 @@ English is the project default: code, identifiers, comments, docs, and the **def
 
 **Favor a self-explaining, explorable CLI over relying on the N1 skill.** A cold LLM agent — given only the binary — must be able to discover the verbs, their parameters, and what they mean, and to learn each output's shape, *without* the skill. The skill (`skill/SKILL.md`) is the material-under-test for the N6 eval and **must stay as simple as possible**; it teaches judgment (polarity, the traps), not the verb/parameter catalog the tool should describe about itself. So when adding or changing a verb: make it discoverable (help/usage + a machine-readable manifest) and schema-describe its I/O. Discoverability lives in the *tool*, not the skill. Detail + rationale: [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md).
 
+### Schema discipline — no drift, no rot (what triggers a schema check/update)
+
+The published schemas (`cli/.../resources/schema/*.json`) are part of the self-describing surface, so they must never lag the code. Two kinds, two guards — and the rule is: **a change to the thing a schema describes must update that schema in the same commit, and a guard must fail the build if it doesn't.**
+
+| change you make | schema to touch | the guard that catches a lag |
+|---|---|---|
+| **add/rename a result-envelope key** (`ResultEnvelope`) | `result.schema.json` | `SchemaVerbTest` — every target-first verb's real output keys must be declared in `result.schema` |
+| **change a `Diagnostic`/`Where` field** | `diagnostic.schema.json` | `SchemaVerbTest`/`SchemaExamplesGuardTest` (diagnostics in real envelopes conform) |
+| **change the rule/computation spec shape** | `add.schema.json` (+ its `examples`) | `SchemaExamplesGuardTest` — the input examples are **executed through the tool** |
+| **change the `apply`/`batch` op-record frame or add an op/key** | `apply.schema.json` / `batch.schema.json` (+ `examples`) + `ApplyCommand.KNOWN_KEYS` | `SchemaExamplesGuardTest` — both frame example blocks are CI-executed |
+| **add/rename/remove a verb** | nothing by hand for the *contract* — `manifest` + `schema <target> <op>` are **derived from the live picocli tree** (can't drift); but flip `ManifestVerbTest.EXPECTED_VERBS` and, if the verb takes a rich JSON input, add its input schema + `SchemaCommand.INPUT_OPS` mapping | `ManifestVerbTest`/`ManifestTreeTest` |
+| **structure change** (new `FieldKind`, new structure op) | only if it changes a verb's I/O shape (above) | the relevant guard above |
+
+The **no-rot** lever is that **every schema `examples` block is CI-executed through the tool** (`SchemaExamplesGuardTest`) — a stale example actively misleads an agent, so an unverified one cannot ship. The **no-drift** lever is that the *contracts* an agent reads (`manifest`, `schema <target> <op>`) are **derived, not authored** — they recompute from the command tree. When in doubt: add the worked `examples` so the guard executes it; never hand-author a schema fact a guard can't check.
+
 ## Test & sample document models
 
 - **Research freely; commit only own-domain re-expressions.** All three sources — **`a12-kernel-demo`**, the **A12 Tools workspaces** (`/Volumes/Buffer/Apps/A12 Tools/A12 Tools - 2025.06-ext5/workspaces`, the 2025.06-ext5 distribution = kernel `30.8.1`, our pin), and **`a12-kernel-mm`** — may be read and studied without limit. What gets **committed** must be our own original fixtures.
