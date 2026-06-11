@@ -23,6 +23,16 @@ public class ModelConsistencyException extends RuntimeException {
         this.notifications = List.copyOf(notifications);
     }
 
+    /**
+     * For a model the kernel rejects <em>before</em> {@code checkConsistency} (deserialize/expand tier —
+     * e.g. a duplicate element id, a malformed type node), so a structure-edit gate can surface every
+     * kernel rejection as one type. Carries no ranked notifications (the cause holds the kernel detail).
+     */
+    public ModelConsistencyException(String message, Throwable cause) {
+        super(message, cause);
+        this.notifications = List.of();
+    }
+
     /** The kernel notifications (ERROR severity) that caused this failure. */
     public List<RankedNotification> notifications() {
         return notifications;

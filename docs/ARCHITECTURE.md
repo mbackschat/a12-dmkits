@@ -124,7 +124,7 @@ Exact edges (each package → the rulekit packages it imports):
 
 `dsl` is the hub; `lint`/`context`/`write` are independent consumers of it (no edges between them). `catalog` and `model` never depend on anything rulekit, so the spine and the index are reusable foundations.
 
-**`dm.modelkit` (folded in 2026-06-09) is a *sibling* of this rulekit stack, not part of it** — it sits over the same `dm.core`/`model` foundation and must not import any `dm.rulekit` package (nor rulekit it; `SiblingBoundaryTest` sweeps both directions). Its DSL-free write primitive will be `dm.core.DmJson` (moves down from `dm.rulekit.write` when M8 structure-editing first needs it); today modelkit is still build-from-scratch (Jackson only).
+**`dm.modelkit` (folded in 2026-06-09) is a *sibling* of this rulekit stack, not part of it** — it sits over the same `dm.core`/`model` foundation and must not import any `dm.rulekit` package (nor rulekit it; `SiblingBoundaryTest` sweeps both directions). Its DSL-free write primitive `DmJson` **moved down to `dm.core` (2026-06-10, M8)** — both kits now share it. modelkit reads + edits an existing model (`ModelDocument`: read structure, round-trip, add/modify/delete fields+groups, re-bound to the kernel gate), beyond build-from-scratch.
 
 ## 3. The kernel-coupling boundary (N8 / D15)
 

@@ -128,7 +128,8 @@ public final class DocumentModelDraft {
         }
     }
 
-    private static ObjectNode groupNode(ElementDraft.Group group, String parentPath, List<String> locales) {
+    // package-private: reused by ModelDocument (M8 structure edits) so the node shape lives once
+    static ObjectNode groupNode(ElementDraft.Group group, String parentPath, List<String> locales) {
         String path = parentPath + "/" + group.name();
         ObjectNode node = MAPPER.createObjectNode();
         node.put("type", "Group");
@@ -164,7 +165,8 @@ public final class DocumentModelDraft {
         return node;
     }
 
-    private static ObjectNode fieldNode(ElementDraft.Field field, String parentPath, List<String> locales) {
+    // package-private: reused by ModelDocument (M8 structure edits) so the node shape lives once
+    static ObjectNode fieldNode(ElementDraft.Field field, String parentPath, List<String> locales) {
         ObjectNode node = MAPPER.createObjectNode();
         node.put("type", "Field");
         node.put("id", parentPath + "/" + field.name());
@@ -604,7 +606,9 @@ public final class DocumentModelDraft {
         }
     }
 
-    private static FieldTypeSpec bareSpec(FieldKind kind) {
+    // package-private: reused by ModelDocument (M8) so an added easy-kind field gets the same valid
+    // type node the builder emits (e.g. DATE carries its default format — not a bare DateType).
+    static FieldTypeSpec bareSpec(FieldKind kind) {
         return switch (kind) {
             case STRING -> new FieldTypeSpec.StringSpec(null, null, null, null);
             case NUMBER -> new FieldTypeSpec.NumberSpec(null, null, null);

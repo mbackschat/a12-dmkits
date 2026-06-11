@@ -1,15 +1,22 @@
 package io.github.mbackschat.a12.dm.modelkit;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import io.github.mbackschat.a12.dm.core.DmJson;
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
+import io.github.mbackschat.a12.dm.core.ModelLoader;
 
 /**
  * An existing document model, read from DM-JSON into its <em>authored source tree</em> (M7) — the read
@@ -142,6 +149,114 @@ public final class ModelDocument {
     public boolean isRepeating(String groupPath) {
         JsonNode group = locate(groupPath, true);
         return group != null && group.path("Group").path("repeatability").asInt(1) > 1;
+    }
+
+    // --- structure edits (M8) — surgical mutations of the source tree; validate() is the kernel gate -
+
+    /**
+     * Add a field of {@code kind} to the group at {@code groupPath} (an "easy" kind — String/Number/Date/
+     * Boolean/Confirm — whose type node needs no inline config). Mutates this document; chain
+     * {@link #validate()} to confirm the result is kernel-valid. Fails fast if the group does not exist.
+     */
+    public ModelDocument addField(String groupPath, String name, FieldKind kind) {
+        // reuse the builder's node emitter so the shape is identical (e.g. DATE carries its format)
+        ElementDraft.Field field = new ElementDraft.Field(
+                name, DocumentModelDraft.bareSpec(kind), Requiredness.OPTIONAL, Map.of(), List.of());
+        containerElements(groupPath).add(DocumentModelDraft.fieldNode(field, groupPath, locales()));
+        return this;
+    }
+
+    /** Add a non-repeating group named {@code name} under {@code parentPath} ({@code ""} = a root group). */
+    public ModelDocument addGroup(String parentPath, String name) {
+        return addGroup(parentPath, name, 1);
+    }
+
+    /** Add a repeatable group ({@code maxRepetitions >= 2}) named {@code name} under {@code parentPath}. */
+    public ModelDocument addRepeatableGroup(String parentPath, String name, int maxRepetitions) {
+        if (maxRepetitions < 2) {
+            throw new IllegalArgumentException("a repeatable group needs maxRepetitions >= 2, got " + maxRepetitions);
+        }
+        return addGroup(parentPath, name, maxRepetitions);
+    }
+
+    private ModelDocument addGroup(String parentPath, String name, int repeatability) {
+        ArrayNode container = parentPath.isEmpty() ? rootGroups() : containerElements(parentPath);
+        ElementDraft.Group group = new ElementDraft.Group(name, repeatability, null, List.of(), List.of());
+        container.add(DocumentModelDraft.groupNode(group, parentPath, locales()));
+        return this;
+    }
+
+    /** Remove the field at {@code fieldPath}. Fails fast if no field is there. */
+    public ModelDocument removeField(String fieldPath) {
+        removeElement(fieldPath, "Field");
+        return this;
+    }
+
+    /** Remove the group at {@code groupPath} (and everything under it). Fails fast if no group is there. */
+    public ModelDocument removeGroup(String groupPath) {
+        removeElement(groupPath, "Group");
+        return this;
+    }
+
+    /** Set the group at {@code groupPath} repeatable to {@code maxRepetitions} ({@code >= 2}). */
+    public ModelDocument setRepeatable(String groupPath, int maxRepetitions) {
+        if (maxRepetitions < 2) {
+            throw new IllegalArgumentException("a repeatable group needs maxRepetitions >= 2, got " + maxRepetitions);
+        }
+        JsonNode group = locate(groupPath, true);
+        if (group == null) {
+            throw new IllegalArgumentException("no group at path: " + groupPath);
+        }
+        ((ObjectNode) group.path("Group")).put("repeatability", maxRepetitions);
+        return this;
+    }
+
+    /**
+     * The kernel gate (tier 2): re-bind the edited model through {@code checkConsistency} (self-contained).
+     * Throws {@link ModelConsistencyException} if any edit made the model invalid — the full structural
+     * constraint set, enforced by the engine rather than reimplemented here. Returns this on success.
+     */
+    public ModelDocument validate() {
+        try {
+            ModelLoader.loadSelfContained(new StringReader(toJson()));
+        } catch (ModelConsistencyException e) {
+            throw e; // checkConsistency tier — already the uniform "model invalid" type
+        } catch (IOException | RuntimeException e) {
+            // deserialize/expand tier (e.g. a duplicate element id surfaces as IllegalArgumentException):
+            // funnel into the same type so a caller sees one "invalid edit" signal regardless of tier
+            throw new ModelConsistencyException("the edited model is not kernel-valid", e);
+        }
+        return this;
+    }
+
+    private ArrayNode rootGroups() {
+        JsonNode rg = root.path("content").path("modelRoot").path("rootGroups");
+        if (!rg.isArray()) {
+            throw new IllegalStateException("model has no content.modelRoot.rootGroups array");
+        }
+        return (ArrayNode) rg;
+    }
+
+    private ArrayNode containerElements(String groupPath) {
+        ArrayNode elements = DmJson.groupElements(root, groupPath);
+        if (elements == null) {
+            throw new IllegalArgumentException("no group at path: " + groupPath);
+        }
+        return elements;
+    }
+
+    private void removeElement(String path, String type) {
+        int cut = path.lastIndexOf('/');
+        String parent = cut <= 0 ? "" : path.substring(0, cut);
+        ArrayNode container = parent.isEmpty() ? rootGroups() : containerElements(parent);
+        for (int i = 0; i < container.size(); i++) {
+            JsonNode n = container.get(i);
+            if (type.equals(n.path("type").asText()) && path.equals(n.path("id").asText())) {
+                container.remove(i);
+                return;
+            }
+        }
+        throw new IllegalArgumentException("no " + type + " at path: " + path);
     }
 
     // --- tree walk ------------------------------------------------------------------------------

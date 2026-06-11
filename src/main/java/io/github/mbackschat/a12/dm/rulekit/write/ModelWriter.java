@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import io.github.mbackschat.a12.dm.core.DmJson;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
@@ -18,12 +19,12 @@ import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 /**
  * The F6 DM-JSON write path for <b>rules</b> (D9: the public, polyglot write surface — no internal
  * builders). Owns the {@code Rule} node shape; the generic tree surgery lives in {@link DmJson} (the
- * dsl-free shared half the future modelkit reuses). Re-binding the result through {@code ModelLoader}
- * re-runs {@code checkConsistency}, so a bad write fails loudly.
+ * dsl-free shared half in {@code dm.core} that modelkit also reuses). Re-binding the result through
+ * {@code ModelLoader} re-runs {@code checkConsistency}, so a bad write fails loudly.
  */
 public final class ModelWriter {
 
-    private static final ObjectMapper MAPPER = DmJson.MAPPER;
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private ModelWriter() {
     }

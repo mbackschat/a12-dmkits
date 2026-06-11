@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.rulekit.write;
+package io.github.mbackschat.a12.dm.core;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;

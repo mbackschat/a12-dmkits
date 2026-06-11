@@ -13,9 +13,9 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolve
 import io.github.mbackschat.a12.dm.adapter.ReadResult;
 import io.github.mbackschat.a12.dm.adapter.ReadComputation;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.core.DmJson;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RenderedDiff;
-import io.github.mbackschat.a12.dm.rulekit.write.DmJson;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
