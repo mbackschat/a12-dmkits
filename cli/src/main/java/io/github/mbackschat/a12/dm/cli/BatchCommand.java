@@ -70,6 +70,11 @@ final class BatchCommand extends BaseCommand {
             result.set("args", argsNode);
         }
         if (verb == null || verb.isBlank()) {
+            // cross-type corrective: an `apply` op-record ({target,op,…}) was fed to `batch`
+            if (op.has("target") || op.has("op")) {
+                return opError(result, "op has target/op — it is an `apply` op-record, not a `batch` op; "
+                        + "use the `apply` verb (batch ops are {verb,args})");
+            }
             return opError(result, "op is missing \"verb\"");
         }
         if ("batch".equals(verb)) {

@@ -31,6 +31,19 @@ class BatchVerbTest {
     }
 
     @Test
+    void anApplyShapedOpIsRedirectedToApply(@TempDir Path dir) throws Exception {
+        // an apply op-record ({target,op,…}) fed to batch — name it + point at the right verb (cross-type corrective)
+        Path opsFile = dir.resolve("ops.json");
+        Files.writeString(opsFile, """
+                [ {"target":"field","op":"add","group":"/Subscription","name":"X","kind":"NUMBER"} ]""");
+
+        var res = CliTestSupport.run("batch", opsFile.toString());
+        JsonNode r0 = MAPPER.readTree(res.out()).get(0);
+        assertNotEquals(0, r0.path("exit").asInt());
+        assertTrue(r0.path("stderr").asText().contains("apply"), () -> "points at `apply`: " + r0);
+    }
+
+    @Test
     void runsMultipleOpsInOneInvocationAndCarriesPerOpResults(@TempDir Path dir) throws Exception {
         String m = model(dir).toString();
         String ops = """

@@ -227,6 +227,15 @@ final class ApplyCommand extends BaseCommand {
      */
     private static List<Diagnostic> validateArgs(JsonNode op) {
         List<Diagnostic> out = new ArrayList<>();
+        // cross-type corrective: a `batch` op-record ({verb,args}) was fed to `apply`
+        if (op.has("verb") || op.has("argv")) {
+            out.add(Diagnostic.precheck(Optional.of("RK_WRONG_BATCH_KIND"),
+                    "this op has verb/argv — it is a `batch` op-record, not an `apply` op",
+                    new Diagnostic.Where((String) null, Optional.empty()),
+                    Optional.of("use the `batch` verb for {verb,args} ops; `apply` ops are {target,op,…args}"),
+                    Optional.empty()));
+            return out;
+        }
         String label = op.path("target").asText() + " " + op.path("op").asText();
         Set<String> valid = KNOWN_KEYS.get(label);
         if (valid == null) {

@@ -120,6 +120,21 @@ class ApplyVerbTest {
     }
 
     @Test
+    void aBatchShapedOpIsRedirectedToBatch(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path ops = dir.resolve("ops.json");
+        // a batch op-record ({verb,args}) fed to apply — name it + point at the right verb (cross-type corrective)
+        Files.writeString(ops, """
+                [ {"verb":"validate","args":["m.json"]} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(1, res.code());
+        JsonNode diag = M.readTree(res.out()).path("results").get(0).path("diagnostics").get(0);
+        assertEquals("RK_WRONG_BATCH_KIND", diag.path("code").asText());
+        assertTrue(diag.path("fix").asText().contains("batch"), () -> "points at `batch`: " + diag);
+    }
+
+    @Test
     void previewWritesNothing(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         String before = Files.readString(model);
