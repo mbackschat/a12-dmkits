@@ -6,7 +6,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
@@ -45,21 +44,52 @@ final class ApplyCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    /** The op-record keys each {@code target op} accepts — the param model op-arg validation checks against. */
-    private static final Map<String, Set<String>> KNOWN_KEYS = Map.ofEntries(
-            Map.entry("field add", Set.of("group", "name", "kind", "typedef")),
-            Map.entry("field remove", Set.of("fieldPathInModel")),
-            Map.entry("group add", Set.of("parent", "name", "repeatable")),
-            Map.entry("group remove", Set.of("groupPathInModel")),
-            Map.entry("rule add", Set.of("field", "condition", "code", "severity", "name", "messages")),
-            Map.entry("rule modify", Set.of("rule", "condition")),
-            Map.entry("computation add", Set.of("computedField", "alternatives", "commonPrecondition", "name", "messages")),
-            Map.entry("computation modify", Set.of("computation", "computedField", "alternatives", "commonPrecondition", "name", "messages")),
-            Map.entry("typedef add", Set.of("id", "kind")),
-            Map.entry("typedef remove", Set.of("typeDefId")),
-            Map.entry("include add", Set.of("alias", "reference", "parent", "name")),
-            Map.entry("include remove", Set.of("alias")),
-            Map.entry("config modify", Set.of("decimal-separator", "time-zone", "condition-language")));
+    /**
+     * The apply op-record kinds — the single source of truth for each op's {@code (target, op)} selector and
+     * its valid arg keys. The dispatch switches on this enum (compiler-checked exhaustive), and op-arg
+     * validation reads {@link #keys} from it — so a new op-kind can't be added without a dispatch case, and
+     * the valid-key set can never drift from the dispatch (the brittleness of parallel string lists is gone).
+     */
+    private enum Op {
+        FIELD_ADD("field", "add", Set.of("group", "name", "kind", "typedef")),
+        FIELD_REMOVE("field", "remove", Set.of("fieldPathInModel")),
+        GROUP_ADD("group", "add", Set.of("parent", "name", "repeatable")),
+        GROUP_REMOVE("group", "remove", Set.of("groupPathInModel")),
+        RULE_ADD("rule", "add", Set.of("field", "condition", "code", "severity", "name", "messages")),
+        RULE_MODIFY("rule", "modify", Set.of("rule", "condition")),
+        COMPUTATION_ADD("computation", "add", Set.of("computedField", "alternatives", "commonPrecondition", "name", "messages")),
+        COMPUTATION_MODIFY("computation", "modify", Set.of("computation", "computedField", "alternatives", "commonPrecondition", "name", "messages")),
+        TYPEDEF_ADD("typedef", "add", Set.of("id", "kind")),
+        TYPEDEF_REMOVE("typedef", "remove", Set.of("typeDefId")),
+        INCLUDE_ADD("include", "add", Set.of("alias", "reference", "parent", "name")),
+        INCLUDE_REMOVE("include", "remove", Set.of("alias")),
+        CONFIG_MODIFY("config", "modify", Set.of("decimal-separator", "time-zone", "condition-language"));
+
+        final String target;
+        final String op;
+        final Set<String> keys;
+
+        Op(String target, String op, Set<String> keys) {
+            this.target = target;
+            this.op = op;
+            this.keys = keys;
+        }
+
+        String label() {
+            return target + " " + op;
+        }
+
+        static Op of(JsonNode opRecord) {
+            String target = opRecord.path("target").asText();
+            String op = opRecord.path("op").asText();
+            for (Op o : values()) {
+                if (o.target.equals(target) && o.op.equals(op)) {
+                    return o;
+                }
+            }
+            return null;
+        }
+    }
 
     @Parameters(index = "0", paramLabel = "<ops.json>",
             description = "a JSON array of op-records: [{\"target\":\"field\",\"op\":\"add\",\"group\":…,\"name\":…,\"kind\":…}, …]")
@@ -156,25 +186,29 @@ final class ApplyCommand extends BaseCommand {
         return committed ? 0 : 1;
     }
 
-    /** Apply one op-record to the shared session and return its {@code changed} delta. Throws on a bad op (→ rollback). */
+    /**
+     * Apply one op-record to the shared session and return its {@code changed} delta. Throws on a bad op
+     * (→ rollback). {@code Op.of} is non-null here — {@link #validateArgs} has already rejected an unknown
+     * {@code target}/{@code op}; the switch is a compiler-checked exhaustive expression over {@link Op}.
+     */
     private ObjectNode dispatch(EditSession session, JsonNode op) {
-        String target = op.path("target").asText();
-        String name = op.path("op").asText();
         ObjectNode changed = MAPPER.createObjectNode();
-        switch (target + " " + name) {
-            case "field add" -> {
+        return switch (Op.of(op)) {
+            case FIELD_ADD -> {
                 String group = req(op, "group");
                 String field = req(op, "name");
                 session.addField(group, field, FieldKind.valueOf(req(op, "kind")));
                 changed.put("added", group + "/" + field);
                 changed.put("kind", req(op, "kind"));
+                yield changed;
             }
-            case "field remove" -> {
+            case FIELD_REMOVE -> {
                 String path = req(op, "fieldPathInModel");
                 session.removeField(path);
                 changed.put("removed", path);
+                yield changed;
             }
-            case "group add" -> {
+            case GROUP_ADD -> {
                 String parent = req(op, "parent");
                 String groupName = req(op, "name");
                 if (op.hasNonNull("repeatable")) {
@@ -184,13 +218,15 @@ final class ApplyCommand extends BaseCommand {
                     session.addGroup(parent, groupName);
                 }
                 changed.put("added", parent + "/" + groupName);
+                yield changed;
             }
-            case "group remove" -> {
+            case GROUP_REMOVE -> {
                 String path = req(op, "groupPathInModel");
                 session.removeGroup(path);
                 changed.put("removed", path);
+                yield changed;
             }
-            case "rule add" -> {
+            case RULE_ADD -> {
                 String field = req(op, "field");
                 int s = field.lastIndexOf('/');
                 if (s <= 0) {
@@ -207,21 +243,24 @@ final class ApplyCommand extends BaseCommand {
                 }
                 session.addRule(group, ruleName, errorEntityRelPath, code, req(op, "condition"), severity, messages);
                 changed.put("rule", group + "/" + ruleName);
+                yield changed;
             }
-            case "rule modify" -> {
+            case RULE_MODIFY -> {
                 String rule = req(op, "rule");
                 session.modifyRule(rule, req(op, "condition"));
                 changed.put("modified", rule);
+                yield changed;
             }
-            case "computation add" -> {
+            case COMPUTATION_ADD -> {
                 ComputationSpec.Parsed parsed = ComputationSpec.parse(op);
                 if (parsed.error() != null) {
                     throw new IllegalArgumentException(parsed.error());
                 }
                 session.addComputation(parsed.draft(), parsed.messages());
                 changed.put("computation", parsed.fullName());
+                yield changed;
             }
-            case "computation modify" -> {
+            case COMPUTATION_MODIFY -> {
                 String comp = req(op, "computation");
                 ComputationSpec.Parsed parsed = ComputationSpec.parse(op);
                 if (parsed.error() != null) {
@@ -229,29 +268,34 @@ final class ApplyCommand extends BaseCommand {
                 }
                 session.modifyComputation(comp, parsed.draft(), parsed.messages());
                 changed.put("modified", comp);
+                yield changed;
             }
-            case "typedef add" -> {
+            case TYPEDEF_ADD -> {
                 String id = req(op, "id");
                 session.addTypeDefinition(id, FieldKind.valueOf(req(op, "kind")));
                 changed.put("added", id);
+                yield changed;
             }
-            case "typedef remove" -> {
+            case TYPEDEF_REMOVE -> {
                 String id = req(op, "typeDefId");
                 session.removeTypeDefinition(id);
                 changed.put("removed", id);
+                yield changed;
             }
-            case "include add" -> {
+            case INCLUDE_ADD -> {
                 String alias = req(op, "alias");
                 session.addInclude(alias, req(op, "reference"), req(op, "parent"), req(op, "name"));
                 changed.put("added", alias);
                 changed.put("mountedAt", op.get("parent").asText() + "/" + op.get("name").asText());
+                yield changed;
             }
-            case "include remove" -> {
+            case INCLUDE_REMOVE -> {
                 String alias = req(op, "alias");
                 session.removeInclude(alias);
                 changed.put("removed", alias);
+                yield changed;
             }
-            case "config modify" -> {
+            case CONFIG_MODIFY -> {
                 if (op.hasNonNull("decimal-separator")) {
                     session.setDecimalSeparator(op.get("decimal-separator").asText());
                     changed.put("decimalSeparator", op.get("decimal-separator").asText());
@@ -268,11 +312,9 @@ final class ApplyCommand extends BaseCommand {
                     throw new IllegalArgumentException("config modify needs one of "
                             + "decimal-separator, time-zone, condition-language");
                 }
+                yield changed;
             }
-            default -> throw new IllegalArgumentException("apply does not yet support op '" + target + " " + name
-                    + "' (built: field/group/typedef add·remove, config modify, rule/computation add·modify)");
-        }
-        return changed;
+        };
     }
 
     private static String req(JsonNode op, String key) {
@@ -299,16 +341,17 @@ final class ApplyCommand extends BaseCommand {
                     Optional.empty()));
             return out;
         }
-        String label = op.path("target").asText() + " " + op.path("op").asText();
-        Set<String> valid = KNOWN_KEYS.get(label);
-        if (valid == null) {
+        Op which = Op.of(op);
+        if (which == null) {
             out.add(Diagnostic.precheck(Optional.of("RK_UNKNOWN_OP"),
-                    "apply does not support op '" + label + "'",
+                    "apply does not support op '" + op.path("target").asText() + " " + op.path("op").asText() + "'",
                     new Diagnostic.Where((String) null, Optional.empty()),
-                    Optional.of("supported ops: " + String.join(", ", new TreeSet<>(KNOWN_KEYS.keySet()))),
+                    Optional.of("supported ops: " + supportedOps()),
                     Optional.empty()));
             return out;
         }
+        String label = which.label();
+        Set<String> valid = which.keys;
         for (Iterator<String> it = op.fieldNames(); it.hasNext();) {
             String f = it.next();
             if (f.equals("target") || f.equals("op") || valid.contains(f)) {
@@ -323,6 +366,15 @@ final class ApplyCommand extends BaseCommand {
                     Optional.empty()));
         }
         return out;
+    }
+
+    /** The supported {@code target op} labels, sorted — for the unknown-op diagnostic. */
+    private static String supportedOps() {
+        TreeSet<String> labels = new TreeSet<>();
+        for (Op o : Op.values()) {
+            labels.add(o.label());
+        }
+        return String.join(", ", labels);
     }
 
     /** A failing op-arg envelope (the offending op rolled the sequence back). */
