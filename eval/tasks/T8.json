@@ -2,10 +2,13 @@
   "id": "T8",
   "family": "comprehension",
   "model": "order-ruled",
-  "rules": ["/Order/EligibilityCheck"],
+  "rules": [
+    "/Order/EligibilityCheck"
+  ],
   "intent": "Read the EligibilityCheck rule on this order model and explain: exactly what makes an order INVALID (the violation it fires on), which field it guards, and anything the rule delegates outside the rule language.",
   "expected": {
     "EligibilityCheck": "Fires when CustomerName is filled AND a host-defined 'ExternalEligibility' custom condition holds. A correct reading must (a) identify CustomCondition ExternalEligibility as a HOST-DELEGATED check — the real eligibility logic lives in application code registered under that name and is NOT expressible/visible in the rule, and (b) note the FieldFilled(CustomerName) conjunct as the presence guard / error-field reference. It must NOT invent or guess what ExternalEligibility actually decides."
   },
-  "notes": "Comprehension family — custom conditions. Deterministic backbone: the rule reads to Converted (custom conditions are typed as a name-only CustomConditionRef since 2026-06-06, no longer Opaque). The agent rubric tests a distinct comprehension skill: recognizing a host-delegated condition and resisting the temptation to hallucinate its semantics from the name. (Custom conditions compose with any combinator — And here; Or/nesting are equally supported — see CustomConditionRef.)"
+  "notes": "Comprehension family — custom conditions. Deterministic backbone: the rule reads to Converted (custom conditions are typed as a name-only CustomConditionRef since 2026-06-06, no longer Opaque). The agent rubric tests a distinct comprehension skill: recognizing a host-delegated condition and resisting the temptation to hallucinate its semantics from the name. (Custom conditions compose with any combinator — And here; Or/nesting are equally supported — see CustomConditionRef.)",
+  "difficulty": "medium"
 }

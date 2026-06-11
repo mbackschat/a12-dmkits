@@ -5,15 +5,35 @@
   "intent": "Add a date field PromisedDate to the order, then add a rule that the delivery date must be on or before the promised date.",
   "gold": {
     "ops": [
-      { "target": "field", "op": "add", "group": "/Order", "name": "PromisedDate", "kind": "DATE" },
-      { "target": "rule", "op": "add",
-        "spec": { "field": "/Order/DeliveryDate",
-                  "condition": "AllFieldsFilled(DeliveryDate, PromisedDate) And DifferenceInDays(PromisedDate, DeliveryDate) > 0",
-                  "code": "DELIVERY_AFTER_PROMISED",
-                  "messages": [ { "locale": "en_US", "text": "Delivery must not be after the promised date." } ] } }
+      {
+        "target": "field",
+        "op": "add",
+        "group": "/Order",
+        "name": "PromisedDate",
+        "kind": "DATE"
+      },
+      {
+        "target": "rule",
+        "op": "add",
+        "spec": {
+          "field": "/Order/DeliveryDate",
+          "condition": "AllFieldsFilled(DeliveryDate, PromisedDate) And DifferenceInDays(PromisedDate, DeliveryDate) > 0",
+          "code": "DELIVERY_AFTER_PROMISED",
+          "messages": [
+            {
+              "locale": "en_US",
+              "text": "Delivery must not be after the promised date."
+            }
+          ]
+        }
+      }
     ],
-    "expect": { "field": "/Order/PromisedDate", "rule": "/Order/DELIVERY_AFTER_PROMISED" }
+    "expect": {
+      "field": "/Order/PromisedDate",
+      "rule": "/Order/DELIVERY_AFTER_PROMISED"
+    }
   },
   "scoring": "recovery",
-  "notes": "Batch-repair: exercises `apply`'s atomic rollback + per-op attribution. The obvious composition trips one op (the rule's date comparison invites the ISO-literal or date-diff-sign slip → that op is `rejected`), so the whole batch ROLLS BACK with a per-op envelope naming which op failed and why. Scored on whether the agent reads the rolled-back, per-op-attributed envelope, fixes the offending op, and re-applies to green — recovery at the batch level, the complement to N-correct's single-call recovery. Activates with `apply` (Phase 3)."
+  "notes": "Batch-repair: exercises `apply`'s atomic rollback + per-op attribution. The obvious composition trips one op (the rule's date comparison invites the ISO-literal or date-diff-sign slip → that op is `rejected`), so the whole batch ROLLS BACK with a per-op envelope naming which op failed and why. Scored on whether the agent reads the rolled-back, per-op-attributed envelope, fixes the offending op, and re-applies to green — recovery at the batch level, the complement to N-correct's single-call recovery. Activates with `apply` (Phase 3).",
+  "difficulty": "medium"
 }

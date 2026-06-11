@@ -5,13 +5,34 @@
   "intent": "Add a number field Discount to the order, then add a rule that the discount must not be negative.",
   "gold": {
     "ops": [
-      { "target": "field", "op": "add", "group": "/Order", "name": "Discount", "kind": "NUMBER" },
-      { "target": "rule", "op": "add",
-        "spec": { "field": "/Order/Discount", "condition": "FieldFilled(Discount) And [Discount] < 0",
-                  "code": "DISCOUNT_NEGATIVE",
-                  "messages": [ { "locale": "en_US", "text": "Discount must not be negative." } ] } }
+      {
+        "target": "field",
+        "op": "add",
+        "group": "/Order",
+        "name": "Discount",
+        "kind": "NUMBER"
+      },
+      {
+        "target": "rule",
+        "op": "add",
+        "spec": {
+          "field": "/Order/Discount",
+          "condition": "FieldFilled(Discount) And [Discount] < 0",
+          "code": "DISCOUNT_NEGATIVE",
+          "messages": [
+            {
+              "locale": "en_US",
+              "text": "Discount must not be negative."
+            }
+          ]
+        }
+      }
     ],
-    "expect": { "field": "/Order/Discount", "rule": "/Order/DISCOUNT_NEGATIVE" }
+    "expect": {
+      "field": "/Order/Discount",
+      "rule": "/Order/DISCOUNT_NEGATIVE"
+    }
   },
-  "notes": "The north-star use case as a task: read → add a field → add a rule that references the just-added field → write back, in ONE `apply` session (one gate, one write). The agent composes the op-list from the manifest + the `schema apply` worked example, looking up `field add` params and the `rule add` spec via `schema rule add`. Exercises the interleave of a modelkit structure edit and a rulekit rule edit on one model — and that the rule can reference the field added earlier in the same session (transient state tolerated, gated once at the end). Scored: model re-binds AND both elements present. Activates with `apply` (Phase 3)."
+  "notes": "The north-star use case as a task: read → add a field → add a rule that references the just-added field → write back, in ONE `apply` session (one gate, one write). The agent composes the op-list from the manifest + the `schema apply` worked example, looking up `field add` params and the `rule add` spec via `schema rule add`. Exercises the interleave of a modelkit structure edit and a rulekit rule edit on one model — and that the rule can reference the field added earlier in the same session (transient state tolerated, gated once at the end). Scored: model re-binds AND both elements present. Activates with `apply` (Phase 3).",
+  "difficulty": "complex"
 }

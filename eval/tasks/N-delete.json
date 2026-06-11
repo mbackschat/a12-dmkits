@@ -7,7 +7,11 @@
     "op": "field remove",
     "field": "/Order/DeliveryDate",
     "cascade": true,
-    "expectRemoved": ["/Order/DeliveryDate", "/Order/DeliveryNotBeforeOrder"]
+    "expectRemoved": [
+      "/Order/DeliveryDate",
+      "/Order/DeliveryNotBeforeOrder"
+    ]
   },
-  "notes": "The safe-delete / corrective-refusal task. A plain `field remove /Order/DeliveryDate` is REFUSED (the field is referenced by /Order/DeliveryNotBeforeOrder) with a structured `RK_REFERENCED` diagnostic that lists the referrer and a `fix` naming `--cascade`. The intent ('along with any rules that depend on it') makes `--cascade` the correct resolution. Scored: the agent reads the refusal and resolves it correctly — the field AND its referencing rule are removed, model stays kernel-valid. A sibling variant with intent 'remove it' (no cascade) should score surfacing the refusal rather than blind cascade. Activates with the modelkit verbs (Phase 2)."
+  "notes": "The safe-delete / corrective-refusal task. A plain `field remove /Order/DeliveryDate` is REFUSED (the field is referenced by /Order/DeliveryNotBeforeOrder) with a structured `RK_REFERENCED` diagnostic that lists the referrer and a `fix` naming `--cascade`. The intent ('along with any rules that depend on it') makes `--cascade` the correct resolution. Scored: the agent reads the refusal and resolves it correctly — the field AND its referencing rule are removed, model stays kernel-valid. A sibling variant with intent 'remove it' (no cascade) should score surfacing the refusal rather than blind cascade. Activates with the modelkit verbs (Phase 2).",
+  "difficulty": "medium"
 }

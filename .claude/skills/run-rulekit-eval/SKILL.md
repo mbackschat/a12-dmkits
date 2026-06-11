@@ -22,10 +22,10 @@ Operator's playbook. **The guidelines live once in [`docs/EVAL-SPEC.md`](../../.
 
 ## Run checklist
 
-1. `./gradlew :cli:installDist`, then smoke-test: `cli check <model> --field … --condition … --code …` → `{"valid": true}`.
+1. `./gradlew :cli:installDist`, then smoke-test: `cli -m <model> rule check --field … --condition … --code …` → envelope `valid:true`.
 2. Bundle tasks: read `eval/tasks/*.json`, trim each to `id/family/model/intent/gold/rules/expected` **plus** the routing keys the runner needs — `modelPath`/`includeDir` (multi-file tasks, e.g. T15) and `computation` (modify-computation tasks, e.g. T16). Pass as `args.tasks` — **actual JSON, not a string**.
 3. Estimate cost (EVAL-SPEC §8a) and tell the user — it's opt-in / token-heavy, only on explicit request.
-4. Launch: `Workflow({ scriptPath: "eval/benchmark.workflow.js", args: { models, k, tasks } })` → Produce → Recheck (`cli batch` for rules · `cli add` for computations · `cli modify --dry-run` for both modify families — rule modifications are batched so the DSL needs no shell-quoting) → Judge → pass@k. **Five families:** authoring · authoring-computation · modify-computation · modify-rule · comprehension. The **rule judges verify by execution** (run `eval-doc` for gold vs candidate on discriminating docs); computation judges still reason (with the type-aware empty-operand fact).
+4. Launch: `Workflow({ scriptPath: "eval/benchmark.workflow.js", args: { models, k, tasks } })` → Produce → Recheck (`cli batch` for rules · `cli computation add --dry-run` for computations · `cli modify --dry-run` for both modify families — rule modifications are batched so the DSL needs no shell-quoting) → Judge → pass@k. **Five families:** authoring · authoring-computation · modify-computation · modify-rule · comprehension. The **rule judges verify by execution** (run `eval-doc` for gold vs candidate on discriminating docs); computation judges still reason (with the type-aware empty-operand fact).
    - **Production-mode** run (measure the skill lift): pass **`args.skillPath: "skill/SKILL.md"`** (PREFERRED — the producer agents read the file itself, so the verbatim skill needs no transcription and can't drift) or `args.skill` = the inlined contents. Label the result **production**, never mixed into the bare-tool trend. **Then run the boundary audit** (step 7).
 5. **Selective re-run after a fix** (EVAL-SPEC §8b): subset `args.tasks` / `args.models` at low `k`. Material changed ⇒ **fresh** run, not resume.
 6. Record pass@k + analysis in `eval/RESULTS.md` (date **+ time-of-day** via `date`, newest first; label targeted vs full).
@@ -35,6 +35,18 @@ Operator's playbook. **The guidelines live once in [`docs/EVAL-SPEC.md`](../../.
    grep -rhoE '"command" *: *"[^"]+"' "$D"/agent-*.jsonl | grep -iE 'cat |head |sed |less '  # bash reads
    ```
    **Clean** = the only files read are `skill/SKILL.md`, the model `.dm.json` under test, and the agents' own `/tmp/*.json` docs. Any `docs/` · `src/` · `*Test` · other `*.md` · `eval/tasks` read is a **boundary breach → the run is invalid** (re-run after tightening the prompt). (For bare-tool runs this should find no skill read at all.)
+
+## Run tiers (the cost/coverage ladder — detail: EVAL-SPEC §8d)
+
+Don't default to the full pass@k — it's a milestone tool. Pick the tier (tasks are tagged `difficulty` + a derived `kit`; `EvalSuiteLedgerTest` locks the categorization):
+
+- **smoke** (~2 min, soft) — the **deterministic** core (every gold through the CLI + the demos verify — largely `EvalGoldOracleTest`) **plus ≥1 rulekit agent run**: bundle the `smoke` suite and run sonnet · k=1.
+  `jq -s -c '[.[]|select(.suites and (.suites|index("smoke")))]' eval/tasks/*.json`
+- **simple** (<7 min) — the `simple` suite (~6 tasks spanning all difficulties), **sonnet** · k=1 (opus only as a single spot-check).
+  `jq -s -c '[.[]|select(.suites and (.suites|index("simple")))]' eval/tasks/*.json`
+- **full** — all tasks, sonnet + **few** opus, k=3 (the ~40-min baseline).
+
+Default the agentic tiers to **sonnet** (it matches opus here — RESULTS.md); opus is a spot-check, not the default. The **modelkit agentic** run (smoke's second agent run + `full` structure coverage) is **deferred to Phase 2+ / `apply` Phase 3** — until then modelkit rides only the deterministic smoke core.
 
 ## Reading results
 

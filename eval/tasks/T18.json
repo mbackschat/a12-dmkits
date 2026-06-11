@@ -2,13 +2,22 @@
   "id": "T18",
   "family": "comprehension",
   "model": "order-aggregates",
-  "rules": ["/Order/MaxOfQuantities", "/Order/UnitPriceRoundedCap", "/Order/FirstCountVsQuantity"],
-  "operators": ["Max", "RoundDownValue", "FirstFilledValue"],
+  "rules": [
+    "/Order/MaxOfQuantities",
+    "/Order/UnitPriceRoundedCap",
+    "/Order/FirstCountVsQuantity"
+  ],
+  "operators": [
+    "Max",
+    "RoundDownValue",
+    "FirstFilledValue"
+  ],
   "intent": "Read the three value-operator rules on this order model and explain, for each, exactly what makes an order INVALID (the violation the rule fires on) and which field it guards.",
   "expected": {
     "MaxOfQuantities": "Fires when the LARGER of Quantity and BackorderQuantity exceeds 100. Max here is the operand-list maximum of the two NAMED values (not an aggregate over repeating rows), so the rule fires when whichever of the two is bigger is > 100. Guards /Order/Quantity. A correct reading notes the condition is the VIOLATION (it fires when the max IS over the cap).",
     "UnitPriceRoundedCap": "Fires when the unit price ROUNDED DOWN to a whole number exceeds 10 (RoundDownValue truncates the fractional part — 10.99 becomes 10 — so the rule fires from a rounded value of 11 upward, i.e. a unit price of 11.00 or more). Guards /Order/UnitPrice.",
     "FirstCountVsQuantity": "Fires when the FIRST specified line-item Count exceeds the order Quantity. FirstFilledValue scans the Items rows and takes the first NON-EMPTY Count (skipping empty rows), then compares it to [Quantity]. Guards /Order/Quantity. A correct reading distinguishes 'first non-empty value' from a sum or a max over the rows."
   },
-  "notes": "COMPREHENSION over the awkward-as-authoring operators (EVAL-SPEC §6): operand-list math (Max), rounding (RoundDownValue), and FirstFilledValue read more naturally as 'explain this rule' than as authoring intents, so they are exercised here as a read-back task rather than as authoring golds. Fixture order-aggregates = the order model + these three rules (built via `cli add`, each kernel-validated). Layer-1 oracle: each rule reads to Converted (these operators are read-supported, F10 100%). The rubric tests the operator semantics (operand-list max vs a row-aggregate; round-down truncation; first-non-empty vs sum/max) and the violation polarity."
+  "notes": "COMPREHENSION over the awkward-as-authoring operators (EVAL-SPEC §6): operand-list math (Max), rounding (RoundDownValue), and FirstFilledValue read more naturally as 'explain this rule' than as authoring intents, so they are exercised here as a read-back task rather than as authoring golds. Fixture order-aggregates = the order model + these three rules (built via `cli add`, each kernel-validated). Layer-1 oracle: each rule reads to Converted (these operators are read-supported, F10 100%). The rubric tests the operator semantics (operand-list max vs a row-aggregate; round-down truncation; first-non-empty vs sum/max) and the violation polarity.",
+  "difficulty": "complex"
 }

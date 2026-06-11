@@ -246,6 +246,23 @@ Task schema (per file):
             "code": "PRO_ADDON_FEE_REQUIRED" } }
 ```
 
+### 8d. Run tiers — a cost/coverage ladder (smoke · simple · full)
+
+The suite is large, so a full pass@k is a milestone tool, not a routine check. Three tiers give a cost/coverage gradient; tasks are categorized on two axes (**difficulty** `simple|medium|complex`, intrinsic per task; **kit** `rulekit|modelkit`, derived from `family`) so a tier can be **derived by filter**, not hand-picked each time. The ledger guard `EvalSuiteLedgerTest` (§8d) locks it: every task declares a difficulty, every family is kit-classified, and the cheap tiers keep their coverage — so adding a task can't silently rot the gradient.
+
+| tier | what runs | model · k | budget | catches |
+|---|---|---|---|---|
+| **smoke** | **deterministic** core — every gold through the CLI (`rule check` / `computation add --dry-run` / `field add --dry-run`) + the demos verify — **plus ≥1 rulekit agent run** (the `smoke` suite; a modelkit agent run is added with B) | sonnet · k=1 for the agent run | ~2 min (soft) | "a verb / kernel interaction broke" + "the agent can't do even one task" |
+| **simple** | **agentic** subset — the `simple` suite (~6 tasks spanning all difficulties × the wired kit) | **sonnet** (+ at most one opus spot-check) · k=1 | <7 min | "a cold agent lost self-sufficiency" |
+| **full** | the pass@k benchmark, all tasks | sonnet + **few** opus · k=3 | ~40 min | precise pass@k / tier comparison |
+
+The deterministic smoke core is difficulty-complete by construction (it runs *every* gold) and already largely exists as `EvalGoldOracleTest`. The agentic tiers default to **sonnet** (the cheaper tier matches opus on these — see RESULTS.md); opus is a spot-check, not the default. Derive a tier's agentic tasks with a one-line filter when bundling `args.tasks`:
+```bash
+jq -s -c '[ .[] | select(.suites and (.suites|index("simple"))) ]' eval/tasks/*.json   # the `simple` tier
+```
+
+**Deferred (B): the modelkit *agentic* path.** Today the wired runner families are all **rulekit**; the modelkit tasks (`N-struct`/`N-delete`/`N-session`/`N-rename`) run only in the *deterministic* smoke core (e.g. `field add --dry-run`) — they have no agentic produce→recheck→judge path yet. Wiring one (so smoke gains its modelkit agent run and `full` measures structure CRUD) is the eval-design increment that **rides Phase 2+ (the modelkit CRUD verbs, #42) and Phase 3 `apply` (#43)**. Until then `EvalSuiteLedgerTest` requires only a *rulekit* smoke agent run.
+
 ## 9. Status & next
 
 The eval is live and instrumented. **Built:** the 18-task suite (T1–T6 + T9–T12 authoring across operator families, T13–T14 computation authoring, T15 multi-file authoring, T16 computation modify, T17 rule modify, T7–T8 + T18 comprehension — each with a deterministic backbone), the `check`/`add`/`batch`/`modify` verbs, the N1 skill, and the Layer-2 pass@k runner (all five families). The **build-measure-learn loop closed end-to-end** on the #1 gap: the eval *found* the silent inverted-polarity trap → the skill *taught* it → the CLI now *catches* it automatically (the `RK_INVERTED_REQUIREDNESS` lint backstop on both `add` and `check`). The **2026-06-06 full run** then drove three more material fixes: the CLI `--field`/`--group`/`--rule` metavar+guard (model-entity-path vs file-path confusion), and two skill notes — the per-row-vs-document-level scope choice (T1) and reading host-delegated custom conditions without guessing (T8). Measured lifts and pass@k are in **[`../eval/RESULTS.md`](../eval/RESULTS.md)**.

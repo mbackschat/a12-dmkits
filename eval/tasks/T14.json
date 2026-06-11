@@ -2,13 +2,21 @@
   "id": "T14",
   "family": "authoring-computation",
   "model": "subscription",
-  "operators": ["Multiply"],
+  "operators": [
+    "Multiply"
+  ],
   "intent": "A subscription's effective fee is twice its base fee.",
   "gold": {
     "computedField": "/Subscription/Billing/EffectiveFee",
     "alternatives": [
-      { "operation": "[BaseFee] * 2" }
+      {
+        "operation": "[BaseFee] * 2"
+      }
     ]
   },
-  "notes": "Plain numeric computation authoring (no new operator) — the baseline that exercises the computation WRITE path itself: discovering the computation-spec shape (`schema add` → the computedField/alternatives/messages oneOf), an unconditional value expression, and the kernel-validated `add` of a computation. Gold verified (RuleValidator.check over a DraftComputation). Complements T13 (which adds the DateRange constructor on top)."
+  "notes": "Plain numeric computation authoring (no new operator) — the baseline that exercises the computation WRITE path itself: discovering the computation-spec shape (`schema add` → the computedField/alternatives/messages oneOf), an unconditional value expression, and the kernel-validated `add` of a computation. Gold verified (RuleValidator.check over a DraftComputation). Complements T13 (which adds the DateRange constructor on top).",
+  "difficulty": "simple",
+  "suites": [
+    "simple"
+  ]
 }

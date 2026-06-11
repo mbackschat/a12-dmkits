@@ -10,8 +10,13 @@
     "to": "PromisedDate",
     "expect": {
       "renamed": "/Order/PromisedDate",
-      "rewroteReferences": { "rules": ["/Order/DeliveryNotBeforeOrder"] }
+      "rewroteReferences": {
+        "rules": [
+          "/Order/DeliveryNotBeforeOrder"
+        ]
+      }
     }
   },
-  "notes": "DEFERRED (status:deferred — the runner skips it). The refactor-class task: `field rename` must rewrite the declaration AND every referencing site (here DeliveryNotBeforeOrder's condition) atomically, valid→valid. It also pins the Opaque-refusal boundary — a rename blocked by an unrewritable (Opaque) referrer must REFUSE with a clear diagnostic, never silently dangle. Authored now as the acceptance gate; activated when the rename engine ships (Phase 4)."
+  "notes": "DEFERRED (status:deferred — the runner skips it). The refactor-class task: `field rename` must rewrite the declaration AND every referencing site (here DeliveryNotBeforeOrder's condition) atomically, valid→valid. It also pins the Opaque-refusal boundary — a rename blocked by an unrewritable (Opaque) referrer must REFUSE with a clear diagnostic, never silently dangle. Authored now as the acceptance gate; activated when the rename engine ships (Phase 4).",
+  "difficulty": "complex"
 }

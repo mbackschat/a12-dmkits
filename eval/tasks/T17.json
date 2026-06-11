@@ -3,12 +3,18 @@
   "family": "modify-rule",
   "model": "order-ruled",
   "rule": "/Order/DeliveryNotBeforeOrder",
-  "operators": ["AllFieldsFilled", "DifferenceInDays", "LessThan", "And"],
+  "operators": [
+    "AllFieldsFilled",
+    "DifferenceInDays",
+    "LessThan",
+    "And"
+  ],
   "intent": "Tighten the delivery rule: the delivery date must be at least 2 days after the order date.",
   "gold": {
     "field": "/Order/DeliveryDate",
     "condition": "AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, DeliveryDate) < 2",
     "code": "DELIVERY_TOO_SOON"
   },
-  "notes": "MODIFY-RULE family (new 2026-06-08): re-express an EXISTING validation RULE's CONDITION — the counterpart to T16 (modify-computation). The committed fixture order-ruled already carries /Order/DeliveryNotBeforeOrder ('delivery not before order': AllFieldsFilled(OrderDate,DeliveryDate) And DifferenceInDays(OrderDate,DeliveryDate) < 0). The new requirement tightens the threshold from 'not before' (< 0) to 'at least 2 days after' (violation < 2), KEEPING the same rule + error field /Order/DeliveryDate. Tests the `modify --rule --condition --dry-run` loop: read the existing rule, re-express its condition to the new requirement, preview read-only, confirm the kernel accepts the CHANGE. The runner's recheck drives `cli modify --rule … --condition … --dry-run` via `cli batch` (JSON args, so the DSL needs no shell-quoting) and counts a pass only when the kernel ACCEPTS it AND it is an actual change. Polarity trap: 'at least 2 days after' is the requirement (>= 2); the rule's condition is its VIOLATION (< 2). DifferenceInDays(A,B) = B − A, positive when B is later. Gold kernel-verified (modify --dry-run => changed:true)."
+  "notes": "MODIFY-RULE family (new 2026-06-08): re-express an EXISTING validation RULE's CONDITION — the counterpart to T16 (modify-computation). The committed fixture order-ruled already carries /Order/DeliveryNotBeforeOrder ('delivery not before order': AllFieldsFilled(OrderDate,DeliveryDate) And DifferenceInDays(OrderDate,DeliveryDate) < 0). The new requirement tightens the threshold from 'not before' (< 0) to 'at least 2 days after' (violation < 2), KEEPING the same rule + error field /Order/DeliveryDate. Tests the `modify --rule --condition --dry-run` loop: read the existing rule, re-express its condition to the new requirement, preview read-only, confirm the kernel accepts the CHANGE. The runner's recheck drives `cli modify --rule … --condition … --dry-run` via `cli batch` (JSON args, so the DSL needs no shell-quoting) and counts a pass only when the kernel ACCEPTS it AND it is an actual change. Polarity trap: 'at least 2 days after' is the requirement (>= 2); the rule's condition is its VIOLATION (< 2). DifferenceInDays(A,B) = B − A, positive when B is later. Gold kernel-verified (modify --dry-run => changed:true).",
+  "difficulty": "medium"
 }

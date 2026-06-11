@@ -2,13 +2,18 @@
   "id": "T13",
   "family": "authoring-computation",
   "model": "order",
-  "operators": ["DateRange"],
+  "operators": [
+    "DateRange"
+  ],
   "intent": "An order's coverage window is the date range running from its order date to its delivery date.",
   "gold": {
     "computedField": "/Order/CoverageWindow",
     "alternatives": [
-      { "operation": "DateRange(OrderDate, DeliveryDate)" }
+      {
+        "operation": "DateRange(OrderDate, DeliveryDate)"
+      }
     ]
   },
-  "notes": "Computation authoring exercising the DateRange CONSTRUCTOR (built 2026-06-08) — a computation-only operator that assigns a DATE_RANGE field its sole legal use site. Gold verified (RuleValidator.check over a DraftComputation; the kernel accepts CoverageWindow = DateRange(OrderDate, DeliveryDate)). The order fixture's CoverageWindow is a date-range field; OrderDate/DeliveryDate are dates. Measures whether a cold agent discovers the computation-spec shape (via `schema add`) AND reaches for the DateRange constructor over (futile) attempts to build a range from a comparison. GOLD POLARITY (gold is UNGUARDED, intentionally): the kernel does NOT evaluate a DateRange operation when an operand is empty — it computes no value and clears any stale value (verified at runtime, KERNEL-FINDINGS §2 supplement; locked by adapter.laws.DateRangeComputationLawsTest). So a candidate adding `commonPrecondition AllFieldsFilled(OrderDate, DeliveryDate)` is EQUIVALENT (the guard is redundant) — the judge prompt now carries this fact, settling the 2026-06-08 judge split where two judges disagreed on the guard."
+  "notes": "Computation authoring exercising the DateRange CONSTRUCTOR (built 2026-06-08) — a computation-only operator that assigns a DATE_RANGE field its sole legal use site. Gold verified (RuleValidator.check over a DraftComputation; the kernel accepts CoverageWindow = DateRange(OrderDate, DeliveryDate)). The order fixture's CoverageWindow is a date-range field; OrderDate/DeliveryDate are dates. Measures whether a cold agent discovers the computation-spec shape (via `schema add`) AND reaches for the DateRange constructor over (futile) attempts to build a range from a comparison. GOLD POLARITY (gold is UNGUARDED, intentionally): the kernel does NOT evaluate a DateRange operation when an operand is empty — it computes no value and clears any stale value (verified at runtime, KERNEL-FINDINGS §2 supplement; locked by adapter.laws.DateRangeComputationLawsTest). So a candidate adding `commonPrecondition AllFieldsFilled(OrderDate, DeliveryDate)` is EQUIVALENT (the guard is redundant) — the judge prompt now carries this fact, settling the 2026-06-08 judge split where two judges disagreed on the guard.",
+  "difficulty": "complex"
 }

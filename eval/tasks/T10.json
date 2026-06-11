@@ -2,12 +2,17 @@
   "id": "T10",
   "family": "authoring",
   "model": "order",
-  "operators": ["Equal", "NotAllFieldsFilled", "And"],
+  "operators": [
+    "Equal",
+    "NotAllFieldsFilled",
+    "And"
+  ],
   "intent": "When express shipping is selected, the shipping address must be complete — every field in it filled in.",
   "gold": {
     "field": "/Order/ExpressShipping",
     "condition": "[ExpressShipping] == True And NotAllFieldsFilled(ShippingAddress)",
     "code": "EXPRESS_NEEDS_FULL_ADDRESS"
   },
-  "notes": "Group-scope field-fill quantifier (new 2026-06-06): NotAllFieldsFilled(<group>) checks the fields INSIDE a group, firing when at least one is empty — distinct from the field-list form NotAllFieldsFilled(a, b). The violation of 'address must be complete when express' is 'express is on AND not all address fields are filled'. Tests (a) the error-scenario polarity (NotAllFieldsFilled, not AllFieldsFilled), (b) recognizing the group-scope form (a single group operand, not a field list), and (c) the boolean literal True (not the string). NON-iterating; ShippingAddress is a non-repeatable group, error field is the trigger ExpressShipping. Gold kernel-verified."
+  "notes": "Group-scope field-fill quantifier (new 2026-06-06): NotAllFieldsFilled(<group>) checks the fields INSIDE a group, firing when at least one is empty — distinct from the field-list form NotAllFieldsFilled(a, b). The violation of 'address must be complete when express' is 'express is on AND not all address fields are filled'. Tests (a) the error-scenario polarity (NotAllFieldsFilled, not AllFieldsFilled), (b) recognizing the group-scope form (a single group operand, not a field list), and (c) the boolean literal True (not the string). NON-iterating; ShippingAddress is a non-repeatable group, error field is the trigger ExpressShipping. Gold kernel-verified.",
+  "difficulty": "medium"
 }

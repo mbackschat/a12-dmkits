@@ -2,12 +2,17 @@
   "id": "T3",
   "family": "authoring",
   "model": "order",
-  "operators": ["FieldFilled", "PatternViolated", "And"],
+  "operators": [
+    "FieldFilled",
+    "PatternViolated",
+    "And"
+  ],
   "intent": "An order's product code, when present, must be a valid product code: two uppercase letters, a hyphen, then four digits (for example AB-1234).",
   "gold": {
     "field": "/Order/ProductCode",
     "condition": "FieldFilled(ProductCode) And [ProductCode] PatternViolated \"[A-Z]{2}-[0-9]{4}\"",
     "code": "PRODUCT_CODE_MALFORMED"
   },
-  "notes": "Pattern family with an UNAMBIGUOUS format — the intent fully specifies XX-9999, so equivalence to the gold regex is well-defined. (The earlier version checked an email address; there is no canonical email regex, so reasonable candidate regexes diverged from the gold and exact-match was the wrong bar — a false negative recorded in eval/RESULTS.md 2026-06-05. Fixed by choosing a crisp format + instructing the judge to treat trivially-different regexes that accept the same strings as equivalent.) NON-iterating (ProductCode is a top-level /Order field). Tests pattern polarity (PatternViolated, not PatternMatched — matching is the GOOD case) + a presence guard."
+  "notes": "Pattern family with an UNAMBIGUOUS format — the intent fully specifies XX-9999, so equivalence to the gold regex is well-defined. (The earlier version checked an email address; there is no canonical email regex, so reasonable candidate regexes diverged from the gold and exact-match was the wrong bar — a false negative recorded in eval/RESULTS.md 2026-06-05. Fixed by choosing a crisp format + instructing the judge to treat trivially-different regexes that accept the same strings as equivalent.) NON-iterating (ProductCode is a top-level /Order field). Tests pattern polarity (PatternViolated, not PatternMatched — matching is the GOOD case) + a presence guard.",
+  "difficulty": "medium"
 }

@@ -2,12 +2,21 @@
   "id": "T1",
   "family": "authoring",
   "model": "subscription",
-  "operators": ["GroupFilled", "Equal", "FieldNotFilled", "And"],
+  "operators": [
+    "GroupFilled",
+    "Equal",
+    "FieldNotFilled",
+    "And"
+  ],
   "intent": "When a subscription's Tier is PRO, each add-on's MonthlyFee must be provided (it must not be left empty).",
   "gold": {
     "field": "/Subscription/Addons/MonthlyFee",
     "condition": "GroupFilled(/Subscription/Addons) And [/Subscription/Tier] == \"PRO\" And FieldNotFilled(MonthlyFee)",
     "code": "PRO_ADDON_FEE_REQUIRED"
   },
-  "notes": "Exercises the iteration/negative-guard idiom: a bare FieldNotFilled in the repeatable Addons scope trips MVK_NEG_CONDITION_IN_ITERATION unless guarded by a positive GroupFilled. Tier is referenced by absolute path (cross-group); MonthlyFee is bare (in the iteration scope)."
+  "notes": "Exercises the iteration/negative-guard idiom: a bare FieldNotFilled in the repeatable Addons scope trips MVK_NEG_CONDITION_IN_ITERATION unless guarded by a positive GroupFilled. Tier is referenced by absolute path (cross-group); MonthlyFee is bare (in the iteration scope).",
+  "difficulty": "complex",
+  "suites": [
+    "simple"
+  ]
 }
