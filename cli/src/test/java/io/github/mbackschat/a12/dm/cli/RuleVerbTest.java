@@ -133,4 +133,27 @@ class RuleVerbTest {
         assertEquals(CliTestSupport.RULE_FULL_NAME, j.path("changed").path("removed").asText());
         assertFalse(Files.readString(model).contains("FeeCapRule"), "the rule is gone");
     }
+
+    @Test
+    void modifyReExpressesARuleConditionAndReportsApplied(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.modelWithRule(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "modify", CliTestSupport.RULE_FULL_NAME,
+                "--condition", "[MonthlyFee] > 2000");
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("modify", j.get("op").asText());
+        assertEquals("applied", j.get("outcome").asText());
+        assertTrue(j.get("written").asBoolean());
+        assertTrue(j.has("changed"), "carries the rendered before/after diff");
+        assertTrue(Files.readString(model).contains("2000"), "the new condition is persisted");
+    }
+
+    @Test
+    void modifyRejectsAnInvalidReExpression(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.modelWithRule(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "modify", CliTestSupport.RULE_FULL_NAME,
+                "--condition", "[MonthlyFee] > [Nonexistent]");
+        assertEquals(1, res.code());
+        assertEquals("rejected", M.readTree(res.out()).get("outcome").asText());
+    }
 }
