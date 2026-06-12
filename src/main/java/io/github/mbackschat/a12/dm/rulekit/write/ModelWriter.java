@@ -94,7 +94,8 @@ public final class ModelWriter {
      */
     public static String replaceComputation(String modelJson, String computationFullName,
             DraftComputation computation, List<LocalizedText> messages) {
-        return addComputation(removeComputation(modelJson, computationFullName), computation, messages);
+        return preserveComputationComments(modelJson, computationFullName,
+                addComputation(removeComputation(modelJson, computationFullName), computation, messages));
     }
 
     /** Returns {@code modelJson} with the Rule element at {@code ruleFullName} removed from its group. */
@@ -109,10 +110,48 @@ public final class ModelWriter {
 
     /**
      * Returns {@code modelJson} with the computation at {@code computationFullName} replaced by
-     * {@code computation} (F8 #3 write-back) — remove the old element, add the re-expressed one.
+     * {@code computation} (F8 #3 write-back) — remove the old element, add the re-expressed one. The old
+     * computation's leading {@code ;;} comments (on its common precondition and its first operation) are
+     * preserved by default, the computation peer of {@link #replaceCondition}.
      */
     public static String replaceComputation(String modelJson, String computationFullName, Computation computation) {
-        return addComputation(removeComputation(modelJson, computationFullName), computation);
+        return preserveComputationComments(modelJson, computationFullName,
+                addComputation(removeComputation(modelJson, computationFullName), computation));
+    }
+
+    /**
+     * Carry the old computation's leading {@code ;;} comments onto the rebuilt one — the common
+     * precondition and the first operation (the slots a whole-computation comment lands on; per-alternative
+     * matching across a re-expression is positional and out of scope). Best-effort: any parse hiccup leaves
+     * the rebuilt model as-is.
+     */
+    private static String preserveComputationComments(String oldModel, String fullName, String newModel) {
+        try {
+            ObjectNode oldComp = DmJson.findElement(MAPPER.readTree(oldModel), "Computation", fullName);
+            ObjectNode newRoot = (ObjectNode) MAPPER.readTree(newModel);
+            ObjectNode newComp = DmJson.findElement(newRoot, "Computation", fullName);
+            if (oldComp == null || newComp == null) {
+                return newModel;
+            }
+            JsonNode oldBody = oldComp.path("Computation");
+            ObjectNode newBody = (ObjectNode) newComp.path("Computation");
+            carryLeading(oldBody, newBody, "commonPrecondition");
+            JsonNode oldAlts = oldBody.path("computationAlternatives");
+            JsonNode newAlts = newBody.path("computationAlternatives");
+            if (oldAlts.isArray() && !oldAlts.isEmpty() && newAlts.isArray() && !newAlts.isEmpty()) {
+                carryLeading(oldAlts.get(0), (ObjectNode) newAlts.get(0), "operation");
+            }
+            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(newRoot);
+        } catch (IOException e) {
+            return newModel;
+        }
+    }
+
+    /** Preserve the leading {@code ;;} comment of {@code slot} from {@code oldNode} onto {@code newNode}. */
+    private static void carryLeading(JsonNode oldNode, ObjectNode newNode, String slot) {
+        if (oldNode.hasNonNull(slot) && newNode.hasNonNull(slot)) {
+            newNode.put(slot, Comments.preserveLeading(oldNode.get(slot).asText(), newNode.get(slot).asText()));
+        }
     }
 
     /** Remove the element of {@code type} at {@code fullName} from its group (the shared half of removeRule/removeComputation). */

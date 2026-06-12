@@ -96,6 +96,33 @@ class RuleComputationEditorTest {
     }
 
     @Test
+    void preservesAComputationsLeadingCommentOnModify() {
+        // #37 — the computation peer of #31: a comment authored on the operation survives a re-express
+        // that doesn't restate it (replaceComputation rebuilds the element, so the old slot comment is carried).
+        EditSession s = EditSession.read(Fixtures.subscriptionJson());
+        GroupEditor billing = s.group("/Subscription/Billing");
+        NumberRef baseFee = billing.num("BaseFee");
+        NumberRef effectiveFee = billing.num("EffectiveFee");
+        billing.addComputation(effectiveFee, c -> c.name("EffFeeComp")
+                .comment("effective fee equals the base fee")
+                .calc(baseFee.value()).message(Dsl.en("x"), Dsl.de("x")).build());
+        s.validate();
+        assertTrue(s.toJson().contains(";; effective fee equals the base fee"), "authored on the operation");
+
+        // re-express the formula WITHOUT restating the comment — it rides along
+        s.computation("/Subscription/Billing/EffFeeComp")
+                .modify(m -> m.computation(m.num("/Subscription/Billing/EffectiveFee"))
+                        .name("EffFeeComp")
+                        .calc(NumberLiteral.of("9.99"))
+                        .message(Dsl.en("flat"), Dsl.de("pauschal")).build());
+        s.validate();
+
+        assertTrue(s.toJson().contains("9.99"), "the new formula is applied");
+        assertTrue(s.toJson().contains(";; effective fee equals the base fee"),
+                "the leading comment survives the computation modify (preserve-by-default)");
+    }
+
+    @Test
     void modifiesAComputationsFormulaByHeldReference() {
         EditSession s = EditSession.read(Fixtures.subscriptionJson());
         GroupEditor billing = s.group("/Subscription/Billing");
