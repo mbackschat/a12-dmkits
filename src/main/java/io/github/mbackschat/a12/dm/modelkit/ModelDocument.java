@@ -326,12 +326,32 @@ public final class ModelDocument {
         return this;
     }
 
+    /** Allow (or forbid) short-name field references where unique — the {@code modelConfig} flag. */
+    public ModelDocument setFieldRefByShortNameAllowed(boolean allowed) {
+        modelConfig().put("fieldRefByShortNameAllowed", allowed);
+        return this;
+    }
+
+    /** Set the model base year ({@code modelInfo.baseYear}) — resolves year-less dates / the BaseYear point-in-time. */
+    public ModelDocument setBaseYear(int year) {
+        modelInfo().put("baseYear", String.valueOf(year));
+        return this;
+    }
+
     private ObjectNode modelConfig() {
         JsonNode config = root.path("content").path("modelConfig");
         if (!config.isObject()) {
             throw new IllegalStateException("model has no content.modelConfig object");
         }
         return (ObjectNode) config;
+    }
+
+    private ObjectNode modelInfo() {
+        JsonNode info = root.path("content").path("modelInfo");
+        if (!info.isObject()) {
+            throw new IllegalStateException("model has no content.modelInfo object");
+        }
+        return (ObjectNode) info;
     }
 
     // --- type definitions (content.typeDefinitions) ---------------------------------------------

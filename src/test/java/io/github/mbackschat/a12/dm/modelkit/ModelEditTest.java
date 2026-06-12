@@ -99,4 +99,15 @@ class ModelEditTest {
         ModelDocument doc = subscription().addField("/Subscription", "Tier", FieldKind.STRING);
         assertThrows(ModelConsistencyException.class, doc::validate);
     }
+
+    @Test
+    void setsDocConfigShortNameAllowedAndBaseYear() {
+        ModelDocument doc = subscription()
+                .setFieldRefByShortNameAllowed(false)
+                .setBaseYear(2030)
+                .validate();
+
+        assertFalse(doc.config().fieldRefByShortNameAllowed());
+        assertTrue(doc.toJson().contains("2030"));   // baseYear written (string-valued; no getter on DocConfig)
+    }
 }

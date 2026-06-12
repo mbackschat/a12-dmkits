@@ -149,6 +149,16 @@ public final class EditSession {
         return this;
     }
 
+    public EditSession setFieldRefByShortNameAllowed(boolean allowed) {
+        json = ModelDocument.read(json).setFieldRefByShortNameAllowed(allowed).toJson();
+        return this;
+    }
+
+    public EditSession setBaseYear(int year) {
+        json = ModelDocument.read(json).setBaseYear(year).toJson();
+        return this;
+    }
+
     public EditSession addInclude(String alias, String reference, String parentPath, String name) {
         json = ModelDocument.read(json).addInclude(alias, reference).mount(parentPath, name, alias).toJson();
         return this;
