@@ -1,10 +1,12 @@
 package io.github.mbackschat.a12.dm.edit;
 
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateFragmentRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef;
@@ -15,6 +17,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupReference;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef;
 
@@ -147,6 +150,28 @@ public final class GroupEditor implements GroupReference {
     public GroupEditor addRepeatableGroup(String name, int maxRepetitions, Consumer<GroupEditor> body) {
         session.addRepeatableGroup(location.path(), name, maxRepetitions);
         body.accept(new GroupEditor(session, new GroupRef(child(name), true)));
+        return this;
+    }
+
+    // --- editor-scoped authoring (the builder arrives already scoped to this group) -----------------
+
+    /**
+     * Author a rule scoped to this group: {@code body} receives a {@link Rule.Builder} already scoped here
+     * (no {@code m.rule(group)} boilerplate) and returns the built rule. Chains. This is what lets a
+     * reusable document-part builder take just a {@code GroupEditor} and emit structure <em>and</em> rules.
+     */
+    public GroupEditor addRule(Function<Rule.Builder, Rule> body) {
+        session.addRule(m -> body.apply(m.rule(this)));
+        return this;
+    }
+
+    /**
+     * Author a computation for {@code computed} (a number field of this group, obtained via {@link
+     * #num(String)}): {@code body} receives a {@link Computation.Builder} already scoped to that field
+     * and returns the built computation. Chains.
+     */
+    public GroupEditor addComputation(NumberRef computed, Function<Computation.Builder, Computation> body) {
+        session.addComputation(m -> body.apply(m.computation(computed)));
         return this;
     }
 

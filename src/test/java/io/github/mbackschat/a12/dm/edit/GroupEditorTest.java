@@ -135,6 +135,33 @@ class GroupEditorTest {
     }
 
     @Test
+    void authorsRulesAndComputationsScopedToTheGroup() {
+        EditSession s = EditSession.read(Fixtures.subscriptionJson());
+        GroupEditor billing = s.group("/Subscription/Billing");
+        NumberRef baseFee = billing.num("BaseFee");
+        NumberRef effectiveFee = billing.num("EffectiveFee");
+
+        // editor-scoped rule authoring — the builder is pre-scoped to /Subscription/Billing (no m.rule(group))
+        billing.addRule(r -> r.name("BaseFeeNonNegative")
+                .errorField(baseFee)
+                .when(baseFee.filled().and(baseFee.lt(0)))
+                .code("BASE_FEE_NEGATIVE").severity(Severity.ERROR)
+                .message(Dsl.en("Base fee must not be negative."), Dsl.de("Basisgebühr darf nicht negativ sein."))
+                .build());
+
+        // editor-scoped computation authoring — the builder is pre-scoped to the computed field
+        billing.addComputation(effectiveFee, c -> c.name("EffectiveFeeComp")
+                .calc(baseFee.value())
+                .message(Dsl.en("EffectiveFee equals BaseFee."), Dsl.de("Die effektive Gebühr entspricht der Basisgebühr."))
+                .build());
+
+        s.validate();
+        String json = s.toJson();
+        assertTrue(json.contains("BaseFeeNonNegative"));
+        assertTrue(json.contains("EffectiveFeeComp"));
+    }
+
+    @Test
     void acceptsTheEditorDirectlyAsRuleScope() {
         // the aspirational ergonomic: pass the editor straight into m.rule(...) — it downgrades to its
         // GroupRef internally (the AST still stores only the pure ref). No rulekit → dm.edit dependency:
@@ -154,5 +181,51 @@ class GroupEditorTest {
                 .validate();
 
         assertTrue(ModelDocument.read(s.toJson()).fieldPaths().contains("/Subscription/Addons/Discount"));
+    }
+
+    @Test
+    void composesDocumentPartBuildersWithoutNewMachinery() {
+        // §5c.1: reusable document-part builders are just plain functions (GroupEditor, params) -> refs.
+        // They compose, reuse under different names/groups, and every result passes the one validate() gate
+        // — nothing beyond the editor + flowing refs is needed.
+        EditSession s = EditSession.read(Fixtures.subscriptionJson());
+
+        NumberRef surcharge = money(s.group("/Subscription/Billing"), "Surcharge");  // component #1
+        money(s.group("/Subscription/Addons"), "Tip");                               // reused under another name
+        GroupRef shipping = address(s.group("/Subscription"), "ShippingAddress");     // reusable substructure
+
+        s.validate();
+
+        // the builders return real, usable handles (not strings) — the whole point of refs-as-currency
+        assertEquals("/Subscription/Billing/Surcharge", surcharge.field().path());
+        assertEquals("/Subscription/ShippingAddress", shipping.path());
+
+        ModelDocument result = ModelDocument.read(s.toJson());
+        assertTrue(result.fieldPaths().contains("/Subscription/Billing/Surcharge"));
+        assertTrue(result.fieldPaths().contains("/Subscription/Addons/Tip"));
+        assertTrue(result.groupPaths().contains("/Subscription/ShippingAddress"));
+        assertTrue(result.fieldPaths().contains("/Subscription/ShippingAddress/Street"));
+    }
+
+    /** A configured scale-2 "money" field plus its non-negative rule; returns the ref for further wiring. */
+    private static NumberRef money(GroupEditor g, String name) {
+        g.addField(name, new FieldTypeSpec.NumberSpec(2, null, null));
+        NumberRef f = g.num(name);
+        g.addRule(r -> r.name(name + "NonNegative")
+                .errorField(f)
+                .when(f.filled().and(f.lt(0)))
+                .code(name.toUpperCase() + "_NEGATIVE").severity(Severity.ERROR)
+                .message(Dsl.en(name + " must not be negative."), Dsl.de(name + " darf nicht negativ sein."))
+                .build());
+        return f;
+    }
+
+    /** A reusable address substructure built under {@code name}; returns the group ref. */
+    private static GroupRef address(GroupEditor parent, String name) {
+        parent.addGroup(name, a -> a
+                .addField("Street", FieldKind.STRING)
+                .addField("City", FieldKind.STRING)
+                .addField("PostalCode", FieldKind.STRING));
+        return parent.group(name);
     }
 }
