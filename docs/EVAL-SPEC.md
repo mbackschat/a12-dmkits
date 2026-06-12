@@ -155,6 +155,7 @@ A run's agent count is dominated by the three phases. With `A` authoring tasks, 
 
 | Phase | Agents | Why |
 |---|---|---|
+| **Prep** | `1` | One agent VERIFIES (read-only) the sandbox the operator built with `eval/prep-sandbox.sh`, halting the run if it's absent — so no produce/recheck agent ever names a committed fixture (§8c, *Committed fixtures are never mutated*). |
 | **Produce** | `(A + C) × M × k` | One clean agent per (task, model, run) — the fan-out. |
 | **Recheck** | `1` (or `0` if no authoring candidates) | A **single** agent batches *all* authored candidates through one `cli batch` (the whole point of the `batch` verb — one warm JVM, not one process per candidate). |
 | **Judge** | `Vauth + (C × M × k)` | One judge per **kernel-valid** authoring candidate (`Vauth` ≤ `A × M × k`; an invalid candidate skips its judge — it's already a fail) + one per comprehension run. |
@@ -193,13 +194,13 @@ The run has **three layers**, each with a deliberate role. Getting the layering 
 
 ```
 MAIN LOOP  (you, via the run-rulekit-eval skill)      — orchestration; shares your context
-  · invoke the skill   · ./gradlew :cli:installDist   · bundle tasks → args
+  · invoke the skill   · ./gradlew :cli:installDist   · bash eval/prep-sandbox.sh   · bundle tasks → args
   · estimate cost (§8a)   · fold results → eval/RESULTS.md   · resume / cost-track (session-scoped)
   │
   │   Workflow({ scriptPath: "eval/benchmark.workflow.js", args: { models, k, tasks } })
   ▼
 WORKFLOW  (eval/benchmark.workflow.js)                — fan-out + scoring; ONE allowed level of nesting
-  Produce ──► Recheck (1 batch agent) ──► Judge ──► aggregate pass@k
+  Prep (verify sandbox, read-only) ──► Produce ──► Recheck (1 batch agent) ──► Judge ──► aggregate pass@k
   │
   │   spawns N clean agents — model pinned, neutral prompt, material boundary enforced
   ▼
@@ -216,6 +217,13 @@ CLEAN SUBAGENTS  (the instrument)                     — ISOLATED BY DESIGN (a 
 - The **`Workflow(...)` call is built by the main loop** (you, following the skill) at run time. `scriptPath` just *references* that committed file; `args = {models, k, tasks}` is assembled fresh each run — read `eval/tasks/*/*.json` (recurse the kit folders), trim each task, choose the tiers and `k` (a selective run includes only the affected task objects). You emit the call; the **harness launches it in the background** and the Workflow runtime executes the script, **injecting `args` as a global** — *that* is what spawns the clean subagents (you don't run the JS). On completion the return value (`{agg, …}`) comes back to the main loop to fold into `RESULTS.md`.
 
 This script-vs-`args` split is deliberate: the script is fixed, `args` varies per run — which is exactly what makes **selective runs** (vary `args`, never the script) and **resume** (same script + same `args` ⇒ cache hit) work.
+
+**Committed fixtures are never mutated (the sandbox) — a hard-won guarantee.** The authoring verbs `add`/`computation add` **write in place by default**. A produce agent told to "author X and confirm the kernel accepts it" would reach for `computation add <model> <spec>` — which *persists* into the committed fixture it was handed. This bit the eval **three times**, the worst being a mutated `order.dm.json` (a stray `CoverageWindowComp` + a whole-file reformat) that **slipped into a commit** (de7e593) and then made the `13-coverage-window-daterange` task un-authorable — every recheck of it crashed with a duplicate-child error, scoring a real, fixed capability as 0/k. Two layers now prevent it, structural first:
+
+1. **Sandbox (structural — no compliance needed).** A committed script, **`eval/prep-sandbox.sh`**, mirrors the whole `cli/src/test/resources/models` tree into `/tmp/rk-eval-sandbox` (preserving structure, so a multi-file model's relative `../lib` includes still resolve); the **operator runs it from the main loop alongside `./gradlew :cli:installDist`**. It is a *script*, not an agent step, on purpose: a workflow subagent runs under a restricted permission mode and **cannot be granted approval for a mutating `rm`/`cp`**, so an agent prompted to build the sandbox is non-deterministically denied. Every model path the runner hands an agent then resolves *under the sandbox*, so no agent ever names a committed file — a corrupted, committable fixture is impossible regardless of what an agent runs. The workflow's **Prep phase only verifies** the sandbox is present (read-only `ls`) and **halts the run loudly** if it isn't, so a forgotten prep can never silently score correct candidates as failures.
+2. **Read-only author prompts (defense in depth).** The author prompts steer to read-only confirmation — `check` for a rule, `computation add … --dry-run` for a computation (both validate without writing) — and forbid any persisting verb, exactly as the modify prompts already do. This keeps even the sandbox copy pristine within a run, so the recheck never trips over a sibling run's write.
+
+The lesson generalizes: **a 0/k cell whose candidates look correct is an artifact, not a gap** — read the produced candidates before recording (the bracket-fix re-run's candidates were perfect `DateRange(OrderDate, DeliveryDate)` with the right messages; the 0/k was entirely the fixture corruption). §3 names this discipline; this is its sharpest worked case.
 
 **What crosses each boundary (data flow):**
 

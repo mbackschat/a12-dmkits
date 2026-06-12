@@ -10,10 +10,31 @@ The dated record of self-sufficiency eval runs. **The method, scoring, task suit
 | Add the skill | T1 | multi-attempt / medium-confidence | first-attempt / high-confidence; polarity correct by construction | Opus 4.8 |
 | Genuine transfer (skill) | T2 | — | first-attempt on a structurally-novel shape (no template to copy) | Opus 4.8 |
 | Model tier | T1, T2 | Opus passes | **Sonnet matches Opus** — the skill lift is not tier-dependent | Sonnet |
+| Close the DateRange/locale gaps (tool→catalog→skill) | T13, T14 | 0/3 (the bracket + per-locale-message traps, masked by a fixture artifact) | **3/3 bare-tool *and* production** | Sonnet |
 
 All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 Workflow runner provides **pass@k** across tiers (latest run at the top of the log).
 
 ## Probe log
+
+### 2026-06-12 02:58 CEST — T13/T14 fix confirmed + the fixture-corruption artifact closed (sonnet, k=3, targeted)
+
+Targeted re-run after fixing the two T13 traps the 00:27 baseline surfaced, **tool→catalog→skill** (API-POC finding 21): (1) declared `locales` now ride `config read` + the `doc describe` card so an agent provisions a message per locale; (2) `AUTHORING` bare-ref gotchas on the date-range functions in the catalog; (3) the skill's bracket rule generalized to function args + the `MVK_UNEXPECTED_TOKEN` hint corrected to name *too-many* brackets.
+
+| run | mode | T13 | T14 |
+|---|---|---|---|
+| `wf_d0e55df7` | bare-tool | **3/3** | **3/3** |
+| `wf_69c925f6` | production (`skillPath`) | **3/3** | **3/3** |
+| `wf_86aa9147` | bare-tool, k=1 (new-prep confirm) | — | **1/1** |
+
+**Lift: T13 0/3 → 3/3, T14 0/3 → 3/3** (bare-tool *and* production). Candidates are now bare `DateRange(OrderDate, DeliveryDate)` and computations carrying a message for every declared locale.
+
+**The 00:27 "T13/T14 0/3" was a fixture-corruption artifact, not a gap — root-caused here.** Both tasks' candidates were correct, yet the recheck crashed with `Cannot have two child elements with the same name [CoverageWindowComp]`/`[EffectiveFeeComp]`. Cause: produce agents author against the committed fixture, and the authoring verbs **write in place by default** — so an agent's `computation add <model> <spec>` (no `--dry-run`) injected a computation, leaving a duplicate the recheck then tripped over. Worse, a *prior* run's mutation of `order.dm.json` (a stray `CoverageWindowComp` + a whole-file reformat) had **slipped into a commit** (de7e593, a "docs" commit), making T13 permanently un-recheckable — so a real, *fixed* capability scored 0/k. The earlier `7e7e768` fix only stopped the *recheck* from writing; the *produce* agents still did.
+
+**Harness fix (so it cannot recur):** restored both fixtures (`order.dm.json` to de7e593~1), then made the runner sandbox-safe — [`eval/prep-sandbox.sh`](prep-sandbox.sh) mirrors the models tree into `/tmp/rk-eval-sandbox` (the **operator runs the script**, because a sandboxed subagent can't be granted permission for a mutating `rm`/`cp` — an agent *prompted* to do it was non-deterministically denied), the workflow's Prep phase only **verifies** (read-only) and halts loudly if absent, and the author prompts now steer to read-only confirmation (`check` / `--dry-run`) like the modify prompts. The `wf_86aa9147` k=1 run confirms the script-built sandbox + verify-prep path end to end. EVAL-SPEC §8c, *Committed fixtures are never mutated*.
+
+**Boundary audit (production run `wf_69c925f6`): producers CLEAN** — read only `skill/SKILL.md`, the sandbox model, and their own `/tmp` scratch; no `docs/`/`src/`/`*Test`/other-`*.md`/`eval/tasks` reads. (The `cp` from `adapter/`/`build/` paths the audit shows was the *old* prep agent improvising after its `rm` was denied — eliminated by the script.)
+
+Lesson, recorded: **a 0/k cell whose candidates look correct is an artifact, not a gap — read the produced candidates before recording.** This was its sharpest case.
 
 ### 2026-06-12 00:27 CEST — first baseline on the dmtool target-first surface (sonnet, k=3, full 18, bare-tool)
 

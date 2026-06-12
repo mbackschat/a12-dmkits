@@ -18,6 +18,7 @@ export const meta = {
   name: 'rulekit-self-sufficiency-benchmark',
   description: 'N6 self-sufficiency benchmark — clean agents author/read rules from only the shipped material; pass@k per model',
   phases: [
+    { title: 'Prep', detail: 'mirror the models tree into a /tmp sandbox (committed fixtures stay read-only)' },
     { title: 'Produce', detail: 'clean agent per (model,task,run) — author or explain' },
     { title: 'Recheck', detail: 'one warm-JVM `cli batch` re-validates every authored candidate' },
     { title: 'Judge', detail: 'semantic correctness vs the gold / rubric' },
@@ -33,12 +34,23 @@ const TASKS = A.tasks || []
 log(`benchmark inputs: ${MODELS.length} model(s) [${MODELS}], k=${K}, ${TASKS.length} task(s)`)
 if (TASKS.length === 0) throw new Error('no tasks passed in args.tasks — nothing to benchmark')
 const CLI = 'JAVA_HOME="$(/usr/libexec/java_home -v 21)" cli/build/install/cli/bin/cli'
-// A task names its model by stem (cli/src/test/resources/models/<model>.dm.json) OR carries an explicit
-// `modelPath` (repo-relative) for nested multi-file layouts. `includeDir` (repo-relative) is threaded to
-// every verb as `--include-dir` so the recheck/judge can resolve a multi-file model's includes/typedefs.
-const MODEL_FILE = t => t.modelPath || `cli/src/test/resources/models/${t.model}.dm.json`
-const INCLUDE_ARGS = t => t.includeDir ? ['--include-dir', t.includeDir] : []
-const INCLUDE_HINT = t => t.includeDir ? ` --include-dir ${t.includeDir}` : ''
+// A task names its model by stem (<MODELS_ROOT>/<model>.dm.json) OR carries an explicit `modelPath`
+// (repo-relative) for nested multi-file layouts. `includeDir` (repo-relative) is threaded to every verb
+// as `--include-dir` so the recheck/judge can resolve a multi-file model's includes/typedefs.
+//
+// SANDBOX — committed fixtures are NEVER mutated. The authoring verbs (`add`/`computation add`) write IN
+// PLACE by default, so an agent pointed at a committed fixture can corrupt it — it has, repeatedly, even
+// slipping a mutated order.dm.json into a commit. So the Prep phase mirrors the whole models tree into a
+// /tmp sandbox and every path below resolves THERE: no agent ever names a committed file. The mirror keeps
+// the tree structure, so a multi-file model's relative `../lib` includes still resolve. Read-only verbs and
+// `--dry-run` validation are unaffected; the author prompts also steer to read-only confirmation.
+const MODELS_ROOT = 'cli/src/test/resources/models'
+const SANDBOX = '/tmp/rk-eval-sandbox'
+const sandboxed = p => p.startsWith(MODELS_ROOT) ? SANDBOX + p.slice(MODELS_ROOT.length) : p
+const SRC_MODEL = t => t.modelPath || `${MODELS_ROOT}/${t.model}.dm.json`
+const MODEL_FILE = t => sandboxed(SRC_MODEL(t))
+const INCLUDE_ARGS = t => t.includeDir ? ['--include-dir', sandboxed(t.includeDir)] : []
+const INCLUDE_HINT = t => t.includeDir ? ` --include-dir ${sandboxed(t.includeDir)}` : ''
 
 // Run-mode (EVAL-SPEC §2a). Bare-tool is the DEFAULT instrument (and the only one CI/historical runs use).
 // PRODUCTION mode is opt-in and gives every PRODUCER agent the N1 skill, two ways:
@@ -93,7 +105,8 @@ function authorPrompt(task) {
   - the CLI:  ${CLI} <args>   (it is self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <target> <op> --help\` shows an op's parameters, \`${CLI} operators\` lists the DSL operators and \`${CLI} operators <id>\` gives one in full)
   - the model file: ${MODEL_FILE(task)}${multifile}${skillBlock()}
 Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). Requirement to enforce: "${task.intent}".
-Author the rule and CONFIRM the kernel accepts it via the CLI. Return ONLY JSON — and note that "field" is
+Author the rule and CONFIRM the kernel accepts it with the read-only check verb (it validates a candidate
+WITHOUT writing) — do NOT run any verb that persists/writes the model file. Return ONLY JSON — and note that "field" is
 the error field's path INSIDE the model (e.g. /Group/Field), NOT the model FILE path you pass on the command line:
   {"field":"<the error field's path inside the model>","condition":"<DSL>","code":"<ID>","kernelAccepted":true|false}`
 }
@@ -131,7 +144,8 @@ from other fields, rather than validating one. Assume NO prior A12/rulekit knowl
   - the CLI:  ${CLI} <args>   (it is self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <target> <op> --help\` shows an op's parameters, \`${CLI} schema computation add\` shows the input shapes, \`${CLI} operators\` lists the DSL operators and \`${CLI} operators <id>\` gives one in full)
   - the model file: ${MODEL_FILE(task)}${skillBlock()}
 Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). Requirement to implement: "${task.intent}".
-Author the computation and CONFIRM the kernel accepts it via the CLI. Return ONLY JSON:
+Author the computation and CONFIRM the kernel accepts it by PREVIEWING with \`--dry-run\` (it writes NOTHING) —
+do NOT run any verb that persists/writes the model file. Return ONLY JSON:
   {"computedField":"<the computed field's path inside the model, e.g. /Group/Field — NOT the model FILE path>","commonPrecondition":"<DSL or omit>","alternatives":[{"precondition":"<DSL or omit>","operation":"<DSL value expression>"}],"messages":[{"locale":"<code>","text":"..."}],"kernelAccepted":true|false}`
 }
 
@@ -176,6 +190,24 @@ const EXPLAIN_SCHEMA = {
   type: 'object', additionalProperties: true,
   properties: { explanations: { type: 'object', additionalProperties: true } },
   required: ['explanations'],
+}
+
+// ---- Prep: VERIFY the model sandbox (committed fixtures stay read-only) ----------------------------
+// The COPY is done by eval/prep-sandbox.sh, which the operator runs from the main loop alongside
+// `:cli:installDist` — NOT by an agent. A workflow subagent runs under a restricted permission mode and
+// cannot be granted approval for a mutating setup command (`rm`/`cp`), so prompting one to build the sandbox
+// is non-deterministically denied. This phase only CONFIRMS the sandbox is present (read-only `ls`) and
+// HALTS loudly if not, so a forgotten prep can never silently score correct candidates as failures.
+phase('Prep')
+const prep = await agent(
+  `Verify the benchmark's model sandbox exists — READ-ONLY, do NOT create anything. Run exactly:  ls ${SANDBOX}
+It must list the model files (e.g. order.dm.json, subscription.dm.json). Report whether the sandbox is ready.`,
+  { label: 'verify sandbox', phase: 'Prep',
+    schema: { type: 'object', additionalProperties: false, required: ['ready'],
+      properties: { ready: { type: 'boolean' }, detail: { type: 'string' } } } })
+if (!prep || prep.ready !== true) {
+  throw new Error(`model sandbox ${SANDBOX} is not ready — run \`bash eval/prep-sandbox.sh\` from the repo `
+    + `root before launching (EVAL-SPEC §8c). Detail: ${(prep && prep.detail) || 'no report'}`)
 }
 
 // ---- Produce: one clean agent per (model, task, run); model pinned for reproducibility ------------
