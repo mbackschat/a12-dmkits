@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
@@ -64,5 +65,26 @@ class RuleComputationEditorTest {
         comp.remove();
         s.validate();
         assertFalse(s.toJson().contains("EffFeeComp"));
+    }
+
+    @Test
+    void modifiesAComputationsFormulaByHeldReference() {
+        EditSession s = EditSession.read(Fixtures.subscriptionJson());
+        GroupEditor billing = s.group("/Subscription/Billing");
+        NumberRef baseFee = billing.num("BaseFee");
+        NumberRef effectiveFee = billing.num("EffectiveFee");
+        billing.addComputation(effectiveFee, c -> c.name("EffFeeComp")
+                .calc(baseFee.value()).message(Dsl.en("equals base"), Dsl.de("entspricht Basis")).build());
+        s.validate();
+
+        // re-express the formula via the TYPED builder, by held reference (mirrors RuleEditor.modify)
+        s.computation("/Subscription/Billing/EffFeeComp")
+                .modify(m -> m.computation(m.num("/Subscription/Billing/EffectiveFee"))
+                        .name("EffFeeComp")
+                        .calc(NumberLiteral.of("7.77"))
+                        .message(Dsl.en("flat fee"), Dsl.de("Pauschale")).build());
+        s.validate();
+
+        assertTrue(s.toJson().contains("7.77"));   // the re-expressed formula is in the model
     }
 }

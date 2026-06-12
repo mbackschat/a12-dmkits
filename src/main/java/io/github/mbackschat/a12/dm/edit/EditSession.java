@@ -236,6 +236,17 @@ public final class EditSession {
         return this;
     }
 
+    /**
+     * Re-express the computation at {@code computationFullName} via the typed DSL builder — the mirror of
+     * {@link #modifyRule(String, Function)}; {@code builder} authors against the current model and the
+     * result re-binds through the kernel gate as it applies.
+     */
+    public EditSession modifyComputation(String computationFullName, Function<BoundModel, Computation> builder) {
+        BoundModel m = boundModel();
+        json = m.replaceComputation(computationFullName, builder.apply(m)).toJson();
+        return this;
+    }
+
     public EditSession removeRule(String ruleFullName) {
         json = boundModel().removeRule(ruleFullName).toJson();
         return this;
