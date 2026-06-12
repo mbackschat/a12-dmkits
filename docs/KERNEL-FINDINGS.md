@@ -168,6 +168,14 @@ Two raw-DSL forms the grammar carries outside the operator surface (productions 
 
 *(Locked: `validate.laws.DirectiveLawsTest`.)*
 
+## Condition comments — `;;` line comments are concrete syntax: tolerated, but re-render-lossy (grammar + 2026-06-12)
+
+The condition lexer defines comments — `Base_ConditionLexer.Comment: ';;' ~('\r'|'\n')* …` — so `;;` begins a **line comment** (continued across lines that each restart with `;;`), parsed *around* a `teilBedingung` (GRAMMAR-LEDGER). So the kernel **validates a commented condition** — comments are read-tolerated; rulekit authors none (GRAMMAR-LEDGER). But a comment is **concrete syntax not carried in the parsed AST**: the kernel ships `ConditionFormatter.stripComments` to remove it, and rulekit's typed AST stores none.
+
+Consequence — the **#3 lossiness**: an AST-based read → re-render **drops** the comment (and any non-canonical formatting). rulekit makes the loss **explicit, never silent**: `KernelAdapter.diff` compares the rule's raw text to its comment-stripped form and, when they differ, attaches the note *"the source rule's comments/formatting are not preserved by re-rendering"* to the `RenderedDiff`. A rule you don't modify keeps its text verbatim (edits are surgical on the DM-JSON); the loss materializes only on write-back of a re-expressed condition. The concrete-syntax-preserving (minimal-edit) re-render that *would* keep comments is the parked Phase-5 residual (proposal §16).
+
+*(Locked: `adapter.ConditionCommentLossinessTest` — the kernel validates a `;;`-commented rule, it reads as `Converted`, and the re-render drops the comment with the lossiness disclosed. rulekit treatment: KERNEL-INTEGRATION-NOTES "Lossy on concrete syntax"; kernel API: KERNEL-RULE-API-SURVEY `stripComments`.)*
+
 ## §6 supplement — the date family (corpus item 9 slice 9a, 2026-06-04 experiments)
 
 `Today` (DE `Heute`), `DifferenceInDays|Months|Years` (DE `DifferenzIn{Tagen,Monaten,Jahren}`), `AddDays|Months|Years` (DE `Addiere{Tage,Monate,Jahre}`):
