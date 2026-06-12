@@ -28,7 +28,7 @@ class ManifestVerbTest {
             "rule check", "rule read", "rule explain", "rule add", "rule modify", "rule remove", "rule rename",
             "computation add", "computation read", "computation explain", "computation modify", "computation remove",
             "field add", "field read", "field remove", "field rename",
-            "group add", "group read", "group remove", "group rename",
+            "group add", "group read", "group remove", "group rename", "group extract",
             "typedef add", "typedef read", "typedef remove", "typedef rename", "typedef extract", "typedef inline",
             "include add", "include read", "include remove",
             "config read", "config modify",

@@ -39,6 +39,7 @@ group add
 group read
 group remove
 group rename
+group extract
 typedef add
 typedef read
 typedef remove

@@ -110,6 +110,57 @@ final class SafetyChecks {
         };
     }
 
+    /**
+     * Refuse extracting a <b>repeatable</b> group as an include — the kernel requires an include's root
+     * group to be single and non-repeatable (RK_REPEATABLE_INCLUDE_ROOT).
+     */
+    static SafetyCheck includableAsRoot(ModelDocument doc, String groupPath) {
+        return () -> {
+            if (!doc.isRepeating(groupPath)) {
+                return Optional.empty();
+            }
+            Diagnostic diagnostic = Diagnostic.precheck(Optional.of("RK_REPEATABLE_INCLUDE_ROOT"),
+                    groupPath + " is repeatable; an include's root group must be single and non-repeatable",
+                    Diagnostic.Where.path(groupPath),
+                    Optional.of("extract a non-repeatable group, or make this group non-repeatable first"),
+                    Optional.empty());
+            return Optional.of(new Refusal(groupPath + " is repeatable — cannot be an include root", null, diagnostic));
+        };
+    }
+
+    /**
+     * Refuse extracting a group whose subtree contains a rule referencing a field <b>outside</b> the
+     * subtree — that rule can't move into a standalone sub-model (it wouldn't see the field). Rules whose
+     * references stay inside travel fine. References pointing <em>into</em> the subtree from outside are
+     * unaffected (the mount preserves the path), so they don't block. RK_OUTWARD_REFERENCE.
+     */
+    static SafetyCheck subtreeSelfContained(KernelAdapter adapter, String groupPath) {
+        return () -> {
+            String inside = groupPath + "/";
+            Set<String> escaping = new TreeSet<>();
+            for (String rule : adapter.ruleFullNames()) {
+                if (!rule.startsWith(inside)) {
+                    continue;   // only rules that would move into the sub-model
+                }
+                if (adapter.referencedFields(rule).stream().anyMatch(field -> !field.startsWith(inside))) {
+                    escaping.add(rule);
+                }
+            }
+            if (escaping.isEmpty()) {
+                return Optional.empty();
+            }
+            ObjectNode data = MAPPER.createObjectNode();
+            ArrayNode array = data.putArray("escapingRules");
+            escaping.forEach(array::add);
+            Diagnostic diagnostic = Diagnostic.precheck(Optional.of("RK_OUTWARD_REFERENCE"),
+                    "the subtree has " + escaping.size() + " rule(s) referencing fields outside it; they cannot move into a standalone sub-model",
+                    Diagnostic.Where.path(groupPath),
+                    Optional.of("move those rules out of the subtree, or extract a larger group that contains what they reference"),
+                    Optional.empty());
+            return Optional.of(new Refusal(groupPath + " has outward references — refusing to extract", data, diagnostic));
+        };
+    }
+
     /** The RK_NAME_EXISTS refusal: a rename whose chosen new name/id is already taken (the collision gate). */
     static Refusal nameExists(String name, String kind, String fix) {
         Diagnostic diagnostic = Diagnostic.precheck(Optional.of("RK_NAME_EXISTS"),

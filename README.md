@@ -271,6 +271,8 @@ dmtool -m order.dm.json typedef rename Currency --to Money
 dmtool -m order.dm.json typedef extract --from /Order/Price,/Order/Cost --id Money   # inverse: typedef inline Money
 # field/group/rule rename refuse if the element is referenced (references aren't rewritten — that engine is parked):
 dmtool -m order.dm.json field rename /Order/Quantity --to Qty
+# extract a subtree into a reusable sub-model, re-mounted at the same name (paths preserved → references survive):
+dmtool -m order.dm.json group extract /Order/BillingAddress --reference billing-address
 
 # Deleting a referenced field is REFUSED with a clear diagnostic that names the referrers …
 dmtool -m order.dm.json field remove /Order/DeliveryDate

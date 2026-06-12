@@ -2,7 +2,7 @@
 
 The component spec for the standalone CLI (N10). The proposal's [§14/§16](PROJECT-PROPOSAL.md) state intent; [`ARCHITECTURE.md`](ARCHITECTURE.md) places it among the subprojects; this spec holds the design — the **op model**, the **verb surface**, the **diagnostics contract**, the dev/test workflow, sizing, and packaging. Per-verb implementation status lives on the [`API-POC-STUDY.md` §9](API-POC-STUDY.md) board; runnable demos in [`CLI-TOUR-SPEC.md`](CLI-TOUR-SPEC.md) ↔ [`../examples/`](../examples/).
 
-> **Status.** This spec is the **target surface** — binary `dmtool`, target-first verbs (`dmtool -m <model> <target> <op>`), and the uniform result envelope (§3). The verb-first surface is mid-migration: the legacy names still resolve as hidden aliases until the flip completes (per-verb status on the §9 board). The structural refactor ops (§6) have **shipped, safety-gated** — `typedef rename`/`extract`/`inline` and `field`/`group`/`rule rename` (refuse-if-referenced); only the reference-*rewriting* rename and `move` remain deferred.
+> **Status.** This spec is the **target surface** — binary `dmtool`, target-first verbs (`dmtool -m <model> <target> <op>`), and the uniform result envelope (§3). The verb-first surface is mid-migration: the legacy names still resolve as hidden aliases until the flip completes (per-verb status on the §9 board). The structural refactor ops (§6) have **shipped, safety-gated** — `typedef rename`/`extract`/`inline`, `field`/`group`/`rule rename` (refuse-if-referenced), and `group extract` (group→include); only the reference-*rewriting* rename, `move`, and `include inline` (the extract inverse) remain deferred.
 
 ## 1. Purpose & persona
 
@@ -120,7 +120,7 @@ Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ 
 | `rule` | `add <spec> · read · explain · check · modify --condition · remove · rename` | rulekit |
 | `computation` | `add <spec> · read · explain · modify --spec · remove` | rulekit |
 | `field` | `add · read · remove · rename` | modelkit |
-| `group` | `add · read · remove · rename` *(move → §6, deferred)* | modelkit |
+| `group` | `add · read · remove · rename · extract` *(extract = group→include refactor, §6; move deferred)* | modelkit |
 | `typedef` | `add · read · remove · rename · extract · inline` *(rename/extract/inline = Tier-1 structural refactors, §6)* | modelkit |
 | `include` | `add · read · remove` | modelkit |
 | `config` | `read · modify` | modelkit |
@@ -160,7 +160,7 @@ Classify every op by **blast radius** — this is the standing rule for adding o
 |---|---|---|---|
 | **Local** | add · read · modify · remove-leaf | one element only | plain surgery, gate at end |
 | **Cascading** | remove-referenced | element + *deletes* dependents | the `where-used` refuse-or-`--cascade` gate |
-| **Refactor** | **rename** (field/group/rule/typedef, *refuse-if-referenced* ✅) · **extract/inline typedef** ✅ · **move** + **rename-with-reference-rewrite** *(deferred)* | safe forms touch one element and repoint structural pointers (a typedef); the deferred form rewrites the element **and all condition references** atomically → valid→valid | safe forms: the **safety gate** (✅, this §); deferred form: a `where-used`-driven, AST-level reference rewrite |
+| **Refactor** | **rename** (field/group/rule/typedef, *refuse-if-referenced* ✅) · **extract/inline typedef** ✅ · **extract group→include** ✅ · **move** + **rename-with-reference-rewrite** + **inline include** *(deferred)* | safe forms touch one element, repoint structural pointers (typedef), or lift a subtree to a same-name mount (paths preserved); the deferred rewrite form rewrites the element **and all condition references** atomically → valid→valid | safe forms: the **safety gate** (✅, this §); deferred form: a `where-used`-driven, AST-level reference rewrite |
 
 ### The refactor safety gate — *check before you change* (standing principle, every refactor, now and future)
 
@@ -176,7 +176,7 @@ This generalizes the safe-delete gate below to the whole Refactor class. Each re
 |---|---|
 | **remove** (referenced) | anything still references the target → refuse, list referrers (`RK_REFERENCED`), or proceed only on explicit `--cascade` |
 | **rename / move** | a referrer is `Opaque` (un-rewritable) → refuse, name it; (move) the destination path would collide with an existing element |
-| **extract group → include** | a rule inside the subtree references **outside** it; the group is **repeatable** (kernel: an include's root must be a single, non-repeatable group); a parent rule referencing into the subtree wouldn't round-trip → refuse, name the offender |
+| **extract group → include** | a rule inside the subtree references **outside** it (`RK_OUTWARD_REFERENCE`, names the rules); the group is **repeatable** (`RK_REPEATABLE_INCLUDE_ROOT` — an include's root must be a single, non-repeatable group) → refuse. (A rule *outside* referencing *into* the subtree is fine — the mount preserves the path; verified.) |
 
 **Two obligations on every refactor — non-negotiable:**
 

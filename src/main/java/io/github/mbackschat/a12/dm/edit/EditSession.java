@@ -185,6 +185,18 @@ public final class EditSession {
         return editStructure(d -> d.removeInclude(alias));
     }
 
+    /**
+     * Extract the group at {@code groupPath} into a standalone sub-model (returned as DM-JSON), replacing it
+     * in this session's model with a mount at the same name (task #7). The session now holds the slimmed
+     * base; validating it needs a resolver that serves the returned sub-model under id {@code reference}.
+     */
+    public String extractGroupAsInclude(String groupPath, String reference) {
+        ModelDocument doc = ModelDocument.read(json);
+        String subModel = doc.extractGroupAsInclude(groupPath, reference);
+        json = doc.toJson();
+        return subModel;
+    }
+
     public EditSession setIncludeReference(String alias, String newReference) {
         return editStructure(d -> d.setIncludeReference(alias, newReference));
     }

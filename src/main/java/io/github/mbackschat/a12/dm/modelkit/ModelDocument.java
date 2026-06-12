@@ -636,6 +636,45 @@ public final class ModelDocument {
         return this;
     }
 
+    /**
+     * Extract the group at {@code groupPath} into a standalone sub-model — returned as DM-JSON — and
+     * replace it in <em>this</em> base with a <b>mount</b> of that sub-model at the same name, so every
+     * composed path is preserved (task #7, a Tier-3 structural refactor). The sub-model reuses the base's
+     * envelope (locales, config) with header id {@code reference} and a single root group = the extracted
+     * subtree rebased to {@code /<name>}; the base gains the {@code modelReference} + {@code modelAlias}
+     * mount. Rules inside the subtree travel into the sub-model (they reference relatively). A rule inside
+     * the subtree that references <em>outside</em> it, or a repeatable group, is the caller's gate to
+     * refuse (the kernel re-validate of the composed pair is the backstop). Fails fast if the group is absent.
+     */
+    public String extractGroupAsInclude(String groupPath, String reference) {
+        JsonNode group = locate(groupPath, true);
+        if (group == null) {
+            throw new IllegalArgumentException("no group at: " + groupPath);
+        }
+        String mountName = group.path("name").asText();
+
+        // the sub-model: the base envelope, its own id, no inherited includes, one root = the rebased subtree.
+        ObjectNode sub = root.deepCopy();
+        ObjectNode subHeader = (ObjectNode) sub.path("header");
+        subHeader.put("id", reference);
+        subHeader.putArray("modelReferences");   // empty (not absent — the kernel expects a list), no inherited includes
+        ObjectNode subGroup = group.deepCopy();
+        reprefixIds(subGroup, groupPath, "/" + mountName);
+        ((ObjectNode) sub.path("content").path("modelRoot")).putArray("rootGroups").add(subGroup);
+        String subModelJson;
+        try {
+            subModelJson = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(sub);
+        } catch (JsonProcessingException e) {
+            throw new UncheckedIOException(new IOException("failed to serialize the extracted sub-model", e));
+        }
+
+        // the base: drop the group, declare the reference, mount it at the same name (path preserved).
+        removeGroup(groupPath);
+        addInclude(reference, reference);
+        mount(groupPath.substring(0, groupPath.lastIndexOf('/')), mountName, reference);
+        return subModelJson;
+    }
+
     /** Every mount-group path that mounts the include aliased {@code alias} ({@code modelAlias}), in document order (task #2). */
     public List<String> mountsOfInclude(String alias) {
         List<String> out = new ArrayList<>();

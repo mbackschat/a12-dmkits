@@ -584,6 +584,50 @@ bin/dmtool -m /tmp/struct2-rn.json field rename /Order/Quantity --to Qty
 
 → `group rename` extends the same gate to a whole **subtree** — it refuses if any descendant (a child field, not just the group itself) is referenced from outside, so it can never silently orphan a rule; rules *inside* the renamed group travel with it. `rule rename` is collision-gated only (nothing references a rule). The reference-*rewriting* rename — rewrite every referrer in place — remains the parked Phase-4 engine (CLI-SPEC §6).
 
+## extract — group → include (Tier-3 refactor, path-preserving)
+
+`group extract <path> --reference <id>` lifts a subtree into its own sub-model and re-mounts it **at the same name**, so every path is preserved — references into the subtree keep resolving, and it dodges the parked reference-rewrite engine entirely. It writes **two** files: the slimmed base and `<reference>.dm.json` beside it. On `order-aggregates` (which has a `/Order/BillingAddress` subgroup with its own rule):
+
+```bash
+mkdir -p /tmp/struct2-ext && cp cli/src/test/resources/models/order-aggregates.dm.json /tmp/struct2-ext/order.dm.json && echo "ready: order-aggregates in /tmp/struct2-ext"
+```
+
+```output
+ready: order-aggregates in /tmp/struct2-ext
+```
+
+```bash
+bin/dmtool -m /tmp/struct2-ext/order.dm.json group extract /Order/BillingAddress --reference billing-address | jq -c '{outcome, ok, changed: {extracted: .changed.extracted, reference: .changed.reference, mountedAt: .changed.mountedAt}}'
+```
+
+```output
+{"outcome":"applied","ok":true,"changed":{"extracted":"/Order/BillingAddress","reference":"billing-address","mountedAt":"/Order/BillingAddress"}}
+```
+
+→ the subtree (and its own rule) moved into `billing-address.dm.json`; the base now **mounts** it at the same path. Two files, the base slimmed to a `modelAlias`:
+
+```bash
+ls /tmp/struct2-ext && jq -c '[.. | objects | select(has("modelAlias")) | .modelAlias]' /tmp/struct2-ext/order.dm.json
+```
+
+```output
+billing-address.dm.json
+order.dm.json
+["billing-address"]
+```
+
+The composed pair re-validates through the real kernel — the base resolves the sub-model by id from the same directory (and the gate already re-validated *before* writing, so a bad split never reaches disk):
+
+```bash
+bin/dmtool -m /tmp/struct2-ext/order.dm.json doc validate | jq -c '{valid}'
+```
+
+```output
+{"valid":true}
+```
+
+→ The gate refuses what can't extract cleanly: a **repeatable** group (`RK_REPEATABLE_INCLUDE_ROOT`) and a subtree whose rule references **outside** it (`RK_OUTWARD_REFERENCE`). A rule *outside* the subtree pointing *in* is fine — the mount preserves the path. The inverse (`include inline`) is the deferred tail.
+
 ## include — mount another model's content
 
 An include declares a reference to another model (`--alias` → `--reference`) and mounts its content as a group (`--name`) under `--parent`. The referenced model is resolved by its header id from `--include-dir`. We stage a `/tmp` copy of `subscription` plus a tiny library directory holding the committed `catalog` model:
