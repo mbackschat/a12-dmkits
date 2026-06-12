@@ -513,9 +513,9 @@ bin/dmtool -m /tmp/struct2-tdx.json typedef inline Money
 
 → `changed.expandedFields` got their inline `NUMBER` type back and `Money` is gone — extract and inline round-trip.
 
-## rename — Tier-2 safe rename (the refuse-if-referenced gate)
+## rename — Tier-2 reference-preserving rename
 
-`field | group | rule rename <path> --to <newName>` renames an element's declaration. References are **not** rewritten (that engine is parked), so the safety gate (CLI-SPEC §6) **refuses** a rename that would dangle a referrer — you stay in control. On `order-ruled` (whose `DeliveryNotBeforeOrder` rule references `/Order/DeliveryDate`):
+`field | group | rule rename <path> --to <newName>` renames an element's declaration **and rewrites every reference to it** — rule conditions, error texts, computations — via the kernel's own `MoveSupportDM` (FEATURE-GAPS-PROPOSAL §3.1), then re-validates. So a *referenced* field renames cleanly; the gate refuses only a **name collision** (`RK_NAME_EXISTS`). On `order-ruled` (whose `DeliveryNotBeforeOrder` rule references `/Order/DeliveryDate`):
 
 ```bash
 cp cli/src/test/resources/models/order-ruled.dm.json /tmp/struct2-rn.json && echo "copied order-ruled → /tmp/struct2-rn.json"
@@ -525,64 +525,38 @@ cp cli/src/test/resources/models/order-ruled.dm.json /tmp/struct2-rn.json && ech
 copied order-ruled → /tmp/struct2-rn.json
 ```
 
-Renaming the **referenced** field is refused (`RK_REFERENCED`, exit 2, nothing written) — the referrers are named so you can act:
+Renaming the **referenced** field rewrites the referrer and stays valid — `changed.rewroteReferences` names what followed the rename:
 
 ```bash
-bin/dmtool -m /tmp/struct2-rn.json field rename /Order/DeliveryDate --to ShipDate >/tmp/rn1.json 2>&1; echo "(exit $?)"; cat /tmp/rn1.json
+bin/dmtool -m /tmp/struct2-rn.json field rename /Order/DeliveryDate --to ShipDate | jq -c '{outcome, ok, changed}'
+```
+
+```output
+{"outcome":"applied","ok":true,"changed":{"renamed":"/Order/DeliveryDate","to":"/Order/ShipDate","rewroteReferences":["/Order/DeliveryNotBeforeOrder"]}}
+```
+
+The `DeliveryNotBeforeOrder` condition now reads `/Order/ShipDate` where it read `/Order/DeliveryDate`, so the model still validates — a true reference-preserving rename, not a refusal:
+
+```bash
+bin/dmtool -m /tmp/struct2-rn.json doc validate | jq -c '{valid}'
+```
+
+```output
+{"valid":true}
+```
+
+A name **collision** is still refused (the gate's one remaining block) — `RK_NAME_EXISTS`, exit 2, nothing written:
+
+```bash
+bin/dmtool -m /tmp/struct2-rn.json field rename /Order/Quantity --to OrderDate >/tmp/rn-coll.json 2>&1; echo "(exit $?)"; jq -c '{outcome, code: .diagnostics[0].code, fix: .diagnostics[0].fix}' /tmp/rn-coll.json
 ```
 
 ```output
 (exit 2)
-{
-  "target" : "field",
-  "op" : "rename",
-  "outcome" : "refused",
-  "ok" : false,
-  "summary" : "/Order/DeliveryDate is referenced — refusing to rename",
-  "data" : {
-    "referencedBy" : {
-      "rules" : [ "/Order/DeliveryNotBeforeOrder" ],
-      "computations" : [ ]
-    }
-  },
-  "diagnostics" : [ {
-    "severity" : "ERROR",
-    "source" : "PRECHECK",
-    "code" : "RK_REFERENCED",
-    "summary" : "/Order/DeliveryDate is referenced by 1 element(s); renaming it would dangle them",
-    "where" : {
-      "path" : "/Order/DeliveryDate"
-    },
-    "fix" : "rename the referrers first, or leave the field's name as is"
-  } ],
-  "written" : false
-}
+{"outcome":"refused","code":"RK_NAME_EXISTS","fix":"choose a name not already used by a sibling, or rename/remove the existing one first"}
 ```
 
-An **unreferenced** field renames cleanly:
-
-```bash
-bin/dmtool -m /tmp/struct2-rn.json field rename /Order/Quantity --to Qty
-```
-
-```output
-{
-  "target" : "field",
-  "op" : "rename",
-  "outcome" : "applied",
-  "ok" : true,
-  "summary" : "renamed /Order/Quantity to /Order/Qty",
-  "changed" : {
-    "renamed" : "/Order/Quantity",
-    "to" : "/Order/Qty"
-  },
-  "diagnostics" : [ ],
-  "written" : true,
-  "output" : "/tmp/struct2-rn.json"
-}
-```
-
-→ `group rename` extends the same gate to a whole **subtree** — it refuses if any descendant (a child field, not just the group itself) is referenced from outside, so it can never silently orphan a rule; rules *inside* the renamed group travel with it. `rule rename` is collision-gated only (nothing references a rule). The reference-*rewriting* rename — rewrite every referrer in place — remains the parked Phase-4 engine (CLI-SPEC §6).
+→ `group rename` re-homes the whole subtree **and** rewrites references into it from outside (starred references like `Sum(Items*/Amount)` follow too — KERNEL-FINDINGS §10); `rule rename` is collision-only (nothing references a rule). The rewriting engine is the kernel's `MoveSupportDM`, wrapped at the adapter boundary (`ReferenceRewriter`). Only **`move`** (relocate to a different parent) remains deferred.
 
 ## extract — group → include (Tier-3 refactor, path-preserving)
 

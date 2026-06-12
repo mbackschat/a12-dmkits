@@ -56,9 +56,8 @@ class SafetyGateTest {
     }
 
     @Test
-    void notReferencedRefusesAReferencedTargetAndPassesAFreeOne() {
-        // a tiny adapter-free check: notReferenced is integration-covered by the remove verb tests;
-        // here we only confirm the Diagnostic source/severity contract the gate emits.
+    void referencedByEmitsAPrecheckErrorDiagnostic() {
+        // the safe-delete reference gate's contract (its end-to-end use is covered by the remove verb tests).
         Diagnostic d = SafetyChecks.referencedBy("/X", Set.of("/R"), Set.of(), "do Y").diagnostic();
         assertEquals(io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource.PRECHECK, d.source());
         assertEquals(com.mgmtp.a12.model.notification.Severity.ERROR, d.severity());

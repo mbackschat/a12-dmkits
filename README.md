@@ -269,8 +269,8 @@ dmtool -m order.dm.json typedef add … ; dmtool -m order.dm.json config modify 
 # Refactor — structural & safety-gated. typedef rename repoints every using field; extract factors shared-type fields out:
 dmtool -m order.dm.json typedef rename Currency --to Money
 dmtool -m order.dm.json typedef extract --from /Order/Price,/Order/Cost --id Money   # inverse: typedef inline Money
-# field/group/rule rename refuse if the element is referenced (references aren't rewritten — that engine is parked):
-dmtool -m order.dm.json field rename /Order/Quantity --to Qty
+# field/group/rule rename rewrites every reference to the element (via the kernel's MoveSupportDM), then re-validates:
+dmtool -m order.dm.json field rename /Order/DeliveryDate --to ShipDate
 # extract a subtree into a reusable sub-model, re-mounted at the same name (paths preserved → references survive):
 dmtool -m order.dm.json group extract /Order/BillingAddress --reference billing-address
 dmtool -m order.dm.json include inline billing-address   # the inverse: fold the sub-model back in

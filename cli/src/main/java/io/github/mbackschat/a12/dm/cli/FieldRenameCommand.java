@@ -3,13 +3,18 @@ package io.github.mbackschat.a12.dm.cli;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.adapter.ReferenceRewriter;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import picocli.CommandLine.Command;
@@ -56,19 +61,25 @@ final class FieldRenameCommand extends BaseCommand {
         String newPath = field.substring(0, field.lastIndexOf('/') + 1) + newName;
         IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
 
+        // gate: only a name collision blocks now — referrers are rewritten, not refused (CLI-SPEC §6).
         Optional<Refusal> refusal = new SafetyGate()
                 .require(SafetyChecks.pathAvailable(doc, newPath))
-                .require(SafetyChecks.notReferenced(KernelAdapter.ofJson(modelJson, resolver), field,
-                        "rename the referrers first, or leave the field's name as is"))
                 .firstFailure();
         if (refusal.isPresent()) {
             return refuse("field", "rename", refusal.get());
         }
 
+        KernelAdapter adapter = KernelAdapter.ofJson(modelJson, resolver);
+        Set<String> rewroteReferences = new TreeSet<>(adapter.whereUsed(field));
+        rewroteReferences.addAll(adapter.whereUsedInComputations(field));
+
         String resultJson;
         try {
-            doc.renameField(field, newName);
-            resultJson = doc.validate(resolver).toJson();
+            // rewrite every referrer to the new path (kernel MoveSupportDM), then rename the declaration.
+            ModelDocument renamed = ModelDocument.read(
+                    ReferenceRewriter.rewriteReferences(modelJson, Map.of(field, newPath)));
+            renamed.renameField(field, newName);
+            resultJson = renamed.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("field", "rename", "rename left the model invalid", e);
         } catch (RuntimeException e) {
@@ -77,6 +88,8 @@ final class FieldRenameCommand extends BaseCommand {
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("renamed", field);
         changed.put("to", newPath);
+        ArrayNode refs = changed.putArray("rewroteReferences");
+        rewroteReferences.forEach(refs::add);
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("field", "rename",
                     "would rename " + field + " to " + newPath, changed);

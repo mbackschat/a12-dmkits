@@ -57,14 +57,19 @@ class RenameVerbTest {
     }
 
     @Test
-    void refusesRenamingAReferencedField(@TempDir Path dir) throws Exception {
+    void renamesAReferencedFieldRewritingItsReferrers(@TempDir Path dir) throws Exception {
+        // ZipGuard references /Order/Shipping/Zip — the rename now REWRITES that reference (not refuses),
+        // so the result still validates (a dangling ref would fail doc validate).
         Path model = orderModel(dir);
         var res = CliTestSupport.run("-m", model.toString(), "field", "rename", "/Order/Shipping/Zip", "--to", "Postal");
-        assertEquals(2, res.code());
+        assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
-        assertEquals("refused", j.get("outcome").asText());
-        assertTrue(j.path("diagnostics").toString().contains("RK_REFERENCED"));
-        assertTrue(Files.readString(model).contains("\"Zip\""), "untouched");
+        assertEquals("applied", j.get("outcome").asText());
+        assertEquals("/Order/Shipping/Postal", j.path("changed").path("to").asText());
+        assertTrue(j.path("changed").path("rewroteReferences").toString().contains("/Order/ZipGuard"),
+                "the referrer is reported as rewritten");
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "doc", "validate").code(),
+                "the reference was rewritten, so the model still validates");
     }
 
     @Test
@@ -77,17 +82,18 @@ class RenameVerbTest {
     }
 
     @Test
-    void refusesRenamingAGroupWhoseChildIsReferencedFromOutside(@TempDir Path dir) throws Exception {
-        // the subtlety: ZipGuard references /Order/Shipping/Zip — the CHILD, not the group — and lives
-        // OUTSIDE Shipping; a naive gate on whereUsed(group) would miss it and silently dangle.
+    void renamesAGroupRewritingExternalReferrers(@TempDir Path dir) throws Exception {
+        // ZipGuard (at /Order) references the child /Order/Shipping/Zip from OUTSIDE Shipping; the group
+        // rename rewrites that external reference to /Order/Delivery/Zip — it no longer refuses.
         Path model = orderModel(dir);
         var res = CliTestSupport.run("-m", model.toString(), "group", "rename", "/Order/Shipping", "--to", "Delivery");
-        assertEquals(2, res.code());
+        assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
-        assertEquals("refused", j.get("outcome").asText());
-        assertTrue(j.path("diagnostics").toString().contains("RK_REFERENCED"));
-        assertTrue(j.path("data").path("referencedBy").toString().contains("/Order/ZipGuard"));
-        assertTrue(Files.readString(model).contains("/Order/Shipping/Zip"), "untouched");
+        assertEquals("applied", j.get("outcome").asText());
+        assertEquals("/Order/Delivery", j.path("changed").path("to").asText());
+        assertTrue(j.path("changed").path("rewroteReferences").toString().contains("/Order/ZipGuard"));
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "doc", "validate").code(),
+                "the external reference followed the rename, so the model still validates");
     }
 
     @Test

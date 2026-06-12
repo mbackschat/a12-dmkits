@@ -3,13 +3,20 @@ package io.github.mbackschat.a12.dm.cli;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.adapter.ReferenceRewriter;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import picocli.CommandLine.Command;
@@ -58,19 +65,33 @@ final class GroupRenameCommand extends BaseCommand {
         String newPath = group.substring(0, group.lastIndexOf('/') + 1) + newName;
         IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
 
+        // gate: only a name collision blocks now — referrers (incl. into the subtree) are rewritten (CLI-SPEC §6).
         Optional<Refusal> refusal = new SafetyGate()
                 .require(SafetyChecks.pathAvailable(doc, newPath))
-                .require(SafetyChecks.subtreeNotExternallyReferenced(
-                        KernelAdapter.ofJson(modelJson, resolver), doc, group))
                 .firstFailure();
         if (refusal.isPresent()) {
             return refuse("group", "rename", refusal.get());
         }
 
+        KernelAdapter adapter = KernelAdapter.ofJson(modelJson, resolver);
+        String inside = group + "/";
+        List<String> subtree = new ArrayList<>();
+        subtree.add(group);
+        doc.fieldPaths().forEach(p -> { if (p.startsWith(inside)) subtree.add(p); });
+        doc.groupPaths().forEach(p -> { if (p.startsWith(inside) && !p.equals(group)) subtree.add(p); });
+        Set<String> rewroteReferences = new TreeSet<>();
+        for (String path : subtree) {
+            rewroteReferences.addAll(adapter.whereUsed(path));
+            rewroteReferences.addAll(adapter.whereUsedInComputations(path));
+        }
+
         String resultJson;
         try {
-            doc.renameGroup(group, newName);
-            resultJson = doc.validate(resolver).toJson();
+            // rewrite every reference into the subtree to the new path (kernel MoveSupportDM), then re-home the group.
+            ModelDocument renamed = ModelDocument.read(
+                    ReferenceRewriter.rewriteReferences(modelJson, Map.of(group, newPath)));
+            renamed.renameGroup(group, newName);
+            resultJson = renamed.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("group", "rename", "rename left the model invalid", e);
         } catch (RuntimeException e) {
@@ -79,6 +100,8 @@ final class GroupRenameCommand extends BaseCommand {
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("renamed", group);
         changed.put("to", newPath);
+        ArrayNode refs = changed.putArray("rewroteReferences");
+        rewroteReferences.forEach(refs::add);
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("group", "rename",
                     "would rename " + group + " to " + newPath, changed);
