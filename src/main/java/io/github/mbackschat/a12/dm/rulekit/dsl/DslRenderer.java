@@ -131,11 +131,19 @@ public final class DslRenderer {
     }
 
     private void emit(Condition condition, StringBuilder out, java.util.Map<Condition, Span> spans) {
+        emit(condition, out, spans, null);
+    }
+
+    private void emit(Condition condition, StringBuilder out, java.util.Map<Condition, Span> spans,
+            Comments comments) {
+        if (comments != null) {
+            comments.beforeOf(condition).ifPresent(text -> out.append(";; ").append(text).append("\n"));
+        }
         int start = out.length();
         if (condition instanceof LogicCondition logic) {
-            emitChild(logic, logic.left(), out, spans);
+            emitChild(logic, logic.left(), out, spans, comments);
             out.append(" ").append(keyword(logic.operatorId())).append(" ");
-            emitChild(logic, logic.right(), out, spans);
+            emitChild(logic, logic.right(), out, spans, comments);
         } else {
             out.append(render(condition));
         }
@@ -143,15 +151,25 @@ public final class DslRenderer {
     }
 
     private void emitChild(LogicCondition parent, Condition child, StringBuilder out,
-            java.util.Map<Condition, Span> spans) {
+            java.util.Map<Condition, Span> spans, Comments comments) {
         boolean parenthesize = child instanceof LogicCondition nested && nested.op() != parent.op();
         if (parenthesize) {
             out.append("(");
         }
-        emit(child, out, spans);
+        emit(child, out, spans, comments);
         if (parenthesize) {
             out.append(")");
         }
+    }
+
+    /** Render with side-channel {@link Comments} emitted as {@code ;;} line comments at each node's position. */
+    public String render(Condition condition, Comments comments) {
+        if (comments == null || comments.isEmpty()) {
+            return render(condition);
+        }
+        StringBuilder out = new StringBuilder();
+        emit(condition, out, new java.util.IdentityHashMap<>(), comments);
+        return out.toString();
     }
 
     public String render(Condition condition) {

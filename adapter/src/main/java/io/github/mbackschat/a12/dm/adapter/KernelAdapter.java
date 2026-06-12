@@ -452,6 +452,11 @@ public final class KernelAdapter {
         return RenderedDiff.between(render(current.condition()), render(modified), lossiness);
     }
 
+    /** The raw stored condition text of {@code ruleFullName} — concrete syntax (comments + formatting) intact. */
+    public String conditionText(String ruleFullName) {
+        return rule(ruleFullName).getErrorConditionText();
+    }
+
     /**
      * Modify-by-re-express diff for a <b>computation</b> (F8 #2, the {@link #diff} peer): render the
      * computation's current shape (as read) against a re-expressed {@code modified} one, so the caller
