@@ -364,3 +364,56 @@ exit=2
 ```
 
 → `outcome: "applied"`, `written: true`, `.changed.removed` names the gone computation. Reading it back now exits non-zero (`exit=2`) — the computation is gone — and the model still validates clean. With this verb the rule + computation CRUD is complete: add · read · explain · modify · remove on both targets, every mutation kernel-validated and written in place.
+
+## Comments — author once, preserved across the loop
+
+A rule's condition can carry a `;;` line **comment** — concrete syntax the kernel tolerates. `rule add` takes an optional `comment` key (and `rule modify --comment` sets one); it persists as a leading `;;` line. The payoff is the loop: a later `rule modify` that *doesn't* mention the comment **keeps it** (preserve-by-default), so the note survives the re-express. We work on a `/tmp` copy of `subscription-computed` (bilingual → both messages).
+
+```bash
+cp cli/src/test/resources/models/subscription-computed.dm.json /tmp/edit2-comment.json
+cat > /tmp/edit2-rule.json <<'SPEC'
+{
+  "field": "/Subscription/Addons/MonthlyFee",
+  "condition": "FieldFilled(/Subscription/Addons/MonthlyFee) And [/Subscription/Addons/MonthlyFee] > 1000",
+  "comment": "cap the monthly fee per policy",
+  "code": "FEE_CAP", "name": "FeeCap",
+  "messages": [
+    {"locale": "en_US", "text": "Monthly fee is too high."},
+    {"locale": "de_DE", "text": "Monatsgebühr ist zu hoch."}
+  ]
+}
+SPEC
+bin/dmtool -m /tmp/edit2-comment.json rule add /tmp/edit2-rule.json | jq -r '.outcome, .written'
+echo "--- persisted comment:"
+grep -o ';;[^\\"]*' /tmp/edit2-comment.json
+
+```
+
+```output
+applied
+true
+--- persisted comment:
+;; cap the monthly fee per policy
+```
+
+→ `outcome: "applied"`, and the model carries the `;;` note ahead of the condition. Now re-express the threshold **without** restating the comment — it rides along:
+
+```bash
+bin/dmtool -m /tmp/edit2-comment.json rule modify /Subscription/Addons/FeeCap --condition "FieldFilled(/Subscription/Addons/MonthlyFee) And [/Subscription/Addons/MonthlyFee] > 500" | jq -r '.outcome'
+echo "--- comment still present:"
+grep -o ';;[^\\"]*' /tmp/edit2-comment.json
+echo "--- new threshold applied (count of '> 500'):"
+grep -c "> 500" /tmp/edit2-comment.json
+
+```
+
+```output
+applied
+--- comment still present:
+;; cap the monthly fee per policy
+--- new threshold applied (count of '> 500'):
+1
+```
+
+→ The comment survived a comment-less `modify`, and the threshold dropped to 500. To *change* the note, pass `rule modify --comment "<text>"` (it wins over the preserved one). The same `;;` comment is authorable from the typed library (`Rule.Builder.comment(...)` / `Computation.Builder.comment(...)`, on operations and preconditions too) and from `apply` rule ops (a `comment` key) — background in KERNEL-FINDINGS "Condition comments".
+
