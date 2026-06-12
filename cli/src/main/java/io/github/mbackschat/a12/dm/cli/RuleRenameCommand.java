@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 
+import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import picocli.CommandLine.Command;
@@ -54,7 +55,9 @@ final class RuleRenameCommand extends BaseCommand {
         String newPath = rule.substring(0, rule.lastIndexOf('/') + 1) + newName;
         IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
 
+        KernelAdapter adapter = KernelAdapter.ofJson(modelJson, resolver);
         Optional<Refusal> refusal = new SafetyGate()
+                .require(SafetyChecks.ruleExists(adapter, rule))
                 .require(SafetyChecks.pathAvailable(doc, newPath))
                 .firstFailure();
         if (refusal.isPresent()) {

@@ -38,6 +38,7 @@ final class GroupMoveCommand extends ReferenceRewritingRefactorCommand {
     @Override
     SafetyGate gate(ModelDocument doc, String newPath) {
         return new SafetyGate()
+                .require(SafetyChecks.exists(doc, group, true))
                 .require(SafetyChecks.groupExists(doc, newParent))
                 .require(SafetyChecks.notIntoOwnSubtree(group, newParent))
                 .require(SafetyChecks.pathAvailable(doc, newPath));

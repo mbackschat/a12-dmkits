@@ -117,6 +117,46 @@ final class SafetyChecks {
     }
 
     /**
+     * Refuse a refactor whose <b>target element</b> does not exist — RK_NO_SUCH_FIELD / RK_NO_SUCH_GROUP,
+     * located at the offending path. The source must resolve before any reference rewrite or node change is
+     * attempted, so a typo'd path yields a structured, corrective diagnostic (not a bare downstream error).
+     */
+    static SafetyCheck exists(ModelDocument doc, String path, boolean isGroup) {
+        return () -> {
+            boolean present = isGroup ? doc.groupPaths().contains(path) : doc.fieldPaths().contains(path);
+            if (present) {
+                return Optional.empty();
+            }
+            String kind = isGroup ? "group" : "field";
+            String code = isGroup ? "RK_NO_SUCH_GROUP" : "RK_NO_SUCH_FIELD";
+            Diagnostic diagnostic = Diagnostic.precheck(Optional.of(code),
+                    "no " + kind + " at '" + path + "'",
+                    Diagnostic.Where.path(path),
+                    Optional.of("pass an existing " + kind + "'s full name-path (see `doc describe` or `" + kind + " read`)"),
+                    Optional.empty());
+            return Optional.of(new Refusal(kind + " '" + path + "' does not exist — refusing", null, diagnostic));
+        };
+    }
+
+    /**
+     * Refuse a rule refactor whose target rule does not exist (RK_NO_SUCH_RULE). A rule is not a field/group,
+     * so its existence is read from the bound model's rule names rather than the path tree.
+     */
+    static SafetyCheck ruleExists(KernelAdapter adapter, String ruleFullName) {
+        return () -> {
+            if (adapter.ruleFullNames().contains(ruleFullName)) {
+                return Optional.empty();
+            }
+            Diagnostic diagnostic = Diagnostic.precheck(Optional.of("RK_NO_SUCH_RULE"),
+                    "no rule at '" + ruleFullName + "'",
+                    Diagnostic.Where.path(ruleFullName),
+                    Optional.of("pass an existing rule's full name (group-path + name; see `rule read` or `where-used`)"),
+                    Optional.empty());
+            return Optional.of(new Refusal("rule '" + ruleFullName + "' does not exist — refusing", null, diagnostic));
+        };
+    }
+
+    /**
      * Refuse a move whose destination parent group does not exist (RK_NO_SUCH_GROUP) — there is nowhere to
      * re-home the element. Runs before any mutation.
      */

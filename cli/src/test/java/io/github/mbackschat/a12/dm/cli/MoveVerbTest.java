@@ -84,6 +84,29 @@ class MoveVerbTest {
     }
 
     @Test
+    void refusesMovingANonexistentField(@TempDir Path dir) throws Exception {
+        Path model = orderModel(dir);
+        String before = Files.readString(model);
+        var res = CliTestSupport.run("-m", model.toString(), "field", "move", "/Order/Nope", "--to", "/Order/Billing");
+        assertEquals(2, res.code());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("refused", j.get("outcome").asText());
+        assertTrue(j.path("diagnostics").toString().contains("RK_NO_SUCH_FIELD"),
+                "a missing source field is a structured refusal, not a bare error");
+        assertEquals(before, Files.readString(model), "a refused move mutates nothing");
+    }
+
+    @Test
+    void refusesMovingANonexistentGroup(@TempDir Path dir) throws Exception {
+        Path model = orderModel(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "group", "move", "/Order/Nope", "--to", "/Order/Billing");
+        assertEquals(2, res.code());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("refused", j.get("outcome").asText());
+        assertTrue(j.path("diagnostics").toString().contains("RK_NO_SUCH_GROUP"));
+    }
+
+    @Test
     void refusesMoveToANonexistentDestination(@TempDir Path dir) throws Exception {
         Path model = orderModel(dir);
         String before = Files.readString(model);

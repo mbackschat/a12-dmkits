@@ -97,6 +97,27 @@ class RenameVerbTest {
     }
 
     @Test
+    void refusesRenamingANonexistentField(@TempDir Path dir) throws Exception {
+        Path model = orderModel(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "field", "rename", "/Order/Nope", "--to", "Memo");
+        assertEquals(2, res.code());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("refused", j.get("outcome").asText());
+        assertTrue(j.path("diagnostics").toString().contains("RK_NO_SUCH_FIELD"),
+                "a missing source field is a structured refusal, not a bare error");
+    }
+
+    @Test
+    void refusesRenamingANonexistentRule(@TempDir Path dir) throws Exception {
+        Path model = orderModel(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "rename", "/Order/Nope", "--to", "X");
+        assertEquals(2, res.code());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("refused", j.get("outcome").asText());
+        assertTrue(j.path("diagnostics").toString().contains("RK_NO_SUCH_RULE"));
+    }
+
+    @Test
     void renamesARule(@TempDir Path dir) throws Exception {
         Path model = orderModel(dir);
         var res = CliTestSupport.run("-m", model.toString(), "rule", "rename", "/Order/ZipGuard", "--to", "ZipPresent");

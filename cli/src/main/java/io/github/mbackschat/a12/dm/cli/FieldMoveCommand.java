@@ -36,6 +36,7 @@ final class FieldMoveCommand extends ReferenceRewritingRefactorCommand {
     @Override
     SafetyGate gate(ModelDocument doc, String newPath) {
         return new SafetyGate()
+                .require(SafetyChecks.exists(doc, field, false))
                 .require(SafetyChecks.groupExists(doc, newParent))
                 .require(SafetyChecks.pathAvailable(doc, newPath));
     }

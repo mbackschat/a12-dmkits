@@ -33,7 +33,9 @@ final class FieldRenameCommand extends ReferenceRewritingRefactorCommand {
 
     @Override
     SafetyGate gate(ModelDocument doc, String newPath) {
-        return new SafetyGate().require(SafetyChecks.pathAvailable(doc, newPath));
+        return new SafetyGate()
+                .require(SafetyChecks.exists(doc, field, false))
+                .require(SafetyChecks.pathAvailable(doc, newPath));
     }
 
     @Override void mutate(ModelDocument doc) { doc.renameField(field, newName); }
