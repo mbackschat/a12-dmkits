@@ -59,134 +59,114 @@ public final class EditSession {
 
     // --- structure edits (modelkit) -------------------------------------------------------------
 
-    public EditSession addField(String groupPath, String name, FieldKind kind) {
-        json = ModelDocument.read(json).addField(groupPath, name, kind).toJson();
+    /** Apply one modelkit structure edit to the current DM-JSON and write it back (the shared rep). */
+    private EditSession editStructure(Function<ModelDocument, ModelDocument> op) {
+        json = op.apply(ModelDocument.read(json)).toJson();
         return this;
+    }
+
+    public EditSession addField(String groupPath, String name, FieldKind kind) {
+        return editStructure(d -> d.addField(groupPath, name, kind));
     }
 
     public EditSession addField(String groupPath, String name, FieldTypeSpec type) {
-        json = ModelDocument.read(json).addField(groupPath, name, type).toJson();
-        return this;
+        return editStructure(d -> d.addField(groupPath, name, type));
     }
 
     public EditSession setFieldType(String fieldPath, FieldTypeSpec type) {
-        json = ModelDocument.read(json).setFieldType(fieldPath, type).toJson();
-        return this;
+        return editStructure(d -> d.setFieldType(fieldPath, type));
     }
 
     public EditSession setRequiredness(String fieldPath, Requiredness requiredness) {
-        json = ModelDocument.read(json).setRequiredness(fieldPath, requiredness).toJson();
-        return this;
+        return editStructure(d -> d.setRequiredness(fieldPath, requiredness));
     }
 
     public EditSession setLabel(String elementPath, Map<String, String> localeToText) {
-        json = ModelDocument.read(json).setLabel(elementPath, localeToText).toJson();
-        return this;
+        return editStructure(d -> d.setLabel(elementPath, localeToText));
     }
 
     public EditSession setAnnotation(String elementPath, String name, String value) {
-        json = ModelDocument.read(json).setAnnotation(elementPath, name, value).toJson();
-        return this;
+        return editStructure(d -> d.setAnnotation(elementPath, name, value));
     }
 
     public EditSession addGroup(String parentPath, String name) {
-        json = ModelDocument.read(json).addGroup(parentPath, name).toJson();
-        return this;
+        return editStructure(d -> d.addGroup(parentPath, name));
     }
 
     public EditSession addRepeatableGroup(String parentPath, String name, int maxRepetitions) {
-        json = ModelDocument.read(json).addRepeatableGroup(parentPath, name, maxRepetitions).toJson();
-        return this;
+        return editStructure(d -> d.addRepeatableGroup(parentPath, name, maxRepetitions));
     }
 
     public EditSession removeField(String fieldPath) {
-        json = ModelDocument.read(json).removeField(fieldPath).toJson();
-        return this;
+        return editStructure(d -> d.removeField(fieldPath));
     }
 
     public EditSession removeGroup(String groupPath) {
-        json = ModelDocument.read(json).removeGroup(groupPath).toJson();
-        return this;
+        return editStructure(d -> d.removeGroup(groupPath));
     }
 
     public EditSession setRepeatable(String groupPath, int maxRepetitions) {
-        json = ModelDocument.read(json).setRepeatable(groupPath, maxRepetitions).toJson();
-        return this;
+        return editStructure(d -> d.setRepeatable(groupPath, maxRepetitions));
     }
 
     public EditSession addTypeDefinition(String id, FieldKind underlying) {
-        json = ModelDocument.read(json).addTypeDefinition(id, underlying).toJson();
-        return this;
+        return editStructure(d -> d.addTypeDefinition(id, underlying));
     }
 
     public EditSession addTypeDefinition(String id, FieldTypeSpec underlying) {
-        json = ModelDocument.read(json).addTypeDefinition(id, underlying).toJson();
-        return this;
+        return editStructure(d -> d.addTypeDefinition(id, underlying));
     }
 
     public EditSession addTypedefField(String groupPath, String name, String typeDefId) {
-        json = ModelDocument.read(json).addTypedefField(groupPath, name, typeDefId).toJson();
-        return this;
+        return editStructure(d -> d.addTypedefField(groupPath, name, typeDefId));
     }
 
     public EditSession setTypeDefinitionType(String id, FieldTypeSpec type) {
-        json = ModelDocument.read(json).setTypeDefinitionType(id, type).toJson();
-        return this;
+        return editStructure(d -> d.setTypeDefinitionType(id, type));
     }
 
     public EditSession removeTypeDefinition(String id) {
-        json = ModelDocument.read(json).removeTypeDefinition(id).toJson();
-        return this;
+        return editStructure(d -> d.removeTypeDefinition(id));
     }
 
     public EditSession setDecimalSeparator(String separator) {
-        json = ModelDocument.read(json).setDecimalSeparator(separator).toJson();
-        return this;
+        return editStructure(d -> d.setDecimalSeparator(separator));
     }
 
     public EditSession setTimeZone(String timeZone) {
-        json = ModelDocument.read(json).setTimeZone(timeZone).toJson();
-        return this;
+        return editStructure(d -> d.setTimeZone(timeZone));
     }
 
     public EditSession setConditionLanguage(String localeCode) {
-        json = ModelDocument.read(json).setConditionLanguage(localeCode).toJson();
-        return this;
+        return editStructure(d -> d.setConditionLanguage(localeCode));
     }
 
     public EditSession setFieldRefByShortNameAllowed(boolean allowed) {
-        json = ModelDocument.read(json).setFieldRefByShortNameAllowed(allowed).toJson();
-        return this;
+        return editStructure(d -> d.setFieldRefByShortNameAllowed(allowed));
     }
 
     public EditSession setBaseYear(int year) {
-        json = ModelDocument.read(json).setBaseYear(year).toJson();
-        return this;
+        return editStructure(d -> d.setBaseYear(year));
     }
 
     public EditSession addInclude(String alias, String reference, String parentPath, String name) {
-        json = ModelDocument.read(json).addInclude(alias, reference).mount(parentPath, name, alias).toJson();
-        return this;
+        return editStructure(d -> d.addInclude(alias, reference).mount(parentPath, name, alias));
     }
 
     public EditSession mount(String parentPath, String name, String alias) {
-        json = ModelDocument.read(json).mount(parentPath, name, alias).toJson();
-        return this;
+        return editStructure(d -> d.mount(parentPath, name, alias));
     }
 
     public EditSession removeInclude(String alias) {
-        json = ModelDocument.read(json).removeInclude(alias).toJson();
-        return this;
+        return editStructure(d -> d.removeInclude(alias));
     }
 
     public EditSession setIncludeReference(String alias, String newReference) {
-        json = ModelDocument.read(json).setIncludeReference(alias, newReference).toJson();
-        return this;
+        return editStructure(d -> d.setIncludeReference(alias, newReference));
     }
 
     public EditSession renameInclude(String oldAlias, String newAlias) {
-        json = ModelDocument.read(json).renameInclude(oldAlias, newAlias).toJson();
-        return this;
+        return editStructure(d -> d.renameInclude(oldAlias, newAlias));
     }
 
     // --- L2c: the session-bound editor (refs as currency) ---------------------------------------
