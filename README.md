@@ -118,7 +118,23 @@ Set<String> users = adapter.whereUsed("/Customer/BirthDate");   // which rules r
 new DslRenderer(ConditionLanguage.DE).render(condition);   // German keywords: Und, Heute, AlleFelderGefüllt …
 ```
 
-Re-expressing an existing rule produces a **`RenderedDiff`** that discloses any lossiness *up front* (e.g. "2 comments will be dropped") — you review before you commit.
+Re-expressing an existing rule produces a **`RenderedDiff`** that discloses any lossiness *up front* — you review before you commit. The rule's **leading `;;` comment is preserved by default** across the loop (only inline/trailing comments are re-rendered away, and the diff says so).
+
+### Comments — author once, preserved across the loop
+
+Conditions can carry `;;` line comments (concrete syntax the kernel tolerates). Author them with the typed builder, and a comment-less `modify` keeps them:
+
+```java
+NumberRef fee = m.num("/Subscription/Addons/MonthlyFee");
+m.rule(m.group("/Subscription/Addons")).name("FeeCap").errorField(fee)
+        .when(fee.filled().and(fee.gt(1000)))
+        .comment("cap the monthly fee per policy")     // ← rendered as a leading ;; line, kernel-tolerated
+        .code("FEE_CAP").severity(Severity.ERROR)
+        .message(en("Monthly fee is too high."), de("Monatsgebühr ist zu hoch."))
+        .build();
+```
+
+The CLI mirrors it: a `comment` key on `rule add` and `rule modify --comment`. Computations carry comments too (operations and preconditions).
 
 More rulekit idioms and the design rationale are in the [API study](docs/API-POC-STUDY.md).
 
