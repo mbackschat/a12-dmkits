@@ -158,6 +158,23 @@ String updated = EditSession.read(dmJson)
 
 `addRule`'s builder receives the model bound to the **current** session state, so `m.num("/Order/Discount")` resolves *only because* `addField` ran first — the typed builder, not a hand-written condition string. (A string overload exists too, but it's for the CLI's `apply`/spec path, where conditions arrive as text — not the idiom for library code.)
 
+**Refs as the currency — the editor (L2c).** The same flow reads better when you hold an **editor** on the group: edits chain, a typed ref to the just-created field comes from relative navigation, and the editor goes straight in as the rule scope (it downgrades to a pure ref — the AST never holds the session):
+
+```java
+EditSession s = EditSession.read(dmJson);
+GroupEditor order = s.group("/Order");                       // a session-bound editor on /Order
+order.addField("Discount", FieldKind.NUMBER);                // structure edit (chains)
+NumberRef discount = order.num("Discount");                  // typed ref to the just-created field
+s.addRule(m -> m.rule(order)                                 // the editor IS the scope (downgrades to GroupRef)
+        .name("DiscountNotNegative").errorField(discount)
+        .when(discount.filled().and(discount.lt(0)))
+        .code("DISCOUNT_NEGATIVE").severity(Severity.ERROR)
+        .message(en("Discount must not be negative.")).build())
+ .validate();
+```
+
+`GroupEditor` also nests (`addGroup(name, sub -> …)`) and authors rules/computations in place; `FieldEditor` re-types/labels/annotates a field; `RuleEditor` / `ComputationEditor` modify or remove by held reference. Design + rationale: [API study §5c](docs/API-POC-STUDY.md).
+
 More library idioms and the design rationale live in the [API study](docs/API-POC-STUDY.md); every doc is indexed in [`docs/`](docs/README.md).
 
 ---
