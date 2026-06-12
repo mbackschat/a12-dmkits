@@ -16,6 +16,17 @@ import com.mgmtp.a12.model.notification.Severity;
  * rule, plus the AST operator-id once read lands), {@code fix} (an applicable DSL replacement or
  * curated prose), {@code explain} (the operator meaning / rationale). {@code code} carries the
  * {@code MVK_*} (kernel) or {@code RK_*} (rulekit) identifier when classifiable.
+ *
+ * <p><b>Resolving a code's meaning (library consumers).</b> A {@code Diagnostic} is public surface — a dep
+ * that drives rulekit/modelkit receives these directly (e.g. from {@link ValidationResult#diagnostics()}).
+ * For an {@code RK_*} code, look up its meaning + canonical fix via {@link RkCode#byCode(String)} — the same
+ * single-source registry the CLI {@code diagnostics} verb serves, so the library and the tool never diverge:
+ * <pre>{@code
+ * String meaning = diagnostic.code()
+ *         .flatMap(RkCode::byCode)
+ *         .map(RkCode::meaning)
+ *         .orElse(diagnostic.summary());   // MVK_* codes are the kernel's — see the operator catalog
+ * }</pre>
  */
 public record Diagnostic(
         Severity severity,

@@ -62,6 +62,13 @@ The diagnostic info is **derived, never authored twice**, and **CI-verified both
 
 When the kernel changes, the diagnostic couplings are in [`KERNEL-UPGRADE.md`](KERNEL-UPGRADE.md) (guardian ↔ what a failure means ↔ realignment).
 
+## Library consumers — the same registry, no second source
+
+Diagnostics aren't a CLI-only concern: the diagnostic model is **public library surface**. A dependency that drives rulekit/modelkit directly receives `Diagnostic` objects (record: `code`/`severity`/`source`/`where`/`fix`/`explain`) from `ValidationResult.diagnostics()` and the edit/validate seams. So the meaning of a code must be **dev-discoverable**, not only CLI-discoverable — and it resolves through the *same* registry the `diagnostics` verb serves:
+
+- **`RkCode` is public.** `RkCode.byCode("RK_NO_SUCH_FIELD")` returns the catalog entry — `meaning()`, `severity()`, `source()`, `fix()`. The CLI `diagnostics` verb is a thin shell over exactly this; a library consumer calls it directly (see `Diagnostic`'s Javadoc for the idiom). `Severity` (the kernel's enum) and `DiagnosticSource` carry their own Javadoc.
+- **One source, both faces.** Tool and library read the one `RkCode` enum, so they never diverge — and the parity guard above keeps it honest. `MVK_*` codes are the kernel's; their meaning is the operator catalog's (`operators`/`explain`), not this registry.
+
 ## Authoring checklist — adding or changing a verb
 
 The checklist is the human shadow of the gates above; the gates fail the build if you skip a row.
