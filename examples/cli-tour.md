@@ -47,6 +47,7 @@ config modify
 export
 where-used
 batch
+apply
 schema
 operators
 manifest
@@ -224,3 +225,200 @@ bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule check --fie
 ```
 
 → The kernel says `valid: true`, but the lint backstop attached a `WARNING` — `RK_UNGUARDED_NUMBER_COMPARISON`. Because an empty number reads as **0** (KERNEL-SEMANTICS §2), the rule would also fire on an empty `Quantity`; the `fix` field spells out the guard. The trap is caught at authoring time, before the rule is ever persisted.
+
+## operators
+
+The DSL vocabulary is a self-verifying catalog, served by the tool itself — no external operator reference needed. `operators` (no arg) lists every construct, each tagged with a `kind` (`OPERATOR`/`PREDICATE`/`FUNCTION`/`CONSTANT`/`PATH_OP`) and a one-line `meaning`; `--keyword`/`--kind` filter it. The list here is summarized with `jq` (the catalog is large).
+
+```bash
+bin/dmtool operators | jq "{verifiedAgainst, count: (.operators|length), kinds: (.operators|map(.kind)|unique)}"
+```
+
+```output
+{
+  "verifiedAgainst": "30.8.1",
+  "count": 109,
+  "kinds": [
+    "CONSTANT",
+    "FUNCTION",
+    "OPERATOR",
+    "PATH_OP",
+    "PREDICATE"
+  ]
+}
+```
+
+→ 109 constructs, verified against kernel `30.8.1`, across five **kinds**. That `kind` is the agent's first cut at how a construct composes: an `OPERATOR` (`And`, `<`) joins operands, a `PREDICATE` (`FieldFilled`) tests a field, a `FUNCTION` (`DifferenceInDays`) returns a value, a `CONSTANT` is a literal, a `PATH_OP` walks the model tree. The catalog is the inventory; the single-operator view below is the detail.
+
+Pass an `operatorId` for one construct in **full** — its bilingual keyword, signature (`operands` → `returns`), `constraints`, `gotchas`, and a `validExample`. This is the page an agent reads before reaching for an operator it hasn't used.
+
+```bash
+bin/dmtool operators DifferenceInDays | jq '{id,kind,meaning}'
+```
+
+```output
+{
+  "id": "DifferenceInDays",
+  "kind": "FUNCTION",
+  "meaning": "The number of whole days from the first date to the second."
+}
+```
+
+→ The same `DifferenceInDays` the `rule explain` glossary surfaced — here looked up **directly**, by id, without a rule that uses it. The full record (omitted by the `jq` projection above) also carries `operands`/`returns`, `constraints`, `gotchas`, and a runnable `validExample`, so the agent can compose the operator correctly from the catalog alone.
+
+## schema result — the output envelope
+
+Every verb in this tour returned the **same envelope shape**. `schema result` emits its JSON Schema, so an agent learns that contract once and reads every command's output the same way. Projected here to the property names and their meanings.
+
+```bash
+bin/dmtool schema result | jq "{required, properties: (.properties | map_values(.description))}"
+```
+
+```output
+{
+  "required": [
+    "target",
+    "op",
+    "outcome",
+    "ok",
+    "summary",
+    "diagnostics",
+    "written"
+  ],
+  "properties": {
+    "target": "the element family acted on: doc | rule | computation | field | group | typedef | include | config",
+    "op": "the operation: add | read | modify | remove | validate | check | explain | describe | export | eval | compute | …",
+    "outcome": "the execution result class",
+    "ok": "the operation executed as asked (outcome in applied | preview | read | staged)",
+    "valid": "validate/check (and after a mutating op): the subject model is kernel-valid — distinct from `ok`",
+    "summary": "one human-readable line (the agent's quick read / log line)",
+    "changed": "(mutations) the delta on success — e.g. {added, kind}, a refactor's rewritten references",
+    "data": "(reads/queries) the op's payload — explanation tree, model card, fired-list, …; shape is op-specific (see `schema <target> <op>`)",
+    "diagnostics": "structured findings — see `schema diagnostic`",
+    "written": "whether the model was written to disk",
+    "output": "the path the model was written to; absent for read/preview/refused/rejected"
+  }
+}
+```
+
+→ Seven keys are always present (`target`, `op`, `outcome`, `ok`, `summary`, `diagnostics`, `written`); the rest are conditional. Note the recurring **`ok`/`valid` split** seen throughout this tour — `ok` says the op ran, `valid` is the verdict on the model — and that **reads** put their payload under **`data`** (whose shape is op-specific: `schema <target> <op>` gives it per verb). This is why one output reader suffices for the whole CLI.
+
+## schema rule add — a directional contract
+
+`schema <target> <op>` gives one verb's **directional** I/O contract: what it consumes and what it returns. For a mutating verb like `rule add` the input is a spec; the output is — universally — the `result` envelope above.
+
+```bash
+bin/dmtool schema rule add | jq '{op, returns, inputKeys: (.input.properties|keys)}'
+```
+
+```output
+{
+  "op": "rule add",
+  "returns": "result",
+  "inputKeys": [
+    "alternatives",
+    "code",
+    "commonPrecondition",
+    "computedField",
+    "condition",
+    "field",
+    "messages",
+    "name",
+    "severity"
+  ]
+}
+```
+
+→ `returns: "result"` — the same envelope `schema result` describes, so the agent already knows how to read it. The `inputKeys` are the **union** of two specs (`rule add` accepts a rule-spec *or* a computation-spec, chosen by which keys are present): `field`/`condition`/`code` author a rule, `computedField`/`alternatives` a computation. The full schema (omitted by this projection) spells out each key, the `oneOf`, and the required sets — enough to construct a valid `add` payload without trial and error.
+
+## doc read — the whole model
+
+Where `rule read` renders one rule, `doc read` reads the **entire** model card in one shot: every rule and computation rendered to DSL, plus a roll-up `summary`. The payload rides `data`, like every read.
+
+```bash
+bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json doc read
+```
+
+```output
+{
+  "target" : "doc",
+  "op" : "read",
+  "outcome" : "read",
+  "ok" : true,
+  "valid" : true,
+  "summary" : "read 3 rule(s), 0 computation(s)",
+  "data" : {
+    "rules" : {
+      "/Order/BillingAddress/PostalCodeFormat" : {
+        "converted" : true,
+        "condition" : "FieldFilled(/Order/BillingAddress/PostalCode) And [/Order/BillingAddress/PostalCode] PatternViolated \"[0-9]{5}\""
+      },
+      "/Order/DeliveryNotBeforeOrder" : {
+        "converted" : true,
+        "condition" : "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And DifferenceInDays(/Order/OrderDate, /Order/DeliveryDate) < 0"
+      },
+      "/Order/EligibilityCheck" : {
+        "converted" : true,
+        "condition" : "FieldFilled(/Order/CustomerName) And CustomCondition ExternalEligibility"
+      }
+    },
+    "computations" : { },
+    "summary" : {
+      "rules" : 3,
+      "convertedRules" : 3,
+      "computations" : 0,
+      "convertedComputations" : 0,
+      "fullyTyped" : true
+    }
+  },
+  "diagnostics" : [ ],
+  "written" : false
+}
+```
+
+→ All three rules at once, each rendered to canonical DSL (the `DeliveryNotBeforeOrder` one is the rule the per-rule sections drilled into). `data.summary` confirms the conversion was total — `convertedRules: 3` of `3`, `fullyTyped: true` — so dmtool modeled every construct with no `Opaque` passthrough. The header `summary` ("read 3 rule(s), 0 computation(s)") is the one-line read; `data` is the full card.
+
+## field / group / config read — the structural facts
+
+Beyond rules, the same `<target> read` pattern reads the model's **structure**. Each returns just the fact under `data` (projected here with `jq` for brevity): `field read` a field's declared type, `group read` whether a group repeats, `config read` the document's rendering config. These are the facts that decide how a condition must be written.
+
+```bash
+bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json field read /Order/OrderDate | jq '.data'
+```
+
+```output
+{
+  "field": "/Order/OrderDate",
+  "type": "DateType"
+}
+```
+
+→ `/Order/OrderDate` is a `DateType` — the kernel's type name (vs the coarser `kind: DATE` from `doc describe`). The type is what lets `DifferenceInDays` take this field as an operand.
+
+```bash
+bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json group read /Order/BillingAddress | jq '.data'
+```
+
+```output
+{
+  "group": "/Order/BillingAddress",
+  "repeatable": false
+}
+```
+
+→ `repeatable: false` — `BillingAddress` is a single nested group, not a line-item list. Repeatability is load-bearing: a rule scoped under a repeating group iterates per row, and aggregate/iteration operators only apply over a repeatable group.
+
+```bash
+bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json config read | jq '.data'
+```
+
+```output
+{
+  "decimalSeparator": ".",
+  "timeZone": "Europe/Berlin",
+  "conditionLanguage": "en_US",
+  "fieldRefByShortNameAllowed": true
+}
+```
+
+→ The document config decides how literals render and resolve: `decimalSeparator: "."` (so `1.5` not `1,5`), `conditionLanguage: "en_US"` (English keywords — `And`, not `Und`), `timeZone` for date arithmetic, and `fieldRefByShortNameAllowed: true` (a condition may name a field by its short name, not just an absolute path). These settings are why the rendered DSL throughout this tour looks the way it does.

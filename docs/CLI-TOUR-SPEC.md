@@ -61,22 +61,15 @@ A fork of showboat to add a redaction hook is the wrong bet — in-band scrubbin
 
 ## Expanding this approach (backlog)
 
-Three demos cover the read, write/edit, and structure-edit workflows; **all three now run on the `dmtool` target-first surface + the result envelope** (the CI gate re-verifies them). The method scales to more, one demo per workflow:
+**Five demos now cover the whole verb surface** on the `dmtool` target-first surface + the result envelope; the CI gate re-verifies all five (`.github/workflows/ci.yml`). Index: [`../examples/README.md`](../examples/README.md).
 
-- ✅ **Authoring loop** — `rule check` → `rule add` → re-`doc validate` (`cli-edit-loop.md`).
-- ✅ **Edit loop** — `computation explain` → re-express → `computation modify --dry-run` (preview) → `computation modify` (write-back); the F8 loop end-to-end (`cli-edit-loop.md`).
-- ✅ **`batch`** — the self-describing, per-op-attributable output in one warm JVM (`cli-edit-loop.md`).
-- ✅ **Multi-file** — `doc describe --include-dir` resolving an included model (`cli-edit-loop.md`).
-- ✅ **Structure edit** — `field add`/`group add`/`field remove` (safe-delete refuse + `--cascade`) (`cli-structure-edit.md`).
-- **Typedef / include / config + combined flow** — `typedef add/read/remove`, `include add/read/remove`, `config read/modify`, and a rule authored on a just-added field then cascade-removed with it. New target-first ops with no demo yet (a showcase gap to fill: extend `cli-structure-edit.md` or add a companion).
-- **Comprehension** — read foreign rules back and explain them (the T7 family).
-- **Runtime evaluation** — `doc eval` a rule against a document instance that *should* and *should not* fire (the empirical polarity check `check` can't give), and `doc compute` to show a field's computed value (and the empty-operand value/cleared cases).
+- ✅ **Discover + read** (`cli-tour.md`) — `manifest` · `operators`(+`<id>`) · `schema result`/`<target> <op>` · `doc describe`/`read`/`validate` · `rule read`/`explain`/`check` · `field`/`group`/`config read`. Doubles as the discovery/self-describing showcase (assemble a call from `manifest` + `schema` alone).
+- ✅ **Rulekit write/edit** (`cli-edit-loop.md`) — `where-used` · the full `rule` + `computation` CRUD (add/read/explain/modify/remove) · `batch` · the F8 re-express loop (`--dry-run` preview vs in-place write).
+- ✅ **Modelkit structure** (`cli-structure-edit.md`) — `field`/`group` add·read·remove (the safe-delete gate + `--cascade`) · `typedef` + `field --typedef` · `include` (`--include-dir`) · `config read`/`modify` · `export`.
+- ✅ **The `apply` session** (`cli-apply.md`) — atomic multi-op · rollback · op-arg corrective (`RK_UNKNOWN_ARG`/`RK_UNKNOWN_OP` + did-you-mean) · cross-type corrective · read-mid-sequence · `schema apply` (the op-record frame).
+- ✅ **Runtime evaluation** (`cli-runtime.md`) — `doc eval` (which rules *fire* on a document instance — the empirical polarity check `check` can't give) · `doc compute` (a computed field's value, incl. empty-as-0).
 
-Target-first tours to add (they double as the executable counterparts of the new eval tasks):
-
-- **Discovery / schema tour** (the #1 self-describing showcase) — a cold start: `dmtool manifest` → `schema result`/`schema diagnostic` → `schema <target> <op>` → assemble and run a call **from the manifest alone**, proving an agent discovers the whole surface (verbs, params, the output envelope, the failure space) without the skill.
-- **`apply` session** (the north-star) — write an op-list *by composition* (manifest + the `schema apply` worked example), run it in one session (one gate, one write); show the per-op envelopes, then a seeded mid-sequence failure → **rollback** + the corrective `RK_UNKNOWN_ARG`/cross-op diagnostic → fix → green. Pairs with `N-session`/`N-batch-fix`.
-- **Self-correction** — a deliberately wrong call (typo'd field path, inverted polarity) → read the diagnostic's `fix` → recover. The headline agent-friendliness demo; pairs with `N-correct`. (Needs the `LANG` pin above for the kernel's German messages.)
+Comprehension (reading foreign rules back) is shown by `rule read`/`rule explain` in the tour; the self-correction headline is the `apply` op-arg + cross-type correctives in `cli-apply.md`. (When the modelkit *agentic* eval lands — EVAL-SPEC §8d / B — these demos are the executable counterparts of the `modelkit/`+`mixed/` tasks.)
 
 Two cross-cutting follow-ups:
 

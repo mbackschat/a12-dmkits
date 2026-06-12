@@ -175,3 +175,192 @@ bin/dmtool schema rule add | jq -c '.input.oneOf'
 ```
 
 → `operators DateRange` carries the meaning and the use-site rule (computation-only); `schema rule add` returns the op's directional contract, with the input shape under `.input` — a `oneOf` of a rule-spec (`field`/`condition`/`code`) or a computation-spec (`computedField`/`alternatives`), both requiring `messages`. A cold agent learns the whole contract from the tool, no external docs.
+
+## rule modify — re-express an existing rule (preview, then write)
+
+`rule modify` is the rule-side twin of `computation modify`: it swaps a rule's condition for an equivalent re-expression, validating the candidate against the real kernel before it writes. By default it **writes in place** (`-o` redirects); **`--dry-run`** previews read-only. We re-express `/Order/DeliveryNotBeforeOrder` on `order-ruled` — its original `DifferenceInDays(...) < 0` becomes a direct date comparison `[/Order/DeliveryDate] < [/Order/OrderDate]` (delivery before order is the violation). The before/after ride `.changed`. We work on a `/tmp` copy so the fixture stays put.
+
+```bash
+rm -f /tmp/edit2-order.json
+cp cli/src/test/resources/models/order-ruled.dm.json /tmp/edit2-order.json
+bin/dmtool -m /tmp/edit2-order.json rule modify /Order/DeliveryNotBeforeOrder --condition "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And [/Order/DeliveryDate] < [/Order/OrderDate]" --dry-run
+echo "--- re-expression occurrences in the file after --dry-run: $(grep -c "DeliveryDate\] <" /tmp/edit2-order.json)"
+```
+
+```output
+{
+  "target" : "rule",
+  "op" : "modify",
+  "outcome" : "preview",
+  "ok" : true,
+  "summary" : "would re-express /Order/DeliveryNotBeforeOrder",
+  "changed" : {
+    "before" : "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And DifferenceInDays(/Order/OrderDate, /Order/DeliveryDate) < 0",
+    "after" : "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And [/Order/DeliveryDate] < [/Order/OrderDate]",
+    "changed" : true,
+    "lossiness" : [ ]
+  },
+  "diagnostics" : [ ],
+  "written" : false
+}
+--- re-expression occurrences in the file after --dry-run: 0
+```
+
+→ `--dry-run` returns `outcome: "preview"` with `written: false`; the before (`DifferenceInDays(...) < 0`) and after (`[/Order/DeliveryDate] < [/Order/OrderDate]`) sit under `.changed`, and the file still has **0** occurrences of the new form — nothing was written. Now drop `--dry-run` to persist it:
+
+```bash
+bin/dmtool -m /tmp/edit2-order.json rule modify /Order/DeliveryNotBeforeOrder --condition "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And [/Order/DeliveryDate] < [/Order/OrderDate]"
+echo "--- re-expression occurrences after modify: $(grep -c "DeliveryDate\] <" /tmp/edit2-order.json)"
+echo "--- the written model still validates: $(bin/dmtool -m /tmp/edit2-order.json doc validate | jq -c ".valid")"
+```
+
+```output
+{
+  "target" : "rule",
+  "op" : "modify",
+  "outcome" : "applied",
+  "ok" : true,
+  "summary" : "re-expressed /Order/DeliveryNotBeforeOrder",
+  "changed" : {
+    "before" : "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And DifferenceInDays(/Order/OrderDate, /Order/DeliveryDate) < 0",
+    "after" : "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And [/Order/DeliveryDate] < [/Order/OrderDate]",
+    "changed" : true,
+    "lossiness" : [ ]
+  },
+  "diagnostics" : [ ],
+  "written" : true,
+  "output" : "/tmp/edit2-order.json"
+}
+--- re-expression occurrences after modify: 1
+--- the written model still validates: true
+```
+
+→ Now `outcome: "applied"` and `written: true` with `output` naming the file; the new condition is present **once** and the written model re-validates against the kernel (`true`). `order-ruled` declares only `en_US`, and a rule re-expression keeps the existing messages — so no locale juggling here. `rule modify` wrote in place; `-o <file>` would redirect the write and leave the source untouched.
+
+## rule remove — drop a rule
+
+`rule remove` deletes a rule by its slash-path and writes the model back (in place; `-o` redirects, `--dry-run` previews). The removed path lands under `.changed.removed`. We remove `/Order/DeliveryNotBeforeOrder` from a fresh `order-ruled` copy and confirm the rule count fell via `export`.
+
+```bash
+rm -f /tmp/edit2-rm-rule.json
+cp cli/src/test/resources/models/order-ruled.dm.json /tmp/edit2-rm-rule.json
+echo "--- $(bin/dmtool export /tmp/edit2-rm-rule.json | grep -E "^- rules:") (before)"
+bin/dmtool -m /tmp/edit2-rm-rule.json rule remove /Order/DeliveryNotBeforeOrder
+echo "--- $(bin/dmtool export /tmp/edit2-rm-rule.json | grep -E "^- rules:") (after)"
+echo "--- the written model still validates: $(bin/dmtool -m /tmp/edit2-rm-rule.json doc validate | jq -c ".valid")"
+```
+
+```output
+--- - rules: 3 (before)
+{
+  "target" : "rule",
+  "op" : "remove",
+  "outcome" : "applied",
+  "ok" : true,
+  "summary" : "removed rule /Order/DeliveryNotBeforeOrder",
+  "changed" : {
+    "removed" : "/Order/DeliveryNotBeforeOrder"
+  },
+  "diagnostics" : [ ],
+  "written" : true,
+  "output" : "/tmp/edit2-rm-rule.json"
+}
+--- - rules: 2 (after)
+--- the written model still validates: true
+```
+
+→ `outcome: "applied"`, `written: true`, and `.changed.removed` names the gone rule. `export` shows the count dropped from **3 to 2**, and the model still validates — the other two rules are untouched. `--dry-run` would report the same removal with `written: false`.
+
+## computation add — persist a brand-new computation
+
+`computation add` is the computed-field counterpart to `rule add`: it takes a JSON computation-spec (`computedField`, `alternatives`, `messages`), kernel-validates it before and after, and on accept **writes it into the model in place** (emitting the envelope, not the model text). The synthesized computation path lands under `.changed.computation`. We add onto a fresh `subscription` copy — which has the bare field `/Subscription/Billing/EffectiveFee` but no computation for it — defining it as twice `BaseFee`. `subscription` declares `en_US` **and** `de_DE`, so the spec carries a message for each.
+
+```bash
+rm -f /tmp/edit2-comp-spec.json /tmp/edit2-sub.json
+printf "%s" "{\"computedField\":\"/Subscription/Billing/EffectiveFee\",\"alternatives\":[{\"operation\":\"[BaseFee] * 2\"}],\"messages\":[{\"locale\":\"en_US\",\"text\":\"Effective fee is twice the base fee.\"},{\"locale\":\"de_DE\",\"text\":\"Effektivgebuehr ist das Doppelte der Basisgebuehr.\"}]}" > /tmp/edit2-comp-spec.json
+cp cli/src/test/resources/models/subscription.dm.json /tmp/edit2-sub.json
+bin/dmtool -m /tmp/edit2-sub.json computation add /tmp/edit2-comp-spec.json
+echo "--- the written model validates: $(bin/dmtool -m /tmp/edit2-sub.json doc validate | jq -c ".valid")"
+```
+
+```output
+{
+  "target" : "computation",
+  "op" : "add",
+  "outcome" : "applied",
+  "ok" : true,
+  "summary" : "added computation /Subscription/Billing/EffectiveFeeComp",
+  "changed" : {
+    "computation" : "/Subscription/Billing/EffectiveFeeComp"
+  },
+  "diagnostics" : [ ],
+  "written" : true,
+  "output" : "/tmp/edit2-sub.json"
+}
+--- the written model validates: true
+```
+
+→ The kernel accepted the spec and `computation add` wrote it in place (`written: true`). The computation path is **synthesized** from the field — `/Subscription/Billing/EffectiveFee` becomes the computation `/Subscription/Billing/EffectiveFeeComp` (the `…Comp` convention) — and surfaces under `.changed.computation`. The written model re-validates clean. That fresh computation is what we read back next.
+
+## computation read — read a computation back
+
+`computation read` round-trips a computation into rulekit's typed form (tolerant of Opaque constructs the typed model can't represent), reporting under `.data`. Where `computation explain` renders the full structure for a human, `read` is the machine-readable round-trip check: did the model parse back into our typed form, and what calculated field does it target. We read back the `EffectiveFeeComp` we just added (still on the `/tmp` `subscription` copy).
+
+```bash
+bin/dmtool -m /tmp/edit2-sub.json computation read /Subscription/Billing/EffectiveFeeComp
+```
+
+```output
+{
+  "target" : "computation",
+  "op" : "read",
+  "outcome" : "read",
+  "ok" : true,
+  "valid" : true,
+  "summary" : "read /Subscription/Billing/EffectiveFeeComp",
+  "data" : {
+    "computation" : "/Subscription/Billing/EffectiveFeeComp",
+    "converted" : true,
+    "calculatedField" : "/Subscription/Billing/EffectiveFee"
+  },
+  "diagnostics" : [ ],
+  "written" : false
+}
+```
+
+→ `outcome: "read"`, `ok: true`, and `.data` carries `converted: true` (the kernel construct round-tripped into rulekit's typed form cleanly) plus `calculatedField` — the `/Subscription/Billing/EffectiveFee` this computation assigns. `read` writes nothing (`written: false`); it's the verification half of the add we just made.
+
+## computation remove — drop a computation
+
+`computation remove` deletes a computation by its slash-path and writes the model back (in place; `-o` redirects, `--dry-run` previews) — the rule-removal twin for computed fields, with the gone path under `.changed.removed`. We remove `/Subscription/Billing/EffectiveFeeComp` from a fresh `subscription-computed` copy (the fixture that ships with that computation), confirming it's present first and gone after.
+
+```bash
+rm -f /tmp/edit2-rm-comp.json
+cp cli/src/test/resources/models/subscription-computed.dm.json /tmp/edit2-rm-comp.json
+echo "--- computation present before? $(bin/dmtool -m /tmp/edit2-rm-comp.json computation read /Subscription/Billing/EffectiveFeeComp | jq -c ".ok")"
+bin/dmtool -m /tmp/edit2-rm-comp.json computation remove /Subscription/Billing/EffectiveFeeComp
+echo "--- read it again (exit code signals absence): $(bin/dmtool -m /tmp/edit2-rm-comp.json computation read /Subscription/Billing/EffectiveFeeComp 2>&1 >/dev/null; echo "exit=$?")"
+echo "--- the written model still validates: $(bin/dmtool -m /tmp/edit2-rm-comp.json doc validate | jq -c ".valid")"
+```
+
+```output
+--- computation present before? true
+{
+  "target" : "computation",
+  "op" : "remove",
+  "outcome" : "applied",
+  "ok" : true,
+  "summary" : "removed computation /Subscription/Billing/EffectiveFeeComp",
+  "changed" : {
+    "removed" : "/Subscription/Billing/EffectiveFeeComp"
+  },
+  "diagnostics" : [ ],
+  "written" : true,
+  "output" : "/tmp/edit2-rm-comp.json"
+}
+--- read it again (exit code signals absence): '/Subscription/Billing/EffectiveFeeComp' is not a computation in this model — computations: []
+exit=2
+--- the written model still validates: true
+```
+
+→ `outcome: "applied"`, `written: true`, `.changed.removed` names the gone computation. Reading it back now exits non-zero (`exit=2`) — the computation is gone — and the model still validates clean. With this verb the rule + computation CRUD is complete: add · read · explain · modify · remove on both targets, every mutation kernel-validated and written in place.

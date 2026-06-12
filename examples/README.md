@@ -10,8 +10,12 @@ uvx showboat@0.6.1 verify examples/cli-tour.md   # exit 0 = output still matches
 
 ## Demos in this folder
 
-| File | What it shows |
-|---|---|
-| [`cli-tour.md`](cli-tour.md) | A tour of the **read/inspect** surface on the `order-ruled` fixture. Opens with discovery (`manifest` → the target-first verb tree) and the **model** it guards (`doc describe` → fields + kinds), then walks `doc validate` · `rule read` · `rule explain` (the structural tree) · `rule check` (with the lint backstop) — each as a command, its captured envelope, and a "what just happened" note. |
-| [`cli-edit-loop.md`](cli-edit-loop.md) | The **write/edit** surface on the `subscription-computed` fixture: `where-used` · `computation explain` · `computation modify` (`--dry-run` previews, then write) · `rule add` · `doc describe --include-dir` (multi-file) · `batch` · `operators`/`schema` (self-description). The companion to the tour — the F8 modify-by-re-express loop end to end (its `--dry-run` preview vs default in-place write, shown via the envelope's `outcome`/`written`). |
-| [`cli-structure-edit.md`](cli-structure-edit.md) | The **structure-edit** surface on the `order-ruled` fixture: `field add` · `group add` (`--repeatable`) · `field remove` (the **safe-delete gate** — a referenced field is refused with the blocking rules surfaced under `data.referencedBy`, then `--cascade` removes them together; never a silent cascade). |
+Five thematic demos that together exercise **every verb** + the cross-cutting features (the result envelope, `--dry-run`/`-o`, `--include-dir`, the safe-delete gate, op-arg/cross-type correctives, the schema contracts):
+
+| File | Surface | Verbs it shows |
+|---|---|---|
+| [`cli-tour.md`](cli-tour.md) | **discover + read** | `manifest` · `operators`(+`<id>`) · `schema result`/`<target> <op>` · `doc describe`/`doc read`/`doc validate` · `rule read`/`rule explain`/`rule check` · `field read`/`group read`/`config read` |
+| [`cli-edit-loop.md`](cli-edit-loop.md) | **rulekit write/edit** | `where-used` · `rule add`/`rule modify`/`rule remove` · `computation add`/`read`/`explain`/`modify`/`remove` · `batch` (the F8 re-express loop; `--dry-run` preview vs in-place write via the envelope's `outcome`/`written`) |
+| [`cli-structure-edit.md`](cli-structure-edit.md) | **modelkit structure** | `field add`/`field read`/`field remove` (the **safe-delete gate** → `--cascade`) · `group add`/`group read`/`group remove` · `typedef add`/`read`/`remove` · `include add`/`read`/`remove` (`--include-dir`) · `config read`/`config modify` · `export` |
+| [`cli-apply.md`](cli-apply.md) | **the `apply` session** | `apply` — atomic multi-op, rollback, op-arg corrective (`RK_UNKNOWN_ARG`/`RK_UNKNOWN_OP`), cross-type corrective, read mid-sequence · `schema apply` (the op-record frame) |
+| [`cli-runtime.md`](cli-runtime.md) | **runtime evaluation** | `doc eval` (which rules *fire* on a document instance — the empirical polarity check) · `doc compute` (a computed field's value, incl. empty-as-0) |
