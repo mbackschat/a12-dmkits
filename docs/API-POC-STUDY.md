@@ -446,24 +446,23 @@ A label must cover every declared locale (fails fast otherwise); the add/re-type
 
 ### Rules *along with* structure — one session (M9)
 
-`EditSession` threads one DM-JSON through both kits. The decisive case: a rule whose error field **is the field the structure step just added** — only kernel-valid if both edits composed over the same document.
+`EditSession` threads one DM-JSON through both kits, and the **preferred idiom is the editor** (the L2c `GroupEditor`/`FieldEditor`/… — §5c): hold an editor on a group, edits chain, and a ref to a just-created field comes from relative navigation. The decisive case: a rule whose error field **is the field the structure step just added** — only kernel-valid if both edits composed over the same document.
 
 ```java
-String edited = EditSession.read(json)
-    .addField("/Subscription/Addons", "Discount", FieldKind.NUMBER)            // structure (modelkit)
-    .addRule(m -> m.rule(m.group("/Subscription/Addons"))                      // rule (rulekit)
-        .name("DiscountNotNegative")
-        .errorField(m.num("/Subscription/Addons/Discount"))                    // ← the just-added field
-        .when(m.num("/Subscription/Addons/Discount").filled()
-              .and(m.num("/Subscription/Addons/Discount").lt(0)))
+EditSession s = EditSession.read(json);
+GroupEditor addons = s.group("/Subscription/Addons");
+addons.addField("Discount", FieldKind.NUMBER);                                 // structure (modelkit) — chains
+NumberRef discount = addons.num("Discount");                                   // ref to the just-added field
+addons.addRule(r -> r.name("DiscountNotNegative")                              // rule (rulekit), pre-scoped here
+        .errorField(discount)
+        .when(discount.filled().and(discount.lt(0)))
         .code("DISCOUNT_NEGATIVE").severity(Severity.ERROR)
         .message(Dsl.en("Discount must not be negative."), Dsl.de("Rabatt darf nicht negativ sein."))
-        .build())
-    .removeGroup("/Subscription/Billing")                                      // delete (modelkit)
-    .validate()                                                                // kernel gate, once
-    .toJson();
+        .build());
+s.removeGroup("/Subscription/Billing");                                        // delete (modelkit, session-level)
+String edited = s.validate().toJson();                                         // kernel gate, once
 ```
-`addRule`'s builder receives the model bound to the *current* state, so it authors against the live structure (`m.num(".../Discount")` resolves only because `addField` already ran). Each rule edit also re-binds the whole model as it applies (fail-fast); `validate()` re-confirms. *Locked by `edit.EditSessionTest`.*
+The editor authors against the **current** session state, so `addons.num("Discount")` resolves *only because* `addField` already ran; each rule edit re-binds the whole model as it applies (fail-fast), and `validate()` re-confirms once. *The editor flow is locked by `edit.GroupEditorTest`; the flat session verbs it forwards to — `s.addField(path, …)`, `s.addRule(m -> m.rule(m.group(path)) …)`, `s.removeGroup(…)` — by `edit.EditSessionTest`.*
 
 The **whole rule lifecycle composes with structure edits** in the one session: `addRule` / `modifyRule(name, m -> newCondition)` / `removeRule(name)` / `addComputation` / `removeComputation` interleave freely with `addField` / `addGroup` / `removeField` / `removeGroup` / `setFieldType` / `setLabel` / `setAnnotation` — every edit reads the current DM-JSON and writes it back, so a rule can reference a field added earlier in the same chain, and `validate()` checks the whole result once.
 

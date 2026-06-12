@@ -141,39 +141,24 @@ String dmJson = order.toJson();   // DM-JSON the kernel accepts
 
 This is where modelkit and rulekit meet — **structure edits and rule edits on one in-memory model, behind a single kernel gate**. The north-star flow: read a model, make a series of structure *and* rule edits (a rule may reference a field added earlier in the same session), validate **once**, write back (intermediate invalid states are fine — only the final result must satisfy the kernel):
 
-```java
-String updated = EditSession.read(dmJson)
-    .addField("/Order", "Discount", FieldKind.NUMBER)            // structure (modelkit) …
-    .addRule(m -> m.rule(m.group("/Order"))                      // … a TYPED rule (rulekit) on the same model
-        .name("DiscountNotNegative")
-        .errorField(m.num("/Order/Discount"))                    // ← the field added one line above
-        .when(m.num("/Order/Discount").filled()
-              .and(m.num("/Order/Discount").lt(0)))              // the violation: a discount below zero
-        .code("DISCOUNT_NEGATIVE").severity(Severity.ERROR)
-        .message(en("Discount must not be negative."))
-        .build())
-    .validate()                                                  // one kernel gate
-    .toJson();
-```
-
-`addRule`'s builder receives the model bound to the **current** session state, so `m.num("/Order/Discount")` resolves *only because* `addField` ran first — the typed builder, not a hand-written condition string. (A string overload exists too, but it's for the CLI's `apply`/spec path, where conditions arrive as text — not the idiom for library code.)
-
-**Refs as the currency — the editor (L2c).** The same flow reads better when you hold an **editor** on the group: edits chain, a typed ref to the just-created field comes from relative navigation, and the editor goes straight in as the rule scope (it downgrades to a pure ref — the AST never holds the session):
+The idiom is the **editor** (L2c): you hold an editor on a group rather than re-typing string paths — structure edits chain, a typed ref to a just-created field comes from relative navigation, and rules author in place against it.
 
 ```java
 EditSession s = EditSession.read(dmJson);
 GroupEditor order = s.group("/Order");                       // a session-bound editor on /Order
-order.addField("Discount", FieldKind.NUMBER);                // structure edit (chains)
-NumberRef discount = order.num("Discount");                  // typed ref to the just-created field
-s.addRule(m -> m.rule(order)                                 // the editor IS the scope (downgrades to GroupRef)
+order.addField("Discount", FieldKind.NUMBER);                // structure edit (modelkit) — chains
+NumberRef discount = order.num("Discount");                  // a typed ref to the field just added
+order.addRule(r -> r                                         // a TYPED rule (rulekit), pre-scoped to /Order
         .name("DiscountNotNegative").errorField(discount)
-        .when(discount.filled().and(discount.lt(0)))
+        .when(discount.filled().and(discount.lt(0)))         // the violation: a discount below zero
         .code("DISCOUNT_NEGATIVE").severity(Severity.ERROR)
-        .message(en("Discount must not be negative.")).build())
- .validate();
+        .message(en("Discount must not be negative.")).build());
+String updated = s.validate().toJson();                      // one kernel gate
 ```
 
-`GroupEditor` also nests (`addGroup(name, sub -> …)`) and authors rules/computations in place; `FieldEditor` re-types/labels/annotates a field; `RuleEditor` / `ComputationEditor` modify or remove by held reference. Design + rationale: [API study §5c](docs/API-POC-STUDY.md).
+**Refs are the currency.** `order.num("Discount")` resolves *only because* `addField` ran first — and it returns a typed ref, not a string path you re-type. Rules author in place (`order.addRule(r -> …)`, the builder pre-scoped to the group) or take the editor straight as a scope (`m.rule(order)`); either way the immutable AST holds **only the pure ref, never the session**, so a rule can't leak an effect. `GroupEditor` also nests (`addGroup(name, sub -> …)`); `FieldEditor` re-types/labels/annotates a field; `RuleEditor` / `ComputationEditor` modify or remove by held reference. Design + rationale: [API study §5c](docs/API-POC-STUDY.md).
+
+The flat session verbs are still there for a quick one-off — `s.addField(path, …)`, `s.addRule(m -> m.rule(m.group(path)) …)` — and a raw-string condition overload backs the CLI's `apply`/spec path (conditions arrive as text), but it's not the idiom for library code.
 
 More library idioms and the design rationale live in the [API study](docs/API-POC-STUDY.md); every doc is indexed in [`docs/`](docs/README.md).
 
