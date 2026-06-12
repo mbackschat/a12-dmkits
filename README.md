@@ -134,7 +134,7 @@ m.rule(m.group("/Subscription/Addons")).name("FeeCap").errorField(fee)
         .build();
 ```
 
-The CLI mirrors it: a `comment` key on `rule add` and `rule modify --comment`. Computations carry comments too (operations and preconditions).
+The CLI mirrors it: a `comment` key on `rule add` and `computation add`, plus `rule modify --comment`. In the typed library, computations carry comments on operations and preconditions too.
 
 More rulekit idioms and the design rationale are in the [API study](docs/API-POC-STUDY.md).
 

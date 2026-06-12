@@ -670,7 +670,7 @@ EditSession.read(json)
         .validate().toJson();        // still contains ";; cap the monthly fee", now with > 500
 ```
 
-Only *inline/trailing* comments and non-canonical formatting are re-rendered away (no AST node anchors them across a re-expression) — `KernelAdapter.diff` discloses exactly that, carrying the leading comment on both sides. The CLI mirrors the surface: a `comment` key on `rule add` (and `apply` rule ops), and `rule modify --comment`. *Test-backed: `rulekit.dsl.RuleCommentTest`/`CommentRenderTest`, `ComputationAuthoringTest`, `adapter.CommentRoundTripTest`/`ConditionCommentLossinessTest`, `cli.AddVerbTest`/`ModifyVerbTest`; demo `examples/cli-edit-loop.md`. Background: KERNEL-FINDINGS "Condition comments".*
+Only *inline/trailing* comments and non-canonical formatting are re-rendered away (no AST node anchors them across a re-expression) — `KernelAdapter.diff` discloses exactly that, carrying the leading comment on both sides. The CLI mirrors the surface: a `comment` key on `rule add` and `computation add` (the computation key leads its first operation), the matching `apply` rule/computation ops, and `rule modify --comment`. *Test-backed: `rulekit.dsl.RuleCommentTest`/`CommentRenderTest`, `ComputationAuthoringTest`, `adapter.CommentRoundTripTest`/`ConditionCommentLossinessTest`, `cli.AddVerbTest`/`ModifyVerbTest`/`ComputationVerbTest`; demo `examples/cli-edit-loop.md`. Background: KERNEL-FINDINGS "Condition comments".*
 
 ## 6. Semantics as data (F7, N6) ✅ — the catalog is queryable today
 

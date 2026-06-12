@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 
@@ -71,6 +72,13 @@ final class ComputationSpec {
                 return error("each alternative needs an operation (the value-expression DSL)");
             }
             alternatives.add(new DraftComputation.Alternative(text(alt, "precondition"), operation));
+        }
+        // a whole-computation comment leads the first operation (mirrors the library Computation.Builder.comment(String))
+        String comment = text(spec, "comment");
+        if (comment != null && !comment.isBlank()) {
+            DraftComputation.Alternative first = alternatives.get(0);
+            alternatives.set(0, new DraftComputation.Alternative(
+                    first.precondition(), Comments.withLeadingComment(comment, first.operation())));
         }
 
         List<LocalizedText> messages = messages(spec);

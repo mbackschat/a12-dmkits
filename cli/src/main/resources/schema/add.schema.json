@@ -12,7 +12,7 @@
   "properties": {
     "field": { "type": "string", "description": "(rule) the error field's ABSOLUTE path, e.g. /Order/Quantity; its parent group is the rule's iteration scope" },
     "condition": { "type": "string", "description": "(rule) the condition in A12 DSL — TRUE on a VIOLATION/the error scenario (the rule fires when it holds), so to enforce a requirement write its violation, e.g. FieldNotFilled(X) not FieldFilled(X)" },
-    "comment": { "type": "string", "description": "(rule) optional explanatory note, persisted as a leading ;; comment on the condition (the kernel tolerates it; it survives a later modify)" },
+    "comment": { "type": "string", "description": "(rule/computation) optional explanatory note, persisted as a leading ;; comment — on the rule's condition, or on a computation's first operation (the kernel tolerates it; it survives a later modify)" },
     "code": { "type": "string", "description": "(rule) the rule's error code" },
     "severity": { "type": "string", "description": "(rule) ERROR | WARNING (default ERROR)" },
 
@@ -62,6 +62,7 @@
     },
     {
       "computedField": "/Subscription/Billing/EffectiveFee",
+      "comment": "effective fee equals the base fee",
       "alternatives": [ { "operation": "[/Subscription/Billing/BaseFee]" } ],
       "messages": [
         { "locale": "en_US", "text": "Effective equals base." },

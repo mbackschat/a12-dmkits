@@ -41,6 +41,21 @@ class ComputationVerbTest {
     }
 
     @Test
+    void addAttachesACommentKeyToTheOperation(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.modelWithRule(dir);
+        Path spec = dir.resolve("comp.json");
+        Files.writeString(spec, """
+                { "computedField": "/Subscription/Billing/EffectiveFee", "name": "EffectiveFeeComp",
+                  "comment": "effective fee is twice the base fee",
+                  "alternatives": [ {"operation": "[BaseFee] * 2"} ],
+                  "messages": [ {"locale":"en_US","text":"twice base"}, {"locale":"de_DE","text":"zweimal Basis"} ] }""");
+        var res = CliTestSupport.run("-m", model.toString(), "computation", "add", spec.toString());
+        assertEquals(0, res.code(), res.err());
+        assertTrue(Files.readString(model).contains(";; effective fee is twice the base fee"),
+                "the comment key lands as a leading ;; line on the computation's first operation");
+    }
+
+    @Test
     void readReturnsTheComputationInData(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRuleAndComputation(dir);
         var res = CliTestSupport.run("-m", model.toString(), "computation", "read", COMP);
