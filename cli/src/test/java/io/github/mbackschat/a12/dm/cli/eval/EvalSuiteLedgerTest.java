@@ -65,16 +65,18 @@ class EvalSuiteLedgerTest {
     }
 
     @Test
-    void smokeCarriesAtLeastOneRulekitAgentRun() throws IOException {
-        boolean rulekitSmoke = false;
+    void smokeCarriesARulekitAndAModelkitAgentRun() throws IOException {
+        Set<String> smokeKits = new TreeSet<>();
         for (Path f : tasks()) {
-            if ("rulekit".equals(kit(f)) && inSuite(MAPPER.readTree(Files.readString(f)), "smoke")) {
-                rulekitSmoke = true;
+            if (inSuite(MAPPER.readTree(Files.readString(f)), "smoke")) {
+                smokeKits.add(kit(f));
             }
         }
-        assertTrue(rulekitSmoke,
-                "the `smoke` suite must include ≥1 rulekit task (its one agentic run); a modelkit smoke run "
-                        + "is deferred to Phase 2+ (the modelkit agentic eval path, #45/B)");
+        assertTrue(smokeKits.contains("rulekit"),
+                "the `smoke` suite must include ≥1 rulekit task (a rulekit agentic run)");
+        assertTrue(smokeKits.contains("modelkit"),
+                "the `smoke` suite must include ≥1 modelkit task (a modelkit agentic run — landed with #45/B); "
+                        + "tag a `structure` task with suites:[\"smoke\"]");
     }
 
     @Test

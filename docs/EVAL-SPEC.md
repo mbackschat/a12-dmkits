@@ -264,7 +264,7 @@ The suite is large, so a full pass@k is a milestone tool, not a routine check. T
 
 | tier | what runs | model · k | budget | catches |
 |---|---|---|---|---|
-| **smoke** | **deterministic** core — every gold through the CLI (`rule check` / `computation add --dry-run` / `field add --dry-run`) + the demos verify — **plus ≥1 rulekit agent run** (the `smoke` suite; a modelkit agent run is added with B) | sonnet · k=1 for the agent run | ~2 min (soft) | "a verb / kernel interaction broke" + "the agent can't do even one task" |
+| **smoke** | **deterministic** core — every gold through `EvalGoldOracleTest` (rules/computations re-validate, structure/session golds re-bind) + the demos verify — **plus a rulekit AND a modelkit agent run** (the `smoke` suite; `EvalSuiteLedgerTest` requires both) | sonnet · k=1 for the agent runs | ~2 min (soft) | "a verb / kernel interaction broke" + "the agent can't do even one task, either kit" |
 | **simple** | **agentic** subset — the `simple` suite (~6 tasks spanning all difficulties × the wired kit) | **sonnet** (+ at most one opus spot-check) · k=1 | <7 min | "a cold agent lost self-sufficiency" |
 | **full** | the pass@k benchmark, all tasks | sonnet + **few** opus · k=3 | ~40 min | precise pass@k / tier comparison |
 
@@ -273,9 +273,11 @@ The deterministic smoke core is difficulty-complete by construction (it runs *ev
 jq -s -c '[ .[] | select(.suites and (.suites|index("simple"))) ]' eval/tasks/*/*.json   # the `simple` tier (recurse the kit folders)
 ```
 
-**Deferred (B): the modelkit/mixed *agentic* path.** Today the wired runner families are all **rulekit**; the `modelkit/` and `mixed/` tasks run only in the *deterministic* smoke core (e.g. `field add --dry-run`) — they have no agentic produce→recheck→judge path yet. Wiring one (so smoke gains its modelkit agent run and `full` measures structure CRUD + `apply`) is the eval-design increment that **rides Phase 2+ (the modelkit CRUD verbs, #42, done) and `apply` (#43, done)** — i.e. the runner just needs the new families. Until then `EvalSuiteLedgerTest` requires only a *rulekit* smoke agent run.
+**B: the modelkit/mixed *agentic* path — structure family landed (2026-06-12).** Both layers are now wired for the **`structure`** family:
+- **Layer 1 (deterministic oracle, `EvalGoldOracleTest`):** the `structure`/`delete-safety`/`session` golds run against the real kernel via `EditSession` — apply the gold edit → re-bind → assert the post-conditions (the expected field/group exists, the cascade's `expectRemoved` set is gone, the session's field+rule are present). Only the **deferred `refactor`** gold stays skipped (it rides the Phase-4 rename engine; its task carries `status:"deferred"`).
+- **Layer 2 (agentic runner):** the `structure` family has a produce→score path. **Produce** — a clean agent authors a `field add`/`group add` from the bare CLI (`STRUCTURE_SCHEMA`). **Score — deterministic, no LLM judge** (structure has no runtime behavior to diff): an agent applies the produced op via `-o` to a fresh `/tmp` file (never the committed/sandbox fixture; the verb re-binds before writing, so `ok` ⇒ kernel-valid), reads the gold's `expectField` kind back from `doc describe`, and reports raw facts; the **workflow** decides `pass = applied && fieldExists && fieldKind == gold.kind`. `EvalSuiteLedgerTest` now requires a modelkit smoke run, and `modelkit/01` carries `suites:["smoke"]`.
 
-**Proposed `modelkit/`+`mixed/` seeds** (authored-but-inert until B wires the runner, exactly as today's are): `add-typed-field` (`field add --kind`/`--typedef`), `add-repeatable-group`, `declare-typedef-and-use`, `mount-include` (multi-file `--include-dir`), `set-decimal-separator` (`config modify`), the safe-delete gate (already `modelkit/02-safe-delete-referenced-field`); and in `mixed/`: `apply-add-field-and-rule` (one atomic session — already `mixed/01`) and `fix-rejected-batch` (the op-arg/cross-type corrective — already `mixed/02`). These map 1:1 to the built modelkit/`apply` surface, so B is task-authoring + runner-wiring, not new CLI work.
+**Remaining in B (same produce→apply-via-`-o`→deterministic-score shape, richer outputs):** the **`session`** family (an `apply` op-list, scored on the gold's `expect.{field,rule}`) and the **`delete-safety`** family (the cascade-refusal corrective, scored on `expectRemoved`). The **`refactor`/rename** family stays gated on Phase 4. No new CLI work — these are runner-wiring increments over the already-built surface.
 
 ## 9. Status & next
 

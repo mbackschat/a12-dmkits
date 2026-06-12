@@ -92,6 +92,7 @@ const AUTHORING_COMP = TASKS.filter(t => t.family === 'authoring-computation')
 const MODIFY_COMP = TASKS.filter(t => t.family === 'modify-computation')
 const MODIFY_RULE = TASKS.filter(t => t.family === 'modify-rule')
 const COMPREHENSION = TASKS.filter(t => t.family === 'comprehension')
+const STRUCTURE = TASKS.filter(t => t.family === 'structure' && t.status !== 'deferred')
 
 // ---- prompts (EVAL-SPEC §5: neutral, material-only, no leaking the technique/polarity) ------------
 
@@ -149,6 +150,16 @@ do NOT run any verb that persists/writes the model file. Return ONLY JSON:
   {"computedField":"<the computed field's path inside the model, e.g. /Group/Field — NOT the model FILE path>","commonPrecondition":"<DSL or omit>","alternatives":[{"precondition":"<DSL or omit>","operation":"<DSL value expression>"}],"messages":[{"locale":"<code>","text":"..."}],"kernelAccepted":true|false}`
 }
 
+function structurePrompt(task) {
+  return `You help a business analyst edit an A12 document model's STRUCTURE — its fields and groups. Assume NO
+prior A12/rulekit knowledge; use ONLY:
+  - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <target> <op> --help\` an op's parameters — e.g. \`${CLI} field add --help\` / \`${CLI} group add --help\`; \`${CLI} -m ${MODEL_FILE(task)} doc describe\` shows the current structure and its field kinds)
+  - the model file: ${MODEL_FILE(task)}${skillBlock()}
+Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). Requirement: "${task.intent}".
+Decide the single structure edit that satisfies it and return ONLY JSON describing the op (discover the exact field-kind set from \`${CLI} field add --help\`):
+  {"op":"field add" | "group add","group":"<parent group path — for field add>","parent":"<parent path — for group add>","name":"<the new element's name>","kind":"<the field kind — for field add>"}`
+}
+
 function explainPrompt(task) {
   return `You help a business analyst understand the validation rules already on an A12 model. Assume NO prior
 A12/rulekit knowledge; use ONLY:
@@ -186,6 +197,15 @@ const AUTHOR_COMP_SCHEMA = {
   },
   required: ['computedField', 'alternatives'],
 }
+const STRUCTURE_SCHEMA = {
+  type: 'object', additionalProperties: true,
+  properties: {
+    op: { type: 'string' }, group: { type: 'string' }, parent: { type: 'string' },
+    name: { type: 'string' }, kind: { type: 'string' },
+  },
+  required: ['op', 'name'],
+}
+
 const EXPLAIN_SCHEMA = {
   type: 'object', additionalProperties: true,
   properties: { explanations: { type: 'object', additionalProperties: true } },
@@ -242,6 +262,16 @@ const authoredComp = await parallel(compRuns.map(r => () =>
   agent(authorComputationPrompt(r.task), { label: `comp ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: AUTHOR_COMP_SCHEMA })
     .then(out => ({ kind: 'authoring-computation', model: r.model, task: r.task, i: r.i, out }))
     .catch(() => ({ kind: 'authoring-computation', model: r.model, task: r.task, i: r.i, out: null }))))
+
+const structureRuns = []
+for (const model of MODELS)
+  for (const task of STRUCTURE)
+    for (let i = 0; i < K; i++) structureRuns.push({ model, task, i })
+
+const authoredStructure = await parallel(structureRuns.map(r => () =>
+  agent(structurePrompt(r.task), { label: `struct ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: STRUCTURE_SCHEMA })
+    .then(out => ({ kind: 'structure', model: r.model, task: r.task, i: r.i, out }))
+    .catch(() => ({ kind: 'structure', model: r.model, task: r.task, i: r.i, out: null }))))
 
 const modRuns = []
 for (const model of MODELS)
@@ -581,6 +611,36 @@ Return ONLY JSON: {"equivalent": true|false, "why": "<one sentence>"}`,
     .catch(() => ({ key, model: r.model, taskId: r.task.id, valid: true, equivalent: false }))
 }))
 
+// ---- Score (structure): DETERMINISTIC — no LLM judge. The agent only RUNS the CLI and reports raw facts;
+// the workflow decides pass/fail against the gold's exact post-conditions. The edit is applied with `-o` to
+// a fresh /tmp file (never the committed/sandbox fixture), and `field add`/`group add` re-bind before
+// writing, so `applied` (ok) already means kernel-valid.
+const structureCandidates = authoredStructure.filter(r => r && r.out && r.out.op && r.out.name)
+const structureScored = await parallel(structureCandidates.map(r => () => {
+  const key = `${r.model}/${r.task.id}/${r.i}`
+  const gold = r.task.gold
+  const out = `/tmp/rk-struct-${key.replace(/[^a-zA-Z0-9]/g, '_')}.json`
+  const o = r.out
+  const applyCmd = o.op === 'group add'
+    ? `${CLI} -m ${MODEL_FILE(r.task)} group add --parent ${o.parent} --name ${o.name} -o ${out}`
+    : `${CLI} -m ${MODEL_FILE(r.task)} field add --group ${o.group} --name ${o.name} --kind ${o.kind} -o ${out}`
+  const describeCheck = `${CLI} -m ${out} doc describe | jq -c --arg p '${gold.expectField}' `
+    + `'{fieldExists: ([.data.fields[]|select(.path==$p)]|length>0), fieldKind: (([.data.fields[]|select(.path==$p)|.kind][0]) // "")}'`
+  return agent(
+    `Run these two commands and report the raw facts — do NOT judge, just execute and copy the asked JSON fields.
+1. Apply the edit (writes a NEW file, never the input): ${applyCmd}
+   Report \`applied\` = the result envelope's \`ok\` (true/false).
+2. Read the expected element's kind back from the result (this prints {fieldExists, fieldKind} directly): ${describeCheck}
+   Report \`fieldExists\` and \`fieldKind\` exactly as that prints them.
+Return ONLY JSON: {"applied": <bool>, "fieldExists": <bool>, "fieldKind": "<string>"}`,
+    { label: `score ${key}`, phase: 'Judge',
+      schema: { type: 'object', additionalProperties: true, required: ['applied'],
+        properties: { applied: { type: 'boolean' }, fieldExists: { type: 'boolean' }, fieldKind: { type: 'string' } } } })
+    .then(f => ({ key, model: r.model, taskId: r.task.id,
+      pass: !!(f && f.applied && f.fieldExists && f.fieldKind === gold.kind), facts: f }))
+    .catch(() => ({ key, model: r.model, taskId: r.task.id, pass: false }))
+}))
+
 // ---- Aggregate pass@k per (model, task). pass = kernel-valid AND semantically right ----------------
 
 const agg = {}
@@ -595,6 +655,7 @@ for (const r of compJudged) bump(r.model, r.taskId, r.valid && r.equivalent)
 for (const r of modJudged) bump(r.model, r.taskId, r.valid && r.equivalent)
 for (const r of modRuleJudged) bump(r.model, r.taskId, r.valid && r.equivalent)
 for (const r of explainJudged) bump(r.model, r.taskId, r.correct)
+for (const r of structureScored) bump(r.model, r.taskId, r.pass)
 
 log('pass@k by (model, task): ' + JSON.stringify(agg))
-return { agg, authorJudged, compJudged, modJudged, modRuleJudged, explainJudged }
+return { agg, authorJudged, compJudged, modJudged, modRuleJudged, explainJudged, structureScored }
