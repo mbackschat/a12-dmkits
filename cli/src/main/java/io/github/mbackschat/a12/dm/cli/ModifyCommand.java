@@ -56,6 +56,10 @@ final class ModifyCommand extends BaseCommand {
                     + "e.g. FieldNotFilled(X) not FieldFilled(X) for a requiredness rule")
     String condition;
 
+    @Option(names = "--comment", paramLabel = "<text>",
+            description = "set an explanatory ;; comment on the rule (omit to keep its existing leading comment)")
+    String comment;
+
     @Option(names = "--computation", paramLabel = "<computationPathInModel>",
             description = "the computation's full name to re-express — its slash-path in the model, e.g. /Order/TotalComp")
     String computationId;
@@ -105,9 +109,11 @@ final class ModifyCommand extends BaseCommand {
             return fail("cannot parse model: " + e.getMessage());
         }
 
+        // --comment sets a new leading comment (wins over the preserved old one); omitted, the old one rides along
+        String newCondition = io.github.mbackschat.a12.dm.rulekit.dsl.Comments.withLeadingComment(comment, condition);
         String modifiedJson;
         try {
-            modifiedJson = ModelWriter.replaceCondition(modelJson, ruleId, condition);
+            modifiedJson = ModelWriter.replaceCondition(modelJson, ruleId, newCondition);
         } catch (RuntimeException e) {
             return fail("cannot apply the new condition: " + e.getMessage());
         }

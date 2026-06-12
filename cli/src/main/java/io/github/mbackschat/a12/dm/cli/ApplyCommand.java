@@ -21,6 +21,7 @@ import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
@@ -56,8 +57,8 @@ final class ApplyCommand extends BaseCommand {
         FIELD_REMOVE("field", "remove", Set.of("fieldPathInModel")),
         GROUP_ADD("group", "add", Set.of("parent", "name", "repeatable")),
         GROUP_REMOVE("group", "remove", Set.of("groupPathInModel")),
-        RULE_ADD("rule", "add", Set.of("field", "condition", "code", "severity", "name", "messages")),
-        RULE_MODIFY("rule", "modify", Set.of("rule", "condition")),
+        RULE_ADD("rule", "add", Set.of("field", "condition", "comment", "code", "severity", "name", "messages")),
+        RULE_MODIFY("rule", "modify", Set.of("rule", "condition", "comment")),
         COMPUTATION_ADD("computation", "add", Set.of("computedField", "alternatives", "commonPrecondition", "name", "messages")),
         COMPUTATION_MODIFY("computation", "modify", Set.of("computation", "computedField", "alternatives", "commonPrecondition", "name", "messages")),
         TYPEDEF_ADD("typedef", "add", Set.of("id", "kind")),
@@ -244,13 +245,14 @@ final class ApplyCommand extends BaseCommand {
                 if (messages.isEmpty()) {
                     throw new IllegalArgumentException("rule add needs messages [{locale,text}, …]");
                 }
-                session.addRule(group, ruleName, errorEntityRelPath, code, req(op, "condition"), severity, messages);
+                String condition = Comments.withLeadingComment(opt(op, "comment"), req(op, "condition"));
+                session.addRule(group, ruleName, errorEntityRelPath, code, condition, severity, messages);
                 changed.put("rule", group + "/" + ruleName);
                 yield staged(which, changed);
             }
             case RULE_MODIFY -> {
                 String rule = req(op, "rule");
-                session.modifyRule(rule, req(op, "condition"));
+                session.modifyRule(rule, Comments.withLeadingComment(opt(op, "comment"), req(op, "condition")));
                 changed.put("modified", rule);
                 yield staged(which, changed);
             }
@@ -379,6 +381,11 @@ final class ApplyCommand extends BaseCommand {
             throw new IllegalArgumentException("op missing required arg '" + key + "'");
         }
         return op.get(key).asText();
+    }
+
+    /** An optional string arg, or {@code null} if absent. */
+    private static String opt(JsonNode op, String key) {
+        return op.hasNonNull(key) ? op.get(key).asText() : null;
     }
 
     /**

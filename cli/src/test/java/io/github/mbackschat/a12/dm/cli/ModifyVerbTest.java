@@ -74,6 +74,25 @@ class ModifyVerbTest {
     }
 
     @Test
+    void commentOptionSetsALeadingCommentAndASecondModifyPreservesIt(@TempDir Path dir) throws Exception {
+        Path m = model(dir);
+        // --comment sets the leading ;; comment alongside the re-expression
+        var set = CliTestSupport.run("modify", m.toString(),
+                "--rule", CliTestSupport.RULE_FULL_NAME, "--condition", "[MonthlyFee] > 2000",
+                "--comment", "raised the cap to 2000");
+        assertEquals(0, set.code(), set::err);
+        assertTrue(Files.readString(m).contains(";; raised the cap to 2000"), "the --comment lands as a ;; line");
+
+        // a later modify with NO --comment carries the existing comment forward (preserve-by-default)
+        var again = CliTestSupport.run("modify", m.toString(),
+                "--rule", CliTestSupport.RULE_FULL_NAME, "--condition", "[MonthlyFee] > 3000");
+        assertEquals(0, again.code(), again::err);
+        String written = Files.readString(m);
+        assertTrue(written.contains(";; raised the cap to 2000"), "the comment survives a comment-less modify");
+        assertTrue(written.contains("3000"), "and the newest condition is applied");
+    }
+
+    @Test
     void rejectsAnInvalidReExpressionWithoutWriting(@TempDir Path dir) throws Exception {
         Path m = model(dir);
         String before = Files.readString(m);

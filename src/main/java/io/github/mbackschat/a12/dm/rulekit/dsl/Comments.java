@@ -62,6 +62,17 @@ public final class Comments {
     }
 
     /**
+     * Prepend {@code comment} as a leading {@code ;;} line to {@code conditionText} — the single owner of
+     * the {@code ;; } prefix format, used by the text-spec authoring paths (the CLI's {@code comment} key).
+     * A {@code null}/blank comment is a no-op. The text-arriving-as-string peer of the typed {@code .comment(...)}.
+     */
+    public static String withLeadingComment(String comment, String conditionText) {
+        return comment == null || comment.isBlank()
+                ? conditionText
+                : ";; " + comment.strip() + "\n" + conditionText;
+    }
+
+    /**
      * Carry the leading {@code ;;} comment block from {@code oldText} onto {@code newText} when the
      * re-expression supplied none — the <b>preserve-by-default</b> rule for read→modify→write-back. If
      * {@code newText} already begins with its own {@code ;;} comment, it wins (no override).

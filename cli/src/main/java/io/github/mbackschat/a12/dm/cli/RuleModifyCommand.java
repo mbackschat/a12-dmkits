@@ -42,6 +42,10 @@ final class RuleModifyCommand extends BaseCommand {
             description = "the new condition in A12 DSL — true on a VIOLATION (the error scenario)")
     String condition;
 
+    @Option(names = "--comment", paramLabel = "<text>",
+            description = "set an explanatory ;; comment on the rule (omit to keep the rule's existing leading comment)")
+    String comment;
+
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the result here instead of in place (overwriting the model)")
     String outputPath;
@@ -69,9 +73,12 @@ final class RuleModifyCommand extends BaseCommand {
         }
         IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
 
+        // --comment sets a new leading comment (it wins over the preserved old one); omitted, replaceCondition
+        // carries the rule's existing leading comment by default.
+        String newCondition = io.github.mbackschat.a12.dm.rulekit.dsl.Comments.withLeadingComment(comment, condition);
         String modifiedJson;
         try {
-            modifiedJson = ModelWriter.replaceCondition(modelJson, rule, condition);
+            modifiedJson = ModelWriter.replaceCondition(modelJson, rule, newCondition);
         } catch (RuntimeException e) {
             return fail("cannot apply the new condition: " + e.getMessage());
         }

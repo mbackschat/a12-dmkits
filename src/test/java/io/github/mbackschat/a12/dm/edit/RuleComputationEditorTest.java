@@ -50,6 +50,34 @@ class RuleComputationEditorTest {
     }
 
     @Test
+    void authorsCommentsThroughTheEditorOnBothARuleAndAComputation() {
+        // the L2c editor carries the comment feature for free — GroupEditor.addRule/addComputation hand
+        // the same Rule.Builder/Computation.Builder, so .comment(...) flows straight through.
+        EditSession s = EditSession.read(Fixtures.subscriptionJson());
+        GroupEditor addons = s.group("/Subscription/Addons");
+        addons.addField("Discount", FieldKind.NUMBER);
+        NumberRef discount = addons.num("Discount");
+        addons.addRule(r -> r.name("DiscountNonNeg").errorField(discount)
+                .when(discount.filled().and(discount.lt(0)))
+                .comment("discounts may not be negative")
+                .code("D_NEG").severity(Severity.ERROR)
+                .message(Dsl.en("neg"), Dsl.de("neg")).build());
+        s.validate();
+        assertTrue(s.toJson().contains(";; discounts may not be negative"),
+                "the editor-authored rule carries its comment");
+
+        GroupEditor billing = s.group("/Subscription/Billing");
+        NumberRef baseFee = billing.num("BaseFee");
+        NumberRef effectiveFee = billing.num("EffectiveFee");
+        billing.addComputation(effectiveFee, c -> c.name("EffFeeComp")
+                .comment("effective fee equals the base fee")
+                .calc(baseFee.value()).message(Dsl.en("x"), Dsl.de("x")).build());
+        s.validate();
+        assertTrue(s.toJson().contains(";; effective fee equals the base fee"),
+                "the editor-authored computation carries its comment");
+    }
+
+    @Test
     void removesAComputationByHeldReference() {
         EditSession s = EditSession.read(Fixtures.subscriptionJson());
         GroupEditor billing = s.group("/Subscription/Billing");

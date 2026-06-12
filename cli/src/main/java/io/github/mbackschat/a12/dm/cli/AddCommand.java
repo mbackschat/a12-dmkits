@@ -78,6 +78,8 @@ final class AddCommand extends BaseCommand {
         if (field == null || condition == null || code == null) {
             return fail("rule-spec needs field, condition, and code (see `schema add`)");
         }
+        // an explanatory ;; comment, attached as a leading line on the condition (the kernel tolerates it)
+        condition = io.github.mbackschat.a12.dm.rulekit.dsl.Comments.withLeadingComment(text(spec, "comment"), condition);
         List<LocalizedText> messages = messages(spec);
         if (messages.isEmpty()) {
             return fail("rule-spec needs at least one message {locale,text} (see `schema add`)");

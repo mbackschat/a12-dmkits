@@ -318,6 +318,7 @@ bin/dmtool schema rule add | jq '{op, returns, inputKeys: (.input.properties|key
   "inputKeys": [
     "alternatives",
     "code",
+    "comment",
     "commonPrecondition",
     "computedField",
     "condition",

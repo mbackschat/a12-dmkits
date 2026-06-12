@@ -60,6 +60,30 @@ class AddVerbTest {
     }
 
     @Test
+    void commentKeyPersistsALeadingCommentOnTheCondition(@TempDir Path dir) throws Exception {
+        String withComment = """
+                {
+                  "field": "/Subscription/Billing/EffectiveFee",
+                  "condition": "[EffectiveFee] < [BaseFee]",
+                  "comment": "effective fee must never dip below the base fee",
+                  "code": "EFFECTIVE_FEE_BELOW_BASE",
+                  "name": "EffectiveFeeNotBelowBase",
+                  "messages": [
+                    {"locale": "en_US", "text": "Effective fee must not be below the base fee."},
+                    {"locale": "de_DE", "text": "Effektives Entgelt darf nicht unter dem Grundentgelt liegen."}
+                  ]
+                }
+                """;
+        var res = CliTestSupport.run("add", model(dir).toString(), spec(dir, withComment).toString());
+        assertEquals(0, res.code(), res::err);
+        assertTrue(res.out().contains(";; effective fee must never dip below the base fee"),
+                () -> "the comment key lands as a leading ;; line on the persisted condition: " + res.out());
+        // still a valid, kernel-reloadable model (the kernel tolerates the comment)
+        assertTrue(BoundModel.ofJson(res.out()).toJson().contains("EffectiveFeeNotBelowBase"),
+                "the commented rule round-trips through the kernel");
+    }
+
+    @Test
     void invalidConditionIsNotPersisted(@TempDir Path dir) throws Exception {
         String bad = GOOD_SPEC.replace("[EffectiveFee] < [BaseFee]", "@@@ not a condition @@@");
         var res = CliTestSupport.run("add", model(dir).toString(), spec(dir, bad).toString());
