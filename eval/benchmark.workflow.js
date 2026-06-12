@@ -93,6 +93,8 @@ const MODIFY_COMP = TASKS.filter(t => t.family === 'modify-computation')
 const MODIFY_RULE = TASKS.filter(t => t.family === 'modify-rule')
 const COMPREHENSION = TASKS.filter(t => t.family === 'comprehension')
 const STRUCTURE = TASKS.filter(t => t.family === 'structure' && t.status !== 'deferred')
+const SESSION = TASKS.filter(t => t.family === 'session' && t.status !== 'deferred')
+const DELETE_SAFETY = TASKS.filter(t => t.family === 'delete-safety' && t.status !== 'deferred')
 
 // ---- prompts (EVAL-SPEC §5: neutral, material-only, no leaking the technique/polarity) ------------
 
@@ -160,6 +162,27 @@ Decide the single structure edit that satisfies it and return ONLY JSON describi
   {"op":"field add" | "group add","group":"<parent group path — for field add>","parent":"<parent path — for group add>","name":"<the new element's name>","kind":"<the field kind — for field add>"}`
 }
 
+function sessionPrompt(task) {
+  return `You help a business analyst edit an A12 document model in ONE atomic session — structure AND rules
+together, applied as an ordered list of operations (a later op may reference a field an earlier op added).
+Assume NO prior A12/rulekit knowledge; use ONLY:
+  - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <target> <op> --help\` an op's parameters, \`${CLI} schema apply\` shows the op-record frame, \`${CLI} -m ${MODEL_FILE(task)} doc describe\` the current structure, \`${CLI} operators\` the DSL operators)
+  - the model file: ${MODEL_FILE(task)}${skillBlock()}
+Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). Requirement: "${task.intent}".
+Build the ordered op-record list that satisfies it; you may PREVIEW with \`apply --dry-run\` (writes nothing) to confirm before answering. Return ONLY JSON — each op-record's fields are the verb's params (manifest / \`schema apply\`):
+  {"ops":[ {"target":"field","op":"add","group":"…","name":"…","kind":"…"}, {"target":"rule","op":"add","spec":{"field":"…","condition":"<DSL>","code":"…","messages":[{"locale":"…","text":"…"}]}} ]}`
+}
+
+function deleteSafetyPrompt(task) {
+  return `You help a business analyst REMOVE part of an A12 document model. Removing a field that other rules
+reference is REFUSED unless you opt into removing those referrers too. Assume NO prior A12/rulekit knowledge; use ONLY:
+  - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} field remove --help\`, \`${CLI} -m ${MODEL_FILE(task)} doc describe\`, \`${CLI} -m ${MODEL_FILE(task)} where-used <path>\` shows what references a field)
+  - the model file: ${MODEL_FILE(task)}${skillBlock()}
+Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). Requirement: "${task.intent}".
+Decide the field to remove and whether to **cascade** (also remove the rules/computations that reference it). Return ONLY JSON:
+  {"field":"<the field's path inside the model, e.g. /Order/X>","cascade":true|false}`
+}
+
 function explainPrompt(task) {
   return `You help a business analyst understand the validation rules already on an A12 model. Assume NO prior
 A12/rulekit knowledge; use ONLY:
@@ -204,6 +227,18 @@ const STRUCTURE_SCHEMA = {
     name: { type: 'string' }, kind: { type: 'string' },
   },
   required: ['op', 'name'],
+}
+
+const SESSION_SCHEMA = {
+  type: 'object', additionalProperties: true,
+  properties: { ops: { type: 'array', items: { type: 'object', additionalProperties: true } } },
+  required: ['ops'],
+}
+
+const DELETE_SAFETY_SCHEMA = {
+  type: 'object', additionalProperties: true,
+  properties: { field: { type: 'string' }, cascade: { type: 'boolean' } },
+  required: ['field'],
 }
 
 const EXPLAIN_SCHEMA = {
@@ -272,6 +307,26 @@ const authoredStructure = await parallel(structureRuns.map(r => () =>
   agent(structurePrompt(r.task), { label: `struct ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: STRUCTURE_SCHEMA })
     .then(out => ({ kind: 'structure', model: r.model, task: r.task, i: r.i, out }))
     .catch(() => ({ kind: 'structure', model: r.model, task: r.task, i: r.i, out: null }))))
+
+const sessionRuns = []
+for (const model of MODELS)
+  for (const task of SESSION)
+    for (let i = 0; i < K; i++) sessionRuns.push({ model, task, i })
+
+const authoredSession = await parallel(sessionRuns.map(r => () =>
+  agent(sessionPrompt(r.task), { label: `session ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: SESSION_SCHEMA })
+    .then(out => ({ kind: 'session', model: r.model, task: r.task, i: r.i, out }))
+    .catch(() => ({ kind: 'session', model: r.model, task: r.task, i: r.i, out: null }))))
+
+const deleteRuns = []
+for (const model of MODELS)
+  for (const task of DELETE_SAFETY)
+    for (let i = 0; i < K; i++) deleteRuns.push({ model, task, i })
+
+const authoredDeleteSafety = await parallel(deleteRuns.map(r => () =>
+  agent(deleteSafetyPrompt(r.task), { label: `del ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: DELETE_SAFETY_SCHEMA })
+    .then(out => ({ kind: 'delete-safety', model: r.model, task: r.task, i: r.i, out }))
+    .catch(() => ({ kind: 'delete-safety', model: r.model, task: r.task, i: r.i, out: null }))))
 
 const modRuns = []
 for (const model of MODELS)
@@ -641,6 +696,56 @@ Return ONLY JSON: {"applied": <bool>, "fieldExists": <bool>, "fieldKind": "<stri
     .catch(() => ({ key, model: r.model, taskId: r.task.id, pass: false }))
 }))
 
+// ---- Score (session): DETERMINISTIC — apply the produced `apply` op-list with `-o` (a fresh /tmp file),
+// then check the gold's expect.{field,rule} are present on the committed result. No LLM judge.
+const sessionCandidates = authoredSession.filter(r => r && r.out && Array.isArray(r.out.ops) && r.out.ops.length)
+const sessionScored = await parallel(sessionCandidates.map(r => () => {
+  const key = `${r.model}/${r.task.id}/${r.i}`
+  const expect = r.task.gold.expect
+  const safe = key.replace(/[^a-zA-Z0-9]/g, '_')
+  const opsFile = `/tmp/rk-sess-ops-${safe}.json`
+  const out = `/tmp/rk-sess-out-${safe}.json`
+  return agent(
+    `Run these and report the raw facts — do NOT judge, just execute and copy the asked JSON fields.
+1. Write this op-record list (verbatim JSON ARRAY) to ${opsFile}:  ${JSON.stringify(r.out.ops)}
+2. Apply it atomically, committing to a NEW file:  ${CLI} -m ${MODEL_FILE(r.task)} apply ${opsFile} -o ${out}
+   Report \`committed\` = the envelope's \`ok\` (true iff the whole sequence committed; on rollback it is false).
+3. ONLY if committed, on the result:  ${CLI} -m ${out} field read ${expect.field}  → \`fieldExists\` = its \`ok\`;
+   ${CLI} -m ${out} where-used ${expect.field}  → \`ruleOnField\` = true iff its \`data.rules\` is NON-EMPTY (some
+   rule now references the new field — the rule's own code/name is the author's choice, so do NOT match it
+   exactly). (If not committed, both are false.)
+Return ONLY JSON: {"committed": <bool>, "fieldExists": <bool>, "ruleOnField": <bool>}`,
+    { label: `score ${key}`, phase: 'Judge',
+      schema: { type: 'object', additionalProperties: true, required: ['committed'],
+        properties: { committed: { type: 'boolean' }, fieldExists: { type: 'boolean' }, ruleOnField: { type: 'boolean' } } } })
+    .then(f => ({ key, model: r.model, taskId: r.task.id,
+      pass: !!(f && f.committed && f.fieldExists && f.ruleOnField), facts: f }))
+    .catch(() => ({ key, model: r.model, taskId: r.task.id, pass: false }))
+}))
+
+// ---- Score (delete-safety): DETERMINISTIC — run the produced removal with `-o`, then confirm every
+// gold.expectRemoved path is GONE on the result. (A referenced field WITHOUT --cascade is refused → ok:false.)
+const deleteCandidates = authoredDeleteSafety.filter(r => r && r.out && r.out.field)
+const deleteScored = await parallel(deleteCandidates.map(r => () => {
+  const key = `${r.model}/${r.task.id}/${r.i}`
+  const removed = r.task.gold.expectRemoved
+  const out = `/tmp/rk-del-out-${key.replace(/[^a-zA-Z0-9]/g, '_')}.json`
+  const cascade = r.out.cascade ? ' --cascade' : ''
+  return agent(
+    `Run these and report the raw facts — do NOT judge, just execute.
+1. Remove the field, committing to a NEW file:  ${CLI} -m ${MODEL_FILE(r.task)} field remove ${r.out.field}${cascade} -o ${out}
+   Report \`applied\` = the envelope's \`ok\` (a referenced field WITHOUT --cascade is refused → ok:false).
+2. ONLY if applied, confirm every path in ${JSON.stringify(removed)} is GONE on ${out}: for each, run
+   \`${CLI} -m ${out} field read <path>\` (if it names a field) or \`${CLI} -m ${out} rule read <path>\` (if a rule);
+   every one must report ok:false (not found). Report \`allRemoved\` = true iff none of them resolves.
+Return ONLY JSON: {"applied": <bool>, "allRemoved": <bool>}`,
+    { label: `score ${key}`, phase: 'Judge',
+      schema: { type: 'object', additionalProperties: true, required: ['applied'],
+        properties: { applied: { type: 'boolean' }, allRemoved: { type: 'boolean' } } } })
+    .then(f => ({ key, model: r.model, taskId: r.task.id, pass: !!(f && f.applied && f.allRemoved), facts: f }))
+    .catch(() => ({ key, model: r.model, taskId: r.task.id, pass: false }))
+}))
+
 // ---- Aggregate pass@k per (model, task). pass = kernel-valid AND semantically right ----------------
 
 const agg = {}
@@ -656,6 +761,8 @@ for (const r of modJudged) bump(r.model, r.taskId, r.valid && r.equivalent)
 for (const r of modRuleJudged) bump(r.model, r.taskId, r.valid && r.equivalent)
 for (const r of explainJudged) bump(r.model, r.taskId, r.correct)
 for (const r of structureScored) bump(r.model, r.taskId, r.pass)
+for (const r of sessionScored) bump(r.model, r.taskId, r.pass)
+for (const r of deleteScored) bump(r.model, r.taskId, r.pass)
 
 log('pass@k by (model, task): ' + JSON.stringify(agg))
-return { agg, authorJudged, compJudged, modJudged, modRuleJudged, explainJudged, structureScored }
+return { agg, authorJudged, compJudged, modJudged, modRuleJudged, explainJudged, structureScored, sessionScored, deleteScored }

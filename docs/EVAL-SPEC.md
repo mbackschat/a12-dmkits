@@ -273,11 +273,15 @@ The deterministic smoke core is difficulty-complete by construction (it runs *ev
 jq -s -c '[ .[] | select(.suites and (.suites|index("simple"))) ]' eval/tasks/*/*.json   # the `simple` tier (recurse the kit folders)
 ```
 
-**B: the modelkit/mixed *agentic* path — structure family landed (2026-06-12).** Both layers are now wired for the **`structure`** family:
+**B: the modelkit/mixed *agentic* path — landed for structure · session · delete-safety (2026-06-12); only `refactor` deferred.** Both layers are wired:
 - **Layer 1 (deterministic oracle, `EvalGoldOracleTest`):** the `structure`/`delete-safety`/`session` golds run against the real kernel via `EditSession` — apply the gold edit → re-bind → assert the post-conditions (the expected field/group exists, the cascade's `expectRemoved` set is gone, the session's field+rule are present). Only the **deferred `refactor`** gold stays skipped (it rides the Phase-4 rename engine; its task carries `status:"deferred"`).
-- **Layer 2 (agentic runner):** the `structure` family has a produce→score path. **Produce** — a clean agent authors a `field add`/`group add` from the bare CLI (`STRUCTURE_SCHEMA`). **Score — deterministic, no LLM judge** (structure has no runtime behavior to diff): an agent applies the produced op via `-o` to a fresh `/tmp` file (never the committed/sandbox fixture; the verb re-binds before writing, so `ok` ⇒ kernel-valid), reads the gold's `expectField` kind back from `doc describe`, and reports raw facts; the **workflow** decides `pass = applied && fieldExists && fieldKind == gold.kind`. `EvalSuiteLedgerTest` now requires a modelkit smoke run, and `modelkit/01` carries `suites:["smoke"]`.
+- **Layer 2 (agentic runner) — all three families, all scored DETERMINISTICALLY, no LLM judge.** Each: a clean agent produces the edit from the bare CLI; a score agent applies it via `-o` to a fresh `/tmp` file (never the committed/sandbox fixture; the verb re-binds before writing, so `ok`/`committed` ⇒ kernel-valid) and reports raw facts; the **workflow** decides pass.
+  - **`structure`** (`STRUCTURE_SCHEMA`) — `pass = applied && the gold's expectField exists with gold.kind` (kind read from `doc describe`).
+  - **`session`** (`SESSION_SCHEMA`, an `apply` op-list) — `pass = committed && expect.field exists && a rule references it` (via `where-used`; **not** the rule's exact name — the author chooses the rule's code, so name-matching would wrongly fail a correct edit).
+  - **`delete-safety`** (`DELETE_SAFETY_SCHEMA`, the cascade-refusal corrective) — `pass = applied && every expectRemoved path is gone`.
+  - `EvalSuiteLedgerTest` requires a modelkit smoke run; `modelkit/01` carries `suites:["smoke"]`. Verified k=1 (sonnet): structure 1/1, session 1/1, delete-safety 1/1.
 
-**Remaining in B (same produce→apply-via-`-o`→deterministic-score shape, richer outputs):** the **`session`** family (an `apply` op-list, scored on the gold's `expect.{field,rule}`) and the **`delete-safety`** family (the cascade-refusal corrective, scored on `expectRemoved`). The **`refactor`/rename** family stays gated on Phase 4. No new CLI work — these are runner-wiring increments over the already-built surface.
+The session/delete-safety scores are **structural** by design (the deterministic-diff choice, D7-style): they confirm the right elements exist / are gone and the model re-binds — they do **not** judge the added rule's *polarity* (that would need the rulekit verify-by-execution judge; a future add). The **`refactor`/rename** family stays gated on Phase 4 (`status:"deferred"`). No new CLI work was needed — B was runner-wiring over the already-built surface.
 
 ## 9. Status & next
 
