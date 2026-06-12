@@ -213,6 +213,8 @@ Same engine, no Java required. Every command is `dmtool -m <model> <target> <op>
 dmtool manifest                       # every verb × parameter, machine-readable, in one call
 dmtool operators                      # the DSL operator catalogue …
 dmtool operators GroupFilled          #   … or one operator in full (meaning, examples, gotchas)
+dmtool diagnostics                    # the diagnostic-code catalogue …
+dmtool diagnostics RK_NO_SUCH_FIELD   #   … or one code in full (meaning + fix) — so a `code` you got back is explorable
 dmtool schema rule add                # the exact JSON shape a verb consumes / returns
 dmtool --version                      # this build + the kernel it targets (see "compatibility" below)
 ```
@@ -310,7 +312,7 @@ The [`examples/`](examples/) directory has **verifiable** walkthroughs of every 
 
 | Demo | Shows |
 |---|---|
-| [`cli-tour`](examples/cli-tour.md) | discover + read (`manifest` · `operators` · `schema` · `doc describe`/`validate` · `rule read`/`explain`) |
+| [`cli-tour`](examples/cli-tour.md) | discover + read (`manifest` · `operators` · `diagnostics` · `schema` · `doc describe`/`validate` · `rule read`/`explain`) |
 | [`cli-edit-loop`](examples/cli-edit-loop.md) | author/modify rules & computations, `batch`, the re-express loop |
 | [`cli-structure-edit`](examples/cli-structure-edit.md) | fields/groups/typedefs/includes/config + the safe-delete gate |
 | [`cli-apply`](examples/cli-apply.md) | the atomic multi-op session + rollback + correctives |

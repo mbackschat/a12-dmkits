@@ -60,7 +60,7 @@ The diagnostic info is **derived, never authored twice**, and **CI-verified both
 - **Forward** parity: emitted ⊆ registry (compile-time). **Reverse** parity: every registry entry is emitted/reachable or explicitly classified (no dead rows).
 - The `diagnostic.schema` `examples` and the conformance fuzzer **execute** against the live registry every build.
 
-When the kernel changes, the diagnostic couplings are in [`KERNEL-UPGRADE.md`](KERNEL-UPGRADE.md) (guardian ↔ what a failure means ↔ realignment).
+The `RK_*` registry is **rulekit-owned** — it has no kernel coupling, so a kernel upgrade doesn't touch it. A kernel upgrade that adds/renames `MVK_*` codes rides the existing **MVK ledger** (`MvkLedgerTest` / [`MVK-LEDGER.md`](MVK-LEDGER.md)), not this registry; the broader kernel guardians and their realignments are in [`KERNEL-UPGRADE.md`](KERNEL-UPGRADE.md).
 
 ## Library consumers — the same registry, no second source
 

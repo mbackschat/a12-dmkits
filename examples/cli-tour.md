@@ -277,6 +277,36 @@ bin/dmtool operators DifferenceInDays | jq '{id,kind,meaning}'
 
 → The same `DifferenceInDays` the `rule explain` glossary surfaced — here looked up **directly**, by id, without a rule that uses it. The full record (omitted by the `jq` projection above) also carries `operands`/`returns`, `constraints`, `gotchas`, and a runnable `validExample`, so the agent can compose the operator correctly from the catalog alone.
 
+## diagnostics — the code catalogue
+
+The twin of `operators`, for **diagnostic codes**: when a verb refuses or rejects, its `diagnostics[].code` (e.g. `RK_NO_SUCH_FIELD`) is explorable — so an agent that gets a code back can look up what it means and how to fix it, rather than guess. `diagnostics` (no arg) lists every `RK_*` code (filter with `--severity`/`--source`); the summary here is projected with `jq`.
+
+```bash
+bin/dmtool diagnostics | jq -c '{count, severities: (.diagnostics|map(.severity)|unique), sources: (.diagnostics|map(.source)|unique)}'
+```
+
+```output
+{"count":30,"severities":["ERROR","INFO","WARNING"],"sources":["ENVIRONMENT","KERNEL","LINT","PRECHECK"]}
+```
+
+Pass a code for its full entry — meaning + the canonical fix:
+
+```bash
+bin/dmtool diagnostics RK_NO_SUCH_FIELD
+```
+
+```output
+{
+  "code" : "RK_NO_SUCH_FIELD",
+  "severity" : "ERROR",
+  "source" : "PRECHECK",
+  "meaning" : "no field exists at the given path.",
+  "fix" : "pass an existing field's full name-path (see `doc describe` or `field read`)."
+}
+```
+
+→ The catalogue is the single source the diagnostics themselves draw from, so a `code` carried in any envelope resolves here. (`MVK_*` codes are the kernel's — their meaning lives in the operator catalogue, via `operators`/`rule explain`.)
+
 ## schema result — the output envelope
 
 Every verb in this tour returned the **same envelope shape**. `schema result` emits its JSON Schema, so an agent learns that contract once and reads every command's output the same way. Projected here to the property names and their meanings.

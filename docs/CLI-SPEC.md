@@ -22,6 +22,7 @@ The tool exists to be driven by a cold LLM agent. Two properties, above all else
 | **I/O shape** | "what does it emit / expect?" | `schema` — the result envelope (§3) + per-op input schemas |
 | **Failure space** | "what can go wrong, and how do I fix it?" | each op advertises the `emits[]` codes in the manifest; every code has a `fix` (§4) |
 | **DSL vocabulary** | "what operators exist, what do they mean?" | `operators` (list + per-operator semantics + gotchas) |
+| **Diagnostic codes** | "what does this `code` mean, how do I fix it?" | `diagnostics` (list all `RK_*` codes, filterable) · `diagnostics <CODE>` (one code's meaning + canonical fix) — the `operators` twin; see [`CLI-CONFORMANCE-SPEC`](CLI-CONFORMANCE-SPEC.md) |
 | **Versions** | "what is this build, what does it target?" | `--version` (human) · `manifest.version` (machine-readable) — §2a |
 
 **Implementation: picocli** (§8). One `@Command`/`@Option(description=…)` declaration per op drives parsing, `--help`, *and* the `manifest` — help cannot drift from behavior. The manifest emits the **entire** target×op tree in one response, so an agent discovers everything without walking the subcommand tree interactively. Drift is caught at build: `ManifestVerbTest` (the verb tree), `SchemaVerbTest` (schema ↔ envelope coverage) — the F11 discipline.
@@ -124,7 +125,7 @@ Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ 
 | `typedef` | `add · read · remove · rename · extract · inline` *(rename/extract/inline = Tier-1 structural refactors, §6)* | modelkit |
 | `include` | `add · read · remove · inline` *(inline = group→include extract inverse, §6)* | modelkit |
 | `config` | `read · modify` | modelkit |
-| *(root meta)* | `manifest · schema · operators · batch · apply` | — |
+| *(root meta)* | `manifest · schema · operators · diagnostics · batch · apply` | — |
 | *(cross-cutting)* | `where-used --entity` | adapter |
 
 **Legacy → target-first** (the migration map; legacy names stay as hidden aliases for one release):
