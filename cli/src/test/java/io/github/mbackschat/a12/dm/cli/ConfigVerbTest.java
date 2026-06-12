@@ -33,6 +33,25 @@ class ConfigVerbTest {
         assertTrue(data.has("conditionLanguage"));
     }
 
+    /**
+     * The declared message locales drive the per-locale-message law
+     * ({@code MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING}): a rule/computation needs one message per declared
+     * locale. {@code conditionLanguage} alone doesn't reveal the set, so {@code config read} surfaces the
+     * full {@code header.locales} — an agent provisions messages up front instead of failing first.
+     */
+    @Test
+    void readSurfacesDeclaredLocales(@TempDir Path dir) throws Exception {
+        Path model = dir.resolve("subscription.dm.json");
+        java.nio.file.Files.writeString(model, CliTestSupport.subscriptionJson());
+        var res = CliTestSupport.run("-m", model.toString(), "config", "read");
+        assertEquals(0, res.code(), res.err());
+        JsonNode locales = M.readTree(res.out()).path("data").path("locales");
+        assertTrue(locales.isArray(), () -> "config read declares `locales` as an array: " + res.out());
+        assertEquals(2, locales.size(), "the subscription fixture declares two locales");
+        assertEquals("en_US", locales.get(0).asText());
+        assertEquals("de_DE", locales.get(1).asText());
+    }
+
     @Test
     void modifyChangesTheDecimalSeparator(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);

@@ -417,8 +417,11 @@ bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json config read | jq
   "decimalSeparator": ".",
   "timeZone": "Europe/Berlin",
   "conditionLanguage": "en_US",
-  "fieldRefByShortNameAllowed": true
+  "fieldRefByShortNameAllowed": true,
+  "locales": [
+    "en_US"
+  ]
 }
 ```
 
-→ The document config decides how literals render and resolve: `decimalSeparator: "."` (so `1.5` not `1,5`), `conditionLanguage: "en_US"` (English keywords — `And`, not `Und`), `timeZone` for date arithmetic, and `fieldRefByShortNameAllowed: true` (a condition may name a field by its short name, not just an absolute path). These settings are why the rendered DSL throughout this tour looks the way it does.
+→ The document config decides how literals render and resolve: `decimalSeparator: "."` (so `1.5` not `1,5`), `conditionLanguage: "en_US"` (English keywords — `And`, not `Und`), `timeZone` for date arithmetic, and `fieldRefByShortNameAllowed: true` (a condition may name a field by its short name, not just an absolute path). The `locales` are the **declared message locales** — every rule and computation needs a message for *each* (here just `en_US`), so read this before authoring to avoid `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING`. These settings are why the rendered DSL throughout this tour looks the way it does.

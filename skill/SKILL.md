@@ -48,7 +48,7 @@ A condition is evaluated relative to the rule's **group** (its iteration scope �
 
 - **Bare name** = a field in the rule's scope **or an ancestor group** — the kernel searches *up* the hierarchy: `FieldNotFilled(MonthlyFee)`, and from a rule scoped to `/Subscription/Addons`, `[Tier]` resolves up to `/Subscription/Tier` (no `../` or absolute path needed for an ancestor's field).
 - **Absolute path** for a field in a *different branch* (or just to be explicit): `[/Customer/Status]`.
-- **Comparisons** bracket the value reference: `[Quantity] > 0`, `[/Customer/Status] == "ACTIVE"`. **Predicates** take bare refs: `FieldNotFilled(Quantity)`.
+- **Brackets `[…]` mark a field used as a *value*** — a comparison operand: `[Quantity] > 0`, `[/Customer/Status] == "ACTIVE"`. **Anything inside a function/predicate/aggregate's parentheses is a BARE ref**, never bracketed: `FieldNotFilled(Quantity)`, `Sum(Items*/Amount)`, `DateRange(OrderDate, DeliveryDate)`, `StartOfDateRange(CoverageWindow)`. Bracketing a call's argument is a parse error, not extra safety.
 - You can compare **field-to-field**, not just field-to-literal — bracket both: `[EffectiveFee] < [BaseFee]`.
 - **Strict vs inclusive**: map the wording carefully. "lower than / below / more than / exceeds" → strict (`<` / `>`); "at least / no less than / at most / no more than" → inclusive (`<=` / `>=`). And remember the *violation* is the opposite of the requirement: requirement "must be **at least** base" (`>= base`, valid) → violation `< base`.
 - **Enums compare by stored value**, not the display label: `== "ACTIVE"`, not `== "Active"`. (`doc describe` lists the stored values.)
@@ -139,7 +139,7 @@ Apply the same shape to your own model: find the enum + the repeatable group wit
 `check` returns diagnostics with a `code` and `summary`. The frequent ones:
 - `MVK_NEG_CONDITION_IN_ITERATION` → your iterating rule has an unguarded negative; add `GroupFilled(<group>) And …`.
 - `MVK_INVALID_ENTITY` → a path doesn't resolve; bare names are relative to the iteration scope, cross-group fields need an absolute `[/…]` path.
-- `MVK_UNEXPECTED_TOKEN` → usually a comparison missing brackets (`[Field] > 1000`) or a malformed expression.
+- `MVK_UNEXPECTED_TOKEN` → a bracketing slip: either a comparison operand *missing* its brackets (`[Field] > 1000`), or — just as common — *extra* brackets on a ref inside a call (`DateRange([OrderDate], …)` → `DateRange(OrderDate, …)`; function/predicate/aggregate args are bare). Or a malformed expression.
 - `MVK_INVALID_TYPE_FOR_COMPARISON` → ordering (`<`/`>`) needs numbers or dates; compare strings/enums with `==` / `!=`.
 
 For anything else, look the operator up with `cli operators <id>` — its `gotchas` and `fix` fields usually say exactly what to do.

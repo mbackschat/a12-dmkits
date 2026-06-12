@@ -155,13 +155,14 @@ public final class ModelContext {
                 + iterationGroup.map(g -> "; iterates within " + g).orElse("") + ".";
     }
 
-    /** The model as a compact card — every field (kind + scale/enum-domain) and group (repeatability). */
+    /** The model as a compact card — every field (kind + scale/enum-domain), group (repeatability), and
+     *  the declared message locales (the per-locale-message orientation cue). */
     public ModelCard describe() {
         List<ModelCard.Field> fields = model.fields().map(this::fieldCard).toList();
         List<ModelCard.Group> groups = model.groups()
                 .map(g -> new ModelCard.Group(g.path(), g.repeating()))
                 .toList();
-        return new ModelCard(fields, groups);
+        return new ModelCard(fields, groups, model.locales());
     }
 
     private ModelCard.Field fieldCard(FieldInfo field) {

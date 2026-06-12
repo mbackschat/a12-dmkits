@@ -1106,6 +1106,7 @@
     "operands": [ { "type": "date-range" } ],
     "returns": "date",
     "meaning": "The start bound of a date-range field, as a comparable date.",
+    "gotchas": [ { "text": "the operand is a BARE entity ref: StartOfDateRange(CoverageWindow), not StartOfDateRange([CoverageWindow]). Bracketing a function's argument is MVK_UNEXPECTED_TOKEN — brackets are only for a field used as a comparison value.", "kind": "AUTHORING" } ],
     "constraints": [ "the operand is a date-range field, rendered as a bare entity ref" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And YearFromDate(StartOfDateRange(CoverageWindow)) > 2020", "note": "fires when the coverage window starts after 2020" },
     "sinceKernel": "30.8.x"
@@ -1117,6 +1118,7 @@
     "operands": [ { "type": "date-range" } ],
     "returns": "date",
     "meaning": "The end bound of a date-range field, as a comparable date (feeds comparisons or DayFromDate/MonthFromDate/...).",
+    "gotchas": [ { "text": "the operand is a BARE entity ref: EndOfDateRange(CoverageWindow), not EndOfDateRange([CoverageWindow]). Bracketing a function's argument is MVK_UNEXPECTED_TOKEN — brackets are only for a field used as a comparison value.", "kind": "AUTHORING" } ],
     "constraints": [ "the operand is a date-range field" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And DayFromDate(EndOfDateRange(CoverageWindow)) > 28", "note": "fires when the coverage window ends late in the month" },
     "sinceKernel": "30.8.x"
@@ -1413,6 +1415,7 @@
     "operands": [ { "type": "date" }, { "type": "date" } ],
     "returns": "date-range",
     "meaning": "Constructs a date range from a start and an end date. Computation-only: it assigns a DATE_RANGE field in a computation operation; it has no condition form (the overlap predicates take date-range FIELDS, and a constructed range cannot be nested or compared). Both operands must be format-compatible date fields.",
+    "gotchas": [ { "text": "operands are BARE entity refs: write DateRange(OrderDate, DeliveryDate), never DateRange([OrderDate], [DeliveryDate]). Brackets mark a field used as a comparison value; a function's arguments are not that, and bracketing them is MVK_UNEXPECTED_TOKEN.", "kind": "AUTHORING" } ],
     "constraints": [ "computation-only — the operation of a computation that assigns a DATE_RANGE field; both operands are date fields with identical date format" ],
     "computationExample": { "operation": "DateRange(OrderDate, DeliveryDate)", "computedField": "/Order/CoverageWindow", "note": "the coverage window spans the order date through the delivery date" },
     "sinceKernel": "30.8.x"

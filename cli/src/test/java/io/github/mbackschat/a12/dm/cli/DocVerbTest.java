@@ -59,6 +59,21 @@ class DocVerbTest {
     }
 
     @Test
+    void describeCardSurfacesDeclaredLocales(@TempDir Path dir) throws Exception {
+        // The model card is the agent's first orientation surface — it carries the declared message
+        // locales so an agent provisions a rule/computation message per locale (the per-locale-message
+        // law, MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING) before authoring, not after a failure.
+        Path model = CliTestSupport.modelWithRule(dir); // subscription fixture: declares en_US + de_DE
+        var res = CliTestSupport.run("-m", model.toString(), "doc", "describe");
+        assertEquals(0, res.code(), res.err());
+        JsonNode locales = M.readTree(res.out()).path("data").path("locales");
+        assertTrue(locales.isArray(), () -> "the model card declares `locales`: " + res.out());
+        assertEquals(2, locales.size());
+        assertEquals("en_US", locales.get(0).asText());
+        assertEquals("de_DE", locales.get(1).asText());
+    }
+
+    @Test
     void readReturnsTheWholeModelInData(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRuleAndComputation(dir);
         var res = CliTestSupport.run("-m", model.toString(), "doc", "read");

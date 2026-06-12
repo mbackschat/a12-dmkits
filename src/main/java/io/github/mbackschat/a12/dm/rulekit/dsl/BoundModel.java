@@ -319,6 +319,12 @@ public final class BoundModel {
                 .map(p -> new GroupInfo(this, p, index.nameOf(p), index.isRepeating(p)));
     }
 
+    /** The declared message-locale codes (header {@code locales}), in document order — every rule and
+     *  computation must carry a message for each (MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING). */
+    public java.util.List<String> locales() {
+        return index.locales();
+    }
+
     /** The non-throwing peek — exploring is lenient; narrowing (on {@link FieldInfo}) is strict. */
     public java.util.Optional<FieldInfo> fieldAt(String path) {
         return index.isField(path) ? java.util.Optional.of(fieldInfo(path)) : java.util.Optional.empty();
