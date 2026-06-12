@@ -29,6 +29,7 @@ final class IncludeInlineCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @ParamKind(ParamKind.Kind.INCLUDE_ALIAS)
     @Parameters(index = "0", paramLabel = "<alias>", description = "the include alias to inline (see `include read`)")
     String alias;
 

@@ -34,10 +34,12 @@ final class RuleModifyCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @ParamKind(ParamKind.Kind.RULE_PATH)
     @Parameters(index = "0", paramLabel = "<rulePathInModel>",
             description = "the rule's full name — its slash-path in the model, e.g. /Order/SomeRule")
     String rule;
 
+    @ParamKind(ParamKind.Kind.FREEFORM)
     @Option(names = "--condition", required = true, paramLabel = "<DSL>",
             description = "the new condition in A12 DSL — true on a VIOLATION (the error scenario)")
     String condition;

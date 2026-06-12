@@ -29,10 +29,12 @@ final class TypedefExtractCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @ParamKind(ParamKind.Kind.FIELD_PATH)
     @Option(names = "--from", required = true, split = ",", paramLabel = "<fieldPath,...>",
             description = "the field paths to factor out (comma-separated); they must share one concrete type")
     List<String> from;
 
+    @ParamKind(ParamKind.Kind.NEW_NAME)
     @Option(names = "--id", required = true, paramLabel = "<newId>", description = "the new type-definition id")
     String id;
 

@@ -26,18 +26,22 @@ final class IncludeAddCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @ParamKind(ParamKind.Kind.NEW_NAME)
     @Option(names = "--alias", required = true, paramLabel = "<alias>",
             description = "the include alias used by the mount")
     String alias;
 
+    @ParamKind(ParamKind.Kind.FREEFORM)
     @Option(names = "--reference", required = true, paramLabel = "<reference>",
             description = "the referenced model's header id (resolved via --include-dir)")
     String reference;
 
+    @ParamKind(ParamKind.Kind.GROUP_PATH)
     @Option(names = "--parent", required = true, paramLabel = "<path>",
             description = "the parent group's full name-path to mount under (e.g. /Order)")
     String parent;
 
+    @ParamKind(ParamKind.Kind.NEW_NAME)
     @Option(names = "--name", required = true, paramLabel = "<name>",
             description = "the mount group's name (the included content resolves under this path)")
     String name;

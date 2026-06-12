@@ -36,6 +36,7 @@ final class RuleAddCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @ParamKind(ParamKind.Kind.FILE)
     @Parameters(index = "0", paramLabel = "<rule-spec.json>",
             description = "the rule envelope as JSON (field, condition, code, messages, …) — see `schema rule add`")
     String specPath;

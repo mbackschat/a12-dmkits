@@ -27,10 +27,12 @@ final class FieldAddCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @ParamKind(ParamKind.Kind.GROUP_PATH)
     @Option(names = "--group", required = true, paramLabel = "<path>",
             description = "the group to add the field to, by full name-path, e.g. /Order")
     String group;
 
+    @ParamKind(ParamKind.Kind.NEW_NAME)
     @Option(names = "--name", required = true, paramLabel = "<name>", description = "the new field's name")
     String name;
 
@@ -39,10 +41,12 @@ final class FieldAddCommand extends BaseCommand {
 
     /** Exactly one of: an easy kind, or a type-definition reference. */
     static final class FieldType {
+        @ParamKind(ParamKind.Kind.FIELD_KIND)
         @Option(names = "--kind", paramLabel = "<kind>",
                 description = "the field kind: STRING | NUMBER | DATE | BOOLEAN | CONFIRM")
         FieldKind kind;
 
+        @ParamKind(ParamKind.Kind.TYPEDEF_ID)
         @Option(names = "--typedef", paramLabel = "<typeDefId>",
                 description = "type the field by an existing type definition")
         String typedef;

@@ -26,6 +26,7 @@ final class IncludeRemoveCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @ParamKind(ParamKind.Kind.INCLUDE_ALIAS)
     @Parameters(index = "0", paramLabel = "<alias>", description = "the include alias to remove")
     String alias;
 

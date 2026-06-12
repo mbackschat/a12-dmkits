@@ -96,20 +96,31 @@ final class ManifestCommand extends BaseCommand {
             v.put("schema", name);
         }
         v.put("description", String.join(" ", cmd.usageMessage().description()));
+        // the semantic kind of each param (so an agent knows what to pass; derived from @ParamKind tags)
+        Map<String, ParamKind.Kind> kinds = ParamKinds.of(cmd);
         ArrayNode params = v.putArray("params");
         for (PositionalParamSpec p : cmd.positionalParameters()) {
             ObjectNode n = params.addObject();
+            String key = ParamKinds.paramKey(p.paramLabel());
             n.put("flag", p.paramLabel());
-            n.put("key", strip(p.paramLabel()));
+            n.put("key", key);
             n.put("positional", true);
             n.put("required", p.required());
             n.put("description", String.join(" ", p.description()));
+            if (kinds.containsKey(key)) {
+                n.put("kind", kinds.get(key).name());
+            }
         }
         for (OptionSpec o : cmd.options()) {
             if (o.usageHelp() || o.versionHelp() || o.inherited()) {
                 continue; // -m is inherited — shown once under globalOptions, not on every verb
             }
-            params.add(option(o));
+            ObjectNode n = option(o);
+            String key = ParamKinds.paramKey(o.longestName());
+            if (kinds.containsKey(key)) {
+                n.put("kind", kinds.get(key).name());
+            }
+            params.add(n);
         }
         return v;
     }
@@ -117,19 +128,10 @@ final class ManifestCommand extends BaseCommand {
     private ObjectNode option(OptionSpec o) {
         ObjectNode n = MAPPER.createObjectNode();
         n.put("flag", o.longestName());
-        n.put("key", strip(o.longestName()));
+        n.put("key", ParamKinds.paramKey(o.longestName()));
         n.put("positional", false);
         n.put("required", o.required());
         n.put("description", String.join(" ", o.description()));
         return n;
-    }
-
-    /** The op-record key for a param: an option's {@code --name} → {@code name}; a positional {@code <label>} → {@code label}. */
-    private static String strip(String flag) {
-        String s = flag.replaceFirst("^-+", "");
-        if (s.startsWith("<") && s.endsWith(">")) {
-            s = s.substring(1, s.length() - 1);
-        }
-        return s;
     }
 }

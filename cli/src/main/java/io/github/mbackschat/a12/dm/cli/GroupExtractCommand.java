@@ -38,9 +38,11 @@ final class GroupExtractCommand extends BaseCommand {
     private static final IDocumentModelSerializer SERIALIZER =
             new DocumentModelServiceFactory().createDocumentModelSerializer();
 
+    @ParamKind(ParamKind.Kind.GROUP_PATH)
     @Parameters(index = "0", paramLabel = "<groupPathInModel>", description = "the group to extract")
     String group;
 
+    @ParamKind(ParamKind.Kind.NEW_NAME)
     @Option(names = "--reference", required = true, paramLabel = "<subModelId>",
             description = "the new sub-model's id (and the include alias the base mounts)")
     String reference;

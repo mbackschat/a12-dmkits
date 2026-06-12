@@ -25,6 +25,7 @@ final class RuleRemoveCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @ParamKind(ParamKind.Kind.RULE_PATH)
     @Parameters(index = "0", paramLabel = "<rulePathInModel>",
             description = "the rule's full name — its slash-path in the model, e.g. /Order/SomeRule")
     String rule;

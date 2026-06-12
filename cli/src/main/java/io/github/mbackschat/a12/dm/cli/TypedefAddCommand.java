@@ -27,9 +27,11 @@ final class TypedefAddCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @ParamKind(ParamKind.Kind.NEW_NAME)
     @Option(names = "--id", required = true, paramLabel = "<id>", description = "the type definition's id")
     String id;
 
+    @ParamKind(ParamKind.Kind.FIELD_KIND)
     @Option(names = "--kind", required = true, paramLabel = "<kind>",
             description = "the underlying kind: STRING | NUMBER | DATE | BOOLEAN | CONFIRM")
     FieldKind kind;

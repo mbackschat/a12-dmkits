@@ -24,6 +24,7 @@ final class ComputationRemoveCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @ParamKind(ParamKind.Kind.COMPUTATION_PATH)
     @Parameters(index = "0", paramLabel = "<computationPathInModel>",
             description = "the computation's full name — its slash-path in the model, e.g. /Order/TotalComp")
     String computation;

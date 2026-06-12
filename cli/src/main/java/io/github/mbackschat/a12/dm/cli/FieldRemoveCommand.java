@@ -31,6 +31,7 @@ final class FieldRemoveCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @ParamKind(ParamKind.Kind.FIELD_PATH)
     @Parameters(index = "0", paramLabel = "<fieldPathInModel>",
             description = "the field's full name-path, e.g. /Order/Quantity")
     String field;

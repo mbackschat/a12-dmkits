@@ -25,14 +25,17 @@ final class ConfigModifyCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @ParamKind(ParamKind.Kind.SCALAR)
     @Option(names = "--decimal-separator", paramLabel = "<sep>",
             description = "the decimal separator, e.g. \".\" or \",\"")
     String decimalSeparator;
 
+    @ParamKind(ParamKind.Kind.SCALAR)
     @Option(names = "--time-zone", paramLabel = "<tz>",
             description = "the time zone, e.g. Europe/Berlin or UTC")
     String timeZone;
 
+    @ParamKind(ParamKind.Kind.SCALAR)
     @Option(names = "--condition-language", paramLabel = "<code>",
             description = "the condition language code, e.g. en_US or de_DE")
     String conditionLanguage;

@@ -31,9 +31,11 @@ final class TypedefRenameCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @ParamKind(ParamKind.Kind.TYPEDEF_ID)
     @Parameters(index = "0", paramLabel = "<typeDefId>", description = "the type definition's current id")
     String id;
 
+    @ParamKind(ParamKind.Kind.NEW_NAME)
     @Option(names = "--to", required = true, paramLabel = "<newId>", description = "the new type-definition id")
     String newId;
 

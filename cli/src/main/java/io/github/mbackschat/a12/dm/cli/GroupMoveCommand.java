@@ -22,9 +22,11 @@ import picocli.CommandLine.Parameters;
         description = "Move a group (re-homing its subtree) to a different parent; references are rewritten.")
 final class GroupMoveCommand extends ReferenceRewritingRefactorCommand {
 
+    @ParamKind(ParamKind.Kind.GROUP_PATH)
     @Parameters(index = "0", paramLabel = "<groupPathInModel>", description = "the group's full name-path")
     String group;
 
+    @ParamKind(ParamKind.Kind.GROUP_PATH)
     @Option(names = "--to", required = true, paramLabel = "<newParentGroup>",
             description = "the destination group's full name-path (the group keeps its name)")
     String newParent;

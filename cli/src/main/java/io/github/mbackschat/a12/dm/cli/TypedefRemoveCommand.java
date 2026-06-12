@@ -26,6 +26,7 @@ final class TypedefRemoveCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @ParamKind(ParamKind.Kind.TYPEDEF_ID)
     @Parameters(index = "0", paramLabel = "<typeDefId>", description = "the type definition's id")
     String id;
 

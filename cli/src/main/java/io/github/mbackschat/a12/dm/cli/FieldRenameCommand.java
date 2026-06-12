@@ -19,9 +19,11 @@ import picocli.CommandLine.Parameters;
         description = "Rename a field; references are rewritten to the new name (a taken name is refused).")
 final class FieldRenameCommand extends ReferenceRewritingRefactorCommand {
 
+    @ParamKind(ParamKind.Kind.FIELD_PATH)
     @Parameters(index = "0", paramLabel = "<fieldPathInModel>", description = "the field's full name-path")
     String field;
 
+    @ParamKind(ParamKind.Kind.NEW_NAME)
     @Option(names = "--to", required = true, paramLabel = "<newName>", description = "the field's new name")
     String newName;
 

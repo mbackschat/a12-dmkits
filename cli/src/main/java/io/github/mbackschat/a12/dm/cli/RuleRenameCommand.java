@@ -28,9 +28,11 @@ final class RuleRenameCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @ParamKind(ParamKind.Kind.RULE_PATH)
     @Parameters(index = "0", paramLabel = "<ruleFullName>", description = "the rule's full name (group-path + name)")
     String rule;
 
+    @ParamKind(ParamKind.Kind.NEW_NAME)
     @Option(names = "--to", required = true, paramLabel = "<newName>", description = "the rule's new name")
     String newName;
 

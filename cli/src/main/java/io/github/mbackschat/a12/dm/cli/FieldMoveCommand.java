@@ -20,9 +20,11 @@ import picocli.CommandLine.Parameters;
         description = "Move a field to a different parent group; references are rewritten to the new path.")
 final class FieldMoveCommand extends ReferenceRewritingRefactorCommand {
 
+    @ParamKind(ParamKind.Kind.FIELD_PATH)
     @Parameters(index = "0", paramLabel = "<fieldPathInModel>", description = "the field's full name-path")
     String field;
 
+    @ParamKind(ParamKind.Kind.GROUP_PATH)
     @Option(names = "--to", required = true, paramLabel = "<newParentGroup>",
             description = "the destination group's full name-path (the field keeps its name)")
     String newParent;

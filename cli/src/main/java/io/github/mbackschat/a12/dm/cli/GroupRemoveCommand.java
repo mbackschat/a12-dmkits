@@ -31,6 +31,7 @@ final class GroupRemoveCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @ParamKind(ParamKind.Kind.GROUP_PATH)
     @Parameters(index = "0", paramLabel = "<groupPathInModel>",
             description = "the group's full name-path, e.g. /Order/BillingAddress")
     String group;

@@ -25,13 +25,16 @@ final class GroupAddCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @ParamKind(ParamKind.Kind.GROUP_PATH)
     @Option(names = "--parent", required = true, paramLabel = "<path>",
             description = "the parent group, by full name-path, e.g. /Order")
     String parent;
 
+    @ParamKind(ParamKind.Kind.NEW_NAME)
     @Option(names = "--name", required = true, paramLabel = "<name>", description = "the new group's name")
     String name;
 
+    @ParamKind(ParamKind.Kind.SCALAR)
     @Option(names = "--repeatable", paramLabel = "<max>",
             description = "make the group a repetition list with this max repetitions (≥2)")
     Integer repeatable;

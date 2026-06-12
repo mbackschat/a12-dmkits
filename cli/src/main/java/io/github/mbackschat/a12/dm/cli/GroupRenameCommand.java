@@ -20,9 +20,11 @@ import picocli.CommandLine.Parameters;
         description = "Rename a group (re-homing its subtree); references are rewritten (a taken name is refused).")
 final class GroupRenameCommand extends ReferenceRewritingRefactorCommand {
 
+    @ParamKind(ParamKind.Kind.GROUP_PATH)
     @Parameters(index = "0", paramLabel = "<groupPathInModel>", description = "the group's full name-path")
     String group;
 
+    @ParamKind(ParamKind.Kind.NEW_NAME)
     @Option(names = "--to", required = true, paramLabel = "<newName>", description = "the group's new name")
     String newName;
 
