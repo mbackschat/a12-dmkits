@@ -19,7 +19,9 @@ java {
     }
 }
 
-def kernelVersion = '30.8.1'
+// `ext` (not `def`) so subprojects can read the pin — the CLI bakes it into version.properties for
+// the `--version` / `manifest.version` surface (the kernel this release was built against).
+ext.kernelVersion = '30.8.1'
 
 dependencies {
     // Public consumer surface only (D9 / N8). The facade transitively provides the public

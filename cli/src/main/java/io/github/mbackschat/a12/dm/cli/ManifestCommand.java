@@ -31,6 +31,9 @@ final class ManifestCommand extends BaseCommand {
     public Integer call() {
         ObjectNode root = MAPPER.createObjectNode();
         root.put("tool", "dmtool");
+        // the machine-readable version surface (CLI-SPEC §1b) — what this build is + what it was built/
+        // verified against; the human peer is `--version`. A cold agent reads it from `manifest.version`.
+        root.set("version", VersionInfo.current().toJson(MAPPER));
         // every verb's output conforms to the result envelope — point the agent at its schema
         root.put("resultSchema", "result");
         // the -m/--model context option is inherited by every verb — list it once, globally

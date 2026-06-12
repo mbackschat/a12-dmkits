@@ -17,7 +17,7 @@ import picocli.CommandLine.Spec;
 @Command(
         name = "dmtool",
         mixinStandardHelpOptions = true,
-        version = "a12-dmkits CLI",
+        versionProvider = VersionProvider.class,
         synopsisSubcommandLabel = "<target> <op>",
         description = "Typed, model-aware authoring & edit kit for A12 document models. JSON in / JSON out.",
         subcommands = {

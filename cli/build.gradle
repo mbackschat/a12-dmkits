@@ -53,6 +53,19 @@ application {
     mainClass = 'io.github.mbackschat.a12.dm.cli.CliMain'
 }
 
+// Bake the build's versions into a resource so `--version` / `manifest.version` can report them at
+// runtime (works from `:cli:test` classes AND the installDist jar, unlike a jar-manifest attribute).
+// Single source of truth: the root project's `version` and `kernelVersion` (the kernel pin). The
+// kernel *runtime* version is read separately from the kernel jar; the catalog floor from operators.json.
+def generatedVersionDir = layout.buildDirectory.dir('generated/version-resources')
+def generateVersionProperties = tasks.register('generateVersionProperties', WriteProperties) {
+    destinationFile = generatedVersionDir.map { it.file('io/github/mbackschat/a12/dm/cli/version.properties') }
+    property 'rulekit', rootProject.version.toString()
+    property 'kernelBuiltAgainst', rootProject.ext.kernelVersion
+}
+sourceSets.main.resources.srcDir(generatedVersionDir)
+tasks.named('processResources') { dependsOn generateVersionProperties }
+
 // picocli-codegen: name the project so the generated native-image config lands under a stable
 // META-INF/native-image/<group>/<artifact>/ path (CLI-SPEC §B2).
 tasks.named('compileJava') {

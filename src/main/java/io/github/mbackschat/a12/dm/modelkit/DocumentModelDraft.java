@@ -31,8 +31,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  */
 public final class DocumentModelDraft {
 
-    /** Kernel model-version stamp written into the header (matches the fixtures' authored value). */
-    private static final String MODEL_VERSION = "28.4.0";
+    /** Document-model schema version stamped on new-from-scratch models — the shared {@code dm.core}
+     *  {@link io.github.mbackschat.a12.dm.core.ModelFormat#VERSION} (the load-time version check and the
+     *  {@code --version} surface compare a loaded model's {@code header.modelVersion} against the same value). */
+    private static final String MODEL_VERSION = io.github.mbackschat.a12.dm.core.ModelFormat.VERSION;
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 

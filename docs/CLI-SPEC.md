@@ -22,8 +22,28 @@ The tool exists to be driven by a cold LLM agent. Two properties, above all else
 | **I/O shape** | "what does it emit / expect?" | `schema` — the result envelope (§3) + per-op input schemas |
 | **Failure space** | "what can go wrong, and how do I fix it?" | each op advertises the `emits[]` codes in the manifest; every code has a `fix` (§4) |
 | **DSL vocabulary** | "what operators exist, what do they mean?" | `operators` (list + per-operator semantics + gotchas) |
+| **Versions** | "what is this build, what does it target?" | `--version` (human) · `manifest.version` (machine-readable) — §2a |
 
 **Implementation: picocli** (§8). One `@Command`/`@Option(description=…)` declaration per op drives parsing, `--help`, *and* the `manifest` — help cannot drift from behavior. The manifest emits the **entire** target×op tree in one response, so an agent discovers everything without walking the subcommand tree interactively. Drift is caught at build: `ManifestVerbTest` (the verb tree), `SchemaVerbTest` (schema ↔ envelope coverage) — the F11 discipline.
+
+### 2a. Version & compatibility surface
+
+The tool reports **what it is and what it targets** on two peer surfaces fed from one `VersionInfo`: `--version` (human) and `manifest.version` (machine-readable, so a cold agent reads it like any other manifest fact). Five axes, each from its single source of truth: the **rulekit** release (baked from the build), the kernel **built-against** (the `build.gradle` pin) and **runtime** (the kernel jar on the classpath — may be newer), the **catalog verified-against** floor (`operators.json`), and the **model-format reference** (`core.ModelFormat.VERSION`).
+
+```
+$ dmtool --version
+a12-dmkits 0.1.0-SNAPSHOT
+  kernel: 30.8.1 (built) / 30.8.1 (runtime)
+  catalog verified against: 30.8.1
+  model version (reference): 28.4.0
+```
+
+**Compatibility — tolerant, but explicit, with the kernel as the authority.** Two version axes, each handled the same way (inform, don't second-guess the kernel):
+
+- **Kernel skew** (F11): a runtime kernel newer than the catalog floor is safe (rulekit binds only the public surface), so it yields a single advisory INFO `RK_KERNEL_VERSION_SKEW` — never an error. `manifest.version.kernel.skewed` exposes it too.
+- **Document `modelVersion`** (the load-time policy): the kernel itself accepts an older same-major model and rejects a newer/different-major one with a clear `"Version mismatch …"` ERROR (KERNEL-FINDINGS, *Header `modelVersion` compatibility*). rulekit **classifies** that verdict so it's machine-actionable: the un-coded kernel ERROR is enriched to **`RK_MODEL_VERSION_INCOMPATIBLE`** (+ a fix — the **fail-fast** case, `valid:false`, exit 1), and an accepted-but-off-reference model gets a tolerant INFO **`RK_MODEL_VERSION_SKEW`** (the **tolerant** case, still `valid:true`). rulekit never re-derives the rule or flips `valid` — the kernel decides; rulekit annotates.
+
+**Write-back never bumps the version.** Edits are surgical (the `header` is untouched), so a loaded model writes back with its `modelVersion` verbatim — no implicit bump to the reference. (Locked: `cli.ModelVersionPolicyTest`.)
 
 ## 3. The op model — one record, two surfaces
 

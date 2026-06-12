@@ -10,7 +10,7 @@ uvx showboat@0.6.1 verify examples/cli-tour.md   # exit 0 = output still matches
 
 ## Demos in this folder
 
-Five thematic demos that together exercise **every verb** + the cross-cutting features (the result envelope, `--dry-run`/`-o`, `--include-dir`, the safe-delete gate, op-arg/cross-type correctives, the schema contracts):
+Six thematic demos that together exercise **every verb** + the cross-cutting features (the result envelope, `--dry-run`/`-o`, `--include-dir`, the safe-delete gate, op-arg/cross-type correctives, the schema contracts, the version surface):
 
 | File | Surface | Verbs it shows |
 |---|---|---|
@@ -19,3 +19,4 @@ Five thematic demos that together exercise **every verb** + the cross-cutting fe
 | [`cli-structure-edit.md`](cli-structure-edit.md) | **modelkit structure** | `field add`/`field read`/`field remove` (the **safe-delete gate** → `--cascade`) · `group add`/`group read`/`group remove` · `typedef add`/`read`/`remove` · `include add`/`read`/`remove` (`--include-dir`) · `config read`/`config modify` · `export` |
 | [`cli-apply.md`](cli-apply.md) | **the `apply` session** | `apply` — atomic multi-op, rollback, op-arg corrective (`RK_UNKNOWN_ARG`/`RK_UNKNOWN_OP`), cross-type corrective, read mid-sequence · `schema apply` (the op-record frame) |
 | [`cli-runtime.md`](cli-runtime.md) | **runtime evaluation** | `doc eval` (which rules *fire* on a document instance — the empirical polarity check) · `doc compute` (a computed field's value, incl. empty-as-0) |
+| [`cli-version.md`](cli-version.md) | **versions & compatibility** | `--version` · `manifest.version` (machine-readable) · the model-version load policy — tolerant `RK_MODEL_VERSION_SKEW` vs fail-fast `RK_MODEL_VERSION_INCOMPATIBLE` · write-back preserves the version (no bump) |

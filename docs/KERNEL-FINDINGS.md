@@ -125,6 +125,19 @@ In DM-JSON, a category's `values` list pairs **positionally** with the enumerati
 
 **Consequence:** no self-contained document model can mark a field table-backed, so the checker's precondition can never be met, so rulekit's "author DM-JSON → `checkConsistency`" oracle **cannot author or verify** a `ValueNotConsistent` rule. It is **un-buildable within single-document-model scope** — same root cause as multi-form/Vordruck (needs infrastructure outside the document model), and it makes the would-be "dynamic-enum modelkit authoring" moot (there is nothing in DM-JSON to emit). Stays a tolerant `ReadResult.Opaque` if ever encountered. *(Demonstrated by probe; not locked by a test — there is no expressible fixture to lock.)*
 
+## Header `modelVersion` compatibility — same-major and not-newer than the kernel's model-format (probed 2026-06-12)
+
+The kernel polices a document's `header.modelVersion` during `checkConsistency` (not at parse): a mismatch surfaces as a **`KERNEL` ERROR** — `"Version mismatch: Document model version is <X> and application version is <28.4.0>"` — so the model is reported `valid:false` (it loads enough to validate; this is a consistency diagnostic, not a load crash). The "application version" is the **model-format version the running kernel implements** (`30.8.1` implements `28.4.0`). Probed band (against `order-ruled`, app-format `28.4.0`):
+
+| `header.modelVersion` | verdict | rule |
+|---|---|---|
+| `28.4.0` | valid | exact |
+| `28.0.0` | **valid** | same major, **≤** app-format → backward-compatible |
+| `28.4.1`, `28.5.0`, `28.9.0` | invalid | same major but **newer** than app-format |
+| `27.0.0`, `29.0.0`, `30.8.1` | invalid | different major |
+
+So the kernel is **tolerant of an older same-major model and fail-fast on a newer/different-major one**, with a clear message — exactly the posture we want, enforced upstream. rulekit only *classifies* this verdict (it does not re-derive the rule): the un-coded kernel ERROR is enriched to **`RK_MODEL_VERSION_INCOMPATIBLE`** (+ a fix), and an accepted-but-off-reference model gets a tolerant INFO **`RK_MODEL_VERSION_SKEW`**. The reference is `core.ModelFormat.VERSION` (`28.4.0`), bumped in lockstep with the kernel pin (KERNEL-UPGRADE). *(Locked: `cli.ModelVersionPolicyTest` — the band's tolerant/exact/fail-fast cases + the message pattern via `validate.ModelVersion.isVersionMismatch`; the no-implicit-bump round-trip is in the same test.)*
+
 ## §5 supplement — tolerance boundary + comparison rescaling (runtime, 2026-06-10, RT-semantics drain)
 
 - **`DiffersWithToleranceRange{N}` fires strictly beyond the tolerance**: satisfied iff `|a − b| > N` — a difference of *exactly* N is still within tolerance and does **not** fire, in either direction. The boundary is the trap a modeller would guess either way. *(Locked: `adapter.laws.ToleranceComparisonLawsTest`.)*

@@ -61,13 +61,14 @@ A fork of showboat to add a redaction hook is the wrong bet — in-band scrubbin
 
 ## Expanding this approach (backlog)
 
-**Five demos now cover the whole verb surface** on the `dmtool` target-first surface + the result envelope; the CI gate re-verifies all five (`.github/workflows/ci.yml`). Index: [`../examples/README.md`](../examples/README.md).
+**Six demos now cover the whole verb surface** on the `dmtool` target-first surface + the result envelope; the CI gate re-verifies all six (`.github/workflows/ci.yml`). Index: [`../examples/README.md`](../examples/README.md).
 
 - ✅ **Discover + read** (`cli-tour.md`) — `manifest` · `operators`(+`<id>`) · `schema result`/`<target> <op>` · `doc describe`/`read`/`validate` · `rule read`/`explain`/`check` · `field`/`group`/`config read`. Doubles as the discovery/self-describing showcase (assemble a call from `manifest` + `schema` alone).
 - ✅ **Rulekit write/edit** (`cli-edit-loop.md`) — `where-used` · the full `rule` + `computation` CRUD (add/read/explain/modify/remove) · `batch` · the F8 re-express loop (`--dry-run` preview vs in-place write).
 - ✅ **Modelkit structure** (`cli-structure-edit.md`) — `field`/`group` add·read·remove (the safe-delete gate + `--cascade`) · `typedef` + `field --typedef` · `include` (`--include-dir`) · `config read`/`modify` · `export`.
 - ✅ **The `apply` session** (`cli-apply.md`) — atomic multi-op · rollback · op-arg corrective (`RK_UNKNOWN_ARG`/`RK_UNKNOWN_OP` + did-you-mean) · cross-type corrective · read-mid-sequence · `schema apply` (the op-record frame).
 - ✅ **Runtime evaluation** (`cli-runtime.md`) — `doc eval` (which rules *fire* on a document instance — the empirical polarity check `check` can't give) · `doc compute` (a computed field's value, incl. empty-as-0).
+- ✅ **Versions & compatibility** (`cli-version.md`) — `--version` + `manifest.version` (the five axes) · the model-version load policy (tolerant `RK_MODEL_VERSION_SKEW` vs fail-fast `RK_MODEL_VERSION_INCOMPATIBLE`, kernel as authority) · write-back preserves the version (no implicit bump).
 
 Comprehension (reading foreign rules back) is shown by `rule read`/`rule explain` in the tour; the self-correction headline is the `apply` op-arg + cross-type correctives in `cli-apply.md`. (When the modelkit *agentic* eval lands — EVAL-SPEC §8d / B — these demos are the executable counterparts of the `modelkit/`+`mixed/` tasks.)
 

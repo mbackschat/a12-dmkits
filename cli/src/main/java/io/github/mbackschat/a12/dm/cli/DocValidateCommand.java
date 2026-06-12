@@ -12,6 +12,7 @@ import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
+import io.github.mbackschat.a12.dm.rulekit.validate.ModelVersion;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 
@@ -51,8 +52,13 @@ final class DocValidateCommand extends BaseCommand {
                 diagnostics.add(KernelDiagnostics.enriched(n, null));
             }
         }
+        // version awareness (the kernel is the authority; we only classify): code a version-mismatch ERROR
+        // as RK_MODEL_VERSION_INCOMPATIBLE, or add a tolerant INFO RK_MODEL_VERSION_SKEW when the model's
+        // version differs from this build's reference but the kernel still accepted it.
+        diagnostics = ModelVersion.classify(json, diagnostics);
 
-        String summary = valid ? "model is valid" : "model has " + diagnostics.size() + " error(s)";
+        long errors = diagnostics.stream().filter(d -> d.severity() == com.mgmtp.a12.model.notification.Severity.ERROR).count();
+        String summary = valid ? "model is valid" : "model has " + errors + " error(s)";
         ResultEnvelope env = ResultEnvelope.read("doc", "validate", summary, valid, diagnostics, null);
         out().print(env.toJsonString());
         return env.exitCode();
