@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -67,6 +68,13 @@ final class ConfigModifyCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        // pre-check the one scalar the kernel stores without validating (AP3); bad time-zone/locale re-bind-reject.
+        Optional<Refusal> refusal = new SafetyGate()
+                .require(SafetyChecks.decimalSeparatorValid(decimalSeparator))
+                .firstFailure();
+        if (refusal.isPresent()) {
+            return refuse("config", "modify", refusal.get());
+        }
         ObjectNode changed = MAPPER.createObjectNode();
         String resultJson;
         try {

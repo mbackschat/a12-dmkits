@@ -178,6 +178,26 @@ final class SafetyChecks {
                 : Optional.of(notFound(RkCode.NO_SUCH_COMPUTATION, "computation", computationFullName));
     }
 
+    /**
+     * Refuse a multi-character decimal separator (RK_INVALID_CONFIG_VALUE) — the kernel stores the
+     * {@code modelConfig} string verbatim without checking it, so a garbage separator would otherwise be
+     * silently accepted (AP3). Only the decimal separator needs this pre-check; a bad time zone / condition
+     * language is already rejected by the kernel on re-bind.
+     */
+    static SafetyCheck decimalSeparatorValid(String separator) {
+        return () -> {
+            if (separator == null || separator.length() == 1) {
+                return Optional.empty();
+            }
+            Diagnostic diagnostic = Diagnostic.precheck(Optional.of(RkCode.INVALID_CONFIG_VALUE.code()),
+                    "the decimal separator must be a single character, got '" + separator + "'",
+                    Diagnostic.Where.arg(null, "--decimal-separator"),
+                    Optional.of(RkCode.INVALID_CONFIG_VALUE.fix()), Optional.empty());
+            return Optional.of(new Refusal(
+                    "'" + separator + "' is not a valid decimal separator — refusing", null, diagnostic));
+        };
+    }
+
     /** A located "no such element" refusal, with the code's catalogued fix (single-source via {@link RkCode}). */
     private static Refusal notFound(RkCode code, String kind, String path) {
         Diagnostic diagnostic = Diagnostic.precheck(Optional.of(code.code()),
