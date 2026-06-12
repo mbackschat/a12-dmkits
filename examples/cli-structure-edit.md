@@ -626,7 +626,26 @@ bin/dmtool -m /tmp/struct2-ext/order.dm.json doc validate | jq -c '{valid}'
 {"valid":true}
 ```
 
-→ The gate refuses what can't extract cleanly: a **repeatable** group (`RK_REPEATABLE_INCLUDE_ROOT`) and a subtree whose rule references **outside** it (`RK_OUTWARD_REFERENCE`). A rule *outside* the subtree pointing *in* is fine — the mount preserves the path. The inverse (`include inline`) is the deferred tail.
+The inverse, `include inline`, folds a mounted include's content back into the base as a real group and drops the reference — so extract and inline **round-trip**:
+
+```bash
+bin/dmtool -m /tmp/struct2-ext/order.dm.json include inline billing-address | jq -c '{outcome, ok, changed}'
+```
+
+```output
+{"outcome":"applied","ok":true,"changed":{"inlined":"billing-address","reference":"billing-address"}}
+```
+
+```bash
+jq -c '[.. | objects | select(has("modelAlias")) | .modelAlias]' /tmp/struct2-ext/order.dm.json && bin/dmtool -m /tmp/struct2-ext/order.dm.json doc validate | jq -c '{valid}'
+```
+
+```output
+[]
+{"valid":true}
+```
+
+→ `BillingAddress` is a real group in the base again — no mount, self-contained, valid. The extract gate refuses what can't extract cleanly: a **repeatable** group (`RK_REPEATABLE_INCLUDE_ROOT`) and a subtree whose rule references **outside** it (`RK_OUTWARD_REFERENCE`). A rule *outside* the subtree pointing *in* is fine — the mount preserves the path.
 
 ## include — mount another model's content
 

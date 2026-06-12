@@ -86,4 +86,22 @@ class ExtractGroupAsIncludeTest {
         assertTrue(KernelAdapter.of(composed).whereUsed("/Order/Shipping/Zip").contains("/Order/ZipFormat"),
                 "the external rule still references the now-mounted field");
     }
+
+    @Test
+    void extractThenInlineRoundTripsToASelfContainedModel() {
+        ModelDocument base = ModelDocument.read(orderJson());
+        String subModel = base.extractGroupAsInclude("/Order/Shipping", "shipping");
+
+        // inline the include back: the mount becomes a real group again, the reference is dropped
+        ModelDocument inlined = ModelDocument.read(base.toJson()).inlineInclude("shipping", subModel);
+        String inlinedJson = inlined.toJson();
+
+        assertFalse(inlinedJson.contains("modelAlias"), "the mount became a real group");
+        assertTrue(inlined.includes().isEmpty(), "the header reference is gone");
+        assertTrue(inlined.fieldPaths().contains("/Order/Shipping/Zip"), "the field is inline under the group again");
+        assertTrue(inlinedJson.contains("CityNeedsZip"), "the subtree's own rule came back");
+        // self-contained again — validates with no resolver
+        assertDoesNotThrow(() -> EditSession.read(inlinedJson).validate(),
+                "the inlined model is self-contained and kernel-valid");
+    }
 }

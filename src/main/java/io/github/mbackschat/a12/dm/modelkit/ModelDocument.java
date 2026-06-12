@@ -675,6 +675,53 @@ public final class ModelDocument {
         return subModelJson;
     }
 
+    /**
+     * Inline the include aliased {@code alias} — the inverse of {@link #extractGroupAsInclude}: fold the
+     * included model's content (passed as {@code includedModelJson}) back into every mount as a real group
+     * (rebasing the sub-model's root path to the mount path), then drop the header reference. The included
+     * JSON is the caller's to supply (it lives in a separate file; this class is resolver-free). Fails fast
+     * if no mount carries {@code alias}.
+     */
+    public ModelDocument inlineInclude(String alias, String includedModelJson) {
+        ModelDocument included = read(includedModelJson);
+        JsonNode includedRoot = included.root.path("content").path("modelRoot").path("rootGroups").path(0);
+        if (includedRoot.isMissingNode()) {
+            throw new IllegalArgumentException("included model has no root group for alias: " + alias);
+        }
+        String includedRootId = includedRoot.path("id").asText();
+        JsonNode includedElements = includedRoot.path("Group").path("elements");
+        boolean[] folded = {false};
+        inlineMounts(rootGroups(), alias, includedRootId, includedElements, folded);
+        if (!folded[0]) {
+            throw new IllegalArgumentException("no mount with alias: " + alias);
+        }
+        removeInclude(alias);   // mounts no longer carry modelAlias, so this only drops the header reference
+        return this;
+    }
+
+    private void inlineMounts(JsonNode elements, String alias, String includedRootId, JsonNode includedElements,
+            boolean[] folded) {
+        for (JsonNode element : elements) {
+            if (!"Group".equals(element.path("type").asText())) {
+                continue;
+            }
+            ObjectNode body = (ObjectNode) element.path("Group");
+            if (alias.equals(body.path("modelAlias").asText(null))) {
+                String mountPath = element.path("id").asText();
+                body.remove("modelAlias");
+                ArrayNode destination = body.putArray("elements");
+                for (JsonNode child : includedElements) {
+                    JsonNode copy = child.deepCopy();
+                    reprefixIds(copy, includedRootId, mountPath);
+                    destination.add(copy);
+                }
+                folded[0] = true;
+            } else if (body.path("elements").isArray()) {
+                inlineMounts(body.path("elements"), alias, includedRootId, includedElements, folded);
+            }
+        }
+    }
+
     /** Every mount-group path that mounts the include aliased {@code alias} ({@code modelAlias}), in document order (task #2). */
     public List<String> mountsOfInclude(String alias) {
         List<String> out = new ArrayList<>();

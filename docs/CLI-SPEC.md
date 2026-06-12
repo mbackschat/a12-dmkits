@@ -2,7 +2,7 @@
 
 The component spec for the standalone CLI (N10). The proposal's [§14/§16](PROJECT-PROPOSAL.md) state intent; [`ARCHITECTURE.md`](ARCHITECTURE.md) places it among the subprojects; this spec holds the design — the **op model**, the **verb surface**, the **diagnostics contract**, the dev/test workflow, sizing, and packaging. Per-verb implementation status lives on the [`API-POC-STUDY.md` §9](API-POC-STUDY.md) board; runnable demos in [`CLI-TOUR-SPEC.md`](CLI-TOUR-SPEC.md) ↔ [`../examples/`](../examples/).
 
-> **Status.** This spec is the **target surface** — binary `dmtool`, target-first verbs (`dmtool -m <model> <target> <op>`), and the uniform result envelope (§3). The verb-first surface is mid-migration: the legacy names still resolve as hidden aliases until the flip completes (per-verb status on the §9 board). The structural refactor ops (§6) have **shipped, safety-gated** — `typedef rename`/`extract`/`inline`, `field`/`group`/`rule rename` (refuse-if-referenced), and `group extract` (group→include); only the reference-*rewriting* rename, `move`, and `include inline` (the extract inverse) remain deferred.
+> **Status.** This spec is the **target surface** — binary `dmtool`, target-first verbs (`dmtool -m <model> <target> <op>`), and the uniform result envelope (§3). The verb-first surface is mid-migration: the legacy names still resolve as hidden aliases until the flip completes (per-verb status on the §9 board). The structural refactor ops (§6) have **shipped, safety-gated** — `typedef rename`/`extract`/`inline`, `field`/`group`/`rule rename` (refuse-if-referenced), `group extract` (group→include), and `include inline` (the extract inverse); only the reference-*rewriting* rename and `move` remain deferred.
 
 ## 1. Purpose & persona
 
@@ -122,7 +122,7 @@ Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ 
 | `field` | `add · read · remove · rename` | modelkit |
 | `group` | `add · read · remove · rename · extract` *(extract = group→include refactor, §6; move deferred)* | modelkit |
 | `typedef` | `add · read · remove · rename · extract · inline` *(rename/extract/inline = Tier-1 structural refactors, §6)* | modelkit |
-| `include` | `add · read · remove` | modelkit |
+| `include` | `add · read · remove · inline` *(inline = group→include extract inverse, §6)* | modelkit |
 | `config` | `read · modify` | modelkit |
 | *(root meta)* | `manifest · schema · operators · batch · apply` | — |
 | *(cross-cutting)* | `where-used --entity` | adapter |
@@ -160,7 +160,7 @@ Classify every op by **blast radius** — this is the standing rule for adding o
 |---|---|---|---|
 | **Local** | add · read · modify · remove-leaf | one element only | plain surgery, gate at end |
 | **Cascading** | remove-referenced | element + *deletes* dependents | the `where-used` refuse-or-`--cascade` gate |
-| **Refactor** | **rename** (field/group/rule/typedef, *refuse-if-referenced* ✅) · **extract/inline typedef** ✅ · **extract group→include** ✅ · **move** + **rename-with-reference-rewrite** + **inline include** *(deferred)* | safe forms touch one element, repoint structural pointers (typedef), or lift a subtree to a same-name mount (paths preserved); the deferred rewrite form rewrites the element **and all condition references** atomically → valid→valid | safe forms: the **safety gate** (✅, this §); deferred form: a `where-used`-driven, AST-level reference rewrite |
+| **Refactor** | **rename** (field/group/rule/typedef, *refuse-if-referenced* ✅) · **extract/inline typedef** ✅ · **extract group→include** + **inline include** ✅ · **move** + **rename-with-reference-rewrite** *(deferred)* | safe forms touch one element, repoint structural pointers (typedef), or lift a subtree to / fold it back from a same-name mount (paths preserved); the deferred rewrite form rewrites the element **and all condition references** atomically → valid→valid | safe forms: the **safety gate** (✅, this §); deferred form: a `where-used`-driven, AST-level reference rewrite |
 
 ### The refactor safety gate — *check before you change* (standing principle, every refactor, now and future)
 

@@ -70,6 +70,16 @@ public final class ReferenceResolvers {
     }
 
     /**
+     * The <b>raw DM-JSON</b> of the document model with {@code header.id == id} under {@code roots}, indexed
+     * the same way {@link #directory} resolves references. Unlike {@code directory} (which deserializes to an
+     * {@code IDocumentModel}), this hands back the authored text — what {@code include inline} needs to fold a
+     * sub-model's content back into the base. Empty if no document model with that id is found.
+     */
+    public static java.util.Optional<String> documentModelJson(String id, Path... roots) {
+        return java.util.Optional.ofNullable(indexDocumentModels(roots).get(id));
+    }
+
+    /**
      * Walk the trees, parse each {@code *.json} header, and index {@code modelType=="document"} files by id.
      * Uses {@code walkFileTree} (not {@code Files.walk}) so an <b>unreadable subdirectory</b> is skipped, not
      * fatal: when the resolver is pointed at a broad tree (e.g. the include-dir defaults to the model file's

@@ -49,6 +49,7 @@ typedef inline
 include add
 include read
 include remove
+include inline
 config read
 config modify
 export

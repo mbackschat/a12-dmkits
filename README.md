@@ -273,6 +273,7 @@ dmtool -m order.dm.json typedef extract --from /Order/Price,/Order/Cost --id Mon
 dmtool -m order.dm.json field rename /Order/Quantity --to Qty
 # extract a subtree into a reusable sub-model, re-mounted at the same name (paths preserved → references survive):
 dmtool -m order.dm.json group extract /Order/BillingAddress --reference billing-address
+dmtool -m order.dm.json include inline billing-address   # the inverse: fold the sub-model back in
 
 # Deleting a referenced field is REFUSED with a clear diagnostic that names the referrers …
 dmtool -m order.dm.json field remove /Order/DeliveryDate
