@@ -387,6 +387,225 @@ public final class ModelDocument {
         throw new IllegalArgumentException("no type definition with id: " + id);
     }
 
+    /**
+     * Every field path typed by the type definition {@code id} (its {@code typeDefinitionId} pointer), in
+     * document order — the structural <em>find</em> leg a typedef refactor rewrites against (task #2).
+     */
+    public List<String> fieldsUsingTypeDefinition(String id) {
+        List<String> out = new ArrayList<>();
+        walk((path, node, isGroup) -> {
+            if (!isGroup && id.equals(node.path("Field").path("fieldType")
+                    .path("TypeDefType").path("typeDefinitionId").asText(null))) {
+                out.add(path);
+            }
+        });
+        return out;
+    }
+
+    // --- rename refactors (CLI-SPEC §6 — structural; the CLI safety gate refuses if the element is referenced) ---
+
+    /** Rename the field at {@code fieldPath} to {@code newName} (its name + id). Fails fast if absent. */
+    public ModelDocument renameField(String fieldPath, String newName) {
+        JsonNode field = locate(fieldPath, false);
+        if (field == null) {
+            throw new IllegalArgumentException("no field at: " + fieldPath);
+        }
+        ((ObjectNode) field).put("name", newName).put("id", renamePath(fieldPath, newName));
+        return this;
+    }
+
+    /**
+     * Rename the group at {@code groupPath} to {@code newName} — its name + id AND the id-path of every
+     * descendant element (fields, sub-groups, rules, computations), in step. Descendant <em>names</em> are
+     * unchanged, so rules inside the subtree (which reference relatively) keep working. Fails fast if absent.
+     */
+    public ModelDocument renameGroup(String groupPath, String newName) {
+        JsonNode group = locate(groupPath, true);
+        if (group == null) {
+            throw new IllegalArgumentException("no group at: " + groupPath);
+        }
+        ((ObjectNode) group).put("name", newName);
+        reprefixIds(group, groupPath, renamePath(groupPath, newName));
+        return this;
+    }
+
+    /** Rename the rule at {@code ruleFullName} to {@code newName} (its name + id). Fails fast if absent. */
+    public ModelDocument renameRule(String ruleFullName, String newName) {
+        ObjectNode rule = findById(ruleFullName);
+        if (rule == null || !"Rule".equals(rule.path("type").asText())) {
+            throw new IllegalArgumentException("no rule at: " + ruleFullName);
+        }
+        rule.put("name", newName).put("id", renamePath(ruleFullName, newName));
+        return this;
+    }
+
+    private static String renamePath(String path, String newName) {
+        return path.substring(0, path.lastIndexOf('/') + 1) + newName;
+    }
+
+    /** Re-prefix the id of {@code element} and every descendant from {@code oldPrefix} to {@code newPrefix}. */
+    private static void reprefixIds(JsonNode element, String oldPrefix, String newPrefix) {
+        if (!(element instanceof ObjectNode obj)) {
+            return;
+        }
+        String id = obj.path("id").asText(null);
+        if (id != null && (id.equals(oldPrefix) || id.startsWith(oldPrefix + "/"))) {
+            obj.put("id", newPrefix + id.substring(oldPrefix.length()));
+        }
+        if ("Group".equals(obj.path("type").asText())) {
+            for (JsonNode child : obj.path("Group").path("elements")) {
+                reprefixIds(child, oldPrefix, newPrefix);
+            }
+        }
+    }
+
+    /** Find any element (field/group/rule/computation) by its full-name id; {@code null} if absent. */
+    private ObjectNode findById(String id) {
+        ObjectNode[] found = {null};
+        for (JsonNode rootGroup : root.path("content").path("modelRoot").path("rootGroups")) {
+            findById(rootGroup, id, found);
+        }
+        return found[0];
+    }
+
+    private void findById(JsonNode node, String id, ObjectNode[] found) {
+        if (found[0] != null) {
+            return;
+        }
+        if (node instanceof ObjectNode obj && id.equals(obj.path("id").asText(null))) {
+            found[0] = obj;
+            return;
+        }
+        if ("Group".equals(node.path("type").asText())) {
+            for (JsonNode child : node.path("Group").path("elements")) {
+                findById(child, id, found);
+            }
+        }
+    }
+
+    /**
+     * Rename the type definition {@code oldId} to {@code newId} — its {@code typeDefinitions} entry AND
+     * every using field's {@code typeDefinitionId}, in step, so nothing dangles (task #3, a structural
+     * refactor: a typedef never appears in condition DSL). Fails fast if {@code oldId} is absent; a
+     * collision with an existing id is the caller's gate to refuse, with {@link #validate()} as backstop.
+     */
+    public ModelDocument renameTypeDefinition(String oldId, String newId) {
+        JsonNode tds = root.path("content").path("typeDefinitions");
+        boolean renamed = false;
+        if (tds.isArray()) {
+            for (JsonNode td : tds) {
+                if (oldId.equals(td.path("id").asText())) {
+                    ObjectNode node = (ObjectNode) td;
+                    node.put("id", newId);
+                    if (oldId.equals(node.path("name").asText())) {
+                        node.put("name", newId);   // a default name (== id) tracks the rename; a custom one stays
+                    }
+                    renamed = true;
+                }
+            }
+        }
+        if (!renamed) {
+            throw new IllegalArgumentException("no type definition with id: " + oldId);
+        }
+        walk((path, node, isGroup) -> {
+            JsonNode ref = node.path("Field").path("fieldType").path("TypeDefType");
+            if (!isGroup && oldId.equals(ref.path("typeDefinitionId").asText(null))) {
+                ((ObjectNode) ref).put("typeDefinitionId", newId);
+            }
+        });
+        return this;
+    }
+
+    /**
+     * Extract the fields at {@code fieldPaths} — which must all share an identical CONCRETE type — into
+     * one reusable type definition {@code newId}, repointing each field at it (task #4, a structural
+     * refactor). Fails fast if a field is absent, already typed by a definition, or the fields do not
+     * share a single concrete type; {@link #validate()} is the kernel backstop.
+     */
+    public ModelDocument extractTypeDefinition(String newId, List<String> fieldPaths) {
+        JsonNode shared = sharedConcreteFieldType(fieldPaths);
+        JsonNode tds = root.path("content").path("typeDefinitions");
+        ArrayNode array = tds.isArray() ? (ArrayNode) tds
+                : ((ObjectNode) root.path("content")).putArray("typeDefinitions");
+        ObjectNode td = array.addObject();
+        td.put("id", newId);
+        td.put("name", newId);
+        td.set("fieldType", shared.deepCopy());
+        for (String fieldPath : fieldPaths) {
+            setFieldType(fieldPath, new FieldTypeSpec.TypeDefRef(newId));
+        }
+        return this;
+    }
+
+    /**
+     * Whether the fields at {@code fieldPaths} all share one concrete type to factor out — present and
+     * not already a {@code TypeDefType}, identical across the set. The CLI gate calls this before
+     * mutating (see {@code SafetyChecks}); {@link #extractTypeDefinition} relies on the same answer.
+     */
+    public boolean fieldsShareConcreteType(List<String> fieldPaths) {
+        try {
+            sharedConcreteFieldType(fieldPaths);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    private JsonNode sharedConcreteFieldType(List<String> fieldPaths) {
+        if (fieldPaths.isEmpty()) {
+            throw new IllegalArgumentException("no fields to extract");
+        }
+        JsonNode shared = null;
+        for (String fieldPath : fieldPaths) {
+            JsonNode field = locate(fieldPath, false);
+            if (field == null) {
+                throw new IllegalArgumentException("no field at: " + fieldPath);
+            }
+            JsonNode fieldType = field.path("Field").path("fieldType");
+            if ("TypeDefType".equals(fieldType.path("type").asText())) {
+                throw new IllegalArgumentException(fieldPath + " is already typed by a definition");
+            }
+            if (shared == null) {
+                shared = fieldType;
+            } else if (!shared.equals(fieldType)) {
+                throw new IllegalArgumentException("fields do not share an identical type: " + fieldPath);
+            }
+        }
+        return shared;
+    }
+
+    /**
+     * Inline the type definition {@code id} — replace every using field's {@code TypeDefType} with the
+     * definition's underlying concrete type, then drop the definition (task #4, the inverse of extract).
+     * Fails fast if {@code id} is absent.
+     */
+    public ModelDocument inlineTypeDefinition(String id) {
+        JsonNode underlying = typeDefinitionFieldType(id);
+        if (underlying == null) {
+            throw new IllegalArgumentException("no type definition with id: " + id);
+        }
+        walk((path, node, isGroup) -> {
+            JsonNode fieldType = node.path("Field").path("fieldType");
+            if (!isGroup && id.equals(fieldType.path("TypeDefType").path("typeDefinitionId").asText(null))) {
+                ((ObjectNode) node.path("Field")).set("fieldType", underlying.deepCopy());
+            }
+        });
+        removeTypeDefinition(id);
+        return this;
+    }
+
+    private JsonNode typeDefinitionFieldType(String id) {
+        JsonNode tds = root.path("content").path("typeDefinitions");
+        if (tds.isArray()) {
+            for (JsonNode td : tds) {
+                if (id.equals(td.path("id").asText())) {
+                    return td.path("fieldType");
+                }
+            }
+        }
+        return null;
+    }
+
     /** Add a field at {@code groupPath} typed by the type definition {@code typeDefId}. */
     public ModelDocument addTypedefField(String groupPath, String name, String typeDefId) {
         ElementDraft.Field field = new ElementDraft.Field(
@@ -415,6 +634,17 @@ public final class ModelDocument {
         ArrayNode container = parentPath.isEmpty() ? rootGroups() : containerElements(parentPath);
         container.add(DocumentModelDraft.mountNode(new ElementDraft.Mount(name, alias, List.of()), parentPath));
         return this;
+    }
+
+    /** Every mount-group path that mounts the include aliased {@code alias} ({@code modelAlias}), in document order (task #2). */
+    public List<String> mountsOfInclude(String alias) {
+        List<String> out = new ArrayList<>();
+        walk((path, node, isGroup) -> {
+            if (isGroup && alias.equals(node.path("Group").path("modelAlias").asText(null))) {
+                out.add(path);
+            }
+        });
+        return out;
     }
 
     /** Remove the type definition {@code id}. Fails fast if absent; {@link #validate()} catches a field still using it. */

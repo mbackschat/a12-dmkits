@@ -63,9 +63,15 @@ record ResultEnvelope(
         return new ResultEnvelope(target, op, Outcome.PREVIEW, summary, changed, null, diagnostics, null, false, null);
     }
 
-    /** The safe-delete gate fired (still referenced, no {@code --cascade}) — nothing written, exit 2. */
+    /** A refactor/cascade safety gate refused (CLI-SPEC §6) — nothing written, exit 2. */
     static ResultEnvelope refused(String target, String op, String summary, List<Diagnostic> diagnostics) {
-        return new ResultEnvelope(target, op, Outcome.REFUSED, summary, null, null, diagnostics, null, false, null);
+        return refused(target, op, summary, null, diagnostics);
+    }
+
+    /** A gate refused, carrying structured {@code data} (e.g. the referrers) — nothing written, exit 2. */
+    static ResultEnvelope refused(String target, String op, String summary, JsonNode data,
+            List<Diagnostic> diagnostics) {
+        return new ResultEnvelope(target, op, Outcome.REFUSED, summary, null, data, diagnostics, null, false, null);
     }
 
     /** The kernel rejected the op (an invalid candidate/edit) — nothing written, exit 1. */

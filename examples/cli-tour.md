@@ -25,6 +25,7 @@ rule explain
 rule add
 rule modify
 rule remove
+rule rename
 computation add
 computation read
 computation explain
@@ -33,12 +34,17 @@ computation remove
 field add
 field read
 field remove
+field rename
 group add
 group read
 group remove
+group rename
 typedef add
 typedef read
 typedef remove
+typedef rename
+typedef extract
+typedef inline
 include add
 include read
 include remove

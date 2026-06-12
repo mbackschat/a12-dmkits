@@ -3,8 +3,6 @@ package io.github.mbackschat.a12.dm.cli;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -16,7 +14,6 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolve
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.edit.EditSession;
-import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
@@ -73,7 +70,8 @@ final class GroupRemoveCommand extends BaseCommand {
             Set<String> refComputations = new TreeSet<>(adapter.whereUsedInComputations(group));
             if (!refRules.isEmpty() || !refComputations.isEmpty()) {
                 if (!cascade) {
-                    return refuse(group, refRules, refComputations);
+                    return refuse("group", "remove", SafetyChecks.referencedBy(group, refRules, refComputations,
+                            "pass --cascade to remove the referrers too, or remove them first"));
                 }
                 for (String r : refRules) {
                     session.removeRule(r);
@@ -110,25 +108,6 @@ final class GroupRemoveCommand extends BaseCommand {
             return fail("cannot write output: " + e.getMessage());
         }
         ResultEnvelope env = ResultEnvelope.applied("group", "remove", "removed " + group, changed, dest);
-        out().print(env.toJsonString());
-        return env.exitCode();
-    }
-
-    private int refuse(String target, Set<String> refRules, Set<String> refComputations) {
-        ObjectNode data = MAPPER.createObjectNode();
-        ObjectNode refs = data.putObject("referencedBy");
-        ArrayNode rules = refs.putArray("rules");
-        refRules.forEach(rules::add);
-        ArrayNode comps = refs.putArray("computations");
-        refComputations.forEach(comps::add);
-        Diagnostic d = Diagnostic.precheck(Optional.of("RK_REFERENCED"),
-                target + " is referenced by " + (refRules.size() + refComputations.size())
-                        + " element(s); removing it would dangle them",
-                Diagnostic.Where.path(target),
-                Optional.of("pass --cascade to remove the referrers too, or remove them first"),
-                Optional.empty());
-        ResultEnvelope env = new ResultEnvelope("group", "remove", ResultEnvelope.Outcome.REFUSED,
-                target + " is referenced — refusing to remove", null, data, List.of(d), null, false, null);
         out().print(env.toJsonString());
         return env.exitCode();
     }

@@ -125,6 +125,30 @@ public final class EditSession {
         return editStructure(d -> d.setTypeDefinitionType(id, type));
     }
 
+    public EditSession renameField(String fieldPath, String newName) {
+        return editStructure(d -> d.renameField(fieldPath, newName));
+    }
+
+    public EditSession renameGroup(String groupPath, String newName) {
+        return editStructure(d -> d.renameGroup(groupPath, newName));
+    }
+
+    public EditSession renameRule(String ruleFullName, String newName) {
+        return editStructure(d -> d.renameRule(ruleFullName, newName));
+    }
+
+    public EditSession renameTypeDefinition(String oldId, String newId) {
+        return editStructure(d -> d.renameTypeDefinition(oldId, newId));
+    }
+
+    public EditSession extractTypeDefinition(String newId, List<String> fieldPaths) {
+        return editStructure(d -> d.extractTypeDefinition(newId, fieldPaths));
+    }
+
+    public EditSession inlineTypeDefinition(String id) {
+        return editStructure(d -> d.inlineTypeDefinition(id));
+    }
+
     public EditSession removeTypeDefinition(String id) {
         return editStructure(d -> d.removeTypeDefinition(id));
     }

@@ -28,8 +28,19 @@ public final class TypeDefEditor {
         return this;
     }
 
+    /** Rename this type definition (its declaration + every using field's pointer); returns an editor on the new id. */
+    public TypeDefEditor rename(String newId) {
+        session.renameTypeDefinition(id, newId);
+        return new TypeDefEditor(session, newId);
+    }
+
     /** Remove this type definition; returns the session ({@code validate()} catches a field still using it). */
     public EditSession remove() {
         return session.removeTypeDefinition(id);
+    }
+
+    /** Inline this type definition into every using field (its concrete type), then drop it; returns the session. */
+    public EditSession inline() {
+        return session.inlineTypeDefinition(id);
     }
 }

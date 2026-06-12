@@ -12,8 +12,9 @@ import picocli.CommandLine.Spec;
  * rename}/{@code move} are the deferred Refactor ops (§6).
  */
 @Command(name = "group", mixinStandardHelpOptions = true,
-        description = "Group operations: add, read, remove.",
-        subcommands = { GroupAddCommand.class, GroupReadCommand.class, GroupRemoveCommand.class })
+        description = "Group operations: add, read, remove, rename.",
+        subcommands = { GroupAddCommand.class, GroupReadCommand.class, GroupRemoveCommand.class,
+                GroupRenameCommand.class })
 final class GroupCommand implements Callable<Integer> {
 
     @Spec

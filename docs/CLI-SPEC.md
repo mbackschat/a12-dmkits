@@ -2,7 +2,7 @@
 
 The component spec for the standalone CLI (N10). The proposal's [§14/§16](PROJECT-PROPOSAL.md) state intent; [`ARCHITECTURE.md`](ARCHITECTURE.md) places it among the subprojects; this spec holds the design — the **op model**, the **verb surface**, the **diagnostics contract**, the dev/test workflow, sizing, and packaging. Per-verb implementation status lives on the [`API-POC-STUDY.md` §9](API-POC-STUDY.md) board; runnable demos in [`CLI-TOUR-SPEC.md`](CLI-TOUR-SPEC.md) ↔ [`../examples/`](../examples/).
 
-> **Status.** This spec is the **target surface** — binary `dmtool`, target-first verbs (`dmtool -m <model> <target> <op>`), and the uniform result envelope (§3). The verb-first surface is mid-migration: the legacy names still resolve as hidden aliases until the flip completes (per-verb status on the §9 board). The rename/refactor ops (§6) are specced but deferred.
+> **Status.** This spec is the **target surface** — binary `dmtool`, target-first verbs (`dmtool -m <model> <target> <op>`), and the uniform result envelope (§3). The verb-first surface is mid-migration: the legacy names still resolve as hidden aliases until the flip completes (per-verb status on the §9 board). The structural refactor ops (§6) have **shipped, safety-gated** — `typedef rename`/`extract`/`inline` and `field`/`group`/`rule rename` (refuse-if-referenced); only the reference-*rewriting* rename and `move` remain deferred.
 
 ## 1. Purpose & persona
 
@@ -117,11 +117,11 @@ Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ 
 | target | ops | family |
 |---|---|---|
 | `doc` | `describe · validate · export · eval --doc · compute --doc` | (whole document) |
-| `rule` | `add <spec> · read · explain · check · modify --condition · remove` | rulekit |
+| `rule` | `add <spec> · read · explain · check · modify --condition · remove · rename` | rulekit |
 | `computation` | `add <spec> · read · explain · modify --spec · remove` | rulekit |
-| `field` | `add · read · remove` *(rename → §6, deferred)* | modelkit |
-| `group` | `add · read · remove` *(rename/move → §6, deferred)* | modelkit |
-| `typedef` | `add · read · remove` | modelkit |
+| `field` | `add · read · remove · rename` | modelkit |
+| `group` | `add · read · remove · rename` *(move → §6, deferred)* | modelkit |
+| `typedef` | `add · read · remove · rename · extract · inline` *(rename/extract/inline = Tier-1 structural refactors, §6)* | modelkit |
 | `include` | `add · read · remove` | modelkit |
 | `config` | `read · modify` | modelkit |
 | *(root meta)* | `manifest · schema · operators · batch · apply` | — |
@@ -160,9 +160,32 @@ Classify every op by **blast radius** — this is the standing rule for adding o
 |---|---|---|---|
 | **Local** | add · read · modify · remove-leaf | one element only | plain surgery, gate at end |
 | **Cascading** | remove-referenced | element + *deletes* dependents | the `where-used` refuse-or-`--cascade` gate |
-| **Refactor** *(deferred)* | **rename · move** (·extract·inline) | rewrites element **and all references** atomically → valid→valid | a `where-used`-driven, AST-level reference rewrite |
+| **Refactor** | **rename** (field/group/rule/typedef, *refuse-if-referenced* ✅) · **extract/inline typedef** ✅ · **move** + **rename-with-reference-rewrite** *(deferred)* | safe forms touch one element and repoint structural pointers (a typedef); the deferred form rewrites the element **and all condition references** atomically → valid→valid | safe forms: the **safety gate** (✅, this §); deferred form: a `where-used`-driven, AST-level reference rewrite |
 
-**Why rename is "not CRUD" — and why it's deferred.** A rename is a *reference-preserving refactor*: it must rewrite the declaration **and** every referencing site (conditions, error-entity paths, computations) **atomically**, token-precise via the AST (not string replace), and **refuse** when a referrer is `Opaque` (un-modellable, so unrewritable). That engine is the riskiest part of the design, so it's **specced here but built later**: the grammar slot (`field rename`, `group rename/move`) is reserved, the eval task (`N-rename`) is authored-but-skipped, and the safe-delete refusal's `fix` references **`--cascade` only** until rename ships.
+### The refactor safety gate — *check before you change* (standing principle, every refactor, now and future)
+
+Every refactor — and every cascading op — is **precondition-checked and refusable**. The author stays in control; the tool never best-effort-rewrites and never silently degrades. The shape is always the same:
+
+1. **Check** the *specific* refactor's safety preconditions against *this* model, **before** touching anything.
+2. **Refuse if unsafe** — `outcome:refused`, exit 2, **no mutation** — with rich, corrective diagnostics (detect → locate → repair, §4): *what* is unsafe, *where*, and *how* to resolve it.
+3. **Only when every precondition holds, mutate** (then the usual single end-gate).
+
+This generalizes the safe-delete gate below to the whole Refactor class. Each refactor declares its own preconditions and the diagnostic it refuses with:
+
+| refactor | unsafe precondition → refuse with a named diagnostic |
+|---|---|
+| **remove** (referenced) | anything still references the target → refuse, list referrers (`RK_REFERENCED`), or proceed only on explicit `--cascade` |
+| **rename / move** | a referrer is `Opaque` (un-rewritable) → refuse, name it; (move) the destination path would collide with an existing element |
+| **extract group → include** | a rule inside the subtree references **outside** it; the group is **repeatable** (kernel: an include's root must be a single, non-repeatable group); a parent rule referencing into the subtree wouldn't round-trip → refuse, name the offender |
+
+**Two obligations on every refactor — non-negotiable:**
+
+1. **Document the gate well in these md docs.** Its preconditions, its refusal conditions, and the diagnostics it emits belong here in §6 (or the refactor's own spec section) — never left implicit in code. The safety contract is part of the published, self-describing surface.
+2. **Lock the refusal with a law test.** The refusal path gets a test proving the gate **fires** on unsafe input, just as the accept path proves it proceeds when safe. An ungated *or* undocumented refactor does not ship.
+
+**Implemented** (2026-06-12) as `SafetyGate` (runs the registered checks in order, returns the first `Refusal`) + `SafetyChecks` (the reusable preconditions — the first is the `RK_REFERENCED` reference gate shared by safe-delete and safe-rename) + `Refusal`/`BaseCommand.refuse` (the `refused`-envelope emit). **Safe-delete (`field`/`group remove`) is the first adopter** — its hand-rolled refusal was replaced by the shared check. Locked by `SafetyGateTest` + the remove verb tests; each new refactor registers its own `SafetyChecks` precondition and adds the matching refusal test.
+
+**Why the *reference-rewriting* rename is still deferred (but the safe rename shipped).** The **safe** rename landed 2026-06-12 (Tier-2): `field` / `group` / `rule` / `typedef rename` rename the declaration and **refuse** via the safety gate when the element is referenced — for a `group`, when any *descendant* is referenced from **outside** the subtree (a rule pointing at a child field, not the group, still blocks); rules *inside* a renamed group travel with it. So a rename never silently dangles a referrer. What stays deferred is the *reference-preserving* form — rewriting the declaration **and** every referencing site (conditions, error-entity paths, computations) **atomically**, token-precise via the AST, refusing only when a referrer is `Opaque`. That AST-rewrite engine is the riskiest part of the design, built later; **`move`** rides it too, and the eval task (`N-rename`) stays authored-but-skipped against it. (**Typedef rename/extract/inline need no such engine** — a typedef never appears in a condition, so they are pure structural pointer-rewrites.)
 
 ### Safe-delete — the Cascading gate (recorded so it isn't re-litigated)
 

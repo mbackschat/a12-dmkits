@@ -12,8 +12,9 @@ import picocli.CommandLine.Spec;
  * the deferred Refactor op (§6).
  */
 @Command(name = "field", mixinStandardHelpOptions = true,
-        description = "Field operations: add, read, remove.",
-        subcommands = { FieldAddCommand.class, FieldReadCommand.class, FieldRemoveCommand.class })
+        description = "Field operations: add, read, remove, rename.",
+        subcommands = { FieldAddCommand.class, FieldReadCommand.class, FieldRemoveCommand.class,
+                FieldRenameCommand.class })
 final class FieldCommand implements Callable<Integer> {
 
     @Spec

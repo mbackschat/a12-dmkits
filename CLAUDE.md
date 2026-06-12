@@ -25,6 +25,15 @@ The published schemas (`cli/.../resources/schema/*.json`) are part of the self-d
 
 The **no-rot** lever is that **every schema `examples` block is CI-executed through the tool** (`SchemaExamplesGuardTest`) — a stale example actively misleads an agent, so an unverified one cannot ship. The **no-drift** lever is that the *contracts* an agent reads (`manifest`, `schema <target> <op>`) are **derived, not authored** — they recompute from the command tree. When in doubt: add the worked `examples` so the guard executes it; never hand-author a schema fact a guard can't check.
 
+## Refactoring safety gate (standing requirement, 2026-06-12)
+
+**Any refactor — now or in the future — checks safety *before* it changes anything; if the specific refactor isn't safe on this model it refuses with rich, corrective diagnostics and mutates nothing; only when safe does it proceed.** We gate the refactor and stay in control — never a best-effort rewrite, never a silent degrade. This generalizes the safe-delete `where-used` gate to the whole Refactor class (rename, move, extract/inline). Two non-negotiables for every refactor:
+
+- **Document the gate well in the md docs** — each refactor's safety preconditions, what it refuses on, and the diagnostics it emits. Its home is [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md) §6; never leave the safety contract implicit in code.
+- **Test the refusal** — when a refactor op lands, its refusal path gets a law test proving the gate *fires* on unsafe input (the `adapter/laws` does-fire tier), not just that the happy path works.
+
+An ungated, undocumented, or untested-on-refusal refactor is not shippable. Full principle + per-refactor preconditions: [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md) §6.
+
 ## Test & sample document models
 
 - **Research freely; commit only own-domain re-expressions.** All three sources — **`a12-kernel-demo`**, the **A12 Tools workspaces** (`/Volumes/Buffer/Apps/A12 Tools/A12 Tools - 2025.06-ext5/workspaces`, the 2025.06-ext5 distribution = kernel `30.8.1`, our pin), and **`a12-kernel-mm`** — may be read and studied without limit. What gets **committed** must be our own original fixtures.

@@ -369,6 +369,221 @@ bin/dmtool -m /tmp/struct2-td.json typedef remove Currency
 
 → With no field using it, `typedef remove` lands `outcome: applied`. The order matters: the kernel won't let you orphan a field's type.
 
+### typedef rename — a Tier-1 structural refactor (id + every using field, gated)
+
+Renaming a type definition rewrites its declaration **and** every field that points at it, in one step. A typedef never appears in a condition, so this is a pure *structural* rewrite — no rule edits, no AST surgery. The refactor **safety gate** (CLI-SPEC §6) runs first: a new id that is already declared is **refused** before anything changes. On a fresh copy with `Currency` typing a new `SetupFee`:
+
+```bash
+cp cli/src/test/resources/models/subscription.dm.json /tmp/struct2-tdr.json && \
+  bin/dmtool -m /tmp/struct2-tdr.json typedef add --id Currency --kind NUMBER >/dev/null && \
+  bin/dmtool -m /tmp/struct2-tdr.json field add --group /Subscription/Billing --name SetupFee --typedef Currency >/dev/null && \
+  echo "ready: Currency declared, SetupFee typed by it"
+```
+
+```output
+ready: Currency declared, SetupFee typed by it
+```
+
+`typedef rename Currency --to Money` moves the id and repoints the using field — `changed.repointedFields` names exactly what moved:
+
+```bash
+bin/dmtool -m /tmp/struct2-tdr.json typedef rename Currency --to Money
+```
+
+```output
+{
+  "target" : "typedef",
+  "op" : "rename",
+  "outcome" : "applied",
+  "ok" : true,
+  "summary" : "renamed typedef Currency to Money",
+  "changed" : {
+    "renamed" : "Currency",
+    "to" : "Money",
+    "repointedFields" : [ "/Subscription/Billing/SetupFee" ]
+  },
+  "diagnostics" : [ ],
+  "written" : true,
+  "output" : "/tmp/struct2-tdr.json"
+}
+```
+
+→ `changed.repointedFields = [ "/Subscription/Billing/SetupFee" ]`: the declaration became `Money` and the field followed in the same write. The kernel re-validate confirms nothing dangles.
+
+The gate refuses a new id that is already taken — *before* any mutation. With a second typedef `Fee` present, renaming `Money → Fee` would collide, so it is refused (`RK_NAME_EXISTS`, exit 2, nothing written):
+
+```bash
+bin/dmtool -m /tmp/struct2-tdr.json typedef add --id Fee --kind NUMBER >/dev/null
+bin/dmtool -m /tmp/struct2-tdr.json typedef rename Money --to Fee >/tmp/tdr-refuse.json 2>&1; echo "(exit $?)"; cat /tmp/tdr-refuse.json
+```
+
+```output
+(exit 2)
+{
+  "target" : "typedef",
+  "op" : "rename",
+  "outcome" : "refused",
+  "ok" : false,
+  "summary" : "'Fee' already exists — refusing",
+  "diagnostics" : [ {
+    "severity" : "ERROR",
+    "source" : "PRECHECK",
+    "code" : "RK_NAME_EXISTS",
+    "summary" : "a type definition named 'Fee' already exists",
+    "where" : {
+      "path" : "Fee"
+    },
+    "fix" : "choose a new id that is not already declared, or remove the existing 'Fee' first"
+  } ],
+  "written" : false
+}
+```
+
+→ `outcome: refused`, exit 2, with a corrective `fix` — and the model is untouched. This is the standing refactor contract (CLI-SPEC §6): **check before you change; if it isn't safe, refuse with a diagnostic and touch nothing.**
+
+### typedef extract / inline — factor a shared type out, or fold it back
+
+`typedef extract` is the DRY refactor: point several fields that already share **one concrete type** at a single new definition, in one step. On a fresh copy with two like-typed fee fields:
+
+```bash
+cp cli/src/test/resources/models/subscription.dm.json /tmp/struct2-tdx.json && \
+  bin/dmtool -m /tmp/struct2-tdx.json field add --group /Subscription/Billing --name SetupFee --kind NUMBER >/dev/null && \
+  bin/dmtool -m /tmp/struct2-tdx.json field add --group /Subscription/Billing --name LateFee --kind NUMBER >/dev/null && \
+  echo "ready: two NUMBER fee fields under /Subscription/Billing"
+```
+
+```output
+ready: two NUMBER fee fields under /Subscription/Billing
+```
+
+```bash
+bin/dmtool -m /tmp/struct2-tdx.json typedef extract --from /Subscription/Billing/SetupFee,/Subscription/Billing/LateFee --id Money
+```
+
+```output
+{
+  "target" : "typedef",
+  "op" : "extract",
+  "outcome" : "applied",
+  "ok" : true,
+  "summary" : "extracted 2 field(s) into typedef Money",
+  "changed" : {
+    "created" : "Money",
+    "fromFields" : [ "/Subscription/Billing/SetupFee", "/Subscription/Billing/LateFee" ]
+  },
+  "diagnostics" : [ ],
+  "written" : true,
+  "output" : "/tmp/struct2-tdx.json"
+}
+```
+
+→ both fields are now typed by the new `Money` definition. The gate **never coerces** — hand it fields that don't share a concrete type and it refuses (`RK_TYPE_MISMATCH`) before touching anything:
+
+```bash
+bin/dmtool -m /tmp/struct2-tdx.json typedef extract --from /Subscription/Billing/BaseFee,/Subscription/PlanName --id X >/tmp/x.json 2>&1; echo "(exit $?)"; jq -c "{outcome, code: .diagnostics[0].code, fix: .diagnostics[0].fix}" /tmp/x.json
+```
+
+```output
+(exit 2)
+{"outcome":"refused","code":"RK_TYPE_MISMATCH","fix":"pass --from fields that exist and have the same type (none already a typedef)"}
+```
+
+`typedef inline` is the inverse — expand the definition's concrete type back into each using field, then drop it:
+
+```bash
+bin/dmtool -m /tmp/struct2-tdx.json typedef inline Money
+```
+
+```output
+{
+  "target" : "typedef",
+  "op" : "inline",
+  "outcome" : "applied",
+  "ok" : true,
+  "summary" : "inlined typedef Money",
+  "changed" : {
+    "inlined" : "Money",
+    "expandedFields" : [ "/Subscription/Billing/SetupFee", "/Subscription/Billing/LateFee" ]
+  },
+  "diagnostics" : [ ],
+  "written" : true,
+  "output" : "/tmp/struct2-tdx.json"
+}
+```
+
+→ `changed.expandedFields` got their inline `NUMBER` type back and `Money` is gone — extract and inline round-trip.
+
+## rename — Tier-2 safe rename (the refuse-if-referenced gate)
+
+`field | group | rule rename <path> --to <newName>` renames an element's declaration. References are **not** rewritten (that engine is parked), so the safety gate (CLI-SPEC §6) **refuses** a rename that would dangle a referrer — you stay in control. On `order-ruled` (whose `DeliveryNotBeforeOrder` rule references `/Order/DeliveryDate`):
+
+```bash
+cp cli/src/test/resources/models/order-ruled.dm.json /tmp/struct2-rn.json && echo "copied order-ruled → /tmp/struct2-rn.json"
+```
+
+```output
+copied order-ruled → /tmp/struct2-rn.json
+```
+
+Renaming the **referenced** field is refused (`RK_REFERENCED`, exit 2, nothing written) — the referrers are named so you can act:
+
+```bash
+bin/dmtool -m /tmp/struct2-rn.json field rename /Order/DeliveryDate --to ShipDate >/tmp/rn1.json 2>&1; echo "(exit $?)"; cat /tmp/rn1.json
+```
+
+```output
+(exit 2)
+{
+  "target" : "field",
+  "op" : "rename",
+  "outcome" : "refused",
+  "ok" : false,
+  "summary" : "/Order/DeliveryDate is referenced — refusing to rename",
+  "data" : {
+    "referencedBy" : {
+      "rules" : [ "/Order/DeliveryNotBeforeOrder" ],
+      "computations" : [ ]
+    }
+  },
+  "diagnostics" : [ {
+    "severity" : "ERROR",
+    "source" : "PRECHECK",
+    "code" : "RK_REFERENCED",
+    "summary" : "/Order/DeliveryDate is referenced by 1 element(s); renaming it would dangle them",
+    "where" : {
+      "path" : "/Order/DeliveryDate"
+    },
+    "fix" : "rename the referrers first, or leave the field's name as is"
+  } ],
+  "written" : false
+}
+```
+
+An **unreferenced** field renames cleanly:
+
+```bash
+bin/dmtool -m /tmp/struct2-rn.json field rename /Order/Quantity --to Qty
+```
+
+```output
+{
+  "target" : "field",
+  "op" : "rename",
+  "outcome" : "applied",
+  "ok" : true,
+  "summary" : "renamed /Order/Quantity to /Order/Qty",
+  "changed" : {
+    "renamed" : "/Order/Quantity",
+    "to" : "/Order/Qty"
+  },
+  "diagnostics" : [ ],
+  "written" : true,
+  "output" : "/tmp/struct2-rn.json"
+}
+```
+
+→ `group rename` extends the same gate to a whole **subtree** — it refuses if any descendant (a child field, not just the group itself) is referenced from outside, so it can never silently orphan a rule; rules *inside* the renamed group travel with it. `rule rename` is collision-gated only (nothing references a rule). The reference-*rewriting* rename — rewrite every referrer in place — remains the parked Phase-4 engine (CLI-SPEC §6).
+
 ## include — mount another model's content
 
 An include declares a reference to another model (`--alias` → `--reference`) and mounts its content as a group (`--name`) under `--parent`. The referenced model is resolved by its header id from `--include-dir`. We stage a `/tmp` copy of `subscription` plus a tiny library directory holding the committed `catalog` model:

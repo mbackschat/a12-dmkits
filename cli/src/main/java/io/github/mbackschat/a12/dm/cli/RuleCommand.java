@@ -11,9 +11,10 @@ import picocli.CommandLine.Spec;
  * A bare {@code dmtool rule} prints its op list (exit 2); the ops are its subcommands.
  */
 @Command(name = "rule", mixinStandardHelpOptions = true,
-        description = "Validation-rule operations: check, read, explain, add, modify, remove.",
+        description = "Validation-rule operations: check, read, explain, add, modify, remove, rename.",
         subcommands = { RuleCheckCommand.class, RuleReadCommand.class, RuleExplainCommand.class,
-                RuleAddCommand.class, RuleModifyCommand.class, RuleRemoveCommand.class })
+                RuleAddCommand.class, RuleModifyCommand.class, RuleRemoveCommand.class,
+                RuleRenameCommand.class })
 final class RuleCommand implements Callable<Integer> {
 
     @Spec

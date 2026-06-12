@@ -42,6 +42,17 @@ abstract class BaseCommand implements Callable<Integer> {
     }
 
     /**
+     * Emit a {@code refused} envelope from a refactor safety-gate {@link Refusal} (CLI-SPEC §6): the
+     * structured {@code data} (e.g. the referrers) + the corrective diagnostic, nothing written, exit 2.
+     */
+    protected int refuse(String target, String op, Refusal refusal) {
+        ResultEnvelope env = ResultEnvelope.refused(target, op, refusal.summary(), refusal.data(),
+                refusal.diagnostics());
+        out().print(env.toJsonString());
+        return env.exitCode();
+    }
+
+    /**
      * The {@code -m/--model} context option, read from the root command. It is an inherited option, so it
      * binds to {@link RootCommand} wherever it appears — before or after the verb. {@code null} if absent.
      */

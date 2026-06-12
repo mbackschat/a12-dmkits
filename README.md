@@ -266,6 +266,12 @@ dmtool -m order.dm.json field add --group /Order --name LoyaltyPoints --kind NUM
 dmtool -m order.dm.json group add --parent /Order --name Shipping
 dmtool -m order.dm.json typedef add … ; dmtool -m order.dm.json config modify --decimal-separator ","
 
+# Refactor — structural & safety-gated. typedef rename repoints every using field; extract factors shared-type fields out:
+dmtool -m order.dm.json typedef rename Currency --to Money
+dmtool -m order.dm.json typedef extract --from /Order/Price,/Order/Cost --id Money   # inverse: typedef inline Money
+# field/group/rule rename refuse if the element is referenced (references aren't rewritten — that engine is parked):
+dmtool -m order.dm.json field rename /Order/Quantity --to Qty
+
 # Deleting a referenced field is REFUSED with a clear diagnostic that names the referrers …
 dmtool -m order.dm.json field remove /Order/DeliveryDate
 # … resolve it explicitly with --cascade (removes the dependent rules too):
