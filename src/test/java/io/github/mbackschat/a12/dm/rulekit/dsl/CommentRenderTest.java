@@ -27,4 +27,20 @@ class CommentRenderTest {
         // the side-channel comment is emitted as a ;; line ahead of the unchanged canonical render
         assertEquals(";; cap the monthly fee\n" + new DslRenderer().render(c), out);
     }
+
+    @Test
+    void rendersATrailingCommentNewlineSafelyAfterANode() {
+        BoundModel m = Fixtures.subscription();
+        NumberRef fee = m.num("/Subscription/Addons/MonthlyFee");
+        Condition presence = fee.filled();
+        Condition c = presence.and(fee.gt(1000));
+
+        // a trailing (after) comment on the LEFT branch — the newline after ;; is what keeps the
+        // following "And …" from being swallowed by the line comment (the newline-safety property)
+        String out = new DslRenderer().render(c, Comments.none().after(presence, "must be present"));
+
+        // the default renderer emits absolute paths (no baseGroup); the point here is the ;;-then-newline
+        assertEquals("FieldFilled(/Subscription/Addons/MonthlyFee) ;; must be present\n"
+                + " And [/Subscription/Addons/MonthlyFee] > 1000", out);
+    }
 }

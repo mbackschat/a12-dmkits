@@ -12,19 +12,24 @@ import java.util.Optional;
  * {@link #before} returns a copy.
  *
  * <p>Mirrors the kernel grammar, where a comment attaches {@code before}/{@code after} a condition branch
- * ({@code teilBedingung}) or operation. This first increment carries leading ({@code before}) comments.
+ * ({@code teilBedingung}) or operation — both carried here. A trailing ({@code after}) comment is rendered
+ * newline-terminated so a following operator cannot be swallowed by the {@code ;;} line comment.
  */
 public final class Comments {
 
     private final Map<Condition, String> before;
+    private final Map<Condition, String> after;
 
-    private Comments(Map<Condition, String> before) {
+    private Comments(Map<Condition, String> before, Map<Condition, String> after) {
+        // each map is replaced wholesale on mutation (never mutated in place), so sharing a reference
+        // across copies is safe — this is a persistent map built by copy-on-write.
         this.before = before;
+        this.after = after;
     }
 
     /** An empty comment side-channel. */
     public static Comments none() {
-        return new Comments(new IdentityHashMap<>());
+        return new Comments(new IdentityHashMap<>(), new IdentityHashMap<>());
     }
 
     private static final java.util.regex.Pattern LEADING_COMMENT =
@@ -43,7 +48,14 @@ public final class Comments {
     public Comments before(Condition node, String text) {
         Map<Condition, String> next = new IdentityHashMap<>(before);
         next.put(node, text);
-        return new Comments(next);
+        return new Comments(next, after);
+    }
+
+    /** A copy with {@code text} attached as a trailing {@code ;;} comment on {@code node}. */
+    public Comments after(Condition node, String text) {
+        Map<Condition, String> next = new IdentityHashMap<>(after);
+        next.put(node, text);
+        return new Comments(before, next);
     }
 
     /** The leading comment on {@code node}, if any. */
@@ -51,8 +63,13 @@ public final class Comments {
         return Optional.ofNullable(before.get(node));
     }
 
+    /** The trailing comment on {@code node}, if any. */
+    Optional<String> afterOf(Condition node) {
+        return Optional.ofNullable(after.get(node));
+    }
+
     /** Whether no comments are attached (the renderer can then take its plain canonical path). */
     public boolean isEmpty() {
-        return before.isEmpty();
+        return before.isEmpty() && after.isEmpty();
     }
 }

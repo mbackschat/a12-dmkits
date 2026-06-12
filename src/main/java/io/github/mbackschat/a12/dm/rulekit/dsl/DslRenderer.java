@@ -147,7 +147,11 @@ public final class DslRenderer {
         } else {
             out.append(render(condition));
         }
-        spans.put(condition, new Span(start, out.length()));
+        spans.put(condition, new Span(start, out.length()));   // the span covers the node's text, not its comments
+        if (comments != null) {
+            // newline-terminated so a following operator/token isn't swallowed by the ;; line comment
+            comments.afterOf(condition).ifPresent(text -> out.append(" ;; ").append(text).append("\n"));
+        }
     }
 
     private void emitChild(LogicCondition parent, Condition child, StringBuilder out,

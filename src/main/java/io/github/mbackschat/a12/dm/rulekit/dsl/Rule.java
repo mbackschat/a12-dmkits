@@ -29,7 +29,8 @@ public record Rule(
         Condition condition,
         String code,
         Severity severity,
-        List<LocalizedText> messages) {
+        List<LocalizedText> messages,
+        Comments comments) {
 
     public Rule {
         messages = List.copyOf(messages);
@@ -43,13 +44,17 @@ public record Rule(
         return "../" + errorField.path().substring(group.path().length() + 1);
     }
 
-    /** Canonical EN condition text — paths rendered relative to the rule's group (fork #9). */
+    /**
+     * Canonical EN condition text — paths rendered relative to the rule's group (fork #9), with any
+     * authored {@link #comments} emitted as {@code ;;} lines at their node's position. An empty
+     * side-channel renders the plain canonical text.
+     */
     public String render() {
-        return new DslRenderer(ConditionLanguage.EN, group.path()).render(condition);
+        return new DslRenderer(ConditionLanguage.EN, group.path()).render(condition, comments);
     }
 
     public String render(ConditionLanguage language) {
-        return new DslRenderer(language, group.path()).render(condition);
+        return new DslRenderer(language, group.path()).render(condition, comments);
     }
 
     /** The bridge to the F4 validator ({@code RuleValidator.check(modelJson, rule.draft())}). */
@@ -97,6 +102,9 @@ public record Rule(
         private String code;
         private Severity severity;
         private final List<LocalizedText> messages = new ArrayList<>();
+        private Comments comments = Comments.none();
+        private String rootComment;
+        private String rootCommentAfter;
 
         Builder(GroupRef group, List<String> declaredLocales) {
             this.group = group;
@@ -167,6 +175,48 @@ public record Rule(
         }
 
         /**
+         * Attach a {@code ;;} comment to the whole rule — rendered as a leading line ahead of the
+         * condition (e.g. {@code ;; cap the monthly fee}). The kernel tolerates the comment as concrete
+         * syntax; it survives the typed write. To comment one branch instead of the whole rule, use
+         * {@link #comment(Condition, String)}.
+         */
+        public Builder comment(String text) {
+            this.rootComment = text;
+            return this;
+        }
+
+        /**
+         * Attach a {@code ;;} comment to a single condition branch, identified by the very
+         * {@link Condition} object handed to {@link #when(Condition)} or one of its subconditions
+         * (identity-keyed, so two structurally-equal branches keep distinct comments). Rendered ahead of
+         * that branch.
+         */
+        public Builder comment(Condition node, String text) {
+            this.comments = comments.before(node, text);
+            return this;
+        }
+
+        /**
+         * Attach a <em>trailing</em> {@code ;;} comment to the whole rule — rendered at the end of the
+         * condition line (e.g. {@code … > 1000 ;; hard cap per policy}). The trailing counterpart of
+         * {@link #comment(String)}; rendered newline-terminated so nothing after it is swallowed.
+         */
+        public Builder commentAfter(String text) {
+            this.rootCommentAfter = text;
+            return this;
+        }
+
+        /**
+         * Attach a <em>trailing</em> {@code ;;} comment to a single condition branch, identified by the
+         * {@link Condition} object handed to {@link #when(Condition)} or one of its subconditions — the
+         * trailing counterpart of {@link #comment(Condition, String)}.
+         */
+        public Builder commentAfter(Condition node, String text) {
+            this.comments = comments.after(node, text);
+            return this;
+        }
+
+        /**
          * Validate the typed slots and produce the immutable {@link Rule}. {@code build()} fail-fasts on the
          * <b>structural</b> requirements (name, error field, condition, code, severity, &ge;1 message per
          * declared locale, error field under the rule's group) but does <b>not</b> run the semantic lint.
@@ -201,7 +251,14 @@ public record Rule(
                     "author the rule in a group that contains " + errorField.path());
             // MVK_ERROR_FIELD_NOT_REFERENCED is NOT hard-checked here (F11) — it mirrors a kernel
             // judgment the live kernel arbitrates, so it is deferred to Rule#deferredChecks().
-            return new Rule(group, name, errorField, condition, code, severity, messages);
+            Comments finalComments = comments;
+            if (rootComment != null) {
+                finalComments = finalComments.before(condition, rootComment);
+            }
+            if (rootCommentAfter != null) {
+                finalComments = finalComments.after(condition, rootCommentAfter);
+            }
+            return new Rule(group, name, errorField, condition, code, severity, messages, finalComments);
         }
 
         /** Fail fast with a structured PRECHECK diagnostic (still an {@code IllegalStateException}). */
