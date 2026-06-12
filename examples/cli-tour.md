@@ -60,6 +60,7 @@ batch
 apply
 schema
 operators
+diagnostics
 manifest
 ```
 

@@ -1,0 +1,76 @@
+package io.github.mbackschat.a12.dm.cli;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.junit.jupiter.api.Test;
+
+/**
+ * The {@code diagnostics} catalog verb (CLI-CONFORMANCE-SPEC) — the `operators` twin for diagnostic codes.
+ * Lists every RK_* code (filterable) and explains one, so an agent that meets a `code` can look it up.
+ * No model needed (it's a catalog, like `operators`).
+ */
+class DiagnosticsVerbTest {
+
+    private static final ObjectMapper M = new ObjectMapper();
+
+    @Test
+    void listsEveryCodeWithSeveritySourceAndMeaning() throws Exception {
+        var res = CliTestSupport.run("diagnostics");
+        assertEquals(0, res.code(), res::err);
+        JsonNode j = M.readTree(res.out());
+        assertTrue(j.path("count").asInt() > 0);
+        boolean sawNoSuchField = false;
+        for (JsonNode d : j.path("diagnostics")) {
+            assertTrue(d.path("code").asText().startsWith("RK_"));
+            assertFalse(d.path("severity").asText().isBlank());
+            assertFalse(d.path("source").asText().isBlank());
+            assertFalse(d.path("meaning").asText().isBlank());
+            if ("RK_NO_SUCH_FIELD".equals(d.path("code").asText())) {
+                sawNoSuchField = true;
+            }
+        }
+        assertTrue(sawNoSuchField, "the catalog lists RK_NO_SUCH_FIELD");
+    }
+
+    @Test
+    void explainsOneCodeWithItsFix() throws Exception {
+        var res = CliTestSupport.run("diagnostics", "RK_NO_SUCH_FIELD");
+        assertEquals(0, res.code(), res::err);
+        JsonNode j = M.readTree(res.out());
+        assertEquals("RK_NO_SUCH_FIELD", j.path("code").asText());
+        assertEquals("ERROR", j.path("severity").asText());
+        assertEquals("PRECHECK", j.path("source").asText());
+        assertFalse(j.path("meaning").asText().isBlank());
+        assertFalse(j.path("fix").asText().isBlank(), "an explained code carries its canonical fix");
+    }
+
+    @Test
+    void acceptsACodeWithoutTheRkPrefix() throws Exception {
+        var res = CliTestSupport.run("diagnostics", "MOVE_INTO_SELF");
+        assertEquals(0, res.code(), res::err);
+        assertEquals("RK_MOVE_INTO_SELF", M.readTree(res.out()).path("code").asText());
+    }
+
+    @Test
+    void filtersBySeverity() throws Exception {
+        var res = CliTestSupport.run("diagnostics", "--severity", "INFO");
+        assertEquals(0, res.code(), res::err);
+        JsonNode j = M.readTree(res.out());
+        assertTrue(j.path("count").asInt() > 0);
+        for (JsonNode d : j.path("diagnostics")) {
+            assertEquals("INFO", d.path("severity").asText());
+        }
+    }
+
+    @Test
+    void failsClearlyOnAnUnknownCode() throws Exception {
+        var res = CliTestSupport.run("diagnostics", "RK_TOTALLY_MADE_UP");
+        assertEquals(2, res.code());
+        assertTrue(res.err().contains("RK_TOTALLY_MADE_UP"), () -> res.err());
+    }
+}

@@ -1,0 +1,159 @@
+package io.github.mbackschat.a12.dm.rulekit.validate;
+
+import java.util.Optional;
+
+import com.mgmtp.a12.model.notification.Severity;
+
+/**
+ * The {@code RK_*} diagnostic vocabulary — rulekit/structure codes — as a typed enum that <b>is</b> the
+ * single-source registry (CLI-CONFORMANCE-SPEC). Each constant carries the code's canonical meaning, its
+ * typical {@link Severity} and {@link DiagnosticSource}, and the general repair guidance, so every surface
+ * that explains a code derives from here: the CLI {@code diagnostics} verb, the {@code diagnostic.schema},
+ * and the library Javadoc all read this enum — never a second hand-authored copy that could drift.
+ *
+ * <p>The constant name <em>is</em> the code minus the {@code RK_} prefix ({@link #NO_SUCH_FIELD} ⇒
+ * {@code "RK_NO_SUCH_FIELD"}), so {@link #code()} is derived and an emit site that references the constant
+ * cannot ship an un-catalogued code. {@code MVK_*} (kernel) codes are <em>not</em> here — their meaning is
+ * owned by the kernel and surfaced through the operator catalog / {@link DiagnosticEnricher}; this enum is
+ * the vocabulary rulekit owns and emits.
+ *
+ * <p>{@code severity}/{@code source} are the <em>canonical</em> classification for the catalog; a specific
+ * emit may legitimately differ (e.g. a precheck warning vs error), and the wire carries the emitted value.
+ */
+public enum RkCode {
+
+    // --- lint advisories (valid-but-suspicious; LINT) -------------------------------------------
+    UNGUARDED_NUMBER_COMPARISON(Severity.WARNING, DiagnosticSource.LINT,
+            "a number is compared with an ordering operator but its presence is not guarded; an empty number reads as 0, so the rule also fires on empty.",
+            "guard the operand: FieldFilled(<number>) And <the comparison>."),
+    UNGUARDED_STRING_CONCAT(Severity.WARNING, DiagnosticSource.LINT,
+            "a string field participates in a concatenation compared as a value, but its operands are not presence-guarded; an empty string still concatenates, so the comparison is evaluated and can mis-fire.",
+            "guard the concatenated operands with AllFieldsFilled(...) before comparing."),
+    INVERTED_REQUIREDNESS(Severity.WARNING, DiagnosticSource.LINT,
+            "the condition's polarity looks inverted for a requiredness rule — it appears to fire when the field IS filled rather than when it is missing.",
+            "re-check the polarity; a 'required' rule fires on the NOT-filled case."),
+    NEG_CONDITION_IN_ITERATION(Severity.WARNING, DiagnosticSource.LINT,
+            "a negated condition inside an iteration (repeatable group) often reads opposite to intent over the rows.",
+            "state the per-row condition positively, or confirm the negation is intended across all repetitions."),
+    REDUNDANT_OPERAND(Severity.WARNING, DiagnosticSource.LINT,
+            "an operand is redundant — it cannot change the predicate's outcome.",
+            "drop the redundant operand."),
+    CONTRADICTORY_PRESENCE(Severity.WARNING, DiagnosticSource.LINT,
+            "presence predicates over the same field contradict (e.g. filled AND not-filled), so the condition can never hold as written.",
+            "remove the contradiction; one of the presence checks is wrong."),
+    PRESENCE_NOT_COMPLEMENTARY(Severity.WARNING, DiagnosticSource.LINT,
+            "two presence predicates that look intended as complements are not (e.g. both positive), so the rule's coverage is not what it appears.",
+            "make the presence checks complementary, or confirm the overlap is intended."),
+    GOTCHA(Severity.INFO, DiagnosticSource.LINT,
+            "a catalog-known gotcha applies to an operator used here — valid, but a common trap worth confirming.",
+            "read the operator's gotcha (see `operators <name>`) and confirm the intent."),
+
+    // --- build-time / structure prechecks (ERROR; PRECHECK) -------------------------------------
+    INCOMPLETE_RULE(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "a rule is missing a required slot (name, error field, condition, code, or severity) — it cannot be built.",
+            "supply the missing slot before building the rule."),
+    ERROR_FIELD_OUTSIDE_GROUP(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "the rule's error field is not inside the rule's scope group, so the error cannot attach.",
+            "point the error field at a field within the rule's group subtree."),
+    NO_SUCH_FIELD(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "no field exists at the given path.",
+            "pass an existing field's full name-path (see `doc describe` or `field read`)."),
+    NO_SUCH_GROUP(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "no group exists at the given path (a target, parent, or destination).",
+            "pass an existing group's full name-path (see `doc describe` or `group read`)."),
+    NO_SUCH_RULE(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "no rule exists at the given full name.",
+            "pass an existing rule's full name (group-path + name; see `rule read` or `where-used`)."),
+    NAME_EXISTS(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "the chosen new name/id collides with an existing sibling field/group or declared id.",
+            "choose a name not already used by a sibling, or rename/remove the existing one first."),
+    TYPE_MISMATCH(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "the fields to factor into a type definition do not all exist and share one concrete type — there is no single type to extract.",
+            "pass fields that exist and share the same concrete type (none already a typedef)."),
+    REPEATABLE_INCLUDE_ROOT(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "the group cannot be an include root — an include's root group must be single and non-repeatable.",
+            "extract a non-repeatable group, or make this group non-repeatable first."),
+    OUTWARD_REFERENCE(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "a rule inside the subtree references a field outside it, so the subtree cannot move into a standalone sub-model.",
+            "move those rules out of the subtree, or extract a larger group that contains what they reference."),
+    MOVE_INTO_SELF(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "a group cannot move into itself or its own subtree — it would orphan the subtree.",
+            "choose a destination group that lies outside the moved subtree."),
+    REFERENCED(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "the element is still referenced by a rule/computation; removing it would dangle the referrers.",
+            "remove or re-point the referrers first, or pass --cascade to remove them together."),
+    UNKNOWN_OP(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "the op is not valid for its target in an apply/batch sequence.",
+            "use an op valid for the target (see `manifest`)."),
+    UNKNOWN_ARG(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "an op-record carries a key that is not a parameter of that verb.",
+            "use the verb's documented keys (see `manifest` / `schema <target> <op>`); check the did-you-mean."),
+    WRONG_BATCH_KIND(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "a batch entry's shape does not match the kind of call it claims to be.",
+            "match the entry to the frame `schema batch` documents."),
+    APPLY_OP_FAILED(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "an op in an atomic apply sequence failed, so the whole sequence was rolled back (nothing written).",
+            "fix the failing op (see its per-op diagnostic) and re-run the sequence."),
+
+    // --- environment / version (advisory or fail-fast) ------------------------------------------
+    KERNEL_VERSION_SKEW(Severity.INFO, DiagnosticSource.ENVIRONMENT,
+            "the running kernel is newer than the catalog's verified floor — safe (rulekit binds only the public surface), an advisory only.",
+            "no action required; re-stamp the catalog `verifiedAgainst` to silence it."),
+    MODEL_VERSION_SKEW(Severity.INFO, DiagnosticSource.ENVIRONMENT,
+            "the document's modelVersion differs from the reference but is accepted by the kernel — tolerated, flagged for awareness.",
+            "no action required; align the modelVersion if you want the note gone."),
+    MODEL_VERSION_INCOMPATIBLE(Severity.ERROR, DiagnosticSource.KERNEL,
+            "the kernel rejects the document's modelVersion (a newer or different-major version) — fail-fast.",
+            "load a model whose version is compatible with this kernel, or migrate the model.");
+
+    private final Severity severity;
+    private final DiagnosticSource source;
+    private final String meaning;
+    private final String fix;
+
+    RkCode(Severity severity, DiagnosticSource source, String meaning, String fix) {
+        this.severity = severity;
+        this.source = source;
+        this.meaning = meaning;
+        this.fix = fix;
+    }
+
+    /** The wire code — {@code "RK_" + name()} (the constant name is the code minus the prefix). */
+    public String code() {
+        return "RK_" + name();
+    }
+
+    /** The canonical severity for the catalog (a specific emit may differ; the wire carries the emitted value). */
+    public Severity severity() {
+        return severity;
+    }
+
+    /** The canonical source for the catalog. */
+    public DiagnosticSource source() {
+        return source;
+    }
+
+    /** What the code means (the catalog entry an agent/dev reads). */
+    public String meaning() {
+        return meaning;
+    }
+
+    /** The general repair guidance (a specific instance may carry a more concrete fix). */
+    public String fix() {
+        return fix;
+    }
+
+    /** The {@link RkCode} for a wire code string ({@code "RK_NO_SUCH_FIELD"}), or empty if not an RK_ code. */
+    public static Optional<RkCode> byCode(String code) {
+        if (code == null || !code.startsWith("RK_")) {
+            return Optional.empty();
+        }
+        String name = code.substring(3);
+        for (RkCode c : values()) {
+            if (c.name().equals(name)) {
+                return Optional.of(c);
+            }
+        }
+        return Optional.empty();
+    }
+}
