@@ -77,4 +77,26 @@ class GroupEditorTest {
         assertTrue(result.fieldPaths().contains("/Subscription/Addons/Note"));
         assertTrue(result.fieldPaths().contains("/Subscription/Addons/Active"));
     }
+
+    @Test
+    void acceptsTheEditorDirectlyAsRuleScope() {
+        // the aspirational ergonomic: pass the editor straight into m.rule(...) — it downgrades to its
+        // GroupRef internally (the AST still stores only the pure ref). No rulekit → dm.edit dependency:
+        // both GroupRef and GroupEditor satisfy the rulekit GroupReference type.
+        EditSession s = EditSession.read(Fixtures.subscriptionJson());
+        GroupEditor addons = s.group("/Subscription/Addons");
+        addons.addField("Discount", FieldKind.NUMBER);
+        NumberRef discount = addons.num("Discount");
+
+        s.addRule(m -> m.rule(addons)                          // the EDITOR as scope, not addons.ref()
+                        .name("DiscountNotNegative")
+                        .errorField(discount)
+                        .when(discount.filled().and(discount.lt(0)))
+                        .code("DISCOUNT_NEGATIVE").severity(Severity.ERROR)
+                        .message(Dsl.en("Discount must not be negative."), Dsl.de("Rabatt darf nicht negativ sein."))
+                        .build())
+                .validate();
+
+        assertTrue(ModelDocument.read(s.toJson()).fieldPaths().contains("/Subscription/Addons/Discount"));
+    }
 }

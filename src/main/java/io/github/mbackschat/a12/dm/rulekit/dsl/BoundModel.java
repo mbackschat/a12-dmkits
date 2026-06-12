@@ -368,8 +368,8 @@ public final class BoundModel {
     // --- authoring objects (F2/F2a) — model-aware so messages check against DECLARED locales ----
 
     /** Start a rule in {@code group}; messages are checked against the model's declared locales. */
-    public Rule.Builder rule(GroupRef group) {
-        return new Rule.Builder(group, index.locales());
+    public Rule.Builder rule(GroupReference group) {
+        return new Rule.Builder(group.ref(), index.locales());
     }
 
     /** Start a computation for {@code computed}; the element is placed in the field's group. */

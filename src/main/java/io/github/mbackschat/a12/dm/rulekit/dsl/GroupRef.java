@@ -11,7 +11,13 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
  * as filled. And an enclosing {@code GroupFilled(Group)} counts as referencing the rule's error
  * field (no {@code MVK_ERROR_FIELD_NOT_REFERENCED}).
  */
-public record GroupRef(String path, boolean repeating) {
+public record GroupRef(String path, boolean repeating) implements GroupReference {
+
+    /** Identity — a {@code GroupRef} is its own {@link GroupReference}. */
+    @Override
+    public GroupRef ref() {
+        return this;
+    }
 
     /** {@code GroupFilled(path)}. */
     public Condition filled() {

@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.edit;
 
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.GroupReference;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringRef;
 
@@ -26,7 +27,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.StringRef;
  * editor is immediately referenceable by name — the create→reference flow the dropped L2b codegen could
  * never do, since the new field exists only at runtime. Obtain an editor from {@link EditSession#group(String)}.
  */
-public final class GroupEditor {
+public final class GroupEditor implements GroupReference {
 
     private final EditSession session;
     private final GroupRef location;
@@ -37,6 +38,7 @@ public final class GroupEditor {
     }
 
     /** Downgrade to the pure group ref — what enters the AST (a rule's scope, a group operand). */
+    @Override
     public GroupRef ref() {
         return location;
     }
