@@ -6,6 +6,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
@@ -64,6 +65,21 @@ public final class EditSession {
 
     public EditSession addField(String groupPath, String name, FieldTypeSpec type) {
         json = ModelDocument.read(json).addField(groupPath, name, type).toJson();
+        return this;
+    }
+
+    public EditSession setFieldType(String fieldPath, FieldTypeSpec type) {
+        json = ModelDocument.read(json).setFieldType(fieldPath, type).toJson();
+        return this;
+    }
+
+    public EditSession setLabel(String elementPath, Map<String, String> localeToText) {
+        json = ModelDocument.read(json).setLabel(elementPath, localeToText).toJson();
+        return this;
+    }
+
+    public EditSession setAnnotation(String elementPath, String name, String value) {
+        json = ModelDocument.read(json).setAnnotation(elementPath, name, value).toJson();
         return this;
     }
 
@@ -137,6 +153,30 @@ public final class EditSession {
      */
     public GroupEditor group(String path) {
         return new GroupEditor(this, boundModel().group(path));
+    }
+
+    /**
+     * A session-bound {@link FieldEditor} on the field at {@code path} — re-type / label / annotate it,
+     * then downgrade via {@link FieldEditor#ref()}. Fails fast if {@code path} is not a field.
+     */
+    public FieldEditor field(String path) {
+        return new FieldEditor(this, boundModel().field(path));
+    }
+
+    /**
+     * A held reference to the rule at {@code fullName} (group-path + name) — re-express its condition or
+     * remove it without re-typing the path. The rule's existence is checked when the edit applies.
+     */
+    public RuleEditor rule(String fullName) {
+        return new RuleEditor(this, fullName);
+    }
+
+    /**
+     * A held reference to the computation at {@code fullName} (group-path + name) — remove it without
+     * re-typing the path. Existence is checked when the edit applies.
+     */
+    public ComputationEditor computation(String fullName) {
+        return new ComputationEditor(this, fullName);
     }
 
     /** The model bound to the current state — navigation and rule edits re-read this after each edit. */
