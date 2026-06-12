@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.edit;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -44,6 +45,34 @@ class IncludeEditorTest {
         assertFalse(ModelDocument.read(s.toJson()).groupPaths().contains("/Subscription/Catalog"));
     }
 
+    @Test
+    void rePointsAnIncludeAtADifferentModel() {
+        EditSession s = EditSession.read(Fixtures.subscriptionJson(), resolver());
+        s.addInclude("catalog", "catalog", "/Subscription", "Catalog");
+        s.validate();
+
+        // re-point at a different referenced model — alias unchanged, so the mounts are untouched
+        s.include("catalog").setReference("catalog-v2");
+        s.validate();   // resolver() resolves "catalog-v2" too
+
+        assertEquals("catalog-v2", ModelDocument.read(s.toJson()).includes().get(0).reference());
+    }
+
+    @Test
+    void renamesAnIncludeAlias() {
+        EditSession s = EditSession.read(Fixtures.subscriptionJson(), resolver());
+        s.addInclude("catalog", "catalog", "/Subscription", "Catalog");
+        s.validate();
+
+        // the header alias AND the mount's modelAlias move together; validate() passing proves nothing dangles
+        s.include("catalog").rename("pricelist");
+        s.validate();
+
+        ModelDocument doc = ModelDocument.read(s.toJson());
+        assertEquals("pricelist", doc.includes().get(0).alias());
+        assertTrue(doc.groupPaths().contains("/Subscription/Catalog"));   // mount path (name-keyed) is unchanged
+    }
+
     /** A tiny included model authored with modelkit (same locales as subscription). */
     private static String catalogModel() {
         return DocumentModelDraft.named("catalog").locale("en_US").locale("de_DE")
@@ -55,7 +84,7 @@ class IncludeEditorTest {
     private static IDocumentModelReferenceResolver resolver() {
         String catalogJson = catalogModel();
         return reference -> {
-            if ("catalog".equals(reference)) {
+            if (reference.startsWith("catalog")) {   // resolves "catalog" and "catalog-v2"
                 try {
                     return SERIALIZER.deserialize(new StringReader(catalogJson));
                 } catch (Exception e) {

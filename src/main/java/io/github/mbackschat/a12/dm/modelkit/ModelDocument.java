@@ -457,6 +457,59 @@ public final class ModelDocument {
         return this;
     }
 
+    /** Re-point the include {@code alias} at a different referenced model — the mounts, keyed by alias, are untouched. */
+    public ModelDocument setIncludeReference(String alias, String newReference) {
+        JsonNode refs = root.path("header").path("modelReferences");
+        if (refs.isArray()) {
+            for (JsonNode ref : refs) {
+                if (alias.equals(ref.path("alias").asText())) {
+                    ((ObjectNode) ref).put("reference", newReference);
+                    return this;
+                }
+            }
+        }
+        throw new IllegalArgumentException("no include with alias: " + alias);
+    }
+
+    /**
+     * Rename an include's alias — its header {@code modelReference} <em>and</em> every mount's {@code
+     * modelAlias}, in step, so nothing dangles. Mount group names/ids are unchanged, so rules over mounted
+     * content (keyed by path, not alias) are unaffected. Fails fast if the alias is present nowhere.
+     */
+    public ModelDocument renameInclude(String oldAlias, String newAlias) {
+        boolean renamed = false;
+        JsonNode refs = root.path("header").path("modelReferences");
+        if (refs.isArray()) {
+            for (JsonNode ref : refs) {
+                if (oldAlias.equals(ref.path("alias").asText())) {
+                    ((ObjectNode) ref).put("alias", newAlias);
+                    renamed = true;
+                }
+            }
+        }
+        boolean[] mountRenamed = {false};
+        renameMounts(rootGroups(), oldAlias, newAlias, mountRenamed);
+        if (!renamed && !mountRenamed[0]) {
+            throw new IllegalArgumentException("no include with alias: " + oldAlias);
+        }
+        return this;
+    }
+
+    private void renameMounts(ArrayNode elements, String oldAlias, String newAlias, boolean[] any) {
+        for (JsonNode el : elements) {
+            if (!"Group".equals(el.path("type").asText())) {
+                continue;
+            }
+            ObjectNode body = (ObjectNode) el.path("Group");
+            if (oldAlias.equals(body.path("modelAlias").asText())) {
+                body.put("modelAlias", newAlias);
+                any[0] = true;
+            } else if (body.path("elements").isArray()) {
+                renameMounts((ArrayNode) body.path("elements"), oldAlias, newAlias, any);
+            }
+        }
+    }
+
     private void removeMounts(ArrayNode elements, String alias, boolean[] any) {
         for (int i = elements.size() - 1; i >= 0; i--) {
             JsonNode el = elements.get(i);

@@ -179,6 +179,16 @@ public final class EditSession {
         return this;
     }
 
+    public EditSession setIncludeReference(String alias, String newReference) {
+        json = ModelDocument.read(json).setIncludeReference(alias, newReference).toJson();
+        return this;
+    }
+
+    public EditSession renameInclude(String oldAlias, String newAlias) {
+        json = ModelDocument.read(json).renameInclude(oldAlias, newAlias).toJson();
+        return this;
+    }
+
     // --- L2c: the session-bound editor (refs as currency) ---------------------------------------
 
     /**
