@@ -1,6 +1,9 @@
 package io.github.mbackschat.a12.dm.cli;
 
+import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -39,6 +42,24 @@ abstract class BaseCommand implements Callable<Integer> {
     protected int fail(String message) {
         err().println(message);
         return 2;
+    }
+
+    /**
+     * The DM-JSON at {@code modelPath}, or {@code null} after printing the corrective failure to stderr (the
+     * caller then returns exit 2). Centralizes the read-the-model-file step every mutating verb opens with —
+     * a missing {@code -m} ({@code modelPath == null}) and an unreadable file both fail with a clear message.
+     */
+    protected String readModelJson(String modelPath) {
+        if (modelPath == null) {
+            fail("pass -m <model.json> (before or after the verb)");
+            return null;
+        }
+        try {
+            return Files.readString(Path.of(modelPath));
+        } catch (IOException e) {
+            fail("cannot read model: " + e.getMessage());
+            return null;
+        }
     }
 
     /**
