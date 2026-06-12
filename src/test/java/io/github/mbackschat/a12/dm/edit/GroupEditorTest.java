@@ -7,7 +7,9 @@ import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
@@ -76,6 +78,60 @@ class GroupEditorTest {
         assertTrue(result.fieldPaths().contains("/Subscription/Addons/Discount"));
         assertTrue(result.fieldPaths().contains("/Subscription/Addons/Note"));
         assertTrue(result.fieldPaths().contains("/Subscription/Addons/Active"));
+    }
+
+    @Test
+    void buildsNestedGroupsViaTheBuilderLambda() {
+        // mirrors the from-scratch DocumentModelDraft builder: each new group is configured in its lambda,
+        // so the model is never bound while a group sits empty (binding runs checkConsistency).
+        EditSession s = EditSession.read(Fixtures.subscriptionJson());
+
+        s.group("/Subscription")
+                .addGroup("Shipping", g -> g.addField("Carrier", FieldKind.STRING))
+                .addGroup("Items", items -> items
+                        .addField("Sku", FieldKind.STRING)
+                        .addField("Qty", FieldKind.NUMBER))
+                .addRepeatableGroup("History", 10, h -> h.addField("ChangedOn", FieldKind.DATE));
+        s.validate();
+
+        ModelDocument result = ModelDocument.read(s.toJson());
+        assertTrue(result.fieldPaths().contains("/Subscription/Shipping/Carrier"));
+        assertTrue(result.fieldPaths().contains("/Subscription/Items/Sku"));
+        assertTrue(result.fieldPaths().contains("/Subscription/Items/Qty"));
+        assertTrue(result.isRepeating("/Subscription/History"));
+        assertTrue(result.fieldPaths().contains("/Subscription/History/ChangedOn"));
+    }
+
+    @Test
+    void addsRichlyTypedFieldsViaFieldTypeSpec() {
+        EditSession s = EditSession.read(Fixtures.subscriptionJson());
+        GroupEditor billing = s.group("/Subscription/Billing");
+
+        billing.addField("Discount", new FieldTypeSpec.NumberSpec(2, null, null))   // scale-2 number
+                .addField("Coupon", new FieldTypeSpec.StringSpec(null, 20, null, null));  // bounded string
+        s.validate();
+
+        assertEquals(2, billing.num("Discount").scale());          // the scale stuck (read back via navigation)
+        assertTrue(ModelDocument.read(s.toJson()).fieldPaths().contains("/Subscription/Billing/Coupon"));
+    }
+
+    @Test
+    void navigatesEveryFieldKindToATypedRef() {
+        // relative navigation covers the whole typed-ref family, mirroring BoundModel's accessors.
+        EditSession s = EditSession.read(Fixtures.orderJson());
+        GroupEditor order = s.group("/Order");
+
+        assertEquals("/Order/ExpressShipping", order.bool("ExpressShipping").field().path());
+        assertEquals("/Order/Priority", order.enumOf("Priority").field().path());
+        assertEquals("/Order/OrderDate", order.date("OrderDate").field().path());
+        assertEquals("/Order/PickupTime", order.time("PickupTime").field().path());
+        assertEquals("/Order/ScheduledAt", order.dateTime("ScheduledAt").field().path());
+        assertEquals("/Order/ExpressShipping", order.field("ExpressShipping").path()); // kind-agnostic
+
+        // confirm fields live in the subscription fixture
+        ConfirmRef terms = EditSession.read(Fixtures.subscriptionJson())
+                .group("/Subscription").confirm("TermsAccepted");
+        assertEquals("/Subscription/TermsAccepted", terms.field().path());
     }
 
     @Test

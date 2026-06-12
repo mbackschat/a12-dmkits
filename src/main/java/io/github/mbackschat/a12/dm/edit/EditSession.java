@@ -14,6 +14,7 @@ import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
@@ -58,6 +59,11 @@ public final class EditSession {
 
     public EditSession addField(String groupPath, String name, FieldKind kind) {
         json = ModelDocument.read(json).addField(groupPath, name, kind).toJson();
+        return this;
+    }
+
+    public EditSession addField(String groupPath, String name, FieldTypeSpec type) {
+        json = ModelDocument.read(json).addField(groupPath, name, type).toJson();
         return this;
     }
 
