@@ -222,6 +222,22 @@ public final class ModelDocument {
         return this;
     }
 
+    /** Set (or clear, with {@link Requiredness#OPTIONAL}) the requiredness of an existing field. */
+    public ModelDocument setRequiredness(String fieldPath, Requiredness requiredness) {
+        JsonNode field = locate(fieldPath, false);
+        if (field == null) {
+            throw new IllegalArgumentException("no field at path: " + fieldPath);
+        }
+        ObjectNode body = (ObjectNode) field.path("Field");
+        String mode = requiredness.mode();
+        if (mode == null) {
+            body.remove("requirednessConfig");
+        } else {
+            body.putObject("requirednessConfig").put("mode", mode);
+        }
+        return this;
+    }
+
     /** The element node (field or group) at {@code path}; fails fast if absent. */
     private ObjectNode element(String path) {
         JsonNode[] found = new JsonNode[1];

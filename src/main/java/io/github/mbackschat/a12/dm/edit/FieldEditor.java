@@ -3,18 +3,17 @@ package io.github.mbackschat.a12.dm.edit;
 import java.util.Map;
 
 import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
+import io.github.mbackschat.a12.dm.modelkit.Requiredness;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
 
 /**
  * L2c — a session-bound editor over one existing field: the field-attribute edits (re-type, per-locale
- * label, annotation) fluently on the session — which {@code EditSession} otherwise did not expose — plus
- * an explicit {@link #ref()} downgrade to the pure {@link FieldRef}. Obtain from {@link
+ * label, annotation, requiredness) fluently on the session — which {@code EditSession} otherwise did not
+ * expose — plus an explicit {@link #ref()} downgrade to the pure {@link FieldRef}. Obtain from {@link
  * EditSession#field(String)}.
  *
  * <p>A field is a leaf, so there is no navigation; for a typed operand in a rule, navigate from the
  * enclosing group via {@code GroupEditor} (which yields the typed {@code NumberRef}/{@code StringRef}/…).
- * (Requiredness is fixed at creation today — re-setting it on an existing field needs new {@code
- * ModelDocument} support and is deferred; see proposal §18.7.)
  */
 public final class FieldEditor {
 
@@ -46,6 +45,12 @@ public final class FieldEditor {
     /** Set a name/value annotation on this field. Chains. */
     public FieldEditor setAnnotation(String name, String value) {
         session.setAnnotation(location.path(), name, value);
+        return this;
+    }
+
+    /** Set this field's requiredness ({@link Requiredness#OPTIONAL} clears it). Chains. */
+    public FieldEditor setRequiredness(Requiredness requiredness) {
+        session.setRequiredness(location.path(), requiredness);
         return this;
     }
 }

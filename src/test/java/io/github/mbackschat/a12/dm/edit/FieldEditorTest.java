@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.edit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
 
@@ -8,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
+import io.github.mbackschat.a12.dm.modelkit.Requiredness;
 
 /**
  * L2c — the {@link FieldEditor}: a session-bound editor over one existing field, surfacing the field-
@@ -31,5 +34,18 @@ class FieldEditorTest {
 
         // the re-type stuck — read the new scale back through group navigation
         assertEquals(4, s.group("/Subscription/Addons").num("MonthlyFee").scale());
+    }
+
+    @Test
+    void setsAndClearsAFieldsRequiredness() {
+        EditSession s = EditSession.read(Fixtures.subscriptionJson());
+
+        s.field("/Subscription/Billing/BaseFee").setRequiredness(Requiredness.REQUIRED);
+        s.validate();
+        assertTrue(s.toJson().contains("absoluteOrRelativeToNextRepAncestor"));    // REQUIRED mode written
+
+        s.field("/Subscription/Billing/BaseFee").setRequiredness(Requiredness.OPTIONAL);  // clears it
+        s.validate();
+        assertFalse(s.toJson().contains("absoluteOrRelativeToNextRepAncestor"));
     }
 }

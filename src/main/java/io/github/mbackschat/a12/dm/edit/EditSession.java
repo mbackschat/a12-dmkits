@@ -17,6 +17,7 @@ import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.modelkit.Requiredness;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
@@ -70,6 +71,11 @@ public final class EditSession {
 
     public EditSession setFieldType(String fieldPath, FieldTypeSpec type) {
         json = ModelDocument.read(json).setFieldType(fieldPath, type).toJson();
+        return this;
+    }
+
+    public EditSession setRequiredness(String fieldPath, Requiredness requiredness) {
+        json = ModelDocument.read(json).setRequiredness(fieldPath, requiredness).toJson();
         return this;
     }
 
