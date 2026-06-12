@@ -134,6 +134,12 @@ public final class GroupEditor implements GroupReference {
         return this;
     }
 
+    /** Add a field typed by a declared type definition {@code typeDefId}. Chains. */
+    public GroupEditor addTypedefField(String name, String typeDefId) {
+        session.addTypedefField(location.path(), name, typeDefId);
+        return this;
+    }
+
     /**
      * Add a subgroup and configure it in place via {@code body} (mirrors the from-scratch builder's
      * {@code group(name, sub -> …)}), then return <em>this</em> editor so siblings chain. The child editor

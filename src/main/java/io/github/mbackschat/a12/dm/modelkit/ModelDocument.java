@@ -338,14 +338,18 @@ public final class ModelDocument {
 
     /** Declare a reusable type definition {@code id} over an easy {@code underlying} kind. */
     public ModelDocument addTypeDefinition(String id, FieldKind underlying) {
+        return addTypeDefinition(id, DocumentModelDraft.bareSpec(underlying));
+    }
+
+    /** Declare a reusable type definition {@code id} over a fully-configured {@code type} (scale, pattern, enum, …). */
+    public ModelDocument addTypeDefinition(String id, FieldTypeSpec type) {
         JsonNode tds = root.path("content").path("typeDefinitions");
         ArrayNode array = tds.isArray() ? (ArrayNode) tds
                 : ((ObjectNode) root.path("content")).putArray("typeDefinitions");
         ObjectNode node = array.addObject();
         node.put("id", id);
         node.put("name", id);
-        DocumentModelDraft.writeFieldType(node.putObject("fieldType"),
-                DocumentModelDraft.bareSpec(underlying), locales());
+        DocumentModelDraft.writeFieldType(node.putObject("fieldType"), type, locales());
         return this;
     }
 

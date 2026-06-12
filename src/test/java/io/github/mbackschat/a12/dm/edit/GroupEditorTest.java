@@ -116,6 +116,21 @@ class GroupEditorTest {
     }
 
     @Test
+    void declaresARichTypeDefinitionAndUsesItViaTheEditor() {
+        EditSession s = EditSession.read(Fixtures.subscriptionJson());
+
+        // a reusable scale-2 "Money" type-def — richer than a bare FieldKind (which carries no scale)
+        s.addTypeDefinition("Money", new FieldTypeSpec.NumberSpec(2, null, null));
+
+        // use it on a new field via the group editor
+        s.group("/Subscription/Billing").addTypedefField("Surcharge", "Money");
+        s.validate();
+
+        assertEquals(2, s.group("/Subscription/Billing").num("Surcharge").scale());   // typedef scale flows through
+        assertTrue(ModelDocument.read(s.toJson()).typeDefinitionIds().contains("Money"));
+    }
+
+    @Test
     void navigatesEveryFieldKindToATypedRef() {
         // relative navigation covers the whole typed-ref family, mirroring BoundModel's accessors.
         EditSession s = EditSession.read(Fixtures.orderJson());

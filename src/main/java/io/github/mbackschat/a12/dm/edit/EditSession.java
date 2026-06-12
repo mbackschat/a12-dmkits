@@ -119,6 +119,16 @@ public final class EditSession {
         return this;
     }
 
+    public EditSession addTypeDefinition(String id, FieldTypeSpec underlying) {
+        json = ModelDocument.read(json).addTypeDefinition(id, underlying).toJson();
+        return this;
+    }
+
+    public EditSession addTypedefField(String groupPath, String name, String typeDefId) {
+        json = ModelDocument.read(json).addTypedefField(groupPath, name, typeDefId).toJson();
+        return this;
+    }
+
     public EditSession removeTypeDefinition(String id) {
         json = ModelDocument.read(json).removeTypeDefinition(id).toJson();
         return this;
