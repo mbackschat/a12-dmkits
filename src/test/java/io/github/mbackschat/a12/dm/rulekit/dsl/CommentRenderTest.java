@@ -43,4 +43,25 @@ class CommentRenderTest {
         assertEquals("FieldFilled(/Subscription/Addons/MonthlyFee) ;; must be present\n"
                 + " And [/Subscription/Addons/MonthlyFee] > 1000", out);
     }
+
+    @Test
+    void preserveLeadingCarriesTheOldLeadingBlockOntoNewTextWhenNewSuppliesNone() {
+        String old = ";; cap the monthly fee\n;; reviewed 2026-06\n[MonthlyFee] > 1000";
+        String reExpressed = "[MonthlyFee] > 500";
+
+        // the whole leading ;; block (both lines, verbatim) rides onto the re-expressed body
+        assertEquals(";; cap the monthly fee\n;; reviewed 2026-06\n[MonthlyFee] > 500",
+                Comments.preserveLeading(old, reExpressed));
+    }
+
+    @Test
+    void preserveLeadingLetsTheReExpressionsOwnCommentWinAndPassesBodyThroughUntouched() {
+        String old = ";; old note\n[MonthlyFee] > 1000";
+
+        // the new text supplies its own leading comment → it wins (no double-prefix)
+        assertEquals(";; new note\n[MonthlyFee] > 500",
+                Comments.preserveLeading(old, ";; new note\n[MonthlyFee] > 500"));
+        // no comment anywhere → the body passes through unchanged
+        assertEquals("[MonthlyFee] > 500", Comments.preserveLeading("[MonthlyFee] > 1000", "[MonthlyFee] > 500"));
+    }
 }

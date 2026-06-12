@@ -35,6 +35,11 @@ public final class Comments {
     private static final java.util.regex.Pattern LEADING_COMMENT =
             java.util.regex.Pattern.compile("^\\s*;;[ \\t]?([^\\r\\n]*)");
 
+    // the leading run of consecutive ;; comment lines (each terminated by a newline, so a condition
+    // body can follow on the next line) — captured verbatim for faithful preservation.
+    private static final java.util.regex.Pattern LEADING_BLOCK =
+            java.util.regex.Pattern.compile("(?:[ \\t]*;;[^\\r\\n]*\\r?\\n)+");
+
     /**
      * The leading {@code ;;} comment text of a raw condition, if it begins with one — concrete-syntax
      * sourcing for the read→modify→write-back preservation path (the loss the AST otherwise drops).
@@ -42,6 +47,28 @@ public final class Comments {
     public static Optional<String> leadingCommentOf(String conditionText) {
         java.util.regex.Matcher m = LEADING_COMMENT.matcher(conditionText);
         return m.find() ? Optional.of(m.group(1).strip()) : Optional.empty();
+    }
+
+    /**
+     * The verbatim leading {@code ;;} comment block of {@code conditionText} — the run of consecutive
+     * leading comment lines including their terminators, or {@code ""} if it has none. The unit
+     * preserved across a read→modify→write-back (its formatting kept as-is, unlike the re-rendered body).
+     */
+    public static String leadingCommentBlock(String conditionText) {
+        java.util.regex.Matcher m = LEADING_BLOCK.matcher(conditionText);
+        return m.lookingAt() ? m.group() : "";
+    }
+
+    /**
+     * Carry the leading {@code ;;} comment block from {@code oldText} onto {@code newText} when the
+     * re-expression supplied none — the <b>preserve-by-default</b> rule for read→modify→write-back. If
+     * {@code newText} already begins with its own {@code ;;} comment, it wins (no override).
+     */
+    public static String preserveLeading(String oldText, String newText) {
+        if (!leadingCommentBlock(newText).isEmpty()) {
+            return newText;
+        }
+        return leadingCommentBlock(oldText) + newText;
     }
 
     /** A copy with {@code text} attached as a leading {@code ;;} comment on {@code node}. */

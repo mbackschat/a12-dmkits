@@ -22,7 +22,7 @@ Classifications:
 | production | classification | notes |
 |---|---|---|
 | `bedingung` | rendered | `And`/`Or` composition; max three parts per bracket level, no mixed `And`/`Or` (the explicit-parentheses law) |
-| `teilBedingung` | rendered | one branch, optional surrounding `;;` comments (comments are read-tolerated, never authored) |
+| `teilBedingung` | rendered | one branch, optional surrounding `;;` comments — read-tolerated and **authored via the `Comments` side-channel** (`before`/`after`); the leading comment is preserved on write-back (KERNEL-FINDINGS "Condition comments") |
 | `geklammerteBedingung` | rendered | parenthesized sub-condition |
 | `einfacheBedingung` | rendered | the dispatch over all condition families |
 | `logOp` | rendered | `And`/`Or` (case variants read-only) |

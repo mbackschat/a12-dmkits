@@ -29,6 +29,7 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
 import com.mgmtp.a12.kernel.md.serializer.model.internal.service.ExternalDocumentModelSerializerService;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
@@ -432,8 +433,10 @@ public final class KernelAdapter {
      * Modify-by-re-express diff (F8 #2): render the rule's current condition (as read) against a
      * re-expressed {@code modified} one, disclosing lossiness up front (study finding 8). The
      * before/after are both rulekit renderings (symmetric — the diff is the intended change, not
-     * cosmetics); the lossiness notes what re-rendering a foreign source drops — chiefly comments,
-     * detected via the kernel's {@code stripComments}. The caller reviews this before writing back.
+     * cosmetics), each carrying the source's <b>leading comment</b> verbatim because write-back
+     * preserves it ({@link Comments#preserveLeading}, F8 #3). The lossiness then notes only what
+     * re-rendering genuinely drops — <em>inline/trailing</em> comments beyond the leading one. The
+     * caller reviews this before writing back.
      *
      * @throws IllegalStateException if the rule's current condition didn't read cleanly (it is
      *         {@code Opaque}) — you can't re-express an AST you don't have.
@@ -446,10 +449,21 @@ public final class KernelAdapter {
         IRule rule = rule(ruleFullName);
         java.util.List<String> lossiness = new java.util.ArrayList<>();
         String raw = rule.getErrorConditionText();
-        if (raw != null && !raw.equals(mvk.stripComments(rule))) {
-            lossiness.add("the source rule's comments/formatting are not preserved by re-rendering");
+        String before = render(current.condition());
+        String after = render(modified);
+        if (raw != null) {
+            // the leading comment survives write-back, so show it on both sides (context, not a change);
+            // anything still commented beyond the leading block is what re-rendering drops.
+            before = Comments.preserveLeading(raw, before);
+            after = Comments.preserveLeading(raw, after);
+            String beyondLeading = raw.substring(Comments.leadingCommentBlock(raw).length());
+            String commentFree = java.util.Objects.toString(mvk.stripComments(rule), "");
+            if (!beyondLeading.strip().equals(commentFree.strip())) {
+                lossiness.add("inline/trailing comments are not preserved by re-rendering"
+                        + " (the leading comment is carried over)");
+            }
         }
-        return RenderedDiff.between(render(current.condition()), render(modified), lossiness);
+        return RenderedDiff.between(before, after, lossiness);
     }
 
     /** The raw stored condition text of {@code ruleFullName} — concrete syntax (comments + formatting) intact. */

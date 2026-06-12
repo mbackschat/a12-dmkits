@@ -58,6 +58,25 @@ class CommentRoundTripTest {
     }
 
     @Test
+    void preservesTheLeadingCommentByDefaultOnModifyWithNoManualSourcing() {
+        // #31 — the read→modify→write-back loop carries the leading ;; comment ON ITS OWN: the caller
+        // re-expresses only the condition (a bare AST, no comment), yet the comment survives the write.
+        String commented = ";; cap the monthly fee\nFieldFilled(MonthlyFee) And [MonthlyFee] > 1000";
+        String json0 = EditSession.read(subscription())
+                .addRule("/Subscription/Addons", "FeeCap", "../MonthlyFee", "FEE_CAP", commented, "ERROR", msgs())
+                .validate().toJson();
+        String name = "/Subscription/Addons/FeeCap";
+
+        String json1 = EditSession.read(json0)
+                .modifyRule(name, bm -> bm.num("/Subscription/Addons/MonthlyFee").filled()
+                        .and(bm.num("/Subscription/Addons/MonthlyFee").gt(500)))
+                .validate().toJson();
+
+        assertTrue(json1.contains(";; cap the monthly fee"), "the leading comment is preserved by default");
+        assertTrue(json1.contains("> 500"), "the modification (1000 → 500) was applied");
+    }
+
+    @Test
     void readsACommentedRuleModifiesItAndTheCommentSurvives() {
         String commented = ";; cap the monthly fee\nFieldFilled(MonthlyFee) And [MonthlyFee] > 1000";
         String json0 = EditSession.read(subscription())

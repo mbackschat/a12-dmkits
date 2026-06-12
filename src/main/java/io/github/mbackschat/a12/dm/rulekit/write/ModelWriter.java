@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import io.github.mbackschat.a12.dm.core.DmJson;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
@@ -49,7 +50,10 @@ public final class ModelWriter {
 
     /**
      * Returns {@code modelJson} with the {@code errorCondition} of the rule at {@code ruleFullName}
-     * replaced by {@code newConditionText} (F8 #3 write-back). Only the condition slot changes.
+     * replaced by {@code newConditionText} (F8 #3 write-back). Only the condition slot changes. The
+     * old condition's <b>leading {@code ;;} comment is preserved by default</b> ({@link Comments#preserveLeading})
+     * — a re-expression that drops the comment from its AST still keeps the explanatory note, unless the
+     * new text supplies its own.
      */
     public static String replaceCondition(String modelJson, String ruleFullName, String newConditionText) {
         try {
@@ -59,7 +63,9 @@ public final class ModelWriter {
             if (rule == null) {
                 throw new IllegalArgumentException("no rule at path: " + ruleFullName);
             }
-            ((ObjectNode) rule.path("Rule")).put("errorCondition", newConditionText);
+            ObjectNode body = (ObjectNode) rule.path("Rule");
+            String oldText = body.path("errorCondition").asText("");
+            body.put("errorCondition", Comments.preserveLeading(oldText, newConditionText));
             return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
         } catch (IOException e) {
             throw new UncheckedIOException("failed to read/write the model DM-JSON", e);
