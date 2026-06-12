@@ -34,7 +34,7 @@ String dmJson = m.add(rule).toJson();   // re-validated through the kernel; read
 
 Three things make this more than a string builder:
 
-- **The model is the type system.** `m.num(...)`, `m.str(...)`, `m.date(...)`, `m.group(...)` return handles bound to real fields, so a path that doesn't exist (or a number operator on a date) fails *before* you ever reach the kernel.
+- **The model is the type system.** `m.num(...)`, `m.str(...)`, `m.date(...)`, `m.group(...)` return handles bound to real fields, so a path that doesn't exist (or a number operator on a date) fails *before* you ever reach the kernel. (That's a **path lookup** — one of two ways to name a field; the other is a session **editor** for the read→edit→reference flow, below.)
 - **It renders to the exact DSL the kernel expects** — English keywords by default, **German** on demand (`And`/`Und`, `Today`/`Heute`, …) — and the kernel confirms the rendered rule, so "valid" means *the engine accepts it*.
 - **It runs in reverse.** rulekit can **read an existing condition string back** into the same typed form — to explain it, analyze it, or re-express it with a reviewable diff. Anything it doesn't yet model is preserved *verbatim*, never dropped.
 
@@ -54,6 +54,17 @@ Three things make this more than a string builder:
 ---
 
 ## rulekit — the library
+
+### Referencing a field — by path, or through an editor
+
+Two ways to name the field a rule talks about; they return the **same pure refs**, so you blend them as fits:
+
+| Style | Looks like | Reach for it when |
+|---|---|---|
+| **By path** (L2a) | `m.num("/Order/Discount")` | referencing an **existing** element while authoring against a loaded model — the common case |
+| **Through an editor** (L2c) | `s.group("/Order").num("Discount")` | the read→**edit**→reference flow: a ref to a field you *just created*, or relative navigation, without re-typing paths — see *Both kits together* below |
+
+Neither is "older": a path lookup is the foundation; the editor adds relative navigation, refs that flow out of edits, and `m.rule(editor)` for when structure and rules move together. The examples below use whichever fits — and [mix both](#both-kits-together--editsession-one-model-one-gate) when a rule spans a just-added field and an existing one.
 
 ### Author (a quick start)
 
@@ -157,6 +168,18 @@ String updated = s.validate().toJson();                      // one kernel gate
 ```
 
 **Refs are the currency.** `order.num("Discount")` resolves *only because* `addField` ran first — and it returns a typed ref, not a string path you re-type. Rules author in place (`order.addRule(r -> …)`, the builder pre-scoped to the group) or take the editor straight as a scope (`m.rule(order)`); either way the immutable AST holds **only the pure ref, never the session**, so a rule can't leak an effect. `GroupEditor` also nests (`addGroup(name, sub -> …)`); `FieldEditor` re-types/labels/annotates a field; `RuleEditor` / `ComputationEditor` modify or remove by held reference. Design + rationale: [API study §5c](docs/API-POC-STUDY.md).
+
+**Blend both as a developer would** — the editor for a field you just added, a path lookup for one that already exists, in the same condition (they are the same pure ref):
+
+```java
+GroupEditor billing = s.group("/Subscription/Billing");
+billing.addField("Surcharge", FieldKind.NUMBER);                       // NEW field — via the editor
+NumberRef surcharge = billing.num("Surcharge");                        // editor relative ref
+s.addRule(m -> m.rule(billing.ref()).name("SurchargeUnderBase").errorField(surcharge)
+        .when(surcharge.filled().and(surcharge.gt(m.num("/Subscription/Billing/BaseFee"))))  // ← path lookup, existing field
+        .code("SURCHARGE_OVER_BASE").severity(Severity.ERROR)
+        .message(en("Surcharge must not exceed the base fee.")).build());
+```
 
 The flat session verbs are still there for a quick one-off — `s.addField(path, …)`, `s.addRule(m -> m.rule(m.group(path)) …)` — and a raw-string condition overload backs the CLI's `apply`/spec path (conditions arrive as text), but it's not the idiom for library code.
 

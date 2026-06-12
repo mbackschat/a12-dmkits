@@ -199,6 +199,31 @@ class GroupEditorTest {
     }
 
     @Test
+    void mixesAnEditorRefAndAPathLookupInOneRule() {
+        // a developer blends the two ref styles as fits: the editor for the field just added,
+        // a path lookup for an existing field — both are the same pure ref, used in one condition.
+        EditSession s = EditSession.read(Fixtures.subscriptionJson());
+        GroupEditor billing = s.group("/Subscription/Billing");
+
+        billing.addField("Surcharge", FieldKind.NUMBER);              // a NEW field, via the editor
+        NumberRef surcharge = billing.num("Surcharge");               // editor relative ref → the just-added field
+
+        s.addRule(m -> {
+            NumberRef baseFee = m.num("/Subscription/Billing/BaseFee");   // path lookup → an existing field
+            return m.rule(billing.ref()).name("SurchargeUnderBase")
+                    .errorField(surcharge)
+                    .when(surcharge.filled().and(surcharge.gt(baseFee)))  // true on the VIOLATION (surcharge exceeds base)
+                    .code("SURCHARGE_OVER_BASE").severity(Severity.ERROR)
+                    .message(Dsl.en("Surcharge must not exceed the base fee."),
+                            Dsl.de("Zuschlag darf die Basisgebühr nicht übersteigen."))
+                    .build();
+        });
+        s.validate();
+
+        assertTrue(s.toJson().contains("SurchargeUnderBase"));
+    }
+
+    @Test
     void composesDocumentPartBuildersWithoutNewMachinery() {
         // §5c.1: reusable document-part builders are just plain functions (GroupEditor, params) -> refs.
         // They compose, reuse under different names/groups, and every result passes the one validate() gate
