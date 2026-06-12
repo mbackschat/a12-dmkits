@@ -151,7 +151,7 @@ Verified 2026-06-03 against the sibling `a12-kernel` clone, prompted by `a12-ant
 
 ## The kernel's typed-accessor generator (was earmarked for L2b — now historical; L2b DROPPED)
 
-> **L2b codegen typed refs was dropped (proposal D7, 2026-06-12) — replaced by the runtime ref/cursor layer L2c.** So this generator is **no longer a planned enabler**; the note is kept as kernel-fact reference only. (Even pre-drop it generated *document-instance* accessors, not rule-authoring refs — a different concern.)
+> **L2b codegen typed refs was dropped (proposal D7, 2026-06-12) — replaced by the runtime ref/editor layer L2c.** So this generator is **no longer a planned enabler**; the note is kept as kernel-fact reference only. (Even pre-drop it generated *document-instance* accessors, not rule-authoring refs — a different concern.)
 
 The kernel ships a **typed-accessor generator**: artifact `com.mgmtp.a12.kernel:kernel-md-typed-accessor-gen:<ver>:TypedAccessorGenerator-CLI`, main class `com.mgmtp.a12.kernel.md.document.typed_accessor_gen.TypedAccessorGenerator`, invoked with `--document-model-file <dm.json> --package-prefix <pkg> --output-dir <dir> --mode overlay`. `a12-kernel-demo`'s `genTypedAccessors`/`runTyped` tasks are a working precedent. It generates over *document-v2 internals* (`kernel-md-document-v2`) — document access, a different concern from rulekit's rule-authoring — which is part of why L2b offered nothing for our field-reference ergonomics (see D7).
 

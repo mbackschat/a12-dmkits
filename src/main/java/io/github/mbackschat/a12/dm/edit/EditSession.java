@@ -121,25 +121,42 @@ public final class EditSession {
         return this;
     }
 
+    // --- L2c: the session-bound editor (refs as currency) ---------------------------------------
+
+    /**
+     * A session-bound {@link GroupEditor} on the group at {@code path} — the L2c editing idiom: fluent
+     * structure edits that chain, relative navigation to a pure ref for any child (existing or
+     * just-created), and an explicit downgrade to the pure {@code GroupRef} for the AST. Fails fast if
+     * {@code path} is not a group in the current model.
+     */
+    public GroupEditor group(String path) {
+        return new GroupEditor(this, boundModel().group(path));
+    }
+
+    /** The model bound to the current state — navigation and rule edits re-read this after each edit. */
+    BoundModel boundModel() {
+        return BoundModel.ofJson(json, resolver);
+    }
+
     // --- rule / computation edits (rulekit) -----------------------------------------------------
 
     /** Add a rule; {@code builder} receives the model bound to the current state to author against it. */
     public EditSession addRule(Function<BoundModel, Rule> builder) {
-        BoundModel m = BoundModel.ofJson(json, resolver);
+        BoundModel m = boundModel();
         json = m.add(builder.apply(m)).toJson();
         return this;
     }
 
     /** Add a computation; {@code builder} authors it against the current model. */
     public EditSession addComputation(Function<BoundModel, Computation> builder) {
-        BoundModel m = BoundModel.ofJson(json, resolver);
+        BoundModel m = boundModel();
         json = m.add(builder.apply(m)).toJson();
         return this;
     }
 
     /** Re-express the condition of the rule at {@code ruleFullName}; {@code builder} authors the new one. */
     public EditSession modifyRule(String ruleFullName, Function<BoundModel, Condition> builder) {
-        BoundModel m = BoundModel.ofJson(json, resolver);
+        BoundModel m = boundModel();
         json = m.replaceCondition(ruleFullName, builder.apply(m)).toJson();
         return this;
     }
@@ -174,12 +191,12 @@ public final class EditSession {
     }
 
     public EditSession removeRule(String ruleFullName) {
-        json = BoundModel.ofJson(json, resolver).removeRule(ruleFullName).toJson();
+        json = boundModel().removeRule(ruleFullName).toJson();
         return this;
     }
 
     public EditSession removeComputation(String computationFullName) {
-        json = BoundModel.ofJson(json, resolver).removeComputation(computationFullName).toJson();
+        json = boundModel().removeComputation(computationFullName).toJson();
         return this;
     }
 
