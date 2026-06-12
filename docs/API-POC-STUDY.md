@@ -15,8 +15,8 @@ import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.*;
 import io.github.mbackschat.a12.dm.rulekit.dsl.*;
 
 BoundModel m = BoundModel.of(ModelIndex.of(ModelLoader.loadSelfContained(reader)));   // ✅ today
-// BoundModel m = BoundModel.load(path);                      // 🔮 sugar
-// BoundModel m = BoundModel.load(path, resolver);            // 🔮 model with includes: rulekit expands (F0)
+// BoundModel m = BoundModel.load(path);                      // 🔮 path-loading sugar (today: read the text yourself)
+BoundModel withIncludes = BoundModel.ofJson(json, resolver);  // ✅ a model with includes — rulekit expands via the resolver (F0; §5d)
 
 NumberRef  fee   = m.num("/Subscription/Addons/MonthlyFee");  // knows: number, scale 2
 EnumRef    tier  = m.enumOf("/Subscription/Tier");            // knows: BASIC, PRO, ENTERPRISE
@@ -582,6 +582,41 @@ address(order, "BillingAddress",  Country.US);                      // … and r
 
 **What you parameterize:** names (build the same component many times), refs (wire a rule around a passed field), kinds / scales / bounds / value-sets (configure the field), and **other builders** (a `lineItems(…)` calls `money(…)`; a `tieredFee(base, Tier…)` emits one computation alternative per tier). A team accrues a **document-component library** (`Money` / `Address` / `LineItems` / `AuditBlock`) and assembles models from it — restrained to **plain functions** (no templating DSL — the same "no query language" discipline as the navigation surface), each assembled result kernel-confirmed at the single gate. Finding 24.
 
+## 5d. Working across models — includes & type-defs ✅ (2026-06-12)
+
+Real apps compose models: a shared sub-model is **included** into a base and mounted at one or more places, and the base authors rules over the mounted fields exactly as if they were local. rulekit binds a model **with includes** by threading a resolver (`EditSession.read(json, resolver)` / `BoundModel.ofJson(json, resolver)`), expands it through the kernel, and writes back **without inlining** the include — the `modelAlias` link is preserved (F6/D9). A field from an include is addressed by its **mount-name path** (`/Catalog/Retail/ListPrice` = the mount `Retail` + the included field `ListPrice`); a **type-def** field behaves as its underlying kind.
+
+```java
+// a shared price list — carrying its OWN rule (list price not negative)
+EditSession plSession = EditSession.read(pricelistStructureJson);     // modelkit-authored structure
+GroupEditor pl = plSession.group("/Pricelist");
+NumberRef listPrice = pl.num("ListPrice");
+pl.addRule(r -> r.name("ListPriceNonNeg").errorField(listPrice)
+        .when(listPrice.filled().and(listPrice.lt(0)))
+        .code("LIST_PRICE_NEG").severity(Severity.ERROR)
+        .message(en("List price must not be negative.")).build());
+String pricelist = plSession.validate().toJson();
+
+// a base model that INCLUDES the price list at TWO locations + declares a Sku type-def
+EditSession s = EditSession.read(catalogJson, resolver);              // resolver supplies "pricelist" → the JSON above
+s.addInclude("pricelist", "pricelist", "/Catalog", "Retail");        // declare + mount #1
+s.include("pricelist").mount("/Catalog", "Wholesale");               // mount #2 — same include, second place
+
+// author rules over the MOUNTED fields (each mount its own copy) and the type-def field
+GroupEditor catalog = s.group("/Catalog");
+NumberRef retail    = catalog.num("Retail/ListPrice");               // relative navigation across the mount
+NumberRef wholesale = catalog.num("Wholesale/ListPrice");
+StringRef sku       = catalog.str("ProductSku");                     // STRING, via the Sku type-def
+catalog.addRule(r -> r.name("RetailCap").errorField(retail)
+        .when(retail.filled().and(retail.gt(1_000_000))) /* …code/severity/message/build… */ .build());
+catalog.addRule(r -> r.name("WholesaleCap").errorField(wholesale) /* … */ .build());
+catalog.addRule(r -> r.name("SkuFormat").errorField(sku)
+        .when(sku.filled().and(sku.violates("[A-Z]{3}.*"))) /* … */ .build());
+s.validate();                                                        // the resolver threads through the gate
+```
+
+The included price list's **own** rule travels with it — mounted twice, it applies at both `/Catalog/Retail` and `/Catalog/Wholesale` — and the base's rules over the mounted fields validate against the real, expanded model. The written-back DM-JSON keeps the include as a `modelAlias` reference, never inlined; included content doesn't leak into the base. *Test-backed: `edit.MultiModelTest` (two-location include of a ruled model + rules over mounted fields + type-def) and `rulekit.dsl.IncludesTypedefsRuleTest` (single mount + type-def, EN/DE render).*
+
 ## 6. Semantics as data (F7, N6) ✅ — the catalog is queryable today
 
 ```java
@@ -797,4 +832,6 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 
 24. *(new, 2026-06-12 — composition over the editor; ✅ implemented)* **The editor lets rule fragments extend to document-part builders — a consequence of the design, not new machinery.** rulekit already has reusable rule fragments (`(refs, params) → Condition`, finding 11). Once the L2c editor takes a "where to build" handle and returns refs, the same shape works for *structure*: an ordinary method `(GroupEditor, params) → structure + rules` that returns a ref to what it built. They're plain functions (no template engine), they compose (one builder calls another), and they parameterize over names / refs / kinds / other builders; each assembled result still passes the single `validate()` gate. Whether a team keeps such a "document-component library" (`Money`/`Address`/`LineItems`/…) is their call — the only claim here is that **nothing extra is needed** — it falls out of the editor + flowing refs (before, you threaded raw string paths and couldn't return a usable handle). Demonstrated by the `money`/`address` builders in `GroupEditorTest`. Examples: §5c.1.
 
-*(4–6 shape Phase-2 API design; 7–8 are proposal §12/§14 refinements; 9–13 are scheduled — 9/10/12-describe-find/13-export Phase 1, the rest Phase 2; 14 is the meta-instrument now in CLAUDE.md; 15–16 are increment/authoring practice; 17 is F4a; 18 prioritizes field-vs-field comparison; 19 is the authored-rule emit-map span path; 20 routes the RT-drain traps through the catalog gotchas and marks them N6 task candidates; 21 closes the T13 cold-agent gaps tool→catalog→skill; 22 adds the version surface + kernel-authoritative model-version classification; 23 makes refs the field/group currency across both kits — L2c — and drops L2b codegen; 24 notes document-part builders fall out of the editor — no new machinery.)*
+25. *(new, 2026-06-12 — working across models; ✅ implemented)* **Includes and type-defs make rulekit a multi-model tool — rules author over included/mounted fields exactly like local ones.** A shared sub-model is included into a base and mounted at one or more places (`addInclude` + `IncludeEditor.mount` for extra locations); the base then authors rules over the mounted fields by their **mount-name path** (`/Catalog/Retail/ListPrice`), and a `typedefField` resolves to its underlying kind. The binding threads a **resolver** (`EditSession.read(json, resolver)` / `BoundModel.ofJson(json, resolver)`) that expands the include through the kernel; write-back keeps the include as a `modelAlias` reference (**never inlined**, F6/D9), and an included model's *own* rules travel with it (mounted twice → applied at both mounts). Full flow + example: §5d. Test-backed: `edit.MultiModelTest`, `rulekit.dsl.IncludesTypedefsRuleTest`.
+
+*(4–6 shape Phase-2 API design; 7–8 are proposal §12/§14 refinements; 9–13 are scheduled — 9/10/12-describe-find/13-export Phase 1, the rest Phase 2; 14 is the meta-instrument now in CLAUDE.md; 15–16 are increment/authoring practice; 17 is F4a; 18 prioritizes field-vs-field comparison; 19 is the authored-rule emit-map span path; 20 routes the RT-drain traps through the catalog gotchas and marks them N6 task candidates; 21 closes the T13 cold-agent gaps tool→catalog→skill; 22 adds the version surface + kernel-authoritative model-version classification; 23 makes refs the field/group currency across both kits — L2c — and drops L2b codegen; 24 notes document-part builders fall out of the editor — no new machinery; 25 covers working across models — includes/type-defs with rules over mounted fields.)*
