@@ -471,6 +471,116 @@ The **whole rule lifecycle composes with structure edits** in the one session: `
 
 Removing a field a rule still references is rejected at **`validate()`** (`ModelConsistencyException`, the kernel's own dangling-entity diagnostic), **not** at `remove()` — which tolerates the invalid intermediate state so the same session can drop the rule too (the safe ordering: remove the rule, then the field). A *proactive* "what references this?" check (`adapter.whereUsed`) is deferred to the CLI remove verb, where the capability lives — never a silent cascade. *Locked by `edit.EditSessionTest.removingAFieldARuleReferencesIsRejectedByTheGate`; rationale in [`KERNEL-INTEGRATION-NOTES.md`](KERNEL-INTEGRATION-NOTES.md) "Structure edits + the delete-safety rule".*
 
+## 5c. Refs & cursors — the L2c ergonomic layer 🔮 (planned, decision D7)
+
+> **Status: design decided 2026-06-12 (proposal D7 / binding level *L2c*); not yet built.** This sketch is the agreed target and **replaces the dropped L2b codegen** idea. It spans **both kits** — rulekit rule authoring *and* modelkit structure editing.
+
+Today you reference an element by **string path**, which returns a typed handle (L2a): `m.num("/Order/Discount")`, `m.group("/Order")`, `addField("/Order", "Discount", NUMBER)`. The path is a string (a typo throws at *bind*, not at compile), and after an edit you **re-type the path** to reference what you just created. L2c makes **refs/pointers the preferred currency** — for fields *and* groups, existing *or* just-created — across both kits, staying pure runtime (no codegen).
+
+**Two types — a pure value, and a session-bound cursor.**
+
+```java
+// PURE VALUE REF — immutable (path + kind + scale/domain); carries operators; AST-safe.   (≈ jOOQ Field<T>)
+NumberRef qty = order.num("Quantity");        // relative navigation off a group ref → an existing child
+qty.lt(0);                                    // → an immutable Condition; no session involved
+
+// CURSOR = value ref + the EditSession; carries the EDIT verbs and **chains** (each edit returns the cursor);
+//          downgrades to its pure ref for the AST.   (≈ jOOQ UpdatableRecord / active-record — but lighter)
+```
+
+**modelkit (structure) — FLUENT cursor editing (it chains, mirroring modelkit's from-scratch builder); refs by navigation:**
+
+```java
+var s = EditSession.read(json);
+
+// the cursor CHAINS — each structure edit returns the cursor, so editing an existing model reads exactly
+// like the from-scratch DocumentModelDraft builder (.field(…).group(name, sub -> …)):
+s.group("/Order")                                  // a cursor on the EXISTING /Order group
+    .addField("Discount", NUMBER)
+    .addField("LoyaltyPoints", NUMBER)
+    .addGroup("Items", items -> items              // a nested-builder lambda for the new subgroup …
+        .addField("Sku", STRING)
+        .addField("Qty", NUMBER));                 // … same shape as building from scratch
+
+// a ref to ANY child — new or existing — comes from relative navigation off the group:
+NumberRef discount = s.group("/Order").num("Discount");
+GroupRef  items    = s.group("/Order").group("Items");
+```
+*(There is **no** session-as-actor / ref-returning duplicate — no `NumberRef d = s.addField(order, …)`. The cursor's fluent edits + relative navigation are the **whole** editing story; the lower-level session mutator, if it exists at all, is an internal delegate the cursor forwards to, not public surface.)*
+
+**rulekit (rules) — the *same* refs are the scope / error-field / operands:**
+
+```java
+s.addRule(m -> m.rule(order)                                // a GROUP ref as the rule scope …
+    .errorField(discount)                                   // … a FIELD ref as the error field …
+    .when(discount.filled().and(discount.lt(0))));          // … and as condition operands — never a string
+```
+
+**Both kits, one session** — the create→reference flow **codegen (L2b) could never do** (the field exists only at runtime):
+
+```java
+var order = s.group("/Order");                              // a group cursor
+order.addField("Discount", NUMBER);                         // modelkit: fluent structure edit (chains if more)
+NumberRef discount = order.num("Discount");                 // ref to the just-created field, by navigation
+s.addRule(m -> m.rule(order).errorField(discount)           // rulekit: the cursor downgrades to its GroupRef …
+    .when(discount.filled().and(discount.lt(0))));          // … and `discount` is a pure ref in the AST
+s.validate().toJson();
+```
+
+**The one safety rule:** the immutable AST holds **only pure value refs**, never the session-carrying cursor — operators (`.lt`, `.filled`, `.eq`) live on the pure ref and produce immutable `Condition`s, so the session never leaks into a rule. (Functional core / effects at the edge — the same discipline that keeps jOOQ's `Field<T>` pure and Roslyn's `SyntaxNode` immutable.)
+
+**Why value refs, not live nodes** (the fork considered):
+
+| | value refs (**chosen**) | live nodes (rejected) |
+|---|---|---|
+| nature | immutable `(path, kind)`; the cursor is a thin forwarder | mutable node bound to the session; tracks element identity |
+| rename-aware | no — dangles if the element is renamed (resolved-on-use; fine for add→reference) | yes — but only by solving the parked **Phase-4 rename engine** |
+| cost / risk | small; fits the immutable-snapshot (F0) + immutable-AST grain | a parallel mutable object graph + aliasing/staleness; clashes with immutability |
+
+Live nodes buy only **node-anchored chaining** and **rename-tracking** over value refs — and rename-tracking is exactly the heavy, parked part. Value refs get ~90% of the win within the paradigm that's already here.
+
+**Reference map** (no familiarity with these assumed — just the lineage that makes this idiomatic):
+
+| pattern | precedent | our use |
+|---|---|---|
+| immutable typed value ref | jOOQ `Field<T>` · QueryDSL Q-type · Roslyn `SyntaxNode` | the **pure ref** (AST coordinate + operators) |
+| handle that edits through a held context | jOOQ `UpdatableRecord` · active-record | the **cursor** (ref + `EditSession`) |
+| *avoid:* context-managed, auto-tracked entity | JPA managed entity · DOM node | rejected — too heavy; needs rename-tracking |
+
+**One idiom — no duplicate.** The **session-as-actor / ref-returning** shape (`s.addField(order, …)` returning a ref) is **dropped** from the public surface — there is exactly one way to edit: the cursor (fluent edits + relative navigation). At most it survives as an *internal* mutator the cursor delegates to, never taught. Deliberate non-goal (carried from D7): **no compile-time path checking** — paths resolve at runtime (a typo throws at bind), consistent with the BA/LLM persona (CLI, no compile step). Full decision + the dropped-L2b rationale: proposal **D7**; the binding-level taxonomy (L2a/L2c, L2b dropped) is in §16.
+
+### 5c.1 Composition — parameterized document-part builders 🔮
+
+The cursor + flowing refs lift rulekit's **parameterized rule fragments** (`(refs, params) → Condition`; the `…Idioms` library, finding 11) to **parameterized document-part builders** — plain functions `(cursor, params) → structure *and* rules` that take *where to build* and **return a ref** to what they built. They compose, and every result still passes the one `validate()` gate.
+
+```java
+// a configured "money" field + its bound rules — returns the ref so the caller can wire it into more rules:
+static NumberRef money(GroupCursor g, String name, BigDecimal cap) {
+    g.addNumberField(name, n -> n.fractionDigits(2));
+    NumberRef f = g.num(name);
+    g.addRule(r -> r.errorField(f).when(f.lt(0)).code(name + "_NEGATIVE") …);
+    if (cap != null) g.addRule(r -> r.errorField(f).when(f.gt(cap)).code(name + "_OVER_CAP") …);
+    return f;
+}
+
+// a reusable sub-structure, built N times under different names, configured per use:
+static GroupRef address(GroupCursor parent, String name, Country c) {
+    parent.addGroup(name, a -> {
+        a.addField("Street", STRING).addField("City", STRING);
+        a.addStringField("PostalCode", s -> s.pattern(c.postalRegex(), "bad postal code"));
+    });
+    return parent.group(name);
+}
+
+// compose — builders call builders; refs flow between them:
+var order = s.group("/Order");
+NumberRef base = money(order, "BaseFee", new BigDecimal("9999"));   // money() composed …
+address(order, "ShippingAddress", Country.DE);
+address(order, "BillingAddress",  Country.US);                      // … and reused under two names
+```
+
+**What you parameterize:** names (build the same component many times), refs (wire a rule around a passed field), kinds / scales / bounds / value-sets (configure the field), and **other builders** (a `lineItems(…)` calls `money(…)`; a `tieredFee(base, Tier…)` emits one computation alternative per tier). A team accrues a **document-component library** (`Money` / `Address` / `LineItems` / `AuditBlock`) and assembles models from it — restrained to **plain functions** (no templating DSL — the same "no query language" discipline as the navigation surface), each assembled result kernel-confirmed at the single gate. Finding 24.
+
 ## 6. Semantics as data (F7, N6) ✅ — the catalog is queryable today
 
 ```java
@@ -556,7 +666,7 @@ List<Rule> rules = m.fields()
         .toList();
 ```
 
-Safe by F0's snapshot semantics (immutable binding → internal memoization, clients never index); **Level 2** (glob paths, ancestry axes, annotation queries) stays parked behind named triggers — see finding 9. The *static* navigation counterpart is L2b codegen refs (Phase 3, jOOQ's generated-schema analogue).
+Safe by F0's snapshot semantics (immutable binding → internal memoization, clients never index); **Level 2** (glob paths, ancestry axes, annotation queries) stays parked behind named triggers — see finding 9. (The *static* codegen-refs counterpart, once mooted as L2b, was **dropped** — proposal D7; the planned ergonomic layer is **L2c** — runtime value refs + a session-bound cursor, across both kits — §5c.)
 
 ## 7. The LLM session (N1, N10, §14) 🌓 first skill draft landed 2026-06-05 (`skill/SKILL.md`) — the loop the skill teaches, for both personas
 
@@ -627,6 +737,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 | **modelkit structure read + round-trip** (`modelkit.ModelDocument`, M7) | ✅ 2026-06-10: read the authored tree (kernel-free), enumerate header/config/includes/typedef-ids + the group/field tree (name-path, field-type, repeatability), lossless `toJson()` round-trip (content-equal, idempotent, kernel-valid). `ModelDocumentTest`; §5b |
 | **modelkit structure edit** (`ModelDocument`, M8/M10+) | ✅ 2026-06-10: add/modify/delete fields + groups (`addField`/`addGroup`/`addRepeatableGroup`/`removeField`/`removeGroup`/`setRepeatable`); the tail — doc config (`setDecimalSeparator`/`setTimeZone`/`setConditionLanguage`), type definitions (`addTypeDefinition`/`addTypedefField`), includes (`addInclude`/`mount`); `validate()`/`validate(resolver)` = the kernel gate (both rejection tiers → `ModelConsistencyException`). `ModelEditTest`/`ModelStructureCoverageTest`; §5b. **Richer field types + metadata ✅ 2026-06-10:** `addField(FieldTypeSpec)` (string bounds/pattern, number scale, enum + categories, date format/precision, typedef ref), `setFieldType` (re-type), `setLabel` (per-locale), `setAnnotation` (`ModelMetadataTest`). **CLI verbs ✅ 2026-06-10:** `add-field` (`--kind`/`--typedef`) · `add-group` · `add-typedef` · `add-include` · `remove` (safe-delete refuse-or-`--cascade`, structured) — plus the combined rulekit+modelkit flow, all demoed in `cli-structure-edit.md` (CI-verified). **Tail:** a CLI `set`-verb for labels/annotations + field re-type (library-only today); placement/top-level constraint surfacing |
 | **unified edit session** (`edit.EditSession`, M9) | ✅ 2026-06-10: compose structure (modelkit) + rule/computation (rulekit) edits over one DM-JSON — the orchestration layer above the two ⊥ kits; validates once. `EditSessionTest`; §5b. Delete-safety (dangling-ref rejected at the gate) locked + documented (KERNEL-INTEGRATION-NOTES) |
+| **L2c — refs/cursor ergonomic layer** (binding level, proposal D7) | 🔮 **planned** (decided 2026-06-12): value refs for any field/group (existing or just-created, via relative navigation) used everywhere across **both** kits + a session-bound cursor as the *one* fluent editing idiom (session-as-actor/ref-returning form dropped); AST holds pure refs only. Replaces the **dropped** L2b codegen. Design + API sketch: §5c / finding 23 |
 | TS twin | 🔮 **deferred — very-future; design-informing only, not on the near agenda** (Phase 4) |
 
 ## 10. Design findings (the review surface's output)
@@ -639,7 +750,7 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 6. **LLM execution surfaces — two personas, one engine** (2026-06-04; **revised same day, N10**). *Original framing (now demoted):* a compile-first **single-file Java / JBang** snippet vehicle, so a failing `javac` hands the agent the type-steering fix before execution. *The revision:* that "developer execution vehicle" added **no real value for developers and missed use cases** — a developer uses rulekit *as a library inside their own project*, where Claude Code edits the project source and the project's own compiler supplies exactly that compile-first steering. The premise "the LLM needs a special vehicle" only ever held for the **modeller/BA**, who can't write Java — and for them the answer is a **standalone CLI** (verbs + JSON in/out, JVM bundled), not JBang (which is itself an install). So the two imagined vehicles (JBang-for-devs + CLI-for-BAs) **collapse to one** (the CLI), shrinking blast radius. *Net:* **developer** = no bespoke vehicle (in-repo library + project compiler + `RuleDiagnostics`); **BA** = the CLI (safety at runtime via builder pre-checks + kernel `Diagnostic`s). The JBang / `java --source 21` idea survives only as a possible internal mechanism for the **N6 self-sufficiency eval** harness. See proposal **N10 / D16 / §14**.
 7. **`explain` should flag suspicions, not just facts** — cheap heuristics (inverted predicate, unguarded negative condition on a repeatable group) over the same projection. *(2026-06-04: promoted to its own requirement **F4a — rich diagnostics**; this finding is its lint half. See finding 17. First lint increment ✅ 2026-06-04 — `lint.Linter`: contradictory/non-complementary presence + duplicate operand, all pure-AST; the model-context heuristics named here follow.)*
 8. **Diff must disclose lossiness up front** — "n comments will be dropped" belongs in `RenderedDiff`'s contract.
-9. ✅ *(implemented 2026-06-04, same-day design)* **The model index gets a Level-1 navigation surface** — the unifying design for rule templates (§3.4), F9a's `find`/`describe`/`export` (which iterate everything anyway), and the fork-9 renderer internals (ancestry, short-name uniqueness — built regardless). Shape: `m.fields()`/`m.groups()`/`m.fields(group)` return **streams of rich info handles**; `m.fieldAt(path)` is the non-throwing peek; **matching is plain `Stream.filter`** — deliberately *no* query language/matcher API (the jOOQ `Meta` restraint; XPath-style DSLs rejected); **info handles narrow to typed authoring handles** via `asNum()`/`asStr()`/… (lenient exploring, strict authoring — jOOQ's `Field<?>` coercion pattern). Safe because the binding is an immutable snapshot (F0) — everything memoizes internally. Polyglot contract is "iterate model facts", not `java.util.Stream`. **Level 2 is parked with named triggers:** glob path patterns (a template inexpressible via `filter`), ancestry axes (the iteration cluster's authoring needs), annotation queries (real-model demand) — none gets built without its trigger. The static counterpart remains L2b codegen refs (Phase 3 — jOOQ's generated schema classes).
+9. ✅ *(implemented 2026-06-04, same-day design)* **The model index gets a Level-1 navigation surface** — the unifying design for rule templates (§3.4), F9a's `find`/`describe`/`export` (which iterate everything anyway), and the fork-9 renderer internals (ancestry, short-name uniqueness — built regardless). Shape: `m.fields()`/`m.groups()`/`m.fields(group)` return **streams of rich info handles**; `m.fieldAt(path)` is the non-throwing peek; **matching is plain `Stream.filter`** — deliberately *no* query language/matcher API (the jOOQ `Meta` restraint; XPath-style DSLs rejected); **info handles narrow to typed authoring handles** via `asNum()`/`asStr()`/… (lenient exploring, strict authoring — jOOQ's `Field<?>` coercion pattern). Safe because the binding is an immutable snapshot (F0) — everything memoizes internally. Polyglot contract is "iterate model facts", not `java.util.Stream`. **Level 2 is parked with named triggers:** glob path patterns (a template inexpressible via `filter`), ancestry axes (the iteration cluster's authoring needs), annotation queries (real-model demand) — none gets built without its trigger. (The *static* codegen-refs counterpart, once L2b, was **dropped** — proposal D7; runtime value refs + a session-bound cursor — **L2c**, finding 23 / §5c — replace it.)
 10. ✅ *(implemented 2026-06-04)* ~~n-ary `allOf`/`anyOf` in `Dsl`~~ — varargs And/Or folds; parenthesization falls out of the existing renderer mixing rule.
 11. *(new)* **Fragment libraries are the re-expression vocabulary** — §5.4 shows modify-by-re-express often means *recognizing a named idiom*; the skill should encourage teams to keep a `…Idioms` class and teach the LLM to prefer its fragments over raw composition. (Also the natural home for org-specific conventions.)
 12. *(new, 2026-06-04)* **The model-context surface is F9's other half** (owner idea, recorded as **F9a** in the proposal): `describe()`/`find()`/`whereUsed()` in an own `context` package — the agent's entry point is a *name*, and "explain the rule on birthdate" needs name resolution + the field→rules inverse index (slot-labeled) before F9 can fire. Exact where-used rides the Phase-2 adapter (`getDirectlyReferencedEntities`, no converter needed); `describe`/`find` are Phase-1-sized and share finding 9's index queries. **Two constraints recorded same day (owner):** *(a) snapshot semantics* — a `BoundModel` is an immutable snapshot (no events, no staleness; writes produce a new binding; derived lookups memoized internally so clients never build their own indexes); *(b) model scale* — 1k fields / 6-level nesting is a *normal* DM, 10k exists → `describe()` is progressive disclosure (skeleton + drill-down), never a full catalogue.
@@ -681,4 +792,8 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 
 22. *(new, 2026-06-12 — version awareness)* **Make the build's versions a self-describing fact, and let the kernel be the authority on compatibility — rulekit only classifies.** A cold agent (and a human) now reads what the build *is* and *targets* from `--version` (human) and `manifest.version` (machine-readable): the rulekit release, the kernel built-against/runtime, the catalog floor, the model-format reference. For loading an off-version document model, the **kernel already** accepts an older same-major model and fail-fasts on a newer/different-major one with a clear `"Version mismatch …"` ERROR (probed + locked, KERNEL-FINDINGS *Header `modelVersion` compatibility*). So the tolerance posture isn't ours to invent — rulekit **classifies** the kernel's verdict into stable, machine-actionable codes: tolerant INFO `RK_MODEL_VERSION_SKEW` (accepted but off-reference) vs fail-fast `RK_MODEL_VERSION_INCOMPATIBLE` (the coded form of the kernel's mismatch ERROR). Same shape as the F11 kernel-skew advisory: *inform, don't second-guess the kernel.* And write-back never bumps the version (surgical edits leave the `header` untouched; locked by `ModelVersionPolicyTest`). Demo: [`examples/cli-version.md`](../examples/cli-version.md).
 
-*(4–6 shape Phase-2 API design; 7–8 are proposal §12/§14 refinements; 9–13 are scheduled — 9/10/12-describe-find/13-export Phase 1, the rest Phase 2; 14 is the meta-instrument now in CLAUDE.md; 15–16 are increment/authoring practice; 17 is F4a; 18 prioritizes field-vs-field comparison; 19 is the authored-rule emit-map span path; 20 routes the RT-drain traps through the catalog gotchas and marks them N6 task candidates; 21 closes the T13 cold-agent gaps tool→catalog→skill; 22 adds the version surface + kernel-authoritative model-version classification.)*
+23. *(new, 2026-06-12 — field/group reference ergonomics; decision D7, milestone L2c)* **Refs/pointers — to fields *and* groups — become the preferred currency across both kits; codegen (L2b) is dropped.** Today an element is referenced by string path returning a typed handle (L2a: `m.num("/Order/Discount")`); the path is a string and you re-type it to reference what you just created. The decided design (🔮 planned — §5c) makes **value refs** the currency: get one for *any* field **or** group (existing — by path/navigation — or **just-created**, fetched by relative navigation after the edit), use it everywhere — rule scope/error-field/operands (**rulekit**) *and* structure-edit targets (**modelkit**) — with a thin session-bound **cursor** as the *one* fluent editing idiom (`order.addField(…)` chains; the session-as-actor/ref-returning form is dropped), plus **relative navigation** off a group (`order.num("Qty")`). The safety invariant: the immutable AST holds **only pure refs**, never the session-carrying cursor (functional core / effects at the edge). **L2b codegen is dropped, not parked** — it's structurally incapable of the runtime create→reference flow (codegen lags the live edit), and the cursor/value-ref design is its complete replacement *without* a build step (the one thing it alone offered, compile-time path checking, stays out of scope by design). **Why not live nodes:** their only unique wins — node-anchored chaining + rename-tracking — and rename-tracking needs the parked Phase-4 engine and a mutable graph that fights the immutable-snapshot/AST grain; value refs get ~90% within the paradigm. Lineage (idiomatic, not novel): pure ref ≈ jOOQ `Field`/QueryDSL Q-type/Roslyn `SyntaxNode`; cursor ≈ jOOQ `UpdatableRecord`/active-record (lighter than a JPA managed entity). Full sketch + rationale: §5c; decision + dropped-L2b: proposal D7; binding-level taxonomy: §16.
+
+24. *(new, 2026-06-12 — composition over the cursor; depends on L2c, not built)* **The cursor lets rule fragments extend to document-part builders — a consequence of the design, not new machinery.** rulekit already has reusable rule fragments (`(refs, params) → Condition`, finding 11). Once the L2c cursor takes a "where to build" handle and returns refs, the same shape works for *structure*: an ordinary method `(GroupCursor, params) → structure + rules` that returns a ref to what it built. They're plain functions (no template engine), they compose (one builder calls another), and they parameterize over names / refs / kinds / other builders; each assembled result still passes the single `validate()` gate. Whether a team keeps such a "document-component library" (`Money`/`Address`/`LineItems`/…) is their call — the only claim here is that **nothing extra is needed** — it falls out of the cursor + flowing refs (before, you threaded raw string paths and couldn't return a usable handle). Speculative until L2c lands. Examples: §5c.1.
+
+*(4–6 shape Phase-2 API design; 7–8 are proposal §12/§14 refinements; 9–13 are scheduled — 9/10/12-describe-find/13-export Phase 1, the rest Phase 2; 14 is the meta-instrument now in CLAUDE.md; 15–16 are increment/authoring practice; 17 is F4a; 18 prioritizes field-vs-field comparison; 19 is the authored-rule emit-map span path; 20 routes the RT-drain traps through the catalog gotchas and marks them N6 task candidates; 21 closes the T13 cold-agent gaps tool→catalog→skill; 22 adds the version surface + kernel-authoritative model-version classification; 23 makes refs the field/group currency across both kits — L2c — and drops L2b codegen; 24 notes document-part builders fall out of the cursor — no new machinery.)*

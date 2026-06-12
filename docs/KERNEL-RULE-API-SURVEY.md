@@ -130,7 +130,7 @@ Public-tier confirmation ◐: `IRule`/`IComputation`/`IDocumentModel` expose **n
 ## 16. Negative findings (checked, not useful)
 
 - `kernel-rewrite` — OpenRewrite kernel-upgrade recipes, not rule rewriting.
-- `kernel-md-typed-accessor-gen` — document-instance accessors (L2b Phase-3 precedent only, already noted).
+- `kernel-md-typed-accessor-gen` — document-instance accessors (a codegen precedent only; L2b itself was dropped — proposal D7).
 - `DocumentModelJoiningService` — deprecated (30.6.0) decoration joining; its visitor patterns (§8) are the useful residue.
 - Migration framework (`IDocumentModelMigrator`) — schema version migrations, not rule text.
 - General codegen modules (`kernel-core-codegen*` beyond condition) — code emission, not authoring; `CodeGenCreator` is only interesting as proof the AST is complete enough to compile from.

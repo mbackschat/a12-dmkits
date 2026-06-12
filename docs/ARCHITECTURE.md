@@ -177,7 +177,7 @@ The CLI's heavy costs are **distribution, not code**: self-contained packaging a
 | Proposed part | TBD — home | Note |
 |---|---|---|
 | **modelkit** (Phase 3, fork #8) — read/build/edit document-model *structure* (fields, groups, type-defs, includes, doc config) and save back, include-preserving | **sibling over `:core`** (may use core + kernel) — *not* on top of rulekit; the shared rep is `BoundModel` | uses public DM-JSON only (D9; no `betterbuilders`); the MM_Common metamodels + `BasicConsistencyCheck` categories are its constraint oracle. D10 wall dropped 2026-06-09 — see "the umbrella" below. |
-| **Codegen refs** (Phase 3) — static navigation counterpart to `context` (generated schema handles) | **TBD: new `codegen` unit** | jOOQ's generated-schema analogue; the L2b static counterpart to runtime navigation |
+| **L2c — refs/cursor ergonomic layer** (Phase 3; binding level, proposal D7) — value refs for any field/group + a fluent session-bound cursor, across both kits | **in `dm.core` + the kit builders + `dm.edit`** (no new unit) | replaces the **dropped** L2b codegen (jOOQ-`Field`-style pure refs + a jOOQ-`Record`-style cursor; no generated-schema step) — proposal D7 / API-POC §5c |
 | **TypeScript twin** (Phase 4, **design-informing only — do not propose implementation**) | **TBD: parallel implementation** | builds the same `model` index from the same DM-JSON content, shares the catalog JSON spine + DM-JSON write path. The public-only core boundary (§3) and data-only out-surface (§4) are precisely what keep this possible — do not let kernel types or internal-tier coupling leak into core, or the twin becomes impossible |
 
 ### The umbrella — siblings over a shared core (D10 superseded by Architecture A, 2026-06-09)
