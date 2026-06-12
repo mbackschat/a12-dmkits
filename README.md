@@ -1,41 +1,52 @@
 # a12-dmkits
 
-**Model-aware**, typed, combinator-style kits for the A12 Kernel document model. The mature kit, **rulekit**, targets validation- and computation-rule conditions — think *"jOOQ for the A12 validation DSL"*, including the reverse direction, since the kernel's own parser supplies it. It replaces fragile hand-written `errorCondition` strings with a typed builder that lets you:
+Typed, **model-aware** authoring & edit kits for the A12 Kernel document model — *"jOOQ for the A12 validation DSL,"* the reverse direction included. JSON in, JSON out; every result is **confirmed by the real engine, not just plausible**.
 
-- **Author** rules through a typed, model-bound builder.
-- **Read** existing rule text back into the same typed representation.
-- **Modify** them with reviewable diffs that disclose any lossiness up front.
-- **Render & validate** against the real kernel — confirmed by the engine, not just plausible.
+> **Not an official A12 artifact.** A personal exploration, not affiliated with or endorsed by mgm. Shipped code binds only to the kernel's **public** OSS surface — no internal systems. (An opt-in, Java-only adapter module may read the kernel's internal AST tier under strict guardrails.)
 
-A companion kit, **modelkit**, authors document-model *structure* (fields, groups, types, includes) and emits DM-JSON the kernel accepts — the same typed, kernel-confirmed approach applied to the model itself.
+## What's in the box
 
-Java first; a TypeScript twin is a deferred, design-informing milestone.
+Two sibling kits over a shared, kernel-bound core:
 
-> **Not an official A12 artifact.** A personal exploration, not affiliated with or endorsed by mgm. Shipped code binds only to the kernel's **public** OSS surface — no internal systems. An opt-in, Java-only adapter module may read the kernel's internal AST tier under strict guardrails (proposal D15).
+- **rulekit** *(mature)* — validation- and computation-rule conditions. It replaces fragile hand-written `errorCondition` strings with a typed, model-bound builder, so you can:
+  - **author** rules and computations through the typed builder,
+  - **read** existing rule text back into the same typed representation,
+  - **modify** them with reviewable diffs that disclose any lossiness up front,
+  - **render** (English / German) and **validate** against the real kernel.
+- **modelkit** — authors document-model *structure* (fields, groups, types, includes, config) and emits DM-JSON the kernel accepts.
 
-## Status
+**Two personas, one engine:** a *developer* edits rulekit-the-library inside their own project; a *modeller/BA* drives **`dmtool`**, a self-describing CLI with no Java toolchain to install. *(Java first; a TypeScript twin is a deferred, design-informing milestone.)*
 
-**Phase 1 (the Java vertical slice) is complete. Phase 2 is in progress.**
+## Try it — the `dmtool` CLI
 
-| Area | State |
-|---|---|
-| **Phase 1** — author → render (EN/DE) → validate against the real kernel: model index, self-verifying operator catalog, typed AST + fork-9 group-relative renderer, the F4a diagnostic surface, the DM-JSON write path, F11 kernel-version tolerance | ✅ complete |
-| **Phase 2** — the bidirectional loop over the opt-in kernel-adapter: *read → explain → modify → diff → validate → write-back*, for **rules and computations** alike (computations are first-class across read *and* write: `readModel`/`where-used`/`explain --computation`, plus `add` a computation and `modify` to re-express it (`--dry-run` previews, default writes)) | ✅ landed |
-| **Phase 2** — standalone **CLI** — the modeller/BA front-end (verbs + JSON I/O), **target-first** (`dmtool -m <model> <target> <op>`) and **self-describing** (`--help` · `manifest` · `operators` · `schema <target> <op>`) so an agent explores it without docs; works on **multi-file** apps (`--include-dir` resolves `include`d / typedef models, F-RES); plus **runtime checks** against a document instance (`doc eval`: which rules *fire* on the data; `doc compute`: what each field *computes*) | ✅ landed |
-| **Phase 2** — modeller/BA **skill** + self-sufficiency eval | ✅ landed |
-| **Phase 2** — F9a exact `whereUsed` ✅, `IProblem → Diagnostic` ✅ (per-rule + candidate-condition diagnostics via the adapter); the F10 long tail = a few specialized constructs, parked | ✅ landed |
+`dmtool` is **target-first** (`dmtool -m <model> <target> <op>`) and **self-describing**, so a cold LLM agent can drive it from the binary alone — no docs required:
 
-**Two personas, one engine** (proposal N10): a *developer* edits rulekit-the-library inside their own project; a *modeller/BA* uses the CLI, with no Java toolchain to install.
+```sh
+dmtool manifest                 # every verb × parameter, machine-readable, in one call
+dmtool operators GroupFilled    # one operator's meaning, worked examples, and gotchas
 
-This snapshot deliberately isn't a feature list, so it can't drift — the per-feature truth lives in the status board. Where to look:
+# Author a rule and have the REAL kernel confirm it:
+dmtool -m order.dm.json rule check \
+  --field /Order/DeliveryDate \
+  --condition 'AllFieldsFilled(OrderDate, DeliveryDate) And [DeliveryDate] < [OrderDate]' \
+  --code DELIVERY_BEFORE_ORDER          # → {"valid": true, …}
+
+# Which rules actually FIRE on a document instance? (what a static check can't tell you)
+dmtool -m order.dm.json doc eval --doc order-instance.json
+```
+
+Runnable, verifiable walkthroughs of the whole surface live in [`examples/`](examples/) — each is also a doc-drift regression test.
+
+## Documentation
+
+Start at the **[docs index](docs/README.md)**; the rest of the map:
 
 | To find… | See |
 |---|---|
-| Per-feature implementation status (the canonical board) | [`docs/API-POC-STUDY.md` §9](docs/API-POC-STUDY.md) |
-| Vision, requirements, decision log (§17), roadmap (§16) | [`docs/PROJECT-PROPOSAL.md`](docs/PROJECT-PROPOSAL.md) |
-| Kernel/editor API inventory | [`docs/KERNEL-RULE-API-SURVEY.md`](docs/KERNEL-RULE-API-SURVEY.md) |
-| Verified kernel facts | [`docs/KERNEL-INTEGRATION-NOTES.md`](docs/KERNEL-INTEGRATION-NOTES.md) |
-| Every doc, indexed | [`docs/README.md`](docs/README.md) |
+| Vision, requirements, the decision log | [`docs/PROJECT-PROPOSAL.md`](docs/PROJECT-PROPOSAL.md) |
+| Per-feature implementation status | [`docs/API-POC-STUDY.md` §9](docs/API-POC-STUDY.md) |
+| The CLI contract | [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md) |
+| Verified kernel facts | [`docs/KERNEL-FINDINGS.md`](docs/KERNEL-FINDINGS.md) · [`docs/KERNEL-INTEGRATION-NOTES.md`](docs/KERNEL-INTEGRATION-NOTES.md) |
 
 ## Prerequisites
 
@@ -59,7 +70,7 @@ export JAVA_HOME="$(/usr/libexec/java_home -v 21)"   # macOS; or point at any JD
 ./gradlew test
 ```
 
-A green `test` means rulekit's output is confirmed by the engine, not just plausible. The suite covers:
+A green `test` means the kit's output is confirmed by the engine, not just plausible. The suite covers:
 
 - kernel wiring and the model index
 - the renderer (EN/DE) and the validator
@@ -71,7 +82,7 @@ With a sibling `a12-kernel-mm` clone present, an opt-in harness also loads all 1
 Other useful tasks:
 
 ```sh
-./gradlew :adapter:test                              # the opt-in internal-tier module (Phase 2)
+./gradlew :adapter:test                              # the opt-in internal-tier module
 ./gradlew :cli:run --args="-m model.json doc validate"   # run the standalone CLI in dev (no packaging)
 ```
 
@@ -91,7 +102,7 @@ It hard-rejects the mechanical violations and reminds on the judgment rule; bypa
 
 **MIT** — see [`LICENSE`](LICENSE).
 
-- **rulekit source: MIT.** Its own original work, shipping no kernel binary, so it carries no copyleft entanglement — consistent with the sibling `a12-kernel-demo` / `a12-kernel-bootstrap` (both MIT).
+- **Source: MIT.** The kits' own original work, shipping no kernel binary, so they carry no copyleft entanglement — consistent with the sibling `a12-kernel-demo` / `a12-kernel-bootstrap` (both MIT).
 - **The kernel: dual `EUPL-1.2 OR commercial`** (upstream, not ours).
 - **The future standalone CLI distributable: EUPL-1.2**, because it *bundles* the kernel — the source stays MIT.
 
