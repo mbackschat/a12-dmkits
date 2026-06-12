@@ -21,7 +21,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.mbackschat.a12.dm.adapter.ReadResult;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
+import io.github.mbackschat.a12.dm.edit.EditSession;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
@@ -31,6 +34,7 @@ import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 
 import java.util.ArrayList;
+import java.util.TreeSet;
 
 /**
  * Layer 1 of the self-sufficiency benchmark (EVAL-SPEC §8) — the deterministic oracle. Reads every
@@ -78,6 +82,9 @@ class EvalGoldOracleTest {
     @MethodSource("tasks")
     void taskBackboneHolds(Path taskFile) throws IOException {
         JsonNode task = MAPPER.readTree(Files.readString(taskFile));
+        // Explicitly-deferred tasks (e.g. the refactor/rename gold) wait on a later phase — skip their backbone.
+        org.junit.jupiter.api.Assumptions.assumeFalse("deferred".equals(task.path("status").asText()),
+                taskFile.getFileName() + ": status=deferred — backbone activates with its phase");
         String model = readModelFromTask(task);
         switch (task.path("family").asText()) {
             // Authoring: the gold condition must validate against the real kernel (multi-file models
@@ -96,11 +103,18 @@ class EvalGoldOracleTest {
             // i.e. they are actually readable by explain/read. The richer "did the agent explain
             // it right?" scoring is the agent layer's job (the task's `expected` rubric).
             case "comprehension" -> assertRulesRead(task, model, taskFile);
-            // Authored-but-not-yet-activatable families: their backbone needs verbs that arrive in a later
-            // phase (modelkit structure / apply session / rename refactor), so skip them until then.
-            case "structure", "delete-safety", "session", "refactor" ->
-                    org.junit.jupiter.api.Assumptions.assumeTrue(false,
-                            taskFile.getFileName() + ": backbone activates with its phase — skipped for now");
+            // Modelkit structure (field/group add): applying the gold edit re-binds kernel-valid AND the
+            // expected element exists.
+            case "structure" -> assertStructureGoldValidates(task, model, taskFile);
+            // Safe-delete: cascading the gold removal (the field + its referrers, found via whereUsed)
+            // re-binds AND every expectRemoved element is gone.
+            case "delete-safety" -> assertDeleteSafetyGoldValidates(task, model, taskFile);
+            // Mixed `apply` session: running the gold op-list on one EditSession re-binds at the single gate
+            // AND the expected field + rule are present (the north-star read→edit→write flow).
+            case "session" -> assertSessionGoldValidates(task, model, taskFile);
+            // Refactor (rename) is gated by the Phase-4 rename engine; its task carries status:deferred (skipped above).
+            case "refactor" -> org.junit.jupiter.api.Assumptions.assumeTrue(false,
+                    taskFile.getFileName() + ": refactor backbone activates with the rename engine (Phase 4)");
             default -> fail(taskFile.getFileName() + " has unknown family: " + task.path("family").asText());
         }
     }
@@ -205,6 +219,119 @@ class EvalGoldOracleTest {
             assertTrue(read instanceof ReadResult.Converted,
                     () -> taskFile.getFileName() + " rule " + rulePath
                             + " must read to Converted (readable by explain), got: " + read);
+        }
+    }
+
+    /**
+     * A structure gold (e.g. {@code field add}): apply the edit to an {@link EditSession}, assert it
+     * re-binds kernel-valid at the gate, and that the {@code expectField} now exists.
+     */
+    private static void assertStructureGoldValidates(JsonNode task, String model, Path taskFile) {
+        JsonNode gold = task.get("gold");
+        var resolver = resolverFor(task);
+        EditSession session = EditSession.read(model, resolver);
+        String op = gold.get("op").asText();
+        switch (op) {
+            case "field add" -> session.addField(gold.get("group").asText(), gold.get("name").asText(),
+                    FieldKind.valueOf(gold.get("kind").asText()));
+            case "group add" -> session.addGroup(gold.get("parent").asText(), gold.get("name").asText());
+            default -> fail(taskFile.getFileName() + " unsupported structure op: " + op);
+        }
+        assertReBinds(session, taskFile, "structure");
+        if (gold.hasNonNull("expectField")) {
+            String expect = gold.get("expectField").asText();
+            assertTrue(BoundModel.ofJson(session.toJson(), resolver).fieldAt(expect).isPresent(),
+                    () -> taskFile.getFileName() + " expected field " + expect + " to exist after the edit");
+        }
+    }
+
+    /**
+     * A delete-safety gold: cascade-remove the field (its referrers found via {@code whereUsed}, exactly as
+     * {@code field remove --cascade} does), assert the result re-binds, and that every {@code expectRemoved}
+     * element is gone.
+     */
+    private static void assertDeleteSafetyGoldValidates(JsonNode task, String model, Path taskFile) {
+        JsonNode gold = task.get("gold");
+        String field = gold.get("field").asText();
+        var resolver = resolverFor(task);
+        EditSession session = EditSession.read(model, resolver);
+        KernelAdapter before = KernelAdapter.ofJson(model, resolver);
+        for (String r : new TreeSet<>(before.whereUsed(field))) {
+            session.removeRule(r);
+        }
+        for (String c : new TreeSet<>(before.whereUsedInComputations(field))) {
+            session.removeComputation(c);
+        }
+        session.removeField(field);
+        assertReBinds(session, taskFile, "delete-safety");
+        BoundModel after = BoundModel.ofJson(session.toJson(), resolver);
+        var rulesAfter = KernelAdapter.of(after).ruleFullNames();
+        for (JsonNode rem : gold.get("expectRemoved")) {
+            String path = rem.asText();
+            assertTrue(after.fieldAt(path).isEmpty() && !rulesAfter.contains(path),
+                    () -> taskFile.getFileName() + " expected " + path + " to be removed by the cascade");
+        }
+    }
+
+    /**
+     * A mixed {@code session} gold: run the gold op-list on one {@link EditSession} (field/group add +
+     * rule add, interleaved like {@code apply}), assert it re-binds at the single gate, and that the
+     * expected field + rule are present.
+     */
+    private static void assertSessionGoldValidates(JsonNode task, String model, Path taskFile) {
+        JsonNode gold = task.get("gold");
+        var resolver = resolverFor(task);
+        EditSession session = EditSession.read(model, resolver);
+        for (JsonNode opNode : gold.get("ops")) {
+            String target = opNode.get("target").asText();
+            String op = opNode.get("op").asText();
+            if (target.equals("field") && op.equals("add")) {
+                session.addField(opNode.get("group").asText(), opNode.get("name").asText(),
+                        FieldKind.valueOf(opNode.get("kind").asText()));
+            } else if (target.equals("group") && op.equals("add")) {
+                session.addGroup(opNode.get("parent").asText(), opNode.get("name").asText());
+            } else if (target.equals("rule") && op.equals("add")) {
+                addRuleFromSpec(session, opNode.get("spec"));
+            } else {
+                fail(taskFile.getFileName() + " unsupported session op: " + target + " " + op);
+            }
+        }
+        assertReBinds(session, taskFile, "session");
+        BoundModel after = BoundModel.ofJson(session.toJson(), resolver);
+        JsonNode expect = gold.get("expect");
+        if (expect.hasNonNull("field")) {
+            String f = expect.get("field").asText();
+            assertTrue(after.fieldAt(f).isPresent(),
+                    () -> taskFile.getFileName() + " expected field " + f + " after the session");
+        }
+        if (expect.hasNonNull("rule")) {
+            String r = expect.get("rule").asText();
+            assertTrue(KernelAdapter.of(after).ruleFullNames().contains(r),
+                    () -> taskFile.getFileName() + " expected rule " + r + " after the session");
+        }
+    }
+
+    /** Add a rule from an {@code apply}-style spec (the same name/group/path derivation as {@code rule add}). */
+    private static void addRuleFromSpec(EditSession session, JsonNode spec) {
+        String field = spec.get("field").asText();
+        int slash = field.lastIndexOf('/');
+        String group = field.substring(0, slash);
+        String relPath = "../" + field.substring(group.length() + 1);
+        String code = spec.get("code").asText();
+        String name = spec.hasNonNull("name") ? spec.get("name").asText() : code;
+        List<LocalizedText> messages = new ArrayList<>();
+        for (JsonNode m : spec.path("messages")) {
+            messages.add(new LocalizedText(m.get("locale").asText(), m.get("text").asText()));
+        }
+        session.addRule(group, name, relPath, code, spec.get("condition").asText(), "ERROR", messages);
+    }
+
+    /** The single kernel gate: the session must re-bind (deserialize → expand → checkConsistency). */
+    private static void assertReBinds(EditSession session, Path taskFile, String family) {
+        try {
+            session.validate();
+        } catch (ModelConsistencyException e) {
+            fail(taskFile.getFileName() + " " + family + " gold must re-bind (kernel-accept), got: " + e.getMessage());
         }
     }
 
