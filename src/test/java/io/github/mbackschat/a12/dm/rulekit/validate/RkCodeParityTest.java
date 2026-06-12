@@ -1,0 +1,101 @@
+package io.github.mbackschat.a12.dm.rulekit.validate;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
+
+import org.junit.jupiter.api.Test;
+
+/**
+ * The diagnostic registry never goes stale (CLI-CONFORMANCE-SPEC §never-stale) — bidirectional parity over
+ * the main source, build-checked:
+ *
+ * <ul>
+ *   <li><b>forward (no-rot):</b> every {@code "RK_*"} string literal the code emits resolves to an
+ *       {@link RkCode} constant — so an un-catalogued code cannot ship;</li>
+ *   <li><b>reverse (no dead rows):</b> every {@link RkCode} constant is actually referenced from the source
+ *       (as a literal or an enum reference) — so the catalog can't accrete codes nothing emits.</li>
+ * </ul>
+ *
+ * Scans {@code src/main} (core: lint/validate/dsl codes) and {@code cli/src/main} (structure/apply codes),
+ * the two trees that emit {@code RK_*}; {@code RkCode.java} itself is excluded (it defines, not emits).
+ * {@code MVK_*} codes are the kernel's — covered by the MVK ledger, not here.
+ */
+class RkCodeParityTest {
+
+    private static final Pattern RK_LITERAL = Pattern.compile("\"(RK_[A-Z_]+)\"");
+
+    @Test
+    void everyEmittedCodeIsCataloguedAndEveryCatalogueCodeIsEmitted() throws IOException {
+        Path root = repoRoot();
+        List<Path> sources = mainSources(root);
+        assertTrue(sources.size() > 20, () -> "expected to scan the main source trees, found " + sources.size());
+
+        Set<String> emitted = new TreeSet<>();   // RK_* literals found in the source
+        StringBuilder allSource = new StringBuilder();
+        for (Path f : sources) {
+            String text = Files.readString(f);
+            allSource.append(text).append('\n');
+            Matcher m = RK_LITERAL.matcher(text);
+            while (m.find()) {
+                emitted.add(m.group(1));
+            }
+        }
+
+        // forward: every emitted literal is a catalogued code
+        List<String> uncatalogued = emitted.stream()
+                .filter(code -> RkCode.byCode(code).isEmpty())
+                .toList();
+        assertTrue(uncatalogued.isEmpty(),
+                () -> "emitted RK_* codes missing from the RkCode registry (un-catalogued — add them): " + uncatalogued);
+
+        // reverse: every catalogued code is referenced somewhere (a literal "RK_X" or an enum ref RkCode.X)
+        String src = allSource.toString();
+        List<String> dead = new ArrayList<>();
+        for (RkCode c : RkCode.values()) {
+            if (!emitted.contains(c.code()) && !src.contains(c.name())) {
+                dead.add(c.code());
+            }
+        }
+        assertTrue(dead.isEmpty(),
+                () -> "RkCode constants nothing emits/references (dead rows — remove or wire them): " + dead);
+    }
+
+    /** The repo root — walk up from the working dir to the dir that holds {@code RkCode.java} under core. */
+    private static Path repoRoot() {
+        Path p = Path.of("").toAbsolutePath();
+        for (; p != null; p = p.getParent()) {
+            if (Files.exists(p.resolve(
+                    "src/main/java/io/github/mbackschat/a12/dm/rulekit/validate/RkCode.java"))) {
+                return p;
+            }
+        }
+        return fail("could not locate the repo root (RkCode.java) from " + Path.of("").toAbsolutePath());
+    }
+
+    private static List<Path> mainSources(Path root) throws IOException {
+        List<Path> out = new ArrayList<>();
+        for (String tree : List.of("src/main/java", "cli/src/main/java")) {
+            Path dir = root.resolve(tree);
+            if (!Files.isDirectory(dir)) {
+                continue;
+            }
+            try (Stream<Path> walk = Files.walk(dir)) {
+                walk.filter(f -> f.toString().endsWith(".java"))
+                        .filter(f -> !f.getFileName().toString().equals("RkCode.java"))
+                        .forEach(out::add);
+            }
+        }
+        return out;
+    }
+}
