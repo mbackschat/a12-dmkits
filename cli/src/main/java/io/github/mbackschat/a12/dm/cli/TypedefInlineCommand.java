@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -52,6 +53,12 @@ final class TypedefInlineCommand extends BaseCommand {
         }
         ModelDocument doc = ModelDocument.read(modelJson);
         IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        Optional<Refusal> refusal = new SafetyGate()
+                .require(SafetyChecks.typedefExists(doc, id))
+                .firstFailure();
+        if (refusal.isPresent()) {
+            return refuse("typedef", "inline", refusal.get());
+        }
         List<String> expanded = doc.fieldsUsingTypeDefinition(id);   // captured before the definition is dropped
         String resultJson;
         try {

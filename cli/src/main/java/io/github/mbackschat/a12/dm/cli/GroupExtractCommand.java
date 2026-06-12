@@ -68,6 +68,7 @@ final class GroupExtractCommand extends BaseCommand {
         IDocumentModelReferenceResolver dirResolver = includes.resolverFor(model);
 
         Optional<Refusal> refusal = new SafetyGate()
+                .require(SafetyChecks.exists(doc, group, true))
                 .require(SafetyChecks.includableAsRoot(doc, group))
                 .require(SafetyChecks.subtreeSelfContained(KernelAdapter.ofJson(modelJson, dirResolver), group))
                 .firstFailure();

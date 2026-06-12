@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -14,6 +15,7 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolve
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.edit.EditSession;
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
@@ -58,6 +60,12 @@ final class FieldRemoveCommand extends BaseCommand {
             return 2;
         }
         IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        Optional<Refusal> notFound = new SafetyGate()
+                .require(SafetyChecks.exists(ModelDocument.read(modelJson), field, false))
+                .firstFailure();
+        if (notFound.isPresent()) {
+            return refuse("field", "remove", notFound.get());
+        }
         EditSession session = EditSession.read(modelJson, resolver);
         ArrayNode cascaded = MAPPER.createArrayNode();
         try {

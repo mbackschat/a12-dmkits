@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -76,9 +77,15 @@ final class FieldAddCommand extends BaseCommand {
         }
         IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
         String target = group + "/" + name;
+        ModelDocument doc = ModelDocument.read(modelJson);
+        Optional<Refusal> refusal = new SafetyGate()
+                .require(SafetyChecks.exists(doc, group, true))
+                .firstFailure();
+        if (refusal.isPresent()) {
+            return refuse("field", "add", refusal.get());
+        }
         String resultJson;
         try {
-            ModelDocument doc = ModelDocument.read(modelJson);
             if (type.typedef != null) {
                 doc.addTypedefField(group, name, type.typedef);
             } else {

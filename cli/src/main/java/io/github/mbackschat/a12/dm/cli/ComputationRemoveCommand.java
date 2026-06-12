@@ -3,11 +3,13 @@ package io.github.mbackschat.a12.dm.cli;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 
+import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
@@ -52,6 +54,12 @@ final class ComputationRemoveCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        Optional<Refusal> refusal = new SafetyGate()
+                .require(SafetyChecks.computationExists(KernelAdapter.ofJson(json, resolver), computation))
+                .firstFailure();
+        if (refusal.isPresent()) {
+            return refuse("computation", "remove", refusal.get());
+        }
         String result;
         try {
             result = BoundModel.ofJson(json, resolver).removeComputation(computation).toJson();

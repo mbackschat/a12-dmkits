@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -53,9 +54,15 @@ final class IncludeRemoveCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        ModelDocument doc = ModelDocument.read(modelJson);
+        Optional<Refusal> refusal = new SafetyGate()
+                .require(SafetyChecks.includeExists(doc, alias))
+                .firstFailure();
+        if (refusal.isPresent()) {
+            return refuse("include", "remove", refusal.get());
+        }
         String resultJson;
         try {
-            ModelDocument doc = ModelDocument.read(modelJson);
             doc.removeInclude(alias);
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {

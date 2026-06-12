@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -63,9 +64,17 @@ final class GroupAddCommand extends BaseCommand {
         }
         IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
         String target = parent + "/" + name;
+        ModelDocument doc = ModelDocument.read(modelJson);
+        if (!parent.isEmpty()) {   // "" = a new root group, which has no parent to check
+            Optional<Refusal> refusal = new SafetyGate()
+                    .require(SafetyChecks.exists(doc, parent, true))
+                    .firstFailure();
+            if (refusal.isPresent()) {
+                return refuse("group", "add", refusal.get());
+            }
+        }
         String resultJson;
         try {
-            ModelDocument doc = ModelDocument.read(modelJson);
             if (repeatable != null) {
                 doc.addRepeatableGroup(parent, name, repeatable);
             } else {

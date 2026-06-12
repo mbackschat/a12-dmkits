@@ -12,7 +12,6 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolve
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.adapter.ReadResult;
-import io.github.mbackschat.a12.dm.core.DmJson;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RenderedDiff;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
@@ -67,13 +66,16 @@ final class RuleModifyCommand extends BaseCommand {
         String modelJson;
         try {
             modelJson = Files.readString(Path.of(model));
-            if (DmJson.findElement(MAPPER.readTree(modelJson), "Rule", rule) == null) {
-                return fail("no rule '" + rule + "' in the model");
-            }
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
         }
         IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        Optional<Refusal> refusal = new SafetyGate()
+                .require(SafetyChecks.ruleExists(KernelAdapter.ofJson(modelJson, resolver), rule))
+                .firstFailure();
+        if (refusal.isPresent()) {
+            return refuse("rule", "modify", refusal.get());
+        }
 
         // --comment sets a new leading comment (it wins over the preserved old one); omitted, replaceCondition
         // carries the rule's existing leading comment by default.

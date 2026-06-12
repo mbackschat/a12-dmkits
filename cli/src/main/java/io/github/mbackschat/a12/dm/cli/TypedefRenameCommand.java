@@ -60,6 +60,7 @@ final class TypedefRenameCommand extends BaseCommand {
 
         // the refactor safety gate (CLI-SPEC §6): check before we change anything, refuse with diagnostics.
         Optional<Refusal> refusal = new SafetyGate()
+                .require(SafetyChecks.typedefExists(doc, id))
                 .require(SafetyChecks.typeDefIdAvailable(doc, newId))
                 .firstFailure();
         if (refusal.isPresent()) {

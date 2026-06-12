@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
 /**
  * Reusable safety preconditions for refactor ops (CLI-SPEC §6). Each refactor registers the checks
@@ -154,6 +155,35 @@ final class SafetyChecks {
                     Optional.empty());
             return Optional.of(new Refusal("rule '" + ruleFullName + "' does not exist — refusing", null, diagnostic));
         };
+    }
+
+    /** Refuse a typedef refactor whose target type definition is not declared (RK_NO_SUCH_TYPEDEF). */
+    static SafetyCheck typedefExists(ModelDocument doc, String id) {
+        return () -> doc.typeDefinitionIds().contains(id)
+                ? Optional.empty()
+                : Optional.of(notFound(RkCode.NO_SUCH_TYPEDEF, "type definition", id));
+    }
+
+    /** Refuse an include refactor whose target alias is not a declared model include (RK_NO_SUCH_INCLUDE). */
+    static SafetyCheck includeExists(ModelDocument doc, String alias) {
+        return () -> doc.includes().stream().anyMatch(i -> i.alias().equals(alias))
+                ? Optional.empty()
+                : Optional.of(notFound(RkCode.NO_SUCH_INCLUDE, "include", alias));
+    }
+
+    /** Refuse a computation op whose target computation does not exist (RK_NO_SUCH_COMPUTATION). */
+    static SafetyCheck computationExists(KernelAdapter adapter, String computationFullName) {
+        return () -> adapter.computationFullNames().contains(computationFullName)
+                ? Optional.empty()
+                : Optional.of(notFound(RkCode.NO_SUCH_COMPUTATION, "computation", computationFullName));
+    }
+
+    /** A located "no such element" refusal, with the code's catalogued fix (single-source via {@link RkCode}). */
+    private static Refusal notFound(RkCode code, String kind, String path) {
+        Diagnostic diagnostic = Diagnostic.precheck(Optional.of(code.code()),
+                "no " + kind + " at '" + path + "'",
+                Diagnostic.Where.path(path), Optional.of(code.fix()), Optional.empty());
+        return new Refusal(kind + " '" + path + "' does not exist — refusing", null, diagnostic);
     }
 
     /**

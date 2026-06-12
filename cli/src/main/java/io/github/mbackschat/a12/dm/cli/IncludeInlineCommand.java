@@ -51,12 +51,15 @@ final class IncludeInlineCommand extends BaseCommand {
             return 2;
         }
         ModelDocument doc = ModelDocument.read(modelJson);
+        Optional<Refusal> refusal = new SafetyGate()
+                .require(SafetyChecks.includeExists(doc, alias))
+                .firstFailure();
+        if (refusal.isPresent()) {
+            return refuse("include", "inline", refusal.get());
+        }
         String reference = doc.includes().stream()
                 .filter(i -> i.alias().equals(alias)).map(ModelDocument.Include::reference)
-                .findFirst().orElse(null);
-        if (reference == null) {
-            return fail("no include with alias '" + alias + "' (see `include read`)");
-        }
+                .findFirst().orElseThrow();
 
         Path parent = Path.of(model).toAbsolutePath().getParent();
         Path[] roots = includes.includeDirs.isEmpty()

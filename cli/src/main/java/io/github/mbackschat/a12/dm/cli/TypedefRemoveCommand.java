@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -48,9 +49,15 @@ final class TypedefRemoveCommand extends BaseCommand {
             return 2;
         }
         IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        ModelDocument doc = ModelDocument.read(modelJson);
+        Optional<Refusal> refusal = new SafetyGate()
+                .require(SafetyChecks.typedefExists(doc, id))
+                .firstFailure();
+        if (refusal.isPresent()) {
+            return refuse("typedef", "remove", refusal.get());
+        }
         String resultJson;
         try {
-            ModelDocument doc = ModelDocument.read(modelJson);
             doc.removeTypeDefinition(id);
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
