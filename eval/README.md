@@ -4,14 +4,18 @@ The curated task set for the N6 self-sufficiency eval. Method, scoring, and prot
 
 ## Layout
 
-- `tasks/*.json` — one task per file (schema below). Each authoring task carries a **kernel-verified gold** answer. All fixtures/rules here are our own originals (license-safe, per the project `CLAUDE.md`).
+- `tasks/<kit>/<NN>-<slug>.json` — one task per file, grouped by **kit** subfolder: `rulekit/` (rules + computations + their comprehension/self-correction), `modelkit/` (structure: field/group/typedef/include/config + delete-safety + refactor), `mixed/` (one `apply` session touching both). **The folder is the kit** (the explicit axis — no derived map); the task `id` is the filename stem (e.g. `01-pro-addon-fee-required`). Each authoring task carries a **kernel-verified gold** answer. All fixtures/rules here are our own originals (license-safe, per the project `CLAUDE.md`). Run tiers (smoke/simple/full) + the categorization are in [`../docs/EVAL-SPEC.md`](../docs/EVAL-SPEC.md) §8d.
 
 ## Task schema
 
 ```json
+// in eval/tasks/rulekit/01-pro-addon-fee-required.json — the folder (rulekit) is the kit; the id is the filename stem
 {
-  "id": "T1",
-  "family": "authoring" | "authoring-computation" | "modify-computation" | "modify-rule" | "comprehension",
+  "id": "01-pro-addon-fee-required",             // = the filename stem (no separate T<N>)
+  "family": "authoring" | "authoring-computation" | "modify-computation" | "modify-rule" | "comprehension" | "self-correction"   // rulekit/
+           // | "structure" | "delete-safety" | "refactor"   // modelkit/      | "session"   // mixed/
+  "difficulty": "simple" | "medium" | "complex", // intrinsic tag (EvalSuiteLedgerTest requires it)
+  "suites": ["smoke", "simple"],                 // optional run-tier membership (derive a tier by filtering on this)
   "model": "subscription",                       // a fixture name under cli/src/test/resources/models/
   "modelPath": "cli/src/test/resources/models/multifile/app/storefront.dm.json", // multi-file: explicit (repo-relative) path
   "includeDir": "cli/src/test/resources/models/multifile/lib",                    // multi-file: threaded as --include-dir
@@ -27,10 +31,11 @@ The curated task set for the N6 self-sufficiency eval. Method, scoring, and prot
 }
 ```
 
-The `gold` shape depends on the family:
-- **authoring / modify-rule** — `{field, condition, code}` (above). For *modify-rule* the `condition` is the intended re-expression, keeping the same rule (named by `rule`) + error field.
+**`kit`** is **not a field** — it is the task's subfolder (`rulekit`/`modelkit`/`mixed`), so it can't drift from a map (`EvalSuiteLedgerTest`). The `gold` shape depends on the family:
+- **authoring / self-correction / modify-rule** — `{field, condition, code}` (above). For *modify-rule* the `condition` is the intended re-expression, keeping the same rule (named by `rule`) + error field; *self-correction*'s gold is the recovered rule.
 - **authoring-computation / modify-computation** — `{computedField, alternatives: [{precondition?, operation}], commonPrecondition?}` (the computation the kernel should accept; for *modify* it's the intended re-expression, keeping the same `computedField`).
 - **comprehension** — no `gold`; instead `rules: [...]` (the model's rule names to read back) + `expected` (the rubric of explanation facts).
+- **structure / delete-safety / refactor / session** (the `modelkit/`+`mixed/` families) — authored-but-inert until the modelkit agentic runner lands (EVAL-SPEC §8d, **B**); skipped by `EvalGoldOracleTest` for now.
 
 `modelPath`/`includeDir` are optional **multi-file** keys: present only when the task model `include`s a separate model that lives outside its own directory, so the runner threads `--include-dir` through every verb. `computation` is required for `modify-computation` (the existing computation to re-express); `rule` is required for `modify-rule` (the existing rule to re-express).
 
