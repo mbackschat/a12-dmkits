@@ -129,6 +129,11 @@ public final class EditSession {
         return this;
     }
 
+    public EditSession setTypeDefinitionType(String id, FieldTypeSpec type) {
+        json = ModelDocument.read(json).setTypeDefinitionType(id, type).toJson();
+        return this;
+    }
+
     public EditSession removeTypeDefinition(String id) {
         json = ModelDocument.read(json).removeTypeDefinition(id).toJson();
         return this;
@@ -161,6 +166,11 @@ public final class EditSession {
 
     public EditSession addInclude(String alias, String reference, String parentPath, String name) {
         json = ModelDocument.read(json).addInclude(alias, reference).mount(parentPath, name, alias).toJson();
+        return this;
+    }
+
+    public EditSession mount(String parentPath, String name, String alias) {
+        json = ModelDocument.read(json).mount(parentPath, name, alias).toJson();
         return this;
     }
 
@@ -203,6 +213,21 @@ public final class EditSession {
      */
     public ComputationEditor computation(String fullName) {
         return new ComputationEditor(this, fullName);
+    }
+
+    /** A single chaining handle over the model's doc-config — the {@code setX} verbs under one surface. */
+    public ConfigEditor config() {
+        return new ConfigEditor(this);
+    }
+
+    /** A held reference to the type definition {@code id} — re-configure its type or remove it. */
+    public TypeDefEditor typeDef(String id) {
+        return new TypeDefEditor(this, id);
+    }
+
+    /** A held reference to the declared include {@code alias} — mount it (again) or remove it. */
+    public IncludeEditor include(String alias) {
+        return new IncludeEditor(this, alias);
     }
 
     /** The model bound to the current state — navigation and rule edits re-read this after each edit. */

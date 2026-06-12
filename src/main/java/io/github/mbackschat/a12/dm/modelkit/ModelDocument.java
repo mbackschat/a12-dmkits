@@ -373,6 +373,20 @@ public final class ModelDocument {
         return this;
     }
 
+    /** Re-configure the underlying type of the type definition {@code id}; fails fast if absent. */
+    public ModelDocument setTypeDefinitionType(String id, FieldTypeSpec type) {
+        JsonNode tds = root.path("content").path("typeDefinitions");
+        if (tds.isArray()) {
+            for (JsonNode td : tds) {
+                if (id.equals(td.path("id").asText())) {
+                    DocumentModelDraft.writeFieldType(((ObjectNode) td).putObject("fieldType"), type, locales());
+                    return this;
+                }
+            }
+        }
+        throw new IllegalArgumentException("no type definition with id: " + id);
+    }
+
     /** Add a field at {@code groupPath} typed by the type definition {@code typeDefId}. */
     public ModelDocument addTypedefField(String groupPath, String name, String typeDefId) {
         ElementDraft.Field field = new ElementDraft.Field(

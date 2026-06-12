@@ -1,0 +1,46 @@
+package io.github.mbackschat.a12.dm.edit;
+
+/**
+ * L2c — a single chaining handle over the model's document configuration, gathering the otherwise-
+ * scattered {@code setX} verbs under one discoverable surface ({@code s.config().decimalSeparator(",").…}).
+ * Each setter forwards to the matching {@link EditSession} config verb and returns this editor. Obtain
+ * from {@link EditSession#config()}.
+ */
+public final class ConfigEditor {
+
+    private final EditSession session;
+
+    ConfigEditor(EditSession session) {
+        this.session = session;
+    }
+
+    /** Set the decimal separator (e.g. {@code "."} or {@code ","}). Chains. */
+    public ConfigEditor decimalSeparator(String separator) {
+        session.setDecimalSeparator(separator);
+        return this;
+    }
+
+    /** Set the model time zone (e.g. {@code "Europe/Berlin"}, {@code "UTC"}). Chains. */
+    public ConfigEditor timeZone(String timeZone) {
+        session.setTimeZone(timeZone);
+        return this;
+    }
+
+    /** Set the condition language code (e.g. {@code "en_US"}, {@code "de_DE"}). Chains. */
+    public ConfigEditor conditionLanguage(String localeCode) {
+        session.setConditionLanguage(localeCode);
+        return this;
+    }
+
+    /** Allow (or forbid) short-name field references where unique. Chains. */
+    public ConfigEditor fieldRefByShortNameAllowed(boolean allowed) {
+        session.setFieldRefByShortNameAllowed(allowed);
+        return this;
+    }
+
+    /** Set the model base year (resolves year-less dates / the BaseYear point-in-time). Chains. */
+    public ConfigEditor baseYear(int year) {
+        session.setBaseYear(year);
+        return this;
+    }
+}
