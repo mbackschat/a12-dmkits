@@ -63,7 +63,9 @@ class NotFoundRefusalTest {
                 arguments(List.of("include", "remove", "nosuchalias"), "RK_NO_SUCH_INCLUDE"),
                 arguments(List.of("rule", "remove", "/Order/Nope"), "RK_NO_SUCH_RULE"),
                 arguments(List.of("rule", "modify", "/Order/Nope", "--condition", "FieldFilled(Note)"), "RK_NO_SUCH_RULE"),
-                arguments(List.of("computation", "remove", "/Order/Nope"), "RK_NO_SUCH_COMPUTATION"));
+                arguments(List.of("computation", "remove", "/Order/Nope"), "RK_NO_SUCH_COMPUTATION"),
+                // the gate runs before the --spec is read, so a not-found computation refuses regardless of the spec file
+                arguments(List.of("computation", "modify", "/Order/Nope", "--spec", "/tmp/rk-unused-spec.json"), "RK_NO_SUCH_COMPUTATION"));
     }
 
     @ParameterizedTest(name = "{0} -> {1}")

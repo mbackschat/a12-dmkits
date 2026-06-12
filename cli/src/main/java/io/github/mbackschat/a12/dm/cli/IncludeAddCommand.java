@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -70,6 +71,14 @@ final class IncludeAddCommand extends BaseCommand {
         }
         IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
         String mountPath = parent + "/" + name;
+        if (!parent.isEmpty()) {   // "" = a root mount, which has no parent group to check
+            Optional<Refusal> refusal = new SafetyGate()
+                    .require(SafetyChecks.exists(ModelDocument.read(modelJson), parent, true))
+                    .firstFailure();
+            if (refusal.isPresent()) {
+                return refuse("include", "add", refusal.get());
+            }
+        }
         String resultJson;
         try {
             resultJson = ModelDocument.read(modelJson)

@@ -60,12 +60,23 @@ final class ComputationModifyCommand extends BaseCommand {
             return fail("pass -m <model.json> (before or after the verb)");
         }
         String modelJson;
-        JsonNode spec;
         try {
             modelJson = Files.readString(Path.of(model));
+        } catch (IOException e) {
+            return fail("cannot read model: " + e.getMessage());
+        }
+        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        Optional<Refusal> refusal = new SafetyGate()
+                .require(SafetyChecks.computationExists(KernelAdapter.ofJson(modelJson, resolver), computation))
+                .firstFailure();
+        if (refusal.isPresent()) {
+            return refuse("computation", "modify", refusal.get());
+        }
+        JsonNode spec;
+        try {
             spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
         } catch (IOException e) {
-            return fail("cannot read input: " + e.getMessage());
+            return fail("cannot read --spec: " + e.getMessage());
         }
         ComputationSpec.Parsed parsed = ComputationSpec.parse(spec);
         if (!parsed.ok()) {
@@ -75,7 +86,6 @@ final class ComputationModifyCommand extends BaseCommand {
             return fail("the --spec re-expresses " + parsed.fullName() + ", not the computation " + computation
                     + " (a re-expression keeps the same computation — match computedField/name)");
         }
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
 
         String modifiedJson;
         try {
