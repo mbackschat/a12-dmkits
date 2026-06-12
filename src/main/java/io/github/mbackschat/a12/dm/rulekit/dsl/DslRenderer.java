@@ -264,6 +264,22 @@ public final class DslRenderer {
         return rendered;
     }
 
+    /**
+     * Renders an {@code operation} with side-channel {@link Comments} — a leading {@code ;;} comment ahead
+     * of it, a trailing one newline-terminated after it (the computation peer of {@link #render(Condition,
+     * Comments)}; comments attach to the top-level operation node, the position the kernel grammar allows).
+     */
+    public String render(Calculation calculation, Comments comments) {
+        if (comments == null || comments.isEmpty()) {
+            return render(calculation);
+        }
+        StringBuilder out = new StringBuilder();
+        comments.beforeOf(calculation).ifPresent(text -> out.append(";; ").append(text).append("\n"));
+        out.append(render(calculation));
+        comments.afterOf(calculation).ifPresent(text -> out.append(" ;; ").append(text).append("\n"));
+        return out.toString();
+    }
+
     /** Renders a value expression — e.g. a computation slot's {@code operation}. */
     public String render(Calculation calculation) {
         return switch (calculation) {

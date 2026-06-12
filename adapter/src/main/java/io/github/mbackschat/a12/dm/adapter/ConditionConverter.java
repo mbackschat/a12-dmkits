@@ -64,6 +64,7 @@ import com.mgmtp.a12.kernel.core.parsetree.a12internal.ast.ASTVisitor;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BaseYear;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.CategoryRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Now;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
@@ -1736,7 +1737,9 @@ final class ConditionConverter {
         String groupPath = computedPath.substring(0, computedPath.lastIndexOf('/'));
         // info.getName() is the computation's full path; Computation.name is the short (last-segment) name
         String name = info.getName().substring(info.getName().lastIndexOf('/') + 1);
-        return new Computation(groupPath, name, computed, common, alternatives, messages);
+        // a read computation carries no comments on the AST (concrete syntax stays in the stored slot
+        // texts); authoring/preservation populate the side-channel, not the converter.
+        return new Computation(groupPath, name, computed, common, alternatives, messages, Comments.none());
     }
 
     private static UnsupportedConstructException unsupported(String what, Object node) {

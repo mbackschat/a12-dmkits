@@ -6,21 +6,23 @@ import java.util.Optional;
 
 /**
  * Comments carried as a <b>side-channel</b> beside the immutable AST (the "carrier (c)" design): a map of
- * {@code ;;} line comments keyed by <em>node identity</em>, so the {@link Condition} hierarchy stays pure
- * semantics while the renderer can still emit (authored or read-preserved) comments at a node's position.
- * Identity-keyed (not value-keyed) so two structurally-equal branches keep distinct comments. Immutable —
- * {@link #before} returns a copy.
+ * {@code ;;} line comments keyed by <em>node identity</em>, so the AST hierarchies stay pure semantics
+ * while the renderer can still emit (authored or read-preserved) comments at a node's position. Both AST
+ * node kinds the kernel attaches a comment to are carried: a {@link Condition} branch ({@code teilBedingung})
+ * and a {@link Calculation} {@code operation}. Identity-keyed (not value-keyed) so two structurally-equal
+ * nodes keep distinct comments. Immutable — {@link #before}/{@link #after} return a copy.
  *
  * <p>Mirrors the kernel grammar, where a comment attaches {@code before}/{@code after} a condition branch
- * ({@code teilBedingung}) or operation — both carried here. A trailing ({@code after}) comment is rendered
- * newline-terminated so a following operator cannot be swallowed by the {@code ;;} line comment.
+ * or an operation. A trailing ({@code after}) comment is rendered newline-terminated so a following
+ * operator cannot be swallowed by the {@code ;;} line comment.
  */
 public final class Comments {
 
-    private final Map<Condition, String> before;
-    private final Map<Condition, String> after;
+    // keys are Condition or Calculation AST nodes (identity); one side-channel covers both kinds.
+    private final Map<Object, String> before;
+    private final Map<Object, String> after;
 
-    private Comments(Map<Condition, String> before, Map<Condition, String> after) {
+    private Comments(Map<Object, String> before, Map<Object, String> after) {
         // each map is replaced wholesale on mutation (never mutated in place), so sharing a reference
         // across copies is safe — this is a persistent map built by copy-on-write.
         this.before = before;
@@ -71,27 +73,39 @@ public final class Comments {
         return leadingCommentBlock(oldText) + newText;
     }
 
-    /** A copy with {@code text} attached as a leading {@code ;;} comment on {@code node}. */
+    /** A copy with {@code text} attached as a leading {@code ;;} comment on a condition branch. */
     public Comments before(Condition node, String text) {
-        Map<Condition, String> next = new IdentityHashMap<>(before);
-        next.put(node, text);
-        return new Comments(next, after);
+        return new Comments(put(before, node, text), after);
     }
 
-    /** A copy with {@code text} attached as a trailing {@code ;;} comment on {@code node}. */
+    /** A copy with {@code text} attached as a leading {@code ;;} comment on an operation. */
+    public Comments before(Calculation node, String text) {
+        return new Comments(put(before, node, text), after);
+    }
+
+    /** A copy with {@code text} attached as a trailing {@code ;;} comment on a condition branch. */
     public Comments after(Condition node, String text) {
-        Map<Condition, String> next = new IdentityHashMap<>(after);
-        next.put(node, text);
-        return new Comments(before, next);
+        return new Comments(before, put(after, node, text));
     }
 
-    /** The leading comment on {@code node}, if any. */
-    Optional<String> beforeOf(Condition node) {
+    /** A copy with {@code text} attached as a trailing {@code ;;} comment on an operation. */
+    public Comments after(Calculation node, String text) {
+        return new Comments(before, put(after, node, text));
+    }
+
+    private static Map<Object, String> put(Map<Object, String> base, Object node, String text) {
+        Map<Object, String> next = new IdentityHashMap<>(base);
+        next.put(node, text);
+        return next;
+    }
+
+    /** The leading comment on {@code node} (a {@link Condition} or {@link Calculation}), if any. */
+    Optional<String> beforeOf(Object node) {
         return Optional.ofNullable(before.get(node));
     }
 
-    /** The trailing comment on {@code node}, if any. */
-    Optional<String> afterOf(Condition node) {
+    /** The trailing comment on {@code node} (a {@link Condition} or {@link Calculation}), if any. */
+    Optional<String> afterOf(Object node) {
         return Optional.ofNullable(after.get(node));
     }
 

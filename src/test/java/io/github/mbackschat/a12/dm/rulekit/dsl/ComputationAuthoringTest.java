@@ -77,6 +77,53 @@ class ComputationAuthoringTest {
     }
 
     @Test
+    void commentsAnOperationAndAPreconditionAndTheKernelAccepts() {
+        // #32 — comments cover computations: a leading ;; on an operation (a Calculation) and on a
+        // precondition (a Condition). Both ride the Comments side-channel; the kernel validates them.
+        NumberRef base = m.num("/Subscription/Billing/BaseFee");
+        Condition filled = fieldFilled(base.field());
+        Calculation passThrough = base.value();
+        Computation comp = m.computation(m.num("/Subscription/Billing/EffectiveFee"))
+                .name("EffectiveFeeComp")
+                .commonPrecondition(filled)
+                .comment(filled, "only when a base fee is set")          // comment on the precondition
+                .when(base.ge(100)).calc(passThrough)
+                .comment(passThrough, "tiered: pass the base fee through") // comment on the operation
+                .when(base.lt(100)).calc(NumberLiteral.of("0.00"))
+                .message(en("EffectiveFee follows the fee tiers."),
+                        de("Die effektive Gebühr folgt den Gebührenstufen."))
+                .build();
+
+        var draft = comp.draft();
+        assertTrue(draft.commonPrecondition().contains(";; only when a base fee is set"),
+                () -> "the precondition carries its comment: " + draft.commonPrecondition());
+        assertTrue(draft.alternatives().get(0).operation().contains(";; tiered: pass the base fee through"),
+                () -> "the operation carries its comment: " + draft.alternatives().get(0).operation());
+
+        ValidationResult vr = new RuleValidator().check(modelJson, comp.draft());
+        assertTrue(vr.ok(), () -> "kernel should accept the commented computation, got: " + vr.diagnostics());
+    }
+
+    @Test
+    void commentsTheWholeComputationViaItsFirstOperation() {
+        NumberRef base = m.num("/Subscription/Billing/BaseFee");
+        Computation comp = m.computation(m.num("/Subscription/Billing/EffectiveFee"))
+                .name("EffectiveFeeComp")
+                .comment("effective fee equals the base fee")     // leading comment on the (first) operation
+                .calc(base.value())
+                .message(en("EffectiveFee must equal BaseFee."),
+                        de("Die effektive Gebühr muss der Basisgebühr entsprechen."))
+                .build();
+
+        assertTrue(comp.draft().alternatives().get(0).operation().startsWith(";; effective fee equals the base fee"),
+                () -> "the whole-computation comment leads the first operation: "
+                        + comp.draft().alternatives().get(0).operation());
+
+        ValidationResult vr = new RuleValidator().check(modelJson, comp.draft());
+        assertTrue(vr.ok(), () -> "kernel should accept the commented computation, got: " + vr.diagnostics());
+    }
+
+    @Test
     void rejectsMixingUnconditionalAndPreconditionedAlternatives() {
         // The study's original .otherwise(...) sketch — kernel-illegal (MVK_ERROR_EMPTY_PRECONDITION).
         NumberRef base = m.num("/Subscription/Billing/BaseFee");

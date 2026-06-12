@@ -27,7 +27,8 @@ public record Computation(
         FieldRef computedField,
         Optional<Condition> commonPrecondition,
         List<Alternative> alternatives,
-        List<LocalizedText> messages) {
+        List<LocalizedText> messages,
+        Comments comments) {
 
     public Computation {
         alternatives = List.copyOf(alternatives);
@@ -53,11 +54,11 @@ public record Computation(
                 groupPath,
                 name,
                 computedFieldRelPath(),
-                commonPrecondition.map(renderer::render).orElse(null),
+                commonPrecondition.map(c -> renderer.render(c, comments)).orElse(null),
                 alternatives.stream()
                         .map(a -> new DraftComputation.Alternative(
-                                a.precondition().map(renderer::render).orElse(null),
-                                renderer.render(a.operation())))
+                                a.precondition().map(p -> renderer.render(p, comments)).orElse(null),
+                                renderer.render(a.operation(), comments)))
                         .toList());
     }
 
@@ -69,6 +70,8 @@ public record Computation(
         private Condition commonPrecondition;
         private final List<Alternative> alternatives = new ArrayList<>();
         private final List<LocalizedText> messages = new ArrayList<>();
+        private Comments comments = Comments.none();
+        private String rootComment;
 
         Builder(FieldRef computedField, List<String> declaredLocales) {
             this.computedField = computedField;
@@ -98,6 +101,36 @@ public record Computation(
 
         public Builder message(LocalizedText... texts) {
             messages.addAll(List.of(texts));
+            return this;
+        }
+
+        /**
+         * Attach a {@code ;;} comment to the whole computation — rendered as a leading line ahead of its
+         * <em>first operation</em> (the "what it computes"). The kernel tolerates the comment as concrete
+         * syntax; it survives the write. To comment a specific operation or precondition, use the
+         * node-targeted {@link #comment(Calculation, String)} / {@link #comment(Condition, String)}.
+         */
+        public Builder comment(String text) {
+            this.rootComment = text;
+            return this;
+        }
+
+        /**
+         * Attach a {@code ;;} comment to a single {@code operation}, identified by the very
+         * {@link Calculation} object handed to {@link #calc(Calculation)} — rendered ahead of that operation.
+         */
+        public Builder comment(Calculation operation, String text) {
+            this.comments = comments.before(operation, text);
+            return this;
+        }
+
+        /**
+         * Attach a {@code ;;} comment to a precondition (the common precondition or an alternative's),
+         * identified by the {@link Condition} object handed to {@link #commonPrecondition(Condition)} or
+         * {@link #when(Condition)} — rendered ahead of that precondition.
+         */
+        public Builder comment(Condition precondition, String text) {
+            this.comments = comments.before(precondition, text);
             return this;
         }
 
@@ -142,8 +175,11 @@ public record Computation(
             }
 
             String groupPath = computedPath.substring(0, computedPath.lastIndexOf('/'));
+            // a whole-computation comment leads the first operation (always present — checked above)
+            Comments finalComments = rootComment == null ? comments
+                    : comments.before(alternatives.get(0).operation(), rootComment);
             return new Computation(groupPath, name, computedField,
-                    Optional.ofNullable(commonPrecondition), alternatives, messages);
+                    Optional.ofNullable(commonPrecondition), alternatives, messages, finalComments);
         }
 
         private static void require(boolean ok, String problem) {
