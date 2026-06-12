@@ -617,6 +617,24 @@ s.validate();                                                        // the reso
 
 The included price list's **own** rule travels with it — mounted twice, it applies at both `/Catalog/Retail` and `/Catalog/Wholesale` — and the base's rules over the mounted fields validate against the real, expanded model. The written-back DM-JSON keeps the include as a `modelAlias` reference, never inlined; included content doesn't leak into the base. *Test-backed: `edit.MultiModelTest` (two-location include of a ruled model + rules over mounted fields + type-def) and `rulekit.dsl.IncludesTypedefsRuleTest` (single mount + type-def, EN/DE render).*
 
+## 5e. Run rules against data — does it actually fire? ✅ (runtime evaluation)
+
+Beyond "is this rule kernel-valid?" (the static gate) is "does it do the **right thing** on real data?" — the verify-by-execution angle that catches an *inverted-but-valid* rule. `KernelAdapter.evaluate` runs a model's rules over a **document instance** (a nested, name-keyed tree — repeatable groups as lists, field values as their kernel string form) and reports which rule **codes** fired; its peer `compute` reports what each field computes. (CLI: `eval-doc` / `compute-doc`.)
+
+```java
+String model = …;   // a model whose /Order/Discount carries a "DiscountNonNeg" rule (code DISCOUNT_NEG)
+
+// a compliant document — the rule does NOT fire
+EvalResult ok = KernelAdapter.ofJson(model).evaluate(Map.of("Order", Map.of("Discount", "0")), Locale.US);
+ok.firedCodes();        // [] — a discount of 0 is not negative
+
+// a violating document — the rule FIRES
+EvalResult bad = KernelAdapter.ofJson(model).evaluate(Map.of("Order", Map.of("Discount", "-5")), Locale.US);
+bad.firedCodes();       // [DISCOUNT_NEG]
+```
+
+So you can prove a rule *behaves* — run a passing and a violating document and read `firedCodes()` — not just that it parses. This is the basis of the eval's **verify-by-execution** judge (construct discriminating documents, compare what fires for a *gold* vs a *candidate* rule — equivalence by execution, not by recalling polarity/empty-operand semantics), and the natural close of the read→modify loop: change a rule, then *show* it now fires correctly on the cases that matter. *Test-backed: `adapter.RuntimeEvalExampleTest`; the seam's depth (per-row repetition indices, `compute`, empty-operand semantics) by `adapter.laws.EvalDocSeamLawsTest`.*
+
 ## 6. Semantics as data (F7, N6) ✅ — the catalog is queryable today
 
 ```java
@@ -834,4 +852,6 @@ The contract is data (catalog + DM-JSON + render rules), so this is a parallel r
 
 25. *(new, 2026-06-12 — working across models; ✅ implemented)* **Includes and type-defs make rulekit a multi-model tool — rules author over included/mounted fields exactly like local ones.** A shared sub-model is included into a base and mounted at one or more places (`addInclude` + `IncludeEditor.mount` for extra locations); the base then authors rules over the mounted fields by their **mount-name path** (`/Catalog/Retail/ListPrice`), and a `typedefField` resolves to its underlying kind. The binding threads a **resolver** (`EditSession.read(json, resolver)` / `BoundModel.ofJson(json, resolver)`) that expands the include through the kernel; write-back keeps the include as a `modelAlias` reference (**never inlined**, F6/D9), and an included model's *own* rules travel with it (mounted twice → applied at both mounts). Full flow + example: §5d. Test-backed: `edit.MultiModelTest`, `rulekit.dsl.IncludesTypedefsRuleTest`.
 
-*(4–6 shape Phase-2 API design; 7–8 are proposal §12/§14 refinements; 9–13 are scheduled — 9/10/12-describe-find/13-export Phase 1, the rest Phase 2; 14 is the meta-instrument now in CLAUDE.md; 15–16 are increment/authoring practice; 17 is F4a; 18 prioritizes field-vs-field comparison; 19 is the authored-rule emit-map span path; 20 routes the RT-drain traps through the catalog gotchas and marks them N6 task candidates; 21 closes the T13 cold-agent gaps tool→catalog→skill; 22 adds the version surface + kernel-authoritative model-version classification; 23 makes refs the field/group currency across both kits — L2c — and drops L2b codegen; 24 notes document-part builders fall out of the editor — no new machinery; 25 covers working across models — includes/type-defs with rules over mounted fields.)*
+26. *(new, 2026-06-12 — runtime evaluation as a use case; ✅ implemented)* **"Does this rule actually fire?" is a first-class capability, not just static validity.** `KernelAdapter.evaluate(documentTree, locale)` runs the model's rules over a document instance and returns the fired rule **codes** (its peer `compute` returns what each field computes); the CLI peers are `eval-doc`/`compute-doc`. This is verify-**by-execution**: run a passing and a violating document and compare `firedCodes()` — the angle that exposes an inverted-but-kernel-valid rule, and the engine behind the eval's execution-based equivalence judge. Example: §5e. Test-backed: `adapter.RuntimeEvalExampleTest`, `adapter.laws.EvalDocSeamLawsTest`.
+
+*(4–6 shape Phase-2 API design; 7–8 are proposal §12/§14 refinements; 9–13 are scheduled — 9/10/12-describe-find/13-export Phase 1, the rest Phase 2; 14 is the meta-instrument now in CLAUDE.md; 15–16 are increment/authoring practice; 17 is F4a; 18 prioritizes field-vs-field comparison; 19 is the authored-rule emit-map span path; 20 routes the RT-drain traps through the catalog gotchas and marks them N6 task candidates; 21 closes the T13 cold-agent gaps tool→catalog→skill; 22 adds the version surface + kernel-authoritative model-version classification; 23 makes refs the field/group currency across both kits — L2c — and drops L2b codegen; 24 notes document-part builders fall out of the editor — no new machinery; 25 covers working across models — includes/type-defs with rules over mounted fields; 26 makes runtime evaluation (verify-by-execution) a first-class use case.)*
