@@ -8,13 +8,13 @@ import picocli.CommandLine.Spec;
 
 /**
  * The {@code field} target group (CLI-SPEC §5) — modelkit field operations on the model named by {@code -m}:
- * {@code add} (Local), {@code read}, {@code remove} (Cascading — the safe-delete gate). {@code rename} is
- * the deferred Refactor op (§6).
+ * {@code add} (Local), {@code read}, {@code remove} (Cascading — the safe-delete gate), and the safety-gated
+ * Refactor ops (§6) {@code rename} and {@code move} (both reference-preserving via the kernel's MoveSupportDM).
  */
 @Command(name = "field", mixinStandardHelpOptions = true,
-        description = "Field operations: add, read, remove, rename.",
+        description = "Field operations: add, read, remove, rename, move.",
         subcommands = { FieldAddCommand.class, FieldReadCommand.class, FieldRemoveCommand.class,
-                FieldRenameCommand.class })
+                FieldRenameCommand.class, FieldMoveCommand.class })
 final class FieldCommand implements Callable<Integer> {
 
     @Spec

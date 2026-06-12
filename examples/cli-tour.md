@@ -35,10 +35,12 @@ field add
 field read
 field remove
 field rename
+field move
 group add
 group read
 group remove
 group rename
+group move
 group extract
 typedef add
 typedef read

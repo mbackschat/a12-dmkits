@@ -8,13 +8,14 @@ import picocli.CommandLine.Spec;
 
 /**
  * The {@code group} target group (CLI-SPEC §5) — modelkit group operations on the model named by {@code -m}:
- * {@code add} (plain or {@code --repeatable}), {@code read}, {@code remove} (the safe-delete gate). {@code
- * rename}/{@code move} are the deferred Refactor ops (§6).
+ * {@code add} (plain or {@code --repeatable}), {@code read}, {@code remove} (the safe-delete gate), and the
+ * safety-gated Refactor ops (§6): {@code rename} and {@code move} (both reference-preserving via the kernel's
+ * MoveSupportDM) and {@code extract} (group → include).
  */
 @Command(name = "group", mixinStandardHelpOptions = true,
-        description = "Group operations: add, read, remove, rename, extract.",
+        description = "Group operations: add, read, remove, rename, move, extract.",
         subcommands = { GroupAddCommand.class, GroupReadCommand.class, GroupRemoveCommand.class,
-                GroupRenameCommand.class, GroupExtractCommand.class })
+                GroupRenameCommand.class, GroupMoveCommand.class, GroupExtractCommand.class })
 final class GroupCommand implements Callable<Integer> {
 
     @Spec

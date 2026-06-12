@@ -439,6 +439,60 @@ public final class ModelDocument {
         return this;
     }
 
+    // --- move refactors (CLI-SPEC §6 — relocate to a different parent; the CLI rewrites references first) ---
+
+    /**
+     * Move the field at {@code fieldPath} to become a child of the group at {@code newParentPath} — detach
+     * the node, re-home it, and re-prefix its id to the new parent (the {@code name} is unchanged; only the
+     * location, hence the id-path, moves). References to the field are the caller's concern — the CLI
+     * rewrites them via {@code adapter.ReferenceRewriter} (the kernel's {@code MoveSupportDM}) <em>before</em>
+     * this call; {@link #validate()} is the kernel backstop. Fails fast if the field is absent or the
+     * destination group does not exist.
+     */
+    public ModelDocument moveField(String fieldPath, String newParentPath) {
+        JsonNode node = locate(fieldPath, false);
+        if (node == null) {
+            throw new IllegalArgumentException("no field at: " + fieldPath);
+        }
+        relocate(node, fieldPath, newParentPath, "Field");
+        return this;
+    }
+
+    /**
+     * Move the group at {@code groupPath} (and its whole subtree) under the group at {@code newParentPath}
+     * ({@code ""} = a root group) — the group node and every descendant id move in step; descendant
+     * <em>names</em> are unchanged, so an internal relative-pathed rule travels intact. References from
+     * outside the subtree are the caller's concern (rewritten first, as for {@link #moveField}). Fails fast
+     * if the group is absent, the destination group does not exist, or the destination lies inside the
+     * moved subtree (which would orphan it).
+     */
+    public ModelDocument moveGroup(String groupPath, String newParentPath) {
+        JsonNode node = locate(groupPath, true);
+        if (node == null) {
+            throw new IllegalArgumentException("no group at: " + groupPath);
+        }
+        if (newParentPath.equals(groupPath) || newParentPath.startsWith(groupPath + "/")) {
+            throw new IllegalArgumentException(
+                    "cannot move group " + groupPath + " into itself or its own subtree: " + newParentPath);
+        }
+        relocate(node, groupPath, newParentPath, "Group");
+        return this;
+    }
+
+    /**
+     * Detach {@code node} from its current parent and re-home it under {@code newParentPath}, re-prefixing
+     * its id-subtree from {@code path} to the new location. The destination is resolved <em>before</em> any
+     * detach, so an unknown parent leaves the tree untouched (fail-fast, no half-move).
+     */
+    private void relocate(JsonNode node, String path, String newParentPath, String type) {
+        String name = path.substring(path.lastIndexOf('/') + 1);
+        String newPath = newParentPath.isEmpty() ? "/" + name : newParentPath + "/" + name;
+        ArrayNode destination = newParentPath.isEmpty() ? rootGroups() : containerElements(newParentPath);
+        removeElement(path, type);
+        reprefixIds(node, path, newPath);
+        destination.add(node);
+    }
+
     private static String renamePath(String path, String newName) {
         return path.substring(0, path.lastIndexOf('/') + 1) + newName;
     }

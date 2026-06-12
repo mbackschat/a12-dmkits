@@ -13,11 +13,11 @@ import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
 /**
- * Tier-2 refactor: <b>safe rename</b> of field / group / rule (task #5, CLI-SPEC §6). The library does the
- * declaration rename (name + id, and for a group every descendant id in step); the CLI gate refuses when
- * the element is referenced (since references are not rewritten — that's the parked engine). These tests
- * pin the mechanics + the key property: a group rename re-homes an <em>internal</em> relative-pathed rule
- * without breaking it (it moves with the subtree), confirmed through the kernel.
+ * Refactor: <b>rename</b> of field / group / rule (CLI-SPEC §6). The library does the declaration rename
+ * (name + id, and for a group every descendant id in step); the CLI rewrites references first (via the
+ * kernel's {@code MoveSupportDM}, wrapped as {@code adapter.ReferenceRewriter}) so nothing dangles. These
+ * tests pin the library mechanics + the key property: a group rename re-homes an <em>internal</em>
+ * relative-pathed rule without breaking it (it moves with the subtree), confirmed through the kernel.
  */
 class RenameRefactorTest {
 

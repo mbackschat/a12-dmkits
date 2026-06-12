@@ -116,6 +116,44 @@ final class SafetyChecks {
         };
     }
 
+    /**
+     * Refuse a move whose destination parent group does not exist (RK_NO_SUCH_GROUP) — there is nowhere to
+     * re-home the element. Runs before any mutation.
+     */
+    static SafetyCheck groupExists(ModelDocument doc, String groupPath) {
+        return () -> {
+            if (doc.groupPaths().contains(groupPath)) {
+                return Optional.empty();
+            }
+            Diagnostic diagnostic = Diagnostic.precheck(Optional.of("RK_NO_SUCH_GROUP"),
+                    "no group at the destination path '" + groupPath + "'",
+                    Diagnostic.Where.arg(null, "--to"),
+                    Optional.of("pass --to an existing group's full name-path (see `group read` or `doc describe`)"),
+                    Optional.empty());
+            return Optional.of(new Refusal(
+                    "destination group '" + groupPath + "' does not exist — refusing to move", null, diagnostic));
+        };
+    }
+
+    /**
+     * Refuse moving a group into itself or its own subtree (RK_MOVE_INTO_SELF) — re-homing a group beneath
+     * one of its own descendants would orphan the whole subtree. Runs before any mutation.
+     */
+    static SafetyCheck notIntoOwnSubtree(String groupPath, String newParentPath) {
+        return () -> {
+            if (!newParentPath.equals(groupPath) && !newParentPath.startsWith(groupPath + "/")) {
+                return Optional.empty();
+            }
+            Diagnostic diagnostic = Diagnostic.precheck(Optional.of("RK_MOVE_INTO_SELF"),
+                    "cannot move " + groupPath + " into itself or its own subtree ('" + newParentPath + "')",
+                    Diagnostic.Where.path(groupPath),
+                    Optional.of("choose a destination group that lies outside the moved subtree"),
+                    Optional.empty());
+            return Optional.of(new Refusal(
+                    groupPath + " cannot move into its own subtree — refusing", null, diagnostic));
+        };
+    }
+
     /** The RK_NAME_EXISTS refusal: a rename whose chosen new name/id is already taken (the collision gate). */
     static Refusal nameExists(String name, String kind, String fix) {
         Diagnostic diagnostic = Diagnostic.precheck(Optional.of("RK_NAME_EXISTS"),

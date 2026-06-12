@@ -23,13 +23,13 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
- * {@code dmtool field rename <fieldPath> --to <newName>} — a Tier-2 safe rename (CLI-SPEC §6). The safety
- * gate runs first: a field still referenced by a rule/computation is <b>refused</b> ({@code RK_REFERENCED})
- * — references are not rewritten (that is the parked engine) — and a colliding new name is refused
- * ({@code RK_NAME_EXISTS}). Only when free does it rename the declaration (name + path); kernel-revalidated.
+ * {@code dmtool field rename <fieldPath> --to <newName>} — a reference-preserving rename (CLI-SPEC §6). The
+ * safety gate runs first: a new name already taken by a sibling is <b>refused</b> ({@code RK_NAME_EXISTS}).
+ * Only when free does it rewrite every referrer to the new path (the kernel's {@code MoveSupportDM}) and
+ * rename the declaration (name + path); the result is kernel-revalidated.
  */
 @Command(name = "rename", mixinStandardHelpOptions = true,
-        description = "Rename a field; a referenced field (or a taken name) is refused.")
+        description = "Rename a field; references are rewritten to the new name (a taken name is refused).")
 final class FieldRenameCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

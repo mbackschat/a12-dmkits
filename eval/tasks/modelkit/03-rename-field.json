@@ -1,7 +1,6 @@
 {
   "id": "03-rename-field",
   "family": "refactor",
-  "status": "deferred",
   "model": "order-ruled",
   "intent": "Rename the order's delivery-date field to PromisedDate.",
   "gold": {
@@ -9,14 +8,13 @@
     "field": "/Order/DeliveryDate",
     "to": "PromisedDate",
     "expect": {
-      "renamed": "/Order/PromisedDate",
-      "rewroteReferences": {
-        "rules": [
-          "/Order/DeliveryNotBeforeOrder"
-        ]
-      }
+      "renamed": "/Order/DeliveryDate",
+      "to": "/Order/PromisedDate",
+      "rewroteReferences": [
+        "/Order/DeliveryNotBeforeOrder"
+      ]
     }
   },
-  "notes": "DEFERRED (status:deferred — the runner skips it). The refactor-class task: `field rename` must rewrite the declaration AND every referencing site (here DeliveryNotBeforeOrder's condition) atomically, valid→valid. It also pins the Opaque-refusal boundary — a rename blocked by an unrewritable (Opaque) referrer must REFUSE with a clear diagnostic, never silently dangle. Authored now as the acceptance gate; activated when the rename engine ships (Phase 4).",
+  "notes": "The refactor-class task: `field rename` rewrites the declaration AND every referencing site atomically, valid->valid, via the kernel's MoveSupportDM (here DeliveryNotBeforeOrder's error-entity path `../DeliveryDate` plus its condition's AllFieldsFilled/DifferenceInDays operands all follow to PromisedDate). The `changed` envelope reports {renamed: old path, to: new path, rewroteReferences: [referrers]}. Activated 2026-06-12 once the reference-rewriting rename + move engine shipped (CLI-SPEC §6). Layer-1 oracle covers it; a Layer-2 agentic refactor phase is a follow-up.",
   "difficulty": "complex"
 }

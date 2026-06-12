@@ -2,7 +2,7 @@
 
 The component spec for the standalone CLI (N10). The proposal's [§14/§16](PROJECT-PROPOSAL.md) state intent; [`ARCHITECTURE.md`](ARCHITECTURE.md) places it among the subprojects; this spec holds the design — the **op model**, the **verb surface**, the **diagnostics contract**, the dev/test workflow, sizing, and packaging. Per-verb implementation status lives on the [`API-POC-STUDY.md` §9](API-POC-STUDY.md) board; runnable demos in [`CLI-TOUR-SPEC.md`](CLI-TOUR-SPEC.md) ↔ [`../examples/`](../examples/).
 
-> **Status.** This spec is the **target surface** — binary `dmtool`, target-first verbs (`dmtool -m <model> <target> <op>`), and the uniform result envelope (§3). The verb-first surface is mid-migration: the legacy names still resolve as hidden aliases until the flip completes (per-verb status on the §9 board). The structural refactor ops (§6) have **shipped, safety-gated** — `typedef rename`/`extract`/`inline`, `field`/`group`/`rule rename` (**reference-rewriting** via the kernel's `MoveSupportDM`), `group extract` (group→include), and `include inline` (the extract inverse); only **`move`** (relocate to a different parent) remains deferred.
+> **Status.** This spec is the **target surface** — binary `dmtool`, target-first verbs (`dmtool -m <model> <target> <op>`), and the uniform result envelope (§3). The verb-first surface is mid-migration: the legacy names still resolve as hidden aliases until the flip completes (per-verb status on the §9 board). The structural refactor ops (§6) have **shipped, safety-gated** — `typedef rename`/`extract`/`inline`, `field`/`group`/`rule rename` and `field`/`group move` (both **reference-rewriting** via the kernel's `MoveSupportDM`), `group extract` (group→include), and `include inline` (the extract inverse). The §3.1 refactor set is complete.
 
 ## 1. Purpose & persona
 
@@ -119,8 +119,8 @@ Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ 
 | `doc` | `describe · validate · export · eval --doc · compute --doc` | (whole document) |
 | `rule` | `add <spec> · read · explain · check · modify --condition · remove · rename` | rulekit |
 | `computation` | `add <spec> · read · explain · modify --spec · remove` | rulekit |
-| `field` | `add · read · remove · rename` | modelkit |
-| `group` | `add · read · remove · rename · extract` *(extract = group→include refactor, §6; move deferred)* | modelkit |
+| `field` | `add · read · remove · rename · move` | modelkit |
+| `group` | `add · read · remove · rename · move · extract` *(extract = group→include refactor, §6)* | modelkit |
 | `typedef` | `add · read · remove · rename · extract · inline` *(rename/extract/inline = Tier-1 structural refactors, §6)* | modelkit |
 | `include` | `add · read · remove · inline` *(inline = group→include extract inverse, §6)* | modelkit |
 | `config` | `read · modify` | modelkit |
@@ -160,7 +160,7 @@ Classify every op by **blast radius** — this is the standing rule for adding o
 |---|---|---|---|
 | **Local** | add · read · modify · remove-leaf | one element only | plain surgery, gate at end |
 | **Cascading** | remove-referenced | element + *deletes* dependents | the `where-used` refuse-or-`--cascade` gate |
-| **Refactor** | **rename** (field/group/rule/typedef — **reference-rewriting** ✅) · **extract/inline typedef** ✅ · **extract group→include** + **inline include** ✅ · **move** *(deferred)* | rename rewrites the element **and every reference** atomically → valid→valid; extract/inline lift or fold a subtree at a same-name mount (paths preserved); typedef ops repoint structural pointers | the **safety gate** (✅, this §) for collisions/preconditions + the kernel's `MoveSupportDM` reference-rewriter (`adapter.ReferenceRewriter`) |
+| **Refactor** | **rename** (field/group/rule/typedef — **reference-rewriting** ✅) · **move** (field/group — **reference-rewriting** ✅) · **extract/inline typedef** ✅ · **extract group→include** + **inline include** ✅ | rename/move rewrite the element **and every reference** atomically → valid→valid (move also relocates the node to a new parent); extract/inline lift or fold a subtree at a same-name mount (paths preserved); typedef ops repoint structural pointers | the **safety gate** (✅, this §) for collisions/preconditions + the kernel's `MoveSupportDM` reference-rewriter (`adapter.ReferenceRewriter`) |
 
 ### The refactor safety gate — *check before you change* (standing principle, every refactor, now and future)
 
@@ -176,6 +176,7 @@ This generalizes the safe-delete gate below to the whole Refactor class. Each re
 |---|---|
 | **remove** (referenced) | anything still references the target → refuse, list referrers (`RK_REFERENCED`), or proceed only on explicit `--cascade` |
 | **rename** | a name **collision** with an existing sibling → refuse (`RK_NAME_EXISTS`); references — including starred and `Opaque`-to-rulekit conditions — are **rewritten**, not refused (the kernel's lenient `MoveSupportDM`) |
+| **move** | destination parent group does not exist → refuse (`RK_NO_SUCH_GROUP`); a group moved **into itself or its own subtree** → refuse (`RK_MOVE_INTO_SELF` — it would orphan the subtree); the destination already has a child of that name → refuse (`RK_NAME_EXISTS`). When safe: relocate the node (re-prefixing its + descendants' ids) and **rewrite every reference** to the new path (same `MoveSupportDM` engine as rename), then re-validate. |
 | **extract group → include** | a rule inside the subtree references **outside** it (`RK_OUTWARD_REFERENCE`, names the rules); the group is **repeatable** (`RK_REPEATABLE_INCLUDE_ROOT` — an include's root must be a single, non-repeatable group) → refuse. (A rule *outside* referencing *into* the subtree is fine — the mount preserves the path; verified.) |
 
 **Two obligations on every refactor — non-negotiable:**
@@ -185,7 +186,7 @@ This generalizes the safe-delete gate below to the whole Refactor class. Each re
 
 **Implemented** (2026-06-12) as `SafetyGate` (runs the registered checks in order, returns the first `Refusal`) + `SafetyChecks` (the reusable preconditions — the first is the `RK_REFERENCED` reference gate shared by safe-delete and safe-rename) + `Refusal`/`BaseCommand.refuse` (the `refused`-envelope emit). **Safe-delete (`field`/`group remove`) is the first adopter** — its hand-rolled refusal was replaced by the shared check. Locked by `SafetyGateTest` + the remove verb tests; each new refactor registers its own `SafetyChecks` precondition and adds the matching refusal test.
 
-**Reference-rewriting rename shipped; only `move` is deferred (2026-06-12).** `field` / `group` / `rule` / `typedef rename` rename the declaration **and rewrite every reference** to it — rule conditions, error-entity paths, computations — then re-validate. The rewriter is the kernel's own **`MoveSupportDM`** (lenient, token-precise, preserves absolute-vs-relative style, and *follows* starred-group references — KERNEL-FINDINGS §10), wrapped at the N8 boundary as `adapter.ReferenceRewriter`; rulekit builds no parser of its own. For a `group`, the whole subtree re-homes and references **into** it from outside are rewritten too. The gate refuses only a name **collision** (`RK_NAME_EXISTS`); a narrow case the rewriter can't fix is caught loudly by the kernel re-validate (`rejected`), never a silent dangle. What stays deferred is **`move`** — relocating an element to a different parent (the node move plus the same reference rewrite); the eval task `N-rename` flips on once `move` lands. (**Typedef rename/extract/inline** need no rewriter — a typedef never appears in a condition.)
+**Reference-rewriting rename + move shipped (2026-06-12) — §3.1 complete.** `field` / `group` / `rule` / `typedef rename` rename the declaration **and rewrite every reference** to it — rule conditions, error-entity paths, computations — then re-validate. **`field` / `group move`** add the node relocation on top of the same rewrite: detach the element, re-home it under a new parent (re-prefixing its + descendants' ids), rewrite every reference to the new path, re-validate. The rewriter is the kernel's own **`MoveSupportDM`** (lenient, token-precise, preserves absolute-vs-relative style, *follows* starred-group references, and also rewrites a group's index/sort-field refs — KERNEL-FINDINGS §10), wrapped at the N8 boundary as `adapter.ReferenceRewriter`; rulekit builds no parser of its own. For a `group` rename/move the whole subtree re-homes and references **into** it from outside are rewritten too. The gates refuse only on a precondition (rename: `RK_NAME_EXISTS`; move: `RK_NO_SUCH_GROUP` / `RK_MOVE_INTO_SELF` / `RK_NAME_EXISTS`); a narrow case the rewriter can't fix is caught loudly by the kernel re-validate (`rejected`), never a silent dangle. The eval task `03-rename-field` (refactor family) is now **active** — its Layer-1 oracle (`EvalGoldOracleTest`) applies the gold rename via the rewriter and asserts it re-binds valid→valid. (**Typedef rename/extract/inline** need no rewriter — a typedef never appears in a condition.)
 
 ### Safe-delete — the Cascading gate (recorded so it isn't re-litigated)
 

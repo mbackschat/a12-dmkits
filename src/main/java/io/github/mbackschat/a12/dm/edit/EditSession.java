@@ -137,6 +137,14 @@ public final class EditSession {
         return editStructure(d -> d.renameRule(ruleFullName, newName));
     }
 
+    public EditSession moveField(String fieldPath, String newParentPath) {
+        return editStructure(d -> d.moveField(fieldPath, newParentPath));
+    }
+
+    public EditSession moveGroup(String groupPath, String newParentPath) {
+        return editStructure(d -> d.moveGroup(groupPath, newParentPath));
+    }
+
     public EditSession renameTypeDefinition(String oldId, String newId) {
         return editStructure(d -> d.renameTypeDefinition(oldId, newId));
     }

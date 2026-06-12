@@ -369,7 +369,7 @@ bin/dmtool -m /tmp/struct2-td.json typedef remove Currency
 
 → With no field using it, `typedef remove` lands `outcome: applied`. The order matters: the kernel won't let you orphan a field's type.
 
-### typedef rename — a Tier-1 structural refactor (id + every using field, gated)
+### typedef rename — a structural refactor (id + every using field, gated)
 
 Renaming a type definition rewrites its declaration **and** every field that points at it, in one step. A typedef never appears in a condition, so this is a pure *structural* rewrite — no rule edits, no AST surgery. The refactor **safety gate** (CLI-SPEC §6) runs first: a new id that is already declared is **refused** before anything changes. On a fresh copy with `Currency` typing a new `SetupFee`:
 
@@ -513,9 +513,9 @@ bin/dmtool -m /tmp/struct2-tdx.json typedef inline Money
 
 → `changed.expandedFields` got their inline `NUMBER` type back and `Money` is gone — extract and inline round-trip.
 
-## rename — Tier-2 reference-preserving rename
+## rename — reference-preserving rename
 
-`field | group | rule rename <path> --to <newName>` renames an element's declaration **and rewrites every reference to it** — rule conditions, error texts, computations — via the kernel's own `MoveSupportDM` (FEATURE-GAPS-PROPOSAL §3.1), then re-validates. So a *referenced* field renames cleanly; the gate refuses only a **name collision** (`RK_NAME_EXISTS`). On `order-ruled` (whose `DeliveryNotBeforeOrder` rule references `/Order/DeliveryDate`):
+`field | group | rule rename <path> --to <newName>` renames an element's declaration **and rewrites every reference to it** — rule conditions, error texts, computations — via the kernel's own `MoveSupportDM`, then re-validates. So a *referenced* field renames cleanly; the gate refuses only a **name collision** (`RK_NAME_EXISTS`). On `order-ruled` (whose `DeliveryNotBeforeOrder` rule references `/Order/DeliveryDate`):
 
 ```bash
 cp cli/src/test/resources/models/order-ruled.dm.json /tmp/struct2-rn.json && echo "copied order-ruled → /tmp/struct2-rn.json"
@@ -556,11 +556,46 @@ bin/dmtool -m /tmp/struct2-rn.json field rename /Order/Quantity --to OrderDate >
 {"outcome":"refused","code":"RK_NAME_EXISTS","fix":"choose a name not already used by a sibling, or rename/remove the existing one first"}
 ```
 
-→ `group rename` re-homes the whole subtree **and** rewrites references into it from outside (starred references like `Sum(Items*/Amount)` follow too — KERNEL-FINDINGS §10); `rule rename` is collision-only (nothing references a rule). The rewriting engine is the kernel's `MoveSupportDM`, wrapped at the adapter boundary (`ReferenceRewriter`). Only **`move`** (relocate to a different parent) remains deferred.
+→ `group rename` re-homes the whole subtree **and** rewrites references into it from outside (starred references like `Sum(Items*/Amount)` follow too — KERNEL-FINDINGS §10); `rule rename` is collision-only (nothing references a rule). The rewriting engine is the kernel's `MoveSupportDM`, wrapped at the adapter boundary (`ReferenceRewriter`) — the same engine that powers `move`, next.
 
-## extract — group → include (Tier-3 refactor, path-preserving)
+## move — relocate to a different parent (reference-preserving)
 
-`group extract <path> --reference <id>` lifts a subtree into its own sub-model and re-mounts it **at the same name**, so every path is preserved — references into the subtree keep resolving, and it dodges the parked reference-rewrite engine entirely. It writes **two** files: the slimmed base and `<reference>.dm.json` beside it. On `order-aggregates` (which has a `/Order/BillingAddress` subgroup with its own rule):
+`field | group move <path> --to <newParentGroup>` re-homes an element under a different parent **and rewrites every reference to its new path** (the same `MoveSupportDM` engine as `rename`), then re-validates. Continuing on `/tmp/struct2-rn.json` — where the field is now `/Order/ShipDate`, referenced by `DeliveryNotBeforeOrder` — relocate it into the `ShippingAddress` subgroup:
+
+```bash
+bin/dmtool -m /tmp/struct2-rn.json field move /Order/ShipDate --to /Order/ShippingAddress | jq -c '{outcome, ok, changed}'
+```
+
+```output
+{"outcome":"applied","ok":true,"changed":{"moved":"/Order/ShipDate","to":"/Order/ShippingAddress/ShipDate","rewroteReferences":["/Order/DeliveryNotBeforeOrder"]}}
+```
+
+The rule's error-entity path and its condition both followed the field — `DifferenceInDays(OrderDate, ShippingAddress/ShipDate)` now — so the model still validates:
+
+```bash
+bin/dmtool -m /tmp/struct2-rn.json doc validate | jq -c '{valid}'
+```
+
+```output
+{"valid":true}
+```
+
+The move gate refuses before touching anything: a **missing destination** is `RK_NO_SUCH_GROUP` (exit 2, nothing written) — likewise a name collision at the destination (`RK_NAME_EXISTS`) and a group moved into its own subtree (`RK_MOVE_INTO_SELF`):
+
+```bash
+bin/dmtool -m /tmp/struct2-rn.json field move /Order/Quantity --to /Order/Nope >/tmp/mv-refuse.json 2>&1; echo "(exit $?)"; jq -c '{outcome, code: .diagnostics[0].code, fix: .diagnostics[0].fix}' /tmp/mv-refuse.json
+```
+
+```output
+(exit 2)
+{"outcome":"refused","code":"RK_NO_SUCH_GROUP","fix":"pass --to an existing group's full name-path (see `group read` or `doc describe`)"}
+```
+
+→ `move` relocates the node, rewrites every reference to it (error-entity paths *and* condition operands, absolute or relative), and re-validates — gated, never a silent dangle. A `group move` re-homes the whole subtree the same way.
+
+## extract — group → include (path-preserving)
+
+`group extract <path> --reference <id>` lifts a subtree into its own sub-model and re-mounts it **at the same name**, so every path is preserved — references into the subtree keep resolving without any condition being rewritten. It writes **two** files: the slimmed base and `<reference>.dm.json` beside it. On `order-aggregates` (which has a `/Order/BillingAddress` subgroup with its own rule):
 
 ```bash
 mkdir -p /tmp/struct2-ext && cp cli/src/test/resources/models/order-aggregates.dm.json /tmp/struct2-ext/order.dm.json && echo "ready: order-aggregates in /tmp/struct2-ext"

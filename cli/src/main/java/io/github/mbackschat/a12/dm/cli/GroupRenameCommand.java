@@ -25,15 +25,14 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
- * {@code dmtool group rename <groupPath> --to <newName>} — a Tier-2 safe rename (CLI-SPEC §6). It re-homes
- * the group and every descendant (their id-paths move in step; rules inside the subtree, referencing
- * relatively, keep working). The safety gate refuses when any element in the subtree is referenced from
- * <b>outside</b> it ({@code RK_REFERENCED}) — that external reference would dangle — or the new name
- * collides ({@code RK_NAME_EXISTS}). The descendant check is the point: a rule referencing a child field
- * (not the group) must still block.
+ * {@code dmtool group rename <groupPath> --to <newName>} — a reference-preserving rename (CLI-SPEC §6). It
+ * renames the group and re-homes every descendant (their id-paths move in step; an internal relative-pathed
+ * rule travels intact). The safety gate runs first: a new name already taken by a sibling is <b>refused</b>
+ * ({@code RK_NAME_EXISTS}). Only when free does it rewrite every reference into the subtree to its new path
+ * (the kernel's {@code MoveSupportDM}) and rename the group; the result is kernel-revalidated.
  */
 @Command(name = "rename", mixinStandardHelpOptions = true,
-        description = "Rename a group (re-homing its subtree); an externally-referenced subtree (or a taken name) is refused.")
+        description = "Rename a group (re-homing its subtree); references are rewritten (a taken name is refused).")
 final class GroupRenameCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

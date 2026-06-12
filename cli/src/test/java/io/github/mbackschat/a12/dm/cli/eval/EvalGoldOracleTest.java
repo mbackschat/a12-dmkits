@@ -21,10 +21,12 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.mbackschat.a12.dm.adapter.ReadResult;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.adapter.ReferenceRewriter;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
@@ -34,6 +36,7 @@ import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.TreeSet;
 
 /**
@@ -112,9 +115,9 @@ class EvalGoldOracleTest {
             // Mixed `apply` session: running the gold op-list on one EditSession re-binds at the single gate
             // AND the expected field + rule are present (the north-star read→edit→write flow).
             case "session" -> assertSessionGoldValidates(task, model, taskFile);
-            // Refactor (rename) is gated by the Phase-4 rename engine; its task carries status:deferred (skipped above).
-            case "refactor" -> org.junit.jupiter.api.Assumptions.assumeTrue(false,
-                    taskFile.getFileName() + ": refactor backbone activates with the rename engine (Phase 4)");
+            // Refactor (rename/move): rewrite references (the kernel's MoveSupportDM) + relocate the
+            // declaration, re-bind, and assert the new path exists while the old is gone.
+            case "refactor" -> assertRefactorGoldValidates(task, model, taskFile);
             default -> fail(taskFile.getFileName() + " has unknown family: " + task.path("family").asText());
         }
     }
@@ -243,6 +246,46 @@ class EvalGoldOracleTest {
             assertTrue(BoundModel.ofJson(session.toJson(), resolver).fieldAt(expect).isPresent(),
                     () -> taskFile.getFileName() + " expected field " + expect + " to exist after the edit");
         }
+    }
+
+    /**
+     * A refactor gold (e.g. {@code field rename}): rewrite every reference via the kernel's
+     * {@code MoveSupportDM} ({@code adapter.ReferenceRewriter}), apply the declaration rename/move, assert
+     * the result re-binds kernel-valid, and that the new path now exists while the old is gone. The re-bind
+     * is the real test — a reference left dangling at the old path would make the kernel reject. Applied via
+     * {@link ModelDocument} + the rewriter (mirroring the CLI verb), not a bare {@link EditSession}, because
+     * the reference-rewriting engine lives in the adapter module (which {@code core}/{@code EditSession}
+     * cannot depend on); a bare rename would dangle the referrers.
+     */
+    private static void assertRefactorGoldValidates(JsonNode task, String model, Path taskFile) {
+        JsonNode gold = task.get("gold");
+        var resolver = resolverFor(task);
+        String op = gold.get("op").asText();
+        String oldPath = gold.get("field").asText();
+        String to = gold.get("to").asText();
+        String result;
+        try {
+            result = switch (op) {
+                case "field rename" -> {
+                    String newPath = oldPath.substring(0, oldPath.lastIndexOf('/') + 1) + to;
+                    yield ModelDocument.read(ReferenceRewriter.rewriteReferences(model, Map.of(oldPath, newPath)))
+                            .renameField(oldPath, to).validate(resolver).toJson();
+                }
+                default -> {
+                    fail(taskFile.getFileName() + " unsupported refactor op: " + op);
+                    yield null;
+                }
+            };
+        } catch (ModelConsistencyException e) {
+            fail(taskFile.getFileName() + " refactor gold must re-bind (kernel-accept), got: " + e.getMessage());
+            return;
+        }
+        String newPath = gold.get("expect").get("to").asText();
+        ModelDocument after = ModelDocument.read(result);
+        assertTrue(after.fieldPaths().contains(newPath) || after.groupPaths().contains(newPath),
+                () -> taskFile.getFileName() + " expected the renamed path " + newPath + " to exist");
+        assertFalse(after.fieldPaths().contains(oldPath) || after.groupPaths().contains(oldPath),
+                () -> taskFile.getFileName() + " expected the old path " + oldPath + " to be gone");
     }
 
     /**
