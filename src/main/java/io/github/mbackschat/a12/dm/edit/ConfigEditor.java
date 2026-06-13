@@ -38,6 +38,16 @@ public final class ConfigEditor {
         return this;
     }
 
+    /**
+     * Set the allowed-character set the kernel validates field values against: each entry a single
+     * character or a range like {@code " -~"}. Pass nothing to clear the restriction (all characters
+     * allowed). Chains.
+     */
+    public ConfigEditor supportedCharacters(String... chars) {
+        session.setSupportedCharacters(java.util.List.of(chars));
+        return this;
+    }
+
     /** Set the model base year (resolves year-less dates / the BaseYear point-in-time). Chains. */
     public ConfigEditor baseYear(int year) {
         session.setBaseYear(year);

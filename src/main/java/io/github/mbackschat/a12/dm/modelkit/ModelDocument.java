@@ -99,11 +99,16 @@ public final class ModelDocument {
     /** The model-level document configuration (content {@code modelConfig}). */
     public DocConfig config() {
         JsonNode c = root.path("content").path("modelConfig");
+        List<String> supported = new ArrayList<>();
+        for (JsonNode ch : c.path("supportedCharacters")) {
+            supported.add(ch.asText());
+        }
         return new DocConfig(
                 c.path("decimalSeparator").asText(),
                 c.path("timeZone").asText(),
                 c.path("conditionLanguage").path("code").asText(),
-                c.path("fieldRefByShortNameAllowed").asBoolean());
+                c.path("fieldRefByShortNameAllowed").asBoolean(),
+                List.copyOf(supported));
     }
 
     /** The ids of the reusable type definitions declared on the model, in document order. */
@@ -368,6 +373,21 @@ public final class ModelDocument {
     /** Allow (or forbid) short-name field references where unique — the {@code modelConfig} flag. */
     public ModelDocument setFieldRefByShortNameAllowed(boolean allowed) {
         modelConfig().put("fieldRefByShortNameAllowed", allowed);
+        return this;
+    }
+
+    /**
+     * Set the {@code modelConfig} allowed-character set (the kernel checks string/enum/custom field values
+     * against it). Each entry is a single character or a range like {@code " -~"}; an empty list clears the
+     * restriction (all of Unicode-Plane-0 allowed).
+     */
+    public ModelDocument setSupportedCharacters(List<String> chars) {
+        ObjectNode config = modelConfig();
+        config.remove("supportedCharacters");
+        if (!chars.isEmpty()) {
+            ArrayNode array = config.putArray("supportedCharacters");
+            chars.forEach(array::add);
+        }
         return this;
     }
 
@@ -1037,5 +1057,5 @@ public final class ModelDocument {
 
     /** The model-level document configuration (content {@code modelConfig}). */
     public record DocConfig(String decimalSeparator, String timeZone, String conditionLanguage,
-            boolean fieldRefByShortNameAllowed) {}
+            boolean fieldRefByShortNameAllowed, List<String> supportedCharacters) {}
 }

@@ -54,6 +54,12 @@ final class ConfigModifyCommand extends BaseCommand {
             description = "set a model-level annotation (repeatable), e.g. --annotation owner=permits-team")
     Map<String, String> annotations = new LinkedHashMap<>();
 
+    @ParamKind(ParamKind.Kind.SCALAR)
+    @Option(names = "--supported-character", paramLabel = "<char-or-range>",
+            description = "restrict allowed characters (repeatable): a char or a range like 'A-Z'. "
+                    + "Replaces the whole set; pass none to leave it unchanged. e.g. --supported-character A-Z")
+    java.util.List<String> supportedCharacters = new java.util.ArrayList<>();
+
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the result here instead of in place (overwriting the model)")
     String outputPath;
@@ -71,9 +77,9 @@ final class ConfigModifyCommand extends BaseCommand {
             return fail("pass -m <model.json> (before or after the verb)");
         }
         if (decimalSeparator == null && timeZone == null && conditionLanguage == null
-                && labels.isEmpty() && annotations.isEmpty()) {
-            return fail("nothing to change — pass at least one of "
-                    + "--decimal-separator, --time-zone, --condition-language, --label, --annotation");
+                && labels.isEmpty() && annotations.isEmpty() && supportedCharacters.isEmpty()) {
+            return fail("nothing to change — pass at least one of --decimal-separator, --time-zone, "
+                    + "--condition-language, --label, --annotation, --supported-character");
         }
         String modelJson;
         try {
@@ -113,6 +119,10 @@ final class ConfigModifyCommand extends BaseCommand {
                 doc.setModelAnnotation(name, value);
                 changed.put("annotation." + name, value);
             });
+            if (!supportedCharacters.isEmpty()) {
+                doc.setSupportedCharacters(supportedCharacters);
+                changed.put("supportedCharacters", String.join(" ", supportedCharacters));
+            }
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("config", "modify", "the config change is rejected by the kernel", e);

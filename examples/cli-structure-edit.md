@@ -784,6 +784,7 @@ bin/dmtool -m /tmp/struct2-cfg.json config read
     "timeZone" : "Europe/Berlin",
     "conditionLanguage" : "en_US",
     "fieldRefByShortNameAllowed" : true,
+    "supportedCharacters" : [ ],
     "locales" : [ "en_US", "de_DE" ]
   },
   "diagnostics" : [ ],
@@ -820,7 +821,7 @@ bin/dmtool -m /tmp/struct2-cfg.json config read | jq -c ".data"
 ```
 
 ```output
-{"decimalSeparator":",","timeZone":"Europe/Berlin","conditionLanguage":"en_US","fieldRefByShortNameAllowed":true,"locales":["en_US","de_DE"]}
+{"decimalSeparator":",","timeZone":"Europe/Berlin","conditionLanguage":"en_US","fieldRefByShortNameAllowed":true,"supportedCharacters":[],"locales":["en_US","de_DE"]}
 ```
 
 → The comma stuck; the other settings are untouched. (`config modify` also takes `--time-zone` and `--condition-language`; at least one of the three is required.) Note `locales: ["en_US", "de_DE"]` — this model is **bilingual**, so a new rule or computation must carry both an `en_US` and a `de_DE` message.

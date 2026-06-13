@@ -295,6 +295,7 @@ dmtool -m order.dm.json field add --group /Order --name LoyaltyPoints --kind NUM
 dmtool -m order.dm.json field add fee-spec.json   # rich: per-kind config + metadata (unit/pattern/suggestions/…) — see `schema field add`
 dmtool -m order.dm.json group add --parent /Order --name Shipping
 dmtool -m order.dm.json typedef add … ; dmtool -m order.dm.json config modify --decimal-separator "," --label en_US="Customer Order"
+dmtool -m order.dm.json config modify --supported-character A-Z --supported-character 0-9   # restrict the allowed-character set (runtime-enforced)
 dmtool -m order.dm.json rule modify /Order/SomeRule --severity WARNING --message en_US="…"   # severity/message edit, condition untouched
 
 # Refactor — structural & safety-gated. typedef rename repoints every using field; extract factors shared-type fields out:

@@ -46,10 +46,12 @@ public final class DocumentModelDraft {
     private final Integer baseYear;
     private final Map<String, String> labels;
     private final List<ElementDraft.Annotation> annotations;
+    private final List<String> supportedCharacters;
 
     private DocumentModelDraft(String id, List<String> locales, List<Include> includes,
             List<TypeDefDecl> typeDefs, List<ElementDraft.Group> rootGroups, Integer baseYear,
-            Map<String, String> labels, List<ElementDraft.Annotation> annotations) {
+            Map<String, String> labels, List<ElementDraft.Annotation> annotations,
+            List<String> supportedCharacters) {
         this.id = id;
         this.locales = locales;
         this.includes = includes;
@@ -58,6 +60,7 @@ public final class DocumentModelDraft {
         this.baseYear = baseYear;
         this.labels = labels;
         this.annotations = annotations;
+        this.supportedCharacters = supportedCharacters;
     }
 
     /** A reusable named type, declared once in {@code content.typeDefinitions} and referenced by fields. */
@@ -115,6 +118,11 @@ public final class DocumentModelDraft {
         config.put("timeZone", "Europe/Berlin");
         config.putObject("conditionLanguage").put("code", locales.get(0));
         config.put("fieldRefByShortNameAllowed", true);
+        if (!supportedCharacters.isEmpty()) {
+            // the allowed-character set: each entry a char or a range like " -~"; empty = all of Unicode-Plane-0
+            ArrayNode chars = config.putArray("supportedCharacters");
+            supportedCharacters.forEach(chars::add);
+        }
 
         checkTypeDefReferences();
         if (!typeDefs.isEmpty()) {
@@ -390,6 +398,7 @@ public final class DocumentModelDraft {
         private final List<ElementDraft.Group> rootGroups = new ArrayList<>();
         private final Map<String, String> labels = new LinkedHashMap<>();
         private final List<ElementDraft.Annotation> annotations = new ArrayList<>();
+        private final List<String> supportedCharacters = new ArrayList<>();
         private Integer baseYear;
 
         private Builder(String id) {
@@ -420,6 +429,16 @@ public final class DocumentModelDraft {
         /** Add a declared locale (e.g. {@code "en_US"}); a full {@code language_COUNTRY} code (KERNEL-FINDINGS §13). */
         public Builder locale(String code) {
             locales.add(code);
+            return this;
+        }
+
+        /**
+         * Restrict the {@code modelConfig} allowed-character set: each entry is a single character or a
+         * range like {@code " -~"} (space through tilde). The kernel checks string/enum/custom field
+         * values against this set. Omit (or pass nothing) to allow all of Unicode-Plane-0.
+         */
+        public Builder supportedCharacters(String... chars) {
+            supportedCharacters.addAll(List.of(chars));
             return this;
         }
 
@@ -455,7 +474,7 @@ public final class DocumentModelDraft {
             }
             return new DocumentModelDraft(id, List.copyOf(locales), List.copyOf(includes),
                     List.copyOf(typeDefs), List.copyOf(rootGroups), baseYear,
-                    Map.copyOf(labels), List.copyOf(annotations));
+                    Map.copyOf(labels), List.copyOf(annotations), List.copyOf(supportedCharacters));
         }
     }
 

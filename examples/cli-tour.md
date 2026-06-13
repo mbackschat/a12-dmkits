@@ -491,6 +491,7 @@ bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json config read | jq
   "timeZone": "Europe/Berlin",
   "conditionLanguage": "en_US",
   "fieldRefByShortNameAllowed": true,
+  "supportedCharacters": [],
   "locales": [
     "en_US"
   ]

@@ -15,7 +15,8 @@ import picocli.CommandLine.Command;
 /**
  * {@code dmtool config read} — read the model's document configuration. A read op: the payload rides {@code
  * data} ({@code decimalSeparator}, {@code timeZone}, {@code conditionLanguage}, {@code fieldRefByShortNameAllowed},
- * and {@code locales} — the declared message locales that a rule/computation must each carry a message for).
+ * {@code supportedCharacters} — the allowed-character set, empty = all allowed — and {@code locales}, the
+ * declared message locales that a rule/computation must each carry a message for).
  */
 @Command(name = "read", mixinStandardHelpOptions = true,
         description = "Read the document configuration into `data`.")
@@ -43,6 +44,9 @@ final class ConfigReadCommand extends BaseCommand {
             data.put("timeZone", c.timeZone());
             data.put("conditionLanguage", c.conditionLanguage());
             data.put("fieldRefByShortNameAllowed", c.fieldRefByShortNameAllowed());
+            // The allowed-character set (each entry a char or a range like " -~"); empty = all characters allowed.
+            ArrayNode supported = data.putArray("supportedCharacters");
+            c.supportedCharacters().forEach(supported::add);
             // The declared message locales (header.locales) drive the per-locale-message law
             // (MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING) — surface the full set so an agent can provision a
             // rule/computation message per locale up front. `conditionLanguage` alone doesn't reveal it.

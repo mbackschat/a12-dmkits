@@ -70,7 +70,7 @@ Legend: ✅ supported · ◐ partial · ❌ not yet built.
 | Include constraints (no cycles, single root, locale superset) | ✅ | the kernel's to enforce on expand — the **locale rule pinned**: an include must declare a *superset* of the base's locales (cover every base locale; extra locales are harmless), `modelkit.IncludeConstraintsTest`. Cycles / single-root are likewise kernel-enforced on expand (KERNEL-FINDINGS) |
 | Config: locales, time zone, decimal separator, base year, condition language, model name | ✅ | `ConfigEditor` / `DocConfig` |
 | Config: model **labels**, model-level **annotations** | ✅ | author (`DocumentModelDraft.label/annotation`) + edit (`ConfigEditor.label/annotation`) + **CLI `config modify --label/--annotation`**; kernel reads + round-trips them (`modelkit.ModelHeaderTest`, `cli.ConfigVerbTest`) |
-| Config: **supported characters** (custom allowed-character set) | ❌ | kernel validates against `supportedCharacters`/`characterSet`; not modeled |
+| Config: **supported characters** (custom allowed-character set) | ✅ | `DocumentModelDraft.supportedCharacters(...)` / `ConfigEditor.supportedCharacters(...)` / CLI `config modify --supported-character` → the `modelConfig.supportedCharacters` list (each entry a char or a range like `A-Z`). The kernel **enforces it at runtime** — an out-of-set value fires `ZeichenNichtImZeichensatz` (KERNEL-FINDINGS). `modelkit.SupportedCharactersTest`, `adapter.laws.SupportedCharactersLawsTest` |
 
 ### Composite element templates
 | Capability | Status | Note |
@@ -187,10 +187,12 @@ Attachment and Multi-Select are first-class A12 group **templates** (both presen
 
 ### 3.9 Model-level metadata & niche composition (Tier 3)
 
-- **Model labels** (per-locale) and **model-level annotations** — the header arrays exist but are never populated; add config-editor methods.
-- **Supported characters** (custom allowed-character set) — the kernel validates field values against `supportedCharacters`/`characterSet`; a real validation feature, niche, would need the header slot modeled + a round-trip.
-- **Include repeatability** (mount hardcoded to 1) and **exclude-rules** flag (`excludeRules`) — structural include options we don't expose.
-- **Type-def-only model** — we *resolve* imported type-defs (`ImportedTypeDef`/`TypeDefModel` exist) but can't *author* a model containing only type-defs; a `--typedef-model` creation mode would close it.
+> **Update — partially shipped 2026-06-13.** Model labels/annotations (the completeness batch) and **supported characters** have landed; **include exclude-rules** and the **type-def-only model + import** are in the same on-demand batch. Corrections to the analysis below: the supported-character slot is `modelConfig.supportedCharacters` (not a `characterSet`) and is **runtime-enforced**, not just authored metadata (out-of-set value → `ZeichenNichtImZeichensatz`, KERNEL-FINDINGS); a type-def-only model is just a normal `modelType: "document"` model with `typeDefinitions` and no root groups — there is **no** separate model discriminator — and a consumer pulls them in with a `modelReferences` entry of `purpose: "typeDefinitions"` (the kernel constant `PURPOSE_4_ONLY_TYPE_DEFS`, **not** `"import"`).
+
+- **Model labels** (per-locale) and **model-level annotations** — ✅ shipped (completeness batch): `DocumentModelDraft.label/annotation` + `ConfigEditor.label/annotation` + CLI `config modify --label/--annotation`.
+- **Supported characters** (custom allowed-character set) — ✅ shipped: `modelConfig.supportedCharacters` (each entry a char or a range like `A-Z`), runtime-enforced; `modelkit.SupportedCharactersTest`, `adapter.laws.SupportedCharactersLawsTest`.
+- **Include repeatability** (✅ shipped, completeness batch) and **exclude-rules** flag (`excludeRules`) — structural include options.
+- **Type-def-only model** — author a model containing only type-defs + import them into a consumer (`purpose: "typeDefinitions"`).
 
 **Recommendation: Tier 3, on demand.** Build when a concrete corpus need appears; none blocks current use.
 

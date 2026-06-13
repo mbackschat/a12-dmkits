@@ -188,6 +188,10 @@ public final class EditSession {
         return editStructure(d -> d.setFieldRefByShortNameAllowed(allowed));
     }
 
+    public EditSession setSupportedCharacters(List<String> chars) {
+        return editStructure(d -> d.setSupportedCharacters(chars));
+    }
+
     public EditSession setBaseYear(int year) {
         return editStructure(d -> d.setBaseYear(year));
     }

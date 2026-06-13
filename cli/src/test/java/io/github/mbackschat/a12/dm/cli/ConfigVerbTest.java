@@ -80,6 +80,23 @@ class ConfigVerbTest {
     }
 
     @Test
+    void modifySetsTheSupportedCharacterSet(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "config", "modify",
+                "--supported-character", "A-Z", "--supported-character", "0-9");
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("applied", j.get("outcome").asText());
+        assertEquals("A-Z 0-9", j.path("changed").path("supportedCharacters").asText());
+        // config read surfaces the set back as an array, in order
+        var read = CliTestSupport.run("-m", model.toString(), "config", "read");
+        JsonNode chars = M.readTree(read.out()).path("data").path("supportedCharacters");
+        assertTrue(chars.isArray() && chars.size() == 2, () -> "read surfaces the set: " + read.out());
+        assertEquals("A-Z", chars.get(0).asText());
+        assertEquals("0-9", chars.get(1).asText());
+    }
+
+    @Test
     void modifyRequiresAtLeastOneSetting(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         var res = CliTestSupport.run("-m", model.toString(), "config", "modify");
