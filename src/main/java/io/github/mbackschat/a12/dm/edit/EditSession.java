@@ -206,6 +206,11 @@ public final class EditSession {
         return editStructure(d -> d.addInclude(alias, reference));
     }
 
+    /** Import the type definitions of {@code reference} ({@code purpose: "typeDefinitions"}); merged by id, not mounted (§3.9). */
+    public EditSession addImport(String reference) {
+        return editStructure(d -> d.addImport(reference));
+    }
+
     public EditSession mount(String parentPath, String name, String alias) {
         return editStructure(d -> d.mount(parentPath, name, alias));
     }

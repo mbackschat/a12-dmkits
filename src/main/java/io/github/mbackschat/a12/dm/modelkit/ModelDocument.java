@@ -38,6 +38,9 @@ public final class ModelDocument {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    /** The {@code modelReferences.purpose} value for a type-def import (kernel {@code PURPOSE_4_ONLY_TYPE_DEFS}). */
+    private static final String IMPORT_PURPOSE = "typeDefinitions";
+
     private final ObjectNode root;
 
     private ModelDocument(ObjectNode root) {
@@ -85,11 +88,28 @@ public final class ModelDocument {
         return out;
     }
 
-    /** The declared model includes (header {@code modelReferences}), in document order. */
+    /** The declared model includes (header {@code modelReferences} with {@code purpose: "include"}), in document order. */
     public List<Include> includes() {
         List<Include> out = new ArrayList<>();
         for (JsonNode r : root.path("header").path("modelReferences")) {
-            out.add(new Include(r.path("alias").asText(), r.path("reference").asText()));
+            if (!IMPORT_PURPOSE.equals(r.path("purpose").asText())) {
+                out.add(new Include(r.path("alias").asText(), r.path("reference").asText()));
+            }
+        }
+        return out;
+    }
+
+    /**
+     * The referenced models this one <b>imports type definitions from</b> (header {@code modelReferences}
+     * with {@code purpose: "typeDefinitions"}), in document order — their type-defs merge into this model's
+     * type-def namespace by id at expand. Distinct from {@link #includes()} (mounted structure).
+     */
+    public List<String> typeDefImports() {
+        List<String> out = new ArrayList<>();
+        for (JsonNode r : root.path("header").path("modelReferences")) {
+            if (IMPORT_PURPOSE.equals(r.path("purpose").asText())) {
+                out.add(r.path("reference").asText());
+            }
         }
         return out;
     }
@@ -731,15 +751,35 @@ public final class ModelDocument {
 
     /** Declare a model include: a header {@code modelReference} aliased {@code alias} → {@code reference}. */
     public ModelDocument addInclude(String alias, String reference) {
-        JsonNode refs = root.path("header").path("modelReferences");
-        ArrayNode array = refs.isArray() ? (ArrayNode) refs
-                : ((ObjectNode) root.path("header")).putArray("modelReferences");
-        array.addObject()
+        modelReferences().addObject()
                 .put("alias", alias)
                 .put("modelType", "document")
                 .put("purpose", "include")
                 .put("reference", reference);
         return this;
+    }
+
+    /**
+     * Declare a <b>type-definition import</b>: a header {@code modelReference} with
+     * {@code purpose: "typeDefinitions"} (the kernel constant {@code PURPOSE_4_ONLY_TYPE_DEFS}). The
+     * referenced model's type-defs merge into this model's type-def namespace by id at expand, so a field
+     * can be typed by an imported id with a plain {@code typeDefinitionId} (no alias prefix). The alias is a
+     * label (defaults to {@code reference}); unlike an include, an import is <em>not</em> mounted.
+     */
+    public ModelDocument addImport(String reference) {
+        modelReferences().addObject()
+                .put("alias", reference)
+                .put("modelType", "document")
+                .put("purpose", IMPORT_PURPOSE)
+                .put("reference", reference);
+        return this;
+    }
+
+    /** The header's {@code modelReferences} array, created if absent. */
+    private ArrayNode modelReferences() {
+        JsonNode refs = root.path("header").path("modelReferences");
+        return refs.isArray() ? (ArrayNode) refs
+                : ((ObjectNode) root.path("header")).putArray("modelReferences");
     }
 
     /** Mount a declared include at {@code parentPath} as a group named {@code name} (a {@code modelAlias} group). */

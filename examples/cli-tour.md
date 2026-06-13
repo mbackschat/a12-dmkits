@@ -51,6 +51,7 @@ typedef remove
 typedef rename
 typedef extract
 typedef inline
+typedef import
 include add
 include read
 include remove

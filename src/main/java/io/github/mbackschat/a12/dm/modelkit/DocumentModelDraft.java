@@ -47,11 +47,12 @@ public final class DocumentModelDraft {
     private final Map<String, String> labels;
     private final List<ElementDraft.Annotation> annotations;
     private final List<String> supportedCharacters;
+    private final List<String> typeDefImports;
 
     private DocumentModelDraft(String id, List<String> locales, List<Include> includes,
             List<TypeDefDecl> typeDefs, List<ElementDraft.Group> rootGroups, Integer baseYear,
             Map<String, String> labels, List<ElementDraft.Annotation> annotations,
-            List<String> supportedCharacters) {
+            List<String> supportedCharacters, List<String> typeDefImports) {
         this.id = id;
         this.locales = locales;
         this.includes = includes;
@@ -61,6 +62,7 @@ public final class DocumentModelDraft {
         this.labels = labels;
         this.annotations = annotations;
         this.supportedCharacters = supportedCharacters;
+        this.typeDefImports = typeDefImports;
     }
 
     /** A reusable named type, declared once in {@code content.typeDefinitions} and referenced by fields. */
@@ -72,6 +74,19 @@ public final class DocumentModelDraft {
     /** Start a draft for the model with this id (also its info name). */
     public static Builder named(String id) {
         return new Builder(id);
+    }
+
+    /**
+     * Start a <b>type-def-only</b> model — one that carries only reusable {@code typeDefinitions} and no
+     * structure, meant to be <em>imported</em> by other models ({@link Builder#importTypeDefs(String)} /
+     * {@code typedef import}). It is a normal {@code modelType: "document"} model with an empty root (the
+     * kernel accepts it standalone); declaring a {@link Builder#rootGroup} on it is an error. Add types with
+     * {@link Builder#typeDef}.
+     */
+    public static Builder typeDefModel(String id) {
+        Builder b = new Builder(id);
+        b.typeDefOnly = true;
+        return b;
     }
 
     /** The model id. */
@@ -101,6 +116,14 @@ public final class DocumentModelDraft {
                     .put("modelType", "document")
                     .put("purpose", "include")
                     .put("reference", inc.reference());
+        }
+        for (String importRef : typeDefImports) {
+            // a type-def import: purpose "typeDefinitions" (kernel PURPOSE_4_ONLY_TYPE_DEFS) — merged by id, not mounted
+            refs.addObject()
+                    .put("alias", importRef)
+                    .put("modelType", "document")
+                    .put("purpose", "typeDefinitions")
+                    .put("reference", importRef);
         }
 
         ObjectNode content = root.putObject("content");
@@ -407,6 +430,8 @@ public final class DocumentModelDraft {
         private final Map<String, String> labels = new LinkedHashMap<>();
         private final List<ElementDraft.Annotation> annotations = new ArrayList<>();
         private final List<String> supportedCharacters = new ArrayList<>();
+        private final List<String> typeDefImports = new ArrayList<>();
+        private boolean typeDefOnly;
         private Integer baseYear;
 
         private Builder(String id) {
@@ -456,6 +481,16 @@ public final class DocumentModelDraft {
             return this;
         }
 
+        /**
+         * Import the type definitions of another model ({@code purpose: "typeDefinitions"}): its type-defs
+         * merge into this model's namespace by id, so a {@code typedefField} may reference an imported id.
+         * Unlike {@link #include}, an import is not mounted — it contributes no structure.
+         */
+        public Builder importTypeDefs(String reference) {
+            typeDefImports.add(reference);
+            return this;
+        }
+
         /** Declare a reusable named type; reference it from fields with {@code typedefField(name, id)}. */
         public Builder typeDef(String id, Consumer<TypeDefBuilder> body) {
             TypeDefBuilder b = new TypeDefBuilder();
@@ -466,23 +501,33 @@ public final class DocumentModelDraft {
 
         /** Add a top-level group, populated by {@code body}. */
         public Builder rootGroup(String name, Consumer<GroupBuilder> body) {
+            if (typeDefOnly) {
+                throw new IllegalStateException("a type-def-only model has no root groups; "
+                        + "use DocumentModelDraft.named(...) for a structural model");
+            }
             GroupBuilder group = new GroupBuilder(name);
             body.accept(group);
             rootGroups.add(group.toDraft());
             return this;
         }
 
-        /** Build the immutable draft, rejecting models that can't be valid (no locale / no group). */
+        /** Build the immutable draft, rejecting models that can't be valid (no locale / empty structure). */
         public DocumentModelDraft build() {
             if (locales.isEmpty()) {
                 throw new IllegalStateException("a model needs at least one locale");
             }
-            if (rootGroups.isEmpty()) {
-                throw new IllegalStateException("a model needs at least one root group");
+            if (typeDefOnly) {
+                if (typeDefs.isEmpty()) {
+                    throw new IllegalStateException("a type-def-only model needs at least one type definition");
+                }
+            } else if (rootGroups.isEmpty()) {
+                throw new IllegalStateException("a model needs at least one root group "
+                        + "(or use DocumentModelDraft.typeDefModel(...) for a type-def-only model)");
             }
             return new DocumentModelDraft(id, List.copyOf(locales), List.copyOf(includes),
                     List.copyOf(typeDefs), List.copyOf(rootGroups), baseYear,
-                    Map.copyOf(labels), List.copyOf(annotations), List.copyOf(supportedCharacters));
+                    Map.copyOf(labels), List.copyOf(annotations), List.copyOf(supportedCharacters),
+                    List.copyOf(typeDefImports));
         }
     }
 
@@ -705,6 +750,11 @@ public final class DocumentModelDraft {
 
     /** Referential integrity: every {@code typedefField} must point at a declared {@code typeDef}. */
     private void checkTypeDefReferences() {
+        // when the model imports type-defs from elsewhere, a ref may resolve to an imported id — the local
+        // ids aren't the full set, so defer the check to the kernel's expand-time resolution.
+        if (!typeDefImports.isEmpty()) {
+            return;
+        }
         Set<String> declared = new HashSet<>();
         typeDefs.forEach(d -> declared.add(d.id()));
         rootGroups.forEach(g -> checkTypeDefReferences(g, declared));

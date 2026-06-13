@@ -122,7 +122,7 @@ Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ 
 | `computation` | `add <spec> · read · explain · modify --spec · remove` | rulekit |
 | `field` | `add · read · remove · rename · move` | modelkit |
 | `group` | `add · read · remove · rename · move · extract` *(extract = group→include refactor, §6)* | modelkit |
-| `typedef` | `add · read · remove · rename · extract · inline` *(rename/extract/inline = Tier-1 structural refactors, §6)* | modelkit |
+| `typedef` | `add · read · remove · rename · extract · inline · import` *(rename/extract/inline = Tier-1 structural refactors, §6; `import` declares a `purpose=typeDefinitions` reference — another model's type-defs merge in by id, not mounted)* | modelkit |
 | `include` | `add · read · remove · inline` *(inline = group→include extract inverse, §6)* | modelkit |
 | `config` | `read · modify` | modelkit |
 | *(root meta)* | `manifest · schema · operators · diagnostics · batch · apply` | — |
