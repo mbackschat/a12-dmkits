@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -339,6 +340,21 @@ public final class ModelDocument {
         ArrayNode container = parentPath.isEmpty() ? rootGroups() : containerElements(parentPath);
         ElementDraft.Group group = new ElementDraft.Group(name, repeatability, null, List.of(), List.of());
         container.add(DocumentModelDraft.groupNode(group, parentPath, locales()));
+        return this;
+    }
+
+    /**
+     * Add a <b>Multi-Select</b> group template (FEATURE-GAPS §3.8) named {@code name} under {@code parentPath}
+     * — a repeatable group with one enum/string selection field; {@code body} supplies the field + maxRows
+     * via the same {@link DocumentModelDraft.MultiSelectBuilder} the from-scratch authoring path uses. The
+     * kernel's {@code MultiSelectGroupRule} validates it on the next {@code validate(...)}.
+     */
+    public ModelDocument addMultiSelectGroup(String parentPath, String name,
+            Consumer<DocumentModelDraft.MultiSelectBuilder> body) {
+        DocumentModelDraft.MultiSelectBuilder b = new DocumentModelDraft.MultiSelectBuilder();
+        body.accept(b);
+        ArrayNode container = parentPath.isEmpty() ? rootGroups() : containerElements(parentPath);
+        container.add(DocumentModelDraft.groupNode(b.toGroup(name), parentPath, locales()));
         return this;
     }
 

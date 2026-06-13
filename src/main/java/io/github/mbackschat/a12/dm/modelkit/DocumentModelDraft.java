@@ -178,6 +178,10 @@ public final class DocumentModelDraft {
         writeAnnotations(node, group.annotations());
         ObjectNode body = node.putObject("Group");
         body.put("repeatability", group.repeatability());
+        if (group.usageType() != null) {
+            // the kernel group-template marker (attachment / multi-select), FEATURE-GAPS §3.8
+            body.put("usageType", group.usageType());
+        }
         if (group.indexFieldName() != null) {
             body.put("indexFieldName", group.indexFieldName());
         }
@@ -511,6 +515,17 @@ public final class DocumentModelDraft {
             return this;
         }
 
+        /** Add a top-level <b>Multi-Select</b> group template (FEATURE-GAPS §3.8); see {@link GroupBuilder#multiSelectGroup}. */
+        public Builder multiSelectGroup(String name, Consumer<MultiSelectBuilder> body) {
+            if (typeDefOnly) {
+                throw new IllegalStateException("a type-def-only model has no root groups");
+            }
+            MultiSelectBuilder b = new MultiSelectBuilder();
+            body.accept(b);
+            rootGroups.add(b.toGroup(name));
+            return this;
+        }
+
         /** Build the immutable draft, rejecting models that can't be valid (no locale / empty structure). */
         public DocumentModelDraft build() {
             if (locales.isEmpty()) {
@@ -702,6 +717,18 @@ public final class DocumentModelDraft {
             return this;
         }
 
+        /**
+         * Add a <b>Multi-Select</b> group template (FEATURE-GAPS §3.8): a repeatable group holding one
+         * enum/string selection field. The generator owns the kernel skeleton ({@code usageType},
+         * repeatability, the single-field rule); {@code body} supplies the field + {@code maxRows}.
+         */
+        public GroupBuilder multiSelectGroup(String name, Consumer<MultiSelectBuilder> body) {
+            MultiSelectBuilder b = new MultiSelectBuilder();
+            body.accept(b);
+            elements.add(b.toGroup(name));
+            return this;
+        }
+
         /** Mount an included model here: a group named {@code name} that mounts the include {@code alias}. */
         public GroupBuilder mount(String name, String alias) {
             return mount(name, alias, 1);
@@ -745,6 +772,80 @@ public final class DocumentModelDraft {
             }
             return new ElementDraft.Group(name, repeatability, indexFieldName,
                     List.copyOf(elements), List.copyOf(annotations));
+        }
+    }
+
+    /**
+     * Builds a <b>Multi-Select</b> group template (FEATURE-GAPS §3.8) — a repeatable group holding exactly
+     * one enum/string selection field (each row = one chosen value). The generator owns the kernel skeleton
+     * ({@code usageType: "multi-select"}, repeatability {@code > 1}, the single field, the field's
+     * requiredness, no index field — {@code MultiSelectGroupRule}); the caller supplies the field and
+     * {@code maxRows}. The field's value is required per row by default (the kernel demands a
+     * {@code requirednessConfig}); {@code OPTIONAL} is not a choice here.
+     */
+    public static final class MultiSelectBuilder {
+
+        private String fieldName;
+        private FieldTypeSpec fieldType;
+        private int maxRows = -1;
+        private Requiredness requiredness = Requiredness.REQUIRED;
+        private final List<ElementDraft.Annotation> annotations = new ArrayList<>();
+
+        /** The single selectable field: an enumeration of {@code values} (at least two for a real choice). */
+        public MultiSelectBuilder enumField(String name, String... values) {
+            List<FieldTypeSpec.EnumValue> enumValues = new ArrayList<>();
+            for (String value : values) {
+                enumValues.add(new FieldTypeSpec.EnumValue(value, Map.of()));
+            }
+            this.fieldName = name;
+            this.fieldType = new FieldTypeSpec.EnumSpec(enumValues, List.of());
+            return this;
+        }
+
+        /** The single selectable field: a free-text string. */
+        public MultiSelectBuilder stringField(String name) {
+            this.fieldName = name;
+            this.fieldType = new FieldTypeSpec.StringSpec(null, null, null, null);
+            return this;
+        }
+
+        /** The maximum number of selections (the group's repeatability); must be {@code > 1}. */
+        public MultiSelectBuilder maxRows(int rows) {
+            this.maxRows = rows;
+            return this;
+        }
+
+        /** Each selected row's value is required (the default). */
+        public MultiSelectBuilder required() {
+            this.requiredness = Requiredness.REQUIRED;
+            return this;
+        }
+
+        /** Each selected row's value is required only once the group itself is present. */
+        public MultiSelectBuilder requiredIfParentPresent() {
+            this.requiredness = Requiredness.REQUIRED_IF_PARENT_PRESENT;
+            return this;
+        }
+
+        /** A name/value annotation on the multi-select group. */
+        public MultiSelectBuilder annotation(String name, String value) {
+            annotations.add(new ElementDraft.Annotation(name, value));
+            return this;
+        }
+
+        ElementDraft.Group toGroup(String groupName) {
+            if (fieldName == null) {
+                throw new IllegalStateException(
+                        "a multi-select needs a field — call enumField(...) or stringField(...)");
+            }
+            if (maxRows <= 1) {
+                throw new IllegalStateException(
+                        "a multi-select needs maxRows > 1 (the kernel requires a repeatable group); was " + maxRows);
+            }
+            ElementDraft.Field field =
+                    new ElementDraft.Field(fieldName, fieldType, requiredness, Map.of(), List.of());
+            return new ElementDraft.Group(groupName, maxRows, null, List.of(field),
+                    List.copyOf(annotations), "multi-select");
         }
     }
 

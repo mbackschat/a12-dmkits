@@ -75,8 +75,8 @@ Legend: ✅ supported · ◐ partial · ❌ not yet built.
 ### Composite element templates
 | Capability | Status | Note |
 |---|---|---|
-| **Attachment** group template | ❌ | a first-class A12 group template (`attachment` in the kernel/metamodel); buildable by hand only |
-| **Multi-Select** group template | ❌ | a first-class A12 template (`multiSelect`); buildable by hand only |
+| **Attachment** group template | ❌ | a first-class A12 group template (`usageType: "attachment"`); generator pending (§3.8) |
+| **Multi-Select** group template | ✅ | `multiSelectGroup(...)` / `ModelDocument.addMultiSelectGroup(...)` / CLI `group multiselect` → a `usageType: "multi-select"` repeatable group with one enum/string field; kernel-validated (`MultiSelectGroupRule`). `modelkit.MultiSelectTemplateTest`, `cli.GroupMultiSelectVerbTest` |
 
 ### Analysis & runtime
 | Capability | Status | Note |
@@ -181,6 +181,8 @@ We support `$Field.value$` (`Dsl.fieldValue`). The kernel's error-text parameter
 
 ### 3.8 Composite-element templates — Attachment & Multi-Select (Tier 3)
 
+> **Update — Multi-Select shipped 2026-06-13; Attachment in progress.** Both are `usageType` group templates, **not** field kinds (correcting the "`field add --kind ATTACHMENT`" phrasing below): a group's `usageType` slot (`"attachment"` / `"multi-select"`) makes the kernel validate a canonical composition (`AttachmentGroupRule` / `MultiSelectGroupRule`, both ERROR-severity — so `validate()` is the oracle). The exact contracts are mined + recorded in [KERNEL-FINDINGS](KERNEL-FINDINGS.md). **Multi-Select** landed as `multiSelectGroup(...)` (a repeatable group + one enum/string field; the generator owns the skeleton, the caller supplies the field + `maxRows`) and CLI `group multiselect` (`modelkit.MultiSelectTemplateTest`, `cli.GroupMultiSelectVerbTest`). **Attachment** (the heavier one — 8 fixed fields + 4 mandated rules + `content` config + an `en_US`/`de_DE` condition-language gate) is next. The original analysis stays below.
+
 Attachment and Multi-Select are first-class A12 group **templates** (both present in the kernel/metamodel). modelkit builds them only as hand-assembled plain groups. A `field add --kind ATTACHMENT` / a `multiselect add` generator would emit the canonical template so an agent doesn't reconstruct it from memory.
 
 **Recommendation: Tier 3, sugar.** Nice-to-have generators; the underlying capability already exists. Worth it mainly because the exact field/rule composition is easy to get wrong by hand — **mine that composition from the metamodel/demo**, don't hand-author it.
@@ -215,7 +217,7 @@ Attachment and Multi-Select are first-class A12 group **templates** (both presen
 | 3.5 | Field flags + descriptions | **2** | ✅ 2026-06-13 | metamodels as oracle + kernel read-back | Global/Transient semantics; description/helper slots |
 | 3.6 | `$Field$` / `$#Group$` interpolation | **2** | ✅ 2026-06-13 | kernel message renderer | Completes message authoring |
 | 3.7 | `RuleEditor` severity/message edits | **2** | ✅ 2026-06-13 | — (our deferred marker) | Completes the in-session edit loop |
-| 3.8 | Attachment / Multi-Select templates | **3** | 🔮 not built | metamodels as oracle | Template generators over groups |
+| 3.8 | Attachment / Multi-Select templates | **3** | ◐ Multi-Select ✅ 2026-06-13; Attachment in progress | kernel rules as oracle | `usageType` template generators over groups |
 | 3.9 | Model metadata, include options, type-def-only model | **3** | ✅ 2026-06-13 (labels/annotations, supported-characters, exclude-rules, type-def-only model + import) | metamodels + kernel as oracle | On-demand niche capability — now closed |
 
 **Status (2026-06-13): all of Tier 1 and Tier 2 are shipped** — §3.1 (rename/move, the differentiator), §3.2 (format + EN↔DE), §3.3 (scoped single-rule test), and the full Tier-2 sweep §3.4–§3.7 (the number `unit`/`trait` slot, briefly deferred, landed after a spike — KERNEL-FINDINGS). A follow-on **completeness batch** also closed several §2-inventory items (index-field auto-rules, model labels/annotations, include repeatability, the include locale-superset rule). A further **§3.9 batch (2026-06-13)** closed the remaining niche-composition items: **supported characters** (runtime-enforced), **include exclude-rules/exclude-computations**, and the **type-def-only model + import** (`purpose=typeDefinitions`). Of Tier 3, only **§3.8 templates** (Attachment / Multi-Select) remain on-demand. **CLI exposure (2026-06-13):** the authoring/edit capabilities are now on the `dmtool` CLI too — rich `field add <spec.json>` (§3.4 config + §3.5 metadata, `schema field add`), `rule modify --severity/--message` (§3.7), `config modify --label/--annotation` (F), `include add --repeatability` (D), and the `$Field$`/`$#Group$` message tokens documented on the add schema (§3.6) — so the whole batch is reachable by a cold agent driving the bare CLI, not just the typed library.

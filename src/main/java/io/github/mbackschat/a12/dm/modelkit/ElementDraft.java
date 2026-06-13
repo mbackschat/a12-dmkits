@@ -50,10 +50,19 @@ public sealed interface ElementDraft permits ElementDraft.Field, ElementDraft.Gr
     /**
      * A group; {@code repeatability == 1} is single, {@code > 1} a repeatable list. A repeatable group
      * may carry an {@code indexFieldName} — the direct child field whose value identifies a row (so two
-     * lists can be iterated in lockstep); {@code null} when unset.
+     * lists can be iterated in lockstep); {@code null} when unset. {@code usageType} is the kernel's
+     * group-template marker ({@code "attachment"} / {@code "multi-select"}, FEATURE-GAPS §3.8); {@code null}
+     * for a plain group.
      */
     record Group(String name, int repeatability, String indexFieldName, List<ElementDraft> elements,
-            List<Annotation> annotations) implements ElementDraft {}
+            List<Annotation> annotations, String usageType) implements ElementDraft {
+
+        /** A plain group — no {@code usageType} template marker. */
+        public Group(String name, int repeatability, String indexFieldName, List<ElementDraft> elements,
+                List<Annotation> annotations) {
+            this(name, repeatability, indexFieldName, elements, annotations, null);
+        }
+    }
 
     /**
      * An include mount: a group with no inline elements that carries {@code modelAlias}; on expand the

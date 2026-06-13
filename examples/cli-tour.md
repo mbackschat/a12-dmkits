@@ -40,6 +40,7 @@ field remove
 field rename
 field move
 group add
+group multiselect
 group read
 group remove
 group rename

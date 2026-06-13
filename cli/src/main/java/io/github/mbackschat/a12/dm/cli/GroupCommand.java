@@ -13,9 +13,10 @@ import picocli.CommandLine.Spec;
  * MoveSupportDM) and {@code extract} (group → include).
  */
 @Command(name = "group", mixinStandardHelpOptions = true,
-        description = "Group operations: add, read, remove, rename, move, extract.",
-        subcommands = { GroupAddCommand.class, GroupReadCommand.class, GroupRemoveCommand.class,
-                GroupRenameCommand.class, GroupMoveCommand.class, GroupExtractCommand.class })
+        description = "Group operations: add, multiselect, read, remove, rename, move, extract.",
+        subcommands = { GroupAddCommand.class, GroupMultiSelectCommand.class, GroupReadCommand.class,
+                GroupRemoveCommand.class, GroupRenameCommand.class, GroupMoveCommand.class,
+                GroupExtractCommand.class })
 final class GroupCommand implements Callable<Integer> {
 
     @Spec

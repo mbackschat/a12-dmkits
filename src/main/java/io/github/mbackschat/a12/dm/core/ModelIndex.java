@@ -192,7 +192,12 @@ public final class ModelIndex {
         throw new IllegalArgumentException("not a field: " + path);
     }
 
-    private IGroup group(String path) {
+    /**
+     * The kernel's {@link IGroup} at {@code groupPath} — the typed read-back surface for group-level slots
+     * the silent-ignore deserializer would otherwise hide, e.g. {@code getUsageType()} (the attachment /
+     * multi-select template marker). The group peer of {@link #field}.
+     */
+    public IGroup group(String path) {
         if (require(path) instanceof IGroup group) {
             return group;
         }

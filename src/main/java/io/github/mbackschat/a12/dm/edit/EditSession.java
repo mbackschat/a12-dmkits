@@ -14,6 +14,7 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolve
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
@@ -209,6 +210,12 @@ public final class EditSession {
     /** Import the type definitions of {@code reference} ({@code purpose: "typeDefinitions"}); merged by id, not mounted (§3.9). */
     public EditSession addImport(String reference) {
         return editStructure(d -> d.addImport(reference));
+    }
+
+    /** Add a Multi-Select group template (FEATURE-GAPS §3.8) under {@code parentPath}; see {@link ModelDocument#addMultiSelectGroup}. */
+    public EditSession addMultiSelectGroup(String parentPath, String name,
+            java.util.function.Consumer<DocumentModelDraft.MultiSelectBuilder> body) {
+        return editStructure(d -> d.addMultiSelectGroup(parentPath, name, body));
     }
 
     public EditSession mount(String parentPath, String name, String alias) {
