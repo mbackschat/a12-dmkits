@@ -47,10 +47,9 @@ class CliConformanceMatrixTest {
      * Reasoned debt: a verb whose <em>happy-path</em> demonstration needs a fixture the corpus doesn't have
      * yet. CI-locked + shrinking, like the MVK ledger — the gate still fires for any <em>new</em> verb (it's
      * neither demonstrated nor listed here), and adding a row is a deliberate, reviewed, reasoned act.
+     * <b>Currently empty</b>: every verb is demonstrated in action.
      */
-    static final Map<String, String> DEMONSTRATION_PENDING = Map.of(
-            "typedef inline", "happy path needs a committed typedef-import fixture pair (a model importing another's type defs)",
-            "typedef import", "happy path needs a committed typedef-import fixture pair (a model importing another's type defs)");
+    static final Map<String, String> DEMONSTRATION_PENDING = Map.of();
 
     /** Demonstrated via the verb's own schema input example (CI-executed by SchemaExamplesGuardTest), not verb-examples.json. */
     private static boolean schemaDemonstrated(String verb) {

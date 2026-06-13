@@ -74,20 +74,22 @@ When any of these fails after a kernel bump, [`KERNEL-UPGRADE.md`](KERNEL-UPGRAD
 
 ## CLI self-describing surface & conformance ([`CLI-CONFORMANCE-SPEC.md`](CLI-CONFORMANCE-SPEC.md))
 
-The `dmtool` CLI is the agent's entire interface (the N6 eval drives the bare binary), so it must be **self-describing** — an agent discovers the verbs, their params, and each verb's I/O shape *from the tool* — and **diagnostic** — a misuse returns a structured, corrective envelope, never a bare stack trace or terse exit. These tests enforce both, and most are **derived from the live picocli command tree**, so they can't drift from the actual verbs:
+The `dmtool` CLI is the agent's entire interface (the N6 eval drives the bare binary), so it must be **self-describing** — an agent discovers the verbs, their params, each verb's I/O shape, and a worked example *in action*, all *from the tool* — and **diagnostic** — a misuse returns a structured, corrective envelope, never a bare stack trace or terse exit. These tests enforce both, and most are **derived from the live picocli command tree**, so they can't drift from the actual verbs:
 
 | test | what it pins |
 |---|---|
 | `ManifestVerbTest` | every verb is in `manifest` with a description (`EXPECTED_VERBS` is the canonical set — a rename/removal can't silently drop a verb) |
 | `ManifestTreeTest` | nested `target op` verbs resolve; bare target groups aren't runnable; `-m` is global |
-| `ManifestCompletenessTest` / `ParamKindManifestTest` | every verb is reachable, and each `@ParamKind`-tagged param surfaces its kind in `manifest` (an agent learns "a FIELD_PATH that must exist" vs "a NEW_NAME you choose") |
-| `SchemaVerbTest` | `schema result`/`diagnostic` serve the structures; `schema <target> <op>` gives the directional contract; **every target-first verb's real output conforms to `result.schema.json`** (the F11 drift guard) |
+| **`CliConformanceMatrixTest`** — the per-verb **matrix** | the single **derived** gate (folds the old `ManifestCompletenessTest`): one row per verb, one column per obligation — *described*, *params-described*, *schema-resolves* (every envelope verb's `schema` pointer resolves to real JSON; the non-envelope verbs are a reasoned `CONTRACT_EXEMPT` ledger), and *demonstrated*. No skip — this is exactly how `meta` (no schema pointer) slipped past the old check. A new column codifies the next anti-pattern. |
+| `ParamKindManifestTest` | each `@ParamKind`-tagged param surfaces its kind in `manifest` (an agent learns "a FIELD_PATH that must exist" vs "a NEW_NAME you choose") — spot-checks the disambiguating kinds (`rename --to` = NEW_NAME vs `move --to` = GROUP_PATH) |
+| `SchemaVerbTest` | `schema result`/`diagnostic` serve the structures; `schema <target> <op>` (and `schema <verb>` for an envelope cross-cutting verb like `meta`) gives the directional contract; **every target-first verb's real output conforms to `result.schema.json`** (the F11 drift guard) |
 | `SchemaExamplesGuardTest` | every published schema `examples` block is **CI-executed through the tool** (the `add` rule/computation specs and the `field-add` field spec via `--dry-run`, the `apply`/`batch` frames) or statically conformed (`result`/`diagnostic`) — a stale example can't ship |
+| **`VerbDemonstrationTest`** — the **demonstration** gate | every verb's worked example in `verb-examples.json` (the read-only invocation `manifest` surfaces as the verb's `example`, so a cold agent sees it *in action*) is **executed through the tool** against a fixture and must produce its documented outcome — the "in action" demo can't rot |
 | `RkCodeParityTest` | the single-source `RkCode` registry (served by the `diagnostics` verb) stays bidirectionally in sync — every emitted code is registered, no dead rows |
 | `NotFoundRefusalTest` | a not-found entity-ref on a mutating verb refuses with the structured `RK_NO_SUCH_*`, not a bare error |
 | **`DiagnosticConformanceFuzzTest`** — the conformance **fuzzer** | derived from the live tree, it probes every mutating verb with a **bogus value for each entity-ref param** and asserts a **structured** envelope comes back (a code + a fix), not a bare fail. A new verb can't escape it, and it catches real regressions — e.g. it caught a `rule modify` change whose precondition *ordering* let a missing-rule slip through as a terse "nothing to change" instead of the structured `RK_NO_SUCH_RULE`. |
 
-The bar (CLI-CONFORMANCE-SPEC): a cold agent given only the binary can self-serve. The fuzzer is the active enforcer — so exposing a new authoring/edit verb on the CLI automatically holds it to the self-describing + structured-diagnostic contract.
+The bar (CLI-CONFORMANCE-SPEC): a cold agent given only the binary can self-serve. Two active enforcers make a new verb hold the contract automatically — the **matrix** proves it's fully surfaced (described, contract-discoverable, demonstrated), and the **fuzzer** proves its misuse is structured-diagnosed.
 
 ## Opt-in corpus harnesses (gated, commit nothing)
 
