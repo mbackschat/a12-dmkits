@@ -49,7 +49,7 @@ Legend: ✅ supported · ◐ partial · ❌ not yet built.
 | Capability | Status | Note |
 |---|---|---|
 | Groups, nesting, repeatability + max | ✅ | modelkit groups |
-| Index field (+ auto uniqueness/mandatory rules) | ◐ | repeatable-group keys supported; confirm the auto-rule pair (`RepetitionNotUnique` + mandatory) is emitted |
+| Index field (+ auto uniqueness/mandatory rules) | ✅ | declaring `indexFieldName` is enough — the kernel **auto-generates** the `RepetitionNotUnique` + mandatory rule pair (confirmed empirically, `adapter.laws.IndexFieldLawsTest`; KERNEL-FINDINGS) |
 | Validation rule: code, error field, **level** (Error/Warning/Info), condition, per-locale messages | ✅ | `Rule` / `Severity` |
 | `@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)` | ✅ | DSL directive; `DirectiveLawsTest` |
 | Error-message interpolation `$Field.value$` | ✅ | `Dsl.fieldValue` |

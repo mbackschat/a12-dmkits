@@ -458,6 +458,15 @@ So the language is keyed by **country**, not just language: `Locale.US` (en_US) 
 
 *Consequence for rulekit:* the adapter's translate seam takes rulekit's **`ConditionLanguage`** (EN/DE), not a raw `Locale`, and maps `EN → Locale.US` / `DE → Locale.GERMANY` internally — the silent-German footgun is made unrepresentable at the N8 boundary. *(Locked: `adapter.KernelAdapterFormatTest` — EN must yield English keywords, DE German; a kernel change to the supported-locale set would surface as a German fallback the EN assertion catches.)*
 
+## A group's index field auto-generates its uniqueness + mandatory rules (2026-06-13)
+
+Declaring a repeatable group's **index field** (`indexFieldName`) is all the authoring needed — the kernel **auto-generates** two validation rules for it (no rule a model has to carry), per the kernel-team BA doc (§"Index Fields"):
+
+- **unique within each iteration**: `RepetitionNotUnique(indexField)`;
+- **mandatory when the group is filled**: `GroupFilled(group) And FieldNotFilled(indexField)`.
+
+Confirmed empirically against the runtime: two repeatable rows sharing an index value fire where distinct values don't, and a filled row with an empty index value fires too. Consequence for rulekit: modelkit's `indexField(name)` only emits `indexFieldName` — it must **not** also emit the pair (the kernel would double them). *(Locked: `adapter.laws.IndexFieldLawsTest` — differential, so it doesn't depend on the generated rules' kernel-internal error codes.)*
+
 ## The DM-JSON deserializer ignores unknown field-config keys — a round-trip must read the value *back* (2026-06-13)
 
 The kernel's DM-JSON `JsonMapper` is annotated **`@JsonIgnoreProperties(ignoreUnknown = true)`** (`kernel-md-serializer`). So a misspelled or unsupported field-type key (e.g. `maxFractionDigits` for the real `maxFractionalDigits`, or a guessed `unit`) is **silently dropped** — the model still loads and validates clean, but the slot has *no effect*. Consequence for verifying a new field-config slot (FEATURE-GAPS §3.4): **"emit + load-valid" proves nothing about whether the engine honored the key** — only reading the value back through the kernel's typed field-type API (`INumberType.isZeroNotAllowed()`, `IStringType.getHintList()`, `IEnumerationType.getErrorMessage()`, …) proves it. rulekit's field-config round-trip tests therefore read back via `ModelIndex.fieldType(path)` rather than trusting a clean load. *(Locked: `modelkit.FieldConfigExtrasTest` — every §3.4 slot asserted via the kernel getter, not the emitted JSON.)*
