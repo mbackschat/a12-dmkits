@@ -67,7 +67,7 @@ Legend: ✅ supported · ◐ partial · ❌ not yet built.
 | Include a model under a group; alias/name; resolution (`--include-dir`) | ✅ | `addInclude`/`mount`; `ReferenceResolvers.directory` |
 | Include **repeatability** | ✅ | `mount(name, alias, repeatability)` (author) + `IncludeEditor.mount(parent, name, repeatability)` (edit) — a mount > 1 expands to a repeating sub-form (`modelkit.IncludeRepeatabilityTest`) |
 | Include **exclude-rules** flag | ❌ | `excludeRules` is a metamodel include slot, still not exposed (on-demand) |
-| Include constraints (no cycles, single root, locale superset) | ◐ | enforced by kernel on expand; single-root enforced at build |
+| Include constraints (no cycles, single root, locale superset) | ✅ | the kernel's to enforce on expand — the **locale rule pinned**: an include must declare a *superset* of the base's locales (cover every base locale; extra locales are harmless), `modelkit.IncludeConstraintsTest`. Cycles / single-root are likewise kernel-enforced on expand (KERNEL-FINDINGS) |
 | Config: locales, time zone, decimal separator, base year, condition language, model name | ✅ | `ConfigEditor` / `DocConfig` |
 | Config: model **labels**, model-level **annotations** | ✅ | author (`DocumentModelDraft.label/annotation`) + edit (`ConfigEditor.label/annotation`); kernel reads + round-trips them (`modelkit.ModelHeaderTest`) |
 | Config: **supported characters** (custom allowed-character set) | ❌ | kernel validates against `supportedCharacters`/`characterSet`; not modeled |

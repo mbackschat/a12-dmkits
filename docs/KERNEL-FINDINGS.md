@@ -458,6 +458,15 @@ So the language is keyed by **country**, not just language: `Locale.US` (en_US) 
 
 *Consequence for rulekit:* the adapter's translate seam takes rulekit's **`ConditionLanguage`** (EN/DE), not a raw `Locale`, and maps `EN → Locale.US` / `DE → Locale.GERMANY` internally — the silent-German footgun is made unrepresentable at the N8 boundary. *(Locked: `adapter.KernelAdapterFormatTest` — EN must yield English keywords, DE German; a kernel change to the supported-locale set would surface as a German fallback the EN assertion catches.)*
 
+## An include's locales must be a superset of the base's — not the reverse (2026-06-13)
+
+The kernel's include locale-compatibility rule, pinned by experiment, runs in the direction that's easy to get backwards: **the included model must declare a superset of the base model's locales** — it must *cover* every locale the base declares. Extra locales in the include are harmless.
+
+- base `{en_US}` includes `{en_US, de_DE}` → **loads** (the include over-covers; the extra `de_DE` is ignored).
+- base `{en_US, de_DE}` includes `{en_US}` → **rejected on expand** (the include can't cover `de_DE`).
+
+So a one-line "locale superset" note is ambiguous about direction; the constraint is *include ⊇ base*, enforced by the kernel on expand (not at the modelkit build tier). *(Locked: `modelkit.IncludeConstraintsTest`.)* Cycles and the single-root rule are likewise the kernel's to enforce on expand — modelkit doesn't re-implement them.
+
 ## A group's index field auto-generates its uniqueness + mandatory rules (2026-06-13)
 
 Declaring a repeatable group's **index field** (`indexFieldName`) is all the authoring needed — the kernel **auto-generates** two validation rules for it (no rule a model has to carry), per the kernel-team BA doc (§"Index Fields"):
