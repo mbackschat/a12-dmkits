@@ -137,6 +137,33 @@ public final class ModelDocument {
                 List.copyOf(supported));
     }
 
+    /** The number of validation rules declared anywhere in the element tree (kernel-free count). */
+    public int ruleCount() {
+        return countByType("Rule");
+    }
+
+    /** The number of computations declared anywhere in the element tree (kernel-free count). */
+    public int computationCount() {
+        return countByType("Computation");
+    }
+
+    private int countByType(String type) {
+        int[] count = {0};
+        countByType(root.path("content").path("modelRoot").path("rootGroups"), type, count);
+        return count[0];
+    }
+
+    private static void countByType(JsonNode elements, String type, int[] count) {
+        for (JsonNode el : elements) {
+            if (type.equals(el.path("type").asText())) {
+                count[0]++;
+            }
+            if ("Group".equals(el.path("type").asText())) {
+                countByType(el.path("Group").path("elements"), type, count);
+            }
+        }
+    }
+
     /** The ids of the reusable type definitions declared on the model, in document order. */
     public List<String> typeDefinitionIds() {
         List<String> out = new ArrayList<>();

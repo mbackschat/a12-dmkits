@@ -60,6 +60,7 @@ final class SchemaCommand extends BaseCommand {
 
     /** Read ops whose {@code data} payload has a published schema → surfaced so the agent learns the output shape. */
     static final Map<String, String> DATA_SCHEMA = Map.of(
+            "doc info", "doc-info",
             "doc describe", "describe",
             "doc validate", "validate",
             "rule check", "validate",

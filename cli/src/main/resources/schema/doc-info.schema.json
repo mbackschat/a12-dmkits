@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/doc-info.schema.json",
+  "title": "DocInfo",
+  "description": "Output of `dmtool doc info` — a single model's header dashboard: identity, the super/subtype convention (parsed from the `abstract`/`superTypes`/`subTypes` header annotations), every outbound model reference (an `include` or a type-def import) cross-resolved to its file via --include-dir (default the model's folder; `resolvedPath` is null when unresolved), the remaining (non-convention) model annotations, and COMPACT COUNTS only. The contents those counts summarize live in their own verbs — fields/groups in `doc describe`, rules/computations in `doc read`, the full config in `config read`, declared type-defs in `typedef read`.",
+  "type": "object",
+  "required": ["id", "modelType", "modelVersion", "locales", "abstract", "superTypes", "subTypes",
+    "annotations", "includes", "typedefImports", "counts"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "description": "the model id (header.id)" },
+    "modelType": { "type": "string", "description": "header.modelType — \"document\" for document/type-def models" },
+    "modelVersion": { "type": "string", "description": "the model's schema version (header.modelVersion)" },
+    "label": { "type": "string", "description": "the model's display label (first declared locale); absent if none" },
+    "locales": { "type": "array", "items": { "type": "string" }, "description": "declared locale codes (the message locales a rule/computation must each cover)" },
+    "abstract": { "type": "boolean", "description": "the `abstract` header-annotation convention — a base type, not instantiated directly" },
+    "superTypes": { "type": "array", "items": { "type": "string" }, "description": "model ids declared as supertypes (`superTypes` annotation, comma-split)" },
+    "subTypes": { "type": "array", "items": { "type": "string" }, "description": "model ids declared as subtypes (`subTypes` annotation, comma-split)" },
+    "annotations": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "the model-level header annotations EXCEPT the super/subtype convention keys (those are parsed into abstract/superTypes/subTypes above)"
+    },
+    "includes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/include" },
+      "description": "header includes (mounted sub-models), cross-resolved to files"
+    },
+    "typedefImports": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/import" },
+      "description": "type-def imports (merged by id, not mounted), cross-resolved to files"
+    },
+    "counts": {
+      "type": "object",
+      "required": ["groups", "fields", "rules", "computations", "typeDefinitions"],
+      "additionalProperties": false,
+      "description": "compact element counts (not contents — see the per-facet read verbs)",
+      "properties": {
+        "groups": { "type": "integer" },
+        "fields": { "type": "integer" },
+        "rules": { "type": "integer" },
+        "computations": { "type": "integer" },
+        "typeDefinitions": { "type": "integer", "description": "reusable type-defs this model declares" }
+      }
+    }
+  },
+  "$defs": {
+    "include": {
+      "type": "object",
+      "required": ["alias", "ref", "resolvedPath"],
+      "additionalProperties": false,
+      "properties": {
+        "alias": { "type": "string", "description": "the include alias (how mount groups bind it)" },
+        "ref": { "type": "string", "description": "the referenced model id" },
+        "resolvedPath": { "type": ["string", "null"], "description": "the referenced model's path within the include dir, or null if unresolved" }
+      }
+    },
+    "import": {
+      "type": "object",
+      "required": ["ref", "resolvedPath"],
+      "additionalProperties": false,
+      "properties": {
+        "ref": { "type": "string", "description": "the imported type-def provider model id" },
+        "resolvedPath": { "type": ["string", "null"], "description": "the provider model's path within the include dir, or null if unresolved" }
+      }
+    }
+  }
+}

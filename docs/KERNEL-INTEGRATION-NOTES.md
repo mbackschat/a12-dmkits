@@ -96,7 +96,7 @@ A document model can declare a **super/subtype hierarchy** with other models —
 
 These are just **model-level annotations** the A12 Tools modeler reads to draw/relate the hierarchy; the kernel reads + round-trips them (a `config modify --annotation` value survives the kernel's own serializer) but does not *expand/merge* a supertype's structure into the subtype. **Shared structure is factored separately via `include`** (both Product models `include Product_Common_DM`). A red herring to avoid: the metamodel's field-type **`superType`** (the `String`/`Number`/`Date` family enum category, used by cross-field type checks) is a *different* concept.
 
-**rulekit supports it today, no dedicated feature** — the model-level annotation surface authors the convention directly: `DocumentModelDraft.annotation("superTypes", "…")` / `ConfigEditor.annotation(...)` / CLI `config modify --annotation superTypes=…` (and `abstract`/`subTypes`). Locked by `modelkit.ModelHeaderTest.theModelSuperSubtypeConventionRoundTrips` (the convention survives the kernel round-trip).
+**rulekit supports it today, no dedicated feature** — the model-level annotation surface authors the convention directly: `DocumentModelDraft.annotation("superTypes", "…")` / `ConfigEditor.annotation(...)` / CLI `config modify --annotation superTypes=…` (and `abstract`/`subTypes`). Locked by `modelkit.ModelHeaderTest.theModelSuperSubtypeConventionRoundTrips` (the convention survives the kernel round-trip). It is also surfaced **read-side**: `modelkit.Workspace` parses it (`abstract`/`superTypes`/`subTypes`), so the CLI `doc info` (one model) and `workspace list` (a folder) both report the graph.
 
 ## Lexer terminals — the catalog ↔ grammar parity test (implemented; "deferred" flipped 2026-06-10)
 

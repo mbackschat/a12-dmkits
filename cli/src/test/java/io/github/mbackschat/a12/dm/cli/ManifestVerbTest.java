@@ -24,7 +24,7 @@ class ManifestVerbTest {
 
     // The canonical target-first surface (the legacy flat verbs are hidden aliases, absent from the manifest).
     private static final List<String> EXPECTED_VERBS = List.of(
-            "doc new", "doc validate", "doc describe", "doc read", "doc eval", "doc compute",
+            "doc new", "doc info", "doc validate", "doc describe", "doc read", "doc eval", "doc compute",
             "rule check", "rule read", "rule explain", "rule format", "rule test", "rule add", "rule modify",
             "rule remove", "rule rename",
             "computation add", "computation read", "computation explain", "computation format",

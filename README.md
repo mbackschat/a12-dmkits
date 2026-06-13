@@ -256,6 +256,7 @@ dmtool -m orders.dm.json field add --group /Order --name Reference --kind STRING
 ### Read & understand a model
 
 ```sh
+dmtool -m order.dm.json doc info              # the header dashboard: identity, super/subtypes, includes/imports (resolved to files), counts
 dmtool -m order.dm.json doc describe          # the model card: fields, kinds, enum domains, groups
 dmtool -m order.dm.json doc validate          # run it through the real kernel → {valid, diagnostics[]}
 dmtool -m order.dm.json rule read  /Order/DeliveryNotBeforeOrder    # a rule's condition, as typed JSON

@@ -15,6 +15,7 @@ bin/dmtool manifest | jq -r ".verbs[].verb"
 
 ```output
 doc new
+doc info
 doc validate
 doc describe
 doc read
@@ -505,6 +506,20 @@ bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json config read | jq
 ```
 
 → The document config decides how literals render and resolve: `decimalSeparator: "."` (so `1.5` not `1,5`), `conditionLanguage: "en_US"` (English keywords — `And`, not `Und`), `timeZone` for date arithmetic, and `fieldRefByShortNameAllowed: true` (a condition may name a field by its short name, not just an absolute path). The `locales` are the **declared message locales** — every rule and computation needs a message for *each* (here just `en_US`), so read this before authoring to avoid `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING`. These settings are why the rendered DSL throughout this tour looks the way it does.
+
+## doc info — one model's header dashboard
+
+`doc info` is the model's identity card in a single read: `id`/`modelType`/`modelVersion`, the super/subtype graph (the `abstract`/`superTypes`/`subTypes` convention), and every outbound reference — `include`s and type-def imports — **resolved to its file** (via `--include-dir`, default the model's own folder). It carries *counts*, never contents — the field/rule/config detail stays in `doc describe`/`doc read`/`config read`, so it adds no redundancy. Projected here with `jq`.
+
+```bash
+bin/dmtool -m cli/src/test/resources/models/multifile/app/storefront.dm.json doc info --include-dir cli/src/test/resources/models/multifile | jq -c '.data | {id, includes, counts}'
+```
+
+```output
+{"id":"storefront","includes":[{"alias":"catalog","ref":"catalog","resolvedPath":"lib/catalog.dm.json"}],"counts":{"groups":2,"fields":1,"rules":0,"computations":0,"typeDefinitions":0}}
+```
+
+→ `storefront` resolves its `catalog` include to `lib/catalog.dm.json` (the file to hand `--include-dir`), and the counts orient you — 2 groups, 1 field, no rules/computations — without dumping their contents. This is the single-model peer of `workspace list` below, which does the same across a whole folder.
 
 ## workspace list — what's in a folder of models
 

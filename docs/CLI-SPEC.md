@@ -118,7 +118,7 @@ Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ 
 
 | target | ops | family |
 |---|---|---|
-| `doc` | `describe · validate · export · eval --doc · compute --doc` | (whole document) |
+| `doc` | `new · info · describe · read · validate · export · eval --doc · compute --doc` *(`info` = the header dashboard: identity + super/subtype graph + includes/type-def imports **resolved to files** + compact counts — the one facet no other read verb owns; `--include-dir` resolves, default the model's folder)* | (whole document) |
 | `rule` | `add <spec> · read · explain · check · modify --condition · remove · rename` | rulekit |
 | `computation` | `add <spec> · read · explain · modify --spec · remove` | rulekit |
 | `field` | `add · read · remove · rename · move` | modelkit |

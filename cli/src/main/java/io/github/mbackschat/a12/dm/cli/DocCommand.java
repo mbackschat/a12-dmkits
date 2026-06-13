@@ -11,9 +11,9 @@ import picocli.CommandLine.Spec;
  * A bare {@code dmtool doc} prints its op list (exit 2), like the root; the ops are its subcommands.
  */
 @Command(name = "doc", mixinStandardHelpOptions = true,
-        description = "Whole-document operations: new, validate, describe, read, eval, compute (export keeps artifact mode).",
-        subcommands = { DocNewCommand.class, DocValidateCommand.class, DocDescribeCommand.class, DocReadCommand.class,
-                DocEvalCommand.class, DocComputeCommand.class })
+        description = "Whole-document operations: new, info, validate, describe, read, eval, compute (export keeps artifact mode).",
+        subcommands = { DocNewCommand.class, DocInfoCommand.class, DocValidateCommand.class, DocDescribeCommand.class,
+                DocReadCommand.class, DocEvalCommand.class, DocComputeCommand.class })
 final class DocCommand implements Callable<Integer> {
 
     @Spec
