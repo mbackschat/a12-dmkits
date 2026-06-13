@@ -16,7 +16,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The document-model-version load policy (the user's tolerance ask): the kernel is the authority on
- * compatibility, and {@code doc validate} <b>classifies</b> its verdict — a stable, machine-detectable
+ * compatibility, and {@code model validate} <b>classifies</b> its verdict — a stable, machine-detectable
  * {@code RK_MODEL_VERSION_INCOMPATIBLE} on the fail-fast case and a tolerant INFO {@code RK_MODEL_VERSION_SKEW}
  * when an older same-major model is accepted. The kernel's compatibility rule is probed + locked in
  * {@code KERNEL-FINDINGS}; here we lock rulekit's classification of it.
@@ -46,7 +46,7 @@ class ModelVersionPolicyTest {
     @Test
     void referenceVersionRaisesNoVersionDiagnostic(@TempDir Path dir) throws Exception {
         Path model = withModelVersion(dir, "28.4.0"); // the build's reference
-        var res = CliTestSupport.run("-m", model.toString(), "doc", "validate");
+        var res = CliTestSupport.run("-m", model.toString(), "model", "validate");
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
         assertTrue(j.path("valid").asBoolean());
@@ -57,7 +57,7 @@ class ModelVersionPolicyTest {
     @Test
     void olderSameMajorIsToleratedWithAnExplicitInfo(@TempDir Path dir) throws Exception {
         Path model = withModelVersion(dir, "28.0.0"); // older, same major → kernel accepts
-        var res = CliTestSupport.run("-m", model.toString(), "doc", "validate");
+        var res = CliTestSupport.run("-m", model.toString(), "model", "validate");
         assertEquals(0, res.code(), res.err()); // tolerant: still valid, exit 0
         JsonNode j = M.readTree(res.out());
         assertTrue(j.path("valid").asBoolean(), () -> "older same-major model stays valid: " + res.out());
@@ -67,7 +67,7 @@ class ModelVersionPolicyTest {
     @Test
     void newerOrDifferentMajorFailsFastWithAStableCode(@TempDir Path dir) throws Exception {
         Path model = withModelVersion(dir, "99.0.0"); // newer → kernel rejects (Version mismatch)
-        var res = CliTestSupport.run("-m", model.toString(), "doc", "validate");
+        var res = CliTestSupport.run("-m", model.toString(), "model", "validate");
         assertEquals(1, res.code(), () -> "fail-fast: invalid, exit 1: " + res.out());
         JsonNode j = M.readTree(res.out());
         assertFalse(j.path("valid").asBoolean());

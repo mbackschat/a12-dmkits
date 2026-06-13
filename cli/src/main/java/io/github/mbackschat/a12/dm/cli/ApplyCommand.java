@@ -592,7 +592,7 @@ final class ApplyCommand extends BaseCommand {
             diagnostics.add(Diagnostic.precheck(Optional.empty(), e.getMessage(),
                     new Diagnostic.Where((String) null, Optional.empty()), Optional.empty(), Optional.empty()));
         }
-        return new ResultEnvelope("doc", "validate", ResultEnvelope.Outcome.REJECTED,
+        return new ResultEnvelope("model", "validate", ResultEnvelope.Outcome.REJECTED,
                 "the terminal kernel gate rejected the sequence — rolled back", null, null, diagnostics, false, false, null);
     }
 }

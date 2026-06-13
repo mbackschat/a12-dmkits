@@ -62,7 +62,7 @@ wrote /tmp/dmver-28.0.0.json (older, same major) and /tmp/dmver-99.0.0.json (new
 **Tolerant** — the older same-major model still validates (`valid:true`, exit 0), and the difference is made explicit as an informational `RK_MODEL_VERSION_SKEW`:
 
 ```bash
-bin/dmtool -m /tmp/dmver-28.0.0.json doc validate | jq -c '{valid, diagnostics: [.diagnostics[] | {severity, code}]}'
+bin/dmtool -m /tmp/dmver-28.0.0.json model validate | jq -c '{valid, diagnostics: [.diagnostics[] | {severity, code}]}'
 
 ```
 
@@ -73,7 +73,7 @@ bin/dmtool -m /tmp/dmver-28.0.0.json doc validate | jq -c '{valid, diagnostics: 
 **Fail-fast** — a newer model the kernel can't load is rejected (`valid:false`, exit 1); rulekit codes the kernel's version-mismatch as `RK_MODEL_VERSION_INCOMPATIBLE` so an agent can branch on it:
 
 ```bash
-bin/dmtool -m /tmp/dmver-99.0.0.json doc validate > /tmp/dmver-out.json; echo "exit=$?"
+bin/dmtool -m /tmp/dmver-99.0.0.json model validate > /tmp/dmver-out.json; echo "exit=$?"
 jq -c '{valid, diagnostics: [.diagnostics[] | {severity, code, summary}]}' /tmp/dmver-out.json
 
 ```

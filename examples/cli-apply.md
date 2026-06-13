@@ -102,8 +102,8 @@ bin/dmtool -m /tmp/apply-atomic.dm.json apply /tmp/apply-atomic-ops.json
 → `committed: true`, `written: true` (`output` names the file) — the **whole sequence** passed the one terminal kernel gate and was written atomically. Note each `result` is `outcome: "staged"`, **not** `applied`: a per-op edit is *staged* in the session (`written: false` on each), and only the wrapper's terminal gate commits the lot. `changed.added` and `changed.rule` name what each op staged. The rule references `/Order/Discount` — a field that did not exist when the file was read; it works because op 0 staged it *first* in the same session.
 
 ```bash
-bin/dmtool -m /tmp/apply-atomic.dm.json doc validate | jq -c "{valid, diagnostics}"
-echo "--- field present: $(bin/dmtool -m /tmp/apply-atomic.dm.json doc describe | jq -c "[.data.fields[].path | select(test(\"Discount\"))]")"
+bin/dmtool -m /tmp/apply-atomic.dm.json model validate | jq -c "{valid, diagnostics}"
+echo "--- field present: $(bin/dmtool -m /tmp/apply-atomic.dm.json model describe | jq -c "[.data.fields[].path | select(test(\"Discount\"))]")"
 echo "--- rule present: $(bin/dmtool export /tmp/apply-atomic.dm.json | grep -E "^- rules:")"
 ```
 
@@ -392,8 +392,8 @@ bin/dmtool -m /tmp/apply-refactor.dm.json apply /tmp/apply-refactor-ops.json
 → All three ops `staged`, then `committed: true` / `written: true` — one atomic commit. The **rename** op's `changed.rewroteReferences` lists `/Order/DISCOUNT_NOT_NEGATIVE` — the rule added in op 1 — proving its reference was rewritten from `/Order/Discount` to `/Order/Rebate` as part of the same transaction. The gate ran against the *live* session (it saw the field op 0 had just staged), and validation was deferred to the one terminal gate, exactly like the Local ops.
 
 ```bash
-bin/dmtool -m /tmp/apply-refactor.dm.json doc validate | jq -c "{valid, diagnostics}"
-echo "fields named Discount/Rebate now: $(bin/dmtool -m /tmp/apply-refactor.dm.json doc describe | jq -c "[.data.fields[].path | select(test(\"Discount|Rebate\"))]")"
+bin/dmtool -m /tmp/apply-refactor.dm.json model validate | jq -c "{valid, diagnostics}"
+echo "fields named Discount/Rebate now: $(bin/dmtool -m /tmp/apply-refactor.dm.json model describe | jq -c "[.data.fields[].path | select(test(\"Discount|Rebate\"))]")"
 ```
 
 ```output

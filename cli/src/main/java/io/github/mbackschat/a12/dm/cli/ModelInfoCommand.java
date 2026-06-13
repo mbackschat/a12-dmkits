@@ -17,20 +17,20 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 
 /**
- * {@code dmtool doc info} — the single-model header dashboard. A read op: the payload rides {@code data} as
+ * {@code dmtool model info} — the single-model header dashboard. A read op: the payload rides {@code data} as
  * the model's <b>identity</b> ({@code id}/{@code modelType}/{@code modelVersion}/{@code label}/{@code
  * locales}/non-convention {@code annotations}), its <b>super/subtype graph</b> (the {@code abstract}/{@code
  * superTypes}/{@code subTypes} convention, parsed), every <b>outbound reference</b> (include / type-def
  * import) <b>cross-resolved to its file</b> via {@code --include-dir} (default the model's folder), and
  * <b>compact counts</b>. It deliberately owns the one facet no other read verb does — identity + references
  * + the super/subtype graph — and emits only <em>counts</em>, never the field/rule/config <em>contents</em>
- * that {@code doc describe} / {@code doc read} / {@code config read} / {@code typedef read} own. Kernel-free
+ * that {@code model describe} / {@code model read} / {@code config read} / {@code typedef read} own. Kernel-free
  * (tolerant of unresolved references). Reuses the {@code workspace list} engine ({@link Workspace}).
  */
 @Command(name = "info", mixinStandardHelpOptions = true,
         description = "Read the model's identity, super/subtype graph, and outbound references "
                 + "(includes/type-def imports, resolved to files) + compact counts into `data`.")
-final class DocInfoCommand extends BaseCommand {
+final class ModelInfoCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -89,7 +89,7 @@ final class DocInfoCommand extends BaseCommand {
         counts.put("computations", doc.computationCount());
         counts.put("typeDefinitions", self.providesTypedefs().size());
 
-        ResultEnvelope env = ResultEnvelope.read("doc", "info", "read model info for " + self.id(),
+        ResultEnvelope env = ResultEnvelope.read("model", "info", "read model info for " + self.id(),
                 true, List.of(), data);
         out().print(env.toJsonString());
         return env.exitCode();

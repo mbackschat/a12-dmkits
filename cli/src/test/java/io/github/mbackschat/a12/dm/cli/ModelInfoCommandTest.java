@@ -17,13 +17,13 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 
 /**
- * {@code dmtool doc info} — the single-model header dashboard: identity + the super/subtype graph + every
+ * {@code dmtool model info} — the single-model header dashboard: identity + the super/subtype graph + every
  * outbound model reference (include / type-def import) <b>resolved to its file</b> via {@code --include-dir}
  * (default the model's folder) + compact counts. The non-redundancy contract is the point — it owns the
  * facet no other read verb does (identity, type-def imports, super/subtypes), emitting only counts (not the
- * field/rule/config <em>contents</em> that `doc describe`/`doc read`/`config read` own).
+ * field/rule/config <em>contents</em> that `model describe`/`model read`/`config read` own).
  */
-class DocInfoCommandTest {
+class ModelInfoCommandTest {
 
     private static final ObjectMapper M = new ObjectMapper();
 
@@ -52,11 +52,11 @@ class DocInfoCommandTest {
     @Test
     void readsIdentitySuperSubtypeAndResolvedReferences(@TempDir Path dir) throws Exception {
         Path movie = catalog(dir);
-        CliTestSupport.Result res = CliTestSupport.run("-m", movie.toString(), "doc", "info");
+        CliTestSupport.Result res = CliTestSupport.run("-m", movie.toString(), "model", "info");
         assertEquals(0, res.code(), res::err);
 
         JsonNode env = M.readTree(res.out());
-        assertEquals("doc", env.path("target").asText());
+        assertEquals("model", env.path("target").asText());
         assertEquals("info", env.path("op").asText());
         assertEquals("read", env.path("outcome").asText());
 
@@ -74,7 +74,7 @@ class DocInfoCommandTest {
     void abstractBaseSurfacesSubtypesImportsAndNonConventionAnnotations(@TempDir Path dir) throws Exception {
         catalog(dir);
         JsonNode data = M.readTree(
-                CliTestSupport.run("-m", dir.resolve("Product_Base.dm.json").toString(), "doc", "info").out()).path("data");
+                CliTestSupport.run("-m", dir.resolve("Product_Base.dm.json").toString(), "model", "info").out()).path("data");
 
         assertTrue(data.path("abstract").asBoolean(), "the abstract base is flagged");
         assertEquals("Product_Movie", data.path("subTypes").path(0).asText());
@@ -90,7 +90,7 @@ class DocInfoCommandTest {
     void countsAreCompactAndIncludeRulesAndComputations(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRuleAndComputation(dir); // 1 rule + 1 computation
         JsonNode counts = M.readTree(
-                CliTestSupport.run("-m", model.toString(), "doc", "info").out()).path("data").path("counts");
+                CliTestSupport.run("-m", model.toString(), "model", "info").out()).path("data").path("counts");
         assertEquals(1, counts.path("rules").asInt());
         assertEquals(1, counts.path("computations").asInt());
         assertTrue(counts.path("groups").asInt() >= 1 && counts.path("fields").asInt() >= 1, "structural counts present");

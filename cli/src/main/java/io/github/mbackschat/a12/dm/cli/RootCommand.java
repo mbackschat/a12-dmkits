@@ -21,7 +21,8 @@ import picocli.CommandLine.Spec;
         synopsisSubcommandLabel = "<target> <op>",
         description = "Typed, model-aware authoring & edit kit for A12 document models. JSON in / JSON out.",
         subcommands = {
-            DocCommand.class,
+            ModelCommand.class,
+            DocTombstoneCommand.class,
             RuleCommand.class,
             ComputationCommand.class,
             FieldCommand.class,

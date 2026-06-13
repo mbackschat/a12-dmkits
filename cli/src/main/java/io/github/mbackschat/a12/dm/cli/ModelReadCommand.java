@@ -19,14 +19,14 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 
 /**
- * {@code dmtool doc read} — the whole-model read-back: every validation rule AND every computation, as two
+ * {@code dmtool model read} — the whole-model read-back: every validation rule AND every computation, as two
  * disjoint sections plus a summary, read into rulekit's typed form (F10). A read op: the read rides {@code
  * data}; Opaque constructs come back verbatim, never an error. The single-element reads are {@code rule
  * read} / {@code computation read}.
  */
 @Command(name = "read", mixinStandardHelpOptions = true,
         description = "Read the whole model — every rule and computation, as DSL — into `data`.")
-final class DocReadCommand extends BaseCommand {
+final class ModelReadCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final DslRenderer EN = new DslRenderer(ConditionLanguage.EN);
@@ -63,7 +63,7 @@ final class DocReadCommand extends BaseCommand {
             summary.put("computations", m.computations().size());
             summary.put("convertedComputations", m.convertedComputations());
             summary.put("fullyTyped", m.fullyTyped());
-            ResultEnvelope env = ResultEnvelope.read("doc", "read",
+            ResultEnvelope env = ResultEnvelope.read("model", "read",
                     "read " + m.rules().size() + " rule(s), " + m.computations().size() + " computation(s)",
                     true, List.of(), data);
             out().print(env.toJsonString());

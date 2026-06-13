@@ -63,7 +63,7 @@ class MoveVerbTest {
         assertTrue(j.path("changed").path("rewroteReferences").toString().contains("/Order/ZipGuard"),
                 "the referrer is reported as rewritten");
         assertTrue(Files.readString(model).contains("/Order/Billing/Zip"), "the field was re-homed");
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "doc", "validate").code(),
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code(),
                 "the reference followed the field, so the model still validates");
     }
 
@@ -81,7 +81,7 @@ class MoveVerbTest {
         assertEquals(0, res.code(), res.err());
         assertEquals("/Order/Archive/Note", M.readTree(res.out()).path("changed").path("to").asText());
         assertTrue(Files.readString(model).contains("/Order/Archive/Note"), "the field was re-homed");
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "doc", "validate").code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code());
     }
 
     @Test
@@ -96,7 +96,7 @@ class MoveVerbTest {
         assertEquals("/Order/Billing/Shipping", j.path("changed").path("to").asText());
         assertTrue(j.path("changed").path("rewroteReferences").toString().contains("/Order/ZipGuard"));
         assertTrue(Files.readString(model).contains("/Order/Billing/Shipping/Zip"), "the subtree was re-homed");
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "doc", "validate").code(),
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code(),
                 "the external reference followed the move, so the model still validates");
     }
 

@@ -26,11 +26,17 @@ public final class Cli {
         PrintWriter outW = new PrintWriter(new AppendableWriter(out), true);
         PrintWriter errW = new PrintWriter(new AppendableWriter(err), true);
         try {
-            return new CommandLine(new RootCommand())
+            CommandLine cli = new CommandLine(new RootCommand())
                     .setOut(outW)
                     .setErr(errW)
-                    .setExpandAtFiles(false) // model paths are plain args, never @argfiles
-                    .execute(args);
+                    .setExpandAtFiles(false); // model paths are plain args, never @argfiles
+            // the renamed `doc` target is a fail-fast tombstone — let any trailing op/flags reach it (so it
+            // can echo the corrected `model …` command) instead of erroring on an unknown subcommand/option
+            CommandLine doc = cli.getSubcommands().get("doc");
+            if (doc != null) {
+                doc.setUnmatchedArgumentsAllowed(true).setUnmatchedOptionsArePositionalParams(true);
+            }
+            return cli.execute(args);
         } finally {
             outW.flush();
             errW.flush();

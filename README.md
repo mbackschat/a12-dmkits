@@ -247,18 +247,18 @@ dmtool --version                      # this build + the kernel it targets (see 
 ### Start a model from scratch
 
 ```sh
-dmtool doc new --id orders --locale en_US --root Order > orders.dm.json   # a new, empty, kernel-valid model
+dmtool model new --id orders --locale en_US --root Order > orders.dm.json   # a new, empty, kernel-valid model
 dmtool -m orders.dm.json field add --group /Order --name Reference --kind STRING   # …then populate it
 ```
 
-`doc new` is the one model-*originating* verb (no `-m` — it makes one); every other verb edits an existing `-m` model. What it emits is kernel-checked, so the next `-m` edit binds.
+`model new` is the one model-*originating* verb (no `-m` — it makes one); every other verb edits an existing `-m` model. What it emits is kernel-checked, so the next `-m` edit binds.
 
 ### Read & understand a model
 
 ```sh
-dmtool -m order.dm.json doc info              # the header dashboard: identity, super/subtypes, includes/imports (resolved to files), counts
-dmtool -m order.dm.json doc describe          # the model card: fields, kinds, enum domains, groups
-dmtool -m order.dm.json doc validate          # run it through the real kernel → {valid, diagnostics[]}
+dmtool -m order.dm.json model info              # the header dashboard: identity, super/subtypes, includes/imports (resolved to files), counts
+dmtool -m order.dm.json model describe          # the model card: fields, kinds, enum domains, groups
+dmtool -m order.dm.json model validate          # run it through the real kernel → {valid, diagnostics[]}
 dmtool -m order.dm.json rule read  /Order/DeliveryNotBeforeOrder    # a rule's condition, as typed JSON
 dmtool -m order.dm.json rule explain /Order/DeliveryNotBeforeOrder  # what it checks + WHEN it fires
 dmtool -m order.dm.json rule format /Order/DeliveryNotBeforeOrder --lang DE  # the kernel's canonical text, switched EN↔DE
@@ -294,9 +294,9 @@ Diagnostics are **corrective**: each carries a stable `code`, a `where`, and a `
 ### Run the rules against real data (not just static checks)
 
 ```sh
-dmtool -m order.dm.json doc eval    --doc order-instance.json   # which rules actually FIRE on this document
+dmtool -m order.dm.json model eval    --doc order-instance.json   # which rules actually FIRE on this document
 dmtool -m order.dm.json rule test /Order/DeliveryNotBeforeOrder --doc order-instance.json  # one rule: fired / passed / suppressed
-dmtool -m sub.dm.json   doc compute --doc sub-instance.json     # what each computed field evaluates to
+dmtool -m sub.dm.json   model compute --doc sub-instance.json     # what each computed field evaluates to
 ```
 
 This is the empirical check a static "is it valid?" can't give — it's how you confirm a rule's *polarity* on concrete data. `rule test` scopes it to one rule with a three-way verdict, distinguishing a genuine **pass** from a rule the kernel **suppressed** because a field it references is formally invalid.
@@ -355,7 +355,7 @@ dmtool -m order.dm.json apply <ops.json>
 ### Works on real, multi-file apps
 
 ```sh
-dmtool -m app/storefront.dm.json doc validate --include-dir lib   # resolves include'd / typedef'd models
+dmtool -m app/storefront.dm.json model validate --include-dir lib   # resolves include'd / typedef'd models
 ```
 
 ### Version & compatibility — tolerant, but explicit
@@ -368,11 +368,11 @@ The [`examples/`](examples/) directory has **verifiable** walkthroughs of every 
 
 | Demo | Shows |
 |---|---|
-| [`cli-tour`](examples/cli-tour.md) | discover + read (`manifest` · `operators` · `diagnostics` · `schema` · `doc describe`/`validate` · `rule read`/`explain`) |
+| [`cli-tour`](examples/cli-tour.md) | discover + read (`manifest` · `operators` · `diagnostics` · `schema` · `model describe`/`validate` · `rule read`/`explain`) |
 | [`cli-edit-loop`](examples/cli-edit-loop.md) | author/modify rules & computations, `batch`, the re-express loop |
 | [`cli-structure-edit`](examples/cli-structure-edit.md) | fields/groups/typedefs/includes/config + the safe-delete gate |
 | [`cli-apply`](examples/cli-apply.md) | the atomic multi-op session + rollback + correctives + in-session refactors |
-| [`cli-runtime`](examples/cli-runtime.md) | `doc eval` / `doc compute` against document instances |
+| [`cli-runtime`](examples/cli-runtime.md) | `model eval` / `model compute` against document instances |
 | [`cli-version`](examples/cli-version.md) | `--version`, `manifest.version`, the model-version policy |
 
 The full CLI contract: [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md).
@@ -425,7 +425,7 @@ Other useful tasks:
 
 ```sh
 ./gradlew :adapter:test                              # the opt-in internal-tier module
-./gradlew :cli:run --args="-m model.json doc validate"   # run the standalone CLI in dev (no packaging)
+./gradlew :cli:run --args="-m model.json model validate"   # run the standalone CLI in dev (no packaging)
 ```
 
 `./gradlew :test` keeps the core build free of the internal tier; see [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md) for the CLI.

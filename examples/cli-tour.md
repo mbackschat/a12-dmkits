@@ -14,13 +14,13 @@ bin/dmtool manifest | jq -r ".verbs[].verb"
 ```
 
 ```output
-doc new
-doc info
-doc validate
-doc describe
-doc read
-doc eval
-doc compute
+model new
+model info
+model validate
+model describe
+model read
+model eval
+model compute
 rule check
 rule read
 rule explain
@@ -74,14 +74,14 @@ diagnostics
 manifest
 ```
 
-→ The surface is **two axes**: a *target* (`doc`, `rule`, `computation`, `field`, `group`, `typedef`, `include`, `config`, `workspace`) crossed with an *op* (`add`/`read`/`modify`/`remove`, plus per-target verbs like `rule check` or `doc validate`). (`workspace` is the cross-model exception — it scans a *directory*, not the `-m` model.) The manifest carries each verb's `target`/`op`, its params (with the op-record `key`), and a `schema` pointer. The tool describes itself — the skill teaches *judgment* (polarity, the traps), not this catalog.
+→ The surface is **two axes**: a *target* (`model`, `rule`, `computation`, `field`, `group`, `typedef`, `include`, `config`, `workspace`) crossed with an *op* (`add`/`read`/`modify`/`remove`, plus per-target verbs like `rule check` or `model validate`). (`workspace` is the cross-model exception — it scans a *directory*, not the `-m` model.) The manifest carries each verb's `target`/`op`, its params (with the op-record `key`), and a `schema` pointer. The tool describes itself — the skill teaches *judgment* (polarity, the traps), not this catalog.
 
 ## The model — `order-ruled`
 
-Rules don't mean anything without the model they guard. This fixture is an **Order**: a customer and product, a quantity and pricing, shipping/billing addresses, a repeating `Items` line-item group, a `Priority` enum, and the two dates a delivery turns on. `doc describe` returns the structure (under `data`); read the relevant fields and their **kinds**.
+Rules don't mean anything without the model they guard. This fixture is an **Order**: a customer and product, a quantity and pricing, shipping/billing addresses, a repeating `Items` line-item group, a `Priority` enum, and the two dates a delivery turns on. `model describe` returns the structure (under `data`); read the relevant fields and their **kinds**.
 
 ```bash
-bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json doc describe | jq -c ".data.fields[] | select(.path|test(\"OrderDate|DeliveryDate|/Quantity\$\")) | {path,kind} + (if .scale!=null then {scale:.scale} else {} end)"
+bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json model describe | jq -c ".data.fields[] | select(.path|test(\"OrderDate|DeliveryDate|/Quantity\$\")) | {path,kind} + (if .scale!=null then {scale:.scale} else {} end)"
 ```
 
 ```output
@@ -92,17 +92,17 @@ bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json doc describe | j
 
 → Two `DATE` fields and a scale-0 `NUMBER`. The kinds drive everything that follows: `DifferenceInDays` only applies because both dates are `DATE`, and `Quantity` being a `NUMBER` is exactly why the empty-reads-as-0 trap surfaces in the `rule check` section.
 
-## doc validate
+## model validate
 
 Runs a model through the **real kernel** consistency check — the same engine that gates persistence. Like every verb it returns the **result envelope**: `outcome`, `ok` (did the op run), `valid` (is the subject model valid), and `diagnostics[]`, with exit 0 valid / 1 invalid.
 
 ```bash
-bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json doc validate
+bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json model validate
 ```
 
 ```output
 {
-  "target" : "doc",
+  "target" : "model",
   "op" : "validate",
   "outcome" : "read",
   "ok" : true,
@@ -339,7 +339,7 @@ bin/dmtool diagnostics RK_NO_SUCH_FIELD
   "severity" : "ERROR",
   "source" : "PRECHECK",
   "meaning" : "no field exists at the given path.",
-  "fix" : "pass an existing field's full name-path (see `doc describe` or `field read`)."
+  "fix" : "pass an existing field's full name-path (see `model describe` or `field read`)."
 }
 ```
 
@@ -365,7 +365,7 @@ bin/dmtool schema result | jq "{required, properties: (.properties | map_values(
     "written"
   ],
   "properties": {
-    "target": "the element family acted on: doc | rule | computation | field | group | typedef | include | config",
+    "target": "the element family acted on: model | rule | computation | field | group | typedef | include | config | workspace",
     "op": "the operation: add | read | modify | remove | validate | check | explain | describe | export | eval | compute | …",
     "outcome": "the execution result class",
     "ok": "the operation executed as asked (outcome in applied | preview | read | staged)",
@@ -411,17 +411,17 @@ bin/dmtool schema rule add | jq '{op, returns, inputKeys: (.input.properties|key
 
 → `returns: "result"` — the same envelope `schema result` describes, so the agent already knows how to read it. The `inputKeys` are the **union** of two specs (`rule add` accepts a rule-spec *or* a computation-spec, chosen by which keys are present): `field`/`condition`/`code` author a rule, `computedField`/`alternatives` a computation. The full schema (omitted by this projection) spells out each key, the `oneOf`, and the required sets — enough to construct a valid `add` payload without trial and error.
 
-## doc read — the whole model
+## model read — the whole model
 
-Where `rule read` renders one rule, `doc read` reads the **entire** model card in one shot: every rule and computation rendered to DSL, plus a roll-up `summary`. The payload rides `data`, like every read.
+Where `rule read` renders one rule, `model read` reads the **entire** model card in one shot: every rule and computation rendered to DSL, plus a roll-up `summary`. The payload rides `data`, like every read.
 
 ```bash
-bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json doc read
+bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json model read
 ```
 
 ```output
 {
-  "target" : "doc",
+  "target" : "model",
   "op" : "read",
   "outcome" : "read",
   "ok" : true,
@@ -473,7 +473,7 @@ bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json field read /Orde
 }
 ```
 
-→ `/Order/OrderDate` is a `DateType` — the kernel's type name (vs the coarser `kind: DATE` from `doc describe`). The type is what lets `DifferenceInDays` take this field as an operand.
+→ `/Order/OrderDate` is a `DateType` — the kernel's type name (vs the coarser `kind: DATE` from `model describe`). The type is what lets `DifferenceInDays` take this field as an operand.
 
 ```bash
 bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json group read /Order/BillingAddress | jq '.data'
@@ -507,12 +507,12 @@ bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json config read | jq
 
 → The document config decides how literals render and resolve: `decimalSeparator: "."` (so `1.5` not `1,5`), `conditionLanguage: "en_US"` (English keywords — `And`, not `Und`), `timeZone` for date arithmetic, and `fieldRefByShortNameAllowed: true` (a condition may name a field by its short name, not just an absolute path). The `locales` are the **declared message locales** — every rule and computation needs a message for *each* (here just `en_US`), so read this before authoring to avoid `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING`. These settings are why the rendered DSL throughout this tour looks the way it does.
 
-## doc info — one model's header dashboard
+## model info — one model's header dashboard
 
-`doc info` is the model's identity card in a single read: `id`/`modelType`/`modelVersion`, the super/subtype graph (the `abstract`/`superTypes`/`subTypes` convention), and every outbound reference — `include`s and type-def imports — **resolved to its file** (via `--include-dir`, default the model's own folder). It carries *counts*, never contents — the field/rule/config detail stays in `doc describe`/`doc read`/`config read`, so it adds no redundancy. Projected here with `jq`.
+`model info` is the model's identity card in a single read: `id`/`modelType`/`modelVersion`, the super/subtype graph (the `abstract`/`superTypes`/`subTypes` convention), and every outbound reference — `include`s and type-def imports — **resolved to its file** (via `--include-dir`, default the model's own folder). It carries *counts*, never contents — the field/rule/config detail stays in `model describe`/`model read`/`config read`, so it adds no redundancy. Projected here with `jq`.
 
 ```bash
-bin/dmtool -m cli/src/test/resources/models/multifile/app/storefront.dm.json doc info --include-dir cli/src/test/resources/models/multifile | jq -c '.data | {id, includes, counts}'
+bin/dmtool -m cli/src/test/resources/models/multifile/app/storefront.dm.json model info --include-dir cli/src/test/resources/models/multifile | jq -c '.data | {id, includes, counts}'
 ```
 
 ```output

@@ -21,7 +21,7 @@ import picocli.CommandLine.Parameters;
  * (F10) and render it as DSL, via the opt-in kernel adapter. A read op: the read-back rides {@code data}
  * ({@code converted}+{@code condition}, or {@code converted:false}+{@code canonicalText}+{@code reason} for
  * an Opaque construct the converter doesn't model — tolerant, never an error). The whole-model read is
- * {@code doc read}; the annotated read is {@code rule explain}.
+ * {@code model read}; the annotated read is {@code rule explain}.
  */
 @Command(name = "read", mixinStandardHelpOptions = true,
         description = "Read a rule's condition back as DSL (typed AST, tolerant of Opaque constructs).")

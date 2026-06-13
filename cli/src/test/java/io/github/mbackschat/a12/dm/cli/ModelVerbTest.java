@@ -18,17 +18,17 @@ import org.junit.jupiter.api.io.TempDir;
  * validate}), the {@code -m/--model} context option accepted <b>before or after</b> the verb, and the
  * uniform result envelope (§3b). Subject validity rides {@code valid}; the op executing rides {@code ok}.
  */
-class DocVerbTest {
+class ModelVerbTest {
 
     private static final ObjectMapper M = new ObjectMapper();
 
     @Test
     void validatesAValidModelWithModelBeforeTheVerb(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
-        var res = CliTestSupport.run("-m", model.toString(), "doc", "validate");
+        var res = CliTestSupport.run("-m", model.toString(), "model", "validate");
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
-        assertEquals("doc", j.get("target").asText());
+        assertEquals("model", j.get("target").asText());
         assertEquals("validate", j.get("op").asText());
         assertEquals("read", j.get("outcome").asText());
         assertTrue(j.get("ok").asBoolean());
@@ -39,7 +39,7 @@ class DocVerbTest {
     @Test
     void acceptsTheModelOptionAfterTheVerbToo(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
-        var res = CliTestSupport.run("doc", "validate", "-m", model.toString());
+        var res = CliTestSupport.run("model", "validate", "-m", model.toString());
         assertEquals(0, res.code(), res.err());
         assertTrue(M.readTree(res.out()).get("valid").asBoolean());
     }
@@ -48,14 +48,14 @@ class DocVerbTest {
     void describeCarriesTheModelCardInData(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
         JsonNode card = M.readTree(CliTestSupport.run("describe", model.toString()).out());
-        var res = CliTestSupport.run("-m", model.toString(), "doc", "describe");
+        var res = CliTestSupport.run("-m", model.toString(), "model", "describe");
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
-        assertEquals("doc", j.get("target").asText());
+        assertEquals("model", j.get("target").asText());
         assertEquals("describe", j.get("op").asText());
         assertEquals("read", j.get("outcome").asText());
         assertTrue(j.get("ok").asBoolean());
-        assertEquals(card, j.get("data"), "doc describe carries the model card in `data`");
+        assertEquals(card, j.get("data"), "model describe carries the model card in `data`");
     }
 
     @Test
@@ -64,7 +64,7 @@ class DocVerbTest {
         // locales so an agent provisions a rule/computation message per locale (the per-locale-message
         // law, MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING) before authoring, not after a failure.
         Path model = CliTestSupport.modelWithRule(dir); // subscription fixture: declares en_US + de_DE
-        var res = CliTestSupport.run("-m", model.toString(), "doc", "describe");
+        var res = CliTestSupport.run("-m", model.toString(), "model", "describe");
         assertEquals(0, res.code(), res.err());
         JsonNode locales = M.readTree(res.out()).path("data").path("locales");
         assertTrue(locales.isArray(), () -> "the model card declares `locales`: " + res.out());
@@ -76,11 +76,11 @@ class DocVerbTest {
     @Test
     void readReturnsTheWholeModelInData(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRuleAndComputation(dir);
-        var res = CliTestSupport.run("-m", model.toString(), "doc", "read");
+        var res = CliTestSupport.run("-m", model.toString(), "model", "read");
         assertEquals(0, res.code(), res.err());
         JsonNode data = M.readTree(res.out()).get("data");
         assertTrue(data.has("rules") && data.has("computations") && data.has("summary"),
-                "doc read carries the whole-model read in `data`");
+                "model read carries the whole-model read in `data`");
     }
 
     @Test
@@ -88,10 +88,10 @@ class DocVerbTest {
         Path model = CliTestSupport.modelWithRule(dir);
         Path docFile = dir.resolve("doc.json");
         Files.writeString(docFile, "{ \"fields\": { \"Subscription\": { \"Addons\": [ { \"MonthlyFee\": \"2000\" } ] } } }");
-        var res = CliTestSupport.run("-m", model.toString(), "doc", "eval", "--doc", docFile.toString());
+        var res = CliTestSupport.run("-m", model.toString(), "model", "eval", "--doc", docFile.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode data = M.readTree(res.out()).get("data");
-        assertTrue(data.has("fired") && data.has("messages"), "doc eval carries fired/messages in `data`");
+        assertTrue(data.has("fired") && data.has("messages"), "model eval carries fired/messages in `data`");
     }
 
     @Test
@@ -99,8 +99,8 @@ class DocVerbTest {
         Path model = CliTestSupport.modelWithRuleAndComputation(dir);
         Path docFile = dir.resolve("compute.json");
         Files.writeString(docFile, "{ \"fields\": { \"Subscription\": { \"Billing\": { \"BaseFee\": \"50\" } } } }");
-        var res = CliTestSupport.run("-m", model.toString(), "doc", "compute", "--doc", docFile.toString());
+        var res = CliTestSupport.run("-m", model.toString(), "model", "compute", "--doc", docFile.toString());
         assertEquals(0, res.code(), res.err());
-        assertTrue(M.readTree(res.out()).get("data").has("computed"), "doc compute carries computed[] in `data`");
+        assertTrue(M.readTree(res.out()).get("data").has("computed"), "model compute carries computed[] in `data`");
     }
 }

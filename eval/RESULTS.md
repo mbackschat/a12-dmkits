@@ -22,17 +22,17 @@ Wired the modelkit/mixed families into `benchmark.workflow.js` (the Layer-2 agen
 
 | family | task | produce → score | k=1 |
 |---|---|---|---|
-| **structure** | `modelkit/01` | `field add` → `applied && expectField exists with gold.kind` (kind via `doc describe`) | **1/1** |
+| **structure** | `modelkit/01` | `field add` → `applied && expectField exists with gold.kind` (kind via `model describe`) | **1/1** |
 | **session** | `mixed/01` | `apply` op-list → `committed && expect.field exists && a rule references it` (`where-used`) | **1/1** |
 | **delete-safety** | `modelkit/02` | `field remove [--cascade]` → `applied && every expectRemoved gone` | **1/1** |
 
-Two scoring bugs caught + fixed by the k=1 runs (the same "read the candidate before recording" lesson): structure first read `field read`'s `data.type` (`NumberType`) instead of `doc describe`'s `kind` (`NUMBER`); session first matched the gold's exact rule name (`/Order/DISCOUNT_NEGATIVE`) but the agent legitimately named its rule `DISCOUNT_NOT_NEGATIVE` (the code is the author's choice) → switched to a name-agnostic `where-used` check. Both then green.
+Two scoring bugs caught + fixed by the k=1 runs (the same "read the candidate before recording" lesson): structure first read `field read`'s `data.type` (`NumberType`) instead of `model describe`'s `kind` (`NUMBER`); session first matched the gold's exact rule name (`/Order/DISCOUNT_NEGATIVE`) but the agent legitimately named its rule `DISCOUNT_NOT_NEGATIVE` (the code is the author's choice) → switched to a name-agnostic `where-used` check. Both then green.
 
 These are **structural** scores by design (D7-style deterministic diff): they confirm the right elements exist / are gone and the model re-binds; they do **not** judge the added rule's polarity (a future rulekit-style verify-by-execution judge could add that). `EvalGoldOracleTest` already validates all these golds (Layer 1). Only **`refactor`/rename** stays deferred (Phase 4). EVAL-SPEC §8d.
 
 ### 2026-06-12 02:58 CEST — T13/T14 fix confirmed + the fixture-corruption artifact closed (sonnet, k=3, targeted)
 
-Targeted re-run after fixing the two T13 traps the 00:27 baseline surfaced, **tool→catalog→skill** (API-POC finding 21): (1) declared `locales` now ride `config read` + the `doc describe` card so an agent provisions a message per locale; (2) `AUTHORING` bare-ref gotchas on the date-range functions in the catalog; (3) the skill's bracket rule generalized to function args + the `MVK_UNEXPECTED_TOKEN` hint corrected to name *too-many* brackets.
+Targeted re-run after fixing the two T13 traps the 00:27 baseline surfaced, **tool→catalog→skill** (API-POC finding 21): (1) declared `locales` now ride `config read` + the `model describe` card so an agent provisions a message per locale; (2) `AUTHORING` bare-ref gotchas on the date-range functions in the catalog; (3) the skill's bracket rule generalized to function args + the `MVK_UNEXPECTED_TOKEN` hint corrected to name *too-many* brackets.
 
 | run | mode | T13 | T14 |
 |---|---|---|---|

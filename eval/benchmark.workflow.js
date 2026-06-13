@@ -155,7 +155,7 @@ do NOT run any verb that persists/writes the model file. Return ONLY JSON:
 function structurePrompt(task) {
   return `You help a business analyst edit an A12 document model's STRUCTURE — its fields and groups. Assume NO
 prior A12/rulekit knowledge; use ONLY:
-  - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <target> <op> --help\` an op's parameters — e.g. \`${CLI} field add --help\` / \`${CLI} group add --help\`; \`${CLI} -m ${MODEL_FILE(task)} doc describe\` shows the current structure and its field kinds)
+  - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <target> <op> --help\` an op's parameters — e.g. \`${CLI} field add --help\` / \`${CLI} group add --help\`; \`${CLI} -m ${MODEL_FILE(task)} model describe\` shows the current structure and its field kinds)
   - the model file: ${MODEL_FILE(task)}${skillBlock()}
 Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). Requirement: "${task.intent}".
 Decide the single structure edit that satisfies it and return ONLY JSON describing the op (discover the exact field-kind set from \`${CLI} field add --help\`):
@@ -166,7 +166,7 @@ function sessionPrompt(task) {
   return `You help a business analyst edit an A12 document model in ONE atomic session — structure AND rules
 together, applied as an ordered list of operations (a later op may reference a field an earlier op added).
 Assume NO prior A12/rulekit knowledge; use ONLY:
-  - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <target> <op> --help\` an op's parameters, \`${CLI} schema apply\` shows the op-record frame, \`${CLI} -m ${MODEL_FILE(task)} doc describe\` the current structure, \`${CLI} operators\` the DSL operators)
+  - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <target> <op> --help\` an op's parameters, \`${CLI} schema apply\` shows the op-record frame, \`${CLI} -m ${MODEL_FILE(task)} model describe\` the current structure, \`${CLI} operators\` the DSL operators)
   - the model file: ${MODEL_FILE(task)}${skillBlock()}
 Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). Requirement: "${task.intent}".
 Build the ordered op-record list that satisfies it; you may PREVIEW with \`apply --dry-run\` (writes nothing) to confirm before answering. Return ONLY JSON — each op-record's fields are the verb's params (manifest / \`schema apply\`):
@@ -176,7 +176,7 @@ Build the ordered op-record list that satisfies it; you may PREVIEW with \`apply
 function deleteSafetyPrompt(task) {
   return `You help a business analyst REMOVE part of an A12 document model. Removing a field that other rules
 reference is REFUSED unless you opt into removing those referrers too. Assume NO prior A12/rulekit knowledge; use ONLY:
-  - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} field remove --help\`, \`${CLI} -m ${MODEL_FILE(task)} doc describe\`, \`${CLI} -m ${MODEL_FILE(task)} where-used <path>\` shows what references a field)
+  - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} field remove --help\`, \`${CLI} -m ${MODEL_FILE(task)} model describe\`, \`${CLI} -m ${MODEL_FILE(task)} where-used <path>\` shows what references a field)
   - the model file: ${MODEL_FILE(task)}${skillBlock()}
 Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). Requirement: "${task.intent}".
 Decide the field to remove and whether to **cascade** (also remove the rules/computations that reference it). Return ONLY JSON:
@@ -539,7 +539,7 @@ const authorJudged = await parallel(candidates.map(r => () => {
     `Judge whether a candidate A12 rule is SEMANTICALLY EQUIVALENT to the reference (gold): do they fire on
 exactly the same documents? Polarity matters — a rule that fires on the opposite case is NOT equivalent.
 Judge WITHIN the field's ACTUAL value domain: two rules that differ only on values the field cannot hold
-ARE equivalent. The model is ${MODEL_FILE(r.task)} — first run \`${CLI} -m ${MODEL_FILE(r.task)} doc describe${INCLUDE_HINT(r.task)}\` to
+ARE equivalent. The model is ${MODEL_FILE(r.task)} — first run \`${CLI} -m ${MODEL_FILE(r.task)} model describe${INCLUDE_HINT(r.task)}\` to
 see field types and enum value sets (e.g. an enum with only three possible values: "X not in {A,B}" then
 equals "X == C"). PATH RESOLUTION: a bare field name resolves against the rule's group AND its ancestor
 groups (the kernel walks UP the hierarchy), so a bare ref and an absolute ref denote the SAME field when
@@ -560,9 +560,9 @@ REQUIRE the presence guard — keep flagging a real difference there.
 VERIFY BY EXECUTION — the kernel is the arbiter; PREFER this over reasoning whenever equivalence hinges on a
 kernel semantic (empty operands, polarity, path resolution). You have the CLI: write 2-4 small documents to
 files (JSON \`{"fields":{…}}\` — a repeatable group is an array of row objects, a field its text value, \`null\`
-= present-but-empty; see \`${CLI} schema doc eval\`) that exercise the fields BOTH conditions reference at their
+= present-but-empty; see \`${CLI} schema model eval\`) that exercise the fields BOTH conditions reference at their
 edges (empty vs filled, a boundary value, each enum value). For each doc run, for the GOLD then the CANDIDATE,
-\`${CLI} -m ${MODEL_FILE(r.task)} doc eval${INCLUDE_HINT(r.task)} --condition '<that condition>' --field <that field> --doc <doc>\`
+\`${CLI} -m ${MODEL_FILE(r.task)} model eval${INCLUDE_HINT(r.task)} --condition '<that condition>' --field <that field> --doc <doc>\`
 and read \`rule.fired\`. They are EQUIVALENT iff \`rule.fired\` matches on EVERY document; a document where they
 differ is the witness that they are NOT. This runs the real kernel, so you needn't recall the empty/polarity rules.
 Reference gold: field="${r.task.gold.field}", condition=${JSON.stringify(r.task.gold.condition)}.
@@ -595,7 +595,7 @@ const compJudged = await parallel(compCandidates.map(r => () => {
 assign the SAME value to the SAME computed field under the SAME conditions? A computation is a computed
 field + an optional common precondition + one or more (precondition, operation) alternatives. Two are
 equivalent iff, for every document, they compute the same value (or both compute nothing). The model is
-${MODEL_FILE(r.task)} — run \`${CLI} -m ${MODEL_FILE(r.task)} doc describe\` to see field types. A difference that
+${MODEL_FILE(r.task)} — run \`${CLI} -m ${MODEL_FILE(r.task)} model describe\` to see field types. A difference that
 is only path notation, conjunct order, or an equivalent value expression is NOT a semantic difference.
 KERNEL FACT (empty operands) — TYPE-DEPENDENT, get this right: an empty operand's effect on a computation
 depends on the operand's TYPE. For a DATE (or other not-evaluated type) the operation computes NO value and
@@ -624,7 +624,7 @@ the gold? A computation is a computed field + an optional common precondition + 
 operation) alternatives. The candidate has already been confirmed (by the kernel) to be a CHANGE from the
 original computation — judge only whether it is the RIGHT change (equivalent to the gold). Two are
 equivalent iff, for every document, they compute the same value (or both compute nothing). The model is
-${MODEL_FILE(r.task)} — run \`${CLI} -m ${MODEL_FILE(r.task)} doc describe\` to see field types. A difference that
+${MODEL_FILE(r.task)} — run \`${CLI} -m ${MODEL_FILE(r.task)} model describe\` to see field types. A difference that
 is only path notation, conjunct order, or an equivalent value expression is NOT a semantic difference.
 KERNEL FACT (empty operands) — TYPE-DEPENDENT: an empty DATE operand makes the operation compute NO value
 (clears), so a presence guard over date operands is REDUNDANT (guarded == unguarded). But an empty NUMBER
@@ -650,12 +650,12 @@ two conditions fire on exactly the same documents (mark the same documents INVAL
 on a VIOLATION — polarity matters; a condition that fires on the OPPOSITE case is NOT equivalent. The candidate
 has already been confirmed by the kernel to be a CHANGE from the original rule — judge only whether it is the
 RIGHT change (semantically equivalent to the gold). The model is ${MODEL_FILE(r.task)} — run \`${CLI} -m
-${MODEL_FILE(r.task)} doc describe\` to see field types and value domains. Judge WITHIN the field's ACTUAL value domain; a
+${MODEL_FILE(r.task)} model describe\` to see field types and value domains. Judge WITHIN the field's ACTUAL value domain; a
 difference that is only path notation or an equivalent value expression is NOT a semantic difference.
 VERIFY BY EXECUTION — the kernel is the arbiter; PREFER it over reasoning when equivalence hinges on a kernel
 semantic (empty operands, polarity). Write 2-4 small documents to files (\`{"fields":{…}}\`; see \`${CLI} schema
-doc eval\`) exercising the referenced fields at their edges; for each, run for the GOLD then the CANDIDATE
-\`${CLI} -m ${MODEL_FILE(r.task)} doc eval${INCLUDE_HINT(r.task)} --condition '<that condition>' --field ${r.task.gold.field} --doc <doc>\`
+model eval\`) exercising the referenced fields at their edges; for each, run for the GOLD then the CANDIDATE
+\`${CLI} -m ${MODEL_FILE(r.task)} model eval${INCLUDE_HINT(r.task)} --condition '<that condition>' --field ${r.task.gold.field} --doc <doc>\`
 and compare \`rule.fired\` — EQUIVALENT iff it matches on every document.
 Reference gold (the intended modified rule): error field "${r.task.gold.field}", condition=${JSON.stringify(r.task.gold.condition)}.
 Candidate condition: ${JSON.stringify(r.out.condition)}.
@@ -679,7 +679,7 @@ const structureScored = await parallel(structureCandidates.map(r => () => {
   const applyCmd = o.op === 'group add'
     ? `${CLI} -m ${MODEL_FILE(r.task)} group add --parent ${o.parent} --name ${o.name} -o ${out}`
     : `${CLI} -m ${MODEL_FILE(r.task)} field add --group ${o.group} --name ${o.name} --kind ${o.kind} -o ${out}`
-  const describeCheck = `${CLI} -m ${out} doc describe | jq -c --arg p '${gold.expectField}' `
+  const describeCheck = `${CLI} -m ${out} model describe | jq -c --arg p '${gold.expectField}' `
     + `'{fieldExists: ([.data.fields[]|select(.path==$p)]|length>0), fieldKind: (([.data.fields[]|select(.path==$p)|.kind][0]) // "")}'`
   return agent(
     `Run these two commands and report the raw facts — do NOT judge, just execute and copy the asked JSON fields.

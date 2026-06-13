@@ -14,13 +14,13 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 
 /**
- * {@code dmtool doc describe} — emit the F9a model card (fields + kinds + enum domains + group
+ * {@code dmtool model describe} — emit the F9a model card (fields + kinds + enum domains + group
  * repeatability) so an agent can orient without reading raw DM-JSON. A read op: the card rides the
  * envelope's {@code data} (CLI-SPEC §3b).
  */
 @Command(name = "describe", mixinStandardHelpOptions = true,
         description = "Emit the model card (fields + kinds + enum domains + group repeatability) in `data`.")
-final class DocDescribeCommand extends BaseCommand {
+final class ModelDescribeCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -36,7 +36,7 @@ final class DocDescribeCommand extends BaseCommand {
         try {
             BoundModel m = BoundModel.ofJson(Files.readString(Path.of(model)), includes.resolverFor(model));
             JsonNode card = MAPPER.readTree(new ModelContext(m).describe().toJson());
-            ResultEnvelope env = ResultEnvelope.read("doc", "describe", "model card", true, List.of(), card);
+            ResultEnvelope env = ResultEnvelope.read("model", "describe", "model card", true, List.of(), card);
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (IOException e) {

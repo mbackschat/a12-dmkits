@@ -20,21 +20,21 @@ cat /tmp/rt-order-violation.json
 { "fields": { "Order": { "OrderDate": "2024-06-01", "DeliveryDate": "2024-05-15" } } }
 ```
 
-## doc eval — which rules fire?
+## model eval — which rules fire?
 
-`doc eval` runs the kernel over the instance and reports, under `data.fired`, the **error codes of every rule that fired** (a rule *fires* when its violation condition evaluates true on this data). `--rule <path>` narrows the report to one stored rule and adds a `data.rule.{name,fired}` verdict for it. The flags come from the CLI itself — no external doc needed.
+`model eval` runs the kernel over the instance and reports, under `data.fired`, the **error codes of every rule that fired** (a rule *fires* when its violation condition evaluates true on this data). `--rule <path>` narrows the report to one stored rule and adds a `data.rule.{name,fired}` verdict for it. The flags come from the CLI itself — no external doc needed.
 
 ```bash
-bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json doc eval --help
+bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json model eval --help
 ```
 
 ```output
-Usage: dmtool doc eval [-hV] [--code=<errorCode>] [--condition=<DSL>]
-                       --doc=<document.json> [--field=<fieldPathInModel>]
-                       [--group=<groupPathInModel>] [--locale=<locale>]
-                       [-m=<model.json>] [--name=<name>]
-                       [--rule=<rulePathInModel>] [--severity=ERROR|WARNING]
-                       [--include-dir=<dir>]...
+Usage: dmtool model eval [-hV] [--code=<errorCode>] [--condition=<DSL>]
+                         --doc=<document.json> [--field=<fieldPathInModel>]
+                         [--group=<groupPathInModel>] [--locale=<locale>]
+                         [-m=<model.json>] [--name=<name>]
+                         [--rule=<rulePathInModel>] [--severity=ERROR|WARNING]
+                         [--include-dir=<dir>]...
 Run the kernel over a document INSTANCE; report which rules fire in `data`
 (runtime).
       --code=<errorCode>     the candidate rule's error code (default: EVAL_DOC)
@@ -42,7 +42,7 @@ Run the kernel over a document INSTANCE; report which rules fire in `data`
                                condition true on a VIOLATION; injected, not
                                persisted
       --doc=<document.json>  the document INSTANCE (field data) — a nested JSON
-                               tree under "fields". See `schema doc eval`.
+                               tree under "fields". See `schema model eval`.
       --field=<fieldPathInModel>
                              the candidate rule's error field as a path INSIDE
                                the model (with --condition)
@@ -70,12 +70,12 @@ Run the kernel over a document INSTANCE; report which rules fire in `data`
 Evaluate the violation instance, narrowed to the date rule:
 
 ```bash
-bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json doc eval --doc /tmp/rt-order-violation.json --rule /Order/DeliveryNotBeforeOrder
+bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json model eval --doc /tmp/rt-order-violation.json --rule /Order/DeliveryNotBeforeOrder
 ```
 
 ```output
 {
-  "target" : "doc",
+  "target" : "model",
   "op" : "eval",
   "outcome" : "read",
   "ok" : true,
@@ -108,12 +108,12 @@ Now the **empirical polarity check** — the same rule, the same model, a *compl
 cat > /tmp/rt-order-ok.json <<'JSON'
 { "fields": { "Order": { "OrderDate": "2024-06-01", "DeliveryDate": "2024-06-15" } } }
 JSON
-bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json doc eval --doc /tmp/rt-order-ok.json --rule /Order/DeliveryNotBeforeOrder
+bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json model eval --doc /tmp/rt-order-ok.json --rule /Order/DeliveryNotBeforeOrder
 ```
 
 ```output
 {
-  "target" : "doc",
+  "target" : "model",
   "op" : "eval",
   "outcome" : "read",
   "ok" : true,
@@ -136,7 +136,7 @@ bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json doc eval --doc /
 
 ## rule test — one rule, three outcomes (fired / passed / suppressed)
 
-`doc eval --rule` answers "did it fire?" — but `fired: false` is **two** different things: the rule was evaluated and *passed*, or it was **never evaluated** because a field it references is formally invalid (the kernel skips a rule whose operand is *unknown*). `rule test` is the rule-first verb that tells them apart, with a three-way `verdict`. First the violation instance from above — the rule fires:
+`model eval --rule` answers "did it fire?" — but `fired: false` is **two** different things: the rule was evaluated and *passed*, or it was **never evaluated** because a field it references is formally invalid (the kernel skips a rule whose operand is *unknown*). `rule test` is the rule-first verb that tells them apart, with a three-way `verdict`. First the violation instance from above — the rule fires:
 
 ```bash
 bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule test /Order/DeliveryNotBeforeOrder --doc /tmp/rt-order-violation.json
@@ -193,7 +193,7 @@ bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule test /Order
 
 → `verdict: suppressed`, **not** `passed` — and `suppressedBy` names the culprit (`/Order/DeliveryDate`, formal code `datumFormatFalsch`). A plain "did it fire" check would have silently reported `false` here and let you believe the order is clean. The three verdicts — `fired` / `passed` / `suppressed` — are the whole point.
 
-## doc eval — a candidate rule, not yet stored
+## model eval — a candidate rule, not yet stored
 
 You can also evaluate a rule that **isn't in the model** — `--condition "<DSL>" --field <path>` injects a one-off candidate (named `EvalDocCandidate` by default, error code `EVAL_DOC`), runs it against the instance, and tells you whether *it* fired. Nothing is persisted; it is the runtime twin of `rule check` (which only asks "is this valid?"). Here the candidate caps quantity at 100, and we feed it an order of 150.
 
@@ -201,12 +201,12 @@ You can also evaluate a rule that **isn't in the model** — `--condition "<DSL>
 cat > /tmp/rt-qty-over.json <<'JSON'
 { "fields": { "Order": { "Quantity": "150" } } }
 JSON
-bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json doc eval --doc /tmp/rt-qty-over.json --condition "[/Order/Quantity] > 100" --field /Order/Quantity --code QTY_CAP
+bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json model eval --doc /tmp/rt-qty-over.json --condition "[/Order/Quantity] > 100" --field /Order/Quantity --code QTY_CAP
 ```
 
 ```output
 {
-  "target" : "doc",
+  "target" : "model",
   "op" : "eval",
   "outcome" : "read",
   "ok" : true,
@@ -233,21 +233,21 @@ bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json doc eval --doc /
 
 → The candidate fired (`QTY_CAP`, `data.rule.fired: true`) on `Quantity = 150`, attributed to the synthetic rule `/Order/EvalDocCandidate`. Drop the quantity below the cap and it would report `fired: false` — same dry-run, no write to the model.
 
-## doc compute — what does a computed field evaluate to?
+## model compute — what does a computed field evaluate to?
 
-`doc compute` is the other runtime read: it runs the model's **computations** over the instance and returns each computed field's **value** under `data.computed`. We switch to the `subscription-computed` model, whose `EffectiveFeeComp` computes `/Subscription/Billing/EffectiveFee` as simply `[BaseFee]` — the effective fee equals the base fee. Give it a base fee and read back the result.
+`model compute` is the other runtime read: it runs the model's **computations** over the instance and returns each computed field's **value** under `data.computed`. We switch to the `subscription-computed` model, whose `EffectiveFeeComp` computes `/Subscription/Billing/EffectiveFee` as simply `[BaseFee]` — the effective fee equals the base fee. Give it a base fee and read back the result.
 
 ```bash
-bin/dmtool -m cli/src/test/resources/models/subscription-computed.dm.json doc compute --help
+bin/dmtool -m cli/src/test/resources/models/subscription-computed.dm.json model compute --help
 ```
 
 ```output
-Usage: dmtool doc compute [-hV] --doc=<document.json> [--locale=<locale>]
-                          [-m=<model.json>] [--include-dir=<dir>]...
+Usage: dmtool model compute [-hV] --doc=<document.json> [--locale=<locale>]
+                            [-m=<model.json>] [--include-dir=<dir>]...
 Run computations over a document INSTANCE; report each computed field's value
 in `data` (read-only).
       --doc=<document.json>  the document INSTANCE (field data) — a nested JSON
-                               tree under "fields". See `schema doc compute`.
+                               tree under "fields". See `schema model compute`.
   -h, --help                 Show this help message and exit.
       --include-dir=<dir>    directory tree(s) holding the included / typedef
                                models to resolve by id (repeatable). Default:
@@ -263,12 +263,12 @@ in `data` (read-only).
 cat > /tmp/rt-sub-filled.json <<'JSON'
 { "fields": { "Subscription": { "Billing": { "BaseFee": "49.90" } } } }
 JSON
-bin/dmtool -m cli/src/test/resources/models/subscription-computed.dm.json doc compute --doc /tmp/rt-sub-filled.json
+bin/dmtool -m cli/src/test/resources/models/subscription-computed.dm.json model compute --doc /tmp/rt-sub-filled.json
 ```
 
 ```output
 {
-  "target" : "doc",
+  "target" : "model",
   "op" : "compute",
   "outcome" : "read",
   "ok" : true,
@@ -294,12 +294,12 @@ Now the **empty-operand** case — the same computation, but `BaseFee` is absent
 cat > /tmp/rt-sub-empty.json <<'JSON'
 { "fields": { "Subscription": { "Billing": { } } } }
 JSON
-bin/dmtool -m cli/src/test/resources/models/subscription-computed.dm.json doc compute --doc /tmp/rt-sub-empty.json
+bin/dmtool -m cli/src/test/resources/models/subscription-computed.dm.json model compute --doc /tmp/rt-sub-empty.json
 ```
 
 ```output
 {
-  "target" : "doc",
+  "target" : "model",
   "op" : "compute",
   "outcome" : "read",
   "ok" : true,
@@ -325,8 +325,8 @@ Two read-only runtime verbs, both `--doc <instance.json>` over a nested `{"field
 
 | verb | question | answer rides | proof shown |
 |------|----------|--------------|-------------|
-| `doc eval` | which rules fire on this data? | `data.fired` (codes) + `data.rule.{name,fired}` with `--rule` | violation fired, compliant did not (same rule, flipped date) |
-| `doc eval --condition/--field` | would *this* candidate fire? | `data.rule.fired` | one-off `QTY_CAP` fired on `Quantity 150`, not persisted |
-| `doc compute` | what does a computed field evaluate to? | `data.computed[].{field,value,outcome}` | `[BaseFee]` = `49.9`; empty operand = `0` (empty-as-0) |
+| `model eval` | which rules fire on this data? | `data.fired` (codes) + `data.rule.{name,fired}` with `--rule` | violation fired, compliant did not (same rule, flipped date) |
+| `model eval --condition/--field` | would *this* candidate fire? | `data.rule.fired` | one-off `QTY_CAP` fired on `Quantity 150`, not persisted |
+| `model compute` | what does a computed field evaluate to? | `data.computed[].{field,value,outcome}` | `[BaseFee]` = `49.9`; empty operand = `0` (empty-as-0) |
 
 Neither verb writes (`written: false`) — they evaluate the *model* against the *instance*, no mutation. The instance carries only the fields a check needs; everything else is absent (and, for numbers, reads as `0`).

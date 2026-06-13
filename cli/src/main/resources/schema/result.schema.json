@@ -7,7 +7,7 @@
   "required": ["target", "op", "outcome", "ok", "summary", "diagnostics", "written"],
   "additionalProperties": false,
   "properties": {
-    "target": { "type": "string", "description": "the element family acted on: doc | rule | computation | field | group | typedef | include | config" },
+    "target": { "type": "string", "description": "the element family acted on: model | rule | computation | field | group | typedef | include | config | workspace" },
     "op": { "type": "string", "description": "the operation: add | read | modify | remove | validate | check | explain | describe | export | eval | compute | …" },
     "outcome": { "type": "string", "enum": ["applied", "preview", "refused", "rejected", "read", "staged"], "description": "the execution result class" },
     "ok": { "type": "boolean", "description": "the operation executed as asked (outcome in applied | preview | read | staged)" },

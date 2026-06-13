@@ -13,22 +13,22 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * {@code doc new} — create a new, empty, kernel-valid document model from scratch (the CLI's one
+ * {@code model new} — create a new, empty, kernel-valid document model from scratch (the CLI's one
  * model-originating verb; every other verb edits an existing {@code -m} model). It prints the model JSON to
  * stdout, or {@code -o} writes it to a file. What it emits is kernel-checked, so the very next `-m` edit binds.
  */
-class DocNewVerbTest {
+class ModelNewVerbTest {
 
     private static final ObjectMapper M = new ObjectMapper();
 
     @Test
     void createsAKernelValidModelToStdout(@TempDir Path dir) throws Exception {
-        CliTestSupport.Result res = CliTestSupport.run("doc", "new", "--id", "orders", "--locale", "en_US", "--root", "Order");
+        CliTestSupport.Result res = CliTestSupport.run("model", "new", "--id", "orders", "--locale", "en_US", "--root", "Order");
         assertEquals(0, res.code(), res::err);
-        // the output IS the model JSON — round-trip it through `doc validate`
+        // the output IS the model JSON — round-trip it through `model validate`
         Path model = dir.resolve("orders.dm.json");
         Files.writeString(model, res.out());
-        CliTestSupport.Result validated = CliTestSupport.run("-m", model.toString(), "doc", "validate");
+        CliTestSupport.Result validated = CliTestSupport.run("-m", model.toString(), "model", "validate");
         assertEquals(0, validated.code(), validated::err);
         assertTrue(M.readTree(validated.out()).path("valid").asBoolean(),
                 () -> "a freshly-created model is kernel-valid: " + validated.out());
@@ -38,18 +38,18 @@ class DocNewVerbTest {
     void writesToFileWithDashO(@TempDir Path dir) throws Exception {
         Path model = dir.resolve("subs.dm.json");
         CliTestSupport.Result res = CliTestSupport.run(
-                "doc", "new", "--id", "subs", "--locale", "en_US", "-o", model.toString());
+                "model", "new", "--id", "subs", "--locale", "en_US", "-o", model.toString());
         assertEquals(0, res.code(), res::err);
         assertTrue(Files.exists(model), "the model file is written");
-        // and the agent can immediately edit it — `doc describe` binds it
-        CliTestSupport.Result describe = CliTestSupport.run("-m", model.toString(), "doc", "describe");
+        // and the agent can immediately edit it — `model describe` binds it
+        CliTestSupport.Result describe = CliTestSupport.run("-m", model.toString(), "model", "describe");
         assertEquals(0, describe.code(), describe::err);
         assertEquals("read", M.readTree(describe.out()).path("outcome").asText());
     }
 
     @Test
     void anInvalidLocaleIsReportedNotSilentlyEmitted() {
-        CliTestSupport.Result res = CliTestSupport.run("doc", "new", "--id", "x", "--locale", "not_a_locale");
+        CliTestSupport.Result res = CliTestSupport.run("model", "new", "--id", "x", "--locale", "not_a_locale");
         assertTrue(res.code() != 0, () -> "an unbuildable model is reported, not emitted: " + res.out() + res.err());
     }
 }

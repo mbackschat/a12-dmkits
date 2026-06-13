@@ -90,8 +90,8 @@ class SchemaVerbTest {
     @Test
     void docInstanceVerbsSurfaceTheDocInputShape() throws Exception {
         // the gap-finder (Option C) found 3/3: `--help` promises the --doc instance shape via `schema <verb>`,
-        // but the contract never served it. Now `schema doc eval`/`doc compute`/`rule test` carry `docInput`.
-        for (String verb : new String[] {"doc eval", "doc compute", "rule test"}) {
+        // but the contract never served it. Now `schema model eval`/`model compute`/`rule test` carry `docInput`.
+        for (String verb : new String[] {"model eval", "model compute", "rule test"}) {
             String[] t = verb.split(" ");
             JsonNode c = MAPPER.readTree(CliTestSupport.run("schema", t[0], t[1]).out());
             assertEquals("DocumentInstance", c.path("docInput").path("title").asText(),
@@ -108,13 +108,13 @@ class SchemaVerbTest {
         assertEquals("Explanation",
                 MAPPER.readTree(CliTestSupport.run("schema", "rule", "explain").out()).path("dataSchema").path("title").asText());
         assertEquals("ModelCard",
-                MAPPER.readTree(CliTestSupport.run("schema", "doc", "describe").out()).path("dataSchema").path("title").asText());
+                MAPPER.readTree(CliTestSupport.run("schema", "model", "describe").out()).path("dataSchema").path("title").asText());
         assertEquals("EvalDocResult",
-                MAPPER.readTree(CliTestSupport.run("schema", "doc", "eval").out()).path("dataSchema").path("title").asText());
+                MAPPER.readTree(CliTestSupport.run("schema", "model", "eval").out()).path("dataSchema").path("title").asText());
         assertEquals("WorkspaceList",
                 MAPPER.readTree(CliTestSupport.run("schema", "workspace", "list").out()).path("dataSchema").path("title").asText());
-        assertEquals("DocInfo",
-                MAPPER.readTree(CliTestSupport.run("schema", "doc", "info").out()).path("dataSchema").path("title").asText());
+        assertEquals("ModelInfo",
+                MAPPER.readTree(CliTestSupport.run("schema", "model", "info").out()).path("dataSchema").path("title").asText());
     }
 
     @Test
@@ -134,7 +134,7 @@ class SchemaVerbTest {
         assertResultEnvelope(CliTestSupport.run("-m", model.toString(), "rule", "read", CliTestSupport.RULE_FULL_NAME));
         assertResultEnvelope(CliTestSupport.run("-m", model.toString(), "field", "read", "/Subscription/Addons/MonthlyFee"));
         assertResultEnvelope(CliTestSupport.run("-m", model.toString(), "config", "read"));
-        assertResultEnvelope(CliTestSupport.run("-m", model.toString(), "doc", "validate"));
+        assertResultEnvelope(CliTestSupport.run("-m", model.toString(), "model", "validate"));
     }
 
     /** Every top-level key the verb emits must be declared in the universal `result` schema (the F11 drift guard). */

@@ -17,13 +17,13 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 
 /**
- * {@code dmtool doc validate} — run the model through the real kernel (the F4 ground-truth step) and report
+ * {@code dmtool model validate} — run the model through the real kernel (the F4 ground-truth step) and report
  * the uniform result envelope. The op always executes ({@code ok:true}); the model's consistency rides
  * {@code valid}, with the kernel's {@code MVK_*} notifications surfaced as enriched {@link Diagnostic}s.
  */
 @Command(name = "validate", mixinStandardHelpOptions = true,
         description = "Run the model through the real kernel; report {valid, diagnostics[]} (exit 0 valid, 1 not).")
-final class DocValidateCommand extends BaseCommand {
+final class ModelValidateCommand extends BaseCommand {
 
     @Mixin
     IncludeDirOption includes = new IncludeDirOption();
@@ -59,7 +59,7 @@ final class DocValidateCommand extends BaseCommand {
 
         long errors = diagnostics.stream().filter(d -> d.severity() == com.mgmtp.a12.model.notification.Severity.ERROR).count();
         String summary = valid ? "model is valid" : "model has " + errors + " error(s)";
-        ResultEnvelope env = ResultEnvelope.read("doc", "validate", summary, valid, diagnostics, null);
+        ResultEnvelope env = ResultEnvelope.read("model", "validate", summary, valid, diagnostics, null);
         out().print(env.toJsonString());
         return env.exitCode();
     }

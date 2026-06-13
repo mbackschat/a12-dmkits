@@ -20,18 +20,18 @@ import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 
 /**
- * {@code dmtool doc compute --doc <document.json>} — run the kernel's {@code compute} over a document
+ * {@code dmtool model compute --doc <document.json>} — run the kernel's {@code compute} over a document
  * INSTANCE and report what each computed field becomes (value / cleared / error). Read-only: the {@code
  * computed[]} payload rides {@code data}; the document is never mutated.
  */
 @Command(name = "compute", mixinStandardHelpOptions = true,
         description = "Run computations over a document INSTANCE; report each computed field's value in `data` (read-only).")
-final class DocComputeCommand extends BaseCommand {
+final class ModelComputeCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Option(names = "--doc", required = true, paramLabel = "<document.json>",
-            description = "the document INSTANCE (field data) — a nested JSON tree under \"fields\". See `schema doc compute`.")
+            description = "the document INSTANCE (field data) — a nested JSON tree under \"fields\". See `schema model compute`.")
     String doc;
 
     @Option(names = "--locale", defaultValue = "en_US", paramLabel = "<locale>",
@@ -81,7 +81,7 @@ final class DocComputeCommand extends BaseCommand {
             cn.put("outcome", c.outcome());
             c.value().ifPresent(v -> cn.put("value", v));
         }
-        ResultEnvelope env = ResultEnvelope.read("doc", "compute",
+        ResultEnvelope env = ResultEnvelope.read("model", "compute",
                 "computed " + result.computed().size() + " field(s)", true, List.of(), data);
         out().print(env.toJsonString());
         return env.exitCode();

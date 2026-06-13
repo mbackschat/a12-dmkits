@@ -24,20 +24,20 @@ import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 
 /**
- * {@code dmtool doc eval --doc <document.json>} — the runtime counterpart of {@code rule check}: run the
+ * {@code dmtool model eval --doc <document.json>} — the runtime counterpart of {@code rule check}: run the
  * kernel's {@code validateFull} over a document INSTANCE and report which rules FIRED (the empirical
  * polarity check). Read-only: the {@code fired}/{@code messages}/{@code rule} payload rides {@code data}.
  * Narrow with {@code --rule} (existing) or a candidate ({@code --condition} + {@code --field}, injected,
- * not persisted). Computations are NOT run — use {@code doc compute}.
+ * not persisted). Computations are NOT run — use {@code model compute}.
  */
 @Command(name = "eval", mixinStandardHelpOptions = true,
         description = "Run the kernel over a document INSTANCE; report which rules fire in `data` (runtime).")
-final class DocEvalCommand extends BaseCommand {
+final class ModelEvalCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Option(names = "--doc", required = true, paramLabel = "<document.json>",
-            description = "the document INSTANCE (field data) — a nested JSON tree under \"fields\". See `schema doc eval`.")
+            description = "the document INSTANCE (field data) — a nested JSON tree under \"fields\". See `schema model eval`.")
     String doc;
 
     @Option(names = "--rule", paramLabel = "<rulePathInModel>",
@@ -123,7 +123,7 @@ final class DocEvalCommand extends BaseCommand {
             DraftRule draft = new DraftRule(effectiveGroup, name, errorEntityRelPath, condition, code, severity);
             ValidationResult check = new RuleValidator().check(modelJson, draft, resolver);
             if (!check.ok()) {
-                ResultEnvelope env = ResultEnvelope.rejected("doc", "eval",
+                ResultEnvelope env = ResultEnvelope.rejected("model", "eval",
                         "the candidate rule is rejected by the kernel (use `rule check` for diagnostics)",
                         check.diagnostics());
                 out().print(env.toJsonString());
@@ -171,7 +171,7 @@ final class DocEvalCommand extends BaseCommand {
             rule.put("name", tr);
             rule.put("fired", ruleFired);
         }
-        ResultEnvelope env = ResultEnvelope.read("doc", "eval",
+        ResultEnvelope env = ResultEnvelope.read("model", "eval",
                 result.firedCodes().size() + " rule(s) fired", true, List.of(), data);
         out().print(env.toJsonString());
         return env.exitCode();

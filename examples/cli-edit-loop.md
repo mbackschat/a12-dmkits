@@ -3,7 +3,7 @@
 *2026-06-11T21:02:17Z by Showboat 0.6.1*
 <!-- showboat-id: 0cbe3a7c-75d1-448c-9808-fba2f6dba3e4 -->
 
-The companion to [`cli-tour.md`](cli-tour.md) (which reads & inspects): this demo **writes**. It walks the F8 modify-by-re-express loop and the write surface on the `subscription-computed` fixture (which already carries a computation `EffectiveFeeComp = [BaseFee]`) — `where-used` · `computation explain` · `computation modify` (`--dry-run` previews, then write) · `rule add` · `doc describe --include-dir` (multi-file) · `batch`. Every command is `bin/dmtool -m <model> <target> <op>`: the model is set once with `-m`, then a `<target> <op>` selects the operation. Commands run through `bin/dmtool` from the repo root; re-check with `uvx showboat@0.6.1 verify examples/cli-edit-loop.md`.
+The companion to [`cli-tour.md`](cli-tour.md) (which reads & inspects): this demo **writes**. It walks the F8 modify-by-re-express loop and the write surface on the `subscription-computed` fixture (which already carries a computation `EffectiveFeeComp = [BaseFee]`) — `where-used` · `computation explain` · `computation modify` (`--dry-run` previews, then write) · `rule add` · `model describe --include-dir` (multi-file) · `batch`. Every command is `bin/dmtool -m <model> <target> <op>`: the model is set once with `-m`, then a `<target> <op>` selects the operation. Commands run through `bin/dmtool` from the repo root; re-check with `uvx showboat@0.6.1 verify examples/cli-edit-loop.md`.
 
 **Migrated verbs write IN PLACE and return the result envelope** (`{target, op, outcome, ok, summary, changed, written, output, diagnostics}`): a mutation carries `.changed`; `--dry-run` previews read-only (writes nothing). So edits below operate on a `/tmp` copy, leaving the committed fixture untouched.
 
@@ -79,7 +79,7 @@ echo "--- Sum( occurrences in the file after --dry-run: $(grep -c "Sum(" /tmp/ed
 ```bash
 bin/dmtool -m /tmp/edit-sub.json computation modify /Subscription/Billing/EffectiveFeeComp --spec /tmp/edit-eff.json
 echo "--- Sum( occurrences in the file after modify: $(grep -c "Sum(" /tmp/edit-sub.json)"
-echo "--- the written model still validates: $(bin/dmtool -m /tmp/edit-sub.json doc validate | jq -c ".valid")"
+echo "--- the written model still validates: $(bin/dmtool -m /tmp/edit-sub.json model validate | jq -c ".valid")"
 ```
 
 ```output
@@ -107,13 +107,13 @@ echo "--- the written model still validates: $(bin/dmtool -m /tmp/edit-sub.json 
 
 ## rule add — persist a brand-new rule
 
-`rule add` validates a candidate against the real kernel and, on accept, **writes it into the model in place** (it emits the envelope, not the model text). The new rule's path lands under `.changed.rule`. We add on a fresh `/tmp` copy, then `doc validate` the persisted model and confirm the rule count rose via `export`.
+`rule add` validates a candidate against the real kernel and, on accept, **writes it into the model in place** (it emits the envelope, not the model text). The new rule's path lands under `.changed.rule`. We add on a fresh `/tmp` copy, then `model validate` the persisted model and confirm the rule count rose via `export`.
 
 ```bash
 printf "%s" "{\"field\":\"/Subscription/Billing/EffectiveFee\",\"condition\":\"[EffectiveFee] < [BaseFee]\",\"code\":\"EFFECTIVE_BELOW_BASE\",\"messages\":[{\"locale\":\"en_US\",\"text\":\"Effective fee is below base fee.\"},{\"locale\":\"de_DE\",\"text\":\"Effektivgebuehr unter Basisgebuehr.\"}]}" > /tmp/edit-rule.json
 cp cli/src/test/resources/models/subscription-computed.dm.json /tmp/edit-add.json
 bin/dmtool -m /tmp/edit-add.json rule add /tmp/edit-rule.json | jq -c "{outcome, rule: .changed.rule, written}"
-bin/dmtool -m /tmp/edit-add.json doc validate | jq -c "{valid, diagnostics}"
+bin/dmtool -m /tmp/edit-add.json model validate | jq -c "{valid, diagnostics}"
 bin/dmtool export /tmp/edit-add.json | grep -E "^- rules:"
 ```
 
@@ -125,12 +125,12 @@ bin/dmtool export /tmp/edit-add.json | grep -E "^- rules:"
 
 → The kernel accepted the candidate, `rule add` wrote it in place (`written: true`, `changed.rule` names it), and the model re-validates clean. `export`'s one-line summary shows the rule landed (`rules: 1`, up from the fixture's 0). The condition is true on the **violation** (effective below base) — A12 rules fire when their condition holds.
 
-## doc describe --include-dir — a multi-file model
+## model describe --include-dir — a multi-file model
 
 A model that `include`s another model needs `--include-dir` to resolve it when the included model lives elsewhere in the workspace. `storefront` (in `multifile/app/`) mounts the separate `catalog` model (in `multifile/lib/`) at `/Storefront/Inventory`. The structure rides the envelope's `.data.fields`.
 
 ```bash
-bin/dmtool -m cli/src/test/resources/models/multifile/app/storefront.dm.json doc describe --include-dir cli/src/test/resources/models/multifile/lib | jq -c '.data.fields[] | select(.path|test("Inventory")) | {path,kind}'
+bin/dmtool -m cli/src/test/resources/models/multifile/app/storefront.dm.json model describe --include-dir cli/src/test/resources/models/multifile/lib | jq -c '.data.fields[] | select(.path|test("Inventory")) | {path,kind}'
 ```
 
 ```output
@@ -211,7 +211,7 @@ echo "--- re-expression occurrences in the file after --dry-run: $(grep -c "Deli
 ```bash
 bin/dmtool -m /tmp/edit2-order.json rule modify /Order/DeliveryNotBeforeOrder --condition "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And [/Order/DeliveryDate] < [/Order/OrderDate]"
 echo "--- re-expression occurrences after modify: $(grep -c "DeliveryDate\] <" /tmp/edit2-order.json)"
-echo "--- the written model still validates: $(bin/dmtool -m /tmp/edit2-order.json doc validate | jq -c ".valid")"
+echo "--- the written model still validates: $(bin/dmtool -m /tmp/edit2-order.json model validate | jq -c ".valid")"
 ```
 
 ```output
@@ -247,7 +247,7 @@ cp cli/src/test/resources/models/order-ruled.dm.json /tmp/edit2-rm-rule.json
 echo "--- $(bin/dmtool export /tmp/edit2-rm-rule.json | grep -E "^- rules:") (before)"
 bin/dmtool -m /tmp/edit2-rm-rule.json rule remove /Order/DeliveryNotBeforeOrder
 echo "--- $(bin/dmtool export /tmp/edit2-rm-rule.json | grep -E "^- rules:") (after)"
-echo "--- the written model still validates: $(bin/dmtool -m /tmp/edit2-rm-rule.json doc validate | jq -c ".valid")"
+echo "--- the written model still validates: $(bin/dmtool -m /tmp/edit2-rm-rule.json model validate | jq -c ".valid")"
 ```
 
 ```output
@@ -280,7 +280,7 @@ rm -f /tmp/edit2-comp-spec.json /tmp/edit2-sub.json
 printf "%s" "{\"computedField\":\"/Subscription/Billing/EffectiveFee\",\"alternatives\":[{\"operation\":\"[BaseFee] * 2\"}],\"messages\":[{\"locale\":\"en_US\",\"text\":\"Effective fee is twice the base fee.\"},{\"locale\":\"de_DE\",\"text\":\"Effektivgebuehr ist das Doppelte der Basisgebuehr.\"}]}" > /tmp/edit2-comp-spec.json
 cp cli/src/test/resources/models/subscription.dm.json /tmp/edit2-sub.json
 bin/dmtool -m /tmp/edit2-sub.json computation add /tmp/edit2-comp-spec.json
-echo "--- the written model validates: $(bin/dmtool -m /tmp/edit2-sub.json doc validate | jq -c ".valid")"
+echo "--- the written model validates: $(bin/dmtool -m /tmp/edit2-sub.json model validate | jq -c ".valid")"
 ```
 
 ```output
@@ -340,7 +340,7 @@ cp cli/src/test/resources/models/subscription-computed.dm.json /tmp/edit2-rm-com
 echo "--- computation present before? $(bin/dmtool -m /tmp/edit2-rm-comp.json computation read /Subscription/Billing/EffectiveFeeComp | jq -c ".ok")"
 bin/dmtool -m /tmp/edit2-rm-comp.json computation remove /Subscription/Billing/EffectiveFeeComp
 echo "--- read it again (exit code signals absence): $(bin/dmtool -m /tmp/edit2-rm-comp.json computation read /Subscription/Billing/EffectiveFeeComp 2>&1 >/dev/null; echo "exit=$?")"
-echo "--- the written model still validates: $(bin/dmtool -m /tmp/edit2-rm-comp.json doc validate | jq -c ".valid")"
+echo "--- the written model still validates: $(bin/dmtool -m /tmp/edit2-rm-comp.json model validate | jq -c ".valid")"
 ```
 
 ```output

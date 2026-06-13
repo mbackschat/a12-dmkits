@@ -54,20 +54,20 @@ final class SchemaCommand extends BaseCommand {
 
     /** Ops that consume a {@code --doc} document INSTANCE → the schema describing that instance tree. */
     static final Map<String, String> DOC_INPUT = Map.of(
-            "doc eval", "document-instance",
-            "doc compute", "document-instance",
+            "model eval", "document-instance",
+            "model compute", "document-instance",
             "rule test", "document-instance");
 
     /** Read ops whose {@code data} payload has a published schema → surfaced so the agent learns the output shape. */
     static final Map<String, String> DATA_SCHEMA = Map.of(
-            "doc info", "doc-info",
-            "doc describe", "describe",
-            "doc validate", "validate",
+            "model info", "model-info",
+            "model describe", "describe",
+            "model validate", "validate",
             "rule check", "validate",
             "rule read", "read",
             "rule explain", "explain",
-            "doc eval", "eval-doc",
-            "doc compute", "compute-doc",
+            "model eval", "eval-doc",
+            "model compute", "compute-doc",
             "workspace list", "workspace-list");
 
     /**
@@ -85,7 +85,7 @@ final class SchemaCommand extends BaseCommand {
             "diagnostics", "emits the diagnostic registry itself — run it",
             "export", "renders an artifact (model card / dot / …), not the result envelope",
             "where-used", "returns a referrers payload, not the result envelope (a dedicated output schema is a follow-up)",
-            "doc new", "emits a brand-new model document (an artifact), not the result envelope");
+            "model new", "emits a brand-new model document (an artifact), not the result envelope");
 
     /** Leaf op-names whose verb returns a read payload in the envelope's {@code data}. */
     private static final Set<String> READ_OPS =

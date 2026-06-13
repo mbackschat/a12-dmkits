@@ -133,7 +133,7 @@ final class SafetyChecks {
             Diagnostic diagnostic = Diagnostic.precheck(Optional.of(code),
                     "no " + kind + " at '" + path + "'",
                     Diagnostic.Where.path(path),
-                    Optional.of("pass an existing " + kind + "'s full name-path (see `doc describe` or `" + kind + " read`)"),
+                    Optional.of("pass an existing " + kind + "'s full name-path (see `model describe` or `" + kind + " read`)"),
                     Optional.empty());
             return Optional.of(new Refusal(kind + " '" + path + "' does not exist — refusing", null, diagnostic));
         };
@@ -225,7 +225,7 @@ final class SafetyChecks {
             Diagnostic diagnostic = Diagnostic.precheck(Optional.of("RK_NO_SUCH_GROUP"),
                     "no group at the destination path '" + groupPath + "'",
                     Diagnostic.Where.arg(null, "--to"),
-                    Optional.of("pass --to an existing group's full name-path (see `group read` or `doc describe`)"),
+                    Optional.of("pass --to an existing group's full name-path (see `group read` or `model describe`)"),
                     Optional.empty());
             return Optional.of(new Refusal(
                     "destination group '" + groupPath + "' does not exist — refusing to move", null, diagnostic));

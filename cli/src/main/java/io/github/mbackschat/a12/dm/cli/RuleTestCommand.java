@@ -35,7 +35,7 @@ final class RuleTestCommand extends BaseCommand {
     String rule;
 
     @Option(names = "--doc", required = true, paramLabel = "<document.json>",
-            description = "the document INSTANCE (field data) — a nested JSON tree under \"fields\". See `schema doc eval`.")
+            description = "the document INSTANCE (field data) — a nested JSON tree under \"fields\". See `schema model eval`.")
     String doc;
 
     @Option(names = "--locale", defaultValue = "en_US", paramLabel = "<locale>",

@@ -113,8 +113,8 @@ class SchemaExamplesGuardTest {
 
     @Test
     void documentInstanceExampleIsAcceptedByDocEval(@TempDir Path dir) throws Exception {
-        // the --doc instance schema (surfaced by `schema doc eval`/`compute`/`rule test`) must stay runnable:
-        // its example, fed to `doc eval`, must evaluate cleanly against a matching model.
+        // the --doc instance schema (surfaced by `schema model eval`/`compute`/`rule test`) must stay runnable:
+        // its example, fed to `model eval`, must evaluate cleanly against a matching model.
         Path model = dir.resolve("order-ruled.dm.json");
         Files.writeString(model, CliTestSupport.orderRuledJson());
         JsonNode examples = schema("document-instance").path("examples");
@@ -123,8 +123,8 @@ class SchemaExamplesGuardTest {
         for (JsonNode ex : examples) {
             Path doc = dir.resolve("doc-" + i++ + ".json");
             Files.writeString(doc, ex.toString());
-            CliTestSupport.Result res = CliTestSupport.run("-m", model.toString(), "doc", "eval", "--doc", doc.toString());
-            assertEquals(0, res.code(), () -> "doc eval rejected the document-instance example: " + res.err() + res.out());
+            CliTestSupport.Result res = CliTestSupport.run("-m", model.toString(), "model", "eval", "--doc", doc.toString());
+            assertEquals(0, res.code(), () -> "model eval rejected the document-instance example: " + res.err() + res.out());
             assertEquals("read", MAPPER.readTree(res.out()).path("outcome").asText(),
                     "the document-instance example evaluates cleanly");
         }

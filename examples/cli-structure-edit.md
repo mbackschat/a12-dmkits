@@ -15,12 +15,12 @@ cp cli/src/test/resources/models/order-ruled.dm.json /tmp/struct.dm.json && echo
 copied order-ruled → /tmp/struct.dm.json
 ```
 
-## doc new — or start one from scratch (no `-m`)
+## model new — or start one from scratch (no `-m`)
 
-We copied an existing fixture above, but a model doesn't have to come from somewhere — `doc new` is the one model-*originating* verb. It takes `--id`, `--locale`, and a root group name (no `-m` — it makes one), and prints the model JSON to stdout (`-o` writes a file).
+We copied an existing fixture above, but a model doesn't have to come from somewhere — `model new` is the one model-*originating* verb. It takes `--id`, `--locale`, and a root group name (no `-m` — it makes one), and prints the model JSON to stdout (`-o` writes a file).
 
 ```bash
-bin/dmtool doc new --id catalog --locale en_US --root Catalog | jq -c '{id: .header.id, root: .content.modelRoot.rootGroups[0].name}'
+bin/dmtool model new --id catalog --locale en_US --root Catalog | jq -c '{id: .header.id, root: .content.modelRoot.rootGroups[0].name}'
 ```
 
 ```output
@@ -30,8 +30,8 @@ bin/dmtool doc new --id catalog --locale en_US --root Catalog | jq -c '{id: .hea
 What it emits is **kernel-checked**, so the fresh model binds immediately — write it with `-o`, then edit it like any other:
 
 ```bash
-bin/dmtool doc new --id catalog --locale en_US --root Catalog -o /tmp/created.dm.json && echo "created /tmp/created.dm.json"
-bin/dmtool -m /tmp/created.dm.json doc validate | jq -c '{ok, valid, fields: (.data.fields|length)}'
+bin/dmtool model new --id catalog --locale en_US --root Catalog -o /tmp/created.dm.json && echo "created /tmp/created.dm.json"
+bin/dmtool -m /tmp/created.dm.json model validate | jq -c '{ok, valid, fields: (.data.fields|length)}'
 ```
 
 ```output
@@ -161,7 +161,7 @@ bin/dmtool -m /tmp/struct.dm.json field remove /Order/DeliveryDate --cascade
 The edited model still passes the real kernel consistency check:
 
 ```bash
-bin/dmtool -m /tmp/struct.dm.json doc validate | jq -c "{outcome,valid,diagnostics}"
+bin/dmtool -m /tmp/struct.dm.json model validate | jq -c "{outcome,valid,diagnostics}"
 ```
 
 ```output
@@ -564,7 +564,7 @@ bin/dmtool -m /tmp/struct2-rn.json field rename /Order/DeliveryDate --to ShipDat
 The `DeliveryNotBeforeOrder` condition now reads `/Order/ShipDate` where it read `/Order/DeliveryDate`, so the model still validates — a true reference-preserving rename, not a refusal:
 
 ```bash
-bin/dmtool -m /tmp/struct2-rn.json doc validate | jq -c '{valid}'
+bin/dmtool -m /tmp/struct2-rn.json model validate | jq -c '{valid}'
 ```
 
 ```output
@@ -599,7 +599,7 @@ bin/dmtool -m /tmp/struct2-rn.json field move /Order/ShipDate --to /Order/Shippi
 The rule's error-entity path and its condition both followed the field — `DifferenceInDays(OrderDate, ShippingAddress/ShipDate)` now — so the model still validates:
 
 ```bash
-bin/dmtool -m /tmp/struct2-rn.json doc validate | jq -c '{valid}'
+bin/dmtool -m /tmp/struct2-rn.json model validate | jq -c '{valid}'
 ```
 
 ```output
@@ -614,7 +614,7 @@ bin/dmtool -m /tmp/struct2-rn.json field move /Order/Quantity --to /Order/Nope >
 
 ```output
 (exit 2)
-{"outcome":"refused","code":"RK_NO_SUCH_GROUP","fix":"pass --to an existing group's full name-path (see `group read` or `doc describe`)"}
+{"outcome":"refused","code":"RK_NO_SUCH_GROUP","fix":"pass --to an existing group's full name-path (see `group read` or `model describe`)"}
 ```
 
 → `move` relocates the node, rewrites every reference to it (error-entity paths *and* condition operands, absolute or relative), and re-validates — gated, never a silent dangle. A `group move` re-homes the whole subtree the same way.
@@ -654,7 +654,7 @@ order.dm.json
 The composed pair re-validates through the real kernel — the base resolves the sub-model by id from the same directory (and the gate already re-validated *before* writing, so a bad split never reaches disk):
 
 ```bash
-bin/dmtool -m /tmp/struct2-ext/order.dm.json doc validate | jq -c '{valid}'
+bin/dmtool -m /tmp/struct2-ext/order.dm.json model validate | jq -c '{valid}'
 ```
 
 ```output
@@ -672,7 +672,7 @@ bin/dmtool -m /tmp/struct2-ext/order.dm.json include inline billing-address | jq
 ```
 
 ```bash
-jq -c '[.. | objects | select(has("modelAlias")) | .modelAlias]' /tmp/struct2-ext/order.dm.json && bin/dmtool -m /tmp/struct2-ext/order.dm.json doc validate | jq -c '{valid}'
+jq -c '[.. | objects | select(has("modelAlias")) | .modelAlias]' /tmp/struct2-ext/order.dm.json && bin/dmtool -m /tmp/struct2-ext/order.dm.json model validate | jq -c '{valid}'
 ```
 
 ```output
@@ -1044,7 +1044,7 @@ bin/dmtool -m /tmp/extras.dm.json meta /Order/Nope --annotate k=v
     "where" : {
       "path" : "/Order/Nope"
     },
-    "fix" : "pass an existing element's full name-path or a declared type-definition id (see `doc describe`)."
+    "fix" : "pass an existing element's full name-path or a declared type-definition id (see `model describe`)."
   } ],
   "written" : false
 }

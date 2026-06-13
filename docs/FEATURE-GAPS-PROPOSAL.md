@@ -76,8 +76,8 @@ Everything below is ✅ — the inventory *is* the authoring surface dmkits cove
 ### Analysis & runtime
 | Capability | Status | Note |
 |---|---|---|
-| Validate a model through the kernel | ✅ | `doc validate` |
-| Evaluate rules against a document instance | ✅ | `doc eval` / `doc compute` (`IDocumentRtService`) |
+| Validate a model through the kernel | ✅ | `model validate` |
+| Evaluate rules against a document instance | ✅ | `model eval` / `model compute` (`IDocumentRtService`) |
 | Scoped **single-rule** evaluation against an instance | ✅ | `rule test --doc` — fired / passed / suppressed verdict (§3.3) |
 
 ---

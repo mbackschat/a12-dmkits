@@ -11,7 +11,7 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 /**
- * {@code dmtool doc new} — create a new, empty, kernel-valid document model <b>from scratch</b>. This is the
+ * {@code dmtool model new} — create a new, empty, kernel-valid document model <b>from scratch</b>. This is the
  * CLI's one model-<em>originating</em> verb: every other verb edits an existing {@code -m} model, so without
  * this an agent has no first step. It builds the skeleton (an {@code id}, a {@code locale}, and one empty
  * root group) via {@link DocumentModelDraft#named}, <b>kernel-checks it</b> (what we emit must be accepted,
@@ -24,7 +24,7 @@ import picocli.CommandLine.Option;
 @Command(name = "new", mixinStandardHelpOptions = true,
         description = "Create a new empty kernel-valid model from scratch (--id + --locale + a root group); "
                 + "prints the model JSON to stdout, or -o writes it to a file.")
-final class DocNewCommand extends BaseCommand {
+final class ModelNewCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.NEW_NAME)
     @Option(names = "--id", required = true, paramLabel = "<id>",

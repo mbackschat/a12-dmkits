@@ -78,7 +78,7 @@ Every verb and every batch op emits the same shape. It **embeds the existing dia
 | `diagnostics` | exactly `ValidationResult.toJson()` — an array of `Diagnostic` (§4) |
 | `written`, `output` | whether the model was written, and where (`null` for read/preview/refused/rejected) |
 
-**The `ok` / `valid` split fixes a real overload:** `ok` = "the tool did the job"; `valid` = "the model is kernel-valid." A `doc validate` that finds the model invalid is `ok:true, valid:false` — the tool worked, the model didn't. **Exit codes** key off this: **0** = `ok` and not `valid:false` (applied/preview/read of a valid subject); **1** = `rejected`, or a validate/check with `valid:false`; **2** = `refused` (safe-gate) or a usage error. Everything else lives in the envelope.
+**The `ok` / `valid` split fixes a real overload:** `ok` = "the tool did the job"; `valid` = "the model is kernel-valid." A `model validate` that finds the model invalid is `ok:true, valid:false` — the tool worked, the model didn't. **Exit codes** key off this: **0** = `ok` and not `valid:false` (applied/preview/read of a valid subject); **1** = `rejected`, or a validate/check with `valid:false`; **2** = `refused` (safe-gate) or a usage error. Everything else lives in the envelope.
 
 ## 4. Diagnostics — reuse, extend, correct
 
@@ -114,11 +114,11 @@ Worked shapes (the real `Diagnostic` fields, inside the envelope):
 
 ## 5. Verb surface — target × op
 
-Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ rulekit) is a **grouping in `--help`/manifest**, not a command level — the real two axes (kind × op) *are* the two command levels. Two verbs sit outside the `-m`-single-model frame: **`doc new`**, the sole model-*originating* verb (no `-m` — it creates a model from scratch: `--id`/`--locale`/`--root`, kernel-checked, emitted to stdout or `-o`, so an agent has a first step before there is any model to edit; like `export` it produces an artifact, `CONTRACT_EXEMPT`); and **`workspace list <dir>`**, the cross-*model* verb (it scans a *directory* of models, not one `-m` model — see the `workspace` row).
+Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ rulekit) is a **grouping in `--help`/manifest**, not a command level — the real two axes (kind × op) *are* the two command levels. Two verbs sit outside the `-m`-single-model frame: **`model new`**, the sole model-*originating* verb (no `-m` — it creates a model from scratch: `--id`/`--locale`/`--root`, kernel-checked, emitted to stdout or `-o`, so an agent has a first step before there is any model to edit; like `export` it produces an artifact, `CONTRACT_EXEMPT`); and **`workspace list <dir>`**, the cross-*model* verb (it scans a *directory* of models, not one `-m` model — see the `workspace` row).
 
 | target | ops | family |
 |---|---|---|
-| `doc` | `new · info · describe · read · validate · export · eval --doc · compute --doc` *(`info` = the header dashboard: identity + super/subtype graph + includes/type-def imports **resolved to files** + compact counts — the one facet no other read verb owns; `--include-dir` resolves, default the model's folder)* | (whole document) |
+| `model` | `new · info · describe · read · validate · export · eval --doc · compute --doc` *(the **document model** target — vs `--doc`, a document **instance**; renamed from `doc`, which is now a fail-fast tombstone. `info` = the header dashboard: identity + super/subtype graph + includes/type-def imports **resolved to files** + compact counts — the one facet no other read verb owns; `--include-dir` resolves, default the model's folder)* | (whole model) |
 | `rule` | `add <spec> · read · explain · check · modify --condition · remove · rename` | rulekit |
 | `computation` | `add <spec> · read · explain · modify --spec · remove` | rulekit |
 | `field` | `add · read · remove · rename · move` | modelkit |
@@ -134,13 +134,15 @@ Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ 
 
 | legacy verb | target-first |
 |---|---|
-| `describe` / `validate` / `export` / `eval-doc` / `compute-doc` | `doc describe` / `doc validate` / `doc export` / `doc eval --doc` / `doc compute --doc` |
+| `describe` / `validate` / `export` / `eval-doc` / `compute-doc` | `model describe` / `model validate` / `export` / `model eval --doc` / `model compute --doc` |
 | `add <spec>` (rule) / `add <spec>` (computation) | `rule add <spec>` / `computation add <spec>` |
-| `read --rule` / `read --all` / `explain --rule` / `explain --computation` | `rule read` / `doc read --all` / `rule explain` / `computation explain` |
+| `read --rule` / `read --all` / `explain --rule` / `explain --computation` | `rule read` / `model read --all` / `rule explain` / `computation explain` |
 | `check` | `rule check` |
 | `modify --rule --condition` / `modify --computation --spec` | `rule modify --condition` / `computation modify --spec` |
 | `add-field` / `add-group` / `add-typedef` / `add-include` | `field add` / `group add` / `typedef add` / `include add` |
 | `remove --field/--group/--rule/--computation/--typedef/--include` | `field remove` / `group remove` / `rule remove` / `computation remove` / `typedef remove` / `include remove` |
+
+**`doc` → `model` is a clean rename, not a hidden alias.** The whole-model target was `doc`, but in A12 "document" is the runtime **instance** (the data) — the same word the `--doc` flag already means. So the target was renamed to **`model`** (the schema), leaving `doc`/`--doc` unambiguously the instance. Unlike the legacy migrations above (hidden aliases for one release), `doc` is a **fail-fast tombstone**: `dmtool doc <op>` does *not* run — it exits non-zero with a corrective message naming `model` (and echoes the corrected command), so a stale caller is *revealed and fixed*, never silently served. The tombstone is hidden from the manifest/`--help` (the canonical surface is `model`) and removable after a release. Rationale: a hidden functional alias would mask exactly the dependency a clean break surfaces (locked: `cli.DocTombstoneTest`).
 
 **The spec-vs-flags asymmetry is inherent and stated, not hidden.** A rule/computation is a rich JSON envelope (condition, code, messages, severity), so `rule add` takes a `--spec <file>`; a field/group is a few scalars, so `field add` takes `--group/--name/--kind` flags. Consistency lives at the **selector** (`<target> <op>`), uniform across the lifecycle (`field add` ↔ `field remove`, `rule add` ↔ `rule modify`); the *payload* differs by necessity.
 
@@ -151,7 +153,7 @@ Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ 
 `schema <X>` is addressed with the same tokens as the verbs:
 
 - `schema result` / `schema diagnostic` — the cross-cutting structures (raw JSON Schema).
-- `schema <target> <op>` — that op's **directional contract**, `{input?, docInput?, returns:"result", data?, dataSchema?}`: what it *consumes* — a rich JSON spec file (`input`, e.g. the rule-spec) and/or a `--doc` document **instance** (`docInput`, the `DocumentInstance` shape, for `doc eval`/`doc compute`/`rule test`) — and the shape it *returns* (a read's `data` payload is described by `dataSchema` where one is published — `Explanation`, `ModelCard`, `ValidationResult`, `EvalDocResult`, `WorkspaceList`, …). One call, unambiguous direction — never "is this what I send or what I get?". Flag-only ops carry no input schema (their params are in the manifest).
+- `schema <target> <op>` — that op's **directional contract**, `{input?, docInput?, returns:"result", data?, dataSchema?}`: what it *consumes* — a rich JSON spec file (`input`, e.g. the rule-spec) and/or a `--doc` document **instance** (`docInput`, the `DocumentInstance` shape, for `model eval`/`model compute`/`rule test`) — and the shape it *returns* (a read's `data` payload is described by `dataSchema` where one is published — `Explanation`, `ModelCard`, `ValidationResult`, `EvalDocResult`, `WorkspaceList`, …). One call, unambiguous direction — never "is this what I send or what I get?". Flag-only ops carry no input schema (their params are in the manifest).
 
 The `manifest` is the index that makes assembly *copy, not infer*: every verb entry carries `target`, `op`, its params (each with the CLI `flag` **and** the op-record `key` = the `--`-stripped name an `apply` op uses), a `schema` pointer (for the envelope verbs — including the single-token ones like `meta`; `export`/`where-used` and the self-describing verbs carry none, see `SchemaCommand.CONTRACT_EXEMPT`), and a worked **`example` `{intent, command}`** — a read-only invocation the agent can run to see the verb *in action* (CI-executed by `VerbDemonstrationTest`). The root carries `resultSchema:"result"` and the global `-m`. So an agent builds any call — single or batched — straight from the manifest. (`schema add` is gone: it splits into `schema rule add` / `schema computation add`.)
 
@@ -214,7 +216,7 @@ Two batch verbs, because they solve different problems — conflating them would
 - **Cross-type corrective.** Feeding `batch` an `apply`-shaped op (or vice versa) is detected and named (*"this op has `target`/`op` — did you mean `apply`?"*).
 - **Examples can't rot.** Every schema `examples` block is CI-executed through the tool (a drift guard alongside the manifest/schema guardians) — a stale example actively misleads an agent, so an unverified one cannot ship.
 
-**Implementation status.** `batch` is the long-standing dispatcher. `apply` is **built and feature-complete**: ordered surgery on one `EditSession` → one terminal gate → one write, atomic rollback, per-op envelopes (edits `staged`, reads `read`+`data`) + the `{ops, committed, failedAt, written, results[]}` summary. Ops cover **field/group/typedef/include add·remove, config modify, rule/computation add·modify, the reference-rewriting refactors (field/group rename·move, rule rename, typedef rename), and the structure reads (field/group/typedef/include/config)** — a read op mid-sequence returns the live session state in its `data` (unified read+edit); a refactor op runs its §6 gate against the live session, rewrites references, and re-homes the result, deferring to the one terminal gate. Op-arg validation (`RK_UNKNOWN_ARG`/`RK_UNKNOWN_OP` + did-you-mean), the cross-type corrective, and `schema apply`/`schema batch` (CI-executed examples) all land; dispatch is an exhaustive `switch` over the `Op` enum (no string drift). **The one niche extension left:** rule/computation/doc *reads* inside `apply` (they'd bind the live model via the adapter per read — low value, since reads are normally a standalone call). (`extract`/`inline` stay standalone — multi-artifact.)
+**Implementation status.** `batch` is the long-standing dispatcher. `apply` is **built and feature-complete**: ordered surgery on one `EditSession` → one terminal gate → one write, atomic rollback, per-op envelopes (edits `staged`, reads `read`+`data`) + the `{ops, committed, failedAt, written, results[]}` summary. Ops cover **field/group/typedef/include add·remove, config modify, rule/computation add·modify, the reference-rewriting refactors (field/group rename·move, rule rename, typedef rename), and the structure reads (field/group/typedef/include/config)** — a read op mid-sequence returns the live session state in its `data` (unified read+edit); a refactor op runs its §6 gate against the live session, rewrites references, and re-homes the result, deferring to the one terminal gate. Op-arg validation (`RK_UNKNOWN_ARG`/`RK_UNKNOWN_OP` + did-you-mean), the cross-type corrective, and `schema apply`/`schema batch` (CI-executed examples) all land; dispatch is an exhaustive `switch` over the `Op` enum (no string drift). **The one niche extension left:** rule/computation/model *reads* inside `apply` (they'd bind the live model via the adapter per read — low value, since reads are normally a standalone call). (`extract`/`inline` stay standalone — multi-artifact.)
 
 ## 8. Module shape
 
@@ -229,7 +231,7 @@ The self-contained binary (jlink/jpackage) only *provisions a JVM* — zero beha
 | Changing | Command | Speed |
 |---|---|---|
 | **CLI/verb code** | `./gradlew :cli:test` — JUnit over `Cli.run(...)` | sub-second (warm daemon); the primary loop |
-| code, want a real process | `./gradlew -q :cli:run --args="-m model.json doc validate"` | seconds (incremental; skips packaging) |
+| code, want a real process | `./gradlew -q :cli:run --args="-m model.json model validate"` | seconds (incremental; skips packaging) |
 | **only inputs** (model/spec JSON) | `./gradlew :cli:installDist` once, then `build/install/cli/bin/dmtool …` | ~1s JVM startup, no rebuild |
 
 Rules of the loop: never `clean`; never `installDist`/jlink/jpackage to test *behavior* (only to produce a distributable). Point an agent dry-run at the one-time `installDist` launcher. *Future option (if multi-call latency bites):* a resident/stdin mode (JVM startup paid once across many calls).

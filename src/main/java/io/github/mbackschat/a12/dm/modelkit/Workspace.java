@@ -101,7 +101,7 @@ public final class Workspace {
 
     /**
      * Index a single already-read model against a resolution map (id → relative path) — the per-model core
-     * of {@link #scan}, exposed so a single-model caller (the CLI {@code doc info}) gets the same
+     * of {@link #scan}, exposed so a single-model caller (the CLI {@code model info}) gets the same
      * references (the same {@link Reference} shape, cross-resolved) and super/subtype facts without
      * re-implementing the convention. {@code path} appears as {@link Model#path()} (cosmetic for a
      * single-model caller); {@code idToPath} is typically built from {@link #scan} over the include dir.

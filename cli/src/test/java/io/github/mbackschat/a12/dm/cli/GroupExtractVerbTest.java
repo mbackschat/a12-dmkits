@@ -66,7 +66,7 @@ class GroupExtractVerbTest {
         assertTrue(baseAfter.contains("\"modelAlias\""), "the base now mounts the sub-model");
         assertFalse(baseAfter.contains("\"name\" : \"City\""), "Shipping's fields left the base");
         // the composed pair re-validates (the sub-model resolves by id from the same dir)
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "doc", "validate").code(), "composed model is valid");
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code(), "composed model is valid");
     }
 
     @Test

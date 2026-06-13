@@ -16,13 +16,13 @@ The CLI is **self-describing** — explore it:
 - `cli schema <target> <op>` — the JSON an op consumes/returns (and `cli schema result` — the universal output envelope every verb emits).
 
 The three you lean on:
-- **`cli -m <model.json> doc describe`** — orient: fields, kinds, enum values, groups, repeatability.
+- **`cli -m <model.json> model describe`** — orient: fields, kinds, enum values, groups, repeatability.
 - **`cli operators`** — pick operators by meaning.
-- **`cli -m <model.json> rule check --field <ABSOLUTE field path> --condition "<DSL>" --code <ID>`** — submit a candidate and get the **real kernel's** verdict (the result envelope's `valid` + `diagnostics`). This is your ground truth. (`cli -m <model.json> doc validate` re-checks a model's *existing* rules.)
+- **`cli -m <model.json> rule check --field <ABSOLUTE field path> --condition "<DSL>" --code <ID>`** — submit a candidate and get the **real kernel's** verdict (the result envelope's `valid` + `diagnostics`). This is your ground truth. (`cli -m <model.json> model validate` re-checks a model's *existing* rules.)
 
 ## The loop
 
-1. **Orient** — `cli -m <model> doc describe` (or `cli export <model>`) to learn the fields, their kinds, enum values, and which groups repeat.
+1. **Orient** — `cli -m <model> model describe` (or `cli export <model>`) to learn the fields, their kinds, enum values, and which groups repeat.
 2. **Pick operators** — from `cli operators`, by meaning.
 3. **Compose** the condition — minding **polarity**, **paths**, and **iteration** below.
 4. **Check** — `cli -m <model> rule check …`. If `valid:true`, done. If not, read each diagnostic.
@@ -51,7 +51,7 @@ A condition is evaluated relative to the rule's **group** (its iteration scope �
 - **Brackets `[…]` mark a field used as a *value*** — a comparison operand: `[Quantity] > 0`, `[/Customer/Status] == "ACTIVE"`. **Anything inside a function/predicate/aggregate's parentheses is a BARE ref**, never bracketed: `FieldNotFilled(Quantity)`, `Sum(Items*/Amount)`, `DateRange(OrderDate, DeliveryDate)`, `StartOfDateRange(CoverageWindow)`. Bracketing a call's argument is a parse error, not extra safety.
 - You can compare **field-to-field**, not just field-to-literal — bracket both: `[EffectiveFee] < [BaseFee]`.
 - **Strict vs inclusive**: map the wording carefully. "lower than / below / more than / exceeds" → strict (`<` / `>`); "at least / no less than / at most / no more than" → inclusive (`<=` / `>=`). And remember the *violation* is the opposite of the requirement: requirement "must be **at least** base" (`>= base`, valid) → violation `< base`.
-- **Enums compare by stored value**, not the display label: `== "ACTIVE"`, not `== "Active"`. (`doc describe` lists the stored values.)
+- **Enums compare by stored value**, not the display label: `== "ACTIVE"`, not `== "Active"`. (`model describe` lists the stored values.)
 
 ## Empty values in a comparison
 
