@@ -88,6 +88,32 @@ class SchemaVerbTest {
     }
 
     @Test
+    void docInstanceVerbsSurfaceTheDocInputShape() throws Exception {
+        // the gap-finder (Option C) found 3/3: `--help` promises the --doc instance shape via `schema <verb>`,
+        // but the contract never served it. Now `schema doc eval`/`doc compute`/`rule test` carry `docInput`.
+        for (String verb : new String[] {"doc eval", "doc compute", "rule test"}) {
+            String[] t = verb.split(" ");
+            JsonNode c = MAPPER.readTree(CliTestSupport.run("schema", t[0], t[1]).out());
+            assertEquals("DocumentInstance", c.path("docInput").path("title").asText(),
+                    () -> verb + " contract surfaces the --doc document-instance schema: " + c);
+            assertTrue(c.path("docInput").path("properties").has("fields"),
+                    () -> verb + " docInput describes the `fields` instance tree: " + c);
+        }
+    }
+
+    @Test
+    void readVerbsSurfaceTheirDataPayloadSchema() throws Exception {
+        // the gap-finder found rule explain's `data` shape (operators/tree/refs/gloss) undiscoverable — now
+        // every read verb with a published payload schema surfaces it as `dataSchema`.
+        assertEquals("Explanation",
+                MAPPER.readTree(CliTestSupport.run("schema", "rule", "explain").out()).path("dataSchema").path("title").asText());
+        assertEquals("ModelCard",
+                MAPPER.readTree(CliTestSupport.run("schema", "doc", "describe").out()).path("dataSchema").path("title").asText());
+        assertEquals("EvalDocResult",
+                MAPPER.readTree(CliTestSupport.run("schema", "doc", "eval").out()).path("dataSchema").path("title").asText());
+    }
+
+    @Test
     void fieldAddContractCarriesTheRichInputSchema() throws Exception {
         // field add now also takes a rich <spec.json> (FEATURE-GAPS §3.4/§3.5) — its contract surfaces the input
         JsonNode c = MAPPER.readTree(CliTestSupport.run("schema", "field", "add").out());

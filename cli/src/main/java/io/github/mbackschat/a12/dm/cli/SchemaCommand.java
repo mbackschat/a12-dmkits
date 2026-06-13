@@ -52,6 +52,22 @@ final class SchemaCommand extends BaseCommand {
             "computation modify", "add",
             "field add", "field-add");
 
+    /** Ops that consume a {@code --doc} document INSTANCE → the schema describing that instance tree. */
+    static final Map<String, String> DOC_INPUT = Map.of(
+            "doc eval", "document-instance",
+            "doc compute", "document-instance",
+            "rule test", "document-instance");
+
+    /** Read ops whose {@code data} payload has a published schema → surfaced so the agent learns the output shape. */
+    static final Map<String, String> DATA_SCHEMA = Map.of(
+            "doc describe", "describe",
+            "doc validate", "validate",
+            "rule check", "validate",
+            "rule read", "read",
+            "rule explain", "explain",
+            "doc eval", "eval-doc",
+            "doc compute", "compute-doc");
+
     /**
      * Verbs for which {@code schema <verb>} serves <b>no</b> directional contract — because they do not return
      * the result envelope. Two reasons, mapped here as the single source of truth (read by {@link
@@ -123,10 +139,26 @@ final class SchemaCommand extends BaseCommand {
             }
             c.set("input", schema);
         }
+        // a `--doc` document instance the verb evaluates (eval/compute/test) — the shape it expects
+        String docInput = DOC_INPUT.get(verb);
+        if (docInput != null) {
+            JsonNode schema = readSchema(docInput);
+            if (schema != null) {
+                c.set("docInput", schema);
+            }
+        }
         c.put("returns", "result");
         c.put("resultSchema", "result");
-        if (READ_OPS.contains(tokens.get(tokens.size() - 1))) {
+        if (READ_OPS.contains(tokens.get(tokens.size() - 1)) || DATA_SCHEMA.containsKey(verb)) {
             c.put("data", "this read returns its payload in the result envelope's `data` field");
+        }
+        // … and where that payload has its own published schema, surface it so the shape is discoverable
+        String dataSchema = DATA_SCHEMA.get(verb);
+        if (dataSchema != null) {
+            JsonNode schema = readSchema(dataSchema);
+            if (schema != null) {
+                c.set("dataSchema", schema);
+            }
         }
         out().print(c.toPrettyString() + "\n");
         return 0;
