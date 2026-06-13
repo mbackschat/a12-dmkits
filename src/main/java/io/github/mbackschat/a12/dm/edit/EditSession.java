@@ -203,6 +203,11 @@ public final class EditSession {
         return editStructure(d -> d.setModelAnnotation(name, value));
     }
 
+    /** Set the model-level {@code comment} ({@code modelInfo.comment} — a free-text model note). */
+    public EditSession setModelComment(String text) {
+        return editStructure(d -> d.setModelComment(text));
+    }
+
     public EditSession setTimeZone(String timeZone) {
         return editStructure(d -> d.setTimeZone(timeZone));
     }

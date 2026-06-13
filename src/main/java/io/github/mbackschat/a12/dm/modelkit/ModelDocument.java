@@ -346,6 +346,24 @@ public final class ModelDocument {
         return this;
     }
 
+    /** Set the model-level {@code comment} ({@code modelInfo.comment} — a free-text model description/note). */
+    public ModelDocument setModelComment(String text) {
+        modelInfo().put("comment", text);
+        return this;
+    }
+
+    /** Remove the model-level {@code comment}. */
+    public ModelDocument clearModelComment() {
+        modelInfo().remove("comment");
+        return this;
+    }
+
+    /** The model-level {@code comment} ({@code modelInfo.comment}), if set. */
+    public Optional<String> modelComment() {
+        JsonNode comment = root.path("content").path("modelInfo").path("comment");
+        return comment.isTextual() ? Optional.of(comment.asText()) : Optional.empty();
+    }
+
     /** The header's {@code key} array, created if absent. */
     private ArrayNode headerArray(String key) {
         ObjectNode header = (ObjectNode) root.path("header");
@@ -389,16 +407,23 @@ public final class ModelDocument {
     }
 
     /**
-     * Locate <em>any</em> element node — field, group, or rule — by its name-path. Broader than
-     * {@link #element} (which {@code walk} limits to fields and groups), so the element-metadata edits
-     * (descriptions / annotations) reach rules too.
+     * Locate any describable node by its name-path or type-def id: a field, group, or rule (by name-path,
+     * broader than {@link #element}, which {@code walk} limits to fields/groups), or a <b>type definition</b>
+     * (by id, since type-defs live in {@code content.typeDefinitions}, not the element tree). All carry the
+     * same element-level {@code internalDescription}/{@code externalDescription}/{@code annotations} shape, so
+     * one metadata API ({@link #setInternalDescription} / {@link #setAnnotation} / …) covers them all.
      */
-    private ObjectNode metaElement(String path) {
-        ObjectNode found = findByPath(root.path("content").path("modelRoot").path("rootGroups"), "", path);
-        if (found == null) {
-            throw new IllegalArgumentException("no element at path: " + path);
+    private ObjectNode metaElement(String pathOrTypeDefId) {
+        ObjectNode found = findByPath(root.path("content").path("modelRoot").path("rootGroups"), "", pathOrTypeDefId);
+        if (found != null) {
+            return found;
         }
-        return found;
+        for (JsonNode td : root.path("content").path("typeDefinitions")) {
+            if (pathOrTypeDefId.equals(td.path("id").asText())) {
+                return (ObjectNode) td;
+            }
+        }
+        throw new IllegalArgumentException("no element or type definition: " + pathOrTypeDefId);
     }
 
     private static ObjectNode findByPath(JsonNode container, String prefix, String target) {

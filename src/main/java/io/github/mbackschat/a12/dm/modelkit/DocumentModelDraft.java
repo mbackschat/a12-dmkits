@@ -49,11 +49,12 @@ public final class DocumentModelDraft {
     private final List<ElementDraft.Annotation> annotations;
     private final List<String> supportedCharacters;
     private final List<String> typeDefImports;
+    private final String comment;
 
     private DocumentModelDraft(String id, List<String> locales, List<Include> includes,
             List<TypeDefDecl> typeDefs, List<ElementDraft.Group> rootGroups, Integer baseYear,
             Map<String, String> labels, List<ElementDraft.Annotation> annotations,
-            List<String> supportedCharacters, List<String> typeDefImports) {
+            List<String> supportedCharacters, List<String> typeDefImports, String comment) {
         this.id = id;
         this.locales = locales;
         this.includes = includes;
@@ -64,10 +65,12 @@ public final class DocumentModelDraft {
         this.annotations = annotations;
         this.supportedCharacters = supportedCharacters;
         this.typeDefImports = typeDefImports;
+        this.comment = comment;
     }
 
     /** A reusable named type, declared once in {@code content.typeDefinitions} and referenced by fields. */
-    private record TypeDefDecl(String id, FieldTypeSpec type) {}
+    private record TypeDefDecl(String id, FieldTypeSpec type, List<ElementDraft.Annotation> annotations,
+            Map<String, String> internalDescription, Map<String, String> externalDescription) {}
 
     /** A header include: {@code alias} (used by mount groups) → {@code reference} (the included model id). */
     private record Include(String alias, String reference) {}
@@ -136,6 +139,9 @@ public final class DocumentModelDraft {
             // the model-level base year (handles year-less date inputs and enables the BaseYear point-in-time)
             info.put("baseYear", String.valueOf(baseYear));
         }
+        if (comment != null) {
+            info.put("comment", comment);   // a free-text model-level note (IDocumentModelInfo.getComment)
+        }
         info.put("immutable", false);
         ObjectNode config = content.putObject("modelConfig");
         config.put("decimalSeparator", ".");
@@ -155,6 +161,9 @@ public final class DocumentModelDraft {
                 ObjectNode node = defs.addObject();
                 node.put("id", def.id());
                 node.put("name", def.id());
+                writeAnnotations(node, def.annotations());
+                writeLocalizedText(node, "internalDescription", def.internalDescription());
+                writeLocalizedText(node, "externalDescription", def.externalDescription());
                 writeFieldType(node.putObject("fieldType"), def.type(), locales);
             }
         }
@@ -464,6 +473,7 @@ public final class DocumentModelDraft {
         private final List<String> typeDefImports = new ArrayList<>();
         private boolean typeDefOnly;
         private Integer baseYear;
+        private String comment;
 
         private Builder(String id) {
             this.id = id;
@@ -526,7 +536,14 @@ public final class DocumentModelDraft {
         public Builder typeDef(String id, Consumer<TypeDefBuilder> body) {
             TypeDefBuilder b = new TypeDefBuilder();
             body.accept(b);
-            typeDefs.add(new TypeDefDecl(id, b.spec()));
+            typeDefs.add(new TypeDefDecl(id, b.spec(), List.copyOf(b.annotations),
+                    Map.copyOf(b.internalDescription), Map.copyOf(b.externalDescription)));
+            return this;
+        }
+
+        /** Set the model-level {@code comment} (a free-text model note / description). */
+        public Builder comment(String text) {
+            this.comment = text;
             return this;
         }
 
@@ -589,12 +606,15 @@ public final class DocumentModelDraft {
             return new DocumentModelDraft(id, List.copyOf(locales), List.copyOf(includes),
                     List.copyOf(typeDefs), List.copyOf(rootGroups), baseYear,
                     Map.copyOf(labels), List.copyOf(annotations), List.copyOf(supportedCharacters),
-                    List.copyOf(typeDefImports));
+                    List.copyOf(typeDefImports), comment);
         }
     }
 
-    /** Picks the single underlying type of a reusable type definition (config reused from the field builders). */
-    public static final class TypeDefBuilder {
+    /**
+     * Picks the single underlying type of a reusable type definition (config reused from the field builders),
+     * and — via {@link ElementMeta} — its describe/annotate metadata.
+     */
+    public static final class TypeDefBuilder extends ElementMeta<TypeDefBuilder> {
 
         private FieldTypeSpec spec;
 

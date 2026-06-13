@@ -65,4 +65,10 @@ public final class ConfigEditor {
         session.setModelAnnotation(name, value);
         return this;
     }
+
+    /** Set the model-level {@code comment} (a free-text model note / description). Chains. */
+    public ConfigEditor comment(String text) {
+        session.setModelComment(text);
+        return this;
+    }
 }
