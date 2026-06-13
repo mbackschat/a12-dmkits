@@ -1,0 +1,16 @@
+{
+  "id": "04-describe-field",
+  "family": "metadata",
+  "model": "order-ruled",
+  "intent": "Document the order's customer-name field with an internal (maintainer-facing) description: \"The full legal name of the ordering customer.\"",
+  "gold": {
+    "op": "describe",
+    "kind": "internal",
+    "ref": "/Order/CustomerName",
+    "locale": "en_US",
+    "text": "The full legal name of the ordering customer."
+  },
+  "notes": "Metadata CRUD: the agent discovers the cross-cutting `meta` verb (`manifest` → params for 'meta') and runs `dmtool -m <model> meta /Order/CustomerName --internal en_US=\"...\"`. Scored: the edit re-binds kernel-valid AND the internal description reads back at the field. Layer-1 oracle covers it; a Layer-2 agentic metadata phase is a follow-up (as for refactor).",
+  "difficulty": "simple",
+  "suites": ["smoke"]
+}

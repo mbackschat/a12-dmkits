@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.eval;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -118,6 +119,9 @@ class EvalGoldOracleTest {
             // Refactor (rename/move): rewrite references (the kernel's MoveSupportDM) + relocate the
             // declaration, re-bind, and assert the new path exists while the old is gone.
             case "refactor" -> assertRefactorGoldValidates(task, model, taskFile);
+            // Metadata (describe/annotate/comment): apply the gold metadata edit, re-bind kernel-valid, and
+            // assert the value reads back (the descriptions/annotations/comment CRUD surface).
+            case "metadata" -> assertMetadataGoldValidates(task, model, taskFile);
             default -> fail(taskFile.getFileName() + " has unknown family: " + task.path("family").asText());
         }
     }
@@ -245,6 +249,50 @@ class EvalGoldOracleTest {
             String expect = gold.get("expectField").asText();
             assertTrue(BoundModel.ofJson(session.toJson(), resolver).fieldAt(expect).isPresent(),
                     () -> taskFile.getFileName() + " expected field " + expect + " to exist after the edit");
+        }
+    }
+
+    /**
+     * A metadata gold ({@code describe} / {@code annotate} / {@code comment}): apply the gold metadata edit
+     * to an {@link EditSession}, assert it re-binds kernel-valid, and that the value reads back through the
+     * kernel (so the slot was honored, not silently dropped).
+     */
+    private static void assertMetadataGoldValidates(JsonNode task, String model, Path taskFile) {
+        JsonNode gold = task.get("gold");
+        var resolver = resolverFor(task);
+        EditSession session = EditSession.read(model, resolver);
+        String op = gold.get("op").asText();
+        boolean external = "external".equals(gold.path("kind").asText("internal"));
+        switch (op) {
+            case "describe" -> {
+                if (external) {
+                    session.setExternalDescription(gold.get("ref").asText(), gold.get("locale").asText(),
+                            gold.get("text").asText());
+                } else {
+                    session.setInternalDescription(gold.get("ref").asText(), gold.get("locale").asText(),
+                            gold.get("text").asText());
+                }
+            }
+            case "annotate" -> session.setAnnotation(gold.get("ref").asText(),
+                    gold.get("name").asText(), gold.get("value").asText());
+            case "comment" -> session.setModelComment(gold.get("text").asText());
+            default -> fail(taskFile.getFileName() + " unsupported metadata op: " + op);
+        }
+        assertReBinds(session, taskFile, "metadata");
+
+        ModelDocument doc = ModelDocument.read(session.toJson());
+        String where = taskFile.getFileName() + " metadata gold must read back";
+        switch (op) {
+            case "describe" -> {
+                Map<String, String> desc = external
+                        ? doc.externalDescription(gold.get("ref").asText())
+                        : doc.internalDescription(gold.get("ref").asText());
+                assertEquals(gold.get("text").asText(), desc.get(gold.get("locale").asText()), where);
+            }
+            case "annotate" -> assertEquals(gold.get("value").asText(),
+                    doc.annotations(gold.get("ref").asText()).get(gold.get("name").asText()), where);
+            case "comment" -> assertEquals(gold.get("text").asText(), doc.modelComment().orElse(null), where);
+            default -> { /* unreachable — fail() above */ }
         }
     }
 

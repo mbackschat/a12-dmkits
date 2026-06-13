@@ -1,0 +1,14 @@
+{
+  "id": "05-annotate-rule",
+  "family": "metadata",
+  "model": "order-ruled",
+  "intent": "Tag the delivery-date rule with a name/value annotation recording its owner: owner = orders-team.",
+  "gold": {
+    "op": "annotate",
+    "ref": "/Order/DeliveryNotBeforeOrder",
+    "name": "owner",
+    "value": "orders-team"
+  },
+  "notes": "Annotations are element-wide — this targets a RULE (not just a field/group), exercising the edit-path locator's reach into rules: `dmtool -m <model> meta /Order/DeliveryNotBeforeOrder --annotate owner=orders-team`. Scored: re-binds AND the annotation reads back on the rule. Layer-1 oracle; Layer-2 follow-up.",
+  "difficulty": "simple"
+}

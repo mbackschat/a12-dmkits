@@ -4,7 +4,7 @@ The curated task set for the N6 self-sufficiency eval. Method, scoring, and prot
 
 ## Layout
 
-- `tasks/<kit>/<NN>-<slug>.json` — one task per file, grouped by **kit** subfolder: `rulekit/` (rules + computations + their comprehension/self-correction), `modelkit/` (structure: field/group/typedef/include/config + delete-safety + refactor), `mixed/` (one `apply` session touching both). **The folder is the kit** (the explicit axis — no derived map); the task `id` is the filename stem (e.g. `01-pro-addon-fee-required`). Each authoring task carries a **kernel-verified gold** answer. All fixtures/rules here are our own originals (license-safe, per the project `CLAUDE.md`). Run tiers (smoke/simple/full) + the categorization are in [`../docs/EVAL-SPEC.md`](../docs/EVAL-SPEC.md) §8d.
+- `tasks/<kit>/<NN>-<slug>.json` — one task per file, grouped by **kit** subfolder: `rulekit/` (rules + computations + their comprehension/self-correction), `modelkit/` (structure: field/group/typedef/include/config + delete-safety + refactor + metadata: descriptions/annotations/comment), `mixed/` (one `apply` session touching both). **The folder is the kit** (the explicit axis — no derived map); the task `id` is the filename stem (e.g. `01-pro-addon-fee-required`). Each authoring task carries a **kernel-verified gold** answer. All fixtures/rules here are our own originals (license-safe, per the project `CLAUDE.md`). Run tiers (smoke/simple/full) + the categorization are in [`../docs/EVAL-SPEC.md`](../docs/EVAL-SPEC.md) §8d.
 
 ## Task schema
 
@@ -13,7 +13,7 @@ The curated task set for the N6 self-sufficiency eval. Method, scoring, and prot
 {
   "id": "01-pro-addon-fee-required",             // = the filename stem (no separate T<N>)
   "family": "authoring" | "authoring-computation" | "modify-computation" | "modify-rule" | "comprehension" | "self-correction"   // rulekit/
-           // | "structure" | "delete-safety" | "refactor"   // modelkit/      | "session"   // mixed/
+           // | "structure" | "delete-safety" | "refactor" | "metadata"   // modelkit/      | "session"   // mixed/
   "difficulty": "simple" | "medium" | "complex", // intrinsic tag (EvalSuiteLedgerTest requires it)
   "suites": ["smoke", "simple"],                 // optional run-tier membership (derive a tier by filtering on this)
   "model": "subscription",                       // a fixture name under cli/src/test/resources/models/
@@ -36,6 +36,7 @@ The curated task set for the N6 self-sufficiency eval. Method, scoring, and prot
 - **authoring-computation / modify-computation** — `{computedField, alternatives: [{precondition?, operation}], commonPrecondition?}` (the computation the kernel should accept; for *modify* it's the intended re-expression, keeping the same `computedField`).
 - **comprehension** — no `gold`; instead `rules: [...]` (the model's rule names to read back) + `expected` (the rubric of explanation facts).
 - **structure / delete-safety / session** (the `modelkit/`+`mixed/` families) — `{op, group/parent, name, kind, expect…}` for a structure edit, `{op, field, cascade, expectRemoved}` for a safe-delete, `{ops:[…], expect:{field, rule}}` for an `apply` session. **Verified by `EvalGoldOracleTest`** (the gold edit re-binds + the post-conditions hold), and **all three have a Layer-2 agentic path** (deterministically scored — no LLM judge; EVAL-SPEC §8d **B**).
+- **metadata** (the `modelkit/` describe/annotate family) — `{op: "describe" | "annotate" | "comment", ref?, kind?, locale?, name?, value?, text?}`: `describe` → `{ref, kind:"internal"|"external", locale, text}`; `annotate` → `{ref, name, value}`; `comment` → `{text}` (model-level). **Verified by `EvalGoldOracleTest`** (apply the gold metadata edit via `EditSession`, re-bind, and assert the value reads back through the kernel). Layer-1 only for now — a Layer-2 agentic metadata phase is a follow-up (as for `refactor`).
 - **refactor** (the `modelkit/` rename/move family) — `{op, field, to, expect:{renamed, to, rewroteReferences}}`. **Verified by `EvalGoldOracleTest`** (active since 2026-06-12 — the reference-rewriting rename/move engine shipped): the gold rename is applied via `adapter.ReferenceRewriter` + `ModelDocument`, must re-bind valid→valid, and the new path must exist while the old is gone. A **Layer-2 agentic refactor phase** is the remaining follow-up (the runner has no refactor producer yet).
 
 `modelPath`/`includeDir` are optional **multi-file** keys: present only when the task model `include`s a separate model that lives outside its own directory, so the runner threads `--include-dir` through every verb. `computation` is required for `modify-computation` (the existing computation to re-express); `rule` is required for `modify-rule` (the existing rule to re-express).

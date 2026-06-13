@@ -1,0 +1,12 @@
+{
+  "id": "06-model-comment",
+  "family": "metadata",
+  "model": "order-ruled",
+  "intent": "Set a model-level comment describing the model: \"Customer order with delivery and eligibility rules.\"",
+  "gold": {
+    "op": "comment",
+    "text": "Customer order with delivery and eligibility rules."
+  },
+  "notes": "The model-level comment (modelInfo.comment) rides `config modify --comment` and is surfaced by `config read`: `dmtool -m <model> config modify --comment \"...\"`. Scored: re-binds AND the comment reads back via config read. Layer-1 oracle; Layer-2 follow-up.",
+  "difficulty": "simple"
+}
