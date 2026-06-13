@@ -749,9 +749,17 @@ public final class ModelDocument {
 
     /** Mount a declared include as a <b>repeatable</b> sub-form ({@code repeatability} rows; FEATURE-GAPS §2). */
     public ModelDocument mount(String parentPath, String name, String alias, int repeatability) {
+        return mount(parentPath, name, alias, MountOptions.repeatable(repeatability));
+    }
+
+    /**
+     * Mount a declared include with explicit {@link MountOptions} — repeatability plus whether to exclude
+     * the included model's rules / computations on expand (FEATURE-GAPS §3.9).
+     */
+    public ModelDocument mount(String parentPath, String name, String alias, MountOptions options) {
         ArrayNode container = parentPath.isEmpty() ? rootGroups() : containerElements(parentPath);
         container.add(DocumentModelDraft.mountNode(
-                new ElementDraft.Mount(name, alias, repeatability, List.of()), parentPath));
+                new ElementDraft.Mount(name, alias, options, List.of()), parentPath));
         return this;
     }
 

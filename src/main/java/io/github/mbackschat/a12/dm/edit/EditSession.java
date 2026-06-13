@@ -17,6 +17,7 @@ import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.modelkit.MountOptions;
 import io.github.mbackschat.a12.dm.modelkit.Requiredness;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
@@ -200,6 +201,11 @@ public final class EditSession {
         return editStructure(d -> d.addInclude(alias, reference).mount(parentPath, name, alias));
     }
 
+    /** Declare a header include ({@code alias} → {@code reference}) without mounting it yet — mount via {@link #include(String)}. */
+    public EditSession addInclude(String alias, String reference) {
+        return editStructure(d -> d.addInclude(alias, reference));
+    }
+
     public EditSession mount(String parentPath, String name, String alias) {
         return editStructure(d -> d.mount(parentPath, name, alias));
     }
@@ -207,6 +213,11 @@ public final class EditSession {
     /** Mount a declared include as a repeatable sub-form ({@code repeatability} rows; FEATURE-GAPS §2). */
     public EditSession mount(String parentPath, String name, String alias, int repeatability) {
         return editStructure(d -> d.mount(parentPath, name, alias, repeatability));
+    }
+
+    /** Mount a declared include with explicit {@link MountOptions} (repeatability + rule/computation exclusions; §3.9). */
+    public EditSession mount(String parentPath, String name, String alias, MountOptions options) {
+        return editStructure(d -> d.mount(parentPath, name, alias, options));
     }
 
     public EditSession removeInclude(String alias) {

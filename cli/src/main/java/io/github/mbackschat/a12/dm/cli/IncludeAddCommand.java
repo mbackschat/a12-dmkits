@@ -11,6 +11,7 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolve
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.modelkit.MountOptions;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
@@ -18,8 +19,10 @@ import picocli.CommandLine.Option;
 /**
  * {@code dmtool include add --alias <a> --reference <r> --parent <path> --name <n>} — declare a header
  * model-reference and mount it as a group, then write the model back (in place; {@code -o}/{@code --dry-run}).
- * The referenced model is resolved + kernel-validated via {@code --include-dir}; a missing reference or an
- * invalid mount is a {@code rejected} envelope.
+ * {@code --repeatability} mounts a repeating sub-form; {@code --exclude-rules}/{@code --exclude-computations}
+ * drop the included model's own rules/computations on expand (FEATURE-GAPS §3.9). The referenced model is
+ * resolved + kernel-validated via {@code --include-dir}; a missing reference or an invalid mount is a
+ * {@code rejected} envelope.
  */
 @Command(name = "add", mixinStandardHelpOptions = true,
         description = "Declare a model include (--alias → --reference) and mount it as --name under --parent.")
@@ -51,6 +54,14 @@ final class IncludeAddCommand extends BaseCommand {
     @Option(names = "--repeatability", defaultValue = "1", paramLabel = "<n>",
             description = "mount as a repeatable sub-form of up to <n> rows (default 1 = single)")
     int repeatability;
+
+    @Option(names = "--exclude-rules",
+            description = "exclude the included model's own rules when the mount is expanded")
+    boolean excludeRules;
+
+    @Option(names = "--exclude-computations",
+            description = "exclude the included model's own computations when the mount is expanded")
+    boolean excludeComputations;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the result here instead of in place (overwriting the model)")
@@ -84,11 +95,18 @@ final class IncludeAddCommand extends BaseCommand {
                 return refuse("include", "add", refusal.get());
             }
         }
+        MountOptions options = MountOptions.repeatable(repeatability);
+        if (excludeRules) {
+            options = options.excludingRules();
+        }
+        if (excludeComputations) {
+            options = options.excludingComputations();
+        }
         String resultJson;
         try {
             resultJson = ModelDocument.read(modelJson)
                     .addInclude(alias, reference)
-                    .mount(parent, name, alias, repeatability)
+                    .mount(parent, name, alias, options)
                     .validate(resolver)
                     .toJson();
         } catch (ModelConsistencyException e) {
@@ -102,6 +120,12 @@ final class IncludeAddCommand extends BaseCommand {
         changed.put("mountedAt", mountPath);
         if (repeatability != 1) {
             changed.put("repeatability", repeatability);
+        }
+        if (excludeRules) {
+            changed.put("excludeRules", true);
+        }
+        if (excludeComputations) {
+            changed.put("excludeComputations", true);
         }
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("include", "add", "would add include " + alias, changed);

@@ -178,8 +178,16 @@ public final class DocumentModelDraft {
         node.put("name", mount.name());
         writeAnnotations(node, mount.annotations());
         ObjectNode body = node.putObject("Group");
-        body.put("repeatability", mount.repeatability());
+        MountOptions options = mount.options();
+        body.put("repeatability", options.repeatability());
         body.put("modelAlias", mount.alias());
+        // rule/computation exclusions sit on the mount group beside modelAlias (metamodel MM_Group, §3.9)
+        if (options.excludeRules()) {
+            body.put("excludeRules", true);
+        }
+        if (options.excludeComputations()) {
+            body.put("excludeComputations", true);
+        }
         return node;
     }
 
@@ -656,7 +664,16 @@ public final class DocumentModelDraft {
 
         /** Mount an included model as a <b>repeatable</b> sub-form ({@code repeatability} rows; §2). */
         public GroupBuilder mount(String name, String alias, int repeatability) {
-            elements.add(new ElementDraft.Mount(name, alias, repeatability, List.of()));
+            return mount(name, alias, MountOptions.repeatable(repeatability));
+        }
+
+        /**
+         * Mount an included model with explicit {@link MountOptions} — repeatability plus whether to
+         * exclude the included model's rules / computations on expand (§3.9). E.g.
+         * {@code mount("Prices", "catalog", MountOptions.single().excludingRules())}.
+         */
+        public GroupBuilder mount(String name, String alias, MountOptions options) {
+            elements.add(new ElementDraft.Mount(name, alias, options, List.of()));
             return this;
         }
 

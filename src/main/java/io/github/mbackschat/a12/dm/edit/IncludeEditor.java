@@ -1,5 +1,7 @@
 package io.github.mbackschat.a12.dm.edit;
 
+import io.github.mbackschat.a12.dm.modelkit.MountOptions;
+
 /**
  * L2c — a held reference to a declared include (by alias), so mounting it (again), re-pointing it,
  * renaming it, or removing it doesn't re-type the alias. Obtain from {@link EditSession#include(String)}.
@@ -31,6 +33,15 @@ public final class IncludeEditor {
     /** Mount this include as a repeatable sub-form ({@code repeatability} rows; FEATURE-GAPS §2). Chains. */
     public IncludeEditor mount(String parentPath, String name, int repeatability) {
         session.mount(parentPath, name, alias, repeatability);
+        return this;
+    }
+
+    /**
+     * Mount this include with explicit {@link MountOptions} — repeatability plus whether to exclude the
+     * included model's rules / computations on expand (FEATURE-GAPS §3.9). Chains.
+     */
+    public IncludeEditor mount(String parentPath, String name, MountOptions options) {
+        session.mount(parentPath, name, alias, options);
         return this;
     }
 
