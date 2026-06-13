@@ -239,9 +239,9 @@ public final class ModelDocument {
         return this;
     }
 
-    /** Set a name/value annotation on a field or group (replacing any existing entry with the same name). */
+    /** Set a name/value annotation on any element — field, group, or rule (replacing any same-named entry). */
     public ModelDocument setAnnotation(String elementPath, String name, String value) {
-        ObjectNode element = element(elementPath);
+        ObjectNode element = metaElement(elementPath);
         ArrayNode annotations = element.has("annotations")
                 ? (ArrayNode) element.get("annotations")
                 : element.putArray("annotations");
@@ -253,6 +253,71 @@ public final class ModelDocument {
         }
         annotations.addObject().put("name", name).put("value", value);
         return this;
+    }
+
+    /** Remove the annotation named {@code name} from the element at {@code elementPath} (no-op if absent). */
+    public ModelDocument removeAnnotation(String elementPath, String name) {
+        filterArray(metaElement(elementPath), "annotations", "name", name);
+        return this;
+    }
+
+    /**
+     * Upsert one per-locale {@code internalDescription} entry on the element at {@code elementPath} — a
+     * field, group, or rule (the kernel's {@code IDescribed}, authoring/maintenance text). Replaces the
+     * text for an existing locale.
+     */
+    public ModelDocument setInternalDescription(String elementPath, String locale, String text) {
+        upsertLocalized(metaElement(elementPath), "internalDescription", locale, text);
+        return this;
+    }
+
+    /** Upsert one per-locale {@code externalDescription} entry on the element at {@code elementPath} (end-user text). */
+    public ModelDocument setExternalDescription(String elementPath, String locale, String text) {
+        upsertLocalized(metaElement(elementPath), "externalDescription", locale, text);
+        return this;
+    }
+
+    /** Remove the {@code internalDescription} entry for {@code locale} from the element at {@code elementPath}. */
+    public ModelDocument removeInternalDescription(String elementPath, String locale) {
+        filterArray(metaElement(elementPath), "internalDescription", "locale", locale);
+        return this;
+    }
+
+    /** Remove the {@code externalDescription} entry for {@code locale} from the element at {@code elementPath}. */
+    public ModelDocument removeExternalDescription(String elementPath, String locale) {
+        filterArray(metaElement(elementPath), "externalDescription", "locale", locale);
+        return this;
+    }
+
+    /** Upsert a {@code [{locale, text}]} entry under {@code key} on {@code element}. */
+    private static void upsertLocalized(ObjectNode element, String key, String locale, String text) {
+        ArrayNode array = element.has(key) ? (ArrayNode) element.get(key) : element.putArray(key);
+        for (JsonNode e : array) {
+            if (locale.equals(e.path("locale").asText())) {
+                ((ObjectNode) e).put("text", text);
+                return;
+            }
+        }
+        array.addObject().put("locale", locale).put("text", text);
+    }
+
+    /** Drop every entry of {@code element[key]} whose {@code matchField} equals {@code matchValue}; remove the array if it empties. */
+    private static void filterArray(ObjectNode element, String key, String matchField, String matchValue) {
+        JsonNode array = element.path(key);
+        if (!array.isArray()) {
+            return;
+        }
+        ArrayNode kept = MAPPER.createArrayNode();
+        for (JsonNode e : array) {
+            if (!matchValue.equals(e.path(matchField).asText())) {
+                kept.add(e);
+            }
+        }
+        if (kept.isEmpty()) {
+            element.remove(key);
+        } else {
+            element.set(key, kept);
+        }
     }
 
     /** Upsert one model-level header <b>label</b> locale (the model-level peer of {@link #setLabel}, §3.5/§2). */
@@ -321,6 +386,35 @@ public final class ModelDocument {
     private ObjectNode elementPayload(String path) {
         ObjectNode element = element(path);
         return (ObjectNode) element.path(element.path("type").asText());
+    }
+
+    /**
+     * Locate <em>any</em> element node — field, group, or rule — by its name-path. Broader than
+     * {@link #element} (which {@code walk} limits to fields and groups), so the element-metadata edits
+     * (descriptions / annotations) reach rules too.
+     */
+    private ObjectNode metaElement(String path) {
+        ObjectNode found = findByPath(root.path("content").path("modelRoot").path("rootGroups"), "", path);
+        if (found == null) {
+            throw new IllegalArgumentException("no element at path: " + path);
+        }
+        return found;
+    }
+
+    private static ObjectNode findByPath(JsonNode container, String prefix, String target) {
+        for (JsonNode node : container) {
+            String path = prefix + "/" + node.path("name").asText();
+            if (path.equals(target)) {
+                return (ObjectNode) node;
+            }
+            if ("Group".equals(node.path("type").asText())) {
+                ObjectNode inner = findByPath(node.path("Group").path("elements"), path, target);
+                if (inner != null) {
+                    return inner;
+                }
+            }
+        }
+        return null;
     }
 
     /** Add a non-repeating group named {@code name} under {@code parentPath} ({@code ""} = a root group). */

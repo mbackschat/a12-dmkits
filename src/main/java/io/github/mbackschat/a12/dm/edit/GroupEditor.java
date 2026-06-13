@@ -181,6 +181,30 @@ public final class GroupEditor implements GroupReference {
         return this;
     }
 
+    /** Set a name/value annotation on this group. Chains. */
+    public GroupEditor setAnnotation(String name, String value) {
+        session.setAnnotation(location.path(), name, value);
+        return this;
+    }
+
+    /** Remove the annotation {@code name} from this group. Chains. */
+    public GroupEditor removeAnnotation(String name) {
+        session.removeAnnotation(location.path(), name);
+        return this;
+    }
+
+    /** Upsert one per-locale internal description (authoring/maintenance text) on this group. Chains. */
+    public GroupEditor setInternalDescription(String locale, String text) {
+        session.setInternalDescription(location.path(), locale, text);
+        return this;
+    }
+
+    /** Upsert one per-locale external description (end-user-facing text) on this group. Chains. */
+    public GroupEditor setExternalDescription(String locale, String text) {
+        session.setExternalDescription(location.path(), locale, text);
+        return this;
+    }
+
     private String child(String name) {
         return location.path() + "/" + name;
     }

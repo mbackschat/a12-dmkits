@@ -92,6 +92,31 @@ public final class EditSession {
         return editStructure(d -> d.setAnnotation(elementPath, name, value));
     }
 
+    /** Remove the annotation {@code name} from the element (field/group/rule) at {@code elementPath}. */
+    public EditSession removeAnnotation(String elementPath, String name) {
+        return editStructure(d -> d.removeAnnotation(elementPath, name));
+    }
+
+    /** Upsert one per-locale {@code internalDescription} on the element (field/group/rule) at {@code elementPath}. */
+    public EditSession setInternalDescription(String elementPath, String locale, String text) {
+        return editStructure(d -> d.setInternalDescription(elementPath, locale, text));
+    }
+
+    /** Upsert one per-locale {@code externalDescription} on the element at {@code elementPath}. */
+    public EditSession setExternalDescription(String elementPath, String locale, String text) {
+        return editStructure(d -> d.setExternalDescription(elementPath, locale, text));
+    }
+
+    /** Remove the {@code internalDescription} for {@code locale} from the element at {@code elementPath}. */
+    public EditSession removeInternalDescription(String elementPath, String locale) {
+        return editStructure(d -> d.removeInternalDescription(elementPath, locale));
+    }
+
+    /** Remove the {@code externalDescription} for {@code locale} from the element at {@code elementPath}. */
+    public EditSession removeExternalDescription(String elementPath, String locale) {
+        return editStructure(d -> d.removeExternalDescription(elementPath, locale));
+    }
+
     public EditSession addGroup(String parentPath, String name) {
         return editStructure(d -> d.addGroup(parentPath, name));
     }

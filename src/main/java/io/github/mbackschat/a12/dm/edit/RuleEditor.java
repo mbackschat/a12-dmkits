@@ -56,6 +56,30 @@ public final class RuleEditor {
         return this;
     }
 
+    /** Set a name/value annotation on this rule. Chains. */
+    public RuleEditor setAnnotation(String name, String value) {
+        session.setAnnotation(fullName, name, value);
+        return this;
+    }
+
+    /** Remove the annotation {@code name} from this rule. Chains. */
+    public RuleEditor removeAnnotation(String name) {
+        session.removeAnnotation(fullName, name);
+        return this;
+    }
+
+    /** Upsert one per-locale internal description (authoring/maintenance text) on this rule. Chains. */
+    public RuleEditor setInternalDescription(String locale, String text) {
+        session.setInternalDescription(fullName, locale, text);
+        return this;
+    }
+
+    /** Upsert one per-locale external description (end-user-facing text) on this rule. Chains. */
+    public RuleEditor setExternalDescription(String locale, String text) {
+        session.setExternalDescription(fullName, locale, text);
+        return this;
+    }
+
     /** Remove this rule; returns the session (the rule no longer exists, so the editor is spent). */
     public EditSession remove() {
         return session.removeRule(fullName);

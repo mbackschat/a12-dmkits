@@ -56,12 +56,25 @@ public sealed interface ElementDraft
      * for a plain group.
      */
     record Group(String name, int repeatability, String indexFieldName, List<ElementDraft> elements,
-            List<Annotation> annotations, String usageType) implements ElementDraft {
+            List<Annotation> annotations, String usageType,
+            Map<String, String> internalDescription, Map<String, String> externalDescription)
+            implements ElementDraft {
 
-        /** A plain group — no {@code usageType} template marker. */
+        public Group {
+            internalDescription = internalDescription == null ? Map.of() : Map.copyOf(internalDescription);
+            externalDescription = externalDescription == null ? Map.of() : Map.copyOf(externalDescription);
+        }
+
+        /** A plain group — no {@code usageType} template marker, no descriptions. */
         public Group(String name, int repeatability, String indexFieldName, List<ElementDraft> elements,
                 List<Annotation> annotations) {
-            this(name, repeatability, indexFieldName, elements, annotations, null);
+            this(name, repeatability, indexFieldName, elements, annotations, null, Map.of(), Map.of());
+        }
+
+        /** A group with a {@code usageType} template marker, no descriptions. */
+        public Group(String name, int repeatability, String indexFieldName, List<ElementDraft> elements,
+                List<Annotation> annotations, String usageType) {
+            this(name, repeatability, indexFieldName, elements, annotations, usageType, Map.of(), Map.of());
         }
     }
 

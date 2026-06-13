@@ -48,6 +48,24 @@ public final class FieldEditor {
         return this;
     }
 
+    /** Remove the annotation {@code name} from this field. Chains. */
+    public FieldEditor removeAnnotation(String name) {
+        session.removeAnnotation(location.path(), name);
+        return this;
+    }
+
+    /** Upsert one per-locale internal description (authoring/maintenance text) on this field. Chains. */
+    public FieldEditor setInternalDescription(String locale, String text) {
+        session.setInternalDescription(location.path(), locale, text);
+        return this;
+    }
+
+    /** Upsert one per-locale external description (end-user-facing text) on this field. Chains. */
+    public FieldEditor setExternalDescription(String locale, String text) {
+        session.setExternalDescription(location.path(), locale, text);
+        return this;
+    }
+
     /** Set this field's requiredness ({@link Requiredness#OPTIONAL} clears it). Chains. */
     public FieldEditor setRequiredness(Requiredness requiredness) {
         session.setRequiredness(location.path(), requiredness);

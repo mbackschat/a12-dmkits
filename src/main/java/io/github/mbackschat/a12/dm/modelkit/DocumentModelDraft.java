@@ -177,6 +177,9 @@ public final class DocumentModelDraft {
         node.put("id", path);
         node.put("name", group.name());
         writeAnnotations(node, group.annotations());
+        // internal/external description are element-level (alongside annotations), uniform with fields (IDescribed)
+        writeLocalizedText(node, "internalDescription", group.internalDescription());
+        writeLocalizedText(node, "externalDescription", group.externalDescription());
         ObjectNode body = node.putObject("Group");
         body.put("repeatability", group.repeatability());
         if (group.usageType() != null) {
@@ -629,14 +632,13 @@ public final class DocumentModelDraft {
         }
     }
 
-    /** Fluent builder for a group and its contents. */
-    public static final class GroupBuilder {
+    /** Fluent builder for a group and its contents — describable/annotatable via {@link ElementMeta}. */
+    public static final class GroupBuilder extends ElementMeta<GroupBuilder> {
 
         private final String name;
         private int repeatability = 1;
         private String indexFieldName;
         private final List<ElementDraft> elements = new ArrayList<>();
-        private final List<ElementDraft.Annotation> annotations = new ArrayList<>();
 
         private GroupBuilder(String name) {
             this.name = name;
@@ -658,12 +660,6 @@ public final class DocumentModelDraft {
          */
         public GroupBuilder indexField(String fieldName) {
             this.indexFieldName = fieldName;
-            return this;
-        }
-
-        /** A name/value annotation on this group element. */
-        public GroupBuilder annotation(String name, String value) {
-            annotations.add(new ElementDraft.Annotation(name, value));
             return this;
         }
 
@@ -815,7 +811,8 @@ public final class DocumentModelDraft {
                 }
             }
             return new ElementDraft.Group(name, repeatability, indexFieldName,
-                    List.copyOf(elements), List.copyOf(annotations));
+                    List.copyOf(elements), List.copyOf(annotations), null,
+                    Map.copyOf(internalDescription), Map.copyOf(externalDescription));
         }
     }
 
@@ -1079,24 +1076,53 @@ public final class DocumentModelDraft {
     }
 
     /**
-     * Field-element attributes shared by every field builder — {@code required(...)}, per-locale
-     * {@code label(...)}, and name/value {@code annotation(...)} — so they're written once and apply
-     * uniformly. The self-type {@code SELF} keeps the fluent chain in the concrete builder's type.
+     * Element metadata shared by every <b>describable</b> element builder — name/value
+     * {@code annotation(...)} and the per-locale {@code internalDescription(...)} /
+     * {@code externalDescription(...)} (the kernel's {@code IDescribed} + {@code IAnnotated}, carried by
+     * {@code IElement} and {@code IFieldTypeDefinition}). Factored out so fields, groups, and type-defs
+     * describe + annotate through one surface, with no per-builder duplication. The self-type {@code SELF}
+     * keeps the fluent chain in the concrete builder's type.
      */
-    public abstract static class FieldAttrs<SELF extends FieldAttrs<SELF>> {
-        Requiredness requiredness = Requiredness.OPTIONAL;
-        final Map<String, String> labels = new LinkedHashMap<>();
+    public abstract static class ElementMeta<SELF extends ElementMeta<SELF>> {
         final List<ElementDraft.Annotation> annotations = new ArrayList<>();
-        boolean global;
-        boolean notPersisted;
         final Map<String, String> internalDescription = new LinkedHashMap<>();
         final Map<String, String> externalDescription = new LinkedHashMap<>();
-        final Map<String, String> helperText = new LinkedHashMap<>();
 
         @SuppressWarnings("unchecked")
-        private SELF self() {
+        SELF self() {
             return (SELF) this;
         }
+
+        /** A name/value annotation on the element. */
+        public SELF annotation(String name, String value) {
+            annotations.add(new ElementDraft.Annotation(name, value));
+            return self();
+        }
+
+        /** Per-locale internal description (authoring/maintenance text, distinct from any label). */
+        public SELF internalDescription(String locale, String text) {
+            internalDescription.put(locale, text);
+            return self();
+        }
+
+        /** Per-locale external description (end-user-facing text, distinct from any label). */
+        public SELF externalDescription(String locale, String text) {
+            externalDescription.put(locale, text);
+            return self();
+        }
+    }
+
+    /**
+     * Field-element attributes — the {@link ElementMeta} describe/annotate surface <em>plus</em> the
+     * field-only slots {@code required(...)}, per-locale {@code label(...)}, {@code global}/{@code transient}
+     * flags, and {@code helperText(...)}.
+     */
+    public abstract static class FieldAttrs<SELF extends FieldAttrs<SELF>> extends ElementMeta<SELF> {
+        Requiredness requiredness = Requiredness.OPTIONAL;
+        final Map<String, String> labels = new LinkedHashMap<>();
+        boolean global;
+        boolean notPersisted;
+        final Map<String, String> helperText = new LinkedHashMap<>();
 
         public SELF required() {
             requiredness = Requiredness.REQUIRED;
@@ -1114,12 +1140,6 @@ public final class DocumentModelDraft {
             return self();
         }
 
-        /** A name/value annotation on the field element. */
-        public SELF annotation(String name, String value) {
-            annotations.add(new ElementDraft.Annotation(name, value));
-            return self();
-        }
-
         /** Mark the field {@code global} — passed to partial validation (a kernel field flag, §3.5). */
         public SELF global() {
             this.global = true;
@@ -1129,18 +1149,6 @@ public final class DocumentModelDraft {
         /** Mark the field {@code transient} — present at runtime but not persisted (a kernel field flag, §3.5). */
         public SELF notPersisted() {
             this.notPersisted = true;
-            return self();
-        }
-
-        /** Per-locale internal description (authoring/maintenance text, distinct from the label). */
-        public SELF internalDescription(String locale, String text) {
-            internalDescription.put(locale, text);
-            return self();
-        }
-
-        /** Per-locale external description (end-user-facing text, distinct from the label). */
-        public SELF externalDescription(String locale, String text) {
-            externalDescription.put(locale, text);
             return self();
         }
 
