@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/apply.schema.json",
   "title": "ApplyOps",
-  "description": "INPUT of `dmtool -m <model> apply <ops.json>` (CLI-SPEC §7) — an ORDERED array of op-records applied to ONE model in a single session: one read → ordered surgery → one terminal kernel gate → one write, with atomic rollback (a mid-sequence failure writes nothing). Each op-record is {target, op, …args}; the per-op fields are that verb's params — discover them from `manifest` + `schema <target> <op>`. Distinct from `batch` (which takes {verb, args} for stateless per-op dispatch). Each op emits a per-op result envelope (a successful edit is `staged` until the terminal gate commits the whole sequence); the wrapper is {ops, committed, failedAt, written, results[]}.",
+  "description": "INPUT of `dmtool -m <model> apply <ops.json>` (CLI-SPEC §7) — an ORDERED array of op-records applied to ONE model in a single session: one read → ordered surgery → one terminal kernel gate → one write, with atomic rollback (a mid-sequence failure writes nothing). Each op-record is {target, op, …args}; the per-op fields are that verb's params — discover them from `manifest` + `schema <target> <op>`. The op-set spans add·modify·remove·read PLUS the reference-rewriting refactors: `field`/`group` rename·move, `rule` rename, `typedef` rename (each runs its §6 safety gate at its turn against the live model — a refused refactor rolls the whole sequence back). `extract`/`inline` stay standalone verbs. An unsupported target/op self-corrects via RK_UNKNOWN_OP, which lists the ops apply DOES support. Distinct from `batch` (which takes {verb, args} for stateless per-op dispatch). Each op emits a per-op result envelope (a successful edit is `staged` until the terminal gate commits the whole sequence); the wrapper is {ops, committed, failedAt, written, results[]}.",
   "type": "array",
   "items": {
     "type": "object",
@@ -10,13 +10,17 @@
     "additionalProperties": true,
     "properties": {
       "target": { "type": "string", "description": "the element family acted on: field | group | rule | … (see `manifest`)" },
-      "op": { "type": "string", "description": "the operation: add | modify | remove | … (valid for the target)" }
+      "op": { "type": "string", "description": "the operation: add | modify | remove | read | rename | move (valid for the target; see `manifest`)" }
     }
   },
   "examples": [
     [
       { "target": "field", "op": "add", "group": "/Subscription", "name": "Note", "kind": "STRING" },
       { "target": "group", "op": "add", "parent": "/Subscription", "name": "Extras" }
+    ],
+    [
+      { "target": "field", "op": "add", "group": "/Subscription", "name": "Memo", "kind": "STRING" },
+      { "target": "field", "op": "rename", "fieldPathInModel": "/Subscription/Memo", "to": "Comment" }
     ]
   ]
 }

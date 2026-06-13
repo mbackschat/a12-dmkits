@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 
+import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import picocli.CommandLine.Command;
@@ -56,23 +57,21 @@ final class TypedefRenameCommand extends BaseCommand {
         if (modelJson == null) {
             return 2;
         }
+        StructureRefactor refactor = StructureRefactor.typedefRename(id, newId);
         ModelDocument doc = ModelDocument.read(modelJson);
+        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        KernelAdapter adapter = KernelAdapter.ofJson(modelJson, resolver);
 
         // the refactor safety gate (CLI-SPEC §6): check before we change anything, refuse with diagnostics.
-        Optional<Refusal> refusal = new SafetyGate()
-                .require(SafetyChecks.typedefExists(doc, id))
-                .require(SafetyChecks.typeDefIdAvailable(doc, newId))
-                .firstFailure();
+        Optional<Refusal> refusal = refactor.firstFailure(doc, adapter);
         if (refusal.isPresent()) {
             return refuse("typedef", "rename", refusal.get());
         }
 
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
         List<String> repointed = doc.fieldsUsingTypeDefinition(id);   // captured before the rename moves them
         String resultJson;
         try {
-            doc.renameTypeDefinition(id, newId);
-            resultJson = doc.validate(resolver).toJson();
+            resultJson = refactor.rewriteAndMutate(modelJson).validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("typedef", "rename", "rename left the model invalid", e);
         } catch (RuntimeException e) {

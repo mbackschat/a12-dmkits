@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 import com.mgmtp.a12.model.notification.RankedNotification;
 
+import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
@@ -37,8 +38,12 @@ import picocli.CommandLine.Parameters;
  * {@code {target, op, …args}} to a shared model, tolerating transient-invalid states between ops and gating
  * only at the end. Each op emits a per-op result envelope ({@code staged} until the terminal gate commits the
  * whole sequence); a batch summary {@code {ops, committed, failedAt, written, results[]}} wraps them. A
- * mid-sequence op failure rolls back (nothing written). This first increment handles the modelkit structure
- * ops (field/group add/remove); rule/computation ops, op-arg validation, and read ops are follow-on increments.
+ * mid-sequence op failure rolls back (nothing written). The op surface (the {@link Op} enum) covers the
+ * <b>Local</b> ops — field/group/typedef/include add·remove, rule/computation add·modify, config modify, and
+ * the structure reads — plus the reference-rewriting <b>Refactor</b> ops field/group rename·move, rule rename,
+ * and typedef rename: each runs its §6 safety gate at its turn against the live (transiently-edited) model, so
+ * a refused refactor rolls the whole sequence back. Op-arg validation ({@code RK_UNKNOWN_ARG}/{@code RK_UNKNOWN_OP}
+ * + did-you-mean) guards every op-record. (extract/inline stay standalone verbs — they produce a second artifact.)
  */
 @Command(name = "apply", mixinStandardHelpOptions = true,
         description = "Apply an ordered sequence of op-records to one model atomically (one gate, one write, rollback).")
@@ -66,6 +71,12 @@ final class ApplyCommand extends BaseCommand {
         INCLUDE_ADD("include", "add", Set.of("alias", "reference", "parent", "name")),
         INCLUDE_REMOVE("include", "remove", Set.of("alias")),
         CONFIG_MODIFY("config", "modify", Set.of("decimal-separator", "time-zone", "condition-language")),
+        FIELD_RENAME("field", "rename", Set.of("fieldPathInModel", "to")),
+        FIELD_MOVE("field", "move", Set.of("fieldPathInModel", "to")),
+        GROUP_RENAME("group", "rename", Set.of("groupPathInModel", "to")),
+        GROUP_MOVE("group", "move", Set.of("groupPathInModel", "to")),
+        RULE_RENAME("rule", "rename", Set.of("rule", "to")),
+        TYPEDEF_RENAME("typedef", "rename", Set.of("typeDefId", "to")),
         FIELD_READ("field", "read", Set.of("fieldPathInModel")),
         GROUP_READ("group", "read", Set.of("groupPathInModel")),
         TYPEDEF_READ("typedef", "read", Set.of()),
@@ -143,7 +154,13 @@ final class ApplyCommand extends BaseCommand {
                 break; // a typo'd/unknown arg self-corrects via the diagnostic — roll back, write nothing
             }
             try {
-                results.add(dispatch(session, op).toJson());
+                Applied applied = dispatch(session, op, resolver);
+                session = applied.session();          // a refactor op re-homes the session; Local ops keep it
+                results.add(applied.env().toJson());
+            } catch (RefactorRefused r) {
+                results.add(r.envelope().toJson());   // the §6 safety gate refused — same corrective diagnostics
+                failedAt = i;
+                break; // rollback — the refactor's gate stops the sequence, nothing written
             } catch (RuntimeException e) {
                 results.add(opFailure(op, i, e).toJson());
                 failedAt = i;
@@ -194,7 +211,7 @@ final class ApplyCommand extends BaseCommand {
      * (→ rollback). {@code Op.of} is non-null here — {@link #validateArgs} has already rejected an unknown
      * {@code target}/{@code op}; the switch is a compiler-checked exhaustive expression over {@link Op}.
      */
-    private ResultEnvelope dispatch(EditSession session, JsonNode op) {
+    private Applied dispatch(EditSession session, JsonNode op, IDocumentModelReferenceResolver resolver) {
         Op which = Op.of(op);
         ObjectNode changed = MAPPER.createObjectNode();
         return switch (which) {
@@ -204,13 +221,13 @@ final class ApplyCommand extends BaseCommand {
                 session.addField(group, field, FieldKind.valueOf(req(op, "kind")));
                 changed.put("added", group + "/" + field);
                 changed.put("kind", req(op, "kind"));
-                yield staged(which, changed);
+                yield staged(which, changed, session);
             }
             case FIELD_REMOVE -> {
                 String path = req(op, "fieldPathInModel");
                 session.removeField(path);
                 changed.put("removed", path);
-                yield staged(which, changed);
+                yield staged(which, changed, session);
             }
             case GROUP_ADD -> {
                 String parent = req(op, "parent");
@@ -222,13 +239,13 @@ final class ApplyCommand extends BaseCommand {
                     session.addGroup(parent, groupName);
                 }
                 changed.put("added", parent + "/" + groupName);
-                yield staged(which, changed);
+                yield staged(which, changed, session);
             }
             case GROUP_REMOVE -> {
                 String path = req(op, "groupPathInModel");
                 session.removeGroup(path);
                 changed.put("removed", path);
-                yield staged(which, changed);
+                yield staged(which, changed, session);
             }
             case RULE_ADD -> {
                 String field = req(op, "field");
@@ -248,13 +265,13 @@ final class ApplyCommand extends BaseCommand {
                 String condition = Comments.withLeadingComment(opt(op, "comment"), req(op, "condition"));
                 session.addRule(group, ruleName, errorEntityRelPath, code, condition, severity, messages);
                 changed.put("rule", group + "/" + ruleName);
-                yield staged(which, changed);
+                yield staged(which, changed, session);
             }
             case RULE_MODIFY -> {
                 String rule = req(op, "rule");
                 session.modifyRule(rule, Comments.withLeadingComment(opt(op, "comment"), req(op, "condition")));
                 changed.put("modified", rule);
-                yield staged(which, changed);
+                yield staged(which, changed, session);
             }
             case COMPUTATION_ADD -> {
                 ComputationSpec.Parsed parsed = ComputationSpec.parse(op);
@@ -263,7 +280,7 @@ final class ApplyCommand extends BaseCommand {
                 }
                 session.addComputation(parsed.draft(), parsed.messages());
                 changed.put("computation", parsed.fullName());
-                yield staged(which, changed);
+                yield staged(which, changed, session);
             }
             case COMPUTATION_MODIFY -> {
                 String comp = req(op, "computation");
@@ -273,32 +290,32 @@ final class ApplyCommand extends BaseCommand {
                 }
                 session.modifyComputation(comp, parsed.draft(), parsed.messages());
                 changed.put("modified", comp);
-                yield staged(which, changed);
+                yield staged(which, changed, session);
             }
             case TYPEDEF_ADD -> {
                 String id = req(op, "id");
                 session.addTypeDefinition(id, FieldKind.valueOf(req(op, "kind")));
                 changed.put("added", id);
-                yield staged(which, changed);
+                yield staged(which, changed, session);
             }
             case TYPEDEF_REMOVE -> {
                 String id = req(op, "typeDefId");
                 session.removeTypeDefinition(id);
                 changed.put("removed", id);
-                yield staged(which, changed);
+                yield staged(which, changed, session);
             }
             case INCLUDE_ADD -> {
                 String alias = req(op, "alias");
                 session.addInclude(alias, req(op, "reference"), req(op, "parent"), req(op, "name"));
                 changed.put("added", alias);
                 changed.put("mountedAt", op.get("parent").asText() + "/" + op.get("name").asText());
-                yield staged(which, changed);
+                yield staged(which, changed, session);
             }
             case INCLUDE_REMOVE -> {
                 String alias = req(op, "alias");
                 session.removeInclude(alias);
                 changed.put("removed", alias);
-                yield staged(which, changed);
+                yield staged(which, changed, session);
             }
             case CONFIG_MODIFY -> {
                 if (op.hasNonNull("decimal-separator")) {
@@ -317,8 +334,20 @@ final class ApplyCommand extends BaseCommand {
                     throw new IllegalArgumentException("config modify needs one of "
                             + "decimal-separator, time-zone, condition-language");
                 }
-                yield staged(which, changed);
+                yield staged(which, changed, session);
             }
+            case FIELD_RENAME -> applyRefactor(session, resolver,
+                    StructureRefactor.fieldRename(req(op, "fieldPathInModel"), req(op, "to")));
+            case FIELD_MOVE -> applyRefactor(session, resolver,
+                    StructureRefactor.fieldMove(req(op, "fieldPathInModel"), req(op, "to")));
+            case GROUP_RENAME -> applyRefactor(session, resolver,
+                    StructureRefactor.groupRename(req(op, "groupPathInModel"), req(op, "to")));
+            case GROUP_MOVE -> applyRefactor(session, resolver,
+                    StructureRefactor.groupMove(req(op, "groupPathInModel"), req(op, "to")));
+            case RULE_RENAME -> applyRefactor(session, resolver,
+                    StructureRefactor.ruleRename(req(op, "rule"), req(op, "to")));
+            case TYPEDEF_RENAME -> applyRefactor(session, resolver,
+                    StructureRefactor.typedefRename(req(op, "typeDefId"), req(op, "to")));
             case FIELD_READ -> {
                 String path = req(op, "fieldPathInModel");
                 String type = ModelDocument.read(session.toJson()).fieldType(path)
@@ -326,7 +355,7 @@ final class ApplyCommand extends BaseCommand {
                 ObjectNode data = MAPPER.createObjectNode();
                 data.put("field", path);
                 data.put("type", type);
-                yield readEnv(which, data);
+                yield readEnv(which, data, session);
             }
             case GROUP_READ -> {
                 String path = req(op, "groupPathInModel");
@@ -337,13 +366,13 @@ final class ApplyCommand extends BaseCommand {
                 ObjectNode data = MAPPER.createObjectNode();
                 data.put("group", path);
                 data.put("repeatable", doc.isRepeating(path));
-                yield readEnv(which, data);
+                yield readEnv(which, data, session);
             }
             case TYPEDEF_READ -> {
                 ObjectNode data = MAPPER.createObjectNode();
                 ArrayNode arr = data.putArray("typedefs");
                 ModelDocument.read(session.toJson()).typeDefinitionIds().forEach(arr::add);
-                yield readEnv(which, data);
+                yield readEnv(which, data, session);
             }
             case INCLUDE_READ -> {
                 ObjectNode data = MAPPER.createObjectNode();
@@ -351,7 +380,7 @@ final class ApplyCommand extends BaseCommand {
                 for (ModelDocument.Include inc : ModelDocument.read(session.toJson()).includes()) {
                     arr.addObject().put("alias", inc.alias()).put("reference", inc.reference());
                 }
-                yield readEnv(which, data);
+                yield readEnv(which, data, session);
             }
             case CONFIG_READ -> {
                 ModelDocument.DocConfig c = ModelDocument.read(session.toJson()).config();
@@ -360,20 +389,69 @@ final class ApplyCommand extends BaseCommand {
                 data.put("timeZone", c.timeZone());
                 data.put("conditionLanguage", c.conditionLanguage());
                 data.put("fieldRefByShortNameAllowed", c.fieldRefByShortNameAllowed());
-                yield readEnv(which, data);
+                yield readEnv(which, data, session);
             }
         };
     }
 
+    /** A dispatched op's outcome: its per-op envelope + the session to carry forward (a refactor re-homes it). */
+    private record Applied(ResultEnvelope env, EditSession session) {}
+
     /** An edit op's per-op envelope — its mutation is {@code staged} until the terminal gate commits the sequence. */
-    private static ResultEnvelope staged(Op which, ObjectNode changed) {
-        return new ResultEnvelope(which.target, which.op, ResultEnvelope.Outcome.STAGED,
-                "staged " + which.label(), changed, null, List.of(), null, false, null);
+    private static Applied staged(Op which, ObjectNode changed, EditSession session) {
+        return new Applied(new ResultEnvelope(which.target, which.op, ResultEnvelope.Outcome.STAGED,
+                "staged " + which.label(), changed, null, List.of(), null, false, null), session);
     }
 
     /** A read op's per-op envelope — its payload (the current session state) rides {@code data}. */
-    private static ResultEnvelope readEnv(Op which, ObjectNode data) {
-        return ResultEnvelope.read(which.target, which.op, "read " + which.label(), true, List.of(), data);
+    private static Applied readEnv(Op which, ObjectNode data, EditSession session) {
+        return new Applied(ResultEnvelope.read(which.target, which.op, "read " + which.label(), true, List.of(), data),
+                session);
+    }
+
+    /**
+     * Apply a refactor op (rename/move, CLI-SPEC §6) to the shared session: run the op's safety gate against
+     * the CURRENT (transiently-edited) model — so it sees prior ops' effects — then rewrite every reference +
+     * apply the node change, and re-home the result into a fresh session for the next op. A failing
+     * precondition throws {@link RefactorRefused} → the loop rolls the whole sequence back, nothing written.
+     * Validation is deferred to the one terminal gate (apply's invariant), like every other op.
+     */
+    private Applied applyRefactor(EditSession session, IDocumentModelReferenceResolver resolver, StructureRefactor r) {
+        String modelJson = session.toJson();
+        ModelDocument doc = ModelDocument.read(modelJson);
+        KernelAdapter adapter = KernelAdapter.ofJson(modelJson, resolver);
+        Optional<Refusal> refusal = r.firstFailure(doc, adapter);
+        if (refusal.isPresent()) {
+            throw new RefactorRefused(r.target(), r.op(), refusal.get());
+        }
+        Set<String> rewrote = r.referrers(adapter, doc);
+        EditSession next = EditSession.read(r.rewriteAndMutate(modelJson).toJson(), resolver);
+        ObjectNode changed = MAPPER.createObjectNode();
+        changed.put(r.changedKey(), r.source());
+        changed.put("to", r.newPath());
+        ArrayNode refs = changed.putArray("rewroteReferences");
+        rewrote.forEach(refs::add);
+        return new Applied(new ResultEnvelope(r.target(), r.op(), ResultEnvelope.Outcome.STAGED,
+                "staged " + r.target() + " " + r.op(), changed, null, List.of(), null, false, null), next);
+    }
+
+    /**
+     * A refactor op's safety gate refused (CLI-SPEC §6) — carried out of {@link #dispatch} as an exception so
+     * the loop rolls the whole sequence back, surfacing the gate's structured {@code data} + corrective
+     * diagnostic in the failing op's {@code refused} envelope (exactly as the standalone verb would).
+     */
+    private static final class RefactorRefused extends RuntimeException {
+        private final transient ResultEnvelope envelope;
+
+        RefactorRefused(String target, String op, Refusal refusal) {
+            super(refusal.summary());
+            this.envelope = ResultEnvelope.refused(target, op, refusal.summary(), refusal.data(),
+                    refusal.diagnostics());
+        }
+
+        ResultEnvelope envelope() {
+            return envelope;
+        }
     }
 
     private static String req(JsonNode op, String key) {

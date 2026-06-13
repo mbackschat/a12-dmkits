@@ -53,23 +53,20 @@ final class RuleRenameCommand extends BaseCommand {
         if (modelJson == null) {
             return 2;
         }
+        StructureRefactor refactor = StructureRefactor.ruleRename(rule, newName);
+        String newPath = refactor.newPath();
         ModelDocument doc = ModelDocument.read(modelJson);
-        String newPath = rule.substring(0, rule.lastIndexOf('/') + 1) + newName;
         IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
-
         KernelAdapter adapter = KernelAdapter.ofJson(modelJson, resolver);
-        Optional<Refusal> refusal = new SafetyGate()
-                .require(SafetyChecks.ruleExists(adapter, rule))
-                .require(SafetyChecks.pathAvailable(doc, newPath))
-                .firstFailure();
+
+        Optional<Refusal> refusal = refactor.firstFailure(doc, adapter);
         if (refusal.isPresent()) {
             return refuse("rule", "rename", refusal.get());
         }
 
         String resultJson;
         try {
-            doc.renameRule(rule, newName);
-            resultJson = doc.validate(resolver).toJson();
+            resultJson = refactor.rewriteAndMutate(modelJson).validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("rule", "rename", "rename left the model invalid", e);
         } catch (RuntimeException e) {

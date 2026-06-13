@@ -324,3 +324,82 @@ bin/dmtool -m /tmp/apply-xtype.dm.json apply /tmp/apply-xtype-ops.json 2>&1; ech
 ```
 
 → `RK_WRONG_BATCH_KIND` names the mistake (`verb/argv` → it's a `batch` op-record) and the `fix` points at the right verb. `apply` and `batch` are siblings — *session surgery* vs *stateless dispatch* — and the tool tells you when you've reached for the wrong one. Discover the apply frame anytime with `bin/dmtool schema apply` (the first section).
+
+## Refactor ops in a session — a rename rewrites references, atomically
+
+Refactors are `apply` op-records too: field/group **rename·move**, **rule rename**, and **typedef rename** run in-session alongside the Local ops (CLI-SPEC §6/§7). The headline is a refactor that **rewrites a reference created earlier in the same transaction**: add a `Discount` field, add a rule that references it, then **rename `Discount`→`Rebate`**. The rename rewrites the rule's reference (the kernel's `MoveSupportDM`), and the whole sequence commits atomically. Each refactor runs its §6 safety gate *at its turn against the live session*, so a refused refactor (a name collision, a missing destination) would roll the whole sequence back — like any other failing op. `extract`/`inline` stay standalone (they produce a second artifact).
+
+```bash
+cp cli/src/test/resources/models/order-ruled.dm.json /tmp/apply-refactor.dm.json
+cat > /tmp/apply-refactor-ops.json <<'JSON'
+[ {"target":"field","op":"add","group":"/Order","name":"Discount","kind":"NUMBER"},
+  {"target":"rule","op":"add","field":"/Order/Discount","code":"DISCOUNT_NOT_NEGATIVE",
+    "condition":"FieldFilled(/Order/Discount) And [/Order/Discount] < 0",
+    "messages":[{"locale":"en_US","text":"Discount must not be negative."}]},
+  {"target":"field","op":"rename","fieldPathInModel":"/Order/Discount","to":"Rebate"} ]
+JSON
+bin/dmtool -m /tmp/apply-refactor.dm.json apply /tmp/apply-refactor-ops.json
+```
+
+```output
+{
+  "verb" : "apply",
+  "ops" : 3,
+  "committed" : true,
+  "failedAt" : null,
+  "written" : true,
+  "output" : "/tmp/apply-refactor.dm.json",
+  "results" : [ {
+    "target" : "field",
+    "op" : "add",
+    "outcome" : "staged",
+    "ok" : true,
+    "summary" : "staged field add",
+    "changed" : {
+      "added" : "/Order/Discount",
+      "kind" : "NUMBER"
+    },
+    "diagnostics" : [ ],
+    "written" : false
+  }, {
+    "target" : "rule",
+    "op" : "add",
+    "outcome" : "staged",
+    "ok" : true,
+    "summary" : "staged rule add",
+    "changed" : {
+      "rule" : "/Order/DISCOUNT_NOT_NEGATIVE"
+    },
+    "diagnostics" : [ ],
+    "written" : false
+  }, {
+    "target" : "field",
+    "op" : "rename",
+    "outcome" : "staged",
+    "ok" : true,
+    "summary" : "staged field rename",
+    "changed" : {
+      "renamed" : "/Order/Discount",
+      "to" : "/Order/Rebate",
+      "rewroteReferences" : [ "/Order/DISCOUNT_NOT_NEGATIVE" ]
+    },
+    "diagnostics" : [ ],
+    "written" : false
+  } ]
+}
+```
+
+→ All three ops `staged`, then `committed: true` / `written: true` — one atomic commit. The **rename** op's `changed.rewroteReferences` lists `/Order/DISCOUNT_NOT_NEGATIVE` — the rule added in op 1 — proving its reference was rewritten from `/Order/Discount` to `/Order/Rebate` as part of the same transaction. The gate ran against the *live* session (it saw the field op 0 had just staged), and validation was deferred to the one terminal gate, exactly like the Local ops.
+
+```bash
+bin/dmtool -m /tmp/apply-refactor.dm.json doc validate | jq -c "{valid, diagnostics}"
+echo "fields named Discount/Rebate now: $(bin/dmtool -m /tmp/apply-refactor.dm.json doc describe | jq -c "[.data.fields[].path | select(test(\"Discount|Rebate\"))]")"
+```
+
+```output
+{"valid":true,"diagnostics":[]}
+fields named Discount/Rebate now: ["/Order/Rebate"]
+```
+
+→ The committed model re-validates (`valid: true`) and the field is now `/Order/Rebate` — renamed, with its just-added referrer rewritten, all in one transaction. The same `StructureRefactor` definition backs both this in-session op and the standalone `field rename` verb, so the §6 safety gate is identical either way. (The lone "Discount" still in the file is the rule's *message prose* — text, not a reference, so it is correctly left untouched.)
+

@@ -75,8 +75,16 @@ public final class DmJson {
                 continue;
             }
             JsonNode elements = node.path("Group").path("elements");
-            if (groupPath.equals(node.path("id").asText()) && elements.isArray()) {
-                return (ArrayNode) elements;
+            if (groupPath.equals(node.path("id").asText())) {
+                if (elements.isArray()) {
+                    return (ArrayNode) elements;
+                }
+                // a childless group may serialize WITHOUT its (empty) `elements` array — the kernel omits it;
+                // treat the id-match as an empty container and materialize the array so callers can append.
+                if (node.path("Group") instanceof ObjectNode group) {
+                    return group.putArray("elements");
+                }
+                return null;
             }
             ArrayNode nested = elementsOf(elements, groupPath);
             if (nested != null) {

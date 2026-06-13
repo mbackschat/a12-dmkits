@@ -556,6 +556,12 @@ How a DM includes another (the workspace `purpose:"include"` scheme, adapted to 
 
 rulekit treatment + the write-separation guarantee live in `KERNEL-INTEGRATION-NOTES.md`. *(Locked: `IncludesWritePathTest`, `ModifyIncludedRuleTest`, `ExtractAsIncludeProbeTest`, `ExtractGroupAsIncludeTest`.)*
 
+## Serialization shape — a childless group's `elements` array is omitted (2026-06-13)
+
+The kernel's `IDocumentModelSerializer` **omits the `Group.elements` array entirely for a childless group** (it does not emit `"elements": []`). So a model round-tripped through the kernel serializer — as the reference-rewriter (`adapter.ReferenceRewriter` over `MoveSupportDM`) does — comes back with empty groups carrying *no* `elements` key, not an empty one. This is consistent with the kernel's omit-empty-collection serialization (cf. the `datePrecision`-omitted-for-FULL and `modelReferences`-must-be-present quirks above): a *present-but-empty* collection and an *absent* one are not interchangeable, and the serializer prefers absent.
+
+Consequence for any code that *inserts into* a group by walking the JSON: "no `elements` array" must be read as "an empty container," not "no such group." It bit `field`/`group move` **into a freshly-added empty group**: the move rewrites references through the kernel serializer first (dropping the destination's empty `elements`), then the node relocation looked up the destination's `elements` and found none → a spurious "no group at path". rulekit's treatment (materialize the empty array on a matched childless group) lives in `KERNEL-INTEGRATION-NOTES.md`. *(Locked: `MoveVerbTest.movesAFieldIntoAChildlessGroup` + `ApplyRefactorTest.theGateSeesPriorOpsEffects_moveIntoAJustAddedGroup`.)*
+
 ## §13 supplement — the message-locale law
 
 Header `locales` are **arbitrary** valid Java locale codes (`fr_FR` is fine; a malformed code like `en_us` fails at *deserialization* — "Invalid locale format" — before any consistency check). English/German are not special here; only the *condition keyword* language is limited to the EN/DE bundles.

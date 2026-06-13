@@ -3,12 +3,8 @@ package io.github.mbackschat.a12.dm.cli;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -16,7 +12,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
-import io.github.mbackschat.a12.dm.adapter.ReferenceRewriter;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import picocli.CommandLine.Command;
@@ -37,15 +32,15 @@ import picocli.CommandLine.Option;
  *
  * The {@code changed} envelope reports <code>{&lt;verb&gt;: source, to: newPath, rewroteReferences: [...]}</code>.
  *
- * <p>A subclass supplies only what varies: the target/op labels, the source path, the resulting path, the
- * gate's preconditions, the node mutation, and which referrers to report — {@link #singleReferrers} for a
- * field, {@link #subtreeReferrers} for a group. The shared {@code --output}/{@code --dry-run}/include-dir
- * options live here.
+ * <p>What varies per op — the gate, the reference entity-moves, the node mutation, the labels, and which
+ * referrers to report — is single-sourced in the {@link StructureRefactor} a subclass returns from
+ * {@link #refactor()}. The SAME {@code StructureRefactor} factories drive the {@code apply} session's
+ * refactor ops, so the safety gate can never drift between the standalone verb and a batch-of-edits.
  *
- * <p>Deliberately <em>not</em> on this base: {@code rule rename} (a rule is referenced by nothing, so it
- * rewrites no references and skips the kernel round-trip, keeping its own formatting-preserving shape), and
- * {@code add}/{@code remove}/{@code extract}/{@code inline} (each a different shape that does not rewrite
- * references).
+ * <p>Deliberately <em>not</em> on this base (different output shapes, both still gate+edit via a
+ * {@link StructureRefactor}): {@code rule rename} (rewrites no references, no {@code rewroteReferences}),
+ * {@code typedef rename} (repoints fields, reports {@code repointedFields}), and
+ * {@code add}/{@code remove}/{@code extract}/{@code inline}.
  */
 @Command
 abstract class ReferenceRewritingRefactorCommand extends BaseCommand {
@@ -62,7 +57,8 @@ abstract class ReferenceRewritingRefactorCommand extends BaseCommand {
     @Mixin
     IncludeDirOption includes = new IncludeDirOption();
 
-    // --- the template method ---------------------------------------------------------------------
+    /** The refactor to run — its gate, reference entity-moves, node change, labels (one of the factories). */
+    abstract StructureRefactor refactor();
 
     @Override
     public final Integer call() {
@@ -71,42 +67,37 @@ abstract class ReferenceRewritingRefactorCommand extends BaseCommand {
         if (modelJson == null) {
             return 2;
         }
+        StructureRefactor refactor = refactor();
         ModelDocument doc = ModelDocument.read(modelJson);
-        String source = source();
-        String newPath = newPath();
         IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        KernelAdapter adapter = KernelAdapter.ofJson(modelJson, resolver);
 
         // gate: op-specific preconditions, checked before any mutation (CLI-SPEC §6).
-        Optional<Refusal> refusal = gate(doc, newPath).firstFailure();
+        Optional<Refusal> refusal = refactor.firstFailure(doc, adapter);
         if (refusal.isPresent()) {
-            return refuse(target(), op(), refusal.get());
+            return refuse(refactor.target(), refactor.op(), refusal.get());
         }
-
-        KernelAdapter adapter = KernelAdapter.ofJson(modelJson, resolver);
-        Set<String> rewroteReferences = referrers(adapter, doc);
+        Set<String> rewroteReferences = refactor.referrers(adapter, doc);
 
         String resultJson;
         try {
-            // rewrite every reference to the new path (kernel MoveSupportDM), then apply the node change.
-            ModelDocument edited = ModelDocument.read(
-                    ReferenceRewriter.rewriteReferences(modelJson, Map.of(source, newPath)));
-            mutate(edited);
-            resultJson = edited.validate(resolver).toJson();
+            // rewrite every reference to the new path (kernel MoveSupportDM), apply the node change, re-validate.
+            resultJson = refactor.rewriteAndMutate(modelJson).validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection(target(), op(), op() + " left the model invalid", e);
+            return emitKernelRejection(refactor.target(), refactor.op(), refactor.op() + " left the model invalid", e);
         } catch (RuntimeException e) {
             return fail(e.getMessage());
         }
 
         ObjectNode changed = MAPPER.createObjectNode();
-        changed.put(changedKey(), source);
-        changed.put("to", newPath);
+        changed.put(refactor.changedKey(), refactor.source());
+        changed.put("to", refactor.newPath());
         ArrayNode refs = changed.putArray("rewroteReferences");
         rewroteReferences.forEach(refs::add);
 
         if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview(target(), op(),
-                    "would " + op() + " " + source + " to " + newPath, changed);
+            ResultEnvelope env = ResultEnvelope.preview(refactor.target(), refactor.op(),
+                    "would " + refactor.op() + " " + refactor.source() + " to " + refactor.newPath(), changed);
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -116,59 +107,9 @@ abstract class ReferenceRewritingRefactorCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot write output: " + e.getMessage());
         }
-        ResultEnvelope env = ResultEnvelope.applied(target(), op(),
-                changedKey() + " " + source + " to " + newPath, changed, dest);
+        ResultEnvelope env = ResultEnvelope.applied(refactor.target(), refactor.op(),
+                refactor.changedKey() + " " + refactor.source() + " to " + refactor.newPath(), changed, dest);
         out().print(env.toJsonString());
         return env.exitCode();
-    }
-
-    // --- hooks the four leaves implement ----------------------------------------------------------
-
-    /** The target-group label ({@code "field"} / {@code "group"}). */
-    abstract String target();
-
-    /** The op label ({@code "rename"} / {@code "move"}) — the envelope op and the {@code "would …"} summary. */
-    abstract String op();
-
-    /** The {@code changed} key and the applied-summary verb ({@code "renamed"} / {@code "moved"}). */
-    abstract String changedKey();
-
-    /** The element's current full name-path. */
-    abstract String source();
-
-    /** The element's resulting full name-path (after the rename/move). */
-    abstract String newPath();
-
-    /** The op-specific preconditions, checked before any mutation. */
-    abstract SafetyGate gate(ModelDocument doc, String newPath);
-
-    /** Apply the node change to the (already reference-rewritten) document. */
-    abstract void mutate(ModelDocument doc);
-
-    /** The referrers rewritten to the new path, reported under {@code changed.rewroteReferences}. */
-    abstract Set<String> referrers(KernelAdapter adapter, ModelDocument doc);
-
-    // --- referrer-collection strategies (a field vs a whole subtree) ------------------------------
-
-    /** Referrers of a single element (a field): the rule + computation references to {@code path}. */
-    protected final Set<String> singleReferrers(KernelAdapter adapter, String path) {
-        Set<String> out = new TreeSet<>(adapter.whereUsed(path));
-        out.addAll(adapter.whereUsedInComputations(path));
-        return out;
-    }
-
-    /** Referrers of a whole subtree (a group + every descendant field/sub-group): the union over it. */
-    protected final Set<String> subtreeReferrers(KernelAdapter adapter, ModelDocument doc, String groupPath) {
-        String inside = groupPath + "/";
-        List<String> subtree = new ArrayList<>();
-        subtree.add(groupPath);
-        doc.fieldPaths().forEach(p -> { if (p.startsWith(inside)) subtree.add(p); });
-        doc.groupPaths().forEach(p -> { if (p.startsWith(inside) && !p.equals(groupPath)) subtree.add(p); });
-        Set<String> out = new TreeSet<>();
-        for (String path : subtree) {
-            out.addAll(adapter.whereUsed(path));
-            out.addAll(adapter.whereUsedInComputations(path));
-        }
-        return out;
     }
 }

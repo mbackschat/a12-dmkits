@@ -133,6 +133,14 @@ Structure edits (`ModelDocument.addField`/`addGroup`/`removeField`/`removeGroup`
 
 **Deferred to the CLI remove verb** (which has the adapter): a *proactive* `whereUsed`-based check that lists referencing rules and **refuses without `--force`** / offers an **explicit `--cascade`** (never a silent cascade-delete). That's where the capability lives; it's a UX layer over the same gate.
 
+## Reference-rewriting refactors — one `StructureRefactor` seam, standalone + `apply` (2026-06-13)
+
+The reference-rewriting refactors (`field`/`group` rename·move, `rule` rename, `typedef` rename) are single-sourced in `cli.StructureRefactor`: per op it carries the **safety-gate composition**, the **reference entity-moves** (empty for rule/typedef — they rewrite no AST references), and the **node mutation**. The two callers share it, so the §6 gate can't drift:
+- the **standalone verb** (`ReferenceRewritingRefactorCommand` + the rule/typedef commands) — gate → `rewriteAndMutate` → `validate()` → write;
+- the **`apply` op-record** — gate against the **live (transiently-edited) session** (so it sees prior ops), `rewriteAndMutate`, then re-home the result into a fresh `EditSession`, deferring to the one terminal gate; a refused gate throws → the whole sequence rolls back. `extract`/`inline` stay standalone (multi-artifact). See CLI-SPEC §6/§7.
+
+**Treatment of the empty-group serialization quirk** (KERNEL-FINDINGS "Serialization shape — a childless group's `elements` array is omitted"): the rewriter round-trips through the kernel serializer, which drops a childless group's `elements`. `core.DmJson.elementsOf` therefore treats an **id-matched group with no `elements` array as an empty container and materializes the array** (`putArray`), so inserting/relocating into a freshly-added empty group works. Without this, `field`/`group move` into an empty destination spuriously failed "no group at path" — for the standalone verb too (it always rewrites first). *(Locked: `MoveVerbTest.movesAFieldIntoAChildlessGroup`, `ApplyRefactorTest`.)*
+
 ## Catalog examples are CI-validated against the real kernel (N7 — done)
 
 Every catalog `validExample`/`invalidExample` is now executed against the real kernel by `CatalogExamplesAreKernelValidTest`: each example is embedded as a rule's `errorCondition` in the `order.dm.json` fixture and run through `RuleValidator` — valid examples must be accepted, invalid ones rejected (with the stated `MVK_*` code where the catalog names one). So the bundled semantics can't silently drift from the engine. This also confirmed the hand-authored examples are correct, including the `Length(<stringField>) > N` syntax. The fixture must provide every field an example references (by name + type); the harness picks the rule's error field as the first fixture field referenced (whole-word match) so the error-field-referenced rule is satisfied.

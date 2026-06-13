@@ -68,6 +68,23 @@ class MoveVerbTest {
     }
 
     @Test
+    void movesAFieldIntoAChildlessGroup(@TempDir Path dir) throws Exception {
+        // a freshly-added EMPTY group serializes (through the kernel rewriter round-trip) WITHOUT its
+        // `elements` array — the destination lookup must treat that as an empty container, not "no group".
+        String base = DocumentModelDraft.named("order").locale("en_US")
+                .rootGroup("Order", o -> o.field("Note", FieldKind.STRING))
+                .build().toJson();
+        Path model = dir.resolve("order.dm.json");
+        Files.writeString(model, EditSession.read(base).addGroup("/Order", "Archive").toJson());
+
+        var res = CliTestSupport.run("-m", model.toString(), "field", "move", "/Order/Note", "--to", "/Order/Archive");
+        assertEquals(0, res.code(), res.err());
+        assertEquals("/Order/Archive/Note", M.readTree(res.out()).path("changed").path("to").asText());
+        assertTrue(Files.readString(model).contains("/Order/Archive/Note"), "the field was re-homed");
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "doc", "validate").code());
+    }
+
+    @Test
     void movesAGroupToANewParentRewritingExternalReferrers(@TempDir Path dir) throws Exception {
         // ZipGuard references the child /Order/Shipping/Zip from OUTSIDE Shipping; moving the whole group
         // under Billing rewrites that reference to /Order/Billing/Shipping/Zip.

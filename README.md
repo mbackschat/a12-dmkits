@@ -294,7 +294,7 @@ The CLI face of the unified `EditSession` above — **modelkit structure edits a
 dmtool -m order.dm.json apply <ops.json>
 ```
 
-`apply` runs a list of op-records (e.g. *add field `Discount`* then *add a rule that references `Discount`*) on a single in-memory session, tolerates transient-invalid intermediate states, gates once at the end, and **rolls back atomically** if any op fails — reporting which op, and why (with did-you-mean correctives for typos). See [`cli-apply`](examples/cli-apply.md).
+`apply` runs a list of op-records (e.g. *add field `Discount`*, then *rename `Note`→`Memo`* rewriting its references, then *add a rule that references `Discount`*) on a single in-memory session, tolerates transient-invalid intermediate states, gates once at the end, and **rolls back atomically** if any op fails — reporting which op, and why (with did-you-mean correctives for typos). The op-set spans add·modify·remove·read **plus the reference-rewriting refactors** (field/group rename·move, rule/typedef rename — each runs its safety gate at its turn, so a refused refactor rolls the whole sequence back). See [`cli-apply`](examples/cli-apply.md) and the gate contract in [CLI-SPEC §6/§7](docs/CLI-SPEC.md).
 
 ### Works on real, multi-file apps
 
@@ -315,7 +315,7 @@ The [`examples/`](examples/) directory has **verifiable** walkthroughs of every 
 | [`cli-tour`](examples/cli-tour.md) | discover + read (`manifest` · `operators` · `diagnostics` · `schema` · `doc describe`/`validate` · `rule read`/`explain`) |
 | [`cli-edit-loop`](examples/cli-edit-loop.md) | author/modify rules & computations, `batch`, the re-express loop |
 | [`cli-structure-edit`](examples/cli-structure-edit.md) | fields/groups/typedefs/includes/config + the safe-delete gate |
-| [`cli-apply`](examples/cli-apply.md) | the atomic multi-op session + rollback + correctives |
+| [`cli-apply`](examples/cli-apply.md) | the atomic multi-op session + rollback + correctives + in-session refactors |
 | [`cli-runtime`](examples/cli-runtime.md) | `doc eval` / `doc compute` against document instances |
 | [`cli-version`](examples/cli-version.md) | `--version`, `manifest.version`, the model-version policy |
 
