@@ -44,15 +44,20 @@ public final class DocumentModelDraft {
     private final List<TypeDefDecl> typeDefs;
     private final List<ElementDraft.Group> rootGroups;
     private final Integer baseYear;
+    private final Map<String, String> labels;
+    private final List<ElementDraft.Annotation> annotations;
 
     private DocumentModelDraft(String id, List<String> locales, List<Include> includes,
-            List<TypeDefDecl> typeDefs, List<ElementDraft.Group> rootGroups, Integer baseYear) {
+            List<TypeDefDecl> typeDefs, List<ElementDraft.Group> rootGroups, Integer baseYear,
+            Map<String, String> labels, List<ElementDraft.Annotation> annotations) {
         this.id = id;
         this.locales = locales;
         this.includes = includes;
         this.typeDefs = typeDefs;
         this.rootGroups = rootGroups;
         this.baseYear = baseYear;
+        this.labels = labels;
+        this.annotations = annotations;
     }
 
     /** A reusable named type, declared once in {@code content.typeDefinitions} and referenced by fields. */
@@ -81,8 +86,10 @@ public final class DocumentModelDraft {
         header.put("modelVersion", MODEL_VERSION);
         ArrayNode locs = header.putArray("locales");
         locales.forEach(code -> locs.addObject().put("code", code));
-        header.putArray("labels");
-        header.putArray("annotations");
+        ArrayNode labelArr = header.putArray("labels");
+        labels.forEach((loc, text) -> labelArr.addObject().put("locale", loc).put("text", text));
+        ArrayNode annoArr = header.putArray("annotations");
+        annotations.forEach(a -> annoArr.addObject().put("name", a.name()).put("value", a.value()));
         checkMountReferences();
         ArrayNode refs = header.putArray("modelReferences");
         for (Include inc : includes) {
@@ -378,10 +385,24 @@ public final class DocumentModelDraft {
         private final List<Include> includes = new ArrayList<>();
         private final List<TypeDefDecl> typeDefs = new ArrayList<>();
         private final List<ElementDraft.Group> rootGroups = new ArrayList<>();
+        private final Map<String, String> labels = new LinkedHashMap<>();
+        private final List<ElementDraft.Annotation> annotations = new ArrayList<>();
         private Integer baseYear;
 
         private Builder(String id) {
             this.id = id;
+        }
+
+        /** Add a per-locale model label (the header's localized display name). */
+        public Builder label(String locale, String text) {
+            labels.put(locale, text);
+            return this;
+        }
+
+        /** Add a model-level name/value annotation (header metadata). */
+        public Builder annotation(String name, String value) {
+            annotations.add(new ElementDraft.Annotation(name, value));
+            return this;
         }
 
         /**
@@ -430,7 +451,8 @@ public final class DocumentModelDraft {
                 throw new IllegalStateException("a model needs at least one root group");
             }
             return new DocumentModelDraft(id, List.copyOf(locales), List.copyOf(includes),
-                    List.copyOf(typeDefs), List.copyOf(rootGroups), baseYear);
+                    List.copyOf(typeDefs), List.copyOf(rootGroups), baseYear,
+                    Map.copyOf(labels), List.copyOf(annotations));
         }
     }
 

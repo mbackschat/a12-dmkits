@@ -68,7 +68,7 @@ Legend: ✅ supported · ◐ partial · ❌ not yet built.
 | Include **repeatability**; **exclude-rules** flag | ❌ | mount repeatability hardcoded to 1; `excludeRules` is a metamodel include slot, not exposed |
 | Include constraints (no cycles, single root, locale superset) | ◐ | enforced by kernel on expand; single-root enforced at build |
 | Config: locales, time zone, decimal separator, base year, condition language, model name | ✅ | `ConfigEditor` / `DocConfig` |
-| Config: model **labels**, model-level **annotations** | ❌ | header arrays exist but unpopulated; no API |
+| Config: model **labels**, model-level **annotations** | ✅ | author (`DocumentModelDraft.label/annotation`) + edit (`ConfigEditor.label/annotation`); kernel reads + round-trips them (`modelkit.ModelHeaderTest`) |
 | Config: **supported characters** (custom allowed-character set) | ❌ | kernel validates against `supportedCharacters`/`characterSet`; not modeled |
 
 ### Composite element templates

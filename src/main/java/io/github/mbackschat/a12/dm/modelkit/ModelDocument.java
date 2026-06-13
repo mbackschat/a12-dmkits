@@ -222,6 +222,38 @@ public final class ModelDocument {
         return this;
     }
 
+    /** Upsert one model-level header <b>label</b> locale (the model-level peer of {@link #setLabel}, §3.5/§2). */
+    public ModelDocument setModelLabel(String locale, String text) {
+        ArrayNode labels = headerArray("labels");
+        for (JsonNode l : labels) {
+            if (locale.equals(l.path("locale").asText())) {
+                ((ObjectNode) l).put("text", text);
+                return this;
+            }
+        }
+        labels.addObject().put("locale", locale).put("text", text);
+        return this;
+    }
+
+    /** Upsert a model-level header <b>annotation</b> (replacing any existing entry with the same name). */
+    public ModelDocument setModelAnnotation(String name, String value) {
+        ArrayNode annotations = headerArray("annotations");
+        for (JsonNode a : annotations) {
+            if (name.equals(a.path("name").asText())) {
+                ((ObjectNode) a).put("value", value);
+                return this;
+            }
+        }
+        annotations.addObject().put("name", name).put("value", value);
+        return this;
+    }
+
+    /** The header's {@code key} array, created if absent. */
+    private ArrayNode headerArray(String key) {
+        ObjectNode header = (ObjectNode) root.path("header");
+        return header.has(key) ? (ArrayNode) header.get(key) : header.putArray(key);
+    }
+
     /** Set (or clear, with {@link Requiredness#OPTIONAL}) the requiredness of an existing field. */
     public ModelDocument setRequiredness(String fieldPath, Requiredness requiredness) {
         JsonNode field = locate(fieldPath, false);

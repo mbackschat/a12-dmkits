@@ -166,6 +166,16 @@ public final class EditSession {
         return editStructure(d -> d.setDecimalSeparator(separator));
     }
 
+    /** Upsert one model-level header label locale (FEATURE-GAPS §2 Config). */
+    public EditSession setModelLabel(String locale, String text) {
+        return editStructure(d -> d.setModelLabel(locale, text));
+    }
+
+    /** Upsert a model-level header annotation. */
+    public EditSession setModelAnnotation(String name, String value) {
+        return editStructure(d -> d.setModelAnnotation(name, value));
+    }
+
     public EditSession setTimeZone(String timeZone) {
         return editStructure(d -> d.setTimeZone(timeZone));
     }

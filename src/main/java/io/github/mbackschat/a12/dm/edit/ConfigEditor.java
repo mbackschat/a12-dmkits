@@ -43,4 +43,16 @@ public final class ConfigEditor {
         session.setBaseYear(year);
         return this;
     }
+
+    /** Upsert one per-locale model header label (the model's localized display name). Chains. */
+    public ConfigEditor label(String locale, String text) {
+        session.setModelLabel(locale, text);
+        return this;
+    }
+
+    /** Upsert a model-level header annotation. Chains. */
+    public ConfigEditor annotation(String name, String value) {
+        session.setModelAnnotation(name, value);
+        return this;
+    }
 }
