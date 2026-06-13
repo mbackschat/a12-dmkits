@@ -55,6 +55,21 @@ class IncludeVerbTest {
     }
 
     @Test
+    void addMountsARepeatableInclude(@TempDir Path dir) throws Exception {
+        Path model = subscriptionWithCatalog(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "include", "add",
+                "--alias", "catalog", "--reference", "catalog",
+                "--parent", "/Subscription", "--name", "Catalog", "--repeatability", "3",
+                "--include-dir", dir.toString());
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("applied", j.get("outcome").asText());
+        assertEquals(3, j.path("changed").path("repeatability").asInt(), "the repeatability is reported");
+        assertTrue(Files.readString(model).contains("\"repeatability\" : 3"),
+                "the mount is emitted as a repeatable group (kernel-validated by the add)");
+    }
+
+    @Test
     void readListsTheDeclaredIncludes(@TempDir Path dir) throws Exception {
         Path model = subscriptionWithCatalog(dir);
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "include", "add",

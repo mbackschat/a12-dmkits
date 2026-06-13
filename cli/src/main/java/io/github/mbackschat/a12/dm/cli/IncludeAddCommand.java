@@ -47,6 +47,11 @@ final class IncludeAddCommand extends BaseCommand {
             description = "the mount group's name (the included content resolves under this path)")
     String name;
 
+    @ParamKind(ParamKind.Kind.SCALAR)
+    @Option(names = "--repeatability", defaultValue = "1", paramLabel = "<n>",
+            description = "mount as a repeatable sub-form of up to <n> rows (default 1 = single)")
+    int repeatability;
+
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the result here instead of in place (overwriting the model)")
     String outputPath;
@@ -83,7 +88,7 @@ final class IncludeAddCommand extends BaseCommand {
         try {
             resultJson = ModelDocument.read(modelJson)
                     .addInclude(alias, reference)
-                    .mount(parent, name, alias)
+                    .mount(parent, name, alias, repeatability)
                     .validate(resolver)
                     .toJson();
         } catch (ModelConsistencyException e) {
@@ -95,6 +100,9 @@ final class IncludeAddCommand extends BaseCommand {
         changed.put("added", alias);
         changed.put("reference", reference);
         changed.put("mountedAt", mountPath);
+        if (repeatability != 1) {
+            changed.put("repeatability", repeatability);
+        }
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("include", "add", "would add include " + alias, changed);
             out().print(env.toJsonString());

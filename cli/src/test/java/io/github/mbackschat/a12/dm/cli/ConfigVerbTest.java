@@ -53,6 +53,20 @@ class ConfigVerbTest {
     }
 
     @Test
+    void modifySetsModelLabelsAndAnnotation(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);   // en_US-only fixture
+        var res = CliTestSupport.run("-m", model.toString(), "config", "modify",
+                "--label", "en_US=Customer Order", "--annotation", "owner=orders-team");
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("applied", j.get("outcome").asText());
+        assertEquals("Customer Order", j.path("changed").path("label.en_US").asText());
+        String written = java.nio.file.Files.readString(model);
+        assertTrue(written.contains("Customer Order"), "the model label is written to the header");
+        assertTrue(written.contains("orders-team"), "the model annotation is written to the header");
+    }
+
+    @Test
     void modifyChangesTheDecimalSeparator(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         var res = CliTestSupport.run("-m", model.toString(), "config", "modify", "--decimal-separator", ",");

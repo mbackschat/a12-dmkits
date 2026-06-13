@@ -3,6 +3,8 @@ package io.github.mbackschat.a12.dm.cli;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,7 +23,8 @@ import picocli.CommandLine.Option;
  * At least one setting is required. Re-bound through the kernel; an invalid result is a {@code rejected} envelope.
  */
 @Command(name = "modify", mixinStandardHelpOptions = true,
-        description = "Set decimal-separator / time-zone / condition-language (at least one required).")
+        description = "Set decimal-separator / time-zone / condition-language / model label / annotation "
+                + "(at least one required).")
 final class ConfigModifyCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -41,6 +44,16 @@ final class ConfigModifyCommand extends BaseCommand {
             description = "the condition language code, e.g. en_US or de_DE")
     String conditionLanguage;
 
+    @ParamKind(ParamKind.Kind.SCALAR)
+    @Option(names = "--label", paramLabel = "<locale>=<text>",
+            description = "set a per-locale model label (repeatable), e.g. --label en_US=Permit")
+    Map<String, String> labels = new LinkedHashMap<>();
+
+    @ParamKind(ParamKind.Kind.SCALAR)
+    @Option(names = "--annotation", paramLabel = "<name>=<value>",
+            description = "set a model-level annotation (repeatable), e.g. --annotation owner=permits-team")
+    Map<String, String> annotations = new LinkedHashMap<>();
+
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the result here instead of in place (overwriting the model)")
     String outputPath;
@@ -57,9 +70,10 @@ final class ConfigModifyCommand extends BaseCommand {
         if (model == null) {
             return fail("pass -m <model.json> (before or after the verb)");
         }
-        if (decimalSeparator == null && timeZone == null && conditionLanguage == null) {
+        if (decimalSeparator == null && timeZone == null && conditionLanguage == null
+                && labels.isEmpty() && annotations.isEmpty()) {
             return fail("nothing to change — pass at least one of "
-                    + "--decimal-separator, --time-zone, --condition-language");
+                    + "--decimal-separator, --time-zone, --condition-language, --label, --annotation");
         }
         String modelJson;
         try {
@@ -91,6 +105,14 @@ final class ConfigModifyCommand extends BaseCommand {
                 doc.setConditionLanguage(conditionLanguage);
                 changed.put("conditionLanguage", conditionLanguage);
             }
+            labels.forEach((locale, text) -> {
+                doc.setModelLabel(locale, text);
+                changed.put("label." + locale, text);
+            });
+            annotations.forEach((name, value) -> {
+                doc.setModelAnnotation(name, value);
+                changed.put("annotation." + name, value);
+            });
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("config", "modify", "the config change is rejected by the kernel", e);

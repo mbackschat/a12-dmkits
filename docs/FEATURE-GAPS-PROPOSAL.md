@@ -65,11 +65,11 @@ Legend: ✅ supported · ◐ partial · ❌ not yet built.
 | Included type-defs (read-only, via include) | ✅ | resolver-served |
 | Imported type-defs / **type-def-only model** (author one) | ◐ / ❌ | imported refs resolve (`ImportedTypeDef`/`TypeDefModel` exist); no verb to *create* a type-def-only model |
 | Include a model under a group; alias/name; resolution (`--include-dir`) | ✅ | `addInclude`/`mount`; `ReferenceResolvers.directory` |
-| Include **repeatability** | ✅ | `mount(name, alias, repeatability)` (author) + `IncludeEditor.mount(parent, name, repeatability)` (edit) — a mount > 1 expands to a repeating sub-form (`modelkit.IncludeRepeatabilityTest`) |
+| Include **repeatability** | ✅ | `mount(name, alias, repeatability)` (author) + `IncludeEditor.mount(parent, name, repeatability)` (edit) + **CLI `include add --repeatability`** — a mount > 1 expands to a repeating sub-form (`modelkit.IncludeRepeatabilityTest`, `cli.IncludeVerbTest`) |
 | Include **exclude-rules** flag | ❌ | `excludeRules` is a metamodel include slot, still not exposed (on-demand) |
 | Include constraints (no cycles, single root, locale superset) | ✅ | the kernel's to enforce on expand — the **locale rule pinned**: an include must declare a *superset* of the base's locales (cover every base locale; extra locales are harmless), `modelkit.IncludeConstraintsTest`. Cycles / single-root are likewise kernel-enforced on expand (KERNEL-FINDINGS) |
 | Config: locales, time zone, decimal separator, base year, condition language, model name | ✅ | `ConfigEditor` / `DocConfig` |
-| Config: model **labels**, model-level **annotations** | ✅ | author (`DocumentModelDraft.label/annotation`) + edit (`ConfigEditor.label/annotation`); kernel reads + round-trips them (`modelkit.ModelHeaderTest`) |
+| Config: model **labels**, model-level **annotations** | ✅ | author (`DocumentModelDraft.label/annotation`) + edit (`ConfigEditor.label/annotation`) + **CLI `config modify --label/--annotation`**; kernel reads + round-trips them (`modelkit.ModelHeaderTest`, `cli.ConfigVerbTest`) |
 | Config: **supported characters** (custom allowed-character set) | ❌ | kernel validates against `supportedCharacters`/`characterSet`; not modeled |
 
 ### Composite element templates
