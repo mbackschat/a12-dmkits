@@ -68,7 +68,8 @@ final class SchemaCommand extends BaseCommand {
             "rule explain", "explain",
             "model eval", "eval-doc",
             "model compute", "compute-doc",
-            "workspace list", "workspace-list");
+            "workspace list", "workspace-list",
+            "workspace graph", "workspace-graph");
 
     /**
      * Verbs for which {@code schema <verb>} serves <b>no</b> directional contract — because they do not return

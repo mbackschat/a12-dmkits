@@ -11,9 +11,12 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * A kernel-free read over a <b>directory of document models</b> — the engine behind {@code dmtool workspace
@@ -42,6 +45,14 @@ public final class Workspace {
      * has that id (the reference dangles, or its target is out of the scan's scope).
      */
     public record Reference(String ref, String alias, String resolvedPath) {
+    }
+
+    /**
+     * A subtype→supertype edge of the model-inheritance graph ({@code workspace graph}). {@code resolved} is
+     * true iff <em>both</em> ids name a scanned model — a false edge points at (or from) a model outside the
+     * scan (dangling, or out of scope; widen with {@code --recursive}).
+     */
+    public record Edge(String subtype, String supertype, boolean resolved) {
     }
 
     /** One model's index entry: identity, the super/subtype convention, references (cross-resolved), and counts. */
@@ -108,6 +119,34 @@ public final class Workspace {
      */
     public static Model index(ModelDocument doc, String path, Map<String, String> idToPath) {
         return toModel(doc, path, idToPath);
+    }
+
+    /**
+     * The model-inheritance edge set ({@code workspace graph}): every subtype→supertype relation declared by
+     * the super/subtype convention, <b>unioned across both directions</b> (a model's {@code superTypes} and a
+     * base's {@code subTypes}) and deduped, deterministically ordered by (subtype, supertype). Each edge is
+     * {@code resolved} iff both endpoints are among {@code models}. Pure derivation over a scanned list — the
+     * nodes are the {@code models} themselves.
+     */
+    public static List<Edge> inheritanceEdges(List<Model> models) {
+        Set<String> ids = new HashSet<>();
+        models.forEach(m -> ids.add(m.id()));
+        // a (subtype, supertype) pair, deduped across both declaration directions (superTypes + subTypes)
+        Set<List<String>> pairs = new LinkedHashSet<>();
+        for (Model m : models) {
+            for (String supertype : m.superTypes()) {
+                pairs.add(List.of(m.id(), supertype));
+            }
+            for (String subtype : m.subTypes()) {
+                pairs.add(List.of(subtype, m.id()));
+            }
+        }
+        List<Edge> edges = new ArrayList<>();
+        for (List<String> pair : pairs) {
+            edges.add(new Edge(pair.get(0), pair.get(1), ids.contains(pair.get(0)) && ids.contains(pair.get(1))));
+        }
+        edges.sort(Comparator.comparing(Edge::subtype).thenComparing(Edge::supertype));
+        return List.copyOf(edges);
     }
 
     private static Model toModel(ModelDocument doc, String path, Map<String, String> idToPath) {

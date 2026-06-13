@@ -54,6 +54,7 @@
   "config modify":     { "intent": "preview setting the model comment", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "config", "modify", "--comment", "Order intake model", "--dry-run"], "expect": "preview" },
 
   "workspace list":    { "intent": "index a directory of models — ids, sub/supertypes, and includes/type-def imports resolved to their files", "siblings": ["multifile/app/storefront.dm.json", "multifile/lib/catalog.dm.json"], "command": ["workspace", "list", "<workspace-dir>"], "expect": "read" },
+  "workspace graph":   { "intent": "graph a directory's model-inheritance hierarchy (subtype→supertype)", "siblings": ["inheritance/Product_Base.dm.json", "inheritance/ProductSingle.dm.json", "inheritance/ProductBundle.dm.json"], "command": ["workspace", "graph", "<workspace-dir>"], "expect": "read" },
 
   "where-used":        { "intent": "list the rules/computations referencing a field", "model": "order-ruled.dm.json", "command": ["where-used", "<model.json>", "--entity", "/Order/Quantity"], "expect": "raw" },
   "meta":              { "intent": "read an element's descriptions + annotations", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "meta", "/Order/Quantity"], "expect": "read" },

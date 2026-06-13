@@ -274,6 +274,8 @@ dmtool workspace list ./models                       # the index as JSON (id, ty
 dmtool workspace list ./models --recursive           # descend sub-folders (widens reference resolution)
 dmtool workspace list ./models --format table        # the same facts as an aligned human listing
 dmtool workspace list ./models --validate            # also flag which models are kernel-valid
+dmtool workspace graph ./models                      # the sub/supertype inheritance hierarchy (nodes + edges)
+dmtool workspace graph ./models --format tree        # …as an indented hierarchy (or --format dot for Graphviz)
 ```
 
 ### Author & check — confirmed by the kernel

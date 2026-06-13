@@ -1,0 +1,43 @@
+{
+  "header" : {
+    "id" : "ProductSingle",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ {
+      "name" : "superTypes",
+      "value" : "Product_Base"
+    } ],
+    "modelReferences" : [ ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "ProductSingle",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Single",
+        "name" : "Single",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ ]
+        }
+      } ]
+    }
+  }
+}

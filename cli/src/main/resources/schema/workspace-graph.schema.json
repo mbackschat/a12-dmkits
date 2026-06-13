@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/workspace-graph.schema.json",
+  "title": "WorkspaceGraph",
+  "description": "Output of `dmtool workspace graph <dir>` — the model-INHERITANCE graph of a directory: nodes are the scanned models, edges are subtype→supertype relations derived from the super/subtype convention (the `superTypes`/`subTypes` header annotations, unioned across both declaration directions and deduped). Each edge is `resolved` iff BOTH ids name a scanned model (a false edge points at a model outside the scan — dangling, or out of scope; widen with --recursive). Inheritance only: the composition relations (includes / type-def imports) are surfaced per-model, resolved, by `workspace list` / `model info`.",
+  "type": "object",
+  "required": ["root", "recursive", "nodes", "edges"],
+  "additionalProperties": false,
+  "properties": {
+    "root": { "type": "string", "description": "the scanned directory, as passed" },
+    "recursive": { "type": "boolean", "description": "whether sub-directories were descended" },
+    "nodes": {
+      "type": "array",
+      "description": "the scanned models (the graph's vertices), ordered by relative path",
+      "items": {
+        "type": "object",
+        "required": ["id", "path", "modelType", "abstract"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "description": "the model id (header.id)" },
+          "path": { "type": "string", "description": "the model file's path relative to the scanned root" },
+          "modelType": { "type": "string", "description": "header.modelType" },
+          "abstract": { "type": "boolean", "description": "the `abstract` convention — a base type, not instantiated directly" }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "description": "subtype→supertype inheritance edges, ordered by (subtype, supertype)",
+      "items": {
+        "type": "object",
+        "required": ["subtype", "supertype", "resolved"],
+        "additionalProperties": false,
+        "properties": {
+          "subtype": { "type": "string", "description": "the model id that is-a `supertype`" },
+          "supertype": { "type": "string", "description": "the supertype model id" },
+          "resolved": { "type": "boolean", "description": "true iff both ids are scanned models; false = an endpoint is outside the scan" }
+        }
+      }
+    }
+  }
+}

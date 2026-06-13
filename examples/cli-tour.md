@@ -63,6 +63,7 @@ include inline
 config read
 config modify
 workspace list
+workspace graph
 export
 where-used
 meta
@@ -535,3 +536,19 @@ bin/dmtool workspace list cli/src/test/resources/models/multifile --recursive | 
 ```
 
 → `storefront` declares an `include` of the model id `catalog`, and the scan **resolves it to `lib/catalog.dm.json`** — the file an agent must put on the `--include-dir` to load `storefront`. Were the target outside the scan, `resolvedPath` would be `null` (widen with `--recursive`, as here). The same resolution covers type-def imports and surfaces the sub/supertype convention (`abstract`/`superTypes`/`subTypes`), so one read maps a whole workspace.
+
+## workspace graph — the inheritance hierarchy
+
+Where `workspace list` is the flat per-model index, `workspace graph` draws the **sub/supertype hierarchy** a flat list can't show at a glance — subtype→supertype edges from the `superTypes`/`subTypes` convention. It is **inheritance only** (the composition relations — includes/imports — stay in `list`/`model info`, where they're already resolved). `--format tree` renders it for humans:
+
+```bash
+bin/dmtool workspace graph cli/src/test/resources/models/inheritance --format tree
+```
+
+```output
+Product_Base (abstract)
+  - ProductBundle
+  - ProductSingle
+```
+
+→ `Product_Base` is the abstract root; its two subtypes nest under it. The default `--format json` returns the same hierarchy as `{nodes, edges}` (each edge `resolved` iff both ends are in the scan — a dangling supertype shows `resolved:false`), and `--format dot` emits a Graphviz digraph.

@@ -126,7 +126,7 @@ Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ 
 | `typedef` | `add · read · remove · rename · extract · inline · import` *(rename/extract/inline = Tier-1 structural refactors, §6; `import` declares a `purpose=typeDefinitions` reference — another model's type-defs merge in by id, not mounted)* | modelkit |
 | `include` | `add · read · remove · inline` *(inline = group→include extract inverse, §6)* | modelkit |
 | `config` | `read · modify` *(incl. `--comment`, the model-level `modelInfo.comment`)* | modelkit |
-| `workspace` | `list <dir> [--recursive] [--format json\|table] [--validate]` *(cross-**model**: scans a directory of models into a per-model index — id/type, the super/subtype convention, and every `include`/type-def import **resolved to its file** within the scan; kernel-free by default, `--validate` flags which are kernel-valid)* | modelkit |
+| `workspace` | `list <dir> [--recursive] [--format json\|table] [--validate]` · `graph <dir> [--recursive] [--format json\|tree\|dot]` *(cross-**model**, kernel-free: `list` = a per-model index — id/type, the super/subtype convention, and every `include`/type-def import **resolved to its file** (`--validate` flags which are kernel-valid); `graph` = the **inheritance** hierarchy (subtype→supertype edges from the convention; `tree`/`dot` render it). Inheritance-only by design — composition relations live in `list`/`model info`.)* | modelkit |
 | *(root meta)* | `manifest · schema · operators · diagnostics · batch · apply` | — |
 | *(cross-cutting)* | `where-used --entity` · `meta <ref>` *(read/edit any element's descriptions + annotations — field/group/rule by path, type-def by id; `ELEMENT_REF`, refuses `RK_NO_SUCH_ELEMENT`)* | adapter / modelkit |
 
