@@ -165,7 +165,7 @@ Bounded, mechanical gaps in the modelkit field model. Each is a `FieldTypeSpec` 
 
 ### 3.6 Error-message interpolation — `$Field$` and `$#Group$` (Tier 2)
 
-> **Update — shipped 2026-06-13.** `Dsl.fieldLabel(FieldRef)` → `$<path>$` (the localized-label form — a bare path, no suffix) and `Dsl.repetitionIndex(GroupRef)` → `$#<groupPath>$` (the repeatable group's 1-based row number). Confirmed: the kernel accepts both with **full paths** (the same path form `fieldValue` uses), end-to-end via `RuleValidator` (`MessageInterpolationTest`). The original analysis stays below.
+> **Update — shipped 2026-06-13.** `Dsl.fieldLabel(FieldRef)` → `$<path>$` (the localized-label form — a bare path, no suffix) and `Dsl.repetitionIndex(GroupRef)` → `$#<groupPath>$` (the repeatable group's 1-based row number). Confirmed: the kernel accepts both with **full paths** (the same path form `fieldValue` uses), end-to-end via `RuleValidator` (`MessageInterpolationTest`). **CLI discoverability:** the three tokens are documented on the `messages.text` field of the `rule add`/`computation add` input schema (`schema rule add`), so an agent writing a raw CLI message learns them. The original analysis stays below.
 
 We support `$Field.value$` (`Dsl.fieldValue`). The kernel's error-text parameter mechanism (`ErrorTextParameter`) also supports `$Field$` (localized **label**) and `$#Group$` (repetition **index**, cf. `repetitionIndex`). Both are message-rendering concerns, not condition AST — add `Dsl.fieldLabel(ref)` and `Dsl.repetitionIndex(groupRef)` emitting `$Field$` / `$#Group$`. Confirm the exact tokens against the kernel message renderer.
 
@@ -173,7 +173,7 @@ We support `$Field.value$` (`Dsl.fieldValue`). The kernel's error-text parameter
 
 ### 3.7 Session-editor parity — `RuleEditor` severity/message edits (Tier 2)
 
-> **Update — shipped 2026-06-13.** `RuleEditor.severity(Severity)` and `.messages(LocalizedText…)` edit a rule in place (condition untouched), delegating to `EditSession.modifyRuleSeverity`/`modifyRuleMessages` → `ModelWriter.replaceSeverity`/`replaceMessages` (rewrites the rule node's `severity` / `errorMessage` slots). Rename stays the `EditSession.renameRule` refactor (not an editor method). `RuleComputationEditorTest`. The original note stays below.
+> **Update — shipped 2026-06-13.** `RuleEditor.severity(Severity)` and `.messages(LocalizedText…)` edit a rule in place (condition untouched), delegating to `EditSession.modifyRuleSeverity`/`modifyRuleMessages` → `ModelWriter.replaceSeverity`/`replaceMessages` (rewrites the rule node's `severity` / `errorMessage` slots). Rename stays the `EditSession.renameRule` refactor (not an editor method). **CLI: `rule modify --severity ERROR|WARNING|INFO --message <locale>=<text>`** (condition optional; `cli.RuleVerbTest`). `RuleComputationEditorTest`. The original note stays below.
 
 `RuleEditor` currently exposes only condition `modify`; "severity / message / rename edits are not yet exposed — deferred" (`RuleEditor.java:13-14`). For the read→edit→write-back loop to be complete, an existing rule should be re-severity-able and re-message-able in-session without a full replace.
 

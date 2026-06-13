@@ -149,6 +149,21 @@ class RuleVerbTest {
     }
 
     @Test
+    void modifySetsSeverityAndMessagesWithoutACondition(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.modelWithRule(dir);   // FeeCapRule, ERROR; model declares en_US + de_DE
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "modify", CliTestSupport.RULE_FULL_NAME,
+                "--severity", "WARNING",
+                "--message", "en_US=Fee is high.", "--message", "de_DE=Gebühr ist hoch.");
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("applied", j.get("outcome").asText());
+        assertEquals("WARNING", j.path("changed").path("severity").asText());
+        String written = Files.readString(model);
+        assertTrue(written.contains("WARNING"), "the new severity is persisted");
+        assertTrue(written.contains("Fee is high."), "the new message is persisted");
+    }
+
+    @Test
     void modifyRejectsAnInvalidReExpression(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
         var res = CliTestSupport.run("-m", model.toString(), "rule", "modify", CliTestSupport.RULE_FULL_NAME,
