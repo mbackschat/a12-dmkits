@@ -480,14 +480,16 @@ Confirmed empirically against the runtime: two repeatable rows sharing an index 
 
 The kernel's DM-JSON `JsonMapper` is annotated **`@JsonIgnoreProperties(ignoreUnknown = true)`** (`kernel-md-serializer`). So a misspelled or unsupported field-type key (e.g. `maxFractionDigits` for the real `maxFractionalDigits`, or a guessed `unit`) is **silently dropped** — the model still loads and validates clean, but the slot has *no effect*. Consequence for verifying a new field-config slot (FEATURE-GAPS §3.4): **"emit + load-valid" proves nothing about whether the engine honored the key** — only reading the value back through the kernel's typed field-type API (`INumberType.isZeroNotAllowed()`, `IStringType.getHintList()`, `IEnumerationType.getErrorMessage()`, …) proves it. rulekit's field-config round-trip tests therefore read back via `ModelIndex.fieldType(path)` rather than trusting a clean load. *(Locked: `modelkit.FieldConfigExtrasTest` — every §3.4 slot asserted via the kernel getter, not the emitted JSON.)*
 
-## The number `trait`/unit slot is represented inconsistently across kernel tiers — deferred (2026-06-13)
+## The number `trait`/unit slot is a clean lowercase field attribute — `AmountWithCent` is a *separate* derived category (2026-06-13, corrects an earlier deferral)
 
-Modeling a number field's **unit** (Amount/Percent/Permille) was scoped for §3.4 but **deferred**, because the kernel represents the trait differently in the two tiers that read it, and the silent-ignore behavior above means a single emitted value can't satisfy both:
+A number field's **unit** is the DM-JSON `trait` slot, whose allowed values are the **lowercase** tokens **`amount` / `percent` / `permille`** — the authoritative client contract (`kernel-md-facade` `api.ts`: *"allowed values are: 'amount' | 'percent' | 'permille'"*). It round-trips cleanly: emit `trait`, read it back via `INumberType.getTrait()` (`Optional<String>`); the runtime treats `amount` specially via `getTrait().equals("amount")` (`TypeConverter`).
 
-- **Runtime** (`kernel-md-model` `TypeConverter`): treats the field as an amount when the raw `trait` string `.equals("amount")` — **lowercase**, exact match (`NUMBER_TYPE_TRAIT_AMOUNT = "amount"`).
-- **Metamodel** (`MM_SMM_FieldTypeChecks`): the fraction-digit checks key off enum values **`AmountWithCent` / `AmountWithoutCent`**, not a bare `"amount"`/`"Amount"`.
+This **corrects an earlier (same-day) deferral** that called the trait "inconsistent across tiers." The confusion was conflating two distinct things:
 
-So there is no single `trait` literal that both the runtime amount-formatting and the metamodel decimal-place rules would agree on, and a wrong guess is silently ignored (no error to catch it). Modeling `trait` correctly needs live experimentation against both tiers; until then the slot is left out rather than shipped half-working. The other §3.4 number slots — `minFractionalDigits`/`maxFractionalDigits` range, `zeroNotAllowed`, `leadingZerosAllowed` — are unambiguous (clear keys, clear read-back getters) and shipped.
+- the field's own **`trait`** slot — lowercase `amount`/`percent`/`permille`, what we model;
+- the metamodel's **`AmountWithCent` / `AmountWithoutCent`** enum (in `CT_FIELD_TYPE_ATTRIBUTES` / `MM_SMM_FieldTypeChecks`, with **no** kernel-java references) — a **derived** category used only in *cross-field* type-compatibility checks (source-vs-target decimal places in a copy/computation), not a competing representation of the field's own trait.
+
+So there is no inconsistency for the slot itself; modeling it is just `trait:"amount|percent|permille"`. The 0-or-2-decimal "with/without cent" distinction is the kernel's *derived cross-field* concern, not a field-level constraint we pre-check. *(Locked: `modelkit.FieldConfigExtrasTest.numberUnitTraitRoundTripsThroughTheKernel`.)* Modeled via `NumberFieldBuilder.unit(NumberTrait)`.
 
 ## How `checkConsistency` actually works — structural laws ARE metamodel rules (2026-06-04)
 

@@ -80,12 +80,12 @@ public sealed interface FieldTypeSpec {
     /**
      * A number field: the decimal scale as a {@code [minFractionalDigits, maxFractionalDigits]} range (the
      * single-arg form fixes only the max, min defaulting to 0 — FEATURE-GAPS §3.4), optional value bounds,
-     * and the two kernel flags {@code zeroNotAllowed} (the engine emits a dedicated zero-not-allowed error)
-     * and {@code leadingZerosAllowed}. ({@code trait}/unit is deliberately not modeled — its runtime vs
-     * metamodel representation is inconsistent; KERNEL-FINDINGS.)
+     * the two kernel flags {@code zeroNotAllowed} (the engine emits a dedicated zero-not-allowed error) and
+     * {@code leadingZerosAllowed}, and the optional unit {@code trait} (amount/percent/permille).
      */
     record NumberSpec(Integer minFractionalDigits, Integer maxFractionalDigits, BigDecimal minValue,
-            BigDecimal maxValue, boolean zeroNotAllowed, boolean leadingZerosAllowed) implements FieldTypeSpec {
+            BigDecimal maxValue, boolean zeroNotAllowed, boolean leadingZerosAllowed, NumberTrait trait)
+            implements FieldTypeSpec {
         public NumberSpec {
             if (minFractionalDigits != null && minFractionalDigits < 0) {
                 throw new IllegalArgumentException("minFractionalDigits must be ≥ 0: " + minFractionalDigits);
@@ -104,7 +104,7 @@ public sealed interface FieldTypeSpec {
 
         /** The pre-§3.4 form: a max-scale (0..{@code fractionDigits}) number with an optional value range. */
         public NumberSpec(Integer fractionDigits, BigDecimal minValue, BigDecimal maxValue) {
-            this(null, fractionDigits, minValue, maxValue, false, false);
+            this(null, fractionDigits, minValue, maxValue, false, false, null);
         }
 
         @Override

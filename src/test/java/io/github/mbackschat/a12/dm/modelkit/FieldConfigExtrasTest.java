@@ -36,6 +36,24 @@ class FieldConfigExtrasTest {
     }
 
     @Test
+    void numberUnitTraitRoundTripsThroughTheKernel() throws Exception {
+        DocumentModelDraft draft = permit()
+                .rootGroup("Permit", p -> p
+                        .numberField("Fee", n -> n.unit(NumberTrait.AMOUNT).fractionDigits(2))
+                        .numberField("Rate", n -> n.unit(NumberTrait.PERCENT))
+                        .numberField("Rare", n -> n.unit(NumberTrait.PERMILLE)))
+                .build();
+        // the kernel keeps the unit trait as the lowercase token (api.ts: "amount" | "percent" | "permille")
+        assertEquals("amount", traitOf(draft, "/Permit/Fee"));
+        assertEquals("percent", traitOf(draft, "/Permit/Rate"));
+        assertEquals("permille", traitOf(draft, "/Permit/Rare"));
+    }
+
+    private static String traitOf(DocumentModelDraft draft, String path) throws Exception {
+        return ((INumberType) fieldTypeAfterRoundTrip(draft, path)).getTrait().orElse(null);
+    }
+
+    @Test
     void numberFractionDigitRangeAndFlagsRoundTripThroughTheKernel() throws Exception {
         DocumentModelDraft draft = permit()
                 .rootGroup("Permit", p -> p

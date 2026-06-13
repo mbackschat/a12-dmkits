@@ -296,6 +296,9 @@ public final class DocumentModelDraft {
                 if (n.leadingZerosAllowed()) {
                     inner.put("leadingZerosAllowed", true);
                 }
+                if (n.trait() != null) {
+                    inner.put("trait", n.trait().json());
+                }
             }
             case FieldTypeSpec.DateSpec d -> {
                 ObjectNode inner = fieldType.putObject("DateType");
@@ -853,6 +856,7 @@ public final class DocumentModelDraft {
         private BigDecimal maxValue;
         private boolean zeroNotAllowed;
         private boolean leadingZerosAllowed;
+        private NumberTrait trait;
 
         /** Fix the maximum scale (0..{@code n} decimal places); the minimum stays 0. */
         public NumberFieldBuilder fractionDigits(int n) {
@@ -889,9 +893,15 @@ public final class DocumentModelDraft {
             return this;
         }
 
+        /** Set the unit trait — {@code AMOUNT} (money), {@code PERCENT}, or {@code PERMILLE} (§3.4). */
+        public NumberFieldBuilder unit(NumberTrait trait) {
+            this.trait = trait;
+            return this;
+        }
+
         private FieldTypeSpec spec() {
             return new FieldTypeSpec.NumberSpec(minFractionalDigits, maxFractionalDigits, minValue, maxValue,
-                    zeroNotAllowed, leadingZerosAllowed);
+                    zeroNotAllowed, leadingZerosAllowed, trait);
         }
     }
 
