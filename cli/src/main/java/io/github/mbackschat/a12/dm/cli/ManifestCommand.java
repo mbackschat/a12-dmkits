@@ -1,8 +1,11 @@
 package io.github.mbackschat.a12.dm.cli;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -26,6 +29,21 @@ import picocli.CommandLine.Model.PositionalParamSpec;
 final class ManifestCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    /**
+     * Per-verb worked demonstrations (the {@code verb-examples.json} resource): each verb's {@code example}
+     * {@code {intent, command}} so a cold agent sees the verb <b>in action</b> straight from the manifest.
+     * CI-executed by {@code VerbDemonstrationTest} and coverage-gated by {@code CliConformanceMatrixTest}.
+     */
+    private static final JsonNode EXAMPLES = loadExamples();
+
+    private static JsonNode loadExamples() {
+        try (InputStream in = ManifestCommand.class.getResourceAsStream("/verb-examples.json")) {
+            return in == null ? MAPPER.createObjectNode() : MAPPER.readTree(in);
+        } catch (IOException e) {
+            return MAPPER.createObjectNode();
+        }
+    }
 
     @Override
     public Integer call() {
@@ -98,6 +116,13 @@ final class ManifestCommand extends BaseCommand {
             v.put("schema", name);
         }
         v.put("description", String.join(" ", cmd.usageMessage().description()));
+        // a worked demonstration — the verb IN ACTION ({intent, command}), so an agent learns it from one read
+        JsonNode example = EXAMPLES.get(name);
+        if (example != null && example.hasNonNull("command")) {
+            ObjectNode ex = v.putObject("example");
+            ex.put("intent", example.path("intent").asText());
+            ex.set("command", example.get("command"));
+        }
         // the semantic kind of each param (so an agent knows what to pass; derived from @ParamKind tags)
         Map<String, ParamKind.Kind> kinds = ParamKinds.of(cmd);
         ArrayNode params = v.putArray("params");

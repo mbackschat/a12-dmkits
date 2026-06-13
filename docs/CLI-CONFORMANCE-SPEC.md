@@ -38,6 +38,7 @@ A cold agent learns the whole surface from the tool:
 | what each verb does | the `@Command` description (non-blank, capability-only) | `ManifestVerbTest` |
 | what each param means **and what to pass** | the param description **+ its `@ParamKind`** (e.g. "a FIELD_PATH that must exist" vs "a NEW_NAME you choose") | the conformance matrix |
 | a verb's I/O shape | `schema <target> <op>` → the `result` schema (and `schema <verb>` for the single-token **envelope** verbs like `meta`); input-bearing verbs add an input schema with CI-executed `examples` | `SchemaVerbTest` / `SchemaExamplesGuardTest` / the conformance matrix |
+| **a verb in action** | the verb's `example {intent, command}` in `manifest` — a worked, read-only invocation the agent can run | the conformance matrix / `VerbDemonstrationTest` |
 | **what a `code` means** | `dmtool diagnostics` (list) / `dmtool diagnostics <CODE>` (explain) — the `operators` twin, derived from the registry | registry parity guard |
 | what `severity`/`source` mean | `schema diagnostic` (per-value enum descriptions) | schema guard |
 
@@ -48,7 +49,8 @@ A cold agent learns the whole surface from the tool:
 | **diagnostic-conformance fuzzer** | for every mutating verb (derived from the live tree), every synthesized **domain error** is a conformant structured envelope — code+where+fix, code∈registry, exit/outcome consistent, `written:false`. A new verb **cannot escape it.** Kills AP1/AP2/AP4. |
 | **registry parity** (no-rot) | every `RK_*` code the tool can emit resolves to a registry entry — **compile-time** via the typed `RkCode` enum + an exhaustiveness test, so an un-catalogued code can't ship. `MVK_*` ride `MVK-LEDGER`/`MvkLedgerTest`. |
 | **single-source derivation** (no-drift) | the `diagnostics` verb, the `manifest` diagnostic info, the `diagnostic.schema` enum/examples, and the API Javadoc all **derive from the one registry** — a guard forbids a second hand-authored copy of a code's meaning. |
-| **conformance matrix** (`CliConformanceMatrixTest`) | the single **derived** per-verb gate (folds the old completeness check): every verb is described, every param is described, and every **envelope** verb advertises a `schema` pointer that *resolves to real JSON*. One row per verb, one column per obligation — so a new verb can't ship under-surfaced, and a newly-learned anti-pattern is a one-column change. Kills AP5/AP6. |
+| **conformance matrix** (`CliConformanceMatrixTest`) | the single **derived** per-verb gate (folds the old completeness check): every verb is described, every param is described, every **envelope** verb advertises a `schema` pointer that *resolves to real JSON*, and every verb is **demonstrated** (a worked example in `manifest`). One row per verb, one column per obligation — so a new verb can't ship under-surfaced, and a newly-learned anti-pattern is a one-column change. Kills AP5/AP6. |
+| **demonstration gate** (`VerbDemonstrationTest`) | every `verb-examples.json` invocation (the one `manifest` surfaces) is **executed through the tool** against a fixture and must produce its documented outcome — so the "in action" example an agent reads cannot rot. All examples are read-only (read or `--dry-run`). |
 | **silent-accept guard** | scalar/enum setters reject invalid input with a structured diagnostic (or are documented freeform + kernel-confirmed). Kills AP3. |
 | **negative-control rehearsals** | each gate above is proven to **fire** (a fabricated bare-fail verb → fuzzer red; an un-catalogued code → red; a param missing a kind → red) so a guard can't rot into a no-op. |
 
@@ -61,16 +63,18 @@ The recurring failure mode is subtle: you add a verb, it *works*, it's *listed* 
 | **described** | non-blank capability description | none — every verb |
 | **params-described** | every param has a non-blank description | none |
 | **schema-resolves** | advertises a `schema` pointer that resolves to real JSON | the non-envelope verbs (below) |
-| **demonstrated** *(next column)* | carries a CI-executed worked invocation — the "in action" proof | the self-describing verbs |
+| **demonstrated** | carries a CI-executed worked invocation an agent can see *in action* | the self-describing verbs |
 
 **One row per verb, one column per obligation.** A newly-learned anti-pattern becomes one more column, re-checked against every existing verb at once — the same growth loop that produced AP1–AP6. The matrix *folds and strengthens* the old `ManifestCompletenessTest`: that check **skipped** a verb that advertised no schema, which is exactly how `meta` slipped through; the matrix has no skip.
 
-**The one exemption is a reasoned ledger, not a silent skip.** `schema <verb>` serves a contract only for verbs that return the **result envelope**. The exceptions live in `SchemaCommand.CONTRACT_EXEMPT` as a `verb → why` map — the single source the manifest reads to decide the pointer *and* the matrix reads as the ledger:
+**The contract exemption is a reasoned ledger, not a silent skip.** `schema <verb>` serves a contract only for verbs that return the **result envelope**. The exceptions live in `SchemaCommand.CONTRACT_EXEMPT` as a `verb → why` map — the single source the manifest reads to decide the pointer *and* the matrix reads as the ledger:
 
 - the four **self-describing** verbs (`manifest`/`schema`/`operators`/`diagnostics`) emit their own JSON — you run them to see it;
 - `export` **renders an artifact** (model card / dot / …), and `where-used` returns a **custom referrers payload** — neither is the `{outcome,…}` envelope (a dedicated `where-used` output schema is a follow-up).
 
 The matrix proves the ledger is **honest**: every exempt verb exists in the manifest (no stale row) and carries a non-blank reason. Anything not exempt **must** be contract-discoverable — which is how `meta` (an envelope verb that was wrongly missing its pointer) is now locked in.
+
+**The demonstration — every verb in action, surfaced by the binary.** A description tells an agent a verb exists; it does not show it *working*. Each verb carries a worked invocation in `verb-examples.json` (read-only by construction — a read, or a mutation under `--dry-run`), and the `manifest` surfaces it as the verb's `example {intent, command}` — so the demonstration ships *in the binary*, on the cold agent's material boundary, not in `examples/` (which the agent never sees). `VerbDemonstrationTest` **executes** every example against a fixture and asserts its documented outcome, so a drifted demo (renamed flag, changed behavior) fails the build. The matrix's `demonstrated` column accepts three forms: a `verb-examples` entry, a schema **input** example (the rich-input verbs, executed by `SchemaExamplesGuardTest`), or a reasoned row in `CliConformanceMatrixTest.DEMONSTRATION_PENDING` — a small, CI-locked, shrinking debt ledger (currently `typedef inline`/`import`, whose happy path needs a typedef-import fixture pair). A **new** verb is in none of the three, so the gate fires.
 
 ## Never stale — the structural guarantee
 
@@ -94,7 +98,8 @@ Diagnostics aren't a CLI-only concern: the diagnostic model is **public library 
 
 The checklist is the human shadow of the gates above; the gates fail the build if you skip a row.
 
-- [ ] **Discoverable:** `@Command` description is capability-only (no status/roadmap); every param has a description **and** a `@ParamKind`; the verb appears in `manifest` (flip `ManifestVerbTest.EXPECTED_VERBS`); `schema <target> <op>` (or `schema <verb>` for an envelope cross-cutting verb) resolves, or the verb is classified in `SchemaCommand.CONTRACT_EXEMPT` with a reason; an input-bearing verb adds an input schema + a CI-executed `examples` block. **The conformance matrix enforces all of this.**
+- [ ] **Discoverable:** `@Command` description is capability-only (no status/roadmap); every param has a description **and** a `@ParamKind`; the verb appears in `manifest` (flip `ManifestVerbTest.EXPECTED_VERBS`); `schema <target> <op>` (or `schema <verb>` for an envelope cross-cutting verb) resolves, or the verb is classified in `SchemaCommand.CONTRACT_EXEMPT` with a reason; an input-bearing verb adds an input schema + a CI-executed `examples` block.
+- [ ] **Demonstrated:** add a read-only worked invocation to `verb-examples.json` (a read or a `--dry-run` mutation) so `manifest` surfaces the verb *in action* and `VerbDemonstrationTest` executes it — or classify it in `DEMONSTRATION_PENDING` with a reason. **The conformance matrix enforces both this and the Discoverable row.**
 - [ ] **Diagnosed:** every domain-error path returns a structured envelope (`refused`/`rejected`), not `fail()`; every error diagnostic has `code` + `where` + `fix`; each `code` is an `RkCode` registry entry (so it's catalogued + explorable via `diagnostics`).
 - [ ] **Symmetric:** every input position that can be wrong has a diagnostic (no AP2); no input is silently accepted (no AP3).
 - [ ] **Proven:** the conformance fuzzer is green for the verb; each new refusal has a does-fire test (the §6 refactor-gate rule); a new gate has a negative-control rehearsal.

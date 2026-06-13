@@ -235,7 +235,7 @@ Same engine, no Java required. Every command is `dmtool -m <model> <target> <op>
 ### Discover the tool itself
 
 ```sh
-dmtool manifest                       # every verb × parameter, machine-readable, in one call
+dmtool manifest                       # every verb × parameter + a worked example per verb, in one call
 dmtool operators                      # the DSL operator catalogue …
 dmtool operators GroupFilled          #   … or one operator in full (meaning, examples, gotchas)
 dmtool diagnostics                    # the diagnostic-code catalogue …

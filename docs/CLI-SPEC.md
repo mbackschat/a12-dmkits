@@ -19,6 +19,7 @@ The tool exists to be driven by a cold LLM agent. Two properties, above all else
 |---|---|---|
 | **Targets & ops** | "what can this tool do?" | `dmtool --help` (target list) · `dmtool <target> --help` (its ops) · `manifest` (the whole tree, machine-readable, one call) |
 | **Parameters** | "how do I call `<target> <op>`?" | per-op `--help` + the `manifest` `params[]` |
+| **A worked call** | "show me this verb in action" | the `manifest` `example {intent, command}` — a read-only invocation per verb (CI-executed; see [`CLI-CONFORMANCE-SPEC`](CLI-CONFORMANCE-SPEC.md)) |
 | **I/O shape** | "what does it emit / expect?" | `schema` — the result envelope (§3) + per-op input schemas |
 | **Failure space** | "what can go wrong, and how do I fix it?" | each op advertises the `emits[]` codes in the manifest; every code has a `fix` (§4) |
 | **DSL vocabulary** | "what operators exist, what do they mean?" | `operators` (list + per-operator semantics + gotchas) |
@@ -151,7 +152,7 @@ Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ 
 - `schema result` / `schema diagnostic` — the cross-cutting structures (raw JSON Schema).
 - `schema <target> <op>` — that op's **directional contract**, `{input?, returns:"result", data?}`: what it *consumes* (a rich JSON input like the rule-spec) and the shape of the `data` it *returns* (for reads). One call, unambiguous direction — never "is this what I send or what I get?". Flag-only ops carry no input schema (their params are in the manifest).
 
-The `manifest` is the index that makes assembly *copy, not infer*: every verb entry carries `target`, `op`, its params (each with the CLI `flag` **and** the op-record `key` = the `--`-stripped name an `apply` op uses), and a `schema` pointer; the root carries `resultSchema:"result"` and the global `-m`. So an agent builds any call — single or batched — straight from the manifest. (`schema add` is gone: it splits into `schema rule add` / `schema computation add`.)
+The `manifest` is the index that makes assembly *copy, not infer*: every verb entry carries `target`, `op`, its params (each with the CLI `flag` **and** the op-record `key` = the `--`-stripped name an `apply` op uses), a `schema` pointer (for the envelope verbs — including the single-token ones like `meta`; `export`/`where-used` and the self-describing verbs carry none, see `SchemaCommand.CONTRACT_EXEMPT`), and a worked **`example` `{intent, command}`** — a read-only invocation the agent can run to see the verb *in action* (CI-executed by `VerbDemonstrationTest`). The root carries `resultSchema:"result"` and the global `-m`. So an agent builds any call — single or batched — straight from the manifest. (`schema add` is gone: it splits into `schema rule add` / `schema computation add`.)
 
 ## 6. Op taxonomy — Local / Cascading / Refactor
 

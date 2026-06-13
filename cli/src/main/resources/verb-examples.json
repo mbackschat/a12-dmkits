@@ -1,0 +1,55 @@
+{
+  "_about": "Per-verb worked demonstrations — one read-only invocation per verb (a read, or a mutation under --dry-run), surfaced in `manifest` (each verb's `example`) so a cold agent sees the verb IN ACTION, and CI-executed by VerbDemonstrationTest so it cannot rot. `<model.json>`/`<doc.json>` are placeholders the agent fills; the test substitutes a fixture. expect ∈ read|preview|raw. Coverage is enforced by CliConformanceMatrixTest (the has-demonstration column).",
+
+  "doc validate":      { "intent": "consistency-check the whole model against the kernel", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "doc", "validate"], "expect": "read" },
+  "doc describe":      { "intent": "read the model structure (fields + kinds, groups) into data", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "doc", "describe"], "expect": "read" },
+  "doc read":          { "intent": "read the model card (header + counts) into data", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "doc", "read"], "expect": "read" },
+  "doc eval":          { "intent": "evaluate a filled document instance — which rules fire", "model": "order-ruled.dm.json", "doc": { "fields": { "Order": { "CustomerName": "Acme", "Quantity": "5", "OrderDate": "2026-01-01", "DeliveryDate": "2026-01-10" } } }, "command": ["-m", "<model.json>", "doc", "eval", "--doc", "<doc.json>"], "expect": "read" },
+  "doc compute":       { "intent": "run the model's computations over a filled instance", "model": "order-ruled.dm.json", "doc": { "fields": { "Order": { "Quantity": "5" } } }, "command": ["-m", "<model.json>", "doc", "compute", "--doc", "<doc.json>"], "expect": "read" },
+
+  "rule check":        { "intent": "validate a candidate rule condition before adding it", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "rule", "check", "--field", "/Order/Quantity", "--condition", "[/Order/Quantity] < 0", "--code", "NEGATIVE_QTY"], "expect": "read" },
+  "rule read":         { "intent": "read a rule's condition back as DSL", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "rule", "read", "/Order/EligibilityCheck"], "expect": "read" },
+  "rule explain":      { "intent": "explain a rule (rendered condition + structure)", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "rule", "explain", "/Order/EligibilityCheck"], "expect": "read" },
+  "rule format":       { "intent": "render a rule's condition in canonical DSL text", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "rule", "format", "/Order/EligibilityCheck"], "expect": "read" },
+  "rule test":         { "intent": "check whether one rule fires on a filled instance", "model": "order-ruled.dm.json", "doc": { "fields": { "Order": { "CustomerName": "Acme", "Quantity": "5", "OrderDate": "2026-01-01", "DeliveryDate": "2026-01-10" } } }, "command": ["-m", "<model.json>", "rule", "test", "/Order/EligibilityCheck", "--doc", "<doc.json>"], "expect": "read" },
+  "rule modify":       { "intent": "preview lowering a rule's severity", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "rule", "modify", "/Order/EligibilityCheck", "--severity", "WARNING", "--dry-run"], "expect": "preview" },
+  "rule remove":       { "intent": "preview removing a rule", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "rule", "remove", "/Order/EligibilityCheck", "--dry-run"], "expect": "preview" },
+  "rule rename":       { "intent": "preview renaming a rule (collision-refused)", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "rule", "rename", "/Order/EligibilityCheck", "--to", "EligibilityGate", "--dry-run"], "expect": "preview" },
+
+  "computation read":  { "intent": "read a computation's calculation back as DSL", "model": "subscription-computed.dm.json", "command": ["-m", "<model.json>", "computation", "read", "/Subscription/Billing/EffectiveFeeComp"], "expect": "read" },
+  "computation explain": { "intent": "explain a computation (rendered calc + structure)", "model": "subscription-computed.dm.json", "command": ["-m", "<model.json>", "computation", "explain", "/Subscription/Billing/EffectiveFeeComp"], "expect": "read" },
+  "computation format": { "intent": "render a computation's calculation in canonical DSL", "model": "subscription-computed.dm.json", "command": ["-m", "<model.json>", "computation", "format", "/Subscription/Billing/EffectiveFeeComp"], "expect": "read" },
+  "computation remove": { "intent": "preview removing a computation", "model": "subscription-computed.dm.json", "command": ["-m", "<model.json>", "computation", "remove", "/Subscription/Billing/EffectiveFeeComp", "--dry-run"], "expect": "preview" },
+
+  "field read":        { "intent": "read a field's kind + config into data", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "field", "read", "/Order/Quantity"], "expect": "read" },
+  "field rename":      { "intent": "preview renaming a field (references rewritten)", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "field", "rename", "/Order/Quantity", "--to", "OrderQuantity", "--dry-run"], "expect": "preview" },
+  "field move":        { "intent": "preview moving a field to another group", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "field", "move", "/Order/Quantity", "--to", "/Order/Items", "--dry-run"], "expect": "preview" },
+  "field remove":      { "intent": "preview removing a field (safe-delete gate)", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "field", "remove", "/Order/Quantity", "--dry-run"], "expect": "preview" },
+
+  "group add":         { "intent": "preview adding a sub-group", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "group", "add", "--parent", "/Order", "--name", "Notes", "--dry-run"], "expect": "preview" },
+  "group multiselect": { "intent": "preview a multi-select group template", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "group", "multiselect", "--parent", "/Order", "--name", "Conditions", "--field", "Condition", "--values", "NEW,USED,REFURBISHED", "--max-rows", "3", "--dry-run"], "expect": "preview" },
+  "group attachment":  { "intent": "preview a file-attachment group template", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "group", "attachment", "--parent", "/Order", "--name", "Invoice", "--dry-run"], "expect": "preview" },
+  "group read":        { "intent": "read a group's structure into data", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "group", "read", "/Order/Items"], "expect": "read" },
+  "group rename":      { "intent": "preview renaming a group", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "group", "rename", "/Order/Items", "--to", "LineItems", "--dry-run"], "expect": "preview" },
+  "group move":        { "intent": "preview moving a group under another parent", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "group", "move", "/Order/Items", "--to", "/Order/ShippingAddress", "--dry-run"], "expect": "preview" },
+  "group remove":      { "intent": "preview removing a group (cascade gate)", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "group", "remove", "/Order/Items", "--dry-run"], "expect": "preview" },
+  "group extract":     { "intent": "preview extracting fields into a sub-model typedef", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "group", "extract", "/Order/ShippingAddress", "--reference", "addressLib", "--dry-run"], "expect": "preview" },
+
+  "typedef add":       { "intent": "preview declaring a field type-definition", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "typedef", "add", "--id", "PostalCodeType", "--kind", "STRING", "--dry-run"], "expect": "preview" },
+  "typedef read":      { "intent": "list the declared type-definition ids into data", "model": "typedefs.dm.json", "command": ["-m", "<model.json>", "typedef", "read"], "expect": "read" },
+  "typedef remove":    { "intent": "preview removing a type definition", "model": "typedefs.dm.json", "command": ["-m", "<model.json>", "typedef", "remove", "PostalCodeType", "--dry-run"], "expect": "preview" },
+  "typedef rename":    { "intent": "preview renaming a type definition (using fields repointed)", "model": "typedefs.dm.json", "command": ["-m", "<model.json>", "typedef", "rename", "PostalCodeType", "--to", "ZipCodeType", "--dry-run"], "expect": "preview" },
+  "typedef extract":   { "intent": "preview extracting fields into a new type definition", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "typedef", "extract", "--from", "/Order/ShippingAddress/Street,/Order/ShippingAddress/City", "--id", "AddressType", "--dry-run"], "expect": "preview" },
+
+  "include read":      { "intent": "list the declared model includes into data", "model": "multifile/app/storefront.dm.json", "siblings": ["multifile/lib/catalog.dm.json"], "command": ["-m", "<model.json>", "include", "read"], "expect": "read" },
+  "include add":       { "intent": "preview mounting a sub-model as an include", "model": "multifile/app/storefront.dm.json", "siblings": ["multifile/lib/catalog.dm.json"], "command": ["-m", "<model.json>", "include", "add", "--alias", "catalog2", "--name", "Catalog2", "--parent", "/Storefront", "--reference", "catalog", "--dry-run"], "expect": "preview" },
+  "include remove":    { "intent": "preview removing a model include", "model": "multifile/app/storefront.dm.json", "siblings": ["multifile/lib/catalog.dm.json"], "command": ["-m", "<model.json>", "include", "remove", "catalog", "--dry-run"], "expect": "preview" },
+  "include inline":    { "intent": "preview inlining an included sub-model in place", "model": "multifile/app/storefront.dm.json", "siblings": ["multifile/lib/catalog.dm.json"], "command": ["-m", "<model.json>", "include", "inline", "catalog", "--dry-run"], "expect": "preview" },
+
+  "config read":       { "intent": "read the model config (locale, decimals, comment)", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "config", "read"], "expect": "read" },
+  "config modify":     { "intent": "preview setting the model comment", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "config", "modify", "--comment", "Order intake model", "--dry-run"], "expect": "preview" },
+
+  "where-used":        { "intent": "list the rules/computations referencing a field", "model": "order-ruled.dm.json", "command": ["where-used", "<model.json>", "--entity", "/Order/Quantity"], "expect": "raw" },
+  "meta":              { "intent": "read an element's descriptions + annotations", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "meta", "/Order/Quantity"], "expect": "read" },
+  "export":            { "intent": "render the model card artifact to stdout", "model": "order-ruled.dm.json", "command": ["export", "<model.json>", "card"], "expect": "raw" }
+}
