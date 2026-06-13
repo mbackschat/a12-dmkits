@@ -76,6 +76,22 @@ The matrix proves the ledger is **honest**: every exempt verb exists in the mani
 
 **The demonstration — every verb in action, surfaced by the binary.** A description tells an agent a verb exists; it does not show it *working*. Each verb carries a worked invocation in `verb-examples.json` (read-only by construction — a read, or a mutation under `--dry-run`), and the `manifest` surfaces it as the verb's `example {intent, command}` — so the demonstration ships *in the binary*, on the cold agent's material boundary, not in `examples/` (which the agent never sees). `VerbDemonstrationTest` **executes** every example against a fixture and asserts its documented outcome, so a drifted demo (renamed flag, changed behavior) fails the build. The matrix's `demonstrated` column accepts three forms: a `verb-examples` entry, a schema **input** example (the rich-input verbs, executed by `SchemaExamplesGuardTest`), or a reasoned row in `CliConformanceMatrixTest.DEMONSTRATION_PENDING` — a CI-locked debt ledger for a verb whose happy path needs a fixture the corpus lacks (**currently empty — every verb is demonstrated**; `typedef inline`/`import` close against the `typedefs.dm.json` + `catalogtypes.dm.json` fixtures). A **new** verb is in none of the three, so the gate fires.
 
+## The gap-finder — the qualitative layer above the matrix (on-demand)
+
+The matrix proves a description/example *exists, resolves, and runs*; it **cannot** judge whether the prose actually *helps* — a description can be non-blank yet useless, or a verb's semantics latent (the dual-mode `meta`). That residue is what `eval/gap-finder.workflow.js` finds. Three layers, cheapest-first:
+
+```
+deterministic matrix   →  gap-finder (this)        →  N6 benchmark
+(per-commit, free)        (on-demand, ~3 agents)      (on-demand, dozens of agents)
+"is it surfaced?"         "is the surface clear?"     "can an agent finish the task?"
+```
+
+**Mechanism.** k=3 **cold** agents (opus) are each handed *only* the binary's self-description (`manifest`/`--help`/`schema`/`operators`/`diagnostics` — the N6 material boundary, no source/docs/examples) and asked, per verb: *could you tell what it does, what to pass, and what comes back?* Each emits structured findings `{verb, gapType, detail}` over a **fixed `gapType` enum** (`AMBIGUOUS_MODE`, `UNCLEAR_INPUT`, `UNCLEAR_OUTPUT`, `PARAM_MEANING_UNCLEAR`, `MISSING_CONSTRAINTS`, `UNCLEAR_PURPOSE`, `OTHER`). The script **aggregates deterministically** — a `(verb, gapType)` pair survives only if a **majority** of agents raise it, which damps run-to-run LLM noise into a stable signal.
+
+**The tripwire is a reasoned, both-directions-honest ledger** — `eval/gap-allowlist.json`, the same idiom as `CONTRACT_EXEMPT`/`DEMONSTRATION_PENDING`/the MVK ledger. Each entry is an accepted `(verb, gapType)` gap (by-design or won't-fix) with a reason. A run's agreed gaps diff against it: a pair **not** in the list is a new gap to triage; a list entry that **no longer surfaces** is stale and gets removed.
+
+**It is on-demand, not a per-commit gate** (LLM cost + nondeterminism). Its output is *candidates*, not proof — a human triages them, and a gap that recurs **graduates into a new deterministic matrix column** (the AP1→AP6 growth loop). So the gap-finder *feeds* the matrix; the matrix is what actually gates. Run it via the `Workflow` tool; results + the allow-list are the durable record.
+
 ## Never stale — the structural guarantee
 
 The diagnostic info is **derived, never authored twice**, and **CI-verified both directions**:

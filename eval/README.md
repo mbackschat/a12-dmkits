@@ -2,6 +2,8 @@
 
 The curated task set for the N6 self-sufficiency eval. Method, scoring, and protocol live in [`../docs/EVAL-SPEC.md`](../docs/EVAL-SPEC.md); measured **results** are logged in [`RESULTS.md`](RESULTS.md) (dated, newest first); this directory holds the **corpus** and the **runner entry points** (`benchmark.workflow.js`).
 
+A second, lighter instrument lives here too: **`gap-finder.workflow.js`** — the on-demand **self-explainability audit** (Option C, [`../docs/CLI-CONFORMANCE-SPEC.md`](../docs/CLI-CONFORMANCE-SPEC.md) "the gap-finder"). k cold agents critique the CLI's self-description for *qualitative* gaps the deterministic conformance matrix can't see; `gap-allowlist.json` is its reasoned tripwire state. It's ~3 agents (no corpus / kernel recheck / judge), distinct from the `benchmark` runner.
+
 ## Layout
 
 - `tasks/<kit>/<NN>-<slug>.json` — one task per file, grouped by **kit** subfolder: `rulekit/` (rules + computations + their comprehension/self-correction), `modelkit/` (structure: field/group/typedef/include/config + delete-safety + refactor + metadata: descriptions/annotations/comment + template: multi-select/attachment group templates), `mixed/` (one `apply` session touching both). **The folder is the kit** (the explicit axis — no derived map); the task `id` is the filename stem (e.g. `01-pro-addon-fee-required`). Each authoring task carries a **kernel-verified gold** answer. All fixtures/rules here are our own originals (license-safe, per the project `CLAUDE.md`). Run tiers (smoke/simple/full) + the categorization are in [`../docs/EVAL-SPEC.md`](../docs/EVAL-SPEC.md) §8d.

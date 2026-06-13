@@ -1,0 +1,4 @@
+{
+  "_about": "Tripwire state for the gap-finder (eval/gap-finder.workflow.js, Option C in CLI-CONFORMANCE-SPEC). Each `accepted` entry is a (verb, gapType) self-explanation gap that is by-design or won't-fix, with a reason. A run diffs its majority-agreed gaps against this list: a pair NOT here = a new gap to triage; an entry that no longer surfaces = stale, remove it. Reasoned + both-directions-honest, like CONTRACT_EXEMPT / DEMONSTRATION_PENDING / the MVK ledger. A recurring gap should instead graduate into a deterministic CliConformanceMatrixTest column.",
+  "accepted": []
+}
