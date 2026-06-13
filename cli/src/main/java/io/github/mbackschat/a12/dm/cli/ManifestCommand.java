@@ -91,8 +91,10 @@ final class ManifestCommand extends BaseCommand {
         } else {
             v.put("op", name);
         }
-        // the schema pointer: `schema <target> <op>` (the §5a ops) + the batch frames (`apply`/`batch`)
-        if (sp >= 0 || "batch".equals(name) || "apply".equals(name)) {
+        // the schema pointer: every op that returns the result envelope is contract-discoverable via
+        // `schema <name>` — the nested target ops (`<target> <op>`) and the single-token envelope verbs
+        // (`meta`/`apply`/`batch`). The CONTRACT_EXEMPT verbs (self-describing / non-envelope) carry none.
+        if (sp >= 0 || !SchemaCommand.CONTRACT_EXEMPT.containsKey(name)) {
             v.put("schema", name);
         }
         v.put("description", String.join(" ", cmd.usageMessage().description()));

@@ -52,9 +52,25 @@ final class SchemaCommand extends BaseCommand {
             "computation modify", "add",
             "field add", "field-add");
 
+    /**
+     * Verbs for which {@code schema <verb>} serves <b>no</b> directional contract — because they do not return
+     * the result envelope. Two reasons, mapped here as the single source of truth (read by {@link
+     * ManifestCommand} to decide the schema pointer, and by {@code CliConformanceMatrixTest} as the reasoned
+     * exemption ledger): the four <b>self-describing</b> verbs emit their own JSON (run them to see it), and
+     * {@code export}/{@code where-used} return a <b>rendered artifact</b> / a <b>custom payload</b> rather than
+     * the {@code {outcome,…}} envelope. Everything else is an envelope op with a discoverable contract.
+     */
+    static final Map<String, String> CONTRACT_EXEMPT = Map.of(
+            "manifest", "emits the verb/param map itself — run it",
+            "schema", "emits schemas itself — run it",
+            "operators", "emits the operator catalog itself — run it",
+            "diagnostics", "emits the diagnostic registry itself — run it",
+            "export", "renders an artifact (model card / dot / …), not the result envelope",
+            "where-used", "returns a referrers payload, not the result envelope (a dedicated output schema is a follow-up)");
+
     /** Leaf op-names whose verb returns a read payload in the envelope's {@code data}. */
     private static final Set<String> READ_OPS =
-            Set.of("read", "explain", "format", "test", "describe", "eval", "compute");
+            Set.of("read", "explain", "format", "test", "describe", "eval", "compute", "meta");
 
     @Parameters(arity = "0..*", paramLabel = "<schema>",
             description = "result | diagnostic (structures), or a verb's directional contract "
@@ -73,12 +89,12 @@ final class SchemaCommand extends BaseCommand {
             return serveStructure(tokens.get(0));
         }
         String verb = String.join(" ", tokens);
-        // a directional contract is meaningful for the target-first ops (<target> <op>) and the input-taking
-        // root op `batch` — not for the discovery/meta verbs, which are explored via their own verb.
-        boolean opContract = tokens.size() == 2 || INPUT_OPS.containsKey(verb);
-        if (!opContract || !resolvesToLeaf(tokens)) {
+        // a directional contract resolves for any runnable leaf op that returns the result envelope — the
+        // target-first ops (`<target> <op>`) and the single-token envelope verbs (e.g. `meta`). The
+        // CONTRACT_EXEMPT verbs (self-describing / non-envelope) are explored via their own output instead.
+        if (!resolvesToLeaf(tokens) || CONTRACT_EXEMPT.containsKey(verb)) {
             return fail("unknown schema: " + verb + "   (structures: " + String.join(", ", STRUCTURES)
-                    + "; or a verb contract like `rule add`, `field read`)");
+                    + "; or a verb contract like `rule add`, `field read`, `meta`)");
         }
         return contract(verb);
     }
@@ -128,7 +144,9 @@ final class SchemaCommand extends BaseCommand {
             cur = cl.getCommandSpec();
             subs = cur.subcommands();
         }
-        return cur != null && cur.subcommands().isEmpty();
+        // a runnable, non-hidden leaf — the hidden legacy flat aliases aren't part of the canonical surface
+        // (the manifest skips them too), so `schema add` must not resolve to the hidden flat `add`.
+        return cur != null && cur.subcommands().isEmpty() && !cur.usageMessage().hidden();
     }
 
     private JsonNode readSchema(String name) {
