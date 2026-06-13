@@ -122,6 +122,9 @@ class EvalGoldOracleTest {
             // Metadata (describe/annotate/comment): apply the gold metadata edit, re-bind kernel-valid, and
             // assert the value reads back (the descriptions/annotations/comment CRUD surface).
             case "metadata" -> assertMetadataGoldValidates(task, model, taskFile);
+            // Template (group multiselect/attachment): expand the usageType template, re-bind kernel-valid
+            // (the kernel's MultiSelect/AttachmentGroupRule accept it), and assert the group exists.
+            case "template" -> assertTemplateGoldValidates(task, model, taskFile);
             default -> fail(taskFile.getFileName() + " has unknown family: " + task.path("family").asText());
         }
     }
@@ -249,6 +252,40 @@ class EvalGoldOracleTest {
             String expect = gold.get("expectField").asText();
             assertTrue(BoundModel.ofJson(session.toJson(), resolver).fieldAt(expect).isPresent(),
                     () -> taskFile.getFileName() + " expected field " + expect + " to exist after the edit");
+        }
+    }
+
+    /**
+     * A template gold ({@code group multiselect} / {@code group attachment}): expand the {@code usageType}
+     * template via {@link EditSession}, assert it re-binds kernel-valid (the kernel's
+     * {@code MultiSelectGroupRule}/{@code AttachmentGroupRule} accept the composition), and the group exists.
+     */
+    private static void assertTemplateGoldValidates(JsonNode task, String model, Path taskFile) {
+        JsonNode gold = task.get("gold");
+        var resolver = resolverFor(task);
+        EditSession session = EditSession.read(model, resolver);
+        String op = gold.get("op").asText();
+        String parent = gold.get("parent").asText();
+        String name = gold.get("name").asText();
+        switch (op) {
+            case "group multiselect" -> {
+                JsonNode valsNode = gold.get("values");
+                String[] values = new String[valsNode.size()];
+                for (int i = 0; i < values.length; i++) {
+                    values[i] = valsNode.get(i).asText();
+                }
+                int maxRows = gold.get("maxRows").asInt();
+                String field = gold.get("field").asText();
+                session.addMultiSelectGroup(parent, name, m -> m.enumField(field, values).maxRows(maxRows));
+            }
+            case "group attachment" -> session.addAttachmentGroup(parent, name, a -> { });
+            default -> fail(taskFile.getFileName() + " unsupported template op: " + op);
+        }
+        assertReBinds(session, taskFile, "template");
+        if (gold.hasNonNull("expectGroup")) {
+            String expect = gold.get("expectGroup").asText();
+            assertTrue(ModelDocument.read(session.toJson()).groupPaths().contains(expect),
+                    taskFile.getFileName() + " expected group " + expect + " to exist after the template");
         }
     }
 

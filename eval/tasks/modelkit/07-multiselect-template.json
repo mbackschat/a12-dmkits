@@ -1,0 +1,17 @@
+{
+  "id": "07-multiselect-template",
+  "family": "template",
+  "model": "order-ruled",
+  "intent": "Add a multi-select group under the order called Conditions, letting the user pick item conditions from NEW, USED, REFURBISHED (up to all three).",
+  "gold": {
+    "op": "group multiselect",
+    "parent": "/Order",
+    "name": "Conditions",
+    "field": "Condition",
+    "values": ["NEW", "USED", "REFURBISHED"],
+    "maxRows": 3,
+    "expectGroup": "/Order/Conditions"
+  },
+  "notes": "The agent discovers the `group multiselect` verb (`manifest` → params) and assembles `dmtool -m <model> group multiselect --parent /Order --name Conditions --field Condition --values NEW,USED,REFURBISHED --max-rows 3`. The generator owns the usageType:\"multi-select\" skeleton; the caller supplies the field + maxRows. Scored: the template re-binds (kernel's MultiSelectGroupRule accepts it) AND the group exists. Layer-1 oracle covers it; a Layer-2 agentic template phase is a follow-up (as for refactor/metadata).",
+  "difficulty": "medium"
+}

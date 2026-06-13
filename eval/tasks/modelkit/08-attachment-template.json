@@ -1,0 +1,14 @@
+{
+  "id": "08-attachment-template",
+  "family": "template",
+  "model": "order-ruled",
+  "intent": "Add a file-attachment group to the order called Invoice.",
+  "gold": {
+    "op": "group attachment",
+    "parent": "/Order",
+    "name": "Invoice",
+    "expectGroup": "/Order/Invoice"
+  },
+  "notes": "The agent discovers `group attachment` and runs `dmtool -m <model> group attachment --parent /Order --name Invoice`. The whole canonical composition (8 fields + 4 mandated rules + the content config) is generated — the agent must NOT hand-assemble it. Scored: the template re-binds (kernel's AttachmentGroupRule accepts the exact composition — the strongest proof) AND the group exists. en_US/de_DE-only. Layer-1 oracle; Layer-2 follow-up.",
+  "difficulty": "medium"
+}

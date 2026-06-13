@@ -861,3 +861,217 @@ bin/dmtool export /tmp/struct2-exp.json
 ```
 
 → The card is a scannable digest of the whole model: field/group/rule counts, the group tree (marking the repeatable one), and enum value lists. Note the shape break — there is **no envelope** here; `export` is for handing the model summary to a human or another tool, so it speaks Markdown/JSONL, not the `target/op/outcome` envelope the editing verbs return.
+
+## Group templates — multi-select & attachment
+
+A12 has two canonical group **templates**, flagged by a group's `usageType`. Rather than hand-assemble them (and get the composition wrong), one verb expands the whole thing. The rest of this tour works on a fresh copy:
+
+```bash
+cp cli/src/test/resources/models/order-ruled.dm.json /tmp/extras.dm.json && echo "copied order-ruled → /tmp/extras.dm.json"
+```
+
+```output
+copied order-ruled → /tmp/extras.dm.json
+```
+
+`group multiselect` expands a repeatable group holding one enum/string selection field — you supply the field + `--max-rows`, the generator owns the `usageType` skeleton:
+
+```bash
+bin/dmtool -m /tmp/extras.dm.json group multiselect --parent /Order --name Conditions --field Condition --values NEW,USED,REFURBISHED --max-rows 3
+```
+
+```output
+{
+  "target" : "group",
+  "op" : "multiselect",
+  "outcome" : "applied",
+  "ok" : true,
+  "summary" : "added multi-select group /Order/Conditions",
+  "changed" : {
+    "added" : "/Order/Conditions",
+    "field" : "Condition",
+    "maxRows" : 3
+  },
+  "diagnostics" : [ ],
+  "written" : true,
+  "output" : "/tmp/extras.dm.json"
+}
+```
+
+`group attachment` expands the kernel's canonical file-attachment composition whole — 8 named fields + 4 mandated rules + the `content` config — and you tune only the knobs (`--max-size-bytes`, `--allowed-mime`, `--categories`, `--repeatable`). The mandated rules are authored in the model's condition language, so it is `en_US`/`de_DE`-only (else it refuses, not crashes):
+
+```bash
+bin/dmtool -m /tmp/extras.dm.json group attachment --parent /Order --name Invoice --max-size-bytes 10000000 --allowed-mime application/pdf,image/png
+```
+
+```output
+{
+  "target" : "group",
+  "op" : "attachment",
+  "outcome" : "applied",
+  "ok" : true,
+  "summary" : "added attachment group /Order/Invoice",
+  "changed" : {
+    "added" : "/Order/Invoice",
+    "template" : "attachment"
+  },
+  "diagnostics" : [ ],
+  "written" : true,
+  "output" : "/tmp/extras.dm.json"
+}
+```
+
+## Element metadata — describe & annotate anything
+
+`meta <ref>` reads or edits an element's **internal/external descriptions** and **annotations** — uniformly across a field, group, rule (by name-path), or type-def (by id). With write flags it sets/removes them:
+
+```bash
+bin/dmtool -m /tmp/extras.dm.json meta /Order/CustomerName --internal en_US="the customer's full legal name" --annotate owner=orders-team
+```
+
+```output
+{
+  "target" : "meta",
+  "op" : "modify",
+  "outcome" : "applied",
+  "ok" : true,
+  "summary" : "changed metadata of /Order/CustomerName",
+  "changed" : {
+    "internal.en_US" : "the customer's full legal name",
+    "annotation.owner" : "orders-team"
+  },
+  "diagnostics" : [ ],
+  "written" : true,
+  "output" : "/tmp/extras.dm.json"
+}
+```
+
+With **no write flags** it reads back — so the agent learns the output shape by running it:
+
+```bash
+bin/dmtool -m /tmp/extras.dm.json meta /Order/CustomerName
+```
+
+```output
+{
+  "target" : "meta",
+  "op" : "read",
+  "outcome" : "read",
+  "ok" : true,
+  "valid" : true,
+  "summary" : "read metadata of /Order/CustomerName",
+  "data" : {
+    "internalDescription" : {
+      "en_US" : "the customer's full legal name"
+    },
+    "externalDescription" : { },
+    "annotations" : {
+      "owner" : "orders-team"
+    }
+  },
+  "diagnostics" : [ ],
+  "written" : false
+}
+```
+
+The same verb reaches a **rule** (not just fields/groups) — the metadata is element-wide:
+
+```bash
+bin/dmtool -m /tmp/extras.dm.json meta /Order/DeliveryNotBeforeOrder --annotate ticket=JIRA-42 --internal en_US="guards: delivery must not precede order"
+```
+
+```output
+{
+  "target" : "meta",
+  "op" : "modify",
+  "outcome" : "applied",
+  "ok" : true,
+  "summary" : "changed metadata of /Order/DeliveryNotBeforeOrder",
+  "changed" : {
+    "internal.en_US" : "guards: delivery must not precede order",
+    "annotation.ticket" : "JIRA-42"
+  },
+  "diagnostics" : [ ],
+  "written" : true,
+  "output" : "/tmp/extras.dm.json"
+}
+```
+
+A reference that doesn't exist is a structured `refused` envelope — coded + with a `fix`, never a bare error:
+
+```bash
+bin/dmtool -m /tmp/extras.dm.json meta /Order/Nope --annotate k=v
+```
+
+```output
+{
+  "target" : "meta",
+  "op" : "modify",
+  "outcome" : "refused",
+  "ok" : false,
+  "summary" : "element or type definition '/Order/Nope' does not exist — refusing",
+  "diagnostics" : [ {
+    "severity" : "ERROR",
+    "source" : "PRECHECK",
+    "code" : "RK_NO_SUCH_ELEMENT",
+    "summary" : "no element or type definition at '/Order/Nope'",
+    "where" : {
+      "path" : "/Order/Nope"
+    },
+    "fix" : "pass an existing element's full name-path or a declared type-definition id (see `doc describe`)."
+  } ],
+  "written" : false
+}
+```
+
+## The model comment
+
+`config modify --comment` sets a free-text model-level note (`modelInfo.comment`); `config read` surfaces it (alongside `supportedCharacters` — the runtime-enforced allowed-character set, set via `config modify --supported-character A-Z …`):
+
+```bash
+bin/dmtool -m /tmp/extras.dm.json config modify --comment "Customer order with delivery and eligibility rules."
+```
+
+```output
+{
+  "target" : "config",
+  "op" : "modify",
+  "outcome" : "applied",
+  "ok" : true,
+  "summary" : "changed document config",
+  "changed" : {
+    "comment" : "Customer order with delivery and eligibility rules."
+  },
+  "diagnostics" : [ ],
+  "written" : true,
+  "output" : "/tmp/extras.dm.json"
+}
+```
+
+```bash
+bin/dmtool -m /tmp/extras.dm.json config read
+```
+
+```output
+{
+  "target" : "config",
+  "op" : "read",
+  "outcome" : "read",
+  "ok" : true,
+  "valid" : true,
+  "summary" : "read document config",
+  "data" : {
+    "decimalSeparator" : ".",
+    "timeZone" : "Europe/Berlin",
+    "conditionLanguage" : "en_US",
+    "fieldRefByShortNameAllowed" : true,
+    "supportedCharacters" : [ ],
+    "comment" : "Customer order with delivery and eligibility rules.",
+    "locales" : [ "en_US" ]
+  },
+  "diagnostics" : [ ],
+  "written" : false
+}
+```
+
+→ Two more authoring verbs round out the model surface (multi-file, so shown via `--include-dir` rather than re-staged here): **`typedef import --reference <m>`** pulls another model's type definitions in by id (a `purpose=typeDefinitions` reference, not a mount), and **`include add --exclude-rules`** mounts a model while dropping its own rules/computations. Both are in `manifest` + `--help`; the contracts are in [`../docs/CLI-SPEC.md`](../docs/CLI-SPEC.md) §5/§6.
