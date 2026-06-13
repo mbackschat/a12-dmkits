@@ -51,21 +51,23 @@ public final class DocumentModelDraft {
     private final List<String> typeDefImports;
     private final String comment;
 
-    private DocumentModelDraft(String id, List<String> locales, List<Include> includes,
-            List<TypeDefDecl> typeDefs, List<ElementDraft.Group> rootGroups, Integer baseYear,
-            Map<String, String> labels, List<ElementDraft.Annotation> annotations,
-            List<String> supportedCharacters, List<String> typeDefImports, String comment) {
-        this.id = id;
-        this.locales = locales;
-        this.includes = includes;
-        this.typeDefs = typeDefs;
-        this.rootGroups = rootGroups;
-        this.baseYear = baseYear;
-        this.labels = labels;
-        this.annotations = annotations;
-        this.supportedCharacters = supportedCharacters;
-        this.typeDefImports = typeDefImports;
-        this.comment = comment;
+    /**
+     * Snapshot the {@link Builder}'s state into an immutable draft. The builder passes itself (rather than a
+     * dozen positional args), and the defensive {@code copyOf} lives here, so the draft is immutable however
+     * {@code build()} calls it. The only call site is {@link Builder#build()}.
+     */
+    private DocumentModelDraft(Builder b) {
+        this.id = b.id;
+        this.locales = List.copyOf(b.locales);
+        this.includes = List.copyOf(b.includes);
+        this.typeDefs = List.copyOf(b.typeDefs);
+        this.rootGroups = List.copyOf(b.rootGroups);
+        this.baseYear = b.baseYear;
+        this.labels = Map.copyOf(b.labels);
+        this.annotations = List.copyOf(b.annotations);
+        this.supportedCharacters = List.copyOf(b.supportedCharacters);
+        this.typeDefImports = List.copyOf(b.typeDefImports);
+        this.comment = b.comment;
     }
 
     /** A reusable named type, declared once in {@code content.typeDefinitions} and referenced by fields. */
@@ -603,10 +605,7 @@ public final class DocumentModelDraft {
                 throw new IllegalStateException("a model needs at least one root group "
                         + "(or use DocumentModelDraft.typeDefModel(...) for a type-def-only model)");
             }
-            return new DocumentModelDraft(id, List.copyOf(locales), List.copyOf(includes),
-                    List.copyOf(typeDefs), List.copyOf(rootGroups), baseYear,
-                    Map.copyOf(labels), List.copyOf(annotations), List.copyOf(supportedCharacters),
-                    List.copyOf(typeDefImports), comment);
+            return new DocumentModelDraft(this);
         }
     }
 
