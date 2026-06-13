@@ -22,6 +22,8 @@ doc compute
 rule check
 rule read
 rule explain
+rule format
+rule test
 rule add
 rule modify
 rule remove
@@ -29,6 +31,7 @@ rule rename
 computation add
 computation read
 computation explain
+computation format
 computation modify
 computation remove
 field add
@@ -132,6 +135,34 @@ bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule read /Order
 ```
 
 → `data.converted: true` confirms dmtool fully modeled every construct (`AllFieldsFilled`, `DifferenceInDays`, `<`, `And`). Note the **polarity**: the condition describes the *violation* (delivery strictly before order), not the requirement — an A12 rule fires when its condition is true.
+
+## rule format
+
+The kernel's **own** canonical text for a rule's condition — a parse + format round-trip through the engine's formatter (distinct from `rule read`, which renders dmtool's AST). Its use is diff-stable normalization: re-express → format → compare. `--lang` re-emits in the other keyword language, the engine being the authority on the EN↔DE switch.
+
+```bash
+bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule format /Order/DeliveryNotBeforeOrder --lang DE
+```
+
+```output
+{
+  "target" : "rule",
+  "op" : "format",
+  "outcome" : "read",
+  "ok" : true,
+  "valid" : true,
+  "summary" : "formatted /Order/DeliveryNotBeforeOrder",
+  "data" : {
+    "rule" : "/Order/DeliveryNotBeforeOrder",
+    "lang" : "de",
+    "canonical" : "AlleFelderAngegeben(OrderDate, DeliveryDate)\nUnd DifferenzInTagen(OrderDate, DeliveryDate) < 0"
+  },
+  "diagnostics" : [ ],
+  "written" : false
+}
+```
+
+→ The same condition as `rule read`, but in the engine's canonical form and **translated to German** (`AlleFelderAngegeben`, `Und`, `DifferenzInTagen`) — the *keywords* switch language, the field paths don't. Omit `--lang` for the model's own language. `computation format` is the peer for the model's computations.
 
 ## rule explain
 

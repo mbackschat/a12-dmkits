@@ -223,6 +223,25 @@ public final class KernelAdapter {
         return mvk.formatConditionText(rule(ruleFullName), SILENT);
     }
 
+    /**
+     * The kernel's canonical condition text re-emitted in {@code language}'s keywords (EN↔DE) — a parse +
+     * format + translate round-trip through the kernel's own {@code formatAndTranslateConditionText}. The
+     * translate peer of {@link #canonicalConditionText(String)}: {@code And}↔{@code Und} and friends switch
+     * language while field paths stay put, so a team can normalize a model into the other dialect with the
+     * engine as the authority (complementing rulekit's {@code DslRenderer(DE)}). Computations share this path
+     * (a computation is also one of the model's {@link #rule}s). Like the plain format round-trip it is lossy
+     * for a {@code $} correlation (KERNEL-FINDINGS) — a display/normalization read, not a write-back.
+     *
+     * <p>Takes rulekit's {@link ConditionLanguage}, not a raw {@code Locale}, by design (N8 boundary): the
+     * kernel recognizes <em>only</em> {@code Locale.US} and {@code Locale.GERMANY} as condition languages and
+     * <b>silently falls back to German</b> for any other locale (KERNEL-FINDINGS) — mapping here makes that
+     * footgun unrepresentable.
+     */
+    public String canonicalConditionText(String ruleFullName, ConditionLanguage language) {
+        Locale kernelLocale = language == ConditionLanguage.DE ? Locale.GERMANY : Locale.US;
+        return mvk.formatAndTranslateConditionText(rule(ruleFullName), kernelLocale, SILENT);
+    }
+
     /** Whether the kernel accepts the rule's condition — the per-rule fast lane (no whole-model check). */
     public boolean hasValidCondition(String ruleFullName) {
         return mvk.hasValidConditionText(rule(ruleFullName), SILENT);
@@ -536,6 +555,64 @@ public final class KernelAdapter {
                     String.valueOf(m.getErrorFieldPointer()), m.getSeverity().name(), m.getMessageType().name()));
         }
         return new EvalResult(messages);
+    }
+
+    /** The kernel's sentinel {@code rulePath} for a formal check (vs. an author rule, whose path starts with {@code /}). */
+    private static final String FORMAL_CHECK = "formalePruefung";
+
+    /**
+     * Test <b>one rule</b> against a document instance (FEATURE-GAPS §3.3) — the scoped, suppression-aware
+     * polarity check over {@link #evaluate}. Returns a three-way {@link RuleTestOutcome.Verdict}: the rule
+     * <b>FIRED</b> (a message carries its path), it <b>PASSED</b> (evaluated, no message), or it was
+     * <b>SUPPRESSED</b> — never evaluated because a field it references is formally invalid (the kernel skips
+     * a rule whose operand is "unknown"; KERNEL-FINDINGS, {@code FormalErrorLawsTest}). The distinction
+     * matters: reporting a suppressed rule as a pass would mislead, so when not fired we check whether any of
+     * the rule's {@linkplain #referencedFields referenced fields} drew a formal-check error and, if so, name them.
+     */
+    public RuleTestOutcome testRule(String ruleFullName, Map<String, Object> fields, Locale locale) {
+        Set<String> referenced = referencedFields(ruleFullName);
+        List<EvalMessage> messages = evaluate(fields, locale).messages();
+        boolean fired = messages.stream().anyMatch(m -> m.rulePath().filter(ruleFullName::equals).isPresent());
+        if (fired) {
+            return new RuleTestOutcome(ruleFullName, RuleTestOutcome.Verdict.FIRED, List.of());
+        }
+        List<RuleTestOutcome.Suppression> suppressions = new ArrayList<>();
+        for (EvalMessage m : messages) {
+            if (isFormalCheck(m)) {
+                for (String field : referenced) {
+                    if (pointerHitsField(m.fieldPointer(), field)) {
+                        suppressions.add(new RuleTestOutcome.Suppression(field, m.errorCode()));
+                    }
+                }
+            }
+        }
+        RuleTestOutcome.Verdict verdict = suppressions.isEmpty()
+                ? RuleTestOutcome.Verdict.PASSED
+                : RuleTestOutcome.Verdict.SUPPRESSED;
+        return new RuleTestOutcome(ruleFullName, verdict, suppressions);
+    }
+
+    /** A formal/structural check (not an author rule): no {@code rulePath}, or one that isn't an absolute slash-path. */
+    private static boolean isFormalCheck(EvalMessage m) {
+        return m.rulePath().map(p -> !p.startsWith("/")).orElse(true);
+    }
+
+    /**
+     * Whether a kernel field-instance pointer (e.g. {@code [/Order/UnitPrice, [1]]}) targets {@code fieldPath} —
+     * a containment match bounded so a field is not mistaken for a longer sibling that shares its prefix
+     * ({@code /Order/Unit} must not hit {@code /Order/UnitPrice}).
+     */
+    private static boolean pointerHitsField(String pointer, String fieldPath) {
+        int at = pointer.indexOf(fieldPath);
+        if (at < 0) {
+            return false;
+        }
+        int after = at + fieldPath.length();
+        return after >= pointer.length() || !isPathChar(pointer.charAt(after));
+    }
+
+    private static boolean isPathChar(char c) {
+        return Character.isLetterOrDigit(c) || c == '/' || c == '_';
     }
 
     /**

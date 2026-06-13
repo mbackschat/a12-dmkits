@@ -8,8 +8,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -98,12 +96,9 @@ final class DocEvalCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         try {
-            JsonNode root = MAPPER.readTree(Files.readString(Path.of(doc)));
-            JsonNode fieldsNode = root.has("fields") ? root.get("fields") : root;
-            if (!fieldsNode.isObject()) {
-                return fail("the document needs a top-level \"fields\" object (a nested field tree)");
-            }
-            fields = MAPPER.convertValue(fieldsNode, new TypeReference<Map<String, Object>>() { });
+            fields = DocInstance.readFields(doc);
+        } catch (IllegalArgumentException badShape) {
+            return fail(badShape.getMessage());
         } catch (IOException e) {
             return fail("cannot read document: " + e.getMessage());
         }

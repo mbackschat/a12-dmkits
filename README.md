@@ -78,6 +78,31 @@ Computation comp = m.computation(m.num("/Subscription/Billing/EffectiveFee"))
     .build();
 ```
 
+### Interpolated error messages
+
+An error message can splice in the **runtime value**, the **label**, or the **row number** of a field/group through typed helpers — each takes a *ref*, so it can't name a field that doesn't exist. The kernel substitutes the token when it renders the message for a failing document:
+
+| Helper | Renders the token | Substituted with… |
+|---|---|---|
+| `fieldValue(ref)` | `$/Order/Items/Count.value$` | the field's runtime **value** |
+| `fieldLabel(ref)` | `$/Order/Items/Count$` | the field's localized **label** |
+| `repetitionIndex(groupRef)` | `$#/Order/Items$` | the repeatable group's 1-based **row number** |
+
+```java
+import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.*;   // en, de, fieldValue, fieldLabel, repetitionIndex
+
+NumberRef count = m.num("/Order/Items/Count");
+GroupRef  items = m.group("/Order/Items");
+// renders, e.g., "Row #2: Count (now 0) must be positive."
+m.rule(items).name("CountPositive").errorField(count)
+    .when(count.filled().and(count.le(0))).code("COUNT_POSITIVE").severity(Severity.ERROR)
+    .message(en("Row #" + repetitionIndex(items) + ": " + fieldLabel(count.field())
+            + " (now " + fieldValue(count.field()) + ") must be positive."))
+    .build();
+```
+
+The CLI `rule add` / `apply` message path accepts the same `$…$` tokens as plain text — the helpers are just the typed, ref-checked way to write them.
+
 ### What you can express
 
 The condition language is rich; a flavour of what the typed builder covers (each renders to kernel-valid DSL):
@@ -160,7 +185,7 @@ DocumentModelDraft order = DocumentModelDraft.named("order")
 String dmJson = order.toJson();   // DM-JSON the kernel accepts
 ```
 
-**What it covers** — field kinds (string with length/pattern, number with fraction-digits/min/max, date / time / date-range, boolean, confirm, enum with values + categories), **repeatable groups** (with index fields), reusable **type definitions**, **includes** (mount another model under a group), and **document config** (locales, decimal separator, time zone, base year). To edit the structure of an *existing* model — add/remove fields & groups, declare type definitions, change config — use `EditSession` (below).
+**What it covers** — field kinds (string with length/pattern/suggestions/line-breaks/sorting, number with fraction-digit range/min/max/zero-not-allowed/leading-zeros, date / time / date-range, boolean, confirm, enum with values + categories + sorting + invalid-value message, and a **custom** field type), **field-level metadata** (global/transient flags, internal/external descriptions, helper text), **repeatable groups** (with index fields), reusable **type definitions**, **includes** (mount another model under a group), and **document config** (locales, decimal separator, time zone, base year). To edit the structure of an *existing* model — add/remove fields & groups, declare type definitions, change config — use `EditSession` (below).
 
 **Illegal states are unrepresentable.** The builder rejects the mistakes the kernel would — a repeatable group with `max < 2`, a field referencing an undeclared type definition — *as you build*, not after a round-trip; and the kernel still has the final say (every result re-binds through `checkConsistency`).
 
@@ -183,7 +208,7 @@ order.addRule(r -> r                                         // a TYPED rule (ru
 String updated = s.validate().toJson();                      // one kernel gate
 ```
 
-**Refs are the currency.** `order.num("Discount")` resolves *only because* `addField` ran first — and it returns a typed ref, not a string path you re-type. Rules author in place (`order.addRule(r -> …)`, the builder pre-scoped to the group) or take the editor straight as a scope (`m.rule(order)`); either way the immutable AST holds **only the pure ref, never the session**, so a rule can't leak an effect. `GroupEditor` also nests (`addGroup(name, sub -> …)`); `FieldEditor` re-types/labels/annotates a field; `RuleEditor` / `ComputationEditor` modify or remove by held reference. `EditSession` also carries the **reference-preserving refactors** — `renameField`/`renameGroup`/`moveField`/`moveGroup` rewrite every reference to the element (via the kernel's `MoveSupportDM`) and re-validate, so a rename or relocation never dangles a referrer. Design + rationale: [API study §5c](docs/API-POC-STUDY.md).
+**Refs are the currency.** `order.num("Discount")` resolves *only because* `addField` ran first — and it returns a typed ref, not a string path you re-type. Rules author in place (`order.addRule(r -> …)`, the builder pre-scoped to the group) or take the editor straight as a scope (`m.rule(order)`); either way the immutable AST holds **only the pure ref, never the session**, so a rule can't leak an effect. `GroupEditor` also nests (`addGroup(name, sub -> …)`); `FieldEditor` re-types/labels/annotates a field; `RuleEditor` / `ComputationEditor` modify or remove by held reference — a rule's condition, **or its severity / messages in place** (`s.rule(name).severity(WARNING).messages(en("…")))`). `EditSession` also carries the **reference-preserving refactors** — `renameField`/`renameGroup`/`moveField`/`moveGroup` rewrite every reference to the element (via the kernel's `MoveSupportDM`) and re-validate, so a rename or relocation never dangles a referrer. Design + rationale: [API study §5c](docs/API-POC-STUDY.md).
 
 **Blend both as a developer would** — the editor for a field you just added, a path lookup for one that already exists, in the same condition (they are the same pure ref):
 
@@ -226,6 +251,7 @@ dmtool -m order.dm.json doc describe          # the model card: fields, kinds, e
 dmtool -m order.dm.json doc validate          # run it through the real kernel → {valid, diagnostics[]}
 dmtool -m order.dm.json rule read  /Order/DeliveryNotBeforeOrder    # a rule's condition, as typed JSON
 dmtool -m order.dm.json rule explain /Order/DeliveryNotBeforeOrder  # what it checks + WHEN it fires
+dmtool -m order.dm.json rule format /Order/DeliveryNotBeforeOrder --lang DE  # the kernel's canonical text, switched EN↔DE
 dmtool -m order.dm.json where-used /Order/DeliveryDate             # which rules/computations use a field
 ```
 
@@ -248,10 +274,11 @@ Diagnostics are **corrective**: each carries a stable `code`, a `where`, and a `
 
 ```sh
 dmtool -m order.dm.json doc eval    --doc order-instance.json   # which rules actually FIRE on this document
+dmtool -m order.dm.json rule test /Order/DeliveryNotBeforeOrder --doc order-instance.json  # one rule: fired / passed / suppressed
 dmtool -m sub.dm.json   doc compute --doc sub-instance.json     # what each computed field evaluates to
 ```
 
-This is the empirical check a static "is it valid?" can't give — it's how you confirm a rule's *polarity* on concrete data.
+This is the empirical check a static "is it valid?" can't give — it's how you confirm a rule's *polarity* on concrete data. `rule test` scopes it to one rule with a three-way verdict, distinguishing a genuine **pass** from a rule the kernel **suppressed** because a field it references is formally invalid.
 
 ### Edit, with a preview diff
 

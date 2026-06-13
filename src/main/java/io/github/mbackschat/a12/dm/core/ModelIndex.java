@@ -79,6 +79,16 @@ public final class ModelIndex {
     }
 
     /**
+     * The kernel's resolved {@link IFieldType} for the field at {@code fieldPath} (type-definitions
+     * resolved) — the typed read-back surface (cast to {@code INumberType}/{@code IStringType}/… for a
+     * slot's value). Used to confirm the engine <em>honored</em> an authored field-config slot, which a
+     * load alone can't (the deserializer ignores unknown keys).
+     */
+    public IFieldType fieldType(String fieldPath) {
+        return effectiveType(field(fieldPath));
+    }
+
+    /**
      * The declared decimal scale (max fractional digits) of the number field at {@code fieldPath}.
      *
      * @throws IllegalArgumentException if the field is not a number
@@ -169,7 +179,13 @@ public final class ModelIndex {
         return field.getEffectiveType().orElseGet(field::getFieldType);
     }
 
-    private IField field(String path) {
+    /**
+     * The kernel's {@link IField} at {@code fieldPath} — the typed read-back surface for field-level metadata
+     * (its {@code isGlobal()}/{@code isTransient()}/{@code getHelperText()} and, via {@code IElement}, the
+     * internal/external descriptions). The same purpose as {@link #fieldType}: confirm the engine honored an
+     * authored slot the silent-ignore deserializer would otherwise hide (KERNEL-FINDINGS).
+     */
+    public IField field(String path) {
         if (require(path) instanceof IField field) {
             return field;
         }

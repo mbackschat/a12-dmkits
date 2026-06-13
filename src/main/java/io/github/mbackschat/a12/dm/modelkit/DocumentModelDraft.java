@@ -175,6 +175,9 @@ public final class DocumentModelDraft {
         node.put("id", parentPath + "/" + field.name());
         node.put("name", field.name());
         writeAnnotations(node, field.annotations());
+        // internal/external description are element-level (alongside annotations), per the kernel serializer
+        writeLocalizedText(node, "internalDescription", field.internalDescription());
+        writeLocalizedText(node, "externalDescription", field.externalDescription());
         ObjectNode body = node.putObject("Field");
         writeFieldType(body.putObject("fieldType"), field.type(), locales);
         String mode = field.requiredness().mode();
@@ -192,7 +195,24 @@ public final class DocumentModelDraft {
             ArrayNode label = body.putArray("label");
             locales.forEach(loc -> label.addObject().put("locale", loc).put("text", field.labels().get(loc)));
         }
+        // global / transient flags + helperText live inside the Field body (kernel FieldSerializer)
+        if (field.global()) {
+            body.put("global", true);
+        }
+        if (field.notPersisted()) {
+            body.put("transient", true);
+        }
+        writeLocalizedText(body, "helperText", field.helperText());
         return node;
+    }
+
+    /** Emit an optional per-locale text slot as {@code key: [{locale, text}]} (omitted when empty). */
+    private static void writeLocalizedText(ObjectNode target, String key, Map<String, String> textByLocale) {
+        if (textByLocale.isEmpty()) {
+            return;
+        }
+        ArrayNode array = target.putArray(key);
+        textByLocale.forEach((loc, text) -> array.addObject().put("locale", loc).put("text", text));
     }
 
     /** Emit element-level {@code annotations: [{name, value}]} (omitted when none). */
@@ -217,7 +237,8 @@ public final class DocumentModelDraft {
     private static void writeTypeConfig(ObjectNode fieldType, FieldTypeSpec spec, List<String> locales) {
         switch (spec) {
             case FieldTypeSpec.StringSpec s -> {
-                if (s.minLength() != null || s.maxLength() != null || s.pattern() != null) {
+                if (s.minLength() != null || s.maxLength() != null || s.pattern() != null
+                        || s.lineBreaksPermitted() || s.alphabeticalSorting() || !s.suggestions().isEmpty()) {
                     ObjectNode inner = fieldType.putObject("StringType");
                     // a pattern needs an error text for every declared locale (MVK_ERROR_MESSAGE_AND_PATTERN_INVALID)
                     if (s.pattern() != null) {
@@ -233,16 +254,40 @@ public final class DocumentModelDraft {
                     if (s.pattern() != null) {
                         inner.put("pattern", s.pattern());
                     }
+                    if (s.lineBreaksPermitted()) {
+                        inner.put("lineBreaksPermitted", true);
+                    }
+                    if (s.alphabeticalSorting()) {
+                        inner.put("alphabeticalSorting", true);
+                    }
+                    if (!s.suggestions().isEmpty()) {
+                        ArrayNode hintList = inner.putArray("hintList");
+                        s.suggestions().forEach((loc, vals) -> {
+                            ObjectNode entry = hintList.addObject();
+                            entry.put("locale", loc);
+                            ArrayNode values = entry.putArray("values");
+                            vals.forEach(values::add);
+                        });
+                    }
                 }
             }
             case FieldTypeSpec.NumberSpec n -> {
                 ObjectNode inner = fieldType.putObject("NumberType");
-                inner.put("maxFractionalDigits", n.fractionDigits() != null ? n.fractionDigits() : 0);
+                inner.put("maxFractionalDigits", n.maxFractionalDigits() != null ? n.maxFractionalDigits() : 0);
+                if (n.minFractionalDigits() != null) {
+                    inner.put("minFractionalDigits", n.minFractionalDigits());
+                }
                 if (n.minValue() != null) {
                     inner.put("minValue", n.minValue());
                 }
                 if (n.maxValue() != null) {
                     inner.put("maxValue", n.maxValue());
+                }
+                if (n.zeroNotAllowed()) {
+                    inner.put("zeroNotAllowed", true);
+                }
+                if (n.leadingZerosAllowed()) {
+                    inner.put("leadingZerosAllowed", true);
                 }
             }
             case FieldTypeSpec.DateSpec d -> {
@@ -302,6 +347,24 @@ public final class DocumentModelDraft {
                         ArrayNode catValues = categoryNode.putArray("values");
                         c.values().forEach(catValues::add);
                     }
+                }
+                if (e.alphabeticalSorting()) {
+                    enumeration.put("alphabeticalSorting", true);
+                }
+                if (e.invalidValueMessage() != null) {
+                    // the invalid-value error text, one entry per declared locale (the kernel's localized map)
+                    ArrayNode messages = enumeration.putArray("errorMessage");
+                    locales.forEach(loc -> messages.addObject().put("locale", loc).put("text", e.invalidValueMessage()));
+                }
+            }
+            case FieldTypeSpec.CustomSpec cf -> {
+                ObjectNode inner = fieldType.putObject("CustomFieldType");
+                inner.put("name", cf.name());
+                if (cf.minLength() != null) {
+                    inner.put("minLength", cf.minLength());
+                }
+                if (cf.maxLength() != null) {
+                    inner.put("maxLength", cf.maxLength());
                 }
             }
         }
@@ -515,6 +578,13 @@ public final class DocumentModelDraft {
             return addField(name, b, b.spec());
         }
 
+        /** Add a custom-typed field (a named kernel custom type + optional length bounds). */
+        public GroupBuilder customField(String name, Consumer<CustomFieldBuilder> body) {
+            CustomFieldBuilder b = new CustomFieldBuilder();
+            body.accept(b);
+            return addField(name, b, b.spec());
+        }
+
         /** Add a field whose type is a reusable {@code typeDef} (referenced by id), optional. */
         public GroupBuilder typedefField(String name, String typeDefId) {
             return typedefField(name, typeDefId, Requiredness.OPTIONAL);
@@ -543,7 +613,9 @@ public final class DocumentModelDraft {
 
         private GroupBuilder addField(String name, FieldAttrs<?> attrs, FieldTypeSpec spec) {
             elements.add(new ElementDraft.Field(name, spec, attrs.requiredness,
-                    Map.copyOf(attrs.labels), List.copyOf(attrs.annotations)));
+                    Map.copyOf(attrs.labels), List.copyOf(attrs.annotations),
+                    attrs.global, attrs.notPersisted, Map.copyOf(attrs.internalDescription),
+                    Map.copyOf(attrs.externalDescription), Map.copyOf(attrs.helperText)));
             return this;
         }
 
@@ -631,6 +703,11 @@ public final class DocumentModelDraft {
         Requiredness requiredness = Requiredness.OPTIONAL;
         final Map<String, String> labels = new LinkedHashMap<>();
         final List<ElementDraft.Annotation> annotations = new ArrayList<>();
+        boolean global;
+        boolean notPersisted;
+        final Map<String, String> internalDescription = new LinkedHashMap<>();
+        final Map<String, String> externalDescription = new LinkedHashMap<>();
+        final Map<String, String> helperText = new LinkedHashMap<>();
 
         @SuppressWarnings("unchecked")
         private SELF self() {
@@ -658,6 +735,36 @@ public final class DocumentModelDraft {
             annotations.add(new ElementDraft.Annotation(name, value));
             return self();
         }
+
+        /** Mark the field {@code global} — passed to partial validation (a kernel field flag, §3.5). */
+        public SELF global() {
+            this.global = true;
+            return self();
+        }
+
+        /** Mark the field {@code transient} — present at runtime but not persisted (a kernel field flag, §3.5). */
+        public SELF notPersisted() {
+            this.notPersisted = true;
+            return self();
+        }
+
+        /** Per-locale internal description (authoring/maintenance text, distinct from the label). */
+        public SELF internalDescription(String locale, String text) {
+            internalDescription.put(locale, text);
+            return self();
+        }
+
+        /** Per-locale external description (end-user-facing text, distinct from the label). */
+        public SELF externalDescription(String locale, String text) {
+            externalDescription.put(locale, text);
+            return self();
+        }
+
+        /** Per-locale helper text (inline UI help shown alongside the field). */
+        public SELF helperText(String locale, String text) {
+            helperText.put(locale, text);
+            return self();
+        }
     }
 
     /** Configures a string field. Cross-kind nonsense (a numeric range) is simply not on this surface. */
@@ -666,6 +773,9 @@ public final class DocumentModelDraft {
         private Integer maxLength;
         private String pattern;
         private String patternMessage;
+        private boolean lineBreaksPermitted;
+        private boolean alphabeticalSorting;
+        private final Map<String, List<String>> suggestions = new LinkedHashMap<>();
 
         public StringFieldBuilder minLength(int n) {
             this.minLength = n;
@@ -684,19 +794,49 @@ public final class DocumentModelDraft {
             return this;
         }
 
+        /** Permit multi-line input (the kernel forbids line breaks by default). */
+        public StringFieldBuilder lineBreaks() {
+            this.lineBreaksPermitted = true;
+            return this;
+        }
+
+        /** Present the field's values sorted alphabetically (a UI hint the kernel records). */
+        public StringFieldBuilder alphabeticalSorting() {
+            this.alphabeticalSorting = true;
+            return this;
+        }
+
+        /** Add localized input suggestions (a hint list) for one locale; validated against the field's own pattern. */
+        public StringFieldBuilder suggestions(String locale, String... values) {
+            this.suggestions.put(locale, List.of(values));
+            return this;
+        }
+
         private FieldTypeSpec spec() {
-            return new FieldTypeSpec.StringSpec(minLength, maxLength, pattern, patternMessage);
+            return new FieldTypeSpec.StringSpec(minLength, maxLength, pattern, patternMessage,
+                    lineBreaksPermitted, alphabeticalSorting, suggestions);
         }
     }
 
-    /** Configures a number field (scale = fraction digits, optional value range). */
+    /** Configures a number field (decimal-place range, optional value range, zero/leading-zero flags). */
     public static final class NumberFieldBuilder extends FieldAttrs<NumberFieldBuilder> {
-        private Integer fractionDigits;
+        private Integer minFractionalDigits;
+        private Integer maxFractionalDigits;
         private BigDecimal minValue;
         private BigDecimal maxValue;
+        private boolean zeroNotAllowed;
+        private boolean leadingZerosAllowed;
 
+        /** Fix the maximum scale (0..{@code n} decimal places); the minimum stays 0. */
         public NumberFieldBuilder fractionDigits(int n) {
-            this.fractionDigits = n;
+            this.maxFractionalDigits = n;
+            return this;
+        }
+
+        /** Bound the scale to a {@code [min, max]} range of decimal places (FEATURE-GAPS §3.4). */
+        public NumberFieldBuilder fractionDigits(int min, int max) {
+            this.minFractionalDigits = min;
+            this.maxFractionalDigits = max;
             return this;
         }
 
@@ -710,8 +850,21 @@ public final class DocumentModelDraft {
             return this;
         }
 
+        /** Reject the value 0 (the kernel emits a dedicated zero-not-allowed error). */
+        public NumberFieldBuilder zeroNotAllowed() {
+            this.zeroNotAllowed = true;
+            return this;
+        }
+
+        /** Permit leading zeros in the input (the kernel strips them by default). */
+        public NumberFieldBuilder leadingZerosAllowed() {
+            this.leadingZerosAllowed = true;
+            return this;
+        }
+
         private FieldTypeSpec spec() {
-            return new FieldTypeSpec.NumberSpec(fractionDigits, minValue, maxValue);
+            return new FieldTypeSpec.NumberSpec(minFractionalDigits, maxFractionalDigits, minValue, maxValue,
+                    zeroNotAllowed, leadingZerosAllowed);
         }
     }
 
@@ -722,6 +875,8 @@ public final class DocumentModelDraft {
     public static final class EnumFieldBuilder extends FieldAttrs<EnumFieldBuilder> {
         private final List<FieldTypeSpec.EnumValue> values = new ArrayList<>();
         private final List<FieldTypeSpec.EnumCategory> categories = new ArrayList<>();
+        private boolean alphabeticalSorting;
+        private String invalidValueMessage;
 
         public EnumFieldBuilder value(String value) {
             values.add(new FieldTypeSpec.EnumValue(value, Map.of()));
@@ -744,11 +899,53 @@ public final class DocumentModelDraft {
             return this;
         }
 
+        /** Present the values sorted alphabetically rather than in declared order (a UI hint the kernel records). */
+        public EnumFieldBuilder alphabeticalSorting() {
+            this.alphabeticalSorting = true;
+            return this;
+        }
+
+        /** The error text shown when an out-of-domain value is supplied (one text, used for every declared locale). */
+        public EnumFieldBuilder invalidValueMessage(String text) {
+            this.invalidValueMessage = text;
+            return this;
+        }
+
         private FieldTypeSpec spec() {
             if (values.isEmpty()) {
                 throw new IllegalStateException("an enumeration field needs at least one value");
             }
-            return new FieldTypeSpec.EnumSpec(values, categories);
+            return new FieldTypeSpec.EnumSpec(values, categories, alphabeticalSorting, invalidValueMessage);
+        }
+    }
+
+    /** Configures a custom-typed field: a named kernel custom type with optional length bounds (FEATURE-GAPS §3.4). */
+    public static final class CustomFieldBuilder extends FieldAttrs<CustomFieldBuilder> {
+        private String typeName;
+        private Integer minLength;
+        private Integer maxLength;
+
+        /** The technical name of the registered kernel custom field type (required). */
+        public CustomFieldBuilder type(String name) {
+            this.typeName = name;
+            return this;
+        }
+
+        public CustomFieldBuilder minLength(int n) {
+            this.minLength = n;
+            return this;
+        }
+
+        public CustomFieldBuilder maxLength(int n) {
+            this.maxLength = n;
+            return this;
+        }
+
+        private FieldTypeSpec spec() {
+            if (typeName == null) {
+                throw new IllegalStateException("a custom field needs a type name — call .type(\"…\")");
+            }
+            return new FieldTypeSpec.CustomSpec(typeName, minLength, maxLength);
         }
     }
 

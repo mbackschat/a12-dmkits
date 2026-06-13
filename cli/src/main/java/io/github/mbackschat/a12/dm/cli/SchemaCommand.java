@@ -52,7 +52,8 @@ final class SchemaCommand extends BaseCommand {
             "computation modify", "add");
 
     /** Leaf op-names whose verb returns a read payload in the envelope's {@code data}. */
-    private static final Set<String> READ_OPS = Set.of("read", "explain", "describe", "eval", "compute");
+    private static final Set<String> READ_OPS =
+            Set.of("read", "explain", "format", "test", "describe", "eval", "compute");
 
     @Parameters(arity = "0..*", paramLabel = "<schema>",
             description = "result | diagnostic (structures), or a verb's directional contract "

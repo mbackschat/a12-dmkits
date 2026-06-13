@@ -50,6 +50,29 @@ class RuleComputationEditorTest {
     }
 
     @Test
+    void reSeveritiesAndReMessagesARuleByHeldReference() {
+        // FEATURE-GAPS §3.7: severity / message edits in place — no full replace, no re-typing the path.
+        EditSession s = EditSession.read(Fixtures.subscriptionJson());
+        GroupEditor addons = s.group("/Subscription/Addons");
+        addons.addField("Discount", FieldKind.NUMBER);
+        NumberRef discount = addons.num("Discount");
+        addons.addRule(r -> r.name("DiscountNonNeg").errorField(discount)
+                .when(discount.filled().and(discount.lt(0)))
+                .code("D_NEG").severity(Severity.ERROR)
+                .message(Dsl.en("neg"), Dsl.de("neg")).build());
+        s.validate();
+
+        s.rule("/Subscription/Addons/DiscountNonNeg")
+                .severity(Severity.WARNING)
+                .messages(Dsl.en("Discount should not be negative."), Dsl.de("Rabatt sollte nicht negativ sein."));
+        s.validate();   // the kernel still accepts the rule after the in-place severity + message edit
+
+        String json = s.toJson();
+        assertTrue(json.contains("\"severity\" : \"WARNING\""), () -> "the new severity is written: " + json);
+        assertTrue(json.contains("Discount should not be negative."), () -> "the new message is written: " + json);
+    }
+
+    @Test
     void authorsCommentsThroughTheEditorOnBothARuleAndAComputation() {
         // the L2c editor carries the comment feature for free — GroupEditor.addRule/addComputation hand
         // the same Rule.Builder/Computation.Builder, so .comment(...) flows straight through.

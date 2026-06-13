@@ -22,11 +22,30 @@ public sealed interface ElementDraft permits ElementDraft.Field, ElementDraft.Gr
     record Annotation(String name, String value) {}
 
     /**
-     * A leaf field — its typed config ({@link FieldTypeSpec}), how it must be filled, per-locale
-     * display {@code labels} (locale → text), and element-level {@code annotations}.
+     * A leaf field — its typed config ({@link FieldTypeSpec}), how it must be filled, per-locale display
+     * {@code labels} (locale → text), and element-level {@code annotations}. Plus the field-level metadata
+     * (FEATURE-GAPS §3.5): the kernel flags {@code global} (relevant to partial validation) and
+     * {@code notPersisted} (the kernel {@code transient} flag — not stored), and three per-locale text slots
+     * distinct from the label — {@code internalDescription} / {@code externalDescription} (element-level) and
+     * {@code helperText} (field-level UI help).
      */
-    record Field(String name, FieldTypeSpec type, Requiredness requiredness,
-            Map<String, String> labels, List<Annotation> annotations) implements ElementDraft {}
+    record Field(String name, FieldTypeSpec type, Requiredness requiredness, Map<String, String> labels,
+            List<Annotation> annotations, boolean global, boolean notPersisted,
+            Map<String, String> internalDescription, Map<String, String> externalDescription,
+            Map<String, String> helperText) implements ElementDraft {
+
+        public Field {
+            internalDescription = internalDescription == null ? Map.of() : Map.copyOf(internalDescription);
+            externalDescription = externalDescription == null ? Map.of() : Map.copyOf(externalDescription);
+            helperText = helperText == null ? Map.of() : Map.copyOf(helperText);
+        }
+
+        /** The pre-§3.5 form: no field-level flags or description/helper text. */
+        public Field(String name, FieldTypeSpec type, Requiredness requiredness, Map<String, String> labels,
+                List<Annotation> annotations) {
+            this(name, type, requiredness, labels, annotations, false, false, Map.of(), Map.of(), Map.of());
+        }
+    }
 
     /**
      * A group; {@code repeatability == 1} is single, {@code > 1} a repeatable list. A repeatable group

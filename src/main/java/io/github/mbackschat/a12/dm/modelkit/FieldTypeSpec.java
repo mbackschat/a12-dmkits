@@ -47,7 +47,8 @@ public sealed interface FieldTypeSpec {
      * is inseparable from its {@code patternMessage} — the kernel rejects a pattern with no error text
      * ({@code MVK_ERROR_MESSAGE_AND_PATTERN_INVALID}), so the two are set or unset together.
      */
-    record StringSpec(Integer minLength, Integer maxLength, String pattern, String patternMessage)
+    record StringSpec(Integer minLength, Integer maxLength, String pattern, String patternMessage,
+            boolean lineBreaksPermitted, boolean alphabeticalSorting, Map<String, List<String>> suggestions)
             implements FieldTypeSpec {
         public StringSpec {
             if (minLength != null && minLength < 0) {
@@ -59,6 +60,15 @@ public sealed interface FieldTypeSpec {
             if ((pattern == null) != (patternMessage == null)) {
                 throw new IllegalArgumentException("a pattern and its error message must be set together");
             }
+            // a LinkedHashMap copy keeps the per-locale hint-list emit deterministic (idempotent toJson)
+            suggestions = suggestions == null
+                    ? Map.of()
+                    : java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(suggestions));
+        }
+
+        /** The pre-§3.4 form: length bounds + optional anchored pattern, no hint-list/line-break/sorting slots. */
+        public StringSpec(Integer minLength, Integer maxLength, String pattern, String patternMessage) {
+            this(minLength, maxLength, pattern, patternMessage, false, false, Map.of());
         }
 
         @Override
@@ -67,15 +77,34 @@ public sealed interface FieldTypeSpec {
         }
     }
 
-    /** A number field: {@code fractionDigits} is the decimal scale (§5b); optional value bounds. */
-    record NumberSpec(Integer fractionDigits, BigDecimal minValue, BigDecimal maxValue) implements FieldTypeSpec {
+    /**
+     * A number field: the decimal scale as a {@code [minFractionalDigits, maxFractionalDigits]} range (the
+     * single-arg form fixes only the max, min defaulting to 0 — FEATURE-GAPS §3.4), optional value bounds,
+     * and the two kernel flags {@code zeroNotAllowed} (the engine emits a dedicated zero-not-allowed error)
+     * and {@code leadingZerosAllowed}. ({@code trait}/unit is deliberately not modeled — its runtime vs
+     * metamodel representation is inconsistent; KERNEL-FINDINGS.)
+     */
+    record NumberSpec(Integer minFractionalDigits, Integer maxFractionalDigits, BigDecimal minValue,
+            BigDecimal maxValue, boolean zeroNotAllowed, boolean leadingZerosAllowed) implements FieldTypeSpec {
         public NumberSpec {
-            if (fractionDigits != null && fractionDigits < 0) {
-                throw new IllegalArgumentException("fractionDigits must be ≥ 0: " + fractionDigits);
+            if (minFractionalDigits != null && minFractionalDigits < 0) {
+                throw new IllegalArgumentException("minFractionalDigits must be ≥ 0: " + minFractionalDigits);
+            }
+            if (maxFractionalDigits != null && maxFractionalDigits < 0) {
+                throw new IllegalArgumentException("maxFractionalDigits must be ≥ 0: " + maxFractionalDigits);
+            }
+            if (minFractionalDigits != null && maxFractionalDigits != null && minFractionalDigits > maxFractionalDigits) {
+                throw new IllegalArgumentException("minFractionalDigits " + minFractionalDigits
+                        + " > maxFractionalDigits " + maxFractionalDigits);
             }
             if (minValue != null && maxValue != null && minValue.compareTo(maxValue) > 0) {
                 throw new IllegalArgumentException("minValue " + minValue + " > maxValue " + maxValue);
             }
+        }
+
+        /** The pre-§3.4 form: a max-scale (0..{@code fractionDigits}) number with an optional value range. */
+        public NumberSpec(Integer fractionDigits, BigDecimal minValue, BigDecimal maxValue) {
+            this(null, fractionDigits, minValue, maxValue, false, false);
         }
 
         @Override
@@ -134,7 +163,8 @@ public sealed interface FieldTypeSpec {
      * ({@code categories[c].values[i]} classifies {@code values[i]}), so every category must classify
      * every value (length checked here).
      */
-    record EnumSpec(List<EnumValue> values, List<EnumCategory> categories) implements FieldTypeSpec {
+    record EnumSpec(List<EnumValue> values, List<EnumCategory> categories, boolean alphabeticalSorting,
+            String invalidValueMessage) implements FieldTypeSpec {
         public EnumSpec {
             values = List.copyOf(values);
             categories = List.copyOf(categories);
@@ -147,9 +177,39 @@ public sealed interface FieldTypeSpec {
             }
         }
 
+        /** The pre-§3.4 form: values + categories, no alphabetical-sort or invalid-value-message slot. */
+        public EnumSpec(List<EnumValue> values, List<EnumCategory> categories) {
+            this(values, categories, false, null);
+        }
+
         @Override
         public String jsonType() {
             return "EnumerationType";
+        }
+    }
+
+    /**
+     * A <b>custom</b> field type: a named kernel custom type ({@code CustomFieldType} discriminator + its
+     * technical {@code name}) with optional length bounds. Validation of custom-typed values needs a custom
+     * validator registered with the engine, so on a bare model only the structural carry round-trips
+     * (KERNEL-FINDINGS); the name + bounds are what authoring records.
+     */
+    record CustomSpec(String name, Integer minLength, Integer maxLength) implements FieldTypeSpec {
+        public CustomSpec {
+            if (name == null || name.isBlank()) {
+                throw new IllegalArgumentException("a custom field type needs a non-blank type name");
+            }
+            if (minLength != null && minLength < 0) {
+                throw new IllegalArgumentException("minLength must be ≥ 0: " + minLength);
+            }
+            if (minLength != null && maxLength != null && minLength > maxLength) {
+                throw new IllegalArgumentException("minLength " + minLength + " > maxLength " + maxLength);
+            }
+        }
+
+        @Override
+        public String jsonType() {
+            return "CustomFieldType";
         }
     }
 

@@ -852,6 +852,26 @@ public final class Dsl {
         return "$" + field.path() + ".value$";
     }
 
+    /**
+     * A field-<em>label</em> interpolation token for an error message (FEATURE-GAPS §3.6) — renders
+     * {@code $<path>$} (a bare path, no {@code .value} suffix), the kernel's placeholder for the field's
+     * localized <b>label</b> (its name, replaceable by the UI label) rather than its runtime value. The
+     * label peer of {@link #fieldValue}: {@code en(fieldLabel(fee) + " is too high.")}.
+     */
+    public static String fieldLabel(FieldRef field) {
+        return "$" + field.path() + "$";
+    }
+
+    /**
+     * A repetition-<em>index</em> interpolation token for an error message (FEATURE-GAPS §3.6) — renders
+     * {@code $#<groupPath>$}, the kernel's placeholder for the 1-based row number of the repeatable
+     * {@code group}'s current repetition. Pairs naturally with a uniqueness/per-row rule:
+     * {@code en("Row #" + repetitionIndex(items) + " is invalid.")}.
+     */
+    public static String repetitionIndex(GroupRef group) {
+        return "$#" + group.path() + "$";
+    }
+
     /** Sugar for the common {@code en_US} — only valid if the model declares it. */
     public static LocalizedText en(String text) {
         return new LocalizedText("en_US", text);

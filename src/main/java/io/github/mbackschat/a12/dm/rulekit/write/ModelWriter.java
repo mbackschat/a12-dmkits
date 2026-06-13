@@ -72,6 +72,47 @@ public final class ModelWriter {
         }
     }
 
+    /**
+     * Returns {@code modelJson} with the rule's {@code severity} slot set to {@code severity} (the enum name),
+     * leaving its condition and messages untouched — the in-place severity edit (FEATURE-GAPS §3.7).
+     */
+    public static String replaceSeverity(String modelJson, String ruleFullName, String severity) {
+        try {
+            com.fasterxml.jackson.databind.node.ObjectNode root =
+                    (com.fasterxml.jackson.databind.node.ObjectNode) MAPPER.readTree(modelJson);
+            ObjectNode rule = DmJson.findElement(root, "Rule", ruleFullName);
+            if (rule == null) {
+                throw new IllegalArgumentException("no rule at path: " + ruleFullName);
+            }
+            ((ObjectNode) rule.path("Rule")).put("severity", severity);
+            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
+        } catch (IOException e) {
+            throw new UncheckedIOException("failed to read/write the model DM-JSON", e);
+        }
+    }
+
+    /**
+     * Returns {@code modelJson} with the rule's per-locale {@code errorMessage} array replaced by
+     * {@code messages}, leaving its condition and severity untouched — the in-place message edit (§3.7).
+     */
+    public static String replaceMessages(String modelJson, String ruleFullName, List<LocalizedText> messages) {
+        try {
+            com.fasterxml.jackson.databind.node.ObjectNode root =
+                    (com.fasterxml.jackson.databind.node.ObjectNode) MAPPER.readTree(modelJson);
+            ObjectNode rule = DmJson.findElement(root, "Rule", ruleFullName);
+            if (rule == null) {
+                throw new IllegalArgumentException("no rule at path: " + ruleFullName);
+            }
+            ArrayNode messageArray = ((ObjectNode) rule.path("Rule")).putArray("errorMessage");
+            for (LocalizedText text : messages) {
+                messageArray.addObject().put("locale", text.locale()).put("text", text.text());
+            }
+            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
+        } catch (IOException e) {
+            throw new UncheckedIOException("failed to read/write the model DM-JSON", e);
+        }
+    }
+
     /** Returns {@code modelJson} with {@code computation} (a built {@link Computation}) added to its computed field's group (F6). */
     public static String addComputation(String modelJson, Computation computation) {
         return DmJson.insertIntoGroup(modelJson, computation.groupPath(),

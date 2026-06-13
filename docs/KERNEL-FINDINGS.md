@@ -445,6 +445,32 @@ FieldFilled(CustomerName) And Sum(Items*/Count Having [$/Order/Quantity] == [Ite
 
 — formats back to just `FieldFilled(CustomerName)`. The `$`-bearing `Sum(… Having …)` conjunct is silently dropped. (`hasValidConditionText` still returns `true` for the rule.) So the canonical form is **not a safe verbatim source** for such rules. *(Consequence for rulekit: `ReadResult.Opaque` preserves the **raw stored** `getErrorConditionText()`, not the canonical form — see KERNEL-INTEGRATION-NOTES. Observed while building the `$`-correlation read guard; not separately locked — the dependent behavior is locked by `adapter.OuterCorrelationReadTest`.)*
 
+## The condition formatter knows exactly two languages — `Locale.US` / `Locale.GERMANY`; anything else silently falls back to German (2026-06-13)
+
+The kernel's keyword-language switch for conditions (`formatAndTranslateConditionText(IRule, Locale, IProblemReporter)`, behind rulekit's `canonicalConditionText(rule, ConditionLanguage)`) resolves the target language through `AbstractMultiLanguageHandler`, whose **supported set is exactly two specific locales**:
+
+```java
+public static Set<Locale> SUPPORTED_CONDITION_LANGUAGES = Set.of(Locale.GERMANY, Locale.US);   // de_DE, en_US
+// constructor: this.languageUsedInConditionText = SUPPORTED.contains(lang) ? lang : Locale.GERMANY;
+```
+
+So the language is keyed by **country**, not just language: `Locale.US` (en_US) → English keywords (`And`/`Or`/`If`); `Locale.GERMANY` (de_DE) → German (`Und`/`Oder`/`Wenn`). **Any other locale — including bare `Locale.ENGLISH` ("en") and `Locale.GERMAN` ("de") — is not in the set and silently defaults to `Locale.GERMANY`** (German), with no error and no diagnostic. Passing `Locale.ENGLISH` to translate an English model therefore returns *German* — the trap that surfaced this. (Source: `kernel-core-parser` `AbstractMultiLanguageHandler`/`ConditionMultiLanguageHandler`; the German branch is literally `Locale.GERMANY.equals(languageUsedInConditionText)`.)
+
+*Consequence for rulekit:* the adapter's translate seam takes rulekit's **`ConditionLanguage`** (EN/DE), not a raw `Locale`, and maps `EN → Locale.US` / `DE → Locale.GERMANY` internally — the silent-German footgun is made unrepresentable at the N8 boundary. *(Locked: `adapter.KernelAdapterFormatTest` — EN must yield English keywords, DE German; a kernel change to the supported-locale set would surface as a German fallback the EN assertion catches.)*
+
+## The DM-JSON deserializer ignores unknown field-config keys — a round-trip must read the value *back* (2026-06-13)
+
+The kernel's DM-JSON `JsonMapper` is annotated **`@JsonIgnoreProperties(ignoreUnknown = true)`** (`kernel-md-serializer`). So a misspelled or unsupported field-type key (e.g. `maxFractionDigits` for the real `maxFractionalDigits`, or a guessed `unit`) is **silently dropped** — the model still loads and validates clean, but the slot has *no effect*. Consequence for verifying a new field-config slot (FEATURE-GAPS §3.4): **"emit + load-valid" proves nothing about whether the engine honored the key** — only reading the value back through the kernel's typed field-type API (`INumberType.isZeroNotAllowed()`, `IStringType.getHintList()`, `IEnumerationType.getErrorMessage()`, …) proves it. rulekit's field-config round-trip tests therefore read back via `ModelIndex.fieldType(path)` rather than trusting a clean load. *(Locked: `modelkit.FieldConfigExtrasTest` — every §3.4 slot asserted via the kernel getter, not the emitted JSON.)*
+
+## The number `trait`/unit slot is represented inconsistently across kernel tiers — deferred (2026-06-13)
+
+Modeling a number field's **unit** (Amount/Percent/Permille) was scoped for §3.4 but **deferred**, because the kernel represents the trait differently in the two tiers that read it, and the silent-ignore behavior above means a single emitted value can't satisfy both:
+
+- **Runtime** (`kernel-md-model` `TypeConverter`): treats the field as an amount when the raw `trait` string `.equals("amount")` — **lowercase**, exact match (`NUMBER_TYPE_TRAIT_AMOUNT = "amount"`).
+- **Metamodel** (`MM_SMM_FieldTypeChecks`): the fraction-digit checks key off enum values **`AmountWithCent` / `AmountWithoutCent`**, not a bare `"amount"`/`"Amount"`.
+
+So there is no single `trait` literal that both the runtime amount-formatting and the metamodel decimal-place rules would agree on, and a wrong guess is silently ignored (no error to catch it). Modeling `trait` correctly needs live experimentation against both tiers; until then the slot is left out rather than shipped half-working. The other §3.4 number slots — `minFractionalDigits`/`maxFractionalDigits` range, `zeroNotAllowed`, `leadingZerosAllowed` — are unambiguous (clear keys, clear read-back getters) and shipped.
+
 ## How `checkConsistency` actually works — structural laws ARE metamodel rules (2026-06-04)
 
 Found while repairing the MVK ledger's coverage hole (`MVK_ERROR_MESSAGE_MISSING`/`MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING` appear at runtime but in no kernel enum, no source file, and no plain string in any jar): `checkConsistency`'s `CodeGenerationRule` runs `generateValidationCode`, and part of that pipeline **validates the model itself as a document against the `MM_Common` metamodel** — using validators *code-generated from the metamodel's rules* (the `mmvalidators-extmpinternal-mm_common-v2-codegen` jar, transitively on the classpath). The two "missing" codes are ordinary **rule `errorCode`s authored in MM_Common**, alongside **103 more** — 105 structural laws expressed as A12 rules over the metamodel.

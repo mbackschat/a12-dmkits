@@ -22,6 +22,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
@@ -306,6 +307,18 @@ public final class EditSession {
     /** Re-express a rule's condition from raw DSL <em>text</em> (the {@code apply}/spec path; no per-op gate). */
     public EditSession modifyRule(String ruleFullName, String condition) {
         json = ModelWriter.replaceCondition(json, ruleFullName, condition);
+        return this;
+    }
+
+    /** Re-set a rule's {@code severity} in place — condition and messages untouched (FEATURE-GAPS §3.7). */
+    public EditSession modifyRuleSeverity(String ruleFullName, Severity severity) {
+        json = ModelWriter.replaceSeverity(json, ruleFullName, severity.name());
+        return this;
+    }
+
+    /** Replace a rule's per-locale messages in place — condition and severity untouched (§3.7). */
+    public EditSession modifyRuleMessages(String ruleFullName, List<LocalizedText> messages) {
+        json = ModelWriter.replaceMessages(json, ruleFullName, messages);
         return this;
     }
 

@@ -134,6 +134,65 @@ bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json doc eval --doc /
 
 → `data.rule.fired: false`, empty `fired`/`messages` — the compliant order does **not** trip the rule. The two runs together are the proof: flip the one date that matters and the verdict flips with it. Same rule, opposite data, opposite outcome.
 
+## rule test — one rule, three outcomes (fired / passed / suppressed)
+
+`doc eval --rule` answers "did it fire?" — but `fired: false` is **two** different things: the rule was evaluated and *passed*, or it was **never evaluated** because a field it references is formally invalid (the kernel skips a rule whose operand is *unknown*). `rule test` is the rule-first verb that tells them apart, with a three-way `verdict`. First the violation instance from above — the rule fires:
+
+```bash
+bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule test /Order/DeliveryNotBeforeOrder --doc /tmp/rt-order-violation.json
+```
+
+```output
+{
+  "target" : "rule",
+  "op" : "test",
+  "outcome" : "read",
+  "ok" : true,
+  "valid" : true,
+  "summary" : "/Order/DeliveryNotBeforeOrder FIRED on this instance (a violation)",
+  "data" : {
+    "rule" : "/Order/DeliveryNotBeforeOrder",
+    "fired" : true,
+    "verdict" : "fired"
+  },
+  "diagnostics" : [ ],
+  "written" : false
+}
+```
+
+→ `verdict: fired` — a violation. Now feed it a **malformed** delivery date (`not-a-date`, which the `yyyy-MM-dd` field can't parse). The rule references `DeliveryDate`, so it is never evaluated:
+
+```bash
+cat > /tmp/rt-order-baddate.json <<'JSON'
+{ "fields": { "Order": { "OrderDate": "2024-06-01", "DeliveryDate": "not-a-date" } } }
+JSON
+bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule test /Order/DeliveryNotBeforeOrder --doc /tmp/rt-order-baddate.json
+```
+
+```output
+{
+  "target" : "rule",
+  "op" : "test",
+  "outcome" : "read",
+  "ok" : true,
+  "valid" : true,
+  "summary" : "/Order/DeliveryNotBeforeOrder was NOT evaluated — a referenced field is formally invalid",
+  "data" : {
+    "rule" : "/Order/DeliveryNotBeforeOrder",
+    "fired" : false,
+    "verdict" : "suppressed",
+    "suppressedBy" : [ {
+      "field" : "/Order/DeliveryDate",
+      "formalErrorCode" : "datumFormatFalsch"
+    } ]
+  },
+  "diagnostics" : [ ],
+  "written" : false
+}
+```
+
+→ `verdict: suppressed`, **not** `passed` — and `suppressedBy` names the culprit (`/Order/DeliveryDate`, formal code `datumFormatFalsch`). A plain "did it fire" check would have silently reported `false` here and let you believe the order is clean. The three verdicts — `fired` / `passed` / `suppressed` — are the whole point.
+
 ## doc eval — a candidate rule, not yet stored
 
 You can also evaluate a rule that **isn't in the model** — `--condition "<DSL>" --field <path>` injects a one-off candidate (named `EvalDocCandidate` by default, error code `EVAL_DOC`), runs it against the instance, and tells you whether *it* fired. Nothing is persisted; it is the runtime twin of `rule check` (which only asks "is this valid?"). Here the candidate caps quantity at 100, and we feed it an order of 150.
