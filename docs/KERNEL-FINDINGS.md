@@ -543,7 +543,9 @@ The 4 required `errorCondition`s (compared after the kernel re-formats them, so 
 | that field is **not** the group's index field | `DOCUMENT_MODEL_MULTI_SELECT_FIELD_INDEX_FIELD` |
 | only `Field` + `Rule` elements — no sub-groups | `DOCUMENT_MODEL_MULTI_SELECT_OTHER_ELEMENTS` |
 
-So **attachment is a heavy fixed template** (no user input beyond the group name/parent — all 8 fields + 4 rules + the `content` config are mandated boilerplate); **multi-select is light but parameterized** (the single enum/string field, its values, and its requiredness are the user's). *(Source-verified by reading the two rule classes + `MM_Group_1`; the generator and its `validate/laws` accept + does-fire-on-malformed lock are the pending FEATURE-GAPS §3.8 work.)*
+So **attachment is a heavy fixed template** (no user input beyond the group name/parent — all 8 fields + 4 rules + the `content` config are mandated boilerplate); **multi-select is light but parameterized** (the single enum/string field, its values, and its requiredness are the user's). *(Source-verified by reading the two rule classes + `MM_Group_1`, then **locked by the generators**: `modelkit.MultiSelectTemplateTest` / `modelkit.AttachmentTemplateTest` each build the template, assert the kernel **accepts** it (the attachment accept-test proves the 4 emitted condition strings round-trip byte-for-byte), and assert a **tampered** template is rejected with the right `DOCUMENT_MODEL_*` category. The generator refuses a non-`en_US`/`de_DE` model rather than emit rules the kernel can't validate — which would also NPE its `RULES_REQUIRED.get(locale)`.)*
+
+Removal: a composite group's internal rules live inside its subtree, so `group remove` takes them with it — the safe-delete gate **excludes in-subtree referrers** so it doesn't demand `--cascade` for rules the author never wrote (CLI-SPEC §6; `cli.GroupAttachmentVerbTest`).
 
 ## How `checkConsistency` actually works — structural laws ARE metamodel rules (2026-06-04)
 

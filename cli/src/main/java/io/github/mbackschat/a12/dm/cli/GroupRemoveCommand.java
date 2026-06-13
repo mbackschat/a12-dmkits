@@ -23,9 +23,10 @@ import picocli.CommandLine.Parameters;
 
 /**
  * {@code dmtool group remove <groupPath>} — remove a group (and everything under it) and write the model
- * back. The safe-delete gate (CLI-SPEC §6): a group directly referenced by a rule/computation is refused
- * unless {@code --cascade}; a removal that dangles a descendant-field reference is caught by the kernel gate
- * (a {@code rejected} envelope).
+ * back. The safe-delete gate (CLI-SPEC §6): a group referenced by a rule/computation <b>outside</b> the
+ * removed subtree is refused unless {@code --cascade}. Rules/computations <b>inside</b> the subtree (e.g. a
+ * composite group's own internal rules, §3.8) are removed with it and never trigger the gate. A removal that
+ * dangles a descendant-field reference is caught by the kernel gate (a {@code rejected} envelope).
  */
 @Command(name = "remove", mixinStandardHelpOptions = true,
         description = "Remove a group (and its contents); a referenced group is refused unless --cascade.")
@@ -72,6 +73,12 @@ final class GroupRemoveCommand extends BaseCommand {
             KernelAdapter adapter = KernelAdapter.ofJson(modelJson, resolver);
             Set<String> refRules = new TreeSet<>(adapter.whereUsed(group));
             Set<String> refComputations = new TreeSet<>(adapter.whereUsedInComputations(group));
+            // rules/computations that live INSIDE the removed subtree go away with it — they are not external
+            // dependents, so they must not trigger the gate. This is what lets a composite group (attachment,
+            // §3.8) — whose internal rules the author never sees — be removed without a spurious --cascade.
+            String subtree = group + "/";
+            refRules.removeIf(r -> r.startsWith(subtree));
+            refComputations.removeIf(c -> c.startsWith(subtree));
             if (!refRules.isEmpty() || !refComputations.isEmpty()) {
                 if (!cascade) {
                     return refuse("group", "remove", SafetyChecks.referencedBy(group, refRules, refComputations,

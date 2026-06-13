@@ -48,8 +48,8 @@ public sealed interface FieldTypeSpec {
      * ({@code MVK_ERROR_MESSAGE_AND_PATTERN_INVALID}), so the two are set or unset together.
      */
     record StringSpec(Integer minLength, Integer maxLength, String pattern, String patternMessage,
-            boolean lineBreaksPermitted, boolean alphabeticalSorting, Map<String, List<String>> suggestions)
-            implements FieldTypeSpec {
+            boolean lineBreaksPermitted, boolean alphabeticalSorting, Map<String, List<String>> suggestions,
+            boolean noValueValidation) implements FieldTypeSpec {
         public StringSpec {
             if (minLength != null && minLength < 0) {
                 throw new IllegalArgumentException("minLength must be ≥ 0: " + minLength);
@@ -64,6 +64,13 @@ public sealed interface FieldTypeSpec {
             suggestions = suggestions == null
                     ? Map.of()
                     : java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(suggestions));
+        }
+
+        /** Pre-attachment form: no {@code noValueValidation} (the value-skipping flag the attachment {@code content} field uses). */
+        public StringSpec(Integer minLength, Integer maxLength, String pattern, String patternMessage,
+                boolean lineBreaksPermitted, boolean alphabeticalSorting, Map<String, List<String>> suggestions) {
+            this(minLength, maxLength, pattern, patternMessage, lineBreaksPermitted, alphabeticalSorting,
+                    suggestions, false);
         }
 
         /** The pre-§3.4 form: length bounds + optional anchored pattern, no hint-list/line-break/sorting slots. */

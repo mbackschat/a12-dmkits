@@ -218,6 +218,12 @@ public final class EditSession {
         return editStructure(d -> d.addMultiSelectGroup(parentPath, name, body));
     }
 
+    /** Add an Attachment group template (FEATURE-GAPS §3.8) under {@code parentPath}; see {@link ModelDocument#addAttachmentGroup}. */
+    public EditSession addAttachmentGroup(String parentPath, String name,
+            java.util.function.Consumer<DocumentModelDraft.AttachmentBuilder> body) {
+        return editStructure(d -> d.addAttachmentGroup(parentPath, name, body));
+    }
+
     public EditSession mount(String parentPath, String name, String alias) {
         return editStructure(d -> d.mount(parentPath, name, alias));
     }

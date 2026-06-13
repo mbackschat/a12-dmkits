@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.modelkit;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -191,8 +192,26 @@ public final class DocumentModelDraft {
                 case ElementDraft.Group sub -> groupNode(sub, path, locales);
                 case ElementDraft.Field field -> fieldNode(field, path, locales);
                 case ElementDraft.Mount mount -> mountNode(mount, path);
+                case ElementDraft.Rule rule -> ruleNode(rule, path);
             });
         }
+        return node;
+    }
+
+    /** A raw rule node ({@code {type:"Rule", Rule:{errorCondition, errorCode, severity, errorMessage, …}}}). */
+    // package-private: reused by ModelDocument when emitting a template group's mandated rules (§3.8)
+    static ObjectNode ruleNode(ElementDraft.Rule rule, String parentPath) {
+        ObjectNode node = MAPPER.createObjectNode();
+        node.put("type", "Rule");
+        node.put("id", parentPath + "/" + rule.name());
+        node.put("name", rule.name());
+        ObjectNode body = node.putObject("Rule");
+        body.put("errorEntityRelPath", rule.errorEntityRelPath());
+        body.put("errorCode", rule.errorCode());
+        body.put("errorCondition", rule.errorCondition());
+        body.put("severity", rule.severity());
+        ArrayNode messages = body.putArray("errorMessage");
+        rule.messages().forEach((loc, text) -> messages.addObject().put("locale", loc).put("text", text));
         return node;
     }
 
@@ -288,7 +307,8 @@ public final class DocumentModelDraft {
         switch (spec) {
             case FieldTypeSpec.StringSpec s -> {
                 if (s.minLength() != null || s.maxLength() != null || s.pattern() != null
-                        || s.lineBreaksPermitted() || s.alphabeticalSorting() || !s.suggestions().isEmpty()) {
+                        || s.lineBreaksPermitted() || s.alphabeticalSorting() || !s.suggestions().isEmpty()
+                        || s.noValueValidation()) {
                     ObjectNode inner = fieldType.putObject("StringType");
                     // a pattern needs an error text for every declared locale (MVK_ERROR_MESSAGE_AND_PATTERN_INVALID)
                     if (s.pattern() != null) {
@@ -306,6 +326,10 @@ public final class DocumentModelDraft {
                     }
                     if (s.lineBreaksPermitted()) {
                         inner.put("lineBreaksPermitted", true);
+                    }
+                    if (s.noValueValidation()) {
+                        // skip value validation (base64 blobs etc.); the kernel requires line breaks alongside it
+                        inner.put("noValueValidation", true);
                     }
                     if (s.alphabeticalSorting()) {
                         inner.put("alphabeticalSorting", true);
@@ -523,6 +547,26 @@ public final class DocumentModelDraft {
             MultiSelectBuilder b = new MultiSelectBuilder();
             body.accept(b);
             rootGroups.add(b.toGroup(name));
+            return this;
+        }
+
+        /**
+         * Add a top-level <b>Attachment</b> group template (FEATURE-GAPS §3.8) — the kernel's canonical
+         * file-attachment composition (8 fields + 4 rules + {@code content} config). Its rules are authored
+         * in the model's condition language (the first declared locale), so a locale must be declared first
+         * and the model must be {@code en_US}/{@code de_DE}. See {@link AttachmentBuilder}.
+         */
+        public Builder attachmentGroup(String name, Consumer<AttachmentBuilder> body) {
+            if (typeDefOnly) {
+                throw new IllegalStateException("a type-def-only model has no root groups");
+            }
+            if (locales.isEmpty()) {
+                throw new IllegalStateException("declare a locale before adding an attachment group "
+                        + "(its rules are authored in the model's condition language)");
+            }
+            AttachmentBuilder b = new AttachmentBuilder();
+            body.accept(b);
+            rootGroups.add(b.toGroup(name, List.copyOf(locales), locales.get(0)));
             return this;
         }
 
@@ -849,6 +893,127 @@ public final class DocumentModelDraft {
         }
     }
 
+    /**
+     * Builds an <b>Attachment</b> group template (FEATURE-GAPS §3.8) — a {@code usageType: "attachment"}
+     * group with the kernel-mandated composition: 8 named fields, the 4 {@link AttachmentRule}s (their exact
+     * {@code errorCondition} strings, in the model's condition language), and a {@code content} field with
+     * {@code noValueValidation} + {@code lineBreaksPermitted}. The whole skeleton is fixed; the caller only
+     * tunes the exposed knobs (repeatability, max size, allowed MIME types, category values, rule-message
+     * overrides). The kernel only knows {@code en_US}/{@code de_DE} attachment rule sets, so this refuses on
+     * any other locale (rather than emitting rules the kernel can't validate).
+     */
+    public static final class AttachmentBuilder {
+
+        private static final List<String> SUPPORTED_LOCALES = List.of("en_US", "de_DE");
+
+        private int repeatability = 1;
+        private Long maxSizeBytes;
+        private List<String> allowedMimeTypes;
+        private List<String> categories;
+        private final Map<AttachmentRule, Map<String, String>> messageOverrides = new EnumMap<>(AttachmentRule.class);
+        private final List<ElementDraft.Annotation> annotations = new ArrayList<>();
+
+        /** Mount a <b>list</b> of attachments — up to {@code rows} (default: a single attachment). */
+        public AttachmentBuilder repeatable(int rows) {
+            this.repeatability = rows;
+            return this;
+        }
+
+        /** Constrain the {@code size} field to a maximum (the max file size, in bytes). */
+        public AttachmentBuilder maxSizeBytes(long max) {
+            this.maxSizeBytes = max;
+            return this;
+        }
+
+        /** Restrict {@code mime_type} to this set (it becomes an enumeration); omit to leave it a free string. */
+        public AttachmentBuilder allowedMimeTypes(String... types) {
+            this.allowedMimeTypes = List.of(types);
+            return this;
+        }
+
+        /** Restrict {@code category} to this set (it becomes an enumeration); omit to leave it a free string. */
+        public AttachmentBuilder categories(String... values) {
+            this.categories = List.of(values);
+            return this;
+        }
+
+        /** Override a mandated rule's message for one locale (otherwise a canonical default is used). */
+        public AttachmentBuilder message(AttachmentRule rule, String locale, String text) {
+            messageOverrides.computeIfAbsent(rule, r -> new LinkedHashMap<>()).put(locale, text);
+            return this;
+        }
+
+        /** A name/value annotation on the attachment group. */
+        public AttachmentBuilder annotation(String name, String value) {
+            annotations.add(new ElementDraft.Annotation(name, value));
+            return this;
+        }
+
+        ElementDraft.Group toGroup(String groupName, List<String> locales, String conditionLanguage) {
+            for (String locale : locales) {
+                if (!SUPPORTED_LOCALES.contains(locale)) {
+                    throw new IllegalStateException("an attachment template supports only en_US/de_DE models; "
+                            + "the model declares '" + locale + "'");
+                }
+            }
+            boolean german = "de_DE".equals(conditionLanguage);
+            List<ElementDraft> elements = new ArrayList<>();
+            elements.add(stringField("original_filename"));
+            elements.add(stringField("internal_filename"));
+            elements.add(contentField());
+            elements.add(stringField("attachment_id"));
+            elements.add(sizeField());
+            elements.add(new ElementDraft.Field("mime_type", enumOrString(allowedMimeTypes),
+                    Requiredness.OPTIONAL, Map.of(), List.of()));
+            elements.add(new ElementDraft.Field("category", enumOrString(categories),
+                    Requiredness.OPTIONAL, Map.of(), List.of()));
+            elements.add(stringField("description"));
+            for (AttachmentRule rule : AttachmentRule.values()) {
+                elements.add(ruleFor(rule, german, locales));
+            }
+            return new ElementDraft.Group(groupName, repeatability, null, elements,
+                    List.copyOf(annotations), "attachment");
+        }
+
+        private static ElementDraft.Field stringField(String name) {
+            return new ElementDraft.Field(name, new FieldTypeSpec.StringSpec(null, null, null, null),
+                    Requiredness.OPTIONAL, Map.of(), List.of());
+        }
+
+        /** The kernel requires {@code content} to be a String that skips value validation and permits line breaks. */
+        private static ElementDraft.Field contentField() {
+            FieldTypeSpec spec = new FieldTypeSpec.StringSpec(null, null, null, null, true, false, Map.of(), true);
+            return new ElementDraft.Field("content", spec, Requiredness.OPTIONAL, Map.of(), List.of());
+        }
+
+        private ElementDraft.Field sizeField() {
+            BigDecimal max = maxSizeBytes == null ? null : BigDecimal.valueOf(maxSizeBytes);
+            return new ElementDraft.Field("size", new FieldTypeSpec.NumberSpec(0, null, max),
+                    Requiredness.OPTIONAL, Map.of(), List.of());
+        }
+
+        private static FieldTypeSpec enumOrString(List<String> values) {
+            if (values == null || values.isEmpty()) {
+                return new FieldTypeSpec.StringSpec(null, null, null, null);
+            }
+            List<FieldTypeSpec.EnumValue> enumValues = new ArrayList<>();
+            for (String value : values) {
+                enumValues.add(new FieldTypeSpec.EnumValue(value, Map.of()));
+            }
+            return new FieldTypeSpec.EnumSpec(enumValues, List.of());
+        }
+
+        private ElementDraft.Rule ruleFor(AttachmentRule rule, boolean german, List<String> locales) {
+            Map<String, String> messages = new LinkedHashMap<>();
+            Map<String, String> overrides = messageOverrides.getOrDefault(rule, Map.of());
+            for (String locale : locales) {
+                messages.put(locale, overrides.getOrDefault(locale, rule.defaultMessage("de_DE".equals(locale))));
+            }
+            return new ElementDraft.Rule(rule.ruleName, "../" + rule.errorField, rule.code,
+                    rule.condition(german), "ERROR", messages);
+        }
+    }
+
     /** Referential integrity: every {@code typedefField} must point at a declared {@code typeDef}. */
     private void checkTypeDefReferences() {
         // when the model imports type-defs from elsewhere, a ref may resolve to an imported id — the local
@@ -873,6 +1038,7 @@ public final class DocumentModelDraft {
                     }
                 }
                 case ElementDraft.Mount mount -> { /* mount aliases are checked separately */ }
+                case ElementDraft.Rule rule -> { /* rules carry no type-def reference */ }
             }
         }
     }
@@ -889,6 +1055,7 @@ public final class DocumentModelDraft {
             switch (element) {
                 case ElementDraft.Group sub -> checkMountReferences(sub, aliases);
                 case ElementDraft.Field field -> { /* fields carry no mount alias */ }
+                case ElementDraft.Rule rule -> { /* rules carry no mount alias */ }
                 case ElementDraft.Mount mount -> {
                     if (!aliases.contains(mount.alias())) {
                         throw new IllegalStateException("mount '" + mount.name()

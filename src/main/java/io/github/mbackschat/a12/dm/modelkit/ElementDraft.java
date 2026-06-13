@@ -10,7 +10,8 @@ import java.util.Map;
  * {@link DocumentModelDraft} are the only way to construct these, so illegal shapes (a field with no
  * kind, a negative repeatability) are unrepresentable.
  */
-public sealed interface ElementDraft permits ElementDraft.Field, ElementDraft.Group, ElementDraft.Mount {
+public sealed interface ElementDraft
+        permits ElementDraft.Field, ElementDraft.Group, ElementDraft.Mount, ElementDraft.Rule {
 
     /** The element's short name — the last segment of its name-path. */
     String name();
@@ -81,6 +82,27 @@ public sealed interface ElementDraft permits ElementDraft.Field, ElementDraft.Gr
         /** A mount of {@code repeatability} rows, including the model's rules and computations. */
         public Mount(String name, String alias, int repeatability, List<Annotation> annotations) {
             this(name, alias, MountOptions.repeatable(repeatability), annotations);
+        }
+    }
+
+    /**
+     * A <b>raw rule node</b> — a fixed {@code errorCondition} (in the model's condition language) plus its
+     * {@code errorCode} / {@code severity} / per-locale {@code messages} / {@code errorEntityRelPath}. This
+     * is the structural emission primitive used by <b>template generators</b> (the attachment template's
+     * kernel-mandated rules, FEATURE-GAPS §3.8) — <em>not</em> a logic-authoring API: author real rules with
+     * rulekit's typed DSL ({@code EditSession.addRule}), which renders + kernel-validates the condition. Rules
+     * carry no element-level annotations here.
+     */
+    record Rule(String name, String errorEntityRelPath, String errorCode, String errorCondition,
+            String severity, Map<String, String> messages) implements ElementDraft {
+
+        public Rule {
+            messages = Map.copyOf(messages);
+        }
+
+        @Override
+        public List<Annotation> annotations() {
+            return List.of();
         }
     }
 }

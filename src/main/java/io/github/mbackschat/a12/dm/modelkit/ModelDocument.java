@@ -358,6 +358,22 @@ public final class ModelDocument {
         return this;
     }
 
+    /**
+     * Add an <b>Attachment</b> group template (FEATURE-GAPS §3.8) named {@code name} under {@code parentPath}
+     * — the kernel's canonical file-attachment composition (8 fields + 4 rules + {@code content} config). The
+     * mandated rules are emitted in the model's condition language; the model must be {@code en_US}/{@code
+     * de_DE} (else the builder refuses). Validated by {@code AttachmentGroupRule} on the next {@code validate(...)}.
+     */
+    public ModelDocument addAttachmentGroup(String parentPath, String name,
+            Consumer<DocumentModelDraft.AttachmentBuilder> body) {
+        DocumentModelDraft.AttachmentBuilder b = new DocumentModelDraft.AttachmentBuilder();
+        body.accept(b);
+        ElementDraft.Group group = b.toGroup(name, locales(), config().conditionLanguage());
+        ArrayNode container = parentPath.isEmpty() ? rootGroups() : containerElements(parentPath);
+        container.add(DocumentModelDraft.groupNode(group, parentPath, locales()));
+        return this;
+    }
+
     /** Remove the field at {@code fieldPath}. Fails fast if no field is there. */
     public ModelDocument removeField(String fieldPath) {
         removeElement(fieldPath, "Field");
