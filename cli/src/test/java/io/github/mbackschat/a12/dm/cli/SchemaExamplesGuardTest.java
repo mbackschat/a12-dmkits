@@ -93,6 +93,25 @@ class SchemaExamplesGuardTest {
     }
 
     @Test
+    void fieldAddExamplesAreAcceptedByTheTool(@TempDir Path dir) throws Exception {
+        Path model = dir.resolve("subscription.dm.json");
+        Files.writeString(model, CliTestSupport.subscriptionJson());
+
+        JsonNode examples = schema("field-add").path("examples");
+        assertTrue(examples.isArray() && examples.size() > 0, "field-add.schema declares examples");
+        int i = 0;
+        for (JsonNode ex : examples) {
+            Path spec = dir.resolve("field-" + i++ + ".json");
+            Files.writeString(spec, ex.toString());
+            CliTestSupport.Result res = CliTestSupport.run(
+                    "-m", model.toString(), "field", "add", spec.toString(), "--dry-run");
+            assertEquals(0, res.code(), () -> "field add rejected the schema example: " + res.err() + res.out());
+            assertEquals("preview", MAPPER.readTree(res.out()).path("outcome").asText(),
+                    "the field-add example previews cleanly");
+        }
+    }
+
+    @Test
     void resultExamplesConformToTheResultSchema() throws Exception {
         JsonNode resultSchema = schema("result");
         JsonNode diagnosticSchema = schema("diagnostic");

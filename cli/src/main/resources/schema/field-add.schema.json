@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/field-add.schema.json",
+  "title": "field-add-spec",
+  "description": "INPUT of `dmtool -m <model> field add <spec.json>` — a field to add, with its full per-kind config (FEATURE-GAPS §3.4) and field-level metadata (§3.5). The simpler `field add --group --name (--kind|--typedef)` flags cover a bare field; this spec covers everything the typed builders express. Validated against the real kernel before writing. (The flags and this spec are mutually exclusive.)",
+  "type": "object",
+  "required": ["group", "name"],
+  "properties": {
+    "group": { "type": "string", "description": "the parent group's ABSOLUTE name-path, e.g. /Order (must exist)" },
+    "name": { "type": "string", "description": "the new field's name (unique within its group)" },
+    "kind": { "type": "string", "description": "STRING | NUMBER | DATE | TIME | DATETIME | DATERANGE | DATEFRAGMENT | BOOLEAN | CONFIRM | ENUM | CUSTOM (omit when `typedef` is given)" },
+    "typedef": { "type": "string", "description": "type the field by an existing type-definition id (wins over `kind`)" },
+    "required": { "description": "true (always required) | false (optional, default) | \"ifParentPresent\" (required only if the parent group is filled)" },
+    "label": { "type": "object", "description": "per-locale display label, { \"<locale>\": \"<text>\" }; once set, must cover every declared locale" },
+    "global": { "type": "boolean", "description": "the kernel `global` flag (relevant to partial validation)" },
+    "transient": { "type": "boolean", "description": "the kernel `transient` flag (present at runtime, not persisted)" },
+    "internalDescription": { "type": "object", "description": "per-locale internal/maintenance text, { \"<locale>\": \"<text>\" }" },
+    "externalDescription": { "type": "object", "description": "per-locale end-user-facing text, { \"<locale>\": \"<text>\" }" },
+    "helperText": { "type": "object", "description": "per-locale inline UI help, { \"<locale>\": \"<text>\" }" },
+    "annotations": { "type": "object", "description": "name/value element annotations, { \"<name>\": \"<value>\" }" },
+    "string": {
+      "type": "object", "description": "(kind STRING) config",
+      "properties": {
+        "minLength": { "type": "integer" }, "maxLength": { "type": "integer" },
+        "pattern": { "type": "string", "description": "anchored regex; requires patternMessage" },
+        "patternMessage": { "type": "string", "description": "the error text shown when the pattern fails" },
+        "lineBreaks": { "type": "boolean", "description": "permit multi-line input" },
+        "alphabeticalSorting": { "type": "boolean" },
+        "suggestions": { "type": "object", "description": "per-locale hint list, { \"<locale>\": [\"…\"] }; validated against the field's own pattern" }
+      }
+    },
+    "number": {
+      "type": "object", "description": "(kind NUMBER) config",
+      "properties": {
+        "minFractionalDigits": { "type": "integer" }, "maxFractionalDigits": { "type": "integer", "description": "the decimal scale; together they bound the fraction-digit range" },
+        "min": { "type": "string", "description": "minimum value (decimal as a string)" }, "max": { "type": "string", "description": "maximum value (decimal as a string)" },
+        "zeroNotAllowed": { "type": "boolean" }, "leadingZerosAllowed": { "type": "boolean" },
+        "unit": { "type": "string", "description": "AMOUNT | PERCENT | PERMILLE (the kernel `trait`)" }
+      }
+    },
+    "enum": {
+      "type": "object", "description": "(kind ENUM) config",
+      "required": ["values"],
+      "properties": {
+        "values": { "type": "array", "description": "≥1 { value, labels? } — stored value + optional per-locale labels", "items": { "type": "object", "required": ["value"] } },
+        "categories": { "type": "array", "description": "named classifications; each has values[] aligned 1:1 with the enum values", "items": { "type": "object", "required": ["name", "values"] } },
+        "alphabeticalSorting": { "type": "boolean" },
+        "invalidValueMessage": { "type": "string", "description": "error text for an out-of-domain value (one text, all locales)" }
+      }
+    },
+    "custom": {
+      "type": "object", "description": "(kind CUSTOM) config",
+      "required": ["typeName"],
+      "properties": {
+        "typeName": { "type": "string", "description": "the registered kernel custom-type name" },
+        "minLength": { "type": "integer" }, "maxLength": { "type": "integer" }
+      }
+    },
+    "date": {
+      "type": "object", "description": "(kind DATE) config",
+      "properties": { "format": { "type": "string" }, "precision": { "type": "string", "description": "FULL (default) | a partial-date precision" } }
+    }
+  },
+  "examples": [
+    {
+      "group": "/Subscription/Addons",
+      "name": "Surcharge",
+      "kind": "NUMBER",
+      "required": true,
+      "label": { "en_US": "Surcharge", "de_DE": "Zuschlag" },
+      "number": { "minFractionalDigits": 2, "maxFractionalDigits": 2, "unit": "AMOUNT", "zeroNotAllowed": true, "min": "0" },
+      "global": true,
+      "helperText": { "en_US": "the monthly surcharge", "de_DE": "der monatliche Zuschlag" }
+    }
+  ]
+}

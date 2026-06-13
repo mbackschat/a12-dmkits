@@ -76,15 +76,23 @@ class SchemaVerbTest {
 
     @Test
     void flagOnlyOpContractHasNoInputAndReadsNoteData() throws Exception {
-        // a flag-only op (field add): direction is "send nothing rich, get the envelope back"
-        JsonNode add = MAPPER.readTree(CliTestSupport.run("schema", "field", "add").out());
+        // a flag-only op (group add): direction is "send nothing rich, get the envelope back"
+        JsonNode add = MAPPER.readTree(CliTestSupport.run("schema", "group", "add").out());
         assertEquals("result", add.path("returns").asText());
-        assertFalse(add.has("input"), "field add takes flags (in the manifest), not a rich JSON input");
+        assertFalse(add.has("input"), "group add takes flags (in the manifest), not a rich JSON input");
 
         // a read op notes that its payload rides the envelope's `data`
         JsonNode read = MAPPER.readTree(CliTestSupport.run("schema", "field", "read").out());
         assertEquals("result", read.path("returns").asText());
         assertTrue(read.has("data"), "a read's contract notes the `data` direction");
+    }
+
+    @Test
+    void fieldAddContractCarriesTheRichInputSchema() throws Exception {
+        // field add now also takes a rich <spec.json> (FEATURE-GAPS §3.4/§3.5) — its contract surfaces the input
+        JsonNode c = MAPPER.readTree(CliTestSupport.run("schema", "field", "add").out());
+        assertEquals("result", c.path("returns").asText());
+        assertTrue(c.path("input").has("properties"), () -> "field add's contract carries the input schema: " + c);
     }
 
     @Test

@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
@@ -16,31 +17,40 @@ import picocli.CommandLine.ArgGroup;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
+import picocli.CommandLine.Parameters;
 
 /**
- * {@code dmtool field add --group <path> --name <n> (--kind <K> | --typedef <id>)} — add a field and write
- * the model back (in place; {@code -o}/{@code --dry-run}). Re-bound through the kernel; a kernel-invalid
- * result is a {@code rejected} envelope carrying the kernel diagnostics.
+ * {@code dmtool field add} — add a field and write the model back (in place; {@code -o}/{@code --dry-run}).
+ * Two input shapes: the <b>flags</b> for a simple field ({@code --group --name (--kind | --typedef)}), or a
+ * rich <b>{@code <spec.json>}</b> (positional) that carries the full per-kind config + field metadata
+ * (length/pattern/suggestions, scale/unit/flags, enum values+categories, custom type, descriptions, …) —
+ * see {@code schema field add}. Re-bound through the kernel; a kernel-invalid result is a {@code rejected}
+ * envelope.
  */
 @Command(name = "add", mixinStandardHelpOptions = true,
-        description = "Add a field (--kind STRING|NUMBER|DATE|BOOLEAN|CONFIRM, or --typedef <id>) to --group.")
+        description = "Add a field — simple via --group/--name/(--kind|--typedef), or rich via a <spec.json>.")
 final class FieldAddCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @Parameters(index = "0", arity = "0..1", paramLabel = "<spec.json>",
+            description = "a rich field spec (JSON): kind + per-kind config + metadata (see `schema field add`) "
+                    + "— the alternative to the --group/--name/--kind flags")
+    String specPath;
+
     @ParamKind(ParamKind.Kind.GROUP_PATH)
-    @Option(names = "--group", required = true, paramLabel = "<path>",
-            description = "the group to add the field to, by full name-path, e.g. /Order")
+    @Option(names = "--group", paramLabel = "<path>",
+            description = "the group to add the field to, by full name-path, e.g. /Order (flags mode)")
     String group;
 
     @ParamKind(ParamKind.Kind.NEW_NAME)
-    @Option(names = "--name", required = true, paramLabel = "<name>", description = "the new field's name")
+    @Option(names = "--name", paramLabel = "<name>", description = "the new field's name (flags mode)")
     String name;
 
-    @ArgGroup(multiplicity = "1")
+    @ArgGroup
     FieldType type;
 
-    /** Exactly one of: an easy kind, or a type-definition reference. */
+    /** Exactly one of: an easy kind, or a type-definition reference (flags mode). */
     static final class FieldType {
         @ParamKind(ParamKind.Kind.FIELD_KIND)
         @Option(names = "--kind", paramLabel = "<kind>",
@@ -69,6 +79,13 @@ final class FieldAddCommand extends BaseCommand {
         if (model == null) {
             return fail("pass -m <model.json> (before or after the verb)");
         }
+        boolean flagsMode = group != null || name != null || type != null;
+        if (specPath == null && !flagsMode) {
+            return fail("pass a <spec.json>, or --group + --name + (--kind | --typedef)");
+        }
+        if (specPath != null && flagsMode) {
+            return fail("pass EITHER a <spec.json> OR the --group/--name/--kind flags, not both");
+        }
         String modelJson;
         try {
             modelJson = Files.readString(Path.of(model));
@@ -76,30 +93,55 @@ final class FieldAddCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
-        String target = group + "/" + name;
         ModelDocument doc = ModelDocument.read(modelJson);
-        Optional<Refusal> refusal = new SafetyGate()
-                .require(SafetyChecks.exists(doc, group, true))
-                .firstFailure();
-        if (refusal.isPresent()) {
-            return refuse("field", "add", refusal.get());
+
+        String effGroup;
+        String target;
+        ObjectNode changed = MAPPER.createObjectNode();
+        try {
+            if (specPath != null) {
+                JsonNode spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
+                FieldSpec.Parsed parsed = FieldSpec.parse(spec);
+                effGroup = parsed.group();
+                target = effGroup + "/" + parsed.field().name();
+                if (refused(doc, effGroup, "field", "add")) {
+                    return 2;
+                }
+                doc.addField(effGroup, parsed.field());
+                changed.put("added", target);
+                changed.put("kind", spec.hasNonNull("typedef") ? "TypeDefType" : spec.path("kind").asText());
+            } else {
+                if (group == null || name == null || type == null) {
+                    return fail("flags mode needs --group + --name + (--kind | --typedef)");
+                }
+                effGroup = group;
+                target = group + "/" + name;
+                if (refused(doc, effGroup, "field", "add")) {
+                    return 2;
+                }
+                if (type.typedef != null) {
+                    doc.addTypedefField(group, name, type.typedef);
+                    changed.put("kind", "TypeDefType");
+                } else {
+                    doc.addField(group, name, type.kind);
+                    changed.put("kind", type.kind.name());
+                }
+                changed.put("added", target);
+            }
+        } catch (IllegalArgumentException badSpec) {
+            return fail("invalid field spec: " + badSpec.getMessage());
+        } catch (IOException e) {
+            return fail("cannot read field spec: " + e.getMessage());
         }
+
         String resultJson;
         try {
-            if (type.typedef != null) {
-                doc.addTypedefField(group, name, type.typedef);
-            } else {
-                doc.addField(group, name, type.kind);
-            }
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("field", "add", "the field is rejected by the kernel", e);
         } catch (RuntimeException e) {
             return fail(e.getMessage());
         }
-        ObjectNode changed = MAPPER.createObjectNode();
-        changed.put("added", target);
-        changed.put("kind", type.typedef != null ? "TypeDefType" : type.kind.name());
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("field", "add", "would add field " + target, changed);
             out().print(env.toJsonString());
@@ -114,5 +156,17 @@ final class FieldAddCommand extends BaseCommand {
         ResultEnvelope env = ResultEnvelope.applied("field", "add", "added field " + target, changed, dest);
         out().print(env.toJsonString());
         return env.exitCode();
+    }
+
+    /** Emit the safety-gate refusal (group must exist) and report whether it fired. */
+    private boolean refused(ModelDocument doc, String groupPath, String target, String op) {
+        Optional<Refusal> refusal = new SafetyGate()
+                .require(SafetyChecks.exists(doc, groupPath, true))
+                .firstFailure();
+        if (refusal.isPresent()) {
+            refuse(target, op, refusal.get());
+            return true;
+        }
+        return false;
     }
 }

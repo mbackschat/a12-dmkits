@@ -291,9 +291,11 @@ dmtool -m order.dm.json rule modify /Order/DeliveryNotBeforeOrder \
 ### Edit structure — with a safe-delete gate
 
 ```sh
-dmtool -m order.dm.json field add --group /Order --name LoyaltyPoints --kind NUMBER
+dmtool -m order.dm.json field add --group /Order --name LoyaltyPoints --kind NUMBER   # simple, via flags
+dmtool -m order.dm.json field add fee-spec.json   # rich: per-kind config + metadata (unit/pattern/suggestions/…) — see `schema field add`
 dmtool -m order.dm.json group add --parent /Order --name Shipping
-dmtool -m order.dm.json typedef add … ; dmtool -m order.dm.json config modify --decimal-separator ","
+dmtool -m order.dm.json typedef add … ; dmtool -m order.dm.json config modify --decimal-separator "," --label en_US="Customer Order"
+dmtool -m order.dm.json rule modify /Order/SomeRule --severity WARNING --message en_US="…"   # severity/message edit, condition untouched
 
 # Refactor — structural & safety-gated. typedef rename repoints every using field; extract factors shared-type fields out:
 dmtool -m order.dm.json typedef rename Currency --to Money

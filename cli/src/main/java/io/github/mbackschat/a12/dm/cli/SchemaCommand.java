@@ -49,7 +49,8 @@ final class SchemaCommand extends BaseCommand {
     static final Map<String, String> INPUT_OPS = Map.of(
             "rule add", "add",
             "computation add", "add",
-            "computation modify", "add");
+            "computation modify", "add",
+            "field add", "field-add");
 
     /** Leaf op-names whose verb returns a read payload in the envelope's {@code data}. */
     private static final Set<String> READ_OPS =

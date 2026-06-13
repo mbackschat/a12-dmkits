@@ -171,9 +171,16 @@ public final class ModelDocument {
      * {@link FieldKind} overload (which is just {@code addField(g, n, bareSpec(kind))}).
      */
     public ModelDocument addField(String groupPath, String name, FieldTypeSpec type) {
-        // reuse the builder's node emitter so the shape is identical to a built field
-        ElementDraft.Field field = new ElementDraft.Field(
-                name, type, Requiredness.OPTIONAL, Map.of(), List.of());
+        return addField(groupPath, new ElementDraft.Field(name, type, Requiredness.OPTIONAL, Map.of(), List.of()));
+    }
+
+    /**
+     * Add a fully-configured {@link ElementDraft.Field} — its type, requiredness, per-locale labels, element
+     * annotations, and the §3.5 metadata (global/transient flags, descriptions, helper text) — emitted via
+     * the same node builder a freshly-authored field uses. The rich peer of the {@code (name, type)} overload;
+     * the CLI {@code field add <spec.json>} path builds the full field, then chains {@link #validate}.
+     */
+    public ModelDocument addField(String groupPath, ElementDraft.Field field) {
         containerElements(groupPath).add(DocumentModelDraft.fieldNode(field, groupPath, locales()));
         return this;
     }

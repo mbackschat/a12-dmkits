@@ -82,9 +82,6 @@ final class RuleModifyCommand extends BaseCommand {
         if (model == null) {
             return fail("pass -m <model.json> (before or after the verb)");
         }
-        if (condition == null && severity == null && messages.isEmpty()) {
-            return fail("nothing to change — pass at least one of --condition, --severity, --message");
-        }
         String modelJson;
         try {
             modelJson = Files.readString(Path.of(model));
@@ -92,11 +89,16 @@ final class RuleModifyCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        // the rule-exists gate runs first, so a missing rule gets the structured RK_NO_SUCH_RULE refusal
+        // regardless of which edit args were passed (CLI-CONFORMANCE-SPEC)
         Optional<Refusal> refusal = new SafetyGate()
                 .require(SafetyChecks.ruleExists(KernelAdapter.ofJson(modelJson, resolver), rule))
                 .firstFailure();
         if (refusal.isPresent()) {
             return refuse("rule", "modify", refusal.get());
+        }
+        if (condition == null && severity == null && messages.isEmpty()) {
+            return fail("nothing to change — pass at least one of --condition, --severity, --message");
         }
 
         String modifiedJson;
