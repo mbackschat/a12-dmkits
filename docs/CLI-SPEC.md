@@ -114,7 +114,7 @@ Worked shapes (the real `Diagnostic` fields, inside the envelope):
 
 ## 5. Verb surface — target × op
 
-Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ rulekit) is a **grouping in `--help`/manifest**, not a command level — the real two axes (kind × op) *are* the two command levels. The one exception is **`doc new`**, the sole model-*originating* verb: it takes no `-m` (it creates a model from scratch — `--id`/`--locale`/`--root`, kernel-checked, emitted to stdout or `-o`), so an agent has a first step before there is any model to edit. Like `export` it produces an artifact, not the result envelope (`CONTRACT_EXEMPT`).
+Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ rulekit) is a **grouping in `--help`/manifest**, not a command level — the real two axes (kind × op) *are* the two command levels. Two verbs sit outside the `-m`-single-model frame: **`doc new`**, the sole model-*originating* verb (no `-m` — it creates a model from scratch: `--id`/`--locale`/`--root`, kernel-checked, emitted to stdout or `-o`, so an agent has a first step before there is any model to edit; like `export` it produces an artifact, `CONTRACT_EXEMPT`); and **`workspace list <dir>`**, the cross-*model* verb (it scans a *directory* of models, not one `-m` model — see the `workspace` row).
 
 | target | ops | family |
 |---|---|---|
@@ -126,6 +126,7 @@ Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ 
 | `typedef` | `add · read · remove · rename · extract · inline · import` *(rename/extract/inline = Tier-1 structural refactors, §6; `import` declares a `purpose=typeDefinitions` reference — another model's type-defs merge in by id, not mounted)* | modelkit |
 | `include` | `add · read · remove · inline` *(inline = group→include extract inverse, §6)* | modelkit |
 | `config` | `read · modify` *(incl. `--comment`, the model-level `modelInfo.comment`)* | modelkit |
+| `workspace` | `list <dir> [--recursive] [--format json\|table] [--validate]` *(cross-**model**: scans a directory of models into a per-model index — id/type, the super/subtype convention, and every `include`/type-def import **resolved to its file** within the scan; kernel-free by default, `--validate` flags which are kernel-valid)* | modelkit |
 | *(root meta)* | `manifest · schema · operators · diagnostics · batch · apply` | — |
 | *(cross-cutting)* | `where-used --entity` · `meta <ref>` *(read/edit any element's descriptions + annotations — field/group/rule by path, type-def by id; `ELEMENT_REF`, refuses `RK_NO_SUCH_ELEMENT`)* | adapter / modelkit |
 
@@ -150,7 +151,7 @@ Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ 
 `schema <X>` is addressed with the same tokens as the verbs:
 
 - `schema result` / `schema diagnostic` — the cross-cutting structures (raw JSON Schema).
-- `schema <target> <op>` — that op's **directional contract**, `{input?, docInput?, returns:"result", data?, dataSchema?}`: what it *consumes* — a rich JSON spec file (`input`, e.g. the rule-spec) and/or a `--doc` document **instance** (`docInput`, the `DocumentInstance` shape, for `doc eval`/`doc compute`/`rule test`) — and the shape it *returns* (a read's `data` payload is described by `dataSchema` where one is published — `Explanation`, `ModelCard`, `ValidationResult`, `EvalDocResult`, …). One call, unambiguous direction — never "is this what I send or what I get?". Flag-only ops carry no input schema (their params are in the manifest).
+- `schema <target> <op>` — that op's **directional contract**, `{input?, docInput?, returns:"result", data?, dataSchema?}`: what it *consumes* — a rich JSON spec file (`input`, e.g. the rule-spec) and/or a `--doc` document **instance** (`docInput`, the `DocumentInstance` shape, for `doc eval`/`doc compute`/`rule test`) — and the shape it *returns* (a read's `data` payload is described by `dataSchema` where one is published — `Explanation`, `ModelCard`, `ValidationResult`, `EvalDocResult`, `WorkspaceList`, …). One call, unambiguous direction — never "is this what I send or what I get?". Flag-only ops carry no input schema (their params are in the manifest).
 
 The `manifest` is the index that makes assembly *copy, not infer*: every verb entry carries `target`, `op`, its params (each with the CLI `flag` **and** the op-record `key` = the `--`-stripped name an `apply` op uses), a `schema` pointer (for the envelope verbs — including the single-token ones like `meta`; `export`/`where-used` and the self-describing verbs carry none, see `SchemaCommand.CONTRACT_EXEMPT`), and a worked **`example` `{intent, command}`** — a read-only invocation the agent can run to see the verb *in action* (CI-executed by `VerbDemonstrationTest`). The root carries `resultSchema:"result"` and the global `-m`. So an agent builds any call — single or batched — straight from the manifest. (`schema add` is gone: it splits into `schema rule add` / `schema computation add`.)
 

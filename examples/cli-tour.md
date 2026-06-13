@@ -61,6 +61,7 @@ include remove
 include inline
 config read
 config modify
+workspace list
 export
 where-used
 meta
@@ -72,7 +73,7 @@ diagnostics
 manifest
 ```
 
-→ The surface is **two axes**: a *target* (`doc`, `rule`, `computation`, `field`, `group`, `typedef`, `include`, `config`) crossed with an *op* (`add`/`read`/`modify`/`remove`, plus per-target verbs like `rule check` or `doc validate`). The manifest carries each verb's `target`/`op`, its params (with the op-record `key`), and a `schema` pointer. The tool describes itself — the skill teaches *judgment* (polarity, the traps), not this catalog.
+→ The surface is **two axes**: a *target* (`doc`, `rule`, `computation`, `field`, `group`, `typedef`, `include`, `config`, `workspace`) crossed with an *op* (`add`/`read`/`modify`/`remove`, plus per-target verbs like `rule check` or `doc validate`). (`workspace` is the cross-model exception — it scans a *directory*, not the `-m` model.) The manifest carries each verb's `target`/`op`, its params (with the op-record `key`), and a `schema` pointer. The tool describes itself — the skill teaches *judgment* (polarity, the traps), not this catalog.
 
 ## The model — `order-ruled`
 
@@ -504,3 +505,18 @@ bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json config read | jq
 ```
 
 → The document config decides how literals render and resolve: `decimalSeparator: "."` (so `1.5` not `1,5`), `conditionLanguage: "en_US"` (English keywords — `And`, not `Und`), `timeZone` for date arithmetic, and `fieldRefByShortNameAllowed: true` (a condition may name a field by its short name, not just an absolute path). The `locales` are the **declared message locales** — every rule and computation needs a message for *each* (here just `en_US`), so read this before authoring to avoid `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING`. These settings are why the rendered DSL throughout this tour looks the way it does.
+
+## workspace list — what's in a folder of models
+
+Everything above operated on one `-m` model. When you're handed a **directory** of models instead, `workspace list` is the cross-model "ls" that goes *into* them: a per-model index where every `include` / type-def import is **cross-resolved to its file within the scan**. So an agent learns which file provides a referenced model — instead of guessing an `--include-dir`. Kernel-free (a half-wired workspace still lists); `--recursive` widens the resolution scope, `--validate` adds a per-model validity flag, `--format table` renders the same facts for humans. Projected here with `jq`.
+
+```bash
+bin/dmtool workspace list cli/src/test/resources/models/multifile --recursive | jq -c '.data.models[] | {id, path, includes: [.includes[] | {ref, resolvedPath}]}'
+```
+
+```output
+{"id":"storefront","path":"app/storefront.dm.json","includes":[{"ref":"catalog","resolvedPath":"lib/catalog.dm.json"}]}
+{"id":"catalog","path":"lib/catalog.dm.json","includes":[]}
+```
+
+→ `storefront` declares an `include` of the model id `catalog`, and the scan **resolves it to `lib/catalog.dm.json`** — the file an agent must put on the `--include-dir` to load `storefront`. Were the target outside the scan, `resolvedPath` would be `null` (widen with `--recursive`, as here). The same resolution covers type-def imports and surfaces the sub/supertype convention (`abstract`/`superTypes`/`subTypes`), so one read maps a whole workspace.

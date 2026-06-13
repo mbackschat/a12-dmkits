@@ -80,6 +80,11 @@ public final class ModelDocument {
         return root.path("header").path("modelVersion").asText();
     }
 
+    /** The {@code header.modelType} discriminator ({@code "document"} for document/type-def-import models). */
+    public String modelType() {
+        return root.path("header").path("modelType").asText();
+    }
+
     /** The declared locale codes, in document order. */
     public List<String> locales() {
         List<String> out = new ArrayList<>();
@@ -362,6 +367,24 @@ public final class ModelDocument {
     public Optional<String> modelComment() {
         JsonNode comment = root.path("content").path("modelInfo").path("comment");
         return comment.isTextual() ? Optional.of(comment.asText()) : Optional.empty();
+    }
+
+    /** The model-level header <b>annotations</b> as a name→value map (the read peer of {@link #setModelAnnotation}). */
+    public Map<String, String> modelAnnotations() {
+        Map<String, String> out = new java.util.LinkedHashMap<>();
+        for (JsonNode a : root.path("header").path("annotations")) {
+            out.put(a.path("name").asText(), a.path("value").asText());
+        }
+        return out;
+    }
+
+    /** The model-level header <b>labels</b> as a locale→text map (the read peer of {@link #setModelLabel}). */
+    public Map<String, String> modelLabels() {
+        Map<String, String> out = new java.util.LinkedHashMap<>();
+        for (JsonNode l : root.path("header").path("labels")) {
+            out.put(l.path("locale").asText(), l.path("text").asText());
+        }
+        return out;
     }
 
     /** The header's {@code key} array, created if absent. */

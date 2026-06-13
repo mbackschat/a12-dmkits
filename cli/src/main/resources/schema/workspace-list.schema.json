@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/workspace-list.schema.json",
+  "title": "WorkspaceList",
+  "description": "Output of `dmtool workspace list <dir>` — a kernel-free per-model index of a directory of document models. Each model carries its identity, the super/subtype convention (the `abstract`/`superTypes`/`subTypes` header annotations), and every model reference (an `include` or a type-def import) cross-resolved to its file WITHIN the scan: `resolvedPath` is the referenced model's relative path, or null when no scanned model has that id (dangling, or out of the scan's scope — widen with --recursive). `valid` is present per model only under --validate.",
+  "type": "object",
+  "required": ["root", "recursive", "count", "models"],
+  "additionalProperties": false,
+  "properties": {
+    "root": { "type": "string", "description": "the scanned directory, as passed" },
+    "recursive": { "type": "boolean", "description": "whether sub-directories were descended" },
+    "count": { "type": "integer", "description": "number of models indexed" },
+    "models": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/model" },
+      "description": "the indexed models, ordered by relative path"
+    }
+  },
+  "$defs": {
+    "model": {
+      "type": "object",
+      "required": ["id", "path", "modelType", "abstract", "superTypes", "subTypes", "locales",
+        "includes", "typedefImports", "providesTypedefs", "groups", "fields"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "description": "the model id (header.id)" },
+        "path": { "type": "string", "description": "the model file's path relative to the scanned root ('/'-normalized)" },
+        "modelType": { "type": "string", "description": "header.modelType — \"document\" for document/type-def models" },
+        "label": { "type": "string", "description": "the model's display label (first declared locale); absent if none" },
+        "abstract": { "type": "boolean", "description": "the `abstract` header-annotation convention — a base type, not instantiated directly" },
+        "superTypes": { "type": "array", "items": { "type": "string" }, "description": "model ids this one declares as supertypes (`superTypes` annotation, comma-split)" },
+        "subTypes": { "type": "array", "items": { "type": "string" }, "description": "model ids this one declares as subtypes (`subTypes` annotation, comma-split)" },
+        "locales": { "type": "array", "items": { "type": "string" }, "description": "declared locale codes" },
+        "includes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/include" },
+          "description": "header includes (mounted sub-models), cross-resolved"
+        },
+        "typedefImports": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/import" },
+          "description": "type-def imports (merged by id, not mounted), cross-resolved"
+        },
+        "providesTypedefs": { "type": "array", "items": { "type": "string" }, "description": "the reusable type-def ids this model declares (what an importer can reference)" },
+        "groups": { "type": "integer", "description": "number of groups in the model's own structure" },
+        "fields": { "type": "integer", "description": "number of fields in the model's own structure" },
+        "valid": { "type": "boolean", "description": "kernel-valid? present only under --validate" }
+      }
+    },
+    "include": {
+      "type": "object",
+      "required": ["alias", "ref", "resolvedPath"],
+      "additionalProperties": false,
+      "properties": {
+        "alias": { "type": "string", "description": "the include alias (how mount groups bind it)" },
+        "ref": { "type": "string", "description": "the referenced model id" },
+        "resolvedPath": { "type": ["string", "null"], "description": "the referenced model's relative path within the scan, or null if unresolved" }
+      }
+    },
+    "import": {
+      "type": "object",
+      "required": ["ref", "resolvedPath"],
+      "additionalProperties": false,
+      "properties": {
+        "ref": { "type": "string", "description": "the imported type-def provider model id" },
+        "resolvedPath": { "type": ["string", "null"], "description": "the provider model's relative path within the scan, or null if unresolved" }
+      }
+    }
+  }
+}

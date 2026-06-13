@@ -264,6 +264,17 @@ dmtool -m order.dm.json rule format /Order/DeliveryNotBeforeOrder --lang DE  # t
 dmtool -m order.dm.json where-used /Order/DeliveryDate             # which rules/computations use a field
 ```
 
+### Explore a whole folder of models
+
+When you're dropped into a *directory* of models — not one file — `workspace list` is the agent-friendly "ls" that goes *into* them: a per-model index with the sub/supertype graph and every `include` / type-def import **resolved to its file**, so you know what to wire (which `--include-dir`, which file provides a needed type-def) without reading raw JSON.
+
+```sh
+dmtool workspace list ./models                       # the index as JSON (id, type, super/subtypes, resolved refs, counts)
+dmtool workspace list ./models --recursive           # descend sub-folders (widens reference resolution)
+dmtool workspace list ./models --format table        # the same facts as an aligned human listing
+dmtool workspace list ./models --validate            # also flag which models are kernel-valid
+```
+
 ### Author & check — confirmed by the kernel
 
 ```sh

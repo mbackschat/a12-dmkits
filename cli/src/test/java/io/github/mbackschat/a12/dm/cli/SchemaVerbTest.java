@@ -111,6 +111,8 @@ class SchemaVerbTest {
                 MAPPER.readTree(CliTestSupport.run("schema", "doc", "describe").out()).path("dataSchema").path("title").asText());
         assertEquals("EvalDocResult",
                 MAPPER.readTree(CliTestSupport.run("schema", "doc", "eval").out()).path("dataSchema").path("title").asText());
+        assertEquals("WorkspaceList",
+                MAPPER.readTree(CliTestSupport.run("schema", "workspace", "list").out()).path("dataSchema").path("title").asText());
     }
 
     @Test

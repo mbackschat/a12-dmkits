@@ -29,6 +29,7 @@ import picocli.CommandLine.Spec;
             TypedefCommand.class,
             IncludeCommand.class,
             ConfigCommand.class,
+            WorkspaceCommand.class,
             ExportCommand.class,
             DescribeCommand.class,
             ValidateCommand.class,

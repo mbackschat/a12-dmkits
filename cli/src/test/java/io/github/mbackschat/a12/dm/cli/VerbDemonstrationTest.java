@@ -75,6 +75,8 @@ class VerbDemonstrationTest {
                     assertTrue(doc != null, () -> verb + " uses <doc.json> but declares no `doc`");
                     yield doc.toString();
                 }
+                // a directory verb (workspace list): the temp dir, already populated with the example's siblings
+                case "<workspace-dir>" -> dir.toString();
                 default -> t;
             });
         }
