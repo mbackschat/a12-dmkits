@@ -164,6 +164,13 @@ final class SafetyChecks {
                 : Optional.of(notFound(RkCode.NO_SUCH_TYPEDEF, "type definition", id));
     }
 
+    /** Refuse a metadata edit whose target element/type-def does not exist (RK_NO_SUCH_ELEMENT). */
+    static SafetyCheck elementExists(ModelDocument doc, String pathOrTypeDefId) {
+        return () -> doc.describableExists(pathOrTypeDefId)
+                ? Optional.empty()
+                : Optional.of(notFound(RkCode.NO_SUCH_ELEMENT, "element or type definition", pathOrTypeDefId));
+    }
+
     /** Refuse an include refactor whose target alias is not a declared model include (RK_NO_SUCH_INCLUDE). */
     static SafetyCheck includeExists(ModelDocument doc, String alias) {
         return () -> doc.includes().stream().anyMatch(i -> i.alias().equals(alias))

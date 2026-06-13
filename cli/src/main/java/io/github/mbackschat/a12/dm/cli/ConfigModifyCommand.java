@@ -60,6 +60,11 @@ final class ConfigModifyCommand extends BaseCommand {
                     + "Replaces the whole set; pass none to leave it unchanged. e.g. --supported-character A-Z")
     java.util.List<String> supportedCharacters = new java.util.ArrayList<>();
 
+    @ParamKind(ParamKind.Kind.SCALAR)
+    @Option(names = "--comment", paramLabel = "<text>",
+            description = "set the model-level comment (a free-text model note / description)")
+    String comment;
+
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the result here instead of in place (overwriting the model)")
     String outputPath;
@@ -77,9 +82,9 @@ final class ConfigModifyCommand extends BaseCommand {
             return fail("pass -m <model.json> (before or after the verb)");
         }
         if (decimalSeparator == null && timeZone == null && conditionLanguage == null
-                && labels.isEmpty() && annotations.isEmpty() && supportedCharacters.isEmpty()) {
+                && labels.isEmpty() && annotations.isEmpty() && supportedCharacters.isEmpty() && comment == null) {
             return fail("nothing to change — pass at least one of --decimal-separator, --time-zone, "
-                    + "--condition-language, --label, --annotation, --supported-character");
+                    + "--condition-language, --label, --annotation, --supported-character, --comment");
         }
         String modelJson;
         try {
@@ -122,6 +127,10 @@ final class ConfigModifyCommand extends BaseCommand {
             if (!supportedCharacters.isEmpty()) {
                 doc.setSupportedCharacters(supportedCharacters);
                 changed.put("supportedCharacters", String.join(" ", supportedCharacters));
+            }
+            if (comment != null) {
+                doc.setModelComment(comment);
+                changed.put("comment", comment);
             }
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {

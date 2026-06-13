@@ -36,7 +36,7 @@ class ManifestVerbTest {
             "typedef import",
             "include add", "include read", "include remove", "include inline",
             "config read", "config modify",
-            "where-used", "export", "batch", "apply", "schema", "operators", "diagnostics", "manifest");
+            "where-used", "meta", "export", "batch", "apply", "schema", "operators", "diagnostics", "manifest");
 
     @Test
     void listsEveryVerbWithADescription() throws Exception {

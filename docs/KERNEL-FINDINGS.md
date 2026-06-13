@@ -547,6 +547,17 @@ So **attachment is a heavy fixed template** (no user input beyond the group name
 
 Removal: a composite group's internal rules live inside its subtree, so `group remove` takes them with it — the safe-delete gate **excludes in-subtree referrers** so it doesn't demand `--cascade` for rules the author never wrote (CLI-SPEC §6; `cli.GroupAttachmentVerbTest`).
 
+## Descriptions + annotations are element-wide (`IElement`/`IFieldTypeDefinition` are `IDescribed`+`IAnnotated`); the model carries a `comment` (2026-06-13)
+
+Every element and type-def carries the same documentation metadata, not just fields: **`IElement extends IIdNamed, IDescribed, IAnnotated`** and **`IFieldTypeDefinition extends IIdNamed, IDescribed, IAnnotated`**. So a field, group, *and* rule (all `IElement`) and a type definition each have:
+
+- **`internalDescription` / `externalDescription`** (`IDescribed`) — per-locale text (`ILocalizedTextMap extends Map<Locale,String>`), serialized **element-level** as `[{locale, text}]` (alongside `annotations`, beside the `Field`/`Group`/`Rule` body — uniform across kinds). Distinct from a field's `label` and its `helperText` (`IField`-only).
+- **`annotations`** (`IAnnotated`) — `[{name, value}]`, element-level.
+
+Separately, the model has a free-text **`comment`** at `content.modelInfo.comment` (`IDocumentModelInfo.getComment()` → `Optional<String>`) — distinct from the header `labels`/`annotations`. (The other "comment" is the inline `;;` concrete-syntax comment inside a condition/computation — a different mechanism, carried in the rulekit DSL.)
+
+rulekit treatment: a shared **`ElementMeta<SELF>` builder mixin** (`annotation` + `internalDescription` + `externalDescription`) that `FieldAttrs`, `GroupBuilder`, and `TypeDefBuilder` extend (author side); the edit-path locator resolves field/group/**rule** by name-path and **type-def by id**, so one metadata API (`ModelDocument.setInternalDescription`/`setAnnotation`/`remove…`, the editors, and the CLI **`meta <ref>`** verb) does CRUD across them all; the model comment rides `config modify --comment`. *(Locked: `modelkit.ElementDescriptionTest`, `edit.ElementMetadataEditTest`, `modelkit.TypeDefAndModelCommentTest`, `cli.MetaVerbTest` — read-back via `IElement.getInternalDescription()` / the kernel deserialize→serialize round-trip.)*
+
 ## How `checkConsistency` actually works — structural laws ARE metamodel rules (2026-06-04)
 
 Found while repairing the MVK ledger's coverage hole (`MVK_ERROR_MESSAGE_MISSING`/`MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING` appear at runtime but in no kernel enum, no source file, and no plain string in any jar): `checkConsistency`'s `CodeGenerationRule` runs `generateValidationCode`, and part of that pipeline **validates the model itself as a document against the `MM_Common` metamodel** — using validators *code-generated from the metamodel's rules* (the `mmvalidators-extmpinternal-mm_common-v2-codegen` jar, transitively on the classpath). The two "missing" codes are ordinary **rule `errorCode`s authored in MM_Common**, alongside **103 more** — 105 structural laws expressed as A12 rules over the metamodel.

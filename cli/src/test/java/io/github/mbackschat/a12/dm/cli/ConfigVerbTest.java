@@ -97,6 +97,16 @@ class ConfigVerbTest {
     }
 
     @Test
+    void modifySetsTheModelComment(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "config", "modify", "--comment", "an order model");
+        assertEquals(0, res.code(), res.err());
+        assertEquals("an order model", M.readTree(res.out()).path("changed").path("comment").asText());
+        var read = CliTestSupport.run("-m", model.toString(), "config", "read");
+        assertEquals("an order model", M.readTree(read.out()).path("data").path("comment").asText());
+    }
+
+    @Test
     void modifyRequiresAtLeastOneSetting(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         var res = CliTestSupport.run("-m", model.toString(), "config", "modify");

@@ -47,6 +47,8 @@ final class ConfigReadCommand extends BaseCommand {
             // The allowed-character set (each entry a char or a range like " -~"); empty = all characters allowed.
             ArrayNode supported = data.putArray("supportedCharacters");
             c.supportedCharacters().forEach(supported::add);
+            // the model-level comment (modelInfo.comment), if set
+            doc.modelComment().ifPresent(comment -> data.put("comment", comment));
             // The declared message locales (header.locales) drive the per-locale-message law
             // (MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING) — surface the full set so an agent can provision a
             // rule/computation message per locale up front. `conditionLanguage` alone doesn't reveal it.

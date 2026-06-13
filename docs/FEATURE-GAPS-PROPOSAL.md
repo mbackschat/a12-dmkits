@@ -35,9 +35,9 @@ Everything below is ✅ — the inventory *is* the authoring surface dmkits cove
 |---|---|---|
 | Required; "only if parent group filled" | ✅ | `Requiredness` (3 modes) |
 | Per-locale **label** | ✅ | `FieldAttrs.label` / `ModelDocument.setLabel` |
-| **Annotations** (name-value) on an element | ✅ | `ElementDraft.Annotation` / `setAnnotation` |
+| **Annotations** (name-value) on an element | ✅ | element-wide (field/group/rule/type-def): the `ElementMeta` builder mixin (author) + `ModelDocument.setAnnotation`/`removeAnnotation` + the CLI `meta <ref> --annotate/--remove-annotation` (`IAnnotated`) |
 | **Global** flag; **Transient** flag | ✅ | `FieldAttrs.global()` / `.notPersisted()` (§3.5) |
-| **Internal / external description**, **helper text** | ✅ | `.internalDescription/externalDescription/helperText(loc, text)` (§3.5) |
+| **Internal / external description**, **helper text** | ✅ | descriptions are **element-wide** (field/group/rule/type-def + model `comment`) via the `ElementMeta` mixin (author) + `setInternalDescription`/`setExternalDescription`/`remove…` + the CLI **`meta <ref>`** verb (read/set/remove); `helperText` is field-only (§3.5). `IDescribed`/`modelInfo.comment` — KERNEL-FINDINGS |
 
 ### Groups, rules, computations
 | Capability | Status | Note |
@@ -63,7 +63,7 @@ Everything below is ✅ — the inventory *is* the authoring surface dmkits cove
 | Include **exclude-rules** flag | ✅ | `MountOptions.excludingRules()`/`.excludingComputations()` → `mount(...)` / `IncludeEditor.mount(...)` / CLI `include add --exclude-rules --exclude-computations`. The kernel drops the included model's rules/computations at **expand** (fields stay); `edit.IncludeExcludeRulesTest`, KERNEL-FINDINGS |
 | Include constraints (no cycles, single root, locale superset) | ✅ | the kernel's to enforce on expand — the **locale rule pinned**: an include must declare a *superset* of the base's locales (cover every base locale; extra locales are harmless), `modelkit.IncludeConstraintsTest`. Cycles / single-root are likewise kernel-enforced on expand (KERNEL-FINDINGS) |
 | Config: locales, time zone, decimal separator, base year, condition language, model name | ✅ | `ConfigEditor` / `DocConfig` |
-| Config: model **labels**, model-level **annotations** | ✅ | author (`DocumentModelDraft.label/annotation`) + edit (`ConfigEditor.label/annotation`) + **CLI `config modify --label/--annotation`**; kernel reads + round-trips them (`modelkit.ModelHeaderTest`, `cli.ConfigVerbTest`) |
+| Config: model **labels**, model-level **annotations**, model **comment** | ✅ | author (`DocumentModelDraft.label/annotation/comment`) + edit (`ConfigEditor.label/annotation/comment`) + **CLI `config modify --label/--annotation/--comment`** (the comment is `modelInfo.comment`, surfaced by `config read`); kernel reads + round-trips them (`modelkit.ModelHeaderTest`/`TypeDefAndModelCommentTest`, `cli.ConfigVerbTest`) |
 | Config: **supported characters** (custom allowed-character set) | ✅ | `DocumentModelDraft.supportedCharacters(...)` / `ConfigEditor.supportedCharacters(...)` / CLI `config modify --supported-character` → the `modelConfig.supportedCharacters` list (each entry a char or a range like `A-Z`). The kernel **enforces it at runtime** — an out-of-set value fires `ZeichenNichtImZeichensatz` (KERNEL-FINDINGS). `modelkit.SupportedCharactersTest`, `adapter.laws.SupportedCharactersLawsTest` |
 
 ### Composite element templates

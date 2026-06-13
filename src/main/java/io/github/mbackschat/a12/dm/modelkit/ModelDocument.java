@@ -426,6 +426,49 @@ public final class ModelDocument {
         throw new IllegalArgumentException("no element or type definition: " + pathOrTypeDefId);
     }
 
+    /**
+     * Whether a describable node exists at {@code pathOrTypeDefId} — a field/group/rule by name-path, or a
+     * type definition by id. The pre-check for the metadata edit verbs (so a bogus reference refuses cleanly).
+     */
+    public boolean describableExists(String pathOrTypeDefId) {
+        if (findByPath(root.path("content").path("modelRoot").path("rootGroups"), "", pathOrTypeDefId) != null) {
+            return true;
+        }
+        for (JsonNode td : root.path("content").path("typeDefinitions")) {
+            if (pathOrTypeDefId.equals(td.path("id").asText())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Read an element's per-locale {@code internalDescription}/{@code externalDescription} (the metadata read verbs). */
+    public Map<String, String> internalDescription(String pathOrTypeDefId) {
+        return localizedOf(metaElement(pathOrTypeDefId), "internalDescription");
+    }
+
+    /** Read an element's external description, by locale. */
+    public Map<String, String> externalDescription(String pathOrTypeDefId) {
+        return localizedOf(metaElement(pathOrTypeDefId), "externalDescription");
+    }
+
+    /** Read an element's annotations as a name→value map. */
+    public Map<String, String> annotations(String pathOrTypeDefId) {
+        Map<String, String> out = new java.util.LinkedHashMap<>();
+        for (JsonNode a : metaElement(pathOrTypeDefId).path("annotations")) {
+            out.put(a.path("name").asText(), a.path("value").asText());
+        }
+        return out;
+    }
+
+    private static Map<String, String> localizedOf(ObjectNode element, String key) {
+        Map<String, String> out = new java.util.LinkedHashMap<>();
+        for (JsonNode e : element.path(key)) {
+            out.put(e.path("locale").asText(), e.path("text").asText());
+        }
+        return out;
+    }
+
     private static ObjectNode findByPath(JsonNode container, String prefix, String target) {
         for (JsonNode node : container) {
             String path = prefix + "/" + node.path("name").asText();

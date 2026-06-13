@@ -37,7 +37,8 @@ class DiagnosticConformanceFuzzTest {
 
     private static final ObjectMapper M = new ObjectMapper();
     private static final Set<String> ENTITY_REF = Set.of(
-            "FIELD_PATH", "GROUP_PATH", "RULE_PATH", "COMPUTATION_PATH", "TYPEDEF_ID", "INCLUDE_ALIAS");
+            "FIELD_PATH", "GROUP_PATH", "RULE_PATH", "COMPUTATION_PATH", "TYPEDEF_ID", "INCLUDE_ALIAS",
+            "ELEMENT_REF");
 
     @TempDir
     Path dir;
@@ -167,7 +168,7 @@ class DiagnosticConformanceFuzzTest {
     /** A value that exists in the fixture, for filling a non-tested entity-ref; null if the fixture has none. */
     private static String validFromFixture(String kind) {
         return switch (kind) {
-            case "FIELD_PATH" -> "/Order/Note";
+            case "FIELD_PATH", "ELEMENT_REF" -> "/Order/Note";
             case "GROUP_PATH" -> "/Order";
             default -> null;   // no rule/computation/typedef/include in the fixture — those verbs are single-ref
         };
