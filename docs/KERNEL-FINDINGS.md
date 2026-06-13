@@ -509,6 +509,42 @@ A consumer pulls those types in via a header `modelReferences` entry whose **`pu
 
 Consequence for authoring: a consumer's `typedefField` may reference an **imported** id that isn't locally declared, so rulekit's draft-time local-typedef-ref check defers to the kernel when an import is present (the kernel resolves it at expand). *(Locked: `modelkit.TypeDefModelImportTest` — type-def-only standalone valid; consumer-from-scratch import + imported-typed fields; the edit path.)* Modeled via `DocumentModelDraft.typeDefModel(id)` (provider), `Builder.importTypeDefs(ref)` / `ModelDocument.addImport(ref)` / `EditSession.addImport(ref)` / CLI `typedef import --reference` (consumer).
 
+## Attachment & Multi-Select are `usageType` group templates with kernel-validated canonical compositions (2026-06-13, source-verified)
+
+A12 has two **group templates**, flagged by a group's **`usageType`** slot (`IGroup.getUsageType()` → `Optional<String>`; the enum is defined in the `MM_Group_1` metamodel). Setting `usageType` flips the kernel into validating a strict canonical composition — both checks report `Severity.ERROR`, so a malformed template fails `checkConsistency` (our `validate()` gate is the oracle). The same marker drives the UI widget (upload control / checkbox list). Sources: `AttachmentGroupRule` / `MultiSelectGroupRule` in `kernel-md-model/.../internal/service/consistency/rules`, and `DocumentModelUtils.ATTACHMENT_NAME = "attachment"` (multi-select id is the literal `"multi-select"`).
+
+**`usageType: "attachment"`** — `AttachmentGroupRule` requires, on that group:
+
+| Requirement | Detail | Violation category |
+|---|---|---|
+| 8 fields, by exact name | `original_filename`, `internal_filename`, `content`, `attachment_id`, `size`, `mime_type`, `category`, `description` (extras tolerated — the rule only checks the set is *present*; order not checked) | `DOCUMENT_MODEL_ATTACHMENT_MISSING_FIELD` |
+| 4 rules, matched by exact `errorCondition` string in the model's condition language | see below | `DOCUMENT_MODEL_ATTACHMENT_REQUIRED_RULES` |
+| `content` field config | a `StringType` with `noValueValidation: true` **and** `lineBreaksPermitted: true` | `DOCUMENT_MODEL_ATTACHMENT_CONTENT_NO_VALUE_VALIDATION` |
+
+The 4 required `errorCondition`s (compared after the kernel re-formats them, so emit the canonical form verbatim; `RuleGroup`/`RegelKontext` is the rule's own group context):
+
+| en_US (`Locale.US`) | de_DE (`Locale.GERMANY`) |
+|---|---|
+| `GroupFilled(RuleGroup) and NotExactlyOneFieldFilled(attachment_id, content)` | `KontextAngegeben(RegelKontext) und NichtGenauEinFeldAngegeben(attachment_id, content)` |
+| `FieldFilled(content) and FieldNotFilled(size)` | `FeldAngegeben(content) und FeldNichtAngegeben(size)` |
+| `GroupFilled(RuleGroup) and FieldNotFilled(internal_filename)` | `KontextAngegeben(RegelKontext) und FeldNichtAngegeben(internal_filename)` |
+| `GroupFilled(RuleGroup) and FieldNotFilled(mime_type)` | `KontextAngegeben(RegelKontext) und FeldNichtAngegeben(mime_type)` |
+
+`AttachmentGroupRule.RULES_REQUIRED` is keyed by `Locale.US`/`Locale.GERMANY` **only**, so an attachment group is well-defined only for an `en_US`/`de_DE` condition-language model (it lines up with the formatter's two-locale limit, above). A wrong field type for the other 7 fields is *not* checked by this rule (only `content` is type-checked) — but the 4 conditions must still bind (`size` must be a field, etc.), so the conventional types are `size` = Number, the rest = String.
+
+**`usageType: "multi-select"`** — `MultiSelectGroupRule` requires, on that group:
+
+| Requirement | Violation category |
+|---|---|
+| `repeatability > 1` (a repeatable group) | `DOCUMENT_MODEL_MULTI_SELECT_REPEATABLE_GROUP` |
+| exactly one `Field` element | `DOCUMENT_MODEL_MULTI_SELECT_REQUIRED_FIELD` |
+| that field is an `EnumerationType` or `StringType` | `DOCUMENT_MODEL_MULTI_SELECT_FIELD_FIELDTYPE` |
+| that field has a `requirednessConfig` (not empty) | `DOCUMENT_MODEL_MULTI_SELECT_FIELD_REQUIRED_FLAG` |
+| that field is **not** the group's index field | `DOCUMENT_MODEL_MULTI_SELECT_FIELD_INDEX_FIELD` |
+| only `Field` + `Rule` elements — no sub-groups | `DOCUMENT_MODEL_MULTI_SELECT_OTHER_ELEMENTS` |
+
+So **attachment is a heavy fixed template** (no user input beyond the group name/parent — all 8 fields + 4 rules + the `content` config are mandated boilerplate); **multi-select is light but parameterized** (the single enum/string field, its values, and its requiredness are the user's). *(Source-verified by reading the two rule classes + `MM_Group_1`; the generator and its `validate/laws` accept + does-fire-on-malformed lock are the pending FEATURE-GAPS §3.8 work.)*
+
 ## How `checkConsistency` actually works — structural laws ARE metamodel rules (2026-06-04)
 
 Found while repairing the MVK ledger's coverage hole (`MVK_ERROR_MESSAGE_MISSING`/`MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING` appear at runtime but in no kernel enum, no source file, and no plain string in any jar): `checkConsistency`'s `CodeGenerationRule` runs `generateValidationCode`, and part of that pipeline **validates the model itself as a document against the `MM_Common` metamodel** — using validators *code-generated from the metamodel's rules* (the `mmvalidators-extmpinternal-mm_common-v2-codegen` jar, transitively on the classpath). The two "missing" codes are ordinary **rule `errorCode`s authored in MM_Common**, alongside **103 more** — 105 structural laws expressed as A12 rules over the metamodel.
