@@ -119,6 +119,7 @@ final class FieldAddCommand extends BaseCommand {
                 if (refused(doc, effGroup, "field", "add")) {
                     return 2;
                 }
+                changed.put("added", target);   // key order matches the established field-add envelope
                 if (type.typedef != null) {
                     doc.addTypedefField(group, name, type.typedef);
                     changed.put("kind", "TypeDefType");
@@ -126,7 +127,6 @@ final class FieldAddCommand extends BaseCommand {
                     doc.addField(group, name, type.kind);
                     changed.put("kind", type.kind.name());
                 }
-                changed.put("added", target);
             }
         } catch (IllegalArgumentException badSpec) {
             return fail("invalid field spec: " + badSpec.getMessage());
