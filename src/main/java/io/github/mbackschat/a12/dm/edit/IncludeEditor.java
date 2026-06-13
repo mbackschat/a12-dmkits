@@ -28,6 +28,12 @@ public final class IncludeEditor {
         return this;
     }
 
+    /** Mount this include as a repeatable sub-form ({@code repeatability} rows; FEATURE-GAPS §2). Chains. */
+    public IncludeEditor mount(String parentPath, String name, int repeatability) {
+        session.mount(parentPath, name, alias, repeatability);
+        return this;
+    }
+
     /** Re-point this include at a different referenced model (the alias and its mounts are unchanged). Chains. */
     public IncludeEditor setReference(String reference) {
         session.setIncludeReference(alias, reference);

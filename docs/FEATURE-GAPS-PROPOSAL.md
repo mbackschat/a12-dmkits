@@ -65,7 +65,8 @@ Legend: ✅ supported · ◐ partial · ❌ not yet built.
 | Included type-defs (read-only, via include) | ✅ | resolver-served |
 | Imported type-defs / **type-def-only model** (author one) | ◐ / ❌ | imported refs resolve (`ImportedTypeDef`/`TypeDefModel` exist); no verb to *create* a type-def-only model |
 | Include a model under a group; alias/name; resolution (`--include-dir`) | ✅ | `addInclude`/`mount`; `ReferenceResolvers.directory` |
-| Include **repeatability**; **exclude-rules** flag | ❌ | mount repeatability hardcoded to 1; `excludeRules` is a metamodel include slot, not exposed |
+| Include **repeatability** | ✅ | `mount(name, alias, repeatability)` (author) + `IncludeEditor.mount(parent, name, repeatability)` (edit) — a mount > 1 expands to a repeating sub-form (`modelkit.IncludeRepeatabilityTest`) |
+| Include **exclude-rules** flag | ❌ | `excludeRules` is a metamodel include slot, still not exposed (on-demand) |
 | Include constraints (no cycles, single root, locale superset) | ◐ | enforced by kernel on expand; single-root enforced at build |
 | Config: locales, time zone, decimal separator, base year, condition language, model name | ✅ | `ConfigEditor` / `DocConfig` |
 | Config: model **labels**, model-level **annotations** | ✅ | author (`DocumentModelDraft.label/annotation`) + edit (`ConfigEditor.label/annotation`); kernel reads + round-trips them (`modelkit.ModelHeaderTest`) |

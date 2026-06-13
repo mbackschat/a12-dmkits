@@ -717,8 +717,14 @@ public final class ModelDocument {
 
     /** Mount a declared include at {@code parentPath} as a group named {@code name} (a {@code modelAlias} group). */
     public ModelDocument mount(String parentPath, String name, String alias) {
+        return mount(parentPath, name, alias, 1);
+    }
+
+    /** Mount a declared include as a <b>repeatable</b> sub-form ({@code repeatability} rows; FEATURE-GAPS §2). */
+    public ModelDocument mount(String parentPath, String name, String alias, int repeatability) {
         ArrayNode container = parentPath.isEmpty() ? rootGroups() : containerElements(parentPath);
-        container.add(DocumentModelDraft.mountNode(new ElementDraft.Mount(name, alias, List.of()), parentPath));
+        container.add(DocumentModelDraft.mountNode(
+                new ElementDraft.Mount(name, alias, repeatability, List.of()), parentPath));
         return this;
     }
 

@@ -200,6 +200,11 @@ public final class EditSession {
         return editStructure(d -> d.mount(parentPath, name, alias));
     }
 
+    /** Mount a declared include as a repeatable sub-form ({@code repeatability} rows; FEATURE-GAPS §2). */
+    public EditSession mount(String parentPath, String name, String alias, int repeatability) {
+        return editStructure(d -> d.mount(parentPath, name, alias, repeatability));
+    }
+
     public EditSession removeInclude(String alias) {
         return editStructure(d -> d.removeInclude(alias));
     }

@@ -58,7 +58,15 @@ public sealed interface ElementDraft permits ElementDraft.Field, ElementDraft.Gr
     /**
      * An include mount: a group with no inline elements that carries {@code modelAlias}; on expand the
      * kernel mounts the referenced model's content here (the {@code alias} resolves via the header's
-     * {@code modelReferences}). KERNEL-FINDINGS §10.
+     * {@code modelReferences}). KERNEL-FINDINGS §10. {@code repeatability > 1} mounts the included model as
+     * a <b>repeatable</b> sub-form (FEATURE-GAPS §2).
      */
-    record Mount(String name, String alias, List<Annotation> annotations) implements ElementDraft {}
+    record Mount(String name, String alias, int repeatability, List<Annotation> annotations)
+            implements ElementDraft {
+
+        /** A single (non-repeatable) mount. */
+        public Mount(String name, String alias, List<Annotation> annotations) {
+            this(name, alias, 1, annotations);
+        }
+    }
 }

@@ -170,7 +170,7 @@ public final class DocumentModelDraft {
         node.put("name", mount.name());
         writeAnnotations(node, mount.annotations());
         ObjectNode body = node.putObject("Group");
-        body.put("repeatability", 1);
+        body.put("repeatability", mount.repeatability());
         body.put("modelAlias", mount.alias());
         return node;
     }
@@ -629,7 +629,12 @@ public final class DocumentModelDraft {
 
         /** Mount an included model here: a group named {@code name} that mounts the include {@code alias}. */
         public GroupBuilder mount(String name, String alias) {
-            elements.add(new ElementDraft.Mount(name, alias, List.of()));
+            return mount(name, alias, 1);
+        }
+
+        /** Mount an included model as a <b>repeatable</b> sub-form ({@code repeatability} rows; §2). */
+        public GroupBuilder mount(String name, String alias, int repeatability) {
+            elements.add(new ElementDraft.Mount(name, alias, repeatability, List.of()));
             return this;
         }
 
