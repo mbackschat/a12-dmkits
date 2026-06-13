@@ -67,4 +67,40 @@ class ModelHeaderTest {
         assertTrue(out.toString().contains("Building Permit"), () -> "the edited label survives: " + out);
         assertTrue(out.toString().contains("permits-team"), () -> "the edited annotation survives: " + out);
     }
+
+    /**
+     * The document-model <b>super/subtype</b> hierarchy (model inheritance) is an A12 modeling <em>convention</em>
+     * over the generic header-annotation mechanism — <b>not</b> a kernel structural feature and not a
+     * {@code modelReferences} purpose. Verified from the real 2025.06-ext5 e-commerce models: {@code Product_DM}
+     * carries {@code abstract=true} + {@code subTypes="…"}, {@code ProductMovie_DM} carries {@code superTypes="…"}
+     * (comma-separated model ids); shared <em>structure</em> is factored via {@code include}. So our model-level
+     * annotation surface authors it directly — no dedicated feature needed. KERNEL-INTEGRATION-NOTES.
+     */
+    @Test
+    void theModelSuperSubtypeConventionRoundTrips() throws Exception {
+        String subtype = DocumentModelDraft.named("ProductMovie").locale("en_US")
+                .annotation("superTypes", "ProductSingle,ProductBase")   // comma-separated supertype model ids
+                .rootGroup("Movie", m -> m.field("Title", FieldKind.STRING))
+                .build().toJson();
+        assertTrue(kernelRoundTrip(subtype).contains("superTypes"), "the subtype's superTypes annotation survives");
+
+        String base = DocumentModelDraft.named("Product").locale("en_US")
+                .annotation("abstract", "true")
+                .annotation("subTypes", "ProductMovie,ProductBook")
+                .rootGroup("Product", p -> p.field("Sku", FieldKind.STRING))
+                .build().toJson();
+        String rt = kernelRoundTrip(base);
+        assertTrue(rt.contains("abstract") && rt.contains("subTypes"),
+                () -> "the base's abstract + subTypes annotations survive: " + rt);
+    }
+
+    /** Deserialize → serialize through the kernel's own serializer (what survives is what the kernel actually read). */
+    private static String kernelRoundTrip(String json) throws Exception {
+        ModelLoader.loadSelfContained(new StringReader(json));   // kernel-valid
+        IDocumentModelSerializer serializer = FACTORY.createDocumentModelSerializer();
+        IDocumentModel model = serializer.deserialize(new StringReader(json));
+        StringWriter out = new StringWriter();
+        serializer.serialize(model, out, n -> { });
+        return out.toString();
+    }
 }
