@@ -82,7 +82,8 @@ final class SchemaCommand extends BaseCommand {
             "operators", "emits the operator catalog itself — run it",
             "diagnostics", "emits the diagnostic registry itself — run it",
             "export", "renders an artifact (model card / dot / …), not the result envelope",
-            "where-used", "returns a referrers payload, not the result envelope (a dedicated output schema is a follow-up)");
+            "where-used", "returns a referrers payload, not the result envelope (a dedicated output schema is a follow-up)",
+            "doc new", "emits a brand-new model document (an artifact), not the result envelope");
 
     /** Leaf op-names whose verb returns a read payload in the envelope's {@code data}. */
     private static final Set<String> READ_OPS =

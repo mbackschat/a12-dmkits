@@ -1,6 +1,7 @@
 {
   "_about": "Per-verb worked demonstrations — one read-only invocation per verb (a read, or a mutation under --dry-run), surfaced in `manifest` (each verb's `example`) so a cold agent sees the verb IN ACTION, and CI-executed by VerbDemonstrationTest so it cannot rot. `<model.json>`/`<doc.json>` are placeholders the agent fills; the test substitutes a fixture. expect ∈ read|preview|raw. Coverage is enforced by CliConformanceMatrixTest (the has-demonstration column).",
 
+  "doc new":           { "intent": "create a new empty kernel-valid model from scratch (no -m needed — it makes one)", "command": ["doc", "new", "--id", "orders", "--locale", "en_US", "--root", "Order"], "expect": "raw" },
   "doc validate":      { "intent": "consistency-check the whole model against the kernel", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "doc", "validate"], "expect": "read" },
   "doc describe":      { "intent": "read the model structure (fields + kinds, groups) into data", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "doc", "describe"], "expect": "read" },
   "doc read":          { "intent": "read the model card (header + counts) into data", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "doc", "read"], "expect": "read" },

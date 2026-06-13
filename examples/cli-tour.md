@@ -14,6 +14,7 @@ bin/dmtool manifest | jq -r ".verbs[].verb"
 ```
 
 ```output
+doc new
 doc validate
 doc describe
 doc read

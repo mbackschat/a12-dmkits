@@ -110,9 +110,10 @@ final class ManifestCommand extends BaseCommand {
             v.put("op", name);
         }
         // the schema pointer: every op that returns the result envelope is contract-discoverable via
-        // `schema <name>` — the nested target ops (`<target> <op>`) and the single-token envelope verbs
-        // (`meta`/`apply`/`batch`). The CONTRACT_EXEMPT verbs (self-describing / non-envelope) carry none.
-        if (sp >= 0 || !SchemaCommand.CONTRACT_EXEMPT.containsKey(name)) {
+        // `schema <name>` (nested target ops + single-token envelope verbs like `meta`/`apply`/`batch`). The
+        // CONTRACT_EXEMPT verbs carry none — the self-describing verbs, and the artifact producers
+        // (`export`, `doc new`) that emit a model/artifact rather than the envelope (even though nested).
+        if (!SchemaCommand.CONTRACT_EXEMPT.containsKey(name)) {
             v.put("schema", name);
         }
         v.put("description", String.join(" ", cmd.usageMessage().description()));

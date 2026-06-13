@@ -15,6 +15,32 @@ cp cli/src/test/resources/models/order-ruled.dm.json /tmp/struct.dm.json && echo
 copied order-ruled → /tmp/struct.dm.json
 ```
 
+## doc new — or start one from scratch (no `-m`)
+
+We copied an existing fixture above, but a model doesn't have to come from somewhere — `doc new` is the one model-*originating* verb. It takes `--id`, `--locale`, and a root group name (no `-m` — it makes one), and prints the model JSON to stdout (`-o` writes a file).
+
+```bash
+bin/dmtool doc new --id catalog --locale en_US --root Catalog | jq -c '{id: .header.id, root: .content.modelRoot.rootGroups[0].name}'
+```
+
+```output
+{"id":"catalog","root":"Catalog"}
+```
+
+What it emits is **kernel-checked**, so the fresh model binds immediately — write it with `-o`, then edit it like any other:
+
+```bash
+bin/dmtool doc new --id catalog --locale en_US --root Catalog -o /tmp/created.dm.json && echo "created /tmp/created.dm.json"
+bin/dmtool -m /tmp/created.dm.json doc validate | jq -c '{ok, valid, fields: (.data.fields|length)}'
+```
+
+```output
+created /tmp/created.dm.json
+{"ok":true,"valid":true,"fields":0}
+```
+
+→ A valid, empty model (zero fields) — the starting point the verbs below populate.
+
 ## field add — a typed field into a group
 
 `field add` drops a `--kind`-typed field under a `--group`. It emits the result envelope: `outcome: applied`, the new path under `.changed.added`, and `written: true` with the `output` path — the write landed **in place** (a copy of the model file). `--dry-run` would preview the same envelope with `written: false`.

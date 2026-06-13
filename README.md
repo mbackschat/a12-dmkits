@@ -244,6 +244,15 @@ dmtool schema rule add                # the exact JSON shape a verb consumes / r
 dmtool --version                      # this build + the kernel it targets (see "compatibility" below)
 ```
 
+### Start a model from scratch
+
+```sh
+dmtool doc new --id orders --locale en_US --root Order > orders.dm.json   # a new, empty, kernel-valid model
+dmtool -m orders.dm.json field add --group /Order --name Reference --kind STRING   # …then populate it
+```
+
+`doc new` is the one model-*originating* verb (no `-m` — it makes one); every other verb edits an existing `-m` model. What it emits is kernel-checked, so the next `-m` edit binds.
+
 ### Read & understand a model
 
 ```sh

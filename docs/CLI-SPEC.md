@@ -114,7 +114,7 @@ Worked shapes (the real `Diagnostic` fields, inside the envelope):
 
 ## 5. Verb surface — target × op
 
-Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ rulekit) is a **grouping in `--help`/manifest**, not a command level — the real two axes (kind × op) *are* the two command levels.
+Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ rulekit) is a **grouping in `--help`/manifest**, not a command level — the real two axes (kind × op) *are* the two command levels. The one exception is **`doc new`**, the sole model-*originating* verb: it takes no `-m` (it creates a model from scratch — `--id`/`--locale`/`--root`, kernel-checked, emitted to stdout or `-o`), so an agent has a first step before there is any model to edit. Like `export` it produces an artifact, not the result envelope (`CONTRACT_EXEMPT`).
 
 | target | ops | family |
 |---|---|---|

@@ -53,7 +53,8 @@ class VerbDemonstrationTest {
 
     /** Write the example's model (+ siblings, + inline doc) to {@code dir} and resolve the {@code <...>} placeholders. */
     private static List<String> materialize(String verb, JsonNode ex, Path dir) throws Exception {
-        Path model = writeResource("models/" + ex.path("model").asText(), dir);
+        // model-originating verbs (e.g. `doc new`) declare no `model` — they make one
+        Path model = ex.hasNonNull("model") ? writeResource("models/" + ex.get("model").asText(), dir) : null;
         for (JsonNode sib : ex.path("siblings")) {
             writeResource("models/" + sib.asText(), dir); // co-located so an include resolves the sibling by id
         }
@@ -66,7 +67,10 @@ class VerbDemonstrationTest {
         for (JsonNode tok : ex.path("command")) {
             String t = tok.asText();
             out.add(switch (t) {
-                case "<model.json>" -> model.toString();
+                case "<model.json>" -> {
+                    assertTrue(model != null, () -> verb + " uses <model.json> but declares no `model`");
+                    yield model.toString();
+                }
                 case "<doc.json>" -> {
                     assertTrue(doc != null, () -> verb + " uses <doc.json> but declares no `doc`");
                     yield doc.toString();
