@@ -16,8 +16,8 @@ The single durable home for building the `dmtool` CLI as a **GraalVM native imag
 | Groovy | ✅ compiles on 25 (no analysis failure), but **excluded from the native classpath** (startup-init issue, §3.1) → JVM keeps it |
 | **Showboat gate** | **5 / 6 demos PASS** — only `cli-runtime.md` fails (the runtime-eval verbs, §4) |
 | Reflection coverage | ✅ **comprehensive** — after the full capture ([`../scripts/capture-native-config.sh`](../scripts/capture-native-config.sh): all fixtures + 109 operators + the demos), validating **all** fixtures against the native binary is clean (0 `MissingReflectionRegistrationError`/`MissingResourceException`), incl. `order.dm.json` which failed before (§3.3) |
-| Runtime-eval verbs (`model eval`/`rule test`/`model compute`) | ❌ need Groovy → cannot go native (§4) |
-| **Shippable?** | **Close.** The authoring/check/structure/read surface works and is reflection-robust. Remaining: a decision on the runtime-eval verbs (§4 — stub/omit in native) + the usual release-engineering (signing/distribution, per RELEASE-SPEC). |
+| Runtime-eval verbs (`model eval`/`rule test`/`model compute`) | ✅ **hidden** from the native command tree and every derived surface (§4) — can't go native (Groovy); JVM keeps them. Guarded by `NativeImageVerbHidingTest` |
+| **Shippable?** | **Functionally yes** for the authoring/check/structure/read surface — reflection-robust, native gate GREEN, JVM-only verbs cleanly hidden. Remaining is **release-engineering only**: signing/distribution (per RELEASE-SPEC) + the B2-vs-B1 call ([`RELEASE-PLAN.md`](RELEASE-PLAN.md) §8). |
 
 **GraalVM 25 vs 21 — 25 is decisively better and is the toolchain going forward:**
 
@@ -56,7 +56,9 @@ Neither picocli-codegen nor GraalVM 25's auto-handling covers the Jackson-deseri
 
 ## 4. The hard ceiling — runtime-eval verbs can't go native
 
-`model eval` / `rule test` / `model compute` execute the kernel's **runtime validation** against a document instance, which **generates and loads Groovy classes at runtime** (`GroovyClassLoader.parseClass`; the agent captured `Com_mgmtp_a12_kernel_generated_*` classes). This is [`CLI-SPEC.md`](CLI-SPEC.md) §11's hard ceiling, breached by verbs that grew past it. Groovy is genuinely required by these 3 verbs (JVM and native), so: the §3.1 exclusion must stay native-only (JVM keeps them), and **the native binary cannot run them** (no Groovy → no runtime codegen). A release must omit them from the native command tree or make them error cleanly ("JVM-only verb"). The authoring/check/structure/read surface — `rule check`/`model validate` are *structural* (StringTemplate, native-OK) — is unaffected. (`cli-runtime.md` is the one demo that fails the gate.)
+`model eval` / `rule test` / `model compute` execute the kernel's **runtime validation** against a document instance, which **generates and loads Groovy classes at runtime** (`GroovyClassLoader.parseClass`; the agent captured `Com_mgmtp_a12_kernel_generated_*` classes). This is [`CLI-SPEC.md`](CLI-SPEC.md) §11's hard ceiling, breached by verbs that grew past it. Groovy is genuinely required by these 3 verbs (JVM and native), so: the §3.1 exclusion stays native-only (JVM keeps them), and **the native binary cannot run them** (no Groovy → no runtime codegen). The authoring/check/structure/read surface — `rule check`/`model validate` are *structural* (StringTemplate, native-OK) — is unaffected.
+
+**Implemented — the registration gate (`Cli.JVM_ONLY_VERBS` + `hideJvmOnlyVerbs`).** In the native build these 3 verbs are **removed from the picocli command tree** (`Cli` detects native via `org.graalvm.nativeimage.imagecode`). Because `manifest`/`schema`/`--help` all **derive from the live tree**, that single removal makes them **vanish from every self-describing surface** — a cold native agent can't even *discover* them (no help entry, not in `manifest`, `schema model eval` → unknown, uninvocable). The JVM build keeps them. **Guarded by `NativeImageVerbHidingTest`** (CI, JUnit): it runs the tree in forced-native profile and asserts the 3 are absent from manifest/`--help`/`schema` and uninvocable, while present in the JVM profile — so native isn't built in CI but the contract still can't regress.
 
 ## 5. Generating the reflection metadata (tracing agent)
 
@@ -86,10 +88,12 @@ You don't have to *guess* when it's stale: the **verification gate is the trip-w
 
 ## 7. The strategic question — B2 (native) vs B1 (jpackage)
 
-GraalVM 25 changed the calculus sharply. Native is now **fast (~50 s), small (~19–31 MB), reflection-robust (§3.3 closed — all fixtures validate clean), and passes the native gate** (§8) — attractive for an agent-first, latency-sensitive CLI (~37 ms start). One thing remains before a native release:
+GraalVM 25 changed the calculus sharply. Native is now **fast (~50 s), small (~19–31 MB), reflection-robust (§3.3 closed — all fixtures validate clean), and passes the native gate** (§8) — attractive for an agent-first, latency-sensitive CLI (~37 ms start). The two earlier blockers are both **closed**:
 
 1. ~~Reflection coverage~~ — **done** (§3.3, the comprehensive capture).
-2. **The 3 runtime-eval verbs** (§4) — architecturally JVM-only; native must drop them from the command tree (and from every self-describing surface — they all derive from the live picocli tree, so not registering them cascades).
+2. ~~The 3 runtime-eval verbs~~ — **done** (§4, the registration gate hides them from every surface; guarded by `NativeImageVerbHidingTest`).
+
+What's left is **release-engineering only** — signing/distribution (RELEASE-SPEC) and the B2-vs-B1 call.
 
 **jpackage (B1)** still "just works" for *all* verbs with no reflection grind, at the cost of size (~65–90 MB/OS) and startup (~600 ms). The live decision — finish native (accepting #1's work + #2's verb loss) or ship B1 first — is in [`RELEASE-PLAN.md`](RELEASE-PLAN.md) §8. Given GraalVM 25's results, native is now the stronger candidate for the primary use case; B1 remains the fallback for full-verb coverage.
 
@@ -98,21 +102,22 @@ GraalVM 25 changed the calculus sharply. Native is now **fast (~50 s), small (~1
 The demos are authored for the **full JVM CLI**, so against the native *subset* some are legitimately not-applicable. Rather than eyeball a known red, the gate is split by target:
 
 - **JVM gate** — CI, the `installDist` launcher, **all 6 demos green** (`.github/workflows/ci.yml`). Unchanged.
-- **Native gate** — **[`../scripts/native-gate.sh`](../scripts/native-gate.sh)** — verifies the native binary byte-for-byte across the **native-applicable** demos, and **skips JVM-only demos with their reason** (never a spurious FAIL). Exits non-zero only on a real regression in a native-applicable demo.
+- **Native gate** — **[`../scripts/native-gate.sh`](../scripts/native-gate.sh)** — verifies the native binary byte-for-byte across the **native-applicable** demos, and **skips the non-applicable ones with their reason** (never a spurious FAIL). Exits non-zero only on a real regression in a native-applicable demo.
 
 ```
 $ ./scripts/native-gate.sh
 PASS  cli-apply.md
 PASS  cli-edit-loop.md
-SKIP  cli-runtime.md  — JVM-only: runtime-eval verbs need Groovy — not in the native binary (§4)
+SKIP  cli-runtime.md   — JVM-only verbs — model eval/rule test/model compute need Groovy (§4)
 PASS  cli-structure-edit.md
-PASS  cli-tour.md
+SKIP  cli-tour.md      — manifest block lists the full verb list — a subset on native; asserted by NativeImageVerbHidingTest
 PASS  cli-version.md
 native gate: GREEN
 ```
 
-The JVM-only set lives in the script (with the *why* next to each entry, so a skip is never silent): today just `cli-runtime.md` (all 9 of its invocations are runtime-eval — nothing native-applicable to salvage).
+The skip set (`NATIVE_SKIP`) lives in the script with the *why* next to each entry. Two distinct causes:
 
-**Convention — isolate JVM-only verbs in their own demo file.** showboat verify is per-file (one exit code), so a *single* runtime-eval block turns its **entire** demo JVM-only and you lose native coverage of every other block in it. So never sprinkle a `model eval`/`rule test`/`model compute` call into a native-applicable demo (e.g. `cli-tour.md`) — keep them confined to `cli-runtime.md`. A *subset* divergence is different from a JVM-only block: **when the runtime-eval verbs are hidden from the native command tree (the registration gate), `cli-tour.md`'s captured `manifest` block becomes a subset and will diverge — fix that with a native-aware capture, not by marking cli-tour JVM-only.**
+- **JVM-only verbs** — `cli-runtime.md` is *entirely* `model eval`/`rule test`/`model compute` (all 9 invocations), so nothing to salvage. **Convention — isolate JVM-only verbs in their own demo file:** showboat verify is per-file, so a *single* runtime-eval block would turn its whole demo unverifiable on native and you'd lose native coverage of its other blocks. Never sprinkle one into a native-applicable demo.
+- **Subset divergence** — `cli-tour.md`'s `manifest` block enumerates the full verb list, which is legitimately shorter on native (the 3 hidden verbs). A per-block "native-aware capture" isn't possible (showboat verifies whole files), so the demo is skipped on native and **the native-aware manifest assertion lives in `NativeImageVerbHidingTest`** (it checks native's manifest omits exactly those 3 and keeps the rest). cli-tour's other (read-verb) blocks aren't lost coverage: native JSON-output fidelity is already proven byte-for-byte by the 4 passing demos.
 
 This split is what keeps "native ≡ JVM" honest *per verb* (identical behavior for every verb native exposes) while letting native legitimately expose fewer.

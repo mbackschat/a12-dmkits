@@ -32,6 +32,14 @@ final class CliTestSupport {
         return new Result(code, out.toString(), err.toString());
     }
 
+    /** Run with the <b>native build profile</b> forced (the JVM-only verbs hidden) — for the native-hiding guard. */
+    static Result runNative(String... args) {
+        StringBuilder out = new StringBuilder();
+        StringBuilder err = new StringBuilder();
+        int code = Cli.run(args, out, err, true);
+        return new Result(code, out.toString(), err.toString());
+    }
+
     /** The subscription fixture + one valid rule, as DM-JSON. */
     static String modelWithRuleJson() {
         BoundModel base = BoundModel.ofJson(subscriptionJson());
