@@ -109,14 +109,16 @@ A static Maven repo (one-line `maven { url }` consume) is a later upgrade; it do
 
 ## 10. Channels — current & planned
 
-| Channel | Status | Guards tripped? | Maintenance |
-|---|---|---|---|
-| raw binaries on the GitHub Release | **v1** | browser-download only (escape hatch) | none |
-| `publishToMavenLocal` + jars on Release | **v1** | n/a | none |
-| Claude Code **plugin** (skill + hook) | planned | none (curl fetch) | a plugin repo + per-release hook target |
-| **Homebrew** formula (mac+linux) / **Scoop** manifest (windows) | planned | none | a tap + a bucket repo, per-release pointer bump |
-| `curl \| sh` installer | planned | none | one script (shares the tarball+checksum artifacts) |
-| static Maven repo / GitHub Pages JavaDoc | planned | n/a | a published repo dir / Pages |
+**v1 repo is private (early testers).** Release assets need **authenticated** download (`gh release download` / web UI) — invited collaborators have it; anonymous channels wait for the later public-mirror-or-go-public decision (§ below / RELEASE-PLAN §8 #6).
+
+| Channel | Status | Notes |
+|---|---|---|
+| raw binaries on the GitHub Release | **v1** | authenticated download (private repo); browser-download escape hatch on a public future |
+| `publishToMavenLocal` + jars on Release | **v1** | the developer-library surface (§3b) — authenticated like any private-repo asset |
+| Claude Code **plugin** (skill + hook) | planned | hook authenticates via `gh` while private (D6); switches to `curl` when public/mirrored |
+| **Homebrew** formula / **Scoop** manifest | planned | **needs public assets** — gated on the public-mirror-or-go-public decision |
+| `curl \| sh` installer | planned | same — needs anonymous (public) assets |
+| static Maven repo / GitHub Pages JavaDoc | planned | a published repo dir / Pages (also needs public hosting) |
 
 ## 11. Rationale (the durable *why*)
 
