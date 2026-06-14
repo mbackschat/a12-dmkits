@@ -62,6 +62,14 @@ batch:   dmtool -m order.dm.json apply --ops edits.json      # edits.json = [ {t
 
 `-m` is an **inherited, position-tolerant** option (accepted before or after the verb); if it's missing the diagnostic is corrective (`pass -m <model>`). We deliberately keep the model **explicit per call** rather than an ambient "use this model" state — a fully-specified, stateless invocation is easier for an agent to generate and to reproduce/debug.
 
+**The workspace root — `-w/--workspace`, set once for every verb.** A multi-file model `include`s / type-def-imports other models *by id*, so every reference-resolving verb needs to know where those models live. Rather than repeat `--include-dir` on each call, set the **workspace root once** — an inherited `-w/--workspace <dir>` option (sibling to `-m`), with the **`DMTOOL_WORKSPACE` env var** as the set-once-per-shell-session fallback (ideal for an agent harness). The resolution precedence, one rule for the whole CLI (`IncludeDirOption`):
+
+```
+--include-dir (per verb)  >  -w/--workspace  >  $DMTOOL_WORKSPACE  >  the model's own directory
+```
+
+So a workspace resolves with no per-verb flag once the root is set; a specific `--include-dir` still overrides for one call; and a self-contained model needs none of it. It stays **observable, not ambient**: the option is in the manifest/`--help`, and an unresolved reference fails loudly naming the directories it searched (never a silent wrong-model). (Locked: `cli.IncludeDirOptionTest` for the precedence, `cli.WorkspaceRootTest` end to end.)
+
 ### 3b. The result envelope
 
 Every verb and every batch op emits the same shape. It **embeds the existing diagnostics array verbatim** (§4); the new part is only the wrapper around it.

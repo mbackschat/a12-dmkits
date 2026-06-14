@@ -278,6 +278,15 @@ dmtool workspace graph ./models                      # the sub/supertype inherit
 dmtool workspace graph ./models --format tree        # …as an indented hierarchy (or --format dot for Graphviz)
 ```
 
+For multi-file models (one model `include`s or imports another *by id*), set the **workspace root once** so every verb resolves references without a per-call `--include-dir`:
+
+```sh
+dmtool -w ./models -m app.dm.json model validate     # -w/--workspace: the dir to resolve includes/imports from
+export DMTOOL_WORKSPACE=./models                      # …or set it once per shell session (the env fallback)
+```
+
+Precedence: a per-verb `--include-dir` > `-w/--workspace` > `$DMTOOL_WORKSPACE` > the model's own folder (see [CLI-SPEC §3a](docs/CLI-SPEC.md)).
+
 ### Author & check — confirmed by the kernel
 
 ```sh

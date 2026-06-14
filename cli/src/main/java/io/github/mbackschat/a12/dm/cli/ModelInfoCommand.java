@@ -95,11 +95,10 @@ final class ModelInfoCommand extends BaseCommand {
         return env.exitCode();
     }
 
-    /** The id→relative-path map for resolving this model's references — its include-dir tree(s), or its own folder. */
+    /** The id→relative-path map for resolving this model's references, over the shared workspace-root precedence. */
     private Map<String, String> resolutionIndex(String modelPath) {
-        List<Path> roots = includes.includeDirs.isEmpty() ? List.of(modelDir(modelPath)) : includes.includeDirs;
         Map<String, String> idToPath = new LinkedHashMap<>();
-        for (Path root : roots) {
+        for (Path root : includes.roots(modelPath)) {
             if (!Files.isDirectory(root)) {
                 continue;
             }
@@ -108,11 +107,6 @@ final class ModelInfoCommand extends BaseCommand {
             }
         }
         return idToPath;
-    }
-
-    private static Path modelDir(String modelPath) {
-        Path parent = Path.of(modelPath).toAbsolutePath().getParent();
-        return parent != null ? parent : Path.of(".");
     }
 
     private static void putStrings(ArrayNode array, List<String> values) {

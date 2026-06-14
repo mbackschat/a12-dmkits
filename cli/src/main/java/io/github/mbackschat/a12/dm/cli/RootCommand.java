@@ -64,6 +64,12 @@ final class RootCommand implements Callable<Integer> {
             description = "the DM-JSON model file to operate on (set once; accepted before or after the verb)")
     String model;
 
+    @Option(names = {"-w", "--workspace"}, scope = ScopeType.INHERIT, paramLabel = "<dir>",
+            description = "the workspace root: the directory tree to resolve included / type-def-imported "
+                    + "models from, set once for every verb (so multi-file models resolve without a per-verb "
+                    + "--include-dir). Env DMTOOL_WORKSPACE is the fallback; a verb's own --include-dir overrides.")
+    String workspace;
+
     @Override
     public Integer call() {
         // no verb given → usage to stderr, exit 2 (preserves the prior bare-invocation behavior)
