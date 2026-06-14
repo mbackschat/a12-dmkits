@@ -277,7 +277,16 @@ dmtool workspace list ./models --format table        # the same facts as an alig
 dmtool workspace list ./models --validate            # also flag which models are kernel-valid
 dmtool workspace graph ./models                      # the sub/supertype inheritance hierarchy (nodes + edges)
 dmtool workspace graph ./models --format tree        # …as an indented hierarchy (or --format dot for Graphviz)
+dmtool workspace validate ./models                   # the project GATE: kernel-validate every model, exit 1 if any invalid
 ```
+
+`workspace validate` is the **gate** form — it runs the real kernel over every model in the directory (references resolved across the tree), reports per-model `{valid, diagnostics[]}` (the same rich `MVK_*` diagnostics as `model validate`), and **exits non-zero if any model is invalid**. That makes it a one-line pre-commit / CI check over a whole project:
+
+```sh
+dmtool workspace validate ./models || exit 1         # fail the commit/build on any invalid model
+```
+
+(`workspace list --validate` differs: it only flags a per-model boolean; `validate` surfaces *why* and fails the build.)
 
 For multi-file models (one model `include`s or imports another *by id*), set the **workspace root once** so every verb resolves references with no per-call flag:
 

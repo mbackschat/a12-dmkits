@@ -90,7 +90,7 @@ final class SchemaCommand extends BaseCommand {
 
     /** Leaf op-names whose verb returns a read payload in the envelope's {@code data}. */
     private static final Set<String> READ_OPS =
-            Set.of("read", "explain", "deps", "format", "test", "describe", "eval", "compute", "meta");
+            Set.of("read", "explain", "deps", "format", "test", "describe", "validate", "eval", "compute", "meta");
 
     @Parameters(arity = "0..*", paramLabel = "<schema>",
             description = "result | diagnostic (structures), or a verb's directional contract "

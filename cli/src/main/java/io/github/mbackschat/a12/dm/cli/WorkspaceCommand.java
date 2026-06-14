@@ -14,8 +14,8 @@ import picocli.CommandLine.Spec;
  */
 @Command(name = "workspace", mixinStandardHelpOptions = true,
         description = "Cross-model discovery over a directory of models: list (index + resolved references), "
-                + "graph (the sub/supertype inheritance hierarchy).",
-        subcommands = { WorkspaceListCommand.class, WorkspaceGraphCommand.class })
+                + "graph (the sub/supertype inheritance hierarchy), validate (the kernel gate over every model).",
+        subcommands = { WorkspaceListCommand.class, WorkspaceGraphCommand.class, WorkspaceValidateCommand.class })
 final class WorkspaceCommand implements Callable<Integer> {
 
     @Spec

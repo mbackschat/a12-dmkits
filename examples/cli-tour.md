@@ -65,6 +65,7 @@ config read
 config modify
 workspace list
 workspace graph
+workspace validate
 export
 where-used
 meta
