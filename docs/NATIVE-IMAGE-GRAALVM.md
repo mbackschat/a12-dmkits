@@ -15,9 +15,9 @@ The single durable home for building the `dmtool` CLI as a **GraalVM native imag
 | Size | ✅ **19 MB** bare, **31 MB** with reflection metadata — both via `-Os` (GraalVM 25 only) |
 | Groovy | ✅ compiles on 25 (no analysis failure), but **excluded from the native classpath** (startup-init issue, §3.1) → JVM keeps it |
 | **Showboat gate** | **5 / 6 demos PASS** — only `cli-runtime.md` fails (the runtime-eval verbs, §4) |
-| Reflection coverage | ⚠️ **capture-bound** — the demo surface works, but inputs outside it (e.g. `model validate` on a model whose operators weren't exercised) still hit `MissingReflectionRegistrationError` (§3.3) |
+| Reflection coverage | ✅ **comprehensive** — after the full capture ([`../scripts/capture-native-config.sh`](../scripts/capture-native-config.sh): all fixtures + 109 operators + the demos), validating **all** fixtures against the native binary is clean (0 `MissingReflectionRegistrationError`/`MissingResourceException`), incl. `order.dm.json` which failed before (§3.3) |
 | Runtime-eval verbs (`model eval`/`rule test`/`model compute`) | ❌ need Groovy → cannot go native (§4) |
-| **Shippable?** | **Not yet** — needs comprehensive reflection coverage (§3.3) + a decision on the runtime-eval verbs (§4). But the authoring/check/structure/read surface (the #1 agent use case) **works**. |
+| **Shippable?** | **Close.** The authoring/check/structure/read surface works and is reflection-robust. Remaining: a decision on the runtime-eval verbs (§4 — stub/omit in native) + the usual release-engineering (signing/distribution, per RELEASE-SPEC). |
 
 **GraalVM 25 vs 21 — 25 is decisively better and is the toolchain going forward:**
 
@@ -51,8 +51,8 @@ Groovy (`org.codehaus.groovy:groovy:3.0.25`, a kernel transitive) compiles on Gr
 ### 3.2 Bundle resources
 Closed-world drops anything read via `getResourceAsStream`, so `-H:IncludeResources=` for `catalog/.*\.json` (operator catalog), `internal/templates/.*` (StringTemplate, used by `checkConsistency`), `schema/.*\.json`, `verb-examples\.json`, `.*version\.properties`. Verified: the binary reads `catalog/operators.json` once these are set (a missing one fails as `IllegalStateException: … resource not found`).
 
-### 3.3 Register reflection — the remaining robustness gap
-Neither picocli-codegen nor GraalVM 25's auto-handling covers the Jackson-deserialized POJOs (`OperatorEntry` &c.) or the kernel's reflective hotspots — without config the binary throws `Cannot construct instance of OperatorEntry … configure reflection`. A **tracing-agent** capture over the showboat demos (§5) → `reachability-metadata.json` gets the **demo surface** working (5/6). **But coverage is capture-bound:** a direct `model validate` on a model whose operators/structures the demos didn't exercise still throws `MissingReflectionRegistrationError`. Closing this for arbitrary real-world input needs a **far more exhaustive capture** (many models × operators × verbs) and/or hand-authored metadata for the kernel's reflective hotspots. **This is the main work remaining before a robust release.**
+### 3.3 Register reflection — closed by the comprehensive capture
+Neither picocli-codegen nor GraalVM 25's auto-handling covers the Jackson-deserialized POJOs (`OperatorEntry` &c.) or the kernel's reflective hotspots — without config the binary throws `Cannot construct instance of OperatorEntry … configure reflection`. A **tracing-agent** capture (§5) produces `reachability-metadata.json` (~377 KB) that registers all of it. A *demo-only* capture is **not enough** (coverage is capture-bound — a `model validate` on a model whose operators the demos didn't exercise still threw `MissingReflectionRegistrationError`). The **comprehensive capture** ([`../scripts/capture-native-config.sh`](../scripts/capture-native-config.sh)) — all fixtures × all read/validate verbs + every operator + the demos — **closes the gap**: validating all fixtures against the native binary is now clean (0 reflection/resource errors), incl. `order.dm.json`. Two coverage lessons baked into the script: validate *valid* models for reflection, **and** run the demos for the **error paths** (a version-incompatible model loads the kernel's i18n `ErrorMessages` `ResourceBundle` — missed by valid-model validation, it surfaces as `MissingResourceException`).
 
 ## 4. The hard ceiling — runtime-eval verbs can't go native
 
@@ -60,16 +60,25 @@ Neither picocli-codegen nor GraalVM 25's auto-handling covers the Jackson-deseri
 
 ## 5. Generating the reflection metadata (tracing agent)
 
-Run the agent on a **Groovy-present JVM** (the native-only exclusion means `installDist` keeps Groovy), driven by the showboat demos:
-```sh
-export GRAALVM_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home; export JAVA_HOME="$GRAALVM_HOME"
-./gradlew :cli:installDist
-CFG="/tmp/rk-ncfg"; mkdir -p "$CFG"
-JAVA_TOOL_OPTIONS="-agentlib:native-image-agent=config-merge-dir=$CFG" \
-  sh -c 'for d in examples/cli-*.md; do uvx showboat@0.6.1 verify "$d" >/dev/null 2>&1; done'
-cp "$CFG"/*.json cli/src/main/resources/META-INF/native-image/rulekit-agent/   # GraalVM 25 → reachability-metadata.json
+One committed script does it: **[`../scripts/capture-native-config.sh`](../scripts/capture-native-config.sh)** (`GRAALVM_HOME=…/graalvm-25 ./scripts/capture-native-config.sh`). It drives the agent on a Groovy-present `installDist` JVM across all fixtures × read/validate verbs + every operator + the demos, merging into one `reachability-metadata.json`, and copies it into place. Then `./gradlew :cli:nativeCompile` bundles it. (The agent only registers what it reaches — hence the script's breadth; the two non-obvious coverage lessons are in §3.3.)
+
+### 5.1 Where it's stored & how often to regenerate — it is NOT a per-build cost
+
+The metadata is a **committed source file**:
+
 ```
-The demos only reach what they exercise — hence §3.3's capture-bound coverage. A robust release wants a much wider input sweep here.
+cli/src/main/resources/META-INF/native-image/rulekit-agent/reachability-metadata.json   (~377 KB, in git)
+```
+
+`:cli:nativeCompile` **reads** it; it does **not** regenerate it. So the expensive ~5-min capture is a **rare, manual, release-engineering step** — decoupled from every normal build (and from the JVM dev loop entirely). Regenerate it **only** when the reflective surface actually changes:
+
+| Trigger | Why |
+|---|---|
+| **Kernel bump** (`a12-kernel`) | the kernel's reflective hotspots / i18n bundles can change → see [`KERNEL-UPGRADE.md`](KERNEL-UPGRADE.md) |
+| **CLI / catalog surface change** | a new verb, a new Jackson POJO, new operators in `operators.json` |
+| **Jackson / reflection-using dependency bump** | databind internals change |
+
+You don't have to *guess* when it's stale: the **verification gate is the trip-wire** — if the metadata lags, a fresh reflective path throws `MissingReflectionRegistrationError`/`MissingResourceException`, and the native gate (the showboat demos + the all-fixtures `model validate` robustness check) fails. Re-run the script when (and only when) that happens. Routine code changes that don't add reflective types need no regeneration.
 
 ## 6. Sizing & shrink levers
 

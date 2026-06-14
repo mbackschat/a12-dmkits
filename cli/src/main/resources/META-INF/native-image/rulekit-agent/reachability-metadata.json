@@ -1894,6 +1894,27 @@
       ]
     },
     {
+      "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.formatdefinition.CodeGenDateRangeTypeImpl",
+      "methods": [
+        {
+          "name": "getFormat1",
+          "parameterTypes": []
+        },
+        {
+          "name": "getJahresinterpretationCode",
+          "parameterTypes": []
+        },
+        {
+          "name": "getTrenner",
+          "parameterTypes": []
+        },
+        {
+          "name": "isZusatzPruefung",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.formatdefinition.CodeGenDateTypeImpl",
       "methods": [
         {
@@ -4637,6 +4658,12 @@
           "parameterTypes": []
         },
         {
+          "name": "setBaseYear",
+          "parameterTypes": [
+            "java.lang.Integer"
+          ]
+        },
+        {
           "name": "setComment",
           "parameterTypes": [
             "java.lang.String"
@@ -4859,6 +4886,42 @@
       ]
     },
     {
+      "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.DateRangeType",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setFormat",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        },
+        {
+          "name": "setRangeSeparator",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.DateTimeType",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setFormat",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
       "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.DateType",
       "methods": [
         {
@@ -4876,6 +4939,12 @@
         {
           "name": "isYoungerThan1900Check",
           "parameterTypes": []
+        },
+        {
+          "name": "setDatePrecision",
+          "parameterTypes": [
+            "com.mgmtp.a12.kernel.md.model.api.fieldtypes.IDateType$DatePrecision"
+          ]
         },
         {
           "name": "setFormat",
@@ -5053,6 +5122,12 @@
           "parameterTypes": [
             "java.math.BigDecimal"
           ]
+        },
+        {
+          "name": "setMinValue",
+          "parameterTypes": [
+            "java.math.BigDecimal"
+          ]
         }
       ]
     },
@@ -5102,9 +5177,30 @@
           ]
         },
         {
+          "name": "setMaxLength",
+          "parameterTypes": [
+            "java.lang.Integer"
+          ]
+        },
+        {
           "name": "setNoValueValidation",
           "parameterTypes": [
             "boolean"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.TimeType",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setFormat",
+          "parameterTypes": [
+            "java.lang.String"
           ]
         }
       ]
@@ -5137,6 +5233,9 @@
       "type": "com.mgmtp.a12.kernel.md.model.api.IVariantFilter$FilterType"
     },
     {
+      "type": "com.mgmtp.a12.kernel.md.model.api.fieldtypes.IDateRangeType$InterpretationOfYear"
+    },
+    {
       "type": "com.mgmtp.a12.kernel.md.model.api.fieldtypes.IDateType$DatePrecision"
     },
     {
@@ -5162,6 +5261,9 @@
     },
     {
       "type": "com.mgmtp.a12.kernel.md.serializer.model.internal.service.serialization.ConfirmTypeMixin"
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.md.serializer.model.internal.service.serialization.DateRangeTypeMixin"
     },
     {
       "type": "com.mgmtp.a12.kernel.md.serializer.model.internal.service.serialization.DateTypeMixin"
@@ -12743,6 +12845,9 @@
     },
     {
       "glob": "internal/templates/validation/groovy/formatdefinitionDir/.stg"
+    },
+    {
+      "glob": "internal/templates/validation/groovy/formatdefinitionDir/CodeGenDateRangeTypeImpl_meta.st"
     },
     {
       "glob": "internal/templates/validation/groovy/formatdefinitionDir/CodeGenDateTypeImpl_meta.st"
