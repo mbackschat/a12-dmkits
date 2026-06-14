@@ -83,6 +83,7 @@ final class SchemaCommand extends BaseCommand {
             "manifest", "emits the verb/param map itself — run it",
             "schema", "emits schemas itself — run it",
             "operators", "emits the operator catalog itself — run it",
+            "patterns", "emits the validation-idiom catalog (and a scaffolded rule-spec) itself — run it",
             "diagnostics", "emits the diagnostic registry itself — run it",
             "export", "renders an artifact (model card / dot / …), not the result envelope",
             "where-used", "returns a referrers payload, not the result envelope (a dedicated output schema is a follow-up)",

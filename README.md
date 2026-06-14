@@ -161,6 +161,10 @@ m.rule(m.group("/Subscription/Addons")).name("FeeCap").errorField(fee)
 
 The CLI mirrors it: a `comment` key on `rule add` and `computation add`, plus `rule modify --comment`. In the typed library, computations carry comments on operations and preconditions too.
 
+### Validation-pattern catalogue
+
+The recurring validation idioms (date-order, required-when, mutually-exclusive, at-least-one-of, sum-of-line-items) are a **catalogue** — `PatternCatalog.load().byId("date-order")` — where each entry builds its condition through the **typed DSL**, so it's correct by construction (right polarity, a referenced error field). The library returns the rule-spec parts; the CLI `patterns` verb scaffolds + `--apply`s them. Each entry's example is kernel-validated in CI, so the catalogue can't go stale. Full API + the typed-vs-data design: [API study](docs/API-POC-STUDY.md).
+
 More rulekit idioms and the design rationale are in the [API study](docs/API-POC-STUDY.md).
 
 ---
@@ -237,7 +241,9 @@ Same engine, no Java required. Every command is `dmtool -m <model> <target> <op>
 ```sh
 dmtool manifest                       # every verb × parameter + a worked example per verb, in one call
 dmtool operators                      # the DSL operator catalogue …
-dmtool operators GroupFilled          #   … or one operator in full (meaning, examples, gotchas)
+dmtool operators GroupFilled          #   … or one operator in full (meaning, examples, gotchas, OPPOSITE)
+dmtool patterns                       # the validation-idiom catalogue (date-order, required-when, …) …
+dmtool patterns date-order            #   … or one idiom in full (params, polarity, skeleton, example)
 dmtool diagnostics                    # the diagnostic-code catalogue …
 dmtool diagnostics RK_NO_SUCH_FIELD   #   … or one code in full (meaning + fix) — so a `code` you got back is explorable
 dmtool schema rule add                # the exact JSON shape a verb consumes / returns
@@ -297,6 +303,28 @@ export DMTOOL_WORKSPACE=./models                      # …or set it once per sh
 
 Precedence: `-w/--workspace` > `$DMTOOL_WORKSPACE` > the model's own folder (see [CLI-SPEC §3a](docs/CLI-SPEC.md)). There's no separate `-w/--workspace` — one workspace concept resolves both includes and type-def imports.
 
+### Scaffold from a validation pattern — polarity & error field baked in
+
+A BA's recurring tasks — *required-when*, *date-order*, *mutually-exclusive*, *at-least-one-of*, *sum-of-line-items* — are exactly where an agent re-risks the two hardest traps every time: getting the **polarity** right (an A12 rule fires on the *violation*) and picking a **valid error field** (it must be referenced + in scope, else `MVK_ERROR_FIELD_NOT_REFERENCED`). The `patterns` verb removes the re-derivation: each idiom is a **typed-DSL-backed** template — correct by construction — that scaffolds a kernel-valid rule from a few parameters.
+
+```sh
+dmtool patterns                                  # list the idioms
+dmtool patterns date-order                        # one idiom: its params, polarity note, skeleton, example
+
+# Scaffold a rule-spec from an idiom and AUTO-CHECK it against the kernel (read-only):
+dmtool -m order.dm.json patterns date-order \
+  --arg earlier=/Order/OrderDate --arg later=/Order/DeliveryDate
+# → { "pattern":"date-order",
+#     "spec": { "field":"/Order/DeliveryDate",
+#               "condition":"AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And DifferenceInDays(…) < 0", … },
+#     "valid": true, "diagnostics": [] }     ← right polarity + a referenced error field, ready for `rule add`
+
+dmtool -m order.dm.json patterns date-order \
+  --arg earlier=/Order/OrderDate --arg later=/Order/DeliveryDate --apply   # …or persist it directly (--dry-run previews)
+```
+
+The catalogue is **self-verifying**: every idiom's example is CI-instantiated and run through the real kernel, so a pattern that no longer scaffolds a valid rule fails the build. See [CLI-SPEC](docs/CLI-SPEC.md) and the [API study](docs/API-POC-STUDY.md).
+
 ### Author & check — confirmed by the kernel
 
 ```sh
@@ -306,11 +334,15 @@ dmtool -m order.dm.json rule check \
   --condition 'AllFieldsFilled(OrderDate, DeliveryDate) And [DeliveryDate] < [OrderDate]' \
   --code DELIVERY_BEFORE_ORDER
 
+# …and let the tool name the LEGAL error fields up front (the condition's referenced fields, in scope):
+dmtool -m order.dm.json rule check --field /Order/DeliveryDate \
+  --condition '…' --code DELIVERY_BEFORE_ORDER --suggest-error-field   # → data.candidates[]
+
 dmtool -m order.dm.json rule add <rule-spec.json>          # persist it (kernel-checked before + after)
-dmtool -m sub.dm.json   computation add <comp-spec.json>   # a computed field, likewise
+dmtool -m sub.dm.json   computation add <comp-spec.json>   # a computed field, likewise (with author-time lints)
 ```
 
-Diagnostics are **corrective**: each carries a stable `code`, a `where`, and a `fix` — and a built-in lint flags the classic **inverted-polarity** mistake automatically.
+Diagnostics are **corrective**: each carries a stable `code`, a `where`, and a `fix` — and a built-in lint flags the classic **inverted-polarity** mistake automatically (and, on `computation add`, forbidden constructs + overlapping preconditions).
 
 ### Run the rules against real data (not just static checks)
 

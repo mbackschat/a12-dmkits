@@ -52,6 +52,7 @@ import picocli.CommandLine.Spec;
             ApplyCommand.class,
             SchemaCommand.class,
             OperatorsCommand.class,
+            PatternsCommand.class,
             DiagnosticsCommand.class,
             ManifestCommand.class
         })

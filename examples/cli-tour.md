@@ -73,6 +73,7 @@ batch
 apply
 schema
 operators
+patterns
 diagnostics
 manifest
 ```
@@ -335,6 +336,37 @@ bin/dmtool operators DifferenceInDays | jq '{id,kind,meaning}'
 ```
 
 → The same `DifferenceInDays` the `rule explain` glossary surfaced — here looked up **directly**, by id, without a rule that uses it. The full record (omitted by the `jq` projection above) also carries `operands`/`returns`, `constraints`, `gotchas`, and a runnable `validExample`, so the agent can compose the operator correctly from the catalog alone.
+
+## patterns — scaffold a correct rule from an idiom
+
+Where `operators` is the *vocabulary*, `patterns` is the *idiom* catalogue — the recurring BA tasks (date-order, required-when, mutually-exclusive, …), each a typed-DSL-backed template that bakes in the two hardest traps: the **violation polarity** and a **referenced error field**. `patterns` lists them; the summary here is projected with `jq`.
+
+```bash
+bin/dmtool patterns | jq -c '{count, ids: (.patterns|map(.id))}'
+```
+
+```output
+{"count":5,"ids":["date-order","mutually-exclusive","at-least-one-of","required-when","sum-of-line-items"]}
+```
+
+→ Five idioms. Pass an id with `--arg name=value` parameters (and `-m <model>`) to **scaffold** a rule-spec from one — the condition is built through the typed DSL, so it's correct by construction, and it's **auto-checked** against the kernel.
+
+```bash
+bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json patterns date-order --arg earlier=/Order/OrderDate --arg later=/Order/DeliveryDate | jq '{pattern, spec: {field: .spec.field, condition: .spec.condition}, valid}'
+```
+
+```output
+{
+  "pattern": "date-order",
+  "spec": {
+    "field": "/Order/DeliveryDate",
+    "condition": "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And DifferenceInDays(/Order/OrderDate, /Order/DeliveryDate) < 0"
+  },
+  "valid": true
+}
+```
+
+→ The idiom picked the **error field** (`/Order/DeliveryDate` — referenced, in scope) and the **polarity** (fires when delivery is *before* order), and `valid: true` confirms the kernel accepts it. The agent reviews the `spec` then `rule add`s it — or adds `--apply` to persist it in one step.
 
 ## diagnostics — the code catalogue
 

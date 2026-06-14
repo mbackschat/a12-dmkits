@@ -23,6 +23,7 @@ The tool exists to be driven by a cold LLM agent. Two properties, above all else
 | **I/O shape** | "what does it emit / expect?" | `schema` — the result envelope (§3) + per-op input schemas |
 | **Failure space** | "what can go wrong, and how do I fix it?" | each op advertises the `emits[]` codes in the manifest; every code has a `fix` (§4) |
 | **DSL vocabulary** | "what operators exist, what do they mean — and how do I express the inverse?" | `operators` (list + per-operator semantics + gotchas); `operators <id>` carries `opposite` — the negation partner(s) (`FieldFilled`→`FieldNotFilled`, `<`→`>=`), serving the kernel's "no generic negation" model (G3) |
+| **Validation idioms** | "what's the standard way to write *this kind* of rule?" | `patterns` (the catalogue of named idioms — date-order, required-when, …); `patterns <id>` (its params + polarity + skeleton); `patterns <id> --arg k=v` scaffolds a kernel-valid rule-spec (right polarity + a referenced error field baked in) and auto-checks it, `--apply` persists it (G2) |
 | **Diagnostic codes** | "what does this `code` mean, how do I fix it?" | `diagnostics` (list all `RK_*` codes, filterable) · `diagnostics <CODE>` (one code's meaning + canonical fix) — the `operators` twin; see [`CLI-CONFORMANCE-SPEC`](CLI-CONFORMANCE-SPEC.md) |
 | **Versions** | "what is this build, what does it target?" | `--version` (human) · `manifest.version` (machine-readable) — §2a |
 
@@ -135,7 +136,7 @@ Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ 
 | `include` | `add · read · remove · inline` *(inline = group→include extract inverse, §6)* | modelkit |
 | `config` | `read · modify` *(incl. `--comment`, the model-level `modelInfo.comment`)* | modelkit |
 | `workspace` | `list <dir> [--recursive] [--format json\|table] [--validate]` · `graph <dir> [--recursive] [--format json\|tree\|dot]` · `validate <dir> [--recursive]` *(cross-**model**: `list` = a kernel-free per-model index — id/type, the super/subtype convention, and every `include`/type-def import **resolved to its file** (`--validate` flags which are kernel-valid); `graph` = the kernel-free **inheritance** hierarchy (subtype→supertype edges; `tree`/`dot` render it; composition lives in `list`/`model info`); `validate` = the **project gate** — kernel-validates every model (references resolved across the tree), emits per-model `{valid, diagnostics[]}`, and **exits 1 if any is invalid**. The split vs `list --validate`: that only flags a per-model boolean; `validate` surfaces the rich `MVK_*` diagnostics and fails the build — the form a pre-commit/CI hook calls.)* | modelkit |
-| *(root meta)* | `manifest · schema · operators · diagnostics · batch · apply` | — |
+| *(root meta)* | `manifest · schema · operators · patterns · diagnostics · batch · apply` *(`patterns` = the validation-idiom catalogue; `patterns <id> --arg k=v` scaffolds a kernel-valid rule-spec + auto-checks it, `--apply` persists — G2; CONTRACT_EXEMPT, self-describing like `operators`)* | rulekit |
 | *(cross-cutting)* | `where-used --entity` · `meta <ref>` *(read/edit any element's descriptions + annotations — field/group/rule by path, type-def by id; `ELEMENT_REF`, refuses `RK_NO_SUCH_ELEMENT`)* | adapter / modelkit |
 
 **Legacy → target-first** (the migration map; legacy names stay as hidden aliases for one release):
