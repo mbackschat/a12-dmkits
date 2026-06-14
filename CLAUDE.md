@@ -96,3 +96,5 @@ The conventions below are enforced; the **map of the whole testing approach** (t
 ## Build
 
 Build with an isolated, public-repos-only Gradle home so the machine's global config (private registry) is bypassed, on JDK 21 — see the README's "Build & test" section. The kernel must first be published to `mavenLocal` via the sibling `a12-kernel-bootstrap` kit.
+
+**Release artifacts (native image, developer jars) and the release procedure are NOT here — they live in [`docs/RELEASE-SPEC.md`](docs/RELEASE-SPEC.md)** (the durable release spec: build recipe + verification gate + versioning + distribution). The GraalVM native-image build in particular has non-obvious requirements (drop Groovy; bundle resources; register Jackson reflection) recorded in §3a — consult it before touching the native build. Everyday dev build (JVM/tests) stays in the README + above; native-image is release-only and never in the dev inner loop.

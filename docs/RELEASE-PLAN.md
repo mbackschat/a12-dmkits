@@ -126,11 +126,14 @@ Ordered by dependency. **Iteration 1 is the only one to execute first**; the res
 | **—** | **Backlog** (§9) | brew/scoop, code-signing, linux-arm64, mac-x64, static Maven repo, GitHub Pages JavaDoc, `curl \| sh` installer, production-mode eval as a gate | — | — |
 
 ### Iteration 1 — concrete steps (local mac only)
-1. **Prereq:** confirm **GraalVM 21** installed locally (`native-image` on PATH); if not, install it (SDKMAN / GraalVM download).
-2. **Do the §4 rename** (`applicationName = 'dmtool'` + skill + eval + shim) as one commit.
-3. **Make the native build repeatable:** add the **`org.graalvm.buildtools.native`** plugin to `:cli` with the proven `buildArgs` — `-H:IncludeResources=` for `internal/templates/.*`, **plus `operators.json`, `schema/*.json`, `version.properties`** (resources loaded via `getResourceAsStream` are invisible to closed-world analysis and will silently vanish otherwise). It auto-consumes the picocli-codegen reflection config already emitted. *Reconcile the output path with the `bin/dmtool` shim* (plugin emits `cli/build/native/nativeCompile/dmtool`, shim lists `cli/build/native/dmtool`).
-4. **Version:** set `0.1.0`.
-5. **Build + smoke-test:** `./gradlew :cli:nativeCompile`, then point `DMTOOL_CLI` at the binary and run the `examples/` showboat demos against it (`uvx showboat@0.6.1 verify examples/cli-*.md`) — the **byte-identity / closed-world** check (§4). All must pass.
+
+> **STATUS (2026-06-14):** rename ✅ (committed `0b8c307`, verified — all 6 showboat demos + `:cli:test` green on the renamed JVM launcher); spec authored ✅; native build **investigated, one blocker remaining** — see step 5. GraalVM 21.0.11 (with `native-image`) is **installed locally** at `/Library/Java/JavaVirtualMachines/graalvm-jdk-21.0.11+9.1/` (off PATH); `gh` authed; kernel `30.8.1` in `mavenLocal`.
+
+1. ~~**Prereq:** GraalVM 21~~ — **DONE**: GraalVM 21.0.11 present locally (path above); run `:cli:nativeCompile` with `JAVA_HOME` set to it.
+2. ~~**Do the §4 rename**~~ — **DONE + verified + committed** (`0b8c307`). Eval routes through the `bin/dmtool` shim.
+3. **Native plugin + config** — recipe **proven** (was applied + reverted; re-apply from [`RELEASE-SPEC.md`](RELEASE-SPEC.md) §3a): plugin `org.graalvm.buildtools.native:1.1.1` (resolves on Gradle 9), `toolchainDetection=false`, the `-H:IncludeResources=` set (verified bundling), **and `configurations.all { exclude group: 'org.codehaus.groovy' }`** (Groovy's mutable call sites break analysis). ⚠️ verify the Groovy exclusion is safe on the JVM path too, or scope it native-only.
+4. **Version:** drop `-SNAPSHOT` → `0.1.0` **at the release/tag step** (not during dev).
+5. **Build + smoke-test — BLOCKER:** `:cli:nativeCompile` **builds** (52 MB, ~1m53s) but the binary **crashes at startup**: Jackson can't reflectively construct the catalog POJOs (`OperatorEntry` &c.). **Next step:** add a `reflect-config.json` (or run the native-image tracing agent) for the Jackson-deserialized types, then re-run and pass the showboat byte-identity gate (§5). Full diagnosis + fix path: [`RELEASE-SPEC.md`](RELEASE-SPEC.md) §3a finding #3.
 6. **Release:** `gh release create v0.1.0` with the mac binary + `SHA256SUMS`.
 7. **Author the durable spec:** create **`docs/RELEASE-SPEC.md`** from this plan's §0 left-column content (the runbook + contracts as actually built), and add its index line to `docs/README.md`. README "Install (macOS)" stanza with the escape hatch (per §7).
 8. **On completion of all iterations:** delete this plan (`docs/RELEASE.md`); the spec carries forward.
