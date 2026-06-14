@@ -159,7 +159,11 @@ Per the project doc-discipline ("docs travel inside the feature commit"):
 
 ## 8. Open questions to resolve before/at execution
 
-1. **GraalVM 21 installed locally?** (blocks iteration 1, step 1).
+1. ~~**GraalVM 21 installed locally?**~~ — **RESOLVED**: GraalVM 21.0.11 present locally.
 2. ~~**Confirm `v0.1.0`** as the first tag~~ — **RESOLVED**: Option A confirmed, `v0.1.0` (D9).
-3. **Linux portability:** when CI lands (iteration 3), decide whether to build a **mostly-static** Linux binary (`-H:+StaticExecutableWithDynamicLibC` or musl) so it doesn't fail on older glibc.
-4. **Parallel-agent coordination:** the §4 rename touches `cli/build.gradle`, the eval, and the shim — confirm the other agent on `main` isn't editing those before starting.
+3. **🚩 NATIVE (B2) vs jpackage (B1) — the decision D1 reversed now needs re-deciding.** The native build is a **substantial, multi-cycle effort** (reflection coverage — `model validate` still throws `MissingReflectionRegistrationError` even after a 1480-class tracing-agent capture) **and forces dropping three verbs** (`model eval`/`rule test`/`model compute` need Groovy runtime codegen, not native-compilable). jpackage (B1) avoids both (all verbs work, no reflection grind) at the cost of size/startup. **Decide: invest in completing native (accepting the verb loss + grind), or ship B1 first as §11 originally sequenced.** Full findings: [`RELEASE-SPEC.md`](RELEASE-SPEC.md) §3a.
+4. **If pursuing native: newer GraalVM.** A GraalVM for JDK 25 brings a newer native-image engine (better reflection auto-handling → less manual config; `-Os` size optimization; `typeReached` support). It does **not** fix the Groovy/runtime-eval wall (#3). Owner offered to download JDK 25 or JDK 21 GraalVM.
+5. **Native binary's runtime-eval verbs:** if native ships, decide how `model eval`/`rule test`/`model compute` behave there — omitted from the command tree, or present but erroring with a clear "JVM-only verb" message.
+6. **🚩 Private repo → public release downloads** (affects D6 plugin hook + raw-download + brew/scoop, all of which fetch anonymously): release assets on a **private** repo require auth — **not** anonymously downloadable. Options: make the repo public; or a dedicated **public releases-mirror repo** (source stays private, CI publishes binaries there); or external public hosting. Decide before the plugin/brew/scoop channels.
+7. **Linux portability:** when CI lands (iteration 3), decide whether to build a **mostly-static** Linux binary (`-H:+StaticExecutableWithDynamicLibC` or musl) so it doesn't fail on older glibc.
+8. **Groovy exclusion scope:** must be **native-classpath-only** (global breaks the JVM runtime-eval verbs + the CI showboat gate + the eval). Not yet implemented as native-only.
