@@ -33,7 +33,8 @@ The **command name is `dmtool`** everywhere it is publicly invoked. `:cli`'s `in
 
 ### 3a. CLI native image (per OS)
 - **Per-OS, no cross-compile:** native-image emits a binary for the OS+arch it runs on. macOS arm64 is built **locally** (cost: avoids the 10× CI multiplier; signing: local cert); linux-x64 / windows-x64 on CI runners (§4). Linux portability: prefer a mostly-static binary (`-H:+StaticExecutableWithDynamicLibC` or musl).
-- **The full build recipe, findings, status, sizing, and the hard ceiling live in [`NATIVE-IMAGE-GRAALVM.md`](NATIVE-IMAGE-GRAALVM.md)** — native-image is a topic of its own. **Current status (GraalVM 25): works for the authoring surface — 5/6 showboat demos pass, ~31 MB, ~50 s.** Two items gate a *robust* release: reflection coverage is capture-bound, and the runtime-eval verbs (`model eval`/`rule test`/`model compute`) can't go native (Groovy). B2-vs-B1 decision: [`RELEASE-PLAN.md`](RELEASE-PLAN.md) §8.
+- **v1 ships native-only** (decision — [`NATIVE-IMAGE-GRAALVM.md`](NATIVE-IMAGE-GRAALVM.md) §7). The shipped CLI is the GraalVM 25 native binary (~31 MB, ~37 ms start, reflection-robust, native gate GREEN). The **runtime-eval verbs** (`model eval`/`rule test`/`model compute`) need Groovy → not native-compilable → **hidden from the shipped binary**; they remain the JVM dev/eval vehicle only, not a shipped artifact.
+- **The full build recipe, findings, sizing, the hard ceiling, and the verb-hiding gate live in [`NATIVE-IMAGE-GRAALVM.md`](NATIVE-IMAGE-GRAALVM.md)** — native-image is a topic of its own.
 
 ### 3b. Developer library
 - **Plugins:** `java-library` + `maven-publish`. `java { withJavadocJar(); withSourcesJar() }` → `-javadoc.jar` + `-sources.jar`. A `MavenPublication` `from components.java` stamps a correct POM (so transitive deps resolve for consumers — §9).

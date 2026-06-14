@@ -86,14 +86,14 @@ You don't have to *guess* when it's stale: the **verification gate is the trip-w
 
 `-Os` (GraalVM 25) is the big lever: **19 MB** bare, **31 MB** with the reflection metadata (the metadata costs ~12 MB). Far below the GraalVM-21 numbers (52–61 MB) and well below the jpackage app-image (§10: ~65–90 MB/OS). Further levers if needed: `--strip-debug`, drop more unused kernel jars, tighter (hand-authored vs full-agent) metadata. `upx` (~50%) is possible but **breaks macOS notarization + slows startup** — not for distribution.
 
-## 7. The strategic question — B2 (native) vs B1 (jpackage)
+## 7. Decision — native-only for v1 (B2)
 
-GraalVM 25 changed the calculus sharply. Native is now **fast (~50 s), small (~19–31 MB), reflection-robust (§3.3 closed — all fixtures validate clean), and passes the native gate** (§8) — attractive for an agent-first, latency-sensitive CLI (~37 ms start). The two earlier blockers are both **closed**:
+**Decided: v1 ships native-only.** The shipped CLI is the GraalVM 25 native binary — the right fit for the agent-first, latency-sensitive use case (~37 ms start, ~31 MB, downloaded by the plugin's `SessionStart` hook). GraalVM 25 closed both earlier blockers:
 
 1. ~~Reflection coverage~~ — **done** (§3.3, the comprehensive capture).
 2. ~~The 3 runtime-eval verbs~~ — **done** (§4, the registration gate hides them from every surface; guarded by `NativeImageVerbHidingTest`).
 
-What's left is **release-engineering only** — signing/distribution (RELEASE-SPEC) and the B2-vs-B1 call.
+**Scope consequence of native-only:** v1's shipped CLI does **not** offer runtime evaluation (`model eval`/`rule test`/`model compute`) — those need Groovy and remain the **JVM dev/eval vehicle only** (`installDist`), not a shipped artifact. No jpackage/B1 full-verb distributable in v1. (B1 — a trimmed JVM + launcher, all verbs, no reflection grind, but ~65–90 MB/OS and ~600 ms start — stays the documented fallback if a real consumer ever needs the runtime-eval verbs outside the dev loop.) What's left for the release is **release-engineering only** — signing/distribution (RELEASE-SPEC).
 
 **jpackage (B1)** still "just works" for *all* verbs with no reflection grind, at the cost of size (~65–90 MB/OS) and startup (~600 ms). The live decision — finish native (accepting #1's work + #2's verb loss) or ship B1 first — is in [`RELEASE-PLAN.md`](RELEASE-PLAN.md) §8. Given GraalVM 25's results, native is now the stronger candidate for the primary use case; B1 remains the fallback for full-verb coverage.
 
