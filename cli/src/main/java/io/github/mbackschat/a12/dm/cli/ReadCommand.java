@@ -58,7 +58,7 @@ final class ReadCommand extends BaseCommand {
     boolean all;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -72,7 +72,7 @@ final class ReadCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         try {
-            KernelAdapter adapter = KernelAdapter.ofJson(modelJson, includes.resolverFor(model));
+            KernelAdapter adapter = KernelAdapter.ofJson(modelJson, workspace.resolverFor(model));
             return all ? readWholeModel(adapter) : readOneRule(adapter);
         } catch (RuntimeException e) {
             return fail("read failed: " + e.getMessage());

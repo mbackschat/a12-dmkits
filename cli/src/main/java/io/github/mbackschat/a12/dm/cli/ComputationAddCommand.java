@@ -42,7 +42,7 @@ final class ComputationAddCommand extends BaseCommand {
     boolean dryRun;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -62,7 +62,7 @@ final class ComputationAddCommand extends BaseCommand {
         if (!parsed.ok()) {
             return fail(parsed.error());
         }
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         ValidationResult check = new RuleValidator().check(modelJson, parsed.draft(), resolver);
         if (!check.ok()) {
             ResultEnvelope env = ResultEnvelope.rejected("computation", "add",

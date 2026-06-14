@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/model-info.schema.json",
   "title": "ModelInfo",
-  "description": "Output of `dmtool model info` — a single model's header dashboard: identity, the super/subtype convention (parsed from the `abstract`/`superTypes`/`subTypes` header annotations), every outbound model reference (an `include` or a type-def import) cross-resolved to its file via --include-dir (default the model's folder; `resolvedPath` is null when unresolved), the remaining (non-convention) model annotations, and COMPACT COUNTS only. The contents those counts summarize live in their own verbs — fields/groups in `model describe`, rules/computations in `model read`, the full config in `config read`, declared type-defs in `typedef read`.",
+  "description": "Output of `dmtool model info` — a single model's header dashboard: identity, the super/subtype convention (parsed from the `abstract`/`superTypes`/`subTypes` header annotations), every outbound model reference (an `include` or a type-def import) cross-resolved to its file via -w/--workspace (default the model's folder; `resolvedPath` is null when unresolved), the remaining (non-convention) model annotations, and COMPACT COUNTS only. The contents those counts summarize live in their own verbs — fields/groups in `model describe`, rules/computations in `model read`, the full config in `config read`, declared type-defs in `typedef read`.",
   "type": "object",
   "required": ["id", "modelType", "modelVersion", "locales", "abstract", "superTypes", "subTypes",
     "annotations", "includes", "typedefImports", "counts"],

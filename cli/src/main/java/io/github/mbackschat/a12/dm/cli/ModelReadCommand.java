@@ -32,7 +32,7 @@ final class ModelReadCommand extends BaseCommand {
     private static final DslRenderer EN = new DslRenderer(ConditionLanguage.EN);
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -47,7 +47,7 @@ final class ModelReadCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         try {
-            ModelRead m = KernelAdapter.ofJson(json, includes.resolverFor(model)).readModel();
+            ModelRead m = KernelAdapter.ofJson(json, workspace.resolverFor(model)).readModel();
             ObjectNode data = MAPPER.createObjectNode();
             ObjectNode rules = data.putObject("rules");
             for (Map.Entry<String, ReadResult> e : m.rules().entrySet()) {

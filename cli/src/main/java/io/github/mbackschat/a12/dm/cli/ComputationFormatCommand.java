@@ -31,7 +31,7 @@ final class ComputationFormatCommand extends BaseCommand {
     ConditionLanguage lang;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -46,7 +46,7 @@ final class ComputationFormatCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         try {
-            BoundModel bound = BoundModel.ofJson(json, includes.resolverFor(model));
+            BoundModel bound = BoundModel.ofJson(json, workspace.resolverFor(model));
             KernelAdapter adapter = KernelAdapter.of(bound);
             if (!adapter.computationFullNames().contains(computation)) {
                 return fail("'" + computation + "' is not a computation in this model — computations: "

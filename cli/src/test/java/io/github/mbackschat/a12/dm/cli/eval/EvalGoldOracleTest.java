@@ -92,7 +92,7 @@ class EvalGoldOracleTest {
         String model = readModelFromTask(task);
         switch (task.path("family").asText()) {
             // Authoring: the gold condition must validate against the real kernel (multi-file models
-            // resolve their includes via --include-dir → ReferenceResolvers.directory). Self-correction
+            // resolve their includes via -w/--workspace → ReferenceResolvers.directory). Self-correction
             // shares the backbone: its gold is the *recovered* rule, which must likewise validate.
             case "authoring", "self-correction" -> assertGoldValidates(task, model, taskFile);
             // Authoring a computation: the gold computation (computed field + alternatives) must validate.

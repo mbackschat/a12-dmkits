@@ -36,7 +36,7 @@ if (TASKS.length === 0) throw new Error('no tasks passed in args.tasks — nothi
 const CLI = 'JAVA_HOME="$(/usr/libexec/java_home -v 21)" cli/build/install/cli/bin/cli'
 // A task names its model by stem (<MODELS_ROOT>/<model>.dm.json) OR carries an explicit `modelPath`
 // (repo-relative) for nested multi-file layouts. `includeDir` (repo-relative) is threaded to every verb
-// as `--include-dir` so the recheck/judge can resolve a multi-file model's includes/typedefs.
+// as `-w/--workspace` so the recheck/judge can resolve a multi-file model's includes/typedefs.
 //
 // SANDBOX — committed fixtures are NEVER mutated. The authoring verbs (`add`/`computation add`) write IN
 // PLACE by default, so an agent pointed at a committed fixture can corrupt it — it has, repeatedly, even
@@ -49,8 +49,8 @@ const SANDBOX = '/tmp/rk-eval-sandbox'
 const sandboxed = p => p.startsWith(MODELS_ROOT) ? SANDBOX + p.slice(MODELS_ROOT.length) : p
 const SRC_MODEL = t => t.modelPath || `${MODELS_ROOT}/${t.model}.dm.json`
 const MODEL_FILE = t => sandboxed(SRC_MODEL(t))
-const INCLUDE_ARGS = t => t.includeDir ? ['--include-dir', sandboxed(t.includeDir)] : []
-const INCLUDE_HINT = t => t.includeDir ? ` --include-dir ${sandboxed(t.includeDir)}` : ''
+const INCLUDE_ARGS = t => t.includeDir ? ['-w', sandboxed(t.includeDir)] : []
+const INCLUDE_HINT = t => t.includeDir ? ` -w ${sandboxed(t.includeDir)}` : ''
 
 // Run-mode (EVAL-SPEC §2a). Bare-tool is the DEFAULT instrument (and the only one CI/historical runs use).
 // PRODUCTION mode is opt-in and gives every PRODUCER agent the N1 skill, two ways:
@@ -100,7 +100,7 @@ const DELETE_SAFETY = TASKS.filter(t => t.family === 'delete-safety' && t.status
 
 function authorPrompt(task) {
   // For a multi-file model, the boundary permits resolving the models it references (neutral — it does
-  // NOT name the flag; the agent discovers `--include-dir` from the CLI error + `<verb> --help`).
+  // NOT name the flag; the agent discovers `-w/--workspace` from the CLI error + `<verb> --help`).
   const multifile = task.includeDir
     ? `\n  - this model is part of a multi-file workspace: it REFERENCES other model files located elsewhere in the workspace, which you may read/resolve as needed to validate it.`
     : ''

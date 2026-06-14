@@ -73,7 +73,7 @@ final class ConfigModifyCommand extends BaseCommand {
     boolean dryRun;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -92,7 +92,7 @@ final class ConfigModifyCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
         }
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         // pre-check the one scalar the kernel stores without validating (AP3); bad time-zone/locale re-bind-reject.
         Optional<Refusal> refusal = new SafetyGate()
                 .require(SafetyChecks.decimalSeparatorValid(decimalSeparator))

@@ -185,10 +185,10 @@ class ApplyVerbTest {
                 [ {"target":"include","op":"add","alias":"catalog","reference":"catalog",
                    "parent":"/Subscription","name":"Catalog"} ]""");
 
-        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString(), "--include-dir", dir.toString());
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString(), "-w", dir.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
-        assertTrue(j.path("committed").asBoolean(), () -> "committed (resolved via --include-dir): " + res.out());
+        assertTrue(j.path("committed").asBoolean(), () -> "committed (resolved via -w/--workspace): " + res.out());
         assertEquals("catalog", j.path("results").get(0).path("changed").path("added").asText());
         assertTrue(Files.readString(model).contains("modelAlias"));
     }

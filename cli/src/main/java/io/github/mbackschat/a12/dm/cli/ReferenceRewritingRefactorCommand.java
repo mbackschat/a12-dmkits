@@ -55,7 +55,7 @@ abstract class ReferenceRewritingRefactorCommand extends BaseCommand {
     boolean dryRun;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     /** The refactor to run — its gate, reference entity-moves, node change, labels (one of the factories). */
     abstract StructureRefactor refactor();
@@ -69,7 +69,7 @@ abstract class ReferenceRewritingRefactorCommand extends BaseCommand {
         }
         StructureRefactor refactor = refactor();
         ModelDocument doc = ModelDocument.read(modelJson);
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         KernelAdapter adapter = KernelAdapter.ofJson(modelJson, resolver);
 
         // gate: op-specific preconditions, checked before any mutation (CLI-SPEC §6).

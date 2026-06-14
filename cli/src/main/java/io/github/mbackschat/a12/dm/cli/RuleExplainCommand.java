@@ -35,7 +35,7 @@ final class RuleExplainCommand extends BaseCommand {
     String rule;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -50,7 +50,7 @@ final class RuleExplainCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         try {
-            BoundModel bound = BoundModel.ofJson(json, includes.resolverFor(model));
+            BoundModel bound = BoundModel.ofJson(json, workspace.resolverFor(model));
             KernelAdapter adapter = KernelAdapter.of(bound);
             String problem = ModelPaths.ruleProblem(adapter.ruleFullNames(), adapter.computationFullNames(), rule);
             if (problem != null) {

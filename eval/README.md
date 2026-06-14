@@ -20,7 +20,7 @@ A second, lighter instrument lives here too: **`gap-finder.workflow.js`** — th
   "suites": ["smoke", "simple"],                 // optional run-tier membership (derive a tier by filtering on this)
   "model": "subscription",                       // a fixture name under cli/src/test/resources/models/
   "modelPath": "cli/src/test/resources/models/multifile/app/storefront.dm.json", // multi-file: explicit (repo-relative) path
-  "includeDir": "cli/src/test/resources/models/multifile/lib",                    // multi-file: threaded as --include-dir
+  "includeDir": "cli/src/test/resources/models/multifile/lib",                    // multi-file: threaded as -w/--workspace
   "computation": "/Subscription/Billing/EffectiveFeeComp",                        // modify-computation: the existing computation's full name
   "rule": "/Order/DeliveryNotBeforeOrder",                                        // modify-rule: the existing rule's full name
   "operators": ["GroupFilled", "Equal", ...],    // catalog families this task exercises (coverage axis)
@@ -42,7 +42,7 @@ A second, lighter instrument lives here too: **`gap-finder.workflow.js`** — th
 - **template** (the `modelkit/` `usageType` group-template family, §3.8) — `{op: "group multiselect" | "group attachment", parent, name, expectGroup, field?, values?, maxRows?}`: `group multiselect` → `{parent, name, field, values, maxRows, expectGroup}`; `group attachment` → `{parent, name, expectGroup}`. **Verified by `EvalGoldOracleTest`** (expand the template via `EditSession`, re-bind — the kernel's `MultiSelect`/`AttachmentGroupRule` accept the composition — and assert the group exists). Layer-1 only for now (Layer-2 follow-up).
 - **refactor** (the `modelkit/` rename/move family) — `{op, field, to, expect:{renamed, to, rewroteReferences}}`. **Verified by `EvalGoldOracleTest`** (active since 2026-06-12 — the reference-rewriting rename/move engine shipped): the gold rename is applied via `adapter.ReferenceRewriter` + `ModelDocument`, must re-bind valid→valid, and the new path must exist while the old is gone. A **Layer-2 agentic refactor phase** is the remaining follow-up (the runner has no refactor producer yet).
 
-`modelPath`/`includeDir` are optional **multi-file** keys: present only when the task model `include`s a separate model that lives outside its own directory, so the runner threads `--include-dir` through every verb. `computation` is required for `modify-computation` (the existing computation to re-express); `rule` is required for `modify-rule` (the existing rule to re-express).
+`modelPath`/`includeDir` are optional **multi-file** keys: present only when the task model `include`s a separate model that lives outside its own directory, so the runner threads `-w/--workspace` through every verb. `computation` is required for `modify-computation` (the existing computation to re-express); `rule` is required for `modify-rule` (the existing rule to re-express).
 
 ## The two layers
 
@@ -66,6 +66,6 @@ Phases pipeline where they can; the whole run is one background `Workflow`. A 0/
 
 ## Adding / changing a task
 
-1. Add a `tasks/<id>.json` with a fresh `id`, the `family`, a real `model`, the `operators` it covers, the `intent`, and a `gold` you've confirmed the kernel accepts. Verify per family: authoring → `cli check <model> --field … --condition "…" --code …` → `valid:true`; computation → `cli add <model> <spec.json>` → exit 0; modify-computation → `cli modify <model> --computation <name> --spec <spec.json> --dry-run` → exit 0 with `changed:true`; modify-rule → `cli modify <model> --rule <name> --condition "…" --dry-run` → exit 0 with `changed:true`; multi-file → add `--include-dir <lib>` and the model's `modelPath`/`includeDir` keys.
+1. Add a `tasks/<id>.json` with a fresh `id`, the `family`, a real `model`, the `operators` it covers, the `intent`, and a `gold` you've confirmed the kernel accepts. Verify per family: authoring → `cli check <model> --field … --condition "…" --code …` → `valid:true`; computation → `cli add <model> <spec.json>` → exit 0; modify-computation → `cli modify <model> --computation <name> --spec <spec.json> --dry-run` → exit 0 with `changed:true`; modify-rule → `cli modify <model> --rule <name> --condition "…" --dry-run` → exit 0 with `changed:true`; multi-file → add `-w <lib>` and the model's `modelPath`/`includeDir` keys.
 2. `EvalGoldOracleTest` picks it up automatically; run `./gradlew :cli:test` — a red oracle means the gold doesn't actually validate (fix the gold, not the test).
 3. Keep the corpus spanning the catalog operator families — coverage is the point (N6 measures self-sufficiency *per covered operator*).

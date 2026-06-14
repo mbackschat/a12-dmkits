@@ -34,7 +34,7 @@ Usage: dmtool model eval [-hV] [--code=<errorCode>] [--condition=<DSL>]
                          [--group=<groupPathInModel>] [--locale=<locale>]
                          [-m=<model.json>] [--name=<name>]
                          [--rule=<rulePathInModel>] [--severity=ERROR|WARNING]
-                         [-w=<dir>] [--include-dir=<dir>]...
+                         [-w=<dir>]...
 Run the kernel over a document INSTANCE; report which rules fire in `data`
 (runtime).
       --code=<errorCode>     the candidate rule's error code (default: EVAL_DOC)
@@ -50,11 +50,6 @@ Run the kernel over a document INSTANCE; report which rules fire in `data`
                              the candidate rule's iteration scope (group path);
                                defaults to the field's parent
   -h, --help                 Show this help message and exit.
-      --include-dir=<dir>    directory tree(s) holding the included / typedef
-                               models to resolve by id (repeatable). Overrides
-                               the -w/--workspace root and $DMTOOL_WORKSPACE
-                               for this verb; default: the directory containing
-                               <model.json>.
       --locale=<locale>      the evaluation locale (default: en_US)
   -m, --model=<model.json>   the DM-JSON model file to operate on (set once;
                                accepted before or after the verb)
@@ -66,12 +61,13 @@ Run the kernel over a document INSTANCE; report which rules fire in `data`
       --severity=ERROR|WARNING
                              the candidate rule's severity (default: ERROR)
   -V, --version              Print version information and exit.
-  -w, --workspace=<dir>      the workspace root: the directory tree to resolve
-                               included / type-def-imported models from, set
-                               once for every verb (so multi-file models
-                               resolve without a per-verb --include-dir). Env
-                               DMTOOL_WORKSPACE is the fallback; a verb's own
-                               --include-dir overrides.
+  -w, --workspace=<dir>      the workspace root(s): directory tree(s) to
+                               resolve a model's included / type-def-imported
+                               models from (repeatable), set once for every
+                               verb so multi-file models resolve with no
+                               per-verb flag. Env DMTOOL_WORKSPACE is the
+                               set-once-per-session fallback; default is the
+                               model's own folder.
 ```
 
 Evaluate the violation instance, narrowed to the date rule:
@@ -250,28 +246,23 @@ bin/dmtool -m cli/src/test/resources/models/subscription-computed.dm.json model 
 
 ```output
 Usage: dmtool model compute [-hV] --doc=<document.json> [--locale=<locale>]
-                            [-m=<model.json>] [-w=<dir>]
-                            [--include-dir=<dir>]...
+                            [-m=<model.json>] [-w=<dir>]...
 Run computations over a document INSTANCE; report each computed field's value
 in `data` (read-only).
       --doc=<document.json>  the document INSTANCE (field data) — a nested JSON
                                tree under "fields". See `schema model compute`.
   -h, --help                 Show this help message and exit.
-      --include-dir=<dir>    directory tree(s) holding the included / typedef
-                               models to resolve by id (repeatable). Overrides
-                               the -w/--workspace root and $DMTOOL_WORKSPACE
-                               for this verb; default: the directory containing
-                               <model.json>.
       --locale=<locale>      the computation locale (default: en_US)
   -m, --model=<model.json>   the DM-JSON model file to operate on (set once;
                                accepted before or after the verb)
   -V, --version              Print version information and exit.
-  -w, --workspace=<dir>      the workspace root: the directory tree to resolve
-                               included / type-def-imported models from, set
-                               once for every verb (so multi-file models
-                               resolve without a per-verb --include-dir). Env
-                               DMTOOL_WORKSPACE is the fallback; a verb's own
-                               --include-dir overrides.
+  -w, --workspace=<dir>      the workspace root(s): directory tree(s) to
+                               resolve a model's included / type-def-imported
+                               models from (repeatable), set once for every
+                               verb so multi-file models resolve with no
+                               per-verb flag. Env DMTOOL_WORKSPACE is the
+                               set-once-per-session fallback; default is the
+                               model's own folder.
 ```
 
 ```bash

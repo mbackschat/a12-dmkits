@@ -40,7 +40,7 @@ final class RuleRemoveCommand extends BaseCommand {
     boolean dryRun;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -54,7 +54,7 @@ final class RuleRemoveCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
         }
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         Optional<Refusal> refusal = new SafetyGate()
                 .require(SafetyChecks.ruleExists(KernelAdapter.ofJson(json, resolver), rule))
                 .firstFailure();

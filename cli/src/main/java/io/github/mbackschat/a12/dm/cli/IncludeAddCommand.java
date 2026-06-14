@@ -21,7 +21,7 @@ import picocli.CommandLine.Option;
  * model-reference and mount it as a group, then write the model back (in place; {@code -o}/{@code --dry-run}).
  * {@code --repeatability} mounts a repeating sub-form; {@code --exclude-rules}/{@code --exclude-computations}
  * drop the included model's own rules/computations on expand (FEATURE-GAPS §3.9). The referenced model is
- * resolved + kernel-validated via {@code --include-dir}; a missing reference or an invalid mount is a
+ * resolved + kernel-validated via {@code -w/--workspace}; a missing reference or an invalid mount is a
  * {@code rejected} envelope.
  */
 @Command(name = "add", mixinStandardHelpOptions = true,
@@ -37,7 +37,7 @@ final class IncludeAddCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.FREEFORM)
     @Option(names = "--reference", required = true, paramLabel = "<reference>",
-            description = "the referenced model's header id (resolved via --include-dir)")
+            description = "the referenced model's header id (resolved via -w/--workspace)")
     String reference;
 
     @ParamKind(ParamKind.Kind.GROUP_PATH)
@@ -71,7 +71,7 @@ final class IncludeAddCommand extends BaseCommand {
     boolean dryRun;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -85,7 +85,7 @@ final class IncludeAddCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
         }
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         String mountPath = parent + "/" + name;
         if (!parent.isEmpty()) {   // "" = a root mount, which has no parent group to check
             Optional<Refusal> refusal = new SafetyGate()

@@ -39,7 +39,7 @@ final class ModelComputeCommand extends BaseCommand {
     String localeTag;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -61,7 +61,7 @@ final class ModelComputeCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read document: " + e.getMessage());
         }
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         Locale locale = Locale.forLanguageTag(localeTag.replace('_', '-'));
 
         ComputeResult result;

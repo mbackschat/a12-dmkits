@@ -44,7 +44,7 @@ final class RuleRenameCommand extends BaseCommand {
     boolean dryRun;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -56,7 +56,7 @@ final class RuleRenameCommand extends BaseCommand {
         StructureRefactor refactor = StructureRefactor.ruleRename(rule, newName);
         String newPath = refactor.newPath();
         ModelDocument doc = ModelDocument.read(modelJson);
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         KernelAdapter adapter = KernelAdapter.ofJson(modelJson, resolver);
 
         Optional<Refusal> refusal = refactor.firstFailure(doc, adapter);

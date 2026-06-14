@@ -22,12 +22,12 @@ final class DescribeCommand extends BaseCommand {
     String model;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
         try {
-            BoundModel m = BoundModel.ofJson(Files.readString(Path.of(model)), includes.resolverFor(model));
+            BoundModel m = BoundModel.ofJson(Files.readString(Path.of(model)), workspace.resolverFor(model));
             out().print(new ModelContext(m).describe().toJson() + "\n");
             return 0;
         } catch (IOException e) {

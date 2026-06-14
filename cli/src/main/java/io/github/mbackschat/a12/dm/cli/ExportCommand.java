@@ -45,7 +45,7 @@ final class ExportCommand extends BaseCommand {
     String outputDir;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -59,7 +59,7 @@ final class ExportCommand extends BaseCommand {
         }
         try {
             String json = Files.readString(Path.of(model));
-            BoundModel bound = BoundModel.ofJson(json, includes.resolverFor(model));
+            BoundModel bound = BoundModel.ofJson(json, workspace.resolverFor(model));
             if (outputDir != null) {
                 Path dir = Path.of(outputDir);
                 Files.createDirectories(dir);

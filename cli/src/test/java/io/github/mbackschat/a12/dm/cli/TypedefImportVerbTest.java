@@ -17,7 +17,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 /**
  * {@code typedef import} — declare that the model imports another model's type definitions
  * ({@code purpose: "typeDefinitions"}). The type-def-providing model is resolved + kernel-validated via
- * {@code --include-dir}; unlike {@code include add}, the import is not mounted.
+ * {@code -w/--workspace}; unlike {@code include add}, the import is not mounted.
  */
 class TypedefImportVerbTest {
 
@@ -37,7 +37,7 @@ class TypedefImportVerbTest {
     void importsAnotherModelsTypeDefinitions(@TempDir Path dir) throws Exception {
         Path model = orderWithTypeProvider(dir);
         var res = CliTestSupport.run("-m", model.toString(), "typedef", "import",
-                "--reference", "catalogtypes", "--include-dir", dir.toString());
+                "--reference", "catalogtypes", "-w", dir.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
         assertEquals("applied", j.get("outcome").asText());
@@ -51,7 +51,7 @@ class TypedefImportVerbTest {
     void unresolvedImportIsRejected(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);   // no provider written
         var res = CliTestSupport.run("-m", model.toString(), "typedef", "import",
-                "--reference", "nope", "--include-dir", dir.toString());
+                "--reference", "nope", "-w", dir.toString());
         assertTrue(res.code() != 0, "an unresolved type-def import is rejected by the kernel");
     }
 }

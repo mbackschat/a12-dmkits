@@ -30,7 +30,7 @@ final class ComputationReadCommand extends BaseCommand {
     String computation;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -45,7 +45,7 @@ final class ComputationReadCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         try {
-            KernelAdapter adapter = KernelAdapter.ofJson(json, includes.resolverFor(model));
+            KernelAdapter adapter = KernelAdapter.ofJson(json, workspace.resolverFor(model));
             if (!adapter.computationFullNames().contains(computation)) {
                 return fail("'" + computation + "' is not a computation in this model — computations: "
                         + adapter.computationFullNames());

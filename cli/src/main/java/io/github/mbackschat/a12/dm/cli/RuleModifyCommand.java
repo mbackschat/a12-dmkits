@@ -74,7 +74,7 @@ final class RuleModifyCommand extends BaseCommand {
     boolean dryRun;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -88,7 +88,7 @@ final class RuleModifyCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
         }
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         // the rule-exists gate runs first, so a missing rule gets the structured RK_NO_SUCH_RULE refusal
         // regardless of which edit args were passed (CLI-CONFORMANCE-SPEC)
         Optional<Refusal> refusal = new SafetyGate()

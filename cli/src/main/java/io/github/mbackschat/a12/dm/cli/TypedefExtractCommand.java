@@ -46,7 +46,7 @@ final class TypedefExtractCommand extends BaseCommand {
     boolean dryRun;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -66,7 +66,7 @@ final class TypedefExtractCommand extends BaseCommand {
             return refuse("typedef", "extract", refusal.get());
         }
 
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         String resultJson;
         try {
             doc.extractTypeDefinition(id, from);

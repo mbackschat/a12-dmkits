@@ -35,7 +35,7 @@ final class ValidateCommand extends BaseCommand {
     String model;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Unmatched
     String[] extra = new String[0];
@@ -57,7 +57,7 @@ final class ValidateCommand extends BaseCommand {
         ObjectNode root = MAPPER.createObjectNode();
         ArrayNode diagnostics = MAPPER.createArrayNode();
         try {
-            BoundModel.ofJson(json, includes.resolverFor(model));
+            BoundModel.ofJson(json, workspace.resolverFor(model));
             root.put("valid", true);
             root.set("diagnostics", diagnostics);
             out().print(pretty(root));

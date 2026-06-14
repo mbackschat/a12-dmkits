@@ -41,7 +41,7 @@ final class IncludeInlineCommand extends BaseCommand {
     boolean dryRun;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -61,16 +61,13 @@ final class IncludeInlineCommand extends BaseCommand {
                 .filter(i -> i.alias().equals(alias)).map(ModelDocument.Include::reference)
                 .findFirst().orElseThrow();
 
-        Path parent = Path.of(model).toAbsolutePath().getParent();
-        Path[] roots = includes.includeDirs.isEmpty()
-                ? new Path[] {parent != null ? parent : Path.of(".")}
-                : includes.includeDirs.toArray(Path[]::new);
+        Path[] roots = workspace.roots(model).toArray(Path[]::new); // -w / $DMTOOL_WORKSPACE / the model's folder
         Optional<String> includedJson = ReferenceResolvers.documentModelJson(reference, roots);
         if (includedJson.isEmpty()) {
-            return fail("cannot resolve the included model '" + reference + "' — pass --include-dir <dir>");
+            return fail("cannot resolve the included model '" + reference + "' — pass -w <dir>");
         }
 
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         String resultJson;
         try {
             doc.inlineInclude(alias, includedJson.get());

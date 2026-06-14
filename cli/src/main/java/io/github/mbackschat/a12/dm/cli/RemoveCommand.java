@@ -78,7 +78,7 @@ final class RemoveCommand extends BaseCommand {
     boolean dryRun;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -93,7 +93,7 @@ final class RemoveCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
         }
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
 
         String target = field != null ? field : group != null ? group : rule != null ? rule
                 : computation != null ? computation : typedef != null ? typedef : includeAlias;

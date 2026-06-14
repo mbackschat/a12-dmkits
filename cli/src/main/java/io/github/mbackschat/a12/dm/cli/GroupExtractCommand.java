@@ -55,7 +55,7 @@ final class GroupExtractCommand extends BaseCommand {
     boolean dryRun;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -65,7 +65,7 @@ final class GroupExtractCommand extends BaseCommand {
             return 2;
         }
         ModelDocument doc = ModelDocument.read(modelJson);
-        IDocumentModelReferenceResolver dirResolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver dirResolver = workspace.resolverFor(model);
 
         Optional<Refusal> refusal = new SafetyGate()
                 .require(SafetyChecks.exists(doc, group, true))
@@ -101,10 +101,8 @@ final class GroupExtractCommand extends BaseCommand {
             return emitKernelRejection("group", "extract", "extraction left the model invalid", e);
         }
 
-        Path parent = Path.of(model).toAbsolutePath().getParent();
-        Path targetDir = !includes.includeDirs.isEmpty() ? includes.includeDirs.get(0)
-                : (parent != null ? parent : Path.of("."));
-        Path subFile = targetDir.resolve(reference + ".dm.json");
+        // write the extracted sub-model into the first workspace root (-w / $DMTOOL_WORKSPACE / the model's folder)
+        Path subFile = workspace.roots(model).get(0).resolve(reference + ".dm.json");
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("extracted", group);
         changed.put("reference", reference);

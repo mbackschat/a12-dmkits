@@ -53,7 +53,7 @@ final class RuleCheckCommand extends BaseCommand {
     String name;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -80,7 +80,7 @@ final class RuleCheckCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
         }
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
 
         // Pre-flight: --field/--group name a path INSIDE the model, not a file (both start with '/').
         // Best-effort — if the model can't bind standalone (e.g. unresolved includes), defer to the kernel.

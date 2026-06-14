@@ -121,7 +121,7 @@ final class ApplyCommand extends BaseCommand {
     boolean dryRun;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -140,7 +140,7 @@ final class ApplyCommand extends BaseCommand {
         if (!ops.isArray()) {
             return fail("the ops file must be a JSON array of op-records");
         }
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         EditSession session = EditSession.read(modelJson, resolver);
 
         ArrayNode results = MAPPER.createArrayNode();

@@ -62,13 +62,13 @@ batch:   dmtool -m order.dm.json apply --ops edits.json      # edits.json = [ {t
 
 `-m` is an **inherited, position-tolerant** option (accepted before or after the verb); if it's missing the diagnostic is corrective (`pass -m <model>`). We deliberately keep the model **explicit per call** rather than an ambient "use this model" state — a fully-specified, stateless invocation is easier for an agent to generate and to reproduce/debug.
 
-**The workspace root — `-w/--workspace`, set once for every verb.** A multi-file model `include`s / type-def-imports other models *by id*, so every reference-resolving verb needs to know where those models live. Rather than repeat `--include-dir` on each call, set the **workspace root once** — an inherited `-w/--workspace <dir>` option (sibling to `-m`), with the **`DMTOOL_WORKSPACE` env var** as the set-once-per-shell-session fallback (ideal for an agent harness). The resolution precedence, one rule for the whole CLI (`IncludeDirOption`):
+**The workspace root — `-w/--workspace`, one option for the whole CLI.** A multi-file model `include`s / type-def-imports other models *by id*, so every reference-resolving verb needs to know where those models live. There is **one** way to say it: an inherited, repeatable **`-w/--workspace <dir>`** option (sibling to `-m`), set once for every verb, with the **`DMTOOL_WORKSPACE` env var** as the set-once-per-shell-session fallback (ideal for an agent harness). The resolution precedence, one rule for the whole CLI (`WorkspaceOption`):
 
 ```
---include-dir (per verb)  >  -w/--workspace  >  $DMTOOL_WORKSPACE  >  the model's own directory
+-w/--workspace  >  $DMTOOL_WORKSPACE  >  the model's own directory
 ```
 
-So a workspace resolves with no per-verb flag once the root is set; a specific `--include-dir` still overrides for one call; and a self-contained model needs none of it. It stays **observable, not ambient**: the option is in the manifest/`--help`, and an unresolved reference fails loudly naming the directories it searched (never a silent wrong-model). (Locked: `cli.IncludeDirOptionTest` for the precedence, `cli.WorkspaceRootTest` end to end.)
+So a workspace resolves with no per-verb flag once the root is set, and a self-contained model needs none of it. **There is deliberately no separate `--include-dir`** — "include" is a document-model concept (a *mounted* sub-model), but the resolver serves *every* reference (includes **and** type-def imports), so naming it after one kind would mislead and split the vocabulary. The old `--include-dir` is a **fail-fast tombstone** (`Cli` errors with the `-w` replacement — no silent alias). It stays **observable, not ambient**: the option is in the manifest/`--help`, and an unresolved reference fails loudly naming the directories it searched (never a silent wrong-model). (Locked: `cli.WorkspaceOptionTest` for the precedence, `cli.WorkspaceRootTest` end to end + the tombstone.)
 
 ### 3b. The result envelope
 
@@ -126,7 +126,7 @@ Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ 
 
 | target | ops | family |
 |---|---|---|
-| `model` | `new · info · describe · read · validate · export · eval --doc · compute --doc` *(the **document model** target — vs `--doc`, a document **instance**; renamed from `doc`, which is now a fail-fast tombstone. `info` = the header dashboard: identity + super/subtype graph + includes/type-def imports **resolved to files** + compact counts — the one facet no other read verb owns; `--include-dir` resolves, default the model's folder)* | (whole model) |
+| `model` | `new · info · describe · read · validate · export · eval --doc · compute --doc` *(the **document model** target — vs `--doc`, a document **instance**; renamed from `doc`, which is now a fail-fast tombstone. `info` = the header dashboard: identity + super/subtype graph + includes/type-def imports **resolved to files** + compact counts — the one facet no other read verb owns; `-w/--workspace` resolves, default the model's folder)* | (whole model) |
 | `rule` | `add <spec> · read · explain · check · modify --condition · remove · rename` | rulekit |
 | `computation` | `add <spec> · read · explain · modify --spec · remove` | rulekit |
 | `field` | `add · read · remove · rename · move` | modelkit |

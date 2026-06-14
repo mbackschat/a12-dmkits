@@ -510,21 +510,21 @@ bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json config read | jq
 
 ## model info — one model's header dashboard
 
-`model info` is the model's identity card in a single read: `id`/`modelType`/`modelVersion`, the super/subtype graph (the `abstract`/`superTypes`/`subTypes` convention), and every outbound reference — `include`s and type-def imports — **resolved to its file** (via `--include-dir`, default the model's own folder). It carries *counts*, never contents — the field/rule/config detail stays in `model describe`/`model read`/`config read`, so it adds no redundancy. Projected here with `jq`.
+`model info` is the model's identity card in a single read: `id`/`modelType`/`modelVersion`, the super/subtype graph (the `abstract`/`superTypes`/`subTypes` convention), and every outbound reference — `include`s and type-def imports — **resolved to its file** (via `-w/--workspace`, default the model's own folder). It carries *counts*, never contents — the field/rule/config detail stays in `model describe`/`model read`/`config read`, so it adds no redundancy. Projected here with `jq`.
 
 ```bash
-bin/dmtool -m cli/src/test/resources/models/multifile/app/storefront.dm.json model info --include-dir cli/src/test/resources/models/multifile | jq -c '.data | {id, includes, counts}'
+bin/dmtool -m cli/src/test/resources/models/multifile/app/storefront.dm.json model info -w cli/src/test/resources/models/multifile | jq -c '.data | {id, includes, counts}'
 ```
 
 ```output
 {"id":"storefront","includes":[{"alias":"catalog","ref":"catalog","resolvedPath":"lib/catalog.dm.json"}],"counts":{"groups":2,"fields":1,"rules":0,"computations":0,"typeDefinitions":0}}
 ```
 
-→ `storefront` resolves its `catalog` include to `lib/catalog.dm.json` (the file to hand `--include-dir`), and the counts orient you — 2 groups, 1 field, no rules/computations — without dumping their contents. This is the single-model peer of `workspace list` below, which does the same across a whole folder.
+→ `storefront` resolves its `catalog` include to `lib/catalog.dm.json` (the file to hand `-w/--workspace`), and the counts orient you — 2 groups, 1 field, no rules/computations — without dumping their contents. This is the single-model peer of `workspace list` below, which does the same across a whole folder.
 
 ## workspace list — what's in a folder of models
 
-Everything above operated on one `-m` model. When you're handed a **directory** of models instead, `workspace list` is the cross-model "ls" that goes *into* them: a per-model index where every `include` / type-def import is **cross-resolved to its file within the scan**. So an agent learns which file provides a referenced model — instead of guessing an `--include-dir`. Kernel-free (a half-wired workspace still lists); `--recursive` widens the resolution scope, `--validate` adds a per-model validity flag, `--format table` renders the same facts for humans. Projected here with `jq`.
+Everything above operated on one `-m` model. When you're handed a **directory** of models instead, `workspace list` is the cross-model "ls" that goes *into* them: a per-model index where every `include` / type-def import is **cross-resolved to its file within the scan**. So an agent learns which file provides a referenced model — instead of guessing an `-w/--workspace`. Kernel-free (a half-wired workspace still lists); `--recursive` widens the resolution scope, `--validate` adds a per-model validity flag, `--format table` renders the same facts for humans. Projected here with `jq`.
 
 ```bash
 bin/dmtool workspace list cli/src/test/resources/models/multifile --recursive | jq -c '.data.models[] | {id, path, includes: [.includes[] | {ref, resolvedPath}]}'
@@ -535,7 +535,7 @@ bin/dmtool workspace list cli/src/test/resources/models/multifile --recursive | 
 {"id":"catalog","path":"lib/catalog.dm.json","includes":[]}
 ```
 
-→ `storefront` declares an `include` of the model id `catalog`, and the scan **resolves it to `lib/catalog.dm.json`** — the file an agent must put on the `--include-dir` to load `storefront`. Were the target outside the scan, `resolvedPath` would be `null` (widen with `--recursive`, as here). The same resolution covers type-def imports and surfaces the sub/supertype convention (`abstract`/`superTypes`/`subTypes`), so one read maps a whole workspace.
+→ `storefront` declares an `include` of the model id `catalog`, and the scan **resolves it to `lib/catalog.dm.json`** — the file an agent must put on the `-w/--workspace` to load `storefront`. Were the target outside the scan, `resolvedPath` would be `null` (widen with `--recursive`, as here). The same resolution covers type-def imports and surfaces the sub/supertype convention (`abstract`/`superTypes`/`subTypes`), so one read maps a whole workspace.
 
 ## workspace graph — the inheritance hierarchy
 

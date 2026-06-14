@@ -26,7 +26,7 @@ import java.util.Set;
  * KERNEL-INTEGRATION-NOTES) + every model reference ({@code include} / type-def import)
  * <b>cross-resolved to its file within the scanned set</b>. That cross-reference is the point: an agent
  * dropped into a folder learns what each model provides and which file an include or imported type-def
- * lives in, instead of guessing an {@code --include-dir}.
+ * lives in, instead of guessing an {@code -w/--workspace}.
  *
  * <p>The scan is the read peer of {@link DocumentModelDraft} (author) / {@link ModelDocument} (single-model
  * read), one level up — the multi-model surface. It depends only on {@link ModelDocument} (hence Jackson),

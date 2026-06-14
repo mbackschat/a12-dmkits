@@ -18,7 +18,7 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 
 /**
  * {@code dmtool model info} — the single-model header dashboard: identity + the super/subtype graph + every
- * outbound model reference (include / type-def import) <b>resolved to its file</b> via {@code --include-dir}
+ * outbound model reference (include / type-def import) <b>resolved to its file</b> via {@code -w/--workspace}
  * (default the model's folder) + compact counts. The non-redundancy contract is the point — it owns the
  * facet no other read verb does (identity, type-def imports, super/subtypes), emitting only counts (not the
  * field/rule/config <em>contents</em> that `model describe`/`model read`/`config read` own).
@@ -65,7 +65,7 @@ class ModelInfoCommandTest {
         assertEquals("document", data.path("modelType").asText());
         assertFalse(data.path("modelVersion").asText().isBlank(), "identity carries the model version");
         assertEquals("Product_Base", data.path("superTypes").path(0).asText());
-        // the include cross-resolves to the sibling file (default --include-dir = the model's folder)
+        // the include cross-resolves to the sibling file (default -w/--workspace = the model's folder)
         assertEquals("base", data.path("includes").path(0).path("alias").asText());
         assertEquals("Product_Base.dm.json", data.path("includes").path(0).path("resolvedPath").asText());
     }

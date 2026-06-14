@@ -98,7 +98,7 @@ class RemoveVerbTest {
                         .rootGroup("Catalog", g -> g.field("Sku", FieldKind.STRING)).build().toJson());
         assertEquals(0, CliTestSupport.run("add-include", model.toString(), "--alias", "catalog",
                 "--reference", "catalog", "--parent", "/Order", "--name", "Catalog",
-                "--include-dir", dir.toString()).code());
+                "-w", dir.toString()).code());
 
         var res = CliTestSupport.run("remove", model.toString(), "--include", "catalog");
         assertEquals(0, res.code(), res.err());

@@ -92,7 +92,7 @@ final class EvalDocCommand extends BaseCommand {
     String localeTag;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -122,7 +122,7 @@ final class EvalDocCommand extends BaseCommand {
             return fail("cannot read document: " + e.getMessage());
         }
 
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         Locale locale = Locale.forLanguageTag(localeTag.replace('_', '-'));
 
         // Determine the model to evaluate (candidate-injected or as-is) and which rule, if any, to report on.

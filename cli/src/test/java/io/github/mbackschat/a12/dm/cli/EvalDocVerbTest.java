@@ -183,7 +183,7 @@ class EvalDocVerbTest {
 
     @Test
     void respectsIncludeDirForAMultiFileModel(@TempDir Path dir) throws Exception {
-        // a storefront that includes a pricelist living in a separate lib/ tree → needs --include-dir to load
+        // a storefront that includes a pricelist living in a separate lib/ tree → needs -w/--workspace to load
         String pricelist = DocumentModelDraft.named("pricelist").locale("en_US")
                 .rootGroup("Pricelist", p -> p.numberField("ListPrice", n -> n.fractionDigits(2)))
                 .build().toJson();
@@ -200,8 +200,8 @@ class EvalDocVerbTest {
                 { "fields": { "Storefront": { "StoreName": "Acme" } } }""");
 
         var withDir = CliTestSupport.run("eval-doc", model.toString(), "--doc", d.toString(),
-                "--include-dir", lib.toString());
-        assertEquals(0, withDir.code(), () -> "--include-dir resolves the multi-file model: " + withDir.err());
+                "-w", lib.toString());
+        assertEquals(0, withDir.code(), () -> "-w/--workspace resolves the multi-file model: " + withDir.err());
         assertTrue(MAPPER.readTree(withDir.out()).has("fired"), () -> "emits a result: " + withDir.out());
     }
 }

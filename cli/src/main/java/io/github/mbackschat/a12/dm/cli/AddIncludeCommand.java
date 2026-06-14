@@ -19,11 +19,11 @@ import picocli.CommandLine.Parameters;
  * The {@code add-include} verb (CLI-SPEC §5d) — declare a header model-reference ({@code --alias} →
  * {@code --reference}) and <b>mount</b> it as a group ({@code --name}) under {@code --parent}, then
  * <b>write the model back</b> (in place; {@code -o} redirects, {@code --dry-run} previews). The mounted
- * model is resolved + kernel-validated via {@code --include-dir} (F-RES), so a missing reference fails.
+ * model is resolved + kernel-validated via {@code -w/--workspace} (F-RES), so a missing reference fails.
  */
 @Command(name = "add-include", hidden = true, mixinStandardHelpOptions = true,
         description = "Declare a model include (--alias → --reference) and mount it as --name under --parent, "
-                + "then WRITE the model back. The referenced model is resolved + validated via --include-dir.")
+                + "then WRITE the model back. The referenced model is resolved + validated via -w/--workspace.")
 final class AddIncludeCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -36,7 +36,7 @@ final class AddIncludeCommand extends BaseCommand {
     String alias;
 
     @Option(names = "--reference", required = true, paramLabel = "<reference>",
-            description = "the referenced model's header id (resolved via --include-dir)")
+            description = "the referenced model's header id (resolved via -w/--workspace)")
     String reference;
 
     @Option(names = "--parent", required = true, paramLabel = "<path>",
@@ -55,7 +55,7 @@ final class AddIncludeCommand extends BaseCommand {
     boolean dryRun;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -65,7 +65,7 @@ final class AddIncludeCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
         }
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         String mountPath = parent + "/" + name;
 
         String resultJson;

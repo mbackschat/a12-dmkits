@@ -53,7 +53,7 @@ final class ExplainCommand extends BaseCommand {
     String computation;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -67,7 +67,7 @@ final class ExplainCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         try {
-            BoundModel boundModel = BoundModel.ofJson(modelJson, includes.resolverFor(model));
+            BoundModel boundModel = BoundModel.ofJson(modelJson, workspace.resolverFor(model));
             KernelAdapter adapter = KernelAdapter.of(boundModel);   // reuses the BoundModel's resolver
             return rule != null ? explainRule(adapter, boundModel) : explainComputation(adapter, boundModel);
         } catch (RuntimeException e) {

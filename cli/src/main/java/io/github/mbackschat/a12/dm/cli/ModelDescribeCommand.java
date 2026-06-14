@@ -25,7 +25,7 @@ final class ModelDescribeCommand extends BaseCommand {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -34,7 +34,7 @@ final class ModelDescribeCommand extends BaseCommand {
             return fail("pass -m <model.json> (before or after the verb)");
         }
         try {
-            BoundModel m = BoundModel.ofJson(Files.readString(Path.of(model)), includes.resolverFor(model));
+            BoundModel m = BoundModel.ofJson(Files.readString(Path.of(model)), workspace.resolverFor(model));
             JsonNode card = MAPPER.readTree(new ModelContext(m).describe().toJson());
             ResultEnvelope env = ResultEnvelope.read("model", "describe", "model card", true, List.of(), card);
             out().print(env.toJsonString());

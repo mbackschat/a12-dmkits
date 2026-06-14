@@ -25,6 +25,16 @@ public final class Cli {
     public static int run(String[] args, Appendable out, Appendable err) {
         PrintWriter outW = new PrintWriter(new AppendableWriter(out), true);
         PrintWriter errW = new PrintWriter(new AppendableWriter(err), true);
+        // the removed --include-dir option is a fail-fast tombstone (renamed to -w/--workspace) — a pre-parse
+        // guard so a stale caller is corrected, not met with a generic "Unknown option" (the no-silent-alias stance)
+        for (String a : args) {
+            if (a.equals("--include-dir") || a.startsWith("--include-dir=")) {
+                errW.println("the `--include-dir` option was renamed to `-w/--workspace` (the workspace root — "
+                        + "it resolves a model's includes AND type-def imports). Rerun with `-w <dir>`.");
+                errW.flush();
+                return 2;
+            }
+        }
         try {
             CommandLine cli = new CommandLine(new RootCommand())
                     .setOut(outW)

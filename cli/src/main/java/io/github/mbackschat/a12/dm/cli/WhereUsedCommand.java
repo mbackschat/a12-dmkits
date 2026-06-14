@@ -39,7 +39,7 @@ final class WhereUsedCommand extends BaseCommand {
     String entity;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -50,7 +50,7 @@ final class WhereUsedCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         try {
-            KernelAdapter adapter = KernelAdapter.ofJson(modelJson, includes.resolverFor(model));
+            KernelAdapter adapter = KernelAdapter.ofJson(modelJson, workspace.resolverFor(model));
             Set<String> rules = adapter.whereUsed(entity);
             Set<String> computations = adapter.whereUsedInComputations(entity);
             ObjectNode root = MAPPER.createObjectNode();

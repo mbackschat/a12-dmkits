@@ -64,11 +64,12 @@ final class RootCommand implements Callable<Integer> {
             description = "the DM-JSON model file to operate on (set once; accepted before or after the verb)")
     String model;
 
-    @Option(names = {"-w", "--workspace"}, scope = ScopeType.INHERIT, paramLabel = "<dir>",
-            description = "the workspace root: the directory tree to resolve included / type-def-imported "
-                    + "models from, set once for every verb (so multi-file models resolve without a per-verb "
-                    + "--include-dir). Env DMTOOL_WORKSPACE is the fallback; a verb's own --include-dir overrides.")
-    String workspace;
+    @Option(names = {"-w", "--workspace"}, scope = ScopeType.INHERIT, arity = "1", paramLabel = "<dir>",
+            description = "the workspace root(s): directory tree(s) to resolve a model's included / "
+                    + "type-def-imported models from (repeatable), set once for every verb so multi-file models "
+                    + "resolve with no per-verb flag. Env DMTOOL_WORKSPACE is the set-once-per-session fallback; "
+                    + "default is the model's own folder.")
+    java.util.List<java.nio.file.Path> workspace = new java.util.ArrayList<>();
 
     @Override
     public Integer call() {

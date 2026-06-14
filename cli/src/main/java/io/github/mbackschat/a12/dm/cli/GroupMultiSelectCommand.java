@@ -65,7 +65,7 @@ final class GroupMultiSelectCommand extends BaseCommand {
     boolean dryRun;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -79,7 +79,7 @@ final class GroupMultiSelectCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read model: " + e.getMessage());
         }
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         String target = parent + "/" + name;
         ModelDocument doc = ModelDocument.read(modelJson);
         if (!parent.isEmpty()) {

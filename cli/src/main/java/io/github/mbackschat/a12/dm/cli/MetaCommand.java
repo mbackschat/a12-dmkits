@@ -75,7 +75,7 @@ final class MetaCommand extends BaseCommand {
     boolean dryRun;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     private boolean hasWrites() {
         return !internal.isEmpty() || !external.isEmpty() || !annotate.isEmpty()
@@ -89,7 +89,7 @@ final class MetaCommand extends BaseCommand {
         if (modelJson == null) {
             return 2;
         }
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         ModelDocument doc = ModelDocument.read(modelJson);
 
         Optional<Refusal> refusal = new SafetyGate()

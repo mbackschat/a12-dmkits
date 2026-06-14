@@ -26,7 +26,7 @@ import picocli.CommandLine.Mixin;
 final class ModelValidateCommand extends BaseCommand {
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -44,7 +44,7 @@ final class ModelValidateCommand extends BaseCommand {
         List<Diagnostic> diagnostics = new ArrayList<>();
         boolean valid;
         try {
-            BoundModel.ofJson(json, includes.resolverFor(model));
+            BoundModel.ofJson(json, workspace.resolverFor(model));
             valid = true;
         } catch (ModelConsistencyException e) {
             valid = false;

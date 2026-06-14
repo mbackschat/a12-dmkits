@@ -48,7 +48,7 @@ final class TypedefRenameCommand extends BaseCommand {
     boolean dryRun;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -59,7 +59,7 @@ final class TypedefRenameCommand extends BaseCommand {
         }
         StructureRefactor refactor = StructureRefactor.typedefRename(id, newId);
         ModelDocument doc = ModelDocument.read(modelJson);
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         KernelAdapter adapter = KernelAdapter.ofJson(modelJson, resolver);
 
         // the refactor safety gate (CLI-SPEC §6): check before we change anything, refuse with diagnostics.

@@ -684,7 +684,7 @@ jq -c '[.. | objects | select(has("modelAlias")) | .modelAlias]' /tmp/struct2-ex
 
 ## include — mount another model's content
 
-An include declares a reference to another model (`--alias` → `--reference`) and mounts its content as a group (`--name`) under `--parent`. The referenced model is resolved by its header id from `--include-dir`. We stage a `/tmp` copy of `subscription` plus a tiny library directory holding the committed `catalog` model:
+An include declares a reference to another model (`--alias` → `--reference`) and mounts its content as a group (`--name`) under `--parent`. The referenced model is resolved by its header id from `-w/--workspace`. We stage a `/tmp` copy of `subscription` plus a tiny library directory holding the committed `catalog` model:
 
 ```bash
 cp cli/src/test/resources/models/subscription.dm.json /tmp/struct2-sub.json
@@ -706,10 +706,10 @@ jq ".header.locales = [{\"code\":\"en_US\"},{\"code\":\"de_DE\"}]" /tmp/struct2-
 [{"code":"en_US"},{"code":"de_DE"}]
 ```
 
-Now `include add` resolves `catalog` from `--include-dir` and mounts it under `/Subscription` as `Catalog`:
+Now `include add` resolves `catalog` from `-w/--workspace` and mounts it under `/Subscription` as `Catalog`:
 
 ```bash
-bin/dmtool -m /tmp/struct2-sub.json include add --alias catalog --reference catalog --parent /Subscription --name Catalog --include-dir /tmp/struct2-lib
+bin/dmtool -m /tmp/struct2-sub.json include add --alias catalog --reference catalog --parent /Subscription --name Catalog -w /tmp/struct2-lib
 ```
 
 ```output
@@ -732,7 +732,7 @@ bin/dmtool -m /tmp/struct2-sub.json include add --alias catalog --reference cata
 
 → `changed.mountedAt = /Subscription/Catalog`: the catalog model's content now hangs under that path. The kernel re-bound the merged model on the way out, so a locale gap (or a missing reference) would have surfaced as diagnostics, not a silent write.
 
-`include read` lists the header's declared includes under `data.includes` — no `--include-dir` needed, it reports what the model *declares*, not the resolved content:
+`include read` lists the header's declared includes under `data.includes` — no `-w/--workspace` needed, it reports what the model *declares*, not the resolved content:
 
 ```bash
 bin/dmtool -m /tmp/struct2-sub.json include read
@@ -760,7 +760,7 @@ bin/dmtool -m /tmp/struct2-sub.json include read
 → `data.includes` carries the `alias → reference` pair the header declares. `include remove <alias>` then drops the header reference *and* its mounts:
 
 ```bash
-bin/dmtool -m /tmp/struct2-sub.json include remove catalog --include-dir /tmp/struct2-lib
+bin/dmtool -m /tmp/struct2-sub.json include remove catalog -w /tmp/struct2-lib
 ```
 
 ```output
@@ -1100,4 +1100,4 @@ bin/dmtool -m /tmp/extras.dm.json config read
 }
 ```
 
-→ Two more authoring verbs round out the model surface (multi-file, so shown via `--include-dir` rather than re-staged here): **`typedef import --reference <m>`** pulls another model's type definitions in by id (a `purpose=typeDefinitions` reference, not a mount), and **`include add --exclude-rules`** mounts a model while dropping its own rules/computations. Both are in `manifest` + `--help`; the contracts are in [`../docs/CLI-SPEC.md`](../docs/CLI-SPEC.md) §5/§6.
+→ Two more authoring verbs round out the model surface (multi-file, so shown via `-w/--workspace` rather than re-staged here): **`typedef import --reference <m>`** pulls another model's type definitions in by id (a `purpose=typeDefinitions` reference, not a mount), and **`include add --exclude-rules`** mounts a model while dropping its own rules/computations. Both are in `manifest` + `--help`; the contracts are in [`../docs/CLI-SPEC.md`](../docs/CLI-SPEC.md) §5/§6.

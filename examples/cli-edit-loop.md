@@ -3,7 +3,7 @@
 *2026-06-11T21:02:17Z by Showboat 0.6.1*
 <!-- showboat-id: 0cbe3a7c-75d1-448c-9808-fba2f6dba3e4 -->
 
-The companion to [`cli-tour.md`](cli-tour.md) (which reads & inspects): this demo **writes**. It walks the F8 modify-by-re-express loop and the write surface on the `subscription-computed` fixture (which already carries a computation `EffectiveFeeComp = [BaseFee]`) — `where-used` · `computation explain` · `computation modify` (`--dry-run` previews, then write) · `rule add` · `model describe --include-dir` (multi-file) · `batch`. Every command is `bin/dmtool -m <model> <target> <op>`: the model is set once with `-m`, then a `<target> <op>` selects the operation. Commands run through `bin/dmtool` from the repo root; re-check with `uvx showboat@0.6.1 verify examples/cli-edit-loop.md`.
+The companion to [`cli-tour.md`](cli-tour.md) (which reads & inspects): this demo **writes**. It walks the F8 modify-by-re-express loop and the write surface on the `subscription-computed` fixture (which already carries a computation `EffectiveFeeComp = [BaseFee]`) — `where-used` · `computation explain` · `computation modify` (`--dry-run` previews, then write) · `rule add` · `model describe -w/--workspace` (multi-file) · `batch`. Every command is `bin/dmtool -m <model> <target> <op>`: the model is set once with `-m`, then a `<target> <op>` selects the operation. Commands run through `bin/dmtool` from the repo root; re-check with `uvx showboat@0.6.1 verify examples/cli-edit-loop.md`.
 
 **Migrated verbs write IN PLACE and return the result envelope** (`{target, op, outcome, ok, summary, changed, written, output, diagnostics}`): a mutation carries `.changed`; `--dry-run` previews read-only (writes nothing). So edits below operate on a `/tmp` copy, leaving the committed fixture untouched.
 
@@ -125,12 +125,12 @@ bin/dmtool export /tmp/edit-add.json | grep -E "^- rules:"
 
 → The kernel accepted the candidate, `rule add` wrote it in place (`written: true`, `changed.rule` names it), and the model re-validates clean. `export`'s one-line summary shows the rule landed (`rules: 1`, up from the fixture's 0). The condition is true on the **violation** (effective below base) — A12 rules fire when their condition holds.
 
-## model describe --include-dir — a multi-file model
+## model describe over a workspace — a multi-file model
 
-A model that `include`s another model needs `--include-dir` to resolve it when the included model lives elsewhere in the workspace. `storefront` (in `multifile/app/`) mounts the separate `catalog` model (in `multifile/lib/`) at `/Storefront/Inventory`. The structure rides the envelope's `.data.fields`.
+A model that `include`s another model needs `-w/--workspace` to resolve it when the included model lives elsewhere in the workspace. `storefront` (in `multifile/app/`) mounts the separate `catalog` model (in `multifile/lib/`) at `/Storefront/Inventory`. The structure rides the envelope's `.data.fields`.
 
 ```bash
-bin/dmtool -m cli/src/test/resources/models/multifile/app/storefront.dm.json model describe --include-dir cli/src/test/resources/models/multifile/lib | jq -c '.data.fields[] | select(.path|test("Inventory")) | {path,kind}'
+bin/dmtool -m cli/src/test/resources/models/multifile/app/storefront.dm.json model describe -w cli/src/test/resources/models/multifile/lib | jq -c '.data.fields[] | select(.path|test("Inventory")) | {path,kind}'
 ```
 
 ```output
@@ -138,7 +138,7 @@ bin/dmtool -m cli/src/test/resources/models/multifile/app/storefront.dm.json mod
 {"path":"/Storefront/Inventory/ListPrice","kind":"NUMBER"}
 ```
 
-→ The mounted `catalog`'s fields (`/Storefront/Inventory/Sku`, `/Storefront/Inventory/ListPrice`) resolve — but **only** because `--include-dir` pointed at the `lib/` tree. Without it the model can't expand (the include is unresolved) and every verb fails until you supply it. `--include-dir` is a shared option on every model-loading verb.
+→ The mounted `catalog`'s fields (`/Storefront/Inventory/Sku`, `/Storefront/Inventory/ListPrice`) resolve — but **only** because `-w/--workspace` pointed at the `lib/` tree. Without it the model can't expand (the include is unresolved) and every verb fails until you supply it. `-w/--workspace` is a shared option on every model-loading verb.
 
 ## batch — many ops in one warm JVM
 

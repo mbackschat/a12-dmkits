@@ -19,7 +19,7 @@ import picocli.CommandLine.Option;
  * of another model (a header {@code modelReferences} entry with {@code purpose: "typeDefinitions"}). The
  * referenced model's type-defs merge into this model's namespace by id, so a field can be typed by an
  * imported id with a plain {@code typeDefinitionId} — distinct from {@code include add}, which mounts a
- * model's <em>structure</em>. The referenced model is resolved + kernel-validated via {@code --include-dir};
+ * model's <em>structure</em>. The referenced model is resolved + kernel-validated via {@code -w/--workspace};
  * an unresolved reference is a {@code rejected} envelope.
  */
 @Command(name = "import", mixinStandardHelpOptions = true,
@@ -30,7 +30,7 @@ final class TypedefImportCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.FREEFORM)
     @Option(names = "--reference", required = true, paramLabel = "<reference>",
-            description = "the type-def-providing model's header id (resolved via --include-dir)")
+            description = "the type-def-providing model's header id (resolved via -w/--workspace)")
     String reference;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
@@ -41,7 +41,7 @@ final class TypedefImportCommand extends BaseCommand {
     boolean dryRun;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -50,7 +50,7 @@ final class TypedefImportCommand extends BaseCommand {
         if (modelJson == null) {
             return 2;
         }
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         String resultJson;
         try {
             resultJson = ModelDocument.read(modelJson)

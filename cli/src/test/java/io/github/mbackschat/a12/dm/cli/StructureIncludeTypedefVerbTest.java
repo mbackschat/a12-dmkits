@@ -16,7 +16,7 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
  * The include/typedef structure-edit verbs — {@code add-typedef}, {@code add-field --typedef}, and
  * {@code add-include} (declare a header model-reference + mount it). They follow the {@code modify}
  * convention (in place; {@code -o}/{@code --dry-run}); {@code add-include} validates the mounted model
- * against {@code --include-dir} (the F-RES resolver).
+ * against {@code -w/--workspace} (the F-RES resolver).
  */
 class StructureIncludeTypedefVerbTest {
 
@@ -54,7 +54,7 @@ class StructureIncludeTypedefVerbTest {
     @Test
     void addsAnIncludeAndMountsItValidatedViaIncludeDir(@TempDir Path dir) throws Exception {
         Path model = subscription(dir);
-        // a referenced model, authored with modelkit, sitting in the same --include-dir (resolved by header id)
+        // a referenced model, authored with modelkit, sitting in the same -w/--workspace (resolved by header id)
         Files.writeString(dir.resolve("catalog.dm.json"),
                 DocumentModelDraft.named("catalog").locale("en_US").locale("de_DE")
                         .rootGroup("Catalog", g -> g.field("Sku", FieldKind.STRING))
@@ -63,12 +63,12 @@ class StructureIncludeTypedefVerbTest {
         var res = CliTestSupport.run("add-include", model.toString(),
                 "--alias", "catalog", "--reference", "catalog",
                 "--parent", "/Subscription", "--name", "Catalog",
-                "--include-dir", dir.toString());
+                "-w", dir.toString());
         assertEquals(0, res.code(), res.err());
 
         String written = Files.readString(model);
         assertTrue(written.contains("\"modelAlias\""));
         assertTrue(written.contains("\"reference\""));
-        assertEquals(0, CliTestSupport.run("validate", model.toString(), "--include-dir", dir.toString()).code());
+        assertEquals(0, CliTestSupport.run("validate", model.toString(), "-w", dir.toString()).code());
     }
 }

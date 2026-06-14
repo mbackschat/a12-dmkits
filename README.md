@@ -267,7 +267,7 @@ dmtool -m order.dm.json where-used /Order/DeliveryDate             # which rules
 
 ### Explore a whole folder of models
 
-When you're dropped into a *directory* of models — not one file — `workspace list` is the agent-friendly "ls" that goes *into* them: a per-model index with the sub/supertype graph and every `include` / type-def import **resolved to its file**, so you know what to wire (which `--include-dir`, which file provides a needed type-def) without reading raw JSON.
+When you're dropped into a *directory* of models — not one file — `workspace list` is the agent-friendly "ls" that goes *into* them: a per-model index with the sub/supertype graph and every `include` / type-def import **resolved to its file**, so you know what to wire (which `-w/--workspace`, which file provides a needed type-def) without reading raw JSON.
 
 ```sh
 dmtool workspace list ./models                       # the index as JSON (id, type, super/subtypes, resolved refs, counts)
@@ -278,14 +278,14 @@ dmtool workspace graph ./models                      # the sub/supertype inherit
 dmtool workspace graph ./models --format tree        # …as an indented hierarchy (or --format dot for Graphviz)
 ```
 
-For multi-file models (one model `include`s or imports another *by id*), set the **workspace root once** so every verb resolves references without a per-call `--include-dir`:
+For multi-file models (one model `include`s or imports another *by id*), set the **workspace root once** so every verb resolves references with no per-call flag:
 
 ```sh
 dmtool -w ./models -m app.dm.json model validate     # -w/--workspace: the dir to resolve includes/imports from
 export DMTOOL_WORKSPACE=./models                      # …or set it once per shell session (the env fallback)
 ```
 
-Precedence: a per-verb `--include-dir` > `-w/--workspace` > `$DMTOOL_WORKSPACE` > the model's own folder (see [CLI-SPEC §3a](docs/CLI-SPEC.md)).
+Precedence: `-w/--workspace` > `$DMTOOL_WORKSPACE` > the model's own folder (see [CLI-SPEC §3a](docs/CLI-SPEC.md)). There's no separate `-w/--workspace` — one workspace concept resolves both includes and type-def imports.
 
 ### Author & check — confirmed by the kernel
 
@@ -328,8 +328,8 @@ dmtool -m order.dm.json field add fee-spec.json   # rich: per-kind config + meta
 dmtool -m order.dm.json group add --parent /Order --name Shipping
 dmtool -m order.dm.json typedef add … ; dmtool -m order.dm.json config modify --decimal-separator "," --label en_US="Customer Order"
 dmtool -m order.dm.json config modify --supported-character A-Z --supported-character 0-9   # restrict the allowed-character set (runtime-enforced)
-dmtool -m order.dm.json include add --alias prices --reference pricelist --parent /Order --name Prices --exclude-rules --include-dir ./models   # mount, dropping the included rules
-dmtool -m order.dm.json typedef import --reference catalogtypes --include-dir ./models   # import another model's type-defs (merged by id, not mounted)
+dmtool -m order.dm.json include add --alias prices --reference pricelist --parent /Order --name Prices --exclude-rules -w ./models   # mount, dropping the included rules
+dmtool -m order.dm.json typedef import --reference catalogtypes -w ./models   # import another model's type-defs (merged by id, not mounted)
 dmtool -m order.dm.json group multiselect --parent /Order --name Conditions --field Condition --values NEW,USED,REFURB --max-rows 3   # a multi-select group template
 dmtool -m order.dm.json group attachment --parent /Order --name Invoice --max-size-bytes 10000000 --allowed-mime application/pdf   # the canonical attachment template (8 fields + 4 rules), generated whole
 dmtool -m order.dm.json meta /Order/Total --internal en_US="the order total" --annotate owner=orders-team   # describe/annotate any element (field/group/rule by path, type-def by id); `meta /Order/Total` reads it back
@@ -366,7 +366,7 @@ dmtool -m order.dm.json apply <ops.json>
 ### Works on real, multi-file apps
 
 ```sh
-dmtool -m app/storefront.dm.json model validate --include-dir lib   # resolves include'd / typedef'd models
+dmtool -m app/storefront.dm.json model validate -w lib   # resolves include'd / typedef'd models
 ```
 
 ### Version & compatibility — tolerant, but explicit

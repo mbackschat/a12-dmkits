@@ -19,7 +19,7 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 /**
  * The target-first {@code include} group (CLI-SPEC §5) — model includes: {@code add} (declare a header
  * model-reference + mount it as a group; the referenced model is resolved + kernel-validated via
- * {@code --include-dir}), {@code read} (lists the declared includes), {@code remove} (kernel-gated; a rule
+ * {@code -w/--workspace}), {@code read} (lists the declared includes), {@code remove} (kernel-gated; a rule
  * still referencing the mounted content is a {@code rejected} envelope).
  */
 class IncludeVerbTest {
@@ -43,7 +43,7 @@ class IncludeVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "include", "add",
                 "--alias", "catalog", "--reference", "catalog",
                 "--parent", "/Subscription", "--name", "Catalog",
-                "--include-dir", dir.toString());
+                "-w", dir.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
         assertEquals("applied", j.get("outcome").asText());
@@ -60,7 +60,7 @@ class IncludeVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "include", "add",
                 "--alias", "catalog", "--reference", "catalog",
                 "--parent", "/Subscription", "--name", "Catalog", "--repeatability", "3",
-                "--include-dir", dir.toString());
+                "-w", dir.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
         assertEquals("applied", j.get("outcome").asText());
@@ -75,7 +75,7 @@ class IncludeVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "include", "add",
                 "--alias", "catalog", "--reference", "catalog",
                 "--parent", "/Subscription", "--name", "Catalog", "--exclude-rules",
-                "--include-dir", dir.toString());
+                "-w", dir.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
         assertEquals("applied", j.get("outcome").asText());
@@ -90,7 +90,7 @@ class IncludeVerbTest {
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "include", "add",
                 "--alias", "catalog", "--reference", "catalog",
                 "--parent", "/Subscription", "--name", "Catalog",
-                "--include-dir", dir.toString()).code());
+                "-w", dir.toString()).code());
         var res = CliTestSupport.run("-m", model.toString(), "include", "read");
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
@@ -112,9 +112,9 @@ class IncludeVerbTest {
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "include", "add",
                 "--alias", "catalog", "--reference", "catalog",
                 "--parent", "/Subscription", "--name", "Catalog",
-                "--include-dir", dir.toString()).code());
+                "-w", dir.toString()).code());
         var res = CliTestSupport.run("-m", model.toString(), "include", "remove", "catalog",
-                "--include-dir", dir.toString());
+                "-w", dir.toString());
         assertEquals(0, res.code(), res.err());
         assertEquals("applied", M.readTree(res.out()).get("outcome").asText());
         assertFalse(Files.readString(model).contains("\"modelAlias\""));

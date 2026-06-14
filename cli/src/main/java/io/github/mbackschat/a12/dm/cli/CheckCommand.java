@@ -66,7 +66,7 @@ final class CheckCommand extends BaseCommand {
     String name;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -93,7 +93,7 @@ final class CheckCommand extends BaseCommand {
         // Pre-flight: --field/--group name a path INSIDE the model, not a file. A file path also starts with
         // '/', so resolve them against the loaded model and fail fast with a clear message (best-effort —
         // if the model can't load standalone, e.g. unresolved includes, skip and let RuleValidator report).
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         try {
             BoundModel bound = BoundModel.ofJson(json, resolver);
             String fieldProblem = ModelPaths.fieldProblem(bound, field);

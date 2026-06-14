@@ -55,7 +55,7 @@ final class AddCommand extends BaseCommand {
     String outputPath;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -95,7 +95,7 @@ final class AddCommand extends BaseCommand {
         String errorEntityRelPath = "../" + field.substring(group.length() + 1);
 
         // 1) validate the condition against the real kernel (placeholders mask messages here)
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         ValidationResult check = new RuleValidator().check(modelJson,
                 new DraftRule(group, name, errorEntityRelPath, condition, code, severity), resolver);
         if (!check.ok()) {
@@ -140,7 +140,7 @@ final class AddCommand extends BaseCommand {
         if (!parsed.ok()) {
             return fail(parsed.error());
         }
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
 
         // 1) validate the computation against the real kernel
         ValidationResult check = new RuleValidator().check(modelJson, parsed.draft(), resolver);

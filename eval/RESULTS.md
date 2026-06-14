@@ -114,13 +114,13 @@ Targeted run after the verb/API rename (`ingest`→`read`, `dump`→`export`, `e
 | T3 | 2/2 | **0/2** | authoring — pattern (unchanged verbs) |
 | T7 | 2/2 | 2/2 | **comprehension — read-back via `explain`** |
 | T13 | 2/2 | 2/2 | **authoring-computation — `schema add` + `DateRange`** |
-| T15 | 2/2 | **0/2** | authoring (multi-file) — `--include-dir` |
+| T15 | 2/2 | **0/2** | authoring (multi-file) — `-w/--workspace` |
 | T16 | 2/2 | 2/2 | **modify-computation — discovery via `read --all`/`explain --computation` + `diff --computation`** |
 
-**Totals: opus 11/12, sonnet 7/12. No regression from the rename.** The rename-sensitive surface is **2/2 on both tiers**: T7 (read foreign rules back via `explain`), T13 (`schema add` + the computation write path), and T16 (the agent discovers the *existing* computation through the renamed `read --all`/`explain --computation`, re-expresses it, and `diff --computation` validates). The self-describing CLI absorbed the new verb names — agents found `read`/`export` from the manifest with no help. **opus T15 2/2** further confirms the multi-file `--include-dir` path works after the rename.
+**Totals: opus 11/12, sonnet 7/12. No regression from the rename.** The rename-sensitive surface is **2/2 on both tiers**: T7 (read foreign rules back via `explain`), T13 (`schema add` + the computation write path), and T16 (the agent discovers the *existing* computation through the renamed `read --all`/`explain --computation`, re-expresses it, and `diff --computation` validates). The self-describing CLI absorbed the new verb names — agents found `read`/`export` from the manifest with no help. **opus T15 2/2** further confirms the multi-file `-w/--workspace` path works after the rename.
 
 Every miss is pre-existing and **naming-independent**:
-- **sonnet T3 0/2 and T15 0/2 — both kernel-*invalid*: the documented `--field` file-path slip** (GAP 1, persists). The condition is right; sonnet puts the model *file* path in the `--field` slot. opus got both 2/2 (incl. the multi-file T15). Neither task touches a renamed verb in its authoring path (they use `describe`/`operators`/`check` + `--include-dir`). A sonnet-tier self-correction limit, not the rename.
+- **sonnet T3 0/2 and T15 0/2 — both kernel-*invalid*: the documented `--field` file-path slip** (GAP 1, persists). The condition is right; sonnet puts the model *file* path in the `--field` slot. opus got both 2/2 (incl. the multi-file T15). Neither task touches a renamed verb in its authoring path (they use `describe`/`operators`/`check` + `-w/--workspace`). A sonnet-tier self-correction limit, not the rename.
 - **T1 1/2 both tiers — the `GroupFilled` vs `FieldFilled(sibling)` row-guard idiom** (opus's miss is kernel-valid-but-non-equivalent on the blank-row case; sonnet's is kernel-invalid). The known iteration wobble; flaky at k=2.
 
 **Bonus: the T13 judge split from the 18:07 run is settled.** That run had sonnet/T13 1/2 because two judges disagreed on whether an `AllFieldsFilled` guard is equivalent to the unguarded gold. This run is **sonnet/T13 2/2**, both judges ruling the guard redundant and citing the kernel empty-operand rule — i.e. the empty-operand semantic fed into the judge prompt (+ the `DateRangeComputationLawsTest` finding) resolved the ambiguity.
@@ -138,7 +138,7 @@ First run of the new **`authoring-computation`** family — the Layer-2 runner g
 
 **The one miss is an eval-design observation, not a model/tool gap.** sonnet/T13 split 1/2 because one run added `commonPrecondition FieldFilled(OrderDate) And FieldFilled(DeliveryDate)` and the **two judges contradicted each other** on whether that guard is equivalent to the unguarded gold: judge A said non-equivalent (a non-repeatable computed field "is always calculated even with empty inputs", so the guard changes behavior on missing dates), judge B said equivalent (a `DateRange` over an empty bound "computes nothing", so the guard is redundant). They are *guessing* the empty-operand-in-computation semantic — which neither the gold nor the judge prompt pins. **Follow-up:** verify the kernel behavior (does an unguarded `DateRange` computation with an empty date operand compute a value or nothing?) and either pin the gold with the guard or feed the semantic to the judge — the same gold-ambiguity class as T5/T11. (The runner change itself is sound; only the T13 equivalence bar is fuzzy.)
 
-**Still uncovered:** multi-file (`--include-dir`) authoring — needs multi-file model staging in the runner (the next Layer-2 extension).
+**Still uncovered:** multi-file (`-w/--workspace`) authoring — needs multi-file model staging in the runner (the next Layer-2 extension).
 
 ### 2026-06-08 17:46 CEST — targeted re-run confirming the two gap fixes (T3, T11; opus + sonnet, k=2)
 
@@ -157,7 +157,7 @@ Fresh targeted run `wf_de96c275-459` (**14 agents, 0.37M tokens, 3m07s**) after 
 
 ### 2026-06-08 17:25 CEST — full pass@k after the computation/CLI/operator build-out — no regression; two real gaps (opus + sonnet, k=2)
 
-First full sweep after this session's large surface growth: computations first-class read+write (`ingestModel`/`where-used`/`explain --computation`/`ingest --all`, `add` a computation, `diff --computation`), CLI-over-includes (`--include-dir` on every verb, F-RES), `Valid/Invalid(field,"Type")`, and the `DateRange` constructor (catalog now zero PLANNED stubs). Material changed → **fresh** full run `wf_478a0cb7-3c0` (**80 agents, 2.07M subagent tokens, 11m36s**), now **T1–T11** (T9–T11 = the date-extraction / group-scope-quantifier / string-concat authoring tasks). Bare-tool mode (no skill). Question: did the enlarged CLI/catalog regress self-sufficiency, and where are the gaps?
+First full sweep after this session's large surface growth: computations first-class read+write (`ingestModel`/`where-used`/`explain --computation`/`ingest --all`, `add` a computation, `diff --computation`), CLI-over-includes (`-w/--workspace` on every verb, F-RES), `Valid/Invalid(field,"Type")`, and the `DateRange` constructor (catalog now zero PLANNED stubs). Material changed → **fresh** full run `wf_478a0cb7-3c0` (**80 agents, 2.07M subagent tokens, 11m36s**), now **T1–T11** (T9–T11 = the date-extraction / group-scope-quantifier / string-concat authoring tasks). Bare-tool mode (no skill). Question: did the enlarged CLI/catalog regress self-sufficiency, and where are the gaps?
 
 | Task | opus | sonnet | family |
 |---|---|---|---|
@@ -180,7 +180,7 @@ First full sweep after this session's large surface growth: computations first-c
 
 **Not gaps:** **T10** — agents reached for the field-list enumeration `NotAllFieldsFilled(ShippingAddress/Street, ShippingAddress/City)` rather than the new group-scope `NotAllFieldsFilled(ShippingAddress)`; the judge correctly ruled them equivalent (same field set), so the new group-scope operator is discoverable and the enumeration is a valid alternative. **T9** (`YearFromDate(OrderDate) < 2020`) — opus byte-identical to gold both runs; the date-extraction family authors cleanly. **T5** — agents again prefer the direct `[DeliveryDate] < [OrderDate]` over the gold's `DifferenceInDays`; judge rules equivalent (the gold's guard is redundant for dates).
 
-**On this session's new surface:** T1–T11 exercise the *older* + the three 2026-06-06 families; this run therefore measures **regression + the existing suite**, not the brand-new verbs (computation authoring/diff over the CLI, `--include-dir`, `Valid(field,"Type")`, `DateRange`) — there are no tasks for those. Measuring *their* authorability needs **new tasks** (a computation-authoring task; a multi-file/`--include-dir` task; a `Valid(field,"Type")` task; a `DateRange` computed-field task) — the recommended next suite addition.
+**On this session's new surface:** T1–T11 exercise the *older* + the three 2026-06-06 families; this run therefore measures **regression + the existing suite**, not the brand-new verbs (computation authoring/diff over the CLI, `-w/--workspace`, `Valid(field,"Type")`, `DateRange`) — there are no tasks for those. Measuring *their* authorability needs **new tasks** (a computation-authoring task; a multi-file/`-w/--workspace` task; a `Valid(field,"Type")` task; a `DateRange` computed-field task) — the recommended next suite addition.
 
 ### 2026-06-06 22:54 CEST — full pass@k after the F10 ingest build-out (+11 catalog operators) — no regression (opus + sonnet, k=2)
 

@@ -17,7 +17,7 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 
 /**
  * The session {@code -w/--workspace} root, end to end: a model whose include lives in a <em>different</em>
- * directory resolves only once the workspace root points there — without a per-verb {@code --include-dir}.
+ * directory resolves only once the workspace root points there — without a per-verb {@code -w/--workspace}.
  * The auto-resolving workspace root (set once, every verb honors it).
  */
 class WorkspaceRootTest {
@@ -40,10 +40,19 @@ class WorkspaceRootTest {
         assertTrue(dflt.path("includes").path(0).path("resolvedPath").isNull(),
                 () -> "without a workspace root, the cross-dir include doesn't resolve: " + dflt);
 
-        // -w lib resolves it — no per-verb --include-dir needed
+        // -w lib resolves it — no per-verb -w/--workspace needed
         JsonNode withRoot = info(CliTestSupport.run("-m", sub.toString(), "-w", lib.toString(), "model", "info"));
         assertEquals("Base.dm.json", withRoot.path("includes").path(0).path("resolvedPath").asText(),
                 () -> "the -w workspace root resolves the include: " + withRoot);
+    }
+
+    @Test
+    void theRemovedIncludeDirOptionFailsFastWithACorrectiveMessage() {
+        // --include-dir was collapsed into -w/--workspace — a clean break, not a silent alias (CLI-SPEC §3a)
+        CliTestSupport.Result res = CliTestSupport.run("-m", "x.dm.json", "model", "validate", "--include-dir", "./models");
+        assertEquals(2, res.code(), res::out);
+        assertTrue(res.err().contains("-w/--workspace"),
+                () -> "the removed --include-dir names its replacement: " + res.err());
     }
 
     private static JsonNode info(CliTestSupport.Result res) throws Exception {

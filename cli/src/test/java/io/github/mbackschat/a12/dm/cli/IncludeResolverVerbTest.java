@@ -22,7 +22,7 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
  * CLI over a <b>multi-file</b> model (F-RES): a model that {@code include}s another document model and
  * uses a typedef must load through the CLI verbs, resolving the referenced model by id. The CLI defaults
  * to resolving against the directory of {@code <model.json>} (siblings resolve with no flag); an explicit
- * {@code --include-dir} points at the workspace tree when the included models live elsewhere. Before this,
+ * {@code -w/--workspace} points at the workspace tree when the included models live elsewhere. Before this,
  * every verb loaded self-contained and a multi-file app failed with "model references a separate model …".
  */
 class IncludeResolverVerbTest {
@@ -91,7 +91,7 @@ class IncludeResolverVerbTest {
 
     @Test
     void resolverSkipsAnUnreadableSubdirectory(@TempDir Path dir) throws Exception {
-        // Reproduces the CI failure: the default --include-dir is the model's parent, which on a CI runner
+        // Reproduces the CI failure: the default -w/--workspace is the model's parent, which on a CI runner
         // can be a shared /tmp containing root-only dirs (/tmp/systemd-private-*). The directory resolver
         // must SKIP a subdir it can't enter, not abort the whole walk with AccessDeniedException.
         assumeTrue(FileSystems.getDefault().supportedFileAttributeViews().contains("posix"),
@@ -119,12 +119,12 @@ class IncludeResolverVerbTest {
         Path storefront = apps.resolve("storefront.dm.json");
         Files.writeString(storefront, storefrontJson());
 
-        // no sibling pricelist → the default (apps/) can't resolve it; --include-dir lib does
+        // no sibling pricelist → the default (apps/) can't resolve it; -w/--workspace lib does
         var noHint = CliTestSupport.run("validate", storefront.toString());
-        assertEquals(1, noHint.code(), () -> "without --include-dir the sibling default can't resolve it: " + noHint.out());
+        assertEquals(1, noHint.code(), () -> "without -w/--workspace the sibling default can't resolve it: " + noHint.out());
 
-        var withDir = CliTestSupport.run("validate", storefront.toString(), "--include-dir", lib.toString());
-        assertEquals(0, withDir.code(), () -> "--include-dir resolves the include: " + withDir.err() + withDir.out());
+        var withDir = CliTestSupport.run("validate", storefront.toString(), "-w", lib.toString());
+        assertEquals(0, withDir.code(), () -> "-w/--workspace resolves the include: " + withDir.err() + withDir.out());
         assertTrue(MAPPER.readTree(withDir.out()).get("valid").asBoolean());
     }
 }

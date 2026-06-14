@@ -43,7 +43,7 @@ final class RuleTestCommand extends BaseCommand {
     String localeTag;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -62,7 +62,7 @@ final class RuleTestCommand extends BaseCommand {
         }
         Locale locale = Locale.forLanguageTag(localeTag.replace('_', '-'));
         try {
-            BoundModel bound = BoundModel.ofJson(json, includes.resolverFor(modelPath));
+            BoundModel bound = BoundModel.ofJson(json, workspace.resolverFor(modelPath));
             KernelAdapter adapter = KernelAdapter.of(bound);
             String problem = ModelPaths.ruleProblem(adapter.ruleFullNames(), adapter.computationFullNames(), rule);
             if (problem != null) {

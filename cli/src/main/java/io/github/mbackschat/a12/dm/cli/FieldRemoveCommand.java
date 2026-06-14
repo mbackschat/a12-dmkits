@@ -50,7 +50,7 @@ final class FieldRemoveCommand extends BaseCommand {
     boolean dryRun;
 
     @Mixin
-    IncludeDirOption includes = new IncludeDirOption();
+    WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
@@ -59,7 +59,7 @@ final class FieldRemoveCommand extends BaseCommand {
         if (modelJson == null) {
             return 2;
         }
-        IDocumentModelReferenceResolver resolver = includes.resolverFor(model);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         Optional<Refusal> notFound = new SafetyGate()
                 .require(SafetyChecks.exists(ModelDocument.read(modelJson), field, false))
                 .firstFailure();
