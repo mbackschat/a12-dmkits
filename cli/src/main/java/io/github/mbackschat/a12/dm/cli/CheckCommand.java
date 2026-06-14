@@ -40,7 +40,7 @@ final class CheckCommand extends BaseCommand {
 
     @Option(names = "--field", required = true, paramLabel = "<fieldPathInModel>",
             description = "the error field as a path INSIDE the model, e.g. /Group/Field "
-                    + "(a model entity path, NOT a file path — the model file is the positional <model.json> argument)")
+                    + "(a model entity path, NOT a file path — the model file is the `-m <model.json>` argument)")
     String field;
 
     @Option(names = "--condition", required = true, paramLabel = "<DSL>",

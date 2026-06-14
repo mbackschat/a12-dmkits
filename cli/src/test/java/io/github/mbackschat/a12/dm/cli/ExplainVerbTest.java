@@ -63,8 +63,8 @@ class ExplainVerbTest {
         var res = CliTestSupport.run("explain", modelWithRuleAndComputation(dir).toString(),
                 "--rule", CliTestSupport.COMPUTATION_FULL_NAME);
         assertNotEquals(0, res.code(), "a computation is not a validation rule");
-        assertTrue(res.err().contains("computation") && res.err().contains("--computation"),
-                () -> "redirects to --computation: " + res.err());
+        assertTrue(res.err().contains("computation explain"),
+                () -> "redirects to the `computation explain` verb: " + res.err());
     }
 
     @Test

@@ -88,12 +88,12 @@ final class ModelPaths {
         }
         if (computationFullNames.contains(path)) {
             return "'" + path + "' is a computation (a calculated field), not a validation rule — use"
-                    + " `explain --computation " + path + "` to inspect it, or `read --all` to read the"
+                    + " `computation explain " + path + "` to inspect it, or `rule read --all` to read the"
                     + " whole model (rules and computations).";
         }
         return "'" + path + "' is not a rule in this model — pass the rule's full name (its slash-path, e.g."
                 + " /Group/RuleName), not its short name, not the opaque element id, and not a file path. The model"
-                + " file is the positional <model.json> argument. Rules in this model: " + ruleFullNames + ".";
+                + " file is the `-m <model.json>` argument. Rules in this model: " + ruleFullNames + ".";
     }
 
     private static String problem(String value, String kind, String example) {
@@ -102,8 +102,8 @@ final class ModelPaths {
             return fileHint;
         }
         return "'" + value + "' is not a " + kind + " in this model — it must be a model entity path like "
-                + example + " (a path INSIDE the model), not a file path. The model file is the positional"
-                + " <model.json> argument; run `rulekit describe <model.json>` to list the model's entities.";
+                + example + " (a path INSIDE the model), not a file path. The model file is the `-m <model.json>`"
+                + " argument; run `dmtool -m <model.json> model describe` to list the model's entities.";
     }
 
     /**
@@ -118,8 +118,8 @@ final class ModelPaths {
         }
         return "'" + value + "' looks like a FILE path, but --" + kind + " must be a path INSIDE the model"
                 + " (e.g. " + example + ") — you have likely passed the <model.json> file argument into --" + kind
-                + ". The model FILE is the positional argument; --" + kind + " is an entity path within it."
-                + " Run `describe <model.json>` to list the model's entities.";
+                + ". The model FILE is the `-m <model.json>` argument; --" + kind + " is an entity path within it."
+                + " Run `dmtool -m <model.json> model describe` to list the model's entities.";
     }
 
     private static boolean looksLikeFile(String value) {
