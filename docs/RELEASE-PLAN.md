@@ -30,7 +30,7 @@ A single GitHub Release per version (`v0.1.0`) carries **both** surfaces as diff
 | Surface | Audience | Artifact(s) | Channel (v1) | Channel (later) |
 |---|---|---|---|---|
 | **`dmtool` CLI** | BAs + developers; **#1 use is inside a Claude Code session** | native binary per OS + `SHA256SUMS` | raw binaries on the GitHub Release | a Claude Code **plugin** (binary + skill); brew/scoop |
-| **rulekit library** | Java developers consuming the typed builder / DSL API | `rulekit-<v>.jar` + `-sources.jar` + `-javadoc.jar` + POM | same GitHub Release, **+ `publishToMavenLocal`** | static Maven repo / GitHub Pages JavaDoc |
+| ~~rulekit library~~ | Java developers | **DEFERRED — not v1** | recorded in [`RELEASE-SPEC.md`](RELEASE-SPEC.md) §11 |
 
 ## 2. Owner requirements (the constraints this plan obeys)
 
@@ -118,12 +118,14 @@ The shipped binary is **`dmtool`** (README, [`bin/dmtool`](../bin/dmtool), `exam
 
 Ordered by dependency. **Iteration 1 is the only one to execute first**; the rest are planned, not yet built.
 
+**v1 = the CLI native binary only.** The whole developer-library wave (JARs, JavaDoc, `llms.txt`, dev skill) is **deferred — recorded in [`RELEASE-SPEC.md`](RELEASE-SPEC.md) §11**, not built now.
+
 | # | Iteration | Builds | CI? | Depends on |
 |---|---|---|---|---|
-| **1** | **Local mac CLI release** *(execute first)* | mac arm64 native binary → GitHub Release + `SHA256SUMS` | **no** | §4 rename, GraalVM local, repeatable native task |
-| **2** | **Developer JARs** | root `:` jar + sources + javadoc + POM → same Release; `publishToMavenLocal` | no (local build) | D8, D9 |
-| **3** | **GitHub CI matrix** | linux-x64 + windows-x64 native binaries; draft-release flow + mac-local upload | **yes** | Team plan (D3), iteration 1 proven |
-| **4** | **Claude Code plugin** | plugin bundling the skill + `SessionStart` hook that downloads `dmtool` from the Release | no | a published Release to download from; D5/D6/D7 |
+| **1** | **Local mac CLI release** *(execute first)* | mac arm64 native binary → public mirror Release + `SHA256SUMS` | **no** | §4 rename, GraalVM local, repeatable native task, the public mirror repo |
+| **2** | **GitHub CI matrix** (in the public mirror) | linux-x64 + windows-x64 native binaries; draft-release + mac-local upload | **yes (free, public mirror)** | iteration 1 proven |
+| **3** | **Claude Code plugin** | plugin bundling the skill + `SessionStart` hook that `curl`s `dmtool` from the mirror | no | a published Release to download from; D5/D6/D7 |
+| **—** | ~~Developer JARs~~ | **DEFERRED** — RELEASE-SPEC §11 | — | — |
 | **—** | **Backlog** (§9) | brew/scoop, code-signing, linux-arm64, mac-x64, static Maven repo, GitHub Pages JavaDoc, `curl \| sh` installer, production-mode eval as a gate | — | — |
 
 ### Iteration 1 — concrete steps (local mac only)
@@ -168,5 +170,5 @@ Per the project doc-discipline ("docs travel inside the feature commit"):
 4. ~~**Newer GraalVM**~~ — **RESOLVED**: GraalVM **25** installed; it compiles Groovy, enables `-Os` (19–31 MB), uses the unified `reachability-metadata.json`. **`GRAALVM_HOME` must point at it** (it wins over `JAVA_HOME` — see NATIVE-IMAGE-GRAALVM §2 gotcha).
 5. ~~**Native binary's runtime-eval verbs**~~ — **RESOLVED: omitted from the native command tree** (the registration gate, `Cli.JVM_ONLY_VERBS`), so they're absent from every self-describing surface — a cold native agent can't even discover them (your explicit requirement). Enforced by `NativeImageVerbHidingTest`.
 6. ~~**Private repo → public downloads**~~ — **RESOLVED for v1: private source repo + a separate PUBLIC release-mirror repo.** This source repo stays **private** (early testers get source access); a dedicated **public release-mirror repo** holds the downloadable artifacts (binaries + `SHA256SUMS` + the developer jars/javadoc), published there by the release step. So **anonymous downloads work from day one** — the plugin hook's plain `curl` (D6), raw downloads, and (later) brew/scoop all fetch from the public mirror, no auth, while the source stays private. **Later (maybe):** make this repo public → releases move here and the **mirror is retired**. So anonymous channels are **not** gated — they work via the mirror now.
-7. **Linux portability:** when CI lands (iteration 3), decide whether to build a **mostly-static** Linux binary (`-H:+StaticExecutableWithDynamicLibC` or musl) so it doesn't fail on older glibc.
+7. **Linux portability:** when the CI matrix lands (iteration 2), decide whether to build a **mostly-static** Linux binary (`-H:+StaticExecutableWithDynamicLibC` or musl) so it doesn't fail on older glibc.
 8. ~~**Groovy exclusion scope**~~ — **RESOLVED: native-only** (`configurations.named('nativeImageClasspath')`), so the JVM build keeps Groovy (`:cli:test` green). Verified.

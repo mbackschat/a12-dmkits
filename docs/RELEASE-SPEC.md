@@ -4,14 +4,14 @@ The **durable** contract for releasing this project: the surfaces we ship, how e
 
 **References the fixed contracts, never duplicates them:** [`CLI-SPEC.md`](CLI-SPEC.md) §10–11 (sizing, packaging phases B1/B2, licensing), [`EVAL-SPEC.md`](EVAL-SPEC.md) §2a (the eval's material boundary + JVM-launcher policy), [`API-POC-STUDY.md`](API-POC-STUDY.md) (the library/DSL surface), [`LICENSING.md`](LICENSING.md) (MIT source / EUPL distributable).
 
-## 1. What we ship — two surfaces, one GitHub Release
+## 1. What we ship
 
-A single GitHub Release per version (`vX.Y.Z`) carries **both** surfaces as different asset types. One release process, not two.
+**v1 ships ONE surface: the `dmtool` CLI native binary.** The developer-library surface (JARs, JavaDoc, the LLM API doc, a dev skill) is **deferred — not v1**; it is recorded for later in §11. Focus is the binary.
 
-| Surface | Audience | Artifacts | v1 channel | Later channels |
-|---|---|---|---|---|
-| **`dmtool` CLI** | BAs + developers; **#1 use is inside a Claude Code session** | native binary per OS + `SHA256SUMS` | raw binaries on the Release | Claude Code **plugin** (binary + skill); brew/scoop; `curl \| sh` |
-| **rulekit library** | Java developers (typed builder / DSL API) | `rulekit-X.Y.Z.jar` + `-sources.jar` + `-javadoc.jar` + POM | same Release **+ `publishToMavenLocal`** | static Maven repo; GitHub Pages JavaDoc |
+| Surface | Audience | v1 artifacts | Channel |
+|---|---|---|---|
+| **`dmtool` CLI** | BAs + developers; **#1 use is inside a Claude Code session** | native binary per OS + `SHA256SUMS` | binaries on the public mirror Release (§10); later the Claude Code plugin, brew/scoop, `curl \| sh` |
+| ~~rulekit library~~ | Java developers | **deferred → §11** | — |
 
 The **command name is `dmtool`** everywhere it is publicly invoked. `:cli`'s `installDist` launcher (`applicationName = 'dmtool'`) and the native binary share that name; the eval exposes the JVM launcher as `dmtool` on PATH too (so the skill is one verbatim artifact — §6).
 
@@ -36,10 +36,8 @@ The **command name is `dmtool`** everywhere it is publicly invoked. `:cli`'s `in
 - **v1 ships native-only** (decision — [`NATIVE-IMAGE-GRAALVM.md`](NATIVE-IMAGE-GRAALVM.md) §7). The shipped CLI is the GraalVM 25 native binary (~31 MB, ~37 ms start, reflection-robust, native gate GREEN). The **runtime-eval verbs** (`model eval`/`rule test`/`model compute`) need Groovy → not native-compilable → **hidden from the shipped binary**; they remain the JVM dev/eval vehicle only, not a shipped artifact.
 - **The full build recipe, findings, sizing, the hard ceiling, and the verb-hiding gate live in [`NATIVE-IMAGE-GRAALVM.md`](NATIVE-IMAGE-GRAALVM.md)** — native-image is a topic of its own.
 
-### 3b. Developer library
-- **Plugins:** `java-library` + `maven-publish`. `java { withJavadocJar(); withSourcesJar() }` → `-javadoc.jar` + `-sources.jar`. A `MavenPublication` `from components.java` stamps a correct POM (so transitive deps resolve for consumers — §9).
-- **Scope:** publish the **root `:` jar only** (rulekit + folded-in modelkit). `:adapter` is the CLI-internal kernel read tier — **not** a published developer artifact.
-- **Outputs:** `publishToMavenLocal` (own machine + sibling kits) **and** the jars + POM attached to the GitHub Release.
+### 3b. Developer library — DEFERRED (not v1)
+The library jars/JavaDoc are out of v1 scope; the full build + consume + licensing record lives in **§11**.
 
 ## 4. Release runbook
 
@@ -58,6 +56,8 @@ git tag vX.Y.Z ──► (CI, when present)
 - A **draft** release is the seam for the local-mac step: CI assembles linux+windows into a draft; the maintainer adds the locally-built mac binary (+ its checksum) and the library jars, reviews, then publishes. A failed mac build never leaves a half-published release.
 - **`SHA256SUMS`** covers every binary + jar — the integrity story that substitutes for code-signing (§7).
 - Tag command form: `git tag -a "vX.Y.Z" -m "…"; gh release create "vX.Y.Z" --title "vX.Y.Z — kernel <kver> (A12 Tools <quarter>)" --notes-file … --latest`.
+
+**CI runs in the PUBLIC mirror repo — free Actions (incl. the 10× macOS / 2× Windows multipliers), no Team plan needed.** The mirror's build workflow **checks out the private source via a read-token secret**, bootstraps the kernel, builds linux/windows native, and publishes to the mirror's Releases. **Guardrail:** the workflow is **maintainer-triggered only** (`workflow_dispatch` / tag / `repository_dispatch` from the private repo) — **never `pull_request`** — so the private-source token is never exposed to a fork PR. The private source only lands transiently on the ephemeral runner; only the binaries become public. (mac stays local; on a Team plan linux+windows are already ~free within the 3000 included minutes, so this mainly buys "no Team needed" + headroom. Iteration-3 concern — no CI until the matrix lands.)
 
 ## 5. The verification gate — native↔JVM byte-identity
 
@@ -93,13 +93,9 @@ The CLI is **LLM-agent-first**; its primary delivery is a **Claude Code plugin**
 
 So the primary (plugin/terminal) paths are clean; only a browser download trips a guard, covered by a three-line README escape hatch (mac `xattr -d com.apple.quarantine`, Windows "More info → Run anyway", linux `chmod +x`). `SHA256SUMS` is the integrity guarantee. Revisit signing only on real friction reports. Licensing: source **MIT**; the kernel-embedding CLI distributable ships **EUPL-1.2** ([`LICENSING.md`](LICENSING.md)); the library jar stays MIT (kernel is a separate dependency jar).
 
-## 8. Library consume recipe (local, no Maven Central)
+## 8. Library consume recipe — DEFERRED (not v1)
 
-Maven Central is **blocked** — rulekit's `api` dependency `kernel-md-facade:30.8.1` is not on Central (it is bootstrapped into `~/.m2` from public sources by the `a12-kernel-bootstrap` kit). So local-only is the honest, forced choice. A consuming developer:
-
-1. **Bootstraps the kernel** into their own `~/.m2` (the `a12-kernel-bootstrap` kit) — unavoidable and dominant in every distribution option.
-2. **Installs the rulekit jar *with its POM*** into `~/.m2` (not a bare flatDir dep — the POM is what lets the kernel resolve from their `.m2` and Jackson from Central).
-3. Declares `implementation 'io.github.mbackschat.a12.dm:rulekit:X.Y.Z'`.
+The consume recipe (bootstrap kernel → install jar with POM → declare the dependency; Maven Central is structurally blocked by the un-published kernel dep) is recorded with the rest of the deferred developer wave in **§11**.
 
 A static Maven repo (one-line `maven { url }` consume) is a later upgrade; it does not remove step 1, so its v1 marginal value is small.
 
@@ -130,13 +126,14 @@ A static Maven repo (one-line `maven { url }` consume) is a later upgrade; it do
 - **Developer JARs → MIT.** `rulekit-X.Y.Z.jar` does **not** embed the kernel (it's a separate `api` dependency the consumer bootstraps), so rulekit's own jar + sources + javadoc stay MIT.
 - The mirror repo's README states the per-artifact licensing explicitly so a downloader isn't confused by the mix.
 
-## 11. Developer API surface — docs & agent support (planned)
+## 11. Developer surface — DEFERRED (recorded for later, NOT v1)
 
-The agent-first thesis extends from the CLI to the **library**: just as the CLI pairs a *self-describing surface* (`manifest`/`schema`/`--help`) with a *judgment skill*, the Java API should pair an **agent-readable API reference** with a **developer skill**. All published on the public mirror.
+**Out of scope for v1** (v1 = the CLI native binary, §1). This section is the durable record of the whole **developer-library wave** so it isn't lost when the transient release *plan* is deleted. The agent-first thesis extends from the CLI to the **library** — just as the CLI pairs a *self-describing surface* (`manifest`/`schema`/`--help`) with a *judgment skill*, the Java API would pair an **agent-readable API reference** with a **developer skill**. All would publish on the public mirror.
 
-- **JavaDoc** — the `-javadoc.jar` (downloadable) **and** browsable **HTML on the mirror's GitHub Pages** (a stable public URL).
-- **LLM API doc (`llms.txt`-style)** — a flat, single-file API reference for coding agents (the public types/methods/signatures + the typed-builder idioms + DSL entry points + short usage), distinct from the human JavaDoc. **Must be derived/CI-locked** against the real API to avoid drift (the project's no-drift discipline — e.g. assembled from the CI-locked typed-builder snippets + signatures), not hand-maintained. Hosted at a public URL an agent can fetch.
-- **Developer skill** — the library-persona analog of [`skill/SKILL.md`](../skill/SKILL.md): teaches *judgment* for authoring via the typed builder / `EditSession` / DSL (polarity, paths, iteration — the same kernel semantics), **not** the API catalog (that's the JavaDoc + `llms.txt`'s job — keep the skill minimal, mirroring the "self-describing surface > skill" rule). Complements the EVAL-SPEC §2 "Developer path."
+1. **Library JARs** — `java-library` + `maven-publish`; `java { withJavadocJar() }` → consumer `rulekit-X.Y.Z.jar` + `-javadoc.jar` + a correct POM (`from components.java`). **No `sources.jar` while the source repo is private** (it would expose the private source on the public mirror; javadoc is fine — it's the public API, not impl). Root `:` jar only (rulekit + modelkit); not `:adapter`. **MIT** (doesn't embed the kernel). Outputs: `publishToMavenLocal` + the jar/javadoc/POM on the mirror. **Consume:** download from the mirror → bootstrap the kernel into `~/.m2` → install jar *with its POM* → `implementation 'io.github.mbackschat.a12.dm:rulekit:X.Y.Z'`. (Maven Central is structurally blocked — the kernel `api` dep isn't on Central.)
+2. **JavaDoc** — the `-javadoc.jar` (downloadable) **and** browsable **HTML on the mirror's GitHub Pages** (a stable public URL).
+3. **LLM API doc (`llms.txt`-style)** — a flat, single-file API reference for coding agents (public types/signatures + typed-builder idioms + DSL entry points + short usage), distinct from the human JavaDoc. **Must be derived/CI-locked** against the real API (the no-drift discipline — assembled from the CI-locked typed-builder snippets + signatures), not hand-maintained. Public URL an agent can fetch.
+4. **Developer skill** — the library-persona analog of [`skill/SKILL.md`](../skill/SKILL.md): teaches *judgment* for authoring via the typed builder / `EditSession` / DSL (polarity, paths, iteration — same kernel semantics), **not** the API catalog (JavaDoc + `llms.txt`'s job — keep it minimal, mirroring "self-describing surface > skill"). Complements the EVAL-SPEC §2 "Developer path."
 
 ## 12. Rationale (the durable *why*)
 
