@@ -111,4 +111,8 @@ PASS  cli-version.md
 native gate: GREEN
 ```
 
-The JVM-only set lives in the script (with the *why* next to each entry, so a skip is never silent): today just `cli-runtime.md`. **When the runtime-eval verbs are hidden from the native command tree (the registration gate), `cli-tour.md`'s captured `manifest` block becomes a subset and will diverge — add it to the JVM-only set or regenerate a native-aware capture at that point.** This split is what keeps "native ≡ JVM" honest *per verb* (identical behavior for every verb native exposes) while letting native legitimately expose fewer.
+The JVM-only set lives in the script (with the *why* next to each entry, so a skip is never silent): today just `cli-runtime.md` (all 9 of its invocations are runtime-eval — nothing native-applicable to salvage).
+
+**Convention — isolate JVM-only verbs in their own demo file.** showboat verify is per-file (one exit code), so a *single* runtime-eval block turns its **entire** demo JVM-only and you lose native coverage of every other block in it. So never sprinkle a `model eval`/`rule test`/`model compute` call into a native-applicable demo (e.g. `cli-tour.md`) — keep them confined to `cli-runtime.md`. A *subset* divergence is different from a JVM-only block: **when the runtime-eval verbs are hidden from the native command tree (the registration gate), `cli-tour.md`'s captured `manifest` block becomes a subset and will diverge — fix that with a native-aware capture, not by marking cli-tour JVM-only.**
+
+This split is what keeps "native ≡ JVM" honest *per verb* (identical behavior for every verb native exposes) while letting native legitimately expose fewer.

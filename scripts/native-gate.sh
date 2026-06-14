@@ -21,6 +21,13 @@ NATIVE="${1:-$ROOT/cli/build/native/nativeCompile/dmtool}"
 # Demos that cannot pass on the native binary, with WHY. Keep the reason here so the skip is never silent.
 #   cli-runtime.md — model eval / rule test / model compute execute kernel runtime validation via Groovy
 #                    (GroovyClassLoader.parseClass), which is not native-compilable (§4 hard ceiling).
+#
+# CONVENTION — isolate JVM-only verbs in their OWN demo file. showboat verify is per-file (one exit code),
+# so a single JVM-only block (a `model eval`/`rule test`/`model compute` call) turns its ENTIRE demo
+# JVM-only — you'd lose native coverage of every other block in it. So never sprinkle a runtime-eval call
+# into a native-applicable demo (e.g. cli-tour); keep them confined to cli-runtime.md. (A *subset*
+# divergence like cli-tour's manifest block once verbs are hidden is different — fix that with a
+# native-aware capture, not by marking cli-tour JVM-only.) See docs/NATIVE-IMAGE-GRAALVM.md §8.
 declare -A JVM_ONLY=(
   ["cli-runtime.md"]="runtime-eval verbs need Groovy — not in the native binary (§4)"
 )
