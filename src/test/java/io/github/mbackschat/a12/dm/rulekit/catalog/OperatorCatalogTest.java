@@ -97,6 +97,44 @@ class OperatorCatalogTest {
         assertEquals("FeldAngegeben", fieldFilled.keywords().de());
     }
 
+    /**
+     * The {@code opposite} pairings (FEATURE-GAPS G3) serve the kernel's "no generic negation" model — each
+     * predicate names the partner(s) to express its inverse. They must be (a) <b>resolvable</b> (every named
+     * id is a real catalog entry — a dangling pointer would mislead an agent) and (b) <b>symmetric</b> (if A
+     * names B as an opposite, B names A) so "express the inverse" is one reliable hop in either direction.
+     */
+    @Test
+    void oppositePairingsAreResolvableAndSymmetric() {
+        for (OperatorEntry e : CATALOG.entries()) {
+            for (String oppId : e.opposite()) {
+                OperatorEntry partner = CATALOG.byId(oppId).orElseThrow(() ->
+                        new AssertionError(e.id() + ": opposite '" + oppId + "' is not a catalog operator"));
+                assertTrue(partner.opposite().contains(e.id()),
+                        () -> "opposite must be symmetric: " + e.id() + " names " + oppId
+                                + " but " + oppId + " does not name " + e.id());
+            }
+        }
+    }
+
+    /** Spot-check the central negation pairs the BA-doc leans on, so the data is actually authored, not empty. */
+    @Test
+    void exposesTheCentralNegationPairs() {
+        assertOpposite("FieldFilled", "FieldNotFilled");
+        assertOpposite("AllFieldsFilled", "NotAllFieldsFilled");
+        assertOpposite("NoFieldFilled", "AtLeastOneFieldFilled");
+        assertOpposite("PatternMatched", "PatternViolated");
+        assertOpposite("Equal", "NotEqual");
+        assertOpposite("LessThan", "GreaterThanOrEqual");
+        assertOpposite("GreaterThan", "LessThanOrEqual");
+    }
+
+    private static void assertOpposite(String a, String b) {
+        assertTrue(CATALOG.byId(a).orElseThrow().opposite().contains(b),
+                () -> a + " should name " + b + " as its opposite");
+        assertTrue(CATALOG.byId(b).orElseThrow().opposite().contains(a),
+                () -> b + " should name " + a + " as its opposite");
+    }
+
     private static boolean isBlank(String s) {
         return s == null || s.isBlank();
     }

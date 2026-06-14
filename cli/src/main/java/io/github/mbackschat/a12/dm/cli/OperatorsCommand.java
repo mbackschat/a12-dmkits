@@ -91,6 +91,10 @@ final class OperatorsCommand extends BaseCommand {
         ArrayNode operands = n.putArray("operands");
         e.operands().forEach(o -> operands.add(o.type()));
         n.put("meaning", e.meaning());
+        if (!e.opposite().isEmpty()) {
+            ArrayNode opp = n.putArray("opposite");
+            e.opposite().forEach(opp::add);
+        }
         if (!e.constraints().isEmpty()) {
             ArrayNode c = n.putArray("constraints");
             e.constraints().forEach(c::add);

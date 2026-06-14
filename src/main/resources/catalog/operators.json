@@ -4,6 +4,7 @@
 [
   {
     "id": "FieldFilled",
+    "opposite": ["FieldNotFilled"],
     "kind": "predicate",
     "keywords": { "en": "FieldFilled", "de": "FeldAngegeben" },
     "operands": [ { "type": "any" } ],
@@ -17,6 +18,7 @@
   },
   {
     "id": "FieldNotFilled",
+    "opposite": ["FieldFilled"],
     "kind": "predicate",
     "keywords": { "en": "FieldNotFilled", "de": "FeldNichtAngegeben" },
     "operands": [ { "type": "any" } ],
@@ -53,6 +55,7 @@
   },
   {
     "id": "LessThanOrEqual",
+    "opposite": ["GreaterThan"],
     "kind": "operator",
     "keywords": { "en": "<=", "de": "<=" },
     "operands": [ { "type": "orderable" }, { "type": "orderable" } ],
@@ -66,6 +69,7 @@
   },
   {
     "id": "LessThan",
+    "opposite": ["GreaterThanOrEqual"],
     "kind": "operator",
     "keywords": { "en": "<", "de": "<" },
     "operands": [ { "type": "orderable" }, { "type": "orderable" } ],
@@ -79,6 +83,7 @@
   },
   {
     "id": "GreaterThan",
+    "opposite": ["LessThanOrEqual"],
     "kind": "operator",
     "keywords": { "en": ">", "de": ">" },
     "operands": [ { "type": "orderable" }, { "type": "orderable" } ],
@@ -92,6 +97,7 @@
   },
   {
     "id": "GreaterThanOrEqual",
+    "opposite": ["LessThan"],
     "kind": "operator",
     "keywords": { "en": ">=", "de": ">=" },
     "operands": [ { "type": "orderable" }, { "type": "orderable" } ],
@@ -105,6 +111,7 @@
   },
   {
     "id": "Equal",
+    "opposite": ["NotEqual"],
     "kind": "operator",
     "keywords": { "en": "==", "de": "==" },
     "operands": [ { "type": "comparable" }, { "type": "comparable" } ],
@@ -118,6 +125,7 @@
   },
   {
     "id": "NotEqual",
+    "opposite": ["Equal"],
     "kind": "operator",
     "keywords": { "en": "!=", "de": "!=" },
     "operands": [ { "type": "comparable" }, { "type": "comparable" } ],
@@ -179,6 +187,7 @@
   },
   {
     "id": "AllFieldsFilled",
+    "opposite": ["NotAllFieldsFilled"],
     "kind": "predicate",
     "keywords": { "en": "AllFieldsFilled", "de": "AlleFelderAngegeben" },
     "operands": [ { "type": "field-list" } ],
@@ -191,6 +200,7 @@
   },
   {
     "id": "NoFieldFilled",
+    "opposite": ["AtLeastOneFieldFilled"],
     "kind": "predicate",
     "keywords": { "en": "NoFieldFilled", "de": "KeinFeldAngegeben" },
     "operands": [ { "type": "field-list" } ],
@@ -202,6 +212,7 @@
   },
   {
     "id": "AtLeastOneFieldFilled",
+    "opposite": ["NoFieldFilled"],
     "kind": "predicate",
     "keywords": { "en": "AtLeastOneFieldFilled", "de": "MindestensEinFeldAngegeben" },
     "operands": [ { "type": "field-list" } ],
@@ -213,6 +224,7 @@
   },
   {
     "id": "NotAllFieldsFilled",
+    "opposite": ["AllFieldsFilled"],
     "kind": "predicate",
     "keywords": { "en": "NotAllFieldsFilled", "de": "NichtAlleFelderOderKeinFeldAngegeben" },
     "operands": [ { "type": "field-list" } ],
@@ -259,6 +271,7 @@
   },
   {
     "id": "GroupFilled",
+    "opposite": ["GroupNotFilled"],
     "kind": "predicate",
     "keywords": { "en": "GroupFilled", "de": "KontextAngegeben" },
     "operands": [ { "type": "group" } ],
@@ -272,6 +285,7 @@
   },
   {
     "id": "GroupNotFilled",
+    "opposite": ["GroupFilled"],
     "kind": "predicate",
     "keywords": { "en": "GroupNotFilled", "de": "KontextNichtAngegeben" },
     "operands": [ { "type": "group" } ],
@@ -284,6 +298,7 @@
   },
   {
     "id": "AllGroupsFilled",
+    "opposite": ["NotAllGroupsFilled"],
     "kind": "predicate",
     "keywords": { "en": "AllGroupsFilled", "de": "AlleKontexteAngegeben" },
     "operands": [ { "type": "group-list" } ],
@@ -296,6 +311,7 @@
   },
   {
     "id": "NoGroupFilled",
+    "opposite": ["AtLeastOneGroupFilled"],
     "kind": "predicate",
     "keywords": { "en": "NoGroupFilled", "de": "KeinKontextAngegeben" },
     "operands": [ { "type": "group-list" } ],
@@ -308,6 +324,7 @@
   },
   {
     "id": "AtLeastOneGroupFilled",
+    "opposite": ["NoGroupFilled"],
     "kind": "predicate",
     "keywords": { "en": "AtLeastOneGroupFilled", "de": "MindestensEinKontextAngegeben" },
     "operands": [ { "type": "group-list" } ],
@@ -320,6 +337,7 @@
   },
   {
     "id": "NotAllGroupsFilled",
+    "opposite": ["AllGroupsFilled"],
     "kind": "predicate",
     "keywords": { "en": "NotAllGroupsFilled", "de": "NichtAlleOderKeinKontextAngegeben" },
     "operands": [ { "type": "group-list" } ],
@@ -357,6 +375,7 @@
   },
   {
     "id": "True",
+    "opposite": ["False"],
     "kind": "constant",
     "keywords": { "en": "True", "de": "Wahr" },
     "operands": [],
@@ -370,6 +389,7 @@
   },
   {
     "id": "False",
+    "opposite": ["True"],
     "kind": "constant",
     "keywords": { "en": "False", "de": "Falsch" },
     "operands": [],
@@ -414,6 +434,7 @@
   },
   {
     "id": "PatternMatched",
+    "opposite": ["PatternViolated"],
     "kind": "operator",
     "keywords": { "en": "PatternMatched", "de": "WieMuster" },
     "operands": [ { "type": "string-field" }, { "type": "string-constant" } ],
@@ -435,6 +456,7 @@
   },
   {
     "id": "PatternViolated",
+    "opposite": ["PatternMatched"],
     "kind": "operator",
     "keywords": { "en": "PatternViolated", "de": "NichtWieMuster" },
     "operands": [ { "type": "string-field" }, { "type": "string-constant" } ],
@@ -454,6 +476,7 @@
   },
   {
     "id": "FieldValueIncludedInValueList",
+    "opposite": ["FieldValueNotIncludedInValueList"],
     "kind": "predicate",
     "keywords": { "en": "FieldValueIncludedInValueList", "de": "FeldWertInWerteListe" },
     "operands": [ { "type": "string-enum-or-number-field" }, { "type": "literal-list" } ],
@@ -474,6 +497,7 @@
   },
   {
     "id": "FieldValueNotIncludedInValueList",
+    "opposite": ["FieldValueIncludedInValueList"],
     "kind": "predicate",
     "keywords": { "en": "FieldValueNotIncludedInValueList", "de": "FeldWertNichtInWerteListe" },
     "operands": [ { "type": "string-enum-or-number-field" }, { "type": "literal-list" } ],
@@ -491,6 +515,7 @@
   },
   {
     "id": "AtLeastOneFieldValueIncludedInValueList",
+    "opposite": ["NoFieldValueIncludedInValueList"],
     "kind": "predicate",
     "keywords": { "en": "AtLeastOneFieldValueIncludedInValueList", "de": "MindestensEinFeldWertInWerteListe" },
     "operands": [ { "type": "homogeneous-field-list" }, { "type": "literal-list" } ],
@@ -508,6 +533,7 @@
   },
   {
     "id": "NoFieldValueIncludedInValueList",
+    "opposite": ["AtLeastOneFieldValueIncludedInValueList"],
     "kind": "predicate",
     "keywords": { "en": "NoFieldValueIncludedInValueList", "de": "KeinFeldWertInWerteListe" },
     "operands": [ { "type": "homogeneous-field-list" }, { "type": "literal-list" } ],
@@ -1339,6 +1365,7 @@
   },
   {
     "id": "Valid",
+    "opposite": ["Invalid"],
     "kind": "predicate",
     "keywords": { "en": "Valid", "de": "Gueltig" },
     "operands": [ { "type": "date" } ],
@@ -1350,6 +1377,7 @@
   },
   {
     "id": "Invalid",
+    "opposite": ["Valid"],
     "kind": "predicate",
     "keywords": { "en": "Invalid", "de": "Ungueltig" },
     "operands": [ { "type": "date" } ],
@@ -1361,6 +1389,7 @@
   },
   {
     "id": "ValidType",
+    "opposite": ["InvalidType"],
     "kind": "predicate",
     "keywords": { "en": "Valid", "de": "Gueltig" },
     "operands": [ { "type": "string" }, { "type": "string" } ],
@@ -1373,6 +1402,7 @@
   },
   {
     "id": "InvalidType",
+    "opposite": ["ValidType"],
     "kind": "predicate",
     "keywords": { "en": "Invalid", "de": "Ungueltig" },
     "operands": [ { "type": "string" }, { "type": "string" } ],

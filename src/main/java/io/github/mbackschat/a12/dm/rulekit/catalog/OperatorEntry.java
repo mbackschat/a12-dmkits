@@ -9,6 +9,13 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * semantics, not just surface: {@code meaning} + {@code constraints}/{@code gotchas} + valid/invalid
  * examples are what let an LLM reason about correctness, not only spelling (N6).
  *
+ * <p>{@code opposite} lists the operator's <b>negation partner(s)</b> — the predicate(s) to reach for when
+ * you want the inverse (FieldFilled → FieldNotFilled, AllFieldsFilled → NotAllFieldsFilled, {@code <} →
+ * {@code >=}). It serves the kernel's "<b>no generic negation</b>" model (express the inverse with the
+ * paired predicate, not a {@code Not(…)}); it is a discoverability pointer, <em>not</em> a claim of strict
+ * logical complement under three-valued / formal-error semantics (a field with a formal error is removed
+ * from evaluation, so {@code FieldFilled} and {@code FieldNotFilled} are not exhaustive — see their gotcha).
+ *
  * <p>Unknown JSON fields are ignored so the on-disk schema can grow ahead of this record.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -25,13 +32,15 @@ public record OperatorEntry(
         InvalidExample invalidExample,
         ComputationExample computationExample,
         OperatorStatus status,
-        String sinceKernel) {
+        String sinceKernel,
+        List<String> opposite) {
 
     public OperatorEntry {
         operands = operands == null ? List.of() : List.copyOf(operands);
         constraints = constraints == null ? List.of() : List.copyOf(constraints);
         gotchas = gotchas == null ? List.of() : List.copyOf(gotchas);
         status = status == null ? OperatorStatus.SUPPORTED : status;
+        opposite = opposite == null ? List.of() : List.copyOf(opposite);
     }
 
     /** Whether rulekit builds a typed handle for this operator (vs a {@link OperatorStatus#PLANNED} stub). */

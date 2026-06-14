@@ -22,7 +22,7 @@ The tool exists to be driven by a cold LLM agent. Two properties, above all else
 | **A worked call** | "show me this verb in action" | the `manifest` `example {intent, command}` — a read-only invocation per verb (CI-executed; see [`CLI-CONFORMANCE-SPEC`](CLI-CONFORMANCE-SPEC.md)) |
 | **I/O shape** | "what does it emit / expect?" | `schema` — the result envelope (§3) + per-op input schemas |
 | **Failure space** | "what can go wrong, and how do I fix it?" | each op advertises the `emits[]` codes in the manifest; every code has a `fix` (§4) |
-| **DSL vocabulary** | "what operators exist, what do they mean?" | `operators` (list + per-operator semantics + gotchas) |
+| **DSL vocabulary** | "what operators exist, what do they mean — and how do I express the inverse?" | `operators` (list + per-operator semantics + gotchas); `operators <id>` carries `opposite` — the negation partner(s) (`FieldFilled`→`FieldNotFilled`, `<`→`>=`), serving the kernel's "no generic negation" model (G3) |
 | **Diagnostic codes** | "what does this `code` mean, how do I fix it?" | `diagnostics` (list all `RK_*` codes, filterable) · `diagnostics <CODE>` (one code's meaning + canonical fix) — the `operators` twin; see [`CLI-CONFORMANCE-SPEC`](CLI-CONFORMANCE-SPEC.md) |
 | **Versions** | "what is this build, what does it target?" | `--version` (human) · `manifest.version` (machine-readable) — §2a |
 
