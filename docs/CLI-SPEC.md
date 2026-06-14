@@ -35,7 +35,7 @@ The tool reports **what it is and what it targets** on two peer surfaces fed fro
 
 ```
 $ dmtool --version
-a12-dmkits 0.1.0-SNAPSHOT
+a12-dmkits 0.1.0
   kernel: 30.8.1 (built) / 30.8.1 (runtime)
   catalog verified against: 30.8.1
   model version (reference): 28.4.0

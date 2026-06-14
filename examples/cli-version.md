@@ -13,7 +13,7 @@ bin/dmtool --version
 ```
 
 ```output
-a12-dmkits 0.1.0-SNAPSHOT
+a12-dmkits 0.1.0
   kernel: 30.8.1 (built) / 30.8.1 (runtime)
   catalog verified against: 30.8.1
   model version (reference): 28.4.0
@@ -28,7 +28,7 @@ bin/dmtool manifest | jq .version
 
 ```output
 {
-  "rulekit": "0.1.0-SNAPSHOT",
+  "rulekit": "0.1.0",
   "kernel": {
     "builtAgainst": "30.8.1",
     "runtime": "30.8.1",
