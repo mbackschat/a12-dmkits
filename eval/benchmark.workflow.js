@@ -51,6 +51,9 @@ const SRC_MODEL = t => t.modelPath || `${MODELS_ROOT}/${t.model}.dm.json`
 const MODEL_FILE = t => sandboxed(SRC_MODEL(t))
 const INCLUDE_ARGS = t => t.includeDir ? ['-w', sandboxed(t.includeDir)] : []
 const INCLUDE_HINT = t => t.includeDir ? ` -w ${sandboxed(t.includeDir)}` : ''
+// Shell single-quote a value so agent-produced free text (descriptions, comments, names) can never break a
+// score-agent command. Used by the deterministic metadata/template/refactor scorers below.
+const sq = s => `'` + String(s).replace(/'/g, `'\\''`) + `'`
 
 // Run-mode (EVAL-SPEC §2a). Bare-tool is the DEFAULT instrument (and the only one CI/historical runs use).
 // PRODUCTION mode is opt-in and gives every PRODUCER agent the N1 skill, two ways:
@@ -95,6 +98,9 @@ const COMPREHENSION = TASKS.filter(t => t.family === 'comprehension')
 const STRUCTURE = TASKS.filter(t => t.family === 'structure' && t.status !== 'deferred')
 const SESSION = TASKS.filter(t => t.family === 'session' && t.status !== 'deferred')
 const DELETE_SAFETY = TASKS.filter(t => t.family === 'delete-safety' && t.status !== 'deferred')
+const METADATA = TASKS.filter(t => t.family === 'metadata' && t.status !== 'deferred')
+const TEMPLATE = TASKS.filter(t => t.family === 'template' && t.status !== 'deferred')
+const REFACTOR = TASKS.filter(t => t.family === 'refactor' && t.status !== 'deferred')
 
 // ---- prompts (EVAL-SPEC §5: neutral, material-only, no leaking the technique/polarity) ------------
 
@@ -183,6 +189,42 @@ Decide the field to remove and whether to **cascade** (also remove the rules/com
   {"field":"<the field's path inside the model, e.g. /Order/X>","cascade":true|false}`
 }
 
+function metadataPrompt(task) {
+  return `You help a business analyst attach METADATA to an A12 document model — a human-facing DESCRIPTION of an
+element, a name/value ANNOTATION on an element, or a model-level COMMENT. Assume NO prior A12/rulekit knowledge; use ONLY:
+  - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} --help\` and \`${CLI} manifest\` list the verbs, \`${CLI} <target> <op> --help\` an op's parameters; \`${CLI} -m ${MODEL_FILE(task)} model describe\` shows the elements and their full name-paths)
+  - the model file: ${MODEL_FILE(task)}${skillBlock()}
+Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). Requirement: "${task.intent}".
+Decide the single metadata edit that satisfies it and return ONLY JSON, using ONE of these shapes:
+  - DESCRIBE an element (field/group/rule by path): {"op":"describe","kind":"internal"|"external","ref":"<element path, e.g. /Order/X>","locale":"<code, e.g. en_US>","text":"<the description>"}
+  - ANNOTATE an element with a name/value pair:     {"op":"annotate","ref":"<element path>","name":"<name>","value":"<value>"}
+  - set the model-level COMMENT:                     {"op":"comment","text":"<the comment>"}
+(An "internal" description is maintainer-facing; "external" is end-user-facing.)`
+}
+
+function templatePrompt(task) {
+  return `You help a business analyst add a higher-level GROUP to an A12 document model — either a MULTI-SELECT
+group (a repeatable group letting the user pick one or more values for a single selection field) or a
+file-ATTACHMENT group. Assume NO prior A12/rulekit knowledge; use ONLY:
+  - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} --help\` and \`${CLI} manifest\` list the verbs, \`${CLI} <target> <op> --help\` an op's parameters; \`${CLI} -m ${MODEL_FILE(task)} model describe\` shows the current structure)
+  - the model file: ${MODEL_FILE(task)}${skillBlock()}
+Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). Requirement: "${task.intent}".
+Decide the single group-template edit that satisfies it and return ONLY JSON, using ONE of these shapes:
+  - MULTI-SELECT group:    {"op":"group multiselect","parent":"<parent group path, e.g. /Order>","name":"<group name>","field":"<selection field name>","values":["<v>", …],"maxRows":<max selections, an integer > 1>}
+  - file-ATTACHMENT group: {"op":"group attachment","parent":"<parent group path>","name":"<group name>"}`
+}
+
+function refactorPrompt(task) {
+  return `You help a business analyst RENAME a field in an A12 document model. The rename must keep the model
+valid: every rule/computation that references the field has to follow to the new name automatically. Assume NO
+prior A12/rulekit knowledge; use ONLY:
+  - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} --help\` and \`${CLI} manifest\` list the verbs, \`${CLI} <target> <op> --help\` an op's parameters; \`${CLI} -m ${MODEL_FILE(task)} model describe\` shows the fields and their full name-paths, \`${CLI} -m ${MODEL_FILE(task)} where-used <path>\` what references a field)
+  - the model file: ${MODEL_FILE(task)}${skillBlock()}
+Do NOT read any rulekit source, docs, tests, or other *.md files (beyond the authoring skill named above, if any). Requirement: "${task.intent}".
+Decide the field to rename and its new name, then return ONLY JSON:
+  {"op":"field rename","field":"<the field's current full path, e.g. /Order/X>","to":"<the new NAME (not a path)>"}`
+}
+
 function explainPrompt(task) {
   return `You help a business analyst understand the validation rules already on an A12 model. Assume NO prior
 A12/rulekit knowledge; use ONLY:
@@ -239,6 +281,30 @@ const DELETE_SAFETY_SCHEMA = {
   type: 'object', additionalProperties: true,
   properties: { field: { type: 'string' }, cascade: { type: 'boolean' } },
   required: ['field'],
+}
+
+const METADATA_SCHEMA = {
+  type: 'object', additionalProperties: true,
+  properties: {
+    op: { type: 'string' }, kind: { type: 'string' }, ref: { type: 'string' },
+    locale: { type: 'string' }, text: { type: 'string' }, name: { type: 'string' }, value: { type: 'string' },
+  },
+  required: ['op'],
+}
+
+const TEMPLATE_SCHEMA = {
+  type: 'object', additionalProperties: true,
+  properties: {
+    op: { type: 'string' }, parent: { type: 'string' }, name: { type: 'string' },
+    field: { type: 'string' }, values: { type: 'array', items: { type: 'string' } }, maxRows: { type: 'number' },
+  },
+  required: ['op', 'name'],
+}
+
+const REFACTOR_SCHEMA = {
+  type: 'object', additionalProperties: true,
+  properties: { op: { type: 'string' }, field: { type: 'string' }, to: { type: 'string' } },
+  required: ['op', 'field', 'to'],
 }
 
 const EXPLAIN_SCHEMA = {
@@ -347,6 +413,36 @@ const authoredModRule = await parallel(modRuleRuns.map(r => () =>
   agent(modifyRulePrompt(r.task), { label: `modrule ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: MODIFY_RULE_SCHEMA })
     .then(out => ({ kind: 'modify-rule', model: r.model, task: r.task, i: r.i, out }))
     .catch(() => ({ kind: 'modify-rule', model: r.model, task: r.task, i: r.i, out: null }))))
+
+const metadataRuns = []
+for (const model of MODELS)
+  for (const task of METADATA)
+    for (let i = 0; i < K; i++) metadataRuns.push({ model, task, i })
+
+const authoredMetadata = await parallel(metadataRuns.map(r => () =>
+  agent(metadataPrompt(r.task), { label: `meta ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: METADATA_SCHEMA })
+    .then(out => ({ kind: 'metadata', model: r.model, task: r.task, i: r.i, out }))
+    .catch(() => ({ kind: 'metadata', model: r.model, task: r.task, i: r.i, out: null }))))
+
+const templateRuns = []
+for (const model of MODELS)
+  for (const task of TEMPLATE)
+    for (let i = 0; i < K; i++) templateRuns.push({ model, task, i })
+
+const authoredTemplate = await parallel(templateRuns.map(r => () =>
+  agent(templatePrompt(r.task), { label: `tmpl ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: TEMPLATE_SCHEMA })
+    .then(out => ({ kind: 'template', model: r.model, task: r.task, i: r.i, out }))
+    .catch(() => ({ kind: 'template', model: r.model, task: r.task, i: r.i, out: null }))))
+
+const refactorRuns = []
+for (const model of MODELS)
+  for (const task of REFACTOR)
+    for (let i = 0; i < K; i++) refactorRuns.push({ model, task, i })
+
+const authoredRefactor = await parallel(refactorRuns.map(r => () =>
+  agent(refactorPrompt(r.task), { label: `refac ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: REFACTOR_SCHEMA })
+    .then(out => ({ kind: 'refactor', model: r.model, task: r.task, i: r.i, out }))
+    .catch(() => ({ kind: 'refactor', model: r.model, task: r.task, i: r.i, out: null }))))
 
 // ---- Recheck: ONE warm-JVM `cli batch` authoritatively re-validates every authored candidate -------
 // (Don't trust the agents' self-reported kernelAccepted.) This is the batch verb's reason to exist:
@@ -746,6 +842,122 @@ Return ONLY JSON: {"applied": <bool>, "allRemoved": <bool>}`,
     .catch(() => ({ key, model: r.model, taskId: r.task.id, pass: false }))
 }))
 
+// ---- Score (metadata): DETERMINISTIC — apply the produced metadata edit with `-o` (a fresh /tmp file),
+// then read the gold's expected value back. The WRITE is built from the AGENT's chosen op (describe /
+// annotate / comment); the READ + the expected value come from the GOLD — so a wrong op, ref, locale, or
+// text leaves the gold's location empty and fails. The meta/config reads always succeed (the gold's ref
+// exists), so they pipe to jq; the score-agent just copies the raw string. No LLM judge.
+const metadataCandidates = authoredMetadata.filter(r => r && r.out && r.out.op)
+const metadataScored = await parallel(metadataCandidates.map(r => () => {
+  const key = `${r.model}/${r.task.id}/${r.i}`
+  const gold = r.task.gold
+  const o = r.out
+  const out = `/tmp/rk-meta-${key.replace(/[^a-zA-Z0-9]/g, '_')}.json`
+  let writeCmd
+  if (o.op === 'comment') {
+    writeCmd = `${CLI} -m ${MODEL_FILE(r.task)} config modify --comment ${sq(o.text || '')} -o ${out}`
+  } else if (o.op === 'annotate') {
+    writeCmd = `${CLI} -m ${MODEL_FILE(r.task)} meta ${sq(o.ref || '')} --annotate ${sq((o.name || '') + '=' + (o.value || ''))} -o ${out}`
+  } else { // describe (internal/external)
+    const flag = o.kind === 'external' ? '--external' : '--internal'
+    writeCmd = `${CLI} -m ${MODEL_FILE(r.task)} meta ${sq(o.ref || '')} ${flag} ${sq((o.locale || '') + '=' + (o.text || ''))} -o ${out}`
+  }
+  let readCmd, expected
+  if (gold.op === 'comment') {
+    readCmd = `${CLI} -m ${out} config read | jq -r '.data.comment // ""'`
+    expected = gold.text
+  } else if (gold.op === 'annotate') {
+    readCmd = `${CLI} -m ${out} meta ${sq(gold.ref)} | jq -r '.data.annotations[${JSON.stringify(gold.name)}] // ""'`
+    expected = gold.value
+  } else { // describe
+    const fld = gold.kind === 'external' ? 'externalDescription' : 'internalDescription'
+    readCmd = `${CLI} -m ${out} meta ${sq(gold.ref)} | jq -r '.data.${fld}[${JSON.stringify(gold.locale)}] // ""'`
+    expected = gold.text
+  }
+  return agent(
+    `Run these and report the raw facts — do NOT judge, just execute and copy the asked values.
+1. Apply the metadata edit (writes a NEW file, never the input): ${writeCmd}
+   Report \`applied\` = the result envelope's \`ok\` (true/false).
+2. ONLY if applied, read the value back from the result (prints the raw string, or an empty line): ${readCmd}
+   Report \`readBack\` = EXACTLY that string (the empty string if it printed nothing). Do not trim or alter it.
+Return ONLY JSON: {"applied": <bool>, "readBack": "<string>"}`,
+    { label: `score ${key}`, phase: 'Judge',
+      schema: { type: 'object', additionalProperties: true, required: ['applied'],
+        properties: { applied: { type: 'boolean' }, readBack: { type: 'string' } } } })
+    .then(f => ({ key, model: r.model, taskId: r.task.id, pass: !!(f && f.applied && f.readBack === expected), facts: f }))
+    .catch(() => ({ key, model: r.model, taskId: r.task.id, pass: false }))
+}))
+
+// ---- Score (template): DETERMINISTIC — apply the produced group-template verb with `-o`, then confirm the
+// expected group exists AND the generated skeleton carries the right `usageType` marker (the kernel's
+// MultiSelectGroupRule/AttachmentGroupRule already accepted the composition, since `applied`==ok re-binds
+// before writing — the marker proves the agent used the TEMPLATE verb, not a hand-rolled plain `group add`).
+// `group read` on a missing group fails fast (stderr, no JSON), so it is agent-interpreted, not jq-piped.
+const templateCandidates = authoredTemplate.filter(r => r && r.out && r.out.op && r.out.name)
+const templateScored = await parallel(templateCandidates.map(r => () => {
+  const key = `${r.model}/${r.task.id}/${r.i}`
+  const gold = r.task.gold
+  const o = r.out
+  const out = `/tmp/rk-tmpl-${key.replace(/[^a-zA-Z0-9]/g, '_')}.json`
+  const marker = gold.op === 'group multiselect' ? 'multi-select' : 'attachment'
+  let applyCmd
+  if (o.op === 'group multiselect') {
+    const vals = Array.isArray(o.values) && o.values.length ? ` --values ${sq(o.values.join(','))}` : ''
+    applyCmd = `${CLI} -m ${MODEL_FILE(r.task)} group multiselect --parent ${sq(o.parent || '')} --name ${sq(o.name)} `
+      + `--field ${sq(o.field || '')}${vals} --max-rows ${Number(o.maxRows) || 0} -o ${out}`
+  } else if (o.op === 'group attachment') {
+    applyCmd = `${CLI} -m ${MODEL_FILE(r.task)} group attachment --parent ${sq(o.parent || '')} --name ${sq(o.name)} -o ${out}`
+  } else {
+    return Promise.resolve({ key, model: r.model, taskId: r.task.id, pass: false })  // not a template verb
+  }
+  const groupCheck = `${CLI} -m ${out} group read ${sq(gold.expectGroup)}`
+  const markerCheck = `grep -c ${sq('"usageType" : "' + marker + '"')} ${out} || true`
+  return agent(
+    `Run these and report the raw facts — do NOT judge, just execute.
+1. Apply the group-template edit (writes a NEW file, never the input): ${applyCmd}
+   Report \`applied\` = the result envelope's \`ok\` (true/false).
+2. ONLY if applied, confirm the expected group exists:  ${groupCheck}
+   Report \`groupExists\` = true iff it RESOLVES (prints an \`ok\`:true envelope); false if it reports "no group …".
+3. ONLY if applied, confirm the template skeleton was generated:  ${markerCheck}
+   Report \`marker\` = true iff that command prints a number greater than 0.
+Return ONLY JSON: {"applied": <bool>, "groupExists": <bool>, "marker": <bool>}`,
+    { label: `score ${key}`, phase: 'Judge',
+      schema: { type: 'object', additionalProperties: true, required: ['applied'],
+        properties: { applied: { type: 'boolean' }, groupExists: { type: 'boolean' }, marker: { type: 'boolean' } } } })
+    .then(f => ({ key, model: r.model, taskId: r.task.id, pass: !!(f && f.applied && f.groupExists && f.marker), facts: f }))
+    .catch(() => ({ key, model: r.model, taskId: r.task.id, pass: false }))
+}))
+
+// ---- Score (refactor): DETERMINISTIC — run the produced `field rename --to` with `-o`, then confirm the NEW
+// path resolves and the OLD path is gone. `field rename` re-validates the whole model (valid->valid) before
+// writing, so `applied`==ok already proves every reference followed to the new name (a dangling ref would
+// reject, not apply). `field read` on the gone path fails fast (stderr, no JSON) → agent-interpreted. No judge.
+const refactorCandidates = authoredRefactor.filter(r => r && r.out && r.out.op && r.out.field && r.out.to)
+const refactorScored = await parallel(refactorCandidates.map(r => () => {
+  const key = `${r.model}/${r.task.id}/${r.i}`
+  const gold = r.task.gold
+  const o = r.out
+  const out = `/tmp/rk-refac-${key.replace(/[^a-zA-Z0-9]/g, '_')}.json`
+  const applyCmd = `${CLI} -m ${MODEL_FILE(r.task)} field rename ${sq(o.field)} --to ${sq(o.to)} -o ${out}`
+  const newCheck = `${CLI} -m ${out} field read ${sq(gold.expect.to)}`
+  const oldCheck = `${CLI} -m ${out} field read ${sq(gold.expect.renamed)}`
+  return agent(
+    `Run these and report the raw facts — do NOT judge, just execute.
+1. Apply the rename (writes a NEW file, never the input): ${applyCmd}
+   Report \`applied\` = the result envelope's \`ok\` (true/false). (The rename re-validates the whole model before
+   writing, so \`ok\`:true already means every reference followed to the new name and the model is still valid.)
+2. ONLY if applied, confirm the NEW path resolves:  ${newCheck}
+   Report \`newExists\` = true iff it RESOLVES (prints the field's type; \`ok\`:true).
+3. ONLY if applied, confirm the OLD path is GONE:  ${oldCheck}
+   Report \`oldGone\` = true iff it does NOT resolve (it reports "no field '…' in the model").
+Return ONLY JSON: {"applied": <bool>, "newExists": <bool>, "oldGone": <bool>}`,
+    { label: `score ${key}`, phase: 'Judge',
+      schema: { type: 'object', additionalProperties: true, required: ['applied'],
+        properties: { applied: { type: 'boolean' }, newExists: { type: 'boolean' }, oldGone: { type: 'boolean' } } } })
+    .then(f => ({ key, model: r.model, taskId: r.task.id, pass: !!(f && f.applied && f.newExists && f.oldGone), facts: f }))
+    .catch(() => ({ key, model: r.model, taskId: r.task.id, pass: false }))
+}))
+
 // ---- Aggregate pass@k per (model, task). pass = kernel-valid AND semantically right ----------------
 
 const agg = {}
@@ -763,6 +975,10 @@ for (const r of explainJudged) bump(r.model, r.taskId, r.correct)
 for (const r of structureScored) bump(r.model, r.taskId, r.pass)
 for (const r of sessionScored) bump(r.model, r.taskId, r.pass)
 for (const r of deleteScored) bump(r.model, r.taskId, r.pass)
+for (const r of metadataScored) bump(r.model, r.taskId, r.pass)
+for (const r of templateScored) bump(r.model, r.taskId, r.pass)
+for (const r of refactorScored) bump(r.model, r.taskId, r.pass)
 
 log('pass@k by (model, task): ' + JSON.stringify(agg))
-return { agg, authorJudged, compJudged, modJudged, modRuleJudged, explainJudged, structureScored, sessionScored, deleteScored }
+return { agg, authorJudged, compJudged, modJudged, modRuleJudged, explainJudged,
+  structureScored, sessionScored, deleteScored, metadataScored, templateScored, refactorScored }
