@@ -1,5 +1,6 @@
 plugins {
     id 'application'
+    id 'org.graalvm.buildtools.native' version '1.1.1'   // release native image (opt-in `:cli:nativeCompile`, GraalVM 25)
 }
 
 // The standalone CLI (proposal N10 / docs/CLI-SPEC.md): the modeller/BA front-end. The `application`
@@ -85,4 +86,27 @@ tasks.named('run') {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+// GraalVM native image — release-only, opt-in `:cli:nativeCompile` (GraalVM 25 + GRAALVM_HOME). Full recipe,
+// findings, and status in docs/NATIVE-IMAGE-GRAALVM.md. Not in the dev loop or CI; the JVM build is unaffected.
+// Groovy is excluded from the NATIVE classpath only (the JVM keeps it): GraalVM 25 compiles Groovy fine, but
+// picocli initializes groovy.lang.Closure at build time and its metadata stream is closed at runtime. The
+// trade-off — the runtime-eval verbs (model eval / rule test / model compute) need Groovy and so don't work
+// in the native binary; the authoring/check/structure/read surface does (5/6 showboat demos pass).
+configurations.named('nativeImageClasspath') { exclude group: 'org.codehaus.groovy' }   // native-only; JVM keeps Groovy
+graalvmNative {
+    toolchainDetection = false
+    binaries {
+        named('main') {
+            imageName = 'dmtool'
+            buildArgs.add('--no-fallback')
+            buildArgs.add('-Os')   // size optimization (GraalVM 25 supports it; 21 didn't)
+            buildArgs.add('-H:IncludeResources=catalog/.*\\.json')      // operator catalog
+            buildArgs.add('-H:IncludeResources=internal/templates/.*')  // StringTemplate (checkConsistency)
+            buildArgs.add('-H:IncludeResources=schema/.*\\.json')       // CLI schema contracts
+            buildArgs.add('-H:IncludeResources=verb-examples\\.json')
+            buildArgs.add('-H:IncludeResources=.*version\\.properties')
+        }
+    }
 }

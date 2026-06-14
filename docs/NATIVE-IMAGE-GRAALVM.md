@@ -1,116 +1,89 @@
 # GraalVM native image — recipe, findings & status
 
-The single durable home for everything about building the `dmtool` CLI as a **GraalVM native image**. Other docs point here and do not duplicate it:
+The single durable home for building the `dmtool` CLI as a **GraalVM native image**. Other docs point here and don't duplicate it:
 
-- [`RELEASE-SPEC.md`](RELEASE-SPEC.md) §3a — the release artifact (refers here for the recipe).
-- [`CLI-SPEC.md`](CLI-SPEC.md) §11 — the packaging *design/decision* (refers here for build mechanics).
-- [`RELEASE-PLAN.md`](RELEASE-PLAN.md) §8 — the open decisions this doc informs.
-- `CLAUDE.md` "Build" — routes here before anyone touches the native build.
+- [`RELEASE-SPEC.md`](RELEASE-SPEC.md) §3a — the release artifact. · [`CLI-SPEC.md`](CLI-SPEC.md) §11 — packaging *design/decision*. · [`RELEASE-PLAN.md`](RELEASE-PLAN.md) §8 — open decisions. · `CLAUDE.md` "Build" — routes here.
 
-> **Why this is its own doc:** native-image for a kernel-embedding CLI is a substantial topic with non-obvious, interacting constraints (closed-world reflection, Groovy's `invokedynamic`, resource bundling, GraalVM-version quirks). It is **release-only** — never in the dev inner loop, which stays JVM/`installDist`.
+> **Why its own doc:** native-image for a kernel-embedding CLI has non-obvious, interacting constraints (closed-world reflection, Groovy's `invokedynamic`, resource bundling, GraalVM-version quirks). It is **release-only** — never in the dev inner loop (that stays JVM/`installDist`), never in CI.
 
-## 1. Status (2026-06-14)
+## 1. Status (2026-06-14, GraalVM **25.0.3**)
 
-| Step | State |
+| Aspect | State |
 |---|---|
-| `org.graalvm.buildtools.native` plugin `1.1.1` on Gradle 9.0 | ✅ resolves + applies |
-| Resource bundling (templates, catalog, schemas, version.properties) | ✅ verified (binary reads `catalog/operators.json` at runtime) |
-| Startup (Jackson POJO reflection) | ✅ fixed via a tracing-agent `reflect-config.json` (1480 classes) — `--version`/manifest work |
-| **Full verb reflection coverage** | ❌ `model validate` still `MissingReflectionRegistrationError` — kernel reflects beyond demo coverage |
-| **Runtime-eval verbs** (`model eval`/`rule test`/`model compute`) | ❌ need Groovy runtime codegen — cannot go native |
-| **Showboat verification gate** (all 6 demos vs the native binary) | ❌ 0/6 |
-| **Shippable?** | **No — not yet.** |
+| Toolchain | **GraalVM for JDK 25** (`graalvm-25.jdk`), plugin `org.graalvm.buildtools.native:1.1.1`, Gradle 9 |
+| Build | ✅ ~45–60 s |
+| Size | ✅ **19 MB** bare, **31 MB** with reflection metadata — both via `-Os` (GraalVM 25 only) |
+| Groovy | ✅ compiles on 25 (no analysis failure), but **excluded from the native classpath** (startup-init issue, §3.1) → JVM keeps it |
+| **Showboat gate** | **5 / 6 demos PASS** — only `cli-runtime.md` fails (the runtime-eval verbs, §4) |
+| Reflection coverage | ⚠️ **capture-bound** — the demo surface works, but inputs outside it (e.g. `model validate` on a model whose operators weren't exercised) still hit `MissingReflectionRegistrationError` (§3.3) |
+| Runtime-eval verbs (`model eval`/`rule test`/`model compute`) | ❌ need Groovy → cannot go native (§4) |
+| **Shippable?** | **Not yet** — needs comprehensive reflection coverage (§3.3) + a decision on the runtime-eval verbs (§4). But the authoring/check/structure/read surface (the #1 agent use case) **works**. |
 
-Measured: builds in ~2 min, **52 MB** (no reflect-config) → **61 MB** (with it), GraalVM 21.0.11, `--gc=serial`.
+**GraalVM 25 vs 21 — 25 is decisively better and is the toolchain going forward:**
 
-## 2. The verified build recipe (re-applicable)
+| | GraalVM 21.0.11 | GraalVM **25.0.3** |
+|---|---|---|
+| Groovy `invokedynamic` | ❌ analysis fails (`MutableCallSite`) | ✅ compiles |
+| `-Os` size optimization | ❌ "Invalid value 's'" | ✅ → 19 MB |
+| Reflection metadata format | `reflect-config.json` (multi-file) | unified `reachability-metadata.json` |
+| Demo gate | 0/6 | **5/6** |
+| Build time / size | ~2 min / 52–61 MB | **~45–60 s / 19–31 MB** |
+| `typeReached` warning | yes | cleared |
 
-This config was applied + verified to the status above, then reverted from the tree (the native build isn't shippable, so it isn't committed). Re-apply it to `cli/build.gradle` to continue:
+## 2. Build (committed, opt-in)
 
-```gradle
-plugins {
-    id 'application'
-    id 'org.graalvm.buildtools.native' version '1.1.1'   // resolves on Gradle 9
-}
-
-// ⚠️ MUST be native-classpath-only, NOT global — Groovy is required by the JVM runtime-eval verbs (§4).
-// (The global form below was used only to test; it breaks model eval/rule test/model compute on the JVM.)
-configurations.all { exclude group: 'org.codehaus.groovy' }     // <-- make native-only before committing
-
-graalvmNative {
-    toolchainDetection = false        // use the GraalVM at JAVA_HOME directly
-    binaries {
-        named('main') {
-            imageName = 'dmtool'
-            buildArgs.add('--no-fallback')
-            buildArgs.add('--gc=serial')   // smaller than G1 (size lever)
-        }
-    }
-}
+```sh
+export GRAALVM_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home   # see the GOTCHA below
+export JAVA_HOME="$GRAALVM_HOME"
+export GRADLE_USER_HOME="$(cd .. && pwd)/.gradle-isolated"
+./gradlew :cli:nativeCompile        # → cli/build/native/nativeCompile/dmtool (~31 MB)
 ```
 
-Build: `JAVA_HOME=<a GraalVM 21> ./gradlew :cli:nativeCompile` → `cli/build/native/nativeCompile/dmtool`. picocli-codegen's reflection config is auto-consumed. Reconcile the output path with the `bin/dmtool` shim (it lists `cli/build/native/dmtool` / `build/native-spike/…`; add the `nativeCompile/dmtool` path).
+The `:cli` build file carries: the plugin, `graalvmNative { toolchainDetection = false; binaries.main { imageName='dmtool'; buildArgs += [--no-fallback, -Os, IncludeResources…] } }`, and a **native-only** Groovy exclusion (`configurations.named('nativeImageClasspath') { exclude group: 'org.codehaus.groovy' }`). The reflection metadata is bundled at `cli/src/main/resources/META-INF/native-image/rulekit-agent/reachability-metadata.json` (auto-detected).
+
+> **GOTCHA — `GRAALVM_HOME` wins over `JAVA_HOME`.** The plugin (with `toolchainDetection=false`) resolves the GraalVM via **`GRAALVM_HOME`** first. If it points at an old GraalVM (e.g. a stale `…/graalvm-jdk-21…`), the build uses *that* regardless of `JAVA_HOME` — failing with *"native-image wasn't found / JDK isn't a GraalVM distribution."* Export `GRAALVM_HOME` to the GraalVM 25 home (and `./gradlew --stop` to drop a stale daemon).
 
 ## 3. The three requirements beyond the defaults
 
-### 3.1 Drop Groovy (analysis blocker)
-Groovy (`org.codehaus.groovy:groovy:3.0.25`, a kernel transitive) uses `invokedynamic` **mutable call sites**; native-image analysis fails hard:
-```
-Error: Unsupported method java.lang.invoke.MethodHandleNatives.setCallSiteTargetNormal(...) is reachable
-       while parsing java.lang.invoke.MutableCallSite.setTarget(...)
-```
-Excluding Groovy fixes the analysis **and** is the biggest size lever ([`CLI-SPEC.md`](CLI-SPEC.md) §10). **But the exclusion must be native-classpath-only** — see §4 for why a global exclude is wrong.
+### 3.1 Exclude Groovy — native-classpath-only
+Groovy (`org.codehaus.groovy:groovy:3.0.25`, a kernel transitive) compiles on GraalVM 25, but **picocli's `DefaultFactory.loadClosureClass` initializes `groovy.lang.Closure` at build time** → `GroovySystem.<clinit>` reads Groovy's DGM metadata stream, which is **closed at runtime** (`java.io.IOException: Stream closed`). Excluding Groovy makes picocli skip Closure loading and startup works. **The exclusion MUST be native-only** (`nativeImageClasspath`, not `configurations.all`) — a global exclude breaks the JVM runtime-eval verbs, the eval, and the CI showboat gate. Verified: `:cli:test` stays green with the native-only form. (On GraalVM 21 the failure was different — `invokedynamic`/`MutableCallSite` broke *analysis* — but the conclusion is the same: exclude Groovy from native.)
 
-### 3.2 Bundle resources (closed-world drops `getResourceAsStream`)
-`-H:IncludeResources=` for `internal/templates/.*` (StringTemplate, used by `checkConsistency`), `catalog/.*\.json` (operator catalog), `schema/.*\.json` (CLI schema contracts), `verb-examples\.json`, `.*version\.properties`. Verified working. (The tracing agent's `resource-config.json` also captures these, so bundling that config covers resources too.)
+### 3.2 Bundle resources
+Closed-world drops anything read via `getResourceAsStream`, so `-H:IncludeResources=` for `catalog/.*\.json` (operator catalog), `internal/templates/.*` (StringTemplate, used by `checkConsistency`), `schema/.*\.json`, `verb-examples\.json`, `.*version\.properties`. Verified: the binary reads `catalog/operators.json` once these are set (a missing one fails as `IllegalStateException: … resource not found`).
 
-### 3.3 Register reflection (the deep, unfinished problem)
-picocli-codegen registers only picocli. The Jackson-deserialized POJOs (`OperatorEntry`/`OperatorCatalog`, schema POJOs, the result envelope, diagnostics, apply/batch op-records) — **and a wide swath of kernel internals** — need reflection registration, or the binary throws `MissingReflectionRegistrationError` (with `--no-fallback`). A tracing-agent capture over the demos (§5) fixes **startup** but is **not sufficient** for the full verb surface. Completing this needs: a far more exhaustive agent sweep (every verb × varied models/operators/diagnostics), and/or hand-authored reflect-config for the kernel's reflective hotspots, possibly across several iterations. **This is the main remaining effort.**
+### 3.3 Register reflection — the remaining robustness gap
+Neither picocli-codegen nor GraalVM 25's auto-handling covers the Jackson-deserialized POJOs (`OperatorEntry` &c.) or the kernel's reflective hotspots — without config the binary throws `Cannot construct instance of OperatorEntry … configure reflection`. A **tracing-agent** capture over the showboat demos (§5) → `reachability-metadata.json` gets the **demo surface** working (5/6). **But coverage is capture-bound:** a direct `model validate` on a model whose operators/structures the demos didn't exercise still throws `MissingReflectionRegistrationError`. Closing this for arbitrary real-world input needs a **far more exhaustive capture** (many models × operators × verbs) and/or hand-authored metadata for the kernel's reflective hotspots. **This is the main work remaining before a robust release.**
 
-## 4. The hard ceiling — runtime-eval verbs cannot be native
+## 4. The hard ceiling — runtime-eval verbs can't go native
 
-`model eval` / `rule test` / `model compute` execute the kernel's **runtime validation** against a document instance, which **generates and loads Groovy classes at runtime** (`GroovyClassLoader.parseClass` — the agent captured `Com_mgmtp_a12_kernel_generated_*…CalculationController.class`). This is the [`CLI-SPEC.md`](CLI-SPEC.md) §11 hard ceiling, now concretely breached by verbs that grew past it. Consequences:
+`model eval` / `rule test` / `model compute` execute the kernel's **runtime validation** against a document instance, which **generates and loads Groovy classes at runtime** (`GroovyClassLoader.parseClass`; the agent captured `Com_mgmtp_a12_kernel_generated_*` classes). This is [`CLI-SPEC.md`](CLI-SPEC.md) §11's hard ceiling, breached by verbs that grew past it. Groovy is genuinely required by these 3 verbs (JVM and native), so: the §3.1 exclusion must stay native-only (JVM keeps them), and **the native binary cannot run them** (no Groovy → no runtime codegen). A release must omit them from the native command tree or make them error cleanly ("JVM-only verb"). The authoring/check/structure/read surface — `rule check`/`model validate` are *structural* (StringTemplate, native-OK) — is unaffected. (`cli-runtime.md` is the one demo that fails the gate.)
 
-- Groovy is **genuinely required** by those 3 verbs — on the **JVM and** native. So the §3.1 exclusion **cannot be global** (it would break them on the JVM, the eval, and the CI showboat gate); it must be native-classpath-only.
-- Even native-only, **the native binary cannot run those 3 verbs** (no Groovy → no validator codegen). A native build must **omit them from the command tree or make them error cleanly** ("JVM-only verb").
-- The authoring/checking/structure/read surface — the #1 (agent) use case — is **unaffected**: `rule check`/`model validate` are *structural* (StringTemplate, native-OK), not runtime evaluation.
+## 5. Generating the reflection metadata (tracing agent)
 
-## 5. Generating the reflection config (tracing agent)
-
-The showboat demos are the most thorough verb-surface exercise, so drive the agent with them:
-
+Run the agent on a **Groovy-present JVM** (the native-only exclusion means `installDist` keeps Groovy), driven by the showboat demos:
 ```sh
-CFG="/tmp/rk-native-config-$(date +%s)"; mkdir -p "$CFG"
-export JAVA_HOME="<a GraalVM 21>"
+export GRAALVM_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home; export JAVA_HOME="$GRAALVM_HOME"
+./gradlew :cli:installDist
+CFG="/tmp/rk-ncfg"; mkdir -p "$CFG"
 JAVA_TOOL_OPTIONS="-agentlib:native-image-agent=config-merge-dir=$CFG" \
   sh -c 'for d in examples/cli-*.md; do uvx showboat@0.6.1 verify "$d" >/dev/null 2>&1; done'
-# → reflect-config.json, resource-config.json, serialization/proxy/jni configs
-cp "$CFG"/*.json cli/src/main/resources/META-INF/native-image/rulekit-agent/   # auto-detected on the classpath
+cp "$CFG"/*.json cli/src/main/resources/META-INF/native-image/rulekit-agent/   # GraalVM 25 → reachability-metadata.json
 ```
-Caveats: the capture only covers what the demos reach (hence §3.3's incompleteness); it captures the Groovy-generated runtime classes from `cli-runtime.md` (harmless once Groovy is native-excluded — the patterns match nothing).
+The demos only reach what they exercise — hence §3.3's capture-bound coverage. A robust release wants a much wider input sweep here.
 
 ## 6. Sizing & shrink levers
 
-Base ~52 MB; the 1480-class reflect-config adds ~9 MB → ~61 MB. (CLI-SPEC §10's ~36 MB was a spike-era estimate on a smaller CLI.) Even so, native is **smaller** than the jpackage app-image (§10: ~65–90 MB/OS). Levers, biggest first:
+`-Os` (GraalVM 25) is the big lever: **19 MB** bare, **31 MB** with the reflection metadata (the metadata costs ~12 MB). Far below the GraalVM-21 numbers (52–61 MB) and well below the jpackage app-image (§10: ~65–90 MB/OS). Further levers if needed: `--strip-debug`, drop more unused kernel jars, tighter (hand-authored vs full-agent) metadata. `upx` (~50%) is possible but **breaks macOS notarization + slows startup** — not for distribution.
 
-- **`-Os`** (optimize for size) — **rejected by GraalVM 21.0.11** ("Invalid value 's' for option Optimize"); needs a **newer GraalVM** (§7).
-- **`--strip-debug`** / strip symbols (before signing).
-- **Drop more unused kernel jars** (kernel-core-runtime/codegen — §10).
-- **Tighter reflect-config** (only needed classes, not the agent's full 1480).
-- `--gc=serial` (applied; minor).
-- `upx` (~50%) — **breaks macOS notarization + slows startup**; not for distribution.
+## 7. The strategic question — B2 (native) vs B1 (jpackage)
 
-Realistic with `-Os` + strip + jar-trim: ~40–45 MB.
+GraalVM 25 changed the calculus sharply. Native is now **fast (~50 s), small (~19–31 MB), and works for the whole authoring/check/structure/read surface (5/6 demos)** — attractive for an agent-first, latency-sensitive CLI (~37 ms start). Two things still gate a robust native release:
 
-## 7. GraalVM version notes
+1. **Reflection coverage** (§3.3) — bounded, tractable work (comprehensive capture), but real.
+2. **The 3 runtime-eval verbs** (§4) — architecturally JVM-only; native must drop/stub them.
 
-- **21.0.11** (currently installed at `/Library/Java/JavaVirtualMachines/graalvm-jdk-21.0.11+9.1/`): works, but **no `-Os`**, and warns *"Found typeReached condition … not supported by this version … considered always true; consider upgrading."*
-- **A newer GraalVM (e.g. for JDK 25)** brings a newer native-image engine: better reflection auto-handling (eases §3.3), `-Os` (eases §6), `typeReached` support. Building a JDK-21-target binary on a JDK-25 GraalVM is fine. **It does NOT fix the Groovy/runtime-eval wall (§4)** — that is architectural, not a toolchain version.
+**jpackage (B1)** still "just works" for *all* verbs with no reflection grind, at the cost of size (~65–90 MB/OS) and startup (~600 ms). The live decision — finish native (accepting #1's work + #2's verb loss) or ship B1 first — is in [`RELEASE-PLAN.md`](RELEASE-PLAN.md) §8. Given GraalVM 25's results, native is now the stronger candidate for the primary use case; B1 remains the fallback for full-verb coverage.
 
-## 8. The strategic question — B2 (native) vs B1 (jpackage)
+## 8. Verification gate
 
-Native is **not a quick win** for the current CLI: §3.3 reflection coverage is multi-cycle work, and §4 forces dropping 3 verbs. **jpackage (B1)** — a trimmed JVM + launcher — has *none* of these problems (full reflection, Groovy works, all verbs work) at the cost of size (~65–90 MB/OS) and startup (~600 ms vs ~37 ms). [`CLI-SPEC.md`](CLI-SPEC.md) §11's "proven feasible" predates the catalog Jackson loading and the runtime-eval verbs. **The live decision — invest in native (accepting the verb loss + grind) or ship B1 first — is tracked in [`RELEASE-PLAN.md`](RELEASE-PLAN.md) §8.**
-
-## 9. Verification gate
-
-Whatever ships, the native binary must pass the `examples/` showboat demos **byte-for-byte** before release ([`RELEASE-SPEC.md`](RELEASE-SPEC.md) §5) — that gate is what licenses the eval to run on the JVM launcher only. It currently fails 0/6 (the §3.3 + §4 gaps), which is the gate doing its job.
+The native binary must pass the `examples/` showboat demos **byte-for-byte** before release ([`RELEASE-SPEC.md`](RELEASE-SPEC.md) §5) — that gate is what licenses the eval to run on the JVM launcher only. Current: **5/6** (all but `cli-runtime.md`). The gate correctly blocks shipping until the runtime-eval verbs are handled and reflection coverage is comprehensive.

@@ -33,7 +33,7 @@ The **command name is `dmtool`** everywhere it is publicly invoked. `:cli`'s `in
 
 ### 3a. CLI native image (per OS)
 - **Per-OS, no cross-compile:** native-image emits a binary for the OS+arch it runs on. macOS arm64 is built **locally** (cost: avoids the 10× CI multiplier; signing: local cert); linux-x64 / windows-x64 on CI runners (§4). Linux portability: prefer a mostly-static binary (`-H:+StaticExecutableWithDynamicLibC` or musl).
-- **The full build recipe, findings, status, sizing, and the hard ceiling live in [`NATIVE-IMAGE-GRAALVM.md`](NATIVE-IMAGE-GRAALVM.md)** — native-image is a topic of its own. **Current status: NOT shippable** — reflection coverage is incomplete and the runtime-eval verbs (`model eval`/`rule test`/`model compute`) can't go native (they need Groovy). This reopens the B2-vs-B1 decision ([`RELEASE-PLAN.md`](RELEASE-PLAN.md) §8).
+- **The full build recipe, findings, status, sizing, and the hard ceiling live in [`NATIVE-IMAGE-GRAALVM.md`](NATIVE-IMAGE-GRAALVM.md)** — native-image is a topic of its own. **Current status (GraalVM 25): works for the authoring surface — 5/6 showboat demos pass, ~31 MB, ~50 s.** Two items gate a *robust* release: reflection coverage is capture-bound, and the runtime-eval verbs (`model eval`/`rule test`/`model compute`) can't go native (Groovy). B2-vs-B1 decision: [`RELEASE-PLAN.md`](RELEASE-PLAN.md) §8.
 
 ### 3b. Developer library
 - **Plugins:** `java-library` + `maven-publish`. `java { withJavadocJar(); withSourcesJar() }` → `-javadoc.jar` + `-sources.jar`. A `MavenPublication` `from components.java` stamps a correct POM (so transitive deps resolve for consumers — §9).
