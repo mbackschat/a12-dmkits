@@ -3,6 +3,9 @@ package io.github.mbackschat.a12.dm.rulekit.dsl.operators;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
@@ -34,6 +37,16 @@ class DateConditionTest {
         // a date constant also renders bare-quoted in argument position (a DifferenceInDays operand)
         Condition diff = Dsl.differenceInDays(m.date(ORDER), Dsl.dateValue("01.01.2022")).gt(7);
         assertEquals("DifferenceInDays(/Order/OrderDate, \"01.01.2022\") > 7", new DslRenderer().render(diff));
+    }
+
+    @Test
+    void javaTimeLiteralsRenderLikeTheirStringForms() {
+        // DG4 — a typed java.time literal can't be a malformed date/time; it renders to the kernel's
+        // German dd.MM.yyyy / HH:mm:ss form, identical to the (kernel-valid) String overload.
+        Condition byDate = m.date(ORDER).after(Dsl.dateValue(LocalDate.of(2022, 1, 1)));
+        assertEquals("[/Order/OrderDate] > \"01.01.2022\"", new DslRenderer().render(byDate));
+        Condition byTime = m.time("/Order/PickupTime").after(Dsl.timeValue(LocalTime.of(17, 0, 0)));
+        assertEquals("[/Order/PickupTime] > \"17:00:00\"", new DslRenderer().render(byTime));
     }
 
     @Test

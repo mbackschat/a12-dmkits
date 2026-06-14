@@ -55,7 +55,7 @@ Each gap: the dev need → what's missing today → the proposal. Ordered by val
 - **Today.** Validate/lint speak the structured `Diagnostic` (+ `PrecheckException` carrying it, with stable `RkCode`s). But the **write/edit/adapter** surfaces throw bare `IllegalArgumentException("no rule at path: …")` / `UncheckedIOException` — even though `RkCode` already defines `NO_SUCH_RULE`/`NO_SUCH_GROUP`/`NO_SUCH_COMPUTATION` that fit exactly. A dev catches two different error models depending on the layer.
 - **Proposal.** Route the not-found / bad-target paths in `ModelWriter`/`EditSession`/`KernelAdapter` through the same structured `Diagnostic` (the codes exist), thrown as `PrecheckException`. One error model, one code set, library-wide.
 
-### DG4 — `java.time` date & time literals  *(small)*
+### DG4 — `java.time` date & time literals  *(small)* — ✅ shipped 2026-06-14 ([API-POC-STUDY](API-POC-STUDY.md) finding 33)
 
 - **Dev need.** The library's whole thesis is "typed beats fragile strings." The last place a string sneaks in is a date/time constant.
 - **Today.** `Dsl.dateValue("01.01.2022")` / `Dsl.timeValue("17:00:00")` take a **format-coupled raw string** — a typo or wrong format is caught only at the kernel, the exact failure mode the typed builder erases everywhere else.

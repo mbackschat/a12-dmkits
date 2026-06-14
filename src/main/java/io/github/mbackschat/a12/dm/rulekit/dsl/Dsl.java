@@ -1,5 +1,8 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,6 +16,12 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * only come from {@link BoundModel}. Grows with the operator catalog.
  */
 public final class Dsl {
+
+    /** The kernel's date-constant form (German {@code dd.MM.yyyy}); see {@link DateLiteral}. */
+    private static final DateTimeFormatter DATE_LITERAL_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
+    /** The kernel's time-constant form ({@code HH:mm:ss}); see {@link TimeLiteral}. */
+    private static final DateTimeFormatter TIME_LITERAL_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     private Dsl() {
     }
@@ -245,9 +254,26 @@ public final class Dsl {
         return new DateExpr(new DateLiteral(ddMMyyyy));
     }
 
+    /**
+     * A date constant from a {@link LocalDate} — the typed form of {@link #dateValue(String)}. A
+     * {@code LocalDate} can't be a malformed date, so the literal is valid by construction; it renders to
+     * the kernel's German {@code dd.MM.yyyy} form, exactly as the string overload does.
+     */
+    public static DateExpr dateValue(LocalDate date) {
+        return dateValue(date.format(DATE_LITERAL_FORMAT));
+    }
+
     /** A time-of-day constant for comparison — {@code [PickupTime] > timeValue("17:00:00")} ({@code HH:mm:ss}). */
     public static TimeExpr timeValue(String hhmmss) {
         return new TimeExpr(new TimeLiteral(hhmmss));
+    }
+
+    /**
+     * A time-of-day constant from a {@link LocalTime} — the typed form of {@link #timeValue(String)},
+     * valid by construction; renders to the kernel's {@code HH:mm:ss} form, as the string overload does.
+     */
+    public static TimeExpr timeValue(LocalTime time) {
+        return timeValue(time.format(TIME_LITERAL_FORMAT));
     }
 
     /** {@code DifferenceInDays(a, b)} — a numeric date difference (a floor, not a calendar count). */
