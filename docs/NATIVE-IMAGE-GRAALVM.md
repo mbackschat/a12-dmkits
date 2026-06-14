@@ -86,13 +86,29 @@ You don't have to *guess* when it's stale: the **verification gate is the trip-w
 
 ## 7. The strategic question — B2 (native) vs B1 (jpackage)
 
-GraalVM 25 changed the calculus sharply. Native is now **fast (~50 s), small (~19–31 MB), and works for the whole authoring/check/structure/read surface (5/6 demos)** — attractive for an agent-first, latency-sensitive CLI (~37 ms start). Two things still gate a robust native release:
+GraalVM 25 changed the calculus sharply. Native is now **fast (~50 s), small (~19–31 MB), reflection-robust (§3.3 closed — all fixtures validate clean), and passes the native gate** (§8) — attractive for an agent-first, latency-sensitive CLI (~37 ms start). One thing remains before a native release:
 
-1. **Reflection coverage** (§3.3) — bounded, tractable work (comprehensive capture), but real.
-2. **The 3 runtime-eval verbs** (§4) — architecturally JVM-only; native must drop/stub them.
+1. ~~Reflection coverage~~ — **done** (§3.3, the comprehensive capture).
+2. **The 3 runtime-eval verbs** (§4) — architecturally JVM-only; native must drop them from the command tree (and from every self-describing surface — they all derive from the live picocli tree, so not registering them cascades).
 
 **jpackage (B1)** still "just works" for *all* verbs with no reflection grind, at the cost of size (~65–90 MB/OS) and startup (~600 ms). The live decision — finish native (accepting #1's work + #2's verb loss) or ship B1 first — is in [`RELEASE-PLAN.md`](RELEASE-PLAN.md) §8. Given GraalVM 25's results, native is now the stronger candidate for the primary use case; B1 remains the fallback for full-verb coverage.
 
-## 8. Verification gate
+## 8. Verification gate — two gates, two targets
 
-The native binary must pass the `examples/` showboat demos **byte-for-byte** before release ([`RELEASE-SPEC.md`](RELEASE-SPEC.md) §5) — that gate is what licenses the eval to run on the JVM launcher only. Current: **5/6** (all but `cli-runtime.md`). The gate correctly blocks shipping until the runtime-eval verbs are handled and reflection coverage is comprehensive.
+The demos are authored for the **full JVM CLI**, so against the native *subset* some are legitimately not-applicable. Rather than eyeball a known red, the gate is split by target:
+
+- **JVM gate** — CI, the `installDist` launcher, **all 6 demos green** (`.github/workflows/ci.yml`). Unchanged.
+- **Native gate** — **[`../scripts/native-gate.sh`](../scripts/native-gate.sh)** — verifies the native binary byte-for-byte across the **native-applicable** demos, and **skips JVM-only demos with their reason** (never a spurious FAIL). Exits non-zero only on a real regression in a native-applicable demo.
+
+```
+$ ./scripts/native-gate.sh
+PASS  cli-apply.md
+PASS  cli-edit-loop.md
+SKIP  cli-runtime.md  — JVM-only: runtime-eval verbs need Groovy — not in the native binary (§4)
+PASS  cli-structure-edit.md
+PASS  cli-tour.md
+PASS  cli-version.md
+native gate: GREEN
+```
+
+The JVM-only set lives in the script (with the *why* next to each entry, so a skip is never silent): today just `cli-runtime.md`. **When the runtime-eval verbs are hidden from the native command tree (the registration gate), `cli-tour.md`'s captured `manifest` block becomes a subset and will diverge — add it to the JVM-only set or regenerate a native-aware capture at that point.** This split is what keeps "native ≡ JVM" honest *per verb* (identical behavior for every verb native exposes) while letting native legitimately expose fewer.
