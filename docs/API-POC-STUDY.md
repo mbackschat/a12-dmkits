@@ -530,19 +530,19 @@ qty.lt(0);                                    // → an immutable Condition; no 
 <!-- teaser -->
 ```java
 var s = EditSession.read(json);
+GroupEditor order = s.group("/Order");             // hold ONE editor on the EXISTING /Order group …
 
 // the editor CHAINS — each structure edit returns the editor, so editing an existing model reads exactly
 // like the from-scratch DocumentModelDraft builder (.field(…).group(name, sub -> …)):
-s.group("/Order")                                  // an editor on the EXISTING /Order group
-    .addField("Discount", NUMBER)
+order.addField("Discount", NUMBER)
     .addField("LoyaltyPoints", NUMBER)
     .addGroup("Items", items -> items              // a nested-builder lambda for the new subgroup …
         .addField("Sku", STRING)
         .addField("Qty", NUMBER));                 // … same shape as building from scratch
 
-// a ref to ANY child — new or existing — comes from relative navigation off the group:
-NumberRef discount = s.group("/Order").num("Discount");
-GroupRef  items    = s.group("/Order").group("Items");
+// a ref to ANY child — new or existing — comes from relative navigation off that SAME editor:
+NumberRef discount = order.num("Discount");        // … never a re-typed "/Order/..." path
+GroupRef  items    = order.group("Items");
 ```
 *(There is **no** session-as-actor / ref-returning duplicate — no `NumberRef d = s.addField(order, …)`. The editor's fluent edits + relative navigation are the **whole** editing story; the lower-level session mutator, if it exists at all, is an internal delegate the editor forwards to, not public surface.)*
 
