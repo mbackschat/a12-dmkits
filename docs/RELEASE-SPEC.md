@@ -73,14 +73,15 @@ This is **not optional polish** — it is the bridge that *licenses the eval to 
 
 showboat compares output byte-for-byte, so a closed-world resource drop (§3a) makes a demo diverge and the gate fails — on the exact OS where it would have hurt a user. Windows note: native stdout may be CRLF; normalize (`sed 's/\r$//'`) or scope Windows to hand-picked invocations if the full suite won't match.
 
-## 6. Agent distribution — the Claude Code plugin
+## 6. Agent distribution — the Claude Code plugin (scaffolded, in [`plugin/`](../plugin/))
 
-The CLI is **LLM-agent-first**; its primary delivery is a **Claude Code plugin** that bundles the skill *and* puts the binary on PATH.
+The CLI is **LLM-agent-first**; its primary delivery is a **Claude Code plugin** that bundles the skill *and* puts the binary on PATH. **Plugin source lives in this repo** ([`plugin/`](../plugin/)) — single source of truth, locally testable (`claude --plugin-dir ./plugin`). The **public `dmtool-releases` repo is a release-only push target**: at release the `plugin/*` tree is pushed to its root (so it's a single-plugin marketplace) alongside the binaries (Releases) + licensing.
 
 - **Vehicle = plugin** (not a bare skill — can't deliver a binary; not MCP — wrong model for a local offline CLI, and it would undercut the self-describing-CLI thesis).
-- **Binary delivery = a `SessionStart` hook** that downloads the right per-OS binary from the GitHub Release, verifies its `sha256`, caches it in `CLAUDE_PLUGIN_DATA`, and adds it to PATH. (Not committed into the plugin's `bin/` — a ~36 MB per-OS binary would bloat/rot the repo.) Bonus: the hook fetches via `curl`, which sets **no quarantine xattr** → Gatekeeper never fires for the agent path (§7).
-- **The skill is single-source:** ship [`skill/SKILL.md`](../skill/SKILL.md) **verbatim** — it *is* the eval's production-mode material ([`EVAL-SPEC.md`](EVAL-SPEC.md) §2a). **Never clone, inherit, or bloat it** with a verb catalog (the CLI self-describes verbs; the skill teaches judgment). Before declaring it release-good: (1) the name must read `dmtool` (§1); (2) run the production-mode benchmark once for a measured lift (currently only n=1 probes).
-- *Caveats to verify when built:* `bin/`-on-PATH needs Claude Code ≥ v2.1.91; no documented per-OS `bin/` naming convention (the hook-download is the inferred idiom) — prototype with a throwaway plugin first.
+- **Structure:** `plugin/.claude-plugin/{plugin.json,marketplace.json}` · `plugin/hooks/{hooks.json,ensure-dmtool.sh}` · `plugin/skills/a12-rules/SKILL.md` · `plugin/README.md` (the **public repo's README** — install + per-artifact licensing + the source pointer/disclaimer for EUPL compliance).
+- **Binary delivery = a `SessionStart` hook** (`ensure-dmtool.sh`) that downloads the per-OS binary from the mirror Release, checksum-verifies it, caches it in `CLAUDE_PLUGIN_DATA`, and adds it to PATH (via `CLAUDE_ENV_FILE`). Fetches via `curl` → no quarantine/MotW (§7). **Dev fallback** (verified): if `RK_DMTOOL_LOCAL` or a sibling source-repo native build is present, it symlinks that — so the plugin is testable from a checkout **before** any release exists. Never hard-fails the session.
+- **The skill is single-source, SYNCED:** `skill/SKILL.md` is canonical (the eval's material — [`EVAL-SPEC.md`](EVAL-SPEC.md) §2a, exact path baked into its boundary audit). `scripts/sync-plugin-skill.sh` copies it to `plugin/skills/a12-rules/SKILL.md` (committed); a **CI freshness check** (`--check`) fails if they drift. Never hand-edit the plugin copy. Before "release-good": run the production-mode benchmark once for a measured lift (currently only n=1 probes).
+- *Still to verify in a real CC session* (couldn't be checked headless): `SessionStart` actually fires + PATH injection lands; `/plugin marketplace add` + `/plugin install`; the `bin/`-on-PATH vs `CLAUDE_ENV_FILE` mechanics (CC ≥ v2.1.91). Hook *logic* is unit-verified (dev-fallback resolves the build, writes the PATH export, runs the verb-hidden binary).
 
 ## 7. Distribution & trust
 

@@ -23,7 +23,7 @@
 ## Later iterations
 
 - **Iteration 2 — CI matrix** (in the public mirror, free Actions): linux-x64 + windows-x64 native binaries; checkout private source via token (maintainer-triggered only); draft-release + mac-local upload. Decide Linux mostly-static then.
-- **Iteration 3 — Claude Code plugin:** bundles `skill/SKILL.md` + a `SessionStart` hook that `curl`s `dmtool` from the mirror. (Prototype the `bin/`-on-PATH / hook mechanics first.)
+- **Iteration 3 — Claude Code plugin: SCAFFOLDED** in [`plugin/`](../plugin/) (manifest + marketplace + `SessionStart` hook with dev-fallback + synced skill + README; CI freshness-locked). Hook *logic* verified locally. **Remaining:** test in a real CC session (`claude --plugin-dir ./plugin` → SessionStart fires, PATH injection, `/plugin install`); then at release, push `plugin/*` to the public mirror root. Detail: RELEASE-SPEC §6.
 
 ## Still-open (resolve in-flight)
 
