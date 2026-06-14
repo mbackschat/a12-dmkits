@@ -92,6 +92,42 @@ class ComputationVerbTest {
     }
 
     @Test
+    void overlappingPreconditionsRideTheAppliedEnvelopeAsAWarning(@TempDir Path dir) throws Exception {
+        // two alternatives with an identical precondition: the kernel accepts (it takes the first match in
+        // declaration order), but G5 warns that the second can never win — a WARNING alongside APPLIED.
+        Path model = CliTestSupport.modelWithRule(dir);
+        Path spec = dir.resolve("comp.json");
+        Files.writeString(spec, """
+                { "computedField": "/Subscription/Billing/EffectiveFee", "name": "EffectiveFeeComp",
+                  "alternatives": [ {"precondition": "[BaseFee] > 0", "operation": "[BaseFee] * 2"},
+                                    {"precondition": "[BaseFee] > 0", "operation": "[BaseFee] * 3"} ],
+                  "messages": [ {"locale":"en_US","text":"fee"}, {"locale":"de_DE","text":"Gebuehr"} ] }""");
+        var res = CliTestSupport.run("-m", model.toString(), "computation", "add", spec.toString());
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("applied", j.get("outcome").asText(), res::out);
+        assertTrue(j.path("diagnostics").toString().contains("RK_COMPUTATION_OVERLAPPING_PRECONDITIONS"),
+                () -> "the overlap lint rides the applied envelope: " + res.out());
+    }
+
+    @Test
+    void aForbiddenConstructInAPreconditionIsLintedAlongsideTheKernelRejection(@TempDir Path dir) throws Exception {
+        // CustomCondition is forbidden in a computation — the kernel rejects, and G5 adds the corrective RK note.
+        Path model = CliTestSupport.modelWithRule(dir);
+        Path spec = dir.resolve("comp.json");
+        Files.writeString(spec, """
+                { "computedField": "/Subscription/Billing/EffectiveFee", "name": "EffectiveFeeComp",
+                  "alternatives": [ {"precondition": "CustomCondition(SpecialCase)", "operation": "[BaseFee] * 2"} ],
+                  "messages": [ {"locale":"en_US","text":"fee"}, {"locale":"de_DE","text":"Gebuehr"} ] }""");
+        var res = CliTestSupport.run("-m", model.toString(), "computation", "add", spec.toString());
+        assertEquals(1, res.code(), () -> "a forbidden construct is a kernel rejection: " + res.out());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("rejected", j.get("outcome").asText());
+        assertTrue(j.path("diagnostics").toString().contains("RK_COMPUTATION_FORBIDDEN_CONSTRUCT"),
+                () -> "the forbidden-construct lint accompanies the kernel rejection: " + res.out());
+    }
+
+    @Test
     void removeDeletesAComputation(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRuleAndComputation(dir);
         var res = CliTestSupport.run("-m", model.toString(), "computation", "remove", COMP);

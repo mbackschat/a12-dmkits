@@ -345,7 +345,7 @@ bin/dmtool diagnostics | jq -c '{count, severities: (.diagnostics|map(.severity)
 ```
 
 ```output
-{"count":33,"severities":["ERROR","INFO","WARNING"],"sources":["ENVIRONMENT","KERNEL","LINT","PRECHECK"]}
+{"count":35,"severities":["ERROR","INFO","WARNING"],"sources":["ENVIRONMENT","KERNEL","LINT","PRECHECK"]}
 ```
 
 Pass a code for its full entry — meaning + the canonical fix:

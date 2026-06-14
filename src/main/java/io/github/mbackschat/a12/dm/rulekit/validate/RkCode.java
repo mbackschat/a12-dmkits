@@ -47,6 +47,12 @@ public enum RkCode {
     GOTCHA(Severity.INFO, DiagnosticSource.LINT,
             "a catalog-known gotcha applies to an operator used here — valid, but a common trap worth confirming.",
             "read the operator's gotcha (see `operators <name>`) and confirm the intent."),
+    COMPUTATION_FORBIDDEN_CONSTRUCT(Severity.WARNING, DiagnosticSource.LINT,
+            "a computation precondition uses a construct the kernel forbids in computations — CustomCondition or RepetitionNotUnique — so the kernel will reject it (MVK_ERROR_INVALID_LANGUAGE_FEATURE).",
+            "remove the forbidden construct from the precondition; CustomCondition and RepetitionNotUnique are not allowed in a computation."),
+    COMPUTATION_OVERLAPPING_PRECONDITIONS(Severity.WARNING, DiagnosticSource.LINT,
+            "two computation alternatives share an identical precondition, so they overlap — the kernel evaluates alternatives in declaration order, so the second can never win.",
+            "make the alternatives' preconditions mutually exclusive (the first matching alternative wins)."),
 
     // --- build-time / structure prechecks (ERROR; PRECHECK) -------------------------------------
     INCOMPLETE_RULE(Severity.ERROR, DiagnosticSource.PRECHECK,

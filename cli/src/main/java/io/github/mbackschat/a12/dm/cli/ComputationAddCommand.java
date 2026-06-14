@@ -9,7 +9,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.lint.ComputationLinter;
+import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
@@ -63,11 +68,16 @@ final class ComputationAddCommand extends BaseCommand {
             return fail(parsed.error());
         }
         IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
+        // G5: proactive author-time lints (forbidden constructs, overlapping preconditions) — they ride the
+        // envelope whether the kernel accepts (as WARNINGs alongside APPLIED) or rejects (with the diagnostics).
+        List<Diagnostic> lints = new ComputationLinter().lint(parsed.draft());
         ValidationResult check = new RuleValidator().check(modelJson, parsed.draft(), resolver);
         if (!check.ok()) {
+            List<Diagnostic> diagnostics = new ArrayList<>(check.diagnostics());
+            diagnostics.addAll(lints);
             ResultEnvelope env = ResultEnvelope.rejected("computation", "add",
                     "computation rejected by the kernel (" + check.diagnostics().size() + " finding(s))",
-                    check.diagnostics());
+                    diagnostics);
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -82,7 +92,7 @@ final class ComputationAddCommand extends BaseCommand {
         changed.put("computation", parsed.fullName());
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("computation", "add",
-                    "would add computation " + parsed.fullName(), changed);
+                    "would add computation " + parsed.fullName(), changed, lints);
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -93,7 +103,7 @@ final class ComputationAddCommand extends BaseCommand {
             return fail("cannot write output: " + e.getMessage());
         }
         ResultEnvelope env = ResultEnvelope.applied("computation", "add",
-                "added computation " + parsed.fullName(), changed, dest);
+                "added computation " + parsed.fullName(), changed, lints, dest);
         out().print(env.toJsonString());
         return env.exitCode();
     }
