@@ -187,7 +187,8 @@ static List<Rule> nonNegativeMoneyRules(BoundModel m) {
                     .when(f.asNum().filled().and(f.asNum().lt(0)))
                     .code("NON_NEGATIVE_" + f.name().toUpperCase())
                     .severity(Severity.ERROR)
-                    .message(en(f.name() + " must not be negative."))   // ✅ F2a: interpolate the value via Dsl.fieldValue(f) → $path.value$
+                    .message(en(f.name() + " must not be negative."),   // ✅ F2a: interpolate via Dsl.fieldValue(f) → $path.value$
+                             de(f.name() + " darf nicht negativ sein.")) // a message per declared locale (the locale law)
                     .build())
             .toList();
 }
