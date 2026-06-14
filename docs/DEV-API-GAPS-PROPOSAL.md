@@ -61,11 +61,12 @@ Each gap: the dev need → what's missing today → the proposal. Ordered by val
 - **Today.** `Dsl.dateValue("01.01.2022")` / `Dsl.timeValue("17:00:00")` take a **format-coupled raw string** — a typo or wrong format is caught only at the kernel, the exact failure mode the typed builder erases everywhere else.
 - **Proposal.** Add `Dsl.dateValue(LocalDate)` / `Dsl.timeValue(LocalTime)` overloads that render to the model's configured format. Compile-time-valid literals; the `String` overload stays for the CLI/spec path (where values arrive as text).
 
-### DG5 — Enum-typed public surface (kill the stringly-typed `kind`/`severity`/`outcome`)  *(small–medium; broad)*
+### DG5 — Enum-typed public surface (kill the stringly-typed `kind`/`severity`/`outcome`)  *(small–medium; broad)* — ◑ the `"?"` sentinel slice shipped 2026-06-14 ([API-POC-STUDY](API-POC-STUDY.md) finding 35); the enum-typing remains open
 
 - **Dev need.** Types the compiler can check, not strings validated late.
-- **Today.** `Severity` and `ValueKind` enums exist, yet the public surface repeatedly downgrades to `String`: `DraftRule.severity`, `ModelCard.Field.kind()` (with a **magic `"?"`** for an unresolved path — a silent failure mode), `FieldMatch.kind()`, `ComputedField.outcome()` (`"value"`/`"cleared"`/`"error"`), `EvalMessage.severity()`/`messageType()`. A wrong severity string is caught late; the `"?"` sentinel is caught never.
-- **Proposal.** Use `Severity`/`ValueKind` (and small enums for compute-outcome / message-type) on the public inputs and result records. Removes a whole class of "invalid string caught late," and the silent sentinel.
+- **Today.** `Severity` and `ValueKind` enums exist, yet the public surface repeatedly downgrades to `String`: `DraftRule.severity`, the explanation projections' `kind` (`RuleExplanation.Reference.kind()` / `ComputationExplanation.computedFieldKind()` / `Operator.kind()` — formerly with a **cryptic `"?"`** for an unresolved kind), `FieldMatch.kind()`, `ComputedField.outcome()` (`"value"`/`"cleared"`/`"error"`), `EvalMessage.severity()`/`messageType()`. A wrong severity string is caught late.
+- **Proposal.** Use `Severity`/`ValueKind` (and small enums for compute-outcome / message-type) on the public inputs and result records. Removes a whole class of "invalid string caught late."
+- **Shipped (the narrow slice, finding 35).** The cryptic `"?"` is gone: the computed-field kind is sourced from the typed `FieldRef` (provably never unknown), and the remaining tolerant fallbacks surface a self-describing `UNKNOWN` token. The broader `String`→enum retype of the public surface is the open, lower-value remainder — do it opportunistically (and note `DraftRule.severity`-as-`String` is arguably correct: it's the deserialization boundary).
 
 ### DG6 — Model-modularity vocabulary completeness  *(medium)*
 

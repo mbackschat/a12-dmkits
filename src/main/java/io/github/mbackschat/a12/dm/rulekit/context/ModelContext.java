@@ -72,7 +72,7 @@ public final class ModelContext {
      */
     public ComputationExplanation explainComputation(Computation computation) {
         String field = computation.computedField().path();
-        String kind = model.fieldAt(field).map(f -> f.kind().name()).orElse("?");
+        String kind = computation.computedField().kind().name();   // from the typed ref — always a kind, never UNKNOWN
 
         Optional<RuleExplanation> commonPrecondition = computation.commonPrecondition().map(this::explain);
         List<ComputationExplanation.Alternative> alternatives = computation.alternatives().stream()
@@ -94,6 +94,13 @@ public final class ModelContext {
                 glossary(OperatorUsage.of(operation)), references(ConditionReferences.of(operation)));
     }
 
+    /**
+     * Explicit, self-describing marker for a kind the projection can't resolve — an operator absent from
+     * the catalog, or a referenced field not in the model (only reachable for an inconsistent rule read
+     * leniently). A named token, not a cryptic {@code "?"}, so a reader/agent sees what it means.
+     */
+    private static final String UNKNOWN = "UNKNOWN";
+
     /** Look up each operator-id in the catalog → keyword/kind/meaning/author-relevant gotchas (rendering elided). */
     private static List<RuleExplanation.Operator> glossary(Set<String> operatorIds) {
         List<RuleExplanation.Operator> operators = new ArrayList<>();
@@ -106,7 +113,7 @@ public final class ModelContext {
                                     .filter(g -> g.kind() != GotchaKind.RENDERING)
                                     .map(g -> g.text())
                                     .toList())),
-                    () -> operators.add(new RuleExplanation.Operator(id, id, "?", "", List.of())));
+                    () -> operators.add(new RuleExplanation.Operator(id, id, UNKNOWN, "", List.of())));
         }
         return operators;
     }
@@ -116,7 +123,7 @@ public final class ModelContext {
         List<RuleExplanation.Reference> references = new ArrayList<>();
         refs.fieldPaths().stream().sorted().forEach(p ->
                 references.add(new RuleExplanation.Reference(p,
-                        model.fieldAt(p).map(f -> f.kind().name()).orElse("?"))));
+                        model.fieldAt(p).map(f -> f.kind().name()).orElse(UNKNOWN))));
         refs.groupPaths().stream().sorted().forEach(g ->
                 references.add(new RuleExplanation.Reference(g, "GROUP")));
         return references;
