@@ -205,6 +205,38 @@ This generalizes the safe-delete gate below to the whole Refactor class. Each re
 
 Removing a field/group a rule/computation still references would dangle a reference. So `field remove`/`group remove` run the adapter's exact **`where-used`** first. If anything references the target it **refuses** (`outcome:refused`, exit 2) and surfaces the references as a structured diagnostic (`RK_REFERENCED`, `where.referencedBy:{rules,computations}`, a `fix`), so an agent can act — remove them first, or pass **`--cascade`** (which removes the referrers, then the element). **Never a silent cascade.** **One refinement for composite groups (§3.8):** the gate counts only referrers **outside** the removed subtree — a rule/computation that *lives inside* the group being removed (an attachment template's own internal rules, which the author never wrote) goes away with the subtree and must not trigger a spurious `--cascade`. So `group remove` drops in-subtree referrers (those whose full name is under `<group>/`) before applying the gate (`cli.GroupAttachmentVerbTest`). The *proactive* "what references this?" check lives at the CLI (which has the adapter — `where-used` is an adapter capability above `EditSession`, and `dm.modelkit ⟂ dm.rulekit` means modelkit can't see rule knowledge); the *authoritative* dangling-reference check stays the kernel gate (`EditSession.validate()`). Layering rationale: [`KERNEL-INTEGRATION-NOTES.md`](KERNEL-INTEGRATION-NOTES.md) "Structure edits + the delete-safety rule".
 
+### What counts as a "reference" — the symmetry, and querying both directions
+
+The whole Cascading/Refactor story hinges on one definition, so make it explicit. A **reference** is whatever the kernel's `getDirectlyReferencedEntities` returns for a rule — and it is **not** just the field a rule's error is *attached to*. It is **every field/group the condition reads** (the operands), and for a **computation** it additionally spans all four sites: the computed (calculated) field, the common precondition, each alternative's precondition, **and each operation expression**. A field read *only* inside a computation's operation — invisible to a rule scan — still counts. (KERNEL-FINDINGS §9 — the `getDirectlyReferencedEntities` primitive; locked by `adapter.WhereUsedInComputationsTest`.)
+
+That definition makes the dependency direction — and the whole gate behaviour — fall out of a simple **referrer vs referent** asymmetry:
+
+```
+   rule / computation  ──references──▶  field / group
+   (referrer — a leaf)                  (referent — depended-upon)
+```
+
+- A **rule or computation is a leaf**: nothing references *it*. So `rule remove` / `computation remove` need **no cascade gate** — removing one can't dangle anything (a computation's computed field simply survives, now unfilled). It only re-binds, so a removal that somehow broke the model still fails loudly.
+- A **field/group is a referent**: removing it could dangle every referrer. So `field remove` / `group remove` are gated.
+
+The three things you can do to a field a rule/computation *reads* — operand, precondition, computed-target, or error-entity alike — each resolve **valid→valid, or refuse/reject; never a silent break**:
+
+| operation on a referenced field | what happens | safe? |
+|---|---|---|
+| **delete** (`field remove`) | every referring rule **and** computation surfaces via `where-used` → **refused** (`RK_REFERENCED`) unless `--cascade`, which removes the *whole* referrers first (it cannot excise a single operand from a condition) | gated |
+| **rename** (`field rename --to`) | every referring site is **rewritten** to the new name — condition operands, preconditions, operations, error-entity + computed-field refs — atomically (`MoveSupportDM`), then re-validated | ✅ automatic |
+| **move** (`field move --to <group>`) | same rewrite **plus** node relocation; refuses first on a missing/again-taken destination (`RK_NO_SUCH_GROUP` / `RK_NAME_EXISTS`) | ✅ automatic |
+
+**Both directions are queryable today** — you don't reason about references by hand:
+
+| direction | verb | output |
+|---|---|---|
+| **usages of an element** (inverse) | `dmtool where-used <model.json> --entity <path>` | `{entity, rules:[…], computations:[…], count}` — every rule/computation that directly references the field/group, the two kinds kept separate |
+| **dependencies of a rule** (forward) | `dmtool -m <model> rule explain <rulePath>` (and `computation explain`) | the explanation's `references:[{path, kind}]` — the fields/groups the condition touches — plus `iterates`/`iterationGroup` (the repeatable group it ranges over) |
+| **every rule's dependencies at once** | `dmtool -m <model> export …` | a `referencedFields` array per rule across the whole model |
+
+The same primitive (`getDirectlyReferencedEntities`) backs all three — `where-used` is literally its inverse, `explain`'s `references` its forward projection, and the safe-delete gate its membership test — so they can never disagree about what "references" means. (Adapter API equivalents for library callers: `whereUsed` / `whereUsedInComputations`, `referencedFields` / `referencedFieldsOfComputation`.) Locks: `cli.WhereUsedVerbTest`, `adapter.WhereUsedInComputationsTest`, `cli.RemoveVerbTest`, `adapter.ReferenceRewriteTest`.
+
 ## 7. Batching — dispatcher `batch` vs session `apply`
 
 Two batch verbs, because they solve different problems — conflating them would break the eval runner:
