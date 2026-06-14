@@ -131,6 +131,42 @@ public final class ModelContext {
                 + commonPrecondition.map(p -> " (when " + p.text() + ")").orElse("") + ".";
     }
 
+    /**
+     * The fields a candidate condition could legally use as its <b>error field</b> (FEATURE-GAPS G4) — the
+     * referenced fields that satisfy the kernel's {@code MVK_ERROR_FIELD_NOT_REFERENCED} law: the error
+     * field must be <em>referenced</em> by the condition and, when the condition iterates a repeatable group,
+     * lie <em>inside</em> that group (so it has a per-row instance to attach the error to). Returns the
+     * qualifying referenced field paths, sorted; empty when the condition references only groups, or only
+     * fields outside its iteration scope (then no referenced field is a valid error field — the author must
+     * reference one inside the scope). A discoverability aid that turns the reject→fix round-trip into an
+     * up-front pick; the kernel stays the authority on the final verdict.
+     */
+    public List<String> errorFieldCandidates(Condition condition) {
+        return errorFieldCandidates(ConditionReferences.of(condition));
+    }
+
+    /**
+     * The {@link #errorFieldCandidates(Condition) error-field candidates} from a set of already-resolved
+     * referenced paths (a field or a group) — the entry for the kernel's own {@code getDirectlyReferencedEntities}
+     * answer, which is robust where the rulekit converter is not (it never NPEs on an inconsistent candidate).
+     * Each path is classified field-vs-group via the model index before the same scope filter is applied.
+     */
+    public List<String> errorFieldCandidates(Set<String> referencedPaths) {
+        Set<String> fields = new java.util.LinkedHashSet<>();
+        Set<String> groups = new java.util.LinkedHashSet<>();
+        for (String p : referencedPaths) {
+            (model.fieldAt(p).isPresent() ? fields : groups).add(p);
+        }
+        return errorFieldCandidates(new ConditionReferences(fields, groups));
+    }
+
+    private List<String> errorFieldCandidates(ConditionReferences refs) {
+        Optional<String> scope = iterationScope(refs);
+        return refs.fieldPaths().stream().sorted()
+                .filter(p -> scope.isEmpty() || p.startsWith(scope.get() + "/"))
+                .toList();
+    }
+
     /** The repeatable group the condition ranges over, if any (a referenced field's repeatable ancestor, or a repeatable referenced group). */
     private Optional<String> iterationScope(ConditionReferences refs) {
         for (String fieldPath : refs.fieldPaths()) {

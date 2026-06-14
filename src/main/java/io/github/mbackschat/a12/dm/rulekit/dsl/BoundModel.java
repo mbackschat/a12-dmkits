@@ -56,6 +56,21 @@ public final class BoundModel {
         }
     }
 
+    /**
+     * Bind <b>without</b> the kernel consistency gate (expand-only) — for <em>read-only</em> inspection of a
+     * model that may be inconsistent (e.g. a candidate rule whose error field is not yet valid, G4: read its
+     * condition / references before it would validate). Makes <b>no validity promise</b>; never use it for the
+     * write path. See {@link ModelLoader#expandOnly}.
+     */
+    public static BoundModel ofJsonLenient(String modelJson,
+            com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver resolver) {
+        try (var reader = new java.io.StringReader(modelJson)) {
+            return new BoundModel(ModelIndex.of(ModelLoader.expandOnly(reader, resolver)), modelJson, resolver);
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException("failed to bind model from JSON (lenient)", e);
+        }
+    }
+
     // --- write path (F6) — every write yields a NEW binding (snapshot semantics, F0) -----------
 
     /**

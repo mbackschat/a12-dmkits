@@ -7,8 +7,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 
+import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.rulekit.context.ModelContext;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
@@ -52,8 +56,16 @@ final class RuleCheckCommand extends BaseCommand {
             description = "candidate rule name (default: ${DEFAULT-VALUE})")
     String name;
 
+    @Option(names = "--suggest-error-field",
+            description = "also list the valid error-field candidates (the condition's referenced fields inside "
+                    + "its iteration scope) in data — the up-front pick that avoids the MVK_ERROR_FIELD_NOT_REFERENCED reject")
+    boolean suggestErrorField;
+
     @Mixin
     WorkspaceOption workspace = new WorkspaceOption();
+
+    private static final com.fasterxml.jackson.databind.ObjectMapper MAPPER =
+            new com.fasterxml.jackson.databind.ObjectMapper();
 
     @Override
     public Integer call() {
@@ -116,11 +128,53 @@ final class RuleCheckCommand extends BaseCommand {
                     Optional.empty(), Optional.empty()));
         }
 
+        ObjectNode data = suggestErrorField
+                ? errorFieldSuggestions(json, effectiveGroup, errorEntityRelPath, resolver)
+                : null;
+
         ValidationResult merged = ValidationResult.of(findings);
         ResultEnvelope env = ResultEnvelope.read("rule", "check",
                 merged.ok() ? "candidate is kernel-valid" : "candidate has " + findings.size() + " finding(s)",
-                merged.ok(), findings, null);
+                merged.ok(), findings, data);
         out().print(env.toJsonString());
         return env.exitCode();
+    }
+
+    /**
+     * The {@code --suggest-error-field} payload (G4): the valid error-field candidates for this candidate
+     * condition — the referenced fields inside its iteration scope ({@link ModelContext#errorFieldCandidates}),
+     * plus whether the chosen {@code --field} is among them. The candidate is injected and bound
+     * <em>leniently</em> ({@link BoundModel#ofJsonLenient} — expand-only, no consistency gate), so a
+     * kernel-rejected candidate — the whole point: a <em>bad error field</em>, which would make the
+     * consistency-checking {@code BoundModel.ofJson} throw — still gets read for its references and the
+     * corrective list. Best-effort: a condition the parser/converter can't model yields an empty list with a
+     * {@code note}, never a failure.
+     */
+    private ObjectNode errorFieldSuggestions(String json, String effectiveGroup, String errorEntityRelPath,
+            IDocumentModelReferenceResolver resolver) {
+        ObjectNode data = MAPPER.createObjectNode();
+        data.put("field", field);
+        String candidateFullName = effectiveGroup + "/" + name;
+        try {
+            DraftRule draft = new DraftRule(effectiveGroup, name, errorEntityRelPath, condition, code, severity);
+            String injected = new RuleValidator().inject(json, draft);
+            BoundModel lenient = BoundModel.ofJsonLenient(injected, resolver);   // tolerates the inconsistent candidate
+            // The kernel's own getDirectlyReferencedEntities (via referencedFields) — robust where the
+            // rulekit converter NPEs on an inconsistent candidate; it returns the condition's references
+            // regardless of error-field validity, which is exactly what we filter into candidates.
+            java.util.Set<String> references = KernelAdapter.of(lenient).referencedFields(candidateFullName);
+            java.util.List<String> candidates = new ModelContext(lenient).errorFieldCandidates(references);
+            ArrayNode arr = data.putArray("candidates");
+            candidates.forEach(arr::add);
+            data.put("fieldIsCandidate", candidates.contains(field));
+            if (candidates.isEmpty()) {
+                data.put("note", "the condition references no field inside its iteration scope — reference one "
+                        + "there to use as the error field");
+            }
+        } catch (RuntimeException e) {
+            data.putArray("candidates");
+            data.put("note", "could not compute candidates (the condition may be malformed): " + e.getMessage());
+        }
+        return data;
     }
 }

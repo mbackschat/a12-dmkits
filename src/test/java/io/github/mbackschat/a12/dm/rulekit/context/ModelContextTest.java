@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 
 /**
  * F9a model-context surface — {@code describe()} (the agent's map of the model, without raw DM-JSON)
@@ -78,5 +79,29 @@ class ModelContextTest {
         assertTrue(ex.iterates());
         assertEquals(java.util.Optional.of("/Subscription/Addons"), ex.iterationGroup());
         assertTrue(ex.toJson().contains("\"references\""), ex.toJson());
+    }
+
+    @Test
+    void errorFieldCandidatesAreReferencedFieldsInsideTheIterationScope() {
+        BoundModel m = Fixtures.subscription();
+        // references a field in the repeatable Addons AND one in the non-repeatable Billing → iterates Addons.
+        Condition c = Dsl.allFieldsFilled(
+                m.field("/Subscription/Addons/MonthlyFee"), m.field("/Subscription/Billing/BaseFee"));
+
+        // only the in-scope field is a valid error field — BaseFee (outside the iterated group) is excluded,
+        // exactly the MVK_ERROR_FIELD_NOT_REFERENCED law the kernel would otherwise reject after the round-trip.
+        assertEquals(List.of("/Subscription/Addons/MonthlyFee"),
+                new ModelContext(m).errorFieldCandidates(c));
+    }
+
+    @Test
+    void errorFieldCandidatesAreAllReferencedFieldsWhenTheConditionDoesNotIterate() {
+        BoundModel m = Fixtures.subscription();
+        // both fields are in the non-repeatable Billing group → no iteration scope → both qualify (sorted).
+        Condition c = Dsl.allFieldsFilled(
+                m.field("/Subscription/Billing/EffectiveFee"), m.field("/Subscription/Billing/BaseFee"));
+
+        assertEquals(List.of("/Subscription/Billing/BaseFee", "/Subscription/Billing/EffectiveFee"),
+                new ModelContext(m).errorFieldCandidates(c));
     }
 }

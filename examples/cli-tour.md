@@ -278,6 +278,24 @@ bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule check --fie
 
 → The kernel says `valid: true`, but the lint backstop attached a `WARNING` — `RK_UNGUARDED_NUMBER_COMPARISON`. Because an empty number reads as **0** (KERNEL-SEMANTICS §2), the rule would also fire on an empty `Quantity`; the `fix` field spells out the guard. The trap is caught at authoring time, before the rule is ever persisted.
 
+`--suggest-error-field` adds the legal error-field picks to `data` — the condition's referenced fields inside its iteration scope. The error field must be one of these (the `MVK_ERROR_FIELD_NOT_REFERENCED` law), so you choose it up front instead of after a reject.
+
+```bash
+bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule check --field /Order/Quantity --condition "[/Order/Quantity] < 1" --code RK_DEMO --suggest-error-field | jq .data
+```
+
+```output
+{
+  "field": "/Order/Quantity",
+  "candidates": [
+    "/Order/Quantity"
+  ],
+  "fieldIsCandidate": true
+}
+```
+
+→ `candidates` lists the fields the condition references in scope; `fieldIsCandidate: true` confirms the chosen `--field` is a legal error field. Pick a candidate before the round-trip, not after the kernel rejects.
+
 ## operators
 
 The DSL vocabulary is a self-verifying catalog, served by the tool itself — no external operator reference needed. `operators` (no arg) lists every construct, each tagged with a `kind` (`OPERATOR`/`PREDICATE`/`FUNCTION`/`CONSTANT`/`PATH_OP`) and a one-line `meaning`; `--keyword`/`--kind` filter it. The list here is summarized with `jq` (the catalog is large).
