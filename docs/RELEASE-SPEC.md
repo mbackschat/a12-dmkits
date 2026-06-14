@@ -17,7 +17,7 @@ The **command name is `dmtool`** everywhere it is publicly invoked. `:cli`'s `in
 
 ## 2. Versioning & naming — SemVer + compatibility metadata
 
-**Scheme: SemVer** (`MAJOR.MINOR.PATCH`, tag `vMAJOR.MINOR.PATCH`). The project version is the project's **own** release identity; the upstream kernel is recorded as **compatibility metadata**, never folded into the version string. (CalVer-keyed-to-upstream was considered and rejected — it re-collapses the two identities and erases the library's break-signal; full rationale in the plan's D9, summarized in §11.)
+**Scheme: SemVer** (`MAJOR.MINOR.PATCH`, tag `vMAJOR.MINOR.PATCH`). The project version is the project's **own** release identity; the upstream kernel is recorded as **compatibility metadata**, never folded into the version string. (CalVer-keyed-to-upstream was considered and rejected — it re-collapses the two identities and erases the library's break-signal; full rationale in the plan's D9, summarized in §12.)
 
 - **0.x** while the public library API stabilizes; **`1.0.0`** when it does. MAJOR = breaking API change, MINOR = additive, PATCH = fixes.
 - **The compatibility key is the kernel semver** (currently `30.8.1`; the A12 Tools distribution label `2025.06-ext5` is a secondary human tag). It is already encoded where consumers look:
@@ -107,20 +107,38 @@ A static Maven repo (one-line `maven { url }` consume) is a later upgrade; it do
 
 **Supersede, don't delete** — ship `vX.Y.(Z+1)` and roll any package-manager pointers forward; reserve hard `gh release delete` for a leaked secret or a broken artifact. Everything lives in repos the owner controls (no Central gatekeeper), so removal is easy — but **deleting an asset a brew formula / scoop manifest points at breaks installs**, so always **update the pointer before deleting the asset**. Removal stops *new* installs only; it cannot recall copies already on machines.
 
-## 10. Channels — current & planned
+## 10. Distribution topology & channels
 
-**v1 repo is private (early testers).** Release assets need **authenticated** download (`gh release download` / web UI) — invited collaborators have it; anonymous channels wait for the later public-mirror-or-go-public decision (§ below / RELEASE-PLAN §8 #6).
+**Source repo PRIVATE (early testers) + a separate PUBLIC release-mirror repo as the single public distribution point.** The release step publishes every downloadable artifact to the mirror's GitHub Releases (and its Pages), so anonymous consumers and agents fetch from the mirror while the source stays private. Going public later retires the mirror (releases move to the source repo). The mirror holds:
+
+- the **CLI native binaries** per-OS + `SHA256SUMS`;
+- the **developer JARs** — `rulekit-X.Y.Z.jar` + `-sources.jar` + `-javadoc.jar` + POM (§3b);
+- the **JavaDoc HTML** (browsable) on the mirror's **GitHub Pages**;
+- an **LLM-facing API doc** (`llms.txt`-style flat API reference) for coding agents — planned (§11).
 
 | Channel | Status | Notes |
 |---|---|---|
-| raw binaries on the GitHub Release | **v1** | authenticated download (private repo); browser-download escape hatch on a public future |
-| `publishToMavenLocal` + jars on Release | **v1** | the developer-library surface (§3b) — authenticated like any private-repo asset |
-| Claude Code **plugin** (skill + hook) | planned | hook authenticates via `gh` while private (D6); switches to `curl` when public/mirrored |
-| **Homebrew** formula / **Scoop** manifest | planned | **needs public assets** — gated on the public-mirror-or-go-public decision |
-| `curl \| sh` installer | planned | same — needs anonymous (public) assets |
-| static Maven repo / GitHub Pages JavaDoc | planned | a published repo dir / Pages (also needs public hosting) |
+| CLI binaries on the mirror Release | **v1** | anonymous `curl` (public mirror) — no auth, no quarantine/MotW |
+| developer jars + POM on the mirror Release | **v1** | + `publishToMavenLocal` for the maintainer/siblings; consume = install-with-POM (§8) |
+| Claude Code **plugin** (skill + hook) | planned | hook plain-`curl`s the CLI binary from the mirror (D6) |
+| **JavaDoc HTML** + **LLM API doc** on the mirror Pages | planned | public URLs for human + agent API consumption (§11) |
+| **Homebrew** formula / **Scoop** manifest | planned | point at the public mirror assets — now unblocked (anonymous) |
+| `curl \| sh` installer | planned | fetches from the mirror |
 
-## 11. Rationale (the durable *why*)
+**Licensing on the mirror (per [`LICENSING.md`](LICENSING.md) / CLI-SPEC §11) — mixed, per-artifact:**
+- **CLI native binaries → EUPL-1.2.** They embed the kernel, so each binary/release carries the kernel **LICENSE/NOTICE/THIRD_PARTY** + a source pointer (and **no "mgm A12" branding** — the `dmtool` name respects that).
+- **Developer JARs → MIT.** `rulekit-X.Y.Z.jar` does **not** embed the kernel (it's a separate `api` dependency the consumer bootstraps), so rulekit's own jar + sources + javadoc stay MIT.
+- The mirror repo's README states the per-artifact licensing explicitly so a downloader isn't confused by the mix.
+
+## 11. Developer API surface — docs & agent support (planned)
+
+The agent-first thesis extends from the CLI to the **library**: just as the CLI pairs a *self-describing surface* (`manifest`/`schema`/`--help`) with a *judgment skill*, the Java API should pair an **agent-readable API reference** with a **developer skill**. All published on the public mirror.
+
+- **JavaDoc** — the `-javadoc.jar` (downloadable) **and** browsable **HTML on the mirror's GitHub Pages** (a stable public URL).
+- **LLM API doc (`llms.txt`-style)** — a flat, single-file API reference for coding agents (the public types/methods/signatures + the typed-builder idioms + DSL entry points + short usage), distinct from the human JavaDoc. **Must be derived/CI-locked** against the real API to avoid drift (the project's no-drift discipline — e.g. assembled from the CI-locked typed-builder snippets + signatures), not hand-maintained. Hosted at a public URL an agent can fetch.
+- **Developer skill** — the library-persona analog of [`skill/SKILL.md`](../skill/SKILL.md): teaches *judgment* for authoring via the typed builder / `EditSession` / DSL (polarity, paths, iteration — the same kernel semantics), **not** the API catalog (that's the JavaDoc + `llms.txt`'s job — keep the skill minimal, mirroring the "self-describing surface > skill" rule). Complements the EVAL-SPEC §2 "Developer path."
+
+## 12. Rationale (the durable *why*)
 
 - **Native over jlink/jpackage** — single self-contained binary, ~16× faster start, no JVM to provision; the closed-world risk is bounded by §5's verification gate and the §3a hard ceiling.
 - **CI matrix, mac built locally** — native-image can't cross-compile (so "all OSes at once" = parallel CI jobs); macOS bills at a 10× multiplier (the only expensive line) and the signing cert lives locally, so mac stays off CI.
