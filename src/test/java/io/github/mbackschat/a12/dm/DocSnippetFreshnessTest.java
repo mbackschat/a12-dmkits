@@ -42,9 +42,81 @@ class DocSnippetFreshnessTest {
     /** One locked snippet: a fenced {@code ```java} block in {@code doc} mirrors a tagged region of {@code testSource}. */
     private record Lock(String id, String doc, String testSource) {}
 
+    private static final String STUDY_SNIPPETS =
+            "src/test/java/io/github/mbackschat/a12/dm/docsnippets/StudySnippetsTest.java";
+
     private static final List<Lock> LOCKS = List.of(
             new Lock("transform", "docs/API-POC-STUDY.md",
-                    "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/TransformConditionTest.java"));
+                    "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/TransformConditionTest.java"),
+            new Lock("nary", "docs/API-POC-STUDY.md", STUDY_SNIPPETS),
+            new Lock("create-model", "docs/API-POC-STUDY.md", STUDY_SNIPPETS),
+            new Lock("edit-session", "docs/API-POC-STUDY.md", STUDY_SNIPPETS),
+            new Lock("catalog", "docs/API-POC-STUDY.md", STUDY_SNIPPETS),
+            new Lock("navigation", "docs/API-POC-STUDY.md", STUDY_SNIPPETS));
+
+    /** The doc whose every shipped (✅) {@code ```java} block must be classified — locked or teaser-marked. */
+    private static final String STUDY = "docs/API-POC-STUDY.md";
+
+    /**
+     * Completeness guard: no shipped snippet escapes classification. Every {@code ```java} block whose
+     * heading ancestry includes a ✅ section must be immediately preceded by either {@code <!-- snippet: <id> -->}
+     * (locked to a run test, above) or {@code <!-- teaser -->} (acknowledged hand-maintained — elided or
+     * deliberately non-compiling, e.g. §2's "what you cannot write"). This mirrors the conformance-matrix
+     * discipline (every X classified), so a newly-shipped snippet can't silently dodge the lock.
+     */
+    @Test
+    @DisabledIfSystemProperty(named = "snippets.fix", matches = "true")
+    void everyShippedDocSnippetIsLockedOrTeaserMarked() throws IOException {
+        List<String> lines = Files.readAllLines(repoFile(STUDY));
+        String[] headingStack = new String[7];
+        List<String> unclassified = new ArrayList<>();
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i);
+            int level = headingLevel(line);
+            if (level > 0) {
+                headingStack[level] = line;
+                for (int deeper = level + 1; deeper < headingStack.length; deeper++) {
+                    headingStack[deeper] = null;
+                }
+            } else if (line.startsWith("```java") && shippedUnder(headingStack)) {
+                String prev = precedingNonBlank(lines, i);
+                if (!prev.startsWith("<!-- snippet:") && !prev.equals("<!-- teaser -->")) {
+                    unclassified.add("L" + (i + 1));
+                }
+            }
+        }
+        assertTrue(unclassified.isEmpty(), () ->
+                "Unclassified ```java block(s) under a ✅ section in " + STUDY + " at " + unclassified
+                + " — each shipped snippet must be preceded by `<!-- snippet: <id> -->` (lock it to a run "
+                + "test) or `<!-- teaser -->` (acknowledge it stays hand-maintained: elided or non-compiling).");
+    }
+
+    /** {@code #}-count of a markdown ATX heading (1–6), or 0 if {@code line} is not a heading. */
+    private static int headingLevel(String line) {
+        int h = 0;
+        while (h < line.length() && line.charAt(h) == '#') {
+            h++;
+        }
+        return (h >= 1 && h <= 6 && h < line.length() && line.charAt(h) == ' ') ? h : 0;
+    }
+
+    private static boolean shippedUnder(String[] headingStack) {
+        for (String heading : headingStack) {
+            if (heading != null && heading.contains("✅")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String precedingNonBlank(List<String> lines, int idx) {
+        for (int i = idx - 1; i >= 0; i--) {
+            if (!lines.get(i).isBlank()) {
+                return lines.get(i).strip();
+            }
+        }
+        return "";
+    }
 
     @Test
     @DisabledIfSystemProperty(named = "snippets.fix", matches = "true")

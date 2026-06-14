@@ -10,6 +10,7 @@
 
 ## 1. Setup — bind once, everything flows from the model (F0) ✅
 
+<!-- teaser -->
 ```java
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.*;
 import io.github.mbackschat.a12.dm.rulekit.dsl.*;
@@ -31,6 +32,7 @@ Everything the safety story needs is in hand at bind time: kinds, scale, enum do
 
 The largest `MVK_*` class is type rejection; the API removes it method-by-method. All of these are **compile errors or immediate failures today**:
 
+<!-- teaser -->
 ```java
 m.str(NAME).le("x")          // does not compile — strings have no ordering (MVK_INVALID_TYPE_FOR_COMPARISON erased)
 anything.not()                // does not compile — the kernel has no negation; use the negative predicate families
@@ -63,6 +65,7 @@ Each erased mistake corresponds to a **kernel-verified** rejection code (see `KE
 
 ### 3.1 Parameterized fragments are ordinary methods ✅
 
+<!-- teaser -->
 ```java
 /** Gate + requiredness — the corpus's most frequent pattern shape. */
 static Condition mandatoryWhen(Condition gate, FieldRef field) {
@@ -87,6 +90,7 @@ Condition r3 = groupNotBlank(addons, m.field("/Subscription/Addons/Name"));
 
 ### 3.2 Fragments with domain parameters ✅ / 🔮 (tolerance ✅ — operator landed, marker flipped on the 2026-06-10 sweep; the chronology composite still 🔮)
 
+<!-- teaser -->
 ```java
 /** Tolerance check — only the fixed 1/2/5/10 variants exist (the catalog teaches this; the enum enforces it). */
 static Condition withinTolerance(NumberRef actual, NumberRef expected, Tolerance t) {
@@ -111,6 +115,7 @@ The fragments show how backlog items compose into the **business idioms** the pr
 
 ### 3.3 A domain fragment library — packaging reuse ✅ (all shown fragments work today)
 
+<!-- teaser -->
 ```java
 /** The team's validation idiom collection: plain static methods over Dsl + handles. */
 public final class SubscriptionIdioms {
@@ -170,6 +175,7 @@ No framework, no registry — a fragment library is a Java class; discoverabilit
 
 ### 3.4 Parameterized *rules* — templates over the model ✅ (message interpolation ✅ — `Dsl.fieldValue`)
 
+<!-- teaser -->
 ```java
 /** One rule per monetary field: never negative. Navigation (§6c) drives the loop. */
 static List<Rule> nonNegativeMoneyRules(BoundModel m) {
@@ -193,6 +199,7 @@ This is the bulk-authoring payoff: a *rule template* is a function `BoundModel �
 
 When you author **many rules in Java that compare the same multi-field structure** (e.g. a seven-field address), a fragment removes the boilerplate — ordinary F5 combinator reuse, two levels deep. (Note: this is a convenience in the *authoring code*, not a transformation of the stored rule — the kernel DSL is flat, so the rendered `errorCondition` is the same string either way; what improves is the Java you write, not the persisted text.)
 
+<!-- teaser -->
 ```java
 // field level — "null-safe equality": both present and equal, OR both absent
 static Condition equalOrBothEmpty(StringRef a, StringRef b) {
@@ -214,6 +221,7 @@ The fragment is just a function — the F5 payoff for repetitive authoring. **Fi
 
 ### 3.5 n-ary composition ✅ (finding 10 — implemented 2026-06-04)
 
+<!-- snippet: nary -->
 ```java
 Condition c = allOf(r1, r2, r3);            // And-fold: "r1 And r2 And r3" — no redundant parentheses
 Condition d = allOf(r1, anyOf(r2, r3));     // "r1 And (r2 Or r3)" — parens per the kernel's mixing rule
@@ -223,6 +231,7 @@ Condition d = allOf(r1, anyOf(r2, r3));     // "r1 And (r2 Or r3)" — parens pe
 
 ### 4.1 The rule object — slots from typed handles (F2a) ✅ — implemented 2026-06-04 (`RuleAuthoringTest`; message *interpolation* ✅ 2026-06-07 — `Dsl.fieldValue`)
 
+<!-- teaser -->
 ```java
 Rule rule = m.rule(addons)                        // model-aware entry: rule lives in a group by construction
         .name("AddonFeeRequiredRule")             // the element name (the study originally forgot it)
@@ -243,6 +252,7 @@ Rule rule = m.rule(addons)                        // model-aware entry: rule liv
 
 ### 4.2 Render → validate → emit ✅
 
+<!-- teaser -->
 ```java
 new DslRenderer().render(condition);                       // ✅ canonical EN, absolute paths (no group context)
 rule.render();                                             // ✅ fork-9: paths relative to the rule's group (../ to siblings)
@@ -261,6 +271,7 @@ m2.writeTo(path);                                          // ✅ DM-JSON write 
 
 ### 4.3 A computation, same materials (F2) ✅ — implemented 2026-06-04 (`ComputationAuthoringTest`; aggregates/arithmetic in operations are corpus items 6–7); **read + full cycle ✅ 2026-06-08** (`readComputation`/`replaceComputation`; kernel-mm 100%, Corpus-1 100% — §9 board); **BA-doc worked-example shapes transferred** (`BaComputationCorpusTest`: concat, tiered+rounding, division/grouping, common-precondition, current-repetition, parallel-iteration — the current-repetition one surfaced + fixed an over-strict calculated-field pre-check, KERNEL-FINDINGS §11)
 
+<!-- teaser -->
 ```java
 Computation tiered = m.computation(m.num("/Subscription/Billing/EffectiveFee"))   // element placed in the
         .name("TieredFeeComp")                                                     // computed field's group;
@@ -294,6 +305,7 @@ Condition widened = proNeedsFee.transform(node -> switch (node) {
 
 `read` is **kernel-mm-complete** (553/553 typed) — including `X And CustomCondition Y`, which converts to a typed, editable AST (the custom condition is the name-only `CustomConditionRef`). The loop below is the real API.
 
+<!-- teaser -->
 ```java
 // LOAD — deserialize → expand → checkConsistency → bind (F0); an immutable snapshot
 BoundModel m = BoundModel.ofJson(Files.readString(Path.of("subscription.dm.json")));
@@ -370,6 +382,7 @@ The flat `operators` list answers *which* constructs appear; the **`tree`** answ
 
 ### 5.4 Re-express, diff, validate, write back (#2) ✅ 2026-06-04
 
+<!-- teaser -->
 ```java
 Condition current = ((ReadResult.Converted) adapter.read("/Subscription/Addons/FeeCapRule")).condition();  // ✅ F10
 Condition fixed   = current.and(m.num(FEE).filled());            // ✅ re-express: compose (or transform inside)
@@ -390,6 +403,7 @@ The use case in one place: **read a DM → add fields/groups → add/modify rule
 
 Before there's a model to read or edit, the typed builder authors one. `DocumentModelDraft.named(id)` opens a builder; `.rootGroup` nests groups/fields with the same fluent shape the editors mirror; `.build().toJson()` yields **kernel-valid** DM-JSON, ready for `ModelDocument.read` / `EditSession`:
 
+<!-- snippet: create-model -->
 ```java
 String json = DocumentModelDraft.named("orders").locale("en_US")
         .rootGroup("Order", o -> o
@@ -406,6 +420,7 @@ The smallest valid model is just `named(id).locale(l).rootGroup(name, g -> {})` 
 
 `ModelDocument.read(json)` reads the authored source tree — **kernel-free**, so a model with unresolved includes still reads — enumerates its structure name-path-addressed, and round-trips losslessly (the generic Jackson tree, not the kernel's `NON_EMPTY`/`NON_DEFAULT` typed serializer):
 
+<!-- teaser -->
 ```java
 ModelDocument doc = ModelDocument.read(json);
 doc.id();                              // "subscription"
@@ -422,6 +437,7 @@ doc.toJson();                          // content-equal to the source, idempoten
 
 ### Edit fields & groups (M8)
 
+<!-- teaser -->
 ```java
 ModelDocument.read(json)
     .addField("/Subscription/Addons", "Discount", FieldKind.NUMBER)   // DATE carries its default format
@@ -435,6 +451,7 @@ Add-ops reuse the build-from-scratch node emitter, so an *added* field is byte-s
 
 ### The coverage tail — doc config, type definitions, includes (M10+)
 
+<!-- teaser -->
 ```java
 ModelDocument.read(json)
     .setDecimalSeparator(",").setTimeZone("UTC")                       // doc config (comma vs point)
@@ -449,6 +466,7 @@ ModelDocument.read(json)
 
 Beyond easy kinds: add a fully-configured field (`FieldTypeSpec` — string bounds/pattern, number scale, enum values + categories, date format/precision, a `TypeDefRef`), **re-type** an existing field, and set per-locale **labels** + name/value **annotations** on a field or group.
 
+<!-- teaser -->
 ```java
 ModelDocument.read(json)
     .addField("/Subscription", "Coupon",
@@ -465,6 +483,7 @@ A label must cover every declared locale (fails fast otherwise); the add/re-type
 
 `EditSession` threads one DM-JSON through both kits, and the **preferred idiom is the editor** (the L2c `GroupEditor`/`FieldEditor`/… — §5c): hold an editor on a group, edits chain, and a ref to a just-created field comes from relative navigation. The decisive case: a rule whose error field **is the field the structure step just added** — only kernel-valid if both edits composed over the same document.
 
+<!-- snippet: edit-session -->
 ```java
 EditSession s = EditSession.read(json);
 GroupEditor addons = s.group("/Subscription/Addons");
@@ -495,6 +514,7 @@ Today you reference an element by **string path**, which returns a typed handle 
 
 **Two types — a pure value, and a session-bound editor.**
 
+<!-- teaser -->
 ```java
 // PURE VALUE REF — immutable (path + kind + scale/domain); carries operators; AST-safe.   (≈ jOOQ Field<T>)
 NumberRef qty = order.num("Quantity");        // relative navigation off a group ref → an existing child
@@ -506,6 +526,7 @@ qty.lt(0);                                    // → an immutable Condition; no 
 
 **modelkit (structure) — FLUENT editor edits (they chain, mirroring modelkit's from-scratch builder); refs by navigation:**
 
+<!-- teaser -->
 ```java
 var s = EditSession.read(json);
 
@@ -526,6 +547,7 @@ GroupRef  items    = s.group("/Order").group("Items");
 
 **rulekit (rules) — the *same* refs are the scope / error-field / operands:**
 
+<!-- teaser -->
 ```java
 s.addRule(m -> m.rule(order)                                // a GROUP ref as the rule scope …
     .errorField(discount)                                   // … a FIELD ref as the error field …
@@ -534,6 +556,7 @@ s.addRule(m -> m.rule(order)                                // a GROUP ref as th
 
 **Both kits, one session** — the create→reference flow **codegen (L2b) could never do** (the field exists only at runtime):
 
+<!-- teaser -->
 ```java
 var order = s.group("/Order");                              // a group editor
 order.addField("Discount", NUMBER);                         // modelkit: fluent structure edit (chains if more)
@@ -571,6 +594,7 @@ Live nodes buy only **node-anchored chaining** and **rename-tracking** over valu
 
 The editor + flowing refs lift rulekit's **parameterized rule fragments** (`(refs, params) → Condition`; the `…Idioms` library, finding 11) to **parameterized document-part builders** — plain functions `(editor, params) → structure *and* rules` that take *where to build* and **return a ref** to what they built. They compose, and every result still passes the one `validate()` gate.
 
+<!-- teaser -->
 ```java
 // a configured "money" field + its bound rules — returns the ref so the caller can wire it into more rules:
 static NumberRef money(GroupEditor g, String name, BigDecimal cap) {
@@ -603,6 +627,7 @@ address(order, "BillingAddress",  Country.US);                      // … and r
 
 Real apps compose models: a shared sub-model is **included** into a base and mounted at one or more places, and the base authors rules over the mounted fields exactly as if they were local. rulekit binds a model **with includes** by threading a resolver (`EditSession.read(json, resolver)` / `BoundModel.ofJson(json, resolver)`), expands it through the kernel, and writes back **without inlining** the include — the `modelAlias` link is preserved (F6/D9). A field from an include is addressed by its **mount-name path** (`/Catalog/Retail/ListPrice` = the mount `Retail` + the included field `ListPrice`); a **type-def** field behaves as its underlying kind.
 
+<!-- teaser -->
 ```java
 // a shared price list — carrying its OWN rule (list price not negative)
 EditSession plSession = EditSession.read(pricelistStructureJson);     // modelkit-authored structure
@@ -638,6 +663,7 @@ The included price list's **own** rule travels with it — mounted twice, it app
 
 Beyond "is this rule kernel-valid?" (the static gate) is "does it do the **right thing** on real data?" — the verify-by-execution angle that catches an *inverted-but-valid* rule. `KernelAdapter.evaluate` runs a model's rules over a **document instance** (a nested, name-keyed tree — repeatable groups as lists, field values as their kernel string form) and reports which rule **codes** fired; its peer `compute` reports what each field computes. (CLI: `eval-doc` / `compute-doc`.)
 
+<!-- teaser -->
 ```java
 String model = …;   // a model whose /Order/Discount carries a "DiscountNonNeg" rule (code DISCOUNT_NEG)
 
@@ -657,6 +683,7 @@ So you can prove a rule *behaves* — run a passing and a violating document and
 
 A rule's condition can carry a `;;` line **comment** — concrete syntax the kernel tolerates but does **not** keep in its parsed AST. rulekit carries comments in a **side-channel** beside the immutable AST (`rulekit.dsl.Comments`, keyed by *node identity*, covering both a `Condition` branch and a `Calculation` operation — the "carrier (c)" design, so the sealed hierarchies + their exhaustive switches stay untouched). The payoff: you **author** comments with the typed builder, and a rule's **leading comment is preserved by default** across read→modify→write-back.
 
+<!-- teaser -->
 ```java
 // a leading comment on a rule (also: commentAfter(...) for a trailing note; comment(node, "…") to
 // annotate one branch of an And/Or by identity)
@@ -679,6 +706,7 @@ m.computation(effectiveFee).name("EffFeeComp")
 
 Preserve-by-default closes the loop — re-express a commented rule's condition and the note rides along, **no manual sourcing**:
 
+<!-- teaser -->
 ```java
 // the stored rule already carries ";; cap the monthly fee"; tighten the threshold — the comment survives
 EditSession.read(json)
@@ -696,6 +724,7 @@ A BA does not re-derive "delivery can't precede the order" from scratch — they
 
 The five built-ins span the BA-doc's typical tasks: **date-order**, **required-when** (field-equals-value form), **mutually-exclusive**, **at-least-one-of**, **sum-of-line-items**. Each produces its condition through the **typed DSL** — so it's correct *by construction*, not merely rejected if wrong:
 
+<!-- teaser -->
 ```java
 PatternEntry dateOrder = PatternCatalog.load().byId("date-order").orElseThrow();
 
@@ -716,6 +745,7 @@ The condition is built — not string-templated — inside the pattern: `Dsl.all
 
 ## 6. Semantics as data (F7, N6) ✅ — the catalog is queryable today
 
+<!-- snippet: catalog -->
 ```java
 OperatorCatalog catalog = OperatorCatalog.load();                                  // ✅
 OperatorEntry e = catalog.byId("GroupFilled").orElseThrow();
@@ -731,6 +761,7 @@ An LLM reads exactly this. The **self-sufficiency eval** (N6) is the runnable ac
 
 The agent's entry point is usually a *name*, not a rule. Three projections compose the answer. (Shipped API is instance methods — `new ModelContext(m).describe()` / `.find(...)` / `.explain(...)`; the `Context.*` static shape below is the original sketch.)
 
+<!-- teaser -->
 ```java
 ModelCard card = Context.describe(m);             // ✅ 2026-06-04 — the agent's map, PROGRESSIVE: default is the
                                                   //    skeleton (group tree + counts/kind histograms — low-1000s
@@ -754,6 +785,7 @@ The N8 seam: `context` lives in the public-tier core; the exact `whereUsed` come
 
 **And for agents, the primary form is files** (owner direction — agents are trained to export-then-grep). The same projections, two persona surfaces (N10): the **in-repo developer** calls them programmatically; the **modeller/BA's** agent runs the **CLI verb** (which serializes the same projections) — no Java toolchain.
 
+<!-- teaser -->
 ```java
 // developer, in their own project — programmatic projection (core):
 Context.export(m, Artifact.FIELDS, System.out);   // 🔮 stream-first primitive — stdout pipes like git
@@ -778,6 +810,7 @@ The 10k-field problem dissolves: the files hold everything, only grep hits enter
 
 The programmatic counterpart to 6b's files — and the machinery beneath them (`fields.jsonl` *is* `m.fields()` serialized). Streams of rich **info handles**; matching is plain Java; narrowing bridges back to strict authoring handles:
 
+<!-- snippet: navigation -->
 ```java
 // iterate + match — Stream.filter IS the matcher (no custom matcher API, no XPath-for-DM):
 List<FieldInfo> money = m.fields()
@@ -793,9 +826,12 @@ NumberRef fee = money.getFirst().asNum();                      // narrowing is s
 // which makes rule templates (§3.4) one stream pipeline:
 List<Rule> rules = m.fields()
         .filter(f -> f.kind() == ValueKind.NUMBER && f.scale() == 2)
-        .map(f -> m.rule(f.group()).errorField(f.asNum())
+        .map(f -> m.rule(f.group()).name(f.name() + "NonNegative").errorField(f.asNum())
                 .when(f.asNum().filled().and(f.asNum().lt(0)))
-                .code("NON_NEGATIVE_" + f.name().toUpperCase()).severity(ERROR).build())
+                .code("NON_NEGATIVE_" + f.name().toUpperCase()).severity(ERROR)
+                .message(en(f.name() + " must not be negative."),               // a message per declared
+                         de(f.name() + " darf nicht negativ sein."))            // locale (the locale law)
+                .build())
         .toList();
 ```
 
