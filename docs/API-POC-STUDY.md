@@ -241,7 +241,7 @@ Rule rule = m.rule(addons)                        // model-aware entry: rule liv
 // ConditionReferences.of(condition) — the build-check's collector — is the seed of F9's referenced-fields projection.
 ```
 
-### 4.2 Render → validate → emit ✅ / 🔮
+### 4.2 Render → validate → emit ✅
 
 ```java
 new DslRenderer().render(condition);                       // ✅ canonical EN, absolute paths (no group context)
