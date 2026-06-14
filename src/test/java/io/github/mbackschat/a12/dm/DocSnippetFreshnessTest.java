@@ -12,6 +12,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 /**
  * Doc-snippet freshness lock — "approach A" (see {@code docs/TESTING.md} "Locked doc snippets").
@@ -27,6 +29,13 @@ import org.junit.jupiter.api.Test;
  * {@code // end::<id>[]}, put {@code <!-- snippet: <id> -->} immediately above the doc's {@code ```java}
  * fence, and add a {@link Lock} row here. The mechanism mirrors the CLI side's
  * {@code CliTourFreshnessTest} (compiled+run = no-rot; locked-to-source = no-drift).
+ *
+ * <p><b>Verification vs. sync.</b> By default this class is the <em>verifier</em> — assert-only, run by
+ * {@code :test} (locally and in CI), it never edits files. The <em>sync</em> is autonomous and on demand:
+ * {@code ./gradlew syncDocSnippets} re-runs this class with {@code -Dsnippets.fix=true}, which flips it to
+ * the <em>fixer</em> — it rewrites every locked doc fence from its canonical test region, no hand-copying.
+ * The fixer and verifier share one extraction/normalization path, so they can't disagree. CI never runs
+ * the fixer, so a forgotten sync still fails the build.
  */
 class DocSnippetFreshnessTest {
 
@@ -38,6 +47,7 @@ class DocSnippetFreshnessTest {
                     "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/TransformConditionTest.java"));
 
     @Test
+    @DisabledIfSystemProperty(named = "snippets.fix", matches = "true")
     void everyLockedDocSnippetMatchesItsRunTestVerbatim() throws IOException {
         for (Lock l : LOCKS) {
             String docBlock = normalize(docFence(repoFile(l.doc()), l.id()));
@@ -45,10 +55,34 @@ class DocSnippetFreshnessTest {
             assertEquals(srcBlock, docBlock, () ->
                     "Doc snippet '" + l.id() + "' in " + l.doc() + " has DRIFTED from its source of truth — "
                     + "the `// tag::" + l.id() + "[]` region of " + l.testSource() + " (which compiles and runs "
-                    + "against the real kernel). Re-mirror the test region into the ```java fence after "
-                    + "`<!-- snippet: " + l.id() + " -->`. The test is canonical: fix the test first, then copy "
-                    + "it into the doc — never edit the doc to pass while the test is wrong.");
+                    + "against the real kernel). Re-sync autonomously: `./gradlew syncDocSnippets` (rewrites the "
+                    + "doc fence from the test region). The test is canonical: if the snippet itself is wrong, "
+                    + "fix the test first, then sync — never hand-edit the doc to pass while the test is wrong.");
         }
+    }
+
+    /**
+     * The autonomous fixer — only when {@code -Dsnippets.fix=true} (i.e. {@code ./gradlew syncDocSnippets}).
+     * Rewrites every locked doc fence in place from its canonical test region; never runs in CI.
+     */
+    @Test
+    @EnabledIfSystemProperty(named = "snippets.fix", matches = "true")
+    void regenerateLockedDocSnippetsFromTheirRunTests() throws IOException {
+        for (Lock l : LOCKS) {
+            String region = normalize(taggedRegion(repoFile(l.testSource()), l.id()));
+            rewriteDocFence(repoFile(l.doc()), l.id(), region);
+        }
+    }
+
+    /** Replace the body of the first {@code ```java} fence after {@code <!-- snippet: id -->} with {@code body}. */
+    private static void rewriteDocFence(Path doc, String id, String body) throws IOException {
+        String text = Files.readString(doc);
+        String marker = "<!-- snippet: " + id + " -->";
+        int at = text.indexOf(marker);
+        assertTrue(at >= 0, () -> "no marker `" + marker + "` in " + doc);
+        Matcher m = Pattern.compile("```java\\R(.*?)\\R```", Pattern.DOTALL).matcher(text);
+        assertTrue(m.find(at + marker.length()), () -> "no ```java fence after `" + marker + "` in " + doc);
+        Files.writeString(doc, text.substring(0, m.start(1)) + body + text.substring(m.end(1)));
     }
 
     /** The body of the first {@code ```java} fence after {@code <!-- snippet: id -->} in {@code doc}. */

@@ -102,23 +102,30 @@ This is *not* extract-and-compile of every fence. The README and many study bloc
 ```
   test method (compiles + runs vs kernel)            markdown doc
   // tag::transform[]                                <!-- snippet: transform -->
-  Condition widened = …tier.is("PRO")…    ──mirror──▶ ```java  (what the reader sees)
-  // end::transform[]                      ◀═assert══  …tier.is("PRO")…   byte-equal
+  Condition widened = …tier.is("PRO")…   ──sync────▶ ```java  (what the reader sees)
+  // end::transform[]                     ◀═verify══  …tier.is("PRO")…   byte-equal
 ```
+
+**Verification vs. sync — two triggers, never confused**
+
+- **Verify** is the default: `DocSnippetFreshnessTest` is assert-only, runs in `:test` (locally *and* CI), edits nothing. Drift → build fails.
+- **Sync** is autonomous and on demand: `./gradlew syncDocSnippets` re-runs the class with `-Dsnippets.fix=true`, flipping it to the *fixer*, which rewrites every locked doc fence in place from its canonical test region — no hand-copy. CI never runs the fixer, so a forgotten sync still fails the verify. Both share one extraction/normalization path, so they can't disagree.
 
 **Lifecycle**
 
 1. **Author** the snippet *as a real test* (a `…LawsTest`/feature test in the suite), wrapping the showable lines in `// tag::<id>[]` … `// end::<id>[]`. `javac` compiles it; the kernel runs it — proven, not plausible. Use the *real* API in the tagged lines (this lock turned the §5.1 example's private `tierIs(...)` test-helper into the genuine `tier.is(...)` API, so the doc now shows runnable code).
-2. **Mirror** the region into the doc's ```java fence, with `<!-- snippet: <id> -->` on the line directly above the fence.
-3. **Register** a `Lock(id, docFile, testSourceFile)` row in `DocSnippetFreshnessTest`.
-4. **Maintain**: change the API → edit the snippet *in the test*. Two independent guards fire — the test fails to compile/pass (the API broke), or the freshness test fails (the doc is stale). **Fix the test first, then re-mirror into the doc** — never edit the doc to go green while the test is red, or you'd document broken code.
+2. **Mark** the doc fence: put `<!-- snippet: <id> -->` on the line directly above the ```java fence (the fence body can start empty — the sync fills it).
+3. **Register** a `Lock(id, docFile, testSourceFile)` row in `DocSnippetFreshnessTest`, then run `./gradlew syncDocSnippets` to populate the fence.
+4. **Maintain**: change the API → edit the snippet *in the test*, then `./gradlew syncDocSnippets`. Two independent guards fire if you forget: the test fails to compile/pass (the API broke) or the verify fails (the doc is stale). **The test is canonical** — if the snippet itself is wrong, fix the test first, then sync; never hand-edit the doc to go green while the test is red.
 
 | concern | mechanism |
 |---|---|
 | **doc marker** | `<!-- snippet: <id> -->` immediately above the ```java fence; the guard takes the first fence after it |
 | **test marker** | `// tag::<id>[]` … `// end::<id>[]` around the showable lines of a passing test |
 | **normalization** | drop blank edge lines, strip the common leading indent (so an 8-space method body equals a column-0 fence), trim trailing whitespace |
-| **registry** | `DocSnippetFreshnessTest.LOCKS` — one `Lock` row per locked snippet; failure names the regen step |
+| **registry** | `DocSnippetFreshnessTest.LOCKS` — one `Lock` row per locked snippet |
+| **verify** | `./gradlew test` (assert-only; CI) — fails on drift |
+| **sync** | `./gradlew syncDocSnippets` (autonomous; rewrites fences from test regions in place) |
 
 ## Opt-in corpus harnesses (gated, commit nothing)
 

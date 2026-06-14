@@ -46,3 +46,19 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+// Autonomous doc-snippet sync: rewrites every locked ```java fence in the docs from its canonical test
+// region (see DocSnippetFreshnessTest / docs/TESTING.md "Locked doc snippets"). One command, no hand-copy.
+// The default `test` run stays assert-only (CI catches a forgotten sync); only this task flips to the fixer.
+tasks.register('syncDocSnippets', Test) {
+    group = 'documentation'
+    description = 'Regenerate locked doc snippets from their canonical test regions (autonomous, in place).'
+    useJUnitPlatform()
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    systemProperty 'snippets.fix', 'true'
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.DocSnippetFreshnessTest'
+    }
+    outputs.upToDateWhen { false }
+}
