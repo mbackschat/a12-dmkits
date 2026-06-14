@@ -46,10 +46,13 @@ class GroupMultiSelectVerbTest {
     }
 
     @Test
-    void aSingleRowMultiSelectIsRefused(@TempDir Path dir) throws Exception {
+    void aSingleRowMultiSelectIsRefusedWithACode(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         var res = CliTestSupport.run("-m", model.toString(), "group", "multiselect",
                 "--parent", "/Order", "--name", "Bad", "--field", "X", "--values", "A,B", "--max-rows", "1");
-        assertTrue(res.code() != 0, "maxRows must be > 1 — a single-row multi-select is rejected");
+        assertEquals(2, res.code(), "maxRows must be > 1 — a single-row multi-select is refused");
+        JsonNode j = M.readTree(res.out());
+        assertEquals("refused", j.get("outcome").asText(), () -> "a coded refusal, not a bare fail: " + res.out());
+        assertEquals("RK_MULTISELECT_MIN_ROWS", j.path("diagnostics").path(0).path("code").asText());
     }
 }

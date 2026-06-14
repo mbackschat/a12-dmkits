@@ -12,6 +12,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+
 /**
  * {@code group attachment} — expand an Attachment group template (FEATURE-GAPS §3.8): the canonical
  * 8-field + 4-rule file-attachment composition, kernel-validated by {@code AttachmentGroupRule}. Includes
@@ -46,6 +49,20 @@ class GroupAttachmentVerbTest {
         assertEquals(0, res.code(), res.err());
         assertEquals("applied", M.readTree(res.out()).get("outcome").asText());
         assertTrue(Files.readString(model).contains("\"usageType\" : \"attachment\""));
+    }
+
+    @Test
+    void anAttachmentOnANonEnDeModelIsRefusedWithACode(@TempDir Path dir) throws Exception {
+        // the template generates en/de rules — a model declaring another locale can't be served (coded refusal)
+        Path model = dir.resolve("fr.dm.json");
+        Files.writeString(model, DocumentModelDraft.named("catalogue").locale("fr_FR")
+                .rootGroup("Commande", g -> g.field("Reference", FieldKind.STRING)).build().toJson());
+        var res = CliTestSupport.run("-m", model.toString(), "group", "attachment",
+                "--parent", "/Commande", "--name", "Facture");
+        assertEquals(2, res.code(), () -> "fr_FR model refuses the attachment template: " + res.out());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("refused", j.get("outcome").asText(), () -> "a coded refusal, not a bare fail: " + res.out());
+        assertEquals("RK_ATTACHMENT_LOCALE_UNSUPPORTED", j.path("diagnostics").path(0).path("code").asText());
     }
 
     @Test

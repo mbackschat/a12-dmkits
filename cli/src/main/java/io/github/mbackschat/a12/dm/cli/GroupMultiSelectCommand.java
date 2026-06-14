@@ -82,13 +82,13 @@ final class GroupMultiSelectCommand extends BaseCommand {
         IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         String target = parent + "/" + name;
         ModelDocument doc = ModelDocument.read(modelJson);
+        SafetyGate gate = new SafetyGate().require(SafetyChecks.multiSelectMinRows(maxRows));
         if (!parent.isEmpty()) {
-            Optional<Refusal> refusal = new SafetyGate()
-                    .require(SafetyChecks.exists(doc, parent, true))
-                    .firstFailure();
-            if (refusal.isPresent()) {
-                return refuse("group", "multiselect", refusal.get());
-            }
+            gate = gate.require(SafetyChecks.exists(doc, parent, true));
+        }
+        Optional<Refusal> refusal = gate.firstFailure();
+        if (refusal.isPresent()) {
+            return refuse("group", "multiselect", refusal.get());
         }
         String resultJson;
         try {

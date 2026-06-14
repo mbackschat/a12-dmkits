@@ -26,7 +26,46 @@ final class SafetyChecks {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    /** The locales the attachment-group template can author its generated rules in (the kernel's two DSL languages). */
+    private static final Set<String> ATTACHMENT_LOCALES = Set.of("en_US", "de_DE");
+
     private SafetyChecks() {
+    }
+
+    /** A multi-select group must be repeatable — refuse a non-repeatable {@code --max-rows} (&lt; 2). */
+    static SafetyCheck multiSelectMinRows(int maxRows) {
+        return () -> {
+            if (maxRows >= 2) {
+                return Optional.empty();
+            }
+            Diagnostic diagnostic = Diagnostic.precheck(Optional.of(RkCode.MULTISELECT_MIN_ROWS.code()),
+                    "a multi-select needs at least 2 rows (it must be repeatable); --max-rows was " + maxRows,
+                    Diagnostic.Where.arg(null, "--max-rows"),
+                    Optional.of(RkCode.MULTISELECT_MIN_ROWS.fix()), Optional.empty());
+            return Optional.of(new Refusal(
+                    "multi-select --max-rows " + maxRows + " is not repeatable — refusing", null, diagnostic));
+        };
+    }
+
+    /**
+     * The attachment-group template generates complete en/de rules — refuse a model that declares any other
+     * locale (the generated rules would lack a message for it, and couldn't render in its DSL keywords).
+     */
+    static SafetyCheck attachmentLocaleSupported(ModelDocument doc) {
+        return () -> {
+            List<String> unsupported = doc.locales().stream()
+                    .filter(locale -> !ATTACHMENT_LOCALES.contains(locale)).toList();
+            if (unsupported.isEmpty()) {
+                return Optional.empty();
+            }
+            Diagnostic diagnostic = Diagnostic.precheck(Optional.of(RkCode.ATTACHMENT_LOCALE_UNSUPPORTED.code()),
+                    "the attachment template generates en/de rules; the model declares unsupported locale(s) " + unsupported,
+                    Diagnostic.Where.arg(null, "-m"),
+                    Optional.of(RkCode.ATTACHMENT_LOCALE_UNSUPPORTED.fix()), Optional.empty());
+            return Optional.of(new Refusal(
+                    "the model declares non-en/de locale(s) " + unsupported
+                            + " — the attachment template can't author its rules for them", null, diagnostic));
+        };
     }
 
     /** Refuse a rename whose new path collides with an existing field or group (the collision gate). */

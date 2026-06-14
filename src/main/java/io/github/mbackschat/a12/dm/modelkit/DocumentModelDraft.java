@@ -968,8 +968,8 @@ public final class DocumentModelDraft {
         ElementDraft.Group toGroup(String groupName, List<String> locales, String conditionLanguage) {
             for (String locale : locales) {
                 if (!SUPPORTED_LOCALES.contains(locale)) {
-                    throw new IllegalStateException("an attachment template supports only en_US/de_DE models; "
-                            + "the model declares '" + locale + "'");
+                    throw new IllegalStateException("the attachment template generates en/de rules (conditions "
+                            + "and messages) and supports only en_US/de_DE models; the model declares '" + locale + "'");
                 }
             }
             boolean german = "de_DE".equals(conditionLanguage);
