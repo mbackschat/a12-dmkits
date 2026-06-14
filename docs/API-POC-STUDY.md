@@ -277,8 +277,9 @@ Computation tiered = m.computation(m.num("/Subscription/Billing/EffectiveFee")) 
 
 ## 5. The bidirectional edit loop (F8, F10) — modify studies
 
-### 5.1 In-session transform (#1) ✅ — working code, verbatim in `TransformConditionTest`
+### 5.1 In-session transform (#1) ✅ — working code, CI-locked verbatim to `TransformConditionTest`
 
+<!-- snippet: transform -->
 ```java
 Condition widened = proNeedsFee.transform(node -> switch (node) {
     case ComparisonCondition c when c.operatorId().equals("Equal")

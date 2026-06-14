@@ -91,6 +91,35 @@ The `dmtool` CLI is the agent's entire interface (the N6 eval drives the bare bi
 
 The bar (CLI-CONFORMANCE-SPEC): a cold agent given only the binary can self-serve. Two active enforcers make a new verb hold the contract automatically — the **matrix** proves it's fully surfaced (described, contract-discoverable, demonstrated), and the **fuzzer** proves its misuse is structured-diagnosed.
 
+## Locked doc snippets (no-rot for the `java` code in docs)
+
+A `java` code block shown to a reader in the markdown docs is hand-authored prose with no compiler behind it — so it drifts silently as the API moves, and a stale snippet actively *misleads*. `DocSnippetFreshnessTest` removes the rot for the **canonical** snippets (the §9-shipped examples in [`API-POC-STUDY.md`](API-POC-STUDY.md)): each locked block must be byte-identical — after indent/trailing-whitespace normalization — to a **tagged region of a real test that compiles and runs against the kernel**. Same two levers as the CLI side (`CliTourFreshnessTest`): **compiled + run ⇒ no-rot; locked-to-source ⇒ no-drift.**
+
+This is *not* extract-and-compile of every fence. The README and many study blocks are deliberate **teasers** with `…` elisions and prose interleaving — they stay hand-maintained (CLAUDE.md's README rule). Only the *full, canonical* snippets get a verbatim lock; pick the one example per shipped capability that is a real compile unit.
+
+**Source of truth = the test region; the doc block is a verified mirror.** That direction is the whole point: "the doc shows it" and "the kernel accepts it" cannot diverge.
+
+```
+  test method (compiles + runs vs kernel)            markdown doc
+  // tag::transform[]                                <!-- snippet: transform -->
+  Condition widened = …tier.is("PRO")…    ──mirror──▶ ```java  (what the reader sees)
+  // end::transform[]                      ◀═assert══  …tier.is("PRO")…   byte-equal
+```
+
+**Lifecycle**
+
+1. **Author** the snippet *as a real test* (a `…LawsTest`/feature test in the suite), wrapping the showable lines in `// tag::<id>[]` … `// end::<id>[]`. `javac` compiles it; the kernel runs it — proven, not plausible. Use the *real* API in the tagged lines (this lock turned the §5.1 example's private `tierIs(...)` test-helper into the genuine `tier.is(...)` API, so the doc now shows runnable code).
+2. **Mirror** the region into the doc's ```java fence, with `<!-- snippet: <id> -->` on the line directly above the fence.
+3. **Register** a `Lock(id, docFile, testSourceFile)` row in `DocSnippetFreshnessTest`.
+4. **Maintain**: change the API → edit the snippet *in the test*. Two independent guards fire — the test fails to compile/pass (the API broke), or the freshness test fails (the doc is stale). **Fix the test first, then re-mirror into the doc** — never edit the doc to go green while the test is red, or you'd document broken code.
+
+| concern | mechanism |
+|---|---|
+| **doc marker** | `<!-- snippet: <id> -->` immediately above the ```java fence; the guard takes the first fence after it |
+| **test marker** | `// tag::<id>[]` … `// end::<id>[]` around the showable lines of a passing test |
+| **normalization** | drop blank edge lines, strip the common leading indent (so an 8-space method body equals a column-0 fence), trim trailing whitespace |
+| **registry** | `DocSnippetFreshnessTest.LOCKS` — one `Lock` row per locked snippet; failure names the regen step |
+
 ## Opt-in corpus harnesses (gated, commit nothing)
 
 These read the **real** model corpora to measure coverage; they skip when their volume/clone is absent, print a report, and never commit corpus content (proprietary A12 Tools workspaces; EUPL `a12-kernel-mm`):

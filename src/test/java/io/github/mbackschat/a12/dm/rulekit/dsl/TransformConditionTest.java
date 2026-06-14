@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.UnaryOperator;
 
 import org.junit.jupiter.api.Test;
@@ -28,14 +29,21 @@ class TransformConditionTest {
     @Test
     void rewritesAMatchedSubtree() {
         // The study's example: widen "tier == PRO" to "tier == PRO Or tier == ENTERPRISE".
-        Condition proNeedsFee = tierIs("PRO").and(FEE.notFilled());
+        // Uses the real EnumRef.is(...) API so the §5.1 doc snippet (locked to the tagged region below
+        // by DocSnippetFreshnessTest) shows code that genuinely compiles and runs against the kernel.
+        EnumRef tier = new EnumRef(new FieldRef("/Subscription/Tier", ValueKind.ENUMERATION),
+                List.of("BASIC", "PRO", "ENTERPRISE"), Map.of());
+        Condition proNeedsFee = tier.is("PRO").and(FEE.notFilled());
 
+        // tag::transform[]
         Condition widened = proNeedsFee.transform(node -> switch (node) {
             case ComparisonCondition c when c.operatorId().equals("Equal")
                     && c.right() instanceof EnumValueLiteral(String v) && v.equals("PRO")
-                    -> tierIs("PRO").or(tierIs("ENTERPRISE"));
+                    -> tier.is("PRO").or(tier.is("ENTERPRISE"));
             default -> node;
         });
+        // bottom-up; untouched subtrees keep reference identity; D14 ids make the guards readable
+        // end::transform[]
 
         assertEquals(
                 "([/Subscription/Tier] == \"PRO\" Or [/Subscription/Tier] == \"ENTERPRISE\")"
