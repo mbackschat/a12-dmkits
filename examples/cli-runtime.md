@@ -91,7 +91,8 @@ bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json model eval --doc
       "rule" : "/Order/DeliveryNotBeforeOrder",
       "field" : "PartiallyKnownDocumentMultiPointerImpl[/Order/DeliveryDate, [1, 1]]",
       "severity" : "ERROR",
-      "type" : "VALUE_ERROR"
+      "type" : "VALUE_ERROR",
+      "message" : "The delivery date must not be earlier than the order date."
     } ],
     "rule" : {
       "name" : "/Order/DeliveryNotBeforeOrder",
@@ -156,7 +157,8 @@ bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule test /Order
   "data" : {
     "rule" : "/Order/DeliveryNotBeforeOrder",
     "fired" : true,
-    "verdict" : "fired"
+    "verdict" : "fired",
+    "message" : "The delivery date must not be earlier than the order date."
   },
   "diagnostics" : [ ],
   "written" : false
@@ -222,7 +224,8 @@ bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json model eval --doc
       "rule" : "/Order/EvalDocCandidate",
       "field" : "PartiallyKnownDocumentMultiPointerImpl[/Order/Quantity, [1, 1]]",
       "severity" : "ERROR",
-      "type" : "VALUE_ERROR"
+      "type" : "VALUE_ERROR",
+      "message" : "EvalDocCandidate"
     } ],
     "rule" : {
       "name" : "/Order/EvalDocCandidate",

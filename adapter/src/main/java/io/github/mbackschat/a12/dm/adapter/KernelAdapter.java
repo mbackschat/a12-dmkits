@@ -552,7 +552,8 @@ public final class KernelAdapter {
         List<EvalMessage> messages = new ArrayList<>();
         for (IMessage m : result.getMessages()) {
             messages.add(new EvalMessage(m.getErrorCode(), m.getRulePath(),
-                    String.valueOf(m.getErrorFieldPointer()), m.getSeverity().name(), m.getMessageType().name()));
+                    String.valueOf(m.getErrorFieldPointer()), m.getSeverity().name(),
+                    m.getMessageType().name(), m.getErrorText()));
         }
         return new EvalResult(messages);
     }
@@ -572,9 +573,11 @@ public final class KernelAdapter {
     public RuleTestOutcome testRule(String ruleFullName, Map<String, Object> fields, Locale locale) {
         Set<String> referenced = referencedFields(ruleFullName);
         List<EvalMessage> messages = evaluate(fields, locale).messages();
-        boolean fired = messages.stream().anyMatch(m -> m.rulePath().filter(ruleFullName::equals).isPresent());
-        if (fired) {
-            return new RuleTestOutcome(ruleFullName, RuleTestOutcome.Verdict.FIRED, List.of());
+        Optional<EvalMessage> firedMessage = messages.stream()
+                .filter(m -> m.rulePath().filter(ruleFullName::equals).isPresent()).findFirst();
+        if (firedMessage.isPresent()) {
+            return new RuleTestOutcome(ruleFullName, RuleTestOutcome.Verdict.FIRED, List.of(),
+                    Optional.of(firedMessage.get().message()));
         }
         List<RuleTestOutcome.Suppression> suppressions = new ArrayList<>();
         for (EvalMessage m : messages) {
@@ -589,7 +592,7 @@ public final class KernelAdapter {
         RuleTestOutcome.Verdict verdict = suppressions.isEmpty()
                 ? RuleTestOutcome.Verdict.PASSED
                 : RuleTestOutcome.Verdict.SUPPRESSED;
-        return new RuleTestOutcome(ruleFullName, verdict, suppressions);
+        return new RuleTestOutcome(ruleFullName, verdict, suppressions, Optional.empty());
     }
 
     /** A formal/structural check (not an author rule): no {@code rulePath}, or one that isn't an absolute slash-path. */

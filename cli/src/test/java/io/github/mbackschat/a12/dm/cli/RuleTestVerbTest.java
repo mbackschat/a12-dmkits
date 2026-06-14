@@ -38,6 +38,8 @@ class RuleTestVerbTest {
         JsonNode data = MAPPER.readTree(res.out()).path("data");
         assertEquals("fired", data.path("verdict").asText(), res::out);
         assertTrue(data.path("fired").asBoolean());
+        // G1: a fired rule surfaces the interpolated end-user message (here a token-free literal).
+        assertEquals("Too high.", data.path("message").asText(), res::out);
     }
 
     @Test

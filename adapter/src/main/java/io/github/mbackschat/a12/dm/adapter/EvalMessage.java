@@ -17,7 +17,10 @@ import java.util.Optional;
  *                     {@code [/Order/Items/Count, [1, 2, 1]]}) — the row it hit
  * @param severity    {@code ERROR} | {@code WARNING} | {@code INFO}
  * @param messageType {@code VALUE_ERROR} | {@code OMISSION_ERROR}
+ * @param message     the <b>interpolated</b> end-user text (the kernel's {@code getErrorText}): the authored
+ *                    error message with every {@code $Field$} / {@code $Field.value$} token already resolved
+ *                    against this document instance — what the end-user actually reads (FEATURE-GAPS G1)
  */
 public record EvalMessage(String errorCode, Optional<String> rulePath, String fieldPointer,
-        String severity, String messageType) {
+        String severity, String messageType, String message) {
 }

@@ -162,6 +162,7 @@ final class ModelEvalCommand extends BaseCommand {
             mn.put("field", m.fieldPointer());
             mn.put("severity", m.severity());
             mn.put("type", m.messageType());
+            mn.put("message", m.message());
         }
         if (targetRule != null) {
             String tr = targetRule;

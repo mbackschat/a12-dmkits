@@ -646,10 +646,11 @@ ok.firedCodes();        // [] — a discount of 0 is not negative
 
 // a violating document — the rule FIRES
 EvalResult bad = KernelAdapter.ofJson(model).evaluate(Map.of("Order", Map.of("Discount", "-5")), Locale.US);
-bad.firedCodes();       // [DISCOUNT_NEG]
+bad.firedCodes();                       // [DISCOUNT_NEG]
+bad.messages().get(0).message();        // "Discount of -5.00 must not be negative." — the INTERPOLATED end-user text
 ```
 
-So you can prove a rule *behaves* — run a passing and a violating document and read `firedCodes()` — not just that it parses. This is the basis of the eval's **verify-by-execution** judge (construct discriminating documents, compare what fires for a *gold* vs a *candidate* rule — equivalence by execution, not by recalling polarity/empty-operand semantics), and the natural close of the read→modify loop: change a rule, then *show* it now fires correctly on the cases that matter. *Test-backed: `adapter.RuntimeEvalExampleTest`; the seam's depth (per-row repetition indices, `compute`, empty-operand semantics) by `adapter.laws.EvalDocSeamLawsTest`.*
+So you can prove a rule *behaves* — run a passing and a violating document and read `firedCodes()` — not just that it parses. Each fired `EvalMessage` also carries `message()`: the kernel's **interpolated** end-user text — the authored template with its `$Field$`/`$Field.value$` tokens resolved against this very document (G1). That closes the loop on the BA's real deliverable: not "did it fire" but "here is exactly what the user will read". This is the basis of the eval's **verify-by-execution** judge (construct discriminating documents, compare what fires for a *gold* vs a *candidate* rule — equivalence by execution, not by recalling polarity/empty-operand semantics), and the natural close of the read→modify loop: change a rule, then *show* it now fires correctly on the cases that matter. *Test-backed: `adapter.RuntimeEvalExampleTest` + `adapter.MessageInterpolationTest`; the seam's depth (per-row repetition indices, `compute`, empty-operand semantics) by `adapter.laws.EvalDocSeamLawsTest`.*
 
 ## 5f. Comments — author `;;` notes, preserved across the loop ✅ (2026-06-12)
 

@@ -31,14 +31,15 @@
   "$defs": {
     "message": {
       "type": "object",
-      "required": ["code", "field", "severity", "type"],
+      "required": ["code", "field", "severity", "type", "message"],
       "additionalProperties": false,
       "properties": {
         "code": { "type": "string", "description": "the rule's error code, or a kernel formal-error code" },
         "rule": { "type": "string", "description": "the firing rule's full slash-path (e.g. /Order/X); a kernel FORMAL check reports the sentinel 'formalePruefung' — a leading '/' is the author-rule discriminator" },
         "field": { "type": "string", "description": "the error field's instance pointer (field path + repetition indices, e.g. [/Order/Items/Count, [1, 2, 1]]) — the row it hit" },
         "severity": { "type": "string", "description": "ERROR | WARNING | INFO" },
-        "type": { "type": "string", "description": "VALUE_ERROR | OMISSION_ERROR" }
+        "type": { "type": "string", "description": "VALUE_ERROR | OMISSION_ERROR" },
+        "message": { "type": "string", "description": "the INTERPOLATED end-user text — the authored message with $Field$/$Field.value$ tokens resolved against this document (what the user actually reads, G1)" }
       }
     }
   }

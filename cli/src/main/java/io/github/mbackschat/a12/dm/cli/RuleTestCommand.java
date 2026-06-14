@@ -92,6 +92,7 @@ final class RuleTestCommand extends BaseCommand {
         data.put("rule", outcome.rule());
         data.put("fired", outcome.fired());
         data.put("verdict", outcome.verdict().name().toLowerCase(Locale.ROOT));
+        outcome.message().ifPresent(m -> data.put("message", m));
         if (!outcome.suppressedBy().isEmpty()) {
             ArrayNode arr = data.putArray("suppressedBy");
             for (RuleTestOutcome.Suppression s : outcome.suppressedBy()) {

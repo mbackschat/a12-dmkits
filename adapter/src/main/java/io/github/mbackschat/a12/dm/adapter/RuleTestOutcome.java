@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * The outcome of {@link KernelAdapter#testRule testing one rule} against a document instance (FEATURE-GAPS
@@ -8,12 +9,16 @@ import java.util.List;
  * a plain "did it fire" answer conflates a genuine <b>PASS</b> with a <b>SUPPRESSED</b> rule (one the kernel
  * never evaluated because a field it references is formally invalid — too many decimals, etc.; KERNEL-FINDINGS),
  * and that conflation misleads. When suppressed, {@link #suppressedBy} names the offending referenced fields.
+ * When FIRED, {@link #message} carries the <b>interpolated</b> end-user text the kernel produced (G1) — the
+ * authored message with its {@code $Field$}/{@code $Field.value$} tokens resolved against this instance.
  *
  * @param rule         the rule's full slash-path
  * @param verdict      FIRED (a violation), PASSED (evaluated, condition false), or SUPPRESSED (not evaluated)
  * @param suppressedBy the referenced fields that were formally invalid (non-empty iff {@code verdict} is SUPPRESSED)
+ * @param message      the interpolated end-user message (present iff {@code verdict} is FIRED)
  */
-public record RuleTestOutcome(String rule, Verdict verdict, List<Suppression> suppressedBy) {
+public record RuleTestOutcome(String rule, Verdict verdict, List<Suppression> suppressedBy,
+        Optional<String> message) {
 
     public RuleTestOutcome {
         suppressedBy = List.copyOf(suppressedBy);
