@@ -34,7 +34,7 @@ The gaps below are the **ergonomic and consistency remainder** — what still ad
 
 Each gap: the dev need → what's missing today → the proposal. Ordered by value. The `DGn` label is this review's item id.
 
-### DG1 — Per-type field configuration when EDITING, not just authoring from scratch  *(medium; the dominant ergonomic divergence)*
+### DG1 — Per-type field configuration when EDITING, not just authoring from scratch  *(medium; the dominant ergonomic divergence)* — ✅ shipped 2026-06-14 ([API-POC-STUDY](API-POC-STUDY.md) finding 36)
 
 - **Dev need.** Editing an existing model should read like authoring one — same fluent, per-kind configuration.
 - **Today.** From-scratch authoring is rich: `GroupBuilder.numberField(n -> n.fractionDigits(2).min("1"))`, `enumField(e -> …)`, etc. But the **edit** surface (`GroupEditor.addField(name, FieldKind)` / `addField(name, FieldTypeSpec)`, `ModelDocument.addField`) takes only a bare kind or a hand-constructed `FieldTypeSpec`. A developer fluent in the builder **drops to constructing records** to add a configured field mid-edit.

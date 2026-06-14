@@ -697,63 +697,63 @@ public final class DocumentModelDraft {
         public GroupBuilder stringField(String name, Consumer<StringFieldBuilder> body) {
             StringFieldBuilder b = new StringFieldBuilder();
             body.accept(b);
-            return addField(name, b, b.spec());
+            return addField(name, b);
         }
 
         /** Add a number field with optional scale/range config, requiredness, labels, annotations. */
         public GroupBuilder numberField(String name, Consumer<NumberFieldBuilder> body) {
             NumberFieldBuilder b = new NumberFieldBuilder();
             body.accept(b);
-            return addField(name, b, b.spec());
+            return addField(name, b);
         }
 
         /** Add an enumeration field; needs at least one value. */
         public GroupBuilder enumField(String name, Consumer<EnumFieldBuilder> body) {
             EnumFieldBuilder b = new EnumFieldBuilder();
             body.accept(b);
-            return addField(name, b, b.spec());
+            return addField(name, b);
         }
 
         /** Add a date field with an explicit constant format. */
         public GroupBuilder dateField(String name, Consumer<DateFieldBuilder> body) {
             DateFieldBuilder b = new DateFieldBuilder();
             body.accept(b);
-            return addField(name, b, b.spec());
+            return addField(name, b);
         }
 
         /** Add a time-of-day field with an explicit constant format. */
         public GroupBuilder timeField(String name, Consumer<TimeFieldBuilder> body) {
             TimeFieldBuilder b = new TimeFieldBuilder();
             body.accept(b);
-            return addField(name, b, b.spec());
+            return addField(name, b);
         }
 
         /** Add a date-time field with an explicit constant format. */
         public GroupBuilder dateTimeField(String name, Consumer<DateTimeFieldBuilder> body) {
             DateTimeFieldBuilder b = new DateTimeFieldBuilder();
             body.accept(b);
-            return addField(name, b, b.spec());
+            return addField(name, b);
         }
 
         /** Add a date-range field (format + range separator, both required by the kernel). */
         public GroupBuilder dateRangeField(String name, Consumer<DateRangeFieldBuilder> body) {
             DateRangeFieldBuilder b = new DateRangeFieldBuilder();
             body.accept(b);
-            return addField(name, b, b.spec());
+            return addField(name, b);
         }
 
         /** Add a date-fragment field (e.g. year-month) with its fragment format. */
         public GroupBuilder dateFragmentField(String name, Consumer<DateFragmentFieldBuilder> body) {
             DateFragmentFieldBuilder b = new DateFragmentFieldBuilder();
             body.accept(b);
-            return addField(name, b, b.spec());
+            return addField(name, b);
         }
 
         /** Add a custom-typed field (a named kernel custom type + optional length bounds). */
         public GroupBuilder customField(String name, Consumer<CustomFieldBuilder> body) {
             CustomFieldBuilder b = new CustomFieldBuilder();
             body.accept(b);
-            return addField(name, b, b.spec());
+            return addField(name, b);
         }
 
         /** Add a field whose type is a reusable {@code typeDef} (referenced by id), optional. */
@@ -808,11 +808,8 @@ public final class DocumentModelDraft {
             return this;
         }
 
-        private GroupBuilder addField(String name, FieldAttrs<?> attrs, FieldTypeSpec spec) {
-            elements.add(new ElementDraft.Field(name, spec, attrs.requiredness,
-                    Map.copyOf(attrs.labels), List.copyOf(attrs.annotations),
-                    attrs.global, attrs.notPersisted, Map.copyOf(attrs.internalDescription),
-                    Map.copyOf(attrs.externalDescription), Map.copyOf(attrs.helperText)));
+        private GroupBuilder addField(String name, FieldAttrs<?> attrs) {
+            elements.add(attrs.toField(name));   // one assembly point, shared with the edit surface (GroupEditor)
             return this;
         }
 
@@ -1176,6 +1173,21 @@ public final class DocumentModelDraft {
             helperText.put(locale, text);
             return self();
         }
+
+        /** The kind-specific type spec this builder configured — implemented per field kind. */
+        protected abstract FieldTypeSpec spec();
+
+        /**
+         * Assemble the configured field — type spec <em>and</em> all element metadata (requiredness,
+         * labels, annotations, descriptions, flags, helper text) — as one {@link ElementDraft.Field}. The
+         * single assembly point shared by the from-scratch {@code GroupBuilder} and the edit-surface
+         * {@code GroupEditor}, so authoring and editing produce a byte-identical field.
+         */
+        public ElementDraft.Field toField(String name) {
+            return new ElementDraft.Field(name, spec(), requiredness, Map.copyOf(labels),
+                    List.copyOf(annotations), global, notPersisted, Map.copyOf(internalDescription),
+                    Map.copyOf(externalDescription), Map.copyOf(helperText));
+        }
     }
 
     /** Configures a string field. Cross-kind nonsense (a numeric range) is simply not on this surface. */
@@ -1223,7 +1235,7 @@ public final class DocumentModelDraft {
             return this;
         }
 
-        private FieldTypeSpec spec() {
+        protected FieldTypeSpec spec() {
             return new FieldTypeSpec.StringSpec(minLength, maxLength, pattern, patternMessage,
                     lineBreaksPermitted, alphabeticalSorting, suggestions);
         }
@@ -1280,7 +1292,7 @@ public final class DocumentModelDraft {
             return this;
         }
 
-        private FieldTypeSpec spec() {
+        protected FieldTypeSpec spec() {
             return new FieldTypeSpec.NumberSpec(minFractionalDigits, maxFractionalDigits, minValue, maxValue,
                     zeroNotAllowed, leadingZerosAllowed, trait);
         }
@@ -1329,7 +1341,7 @@ public final class DocumentModelDraft {
             return this;
         }
 
-        private FieldTypeSpec spec() {
+        protected FieldTypeSpec spec() {
             if (values.isEmpty()) {
                 throw new IllegalStateException("an enumeration field needs at least one value");
             }
@@ -1359,7 +1371,7 @@ public final class DocumentModelDraft {
             return this;
         }
 
-        private FieldTypeSpec spec() {
+        protected FieldTypeSpec spec() {
             if (typeName == null) {
                 throw new IllegalStateException("a custom field needs a type name — call .type(\"…\")");
             }
@@ -1397,7 +1409,7 @@ public final class DocumentModelDraft {
             return this;
         }
 
-        private FieldTypeSpec spec() {
+        protected FieldTypeSpec spec() {
             return new FieldTypeSpec.DateSpec(format, datePrecision.jsonValue());
         }
     }
@@ -1411,7 +1423,7 @@ public final class DocumentModelDraft {
             return this;
         }
 
-        private FieldTypeSpec spec() {
+        protected FieldTypeSpec spec() {
             return new FieldTypeSpec.TimeSpec(format);
         }
     }
@@ -1425,7 +1437,7 @@ public final class DocumentModelDraft {
             return this;
         }
 
-        private FieldTypeSpec spec() {
+        protected FieldTypeSpec spec() {
             return new FieldTypeSpec.DateTimeSpec(format);
         }
     }
@@ -1445,7 +1457,7 @@ public final class DocumentModelDraft {
             return this;
         }
 
-        private FieldTypeSpec spec() {
+        protected FieldTypeSpec spec() {
             if (format == null || separator == null) {
                 throw new IllegalStateException("a date range needs both a format and a range separator");
             }
@@ -1462,7 +1474,7 @@ public final class DocumentModelDraft {
             return this;
         }
 
-        private FieldTypeSpec spec() {
+        protected FieldTypeSpec spec() {
             if (fragmentFormat == null) {
                 throw new IllegalStateException("a date fragment needs a fragment format");
             }

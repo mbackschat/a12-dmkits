@@ -15,6 +15,7 @@ import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
+import io.github.mbackschat.a12.dm.modelkit.ElementDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
@@ -74,6 +75,12 @@ public final class EditSession {
 
     public EditSession addField(String groupPath, String name, FieldTypeSpec type) {
         return editStructure(d -> d.addField(groupPath, name, type));
+    }
+
+    /** Add a fully-configured field — type + requiredness + labels + annotations + descriptions (built by a
+     *  per-type field builder, e.g. via {@link GroupEditor#numberField}). */
+    public EditSession addField(String groupPath, ElementDraft.Field field) {
+        return editStructure(d -> d.addField(groupPath, field));
     }
 
     public EditSession setFieldType(String fieldPath, FieldTypeSpec type) {

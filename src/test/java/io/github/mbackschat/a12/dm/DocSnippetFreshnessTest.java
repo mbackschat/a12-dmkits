@@ -52,7 +52,9 @@ class DocSnippetFreshnessTest {
             new Lock("create-model", "docs/API-POC-STUDY.md", STUDY_SNIPPETS),
             new Lock("edit-session", "docs/API-POC-STUDY.md", STUDY_SNIPPETS),
             new Lock("catalog", "docs/API-POC-STUDY.md", STUDY_SNIPPETS),
-            new Lock("navigation", "docs/API-POC-STUDY.md", STUDY_SNIPPETS));
+            new Lock("navigation", "docs/API-POC-STUDY.md", STUDY_SNIPPETS),
+            new Lock("editor-number-field", "docs/API-POC-STUDY.md",
+                    "src/test/java/io/github/mbackschat/a12/dm/edit/GroupEditorTest.java"));
 
     /** The doc whose every shipped (✅) {@code ```java} block must be classified — locked or teaser-marked. */
     private static final String STUDY = "docs/API-POC-STUDY.md";

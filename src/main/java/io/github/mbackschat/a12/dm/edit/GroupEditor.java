@@ -3,6 +3,17 @@ package io.github.mbackschat.a12.dm.edit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.CustomFieldBuilder;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.DateFieldBuilder;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.DateFragmentFieldBuilder;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.DateRangeFieldBuilder;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.DateTimeFieldBuilder;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.EnumFieldBuilder;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.FieldAttrs;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.NumberFieldBuilder;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.StringFieldBuilder;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.TimeFieldBuilder;
+import io.github.mbackschat.a12.dm.modelkit.ElementDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoolRef;
@@ -132,6 +143,67 @@ public final class GroupEditor implements GroupReference {
     public GroupEditor addField(String name, FieldTypeSpec type) {
         session.addField(location.path(), name, type);
         return this;
+    }
+
+    /** Add a fully-configured field (type + metadata) built by a per-type builder below. Chains. */
+    public GroupEditor addField(ElementDraft.Field field) {
+        session.addField(location.path(), field);
+        return this;
+    }
+
+    // --- per-type field builders (the from-scratch builders, on the EDIT surface — DG1) --------------
+    // Editing reads like authoring: configure scale/bounds/pattern/enum domain + metadata fluently,
+    // instead of hand-building a FieldTypeSpec. Each reuses the from-scratch builder, so a field added
+    // here is byte-identical to one built from scratch (the shared FieldAttrs.toField assembly).
+
+    /** Add a configured string field — {@code stringField("Code", s -> s.length(3, 10).pattern("[A-Z]+"))}. */
+    public GroupEditor stringField(String name, Consumer<StringFieldBuilder> body) {
+        return configured(name, new StringFieldBuilder(), body);
+    }
+
+    /** Add a configured number field — {@code numberField("Fee", n -> n.fractionDigits(2).min("0"))}. */
+    public GroupEditor numberField(String name, Consumer<NumberFieldBuilder> body) {
+        return configured(name, new NumberFieldBuilder(), body);
+    }
+
+    /** Add a configured enum field — {@code enumField("Tier", e -> e.value("BASIC").value("PRO"))}. */
+    public GroupEditor enumField(String name, Consumer<EnumFieldBuilder> body) {
+        return configured(name, new EnumFieldBuilder(), body);
+    }
+
+    /** Add a configured date field — {@code dateField("Due", d -> d.required())}. */
+    public GroupEditor dateField(String name, Consumer<DateFieldBuilder> body) {
+        return configured(name, new DateFieldBuilder(), body);
+    }
+
+    /** Add a configured time-of-day field. */
+    public GroupEditor timeField(String name, Consumer<TimeFieldBuilder> body) {
+        return configured(name, new TimeFieldBuilder(), body);
+    }
+
+    /** Add a configured date-time field. */
+    public GroupEditor dateTimeField(String name, Consumer<DateTimeFieldBuilder> body) {
+        return configured(name, new DateTimeFieldBuilder(), body);
+    }
+
+    /** Add a configured date-range field. */
+    public GroupEditor dateRangeField(String name, Consumer<DateRangeFieldBuilder> body) {
+        return configured(name, new DateRangeFieldBuilder(), body);
+    }
+
+    /** Add a configured date-fragment field. */
+    public GroupEditor dateFragmentField(String name, Consumer<DateFragmentFieldBuilder> body) {
+        return configured(name, new DateFragmentFieldBuilder(), body);
+    }
+
+    /** Add a configured custom (host-typed) field. */
+    public GroupEditor customField(String name, Consumer<CustomFieldBuilder> body) {
+        return configured(name, new CustomFieldBuilder(), body);
+    }
+
+    private <B extends FieldAttrs<B>> GroupEditor configured(String name, B builder, Consumer<B> body) {
+        body.accept(builder);
+        return addField(builder.toField(name));
     }
 
     /** Add a field typed by a declared type definition {@code typeDefId}. Chains. */

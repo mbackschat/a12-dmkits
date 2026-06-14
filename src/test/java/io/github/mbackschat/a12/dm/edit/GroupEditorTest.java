@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.edit;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -22,6 +23,21 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
  * to the pure {@link GroupRef} to enter the immutable AST (so the session never leaks into a rule).
  */
 class GroupEditorTest {
+
+    @Test
+    void perTypeFieldBuilderConfiguresAFieldWhenEditing() {
+        // DG1 — the from-scratch per-type fluent builders are available on the EDIT surface, so editing
+        // reads like authoring (no dropping to a hand-built FieldTypeSpec for a configured field).
+        EditSession s = EditSession.read(Fixtures.orderJson());
+
+        // tag::editor-number-field[]
+        s.group("/Order").numberField("Surcharge", n -> n.fractionDigits(2).min("0"));   // configured field, mid-edit
+        // end::editor-number-field[]
+
+        assertEquals(2, s.boundModel().fieldAt("/Order/Surcharge").orElseThrow().scale(),
+                "the per-type builder's scale config flows through the edit path");
+        assertDoesNotThrow(s::validate, "the kernel accepts the configured field");
+    }
 
     @Test
     void navigatesToExistingChildrenAsPureTypedRefs() {
