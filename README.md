@@ -2,7 +2,7 @@
 
 Author, read, and safely edit the **rules** and **structure** of A12 Kernel document models — as typed Java code, or through a self-describing command-line tool. Every result is checked by the **real A12 kernel**, so what you produce is *accepted*, not merely plausible. JSON in, JSON out.
 
-> **Not an official A12 artifact.** A personal exploration, not affiliated with or endorsed by mgm. Shipped code binds only to the kernel's **public** OSS surface — no internal systems. (An opt-in, Java-only adapter module may read the kernel's internal AST tier under strict guardrails.)
+> **Not an official A12 artifact.** A personal exploration, not affiliated with or endorsed by mgm — currently a private project, built using GPT 5.5. Shipped code binds only to the kernel's **public** OSS surface — no internal systems. (An opt-in, Java-only adapter module may read the kernel's internal AST tier under strict guardrails.)
 
 ---
 
@@ -21,15 +21,32 @@ Writing those strings by hand is fragile. A mistyped field path, a wrong operato
 ```java
 BoundModel m = BoundModel.ofJson(Files.readString(modelPath));   // bind a model to the real kernel
 
-Rule rule = m.rule(m.group("/Subscription/Addons"))
+GroupRef  addons = m.group("/Subscription/Addons");              // resolve each element ONCE …
+NumberRef fee    = m.num("/Subscription/Addons/MonthlyFee");     // … then reuse the typed ref — no repeated paths
+
+Rule rule = m.rule(addons)
     .name("FeeCapRule")
-    .errorField(m.num("/Subscription/Addons/MonthlyFee"))         // fields come OFF the model …
-    .when(m.num("/Subscription/Addons/MonthlyFee").gt(1000))      // … a wrong path can't compile
+    .errorField(fee)                                            // fields come OFF the model …
+    .when(fee.gt(1000))                                         // … a wrong path can't compile
     .code("FEE_CAP").severity(Severity.ERROR)
     .message(en("Monthly fee is too high."), de("Monatsgebühr ist zu hoch."))
     .build();
 
 String dmJson = m.add(rule).toJson();   // re-validated through the kernel; ready to write back
+```
+
+Or hold an **editor** on the group and navigate relatively — the model path is typed once, and the rule authors in place against it:
+
+```java
+EditSession s      = EditSession.read(dmJson);
+GroupEditor addons = s.group("/Subscription/Addons");           // a session-bound editor on the group
+NumberRef   fee    = addons.num("MonthlyFee");                  // a typed ref off the editor — relative, no full path
+addons.addRule(r -> r                                           // pre-scoped to /Subscription/Addons
+        .name("FeeCapRule").errorField(fee)
+        .when(fee.gt(1000))                                     // same typed condition, same kernel gate
+        .code("FEE_CAP").severity(Severity.ERROR)
+        .message(en("Monthly fee is too high."), de("Monatsgebühr ist zu hoch.")).build());
+String updated = s.validate().toJson();                         // one kernel gate
 ```
 
 Three things make this more than a string builder:
@@ -49,7 +66,7 @@ Three things make this more than a string builder:
 | a **developer**, editing models in your own JVM project | **rulekit / modelkit** as a library | typed builders, kernel-checked, in your own code & compiler |
 | a **modeller / BA**, or an **LLM agent** | **`dmtool`**, the CLI | verbs + JSON I/O, JVM bundled, self-describing — no Java toolchain to install |
 
-*(Java first; a TypeScript twin is a deferred, design-informing milestone.)*
+*(Java first; a TypeScript twin may follow.)*
 
 ---
 
@@ -61,8 +78,8 @@ Two ways to name the field a rule talks about; they return the **same pure refs*
 
 | Style | Looks like | Reach for it when |
 |---|---|---|
-| **By path** (L2a) | `m.num("/Order/Discount")` | referencing an **existing** element while authoring against a loaded model — the common case |
-| **Through an editor** (L2c) | `s.group("/Order").num("Discount")` | the read→**edit**→reference flow: a ref to a field you *just created*, or relative navigation, without re-typing paths — see *Both kits together* below |
+| **By path** | `m.num("/Order/Discount")` | referencing an **existing** element while authoring against a loaded model — the common case |
+| **Through an editor** | `s.group("/Order").num("Discount")` | the read→**edit**→reference flow: a ref to a field you *just created*, or relative navigation, without re-typing paths — see *Both kits together* below |
 
 Neither is "older": a path lookup is the foundation; the editor adds relative navigation, refs that flow out of edits, and `m.rule(editor)` for when structure and rules move together. The examples below use whichever fits — and [mix both](#both-kits-together--editsession-one-model-one-gate) when a rule spans a just-added field and an existing one.
 
@@ -197,7 +214,7 @@ String dmJson = order.toJson();   // DM-JSON the kernel accepts
 
 This is where modelkit and rulekit meet — **structure edits and rule edits on one in-memory model, behind a single kernel gate**. The north-star flow: read a model, make a series of structure *and* rule edits (a rule may reference a field added earlier in the same session), validate **once**, write back (intermediate invalid states are fine — only the final result must satisfy the kernel):
 
-The idiom is the **editor** (L2c): you hold an editor on a group rather than re-typing string paths — structure edits chain, a typed ref to a just-created field comes from relative navigation, and rules author in place against it.
+The idiom is the **editor**: you hold an editor on a group rather than re-typing string paths — structure edits chain, a typed ref to a just-created field comes from relative navigation, and rules author in place against it.
 
 ```java
 EditSession s = EditSession.read(dmJson);
@@ -365,25 +382,61 @@ dmtool -m order.dm.json rule modify /Order/DeliveryNotBeforeOrder \
 ### Edit structure — with a safe-delete gate
 
 ```sh
-dmtool -m order.dm.json field add --group /Order --name LoyaltyPoints --kind NUMBER   # simple, via flags
-dmtool -m order.dm.json field add fee-spec.json   # rich: per-kind config + metadata (unit/pattern/suggestions/…) — see `schema field add`
+# simple, via flags
+dmtool -m order.dm.json field add --group /Order --name LoyaltyPoints --kind NUMBER
+
+# rich: per-kind config + metadata (unit/pattern/suggestions/…) — see `schema field add`
+dmtool -m order.dm.json field add fee-spec.json
+
 dmtool -m order.dm.json group add --parent /Order --name Shipping
-dmtool -m order.dm.json typedef add … ; dmtool -m order.dm.json config modify --decimal-separator "," --label en_US="Customer Order"
-dmtool -m order.dm.json config modify --supported-character A-Z --supported-character 0-9   # restrict the allowed-character set (runtime-enforced)
-dmtool -m order.dm.json include add --alias prices --reference pricelist --parent /Order --name Prices --exclude-rules -w ./models   # mount, dropping the included rules
-dmtool -m order.dm.json typedef import --reference catalogtypes -w ./models   # import another model's type-defs (merged by id, not mounted)
-dmtool -m order.dm.json group multiselect --parent /Order --name Conditions --field Condition --values NEW,USED,REFURB --max-rows 3   # a multi-select group template
-dmtool -m order.dm.json group attachment --parent /Order --name Invoice --max-size-bytes 10000000 --allowed-mime application/pdf   # the canonical attachment template (8 fields + 4 rules), generated whole
-dmtool -m order.dm.json meta /Order/Total --internal en_US="the order total" --annotate owner=orders-team   # describe/annotate any element (field/group/rule by path, type-def by id); `meta /Order/Total` reads it back
-dmtool -m order.dm.json rule modify /Order/SomeRule --severity WARNING --message en_US="…"   # severity/message edit, condition untouched
+dmtool -m order.dm.json typedef add …
+
+dmtool -m order.dm.json config modify \
+  --decimal-separator "," --label en_US="Customer Order"
+
+# restrict the allowed-character set (runtime-enforced)
+dmtool -m order.dm.json config modify \
+  --supported-character A-Z --supported-character 0-9
+
+# mount another model under /Order/Prices, dropping the included rules
+dmtool -m order.dm.json include add \
+  --alias prices --reference pricelist \
+  --parent /Order --name Prices --exclude-rules -w ./models
+
+# import another model's type-defs (merged by id, not mounted)
+dmtool -m order.dm.json typedef import --reference catalogtypes -w ./models
+
+# a multi-select group template
+dmtool -m order.dm.json group multiselect \
+  --parent /Order --name Conditions \
+  --field Condition --values NEW,USED,REFURB --max-rows 3
+
+# the canonical attachment template (8 fields + 4 rules), generated whole
+dmtool -m order.dm.json group attachment \
+  --parent /Order --name Invoice \
+  --max-size-bytes 10000000 --allowed-mime application/pdf
+
+# describe/annotate any element (field/group/rule by path, type-def by id); `meta /Order/Total` reads it back
+dmtool -m order.dm.json meta /Order/Total \
+  --internal en_US="the order total" --annotate owner=orders-team
+
+# severity/message edit, condition untouched
+dmtool -m order.dm.json rule modify /Order/SomeRule \
+  --severity WARNING --message en_US="…"
 
 # Refactor — structural & safety-gated. typedef rename repoints every using field; extract factors shared-type fields out:
 dmtool -m order.dm.json typedef rename Currency --to Money
-dmtool -m order.dm.json typedef extract --from /Order/Price,/Order/Cost --id Money   # inverse: typedef inline Money
+
+# inverse: typedef inline Money
+dmtool -m order.dm.json typedef extract --from /Order/Price,/Order/Cost --id Money
+
 # field/group/rule rename rewrites every reference to the element (via the kernel's MoveSupportDM), then re-validates:
 dmtool -m order.dm.json field rename /Order/DeliveryDate --to ShipDate
-# field/group move relocates an element to a new parent and rewrites references to its new path (same engine):
-dmtool -m order.dm.json field move /Order/DeliveryDate --to /Order/Shipping   # gate refuses a missing/colliding/self destination
+
+# field/group move relocates an element to a new parent and rewrites references to its new path (same engine);
+# the gate refuses a missing / colliding / self destination:
+dmtool -m order.dm.json field move /Order/DeliveryDate --to /Order/Shipping
+
 # extract a subtree into a reusable sub-model, re-mounted at the same name (paths preserved → references survive):
 dmtool -m order.dm.json group extract /Order/BillingAddress --reference billing-address
 dmtool -m order.dm.json include inline billing-address   # the inverse: fold the sub-model back in
@@ -500,5 +553,3 @@ It hard-rejects the mechanical violations and reminds on the judgment rule; bypa
 - **Source: MIT.** The kits' own original work, shipping no kernel binary, so they carry no copyleft entanglement — consistent with the sibling `a12-kernel-demo` / `a12-kernel-bootstrap` (both MIT).
 - **The kernel: dual `EUPL-1.2 OR commercial`** (upstream, not ours).
 - **The future standalone CLI distributable: EUPL-1.2**, because it *bundles* the kernel — the source stays MIT.
-
-Full analysis: [`docs/LICENSING.md`](docs/LICENSING.md).
