@@ -274,7 +274,7 @@ The self-contained binary (jlink/jpackage) only *provisions a JVM* — zero beha
 |---|---|---|
 | **CLI/verb code** | `./gradlew :cli:test` — JUnit over `Cli.run(...)` | sub-second (warm daemon); the primary loop |
 | code, want a real process | `./gradlew -q :cli:run --args="-m model.json model validate"` | seconds (incremental; skips packaging) |
-| **only inputs** (model/spec JSON) | `./gradlew :cli:installDist` once, then `build/install/cli/bin/dmtool …` | ~1s JVM startup, no rebuild |
+| **only inputs** (model/spec JSON) | `./gradlew :cli:installDist` once, then `cli/build/install/dmtool/bin/dmtool …` (or the `bin/dmtool` shim) | ~1s JVM startup, no rebuild |
 
 Rules of the loop: never `clean`; never `installDist`/jlink/jpackage to test *behavior* (only to produce a distributable). Point an agent dry-run at the one-time `installDist` launcher. *Future option (if multi-call latency bites):* a resident/stdin mode (JVM startup paid once across many calls).
 

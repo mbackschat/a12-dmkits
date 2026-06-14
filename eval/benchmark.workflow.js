@@ -8,7 +8,9 @@
 // foreign rules correctly? Kernel-accepts is necessary but NOT sufficient — the kernel accepts an
 // inverted-polarity rule too, so a judge re-scores semantic correctness against the task gold/rubric.
 //
-// Prereq: build the launcher once — `./gradlew :cli:installDist` → cli/build/install/cli/bin/cli.
+// Prereq: build the launcher once — `./gradlew :cli:installDist` → cli/build/install/dmtool/bin/dmtool
+// (the agents invoke it through the repo's bin/dmtool shim, the same canonical `dmtool` entry the
+// examples/ demos use; never the native binary — EVAL-SPEC §2a).
 // Invoke:
 //   Workflow({ scriptPath: "eval/benchmark.workflow.js",
 //     args: { models: ["opus","sonnet"], k: 3, tasks: [ /* contents of eval/tasks/<kit>/*.json */ ] } })
@@ -33,7 +35,7 @@ const K = A.k || 3
 const TASKS = A.tasks || []
 log(`benchmark inputs: ${MODELS.length} model(s) [${MODELS}], k=${K}, ${TASKS.length} task(s)`)
 if (TASKS.length === 0) throw new Error('no tasks passed in args.tasks — nothing to benchmark')
-const CLI = 'JAVA_HOME="$(/usr/libexec/java_home -v 21)" cli/build/install/cli/bin/cli'
+const CLI = 'JAVA_HOME="$(/usr/libexec/java_home -v 21)" bin/dmtool'
 // A task names its model by stem (<MODELS_ROOT>/<model>.dm.json) OR carries an explicit `modelPath`
 // (repo-relative) for nested multi-file layouts. `includeDir` (repo-relative) is threaded to every verb
 // as `-w/--workspace` so the recheck/judge can resolve a multi-file model's includes/typedefs.

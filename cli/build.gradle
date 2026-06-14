@@ -51,6 +51,11 @@ dependencies {
 
 application {
     mainClass = 'io.github.mbackschat.a12.dm.cli.CliMain'
+    // The public command name is `dmtool` (README, bin/dmtool shim, examples/, CLI-SPEC §8). This names
+    // the installDist launcher + install dir → cli/build/install/dmtool/bin/dmtool (NOT .../cli/bin/cli).
+    // The native binary (release) and the eval's JVM launcher both resolve under this one name, so the
+    // shipped skill is a single verbatim artifact. See docs/RELEASE-SPEC.md §1.
+    applicationName = 'dmtool'
 }
 
 // Bake the build's versions into a resource so `--version` / `manifest.version` can report them at

@@ -28,7 +28,7 @@ if [[ "${RK_NATIVE:-}" == "1" ]]; then
     "$ROOT/build/native-spike/dmtool-cli-res"   # the CLI-SPEC §B2 spike's resource-bundled binary
   )
 fi
-candidates+=("$ROOT/cli/build/install/cli/bin/cli")  # installDist launcher — the default
+candidates+=("$ROOT/cli/build/install/dmtool/bin/dmtool")  # installDist launcher — the default
 for c in "${candidates[@]}"; do
   if [[ -n "$c" && -x "$c" ]]; then exec "$c" "$@"; fi
 done

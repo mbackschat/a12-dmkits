@@ -33,7 +33,7 @@ const GAP_SCHEMA = {
   },
 }
 
-const BIN = 'cli/build/install/cli/bin/cli'
+const BIN = 'bin/dmtool'   // the canonical `dmtool` shim → installDist JVM launcher (never native; EVAL-SPEC §2a)
 const SEP = '\t'
 
 const EXPLORER_PROMPT = `You are a COLD agent. You have been handed exactly one thing: a command-line tool you run as \`${BIN}\` (it calls itself \`dmtool\`). You have NEVER seen its source code, its docs, or any examples — and you must NOT look for them. Use ONLY the tool's own self-description, via these read-only commands (none of them touch a model or write anything):

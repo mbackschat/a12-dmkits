@@ -11,21 +11,21 @@ You help author **A12 validation rules** on a document model with the `dmtool` C
 
 The CLI is **self-describing** — explore it:
 
-- `cli --help` — the verb list; every command is `cli -m <model.json> <target> <op>` (the model is set once with `-m`, before or after the verb); `cli <target> <op> --help` — that op's parameters and what they mean; `cli manifest` — the same, machine-readable (each verb's `target`/`op` + params).
-- `cli operators` — the DSL operator catalog (each operator's meaning, operands, examples, and **gotchas** — read the gotchas, they often name the exact fix for a rejection); `cli operators <id>` — one in full.
-- `cli schema <target> <op>` — the JSON an op consumes/returns (and `cli schema result` — the universal output envelope every verb emits).
+- `dmtool --help` — the verb list; every command is `dmtool -m <model.json> <target> <op>` (the model is set once with `-m`, before or after the verb); `dmtool <target> <op> --help` — that op's parameters and what they mean; `dmtool manifest` — the same, machine-readable (each verb's `target`/`op` + params).
+- `dmtool operators` — the DSL operator catalog (each operator's meaning, operands, examples, and **gotchas** — read the gotchas, they often name the exact fix for a rejection); `dmtool operators <id>` — one in full.
+- `dmtool schema <target> <op>` — the JSON an op consumes/returns (and `dmtool schema result` — the universal output envelope every verb emits).
 
 The three you lean on:
-- **`cli -m <model.json> model describe`** — orient: fields, kinds, enum values, groups, repeatability.
-- **`cli operators`** — pick operators by meaning.
-- **`cli -m <model.json> rule check --field <ABSOLUTE field path> --condition "<DSL>" --code <ID>`** — submit a candidate and get the **real kernel's** verdict (the result envelope's `valid` + `diagnostics`). This is your ground truth. (`cli -m <model.json> model validate` re-checks a model's *existing* rules.)
+- **`dmtool -m <model.json> model describe`** — orient: fields, kinds, enum values, groups, repeatability.
+- **`dmtool operators`** — pick operators by meaning.
+- **`dmtool -m <model.json> rule check --field <ABSOLUTE field path> --condition "<DSL>" --code <ID>`** — submit a candidate and get the **real kernel's** verdict (the result envelope's `valid` + `diagnostics`). This is your ground truth. (`dmtool -m <model.json> model validate` re-checks a model's *existing* rules.)
 
 ## The loop
 
-1. **Orient** — `cli -m <model> model describe` (or `cli export <model>`) to learn the fields, their kinds, enum values, and which groups repeat.
-2. **Pick operators** — from `cli operators`, by meaning.
+1. **Orient** — `dmtool -m <model> model describe` (or `dmtool export <model>`) to learn the fields, their kinds, enum values, and which groups repeat.
+2. **Pick operators** — from `dmtool operators`, by meaning.
 3. **Compose** the condition — minding **polarity**, **paths**, and **iteration** below.
-4. **Check** — `cli -m <model> rule check …`. If `valid:true`, done. If not, read each diagnostic.
+4. **Check** — `dmtool -m <model> rule check …`. If `valid:true`, done. If not, read each diagnostic.
 5. **Iterate** — the diagnostic `code`+`summary` name the problem; look the operator up in the catalog for the fix; adjust and re-check.
 
 ## ⚠️ Polarity — the single most important thing
@@ -77,14 +77,14 @@ So **guard a number comparison** when an empty value shouldn't trip it — `Fiel
 When a rule reasons about **all the rows at once** (not one row), use an **aggregate** over the flattened group — `Group*/Field` (the `*` takes every row's value):
 
 - **`Sum(Lines*/Amount)` sums the field's *values*.** This is **not** the same as *counting* rows — `Sum` adds the numbers; to count how many fields are filled use `NumberOfFilledFields(...)`. Mixing these up is a common slip: "total of the amounts" is `Sum`, "how many items" is a count.
-- `Min` / `Max` / count-style aggregates exist too — look up the exact names/operands with `cli operators`.
+- `Min` / `Max` / count-style aggregates exist too — look up the exact names/operands with `dmtool operators`.
 - An aggregate **is a number**, so compare it like one: `Sum(Lines*/Amount) > 500`. To compare against another field instead of a literal, bracket the field: `[Cap] < Sum(Lines*/Amount)`.
 - **`Having` filters which rows are folded:** `Sum(Lines*/Amount Having [Lines/Type] == "FEE")` sums only the fee lines.
 - An aggregate rule is **model-level** (it spans rows), so put its error field on a **non-repeatable** field — it does **not** iterate per row.
 
 Example — *"the total of all FEE lines must not exceed 500"* (an invoice with repeatable `/Invoice/Lines`):
 ```
-cli -m invoice.json rule check --field /Invoice/Total \
+dmtool -m invoice.json rule check --field /Invoice/Total \
   --condition "Sum(Lines*/Amount Having [Lines/Type] == \"FEE\") > 500" --code FEE_TOTAL_TOO_HIGH
 ```
 
@@ -97,11 +97,11 @@ Date operators need **both operands present** and have a **fixed argument order*
 - **`DifferenceInDays(A, B)` = B − A** (same for `DifferenceInMonths` / `DifferenceInYears`): **positive when B is *later* than A.** So:
   - "B is *before* A" → `DifferenceInDays(A, B) < 0`
   - "B is more than N days *after* A" → `DifferenceInDays(A, B) > N`
-- Other date ops (`Today`, `AddYears`, …) — see `cli operators`.
+- Other date ops (`Today`, `AddYears`, …) — see `dmtool operators`.
 
 Example — *"a ticket must be resolved within 5 days of being raised"* (dates `/Ticket/RaisedDate`, `/Ticket/ResolvedDate`):
 ```
-cli -m ticket.json rule check --field /Ticket/ResolvedDate \
+dmtool -m ticket.json rule check --field /Ticket/ResolvedDate \
   --condition "AllFieldsFilled(RaisedDate, ResolvedDate) And DifferenceInDays(RaisedDate, ResolvedDate) > 5" \
   --code RESOLVED_TOO_LATE
 ```
@@ -125,7 +125,7 @@ Model has enum `/Order/Channel` (values `STANDARD, EXPRESS`) and a **repeatable*
   ```
 - Confirm:
   ```
-  cli -m order.json rule check \
+  dmtool -m order.json rule check \
     --field /Order/LineItems/DeliveryDate \
     --condition "GroupFilled(/Order/LineItems) And [/Order/Channel] == \"EXPRESS\" And FieldNotFilled(DeliveryDate)" \
     --code EXPRESS_ITEM_NEEDS_DELIVERY_DATE
@@ -142,4 +142,4 @@ Apply the same shape to your own model: find the enum + the repeatable group wit
 - `MVK_UNEXPECTED_TOKEN` → a bracketing slip: either a comparison operand *missing* its brackets (`[Field] > 1000`), or — just as common — *extra* brackets on a ref inside a call (`DateRange([OrderDate], …)` → `DateRange(OrderDate, …)`; function/predicate/aggregate args are bare). Or a malformed expression.
 - `MVK_INVALID_TYPE_FOR_COMPARISON` → ordering (`<`/`>`) needs numbers or dates; compare strings/enums with `==` / `!=`.
 
-For anything else, look the operator up with `cli operators <id>` — its `gotchas` and `fix` fields usually say exactly what to do.
+For anything else, look the operator up with `dmtool operators <id>` — its `gotchas` and `fix` fields usually say exactly what to do.
