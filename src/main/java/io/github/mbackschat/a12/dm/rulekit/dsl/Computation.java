@@ -3,8 +3,12 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
+import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
 
 /**
  * A typed computation — the F2 authoring object (study §4.3): a computed field + optional
@@ -182,17 +186,35 @@ public record Computation(
                     Optional.ofNullable(commonPrecondition), alternatives, messages, finalComments);
         }
 
-        private static void require(boolean ok, String problem) {
+        /** Lifts an {@code MVK_*}/{@code RK_*} code out of a precheck message when it names one. */
+        private static final Pattern PRECHECK_CODE = Pattern.compile("(MVK|RK)_[A-Z0-9_]+");
+
+        private void require(boolean ok, String problem) {
             if (!ok) {
-                throw new IllegalStateException(problem);
+                fail(problem);
             }
         }
 
+        /**
+         * Fail fast with a structured PRECHECK diagnostic (a {@link PrecheckException}, itself an
+         * {@code IllegalStateException}) — parity with {@code Rule.Builder.check}. The {@code MVK_*}/
+         * {@code RK_*} code is lifted from the message when it names one (as {@code Diagnostic} does for
+         * kernel notifications), so a caller reads {@code diagnostic().code()} instead of scraping prose.
+         */
+        private void fail(String problem) {
+            Matcher matcher = PRECHECK_CODE.matcher(problem);
+            Optional<String> code = matcher.find() ? Optional.of(matcher.group()) : Optional.empty();
+            throw new PrecheckException(Diagnostic.precheck(code, problem,
+                    new Diagnostic.Where(computedField.path(), Optional.empty()),
+                    Optional.empty(), Optional.empty()));
+        }
+
         /** CustomCondition is forbidden in computation rules (KERNEL-SEMANTICS §14). */
-        private static void requireNoCustomCondition(Condition c) {
+        private void requireNoCustomCondition(Condition c) {
             switch (c) {
-                case CustomConditionRef ignored -> throw new IllegalStateException(
-                        "CustomCondition is not allowed in a computation rule (KERNEL-SEMANTICS §14)");
+                case CustomConditionRef ignored -> fail(
+                        "CustomCondition is not allowed in a computation rule"
+                                + " (MVK_ERROR_INVALID_LANGUAGE_FEATURE; KERNEL-SEMANTICS §14)");
                 case LogicCondition l -> {
                     requireNoCustomCondition(l.left());
                     requireNoCustomCondition(l.right());

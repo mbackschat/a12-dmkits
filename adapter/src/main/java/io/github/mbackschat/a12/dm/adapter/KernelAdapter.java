@@ -425,20 +425,28 @@ public final class KernelAdapter {
     }
 
     private ReadComputation readOne(ICalculationRule cr) {
+        String verbatim = verbatimComputationText(cr);
         try {
             java.util.Optional<ICalculationInfo> info = calcService().extractCalculationInfo(cr, SILENT);
             if (info.isEmpty()) {
-                return new ReadComputation.Opaque("the kernel could not extract calculation info");
+                return new ReadComputation.Opaque(verbatim, "the kernel could not extract calculation info");
             }
             Computation computation = new ConditionConverter(model)
                     .convertComputation(info.get(), recoverMessages(cr.getRule()));
             return new ReadComputation.Converted(computation);
         } catch (UnsupportedConstructException unconverted) {
-            return new ReadComputation.Opaque(unconverted.getMessage());
+            return new ReadComputation.Opaque(verbatim, unconverted.getMessage());
         } catch (RuntimeException unexpected) {
-            return new ReadComputation.Opaque("unresolved reference (" + unexpected.getClass().getSimpleName()
-                    + "): " + unexpected.getMessage());
+            return new ReadComputation.Opaque(verbatim, "unresolved reference ("
+                    + unexpected.getClass().getSimpleName() + "): " + unexpected.getMessage());
         }
+    }
+
+    /** The verbatim stored text to preserve for an opaque computation — a computation is stored as a rule,
+     *  so this is its raw {@code errorConditionText} (the {@link #verbatimConditionText} analogue). */
+    private static String verbatimComputationText(ICalculationRule cr) {
+        String raw = cr.getRule().getErrorConditionText();
+        return raw == null ? "" : raw;
     }
 
     /** Recover a computation's error messages (the kernel requires them) as rulekit {@link LocalizedText}. */

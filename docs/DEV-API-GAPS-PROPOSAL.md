@@ -40,7 +40,7 @@ Each gap: the dev need → what's missing today → the proposal. Ordered by val
 - **Today.** From-scratch authoring is rich: `GroupBuilder.numberField(n -> n.fractionDigits(2).min("1"))`, `enumField(e -> …)`, etc. But the **edit** surface (`GroupEditor.addField(name, FieldKind)` / `addField(name, FieldTypeSpec)`, `ModelDocument.addField`) takes only a bare kind or a hand-constructed `FieldTypeSpec`. A developer fluent in the builder **drops to constructing records** to add a configured field mid-edit.
 - **Proposal.** Bring the same `Consumer<XFieldBuilder>` builders to the editor surface — `GroupEditor.numberField(name, n -> …)`, `enumField`, `stringField`, `dateField`, … — reusing the from-scratch builders. Authoring and editing then read identically (the §5c "refs & editors" thesis), and the rich-config path is never lost when the model already exists.
 
-### DG2 — Rule/computation API parity  *(medium)*
+### DG2 — Rule/computation API parity  *(medium)* — ✅ shipped 2026-06-14 ([API-POC-STUDY](API-POC-STUDY.md) finding 34)
 
 - **Dev need.** A developer treats rules and computations as siblings and expects symmetric tooling.
 - **Today.** Three asymmetries, all verified:

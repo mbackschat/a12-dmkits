@@ -25,8 +25,13 @@ public sealed interface ReadComputation
     /** A computation whose calculated field, preconditions, and operations converted to a typed AST. */
     record Converted(Computation computation) implements ReadComputation {}
 
-    /** A computation preserved verbatim because it uses a not-yet-modeled construct (with the reason). */
-    record Opaque(String reason) implements ReadComputation {}
+    /**
+     * A computation preserved verbatim because it uses a not-yet-modeled construct. Carries the
+     * {@code canonicalText} — the computation's raw stored condition text (a computation is stored as a
+     * rule, so this is its {@code errorConditionText}) — so it round-trips, not just the {@code reason}
+     * it wasn't typed. Parity with {@link ReadResult.Opaque}.
+     */
+    record Opaque(String canonicalText, String reason) implements ReadComputation {}
 
     /** True iff this is a {@link Converted} result. */
     default boolean isConverted() {

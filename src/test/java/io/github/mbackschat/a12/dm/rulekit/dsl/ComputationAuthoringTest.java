@@ -12,12 +12,14 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
+import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
@@ -44,6 +46,17 @@ class ComputationAuthoringTest {
         try (Reader reader = fixture("models/subscription.dm.json")) {
             m = BoundModel.of(ModelIndex.of(ModelLoader.loadSelfContained(reader)));
         }
+    }
+
+    @Test
+    void buildFailureCarriesAStructuredDiagnostic() {
+        // DG2b — parity with Rule.Builder: a build() precheck throws a structured PrecheckException
+        // carrying a coded Diagnostic, not a bare IllegalStateException.
+        PrecheckException ex = assertThrows(PrecheckException.class, () ->
+                m.computation(m.num("/Subscription/Billing/EffectiveFee")).name("NoMessage")
+                        .calc(m.num("/Subscription/Billing/BaseFee").value())
+                        .build());   // no message() → MVK_ERROR_MESSAGE_MISSING
+        assertEquals(Optional.of("MVK_ERROR_MESSAGE_MISSING"), ex.diagnostic().code());
     }
 
     @Test
