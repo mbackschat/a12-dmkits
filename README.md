@@ -261,8 +261,9 @@ dmtool -m order.dm.json model describe          # the model card: fields, kinds,
 dmtool -m order.dm.json model validate          # run it through the real kernel → {valid, diagnostics[]}
 dmtool -m order.dm.json rule read  /Order/DeliveryNotBeforeOrder    # a rule's condition, as typed JSON
 dmtool -m order.dm.json rule explain /Order/DeliveryNotBeforeOrder  # what it checks + WHEN it fires
+dmtool -m order.dm.json rule deps  /Order/DeliveryNotBeforeOrder    # its forward deps: the fields it references (+ iteration)
 dmtool -m order.dm.json rule format /Order/DeliveryNotBeforeOrder --lang DE  # the kernel's canonical text, switched EN↔DE
-dmtool -m order.dm.json where-used /Order/DeliveryDate             # which rules/computations use a field
+dmtool -m order.dm.json where-used /Order/DeliveryDate             # the inverse: which rules/computations use a field
 ```
 
 ### Explore a whole folder of models

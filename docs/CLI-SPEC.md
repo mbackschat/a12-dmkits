@@ -127,7 +127,7 @@ Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ 
 | target | ops | family |
 |---|---|---|
 | `model` | `new · info · describe · read · validate · export · eval --doc · compute --doc` *(the **document model** target — vs `--doc`, a document **instance**; renamed from `doc`, which is now a fail-fast tombstone. `info` = the header dashboard: identity + super/subtype graph + includes/type-def imports **resolved to files** + compact counts — the one facet no other read verb owns; `-w/--workspace` resolves, default the model's folder)* | (whole model) |
-| `rule` | `add <spec> · read · explain · check · modify --condition · remove · rename` | rulekit |
+| `rule` | `add <spec> · read · explain · deps · check · modify --condition · remove · rename` *(`deps` = the rule's forward dependencies — the fields/groups it references + iteration; the thin projection of `explain`, the inverse of `where-used`)* | rulekit |
 | `computation` | `add <spec> · read · explain · modify --spec · remove` | rulekit |
 | `field` | `add · read · remove · rename · move` | modelkit |
 | `group` | `add · multiselect · attachment · read · remove · rename · move · extract` *(extract = group→include refactor, §6)* | modelkit |
@@ -232,7 +232,7 @@ The three things you can do to a field a rule/computation *reads* — operand, p
 | direction | verb | output |
 |---|---|---|
 | **usages of an element** (inverse) | `dmtool where-used <model.json> --entity <path>` | `{entity, rules:[…], computations:[…], count}` — every rule/computation that directly references the field/group, the two kinds kept separate |
-| **dependencies of a rule** (forward) | `dmtool -m <model> rule explain <rulePath>` (and `computation explain`) | the explanation's `references:[{path, kind}]` — the fields/groups the condition touches — plus `iterates`/`iterationGroup` (the repeatable group it ranges over) |
+| **dependencies of a rule** (forward) | `dmtool -m <model> rule deps <rulePath>` | `data: {references:[{path, kind}], iterates, iterationGroup?, count}` — the fields/groups the condition touches + the repeatable group it ranges over. The focused verb; `rule explain` carries the same `references`/`iterates` inside its fuller projection (tree + operators + gloss) |
 | **every rule's dependencies at once** | `dmtool -m <model> export …` | a `referencedFields` array per rule across the whole model |
 
 The same primitive (`getDirectlyReferencedEntities`) backs all three — `where-used` is literally its inverse, `explain`'s `references` its forward projection, and the safe-delete gate its membership test — so they can never disagree about what "references" means. (Adapter API equivalents for library callers: `whereUsed` / `whereUsedInComputations`, `referencedFields` / `referencedFieldsOfComputation`.) Locks: `cli.WhereUsedVerbTest`, `adapter.WhereUsedInComputationsTest`, `cli.RemoveVerbTest`, `adapter.ReferenceRewriteTest`.

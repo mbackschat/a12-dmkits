@@ -24,6 +24,7 @@ model compute
 rule check
 rule read
 rule explain
+rule deps
 rule format
 rule test
 rule add
@@ -325,7 +326,7 @@ bin/dmtool diagnostics | jq -c '{count, severities: (.diagnostics|map(.severity)
 ```
 
 ```output
-{"count":31,"severities":["ERROR","INFO","WARNING"],"sources":["ENVIRONMENT","KERNEL","LINT","PRECHECK"]}
+{"count":33,"severities":["ERROR","INFO","WARNING"],"sources":["ENVIRONMENT","KERNEL","LINT","PRECHECK"]}
 ```
 
 Pass a code for its full entry — meaning + the canonical fix:
