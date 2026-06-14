@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/add-typedef.schema.json",
   "title": "AddTypedefResult",
-  "description": "Output of `rulekit add-typedef` — the type definition declared. The modified model is written back (in place, or -o); --dry-run writes nothing.",
+  "description": "Output of `typedef add` — the type definition declared. The modified model is written back (in place, or -o); --dry-run writes nothing.",
   "type": "object",
   "required": ["added", "kind", "written"],
   "additionalProperties": false,

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/eval-doc.schema.json",
   "title": "EvalDocResult",
-  "description": "Output of `rulekit eval-doc` — the real kernel's runtime verdict over a document INSTANCE: which rules fired on the data (validateFull). Computations are NOT run; a computed field reads as whatever the document supplies. The INPUT --doc is a nested tree under \"fields\" (repeatable group = array of row objects, non-repeatable group = nested object, field = its text value; null/\"\" = present-but-unfilled, an absent key = no instance).",
+  "description": "Output of `model eval` — the real kernel's runtime verdict over a document INSTANCE: which rules fired on the data (validateFull). Computations are NOT run; a computed field reads as whatever the document supplies. The INPUT --doc is a nested tree under \"fields\" (repeatable group = array of row objects, non-repeatable group = nested object, field = its text value; null/\"\" = present-but-unfilled, an absent key = no instance).",
   "type": "object",
   "required": ["fired", "messages"],
   "additionalProperties": false,

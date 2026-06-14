@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/explain.schema.json",
   "title": "Explanation",
-  "description": "Output of `rulekit explain`. With --rule: a RuleExplanation — `operators` is the glossary (each distinct construct once, with meaning/gotchas), `tree` is the structure and every node's `operator` BACKLINKS into `operators[].id`. With --computation: a ComputationExplanation — the computed field, common precondition + per-alternative precondition/operation, messages, gloss. Either mode is tolerant: a construct the converter doesn't model yet returns `{explained:false, reason, …}` instead.",
+  "description": "Output of `rule explain`. With --rule: a RuleExplanation — `operators` is the glossary (each distinct construct once, with meaning/gotchas), `tree` is the structure and every node's `operator` BACKLINKS into `operators[].id`. With --computation: a ComputationExplanation — the computed field, common precondition + per-alternative precondition/operation, messages, gloss. Either mode is tolerant: a construct the converter doesn't model yet returns `{explained:false, reason, …}` instead.",
   "type": "object",
   "additionalProperties": false,
   "oneOf": [

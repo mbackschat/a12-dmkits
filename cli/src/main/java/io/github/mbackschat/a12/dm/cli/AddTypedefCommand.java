@@ -19,11 +19,11 @@ import picocli.CommandLine.Parameters;
 /**
  * The {@code add-typedef} verb (CLI-SPEC §5d) — declare a reusable type definition over an easy kind, and
  * <b>write the model back</b> (in place; {@code -o} redirects, {@code --dry-run} previews). Fields then
- * reference it via {@code add-field --typedef <id>}.
+ * reference it via {@code field add --typedef <id>}.
  */
 @Command(name = "add-typedef", hidden = true, mixinStandardHelpOptions = true,
         description = "Declare a reusable type definition (--id) over an easy --kind and WRITE the model back "
-                + "(in place; -o redirects, --dry-run previews). Use it on a field with `add-field --typedef <id>`.")
+                + "(in place; -o redirects, --dry-run previews). Use it on a field with `field add --typedef <id>`.")
 final class AddTypedefCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

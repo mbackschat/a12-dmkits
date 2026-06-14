@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/remove.schema.json",
   "title": "RemoveResult",
-  "description": "Output of `rulekit remove` — the summary of what was deleted. The modified model is written back to the file (in place, or -o); `--dry-run` writes nothing. Removing a field/group that rules/computations reference is refused unless --cascade, which lists the also-removed references here.",
+  "description": "Output of `field remove` — the summary of what was deleted. The modified model is written back to the file (in place, or -o); `--dry-run` writes nothing. Removing a field/group that rules/computations reference is refused unless --cascade, which lists the also-removed references here.",
   "type": "object",
   "required": ["removed", "cascaded", "written"],
   "additionalProperties": false,

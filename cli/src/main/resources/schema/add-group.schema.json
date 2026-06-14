@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/add-group.schema.json",
   "title": "AddGroupResult",
-  "description": "Output of `rulekit add-group` — the summary of the group added. The modified model is written back to the file (in place, or -o); --dry-run writes nothing.",
+  "description": "Output of `group add` — the summary of the group added. The modified model is written back to the file (in place, or -o); --dry-run writes nothing.",
   "type": "object",
   "required": ["added", "repeatable", "written"],
   "additionalProperties": false,

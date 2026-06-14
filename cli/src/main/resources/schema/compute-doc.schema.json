@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/compute-doc.schema.json",
   "title": "ComputeDocResult",
-  "description": "Output of `rulekit compute-doc` — the real kernel's runtime computation over a document INSTANCE: what each computed field becomes (compute). Read-only — the input --doc is never modified. The INPUT --doc is the same nested tree `eval-doc` takes (under \"fields\": repeatable group = array of rows, field = its text value).",
+  "description": "Output of `model compute` — the real kernel's runtime computation over a document INSTANCE: what each computed field becomes (compute). Read-only — the input --doc is never modified. The INPUT --doc is the same nested tree `eval-doc` takes (under \"fields\": repeatable group = array of rows, field = its text value).",
   "type": "object",
   "required": ["computed"],
   "additionalProperties": false,
