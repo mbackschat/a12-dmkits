@@ -12,7 +12,7 @@ The companion to [`cli-tour.md`](cli-tour.md) (which reads & inspects): this dem
 Before you touch a field, see what references it. `where-used` is a cross-cutting root verb (it spans the whole model, so it takes the model as a **positional** and keeps its own `{entity, rules, computations, count}` shape rather than the envelope). It reports the rules **and** computations that read an entity — so you know the blast radius of a change.
 
 ```bash
-dmtool where-used cli/src/test/resources/models/subscription-computed.dm.json \
+dmtool where-used examples/models/subscription-computed.dm.json \
   --entity /Subscription/Billing/BaseFee
 ```
 
@@ -32,7 +32,7 @@ dmtool where-used cli/src/test/resources/models/subscription-computed.dm.json \
 `computation explain` renders a computation in normalized form under the envelope's `data`: the computed field, its kind, the (precondition, operation) alternatives, and a one-line `gloss`. The computation is named by a positional path.
 
 ```bash
-dmtool -m cli/src/test/resources/models/subscription-computed.dm.json \
+dmtool -m examples/models/subscription-computed.dm.json \
   computation explain /Subscription/Billing/EffectiveFeeComp \
   | jq '{computedField:.data.computedField, computedFieldKind:.data.computedFieldKind, gloss:.data.gloss}'
 ```
@@ -53,7 +53,7 @@ dmtool -m cli/src/test/resources/models/subscription-computed.dm.json \
 
 ```bash
 printf "%s" "{ \"computedField\":\"/Subscription/Billing/EffectiveFee\", \"alternatives\":[{\"operation\":\"[BaseFee] + Sum(/Subscription/Addons*/MonthlyFee)\"}], \"messages\":[{\"locale\":\"en_US\",\"text\":\"Base plus add-ons.\"},{\"locale\":\"de_DE\",\"text\":\"Basis plus Zusatz.\"}] }" > /tmp/edit-eff.json
-cp cli/src/test/resources/models/subscription-computed.dm.json /tmp/edit-sub.json
+cp examples/models/subscription-computed.dm.json /tmp/edit-sub.json
 dmtool -m /tmp/edit-sub.json \
   computation modify /Subscription/Billing/EffectiveFeeComp \
   --spec /tmp/edit-eff.json --dry-run
@@ -118,7 +118,7 @@ echo "--- the written model still validates: $(dmtool -m /tmp/edit-sub.json mode
 
 ```bash
 printf "%s" "{\"field\":\"/Subscription/Billing/EffectiveFee\",\"condition\":\"[EffectiveFee] < [BaseFee]\",\"code\":\"EFFECTIVE_BELOW_BASE\",\"messages\":[{\"locale\":\"en_US\",\"text\":\"Effective fee is below base fee.\"},{\"locale\":\"de_DE\",\"text\":\"Effektivgebuehr unter Basisgebuehr.\"}]}" > /tmp/edit-rule.json
-cp cli/src/test/resources/models/subscription-computed.dm.json /tmp/edit-add.json
+cp examples/models/subscription-computed.dm.json /tmp/edit-add.json
 dmtool -m /tmp/edit-add.json rule add /tmp/edit-rule.json \
   | jq -c "{outcome, rule: .changed.rule, written}"
 dmtool -m /tmp/edit-add.json model validate | jq -c "{valid, diagnostics}"
@@ -138,9 +138,9 @@ dmtool export /tmp/edit-add.json | grep -E "^- rules:"
 A model that `include`s another model needs `-w/--workspace` to resolve it when the included model lives elsewhere in the workspace. `storefront` (in `multifile/app/`) mounts the separate `catalog` model (in `multifile/lib/`) at `/Storefront/Inventory`. The structure rides the envelope's `.data.fields`.
 
 ```bash
-dmtool -m cli/src/test/resources/models/multifile/app/storefront.dm.json \
+dmtool -m examples/models/multifile/app/storefront.dm.json \
   model describe \
-  -w cli/src/test/resources/models/multifile/lib \
+  -w examples/models/multifile/lib \
   | jq -c '.data.fields[] | select(.path|test("Inventory")) | {path,kind}'
 ```
 
@@ -156,7 +156,7 @@ dmtool -m cli/src/test/resources/models/multifile/app/storefront.dm.json \
 `batch` runs a JSON array of verb invocations in a single process, amortizing the kernel's warm-up. Each op is `{id, verb, args}` and dispatches to the flat verb name (`check`); each result is tagged by its `id`, so a producer can attribute every verdict.
 
 ```bash
-printf "%s" "[{\"id\":\"ok\",\"verb\":\"check\",\"args\":[\"cli/src/test/resources/models/subscription-computed.dm.json\",\"--field\",\"/Subscription/Billing/EffectiveFee\",\"--condition\",\"[EffectiveFee] < [BaseFee]\",\"--code\",\"X\"]},{\"id\":\"bad\",\"verb\":\"check\",\"args\":[\"cli/src/test/resources/models/subscription-computed.dm.json\",\"--field\",\"/Subscription/Billing/EffectiveFee\",\"--condition\",\"[EffectiveFee] PatternViolated \\\"x\\\"\",\"--code\",\"Y\"]}]" > /tmp/edit-ops.json
+printf "%s" "[{\"id\":\"ok\",\"verb\":\"check\",\"args\":[\"examples/models/subscription-computed.dm.json\",\"--field\",\"/Subscription/Billing/EffectiveFee\",\"--condition\",\"[EffectiveFee] < [BaseFee]\",\"--code\",\"X\"]},{\"id\":\"bad\",\"verb\":\"check\",\"args\":[\"examples/models/subscription-computed.dm.json\",\"--field\",\"/Subscription/Billing/EffectiveFee\",\"--condition\",\"[EffectiveFee] PatternViolated \\\"x\\\"\",\"--code\",\"Y\"]}]" > /tmp/edit-ops.json
 dmtool batch /tmp/edit-ops.json | jq -c ".[] | {id, valid: .result.valid}"
 ```
 
@@ -193,7 +193,7 @@ dmtool schema rule add | jq -c '.input.oneOf'
 
 ```bash
 rm -f /tmp/edit2-order.json
-cp cli/src/test/resources/models/order-ruled.dm.json /tmp/edit2-order.json
+cp examples/models/order-ruled.dm.json /tmp/edit2-order.json
 dmtool -m /tmp/edit2-order.json \
   rule modify /Order/DeliveryNotBeforeOrder \
   --condition "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And [/Order/DeliveryDate] < [/Order/OrderDate]" \
@@ -259,7 +259,7 @@ echo "--- the written model still validates: $(dmtool -m /tmp/edit2-order.json m
 
 ```bash
 rm -f /tmp/edit2-rm-rule.json
-cp cli/src/test/resources/models/order-ruled.dm.json /tmp/edit2-rm-rule.json
+cp examples/models/order-ruled.dm.json /tmp/edit2-rm-rule.json
 echo "--- $(dmtool export /tmp/edit2-rm-rule.json | grep -E "^- rules:") (before)"
 dmtool -m /tmp/edit2-rm-rule.json rule remove /Order/DeliveryNotBeforeOrder
 echo "--- $(dmtool export /tmp/edit2-rm-rule.json | grep -E "^- rules:") (after)"
@@ -294,7 +294,7 @@ echo "--- the written model still validates: $(dmtool -m /tmp/edit2-rm-rule.json
 ```bash
 rm -f /tmp/edit2-comp-spec.json /tmp/edit2-sub.json
 printf "%s" "{\"computedField\":\"/Subscription/Billing/EffectiveFee\",\"alternatives\":[{\"operation\":\"[BaseFee] * 2\"}],\"messages\":[{\"locale\":\"en_US\",\"text\":\"Effective fee is twice the base fee.\"},{\"locale\":\"de_DE\",\"text\":\"Effektivgebuehr ist das Doppelte der Basisgebuehr.\"}]}" > /tmp/edit2-comp-spec.json
-cp cli/src/test/resources/models/subscription.dm.json /tmp/edit2-sub.json
+cp examples/models/subscription.dm.json /tmp/edit2-sub.json
 dmtool -m /tmp/edit2-sub.json computation add /tmp/edit2-comp-spec.json
 echo "--- the written model validates: $(dmtool -m /tmp/edit2-sub.json model validate | jq -c ".valid")"
 ```
@@ -352,7 +352,7 @@ dmtool -m /tmp/edit2-sub.json computation read /Subscription/Billing/EffectiveFe
 
 ```bash
 rm -f /tmp/edit2-rm-comp.json
-cp cli/src/test/resources/models/subscription-computed.dm.json /tmp/edit2-rm-comp.json
+cp examples/models/subscription-computed.dm.json /tmp/edit2-rm-comp.json
 echo "--- computation present before? $(dmtool -m /tmp/edit2-rm-comp.json computation read /Subscription/Billing/EffectiveFeeComp | jq -c ".ok")"
 dmtool -m /tmp/edit2-rm-comp.json computation remove /Subscription/Billing/EffectiveFeeComp
 echo "--- read it again (exit code signals absence): $(dmtool -m /tmp/edit2-rm-comp.json computation read /Subscription/Billing/EffectiveFeeComp 2>&1 >/dev/null; echo "exit=$?")"
@@ -386,7 +386,7 @@ exit=2
 A rule's condition can carry a `;;` line **comment** — concrete syntax the kernel tolerates. `rule add` takes an optional `comment` key (and `rule modify --comment` sets one); it persists as a leading `;;` line. The payoff is the loop: a later `rule modify` that *doesn't* mention the comment **keeps it** (preserve-by-default), so the note survives the re-express. We work on a `/tmp` copy of `subscription-computed` (bilingual → both messages).
 
 ```bash
-cp cli/src/test/resources/models/subscription-computed.dm.json /tmp/edit2-comment.json
+cp examples/models/subscription-computed.dm.json /tmp/edit2-comment.json
 cat > /tmp/edit2-rule.json <<'SPEC'
 {
   "field": "/Subscription/Addons/MonthlyFee",

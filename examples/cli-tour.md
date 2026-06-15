@@ -85,7 +85,7 @@ manifest
 Rules don't mean anything without the model they guard. This fixture is an **Order**: a customer and product, a quantity and pricing, shipping/billing addresses, a repeating `Items` line-item group, a `Priority` enum, and the two dates a delivery turns on. `model describe` returns the structure (under `data`); read the relevant fields and their **kinds**.
 
 ```bash
-dmtool -m cli/src/test/resources/models/order-ruled.dm.json model describe | jq -c ".data.fields[] | select(.path|test(\"OrderDate|DeliveryDate|/Quantity\$\")) | {path,kind} + (if .scale!=null then {scale:.scale} else {} end)"
+dmtool -m examples/models/order-ruled.dm.json model describe | jq -c ".data.fields[] | select(.path|test(\"OrderDate|DeliveryDate|/Quantity\$\")) | {path,kind} + (if .scale!=null then {scale:.scale} else {} end)"
 ```
 
 ```output
@@ -101,7 +101,7 @@ dmtool -m cli/src/test/resources/models/order-ruled.dm.json model describe | jq 
 Runs a model through the **real kernel** consistency check — the same engine that gates persistence. Like every verb it returns the **result envelope**: `outcome`, `ok` (did the op run), `valid` (is the subject model valid), and `diagnostics[]`, with exit 0 valid / 1 invalid.
 
 ```bash
-dmtool -m cli/src/test/resources/models/order-ruled.dm.json model validate
+dmtool -m examples/models/order-ruled.dm.json model validate
 ```
 
 ```output
@@ -124,7 +124,7 @@ dmtool -m cli/src/test/resources/models/order-ruled.dm.json model validate
 Reads a rule stored in the model and renders its condition back as DSL — the kernel's own canonical text. The rule is named by a positional path; a read's payload rides the envelope's `data`. A partial parse returns a tolerant `Opaque` passthrough instead.
 
 ```bash
-dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule read /Order/DeliveryNotBeforeOrder
+dmtool -m examples/models/order-ruled.dm.json rule read /Order/DeliveryNotBeforeOrder
 ```
 
 ```output
@@ -152,7 +152,7 @@ dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule read /Order/Del
 The kernel's **own** canonical text for a rule's condition — a parse + format round-trip through the engine's formatter (distinct from `rule read`, which renders dmtool's AST). Its use is diff-stable normalization: re-express → format → compare. `--lang` re-emits in the other keyword language, the engine being the authority on the EN↔DE switch.
 
 ```bash
-dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule format /Order/DeliveryNotBeforeOrder --lang DE
+dmtool -m examples/models/order-ruled.dm.json rule format /Order/DeliveryNotBeforeOrder --lang DE
 ```
 
 ```output
@@ -180,7 +180,7 @@ dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule format /Order/D
 Projects a condition in **normalized** form under `data`: a flat **`operators` glossary** (each distinct construct once, with meaning + gotchas) plus a structural **`tree`** whose nodes are `{operator, text, children}` — `operator` backlinks into the glossary. The tree gives the And/Or nesting the flat list throws away.
 
 ```bash
-dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule explain /Order/DeliveryNotBeforeOrder | jq "{operators: .data.operators, tree: .data.tree}"
+dmtool -m examples/models/order-ruled.dm.json rule explain /Order/DeliveryNotBeforeOrder | jq "{operators: .data.operators, tree: .data.tree}"
 ```
 
 ```output
@@ -250,7 +250,7 @@ dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule explain /Order/
 Validates a **candidate** rule you haven't persisted yet — kernel verdict *plus* dmtool's lint backstop, in the same envelope. The candidate below compares a number whose presence isn't guarded.
 
 ```bash
-dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule check --field /Order/Quantity --condition "[/Order/Quantity] < 1" --code RK_DEMO
+dmtool -m examples/models/order-ruled.dm.json rule check --field /Order/Quantity --condition "[/Order/Quantity] < 1" --code RK_DEMO
 ```
 
 ```output
@@ -282,7 +282,7 @@ dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule check --field /
 `--suggest-error-field` adds the legal error-field picks to `data` — the condition's referenced fields inside its iteration scope. The error field must be one of these (the `MVK_ERROR_FIELD_NOT_REFERENCED` law), so you choose it up front instead of after a reject.
 
 ```bash
-dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule check --field /Order/Quantity --condition "[/Order/Quantity] < 1" --code RK_DEMO --suggest-error-field | jq .data
+dmtool -m examples/models/order-ruled.dm.json rule check --field /Order/Quantity --condition "[/Order/Quantity] < 1" --code RK_DEMO --suggest-error-field | jq .data
 ```
 
 ```output
@@ -352,7 +352,7 @@ dmtool patterns | jq -c '{count, ids: (.patterns|map(.id))}'
 → Five idioms. Pass an id with `--arg name=value` parameters (and `-m <model>`) to **scaffold** a rule-spec from one — the condition is built through the typed DSL, so it's correct by construction, and it's **auto-checked** against the kernel.
 
 ```bash
-dmtool -m cli/src/test/resources/models/order-ruled.dm.json patterns date-order --arg earlier=/Order/OrderDate --arg later=/Order/DeliveryDate | jq '{pattern, spec: {field: .spec.field, condition: .spec.condition}, valid}'
+dmtool -m examples/models/order-ruled.dm.json patterns date-order --arg earlier=/Order/OrderDate --arg later=/Order/DeliveryDate | jq '{pattern, spec: {field: .spec.field, condition: .spec.condition}, valid}'
 ```
 
 ```output
@@ -469,7 +469,7 @@ dmtool schema rule add | jq '{op, returns, inputKeys: (.input.properties|keys)}'
 Where `rule read` renders one rule, `model read` reads the **entire** model card in one shot: every rule and computation rendered to DSL, plus a roll-up `summary`. The payload rides `data`, like every read.
 
 ```bash
-dmtool -m cli/src/test/resources/models/order-ruled.dm.json model read
+dmtool -m examples/models/order-ruled.dm.json model read
 ```
 
 ```output
@@ -516,7 +516,7 @@ dmtool -m cli/src/test/resources/models/order-ruled.dm.json model read
 Beyond rules, the same `<target> read` pattern reads the model's **structure**. Each returns just the fact under `data` (projected here with `jq` for brevity): `field read` a field's declared type, `group read` whether a group repeats, `config read` the document's rendering config. These are the facts that decide how a condition must be written.
 
 ```bash
-dmtool -m cli/src/test/resources/models/order-ruled.dm.json field read /Order/OrderDate | jq '.data'
+dmtool -m examples/models/order-ruled.dm.json field read /Order/OrderDate | jq '.data'
 ```
 
 ```output
@@ -529,7 +529,7 @@ dmtool -m cli/src/test/resources/models/order-ruled.dm.json field read /Order/Or
 → `/Order/OrderDate` is a `DateType` — the kernel's type name (vs the coarser `kind: DATE` from `model describe`). The type is what lets `DifferenceInDays` take this field as an operand.
 
 ```bash
-dmtool -m cli/src/test/resources/models/order-ruled.dm.json group read /Order/BillingAddress | jq '.data'
+dmtool -m examples/models/order-ruled.dm.json group read /Order/BillingAddress | jq '.data'
 ```
 
 ```output
@@ -542,7 +542,7 @@ dmtool -m cli/src/test/resources/models/order-ruled.dm.json group read /Order/Bi
 → `repeatable: false` — `BillingAddress` is a single nested group, not a line-item list. Repeatability is load-bearing: a rule scoped under a repeating group iterates per row, and aggregate/iteration operators only apply over a repeatable group.
 
 ```bash
-dmtool -m cli/src/test/resources/models/order-ruled.dm.json config read | jq '.data'
+dmtool -m examples/models/order-ruled.dm.json config read | jq '.data'
 ```
 
 ```output
@@ -565,7 +565,7 @@ dmtool -m cli/src/test/resources/models/order-ruled.dm.json config read | jq '.d
 `model info` is the model's identity card in a single read: `id`/`modelType`/`modelVersion`, the super/subtype graph (the `abstract`/`superTypes`/`subTypes` convention), and every outbound reference — `include`s and type-def imports — **resolved to its file** (via `-w/--workspace`, default the model's own folder). It carries *counts*, never contents — the field/rule/config detail stays in `model describe`/`model read`/`config read`, so it adds no redundancy. Projected here with `jq`.
 
 ```bash
-dmtool -m cli/src/test/resources/models/multifile/app/storefront.dm.json model info -w cli/src/test/resources/models/multifile | jq -c '.data | {id, includes, counts}'
+dmtool -m examples/models/multifile/app/storefront.dm.json model info -w examples/models/multifile | jq -c '.data | {id, includes, counts}'
 ```
 
 ```output
@@ -579,7 +579,7 @@ dmtool -m cli/src/test/resources/models/multifile/app/storefront.dm.json model i
 Everything above operated on one `-m` model. When you're handed a **directory** of models instead, `workspace list` is the cross-model "ls" that goes *into* them: a per-model index where every `include` / type-def import is **cross-resolved to its file within the scan**. So an agent learns which file provides a referenced model — instead of guessing an `-w/--workspace`. Kernel-free (a half-wired workspace still lists); `--recursive` widens the resolution scope, `--validate` adds a per-model validity flag, `--format table` renders the same facts for humans. Projected here with `jq`.
 
 ```bash
-dmtool workspace list cli/src/test/resources/models/multifile --recursive | jq -c '.data.models[] | {id, path, includes: [.includes[] | {ref, resolvedPath}]}'
+dmtool workspace list examples/models/multifile --recursive | jq -c '.data.models[] | {id, path, includes: [.includes[] | {ref, resolvedPath}]}'
 ```
 
 ```output
@@ -594,7 +594,7 @@ dmtool workspace list cli/src/test/resources/models/multifile --recursive | jq -
 Where `workspace list` is the flat per-model index, `workspace graph` draws the **sub/supertype hierarchy** a flat list can't show at a glance — subtype→supertype edges from the `superTypes`/`subTypes` convention. It is **inheritance only** (the composition relations — includes/imports — stay in `list`/`model info`, where they're already resolved). `--format tree` renders it for humans:
 
 ```bash
-dmtool workspace graph cli/src/test/resources/models/inheritance --format tree
+dmtool workspace graph examples/models/inheritance --format tree
 ```
 
 ```output

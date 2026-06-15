@@ -8,7 +8,7 @@ The structure-edit companion to the [verb tour](cli-tour.md) (which reads rules)
 We work on a `/tmp` copy of the `order-ruled` fixture — its `DeliveryNotBeforeOrder` rule references `/Order/DeliveryDate`, which is what arms the safe-delete gate below — so the committed fixture stays put.
 
 ```bash
-cp cli/src/test/resources/models/order-ruled.dm.json /tmp/struct.dm.json && echo "copied order-ruled → /tmp/struct.dm.json"
+cp examples/models/order-ruled.dm.json /tmp/struct.dm.json && echo "copied order-ruled → /tmp/struct.dm.json"
 ```
 
 ```output
@@ -177,7 +177,7 @@ dmtool -m /tmp/struct.dm.json model validate | jq -c "{outcome,valid,diagnostics
 The two reads tell you what a path *is* before you edit it: `field read <fieldPath>` returns the field's declared `type`, `group read <groupPath>` returns whether the group repeats. Both land their answer under `.data` and write nothing (`written: false`). We work from a fresh copy of the `subscription` fixture — its `/Subscription/Billing/BaseFee` field and repeatable `/Subscription/Addons` group give us something to inspect.
 
 ```bash
-cp cli/src/test/resources/models/subscription.dm.json /tmp/struct2.dm.json && echo "copied subscription → /tmp/struct2.dm.json"
+cp examples/models/subscription.dm.json /tmp/struct2.dm.json && echo "copied subscription → /tmp/struct2.dm.json"
 ```
 
 ```output
@@ -266,7 +266,7 @@ dmtool -m /tmp/struct2.dm.json group remove /Subscription/Addons
 A type definition is a named, reusable type you declare once (`typedef add --id <id> --kind <KIND>`) and then point fields at (`field add --typedef <id>`). We work on a fresh copy so the reads above stay intact.
 
 ```bash
-cp cli/src/test/resources/models/subscription.dm.json /tmp/struct2-td.json && echo "copied subscription → /tmp/struct2-td.json"
+cp examples/models/subscription.dm.json /tmp/struct2-td.json && echo "copied subscription → /tmp/struct2-td.json"
 ```
 
 ```output
@@ -403,7 +403,7 @@ dmtool -m /tmp/struct2-td.json typedef remove Currency
 Renaming a type definition rewrites its declaration **and** every field that points at it, in one step. A typedef never appears in a condition, so this is a pure *structural* rewrite — no rule edits, no AST surgery. The refactor **safety gate** (CLI-SPEC §6) runs first: a new id that is already declared is **refused** before anything changes. On a fresh copy with `Currency` typing a new `SetupFee`:
 
 ```bash
-cp cli/src/test/resources/models/subscription.dm.json /tmp/struct2-tdr.json && \
+cp examples/models/subscription.dm.json /tmp/struct2-tdr.json && \
   dmtool -m /tmp/struct2-tdr.json typedef add --id Currency --kind NUMBER >/dev/null && \
   dmtool -m /tmp/struct2-tdr.json field add --group /Subscription/Billing --name SetupFee --typedef Currency >/dev/null && \
   echo "ready: Currency declared, SetupFee typed by it"
@@ -475,7 +475,7 @@ dmtool -m /tmp/struct2-tdr.json typedef rename Money --to Fee >/tmp/tdr-refuse.j
 `typedef extract` is the DRY refactor: point several fields that already share **one concrete type** at a single new definition, in one step. On a fresh copy with two like-typed fee fields:
 
 ```bash
-cp cli/src/test/resources/models/subscription.dm.json /tmp/struct2-tdx.json && \
+cp examples/models/subscription.dm.json /tmp/struct2-tdx.json && \
   dmtool -m /tmp/struct2-tdx.json field add --group /Subscription/Billing --name SetupFee --kind NUMBER >/dev/null && \
   dmtool -m /tmp/struct2-tdx.json field add --group /Subscription/Billing --name LateFee --kind NUMBER >/dev/null && \
   echo "ready: two NUMBER fee fields under /Subscription/Billing"
@@ -550,7 +550,7 @@ dmtool -m /tmp/struct2-tdx.json typedef inline Money
 `field | group | rule rename <path> --to <newName>` renames an element's declaration **and rewrites every reference to it** — rule conditions, error texts, computations — via the kernel's own `MoveSupportDM`, then re-validates. So a *referenced* field renames cleanly; the gate refuses only a **name collision** (`RK_NAME_EXISTS`). On `order-ruled` (whose `DeliveryNotBeforeOrder` rule references `/Order/DeliveryDate`):
 
 ```bash
-cp cli/src/test/resources/models/order-ruled.dm.json /tmp/struct2-rn.json && echo "copied order-ruled → /tmp/struct2-rn.json"
+cp examples/models/order-ruled.dm.json /tmp/struct2-rn.json && echo "copied order-ruled → /tmp/struct2-rn.json"
 ```
 
 ```output
@@ -632,7 +632,7 @@ dmtool -m /tmp/struct2-rn.json field move /Order/Quantity --to /Order/Nope >/tmp
 `group extract <path> --reference <id>` lifts a subtree into its own sub-model and re-mounts it **at the same name**, so every path is preserved — references into the subtree keep resolving without any condition being rewritten. It writes **two** files: the slimmed base and `<reference>.dm.json` beside it. On `order-aggregates` (which has a `/Order/BillingAddress` subgroup with its own rule):
 
 ```bash
-mkdir -p /tmp/struct2-ext && cp cli/src/test/resources/models/order-aggregates.dm.json /tmp/struct2-ext/order.dm.json && echo "ready: order-aggregates in /tmp/struct2-ext"
+mkdir -p /tmp/struct2-ext && cp examples/models/order-aggregates.dm.json /tmp/struct2-ext/order.dm.json && echo "ready: order-aggregates in /tmp/struct2-ext"
 ```
 
 ```output
@@ -698,8 +698,8 @@ jq -c '[.. | objects | select(has("modelAlias")) | .modelAlias]' /tmp/struct2-ex
 An include declares a reference to another model (`--alias` → `--reference`) and mounts its content as a group (`--name`) under `--parent`. The referenced model is resolved by its header id from `-w/--workspace`. We stage a `/tmp` copy of `subscription` plus a tiny library directory holding the committed `catalog` model:
 
 ```bash
-cp cli/src/test/resources/models/subscription.dm.json /tmp/struct2-sub.json
-mkdir -p /tmp/struct2-lib && cp cli/src/test/resources/models/multifile/lib/catalog.dm.json /tmp/struct2-lib/catalog.dm.json
+cp examples/models/subscription.dm.json /tmp/struct2-sub.json
+mkdir -p /tmp/struct2-lib && cp examples/models/multifile/lib/catalog.dm.json /tmp/struct2-lib/catalog.dm.json
 echo "staged sub + lib"
 ```
 
@@ -801,7 +801,7 @@ dmtool -m /tmp/struct2-sub.json include remove catalog -w /tmp/struct2-lib
 `config read` reports the document-level settings (decimal separator, time zone, condition language) under `.data`; `config modify` changes them in place. We use a fresh copy so the comma-edit doesn't bleed into the other sections.
 
 ```bash
-cp cli/src/test/resources/models/subscription.dm.json /tmp/struct2-cfg.json && echo "copied subscription → /tmp/struct2-cfg.json"
+cp examples/models/subscription.dm.json /tmp/struct2-cfg.json && echo "copied subscription → /tmp/struct2-cfg.json"
 ```
 
 ```output
@@ -872,7 +872,7 @@ dmtool -m /tmp/struct2-cfg.json config read | jq -c ".data"
 `export` is the odd one out: it is a **root verb** that takes the model as a **positional** argument (`dmtool export <model>`), and it prints a plain artifact — *not* the JSON result envelope. With no artifact name it emits the **model card** (a Markdown summary); `fields | groups | rules` print line-delimited JSON instead, and `--out-dir` writes all four to files.
 
 ```bash
-cp cli/src/test/resources/models/subscription.dm.json /tmp/struct2-exp.json && echo "copied subscription → /tmp/struct2-exp.json"
+cp examples/models/subscription.dm.json /tmp/struct2-exp.json && echo "copied subscription → /tmp/struct2-exp.json"
 ```
 
 ```output
@@ -908,7 +908,7 @@ dmtool export /tmp/struct2-exp.json
 A12 has two canonical group **templates**, flagged by a group's `usageType`. Rather than hand-assemble them (and get the composition wrong), one verb expands the whole thing. The rest of this tour works on a fresh copy:
 
 ```bash
-cp cli/src/test/resources/models/order-ruled.dm.json /tmp/extras.dm.json && echo "copied order-ruled → /tmp/extras.dm.json"
+cp examples/models/order-ruled.dm.json /tmp/extras.dm.json && echo "copied order-ruled → /tmp/extras.dm.json"
 ```
 
 ```output

@@ -2,11 +2,14 @@
 
 Executable, `verify`-able demos of the `dmtool` CLI (authored with [showboat](https://github.com/simonw/showboat)). Each `*.md` here is documentation *and* a doc-drift test.
 
-**The method — how to run, verify, and extend these — lives in [`docs/CLI-TOUR-SPEC.md`](../docs/CLI-TOUR-SPEC.md).** Quick check:
+**The method — how to run, verify, and extend these — lives in [`docs/CLI-TOUR-SPEC.md`](../docs/CLI-TOUR-SPEC.md).** Quick check (from the repo root, with the repo `bin/` on PATH so the bare `dmtool` resolves):
 
 ```bash
+export PATH="$PWD/bin:$PATH"
 uvx showboat@0.6.1 verify examples/cli-tour.md   # exit 0 = output still matches the live CLI
 ```
+
+The demos use the bare `dmtool` and read their sample models from [`models/`](models/) — the demos' **own** fixtures, kept separate from the JUnit test fixtures (`cli/src/test/resources/models/`): same kind of model, different purpose (user-facing showcase vs. internal test coverage). Both the demos and `models/` are published to the release mirror, so the walkthroughs run there too.
 
 ## Demos in this folder
 

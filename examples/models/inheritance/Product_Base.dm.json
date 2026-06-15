@@ -1,0 +1,46 @@
+{
+  "header" : {
+    "id" : "Product_Base",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ {
+      "name" : "abstract",
+      "value" : "true"
+    }, {
+      "name" : "subTypes",
+      "value" : "ProductSingle,ProductBundle"
+    } ],
+    "modelReferences" : [ ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "Product_Base",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Product",
+        "name" : "Product",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ ]
+        }
+      } ]
+    }
+  }
+}

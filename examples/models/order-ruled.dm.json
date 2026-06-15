@@ -1,0 +1,271 @@
+{
+  "header" : {
+    "id" : "order",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "order",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Order",
+        "name" : "Order",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Field",
+            "id" : "/Order/CustomerName",
+            "name" : "CustomerName",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType"
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Order/ProductCode",
+            "name" : "ProductCode",
+            "Field" : {
+              "fieldType" : {
+                "type" : "StringType"
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Order/Quantity",
+            "name" : "Quantity",
+            "Field" : {
+              "fieldType" : {
+                "type" : "NumberType",
+                "NumberType" : {
+                  "maxFractionalDigits" : 0
+                }
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Order/UnitPrice",
+            "name" : "UnitPrice",
+            "Field" : {
+              "fieldType" : {
+                "type" : "NumberType",
+                "NumberType" : {
+                  "maxFractionalDigits" : 2
+                }
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Order/BackorderQuantity",
+            "name" : "BackorderQuantity",
+            "Field" : {
+              "fieldType" : {
+                "type" : "NumberType",
+                "NumberType" : {
+                  "maxFractionalDigits" : 0
+                }
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Order/ExpressShipping",
+            "name" : "ExpressShipping",
+            "Field" : {
+              "fieldType" : {
+                "type" : "BooleanType"
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Order/TermsConfirmed",
+            "name" : "TermsConfirmed",
+            "Field" : {
+              "fieldType" : {
+                "type" : "ConfirmType"
+              }
+            }
+          }, {
+            "type" : "Group",
+            "id" : "/Order/ShippingAddress",
+            "name" : "ShippingAddress",
+            "Group" : {
+              "elements" : [ {
+                "type" : "Field",
+                "id" : "/Order/ShippingAddress/Street",
+                "name" : "Street",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "StringType"
+                  }
+                }
+              }, {
+                "type" : "Field",
+                "id" : "/Order/ShippingAddress/City",
+                "name" : "City",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "StringType"
+                  }
+                }
+              } ]
+            }
+          }, {
+            "type" : "Group",
+            "id" : "/Order/BillingAddress",
+            "name" : "BillingAddress",
+            "Group" : {
+              "elements" : [ {
+                "type" : "Field",
+                "id" : "/Order/BillingAddress/PostalCode",
+                "name" : "PostalCode",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "StringType"
+                  }
+                }
+              }, {
+                "type" : "Rule",
+                "id" : "/Order/BillingAddress/PostalCodeFormat",
+                "name" : "PostalCodeFormat",
+                "Rule" : {
+                  "errorEntityRelPath" : "../PostalCode",
+                  "errorCode" : "POSTAL_CODE_MALFORMED",
+                  "errorCondition" : "FieldFilled(PostalCode) And [PostalCode] PatternViolated \"[0-9]{5}\"",
+                  "severity" : "ERROR",
+                  "errorMessage" : [ {
+                    "locale" : "en_US",
+                    "text" : "The billing postal code must be exactly five digits."
+                  } ]
+                }
+              } ]
+            }
+          }, {
+            "type" : "Group",
+            "id" : "/Order/Items",
+            "name" : "Items",
+            "Group" : {
+              "repeatability" : 50,
+              "indexFieldName" : "Sku",
+              "elements" : [ {
+                "type" : "Field",
+                "id" : "/Order/Items/Sku",
+                "name" : "Sku",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "StringType"
+                  }
+                }
+              }, {
+                "type" : "Field",
+                "id" : "/Order/Items/Count",
+                "name" : "Count",
+                "Field" : {
+                  "fieldType" : {
+                    "type" : "NumberType",
+                    "NumberType" : {
+                      "maxFractionalDigits" : 0
+                    }
+                  }
+                }
+              } ]
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Order/Priority",
+            "name" : "Priority",
+            "Field" : {
+              "fieldType" : {
+                "type" : "EnumerationType",
+                "EnumerationType" : {
+                  "values" : [ {
+                    "value" : "STANDARD"
+                  }, {
+                    "value" : "EXPRESS"
+                  }, {
+                    "value" : "OVERNIGHT"
+                  } ],
+                  "categories" : [ {
+                    "name" : "SpeedClass",
+                    "values" : [ "NORMAL", "FAST", "FAST" ]
+                  } ]
+                }
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Order/OrderDate",
+            "name" : "OrderDate",
+            "Field" : {
+              "fieldType" : {
+                "type" : "DateType",
+                "DateType" : {
+                  "format" : "yyyy-MM-dd"
+                }
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Order/DeliveryDate",
+            "name" : "DeliveryDate",
+            "Field" : {
+              "fieldType" : {
+                "type" : "DateType",
+                "DateType" : {
+                  "format" : "yyyy-MM-dd"
+                }
+              }
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "/Order/DeliveryNotBeforeOrder",
+            "name" : "DeliveryNotBeforeOrder",
+            "Rule" : {
+              "errorEntityRelPath" : "../DeliveryDate",
+              "errorCode" : "DELIVERY_BEFORE_ORDER",
+              "errorCondition" : "AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, DeliveryDate) < 0",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "The delivery date must not be earlier than the order date."
+              } ]
+            }
+          }, {
+            "type" : "Rule",
+            "id" : "/Order/EligibilityCheck",
+            "name" : "EligibilityCheck",
+            "Rule" : {
+              "errorEntityRelPath" : "../CustomerName",
+              "errorCode" : "INELIGIBLE_ORDER",
+              "errorCondition" : "FieldFilled(CustomerName) And CustomCondition ExternalEligibility",
+              "severity" : "ERROR",
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "The order failed the external eligibility check."
+              } ]
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

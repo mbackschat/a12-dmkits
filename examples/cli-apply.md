@@ -46,7 +46,7 @@ dmtool schema apply | jq "{title, type, item_required: .items.required, example:
 The north-star: one `apply` that **adds a field and the rule guarding it together**, committed atomically. On `order-ruled` (en_US-only), we add a `Discount` number and a rule that fires when it's present and negative. The ops file is a JSON array of op-records; we write it to `/tmp` and operate on a `/tmp` copy of the fixture.
 
 ```bash
-cp cli/src/test/resources/models/order-ruled.dm.json /tmp/apply-atomic.dm.json
+cp examples/models/order-ruled.dm.json /tmp/apply-atomic.dm.json
 cat > /tmp/apply-atomic-ops.json <<'JSON'
 [ {"target":"field","op":"add","group":"/Order","name":"Discount","kind":"NUMBER"},
   {"target":"rule","op":"add","field":"/Order/Discount","code":"DISCOUNT_NOT_NEGATIVE",
@@ -120,7 +120,7 @@ echo "--- rule present: $(dmtool export /tmp/apply-atomic.dm.json | grep -E "^- 
 A session can **mix edits and reads**. Here op 0 stages a `Discount` field; op 1 *reads it back* — and the read returns the **just-staged** state, because both ops see the same in-session model. (Read ops carry no `changed`; their payload rides `.data`, like the standalone read verbs.) The `field read` op-record key is `fieldPathInModel` (from `manifest`).
 
 ```bash
-cp cli/src/test/resources/models/order-ruled.dm.json /tmp/apply-midread.dm.json
+cp examples/models/order-ruled.dm.json /tmp/apply-midread.dm.json
 cat > /tmp/apply-midread-ops.json <<'JSON'
 [ {"target":"field","op":"add","group":"/Order","name":"Discount","kind":"NUMBER"},
   {"target":"field","op":"read","fieldPathInModel":"/Order/Discount"} ]
@@ -172,7 +172,7 @@ dmtool -m /tmp/apply-midread.dm.json apply /tmp/apply-midread-ops.json
 The session is **all-or-nothing**. Here op 0 stages a valid `Discount` field, but op 1 targets a **non-existent group** (`/Order/NoSuchGroup`). The op fails → the sequence stops, the wrapper reports `committed: false` and `failedAt: 1`, and **nothing is written** — including op 0's otherwise-valid edit. A failing op exits non-zero, so we capture the output explicitly.
 
 ```bash
-cp cli/src/test/resources/models/order-ruled.dm.json /tmp/apply-rollback.dm.json
+cp examples/models/order-ruled.dm.json /tmp/apply-rollback.dm.json
 cat > /tmp/apply-rollback-ops.json <<'JSON'
 [ {"target":"field","op":"add","group":"/Order","name":"Discount","kind":"NUMBER"},
   {"target":"field","op":"add","group":"/Order/NoSuchGroup","name":"Tax","kind":"NUMBER"} ]
@@ -234,7 +234,7 @@ Discount occurrences in the file after rollback: 0
 `apply` validates each op's args **before** dispatching it. A typo'd key — here `"grop"` instead of `"group"` — is caught and rejected with `RK_UNKNOWN_ARG` carrying a **did-you-mean** `fix`. The whole sequence rolls back (this is the only, failing op).
 
 ```bash
-cp cli/src/test/resources/models/order-ruled.dm.json /tmp/apply-typo.dm.json
+cp examples/models/order-ruled.dm.json /tmp/apply-typo.dm.json
 cat > /tmp/apply-typo-ops.json <<'JSON'
 [ {"target":"field","op":"add","grop":"/Order","name":"Discount","kind":"NUMBER"} ]
 JSON
@@ -289,7 +289,7 @@ dmtool -m /tmp/apply-typo.dm.json apply /tmp/apply-badop-ops.json 2>&1 | jq -c "
 `apply` and `batch` take **different** op shapes: `apply` wants `{target, op, …args}`, `batch` wants `{verb, args}`. Feed `apply` a *batch-shaped* op (one with `verb`/`argv`) and it doesn't guess — it rejects with `RK_WRONG_BATCH_KIND`, pointing you at the `batch` verb.
 
 ```bash
-cp cli/src/test/resources/models/order-ruled.dm.json /tmp/apply-xtype.dm.json
+cp examples/models/order-ruled.dm.json /tmp/apply-xtype.dm.json
 cat > /tmp/apply-xtype-ops.json <<'JSON'
 [ {"verb":"field add","args":["--group","/Order","--name","Discount","--kind","NUMBER"]} ]
 JSON
@@ -330,7 +330,7 @@ dmtool -m /tmp/apply-xtype.dm.json apply /tmp/apply-xtype-ops.json 2>&1; echo "(
 Refactors are `apply` op-records too: field/group **rename·move**, **rule rename**, and **typedef rename** run in-session alongside the Local ops (CLI-SPEC §6/§7). The headline is a refactor that **rewrites a reference created earlier in the same transaction**: add a `Discount` field, add a rule that references it, then **rename `Discount`→`Rebate`**. The rename rewrites the rule's reference (the kernel's `MoveSupportDM`), and the whole sequence commits atomically. Each refactor runs its §6 safety gate *at its turn against the live session*, so a refused refactor (a name collision, a missing destination) would roll the whole sequence back — like any other failing op. `extract`/`inline` stay standalone (they produce a second artifact).
 
 ```bash
-cp cli/src/test/resources/models/order-ruled.dm.json /tmp/apply-refactor.dm.json
+cp examples/models/order-ruled.dm.json /tmp/apply-refactor.dm.json
 cat > /tmp/apply-refactor-ops.json <<'JSON'
 [ {"target":"field","op":"add","group":"/Order","name":"Discount","kind":"NUMBER"},
   {"target":"rule","op":"add","field":"/Order/Discount","code":"DISCOUNT_NOT_NEGATIVE",

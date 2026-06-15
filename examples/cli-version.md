@@ -46,7 +46,7 @@ The kernel accepts an **older same-major** model and rejects a **newer or differ
 ```bash
 python3 - <<'PY'
 import json
-base = json.load(open("cli/src/test/resources/models/order-ruled.dm.json"))
+base = json.load(open("examples/models/order-ruled.dm.json"))
 for v in ("28.0.0", "99.0.0"):
     base["header"]["modelVersion"] = v
     json.dump(base, open(f"/tmp/dmver-{v}.json", "w"))

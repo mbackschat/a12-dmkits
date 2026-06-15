@@ -30,11 +30,13 @@ cp -Rf "$ROOT/plugin-codex/hooks"            "$DEST/codex/"
 cp -Rf "$ROOT/plugin-codex/skills"           "$DEST/codex/"
 cp -f  "$ROOT/plugin-codex/AGENTS.md"        "$DEST/codex/"
 cp -f  "$ROOT/plugin-codex/marketplace.json" "$DEST/.agents/plugins/marketplace.json"
-# 1c. the worked-example walkthroughs (the CI-verified showboat demos) — the public showcase. They call the
-#     bare `dmtool`; the discovery verbs run as-is, the model-based ones use the project's sample models
-#     (read-to-understand). A tailored README header explains that (the repo's examples/README is dev-facing).
+# 1c. the worked-example walkthroughs (the CI-verified showboat demos) + their OWN sample models — the
+#     public showcase, RUNNABLE: the demos reference examples/models/ (the demos' own fixtures, decoupled
+#     from the JUnit test fixtures — a different purpose), so a user who clones the mirror runs them verbatim
+#     from the repo root. The fixtures are our own original MIT models.
 mkdir -p "$DEST/examples"
-cp -f "$ROOT"/examples/cli-*.md "$DEST/examples/"
+cp -f  "$ROOT"/examples/cli-*.md "$DEST/examples/"
+cp -Rf "$ROOT/examples/models"   "$DEST/examples/"
 cat > "$DEST/examples/README.md" <<'EOF'
 # Worked examples — the dmtool CLI, verb by verb
 
@@ -50,9 +52,10 @@ are executable docs — kept in sync with the live CLI by a CI gate in the sourc
 | [`cli-runtime`](cli-runtime.md) | `model eval` / `rule test` / `model compute` against document instances **(JVM only — not in the native binary)** |
 | [`cli-version`](cli-version.md) | `--version`, `manifest.version`, the model-version compatibility policy |
 
-> The commands call the bare `dmtool` (what the plugin/raw install puts on PATH). The **discovery** verbs
-> (`manifest`, `operators`, `patterns`, `schema`, `--help`) run with no model; the **model-based** ones
-> reference the project's own sample models, so read them to learn the shape of each call and its output.
+> **Try them:** clone this repo and run from its root with `dmtool` on PATH. The commands call the bare
+> `dmtool` (what the plugin/raw install provides); discovery verbs (`manifest`, `operators`, `patterns`,
+> `schema`, `--help`) need no model, and the model-based ones use the sample models shipped in
+> [`models/`](models/). (`cli-runtime`'s verbs are JVM-only — not in the native binary.)
 EOF
 # 2. EUPL-1.2 compliance bundle, from the pinned kernel
 cp -f  "$KERNEL/licenses/EUPL-1.2.txt"  "$DEST/LICENSE"           # the artifact is offered under EUPL-1.2

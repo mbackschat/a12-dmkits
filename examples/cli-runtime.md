@@ -25,7 +25,7 @@ cat /tmp/rt-order-violation.json
 `model eval` runs the kernel over the instance and reports, under `data.fired`, the **error codes of every rule that fired** (a rule *fires* when its violation condition evaluates true on this data). `--rule <path>` narrows the report to one stored rule and adds a `data.rule.{name,fired}` verdict for it. The flags come from the CLI itself — no external doc needed.
 
 ```bash
-dmtool -m cli/src/test/resources/models/order-ruled.dm.json model eval --help
+dmtool -m examples/models/order-ruled.dm.json model eval --help
 ```
 
 ```output
@@ -73,7 +73,7 @@ Run the kernel over a document INSTANCE; report which rules fire in `data`
 Evaluate the violation instance, narrowed to the date rule:
 
 ```bash
-dmtool -m cli/src/test/resources/models/order-ruled.dm.json \
+dmtool -m examples/models/order-ruled.dm.json \
   model eval \
   --doc /tmp/rt-order-violation.json \
   --rule /Order/DeliveryNotBeforeOrder
@@ -115,7 +115,7 @@ Now the **empirical polarity check** — the same rule, the same model, a *compl
 cat > /tmp/rt-order-ok.json <<'JSON'
 { "fields": { "Order": { "OrderDate": "2024-06-01", "DeliveryDate": "2024-06-15" } } }
 JSON
-dmtool -m cli/src/test/resources/models/order-ruled.dm.json \
+dmtool -m examples/models/order-ruled.dm.json \
   model eval \
   --doc /tmp/rt-order-ok.json \
   --rule /Order/DeliveryNotBeforeOrder
@@ -149,7 +149,7 @@ dmtool -m cli/src/test/resources/models/order-ruled.dm.json \
 `model eval --rule` answers "did it fire?" — but `fired: false` is **two** different things: the rule was evaluated and *passed*, or it was **never evaluated** because a field it references is formally invalid (the kernel skips a rule whose operand is *unknown*). `rule test` is the rule-first verb that tells them apart, with a three-way `verdict`. First the violation instance from above — the rule fires:
 
 ```bash
-dmtool -m cli/src/test/resources/models/order-ruled.dm.json \
+dmtool -m examples/models/order-ruled.dm.json \
   rule test /Order/DeliveryNotBeforeOrder \
   --doc /tmp/rt-order-violation.json
 ```
@@ -179,7 +179,7 @@ dmtool -m cli/src/test/resources/models/order-ruled.dm.json \
 cat > /tmp/rt-order-baddate.json <<'JSON'
 { "fields": { "Order": { "OrderDate": "2024-06-01", "DeliveryDate": "not-a-date" } } }
 JSON
-dmtool -m cli/src/test/resources/models/order-ruled.dm.json \
+dmtool -m examples/models/order-ruled.dm.json \
   rule test /Order/DeliveryNotBeforeOrder \
   --doc /tmp/rt-order-baddate.json
 ```
@@ -216,7 +216,7 @@ You can also evaluate a rule that **isn't in the model** — `--condition "<DSL>
 cat > /tmp/rt-qty-over.json <<'JSON'
 { "fields": { "Order": { "Quantity": "150" } } }
 JSON
-dmtool -m cli/src/test/resources/models/order-ruled.dm.json \
+dmtool -m examples/models/order-ruled.dm.json \
   model eval \
   --doc /tmp/rt-qty-over.json \
   --condition "[/Order/Quantity] > 100" \
@@ -259,7 +259,7 @@ dmtool -m cli/src/test/resources/models/order-ruled.dm.json \
 `model compute` is the other runtime read: it runs the model's **computations** over the instance and returns each computed field's **value** under `data.computed`. We switch to the `subscription-computed` model, whose `EffectiveFeeComp` computes `/Subscription/Billing/EffectiveFee` as simply `[BaseFee]` — the effective fee equals the base fee. Give it a base fee and read back the result.
 
 ```bash
-dmtool -m cli/src/test/resources/models/subscription-computed.dm.json model compute --help
+dmtool -m examples/models/subscription-computed.dm.json model compute --help
 ```
 
 ```output
@@ -287,7 +287,7 @@ in `data` (read-only).
 cat > /tmp/rt-sub-filled.json <<'JSON'
 { "fields": { "Subscription": { "Billing": { "BaseFee": "49.90" } } } }
 JSON
-dmtool -m cli/src/test/resources/models/subscription-computed.dm.json \
+dmtool -m examples/models/subscription-computed.dm.json \
   model compute --doc /tmp/rt-sub-filled.json
 ```
 
@@ -319,7 +319,7 @@ Now the **empty-operand** case — the same computation, but `BaseFee` is absent
 cat > /tmp/rt-sub-empty.json <<'JSON'
 { "fields": { "Subscription": { "Billing": { } } } }
 JSON
-dmtool -m cli/src/test/resources/models/subscription-computed.dm.json \
+dmtool -m examples/models/subscription-computed.dm.json \
   model compute --doc /tmp/rt-sub-empty.json
 ```
 

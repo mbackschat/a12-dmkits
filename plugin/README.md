@@ -52,17 +52,48 @@ dmtool patterns                 # validation idioms — date-order, required-whe
 dmtool schema rule check        # a verb's exact input / output shape
 ```
 
-Author a rule and let the **real kernel** confirm it. A condition is **true on a violation**, so to *enforce* a requirement you write its violation:
+### From zero to a kernel-checked rule
+
+Create a model, add fields, and attach a validation rule — every step confirmed by the **real A12 kernel** (this whole sequence runs as-is):
 
 ```sh
-dmtool -m model.dm.json rule check \
+# 1. a new, empty, kernel-valid model
+dmtool model new --id orders --locale en_US --root Order -o order.dm.json
+
+# 2. add two date fields (structure editing — writes in place)
+dmtool -m order.dm.json field add --group /Order --name OrderDate --kind DATE
+dmtool -m order.dm.json field add --group /Order --name DeliveryDate --kind DATE
+# → { "outcome": "applied", "changed": { "added": "/Order/DeliveryDate", "kind": "DATE" } }
+
+# 3. CHECK a rule against the kernel before saving anything (dry-run, writes nothing)
+dmtool -m order.dm.json rule check \
   --field /Order/DeliveryDate \
-  --condition 'FieldNotFilled(DeliveryDate)' \
-  --code DELIVERY_REQUIRED
+  --condition 'AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, DeliveryDate) < 0' \
+  --code DELIVERY_BEFORE_ORDER
 # → { "valid": true, "diagnostics": [] }
+
+# 4. once it checks out, persist it
+echo '{ "field": "/Order/DeliveryDate",
+        "condition": "AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, DeliveryDate) < 0",
+        "code": "DELIVERY_BEFORE_ORDER",
+        "messages": [ { "locale": "en_US", "text": "Delivery date must not be before the order date." } ] }' > rule.json
+dmtool -m order.dm.json rule add rule.json
+# → { "outcome": "applied", "changed": { "rule": "/Order/DELIVERY_BEFORE_ORDER" }, "written": true }
 ```
 
-Every result is a uniform JSON envelope (`{ok, valid, outcome, data, diagnostics[], …}`) with structured, fix-oriented diagnostics.
+**Reading the `rule check` call** (step 3) — its pieces:
+
+| Part | Meaning |
+|---|---|
+| `-m order.dm.json` | the model to check against (global option; before or after the verb) |
+| `rule check` | validate a *candidate* rule against the kernel — **writes nothing** (vs `rule add`, which persists) |
+| `--field /Order/DeliveryDate` | the **error field**: a path *inside the model*, flagged when the rule fires |
+| `--condition '…'` | the rule logic in A12 DSL |
+| `--code DELIVERY_BEFORE_ORDER` | the error code the rule carries |
+
+**The key idea — polarity:** a condition is **true on the *violation*, not the requirement.** To enforce *"delivery must not be before the order date,"* you write the case to **reject** — `DifferenceInDays(OrderDate, DeliveryDate) < 0` is true exactly when delivery *is* before order (the `AllFieldsFilled(…)` guard skips the check until both dates are present). Writing the requirement directly would flag every *valid* document — the inverted-polarity trap the bundled skill helps you avoid.
+
+Every result is a uniform JSON envelope (`{ok, valid, outcome, changed, diagnostics[], …}`) with structured, fix-oriented diagnostics.
 
 ## Worked examples
 

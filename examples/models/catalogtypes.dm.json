@@ -1,0 +1,51 @@
+{
+  "header" : {
+    "id" : "catalogtypes",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "catalogtypes",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "typeDefinitions" : [ {
+      "id" : "SkuType",
+      "name" : "SkuType",
+      "fieldType" : {
+        "type" : "StringType",
+        "StringType" : {
+          "maxLength" : 12
+        }
+      }
+    }, {
+      "id" : "UnitPriceType",
+      "name" : "UnitPriceType",
+      "fieldType" : {
+        "type" : "NumberType",
+        "NumberType" : {
+          "maxFractionalDigits" : 2
+        }
+      }
+    } ],
+    "modelRoot" : {
+      "rootGroups" : [ ]
+    }
+  }
+}
