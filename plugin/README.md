@@ -9,7 +9,7 @@ Public distribution for **`dmtool`**, a CLI for authoring and validating **A12 K
 ## Install — Claude Code
 
 ```
-/plugin marketplace add mbackschat/dmtool-releases
+/plugin marketplace add mbackschat/a12-dmtool-releases
 /plugin install dmtool
 ```
 
@@ -18,7 +18,7 @@ The plugin lives at the repository root (`.claude-plugin/`).
 ## Install — OpenAI Codex
 
 ```
-codex plugin marketplace add mbackschat/dmtool-releases
+codex plugin marketplace add mbackschat/a12-dmtool-releases
 codex plugin add dmtool
 ```
 
@@ -40,6 +40,33 @@ xattr -d com.apple.quarantine dmtool-macos-arm64
 The CLI is **self-describing** — `dmtool --help`, `dmtool manifest`, `dmtool operators`, `dmtool schema <target> <op>`.
 
 > The native binary covers rule **authoring / checking / structure / read**. The runtime-evaluation verbs (`model eval`, `rule test`, `model compute`) require a JVM and are **not** in the native binary.
+
+## What you can do — a quick tour
+
+Discover the whole surface from the binary alone (these need no model):
+
+```sh
+dmtool manifest                 # every verb × parameter + a worked example, as JSON
+dmtool operators                # the A12 DSL operator catalogue (or `operators <Name>` for one)
+dmtool patterns                 # validation idioms — date-order, required-when, … (or `patterns <id>`)
+dmtool schema rule check        # a verb's exact input / output shape
+```
+
+Author a rule and let the **real kernel** confirm it. A condition is **true on a violation**, so to *enforce* a requirement you write its violation:
+
+```sh
+dmtool -m model.dm.json rule check \
+  --field /Order/DeliveryDate \
+  --condition 'FieldNotFilled(DeliveryDate)' \
+  --code DELIVERY_REQUIRED
+# → { "valid": true, "diagnostics": [] }
+```
+
+Every result is a uniform JSON envelope (`{ok, valid, outcome, data, diagnostics[], …}`) with structured, fix-oriented diagnostics.
+
+## Worked examples
+
+End-to-end walkthroughs of **every verb** — command + real captured output — live in [`examples/`](examples/): the verb tour, the rule/computation edit loop, structure editing with the safe-delete gate, the atomic `apply` session, runtime evaluation, and the version/compatibility surface.
 
 ## Changelog
 

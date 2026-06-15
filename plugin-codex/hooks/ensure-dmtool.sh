@@ -6,7 +6,7 @@
 # on drift). It is agent-agnostic: it reads whichever env vars the host provides (CLAUDE_* or PLUGIN_*/
 # CODEX_*), so the same downloader works unmodified under either agent.
 #
-#   • PRODUCTION — download the per-OS binary from the dmtool-releases GitHub Release (anonymous,
+#   • PRODUCTION — download the per-OS binary from the a12-dmtool-releases GitHub Release (anonymous,
 #     public mirror), checksum-verify against SHA256SUMS, cache in the plugin data dir, add to PATH.
 #   • DEV — if an explicit override or a sibling source-repo build is present, use that instead, so the
 #     plugin is testable from a checkout before any release exists.
@@ -17,7 +17,7 @@
 set -uo pipefail
 
 VERSION="v0.1.0"
-REPO="mbackschat/dmtool-releases"
+REPO="mbackschat/a12-dmtool-releases"
 # Host-provided dirs differ by agent: Claude Code sets CLAUDE_PLUGIN_*, Codex sets PLUGIN_* — accept both.
 DATA="${CLAUDE_PLUGIN_DATA:-${PLUGIN_DATA:-$HOME/.cache/dmtool-plugin}}"
 PLUGIN_ROOT_DIR="${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT:-.}}"

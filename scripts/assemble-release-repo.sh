@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Assemble the PUBLIC dmtool-releases repo tree for a release — the plugin + the EUPL-1.2 compliance
+# Assemble the PUBLIC a12-dmtool-releases repo tree for a release — the plugin + the EUPL-1.2 compliance
 # bundle for the kernel-embedding native binary (LICENSING.md §33). Kernel notices are copied FRESH from
 # the pinned kernel checkout (../a12-kernel), not committed into this MIT source repo; re-run on a kernel
 # bump (KERNEL-UPGRADE.md). The native binaries + SHA256SUMS are uploaded to the Release separately.
@@ -30,6 +30,30 @@ cp -Rf "$ROOT/plugin-codex/hooks"            "$DEST/codex/"
 cp -Rf "$ROOT/plugin-codex/skills"           "$DEST/codex/"
 cp -f  "$ROOT/plugin-codex/AGENTS.md"        "$DEST/codex/"
 cp -f  "$ROOT/plugin-codex/marketplace.json" "$DEST/.agents/plugins/marketplace.json"
+# 1c. the worked-example walkthroughs (the CI-verified showboat demos) — the public showcase. They call the
+#     bare `dmtool`; the discovery verbs run as-is, the model-based ones use the project's sample models
+#     (read-to-understand). A tailored README header explains that (the repo's examples/README is dev-facing).
+mkdir -p "$DEST/examples"
+cp -f "$ROOT"/examples/cli-*.md "$DEST/examples/"
+cat > "$DEST/examples/README.md" <<'EOF'
+# Worked examples — the dmtool CLI, verb by verb
+
+Six end-to-end walkthroughs (command + real captured output + narration) covering **every verb**. They
+are executable docs — kept in sync with the live CLI by a CI gate in the source repo.
+
+| Demo | Shows |
+|---|---|
+| [`cli-tour`](cli-tour.md) | discover + read — `manifest` · `operators` · `patterns` · `diagnostics` · `schema` · `model describe`/`validate` · `rule read`/`explain` |
+| [`cli-edit-loop`](cli-edit-loop.md) | author/modify rules & computations, `batch`, the re-express loop |
+| [`cli-structure-edit`](cli-structure-edit.md) | fields/groups/typedefs/includes/config + the safe-delete gate + the refactors |
+| [`cli-apply`](cli-apply.md) | the atomic multi-op session — rollback + correctives + in-session refactors |
+| [`cli-runtime`](cli-runtime.md) | `model eval` / `rule test` / `model compute` against document instances **(JVM only — not in the native binary)** |
+| [`cli-version`](cli-version.md) | `--version`, `manifest.version`, the model-version compatibility policy |
+
+> The commands call the bare `dmtool` (what the plugin/raw install puts on PATH). The **discovery** verbs
+> (`manifest`, `operators`, `patterns`, `schema`, `--help`) run with no model; the **model-based** ones
+> reference the project's own sample models, so read them to learn the shape of each call and its output.
+EOF
 # 2. EUPL-1.2 compliance bundle, from the pinned kernel
 cp -f  "$KERNEL/licenses/EUPL-1.2.txt"  "$DEST/LICENSE"           # the artifact is offered under EUPL-1.2
 cp -f  "$KERNEL/LICENSE"                "$DEST/KERNEL-LICENSE"    # the embedded kernel's own (dual) licence

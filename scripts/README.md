@@ -8,7 +8,7 @@ Maintainer scripts for building, packaging, and releasing `dmtool`. None are nee
 | [`ensure-dmtool.sh`](ensure-dmtool.sh) | **Canonical** `SessionStart` hook (agent-agnostic): downloads the per-OS native binary from the release mirror, checksum-verifies it, caches it, and puts `dmtool` on PATH. Never runs from here — it is synced into each plugin's `hooks/` and runs there. | Don't run directly; edit here, then `sync-plugin-assets.sh`. |
 | [`capture-native-config.sh`](capture-native-config.sh) | Drive the GraalVM tracing agent over all fixtures + operators + demos to (re)capture the reflection metadata the native build needs. | On a verb/catalog/kernel/Jackson change — see [`../docs/NATIVE-IMAGE-GRAALVM.md`](../docs/NATIVE-IMAGE-GRAALVM.md) §5.1. |
 | [`native-gate.sh`](native-gate.sh) | Verify the built native binary against the showboat demos (the two-gate verification); skips the JVM-only demos with reasons. | Before shipping a native binary. |
-| [`assemble-release-repo.sh`](assemble-release-repo.sh) | Assemble the public `dmtool-releases` tree: both plugins (Claude at root, Codex under `codex/`) + the EUPL-1.2 compliance bundle copied fresh from the pinned kernel checkout. | At release, and on a kernel bump (notices change). |
+| [`assemble-release-repo.sh`](assemble-release-repo.sh) | Assemble the public `a12-dmtool-releases` tree: both plugins (Claude at root, Codex under `codex/`) + the EUPL-1.2 compliance bundle copied fresh from the pinned kernel checkout. | At release, and on a kernel bump (notices change). |
 
 ## The single-source pattern
 

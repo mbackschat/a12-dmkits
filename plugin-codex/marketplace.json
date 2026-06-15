@@ -8,7 +8,7 @@
       "name": "dmtool",
       "source": {
         "source": "git-subdir",
-        "url": "https://github.com/mbackschat/dmtool-releases.git",
+        "url": "https://github.com/mbackschat/a12-dmtool-releases.git",
         "path": "./codex",
         "ref": "main"
       },

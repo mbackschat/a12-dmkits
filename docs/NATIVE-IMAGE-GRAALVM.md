@@ -2,7 +2,7 @@
 
 The single durable home for building the `dmtool` CLI as a **GraalVM native image**. Other docs point here and don't duplicate it:
 
-- [`RELEASE-SPEC.md`](RELEASE-SPEC.md) §3a — the release artifact. · [`CLI-SPEC.md`](CLI-SPEC.md) §11 — packaging *design/decision*. · [`RELEASE-PLAN.md`](RELEASE-PLAN.md) §8 — open decisions. · `CLAUDE.md` "Build" — routes here.
+- [`RELEASE-SPEC.md`](RELEASE-SPEC.md) §3a — the release artifact. · [`CLI-SPEC.md`](CLI-SPEC.md) §11 — packaging *design/decision*. · `CLAUDE.md` "Build" — routes here.
 
 > **Why its own doc:** native-image for a kernel-embedding CLI has non-obvious, interacting constraints (closed-world reflection, Groovy's `invokedynamic`, resource bundling, GraalVM-version quirks). It is **release-only** — never in the dev inner loop (that stays JVM/`installDist`), never in CI.
 
@@ -17,7 +17,7 @@ The single durable home for building the `dmtool` CLI as a **GraalVM native imag
 | **Showboat gate** | **5 / 6 demos PASS** — only `cli-runtime.md` fails (the runtime-eval verbs, §4) |
 | Reflection coverage | ✅ **comprehensive** — after the full capture ([`../scripts/capture-native-config.sh`](../scripts/capture-native-config.sh): all fixtures + 109 operators + the demos), validating **all** fixtures against the native binary is clean (0 `MissingReflectionRegistrationError`/`MissingResourceException`), incl. `order.dm.json` which failed before (§3.3) |
 | Runtime-eval verbs (`model eval`/`rule test`/`model compute`) | ✅ **hidden** from the native command tree and every derived surface (§4) — can't go native (Groovy); JVM keeps them. Guarded by `NativeImageVerbHidingTest` |
-| **Shippable?** | **Functionally yes** for the authoring/check/structure/read surface — reflection-robust, native gate GREEN, JVM-only verbs cleanly hidden. Remaining is **release-engineering only**: signing/distribution (per RELEASE-SPEC) + the B2-vs-B1 call ([`RELEASE-PLAN.md`](RELEASE-PLAN.md) §8). |
+| **Shippable?** | **Functionally yes** for the authoring/check/structure/read surface — reflection-robust, native gate GREEN, JVM-only verbs cleanly hidden. Remaining is **release-engineering only**: signing/distribution (per RELEASE-SPEC). The B2-vs-B1 call is **resolved — native-only for v1** (§7). |
 
 **GraalVM 25 vs 21 — 25 is decisively better and is the toolchain going forward:**
 
@@ -95,7 +95,7 @@ You don't have to *guess* when it's stale: the **verification gate is the trip-w
 
 **Scope consequence of native-only:** v1's shipped CLI does **not** offer runtime evaluation (`model eval`/`rule test`/`model compute`) — those need Groovy and remain the **JVM dev/eval vehicle only** (`installDist`), not a shipped artifact. No jpackage/B1 full-verb distributable in v1. (B1 — a trimmed JVM + launcher, all verbs, no reflection grind, but ~65–90 MB/OS and ~600 ms start — stays the documented fallback if a real consumer ever needs the runtime-eval verbs outside the dev loop.) What's left for the release is **release-engineering only** — signing/distribution (RELEASE-SPEC).
 
-**jpackage (B1)** still "just works" for *all* verbs with no reflection grind, at the cost of size (~65–90 MB/OS) and startup (~600 ms). The live decision — finish native (accepting #1's work + #2's verb loss) or ship B1 first — is in [`RELEASE-PLAN.md`](RELEASE-PLAN.md) §8. Given GraalVM 25's results, native is now the stronger candidate for the primary use case; B1 remains the fallback for full-verb coverage.
+**jpackage (B1)** still "just works" for *all* verbs with no reflection grind, at the cost of size (~65–90 MB/OS) and startup (~600 ms). That decision is **resolved — native-only for v1** (§7): GraalVM 25's results made native the stronger candidate for the primary use case, and it shipped. B1 remains the fallback for full-verb coverage.
 
 ## 8. Verification gate — two gates, two targets
 

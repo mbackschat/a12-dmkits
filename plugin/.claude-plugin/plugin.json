@@ -3,6 +3,6 @@
   "description": "Author and validate A12 Kernel validation rules with the dmtool CLI — bundles the native binary (downloaded on first use) and the rule-authoring skill.",
   "version": "0.1.0",
   "author": { "name": "Martin Backschat" },
-  "homepage": "https://github.com/mbackschat/dmtool-releases",
+  "homepage": "https://github.com/mbackschat/a12-dmtool-releases",
   "license": "MIT"
 }

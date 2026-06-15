@@ -259,23 +259,23 @@ Same engine, no Java required. Every command is `dmtool -m <model> <target> <op>
 
 ```text
 # Claude Code
-/plugin marketplace add mbackschat/dmtool-releases
+/plugin marketplace add mbackschat/a12-dmtool-releases
 /plugin install dmtool
 
 # OpenAI Codex
-codex plugin marketplace add mbackschat/dmtool-releases
+codex plugin marketplace add mbackschat/a12-dmtool-releases
 codex plugin add dmtool
 ```
 
-The plugins, the per-OS binaries, and full install/licensing details live in the public release repo — **[`dmtool-releases`](https://github.com/mbackschat/dmtool-releases)**. (This source repo holds the plugin *source* under [`plugin/`](plugin/) (Claude Code) and [`plugin-codex/`](plugin-codex/) (Codex); they ship to the mirror at release.)
+The plugins, the per-OS binaries, and full install/licensing details live in the public release repo — **[`a12-dmtool-releases`](https://github.com/mbackschat/a12-dmtool-releases)**. (This source repo holds the plugin *source* under [`plugin/`](plugin/) (Claude Code) and [`plugin-codex/`](plugin-codex/) (Codex); they ship to the mirror at release.)
 
 ### Install the binary directly (no agent)
 
-For terminal use without an agent, grab the native binary from the [`dmtool-releases`](https://github.com/mbackschat/dmtool-releases) Releases and verify its checksum:
+For terminal use without an agent, grab the native binary from the [`a12-dmtool-releases`](https://github.com/mbackschat/a12-dmtool-releases) Releases and verify its checksum:
 
 ```sh
 # macOS (Apple Silicon)
-base=https://github.com/mbackschat/dmtool-releases/releases/latest/download
+base=https://github.com/mbackschat/a12-dmtool-releases/releases/latest/download
 curl -fsSLO "$base/dmtool-macos-arm64"
 curl -fsSLO "$base/SHA256SUMS"
 shasum -a 256 -c SHA256SUMS --ignore-missing             # verify integrity
