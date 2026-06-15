@@ -6,4 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 ## [Unreleased]
 
-_Empty by design: v0.1.0 is the initial release. The first entries land with the first feature release after it._
+_Empty._
+
+## [0.1.1] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
+
+### Added
+
+- `dmtool --version` and `manifest.version` now report the **A12 Tools distribution** label (`2025.06-ext5`) alongside the kernel semver, so the human-facing A12 release the kernel ships in is discoverable from the binary.
+
+### Changed
+
+- README and plugin metadata now state the targeted **A12 Kernel 30.8.1 (A12 Tools 2025.06-ext5)** up front.
+
+## [0.1.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
+
+Initial public release: the native `dmtool` CLI (authoring / checking / structure / read) plus the Claude Code and OpenAI Codex plugins with the rule-authoring skill.

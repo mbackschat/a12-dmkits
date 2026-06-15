@@ -15,12 +15,15 @@ import io.github.mbackschat.a12.dm.rulekit.validate.KernelVersion;
 /**
  * The release's version surface (CLI-SPEC §1b) — what this {@code dmtool} build <em>is</em> and what it was
  * built/verified against, for {@code --version} (human) and {@code manifest.version} (machine-readable, so a
- * cold agent can read it). Five axes, each from its single source of truth:
+ * cold agent can read it). Six axes, each from its single source of truth:
  *
  * <ul>
  *   <li><b>rulekit</b> — this release, baked into {@code version.properties} by the build.</li>
  *   <li><b>kernel built-against</b> — the kernel pin this release compiled against ({@code build.gradle}, via
  *       the same properties resource).</li>
+ *   <li><b>A12 distribution</b> — the human-facing A12 Tools release label the built-against kernel ships in
+ *       ({@code build.gradle} {@code a12Distribution}); the kernel semver is the machine compatibility key,
+ *       this is its "A12 Tools &lt;quarter&gt;" tag (RELEASE-SPEC).</li>
  *   <li><b>kernel runtime</b> — the kernel jar actually on the classpath ({@link KernelVersion#runtimeVersion()});
  *       may be <em>newer</em> than built-against — the F11 tolerance posture (a newer kernel is a superset).</li>
  *   <li><b>catalog verified-against</b> — the kernel the operator catalog was verified against
@@ -30,7 +33,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.KernelVersion;
  *       is compared against (the §8c load-time skew check).</li>
  * </ul>
  */
-record VersionInfo(String rulekit, String kernelBuiltAgainst, String kernelRuntime,
+record VersionInfo(String rulekit, String kernelBuiltAgainst, String a12Distribution, String kernelRuntime,
         String catalogVerifiedAgainst, String modelVersion) {
 
     private static final String UNKNOWN = "(unknown)";
@@ -48,6 +51,7 @@ record VersionInfo(String rulekit, String kernelBuiltAgainst, String kernelRunti
         return new VersionInfo(
                 p.getProperty("rulekit", "(dev)"),
                 p.getProperty("kernelBuiltAgainst", UNKNOWN),
+                p.getProperty("a12Distribution", UNKNOWN),
                 Optional.ofNullable(KernelVersion.runtimeVersion()).orElse(UNKNOWN),
                 Optional.ofNullable(OperatorCatalog.load().verifiedAgainst()).orElse(UNKNOWN),
                 ModelFormat.VERSION);
@@ -64,6 +68,7 @@ record VersionInfo(String rulekit, String kernelBuiltAgainst, String kernelRunti
                 "a12-dmkits " + rulekit,
                 "  kernel: " + kernelBuiltAgainst + " (built) / " + kernelRuntime + " (runtime)"
                         + (kernelSkewed() ? "  [skew — see RK_KERNEL_VERSION_SKEW]" : ""),
+                "  A12 Tools distribution: " + a12Distribution,
                 "  catalog verified against: " + catalogVerifiedAgainst,
                 "  model version (reference): " + modelVersion,
         };
@@ -75,6 +80,7 @@ record VersionInfo(String rulekit, String kernelBuiltAgainst, String kernelRunti
         n.put("rulekit", rulekit);
         ObjectNode k = n.putObject("kernel");
         k.put("builtAgainst", kernelBuiltAgainst);
+        k.put("a12Distribution", a12Distribution);
         k.put("runtime", kernelRuntime);
         k.put("skewed", kernelSkewed());
         n.put("catalogVerifiedAgainst", catalogVerifiedAgainst);

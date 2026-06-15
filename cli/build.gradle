@@ -68,6 +68,7 @@ def generateVersionProperties = tasks.register('generateVersionProperties', Writ
     destinationFile = generatedVersionDir.map { it.file('io/github/mbackschat/a12/dm/cli/version.properties') }
     property 'rulekit', rootProject.version.toString()
     property 'kernelBuiltAgainst', rootProject.ext.kernelVersion
+    property 'a12Distribution', rootProject.ext.a12Distribution
 }
 sourceSets.main.resources.srcDir(generatedVersionDir)
 tasks.named('processResources') { dependsOn generateVersionProperties }

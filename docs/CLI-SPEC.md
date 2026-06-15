@@ -31,12 +31,13 @@ The tool exists to be driven by a cold LLM agent. Two properties, above all else
 
 ### 2a. Version & compatibility surface
 
-The tool reports **what it is and what it targets** on two peer surfaces fed from one `VersionInfo`: `--version` (human) and `manifest.version` (machine-readable, so a cold agent reads it like any other manifest fact). Five axes, each from its single source of truth: the **rulekit** release (baked from the build), the kernel **built-against** (the `build.gradle` pin) and **runtime** (the kernel jar on the classpath — may be newer), the **catalog verified-against** floor (`operators.json`), and the **model-format reference** (`core.ModelFormat.VERSION`).
+The tool reports **what it is and what it targets** on two peer surfaces fed from one `VersionInfo`: `--version` (human) and `manifest.version` (machine-readable, so a cold agent reads it like any other manifest fact). Six axes, each from its single source of truth: the **rulekit** release (baked from the build), the kernel **built-against** (the `build.gradle` pin) and **runtime** (the kernel jar on the classpath — may be newer), the **A12 Tools distribution** label the built-against kernel ships in (`build.gradle` `a12Distribution`; the human-facing tag for the kernel semver), the **catalog verified-against** floor (`operators.json`), and the **model-format reference** (`core.ModelFormat.VERSION`).
 
 ```
 $ dmtool --version
-a12-dmkits 0.1.0
+a12-dmkits 0.1.1
   kernel: 30.8.1 (built) / 30.8.1 (runtime)
+  A12 Tools distribution: 2025.06-ext5
   catalog verified against: 30.8.1
   model version (reference): 28.4.0
 ```

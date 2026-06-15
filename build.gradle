@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'io.github.mbackschat.a12.dm'
-version = '0.1.0'
+version = '0.1.1'
 
 // PUBLIC + LOCAL repositories only. The A12 kernel is resolved from the local Maven
 // repository (~/.m2), where the dedicated a12-kernel-bootstrap kit publishes it from
@@ -22,6 +22,11 @@ java {
 // `ext` (not `def`) so subprojects can read the pin — the CLI bakes it into version.properties for
 // the `--version` / `manifest.version` surface (the kernel this release was built against).
 ext.kernelVersion = '30.8.1'
+// The A12 Tools distribution that ships this kernel — the human-facing release tag (the kernel semver is
+// the machine compatibility key; this is its "A12 Tools <quarter>" label, RELEASE-SPEC). Single source of
+// truth: the CLI bakes it into the version surface, and a drift guard pins every README/plugin mention to
+// it. Bump it in lockstep with `kernelVersion` (KERNEL-UPGRADE).
+ext.a12Distribution = '2025.06-ext5'
 
 dependencies {
     // Public consumer surface only (D9 / N8). The facade transitively provides the public

@@ -4,6 +4,8 @@ Public distribution for **`dmtool`**, a CLI for authoring and validating **A12 K
 
 > **Not an official A12 / mgm artifact.** `dmtool` is an independent tool built against the public A12 Kernel.
 
+This release targets **A12 Kernel 30.8.1** (A12 Tools distribution **2025.06-ext5**) — reported by `dmtool --version` and `dmtool manifest`, and recorded per entry in the [`CHANGELOG`](CHANGELOG.md).
+
 `dmtool` is **LLM-agent-first**: it installs as a plugin for your coding agent, which downloads the right native binary for your OS (anonymous, checksum-verified) and loads a **rule-authoring skill** that teaches the judgment the tool's help can't — condition *polarity*, error-field paths, iteration scope.
 
 ## Install — Claude Code

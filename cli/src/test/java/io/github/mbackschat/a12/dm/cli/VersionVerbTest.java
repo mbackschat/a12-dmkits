@@ -11,8 +11,9 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The version surface (CLI-SPEC §1b): {@code --version} (human) and {@code manifest.version} (machine-readable)
- * report the same five axes — the rulekit release, the kernel built-against/runtime, the catalog floor, and the
- * document-model reference version — so an agent (or human) can see what this build is and what it targets.
+ * report the same six axes — the rulekit release, the kernel built-against/runtime, the A12 Tools distribution
+ * label, the catalog floor, and the document-model reference version — so an agent (or human) can see what this
+ * build is and what it targets.
  */
 class VersionVerbTest {
 
@@ -26,6 +27,8 @@ class VersionVerbTest {
         assertTrue(out.contains("a12-dmkits"), () -> "names the tool + release: " + out);
         assertTrue(out.contains("kernel:") && out.contains("(built)") && out.contains("(runtime)"),
                 () -> "reports built-against + runtime kernel: " + out);
+        assertTrue(out.contains("A12 Tools distribution:"),
+                () -> "reports the A12 Tools distribution label: " + out);
         assertTrue(out.contains("model version"), () -> "reports the model reference version: " + out);
         assertFalse(out.contains("(unknown)"), () -> "the build baked real versions (not (unknown)): " + out);
     }
@@ -38,6 +41,8 @@ class VersionVerbTest {
         assertTrue(v.isObject(), () -> "manifest.version is a machine-readable object: " + res.out());
         assertTrue(v.path("rulekit").isTextual() && !v.path("rulekit").asText().isBlank());
         assertTrue(v.path("kernel").path("builtAgainst").isTextual());
+        assertTrue(v.path("kernel").path("a12Distribution").isTextual()
+                && !v.path("kernel").path("a12Distribution").asText().isBlank());
         assertTrue(v.path("kernel").path("runtime").isTextual());
         assertTrue(v.path("kernel").path("skewed").isBoolean());
         assertTrue(v.path("catalogVerifiedAgainst").isTextual());

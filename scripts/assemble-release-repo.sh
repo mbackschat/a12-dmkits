@@ -10,6 +10,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KERNEL="$ROOT/../a12-kernel"
 DEST="${1:-$ROOT/build/release-repo}"
 PIN="$(grep -oE "kernelVersion *= *'[^']+'" "$ROOT/build.gradle" | grep -oE "[0-9][0-9.]+")"
+A12DIST="$(grep -oE "a12Distribution *= *'[^']+'" "$ROOT/build.gradle" | sed -E "s/.*'([^']+)'.*/\1/")"
 
 # Guard: the kernel checkout must match our pin, or its notices are for the wrong version.
 [[ -d "$KERNEL" ]] || { echo "kernel checkout not found at $KERNEL" >&2; exit 2; }
@@ -81,5 +82,13 @@ EOF
   cat "$KERNEL/NOTICE"
 } > "$DEST/NOTICE"
 
-echo "assembled public release-repo tree → $DEST  (kernel pin $PIN)"
+# 4. Release-time no-drift guard: the assembled public README + plugin manifest must state both pinned
+#    versions (the JUnit VersionMentionFreshnessTest enforces the source files; this re-checks what we
+#    actually assembled, in case the script is run without the test suite).
+for f in "$DEST/README.md" "$DEST/.claude-plugin/plugin.json" "$DEST/CHANGELOG.md"; do
+  grep -q "$PIN"     "$f" || { echo "assembled $f does not mention kernel pin $PIN — refusing" >&2; exit 1; }
+  grep -q "$A12DIST" "$f" || { echo "assembled $f does not mention A12 distribution $A12DIST — refusing" >&2; exit 1; }
+done
+
+echo "assembled public release-repo tree → $DEST  (kernel pin $PIN, A12 Tools $A12DIST)"
 echo "--- tree ---"; (cd "$DEST" && find . -type f | sort | sed 's/^/  /')

@@ -5,7 +5,7 @@
 
 A release knows **what it is** and **what it targets**, and says so on two peer surfaces: `--version` (human) and `manifest.version` (machine-readable). The kernel is the authority on whether a document model's version is compatible; `dmtool` is *tolerant but explicit* — it warns on a difference it can load and fails fast (with a stable code) on one it can't. Writing a model back never bumps its version.
 
-**`--version`** — the five axes: the rulekit release, the kernel built-against / runtime, the catalog floor, and the document-model reference version.
+**`--version`** — the six axes: the rulekit release, the kernel built-against / runtime, the A12 Tools distribution label, the catalog floor, and the document-model reference version.
 
 ```bash
 dmtool --version
@@ -13,8 +13,9 @@ dmtool --version
 ```
 
 ```output
-a12-dmkits 0.1.0
+a12-dmkits 0.1.1
   kernel: 30.8.1 (built) / 30.8.1 (runtime)
+  A12 Tools distribution: 2025.06-ext5
   catalog verified against: 30.8.1
   model version (reference): 28.4.0
 ```
@@ -28,9 +29,10 @@ dmtool manifest | jq .version
 
 ```output
 {
-  "rulekit": "0.1.0",
+  "rulekit": "0.1.1",
   "kernel": {
     "builtAgainst": "30.8.1",
+    "a12Distribution": "2025.06-ext5",
     "runtime": "30.8.1",
     "skewed": false
   },
