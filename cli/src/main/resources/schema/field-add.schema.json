@@ -22,7 +22,7 @@
       "type": "object", "description": "(kind STRING) config",
       "properties": {
         "minLength": { "type": "integer" }, "maxLength": { "type": "integer" },
-        "pattern": { "type": "string", "description": "anchored regex; requires patternMessage" },
+        "pattern": { "type": "string", "description": "anchored regex; requires patternMessage. seeAlso: the PatternViolated/PatternMatched operators — the rule-level alternative (`operators PatternViolated`)" },
         "patternMessage": { "type": "string", "description": "the error text shown when the pattern fails" },
         "lineBreaks": { "type": "boolean", "description": "permit multi-line input" },
         "alphabeticalSorting": { "type": "boolean" },
@@ -33,7 +33,7 @@
       "type": "object", "description": "(kind NUMBER) config",
       "properties": {
         "minFractionalDigits": { "type": "integer" }, "maxFractionalDigits": { "type": "integer", "description": "the decimal scale; together they bound the fraction-digit range" },
-        "min": { "type": "string", "description": "minimum value (decimal as a string)" }, "max": { "type": "string", "description": "maximum value (decimal as a string)" },
+        "min": { "type": "string", "description": "minimum value (decimal as a string). seeAlso: the LessThan/GreaterThan comparison operators — rule-level bounds" }, "max": { "type": "string", "description": "maximum value (decimal as a string)" },
         "zeroNotAllowed": { "type": "boolean" }, "leadingZerosAllowed": { "type": "boolean" },
         "unit": { "type": "string", "description": "AMOUNT | PERCENT | PERMILLE (the kernel `trait`)" }
       }
@@ -42,7 +42,7 @@
       "type": "object", "description": "(kind ENUM) config",
       "required": ["values"],
       "properties": {
-        "values": { "type": "array", "description": "≥1 { value, labels? } — stored value + optional per-locale labels", "items": { "type": "object", "required": ["value"] } },
+        "values": { "type": "array", "description": "≥1 { value, labels? } — stored value + optional per-locale labels. seeAlso: FieldValueIncludedInValueList — the rule-level way to restrict a field to a value set", "items": { "type": "object", "required": ["value"] } },
         "categories": { "type": "array", "description": "named classifications; each has values[] aligned 1:1 with the enum values", "items": { "type": "object", "required": ["name", "values"] } },
         "alphabeticalSorting": { "type": "boolean" },
         "invalidValueMessage": { "type": "string", "description": "error text for an out-of-domain value (one text, all locales)" }

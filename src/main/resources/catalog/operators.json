@@ -56,6 +56,7 @@
   {
     "id": "LessThanOrEqual",
     "opposite": ["GreaterThan"],
+    "seeAlso": ["number.min / number.max — a NUMBER field's intrinsic value bounds (field config); the field-level alternative to a comparison rule (see `schema field add`)"],
     "kind": "operator",
     "keywords": { "en": "<=", "de": "<=" },
     "operands": [ { "type": "orderable" }, { "type": "orderable" } ],
@@ -70,6 +71,7 @@
   {
     "id": "LessThan",
     "opposite": ["GreaterThanOrEqual"],
+    "seeAlso": ["number.min / number.max — a NUMBER field's intrinsic value bounds (field config); the field-level alternative to a comparison rule (see `schema field add`)"],
     "kind": "operator",
     "keywords": { "en": "<", "de": "<" },
     "operands": [ { "type": "orderable" }, { "type": "orderable" } ],
@@ -84,6 +86,7 @@
   {
     "id": "GreaterThan",
     "opposite": ["LessThanOrEqual"],
+    "seeAlso": ["number.min / number.max — a NUMBER field's intrinsic value bounds (field config); the field-level alternative to a comparison rule (see `schema field add`)"],
     "kind": "operator",
     "keywords": { "en": ">", "de": ">" },
     "operands": [ { "type": "orderable" }, { "type": "orderable" } ],
@@ -98,6 +101,7 @@
   {
     "id": "GreaterThanOrEqual",
     "opposite": ["LessThan"],
+    "seeAlso": ["number.min / number.max — a NUMBER field's intrinsic value bounds (field config); the field-level alternative to a comparison rule (see `schema field add`)"],
     "kind": "operator",
     "keywords": { "en": ">=", "de": ">=" },
     "operands": [ { "type": "orderable" }, { "type": "orderable" } ],
@@ -435,6 +439,7 @@
   {
     "id": "PatternMatched",
     "opposite": ["PatternViolated"],
+    "seeAlso": ["string.pattern — constrain a STRING field's format intrinsically (field config); the field-level alternative to this rule (see `schema field add`)"],
     "kind": "operator",
     "keywords": { "en": "PatternMatched", "de": "WieMuster" },
     "operands": [ { "type": "string-field" }, { "type": "string-constant" } ],
@@ -457,6 +462,7 @@
   {
     "id": "PatternViolated",
     "opposite": ["PatternMatched"],
+    "seeAlso": ["string.pattern — constrain a STRING field's format intrinsically (field config); the field-level alternative to this rule (see `schema field add`)"],
     "kind": "operator",
     "keywords": { "en": "PatternViolated", "de": "NichtWieMuster" },
     "operands": [ { "type": "string-field" }, { "type": "string-constant" } ],
@@ -477,6 +483,7 @@
   {
     "id": "FieldValueIncludedInValueList",
     "opposite": ["FieldValueNotIncludedInValueList"],
+    "seeAlso": ["enum.values — restrict a field to a value set as an ENUM (field config); the field-level alternative to a value-list rule (see `schema field add`)"],
     "kind": "predicate",
     "keywords": { "en": "FieldValueIncludedInValueList", "de": "FeldWertInWerteListe" },
     "operands": [ { "type": "string-enum-or-number-field" }, { "type": "literal-list" } ],

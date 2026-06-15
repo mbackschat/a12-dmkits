@@ -95,6 +95,13 @@ final class OperatorsCommand extends BaseCommand {
             ArrayNode opp = n.putArray("opposite");
             e.opposite().forEach(opp::add);
         }
+        // seeAlso: the field-config constraint(s) that express a related restriction (G7) — a factual,
+        // bidirectional bridge to the `schema field add` config knobs; choosing field-config vs a rule is
+        // modeling judgment (the skill's job), not the tool's
+        if (!e.seeAlso().isEmpty()) {
+            ArrayNode sa = n.putArray("seeAlso");
+            e.seeAlso().forEach(sa::add);
+        }
         if (!e.constraints().isEmpty()) {
             ArrayNode c = n.putArray("constraints");
             e.constraints().forEach(c::add);

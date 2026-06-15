@@ -33,7 +33,8 @@ public record OperatorEntry(
         ComputationExample computationExample,
         OperatorStatus status,
         String sinceKernel,
-        List<String> opposite) {
+        List<String> opposite,
+        List<String> seeAlso) {
 
     public OperatorEntry {
         operands = operands == null ? List.of() : List.copyOf(operands);
@@ -41,6 +42,7 @@ public record OperatorEntry(
         gotchas = gotchas == null ? List.of() : List.copyOf(gotchas);
         status = status == null ? OperatorStatus.SUPPORTED : status;
         opposite = opposite == null ? List.of() : List.copyOf(opposite);
+        seeAlso = seeAlso == null ? List.of() : List.copyOf(seeAlso);
     }
 
     /** Whether rulekit builds a typed handle for this operator (vs a {@link OperatorStatus#PLANNED} stub). */
