@@ -53,13 +53,13 @@ Each gap: the BA need → what's missing today → the proposal. Ordered by valu
 - **Today.** These surface only as kernel rejects at `computation add`.
 - **Proposal.** A proactive lint in `computation add`: warn on (a) overlapping / non-exclusive preconditions and (b) the forbidden constructs (the latter trivial via the AST) — a corrective `RK_*` *before* the kernel round-trip.
 
-### G6 — Edit an existing field's config without delete + re-create  *(medium; surfaced by a real agent session)*
+### G6 — Edit an existing field's config without delete + re-create  *(✅ shipped 2026-06-16 — `field modify`, CLI-SPEC §5; surfaced by a real agent session)*
 
 - **BA need.** "Change the postal-code field to enforce a 5-digit pattern" — i.e. *edit an existing field's type spec* (add/change a `pattern`, `fractionDigits`, length bounds, …).
 - **Today.** `field` has add / read / remove / rename / move but **no config-edit**; `config modify` is document-level only. So the only path is **delete the field and re-create it** with a rich spec. A real agent session did exactly this ("No field edit — I'll re-create PLZ"), and because delete-then-recreate isn't atomic, a failure mid-sequence left the model in an uncertain state (the field gone, the re-add not landed).
 - **Proposal.** A `field modify <spec.json>` (or `field config`) that edits a field's type spec in place — the CLI peer of the library's typed per-type field config (the DG1 `GroupEditor` builders). Removes the destructive workaround and the non-atomic-state trap.
 
-### G7 — Bridge field-config constraints ↔ rule operators with a factual `seeAlso`  *(small–medium; neutral)*
+### G7 — Bridge field-config constraints ↔ rule operators with a factual `seeAlso`  *(✅ shipped 2026-06-16 — operator-catalog `seeAlso` + field-schema notes, neutral; STRING/NUMBER/ENUM ops bridged, others extendable)*
 
 - **Need.** "Constrain a value" almost always has **two** expressions — a **field-config** constraint (intrinsic to the field) *or* a **rule** using the matching operator — and this is **general across field types**, not a STRING/pattern special case:
   - **STRING** `pattern` ↔ `PatternViolated`/`PatternMatched`; `min/maxLength` ↔ `Length`.
