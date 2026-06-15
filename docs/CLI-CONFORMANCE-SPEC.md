@@ -103,6 +103,18 @@ The diagnostic info is **derived, never authored twice**, and **CI-verified both
 
 The `RK_*` registry is **rulekit-owned** — it has no kernel coupling, so a kernel upgrade doesn't touch it. A kernel upgrade that adds/renames `MVK_*` codes rides the existing **MVK ledger** (`MvkLedgerTest` / [`MVK-LEDGER.md`](MVK-LEDGER.md)), not this registry; the broader kernel guardians and their realignments are in [`KERNEL-UPGRADE.md`](KERNEL-UPGRADE.md).
 
+## Command examples never go stale — the two-guard defense
+
+Help text, diagnostic hints, and schema descriptions are riddled with worked command examples (`dmtool -m <model> rule add …`, "use `rule read`"). A verb rename or a tool rename silently turns these into instructions an agent *will follow into a dead end* — a real defect that the conformance matrix (which checks a verb is *surfaced*) doesn't see, because it never reads the prose. Two complementary guards cover it, and the tool name is single-sourced so a rename is one edit:
+
+| Lever | What it does | Catches | Test |
+|---|---|---|---|
+| **single-source name** | `Cli.TOOL_NAME` is the one literal; `RootCommand` binds it, `manifest.tool` derives from the live name | re-hardcoded names drifting from the binding | (compile-time) |
+| **pattern guard** (cheap) | forbids a fixed list of *known-bad* forms (`rulekit …`, `doc …`, the flat-verb hints, positional `<model>`) | the specific stale idioms left by past renames | `NoStaleCommandSyntaxTest` |
+| **positive guard** (rename-proof) | every `dmtool …` invocation + two-token `` `target op` `` shorthand must **resolve against the live picocli tree**; an invocation-count floor doubles as the tool-rename trip-wire | a *future* verb rename/removal, and a tool rename that leaves the old name in the text | `CommandReferencesResolveTest` |
+
+The positive guard is the durable one: it needs no knowledge of *which* form went bad — it derives the valid verb set and the tool name from the same tree that drives parsing, so a rename that forgets an example fails the build with the file:line and the offending token. (Prose that names the tool as a noun, not an invocation, uses a code span — `` `dmtool` verb `` — so it reads as prose and the guard skips it.)
+
 ## Library consumers — the same registry, no second source
 
 Diagnostics aren't a CLI-only concern: the diagnostic model is **public library surface**. A dependency that drives rulekit/modelkit directly receives `Diagnostic` objects (record: `code`/`severity`/`source`/`where`/`fix`/`explain`) from `ValidationResult.diagnostics()` and the edit/validate seams. So the meaning of a code must be **dev-discoverable**, not only CLI-discoverable — and it resolves through the *same* registry the `diagnostics` verb serves:

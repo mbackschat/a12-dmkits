@@ -48,7 +48,8 @@ final class ManifestCommand extends BaseCommand {
     @Override
     public Integer call() {
         ObjectNode root = MAPPER.createObjectNode();
-        root.put("tool", "dmtool");
+        // the live root command name (= Cli.TOOL_NAME) — derived, never re-hardcoded, so it can't drift
+        root.put("tool", spec.root().name());
         // the machine-readable version surface (CLI-SPEC §1b) — what this build is + what it was built/
         // verified against; the human peer is `--version`. A cold agent reads it from `manifest.version`.
         root.set("version", VersionInfo.current().toJson(MAPPER));

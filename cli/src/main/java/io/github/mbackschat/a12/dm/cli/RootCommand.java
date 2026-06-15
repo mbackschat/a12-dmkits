@@ -15,7 +15,7 @@ import picocli.CommandLine.Spec;
  * class; nothing else needs to know.
  */
 @Command(
-        name = "dmtool",
+        name = Cli.TOOL_NAME,
         mixinStandardHelpOptions = true,
         versionProvider = VersionProvider.class,
         synopsisSubcommandLabel = "<target> <op>",

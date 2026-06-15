@@ -24,6 +24,15 @@ public final class Cli {
     }
 
     /**
+     * The shipped command name — the <b>single source of truth</b> for the tool's name. {@link RootCommand}
+     * binds it as the picocli command name (so {@code --help}, {@code manifest}, and {@code schema} all
+     * report it without drift); every other surface should read the <i>live</i> name from the command tree
+     * rather than re-hardcode the literal. A rename is a one-line change here, and
+     * {@code CommandReferencesResolveTest} fails the build if the example text still names the old tool.
+     */
+    public static final String TOOL_NAME = "dmtool";
+
+    /**
      * Verbs that execute the kernel's <b>runtime validation</b> (Groovy code generation), which is not
      * native-compilable — the hard ceiling in {@code docs/NATIVE-IMAGE-GRAALVM.md} §4. Registered on the
      * JVM build; <b>hidden in the native image</b>. Because {@code manifest}/{@code schema}/{@code --help}

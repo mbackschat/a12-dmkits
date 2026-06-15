@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/result.schema.json",
   "title": "ResultEnvelope",
-  "description": "The uniform OUTPUT of every dmtool verb and every `apply` op (CLI-SPEC §3b): one op-record in, one envelope out, so an agent learns a single output shape. `ok` = the operation executed as asked; `valid` (validate/check) = the subject model is kernel-valid — distinct from `ok`. Optional keys (valid/changed/output) are omitted when not applicable.",
+  "description": "The uniform OUTPUT of every `dmtool` verb and every `apply` op (CLI-SPEC §3b): one op-record in, one envelope out, so an agent learns a single output shape. `ok` = the operation executed as asked; `valid` (validate/check) = the subject model is kernel-valid — distinct from `ok`. Optional keys (valid/changed/output) are omitted when not applicable.",
   "type": "object",
   "required": ["target", "op", "outcome", "ok", "summary", "diagnostics", "written"],
   "additionalProperties": false,
