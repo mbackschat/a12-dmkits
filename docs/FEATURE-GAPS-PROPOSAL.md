@@ -54,6 +54,18 @@ Each gap: the BA need → what's missing today → the proposal. Ordered by valu
 - **Today.** These surface only as kernel rejects at `computation add`.
 - **Proposal.** A proactive lint in `computation add`: warn on (a) overlapping / non-exclusive preconditions and (b) the forbidden constructs (the latter trivial via the AST) — a corrective `RK_*` *before* the kernel round-trip.
 
+### G6 — Edit an existing field's config without delete + re-create  *(medium; surfaced by a real agent session)*
+
+- **BA need.** "Change the postal-code field to enforce a 5-digit pattern" — i.e. *edit an existing field's type spec* (add/change a `pattern`, `fractionDigits`, length bounds, …).
+- **Today.** `field` has add / read / remove / rename / move but **no config-edit**; `config modify` is document-level only. So the only path is **delete the field and re-create it** with a rich spec. A real agent session did exactly this ("No field edit — I'll re-create PLZ"), and because delete-then-recreate isn't atomic, a failure mid-sequence left the model in an uncertain state (the field gone, the re-add not landed).
+- **Proposal.** A `field modify <spec.json>` (or `field config`) that edits a field's type spec in place — the CLI peer of the library's typed per-type field config (the DG1 `GroupEditor` builders). Removes the destructive workaround and the non-atomic-state trap.
+
+### G7 — Signpost "how do I constrain a value?" across the two mechanisms  *(small)*
+
+- **BA need.** "Constrain this string to a pattern" has **two** valid expressions — a **field-level** `string.pattern` + `patternMessage`, or a **rule-level** `PatternViolated` operator — with different trade-offs (intrinsic field constraint vs. a standalone rule with its own message/severity).
+- **Today.** Both are discoverable separately (`schema field add` shows `pattern`; `operators PatternViolated` shows the operator) but **nothing connects them or guides the choice**. The same agent session had to explore to learn both existed ("How to learn about string pattern?").
+- **Proposal.** Cross-link them in the self-describing surface: a `seeAlso` from the operator catalog's `PatternViolated`/`PatternMatched` to the field-level `string.pattern` (and back from `schema field add`), with a one-line "field-level vs rule-level" note. Pairs naturally with G3's operator-catalog cross-references.
+
 ---
 
 ## 3. Sequencing
@@ -61,6 +73,7 @@ Each gap: the BA need → what's missing today → the proposal. Ordered by valu
 - **First, the cheap high-value pair:** **G1** (close the loop on the BA's deliverable) and **G3** (serve the doc's negation model) — both small.
 - **Then the lever:** **G2** — the biggest BA-efficiency win and the most BA-shaped feature still missing.
 - **Then the round-trip-savers:** **G4**, **G5**.
+- **G6** (field-config edit) is the highest-value of the agent-surfaced pair — it removes a destructive workaround; **G7** (pattern signpost) is cheap and rides G3's cross-reference work.
 
 When one ships it graduates into the **shipped** record — a row on the [`API-POC-STUDY.md` §9 board](API-POC-STUDY.md) and, for a CLI verb, a [`CLI-SPEC.md`](CLI-SPEC.md) contract — with its own test lock, exactly as the former structural inventory did.
 
