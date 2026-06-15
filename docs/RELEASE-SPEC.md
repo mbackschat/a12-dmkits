@@ -10,7 +10,7 @@ The **durable** contract for releasing this project: the surfaces we ship, how e
 
 | Surface | Audience | v1 artifacts | Channel |
 |---|---|---|---|
-| **`dmtool` CLI** | BAs + developers; **#1 use is inside a Claude Code session** | native binary per OS + `SHA256SUMS` | binaries on the public mirror Release (§10); later the Claude Code plugin, brew/scoop, `curl \| sh` |
+| **`dmtool` CLI** | BAs + developers; **#1 use is inside a coding-agent session** | native binary per OS + `SHA256SUMS` + **agent plugins (Claude Code + Codex)** | binaries on the public mirror Release (§10); the Claude Code + Codex plugins (§6); later brew/scoop, `curl \| sh` |
 | ~~rulekit library~~ | Java developers | **deferred → §11** | — |
 
 The **command name is `dmtool`** everywhere it is publicly invoked. `:cli`'s `installDist` launcher (`applicationName = 'dmtool'`) and the native binary share that name; the eval exposes the JVM launcher as `dmtool` on PATH too (so the skill is one verbatim artifact — §6).
@@ -73,15 +73,21 @@ This is **not optional polish** — it is the bridge that *licenses the eval to 
 
 showboat compares output byte-for-byte, so a closed-world resource drop (§3a) makes a demo diverge and the gate fails — on the exact OS where it would have hurt a user. Windows note: native stdout may be CRLF; normalize (`sed 's/\r$//'`) or scope Windows to hand-picked invocations if the full suite won't match.
 
-## 6. Agent distribution — the Claude Code plugin (scaffolded, in [`plugin/`](../plugin/))
+## 6. Agent distribution — the plugins (Claude Code + Codex, both v1)
 
-The CLI is **LLM-agent-first**; its primary delivery is a **Claude Code plugin** that bundles the skill *and* puts the binary on PATH. **Plugin source lives in this repo** ([`plugin/`](../plugin/)) — single source of truth, locally testable (`claude --plugin-dir ./plugin`). The **public `dmtool-releases` repo is a release-only push target**: at release the `plugin/*` tree is pushed to its root (so it's a single-plugin marketplace) alongside the binaries (Releases) + licensing.
+The CLI is **LLM-agent-first**; its primary delivery is an **agent plugin** that bundles the skill *and* puts the binary on PATH. **v1 ships two plugins — Claude Code and OpenAI Codex** — because the two ecosystems converged on a near-identical model (a `SKILL.md` of the same format, a `SessionStart` hook, a plugin manifest + marketplace). **Plugin source lives in this repo** — [`plugin/`](../plugin/) (Claude Code) and [`plugin-codex/`](../plugin-codex/) (Codex) — single source of truth, locally testable. The **public `dmtool-releases` repo is a release-only push target**.
 
-- **Vehicle = plugin** (not a bare skill — can't deliver a binary; not MCP — wrong model for a local offline CLI, and it would undercut the self-describing-CLI thesis).
-- **Structure:** `plugin/.claude-plugin/{plugin.json,marketplace.json}` · `plugin/hooks/{hooks.json,ensure-dmtool.sh}` · `plugin/skills/a12-rules/SKILL.md` · `plugin/README.md` (the **public repo's README** — install + per-artifact licensing + the source pointer/disclaimer for EUPL compliance).
-- **Binary delivery = a `SessionStart` hook** (`ensure-dmtool.sh`) that downloads the per-OS binary from the mirror Release, checksum-verifies it, caches it in `CLAUDE_PLUGIN_DATA`, and adds it to PATH (via `CLAUDE_ENV_FILE`). Fetches via `curl` → no quarantine/MotW (§7). **Dev fallback** (verified): if `RK_DMTOOL_LOCAL` or a sibling source-repo native build is present, it symlinks that — so the plugin is testable from a checkout **before** any release exists. Never hard-fails the session.
-- **The skill is single-source, SYNCED:** `skill/SKILL.md` is canonical (the eval's material — [`EVAL-SPEC.md`](EVAL-SPEC.md) §2a, exact path baked into its boundary audit). `scripts/sync-plugin-skill.sh` copies it to `plugin/skills/a12-rules/SKILL.md` (committed); a **CI freshness check** (`--check`) fails if they drift. Never hand-edit the plugin copy. Before "release-good": run the production-mode benchmark once for a measured lift (currently only n=1 probes).
-- *Still to verify in a real CC session* (couldn't be checked headless): `SessionStart` actually fires + PATH injection lands; `/plugin marketplace add` + `/plugin install`; the `bin/`-on-PATH vs `CLAUDE_ENV_FILE` mechanics (CC ≥ v2.1.91). Hook *logic* is unit-verified (dev-fallback resolves the build, writes the PATH export, runs the verb-hidden binary).
+- **Vehicle = plugin** (not a bare skill — can't deliver a binary; not MCP — wrong model for a local offline CLI, and it would undercut the self-describing-CLI thesis). This holds for both agents.
+- **Single-source shared assets, COPY-synced** (the proven cross-agent pattern — symlinks don't survive the mirror push, and the two `hooks.json` genuinely differ). Two assets are shared **verbatim** by both plugins:
+  - `skill/SKILL.md` — canonical (also the eval's material, [`EVAL-SPEC.md`](EVAL-SPEC.md) §2a, exact path baked into its boundary audit);
+  - `scripts/ensure-dmtool.sh` — the **agent-agnostic** binary downloader (reads `CLAUDE_*` or `PLUGIN_*`/`CODEX_ENV_FILE`, so one script serves both hosts).
+
+  `scripts/sync-plugin-assets.sh` copies both into every plugin tree (`plugin/`, `plugin-codex/`); a **CI freshness check** (`--check`) fails on any drift. Never hand-edit a plugin copy; add a plugin to the script's `PLUGINS` list when a new agent is supported.
+- **Per-agent files (the irreducible delta), maintained in place:** each plugin's manifest (`.claude-plugin/plugin.json` + `marketplace.json` · `.codex-plugin/plugin.json` + a git-subdir `marketplace.json`), its `hooks/hooks.json` (different formats), and Codex's `AGENTS.md` (a usage/context template).
+- **Binary delivery = a `SessionStart` hook** (`ensure-dmtool.sh`): downloads the per-OS binary from the mirror Release, checksum-verifies it, caches it (`CLAUDE_PLUGIN_DATA`/`PLUGIN_DATA`), and injects PATH via the host env-file (`CLAUDE_ENV_FILE`/`CODEX_ENV_FILE`). Fetches via `curl` → no quarantine/MotW (§7). If a host can't inject PATH, the binary is at a deterministic `$PLUGIN_DATA/bin/dmtool` (documented in `AGENTS.md`). **Dev fallback** (verified, both agents): `RK_DMTOOL_LOCAL` or a sibling source-repo native build is symlinked — so a plugin is testable from a checkout before any release exists. Never hard-fails the session.
+- **Mirror layout (assembled by `scripts/assemble-release-repo.sh`):** the Claude plugin at the **mirror root** (`.claude-plugin/`, `hooks/`, `skills/`); the Codex plugin under **`codex/`**; the Codex marketplace manifest at `.agents/plugins/marketplace.json` (git-subdir → `./codex`). Both alongside the binaries (Releases) + the shared EUPL bundle + the public `README.md` (covers both install paths + per-artifact licensing + disclaimer).
+- **Install:** `/plugin marketplace add mbackschat/dmtool-releases` + `/plugin install dmtool` (Claude Code) · `codex plugin marketplace add mbackschat/dmtool-releases` + `codex plugin install dmtool` (Codex).
+- *Still to verify in real agent sessions* (couldn't be checked headless): `SessionStart` actually fires + PATH injection lands on each host; the marketplace add/install flow; Codex's exact env-file var name for PATH (the `$PLUGIN_DATA/bin/dmtool` fallback covers it regardless). Hook *logic* is unit-verified under both Claude and Codex env-var profiles (resolves the build, writes the PATH export, runs the verb-hidden binary). Before "release-good": run the production-mode benchmark once for a measured skill lift (currently only n=1 probes).
 
 ## 7. Distribution & trust
 
@@ -117,7 +123,7 @@ A static Maven repo (one-line `maven { url }` consume) is a later upgrade; it do
 |---|---|---|
 | CLI binaries on the mirror Release | **v1** | anonymous `curl` (public mirror) — no auth, no quarantine/MotW |
 | developer jars + POM on the mirror Release | **v1** | + `publishToMavenLocal` for the maintainer/siblings; consume = install-with-POM (§8) |
-| Claude Code **plugin** (skill + hook) | planned | hook plain-`curl`s the CLI binary from the mirror (D6) |
+| **agent plugins** (Claude Code + Codex; skill + hook) | **v1** | both push to the mirror (Claude at root, Codex under `codex/`); the `SessionStart` hook plain-`curl`s the CLI binary from the mirror (§6) |
 | **JavaDoc HTML** + **LLM API doc** on the mirror Pages | planned | public URLs for human + agent API consumption (§11) |
 | **Homebrew** formula / **Scoop** manifest | planned | point at the public mirror assets — now unblocked (anonymous) |
 | `curl \| sh` installer | planned | fetches from the mirror |
@@ -136,25 +142,24 @@ A static Maven repo (one-line `maven { url }` consume) is a later upgrade; it do
 3. **LLM API doc (`llms.txt`-style)** — a flat, single-file API reference for coding agents (public types/signatures + typed-builder idioms + DSL entry points + short usage), distinct from the human JavaDoc. **Must be derived/CI-locked** against the real API (the no-drift discipline — assembled from the CI-locked typed-builder snippets + signatures), not hand-maintained. Public URL an agent can fetch.
 4. **Developer skill** — the library-persona analog of [`skill/SKILL.md`](../skill/SKILL.md): teaches *judgment* for authoring via the typed builder / `EditSession` / DSL (polarity, paths, iteration — same kernel semantics), **not** the API catalog (JavaDoc + `llms.txt`'s job — keep it minimal, mirroring "self-describing surface > skill"). Complements the EVAL-SPEC §2 "Developer path."
 
-## 12. Multi-agent packaging (Codex, Gemini) — DEFERRED (post-v1)
+## 12. Multi-agent packaging — Claude Code + Codex shipped (v1); Gemini next
 
-The tool is **not Claude-specific**. The CLI is a self-describing binary any coding agent can shell out to, and the judgment layer is plain markdown — so portability is mostly **reuse**, with a thin per-agent wrapper as the only real delta.
+The tool is **not Claude-specific**. The CLI is a self-describing binary any coding agent can shell out to, and the judgment layer is plain markdown — so portability is mostly **reuse**, with a thin per-agent wrapper as the only real delta. **v1 ships Claude Code and Codex** (§6); **Gemini is the next candidate**, recorded here.
 
 **Reused as-is (zero per-agent work):**
 - **The binary** — `dmtool` is agent-agnostic; the §6 self-describing surface (`manifest` / `schema` / `--help` / diagnostics) is exactly what lets *any* cold agent discover the verbs and their I/O without host-specific glue. No changes.
-- **The judgment content** — [`skill/SKILL.md`](../skill/SKILL.md) is canonical markdown; the same prose teaches polarity / paths / iteration to any agent. It stays single-source: the §6 sync discipline extends per agent (each wrapper gets a *synced* copy + a freshness check, never hand-edited).
+- **The judgment content + the downloader** — [`skill/SKILL.md`](../skill/SKILL.md) and `scripts/ensure-dmtool.sh` are canonical and single-source; the §6 copy-sync (`sync-plugin-assets.sh --check`) materializes them into each plugin. Adding an agent = a new row in that script's `PLUGINS` list + the per-agent wrapper files.
 
 **The per-agent delta — a thin wrapper:**
 
-| Agent | Distribution vehicle | Project context file | Binary delivery |
-|---|---|---|---|
-| **Claude Code** (v1) | plugin ([`plugin/`](../plugin/)) | the bundled skill | `SessionStart` hook downloads from the mirror (§6) |
-| **OpenAI Codex** | a Codex skill/plugin equivalent | `AGENTS.md` | same mirror binary, fetched by the wrapper's setup step |
-| **Gemini** | a Gemini CLI extension | `GEMINI.md` | same mirror binary |
+| Agent | Distribution vehicle | Context file | Binary delivery | Status |
+|---|---|---|---|---|
+| **Claude Code** | plugin ([`plugin/`](../plugin/)) | the bundled skill | `SessionStart` hook → mirror (§6) | **v1** |
+| **OpenAI Codex** | plugin ([`plugin-codex/`](../plugin-codex/), git-subdir marketplace) | the skill + `AGENTS.md` template | `SessionStart` hook → mirror (§6) | **v1** |
+| **Gemini** | a Gemini CLI extension | `GEMINI.md` | same mirror binary, same hook pattern | next |
 
-- **Effort: ~a day each**, dominated by learning the host's packaging format + its binary-on-PATH mechanism — *not* by content, which is shared from the canonical skill.
-- **MCP is the write-once alternative** — one MCP server reachable by all three agents instead of three native wrappers. Rejected as the *primary* path (same reasoning as §6's vehicle choice): it adds a running process and undercuts the offline self-describing-CLI thesis. Keep it on the table only if maintaining several native wrappers becomes the actual friction.
-- **Why post-v1:** v1 proves the model on one host (Claude Code). Porting is mechanical once the canonical skill and the mirror download path are stable, and it gains nothing until there's demand from Codex/Gemini users.
+- **The Claude↔Codex convergence made Codex near-free:** same `SKILL.md` format, same `SessionStart`/plugin/marketplace model — the delta was one manifest, one `hooks.json`, an `AGENTS.md`, and generalizing the downloader's env-var reads. Gemini is expected to be similar (extension + `GEMINI.md`).
+- **MCP is the write-once alternative** — one MCP server reachable by all agents instead of N native wrappers. Rejected as the *primary* path (same reasoning as §6's vehicle choice): it adds a running process and undercuts the offline self-describing-CLI thesis. Keep it on the table only if maintaining several native wrappers becomes the actual friction.
 
 ## 13. Rationale (the durable *why*)
 

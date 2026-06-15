@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
-# SessionStart hook: ensure the `dmtool` native CLI is on PATH for this Claude Code session.
+# SessionStart hook — ensure the `dmtool` native CLI is on PATH for this agent session.
+#
+# CANONICAL SOURCE. This one script serves BOTH plugins (Claude Code and Codex); it is copy-synced into
+# each plugin's hooks/ by scripts/sync-plugin-assets.sh (never hand-edit the copies — a CI --check fails
+# on drift). It is agent-agnostic: it reads whichever env vars the host provides (CLAUDE_* or PLUGIN_*/
+# CODEX_*), so the same downloader works unmodified under either agent.
 #
 #   • PRODUCTION — download the per-OS binary from the dmtool-releases GitHub Release (anonymous,
-#     public mirror), checksum-verify against SHA256SUMS, cache in CLAUDE_PLUGIN_DATA, add to PATH.
+#     public mirror), checksum-verify against SHA256SUMS, cache in the plugin data dir, add to PATH.
 #   • DEV — if an explicit override or a sibling source-repo build is present, use that instead, so the
-#     plugin is testable from a checkout (`claude --plugin-dir ./plugin`) before any release exists.
+#     plugin is testable from a checkout before any release exists.
 #
 # Never hard-fails the session: on any download/verify problem it warns to stderr and exits 0 (the
 # session continues; `dmtool` just won't be on PATH). The runtime-eval verbs are intentionally absent
@@ -13,18 +18,23 @@ set -uo pipefail
 
 VERSION="v0.1.0"
 REPO="mbackschat/dmtool-releases"
-DATA="${CLAUDE_PLUGIN_DATA:-$HOME/.cache/dmtool-plugin}"
+# Host-provided dirs differ by agent: Claude Code sets CLAUDE_PLUGIN_*, Codex sets PLUGIN_* — accept both.
+DATA="${CLAUDE_PLUGIN_DATA:-${PLUGIN_DATA:-$HOME/.cache/dmtool-plugin}}"
+PLUGIN_ROOT_DIR="${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT:-.}}"
+ENV_FILE="${CLAUDE_ENV_FILE:-${CODEX_ENV_FILE:-}}"
 BIN_DIR="$DATA/bin"
 DEST="$BIN_DIR/dmtool"
 mkdir -p "$BIN_DIR"
 
 warn() { echo "dmtool plugin: $*" >&2; }
-put_on_path() { [[ -n "${CLAUDE_ENV_FILE:-}" ]] && echo "export PATH=\"$BIN_DIR:\$PATH\"" >> "$CLAUDE_ENV_FILE"; }
+# Inject PATH via the host's session env-file if it offers one; the binary is always at $DEST regardless,
+# so an agent whose hooks can't set PATH can still invoke it by that deterministic path (see AGENTS.md).
+put_on_path() { [[ -n "$ENV_FILE" ]] && echo "export PATH=\"$BIN_DIR:\$PATH\"" >> "$ENV_FILE"; }
 
 # --- DEV fallback: explicit override, then a sibling source-repo native build -------------------------
 dev_binary() {
   if [[ -n "${RK_DMTOOL_LOCAL:-}" && -x "${RK_DMTOOL_LOCAL}" ]]; then echo "${RK_DMTOOL_LOCAL}"; return 0; fi
-  local guess="${CLAUDE_PLUGIN_ROOT:-.}/../cli/build/native/nativeCompile/dmtool"
+  local guess="${PLUGIN_ROOT_DIR}/../cli/build/native/nativeCompile/dmtool"
   if [[ -x "$guess" ]]; then
     local dir; dir="$(cd "$(dirname "$guess")" && pwd)"   # absolute path
     echo "$dir/dmtool"; return 0

@@ -19,8 +19,17 @@ if ! git -C "$KERNEL" log -1 --format=%s 2>/dev/null | grep -q "$PIN"; then
 fi
 
 mkdir -p "$DEST/licenses"
-# 1. the plugin + the public-repo README (already EUPL-aware: per-artifact licensing + source pointer + disclaimer)
+# 1a. the CLAUDE CODE plugin at the mirror ROOT + the public-repo README (already EUPL-aware: per-artifact
+#     licensing + source pointer + disclaimer). Claude's marketplace.json has source "." → the repo root.
 cp -Rf "$ROOT/plugin/." "$DEST/"
+# 1b. the CODEX plugin under codex/ (its hooks.json differs from Claude's, so it can't share the root),
+#     with its marketplace manifest at the Codex-standard location pointing back at ./codex (git-subdir).
+mkdir -p "$DEST/codex" "$DEST/.agents/plugins"
+cp -Rf "$ROOT/plugin-codex/.codex-plugin"    "$DEST/codex/"
+cp -Rf "$ROOT/plugin-codex/hooks"            "$DEST/codex/"
+cp -Rf "$ROOT/plugin-codex/skills"           "$DEST/codex/"
+cp -f  "$ROOT/plugin-codex/AGENTS.md"        "$DEST/codex/"
+cp -f  "$ROOT/plugin-codex/marketplace.json" "$DEST/.agents/plugins/marketplace.json"
 # 2. EUPL-1.2 compliance bundle, from the pinned kernel
 cp -f  "$KERNEL/licenses/EUPL-1.2.txt"  "$DEST/LICENSE"           # the artifact is offered under EUPL-1.2
 cp -f  "$KERNEL/LICENSE"                "$DEST/KERNEL-LICENSE"    # the embedded kernel's own (dual) licence

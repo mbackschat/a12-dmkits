@@ -64,7 +64,7 @@ Three things make this more than a string builder:
 | You are… | Use | Why |
 |---|---|---|
 | a **developer**, editing models in your own JVM project | **rulekit / modelkit** as a library | typed builders, kernel-checked, in your own code & compiler |
-| a **modeller / BA**, or an **LLM agent** | **`dmtool`**, the CLI | verbs + JSON I/O, JVM bundled, self-describing — no Java toolchain to install |
+| a **modeller / BA**, or an **LLM agent** | **`dmtool`**, the CLI | verbs + JSON I/O, single native binary, self-describing — no Java toolchain to install |
 
 *(Java first; a TypeScript twin may follow.)*
 
@@ -252,6 +252,22 @@ More library idioms and the design rationale live in the [API study](docs/API-PO
 ## `dmtool` — the CLI
 
 Same engine, no Java required. Every command is `dmtool -m <model> <target> <op> [args]` and prints a uniform JSON **result envelope** (`{ok, valid, outcome, data, diagnostics[], …}`). It is **self-describing**, so a cold agent (or you) can discover the whole surface from the binary alone.
+
+### Use it inside your coding agent (Claude Code, Codex)
+
+`dmtool` is **LLM-agent-first**. The primary way to use it is to install it as a **plugin** for your coding agent: the plugin downloads the right native binary for your OS (anonymous, checksum-verified) and loads a **rule-authoring skill** that teaches the judgment the tool's help can't — condition *polarity*, error-field paths, iteration scope. The same canonical skill backs both agents.
+
+```text
+# Claude Code
+/plugin marketplace add mbackschat/dmtool-releases
+/plugin install dmtool
+
+# OpenAI Codex
+codex plugin marketplace add mbackschat/dmtool-releases
+codex plugin install dmtool
+```
+
+The plugins, the per-OS binaries, and full install/licensing details live in the public release repo — **[`dmtool-releases`](https://github.com/mbackschat/dmtool-releases)**. (This source repo holds the plugin *source* under [`plugin/`](plugin/) (Claude Code) and [`plugin-codex/`](plugin-codex/) (Codex); they ship to the mirror at release.)
 
 ### Discover the tool itself
 

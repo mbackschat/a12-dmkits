@@ -23,7 +23,7 @@
 ## Later iterations
 
 - **Iteration 2 — CI matrix** (in the public mirror, free Actions): linux-x64 + windows-x64 native binaries; checkout private source via token (maintainer-triggered only); draft-release + mac-local upload. Decide Linux mostly-static then.
-- **Iteration 3 — Claude Code plugin: SCAFFOLDED** in [`plugin/`](../plugin/) (manifest + marketplace + `SessionStart` hook with dev-fallback + synced skill + README; CI freshness-locked). Hook *logic* verified locally. **Remaining:** test in a real CC session (`claude --plugin-dir ./plugin` → SessionStart fires, PATH injection, `/plugin install`); then at release, push `plugin/*` to the public mirror root. Detail: RELEASE-SPEC §6.
+- **Iteration 3 — agent plugins (Claude Code + Codex): SCAFFOLDED** in [`plugin/`](../plugin/) + [`plugin-codex/`](../plugin-codex/) (per-agent manifest + marketplace + `SessionStart` hook; shared skill + agent-agnostic downloader copy-synced by `scripts/sync-plugin-assets.sh`, CI freshness-locked). Hook *logic* verified locally under both Claude and Codex env profiles. **Remaining:** test in a real session each (`claude --plugin-dir ./plugin`; `codex plugin marketplace add` + install) — SessionStart fires, PATH injection, install flow; then at release, `assemble-release-repo.sh` pushes both to the mirror (Claude at root, Codex under `codex/`). Detail: RELEASE-SPEC §6 / §12.
 
 ## Still-open (resolve in-flight)
 

@@ -69,12 +69,12 @@ jobs:
           GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated
         run: ./gradlew --no-daemon test :adapter:test :cli:test
 
-      # The Claude Code plugin bundles a COPY of the canonical skill (skill/SKILL.md → plugin/skills/
-      # a12-rules/SKILL.md, synced by scripts/sync-plugin-skill.sh). Fail loudly if the copy drifts —
-      # single source of truth is skill/SKILL.md; the plugin copy must be regenerated, never hand-edited.
-      - name: Verify the plugin skill is in sync with skill/SKILL.md
+      # Both agent plugins (Claude Code, Codex) bundle COPIES of the single-source assets — skill/SKILL.md
+      # and scripts/ensure-dmtool.sh — synced by scripts/sync-plugin-assets.sh. Fail loudly if any copy
+      # drifts; the canonical sources are the originals and the plugin copies are regenerated, never edited.
+      - name: Verify the plugin assets are in sync (skill + downloader, all agents)
         working-directory: a12-dmkits
-        run: ./scripts/sync-plugin-skill.sh --check
+        run: ./scripts/sync-plugin-assets.sh --check
 
       # Doc-drift gate (F11 "loud detection at build"): the examples/ Showboat demos are executable
       # docs — `verify` re-runs each captured CLI invocation and exact-matches its recorded output. A

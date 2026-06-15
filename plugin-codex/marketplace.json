@@ -1,0 +1,17 @@
+{
+  "name": "dmtool",
+  "owner": { "name": "Martin Backschat", "url": "https://github.com/mbackschat" },
+  "plugins": [
+    {
+      "name": "dmtool",
+      "description": "Author and validate A12 Kernel validation rules with the dmtool CLI (native binary + rule-authoring skill).",
+      "category": "Productivity",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/mbackschat/dmtool-releases.git",
+        "path": "./codex",
+        "ref": "main"
+      }
+    }
+  ]
+}
