@@ -41,6 +41,10 @@ The CLI is **self-describing** — `dmtool --help`, `dmtool manifest`, `dmtool o
 
 > The native binary covers rule **authoring / checking / structure / read**. The runtime-evaluation verbs (`model eval`, `rule test`, `model compute`) require a JVM and are **not** in the native binary.
 
+## Changelog
+
+What changed in each release: [`CHANGELOG.md`](CHANGELOG.md).
+
 ## Licensing (per artifact)
 
 - **Native CLI binaries → EUPL-1.2.** They embed the A12 Kernel, so each binary is offered under the European Union Public Licence v1.2. See [`LICENSE`](LICENSE), [`NOTICE`](NOTICE), and [`THIRD_PARTY_NOTICES`](THIRD_PARTY_NOTICES). **Kernel source** (EUPL-1.2): <https://github.com/mgm-tp> (satisfies EUPL Art. 5).
