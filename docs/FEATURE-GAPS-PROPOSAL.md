@@ -33,8 +33,7 @@ Each gap: the BA need → what's missing today → the proposal. Ordered by valu
 ### G2 — Common validation-pattern templates  *(medium–large; highest leverage)*
 
 - **BA need.** The BA doc is organized around *typical* validation tasks — required-when, date-order, mutually-exclusive, at-least-one-of, sum-of-line-items. The agent re-derives each from scratch, re-risking polarity and error-field choice every time.
-- **Today.** Only **group** templates exist (`group multiselect` / `group attachment`); there is no rule/computation pattern catalog.
-- **Proposal.** A parameterized **pattern catalog** — `dmtool patterns` lists named idioms with their DSL skeleton + parameters, and an authoring path scaffolds the rule/computation with **correct polarity and a valid error field baked in**. The rule/computation-level peer of the group templates; it attacks the polarity trap *structurally*, not just by lint. The most "BA-shaped" capability still missing.
+- **Status — largely shipped (reconcile to the §9 board).** The parameterized **`dmtool patterns`** catalog now exists with named rule idioms + params (`date-order`, `mutually-exclusive`, `at-least-one-of`, `required-when`, `sum-of-line-items`) and an `--apply` authoring path that bakes in correct polarity + a valid error field. *Remaining backlog*: extend beyond `kind:rule` (computation idioms; field-constraint idioms) — and G7 connects the *field-config* constraint vocabulary to the operator side, which the rule-only catalog doesn't cover. The original "no catalog exists" claim is obsolete; the verb attacks the polarity trap structurally, as planned.
 
 ### G3 — Negation / opposite discoverability  *(small)*
 
@@ -60,11 +59,16 @@ Each gap: the BA need → what's missing today → the proposal. Ordered by valu
 - **Today.** `field` has add / read / remove / rename / move but **no config-edit**; `config modify` is document-level only. So the only path is **delete the field and re-create it** with a rich spec. A real agent session did exactly this ("No field edit — I'll re-create PLZ"), and because delete-then-recreate isn't atomic, a failure mid-sequence left the model in an uncertain state (the field gone, the re-add not landed).
 - **Proposal.** A `field modify <spec.json>` (or `field config`) that edits a field's type spec in place — the CLI peer of the library's typed per-type field config (the DG1 `GroupEditor` builders). Removes the destructive workaround and the non-atomic-state trap.
 
-### G7 — Signpost "how do I constrain a value?" across the two mechanisms  *(small)*
+### G7 — Bridge field-config constraints ↔ rule operators with a factual `seeAlso`  *(small–medium; neutral)*
 
-- **BA need.** "Constrain this string to a pattern" has **two** valid expressions — a **field-level** `string.pattern` + `patternMessage`, or a **rule-level** `PatternViolated` operator — with different trade-offs (intrinsic field constraint vs. a standalone rule with its own message/severity).
-- **Today.** Both are discoverable separately (`schema field add` shows `pattern`; `operators PatternViolated` shows the operator) but **nothing connects them or guides the choice**. The same agent session had to explore to learn both existed ("How to learn about string pattern?").
-- **Proposal.** Cross-link them in the self-describing surface: a `seeAlso` from the operator catalog's `PatternViolated`/`PatternMatched` to the field-level `string.pattern` (and back from `schema field add`), with a one-line "field-level vs rule-level" note. Pairs naturally with G3's operator-catalog cross-references.
+- **Need.** "Constrain a value" almost always has **two** expressions — a **field-config** constraint (intrinsic to the field) *or* a **rule** using the matching operator — and this is **general across field types**, not a STRING/pattern special case:
+  - **STRING** `pattern` ↔ `PatternViolated`/`PatternMatched`; `min/maxLength` ↔ `Length`.
+  - **NUMBER** value bounds ↔ `LessThan`/`GreaterThan`/`Equal`, `DiffersWithToleranceRange*` (decimal **scale/fractionDigits** is config-only — no operator twin).
+  - **ENUM** the allowed value set ↔ `FieldValueIncludedInValueList` family / `EnumCategory` (the cleanest second instance).
+  - **DATE/TIME/DATETIME** little intrinsic config (mostly `precision`); the constraints are *relational* → comparisons + `DifferenceIn…`/`…FromDate` operators (**rule-dominant** here).
+  - **CUSTOM / TYPEDEF** constraints are **indirected** — defined by the custom type / the referenced typedef.
+- **Today.** Each mechanism is discoverable *separately* (`schema field add` shows the per-type config; `operators <id>` self-describes the operator incl. regex dialect/anchoring/gotchas) but **nothing connects them**, so an agent must already know to look in both places ("How to learn about string pattern?").
+- **Proposal — neutral, not opinionated.** Add a **type-aware, partial, bidirectional `seeAlso`** between field-config constraints and operators: `operators <id>` → the related field-config constraint(s); `schema field add`'s per-type knobs → the related operator(s); single-sourced so both directions derive from one map. It states *what relates and what's available* — including an **honest "none" / "see typedef X" / "see custom type Y"**, which is real signal (e.g. "decimal scale has no rule twin"; "this temporal constraint is rule-only"). **Which mechanism to choose is NOT the tool's call** — the per-type variety (config-rich for STRING/NUMBER/ENUM, rule-dominant for dates, indirected for custom/typedef) means a generic default would be wrong as often as right. Modeling judgment stays **skill territory**, where a real modeler can weigh it (the skill is exactly the expert-authored-judgment mechanism; the tool stays factual). Composes with G3's operator-catalog relations (`opposite`/`family`).
 
 ---
 
@@ -73,7 +77,7 @@ Each gap: the BA need → what's missing today → the proposal. Ordered by valu
 - **First, the cheap high-value pair:** **G1** (close the loop on the BA's deliverable) and **G3** (serve the doc's negation model) — both small.
 - **Then the lever:** **G2** — the biggest BA-efficiency win and the most BA-shaped feature still missing.
 - **Then the round-trip-savers:** **G4**, **G5**.
-- **G6** (field-config edit) is the highest-value of the agent-surfaced pair — it removes a destructive workaround; **G7** (pattern signpost) is cheap and rides G3's cross-reference work.
+- **G6** (field-config edit) is the highest-value of the agent-surfaced pair — it removes a destructive workaround; **G7** (the factual constraint↔operator `seeAlso`) is the neutral discoverability bridge and composes with G3's operator relations.
 
 When one ships it graduates into the **shipped** record — a row on the [`API-POC-STUDY.md` §9 board](API-POC-STUDY.md) and, for a CLI verb, a [`CLI-SPEC.md`](CLI-SPEC.md) contract — with its own test lock, exactly as the former structural inventory did.
 
