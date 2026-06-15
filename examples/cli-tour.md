@@ -38,6 +38,7 @@ computation format
 computation modify
 computation remove
 field add
+field modify
 field read
 field remove
 field rename

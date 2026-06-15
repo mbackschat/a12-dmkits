@@ -12,9 +12,9 @@ import picocli.CommandLine.Spec;
  * Refactor ops (§6) {@code rename} and {@code move} (both reference-preserving via the kernel's MoveSupportDM).
  */
 @Command(name = "field", mixinStandardHelpOptions = true,
-        description = "Field operations: add, read, remove, rename, move.",
-        subcommands = { FieldAddCommand.class, FieldReadCommand.class, FieldRemoveCommand.class,
-                FieldRenameCommand.class, FieldMoveCommand.class })
+        description = "Field operations: add, modify, read, remove, rename, move.",
+        subcommands = { FieldAddCommand.class, FieldModifyCommand.class, FieldReadCommand.class,
+                FieldRemoveCommand.class, FieldRenameCommand.class, FieldMoveCommand.class })
 final class FieldCommand implements Callable<Integer> {
 
     @Spec
