@@ -183,7 +183,7 @@ The tool is **not Claude-specific**. The CLI is a self-describing binary any cod
 
 ## 13. Rationale (the durable *why*)
 
-- **Native over jlink/jpackage** — single self-contained binary, ~16× faster start, no JVM to provision; the closed-world risk is bounded by §5's verification gate and the §3a hard ceiling.
+- **Native over jlink/jpackage** — single self-contained binary, no JVM to provision; **measured 2026-06-15** (not estimated): native **33 MB / ~90 ms** vs B1 **119–147 MB / ~600 ms** (~4× size, ~7× start), and B1 passes 6/6 demos incl. runtime-eval. The closed-world risk is bounded by **rule-based reflection registration + the no-crash battery** ([`NATIVE-IMAGE-GRAALVM.md`](NATIVE-IMAGE-GRAALVM.md) §3.4/§3.6) — which closed the v0.1.0/v0.1.1 capture-bound defects — and the §3a Groovy hard ceiling. **B1 is the measured escape hatch** (§10 there), flipped to only if shipping the runtime-eval verbs becomes a real need.
 - **CI matrix, mac built locally** — native-image can't cross-compile (so "all OSes at once" = parallel CI jobs); macOS bills at a 10× multiplier (the only expensive line) and the signing cert lives locally, so mac stays off CI.
 - **No signing at v1** — the audience is terminal-capable and the primary delivery paths (plugin hook, package managers, `curl`) don't trip the OS guards at all; checksums + an escape hatch cover the rest. Signing is pure cost until friction is observed.
 - **Local-only library, SemVer** — Central is structurally blocked by the un-published kernel dependency; SemVer (not CalVer) keeps the project's release identity independent of the upstream calendar and preserves the API break-signal library consumers need.
