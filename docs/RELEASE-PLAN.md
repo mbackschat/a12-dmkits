@@ -21,7 +21,7 @@
 1. [ ] **Create the public mirror repo** `dmtool-releases` (public). *(Outward, irreversible — needs explicit go-ahead.)*
 2. [ ] **Push the mirror tree** — `scripts/assemble-release-repo.sh` → push the assembled tree (both plugins + EUPL bundle + README + CHANGELOG) to the mirror.
 3. [ ] **Tag + release** — tag `v0.1.0` on this (source) repo; publish the mac binary + `SHA256SUMS` to the mirror's Release `v0.1.0` (title `v0.1.0 — kernel 30.8.1 (A12 Tools 2025.06-ext5)`; notes per RELEASE-SPEC §2; flip the CHANGELOG entry's date).
-4. [ ] **Top README** — add a short raw-binary "Install (macOS)" section (download · `xattr -d com.apple.quarantine` · `chmod +x` · `shasum -a 256 -c`). The agent-plugin install path is already documented.
+_(The top-README raw-binary "Install (macOS)" section is done — committed.)_
 
 ## Still-open (resolve in-flight)
 

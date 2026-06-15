@@ -269,6 +269,24 @@ codex plugin add dmtool
 
 The plugins, the per-OS binaries, and full install/licensing details live in the public release repo — **[`dmtool-releases`](https://github.com/mbackschat/dmtool-releases)**. (This source repo holds the plugin *source* under [`plugin/`](plugin/) (Claude Code) and [`plugin-codex/`](plugin-codex/) (Codex); they ship to the mirror at release.)
 
+### Install the binary directly (no agent)
+
+For terminal use without an agent, grab the native binary from the [`dmtool-releases`](https://github.com/mbackschat/dmtool-releases) Releases and verify its checksum:
+
+```sh
+# macOS (Apple Silicon)
+base=https://github.com/mbackschat/dmtool-releases/releases/latest/download
+curl -fsSLO "$base/dmtool-macos-arm64"
+curl -fsSLO "$base/SHA256SUMS"
+shasum -a 256 -c SHA256SUMS --ignore-missing             # verify integrity
+chmod +x dmtool-macos-arm64
+xattr -d com.apple.quarantine dmtool-macos-arm64 2>/dev/null || true   # only if a browser download was quarantined
+sudo mv dmtool-macos-arm64 /usr/local/bin/dmtool         # put it on PATH as `dmtool`
+dmtool --version
+```
+
+Linux/Windows binaries and Homebrew/Scoop come later; the binary is **EUPL-1.2** (it embeds the A12 Kernel — see the mirror's `LICENSE`/`NOTICE`). The runtime-evaluation verbs (`model eval`, `rule test`, `model compute`) need a JVM and are **not** in the native binary.
+
 ### Discover the tool itself
 
 ```sh
