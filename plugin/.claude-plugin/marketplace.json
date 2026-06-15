@@ -5,7 +5,7 @@
     {
       "name": "dmtool",
       "source": ".",
-      "description": "Author and validate A12 Kernel validation rules with the dmtool CLI (native binary + rule-authoring skill)."
+      "description": "Author, validate, and safely edit A12 Kernel document models — rules, computed fields, and structure (fields, groups, type-defs, includes) — with the dmtool CLI (native binary + authoring skill)."
     }
   ]
 }

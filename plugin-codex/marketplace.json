@@ -1,7 +1,7 @@
 {
   "name": "dmtool",
   "interface": {
-    "displayName": "dmtool — A12 rule authoring"
+    "displayName": "dmtool — A12 document-model authoring"
   },
   "plugins": [
     {
