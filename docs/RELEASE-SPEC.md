@@ -17,7 +17,7 @@ The **command name is `dmtool`** everywhere it is publicly invoked. `:cli`'s `in
 
 ## 2. Versioning & naming — SemVer + compatibility metadata
 
-**Scheme: SemVer** (`MAJOR.MINOR.PATCH`, tag `vMAJOR.MINOR.PATCH`). The project version is the project's **own** release identity; the upstream kernel is recorded as **compatibility metadata**, never folded into the version string. (CalVer-keyed-to-upstream was considered and rejected — it re-collapses the two identities and erases the library's break-signal; full rationale in the plan's D9, summarized in §12.)
+**Scheme: SemVer** (`MAJOR.MINOR.PATCH`, tag `vMAJOR.MINOR.PATCH`). The project version is the project's **own** release identity; the upstream kernel is recorded as **compatibility metadata**, never folded into the version string. (CalVer-keyed-to-upstream was considered and rejected — it re-collapses the two identities and erases the library's break-signal; full rationale in the plan's D9, summarized in §13.)
 
 - **0.x** while the public library API stabilizes; **`1.0.0`** when it does. MAJOR = breaking API change, MINOR = additive, PATCH = fixes.
 - **The compatibility key is the kernel semver** (currently `30.8.1`; the A12 Tools distribution label `2025.06-ext5` is a secondary human tag). It is already encoded where consumers look:
@@ -136,7 +136,27 @@ A static Maven repo (one-line `maven { url }` consume) is a later upgrade; it do
 3. **LLM API doc (`llms.txt`-style)** — a flat, single-file API reference for coding agents (public types/signatures + typed-builder idioms + DSL entry points + short usage), distinct from the human JavaDoc. **Must be derived/CI-locked** against the real API (the no-drift discipline — assembled from the CI-locked typed-builder snippets + signatures), not hand-maintained. Public URL an agent can fetch.
 4. **Developer skill** — the library-persona analog of [`skill/SKILL.md`](../skill/SKILL.md): teaches *judgment* for authoring via the typed builder / `EditSession` / DSL (polarity, paths, iteration — same kernel semantics), **not** the API catalog (JavaDoc + `llms.txt`'s job — keep it minimal, mirroring "self-describing surface > skill"). Complements the EVAL-SPEC §2 "Developer path."
 
-## 12. Rationale (the durable *why*)
+## 12. Multi-agent packaging (Codex, Gemini) — DEFERRED (post-v1)
+
+The tool is **not Claude-specific**. The CLI is a self-describing binary any coding agent can shell out to, and the judgment layer is plain markdown — so portability is mostly **reuse**, with a thin per-agent wrapper as the only real delta.
+
+**Reused as-is (zero per-agent work):**
+- **The binary** — `dmtool` is agent-agnostic; the §6 self-describing surface (`manifest` / `schema` / `--help` / diagnostics) is exactly what lets *any* cold agent discover the verbs and their I/O without host-specific glue. No changes.
+- **The judgment content** — [`skill/SKILL.md`](../skill/SKILL.md) is canonical markdown; the same prose teaches polarity / paths / iteration to any agent. It stays single-source: the §6 sync discipline extends per agent (each wrapper gets a *synced* copy + a freshness check, never hand-edited).
+
+**The per-agent delta — a thin wrapper:**
+
+| Agent | Distribution vehicle | Project context file | Binary delivery |
+|---|---|---|---|
+| **Claude Code** (v1) | plugin ([`plugin/`](../plugin/)) | the bundled skill | `SessionStart` hook downloads from the mirror (§6) |
+| **OpenAI Codex** | a Codex skill/plugin equivalent | `AGENTS.md` | same mirror binary, fetched by the wrapper's setup step |
+| **Gemini** | a Gemini CLI extension | `GEMINI.md` | same mirror binary |
+
+- **Effort: ~a day each**, dominated by learning the host's packaging format + its binary-on-PATH mechanism — *not* by content, which is shared from the canonical skill.
+- **MCP is the write-once alternative** — one MCP server reachable by all three agents instead of three native wrappers. Rejected as the *primary* path (same reasoning as §6's vehicle choice): it adds a running process and undercuts the offline self-describing-CLI thesis. Keep it on the table only if maintaining several native wrappers becomes the actual friction.
+- **Why post-v1:** v1 proves the model on one host (Claude Code). Porting is mechanical once the canonical skill and the mirror download path are stable, and it gains nothing until there's demand from Codex/Gemini users.
+
+## 13. Rationale (the durable *why*)
 
 - **Native over jlink/jpackage** — single self-contained binary, ~16× faster start, no JVM to provision; the closed-world risk is bounded by §5's verification gate and the §3a hard ceiling.
 - **CI matrix, mac built locally** — native-image can't cross-compile (so "all OSes at once" = parallel CI jobs); macOS bills at a 10× multiplier (the only expensive line) and the signing cert lives locally, so mac stays off CI.

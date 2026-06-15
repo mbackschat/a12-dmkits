@@ -10,7 +10,7 @@
 
 - ✅ `cli`→`dmtool` rename (launcher, skill, eval, shim) — committed, verified.
 - ✅ Native build infra: GraalVM 25 plugin, `-Os`, native-only Groovy exclusion, comprehensive reflection capture (`scripts/capture-native-config.sh`), the verb-hiding gate (`Cli.JVM_ONLY_VERBS` + `NativeImageVerbHidingTest`), the native gate (`scripts/native-gate.sh`) — committed, native gate GREEN (5/6 + 1 skip).
-- ✅ All release decisions (RELEASE-SPEC + its §12 rationale).
+- ✅ All release decisions (RELEASE-SPEC + its §13 rationale).
 
 ## Remaining steps — iteration 1 (local mac release)
 
