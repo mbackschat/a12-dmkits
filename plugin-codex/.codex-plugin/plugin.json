@@ -1,6 +1,6 @@
 {
   "name": "dmtool",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Author and validate A12 Kernel validation rules with the dmtool CLI — bundles the native binary (downloaded on first use) and the rule-authoring skill. Targets A12 Kernel 30.8.1 (A12 Tools 2025.06-ext5).",
   "author": { "name": "Martin Backschat" },
   "homepage": "https://github.com/mbackschat/a12-dmtool-releases",
