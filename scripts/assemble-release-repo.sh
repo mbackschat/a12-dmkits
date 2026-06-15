@@ -58,6 +58,13 @@ are executable docs — kept in sync with the live CLI by a CI gate in the sourc
 > `schema`, `--help`) need no model, and the model-based ones use the sample models shipped in
 > [`models/`](models/). (`cli-runtime`'s verbs are JVM-only — not in the native binary.)
 EOF
+# 1d. the mirror's own GitHub Actions workflow(s) — single-sourced here (inert under .github/mirror-workflows/,
+#     i.e. NOT a workflow in this private repo) and shipped to the mirror's .github/workflows/ so the public
+#     repo can build the per-OS native binaries (RELEASE-SPEC §4). Must be assembled (not hand-kept on the
+#     mirror): the release push rsyncs with --delete, so anything not in this tree is wiped.
+mkdir -p "$DEST/.github/workflows"
+cp -f "$ROOT"/.github/mirror-workflows/*.yml "$DEST/.github/workflows/"
+
 # 2. EUPL-1.2 compliance bundle, from the pinned kernel
 cp -f  "$KERNEL/licenses/EUPL-1.2.txt"  "$DEST/LICENSE"           # the artifact is offered under EUPL-1.2
 cp -f  "$KERNEL/LICENSE"                "$DEST/KERNEL-LICENSE"    # the embedded kernel's own (dual) licence

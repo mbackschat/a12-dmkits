@@ -58,7 +58,25 @@ git tag vX.Y.Z ──► (CI, when present)
 - Tag command form: `git tag -a "vX.Y.Z" -m "…"; gh release create "vX.Y.Z" --title "vX.Y.Z — kernel <kver> (A12 Tools <quarter>)" --notes-file … --latest`.
 - **Changelog:** [`plugin/CHANGELOG.md`](../plugin/CHANGELOG.md) (ships to the mirror root) is the public record of the released artifacts. Before tagging, flip the new version's `— unreleased` to the date and confirm the entries; that section doubles as the release `--notes`. It tracks only the public artifact (the CLI + plugins), never internal development.
 
-**CI runs in the PUBLIC mirror repo — free Actions (incl. the 10× macOS / 2× Windows multipliers), no Team plan needed.** The mirror's build workflow **checks out the private source via a read-token secret**, bootstraps the kernel, builds linux/windows native, and publishes to the mirror's Releases. **Guardrail:** the workflow is **maintainer-triggered only** (`workflow_dispatch` / tag / `repository_dispatch` from the private repo) — **never `pull_request`** — so the private-source token is never exposed to a fork PR. The private source only lands transiently on the ephemeral runner; only the binaries become public. (mac stays local; on a Team plan linux+windows are already ~free within the 3000 included minutes, so this mainly buys "no Team needed" + headroom. Iteration-3 concern — no CI until the matrix lands.)
+**CI runs in the PUBLIC mirror repo — free Actions (incl. the 10× macOS / 2× Windows multipliers), no Team plan needed.** The mirror's build workflow **checks out the private source via a read-token secret**, bootstraps the kernel, builds linux/windows native, and publishes to the mirror's Releases. **Guardrail:** the workflow is **maintainer-triggered only** (`workflow_dispatch` / tag / `repository_dispatch` from the private repo) — **never `pull_request`** — so the private-source token is never exposed to a fork PR. The private source only lands transiently on the ephemeral runner; only the binaries become public. (mac stays local; on a Team plan linux+windows are already ~free within the 3000 included minutes, so this mainly buys "no Team needed" + headroom.)
+
+### The mirror's `build-native` workflow (linux-x64 + windows-x64)
+
+Single-sourced in the private repo at **`.github/mirror-workflows/build-native.yml`** (inert there — *not* under `.github/workflows/`, so it never runs in the private repo) and shipped to the mirror's `.github/workflows/` by `assemble-release-repo.sh`. It **must** be assembled, not hand-kept on the mirror: the release push rsyncs with `--delete`, so anything not in the assembled tree is wiped.
+
+**One-time setup (before the first run):** add a fine-grained PAT with **`contents: read` on `a12-dmkits` only** as the mirror secret **`SOURCE_REPO_TOKEN`**. (The mirror's default `GITHUB_TOKEN` can read/write the *mirror's* own releases but cannot read the private source.)
+
+**Run it:** the mirror → Actions → *build-native* → *Run workflow*, with `source_ref` (the `a12-dmkits` tag/branch to build, e.g. `v0.1.1`) and `release_tag` (the mirror release to attach to; blank = upload workflow artifacts only).
+
+The three jobs and why they're shaped this way:
+
+| Job | Runner | What | Why |
+|---|---|---|---|
+| `bootstrap-kernel` | ubuntu | rebuild the kernel from public sources (`a12-kernel-bootstrap`), cache `~/.m2/.../com/mgmtp`, upload it as the `kernel-m2` artifact | the kernel is on no public Maven repo; the bootstrap is **bash**, so it runs on Linux *once* and the OS-independent JARs are handed to every native job — Windows never runs the bash bootstrap |
+| `build-native` (matrix: linux-x64, windows-x64) | ubuntu / windows | download `kernel-m2`; set up **JDK 21** (Gradle toolchain) + **GraalVM 25** (native-image via `GRAALVM_HOME`, since `toolchainDetection=false`); `:cli:nativeCompile`; verify | the toolchain is 21 but native-image needs GraalVM 25 — both must be present, with the 21 toolchain found via `-Porg.gradle.java.installations.fromEnv=JAVA_HOME_21_X64` |
+| `publish` (only if `release_tag` set) | ubuntu | upload the two binaries to the release, then **regenerate `SHA256SUMS` over all assets** (incl. the locally-uploaded mac binary) | keeps the checksum file covering the full per-OS set |
+
+**Per-OS verification asymmetry (deliberate):** Linux runs the full **`native-gate.sh`** (byte-for-byte showboat, §5). Windows runs a **lighter smoke** (`--version` / `manifest` / `model validate` / `rule read`, CRLF-normalized) instead — the showboat demos are bash/`jq`/`python` heredocs that don't run cleanly on Windows, but the smoke still exercises the reflection metadata, which is the real cross-OS porting risk (it's captured on macOS; if Windows surfaces a `MissingReflection`/`MissingResource`, add a Windows `capture-native-config.sh` run).
 
 ## 5. The verification gate — native↔JVM byte-identity
 

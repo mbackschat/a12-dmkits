@@ -1,0 +1,216 @@
+name: build-native
+
+# Builds the dmtool native binaries (linux-x64, windows-x64) on the PUBLIC mirror's free Actions and
+# attaches them to a mirror Release. RELEASE-SPEC §4.
+#
+# This file is SINGLE-SOURCED in the private repo at .github/mirror-workflows/build-native.yml (inert
+# there — not under .github/workflows/) and shipped to the mirror's .github/workflows/ by
+# scripts/assemble-release-repo.sh. Edit it there, never on the mirror.
+#
+# WHY a kernel-bootstrap job: the A12 kernel is on no public Maven repo, so a Linux job rebuilds it
+# from public sources (a12-kernel-bootstrap) and hands the OS-independent JARs to the per-OS native
+# jobs as an artifact — so the *bash* bootstrap never has to run on Windows.
+#
+# SECURITY: the source repo (a12-dmkits) is PRIVATE. This workflow reads it via a fine-grained PAT in
+# the secret SOURCE_REPO_TOKEN (contents:read on a12-dmkits only). It is therefore maintainer-triggered
+# ONLY (workflow_dispatch) — NEVER pull_request — so a fork PR can never see the token.
+#
+# macOS arm64 is built + uploaded locally by the maintainer (native-image can't cross-compile, and macOS
+# CI bills 10×); this workflow covers linux + windows, then regenerates SHA256SUMS over ALL release assets.
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: "a12-dmkits ref to build (tag/branch/sha)"
+        required: true
+        default: "main"
+      release_tag:
+        description: "mirror release tag to attach binaries to (e.g. v0.1.1). Blank = upload workflow artifacts only."
+        required: false
+        default: ""
+
+permissions:
+  contents: write   # the mirror's own GITHUB_TOKEN, to upload assets to the mirror's Releases
+
+env:
+  # Keep in lockstep with build.gradle ext.kernelVersion / the bootstrap cache key (KERNEL-UPGRADE).
+  KERNEL_CACHE_KEY: a12-kernel-30.8.1-base-29.3.0
+
+jobs:
+  # 1. Rebuild the kernel from public sources ONCE (Linux only — the bootstrap is bash) and publish the
+  #    resulting mavenLocal JARs as an artifact the per-OS native jobs consume.
+  bootstrap-kernel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout the kernel bootstrap kit (public)
+        uses: actions/checkout@v4
+        with:
+          repository: mbackschat/a12-kernel-bootstrap
+          path: a12-kernel-bootstrap
+
+      - name: Set up JDK 21 + 25 (for the bootstrap)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            21
+            25
+
+      - name: Cache bootstrapped kernel (mavenLocal)
+        id: kernel-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/com/mgmtp
+          key: ${{ env.KERNEL_CACHE_KEY }}-${{ hashFiles('a12-kernel-bootstrap/bootstrap.sh', 'a12-kernel-bootstrap/patches/**') }}
+
+      - name: Bootstrap the A12 kernel from public sources (cache miss only)
+        if: steps.kernel-cache.outputs.cache-hit != 'true'
+        working-directory: a12-kernel-bootstrap
+        env:
+          JAVA21_HOME: ${{ env.JAVA_HOME_21_X64 }}
+          JAVA25_HOME: ${{ env.JAVA_HOME_25_X64 }}
+        run: ./bootstrap.sh
+
+      - name: Upload the kernel m2 (OS-independent JARs)
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-m2
+          path: ~/.m2/repository/com/mgmtp
+          retention-days: 1
+          if-no-files-found: error
+
+  # 2. Build the native binary per OS. Linux runs the full showboat native gate; Windows runs a lighter
+  #    smoke (the showboat demos are bash/jq/python heredocs that don't run cleanly on Windows — §5).
+  build-native:
+    needs: bootstrap-kernel
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux-x64
+            binary: dmtool
+            asset: dmtool-linux-x64
+          - os: windows-latest
+            target: windows-x64
+            binary: dmtool.exe
+            asset: dmtool-windows-x64.exe
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - name: Checkout the PRIVATE source (a12-dmkits)
+        uses: actions/checkout@v4
+        with:
+          repository: mbackschat/a12-dmkits
+          ref: ${{ inputs.source_ref }}
+          token: ${{ secrets.SOURCE_REPO_TOKEN }}
+          path: a12-dmkits
+
+      - name: Download the bootstrapped kernel m2
+        uses: actions/download-artifact@v4
+        with:
+          name: kernel-m2
+          path: ~/.m2/repository/com/mgmtp
+
+      # The Gradle toolchain is JDK 21 (compileJava); native-image needs GraalVM 25 (toolchainDetection=false
+      # → resolved via GRAALVM_HOME). Provide BOTH: setup-java 21 first (exports JAVA_HOME_21_X64), then
+      # setup-graalvm 25 (becomes JAVA_HOME + GRAALVM_HOME). Gradle finds the 21 toolchain via fromEnv below.
+      - name: Set up JDK 21 (Gradle toolchain)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up GraalVM 25 (native-image)
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '25'
+          distribution: 'graalvm'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build the native binary
+        working-directory: a12-dmkits
+        shell: bash
+        env:
+          GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated
+        run: |
+          ./gradlew --no-daemon :cli:nativeCompile \
+            -Porg.gradle.java.installations.fromEnv=JAVA_HOME_21_X64
+          ls -la cli/build/native/nativeCompile/
+
+      # ---- Linux: the full native verification gate (byte-for-byte showboat, §5) ----
+      - name: Set up uv (for uvx showboat)
+        if: matrix.os == 'ubuntu-latest'
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+
+      - name: Native verification gate (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: a12-dmkits
+        run: ./scripts/native-gate.sh
+
+      # ---- Windows: a lighter smoke that still exercises the reflection metadata (the main porting risk),
+      #      with CRLF normalization since showboat exact-match + bash heredocs don't port (§5). ----
+      - name: Native smoke (Windows)
+        if: matrix.os == 'windows-latest'
+        working-directory: a12-dmkits
+        shell: bash
+        run: |
+          BIN="cli/build/native/nativeCompile/dmtool.exe"
+          norm() { sed 's/\r$//'; }
+          echo "== --version =="
+          "$BIN" --version | norm | tee /tmp/v.txt
+          grep -q "A12 Tools distribution: 2025.06-ext5" /tmp/v.txt
+          echo "== manifest (catalog reflection) =="
+          "$BIN" manifest | norm | grep -q '"a12Distribution": "2025.06-ext5"'
+          echo "== model validate (kernel reflection) =="
+          "$BIN" -m examples/models/order-ruled.dm.json model validate | norm | grep -q '"valid": true'
+          echo "== rule read (adapter reflection) =="
+          "$BIN" -m examples/models/order-ruled.dm.json rule read | norm | grep -q '"ok"'
+          echo "windows native smoke: OK"
+
+      - name: Stage the binary under its release asset name
+        working-directory: a12-dmkits
+        shell: bash
+        run: |
+          mkdir -p out
+          cp "cli/build/native/nativeCompile/${{ matrix.binary }}" "out/${{ matrix.asset }}"
+
+      - name: Upload the binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: a12-dmkits/out/${{ matrix.asset }}
+          if-no-files-found: error
+
+  # 3. Attach the linux + windows binaries to the named release and regenerate SHA256SUMS over EVERY
+  #    asset (incl. the locally-uploaded macOS binary), so the checksum file always covers the full set.
+  publish:
+    needs: build-native
+    if: inputs.release_tag != ''
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ inputs.release_tag }}
+    steps:
+      - name: Download the built binaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dmtool-*
+          path: dl
+          merge-multiple: true
+
+      - name: Upload binaries to the release
+        run: gh release upload "$TAG" dl/dmtool-* --clobber --repo "${{ github.repository }}"
+
+      - name: Regenerate SHA256SUMS over all release assets
+        run: |
+          mkdir all && cd all
+          # pull every current asset except the checksum file, then re-sum the full set
+          gh release download "$TAG" --repo "${{ github.repository }}" --pattern 'dmtool-*'
+          shasum -a 256 dmtool-* > SHA256SUMS
+          echo "--- SHA256SUMS ---"; cat SHA256SUMS
+          gh release upload "$TAG" SHA256SUMS --clobber --repo "${{ github.repository }}"
