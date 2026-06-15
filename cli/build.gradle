@@ -105,6 +105,12 @@ graalvmNative {
             buildArgs.add('-Os')   // size optimization (GraalVM 25 supports it; 21 didn't)
             buildArgs.add('-H:IncludeResources=catalog/.*\\.json')      // operator catalog
             buildArgs.add('-H:IncludeResources=internal/templates/.*')  // StringTemplate (checkConsistency)
+            // ALL kernel i18n error-message bundles, every locale — NOT capture-bound. The agent only records
+            // bundles a traced run actually loads, and these load lazily only when FORMATTING an error (e.g. a
+            // parser diagnostic), per locale — so capture missed `vk_parser_common_error_messages` entirely and
+            // every locale variant of the rest. A glob over the whole tree includes them by rule. (Bug: native
+            // `rule check`/`model validate` of any invalid condition failed with "Can't find bundle …".)
+            buildArgs.add('-H:IncludeResources=.*error_messages.*\\.properties')
             buildArgs.add('-H:IncludeResources=schema/.*\\.json')       // CLI schema contracts
             buildArgs.add('-H:IncludeResources=verb-examples\\.json')
             buildArgs.add('-H:IncludeResources=.*version\\.properties')

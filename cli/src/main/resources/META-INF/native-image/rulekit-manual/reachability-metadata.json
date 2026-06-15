@@ -1,0 +1,2398 @@
+{
+ "reflection": [
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.BaseCodeGenConstants",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.BaseCodeGenerator",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.BaseCodeGenerator$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.CodeGenConditionConstants",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.CodeGenConstants",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.CodeGenContext",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.CodeGenData",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.CodeGenEntityConstants",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.CodeGenEntityData",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.CodeGenRuleConstants",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.CodeGeneratorCollection",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.GeneratorConstants",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.GradleConfigGenerator",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.IBaseCodeGenData",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.ICodeGenerator",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.MapperCodeGenerator",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.MapperCodeGenerator$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.ModelBasedCodeGenerator",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.PacketCodeGenerator",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.PacketCodeGenerator$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.VBAValidationCodeGenerator",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.ValidationCodeGenerator",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.ValidationCodeGenerator$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.ValidationCodeGenerator$ValidationEntryPoint",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.XMLReaderCodeGenerator",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.XMLReaderCodeGenerator$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.XMLWriterCodeGenerator",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.XMLWriterCodeGenerator$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.AnnotationInfo",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.AnnotationInfoPair",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CharParameter",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenBaseClass",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenEREntities",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenEREntitiesBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenEntities",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenEntitiesBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenFieldDefinition",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenFieldDefinitionBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenFilterCondition",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenMetaFields",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenMetaFieldsBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenMetaModel",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenModel",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenModel$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenModelBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenModelWrapper",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenRuleCheckObject",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenRuleDefinition",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenRuleDefinition$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenRuleDefinition$ConditionClosure",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenRuleDefinitionBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenRules",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenRulesBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenTableCompressed",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenTableHolder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenTeilValidierung",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CodeGenTypescriptDefCode",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.CollectedRulesPerRootGroupCreator",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.EntityId",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.EntityId$Builder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.EntityIdList",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.EntityIdsCollector",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.GroupSortInfo",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.GroupSortInfoPair",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.GroupedEntityIdList",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.GroupedEntityIdList$GroupedEntityIdListElem",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.IntegerParameter",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.LfdNrIndexCode",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.ListParameter",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.LongParameter",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.MapParameter",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.PreliminaryRulesForErrorField",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.RulesInRootGroup",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.RulesInRootGroupBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.SemanticIndexConst",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.SemanticIndexValue",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.SetParameter",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.StringParameter",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.UsbIndexCode",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.builder.CodeGenBaseClassBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.builder.CodeGenMetaModelBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.builder.CodeGenTableCompressedBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.builder.CodeGenTableHolderBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.buildscripts.BuildGradle",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.calc.CodeGenCalc",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.calc.CodeGenCalcBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.calc.CodeGenCalcObject",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.calc.CodeGenCalculatedField",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.calc.CodeGenCalculatedFieldBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.calc.CodeGenCalculationAlternative",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.ApplicationCondition",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.CodeGenCondition",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.ComparisonCondition",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.CompositeCondition",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.ConditionSuffix",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.DateValidityCondition",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.EntityListAndValueConditionFieldList",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.EntityListAndValueConditionFieldList$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.EntityListAndValueConditionMixedList",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.EntityListAndValueConditionStringList",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.EntityListAndValueListCondition",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.EntityListCondition",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.LogOpCode",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.PredefinedTypeValidityCondition",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.RootGroupCondition",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.ValueListCondition",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.dynamicEnum.CodeGenDynamicEnumeration",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.dynamicEnum.CodeGenDynamicEnumerationBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.dynamicEnum.CodeGenDynamicEnumerationValue",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.dynamicEnum.CodeGenDynamicEnumerations",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.dynamicEnum.CodeGenDynamicEnumerationsBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.dynamicEnum.ConsistentValueOp",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.BoolConstantOperation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.CodeGenOperation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.CompositeOperation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.ConstantOperation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.EntityListOperation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.EntityListOperationWithValue",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.FieldIdOperation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.FieldIdOperationWithParameters",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.GroupOperation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.NumberOfRootGroupsOperation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.NumberOfUsbOperation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.OpListOperation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.OpListOperationWithParameter",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.PointInTimeOperation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.date.DateAddOperation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.date.DateConstructionOperation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.date.DateDiffOperation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.date.DateExtractionOperation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.date.DateRangeConstructionOperation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.date.DateRangeExtractionOperation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.date.DateRangeExtractionOperationBaseYear",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.date.DateTimeConstructionOperation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.fieldoperations.date.TimeConstructionOperation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.formatdefinition.CodeGenDateRangeTypeImpl",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.formatdefinition.CodeGenDateRangeTypeImpl$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.formatdefinition.CodeGenDateTypeImpl",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.formatdefinition.CodeGenEnumerationTypeImpl",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.formatdefinition.CodeGenExtensibleTypeImpl",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.formatdefinition.CodeGenFeldTypBasis",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.formatdefinition.CodeGenFeldTypBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.formatdefinition.CodeGenNumberTypeImpl",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.formatdefinition.CodeGenPredefinedTypeImpl",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.formatdefinition.CodeGenStringTypeImpl",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.formatdefinition.CodeGenStringTypeImpl$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.formatdefinition.CodeGenYesNoTypeImpl",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.formatdefinition.CodeGenYesTypeImpl",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.formatdefinition.JavaScriptLanguageHelper",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.mapper.CodeGenFieldMapInfo",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.mapper.CodeGenRootGroupMapInfo",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.mapper.FieldSbKzInformation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.mapper.MapInformation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.mapper.MapInformationBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.mapper.UXMLMapper",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.mapper.UXMLMapperBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.AdditionalKeyValuePair",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.AdditionalKeyValues",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.AdditionalKeyValuesDelegate",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.CodeGenMetaPflicht",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.CodeGenMetaPflichtBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.CodeGenMetaPflichtfeldInfo",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.CodeGenMetaPflichtfeldInfoBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.CodeGenMetaRules",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.CodeGenMetaRulesBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.CodeGenPresentationLanguage",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.CodeGenProjectLanguageSettings",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.DefaultPresentationInformation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.Fehlertext",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.FehlertextBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.LokalePflichtInfoMethodenAufrufCode",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaContainerInfo",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaEnumCategoryValues",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaEnumCategoryValues$EnumerationCategory",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaEnumDisplayValues",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaEnumDisplayValues$EnumerationOberflaechenWerte",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaFeld",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaFeldFehlertexte",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaFeldFehlertexte$Fehlertext",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaGemeinsameFormate",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaGemeinsamesFormat",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaIdentifier",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaIdentifier$ReferenzTyp",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaLokalePflichtInfoCode",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaLokalePflichtInfoTeilMethodenCode",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaPflichtInfoMethod",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaRegelFehlertexte",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaRegelFehlertexteBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaRegelMethod",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaRegelMethod$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaRegelReferenzen",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaRegelReferenzenBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaStringHintLists",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaStringHintLists$HintLists",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.MetaUtilService",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.util.MetaInfoCodeGenParams",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.util.MetaInfoCodeGenParams$MetaInfoValueImpl",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.util.MetaSprachUnterschiedeHelper",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.xml.MetaXMLReader",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.xml.MetaXMLReader$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.xml.MetaXMLReaderBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.xml.MetaXMLWriter",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.xml.MetaXMLWriter$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.meta.xml.MetaXMLWriterBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.teilvalidierung.CodeGenTeilvalidierungBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.teilvalidierung.RuleType",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.teilvalidierung.TeilValidierungFuehreAusCalls",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.teilvalidierung.TeilValidierungFuehreAusCaseStmtCode",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.teilvalidierung.TeilValidierungFuehreAusSplitFunctCode",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.teilvalidierung.TeilValidierungFuehreAusSplitFunctCode$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.AddValidatorMessage",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.BaseCodeGenUtils",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.BasePackageInformation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.BasePackageInformation$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.BetterObjectModelAdaptor",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.BooleanParameter",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.CalculatedFieldIterationLimitCreator",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.ClearWiederholungNichtEindeutigParameter",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.CodeGenHelper",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.CodeGenHelper$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.CodeGenHelper$1Visitor",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.CodeGenHelper$2Visitor",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.CodeGenHelper$3Visitor",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.CodeGenMap",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.CodeGenMapEntry",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.CodeGenPair",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.CodeGenParseTreeHelper",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.CodeGenParseTreeHelper$FilterConditionVisitor",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.EncodingUtil",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.EncodingUtil$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.EntityListAndValueListCreator",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.EntityListAndValueListCreator$1Visitor",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.ExtmpRuleInfo",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.FirstIndex",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.FormatUtil",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.ICPPMetaKeys",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.ICodeFragmentContainer",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.ICodeOutput",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.IndexHelper",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.InitEntityListAndValueListConditionParam",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.InitWiederholungNichtEindeutigParameter",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.IterationIndices",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.IterationLimitCreatorBase",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.LanguageHelper",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.MetaCodeGenHelper",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.NullTerminal",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.OptimizationCodeFragment",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.PackageInformation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.RepetitionNotUniqueCreator",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.RepetitionNotUniqueCreator$1Visitor",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.RuleInfo",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.RuleInfoBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.RuleIterationLimitCreator",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.STParamUtil",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.STParameterClassBase",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.SemanticIndexLevelVisitor",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.SemanticIndices4ErrorFieldVisitor",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.SemanticIndices4ErrorFieldVisitor$SemanticIndexWrapper",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.StartEndIndex",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.StringFormatUtil",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.StringTemplateErrorHandler",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.StringTemplateGroup",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.StringTemplateUtil",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.ThrowingErrorListener",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.utils.USBCodeFragment",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.reader.FeldKennungIdentifierEntry",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.reader.FeldKennungIdentifierMappingLfdNr",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.reader.FeldKennungIdentifierMappingLfdNrBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.reader.FeldKennungMapping",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.reader.UXMLMapping4Reader",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.reader.UXMLMapping4ReaderBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.reader.UsbIndexFeldMapping",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.reader.XMLReader",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.reader.XMLReaderBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.reader.ZusatzFelderListEntry",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.writer.FeldInhalteEntry",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.writer.FeldInhalteMapClassEntry",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.writer.FeldInhalteMapLfdNr",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.writer.FeldInhalteMapLfdNrBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.writer.UXMLMapping4Writer",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.writer.UXMLMapping4WriterBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.writer.UsbIndexFeldVordruckEntry",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.writer.VordruckEntry",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.writer.XMLSchemaNodeTemplate",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.writer.XMLSchemaNodeTemplate$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.writer.XMLSchemaNodesContainer",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.writer.XMLSchemaNodesContainerBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.writer.XMLWriter",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.writer.XMLWriterBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.xml.writer.ZusatzFeldEntry",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.conversion.CodeGenCreator",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.conversion.CodeGenCreator$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.error.CreateEntryException",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.vba.utils.VBAEC",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.vba.utils.VBAFieldFilter",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.vba.utils.VBAGroupFilter",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.vba.utils.VBARuleFilter",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.Computation",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.Computation$ComputationAlternative",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.Computation$ComputationAlternative$ComputationAlternativeBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.Computation$ComputationBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.Computation$ComputationPreconditionsAndOperations",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.Computation$ComputationPreconditionsAndOperations$ComputationPreconditionsAndOperationsBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.DocumentModel",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.DocumentModel$DocumentModelBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.DocumentModelConfig",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.DocumentModelConfig$DocumentModelConfigBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.DocumentModelContent",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.DocumentModelContent$DocumentModelContentBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.DocumentModelInfo",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.DocumentModelInfo$DocumentModelInfoBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.DocumentModelObjectReferenceBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.DocumentModelRoot",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.Element",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.Field",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.Field$FieldBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.FieldTypeDefinition",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.FieldTypeDefinition$FieldTypeDefinitionBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.Group",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.Group$GroupBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.Group$IncludeDetails",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.Group$IncludeDetails$IncludeDetailsBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.Group$SortField",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.Group$SortField$SortFieldBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.IAnnotated",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.IDescribed",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.IDocumentModelObjectReference",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.IEntity",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.IIdNamed",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.ILabeled",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.LocalizedTextMapBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.RequirednessConfig",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.RequirednessConfig$RequirednessConfigBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.Rule",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.Rule$RuleBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.VariantFilter",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.VariantFilter$VariantFilterBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.BooleanType",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.BooleanType$BooleanTypeBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.ConfirmType",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.ConfirmType$ConfirmTypeBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.CustomFieldType",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.CustomFieldType$CustomFieldTypeBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.DateFragmentType",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.DateFragmentType$DateFragmentTypeBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.DateRangeType",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.DateRangeType$DateRangeTypeBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.DateTimeType",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.DateTimeType$DateTimeTypeBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.DateType",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.DateType$DateTypeBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.EnumerationType",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.EnumerationType$EnumCategory",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.EnumerationType$EnumCategory$EnumCategoryBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.EnumerationType$EnumValue",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.EnumerationType$EnumValue$EnumValueBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.EnumerationType$EnumerationTypeBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.FieldType",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.NumberType",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.NumberType$NumberTypeBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.StringType",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.StringType$HintList",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.StringType$HintList$HintListBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.StringType$StringTypeBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.TimeType",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.TimeType$TimeTypeBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.TypeDefType",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.TypeDefType$TypeDefTypeBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.UnspecifiedType",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.UnspecifiedType$UnspecifiedTypeBuilder",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.DocumentModelCopyService",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.DocumentModelMigrator",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.DocumentModelMigrator$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.DocumentModelMigrator$FailableDocModelsById",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.DocumentModelReferenceResolver",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.DocumentModelSearchService",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.DocumentModelService",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.DocumentModelService$ComputationRuleAndMvkService",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.ElementContainer",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.MoveSupportDM",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.MoveSupportDM$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.OriginInComputationFragment",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.OriginInComputationFragment$TextPosition",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.codegen.A12SpecificSettings",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.codegen.cli.BatchVkValidationCodeGeneratorJs",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.codegen.cli.VkValidationCodeGeneratorCli",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.codegen.cli.VkValidationCodeGeneratorCli$1",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.join.DocumentModelJoiningService",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.join.JoiningType",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.join.addition.AdditionOrigins",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.join.addition.AnnotationsOrigins",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.join.addition.IAdditionOrigins",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.join.addition.IAdditionOrigins$IAnnotationsOrigins",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.join.item.DocumentModelJoiningItem",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.join.item.DocumentModelJoiningItem$ElementOrderForAddition",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.join.item.JoiningItem",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.services.join.item.SelectionJoiningItem",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.visitor.DocumentModelVisitor",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  },
+  {
+   "type": "com.mgmtp.a12.kernel.md.model.a12internal.visitor.DocumentModelWalker",
+   "allDeclaredMethods": true,
+   "allDeclaredConstructors": true,
+   "allDeclaredFields": true
+  }
+ ]
+}

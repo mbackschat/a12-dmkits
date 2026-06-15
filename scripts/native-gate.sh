@@ -52,6 +52,32 @@ for d in examples/cli-*.md; do
   fi
 done
 
+# Reflection/resource smoke — the paths the demos DON'T cover but that shipped native-only bugs in
+# v0.1.0/v0.1.1 (docs/NATIVE-IMAGE-GRAALVM.md §3.5). These exercise the two by-name reflective surfaces
+# (§3.4) + the i18n bundle glob, so a regression in the rule-based registration fails here, loudly. This
+# is the seed of the broader §3.6 no-crash battery; keep adding shapes as new ones are found.
 echo "----"
-if [[ $fails -eq 0 ]]; then echo "native gate: GREEN (native-applicable demos pass; JVM-only demos skipped)"; else echo "native gate: $fails native-applicable demo(s) FAILED"; fi
-exit $(( fails > 0 ? 1 : 0 ))
+SMOKE="$(mktemp -d)"
+smoke_fail=0
+schk(){ if eval "$2"; then printf 'PASS  smoke: %s\n' "$1"; else printf 'FAIL  smoke: %s\n' "$1"; smoke_fail=$((smoke_fail+1)); fi; }
+"$NATIVE" model new --id smk --locale en_US --root R -o "$SMOKE/m.json" >/dev/null 2>&1
+cat > "$SMOKE/pat.json" <<JSON
+{ "group":"/R","name":"P","kind":"STRING","string":{"pattern":"[0-9]{5}","patternMessage":"five digits"} }
+JSON
+# Jackson setter reflection (StringType.setErrorMessage) + StringTemplate codegen (CodeGenMetaFields) on validate
+schk "patterned STRING field add+validate (reflection: deserialize + codegen)" \
+  '"$NATIVE" -m "$SMOKE/m.json" field add "$SMOKE/pat.json" >/dev/null 2>&1 && "$NATIVE" -m "$SMOKE/m.json" model validate 2>&1 | grep -q "\"valid\" : true"'
+# Parser-error i18n bundle, both locales (the bug was: "Can't find bundle … locale <X>")
+"$NATIVE" -m "$SMOKE/m.json" field add --group /R --name F --kind STRING >/dev/null 2>&1
+schk "invalid condition en_US (i18n bundle: no 'Can't find bundle')" \
+  '! "$NATIVE" -m "$SMOKE/m.json" rule check --field /R/F --condition "Bogus(F)" --code X 2>&1 | grep -q "find bundle"'
+"$NATIVE" model new --id smkde --locale de_DE --root R -o "$SMOKE/de.json" >/dev/null 2>&1
+"$NATIVE" -m "$SMOKE/de.json" field add --group /R --name F --kind STRING >/dev/null 2>&1
+schk "invalid condition de_DE (i18n bundle, all locales)" \
+  '! "$NATIVE" -m "$SMOKE/de.json" rule check --field /R/F --condition "FieldNotFilled(F)" --code X 2>&1 | grep -q "find bundle"'
+rm -rf "$SMOKE"
+
+echo "----"
+total=$(( fails + smoke_fail ))
+if [[ $total -eq 0 ]]; then echo "native gate: GREEN (native-applicable demos pass; reflection/resource smoke pass; JVM-only demos skipped)"; else echo "native gate: $fails demo(s) + $smoke_fail smoke check(s) FAILED"; fi
+exit $(( total > 0 ? 1 : 0 ))
