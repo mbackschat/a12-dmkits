@@ -80,7 +80,9 @@ jobs:
       # docs — `verify` re-runs each captured CLI invocation and exact-matches its recorded output. A
       # verb rename or output-shape change that wasn't reflected in the demos fails CI here instead of
       # rotting silently (the read/export rename bit them twice before this gate existed). Needs the CLI
-      # launcher (installDist, which `bin/dmtool` resolves to) + uv (for `uvx showboat`); jq is on the runner.
+      # launcher (installDist) + uv (for `uvx showboat`); jq is on the runner. The demos call the bare
+      # `dmtool` (what an installed user types), so the repo `bin/` (the shim → installDist launcher) is
+      # put on PATH for the run; the shim resolves `dmtool` to the JVM launcher.
       - name: Build the CLI launcher (for the demos)
         working-directory: a12-dmkits
         env:
@@ -98,6 +100,7 @@ jobs:
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
         run: |
+          export PATH="$PWD/bin:$PATH"   # the demos call bare `dmtool`; the repo shim resolves it
           uvx showboat@0.6.1 verify examples/cli-tour.md
           uvx showboat@0.6.1 verify examples/cli-edit-loop.md
           uvx showboat@0.6.1 verify examples/cli-structure-edit.md

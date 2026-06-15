@@ -3,7 +3,7 @@
 *2026-06-11T23:51:18Z by Showboat 0.6.1*
 <!-- showboat-id: bf4f1a1d-efae-4469-94a0-28e706b4a839 -->
 
-The previous tours operated on the **model** — its rules and computations as text. This one runs the kernel over a document **instance** (actual field data) and asks the *runtime* questions: which rules **fire** on this data, and what does a computed field **evaluate to**? Two read-only verbs, both `JSON-in / JSON-out` over the A12 kernel, both invoked through `bin/dmtool` (the launcher shim) from the repo root; some steps also use `jq`. The document instance is a small JSON file — a nested `{"fields":{…}}` tree, grouped exactly like the model. Output blocks are captured by [showboat](https://github.com/simonw/showboat); re-check them with `uvx showboat@0.6.1 verify examples/cli-runtime.md` (exit 0 = output still matches the live CLI).
+The previous tours operated on the **model** — its rules and computations as text. This one runs the kernel over a document **instance** (actual field data) and asks the *runtime* questions: which rules **fire** on this data, and what does a computed field **evaluate to**? Two read-only verbs, both `JSON-in / JSON-out` over the A12 kernel, both invoked through `dmtool` (the launcher shim) from the repo root; some steps also use `jq`. The document instance is a small JSON file — a nested `{"fields":{…}}` tree, grouped exactly like the model. Output blocks are captured by [showboat](https://github.com/simonw/showboat); re-check them with `uvx showboat@0.6.1 verify examples/cli-runtime.md` (exit 0 = output still matches the live CLI).
 
 ## The document instance
 
@@ -25,7 +25,7 @@ cat /tmp/rt-order-violation.json
 `model eval` runs the kernel over the instance and reports, under `data.fired`, the **error codes of every rule that fired** (a rule *fires* when its violation condition evaluates true on this data). `--rule <path>` narrows the report to one stored rule and adds a `data.rule.{name,fired}` verdict for it. The flags come from the CLI itself — no external doc needed.
 
 ```bash
-bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json model eval --help
+dmtool -m cli/src/test/resources/models/order-ruled.dm.json model eval --help
 ```
 
 ```output
@@ -73,7 +73,10 @@ Run the kernel over a document INSTANCE; report which rules fire in `data`
 Evaluate the violation instance, narrowed to the date rule:
 
 ```bash
-bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json model eval --doc /tmp/rt-order-violation.json --rule /Order/DeliveryNotBeforeOrder
+dmtool -m cli/src/test/resources/models/order-ruled.dm.json \
+  model eval \
+  --doc /tmp/rt-order-violation.json \
+  --rule /Order/DeliveryNotBeforeOrder
 ```
 
 ```output
@@ -112,7 +115,10 @@ Now the **empirical polarity check** — the same rule, the same model, a *compl
 cat > /tmp/rt-order-ok.json <<'JSON'
 { "fields": { "Order": { "OrderDate": "2024-06-01", "DeliveryDate": "2024-06-15" } } }
 JSON
-bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json model eval --doc /tmp/rt-order-ok.json --rule /Order/DeliveryNotBeforeOrder
+dmtool -m cli/src/test/resources/models/order-ruled.dm.json \
+  model eval \
+  --doc /tmp/rt-order-ok.json \
+  --rule /Order/DeliveryNotBeforeOrder
 ```
 
 ```output
@@ -143,7 +149,9 @@ bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json model eval --doc
 `model eval --rule` answers "did it fire?" — but `fired: false` is **two** different things: the rule was evaluated and *passed*, or it was **never evaluated** because a field it references is formally invalid (the kernel skips a rule whose operand is *unknown*). `rule test` is the rule-first verb that tells them apart, with a three-way `verdict`. First the violation instance from above — the rule fires:
 
 ```bash
-bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule test /Order/DeliveryNotBeforeOrder --doc /tmp/rt-order-violation.json
+dmtool -m cli/src/test/resources/models/order-ruled.dm.json \
+  rule test /Order/DeliveryNotBeforeOrder \
+  --doc /tmp/rt-order-violation.json
 ```
 
 ```output
@@ -171,7 +179,9 @@ bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule test /Order
 cat > /tmp/rt-order-baddate.json <<'JSON'
 { "fields": { "Order": { "OrderDate": "2024-06-01", "DeliveryDate": "not-a-date" } } }
 JSON
-bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json rule test /Order/DeliveryNotBeforeOrder --doc /tmp/rt-order-baddate.json
+dmtool -m cli/src/test/resources/models/order-ruled.dm.json \
+  rule test /Order/DeliveryNotBeforeOrder \
+  --doc /tmp/rt-order-baddate.json
 ```
 
 ```output
@@ -206,7 +216,12 @@ You can also evaluate a rule that **isn't in the model** — `--condition "<DSL>
 cat > /tmp/rt-qty-over.json <<'JSON'
 { "fields": { "Order": { "Quantity": "150" } } }
 JSON
-bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json model eval --doc /tmp/rt-qty-over.json --condition "[/Order/Quantity] > 100" --field /Order/Quantity --code QTY_CAP
+dmtool -m cli/src/test/resources/models/order-ruled.dm.json \
+  model eval \
+  --doc /tmp/rt-qty-over.json \
+  --condition "[/Order/Quantity] > 100" \
+  --field /Order/Quantity \
+  --code QTY_CAP
 ```
 
 ```output
@@ -244,7 +259,7 @@ bin/dmtool -m cli/src/test/resources/models/order-ruled.dm.json model eval --doc
 `model compute` is the other runtime read: it runs the model's **computations** over the instance and returns each computed field's **value** under `data.computed`. We switch to the `subscription-computed` model, whose `EffectiveFeeComp` computes `/Subscription/Billing/EffectiveFee` as simply `[BaseFee]` — the effective fee equals the base fee. Give it a base fee and read back the result.
 
 ```bash
-bin/dmtool -m cli/src/test/resources/models/subscription-computed.dm.json model compute --help
+dmtool -m cli/src/test/resources/models/subscription-computed.dm.json model compute --help
 ```
 
 ```output
@@ -272,7 +287,8 @@ in `data` (read-only).
 cat > /tmp/rt-sub-filled.json <<'JSON'
 { "fields": { "Subscription": { "Billing": { "BaseFee": "49.90" } } } }
 JSON
-bin/dmtool -m cli/src/test/resources/models/subscription-computed.dm.json model compute --doc /tmp/rt-sub-filled.json
+dmtool -m cli/src/test/resources/models/subscription-computed.dm.json \
+  model compute --doc /tmp/rt-sub-filled.json
 ```
 
 ```output
@@ -303,7 +319,8 @@ Now the **empty-operand** case — the same computation, but `BaseFee` is absent
 cat > /tmp/rt-sub-empty.json <<'JSON'
 { "fields": { "Subscription": { "Billing": { } } } }
 JSON
-bin/dmtool -m cli/src/test/resources/models/subscription-computed.dm.json model compute --doc /tmp/rt-sub-empty.json
+dmtool -m cli/src/test/resources/models/subscription-computed.dm.json \
+  model compute --doc /tmp/rt-sub-empty.json
 ```
 
 ```output

@@ -18,7 +18,14 @@ uvx showboat@0.6.1 verify examples/cli-tour.md
 uvx showboat@0.6.1 extract examples/cli-tour.md
 ```
 
-Run from the **repo root** — commands use repo-root-relative paths (`bin/dmtool …`, `cli/src/test/...`). `JAVA_HOME` must point at JDK 21 for **both** build and `verify` (`bin/dmtool` → the JVM launcher); export it first: `export JAVA_HOME="$(/usr/libexec/java_home -v 21)"`.
+Run from the **repo root**. The demos call the bare **`dmtool`** (what an installed/plugin user actually types — not the repo artifact `bin/dmtool`), so put the repo `bin/` on PATH for `verify`: the shim there resolves `dmtool` to the JVM launcher. Model paths stay repo-relative (`cli/src/test/...`). `JAVA_HOME` must point at JDK 21 for **both** build and `verify` (the launcher runs Groovy for the runtime-eval verbs). Export both first:
+
+```bash
+export JAVA_HOME="$(/usr/libexec/java_home -v 21)"
+export PATH="$PWD/bin:$PATH"
+```
+
+Long `dmtool` calls are wrapped with trailing `\` (one logical piece per line) for readability — `showboat` runs each ```bash``` block as one shell, so continuations execute identically and `verify` stays green (see CLAUDE.md "Wrap long CLI calls").
 
 ## Authoring model — how showboat builds a demo (so you never have to re-derive it)
 

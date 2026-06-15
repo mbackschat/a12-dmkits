@@ -8,7 +8,7 @@ A release knows **what it is** and **what it targets**, and says so on two peer 
 **`--version`** — the five axes: the rulekit release, the kernel built-against / runtime, the catalog floor, and the document-model reference version.
 
 ```bash
-bin/dmtool --version
+dmtool --version
 
 ```
 
@@ -22,7 +22,7 @@ a12-dmkits 0.1.0
 The same facts machine-readably, so a cold agent reads them like any other manifest entry (`kernel.skewed` flags a runtime kernel newer than the catalog floor — F11, always informational).
 
 ```bash
-bin/dmtool manifest | jq .version
+dmtool manifest | jq .version
 
 ```
 
@@ -62,7 +62,7 @@ wrote /tmp/dmver-28.0.0.json (older, same major) and /tmp/dmver-99.0.0.json (new
 **Tolerant** — the older same-major model still validates (`valid:true`, exit 0), and the difference is made explicit as an informational `RK_MODEL_VERSION_SKEW`:
 
 ```bash
-bin/dmtool -m /tmp/dmver-28.0.0.json model validate | jq -c '{valid, diagnostics: [.diagnostics[] | {severity, code}]}'
+dmtool -m /tmp/dmver-28.0.0.json model validate | jq -c '{valid, diagnostics: [.diagnostics[] | {severity, code}]}'
 
 ```
 
@@ -73,7 +73,7 @@ bin/dmtool -m /tmp/dmver-28.0.0.json model validate | jq -c '{valid, diagnostics
 **Fail-fast** — a newer model the kernel can't load is rejected (`valid:false`, exit 1); rulekit codes the kernel's version-mismatch as `RK_MODEL_VERSION_INCOMPATIBLE` so an agent can branch on it:
 
 ```bash
-bin/dmtool -m /tmp/dmver-99.0.0.json model validate > /tmp/dmver-out.json; echo "exit=$?"
+dmtool -m /tmp/dmver-99.0.0.json model validate > /tmp/dmver-out.json; echo "exit=$?"
 jq -c '{valid, diagnostics: [.diagnostics[] | {severity, code, summary}]}' /tmp/dmver-out.json
 
 ```
@@ -87,7 +87,7 @@ exit=1
 
 ```bash
 command cp /tmp/dmver-28.0.0.json /tmp/dmver-edit.json
-bin/dmtool -m /tmp/dmver-edit.json config modify --decimal-separator "," > /dev/null
+dmtool -m /tmp/dmver-edit.json config modify --decimal-separator "," > /dev/null
 echo "modelVersion after write-back: $(jq -r .header.modelVersion /tmp/dmver-edit.json)"
 
 ```

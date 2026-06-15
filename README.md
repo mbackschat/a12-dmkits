@@ -521,7 +521,7 @@ The A12 Kernel is resolved from your **local Maven repository** (`~/.m2`) — no
 ./bootstrap.sh
 ```
 
-This publishes kernel `30.8.1` (Java only) to `mavenLocal`. You also need **JDK 21**.
+This publishes kernel `30.8.1` (Java only) to `mavenLocal`. You also need **JDK 21** — the build toolchain is pinned to 21 (a newer JDK isn't used even if installed; [why](docs/KERNEL-INTEGRATION-NOTES.md) — Groovy 3.0.25 + the validated baseline). GraalVM 25 is used only for the native build.
 
 ## Build & test
 

@@ -3,7 +3,7 @@
 *2026-06-11T21:02:45Z by Showboat 0.6.1*
 <!-- showboat-id: af0727e1-6f18-458a-ba7a-84938e1b2b93 -->
 
-The structure-edit companion to the [verb tour](cli-tour.md) (which reads rules): this demo **edits the model's structure** — add a field, add a group, and **safely remove** a referenced field. These mutating verbs write **in place** (`-o` redirects, `--dry-run` previews) and carry the result envelope's `.changed`. Every command is `bin/dmtool -m <model> <target> <op>`, run from the repo root; some steps also use `jq`. Re-check the captured output with `uvx showboat@0.6.1 verify examples/cli-structure-edit.md` (exit 0 = it still matches the live CLI).
+The structure-edit companion to the [verb tour](cli-tour.md) (which reads rules): this demo **edits the model's structure** — add a field, add a group, and **safely remove** a referenced field. These mutating verbs write **in place** (`-o` redirects, `--dry-run` previews) and carry the result envelope's `.changed`. Every command is `dmtool -m <model> <target> <op>`, run from the repo root; some steps also use `jq`. Re-check the captured output with `uvx showboat@0.6.1 verify examples/cli-structure-edit.md` (exit 0 = it still matches the live CLI).
 
 We work on a `/tmp` copy of the `order-ruled` fixture — its `DeliveryNotBeforeOrder` rule references `/Order/DeliveryDate`, which is what arms the safe-delete gate below — so the committed fixture stays put.
 
@@ -20,7 +20,8 @@ copied order-ruled → /tmp/struct.dm.json
 We copied an existing fixture above, but a model doesn't have to come from somewhere — `model new` is the one model-*originating* verb. It takes `--id`, `--locale`, and a root group name (no `-m` — it makes one), and prints the model JSON to stdout (`-o` writes a file).
 
 ```bash
-bin/dmtool model new --id catalog --locale en_US --root Catalog | jq -c '{id: .header.id, root: .content.modelRoot.rootGroups[0].name}'
+dmtool model new --id catalog --locale en_US --root Catalog \
+  | jq -c '{id: .header.id, root: .content.modelRoot.rootGroups[0].name}'
 ```
 
 ```output
@@ -30,8 +31,9 @@ bin/dmtool model new --id catalog --locale en_US --root Catalog | jq -c '{id: .h
 What it emits is **kernel-checked**, so the fresh model binds immediately — write it with `-o`, then edit it like any other:
 
 ```bash
-bin/dmtool model new --id catalog --locale en_US --root Catalog -o /tmp/created.dm.json && echo "created /tmp/created.dm.json"
-bin/dmtool -m /tmp/created.dm.json model validate | jq -c '{ok, valid, fields: (.data.fields|length)}'
+dmtool model new --id catalog --locale en_US --root Catalog -o /tmp/created.dm.json \
+  && echo "created /tmp/created.dm.json"
+dmtool -m /tmp/created.dm.json model validate | jq -c '{ok, valid, fields: (.data.fields|length)}'
 ```
 
 ```output
@@ -46,7 +48,7 @@ created /tmp/created.dm.json
 `field add` drops a `--kind`-typed field under a `--group`. It emits the result envelope: `outcome: applied`, the new path under `.changed.added`, and `written: true` with the `output` path — the write landed **in place** (a copy of the model file). `--dry-run` would preview the same envelope with `written: false`.
 
 ```bash
-bin/dmtool -m /tmp/struct.dm.json field add --group /Order --name Discount --kind NUMBER
+dmtool -m /tmp/struct.dm.json field add --group /Order --name Discount --kind NUMBER
 ```
 
 ```output
@@ -73,7 +75,7 @@ bin/dmtool -m /tmp/struct.dm.json field add --group /Order --name Discount --kin
 `group add` attaches a child group to `--parent`. Pass `--repeatable <max>` to make it a repetition list (a line-item-style group that repeats up to `max` times); the envelope echoes `changed.repeatable: true`.
 
 ```bash
-bin/dmtool -m /tmp/struct.dm.json group add --parent /Order --name Notes --repeatable 5
+dmtool -m /tmp/struct.dm.json group add --parent /Order --name Notes --repeatable 5
 ```
 
 ```output
@@ -100,7 +102,7 @@ bin/dmtool -m /tmp/struct.dm.json group add --parent /Order --name Notes --repea
 Removing `/Order/DeliveryDate` would orphan the rule that references it (`DeliveryNotBeforeOrder`). `field remove` runs the reference check **first** and **refuses**: it returns a `refused` envelope (`ok: false`, `written: false`), an `RK_REFERENCED` diagnostic carrying the `fix`, and the blocking referrers under `data.referencedBy` — and it exits **2**. Never a silent cascade. We redirect the envelope to a file so the exit code prints alongside it.
 
 ```bash
-bin/dmtool -m /tmp/struct.dm.json field remove /Order/DeliveryDate >/tmp/struct-refusal.json 2>&1; echo "(exit $?)"; cat /tmp/struct-refusal.json
+dmtool -m /tmp/struct.dm.json field remove /Order/DeliveryDate >/tmp/struct-refusal.json 2>&1; echo "(exit $?)"; cat /tmp/struct-refusal.json
 ```
 
 ```output
@@ -136,7 +138,7 @@ bin/dmtool -m /tmp/struct.dm.json field remove /Order/DeliveryDate >/tmp/struct-
 Pass **`--cascade`** to remove the blocking rule(s) together with the field — an explicit opt-in, so the cascade is never a surprise:
 
 ```bash
-bin/dmtool -m /tmp/struct.dm.json field remove /Order/DeliveryDate --cascade
+dmtool -m /tmp/struct.dm.json field remove /Order/DeliveryDate --cascade
 ```
 
 ```output
@@ -161,7 +163,7 @@ bin/dmtool -m /tmp/struct.dm.json field remove /Order/DeliveryDate --cascade
 The edited model still passes the real kernel consistency check:
 
 ```bash
-bin/dmtool -m /tmp/struct.dm.json model validate | jq -c "{outcome,valid,diagnostics}"
+dmtool -m /tmp/struct.dm.json model validate | jq -c "{outcome,valid,diagnostics}"
 ```
 
 ```output
@@ -185,7 +187,7 @@ copied subscription → /tmp/struct2.dm.json
 `field read` resolves the field's full name-path and reports its kernel `type` (here `NumberType`):
 
 ```bash
-bin/dmtool -m /tmp/struct2.dm.json field read /Subscription/Billing/BaseFee
+dmtool -m /tmp/struct2.dm.json field read /Subscription/Billing/BaseFee
 ```
 
 ```output
@@ -210,7 +212,7 @@ bin/dmtool -m /tmp/struct2.dm.json field read /Subscription/Billing/BaseFee
 `group read` answers the one structural question a group carries here — does it repeat? `/Subscription/Addons` is a repetition list (it was declared `--repeatable`), so `data.repeatable` is `true`:
 
 ```bash
-bin/dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons
+dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons
 ```
 
 ```output
@@ -237,7 +239,7 @@ bin/dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons
 `group remove` deletes the group and everything under it. Like `field remove`, it runs the reference check first and refuses (exit 2) a group still referenced by a rule or computation unless you pass `--cascade`. `/Subscription/Addons` is unreferenced, so it goes cleanly — `changed.cascaded` is empty, meaning nothing else had to come with it:
 
 ```bash
-bin/dmtool -m /tmp/struct2.dm.json group remove /Subscription/Addons
+dmtool -m /tmp/struct2.dm.json group remove /Subscription/Addons
 ```
 
 ```output
@@ -274,7 +276,7 @@ copied subscription → /tmp/struct2-td.json
 `typedef add` declares the reusable type over an easy `--kind`:
 
 ```bash
-bin/dmtool -m /tmp/struct2-td.json typedef add --id Currency --kind NUMBER
+dmtool -m /tmp/struct2-td.json typedef add --id Currency --kind NUMBER
 ```
 
 ```output
@@ -299,7 +301,7 @@ bin/dmtool -m /tmp/struct2-td.json typedef add --id Currency --kind NUMBER
 `typedef read` lists the declared ids under `data.typedefs` (a non-mutating query):
 
 ```bash
-bin/dmtool -m /tmp/struct2-td.json typedef read
+dmtool -m /tmp/struct2-td.json typedef read
 ```
 
 ```output
@@ -323,7 +325,8 @@ bin/dmtool -m /tmp/struct2-td.json typedef read
 Now type a field by that definition with `field add --typedef Currency` (instead of `--kind`). The field's kind comes back as `TypeDefType` — it carries the typedef, not a primitive kind:
 
 ```bash
-bin/dmtool -m /tmp/struct2-td.json field add --group /Subscription/Billing --name SetupFee --typedef Currency
+dmtool -m /tmp/struct2-td.json \
+  field add --group /Subscription/Billing --name SetupFee --typedef Currency
 ```
 
 ```output
@@ -348,7 +351,7 @@ bin/dmtool -m /tmp/struct2-td.json field add --group /Subscription/Billing --nam
 `typedef remove` deletes a definition — but the kernel rejects (exit 1) removing one a field still uses, because that would leave the field's type dangling. With `SetupFee` still referencing `Currency`, the removal is refused:
 
 ```bash
-bin/dmtool -m /tmp/struct2-td.json typedef remove Currency >/tmp/struct2-td-rej.json 2>&1; echo "(exit $?)"; cat /tmp/struct2-td-rej.json
+dmtool -m /tmp/struct2-td.json typedef remove Currency >/tmp/struct2-td-rej.json 2>&1; echo "(exit $?)"; cat /tmp/struct2-td-rej.json
 ```
 
 ```output
@@ -372,8 +375,8 @@ bin/dmtool -m /tmp/struct2-td.json typedef remove Currency >/tmp/struct2-td-rej.
 → `outcome: rejected`, exit `1`: the edited model would not be kernel-valid (a field typed by a missing definition). Nothing was written. Remove the using field first, then the typedef goes cleanly:
 
 ```bash
-bin/dmtool -m /tmp/struct2-td.json field remove /Subscription/Billing/SetupFee | jq -c "{outcome,ok}"
-bin/dmtool -m /tmp/struct2-td.json typedef remove Currency
+dmtool -m /tmp/struct2-td.json field remove /Subscription/Billing/SetupFee | jq -c "{outcome,ok}"
+dmtool -m /tmp/struct2-td.json typedef remove Currency
 ```
 
 ```output
@@ -401,8 +404,8 @@ Renaming a type definition rewrites its declaration **and** every field that poi
 
 ```bash
 cp cli/src/test/resources/models/subscription.dm.json /tmp/struct2-tdr.json && \
-  bin/dmtool -m /tmp/struct2-tdr.json typedef add --id Currency --kind NUMBER >/dev/null && \
-  bin/dmtool -m /tmp/struct2-tdr.json field add --group /Subscription/Billing --name SetupFee --typedef Currency >/dev/null && \
+  dmtool -m /tmp/struct2-tdr.json typedef add --id Currency --kind NUMBER >/dev/null && \
+  dmtool -m /tmp/struct2-tdr.json field add --group /Subscription/Billing --name SetupFee --typedef Currency >/dev/null && \
   echo "ready: Currency declared, SetupFee typed by it"
 ```
 
@@ -413,7 +416,7 @@ ready: Currency declared, SetupFee typed by it
 `typedef rename Currency --to Money` moves the id and repoints the using field — `changed.repointedFields` names exactly what moved:
 
 ```bash
-bin/dmtool -m /tmp/struct2-tdr.json typedef rename Currency --to Money
+dmtool -m /tmp/struct2-tdr.json typedef rename Currency --to Money
 ```
 
 ```output
@@ -439,8 +442,8 @@ bin/dmtool -m /tmp/struct2-tdr.json typedef rename Currency --to Money
 The gate refuses a new id that is already taken — *before* any mutation. With a second typedef `Fee` present, renaming `Money → Fee` would collide, so it is refused (`RK_NAME_EXISTS`, exit 2, nothing written):
 
 ```bash
-bin/dmtool -m /tmp/struct2-tdr.json typedef add --id Fee --kind NUMBER >/dev/null
-bin/dmtool -m /tmp/struct2-tdr.json typedef rename Money --to Fee >/tmp/tdr-refuse.json 2>&1; echo "(exit $?)"; cat /tmp/tdr-refuse.json
+dmtool -m /tmp/struct2-tdr.json typedef add --id Fee --kind NUMBER >/dev/null
+dmtool -m /tmp/struct2-tdr.json typedef rename Money --to Fee >/tmp/tdr-refuse.json 2>&1; echo "(exit $?)"; cat /tmp/tdr-refuse.json
 ```
 
 ```output
@@ -473,8 +476,8 @@ bin/dmtool -m /tmp/struct2-tdr.json typedef rename Money --to Fee >/tmp/tdr-refu
 
 ```bash
 cp cli/src/test/resources/models/subscription.dm.json /tmp/struct2-tdx.json && \
-  bin/dmtool -m /tmp/struct2-tdx.json field add --group /Subscription/Billing --name SetupFee --kind NUMBER >/dev/null && \
-  bin/dmtool -m /tmp/struct2-tdx.json field add --group /Subscription/Billing --name LateFee --kind NUMBER >/dev/null && \
+  dmtool -m /tmp/struct2-tdx.json field add --group /Subscription/Billing --name SetupFee --kind NUMBER >/dev/null && \
+  dmtool -m /tmp/struct2-tdx.json field add --group /Subscription/Billing --name LateFee --kind NUMBER >/dev/null && \
   echo "ready: two NUMBER fee fields under /Subscription/Billing"
 ```
 
@@ -483,7 +486,10 @@ ready: two NUMBER fee fields under /Subscription/Billing
 ```
 
 ```bash
-bin/dmtool -m /tmp/struct2-tdx.json typedef extract --from /Subscription/Billing/SetupFee,/Subscription/Billing/LateFee --id Money
+dmtool -m /tmp/struct2-tdx.json \
+  typedef extract \
+  --from /Subscription/Billing/SetupFee,/Subscription/Billing/LateFee \
+  --id Money
 ```
 
 ```output
@@ -506,7 +512,7 @@ bin/dmtool -m /tmp/struct2-tdx.json typedef extract --from /Subscription/Billing
 → both fields are now typed by the new `Money` definition. The gate **never coerces** — hand it fields that don't share a concrete type and it refuses (`RK_TYPE_MISMATCH`) before touching anything:
 
 ```bash
-bin/dmtool -m /tmp/struct2-tdx.json typedef extract --from /Subscription/Billing/BaseFee,/Subscription/PlanName --id X >/tmp/x.json 2>&1; echo "(exit $?)"; jq -c "{outcome, code: .diagnostics[0].code, fix: .diagnostics[0].fix}" /tmp/x.json
+dmtool -m /tmp/struct2-tdx.json typedef extract --from /Subscription/Billing/BaseFee,/Subscription/PlanName --id X >/tmp/x.json 2>&1; echo "(exit $?)"; jq -c "{outcome, code: .diagnostics[0].code, fix: .diagnostics[0].fix}" /tmp/x.json
 ```
 
 ```output
@@ -517,7 +523,7 @@ bin/dmtool -m /tmp/struct2-tdx.json typedef extract --from /Subscription/Billing
 `typedef inline` is the inverse — expand the definition's concrete type back into each using field, then drop it:
 
 ```bash
-bin/dmtool -m /tmp/struct2-tdx.json typedef inline Money
+dmtool -m /tmp/struct2-tdx.json typedef inline Money
 ```
 
 ```output
@@ -554,7 +560,8 @@ copied order-ruled → /tmp/struct2-rn.json
 Renaming the **referenced** field rewrites the referrer and stays valid — `changed.rewroteReferences` names what followed the rename:
 
 ```bash
-bin/dmtool -m /tmp/struct2-rn.json field rename /Order/DeliveryDate --to ShipDate | jq -c '{outcome, ok, changed}'
+dmtool -m /tmp/struct2-rn.json field rename /Order/DeliveryDate --to ShipDate \
+  | jq -c '{outcome, ok, changed}'
 ```
 
 ```output
@@ -564,7 +571,7 @@ bin/dmtool -m /tmp/struct2-rn.json field rename /Order/DeliveryDate --to ShipDat
 The `DeliveryNotBeforeOrder` condition now reads `/Order/ShipDate` where it read `/Order/DeliveryDate`, so the model still validates — a true reference-preserving rename, not a refusal:
 
 ```bash
-bin/dmtool -m /tmp/struct2-rn.json model validate | jq -c '{valid}'
+dmtool -m /tmp/struct2-rn.json model validate | jq -c '{valid}'
 ```
 
 ```output
@@ -574,7 +581,7 @@ bin/dmtool -m /tmp/struct2-rn.json model validate | jq -c '{valid}'
 A name **collision** is still refused (the gate's one remaining block) — `RK_NAME_EXISTS`, exit 2, nothing written:
 
 ```bash
-bin/dmtool -m /tmp/struct2-rn.json field rename /Order/Quantity --to OrderDate >/tmp/rn-coll.json 2>&1; echo "(exit $?)"; jq -c '{outcome, code: .diagnostics[0].code, fix: .diagnostics[0].fix}' /tmp/rn-coll.json
+dmtool -m /tmp/struct2-rn.json field rename /Order/Quantity --to OrderDate >/tmp/rn-coll.json 2>&1; echo "(exit $?)"; jq -c '{outcome, code: .diagnostics[0].code, fix: .diagnostics[0].fix}' /tmp/rn-coll.json
 ```
 
 ```output
@@ -589,7 +596,8 @@ bin/dmtool -m /tmp/struct2-rn.json field rename /Order/Quantity --to OrderDate >
 `field | group move <path> --to <newParentGroup>` re-homes an element under a different parent **and rewrites every reference to its new path** (the same `MoveSupportDM` engine as `rename`), then re-validates. Continuing on `/tmp/struct2-rn.json` — where the field is now `/Order/ShipDate`, referenced by `DeliveryNotBeforeOrder` — relocate it into the `ShippingAddress` subgroup:
 
 ```bash
-bin/dmtool -m /tmp/struct2-rn.json field move /Order/ShipDate --to /Order/ShippingAddress | jq -c '{outcome, ok, changed}'
+dmtool -m /tmp/struct2-rn.json field move /Order/ShipDate --to /Order/ShippingAddress \
+  | jq -c '{outcome, ok, changed}'
 ```
 
 ```output
@@ -599,7 +607,7 @@ bin/dmtool -m /tmp/struct2-rn.json field move /Order/ShipDate --to /Order/Shippi
 The rule's error-entity path and its condition both followed the field — `DifferenceInDays(OrderDate, ShippingAddress/ShipDate)` now — so the model still validates:
 
 ```bash
-bin/dmtool -m /tmp/struct2-rn.json model validate | jq -c '{valid}'
+dmtool -m /tmp/struct2-rn.json model validate | jq -c '{valid}'
 ```
 
 ```output
@@ -609,7 +617,7 @@ bin/dmtool -m /tmp/struct2-rn.json model validate | jq -c '{valid}'
 The move gate refuses before touching anything: a **missing destination** is `RK_NO_SUCH_GROUP` (exit 2, nothing written) — likewise a name collision at the destination (`RK_NAME_EXISTS`) and a group moved into its own subtree (`RK_MOVE_INTO_SELF`):
 
 ```bash
-bin/dmtool -m /tmp/struct2-rn.json field move /Order/Quantity --to /Order/Nope >/tmp/mv-refuse.json 2>&1; echo "(exit $?)"; jq -c '{outcome, code: .diagnostics[0].code, fix: .diagnostics[0].fix}' /tmp/mv-refuse.json
+dmtool -m /tmp/struct2-rn.json field move /Order/Quantity --to /Order/Nope >/tmp/mv-refuse.json 2>&1; echo "(exit $?)"; jq -c '{outcome, code: .diagnostics[0].code, fix: .diagnostics[0].fix}' /tmp/mv-refuse.json
 ```
 
 ```output
@@ -632,7 +640,9 @@ ready: order-aggregates in /tmp/struct2-ext
 ```
 
 ```bash
-bin/dmtool -m /tmp/struct2-ext/order.dm.json group extract /Order/BillingAddress --reference billing-address | jq -c '{outcome, ok, changed: {extracted: .changed.extracted, reference: .changed.reference, mountedAt: .changed.mountedAt}}'
+dmtool -m /tmp/struct2-ext/order.dm.json \
+  group extract /Order/BillingAddress --reference billing-address \
+  | jq -c '{outcome, ok, changed: {extracted: .changed.extracted, reference: .changed.reference, mountedAt: .changed.mountedAt}}'
 ```
 
 ```output
@@ -654,7 +664,7 @@ order.dm.json
 The composed pair re-validates through the real kernel — the base resolves the sub-model by id from the same directory (and the gate already re-validated *before* writing, so a bad split never reaches disk):
 
 ```bash
-bin/dmtool -m /tmp/struct2-ext/order.dm.json model validate | jq -c '{valid}'
+dmtool -m /tmp/struct2-ext/order.dm.json model validate | jq -c '{valid}'
 ```
 
 ```output
@@ -664,7 +674,8 @@ bin/dmtool -m /tmp/struct2-ext/order.dm.json model validate | jq -c '{valid}'
 The inverse, `include inline`, folds a mounted include's content back into the base as a real group and drops the reference — so extract and inline **round-trip**:
 
 ```bash
-bin/dmtool -m /tmp/struct2-ext/order.dm.json include inline billing-address | jq -c '{outcome, ok, changed}'
+dmtool -m /tmp/struct2-ext/order.dm.json include inline billing-address \
+  | jq -c '{outcome, ok, changed}'
 ```
 
 ```output
@@ -672,7 +683,7 @@ bin/dmtool -m /tmp/struct2-ext/order.dm.json include inline billing-address | jq
 ```
 
 ```bash
-jq -c '[.. | objects | select(has("modelAlias")) | .modelAlias]' /tmp/struct2-ext/order.dm.json && bin/dmtool -m /tmp/struct2-ext/order.dm.json model validate | jq -c '{valid}'
+jq -c '[.. | objects | select(has("modelAlias")) | .modelAlias]' /tmp/struct2-ext/order.dm.json && dmtool -m /tmp/struct2-ext/order.dm.json model validate | jq -c '{valid}'
 ```
 
 ```output
@@ -709,7 +720,11 @@ jq ".header.locales = [{\"code\":\"en_US\"},{\"code\":\"de_DE\"}]" /tmp/struct2-
 Now `include add` resolves `catalog` from `-w/--workspace` and mounts it under `/Subscription` as `Catalog`:
 
 ```bash
-bin/dmtool -m /tmp/struct2-sub.json include add --alias catalog --reference catalog --parent /Subscription --name Catalog -w /tmp/struct2-lib
+dmtool -m /tmp/struct2-sub.json \
+  include add \
+  --alias catalog --reference catalog \
+  --parent /Subscription --name Catalog \
+  -w /tmp/struct2-lib
 ```
 
 ```output
@@ -735,7 +750,7 @@ bin/dmtool -m /tmp/struct2-sub.json include add --alias catalog --reference cata
 `include read` lists the header's declared includes under `data.includes` — no `-w/--workspace` needed, it reports what the model *declares*, not the resolved content:
 
 ```bash
-bin/dmtool -m /tmp/struct2-sub.json include read
+dmtool -m /tmp/struct2-sub.json include read
 ```
 
 ```output
@@ -760,7 +775,7 @@ bin/dmtool -m /tmp/struct2-sub.json include read
 → `data.includes` carries the `alias → reference` pair the header declares. `include remove <alias>` then drops the header reference *and* its mounts:
 
 ```bash
-bin/dmtool -m /tmp/struct2-sub.json include remove catalog -w /tmp/struct2-lib
+dmtool -m /tmp/struct2-sub.json include remove catalog -w /tmp/struct2-lib
 ```
 
 ```output
@@ -794,7 +809,7 @@ copied subscription → /tmp/struct2-cfg.json
 ```
 
 ```bash
-bin/dmtool -m /tmp/struct2-cfg.json config read
+dmtool -m /tmp/struct2-cfg.json config read
 ```
 
 ```output
@@ -821,7 +836,7 @@ bin/dmtool -m /tmp/struct2-cfg.json config read
 → The fixture ships with a point decimal separator. That setting governs how numeric literals are written and parsed, so it's the one to get right for a German-facing model. `config modify --decimal-separator ","` flips it to a comma:
 
 ```bash
-bin/dmtool -m /tmp/struct2-cfg.json config modify --decimal-separator ","
+dmtool -m /tmp/struct2-cfg.json config modify --decimal-separator ","
 ```
 
 ```output
@@ -843,7 +858,7 @@ bin/dmtool -m /tmp/struct2-cfg.json config modify --decimal-separator ","
 → `changed.decimalSeparator = ","` — the only field that moved. A read-back confirms it persisted:
 
 ```bash
-bin/dmtool -m /tmp/struct2-cfg.json config read | jq -c ".data"
+dmtool -m /tmp/struct2-cfg.json config read | jq -c ".data"
 ```
 
 ```output
@@ -854,7 +869,7 @@ bin/dmtool -m /tmp/struct2-cfg.json config read | jq -c ".data"
 
 ## export — the artifacts, not the envelope
 
-`export` is the odd one out: it is a **root verb** that takes the model as a **positional** argument (`bin/dmtool export <model>`), and it prints a plain artifact — *not* the JSON result envelope. With no artifact name it emits the **model card** (a Markdown summary); `fields | groups | rules` print line-delimited JSON instead, and `--out-dir` writes all four to files.
+`export` is the odd one out: it is a **root verb** that takes the model as a **positional** argument (`dmtool export <model>`), and it prints a plain artifact — *not* the JSON result envelope. With no artifact name it emits the **model card** (a Markdown summary); `fields | groups | rules` print line-delimited JSON instead, and `--out-dir` writes all four to files.
 
 ```bash
 cp cli/src/test/resources/models/subscription.dm.json /tmp/struct2-exp.json && echo "copied subscription → /tmp/struct2-exp.json"
@@ -865,7 +880,7 @@ copied subscription → /tmp/struct2-exp.json
 ```
 
 ```bash
-bin/dmtool export /tmp/struct2-exp.json
+dmtool export /tmp/struct2-exp.json
 ```
 
 ```output
@@ -903,7 +918,10 @@ copied order-ruled → /tmp/extras.dm.json
 `group multiselect` expands a repeatable group holding one enum/string selection field — you supply the field + `--max-rows`, the generator owns the `usageType` skeleton:
 
 ```bash
-bin/dmtool -m /tmp/extras.dm.json group multiselect --parent /Order --name Conditions --field Condition --values NEW,USED,REFURBISHED --max-rows 3
+dmtool -m /tmp/extras.dm.json \
+  group multiselect \
+  --parent /Order --name Conditions --field Condition \
+  --values NEW,USED,REFURBISHED --max-rows 3
 ```
 
 ```output
@@ -927,7 +945,11 @@ bin/dmtool -m /tmp/extras.dm.json group multiselect --parent /Order --name Condi
 `group attachment` expands the kernel's canonical file-attachment composition whole — 8 named fields + 4 mandated rules + the `content` config — and you tune only the knobs (`--max-size-bytes`, `--allowed-mime`, `--categories`, `--repeatable`). The mandated rules are authored in the model's condition language, so it is `en_US`/`de_DE`-only (else it refuses, not crashes):
 
 ```bash
-bin/dmtool -m /tmp/extras.dm.json group attachment --parent /Order --name Invoice --max-size-bytes 10000000 --allowed-mime application/pdf,image/png
+dmtool -m /tmp/extras.dm.json \
+  group attachment \
+  --parent /Order --name Invoice \
+  --max-size-bytes 10000000 \
+  --allowed-mime application/pdf,image/png
 ```
 
 ```output
@@ -952,7 +974,10 @@ bin/dmtool -m /tmp/extras.dm.json group attachment --parent /Order --name Invoic
 `meta <ref>` reads or edits an element's **internal/external descriptions** and **annotations** — uniformly across a field, group, rule (by name-path), or type-def (by id). With write flags it sets/removes them:
 
 ```bash
-bin/dmtool -m /tmp/extras.dm.json meta /Order/CustomerName --internal en_US="the customer's full legal name" --annotate owner=orders-team
+dmtool -m /tmp/extras.dm.json \
+  meta /Order/CustomerName \
+  --internal en_US="the customer's full legal name" \
+  --annotate owner=orders-team
 ```
 
 ```output
@@ -975,7 +1000,7 @@ bin/dmtool -m /tmp/extras.dm.json meta /Order/CustomerName --internal en_US="the
 With **no write flags** it reads back — so the agent learns the output shape by running it:
 
 ```bash
-bin/dmtool -m /tmp/extras.dm.json meta /Order/CustomerName
+dmtool -m /tmp/extras.dm.json meta /Order/CustomerName
 ```
 
 ```output
@@ -1003,7 +1028,10 @@ bin/dmtool -m /tmp/extras.dm.json meta /Order/CustomerName
 The same verb reaches a **rule** (not just fields/groups) — the metadata is element-wide:
 
 ```bash
-bin/dmtool -m /tmp/extras.dm.json meta /Order/DeliveryNotBeforeOrder --annotate ticket=JIRA-42 --internal en_US="guards: delivery must not precede order"
+dmtool -m /tmp/extras.dm.json \
+  meta /Order/DeliveryNotBeforeOrder \
+  --annotate ticket=JIRA-42 \
+  --internal en_US="guards: delivery must not precede order"
 ```
 
 ```output
@@ -1026,7 +1054,7 @@ bin/dmtool -m /tmp/extras.dm.json meta /Order/DeliveryNotBeforeOrder --annotate 
 A reference that doesn't exist is a structured `refused` envelope — coded + with a `fix`, never a bare error:
 
 ```bash
-bin/dmtool -m /tmp/extras.dm.json meta /Order/Nope --annotate k=v
+dmtool -m /tmp/extras.dm.json meta /Order/Nope --annotate k=v
 ```
 
 ```output
@@ -1055,7 +1083,8 @@ bin/dmtool -m /tmp/extras.dm.json meta /Order/Nope --annotate k=v
 `config modify --comment` sets a free-text model-level note (`modelInfo.comment`); `config read` surfaces it (alongside `supportedCharacters` — the runtime-enforced allowed-character set, set via `config modify --supported-character A-Z …`):
 
 ```bash
-bin/dmtool -m /tmp/extras.dm.json config modify --comment "Customer order with delivery and eligibility rules."
+dmtool -m /tmp/extras.dm.json \
+  config modify --comment "Customer order with delivery and eligibility rules."
 ```
 
 ```output
@@ -1075,7 +1104,7 @@ bin/dmtool -m /tmp/extras.dm.json config modify --comment "Customer order with d
 ```
 
 ```bash
-bin/dmtool -m /tmp/extras.dm.json config read
+dmtool -m /tmp/extras.dm.json config read
 ```
 
 ```output
