@@ -306,6 +306,7 @@ dmtool --version                      # this build + the kernel it targets (see 
 ```sh
 dmtool model new --id orders --locale en_US --root Order > orders.dm.json   # a new, empty, kernel-valid model
 dmtool -m orders.dm.json field add --group /Order --name Reference --kind STRING   # …then populate it
+dmtool -m orders.dm.json field modify postal.spec.json   # re-type a field in place (e.g. add a STRING pattern) — no delete-and-recreate
 ```
 
 `model new` is the one model-*originating* verb (no `-m` — it makes one); every other verb edits an existing `-m` model. What it emits is kernel-checked, so the next `-m` edit binds.

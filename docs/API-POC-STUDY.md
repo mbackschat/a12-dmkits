@@ -478,7 +478,7 @@ ModelDocument.read(json)
     .setAnnotation("/Subscription/Tier", "ui:widget", "dropdown")                        // name/value metadata
     .validate();
 ```
-A label must cover every declared locale (fails fast otherwise); the add/re-type reuse the build-from-scratch emitter, so a configured field is shaped identically to a built one. *Locked by `modelkit.ModelMetadataTest`.*
+A label must cover every declared locale (fails fast otherwise); the add/re-type reuse the build-from-scratch emitter, so a configured field is shaped identically to a built one. *Locked by `modelkit.ModelMetadataTest`.* (The re-type — `setFieldType` — is also reachable from the CLI as **`field modify <spec.json>`** (G6), so an agent can add a STRING `pattern` to an existing field without delete-and-recreate; CLI-SPEC §5.)
 
 ### Rules *along with* structure — one session (M9)
 

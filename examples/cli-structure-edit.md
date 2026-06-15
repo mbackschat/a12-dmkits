@@ -1130,3 +1130,19 @@ dmtool -m /tmp/extras.dm.json config read
 ```
 
 → Two more authoring verbs round out the model surface (multi-file, so shown via `-w/--workspace` rather than re-staged here): **`typedef import --reference <m>`** pulls another model's type definitions in by id (a `purpose=typeDefinitions` reference, not a mount), and **`include add --exclude-rules`** mounts a model while dropping its own rules/computations. Both are in `manifest` + `--help`; the contracts are in [`../docs/CLI-SPEC.md`](../docs/CLI-SPEC.md) §5/§6.
+
+## field modify — re-type a field in place (no delete-and-recreate)
+
+Adding a constraint to an *existing* field — e.g. enforce that a postal code is exactly 5 digits — no longer means deleting and re-creating it. `field modify` re-types the field in place from the same rich spec as `field add`, located by its `group` + `name`:
+
+```bash
+dmtool model new --id addr --locale en_US --root Address -o /tmp/addr.dm.json >/dev/null
+dmtool -m /tmp/addr.dm.json field add --group /Address --name PostalCode --kind STRING >/dev/null
+printf '%s' '{"group":"/Address","name":"PostalCode","kind":"STRING","string":{"pattern":"[0-9]{5}","patternMessage":"The postal code must be exactly 5 digits."}}' > /tmp/plz.spec.json
+dmtool -m /tmp/addr.dm.json field modify /tmp/plz.spec.json | jq -c '{outcome, changed}'
+
+```
+
+```output
+{"outcome":"applied","changed":{"modified":"/Address/PostalCode","kind":"STRING"}}
+```
