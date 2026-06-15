@@ -16,6 +16,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 NATIVE="${1:-$ROOT/cli/build/native/nativeCompile/dmtool}"
 
+# The demos call the bare `dmtool`; put the repo shim on PATH so it resolves there. The shim honors
+# DMTOOL_CLI (resolution #1), set per-demo below to the native binary under test.
+export PATH="$ROOT/bin:$PATH"
+
 [[ -x "$NATIVE" ]] || { echo "native binary not found/executable: $NATIVE  (build with :cli:nativeCompile)" >&2; exit 2; }
 
 # Demos NOT byte-verifiable against the native binary, with WHY. Keep the reason here so a skip is never silent.
