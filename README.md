@@ -264,7 +264,7 @@ Same engine, no Java required. Every command is `dmtool -m <model> <target> <op>
 
 # OpenAI Codex
 codex plugin marketplace add mbackschat/dmtool-releases
-codex plugin install dmtool
+codex plugin add dmtool
 ```
 
 The plugins, the per-OS binaries, and full install/licensing details live in the public release repo — **[`dmtool-releases`](https://github.com/mbackschat/dmtool-releases)**. (This source repo holds the plugin *source* under [`plugin/`](plugin/) (Claude Code) and [`plugin-codex/`](plugin-codex/) (Codex); they ship to the mirror at release.)

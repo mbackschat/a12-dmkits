@@ -19,7 +19,7 @@ The plugin lives at the repository root (`.claude-plugin/`).
 
 ```
 codex plugin marketplace add mbackschat/dmtool-releases
-codex plugin install dmtool
+codex plugin add dmtool
 ```
 
 The Codex plugin lives under [`codex/`](codex/); the marketplace manifest at `.agents/plugins/marketplace.json` points Codex at it. Codex users can also drop the bundled [`codex/AGENTS.md`](codex/AGENTS.md) into their own repo's `AGENTS.md` to keep dmtool guidance always in context.
