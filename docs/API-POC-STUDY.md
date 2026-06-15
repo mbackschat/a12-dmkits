@@ -1,4 +1,4 @@
-# API study & review surface — what rulekit feels like
+# API study & review surface — what the dmkits library (rulekit + modelkit) feels like
 
 > **Status:** living **design study and review surface**, expanded 2026-06-04 (first version 2026-06-03) — code studies for **every stated proposal goal** ([`PROJECT-PROPOSAL.md`](./PROJECT-PROPOSAL.md) v2 §2/§3), so the end-state experience can be reviewed *before* each part is built. Names and signatures of unbuilt parts are **not final**. Status markers throughout: ✅ = works today, verbatim or near-verbatim; 🔮 = Phase-1/2 scope, illustrative.
 >

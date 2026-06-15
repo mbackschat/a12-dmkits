@@ -1,4 +1,4 @@
-# Release spec — `dmtool` CLI + rulekit developer library
+# Release spec — `dmtool` CLI + the dmkits developer library (rulekit + modelkit)
 
 The **durable** contract for releasing this project: the surfaces we ship, how each artifact is built, the release runbook, the verification gate, versioning, and the distribution/trust posture. This spec **survives and evolves** with every release. (Its transient companion — the per-release execution plan with iteration order, status, and one-time migrations — lives separately and is deleted when a release is done.)
 
@@ -11,7 +11,7 @@ The **durable** contract for releasing this project: the surfaces we ship, how e
 | Surface | Audience | v1 artifacts | Channel |
 |---|---|---|---|
 | **`dmtool` CLI** | BAs + developers; **#1 use is inside a coding-agent session** | native binary per OS + `SHA256SUMS` + **agent plugins (Claude Code + Codex)** | binaries on the public mirror Release (§10); the Claude Code + Codex plugins (§6); later brew/scoop, `curl \| sh` |
-| ~~rulekit library~~ | Java developers | **deferred → §11** | — |
+| ~~dmkits library (rulekit + modelkit)~~ | Java developers | **deferred → §11** | — |
 
 The **command name is `dmtool`** everywhere it is publicly invoked. `:cli`'s `installDist` launcher (`applicationName = 'dmtool'`) and the native binary share that name; the eval exposes the JVM launcher as `dmtool` on PATH too (so the skill is one verbatim artifact — §6).
 
@@ -117,7 +117,7 @@ A static Maven repo (one-line `maven { url }` consume) is a later upgrade; it do
 **Source repo PRIVATE (early testers) + a separate PUBLIC release-mirror repo as the single public distribution point.** The release step publishes every downloadable artifact to the mirror's GitHub Releases (and its Pages), so anonymous consumers and agents fetch from the mirror while the source stays private. Going public later retires the mirror (releases move to the source repo). The mirror holds:
 
 - the **CLI native binaries** per-OS + `SHA256SUMS`;
-- the **developer JARs** — `rulekit-X.Y.Z.jar` + `-sources.jar` + `-javadoc.jar` + POM (§3b);
+- the **developer JARs** — `dmkits-X.Y.Z.jar` (the root `:` project = rulekit + modelkit) + `-sources.jar` + `-javadoc.jar` + POM (§3b);
 - the **JavaDoc HTML** (browsable) on the mirror's **GitHub Pages**;
 - an **LLM-facing API doc** (`llms.txt`-style flat API reference) for coding agents — planned (§11).
 
@@ -132,14 +132,14 @@ A static Maven repo (one-line `maven { url }` consume) is a later upgrade; it do
 
 **Licensing on the mirror (per [`LICENSING.md`](LICENSING.md) / CLI-SPEC §11) — mixed, per-artifact:**
 - **CLI native binaries → EUPL-1.2.** They embed the kernel, so each binary/release carries the kernel **LICENSE/NOTICE/THIRD_PARTY** + a source pointer (and **no "mgm A12" branding** — the `dmtool` name respects that).
-- **Developer JARs → MIT.** `rulekit-X.Y.Z.jar` does **not** embed the kernel (it's a separate `api` dependency the consumer bootstraps), so rulekit's own jar + sources + javadoc stay MIT.
+- **Developer JARs → MIT.** `dmkits-X.Y.Z.jar` does **not** embed the kernel (it's a separate `api` dependency the consumer bootstraps), so the dmkits jar + sources + javadoc stay MIT.
 - The mirror repo's README states the per-artifact licensing explicitly so a downloader isn't confused by the mix.
 
 ## 11. Developer surface — DEFERRED (recorded for later, NOT v1)
 
 **Out of scope for v1** (v1 = the CLI native binary, §1). This section is the durable record of the whole **developer-library wave** so it isn't lost when the transient release *plan* is deleted. The agent-first thesis extends from the CLI to the **library** — just as the CLI pairs a *self-describing surface* (`manifest`/`schema`/`--help`) with a *judgment skill*, the Java API would pair an **agent-readable API reference** with a **developer skill**. All would publish on the public mirror.
 
-1. **Library JARs** — `java-library` + `maven-publish`; `java { withJavadocJar() }` → consumer `rulekit-X.Y.Z.jar` + `-javadoc.jar` + a correct POM (`from components.java`). **No `sources.jar` while the source repo is private** (it would expose the private source on the public mirror; javadoc is fine — it's the public API, not impl). Root `:` jar only (rulekit + modelkit); not `:adapter`. **MIT** (doesn't embed the kernel). Outputs: `publishToMavenLocal` + the jar/javadoc/POM on the mirror. **Consume:** download from the mirror → bootstrap the kernel into `~/.m2` → install jar *with its POM* → `implementation 'io.github.mbackschat.a12.dm:rulekit:X.Y.Z'`. (Maven Central is structurally blocked — the kernel `api` dep isn't on Central.)
+1. **Library JARs** — `java-library` + `maven-publish`; `java { withJavadocJar() }` → consumer `dmkits-X.Y.Z.jar` + `-javadoc.jar` + a correct POM (`from components.java`). **No `sources.jar` while the source repo is private** (it would expose the private source on the public mirror; javadoc is fine — it's the public API, not impl). **The root `:` project (`a12-dmkits`) jar = rulekit + modelkit** in one artifact; not `:adapter`. **MIT** (doesn't embed the kernel). Outputs: `publishToMavenLocal` + the jar/javadoc/POM on the mirror. **Consume:** download from the mirror → bootstrap the kernel into `~/.m2` → install jar *with its POM* → `implementation 'io.github.mbackschat.a12.dm:dmkits:X.Y.Z'`. (Maven Central is structurally blocked — the kernel `api` dep isn't on Central.)
 2. **JavaDoc** — the `-javadoc.jar` (downloadable) **and** browsable **HTML on the mirror's GitHub Pages** (a stable public URL).
 3. **LLM API doc (`llms.txt`-style)** — a flat, single-file API reference for coding agents (public types/signatures + typed-builder idioms + DSL entry points + short usage), distinct from the human JavaDoc. **Must be derived/CI-locked** against the real API (the no-drift discipline — assembled from the CI-locked typed-builder snippets + signatures), not hand-maintained. Public URL an agent can fetch.
 4. **Developer skill** — the library-persona analog of [`skill/SKILL.md`](../skill/SKILL.md): teaches *judgment* for authoring via the typed builder / `EditSession` / DSL (polarity, paths, iteration — same kernel semantics), **not** the API catalog (JavaDoc + `llms.txt`'s job — keep it minimal, mirroring "self-describing surface > skill"). Complements the EVAL-SPEC §2 "Developer path."

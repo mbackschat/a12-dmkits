@@ -4,29 +4,33 @@
 
 ## v1 scope (decided)
 
-**Ship the `dmtool` native CLI binary only.** Native-only (GraalVM 25); macOS arm64 first, built locally. Source repo stays **private** (early testers); a separate **public release-mirror repo** is the distribution point. The whole developer-library wave (JARs/JavaDoc/`llms.txt`/dev skill) is **deferred** → RELEASE-SPEC §11.
+**Ship the `dmtool` native CLI binary + the agent plugins (Claude Code + Codex).** Native-only (GraalVM 25); macOS arm64 first, built locally. Source repo stays **private** (early testers); the public **`dmtool-releases`** mirror is the distribution point. The developer-library wave (JARs/JavaDoc/`llms.txt`/dev skill) is **deferred** → RELEASE-SPEC §11.
 
 ## Done
 
-- ✅ `cli`→`dmtool` rename (launcher, skill, eval, shim) — committed, verified.
-- ✅ Native build infra: GraalVM 25 plugin, `-Os`, native-only Groovy exclusion, comprehensive reflection capture (`scripts/capture-native-config.sh`), the verb-hiding gate (`Cli.JVM_ONLY_VERBS` + `NativeImageVerbHidingTest`), the native gate (`scripts/native-gate.sh`) — committed, native gate GREEN (5/6 + 1 skip).
-- ✅ All release decisions (RELEASE-SPEC + its §13 rationale).
+- ✅ `cli`→`dmtool` rename; version `0.1.0` (root `build.gradle`).
+- ✅ Native build infra + binary: GraalVM 25, `-Os`, native-only Groovy exclusion, comprehensive reflection capture, the verb-hiding gate (`Cli.JVM_ONLY_VERBS` + `NativeImageVerbHidingTest`), the native gate. **`build/release/dmtool-macos-arm64` + `SHA256SUMS` staged; native gate GREEN** (5/6 + 1 skip).
+- ✅ **Agent plugins (Claude Code + Codex)** in [`plugin/`](../plugin/) + [`plugin-codex/`](../plugin-codex/): per-agent manifest + marketplace + `SessionStart` hook; shared skill + agent-agnostic downloader copy-synced (`scripts/sync-plugin-assets.sh`, CI freshness-locked). **Codex validated against the installed CLI 0.139.0** (manifest parses, plugin resolves, local-source install bundles manifest + hooks + skill).
+- ✅ Self-describing-surface hardening: stale-command guard + rename-proof command-ref guard (`CommandReferencesResolveTest`), tool name single-sourced (`Cli.TOOL_NAME`).
+- ✅ Public **CHANGELOG** ([`plugin/CHANGELOG.md`](../plugin/CHANGELOG.md), ships to the mirror root; empty until post-v1).
+- ✅ Mirror assembly (`scripts/assemble-release-repo.sh`): both plugins (Claude at root, Codex under `codex/`) + the EUPL bundle from the pinned kernel.
+- ✅ All release decisions (RELEASE-SPEC + its §13 rationale); mirror name = **`dmtool-releases`**.
 
-## Remaining steps — iteration 1 (local mac release)
+## Remaining to ship v1 — pre-flight → publish (awaiting "go")
 
-1. [ ] **Version:** bump `0.1.0-SNAPSHOT` → `0.1.0` (root `build.gradle`).
-2. [ ] **Build:** mac arm64 native binary (GraalVM 25, `GRAALVM_HOME` set) → name it `dmtool-macos-arm64`; generate `SHA256SUMS`. Run `scripts/native-gate.sh` → GREEN.
-3. [ ] **Public mirror repo:** create it (decide the name) — it will hold the downloadable binaries (EUPL-1.2 + kernel LICENSE/NOTICE/THIRD_PARTY + source pointer; README states per-artifact licensing). *(Outward action — confirm name before creating.)*
-4. [ ] **Release:** tag `v0.1.0` on this (source) repo; publish the mac binary + `SHA256SUMS` to the **mirror's** Release `v0.1.0` (title `v0.1.0 — kernel 30.8.1 (A12 Tools 2025.06-ext5)`; notes with a Compatibility section — RELEASE-SPEC §2).
-5. [ ] **README:** add an "Install (macOS)" section — download, `xattr -d com.apple.quarantine`, `chmod +x`, `sha256sum -c`.
-
-## Later iterations
-
-- **Iteration 2 — CI matrix** (in the public mirror, free Actions): linux-x64 + windows-x64 native binaries; checkout private source via token (maintainer-triggered only); draft-release + mac-local upload. Decide Linux mostly-static then.
-- **Iteration 3 — agent plugins (Claude Code + Codex): SCAFFOLDED** in [`plugin/`](../plugin/) + [`plugin-codex/`](../plugin-codex/) (per-agent manifest + marketplace + `SessionStart` hook; shared skill + agent-agnostic downloader copy-synced by `scripts/sync-plugin-assets.sh`, CI freshness-locked). Hook *logic* verified locally under both Claude and Codex env profiles. **Remaining:** test in a real session each (`claude --plugin-dir ./plugin`; `codex plugin marketplace add` + install) — SessionStart fires, PATH injection, install flow; then at release, `assemble-release-repo.sh` pushes both to the mirror (Claude at root, Codex under `codex/`). Detail: RELEASE-SPEC §6 / §12.
+1. [ ] **Create the public mirror repo** `dmtool-releases` (public). *(Outward, irreversible — needs explicit go-ahead.)*
+2. [ ] **Push the mirror tree** — `scripts/assemble-release-repo.sh` → push the assembled tree (both plugins + EUPL bundle + README + CHANGELOG) to the mirror.
+3. [ ] **Tag + release** — tag `v0.1.0` on this (source) repo; publish the mac binary + `SHA256SUMS` to the mirror's Release `v0.1.0` (title `v0.1.0 — kernel 30.8.1 (A12 Tools 2025.06-ext5)`; notes per RELEASE-SPEC §2; flip the CHANGELOG entry's date).
+4. [ ] **Top README** — add a short raw-binary "Install (macOS)" section (download · `xattr -d com.apple.quarantine` · `chmod +x` · `shasum -a 256 -c`). The agent-plugin install path is already documented.
 
 ## Still-open (resolve in-flight)
 
-- The **public mirror repo name** (step 3).
+- **Tag-push:** push the source-repo `v0.1.0` tag to `origin` (private), or keep it local?
 - **Signing:** none for v1 (escape hatch in the README); revisit on friction.
 - **Going public later** retires the mirror (releases move to this repo).
+
+## After v1 (not blocking the ship)
+
+- **Real-session plugin verification:** Claude `/plugin install` + Codex live session — confirm `SessionStart` fires and PATH injection lands (the `$PLUGIN_DATA/bin/dmtool` fallback covers a host that can't inject PATH).
+- **Production-mode eval run** for a measured skill lift before declaring the skill "release-good" (currently n=1 probes).
+- **Iteration 2 — CI matrix** (in the mirror, free Actions): linux-x64 + windows-x64 native binaries; checkout private source via token (maintainer-triggered only); draft-release + mac-local upload. Decide Linux mostly-static then.
