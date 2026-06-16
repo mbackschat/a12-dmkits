@@ -227,6 +227,77 @@ Condition d = allOf(r1, anyOf(r2, r3));     // "r1 And (r2 Or r3)" — parens pe
 Condition e = allOf(List.of(r1, r2, r3));   // the LIST form — fold clauses a loop/stream built (bulk authoring)
 ```
 
+### 3.6 Study — a real, highly-repetitive rule, rebuilt (before → after) ✅ (2026-06-16, findings 38–39; `MirroringRuleStudyTest`)
+
+A shape that shows up in real models: an **effective** block (here a 3-field address) must **mirror** one of several source blocks — *null-safe*, so "both empty" counts as equal — and the source is chosen by a **2×2 of flags** (is a preferred name given? is a PO-box block in use?). Written by hand it's the same null-safe-equality idiom copy-pasted **12 times** across **4 near-identical branches**, with the 2×2 flattened into the prose.
+
+**Before** — the rendered `errorCondition` you'd otherwise type and maintain by hand (the four branches are a `FieldFilled`/`FieldNotFilled` × `AtLeastOneFieldFilled`/`NoFieldFilled` cross-product; one branch shown in full, the rest abbreviated — the **complete** string is pinned verbatim in `MirroringRuleStudyTest`):
+
+```text
+GroupFilled(/Invoice/DigitalChannel)
+And AtLeastOneFieldFilled(/Invoice/Effective/Name, /Invoice/Effective/Zip, /Invoice/Effective/City)
+And (
+  ( FieldFilled(/Invoice/PreferredName) And AtLeastOneFieldFilled(/Invoice/PoBox/Zip, /Invoice/PoBox/City)
+    And ((AllFieldsFilled(/Invoice/PreferredName, /Invoice/Effective/Name) And [/Invoice/PreferredName] == [/Invoice/Effective/Name]) Or NoFieldFilled(/Invoice/PreferredName, /Invoice/Effective/Name))
+    And ((AllFieldsFilled(/Invoice/PoBox/Zip, /Invoice/Effective/Zip) And [/Invoice/PoBox/Zip] == [/Invoice/Effective/Zip]) Or NoFieldFilled(/Invoice/PoBox/Zip, /Invoice/Effective/Zip))
+    And ((AllFieldsFilled(/Invoice/PoBox/City, /Invoice/Effective/City) And [/Invoice/PoBox/City] == [/Invoice/Effective/City]) Or NoFieldFilled(/Invoice/PoBox/City, /Invoice/Effective/City)) )
+  Or ( FieldFilled(/Invoice/PreferredName)    And NoFieldFilled(PoBox…)        And ⟨the same 3 null-safe-equality clauses, sources = PreferredName + Street/Zip + Street/City⟩ )
+  Or ( FieldNotFilled(/Invoice/PreferredName) And AtLeastOneFieldFilled(PoBox…) And ⟨… sources = LegalName + PoBox/Zip + PoBox/City⟩ )
+  Or ( FieldNotFilled(/Invoice/PreferredName) And NoFieldFilled(PoBox…)        And ⟨… sources = LegalName + Street/Zip + Street/City⟩ )
+)
+```
+
+The problems are all repetition: the `(AllFieldsFilled(a,b) And [a]==[b]) Or NoFieldFilled(a,b)` idiom is hand-written 12×; the 2×2 is invisible (four pasted blocks); a one-field change is four edits; and the polarity is re-judged every line.
+
+**After** — the build that produces *exactly* that string (the assertion in the test pins the full rendered output, so the rebuild is provably faithful):
+
+<!-- snippet: study-mirroring -->
+```java
+// the fixed target block — the "effective" address (mirrored in every branch)
+List<StringRef> target = List.of(m.str("/Invoice/Effective/Name"),
+        m.str("/Invoice/Effective/Zip"), m.str("/Invoice/Effective/City"));
+
+// the two binary axes that SELECT the source block
+StringRef preferred = m.str("/Invoice/PreferredName");
+List<FieldRef> poBox = List.of(m.field("/Invoice/PoBox/Zip"), m.field("/Invoice/PoBox/City"));
+
+// assemble the source block from the two axis choices (primary name? PO-box in use?)
+BiFunction<Boolean, Boolean, List<StringRef>> sources = (primary, useExtras) -> List.of(
+        primary ? preferred : m.str("/Invoice/LegalName"),
+        useExtras ? m.str("/Invoice/PoBox/Zip") : m.str("/Invoice/Street/Zip"),
+        useExtras ? m.str("/Invoice/PoBox/City") : m.str("/Invoice/Street/City"));
+
+// every target mirrors its source, null-safe — the inner 3× repetition collapses to a zip + fold
+BiFunction<List<StringRef>, List<StringRef>, Condition> mirrors = (src, tgt) -> allOf(
+        IntStream.range(0, tgt.size()).mapToObj(i -> src.get(i).agreesWith(tgt.get(i))).toList());
+
+// the 4 branches ARE the 2×2 cross-product — a loop, not four copy-pasted blocks
+List<Condition> branches = new ArrayList<>();
+for (boolean primary : new boolean[] {true, false}) {
+    for (boolean useExtras : new boolean[] {true, false}) {
+        Condition selector = (primary ? preferred.filled() : preferred.notFilled())
+                .and(useExtras ? atLeastOneFieldFilled(poBox) : noFieldFilled(poBox));
+        branches.add(selector.and(mirrors.apply(sources.apply(primary, useExtras), target)));
+    }
+}
+
+Condition rule = m.group("/Invoice/DigitalChannel").filled()
+        .and(atLeastOneFieldFilled(target.stream().map(StringRef::field).toList()))
+        .and(anyOf(branches));
+```
+
+**What collapsed:**
+
+| in the hand-written rule | in the build |
+|---|---|
+| the null-safe idiom, 12× | `a.agreesWith(b)` — written, and its polarity reviewed, **once** (39) |
+| each branch's 3 mirror clauses | a `mirrors` zip folded by `allOf(List)` (38) |
+| the 2×2 as four pasted blocks | a `for`×`for` over the two axes — the structure is now *visible* |
+| the presence guard over a field set | `atLeastOneFieldFilled(List)` (38) — no `toArray` splat |
+| add a field pair → 4 identical edits | one entry in `target` + each source block |
+
+~15 lines instead of ~40, correct by construction (each pair type- and scale-checked, auto-parenthesized). As always (§3.4a) this is authoring-time only — it **renders to the identical flat kernel DSL**, so it stays exactly what the kernel accepts.
+
 ## 4. Authoring a rule end-to-end (F1, F2, F2a, F3, F4, F6)
 
 ### 4.1 The rule object — slots from typed handles (F2a) ✅ — implemented 2026-06-04 (`RuleAuthoringTest`; message *interpolation* ✅ 2026-06-07 — `Dsl.fieldValue`)
