@@ -28,6 +28,45 @@ GroupRef   addons = m.group("/Subscription/Addons");          // knows: repeatab
 
 Everything the safety story needs is in hand at bind time: kinds, scale, enum domain, repetition. `m.num(stringPath)` fails *here* with the kind named — not as an `MVK_*` three steps later.
 
+## 1a. The handle families — `Ref` · `Info` · `Editor` (read this first)
+
+Almost everything you hold is one of **three handle families**, and the **suffix tells you the role** — point at an element, describe it, or change it. They sit on a deliberate **purity gradient**, which is the single most important thing to internalize:
+
+```
+   Ref  (pure value, no model)     →   Info  (model-aware, read-only)   →   Editor (session-aware, mutating)
+   "point at it, to author"            "describe it, to explore"            "change it"
+   goes INTO the immutable AST          narrows to a Ref                     produces Refs of what it creates
+```
+
+| family | what it is | get it from | it holds | use it to | members |
+|---|---|---|---|---|---|
+| **`XRef`** | a **typed pointer** to a model element — the *currency* of authoring. A **pure immutable value** (no model/session inside), so it's safe to embed in the AST | `BoundModel` lookup (`m.num(path)`) or relative nav off an `Info`/`Editor` (`app.str("Zip")`) | nothing but the path + static type facts | **author** — operands, error fields, rule/computation scopes | per-kind scalars `NumberRef` `StringRef` `EnumRef` `BoolRef` `ConfirmRef` `DateRef` `TimeRef` `DateTimeRef` `DateFragmentRef` `DateRangeRef`; `GroupRef`; `CategoryRef`; list/wildcard `FieldListRef` `GroupListRef`; the kind-erased base `FieldRef`; read-back `CustomConditionRef` |
+| **`XInfo`** | a **rich read-only descriptor** — the navigation/exploration currency (jOOQ-`Meta` style) | `BoundModel.fields()`/`groups()`/`fieldAt()`/`groupAt()` | the model (so it can read metadata + navigate) | **explore** — read `kind`/`scale`/`annotations`, filter, then **narrow** to a `Ref` to author | `FieldInfo` · `GroupInfo` |
+| **`XEditor`** | a **session-bound mutator** (jOOQ `UpdatableRecord`/active-record style) — the *one* editing idiom | `EditSession` (`s.group(path)`, `s.field(path)`, …) | the live `EditSession` | **change** — fluent edits chain; relative nav yields `Ref`s of just-created elements | `GroupEditor` `FieldEditor` `RuleEditor` `ComputationEditor` `TypeDefEditor` `IncludeEditor` `ConfigEditor` |
+
+**The invariant that ties it together (decision §5c / D7):** the immutable AST holds **only pure `Ref`s — never an `Info` or `Editor`**. That's the functional-core / effects-at-the-edge split: a `Ref` carries no model or session, so a rule can't accidentally capture one and leak a side effect; the model-awareness lives on `Info` (read) and the mutation on `Editor` (write), at the edges. It's also why relative navigation lives on `Info`/`Editor` (they hold the model) and **not** on `GroupRef` (a pure value) — see finding 40.
+
+**The producers** these come from: **`BoundModel`** — the immutable bound snapshot (F0); hands out `Ref`s (lookup) and `Info`s (navigation). **`EditSession`** — the read→edit→write-back session; hands out `Editor`s. **`ModelContext`** — the agent's name-resolution + explain surface (`find`/`describe`/`explain`).
+
+<!-- teaser -->
+```java
+// Ref — point at it, to author (pure value → goes in the rule's AST):
+NumberRef fee = m.num("/Subscription/Addons/MonthlyFee");
+Condition c   = fee.filled().and(fee.lt(0));
+
+// Info — describe it, to explore; narrow to a Ref when you want to author:
+FieldInfo info = m.fieldAt("/Subscription/Addons/MonthlyFee").orElseThrow();
+info.kind();   // ValueKind.NUMBER    info.scale();   // 2    info.annotation("audited");
+NumberRef sameFee = info.asNum();                      // lenient explore → strict author
+
+// Editor — change it; a ref to what you just created comes back by relative navigation:
+GroupEditor addons = s.group("/Subscription/Addons");
+addons.addField("Discount", FieldKind.NUMBER);          // mutate (chains)
+NumberRef discount = addons.num("Discount");            // Ref of the just-added field
+```
+
+Read the rest of this study with that gradient in mind: §3–§4 author with **`Ref`s**, §6c explores with **`Info`s**, §5b/§5c edit with **`Editor`s**.
+
 ## 2. The type system steers (F0a/§5b) ✅ — a study in what you *cannot* write
 
 The largest `MVK_*` class is type rejection; the API removes it method-by-method. All of these are **compile errors or immediate failures today**:
