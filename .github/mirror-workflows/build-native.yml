@@ -164,12 +164,14 @@ jobs:
           echo "== --version =="
           "$BIN" --version | norm | tee /tmp/v.txt
           grep -q "A12 Tools distribution: 2025.06-ext5" /tmp/v.txt
+          # grep a FILE, not the pipe: `… | grep -q` exits on first match and SIGPIPEs the upstream
+          # producer (manifest is ~66 KB) → exit 141 under `set -o pipefail`. Mirrors the --version check.
           echo "== manifest (catalog reflection) =="
-          "$BIN" manifest | norm | grep -Eq '"a12Distribution" *: *"2025.06-ext5"'
+          "$BIN" manifest | norm > /tmp/m.txt; grep -Eq '"a12Distribution" *: *"2025.06-ext5"' /tmp/m.txt
           echo "== model validate (kernel reflection) =="
-          "$BIN" -m examples/models/order-ruled.dm.json model validate | norm | grep -Eq '"valid" *: *true'
+          "$BIN" -m examples/models/order-ruled.dm.json model validate | norm > /tmp/mv.txt; grep -Eq '"valid" *: *true' /tmp/mv.txt
           echo "== rule read (adapter reflection) =="
-          "$BIN" -m examples/models/order-ruled.dm.json rule read /Order/DeliveryNotBeforeOrder | norm | grep -Eq '"ok" *: *true'
+          "$BIN" -m examples/models/order-ruled.dm.json rule read /Order/DeliveryNotBeforeOrder | norm > /tmp/rr.txt; grep -Eq '"ok" *: *true' /tmp/rr.txt
           echo "windows native smoke: OK"
 
       - name: Stage the binary under its release asset name
