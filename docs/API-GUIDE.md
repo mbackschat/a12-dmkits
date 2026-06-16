@@ -197,7 +197,7 @@ Condition r3 = groupNotBlank(addons, m.field("/Subscription/Addons/Name"));
 ```
 
 ### 3.2 Fragments with domain parameters
-<!-- teaser -->
+<!-- snippet: study-fragments -->
 ```java
 /** Tolerance check — only the fixed 1/2/5/10 variants exist (the catalog teaches this; the enum enforces it). */
 static Condition withinTolerance(NumberRef actual, NumberRef expected, Tolerance t) {
@@ -528,14 +528,15 @@ m2.writeTo(path);                                          // DM-JSON write path
 
 ### 4.3 A computation, same materials
 
-<!-- teaser -->
+<!-- snippet: computation -->
 ```java
 Computation tiered = m.computation(m.num("/Subscription/Billing/EffectiveFee"))   // element placed in the
         .name("TieredFeeComp")                                                     // computed field's group;
         .commonPrecondition(fieldFilled(base.field()))                             // relPath computed
         .when(base.ge(100)).calc(base.value())             // staged: every when() must get its calc()
         .when(base.lt(100)).calc(NumberLiteral.of("0.00"))
-        .message(en("EffectiveFee follows the fee tiers."))
+        .message(en("EffectiveFee follows the fee tiers."),
+                 de("EffectiveFee folgt den Gebührenstufen."))   // a message per declared locale (the locale law)
         .build();
 ```
 
@@ -994,7 +995,7 @@ A BA does not re-derive "delivery can't precede the order" from scratch — they
 
 The five built-ins span the BA-doc's typical tasks: **date-order**, **required-when** (field-equals-value form), **mutually-exclusive**, **at-least-one-of**, **sum-of-line-items**. Each produces its condition through the **typed DSL** — so it's correct *by construction*, not merely rejected if wrong:
 
-<!-- teaser -->
+<!-- snippet: pattern-instantiate -->
 ```java
 PatternEntry dateOrder = PatternCatalog.load().byId("date-order").orElseThrow();
 

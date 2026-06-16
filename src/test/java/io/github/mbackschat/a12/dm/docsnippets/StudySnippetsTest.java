@@ -1,9 +1,13 @@
 package io.github.mbackschat.a12.dm.docsnippets;
 
+import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.allFieldsFilled;
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.allOf;
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.anyOf;
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.de;
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
+import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.fieldFilled;
+import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.groupFilled;
+import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.repetitionNotUnique;
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Severity.ERROR;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -11,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -23,14 +28,21 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry;
+import io.github.mbackschat.a12.dm.rulekit.catalog.PatternCatalog;
+import io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance;
 
 /**
  * The canonical, runnable §9 study snippets — each tagged region is mirrored verbatim into
@@ -160,5 +172,78 @@ class StudySnippetsTest {
         // end::navigation-annotations[]
         assertTrue(edited.contains("BaseFee_AUDIT"));
         assertTrue(edited.contains("auditUser"));
+    }
+
+    // tag::study-fragments[]
+    /** Tolerance check — only the fixed 1/2/5/10 variants exist (the catalog teaches this; the enum enforces it). */
+    static Condition withinTolerance(NumberRef actual, NumberRef expected, Tolerance t) {
+        return allFieldsFilled(actual.field(), expected.field())
+                .and(actual.differsWithTolerance(t, expected));   // DiffersWithToleranceRange{N} (NumberRef.differsWithTolerance)
+    }
+
+    /** Per-row threshold over a repeating group — composes the iteration cluster (item 7): the semantic index
+     *  `num(f).forIndex("k")` (7f) reads this field's value in the row whose index field equals "k", so a row
+     *  can be compared against a keyed baseline row. */
+    static Condition exceedsBaselineRow(GroupRef repeating, NumberRef amount, String baselineKey) {
+        return groupFilled(repeating).and(amount.gt(amount.forIndex(baselineKey)));
+    }
+
+    /** Uniqueness by key (7b) — one operator, but the fragment names the business intent.
+     *  The rule sits at the PARENT of the repeating group (kernel position law, KERNEL-FINDINGS §9). */
+    static Condition uniqueBy(GroupRef repeating, FieldRef key) {
+        return groupFilled(repeating).and(repetitionNotUnique(key));               // + .from(scope) for @From
+    }
+    // end::study-fragments[]
+
+    @Test
+    void reusableIterationAndToleranceFragmentsBuild() {
+        BoundModel m = Fixtures.subscription();
+        NumberRef baseFee = m.num("/Subscription/Billing/BaseFee");
+        NumberRef effFee = m.num("/Subscription/Billing/EffectiveFee");
+        GroupRef addons = m.group("/Subscription/Addons");
+        NumberRef monthlyFee = m.num("/Subscription/Addons/MonthlyFee");
+        FieldRef name = m.field("/Subscription/Addons/Name");
+        assertNotNull(withinTolerance(baseFee, effFee, Tolerance.RANGE_5));
+        assertNotNull(exceedsBaselineRow(addons, monthlyFee, "premium"));
+        assertNotNull(uniqueBy(addons, name));
+    }
+
+    @Test
+    void authorAStagedComputation() {
+        BoundModel m = Fixtures.subscription();
+        NumberRef base = m.num("/Subscription/Billing/BaseFee");
+        // tag::computation[]
+        Computation tiered = m.computation(m.num("/Subscription/Billing/EffectiveFee"))   // element placed in the
+                .name("TieredFeeComp")                                                     // computed field's group;
+                .commonPrecondition(fieldFilled(base.field()))                             // relPath computed
+                .when(base.ge(100)).calc(base.value())             // staged: every when() must get its calc()
+                .when(base.lt(100)).calc(NumberLiteral.of("0.00"))
+                .message(en("EffectiveFee follows the fee tiers."),
+                         de("EffectiveFee folgt den Gebührenstufen."))   // a message per declared locale (the locale law)
+                .build();
+        // end::computation[]
+        assertNotNull(tiered);
+    }
+
+    @Test
+    void instantiateAValidationPattern() {
+        BoundModel boundModel = BoundModel.ofJson(DocumentModelDraft.named("orders").locale("en_US")
+                .rootGroup("Order", o -> o
+                        .field("OrderDate", FieldKind.DATE)
+                        .field("DeliveryDate", FieldKind.DATE))
+                .build().toJson());
+        // tag::pattern-instantiate[]
+        PatternEntry dateOrder = PatternCatalog.load().byId("date-order").orElseThrow();
+
+        // instantiate against the model with the caller's field refs:
+        PatternEntry.Instantiation it = dateOrder.instantiate(boundModel,
+                Map.of("earlier", "/Order/OrderDate", "later", "/Order/DeliveryDate"));
+
+        it.condition();    // "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And DifferenceInDays(…) < 0"
+        it.errorField();   // "/Order/DeliveryDate" — referenced, in scope (a legal error field, baked in)
+        it.suggestedCode();// "DATE_ORDER"
+        // end::pattern-instantiate[]
+        assertEquals("/Order/DeliveryDate", it.errorField());
+        assertTrue(it.condition().contains("DifferenceInDays"));
     }
 }
