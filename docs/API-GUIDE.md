@@ -11,7 +11,65 @@ A12 validation- and computation-rules are stored as **`errorCondition` strings**
 
 rulekit/modelkit replace that with a **typed, model-aware builder** and a full **read → explain → modify → validate → write-back** loop. The model is bound once; every handle (`m.num(path)`, `m.enumOf(path)`) knows its kind, scale, and enum domain, so a wrong path or a nonsensical comparison fails *at the call site* with the cause named — not three steps later in the engine. The rendered DSL text the kernel stores is identical to what you'd hand-write; what changes is that the compiler, not the kernel, catches the mistakes first.
 
-<!-- __PART1_CASESTUDY__ -->
+### Case study: a subscription model, end to end
+
+One pass through the whole loop on a small **subscription** model — `Subscription { Tier (enum BASIC/PRO/ENTERPRISE), MonthlyFee (money, scale 2) }`. Every step below is real, runnable code, **confirmed by the A12 kernel** (it's a locked test — the doc can't drift from what runs).
+
+**1 — Bind once, then explore.** Binding indexes the model; from there everything flows off typed handles. Exploration is a plain `Stream` (no query language):
+
+<!-- snippet: cs-bind -->
+```java
+BoundModel m = BoundModel.ofJson(subscription);          // bound once — kinds, scale, enum domain in hand
+List<FieldInfo> money = m.fields()                       // explore: every money field; Stream.filter IS the matcher
+        .filter(f -> f.kind() == ValueKind.NUMBER && f.scale() == 2)
+        .toList();
+```
+
+**2 — Author a rule the compiler steers, then let the kernel confirm it.** Handles know their kind/scale/enum domain, so a wrong operand fails at the call site; the rendered DSL is then validated by the real kernel — no codegen, no compile:
+
+<!-- snippet: cs-author -->
+```java
+NumberRef fee  = m.num("/Subscription/MonthlyFee");      // knows: NUMBER, scale 2
+EnumRef   tier = m.enumOf("/Subscription/Tier");         // knows: BASIC / PRO / ENTERPRISE
+Rule rule = m.rule(m.group("/Subscription"))
+        .name("ProNeedsFee").errorField(fee)
+        .when(tier.is("PRO").and(fee.notFilled()))       // a PRO subscription must carry a monthly fee
+        .code("PRO_FEE_REQUIRED").severity(Severity.ERROR)
+        .message(Dsl.en("A PRO subscription requires a monthly fee."))
+        .build();                                        // build-time pre-checks: error field in scope, locale law
+ValidationResult vr = new RuleValidator().check(subscription, rule.draft());   // the REAL kernel confirms it
+```
+
+**3 — Edit structure *and* rules in one session, then write back.** Add a field and a rule that guards it in a single `EditSession`; the reference to the just-created field comes back by navigation, and one terminal kernel gate validates the whole change:
+
+<!-- snippet: cs-edit -->
+```java
+EditSession s = EditSession.read(subscription);
+GroupEditor sub = s.group("/Subscription");
+sub.addField("Discount", FieldKind.NUMBER);              // structure edit (modelkit)
+NumberRef discount = sub.num("Discount");                // a ref to the field just created
+sub.addRule(r -> r.name("DiscountNonNeg").errorField(discount)
+        .when(discount.filled().and(discount.lt(0)))     // rule (rulekit) over the new field
+        .code("DISCOUNT_NEG").severity(Severity.ERROR)
+        .message(Dsl.en("Discount must not be negative.")).build());
+String updated = s.validate().toJson();                  // one terminal kernel gate, then write back
+```
+
+**4 — Run it against data — does it actually fire?** The empirical check a static "is it valid?" can't give: evaluate the rule over a real document instance and see which codes fired (the angle that catches an inverted-but-valid rule):
+
+<!-- snippet: cs-run -->
+```java
+// does it actually FIRE? — the empirical check a static "is it valid?" can't give
+EvalResult clean = KernelAdapter.ofJson(updated)
+        .evaluate(Map.of("Subscription", Map.of("Discount", "0")), Locale.US);
+assertFalse(clean.firedCodes().contains("DISCOUNT_NEG"));        // a compliant instance — silent
+
+EvalResult violating = KernelAdapter.ofJson(updated)
+        .evaluate(Map.of("Subscription", Map.of("Discount", "-5")), Locale.US);
+assertTrue(violating.firedCodes().contains("DISCOUNT_NEG"));     // a negative discount — the rule fires
+```
+
+That's the arc — **bind → explore → author → validate → edit → write back → run** — and rulekit also **reads** foreign `errorCondition` strings back into the same typed form and **explains** them. The rest of this guide (Part II) takes each part in turn; the handle families you'll see throughout are next.
 
 ## 1a. The handle families — `Ref` · `Info` · `Editor` (read this first)
 

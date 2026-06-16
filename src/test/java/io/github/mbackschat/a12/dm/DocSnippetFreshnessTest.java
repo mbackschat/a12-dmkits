@@ -45,7 +45,14 @@ class DocSnippetFreshnessTest {
     private static final String STUDY_SNIPPETS =
             "src/test/java/io/github/mbackschat/a12/dm/docsnippets/StudySnippetsTest.java";
 
+    private static final String CASE_STUDY =
+            "adapter/src/test/java/io/github/mbackschat/a12/dm/adapter/CaseStudyTest.java";
+
     private static final List<Lock> LOCKS = List.of(
+            new Lock("cs-bind", "docs/API-GUIDE.md", CASE_STUDY),
+            new Lock("cs-author", "docs/API-GUIDE.md", CASE_STUDY),
+            new Lock("cs-edit", "docs/API-GUIDE.md", CASE_STUDY),
+            new Lock("cs-run", "docs/API-GUIDE.md", CASE_STUDY),
             new Lock("transform", "docs/API-GUIDE.md",
                     "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/TransformConditionTest.java"),
             new Lock("nary", "docs/API-GUIDE.md", STUDY_SNIPPETS),
