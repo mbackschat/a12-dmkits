@@ -8,7 +8,7 @@ rulekit pins one kernel (`30.8.1` today) and never reimplements its truth — th
 2. **Run everything.** `./gradlew test` (core + adapter). Core guardians fail fast; the adapter canary is the N8 pin+canary for the unstable internal surface.
 3. **Read failures by class → act** using the coupling map below. Each guardian failure names exactly what changed and the realignment.
 4. **Re-stamp the floor.** Update the catalog's `verifiedAgainst` (in `operators.json`) to the new version once green — that is the F11 verification floor the runtime skew advisory compares against. Set `sinceKernel` on any newly-added operator entries.
-5. **Sweep docs.** Update the §9 board (`API-POC-STUDY.md`), record any new kernel fact in `KERNEL-FINDINGS.md`, and note rulekit's treatment in `KERNEL-INTEGRATION-NOTES.md` — in the same change (docs travel with the code).
+5. **Sweep docs.** Update the §9 board (`API-GUIDE.md`), record any new kernel fact in `KERNEL-FINDINGS.md`, and note rulekit's treatment in `KERNEL-INTEGRATION-NOTES.md` — in the same change (docs travel with the code).
 
 ## The coupling map — guardian ↔ what a failure means ↔ realignment
 

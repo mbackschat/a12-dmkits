@@ -46,27 +46,27 @@ class DocSnippetFreshnessTest {
             "src/test/java/io/github/mbackschat/a12/dm/docsnippets/StudySnippetsTest.java";
 
     private static final List<Lock> LOCKS = List.of(
-            new Lock("transform", "docs/API-POC-STUDY.md",
+            new Lock("transform", "docs/API-GUIDE.md",
                     "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/TransformConditionTest.java"),
-            new Lock("nary", "docs/API-POC-STUDY.md", STUDY_SNIPPETS),
-            new Lock("create-model", "docs/API-POC-STUDY.md", STUDY_SNIPPETS),
-            new Lock("edit-session", "docs/API-POC-STUDY.md", STUDY_SNIPPETS),
-            new Lock("catalog", "docs/API-POC-STUDY.md", STUDY_SNIPPETS),
-            new Lock("navigation", "docs/API-POC-STUDY.md", STUDY_SNIPPETS),
-            new Lock("navigation-annotations", "docs/API-POC-STUDY.md", STUDY_SNIPPETS),
-            new Lock("study-mirroring", "docs/API-POC-STUDY.md",
+            new Lock("nary", "docs/API-GUIDE.md", STUDY_SNIPPETS),
+            new Lock("create-model", "docs/API-GUIDE.md", STUDY_SNIPPETS),
+            new Lock("edit-session", "docs/API-GUIDE.md", STUDY_SNIPPETS),
+            new Lock("catalog", "docs/API-GUIDE.md", STUDY_SNIPPETS),
+            new Lock("navigation", "docs/API-GUIDE.md", STUDY_SNIPPETS),
+            new Lock("navigation-annotations", "docs/API-GUIDE.md", STUDY_SNIPPETS),
+            new Lock("study-mirroring", "docs/API-GUIDE.md",
                     "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/MirroringRuleStudyTest.java"),
-            new Lock("study-mirror-combinators", "docs/API-POC-STUDY.md",
+            new Lock("study-mirror-combinators", "docs/API-GUIDE.md",
                     "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/MirroringRuleStudyTest.java"),
-            new Lock("study-mirror-reuse", "docs/API-POC-STUDY.md",
+            new Lock("study-mirror-reuse", "docs/API-GUIDE.md",
                     "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/MirroringRuleStudyTest.java"),
-            new Lock("study-mirror-relative", "docs/API-POC-STUDY.md",
+            new Lock("study-mirror-relative", "docs/API-GUIDE.md",
                     "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/MirroringRuleStudyTest.java"),
-            new Lock("editor-number-field", "docs/API-POC-STUDY.md",
+            new Lock("editor-number-field", "docs/API-GUIDE.md",
                     "src/test/java/io/github/mbackschat/a12/dm/edit/GroupEditorTest.java"));
 
     /** The doc whose every shipped (✅) {@code ```java} block must be classified — locked or teaser-marked. */
-    private static final String STUDY = "docs/API-POC-STUDY.md";
+    private static final String STUDY = "docs/API-GUIDE.md";
 
     /**
      * Completeness guard: no shipped snippet escapes classification. Every {@code ```java} block whose

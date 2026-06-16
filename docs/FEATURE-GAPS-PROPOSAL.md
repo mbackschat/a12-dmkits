@@ -2,7 +2,7 @@
 
 > **What this is.** In practice dmkits (rulekit + modelkit + `dmtool`) is driven by a **business analyst working through an LLM agent**: the BA holds a requirement in business terms ("delivery can't precede the order date"), and the agent turns it into a rule or computation via `dmtool`. This doc is the **open backlog for that BA+agent loop** — ergonomic capabilities that would make the loop faster or safer — surfaced by a 2026-06-14 review against the kernel team's BA reference (`a12-kernel/documentation/_merged/kernel-ba.md`). Every item here is **proposed, not built**.
 >
-> **What was here before.** This file used to hold the *structural* authoring-coverage inventory (field config, field/element metadata, group templates, refactors, …). **That backlog is closed — every one of those capabilities shipped**, and each is documented where it is contracted and tested: the [`API-POC-STUDY.md` §9 board](API-POC-STUDY.md) (the single source of truth for what's built), [`CLI-SPEC.md`](CLI-SPEC.md) (verb/gate contracts), and [`KERNEL-FINDINGS.md`](KERNEL-FINDINGS.md) (kernel facts). Code comments that cite `FEATURE-GAPS §3.x` / `§2` name those now-shipped features — find each on the §9 board (it carries the same capabilities by name).
+> **What was here before.** This file used to hold the *structural* authoring-coverage inventory (field config, field/element metadata, group templates, refactors, …). **That backlog is closed — every one of those capabilities shipped**, and each is documented where it is contracted and tested: the [`API-GUIDE.md` §9 board](API-GUIDE.md) (the single source of truth for what's built), [`CLI-SPEC.md`](CLI-SPEC.md) (verb/gate contracts), and [`KERNEL-FINDINGS.md`](KERNEL-FINDINGS.md) (kernel facts). Code comments that cite `FEATURE-GAPS §3.x` / `§2` name those now-shipped features — find each on the §9 board (it carries the same capabilities by name).
 
 ---
 
@@ -79,7 +79,7 @@ Each gap: the BA need → what's missing today → the proposal. Ordered by valu
 - **Then the round-trip-savers:** **G4**, **G5**.
 - **G6** (field-config edit) is the highest-value of the agent-surfaced pair — it removes a destructive workaround; **G7** (the factual constraint↔operator `seeAlso`) is the neutral discoverability bridge and composes with G3's operator relations.
 
-When one ships it graduates into the **shipped** record — a row on the [`API-POC-STUDY.md` §9 board](API-POC-STUDY.md) and, for a CLI verb, a [`CLI-SPEC.md`](CLI-SPEC.md) contract — with its own test lock, exactly as the former structural inventory did.
+When one ships it graduates into the **shipped** record — a row on the [`API-GUIDE.md` §9 board](API-GUIDE.md) and, for a CLI verb, a [`CLI-SPEC.md`](CLI-SPEC.md) contract — with its own test lock, exactly as the former structural inventory did.
 
 ---
 

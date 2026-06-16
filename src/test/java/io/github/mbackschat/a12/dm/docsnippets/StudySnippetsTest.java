@@ -34,7 +34,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
 /**
  * The canonical, runnable §9 study snippets — each tagged region is mirrored verbatim into
- * {@code docs/API-POC-STUDY.md} and locked by {@link io.github.mbackschat.a12.dm.DocSnippetFreshnessTest}.
+ * {@code docs/API-GUIDE.md} and locked by {@link io.github.mbackschat.a12.dm.DocSnippetFreshnessTest}.
  * Authored here so the doc shows code that genuinely compiles and runs against the real kernel.
  * (Teaching-heavy / elided / deliberately-non-compiling study blocks stay {@code <!-- teaser -->}.)
  */
