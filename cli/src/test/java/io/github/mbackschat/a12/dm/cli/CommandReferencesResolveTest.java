@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.cli;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -14,6 +15,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import picocli.CommandLine;
 
@@ -26,8 +28,13 @@ import picocli.CommandLine;
  *
  * <p>It is derived entirely from the live command tree ({@link Cli#TOOL_NAME} via {@link RootCommand}), so
  * it can't drift: the set of valid verbs and the tool name both recompute from the same model that drives
- * parsing. Two reference shapes are checked across the authored user-facing text ({@code src/main/java}
- * help + diagnostics, the bundled {@code schema/*.json} + {@code verb-examples.json}, the operator catalog):
+ * parsing. Two reference shapes are checked across the authored user-facing text — the in-binary surface
+ * ({@code src/main/java} help + diagnostics, the bundled {@code schema/*.json} + {@code verb-examples.json},
+ * the operator catalog) <b>and the command-bearing markdown an agent or installer reads</b> (the source +
+ * public READMEs, the canonical {@code skill/SKILL.md} — the N6 material-under-test, so a stale verb there
+ * misleads the cold agent directly — and the Codex {@code AGENTS.md}). The {@code examples/} demos are
+ * already guarded by Showboat (it <i>executes</i> them), and the skill's plugin copies by the
+ * {@code sync-plugin-assets.sh --check} copy-equality gate, so guarding the canonical files suffices:
  *
  * <ul>
  *   <li><b>Full invocations</b> — {@code dmtool [-m <model>] <target> <op> …}: the leading token must be
@@ -35,6 +42,12 @@ import picocli.CommandLine;
  *   <li><b>Two-token shorthand</b> — a backtick {@code `target op`} whose first token is a real top-level
  *       subcommand (the diagnostic hints, e.g. {@code `rule read`}); the pair must resolve.</li>
  * </ul>
+ *
+ * <p><b>Markdown is scanned by code context, not prose:</b> inside a fenced code block the whole line is a
+ * command; outside one, only inline-code spans (backtick) count — so a bare prose mention like "dmtool
+ * guidance" is ignored, while {@code `rule read`} and a fenced {@code dmtool …} block are checked.
+ * Illustrative placeholders the skill teaches with — {@code dmtool <target> <op>}, {@code operators <id>} —
+ * resolve cleanly (an angle-bracket token ends the path without a violation).
  *
  * <p>The <b>tool-rename trip-wire:</b> the scan keys off the <i>live</i> tool name, so renaming
  * {@link Cli#TOOL_NAME} without updating the example text drops the invocation count to ~0 — the
@@ -47,6 +60,15 @@ class CommandReferencesResolveTest {
             Path.of("src/main/java"),
             Path.of("src/main/resources"),
             Path.of("../src/main/resources/catalog"));
+
+    /** Command-bearing markdown an agent/installer reads (repo-root-relative from the {@code cli} module dir).
+     *  The {@code examples/} demos are guarded by Showboat (it executes them); the skill's plugin copies by
+     *  the copy-equality gate — so only these canonical files need command-resolution scanning here. */
+    private static final List<Path> MD_FILES = List.of(
+            Path.of("../README.md"),
+            Path.of("../plugin/README.md"),
+            Path.of("../skill/SKILL.md"),
+            Path.of("../plugin-codex/AGENTS.md"));
 
     /** A path/shorthand segment: a lowercase verb token (targets/ops are all lowercase, hyphens allowed). */
     private static final Pattern BAREWORD = Pattern.compile("[a-z][a-z0-9-]*");
@@ -75,6 +97,11 @@ class CommandReferencesResolveTest {
                         .forEach(p -> scan(p, root, invocation, violations, invocationCount));
             }
         }
+        for (Path md : MD_FILES) {
+            if (Files.isRegularFile(md)) {
+                scanMarkdown(md, root, invocation, violations, invocationCount);
+            }
+        }
 
         assertTrue(invocationCount[0] >= MIN_INVOCATIONS,
                 () -> "found only " + invocationCount[0] + " `" + toolName + " …` command examples (floor "
@@ -84,41 +111,106 @@ class CommandReferencesResolveTest {
                         + String.join("\n", violations));
     }
 
+    /** Code-everywhere surfaces (.java/.json): every line is candidate text — full invocations + the
+     *  two-token backtick shorthand. */
+    /** Does-fire proof for the markdown path: a stale fenced command must be caught, while a bare prose
+     *  mention and an illustrative {@code <id>} placeholder must not — the three behaviours the guard rests on. */
+    @Test
+    void theMarkdownGuardFiresOnAStaleCommandButNotOnProseOrPlaceholders(@TempDir Path dir) throws IOException {
+        CommandLine root = new CommandLine(new RootCommand());
+        Pattern invocation = Pattern.compile("\\b" + Pattern.quote(root.getCommandName()) + "\\b([^`}\"\\n]*)");
+        Path md = dir.resolve("stale.md");
+        Files.writeString(md, """
+                Prose mentioning dmtool guidance must be ignored (not a command).
+
+                ```sh
+                dmtool -m order.dm.json rule frobnicate --field /X   # stale op after a concrete -m value
+                ```
+
+                Inline `dmtool operators <id>` is an illustrative placeholder and must pass.
+                """);
+
+        List<String> violations = new ArrayList<>();
+        int[] count = {0};
+        scanMarkdown(md, root, invocation, violations, count);
+
+        assertEquals(1, violations.size(),
+                () -> "expected exactly the stale `rule frobnicate` to fire, got: " + violations);
+        assertTrue(violations.get(0).contains("frobnicate"), violations::toString);
+    }
+
     private static void scan(Path file, CommandLine root, Pattern invocation,
             List<String> violations, int[] invocationCount) {
-        List<String> lines;
-        try {
-            lines = Files.readAllLines(file);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
+        List<String> lines = readLines(file);
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i);
+            matchInvocations(line, file, i + 1, root, invocation, violations, invocationCount);
+            Matcher b = BACKTICK.matcher(line);
+            while (b.find()) {
+                checkTwoTokenShorthand(b.group(1), file, i + 1, root, violations);
+            }
         }
-        Map<String, CommandLine> topLevel = root.getSubcommands();
+    }
+
+    /** Markdown surfaces: scan by <b>code context</b>, not prose. Inside a fenced block the whole line is a
+     *  command; outside one, only inline-code spans count — so a bare prose mention ("dmtool guidance") is
+     *  ignored while {@code `rule read`} and fenced {@code dmtool …} lines are checked. */
+    private static void scanMarkdown(Path file, CommandLine root, Pattern invocation,
+            List<String> violations, int[] invocationCount) {
+        List<String> lines = readLines(file);
+        boolean inFence = false;
         for (int i = 0; i < lines.size(); i++) {
             String line = lines.get(i);
             int lineNo = i + 1;
-
-            Matcher m = invocation.matcher(line);
-            while (m.find()) {
-                List<String> tokens = tokenize(m.group(1));
-                String problem = resolveInvocation(root, tokens);
-                if (problem == PATH_PRESENT) {
-                    invocationCount[0]++;
-                } else if (problem != null) {
-                    violations.add(file + ":" + lineNo + " — `" + (root.getCommandName() + m.group(1)).trim()
-                            + "` — " + problem);
+            if (line.stripLeading().startsWith("```")) {
+                inFence = !inFence;
+                continue;
+            }
+            if (inFence) {
+                matchInvocations(line, file, lineNo, root, invocation, violations, invocationCount);
+            } else {
+                Matcher b = BACKTICK.matcher(line);
+                while (b.find()) {
+                    String span = b.group(1);
+                    matchInvocations(span, file, lineNo, root, invocation, violations, invocationCount);
+                    checkTwoTokenShorthand(span, file, lineNo, root, violations);
                 }
             }
+        }
+    }
 
-            Matcher b = BACKTICK.matcher(line);
-            while (b.find()) {
-                String[] words = b.group(1).trim().split("\\s+");
-                if (words.length == 2 && BAREWORD.matcher(words[0]).matches()
-                        && BAREWORD.matcher(words[1]).matches() && topLevel.containsKey(words[0])) {
-                    String problem = resolvePath(root, List.of(words), 0);
-                    if (problem != null && problem != PATH_PRESENT) {
-                        violations.add(file + ":" + lineNo + " — `" + b.group(1) + "` — " + problem);
-                    }
-                }
+    private static List<String> readLines(Path file) {
+        try {
+            return Files.readAllLines(file);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    /** Find every {@code dmtool …} invocation in {@code text}; count the resolved ones, record stale ones. */
+    private static void matchInvocations(String text, Path file, int lineNo, CommandLine root,
+            Pattern invocation, List<String> violations, int[] invocationCount) {
+        Matcher m = invocation.matcher(text);
+        while (m.find()) {
+            String problem = resolveInvocation(root, tokenize(m.group(1)));
+            if (problem == PATH_PRESENT) {
+                invocationCount[0]++;
+            } else if (problem != null) {
+                violations.add(file + ":" + lineNo + " — `" + (root.getCommandName() + m.group(1)).trim()
+                        + "` — " + problem);
+            }
+        }
+    }
+
+    /** The {@code `target op`} shorthand: a two-bareword span whose first word is a real top-level verb. */
+    private static void checkTwoTokenShorthand(String span, Path file, int lineNo, CommandLine root,
+            List<String> violations) {
+        String[] words = span.trim().split("\\s+");
+        if (words.length == 2 && BAREWORD.matcher(words[0]).matches()
+                && BAREWORD.matcher(words[1]).matches() && root.getSubcommands().containsKey(words[0])) {
+            String problem = resolvePath(root, List.of(words), 0);
+            if (problem != null && problem != PATH_PRESENT) {
+                violations.add(file + ":" + lineNo + " — `" + span + "` — " + problem);
             }
         }
     }
@@ -126,13 +218,17 @@ class CommandReferencesResolveTest {
     /** Sentinel: a real, fully-resolved verb path was present (counts toward the invocation floor). */
     private static final String PATH_PRESENT = "<resolved>";
 
-    /** Strip leading global options (e.g. {@code -m <model.json>}) before resolving the verb path. */
+    /** Strip leading global options before resolving the verb path — both the placeholder form
+     *  ({@code -m <model.json>}) and the concrete form the READMEs/skill use ({@code -m order.dm.json}). The
+     *  value is skipped only when it isn't itself a real top-level verb, so a boolean flag followed by a verb
+     *  ({@code --dry-run rule modify}) still resolves the verb. */
     private static String resolveInvocation(CommandLine root, List<String> tokens) {
         int i = 0;
         while (i < tokens.size() && tokens.get(i).startsWith("-")) {
             i++;                                                    // the option flag
-            if (i < tokens.size() && tokens.get(i).startsWith("<")) {
-                i++;                                                // its placeholder value
+            if (i < tokens.size() && !tokens.get(i).startsWith("-")
+                    && !root.getSubcommands().containsKey(tokens.get(i))) {
+                i++;                                                // its value (placeholder or concrete file)
             }
         }
         return resolvePath(root, tokens, i);
@@ -176,6 +272,9 @@ class CommandReferencesResolveTest {
     private static List<String> tokenize(String rest) {
         List<String> out = new ArrayList<>();
         for (String t : rest.trim().split("\\s+")) {
+            if (t.startsWith("#")) {
+                break;                                              // a shell comment ends the command
+            }
             if (!t.isEmpty()) {
                 out.add(t);
             }
