@@ -8,6 +8,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 _Empty._
 
+## [0.2.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
+
+### Added
+
+- **`field modify` inside `apply`/`batch`** — re-type or add constraints to an existing field (e.g. give a STRING a `pattern`, tighten a NUMBER's scale) as one op in an atomic `apply`/`batch` session, using the same rich spec as the standalone `field modify` verb (which shipped in 0.1.3).
+
+### Changed
+
+- **`field modify` now warns when a kind change strands rules that read the field** — re-typing a field surfaces an advisory if existing rules or computations reference it, so a breaking re-type is visible before the write.
+
 ## [0.1.3] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
 ### Added
