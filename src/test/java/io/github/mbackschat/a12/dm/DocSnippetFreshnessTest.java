@@ -65,31 +65,23 @@ class DocSnippetFreshnessTest {
             new Lock("editor-number-field", "docs/API-GUIDE.md",
                     "src/test/java/io/github/mbackschat/a12/dm/edit/GroupEditorTest.java"));
 
-    /** The doc whose every shipped (✅) {@code ```java} block must be classified — locked or teaser-marked. */
+    /** The guide whose every {@code ```java} block must be classified — locked or teaser-marked. */
     private static final String STUDY = "docs/API-GUIDE.md";
 
     /**
-     * Completeness guard: no shipped snippet escapes classification. Every {@code ```java} block whose
-     * heading ancestry includes a ✅ section must be immediately preceded by either {@code <!-- snippet: <id> -->}
-     * (locked to a run test, above) or {@code <!-- teaser -->} (acknowledged hand-maintained — elided or
-     * deliberately non-compiling, e.g. §2's "what you cannot write"). This mirrors the conformance-matrix
-     * discipline (every X classified), so a newly-shipped snippet can't silently dodge the lock.
+     * Completeness guard: no snippet escapes classification. <b>Every</b> {@code ```java} block in the guide
+     * must be immediately preceded by either {@code <!-- snippet: <id> -->} (locked to a run test, above) or
+     * {@code <!-- teaser -->} (acknowledged hand-maintained — elided or deliberately non-compiling, e.g. §2's
+     * "what you cannot write"). Independent of heading status markers (the guide's user-facing titles carry no
+     * ✅/🔮 — status lives on the board in {@code API-STATUS.md}), so a new snippet can't dodge the lock.
      */
     @Test
     @DisabledIfSystemProperty(named = "snippets.fix", matches = "true")
-    void everyShippedDocSnippetIsLockedOrTeaserMarked() throws IOException {
+    void everyDocSnippetIsLockedOrTeaserMarked() throws IOException {
         List<String> lines = Files.readAllLines(repoFile(STUDY));
-        String[] headingStack = new String[7];
         List<String> unclassified = new ArrayList<>();
         for (int i = 0; i < lines.size(); i++) {
-            String line = lines.get(i);
-            int level = headingLevel(line);
-            if (level > 0) {
-                headingStack[level] = line;
-                for (int deeper = level + 1; deeper < headingStack.length; deeper++) {
-                    headingStack[deeper] = null;
-                }
-            } else if (line.startsWith("```java") && shippedUnder(headingStack)) {
+            if (lines.get(i).startsWith("```java")) {
                 String prev = precedingNonBlank(lines, i);
                 if (!prev.startsWith("<!-- snippet:") && !prev.equals("<!-- teaser -->")) {
                     unclassified.add("L" + (i + 1));
@@ -97,27 +89,9 @@ class DocSnippetFreshnessTest {
             }
         }
         assertTrue(unclassified.isEmpty(), () ->
-                "Unclassified ```java block(s) under a ✅ section in " + STUDY + " at " + unclassified
-                + " — each shipped snippet must be preceded by `<!-- snippet: <id> -->` (lock it to a run "
-                + "test) or `<!-- teaser -->` (acknowledge it stays hand-maintained: elided or non-compiling).");
-    }
-
-    /** {@code #}-count of a markdown ATX heading (1–6), or 0 if {@code line} is not a heading. */
-    private static int headingLevel(String line) {
-        int h = 0;
-        while (h < line.length() && line.charAt(h) == '#') {
-            h++;
-        }
-        return (h >= 1 && h <= 6 && h < line.length() && line.charAt(h) == ' ') ? h : 0;
-    }
-
-    private static boolean shippedUnder(String[] headingStack) {
-        for (String heading : headingStack) {
-            if (heading != null && heading.contains("✅")) {
-                return true;
-            }
-        }
-        return false;
+                "Unclassified ```java block(s) in " + STUDY + " at " + unclassified
+                + " — each must be preceded by `<!-- snippet: <id> -->` (lock it to a run test) or "
+                + "`<!-- teaser -->` (acknowledge it stays hand-maintained: elided or non-compiling).");
     }
 
     private static String precedingNonBlank(List<String> lines, int idx) {

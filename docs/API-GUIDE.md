@@ -1,32 +1,17 @@
-# API study & review surface — what the dmkits library (rulekit + modelkit) feels like
+# rulekit & modelkit — the API guide
 
-> **Status:** living **design study and review surface**, expanded 2026-06-04 (first version 2026-06-03) — code studies for **every stated proposal goal** ([`PROJECT-PROPOSAL.md`](./PROJECT-PROPOSAL.md) v2 §2/§3), so the end-state experience can be reviewed *before* each part is built. Names and signatures of unbuilt parts are **not final**. Status markers throughout: ✅ = works today, verbatim or near-verbatim; 🔮 = Phase-1/2 scope, illustrative.
->
-> **This doc is deliberately kept alive:** whenever a feature lands or an interesting usage emerges, the corresponding study here is updated to showcase it (see the doc-evolution note in `CLAUDE.md`). It doubles as the seed material for the LLM skill (N1) and the self-sufficiency eval (N6).
->
-> Domain: the committed **subscription** fixture (our own original) — `Subscription` root with `Tier` (enum `BASIC/PRO/ENTERPRISE`, category `Pricing` FREE/PAID), `AutoRenew` (boolean), `TermsAccepted` (confirm), repeatable `Addons{Name, MonthlyFee(scale 2)}`, `Billing{InvoiceEmail, BaseFee(scale 2), EffectiveFee(scale 2)}`; declared locales `en_US` + `de_DE` (header locales are arbitrary — en/de are not special); the **order** fixture adds `ShippingAddress`/`BillingAddress` groups and boolean/confirm fields. Extended illustratively where a construct needs it.
+> What the dmkits library (**rulekit** + **modelkit**) feels like to use, as a typed Java library: bind a model, author rules and computations the compiler steers, edit structure, read foreign rules back, explain them, and run them against data — all confirmed by the real A12 kernel. **Part I** motivates it with a worked case study; **Part II** walks the parts in detail. The per-capability **status board** and the numbered **design findings** live in [`API-STATUS.md`](API-STATUS.md) (this guide stays status-free, so titles read clean).
 
 ---
+## Part I — Motivation & case study
 
-## 1. Setup — bind once, everything flows from the model (F0) ✅
+### Why this exists
 
-<!-- teaser -->
-```java
-import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.*;
-import io.github.mbackschat.a12.dm.rulekit.dsl.*;
+A12 validation- and computation-rules are stored as **`errorCondition` strings** — `FieldFilled(MonthlyFee) And [MonthlyFee] < 0` — hand-written, untyped, and only checked when the kernel finally runs. A typo in a field name, a number operator on a date, the wrong enum value, the missing error message: all surface late, as cryptic `MVK_*` codes, far from where you wrote the mistake.
 
-BoundModel m = BoundModel.of(ModelIndex.of(ModelLoader.loadSelfContained(reader)));   // ✅ today
-// BoundModel m = BoundModel.load(path);                      // 🔮 path-loading sugar (today: read the text yourself)
-BoundModel withIncludes = BoundModel.ofJson(json, resolver);  // ✅ a model with includes — rulekit expands via the resolver (F0; §5d)
+rulekit/modelkit replace that with a **typed, model-aware builder** and a full **read → explain → modify → validate → write-back** loop. The model is bound once; every handle (`m.num(path)`, `m.enumOf(path)`) knows its kind, scale, and enum domain, so a wrong path or a nonsensical comparison fails *at the call site* with the cause named — not three steps later in the engine. The rendered DSL text the kernel stores is identical to what you'd hand-write; what changes is that the compiler, not the kernel, catches the mistakes first.
 
-NumberRef  fee   = m.num("/Subscription/Addons/MonthlyFee");  // knows: number, scale 2
-EnumRef    tier  = m.enumOf("/Subscription/Tier");            // knows: BASIC, PRO, ENTERPRISE
-BoolRef    renew = m.bool("/Subscription/AutoRenew");         // boolean ≠ confirm (§5b)
-ConfirmRef terms = m.confirm("/Subscription/TermsAccepted");
-GroupRef   addons = m.group("/Subscription/Addons");          // knows: repeatable
-```
-
-Everything the safety story needs is in hand at bind time: kinds, scale, enum domain, repetition. `m.num(stringPath)` fails *here* with the kind named — not as an `MVK_*` three steps later.
+<!-- __PART1_CASESTUDY__ -->
 
 ## 1a. The handle families — `Ref` · `Info` · `Editor` (read this first)
 
@@ -67,7 +52,33 @@ NumberRef discount = addons.num("Discount");            // Ref of the just-added
 
 Read the rest of this study with that gradient in mind: §3–§4 author with **`Ref`s**, §6c explores with **`Info`s**, §5b/§5c edit with **`Editor`s**.
 
-## 2. The type system steers (F0a/§5b) ✅ — a study in what you *cannot* write
+
+
+## Part II — The parts in detail
+
+---
+
+## 1. Setup — bind once, everything flows from the model
+
+<!-- teaser -->
+```java
+import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.*;
+import io.github.mbackschat.a12.dm.rulekit.dsl.*;
+
+BoundModel m = BoundModel.of(ModelIndex.of(ModelLoader.loadSelfContained(reader)));   // ✅ today
+// BoundModel m = BoundModel.load(path);                      // 🔮 path-loading sugar (today: read the text yourself)
+BoundModel withIncludes = BoundModel.ofJson(json, resolver);  // ✅ a model with includes — rulekit expands via the resolver (F0; §5d)
+
+NumberRef  fee   = m.num("/Subscription/Addons/MonthlyFee");  // knows: number, scale 2
+EnumRef    tier  = m.enumOf("/Subscription/Tier");            // knows: BASIC, PRO, ENTERPRISE
+BoolRef    renew = m.bool("/Subscription/AutoRenew");         // boolean ≠ confirm (§5b)
+ConfirmRef terms = m.confirm("/Subscription/TermsAccepted");
+GroupRef   addons = m.group("/Subscription/Addons");          // knows: repeatable
+```
+
+Everything the safety story needs is in hand at bind time: kinds, scale, enum domain, repetition. `m.num(stringPath)` fails *here* with the kind named — not as an `MVK_*` three steps later.
+
+## 2. The type system steers — a study in what you *cannot* write
 
 The largest `MVK_*` class is type rejection; the API removes it method-by-method. All of these are **compile errors or immediate failures today**:
 
@@ -100,9 +111,9 @@ m.flatten("/S/Billing*/BaseFee")       // fails fast — Billing is not repeatab
 
 Each erased mistake corresponds to a **kernel-verified** rejection code (see `KERNEL-INTEGRATION-NOTES.md`) — the type system is the documentation.
 
-## 3. Combinators & parameterization (F5) — the reuse study
+## 3. Combinators & parameterization — the reuse study
 
-### 3.1 Parameterized fragments are ordinary methods ✅
+### 3.1 Parameterized fragments are ordinary methods
 
 <!-- teaser -->
 ```java
@@ -127,8 +138,7 @@ Condition r2 = mandatoryWhen(renew.isTrue().and(terms.confirmed()), m.field("/Su
 Condition r3 = groupNotBlank(addons, m.field("/Subscription/Addons/Name"));
 ```
 
-### 3.2 Fragments with domain parameters ✅ / 🔮 (tolerance ✅ — operator landed, marker flipped on the 2026-06-10 sweep; the chronology composite still 🔮)
-
+### 3.2 Fragments with domain parameters
 <!-- teaser -->
 ```java
 /** Tolerance check — only the fixed 1/2/5/10 variants exist (the catalog teaches this; the enum enforces it). */
@@ -152,7 +162,7 @@ static Condition uniqueBy(GroupRef repeating, FieldRef key) {
 
 The fragments show how backlog items compose into the **business idioms** the proposal's §2 names (`mandatory`, `withinTolerance`, `chronological`, `uniqueBy`) — each is 1–3 lines once its operators exist.
 
-### 3.3 A domain fragment library — packaging reuse ✅ (all shown fragments work today)
+### 3.3 A domain fragment library — packaging reuse
 
 <!-- teaser -->
 ```java
@@ -212,7 +222,7 @@ public final class SubscriptionIdioms {
 
 No framework, no registry — a fragment library is a Java class; discoverability comes from javadoc + the skill. (This is the Zod lesson: schemas-are-code.)
 
-### 3.4 Parameterized *rules* — templates over the model ✅ (message interpolation ✅ — `Dsl.fieldValue`)
+### 3.4 Parameterized *rules* — templates over the model (message interpolation — `Dsl.fieldValue`)
 
 <!-- teaser -->
 ```java
@@ -235,7 +245,7 @@ static List<Rule> nonNegativeMoneyRules(BoundModel m) {
 
 This is the bulk-authoring payoff: a *rule template* is a function `BoundModel → List<Rule>`; an LLM (or CI) applies it to any model.
 
-### 3.4a Authoring-time reuse over a multi-field structure — `sameAddress` ✅ (field-vs-field equality finding 18; `agreesWith` shipped finding 39)
+### 3.4a Authoring-time reuse over a multi-field structure — `sameAddress`
 
 When you author **many rules in Java that compare the same multi-field structure** (e.g. a seven-field address), a fragment removes the boilerplate — ordinary F5 combinator reuse, two levels deep. (Note: this is a convenience in the *authoring code*, not a transformation of the stored rule — the kernel DSL is flat, so the rendered `errorCondition` is the same string either way; what improves is the Java you write, not the persisted text.)
 
@@ -255,7 +265,7 @@ m.rule(g).when(warehouseAddr.filled().and(sameAddress(warehouse, sender).or(same
 
 `agreesWith` ships the most-repeated mirroring idiom as a one-call ref combinator on `StringRef`, `NumberRef`, and `EnumRef` (number inherits the equal-scale gate; enum compares by stored value via `is`). It's written — and its polarity reviewed — **once**, not per pair. **Field-vs-field equality** (`a.eq(b)`) underneath landed for string + number (finding 18); **enum-vs-enum ✅** (`EnumRef.is(EnumRef)`/`isNot(EnumRef)`). `sameAddress` is then just `agreesWith` zipped over the fields and folded with `allOf(List)` (38) — the full worked rebuild is the **Study, §3.6**. (Later: a `sameAddress(GroupRef, GroupRef)` that zips like-named fields via the model index — Level-2 navigation.)
 
-### 3.5 n-ary composition ✅ (finding 10 — implemented 2026-06-04; **list form** + presence-list overloads 2026-06-16, finding 38)
+### 3.5 n-ary composition
 
 Varargs for hand-written composition; a `List<Condition>` overload for the **generated/bulk** case (one clause per navigated field, folded). The presence quantifiers (`allFieldsFilled`/`noFieldFilled`/`atLeastOneFieldFilled`) gained the same `List<? extends FieldOperand>` overload, so a presence guard over a built field set needs no `toArray` splat.
 
@@ -266,7 +276,7 @@ Condition d = allOf(r1, anyOf(r2, r3));     // "r1 And (r2 Or r3)" — parens pe
 Condition e = allOf(List.of(r1, r2, r3));   // the LIST form — fold clauses a loop/stream built (bulk authoring)
 ```
 
-### 3.6 Study — a real, highly-repetitive rule, rebuilt (before → after) ✅ (2026-06-16, findings 38–39; `MirroringRuleStudyTest`)
+### 3.6 Study — a real, highly-repetitive rule, rebuilt (before → after)
 
 **Where this comes from.** A12 models *forms*, and a real pattern in them is that the same logical block is captured in more than one place. Here (an **insurance** application submitted through a broker portal): the policyholder block restated on the **policy schedule** (`Schedule/*`) — a section captured apart from where the underlying name and address were entered — must stay **consistent with** the application data. The engine can't auto-sync across form sections, so a **consistency rule** enforces that the schedule block **mirrors** whichever source the application's flags select — *null-safe*, so a not-yet-filled block (both empty) is allowed. The source is a **2×2**: policyholder type (organization vs person → which **name**) × whether a separate correspondence address was given (correspondence vs residence → which **locality**).
 
@@ -415,9 +425,9 @@ static Condition scheduleConsistency(GroupInfo app) {
 
 Applied to `/Application`, `scheduleConsistency(...)` reproduces the flagship rule above **byte-for-byte** (the test asserts it), so the extraction is faithful, not a lookalike. This is the §3.2/finding-24 endgame: a team accrues a small library of **rule-shaped combinators**, and each new rule of a known shape supplies only what differs — restrained to plain functions over the shipped primitives (`agreesWith` 39, `allOf`/presence-`List` 38, relative navigation 40), no templating DSL.
 
-## 4. Authoring a rule end-to-end (F1, F2, F2a, F3, F4, F6)
+## 4. Authoring a rule end-to-end
 
-### 4.1 The rule object — slots from typed handles (F2a) ✅ — implemented 2026-06-04 (`RuleAuthoringTest`; message *interpolation* ✅ 2026-06-07 — `Dsl.fieldValue`)
+### 4.1 The rule object — slots from typed handles
 
 <!-- teaser -->
 ```java
@@ -438,7 +448,7 @@ Rule rule = m.rule(addons)                        // model-aware entry: rule liv
 // ConditionReferences.of(condition) — the build-check's collector — is the seed of F9's referenced-fields projection.
 ```
 
-### 4.2 Render → validate → emit ✅
+### 4.2 Render → validate → emit
 
 <!-- teaser -->
 ```java
@@ -457,7 +467,7 @@ BoundModel m2 = m.add(rule);                               // ✅ snapshot (F0):
 m2.writeTo(path);                                          // ✅ DM-JSON write path — authored JSON, includes preserved (D9, F6)
 ```
 
-### 4.3 A computation, same materials (F2) ✅ — implemented 2026-06-04 (`ComputationAuthoringTest`; aggregates/arithmetic in operations are corpus items 6–7); **read + full cycle ✅ 2026-06-08** (`readComputation`/`replaceComputation`; kernel-mm 100%, Corpus-1 100% — §9 board); **BA-doc worked-example shapes transferred** (`BaComputationCorpusTest`: concat, tiered+rounding, division/grouping, common-precondition, current-repetition, parallel-iteration — the current-repetition one surfaced + fixed an over-strict calculated-field pre-check, KERNEL-FINDINGS §11)
+### 4.3 A computation, same materials
 
 <!-- teaser -->
 ```java
@@ -474,9 +484,9 @@ Computation tiered = m.computation(m.num("/Subscription/Billing/EffectiveFee")) 
 
 **Cross-slot reuse for free:** `SubscriptionIdioms.paidTier(tier)` drops unchanged into a rule `errorCondition` *or* a computation `precondition` — one expression language, many slots (§5). That is the concrete payoff of combinators + the slot model.
 
-## 5. The bidirectional edit loop (F8, F10) — modify studies
+## 5. The bidirectional edit loop — modify studies
 
-### 5.1 In-session transform (#1) ✅ — working code, CI-locked verbatim to `TransformConditionTest`
+### 5.1 In-session transform
 
 <!-- snippet: transform -->
 ```java
@@ -489,7 +499,7 @@ Condition widened = proNeedsFee.transform(node -> switch (node) {
 // bottom-up; untouched subtrees keep reference identity; D14 ids make the guards readable
 ```
 
-### 5.2 Read a foreign, BA-authored rule — the full loop, load to save (F10) ✅ 2026-06-06
+### 5.2 Read a foreign, BA-authored rule — the full loop, load to save
 
 `read` is **kernel-mm-complete** (553/553 typed) — including `X And CustomCondition Y`, which converts to a typed, editable AST (the custom condition is the name-only `CustomConditionRef`). The loop below is the real API.
 
@@ -528,7 +538,7 @@ m2.writeTo(Path.of("subscription.dm.json"));   // SAVE — DM-JSON, the portable
 + FieldFilled(MonthlyFee) And CustomCondition FeeEligibility      (renamed via transform)
 ```
 
-### 5.3 Explain (F9) ✅ 2026-06-04 (structural `tree` added 2026-06-05) — same projection for built and read rules
+### 5.3 Explain — same projection for built and read rules
 
 `ModelContext.explain(condition)` → `RuleExplanation` (JSON below). One mechanism, two consumers — and it works **identically on a rulekit-built condition and a converted-foreign one** (F10 read feeds it). The snippet below is the *real* output (`ExplainSnippetProbe`/`ExplainReadRuleTest`) of explaining the **read** foreign rule `FieldFilled(CustomerName) And Sum(Items*/Count) > 100` — parsed by the kernel, converted to a rulekit AST, then explained with no adapter-specific code.
 
@@ -568,7 +578,7 @@ The flat `operators` list answers *which* constructs appear; the **`tree`** answ
 
 *Carried forward (the 2026-06-03 sketch's richer rule-envelope, not yet shipped):* per-reference **roles** (error-field / operand) and **severity** need the rule envelope, not just the condition; the **`suspicious`** hints are available separately today via `RuleDiagnostics`/`lint.Linter`; authored path-style is a render concern. See proposal §F9 ("rule-envelope enrichment").
 
-### 5.4 Re-express, diff, validate, write back (#2) ✅ 2026-06-04
+### 5.4 Re-express, diff, validate, write back
 
 <!-- teaser -->
 ```java
@@ -583,7 +593,7 @@ BoundModel m2 = model.replaceCondition("/Subscription/Addons/FeeCapRule", fixed)
 
 Note how 3.3's fragment library closes the loop: **re-expression frequently means recognizing a known idiom** — the LLM maps a foreign rule onto `feeRequired(...)` and the diff shows the cleanup.
 
-## 5b. Editing the model — structure *and* rules (modelkit + `EditSession`) ✅ — 2026-06-10
+## 5b. Editing the model — structure *and* rules (modelkit + `EditSession`)
 
 The use case in one place: **read a DM → add fields/groups → add/modify rules → maybe delete → write back.** modelkit (`ModelDocument`) edits *structure*; rulekit edits *rules*; they are siblings over `dm.core` that cannot see each other (`dm.modelkit ⊥ dm.rulekit`), so `dm.edit.EditSession` is the orchestration layer above both. Every edit is surgical on the **authored** DM-JSON tree (includes preserved, never inlined) and the **real kernel is the gate** — nothing structural is reimplemented.
 
@@ -604,7 +614,7 @@ String json = DocumentModelDraft.named("orders").locale("en_US")
 
 The smallest valid model is just `named(id).locale(l).rootGroup(name, g -> {})` — an empty root group is accepted. For a type-def-only library, `DocumentModelDraft.typeDefModel(id)` (a consumer pulls it in via `importTypeDefs(ref)`). *This is the shape every test fixture is built with (e.g. `ModelDrafts`).*
 
-### Read & enumerate an existing model (M7)
+### Read & enumerate an existing model
 
 `ModelDocument.read(json)` reads the authored source tree — **kernel-free**, so a model with unresolved includes still reads — enumerates its structure name-path-addressed, and round-trips losslessly (the generic Jackson tree, not the kernel's `NON_EMPTY`/`NON_DEFAULT` typed serializer):
 
@@ -623,7 +633,7 @@ doc.toJson();                          // content-equal to the source, idempoten
 ```
 *Locked by `modelkit.ModelDocumentTest`.*
 
-### Edit fields & groups (M8)
+### Edit fields & groups
 
 <!-- teaser -->
 ```java
@@ -637,7 +647,7 @@ ModelDocument.read(json)
 ```
 Add-ops reuse the build-from-scratch node emitter, so an *added* field is byte-shaped identically to a *built* one. A missing target path fails fast with `IllegalArgumentException`; the full constraint set rides `validate()`. *Locked by `modelkit.ModelEditTest`.*
 
-### The coverage tail — doc config, type definitions, includes (M10+)
+### The coverage tail — doc config, type definitions, includes
 
 <!-- teaser -->
 ```java
@@ -650,7 +660,7 @@ ModelDocument.read(json)
 ```
 *Locked by `modelkit.ModelStructureCoverageTest`.*
 
-### Richer field types & element metadata (M10+)
+### Richer field types & element metadata
 
 Beyond easy kinds: add a fully-configured field (`FieldTypeSpec` — string bounds/pattern, number scale, enum values + categories, date format/precision, a `TypeDefRef`), **re-type** an existing field, and set per-locale **labels** + name/value **annotations** on a field or group.
 
@@ -667,7 +677,7 @@ ModelDocument.read(json)
 ```
 A label must cover every declared locale (fails fast otherwise); the add/re-type reuse the build-from-scratch emitter, so a configured field is shaped identically to a built one. *Locked by `modelkit.ModelMetadataTest`.* (The re-type — `setFieldType` — is also reachable from the CLI as **`field modify <spec.json>`** (G6), so an agent can add a STRING `pattern` to an existing field without delete-and-recreate; CLI-SPEC §5.)
 
-### Rules *along with* structure — one session (M9)
+### Rules *along with* structure — one session
 
 `EditSession` threads one DM-JSON through both kits, and the **preferred idiom is the editor** (the L2c `GroupEditor`/`FieldEditor`/… — §5c): hold an editor on a group, edits chain, and a ref to a just-created field comes from relative navigation. The decisive case: a rule whose error field **is the field the structure step just added** — only kernel-valid if both edits composed over the same document.
 
@@ -694,7 +704,7 @@ The **whole rule lifecycle composes with structure edits** in the one session: `
 
 Removing a field a rule still references is rejected at **`validate()`** (`ModelConsistencyException`, the kernel's own dangling-entity diagnostic), **not** at `remove()` — which tolerates the invalid intermediate state so the same session can drop the rule too (the safe ordering: remove the rule, then the field). A *proactive* "what references this?" check (`adapter.whereUsed`) is deferred to the CLI remove verb, where the capability lives — never a silent cascade. *Locked by `edit.EditSessionTest.removingAFieldARuleReferencesIsRejectedByTheGate`; rationale in [`KERNEL-INTEGRATION-NOTES.md`](KERNEL-INTEGRATION-NOTES.md) "Structure edits + the delete-safety rule".*
 
-## 5c. Refs & editors — the L2c ergonomic layer ✅ (implemented 2026-06-12, decision D7)
+## 5c. Refs & editors — the L2c ergonomic layer
 
 > **Status: implemented 2026-06-12 (proposal D7 / binding level *L2c*).** This is the agreed design, now built, and **replaces the dropped L2b codegen**. It spans **both kits** — rulekit rule authoring *and* modelkit structure editing. The session-bound handles are the **`Editor`** family — `GroupEditor` / `FieldEditor` / `RuleEditor` / `ComputationEditor` / `TypeDefEditor` / `IncludeEditor` / `ConfigEditor` — a **complete surface**: every editable element has an editor, so asking "what editors exist?" finds no gaps. The earlier working name *"cursor"* was dropped — naming decision + rejected alternatives (`Node`, `Handle`) in proposal §18.7 (fork #7). **No deferrals** (§18.7): `IncludeEditor` also does `setReference` (re-point) and `rename` (header + every mount move in step, so rules over mounted content don't ripple).
 
@@ -785,7 +795,7 @@ Live nodes buy only **node-anchored chaining** and **rename-tracking** over valu
 
 **One idiom — no duplicate.** The **session-as-actor / ref-returning** shape (`s.addField(order, …)` returning a ref) is **dropped** from the public surface — there is exactly one way to edit: the editor (fluent edits + relative navigation). At most it survives as an *internal* mutator the editor delegates to, never taught. Deliberate non-goal (carried from D7): **no compile-time path checking** — paths resolve at runtime (a typo throws at bind), consistent with the BA/LLM persona (CLI, no compile step). Full decision + the dropped-L2b rationale: proposal **D7**; the binding-level taxonomy (L2a/L2c, L2b dropped) is in §16.
 
-### 5c.1 Composition — parameterized document-part builders ✅ (2026-06-12)
+### 5c.1 Composition — parameterized document-part builders
 
 The editor + flowing refs lift rulekit's **parameterized rule fragments** (`(refs, params) → Condition`; the `…Idioms` library, finding 11) to **parameterized document-part builders** — plain functions `(editor, params) → structure *and* rules` that take *where to build* and **return a ref** to what they built. They compose, and every result still passes the one `validate()` gate.
 
@@ -818,7 +828,7 @@ address(order, "BillingAddress",  Country.US);                      // … and r
 
 **What you parameterize:** names (build the same component many times), refs (wire a rule around a passed field), kinds / scales / bounds / value-sets (configure the field), and **other builders** (a `lineItems(…)` calls `money(…)`; a `tieredFee(base, Tier…)` emits one computation alternative per tier). A team accrues a **document-component library** (`Money` / `Address` / `LineItems` / `AuditBlock`) and assembles models from it — restrained to **plain functions** (no templating DSL — the same "no query language" discipline as the navigation surface), each assembled result kernel-confirmed at the single gate. Finding 24.
 
-## 5d. Working across models — includes & type-defs ✅ (2026-06-12)
+## 5d. Working across models — includes & type-defs
 
 Real apps compose models: a shared sub-model is **included** into a base and mounted at one or more places, and the base authors rules over the mounted fields exactly as if they were local. rulekit binds a model **with includes** by threading a resolver (`EditSession.read(json, resolver)` / `BoundModel.ofJson(json, resolver)`), expands it through the kernel, and writes back **without inlining** the include — the `modelAlias` link is preserved (F6/D9). A field from an include is addressed by its **mount-name path** (`/Catalog/Retail/ListPrice` = the mount `Retail` + the included field `ListPrice`); a **type-def** field behaves as its underlying kind.
 
@@ -854,7 +864,7 @@ s.validate();                                                        // the reso
 
 The included price list's **own** rule travels with it — mounted twice, it applies at both `/Catalog/Retail` and `/Catalog/Wholesale` — and the base's rules over the mounted fields validate against the real, expanded model. The written-back DM-JSON keeps the include as a `modelAlias` reference, never inlined; included content doesn't leak into the base. *Test-backed: `edit.MultiModelTest` (two-location include of a ruled model + rules over mounted fields + type-def) and `rulekit.dsl.IncludesTypedefsRuleTest` (single mount + type-def, EN/DE render).*
 
-## 5e. Run rules against data — does it actually fire? ✅ (runtime evaluation)
+## 5e. Run rules against data — does it actually fire? (runtime evaluation)
 
 Beyond "is this rule kernel-valid?" (the static gate) is "does it do the **right thing** on real data?" — the verify-by-execution angle that catches an *inverted-but-valid* rule. `KernelAdapter.evaluate` runs a model's rules over a **document instance** (a nested, name-keyed tree — repeatable groups as lists, field values as their kernel string form) and reports which rule **codes** fired; its peer `compute` reports what each field computes. (CLI: `eval-doc` / `compute-doc`.)
 
@@ -874,7 +884,7 @@ bad.messages().get(0).message();        // "Discount of -5.00 must not be negati
 
 So you can prove a rule *behaves* — run a passing and a violating document and read `firedCodes()` — not just that it parses. Each fired `EvalMessage` also carries `message()`: the kernel's **interpolated** end-user text — the authored template with its `$Field$`/`$Field.value$` tokens resolved against this very document (G1). That closes the loop on the BA's real deliverable: not "did it fire" but "here is exactly what the user will read". This is the basis of the eval's **verify-by-execution** judge (construct discriminating documents, compare what fires for a *gold* vs a *candidate* rule — equivalence by execution, not by recalling polarity/empty-operand semantics), and the natural close of the read→modify loop: change a rule, then *show* it now fires correctly on the cases that matter. *Test-backed: `adapter.RuntimeEvalExampleTest` + `adapter.MessageInterpolationTest`; the seam's depth (per-row repetition indices, `compute`, empty-operand semantics) by `adapter.laws.EvalDocSeamLawsTest`.*
 
-## 5f. Comments — author `;;` notes, preserved across the loop ✅ (2026-06-12)
+## 5f. Comments — author `;;` notes, preserved across the loop
 
 A rule's condition can carry a `;;` line **comment** — concrete syntax the kernel tolerates but does **not** keep in its parsed AST. rulekit carries comments in a **side-channel** beside the immutable AST (`rulekit.dsl.Comments`, keyed by *node identity*, covering both a `Condition` branch and a `Calculation` operation — the "carrier (c)" design, so the sealed hierarchies + their exhaustive switches stay untouched). The payoff: you **author** comments with the typed builder, and a rule's **leading comment is preserved by default** across read→modify→write-back.
 
@@ -913,7 +923,7 @@ EditSession.read(json)
 
 Only *inline/trailing* comments and non-canonical formatting are re-rendered away (no AST node anchors them across a re-expression) — `KernelAdapter.diff` discloses exactly that, carrying the leading comment on both sides. The CLI mirrors the surface: a `comment` key on `rule add` and `computation add` (the computation key leads its first operation), the matching `apply` rule/computation ops, and `rule modify --comment`. *Test-backed: `rulekit.dsl.RuleCommentTest`/`CommentRenderTest`, `ComputationAuthoringTest`, `adapter.CommentRoundTripTest`/`ConditionCommentLossinessTest`, `cli.AddVerbTest`/`ModifyVerbTest`/`ComputationVerbTest`; demo `examples/cli-edit-loop.md`. Background: KERNEL-FINDINGS "Condition comments".*
 
-## 5g. Validation-pattern catalogue — idioms that bake in polarity + a valid error field ✅ (2026-06-14, FEATURE-GAPS G2)
+## 5g. Validation-pattern catalogue — idioms that bake in polarity + a valid error field
 
 A BA does not re-derive "delivery can't precede the order" from scratch — they reach for the *date-order* idiom. The pattern catalogue (`rulekit.catalog.PatternCatalog`, the rule-level peer of `OperatorCatalog`) makes that an API: a named idiom, parameterized over a few field refs, that produces a **kernel-valid rule** with the two hardest traps solved structurally — the **violation polarity** (an A12 rule fires on the error scenario) and a **referenced error field** in scope (the `MVK_ERROR_FIELD_NOT_REFERENCED` law).
 
@@ -938,7 +948,7 @@ The condition is built — not string-templated — inside the pattern: `Dsl.all
 
 **CLI peer.** `dmtool patterns` lists the idioms, `patterns <id>` details one, and `patterns <id> --arg k=v …` scaffolds a rule-spec and **auto-checks** it (the G4 verdict folded in); `--apply` persists it through the same path as `rule add`. *Test-backed: `rulekit.catalog.PatternCatalogTest` (structure) + `PatternCatalogKernelTest` (the kernel no-rot gate); `cli.PatternsVerbTest`. Demo: `examples/cli-tour.md`.*
 
-## 6. Semantics as data (F7, N6) ✅ — the catalog is queryable today
+## 6. Semantics as data — the catalog is queryable today
 
 <!-- snippet: catalog -->
 ```java
@@ -952,7 +962,7 @@ e.invalidExample(); // dsl + the exact MVK_* + the fix — every example kernel-
 
 An LLM reads exactly this. The **self-sufficiency eval** (N6) is the runnable acceptance test: given only the catalog + skill + javadoc, author and correctly explain a rule per covered operator — where it can't, the material (not the LLM) is deemed incomplete.
 
-### 6b. The model-context surface (F9a, `context` package) — `describe`/`find` ✅ 2026-06-04, `whereUsed`/`export` ✅ — "explain the rule on birthdate"
+### 6b. The model-context surface (`context` package) — `describe`/`find`/`whereUsed`/`export`
 
 The agent's entry point is usually a *name*, not a rule. Three projections compose the answer. (Shipped API is instance methods — `new ModelContext(m).describe()` / `.find(...)` / `.explain(...)`; the `Context.*` static shape below is the original sketch.)
 
@@ -1001,7 +1011,7 @@ grep BirthDate ctx/rules.jsonl
 
 The 10k-field problem dissolves: the files hold everything, only grep hits enter context; `model-card.md` (skeleton) is the single read-whole artifact. JSONL = one line per fact = greppable *and* `jq`/Python-parseable; each artifact stamps the snapshot's model id/version.
 
-### 6c. Navigating the model (finding 9, Level 1) ✅ — jOOQ-`Meta`-style, no query language (implemented 2026-06-04; `NavigationTest`)
+### 6c. Navigating the model — jOOQ-`Meta`-style, no query language
 
 The programmatic counterpart to 6b's files — and the machinery beneath them (`fields.jsonl` *is* `m.fields()` serialized). Streams of rich **info handles**; matching is plain Java; narrowing bridges back to strict authoring handles:
 
@@ -1053,7 +1063,7 @@ m.fields()
 String edited = s.validate().toJson();        // kernel gate, once
 ```
 
-## 7. The LLM session (N1, N10, §14) 🌓 first skill draft landed 2026-06-05 (`skill/SKILL.md`) — the loop the skill teaches, for both personas
+## 7. The LLM session — the loop the skill teaches, for both personas
 
 > **Skill status:** the first BA-path skill draft exists and was **eval-measured** (a clean Opus subagent, given only the CLI + catalog + skill, went from multi-attempt/medium-confidence to **first-attempt/high-confidence** on the T1 authoring task, with the silent-inversion polarity trap closed by the skill's polarity section). Method, lifts, and caveats in [`EVAL-SPEC.md`](./EVAL-SPEC.md). Structurally-distinct benchmark tasks **T2–T6** now span the families (field-vs-field, pattern, aggregate+Having, date, value-list+boolean; golds kernel-verified) — answering the "T1 ≈ the skill's worked example" caveat — and **T7** adds the first **comprehension** task (the `order-ruled` fixture; the oracle asserts its rules read to `Converted`, readable by `explain`). Remaining: the **Workflow pass@k runner** that drives the agent passes (T3–T6 authoring + T7 explanation).
 
@@ -1072,7 +1082,7 @@ The **same loop, two surfaces** (N10 — one engine, two interactions): the **de
 
 Authoring direction: *"ENTERPRISE needs ≥ 2 add-ons"* → agent queries the index (`addons.repeating()`), finds `NumberOfFilledFields` in the catalog (operands/returns/example), composes, validates. The feedback loop differs by persona (N10): the **developer's** wrong guesses die at **compile** (step 3, the project's own `javac`) or **parse** (step 4); the **BA's** wrong guesses die at **schema validation + builder pre-check + kernel `Diagnostic`** (no compile step, same engine). **Execution surfaces:** developer = the library in their own repo (no bespoke vehicle); BA = the standalone CLI. *(The earlier "scratch JBang vehicle" is demoted — see finding 6 — to at most an internal N6-eval mechanism.)*
 
-## 8. Polyglot peek (N2, §13) 🔮 deferred (very-future, design-informing only — not on the near agenda) — the same catalog, a Zod-flavored skin
+## 8. Polyglot peek — the same catalog, a Zod-flavored skin
 
 ```typescript
 import { bind } from "@a12-dmkits/core";                       // reads the SAME catalog JSON + DM-JSON
@@ -1086,6 +1096,6 @@ proNeedsFee.render();                                            // identical ca
 
 The contract is data (catalog + DM-JSON + render rules), so this is a parallel reading, not a port — and naming parity means an agent transfers Java↔TS knowledge 1:1.
 
-## Status & reference
+## Part III — Status & reference
 
 The canonical capability **status board** and the numbered **design-findings** log live in their own doc — [`API-STATUS.md`](API-STATUS.md) — kept separate so this guide stays a user-facing capability narrative. (Findings are referenced as "finding N" throughout; they live there.)
