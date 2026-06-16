@@ -225,7 +225,7 @@ public final class ModelContext {
         for (FieldInfo field : all) {
             FieldMatch.How how = classify(field, q);
             if (how != null) {
-                matches.add(new FieldMatch(field.path(), field.name(), field.kind().name(), how));
+                matches.add(new FieldMatch(field.path(), field.name(), field.kind(), how));
             }
         }
         if (!matches.isEmpty()) {
@@ -237,7 +237,7 @@ public final class ModelContext {
         return Suggest.nearest(q, all.stream().map(FieldInfo::name).toList())
                 .map(name -> all.stream()
                         .filter(f -> f.name().equals(name))
-                        .map(f -> new FieldMatch(f.path(), f.name(), f.kind().name(), FieldMatch.How.FUZZY))
+                        .map(f -> new FieldMatch(f.path(), f.name(), f.kind(), FieldMatch.How.FUZZY))
                         .toList())
                 .orElseGet(List::of);
     }

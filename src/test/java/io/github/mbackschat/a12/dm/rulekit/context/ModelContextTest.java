@@ -44,6 +44,8 @@ class ModelContextTest {
         assertEquals(1, hits.size(), () -> "hits: " + hits);
         assertEquals("/Subscription/Tier", hits.get(0).path());
         assertEquals(FieldMatch.How.EXACT_NAME, hits.get(0).how());
+        assertEquals(io.github.mbackschat.a12.dm.core.ValueKind.ENUMERATION, hits.get(0).kind(),
+                "kind is the typed ValueKind (matching FieldInfo.kind()), not a stringly value");
     }
 
     @Test
