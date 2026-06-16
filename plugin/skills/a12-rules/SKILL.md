@@ -93,7 +93,7 @@ dmtool -m invoice.json rule check --field /Invoice/Total \
 Date operators need **both operands present** and have a **fixed argument order** — get both right:
 
 - **Guard presence first.** A date function on a missing date is a formal error; lead with `AllFieldsFilled(DateA, DateB) And …`.
-- **A date/time *constant* is German-format and quoted** — date `"31.12.2024"` (`dd.MM.yyyy`), time `"17:00:00"`. An **ISO-style literal** (`"2024-12-31"`) is read as a *string*, so an ordering comparison is rejected as `MVK_INVALID_TYPE_FOR_COMPARISON` — a misleading code here: the fix is the German format, **not** switching to `==`. (Often cleaner to skip the literal: compare to another date field or `Today`, or pull a part — `YearFromDate(D) < 2020`.)
+- **A date/time *constant* is German-format and quoted** — date `"31.12.2024"` (`dd.MM.yyyy`), time `"17:00:00"`. An **ISO-style literal** (`"2024-12-31"`) is read as a *string*, so an ordering comparison is rejected as `MVK_INVALID_TYPE_FOR_COMPARISON` — the code *name* is unhelpful here, but its `fix` hint now points the right way: write the German format, **not** switch to `==`. (Often cleaner to skip the literal: compare to another date field or `Today`, or pull a part — `YearFromDate(D) < 2020`.)
 - **`DifferenceInDays(A, B)` = B − A** (same for `DifferenceInMonths` / `DifferenceInYears`): **positive when B is *later* than A.** So:
   - "B is *before* A" → `DifferenceInDays(A, B) < 0`
   - "B is more than N days *after* A" → `DifferenceInDays(A, B) > N`
