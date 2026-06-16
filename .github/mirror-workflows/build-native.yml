@@ -165,11 +165,11 @@ jobs:
           "$BIN" --version | norm | tee /tmp/v.txt
           grep -q "A12 Tools distribution: 2025.06-ext5" /tmp/v.txt
           echo "== manifest (catalog reflection) =="
-          "$BIN" manifest | norm | grep -q '"a12Distribution": "2025.06-ext5"'
+          "$BIN" manifest | norm | grep -Eq '"a12Distribution" *: *"2025.06-ext5"'
           echo "== model validate (kernel reflection) =="
-          "$BIN" -m examples/models/order-ruled.dm.json model validate | norm | grep -q '"valid": true'
+          "$BIN" -m examples/models/order-ruled.dm.json model validate | norm | grep -Eq '"valid" *: *true'
           echo "== rule read (adapter reflection) =="
-          "$BIN" -m examples/models/order-ruled.dm.json rule read | norm | grep -q '"ok"'
+          "$BIN" -m examples/models/order-ruled.dm.json rule read /Order/DeliveryNotBeforeOrder | norm | grep -Eq '"ok" *: *true'
           echo "windows native smoke: OK"
 
       - name: Stage the binary under its release asset name
