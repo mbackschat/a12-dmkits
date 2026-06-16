@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
-# Comprehensive native-image reflection capture (docs/NATIVE-IMAGE-GRAALVM.md §5).
+# Native-image reflection capture (docs/NATIVE-IMAGE-GRAALVM.md §5) — TEST-SUITE driven.
 #
-# Drives the production CLI (bin/dmtool → installDist JVM, Groovy present) under the GraalVM
-# native-image tracing agent across the WHOLE fixture surface + a spread of rule-check conditions,
-# so the captured reachability-metadata.json covers far more than the 6 showboat demos. Re-run when
-# the kernel is bumped, the CLI/catalog surface changes, or a reflection-using dependency bumps —
-# the native gate (showboat + the fixture robustness check) tells you when it's gone stale.
+# Runs the :cli JUnit suite under the GraalVM native-image tracing agent, so the captured
+# reachability-metadata.json TRACKS THE TEST SUITE: every TDD test that exercises a new shape — a field
+# kind, a constraint, an operator, an apply/refactor op, an error/diagnostic path — extends the metadata
+# automatically, with no one having to remember to add it. This REPLACES the earlier curated verb-driving
+# capture, whose coverage was bounded by the invocations the script happened to list — the root cause of
+# the v0.1.0/v0.1.1 native-only bugs (§3.5). The rule-based registration of the two bounded reflective
+# packages (scripts/gen-native-reflect-metadata.sh, §3.4) stays the shape-INDEPENDENT core; this capture
+# covers the out-of-package tail, and now grows with the suite instead of by hand.
 #
-# Usage:  GRAALVM_HOME=/path/to/graalvm-25 ./eval/capture-native-config.sh
-# Then:   ./gradlew :cli:nativeCompile   (the merged metadata is bundled under cli/src/main/resources)
+# The agent ships inside GraalVM, so the test JVM must be GraalVM (not the JDK-21 Gradle toolchain):
+# build.gradle's `-PrkNativeAgent` mode points the test task's `executable` at $GRAALVM_HOME/bin/java,
+# attaches the agent (config-merge-dir), and serializes forks (merge-dir is not fork-safe).
+#
+# Usage:  GRAALVM_HOME=/path/to/graalvm-25 ./scripts/capture-native-config.sh
+# Then:   ./gradlew :cli:nativeCompile   (the metadata is bundled under cli/src/main/resources)
 set -euo pipefail
 
 : "${GRAALVM_HOME:?set GRAALVM_HOME to a GraalVM 25 home}"
@@ -17,39 +24,19 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 export GRADLE_USER_HOME="${GRADLE_USER_HOME:-$(cd .. && pwd)/.gradle-isolated}"
 
-MODELS="cli/src/test/resources/models"
 DEST="cli/src/main/resources/META-INF/native-image/rulekit-agent"
 CFG="${RK_NATIVE_CFG:-/tmp/rk-native-capture}"
-mkdir -p "$DEST" "$CFG"
+rm -rf "$CFG"; mkdir -p "$DEST" "$CFG"
 
-./gradlew -q :cli:installDist   # Groovy present (native-only exclusion); the agent traces the real verbs
+# Run the whole :cli suite under the agent. A failing assertion still exercises its code path, so capture
+# is robust to a red test; --continue keeps the suite going and `|| true` ignores the test-failure exit.
+./gradlew --continue -PrkNativeAgent "-PrkNativeAgentDir=$CFG" :cli:test || true
 
-run() { JAVA_TOOL_OPTIONS="-agentlib:native-image-agent=config-merge-dir=$CFG" bin/dmtool "$@" >/dev/null 2>&1 || true; }
-
-# 1. every fixture, every read/validate verb (top-level models)
-for m in "$MODELS"/*.dm.json; do
-  run -m "$m" model validate
-  run -m "$m" model describe
-  run -m "$m" model info
-  run -m "$m" export
-done
-# 2. multi-file + inheritance models need a workspace root
-run -w "$MODELS/multifile" -m "$MODELS/multifile/app/storefront.dm.json" model validate
-run -w "$MODELS/multifile" -m "$MODELS/multifile/app/storefront.dm.json" model describe
-run -w "$MODELS/inheritance" -m "$MODELS/inheritance/ProductSingle.dm.json" model validate
-run -w "$MODELS/inheritance" -m "$MODELS/inheritance/ProductBundle.dm.json" model validate
-# 3. self-describing surface (catalog/schema/manifest/diagnostics — their own Jackson POJOs)
-run manifest; run operators; run diagnostics; run schema result
-for id in $(bin/dmtool operators 2>/dev/null | grep -oE '"id" *: *"[^"]+"' | sed 's/.*"\([^"]*\)"$/\1/'); do
-  run operators "$id"
-done
-
-# 4. the showboat demos — REQUIRED. They cover the end-to-end mutating paths (apply/edit/structure) AND
-# the ERROR paths (e.g. a version-incompatible model → the kernel i18n ErrorMessages ResourceBundle).
-# Validating only *valid* fixtures (steps 1–2) misses those; without this the version/apply/edit demos
-# regress to MissingResourceException / output mismatch. Drive them under the same agent (merges in).
-JAVA_TOOL_OPTIONS="-agentlib:native-image-agent=config-merge-dir=$CFG" \
-  sh -c 'for d in examples/cli-*.md; do uvx showboat@0.6.1 verify "$d" >/dev/null 2>&1; done'
-
-\cp -f "$CFG"/*.json "$DEST/"   # \cp bypasses a `cp -i` alias that would prompt and skip the overwrite
-echo "captured → $DEST/ ($(ls "$DEST" | tr '\n' ' '))"
+shopt -s nullglob
+files=("$CFG"/*.json)
+[[ ${#files[@]} -gt 0 ]] || {
+  echo "capture produced no metadata in $CFG — did the agent attach to a GraalVM test JVM? (GRAALVM_HOME=$GRAALVM_HOME)" >&2
+  exit 1
+}
+\cp -f "${files[@]}" "$DEST/"   # \cp bypasses a `cp -i` alias that would prompt and skip the overwrite
+echo "captured (test-suite) → $DEST/ ($(ls "$DEST" | tr '\n' ' '))"

@@ -87,6 +87,26 @@ tasks.named('run') {
 
 tasks.named('test') {
     useJUnitPlatform()
+    // Native-image reflection capture (docs/NATIVE-IMAGE-GRAALVM.md §5) — TEST-SUITE driven, opt-in.
+    // `-PrkNativeAgent` runs this suite under the GraalVM tracing agent so the captured reachability
+    // metadata TRACKS THE TEST SUITE (grows with TDD), replacing the old curated verb-driving capture
+    // whose coverage was bounded by the invocations it remembered to list (the v0.1.0/v0.1.1 bugs, §3.5).
+    // The agent ships inside GraalVM, so the test JVM must be GraalVM, not the JDK-21 toolchain: point
+    // `executable` at $GRAALVM_HOME and serialize forks (config-merge-dir is not fork-safe). Driven by
+    // scripts/capture-native-config.sh; never on in the normal test run.
+    if (project.hasProperty('rkNativeAgent')) {
+        def graalHome = System.getenv('GRAALVM_HOME')
+        if (!graalHome) throw new GradleException('rkNativeAgent capture needs GRAALVM_HOME (a GraalVM 25 home)')
+        def cfgDir = project.findProperty('rkNativeAgentDir') ?: "${rootProject.projectDir}/build/rk-native-capture"
+        // caller-filter drops reflective lookups MADE BY the test harness (JUnit/Gradle), so the metadata
+        // does not record JUnit's instantiation of the *Test classes (which share the …cli package with
+        // production classes, so an access-filter can't separate them by package).
+        def callerFilter = "${rootProject.projectDir}/scripts/native-agent-caller-filter.json"
+        executable = "${graalHome}/bin/java"
+        jvmArgs "-agentlib:native-image-agent=config-merge-dir=${cfgDir},caller-filter-file=${callerFilter}"
+        maxParallelForks = 1
+        outputs.upToDateWhen { false }   // always re-run; a cached (skipped) test run captures nothing
+    }
 }
 
 // GraalVM native image — release-only, opt-in `:cli:nativeCompile` (GraalVM 25 + GRAALVM_HOME). Full recipe,

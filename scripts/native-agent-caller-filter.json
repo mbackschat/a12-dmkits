@@ -1,0 +1,10 @@
+{
+  "comment": "native-image tracing-agent CALLER filter for the test-suite capture (docs/NATIVE-IMAGE-GRAALVM.md §5). Drops reflective lookups whose CALLER is the test harness (JUnit / opentest4j / apiguardian / the Gradle test worker), so the captured reachability-metadata does NOT record JUnit's reflective instantiation of the *Test classes — which share the …cli package with production classes, so an access-filter cannot separate them by package. The raw -agentlib agent applies no test-framework filter of its own (the plugin's -Pagent does); this supplies it. It does not catch a few ServiceLoader-loaded JUnit infra classes (caller not attributable to org.junit), but those — like the Groovy-runtime classes the JVM capture also records — are excluded from the native classpath and ignored at build, so they are harmless noise, not a coverage gap.",
+  "rules": [
+    { "excludeClasses": "org.junit.**" },
+    { "excludeClasses": "org.opentest4j.**" },
+    { "excludeClasses": "org.apiguardian.**" },
+    { "excludeClasses": "org.gradle.**" },
+    { "excludeClasses": "worker.org.gradle.**" }
+  ]
+}
