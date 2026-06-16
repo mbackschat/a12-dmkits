@@ -97,6 +97,12 @@ const AUTHORING_COMP = TASKS.filter(t => t.family === 'authoring-computation')
 const MODIFY_COMP = TASKS.filter(t => t.family === 'modify-computation')
 const MODIFY_RULE = TASKS.filter(t => t.family === 'modify-rule')
 const COMPREHENSION = TASKS.filter(t => t.family === 'comprehension')
+// self-correction is authoring with a recovery trap: the obvious first attempt is kernel-rejected (e.g. an
+// ISO date literal → MVK_INVALID_TYPE_FOR_COMPARISON) and the agent must read the diagnostic's `fix` and
+// recover within its turns. The recovery loop happens INSIDE the produce agent (it has the check verb), so
+// the pass criterion is identical to authoring — final rule kernel-valid AND gold-equivalent. It therefore
+// rides the authoring produce → batch-recheck → judge-by-execution path verbatim (folded into authorRuns).
+const SELF_CORRECTION = TASKS.filter(t => t.family === 'self-correction')
 const STRUCTURE = TASKS.filter(t => t.family === 'structure' && t.status !== 'deferred')
 const SESSION = TASKS.filter(t => t.family === 'session' && t.status !== 'deferred')
 const DELETE_SAFETY = TASKS.filter(t => t.family === 'delete-safety' && t.status !== 'deferred')
@@ -112,6 +118,8 @@ const missingRule = MODIFY_RULE.filter(t => !t.rule).map(t => t.id)
 if (missingRule.length) throw new Error(`modify-rule task(s) missing the \`rule\` key (the existing rule to re-express): ${missingRule.join(', ')} — pass the whole task object or include \`rule\``)
 const missingComp = MODIFY_COMP.filter(t => !t.computation).map(t => t.id)
 if (missingComp.length) throw new Error(`modify-computation task(s) missing the \`computation\` key: ${missingComp.join(', ')} — pass the whole task object or include \`computation\``)
+const missingGold = [...AUTHORING, ...SELF_CORRECTION].filter(t => !(t.gold && t.gold.condition && t.gold.field)).map(t => t.id)
+if (missingGold.length) throw new Error(`authoring/self-correction task(s) missing \`gold.field\`/\`gold.condition\` (the judge needs the reference rule): ${missingGold.join(', ')} — pass the whole task object`)
 
 // ---- prompts (EVAL-SPEC §5: neutral, material-only, no leaking the technique/polarity) ------------
 
@@ -347,7 +355,7 @@ if (!prep || prep.ready !== true) {
 phase('Produce')
 const authorRuns = []
 for (const model of MODELS)
-  for (const task of AUTHORING)
+  for (const task of [...AUTHORING, ...SELF_CORRECTION])  // self-correction = authoring + a recovery trap; same pass path
     for (let i = 0; i < K; i++) authorRuns.push({ model, task, i })
 
 const explainRuns = []

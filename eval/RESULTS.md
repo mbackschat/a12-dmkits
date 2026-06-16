@@ -16,6 +16,18 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-17 00:46 CEST — self-correction family wired + a catalog-quality fix it surfaced (sonnet, k=3, T19)
+
+Wired the **`self-correction`** family into `benchmark.workflow.js` (it had no runner stage, so the 28-task baseline above excluded `rulekit/19`). Self-correction is authoring with a recovery trap — the recovery loop happens *inside* the produce agent (it has the read-only `check` verb), so the pass criterion is identical to authoring (final rule kernel-valid AND gold-equivalent); it rides the authoring produce → `cli batch` recheck → judge-by-execution path verbatim. EVAL-SPEC §3.
+
+| task | mode | k=3 |
+|---|---|---|
+| `19-self-correct-date-rule` (`wf_da1f8f67`) | bare-tool | **3/3** |
+
+All three agents **recovered**, but via `YearFromDate(DeliveryDate) > 2024` — *routing around* the date-literal comparison rather than using the German `dd.MM.yyyy` literal (gold). Judge confirmed equivalence by kernel execution (both first fire on 01.01.2025). The recovery-via-detour is itself the signal the task is for: the diagnostic's joined `fix` did **not** point at the date-literal remedy.
+
+**Catalog-quality fix (build-measure-learn closure).** The `MVK_INVALID_TYPE_FOR_COMPARISON` diagnostic is enriched by a catalog-join (`DiagnosticEnricher`, **by MVK code only — operand-blind**), so the static `invalidExample.fix` for the comparison operators (whose example is string-vs-string) was reused on the *date-vs-ISO-literal* trigger, where "compare strings with == / != instead" is wrong. Broadened the fix text (all four ordering ops in `operators.json`) to name **both** remedies — strings → `==`/`!=`; a DATE → write the literal in German `dd.MM.yyyy` (e.g. `"31.12.2024"`), not ISO. Verified the live diagnostic now carries it for both triggers. (The skill already taught this; the gap was the **bare-tool** self-describing surface — CLAUDE.md's self-explaining-CLI requirement.) Also added a **fail-fast** guard: authoring/self-correction tasks missing `gold.field`/`gold.condition` now abort loudly.
+
 ### 2026-06-17 00:34 CEST — full pass@3 baseline on the post-rename surface (sonnet, k=3, 28 tasks, bare-tool)
 
 First full N6 baseline since the **`doc`→`model`** target rename, the **`--include-dir`→`-w/--workspace`** flag collapse, and the ~26 CLI commits of 2026-06-13/14 (new verbs `workspace list/graph`, `model info/new`, `meta`, `rule deps`, `diagnostics`; the `RkCode` registry; coded refusals). Bare-tool (no skill). `wf_bee704d3`, 166 agents, **4.61M tokens**, ~28 min — plus a targeted task-17 re-run (`wf_88a4f3de`, 8 agents, 0.22M).
