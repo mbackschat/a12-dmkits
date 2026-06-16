@@ -62,6 +62,16 @@ public final class BoundModel {
         return ofJson(modelJson, io.github.mbackschat.a12.dm.core.ReferenceResolvers.of(resolver));
     }
 
+    /** Bind from a DM-JSON file on disk — sugar for {@code ofJson(Files.readString(path))}. The source is
+     *  retained for the write path (F6), exactly as {@link #ofJson(String)}. */
+    public static BoundModel load(java.nio.file.Path path) {
+        try {
+            return ofJson(java.nio.file.Files.readString(path));
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException("failed to read model from " + path, e);
+        }
+    }
+
     /**
      * Bind <b>without</b> the kernel consistency gate (expand-only) — for <em>read-only</em> inspection of a
      * model that may be inconsistent (e.g. a candidate rule whose error field is not yet valid, G4: read its
