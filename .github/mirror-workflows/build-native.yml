@@ -170,8 +170,11 @@ jobs:
           "$BIN" manifest | norm > /tmp/m.txt; grep -Eq '"a12Distribution" *: *"2025.06-ext5"' /tmp/m.txt
           echo "== model validate (kernel reflection) =="
           "$BIN" -m examples/models/order-ruled.dm.json model validate | norm > /tmp/mv.txt; grep -Eq '"valid" *: *true' /tmp/mv.txt
+          # /Order/... is a POSIX-looking arg → git-bash rewrites it to C:/Program Files/Git/Order/... (MSYS
+          # path conversion) → "not a rule". MSYS_NO_PATHCONV=1 passes it verbatim. Windows/git-bash-only —
+          # NOT reproducible on mac/linux, so only the Windows CI reveals it.
           echo "== rule read (adapter reflection) =="
-          "$BIN" -m examples/models/order-ruled.dm.json rule read /Order/DeliveryNotBeforeOrder | norm > /tmp/rr.txt; grep -Eq '"ok" *: *true' /tmp/rr.txt
+          MSYS_NO_PATHCONV=1 "$BIN" -m examples/models/order-ruled.dm.json rule read /Order/DeliveryNotBeforeOrder | norm > /tmp/rr.txt; grep -Eq '"ok" *: *true' /tmp/rr.txt
           echo "windows native smoke: OK"
 
       - name: Stage the binary under its release asset name
