@@ -14,15 +14,18 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ValueKind;
+import io.github.mbackschat.a12.dm.edit.EditSession;
 
 /**
  * The Level-1 navigation surface (study finding 9, §6c — jOOQ-{@code Meta}-style): streams of rich
  * info handles, matching via plain {@code Stream.filter} (no query language), and strict narrowing
- * back to typed authoring handles. Safe by F0's snapshot semantics. Level 2 (globs, axes,
- * annotation queries) is deliberately absent — trigger-gated.
+ * back to typed authoring handles. Safe by F0's snapshot semantics. Level 2 (globs, axes) is
+ * deliberately absent — trigger-gated; annotation <em>reads</em> ({@code annotations()}/{@code annotation(name)})
+ * landed (finding 37) as the minimum the annotation-query trigger demanded — enough for annotation-filtered streams.
  */
 class NavigationTest {
 
@@ -114,6 +117,45 @@ class NavigationTest {
                 "FieldFilled(/Subscription/Billing/BaseFee) And [/Subscription/Billing/BaseFee] < 0",
                 "FieldFilled(/Subscription/Billing/EffectiveFee) And [/Subscription/Billing/EffectiveFee] < 0"),
                 rendered);
+    }
+
+    @Test
+    void readsFieldAnnotationsAsTypedDescriptors() {
+        // author element-level annotations, write back, re-load through the kernel — the read side
+        // of the surface we could already only WRITE (EditSession.setAnnotation).
+        String json = EditSession.read(Fixtures.subscriptionJson())
+                .setAnnotation("/Subscription/Billing/BaseFee", "audited", "true")
+                .setAnnotation("/Subscription/Billing/BaseFee", "owner", "billing-team")
+                .toJson();
+        BoundModel bound = BoundModel.ofJson(json);
+
+        FieldInfo fee = bound.fieldAt("/Subscription/Billing/BaseFee").orElseThrow();
+        assertEquals(List.of(
+                new FieldInfo.Annotation("audited", "true"),
+                new FieldInfo.Annotation("owner", "billing-team")), fee.annotations());
+
+        // convenience lookup by name
+        assertEquals("true", fee.annotation("audited").orElseThrow().value());
+        assertTrue(fee.annotation("absent").isEmpty());
+
+        // a field with no annotations → empty list, never null
+        assertTrue(bound.fieldAt("/Subscription/Tier").orElseThrow().annotations().isEmpty());
+    }
+
+    @Test
+    void enablesAnnotationQueryByPlainStreamFilter() {
+        // the use case: find fields carrying an annotation — ordinary Stream.filter, no query API.
+        String json = EditSession.read(Fixtures.subscriptionJson())
+                .setAnnotation("/Subscription/Billing/BaseFee", "audited", "true")
+                .setAnnotation("/Subscription/Addons/MonthlyFee", "audited", "yes")
+                .toJson();
+        BoundModel bound = BoundModel.ofJson(json);
+
+        List<String> audited = bound.fields()
+                .filter(f -> f.annotation("audited").isPresent())
+                .map(FieldInfo::path)
+                .toList();
+        assertEquals(List.of("/Subscription/Addons/MonthlyFee", "/Subscription/Billing/BaseFee"), audited);
     }
 
     private static Reader fixture(String classpathLocation) {

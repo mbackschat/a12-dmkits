@@ -132,4 +132,30 @@ class StudySnippetsTest {
         assertNotNull(peek);
         assertNotNull(fee);
     }
+
+    @Test
+    void findAnnotatedFieldsAndAddSiblingAuditGroups() {
+        String json = EditSession.read(Fixtures.subscriptionJson())
+                .setAnnotation("/Subscription/Billing/BaseFee", "audited", "true")
+                .toJson();
+        // tag::navigation-annotations[]
+        BoundModel m = BoundModel.ofJson(json);       // navigate this immutable snapshot
+        EditSession s = EditSession.read(json);       // mutate this session
+
+        m.fields()
+                .filter(f -> f.annotation("audited").isPresent())   // find by annotation — plain Stream.filter
+                .toList()                                           // materialize before mutating (don't match new fields)
+                .forEach(f -> {
+                    String audit = f.name() + "_AUDIT";
+                    s.addGroup(f.groupPath(), audit);               // a sibling group of the matched field
+                    s.group(f.groupPath() + "/" + audit)            // → GroupEditor: three audit fields
+                            .stringField("auditUser", b -> {})
+                            .dateTimeField("auditAt", b -> {})
+                            .stringField("auditAction", b -> {});
+                });
+        String edited = s.validate().toJson();        // kernel gate, once
+        // end::navigation-annotations[]
+        assertTrue(edited.contains("BaseFee_AUDIT"));
+        assertTrue(edited.contains("auditUser"));
+    }
 }

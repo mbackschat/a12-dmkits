@@ -51,6 +51,21 @@ public final class FieldInfo {
         return model.num(path).scale();
     }
 
+    // --- annotations: the read peer of EditSession.setAnnotation (study finding 9, annotation reads) --
+
+    /** One element-level name/value annotation pair (the kernel's {@code annotations}). */
+    public record Annotation(String name, String value) {}
+
+    /** This field's element-level annotations, in document order; empty (never {@code null}) when none. */
+    public java.util.List<Annotation> annotations() {
+        return model.annotationsOf(path);
+    }
+
+    /** The annotation named {@code name}, if present — the matcher the "find fields by annotation" use case needs. */
+    public java.util.Optional<Annotation> annotation(String name) {
+        return annotations().stream().filter(a -> a.name().equals(name)).findFirst();
+    }
+
     // --- narrowing: lenient exploring → strict authoring (throws on kind mismatch) -------------
 
     public FieldRef ref() {

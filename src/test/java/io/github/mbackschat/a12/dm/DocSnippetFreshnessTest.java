@@ -53,6 +53,7 @@ class DocSnippetFreshnessTest {
             new Lock("edit-session", "docs/API-POC-STUDY.md", STUDY_SNIPPETS),
             new Lock("catalog", "docs/API-POC-STUDY.md", STUDY_SNIPPETS),
             new Lock("navigation", "docs/API-POC-STUDY.md", STUDY_SNIPPETS),
+            new Lock("navigation-annotations", "docs/API-POC-STUDY.md", STUDY_SNIPPETS),
             new Lock("editor-number-field", "docs/API-POC-STUDY.md",
                     "src/test/java/io/github/mbackschat/a12/dm/edit/GroupEditorTest.java"));
 
