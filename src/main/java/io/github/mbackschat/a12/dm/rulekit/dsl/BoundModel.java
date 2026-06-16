@@ -349,12 +349,20 @@ public final class BoundModel {
         return new FieldInfo(this, path, index.nameOf(path), index.kindOf(path));
     }
 
-    /** The field's element-level annotations, read back through the kernel {@link com.mgmtp.a12.kernel.md.model.api.IField}
+    /** A field's element-level annotations, read back through the kernel {@link com.mgmtp.a12.kernel.md.model.api.IField}
      *  (the slot the silent-ignore deserializer would otherwise hide). Backs {@link FieldInfo#annotations()}. */
-    java.util.List<FieldInfo.Annotation> annotationsOf(String fieldPath) {
-        return index.field(fieldPath).getAnnotations().stream()
-                .map(a -> new FieldInfo.Annotation(a.getName(), a.getValue()))
-                .toList();
+    java.util.List<Annotation> annotationsOf(String fieldPath) {
+        return map(index.field(fieldPath).getAnnotations());
+    }
+
+    /** A group's element-level annotations (kernel {@link com.mgmtp.a12.kernel.md.model.api.IGroup}). Backs
+     *  {@link GroupInfo#annotations()}. */
+    java.util.List<Annotation> annotationsOfGroup(String groupPath) {
+        return map(index.group(groupPath).getAnnotations());
+    }
+
+    private static java.util.List<Annotation> map(java.util.List<com.mgmtp.a12.model.header.Annotation> as) {
+        return as.stream().map(a -> new Annotation(a.getName(), a.getValue())).toList();
     }
 
     /** A typed boolean handle ({@code isTrue()}/{@code isFalse()}). Throws if not a boolean field. */

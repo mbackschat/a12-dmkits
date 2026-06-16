@@ -152,6 +152,7 @@ ModelCard card  = ctx.describe();                 // every field + kind + enum d
 RuleExplanation why = ctx.explain(condition);     // what it checks, and WHEN it fires (polarity made explicit)
 List<FieldMatch> hits = ctx.find("birthdate");    // resolve a fuzzy name to model fields
 Set<String> users = adapter.whereUsed("/Customer/BirthDate");   // which rules reference a field
+m.fields().filter(f -> f.annotation("audited").isPresent());    // find fields by annotation (GroupInfo too)
 ```
 
 ### Modify by re-expression, with a diff — and render to German

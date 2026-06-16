@@ -35,6 +35,17 @@ public final class GroupInfo {
         return model.group(path);
     }
 
+    /** This group's element-level annotations, in document order; empty (never {@code null}) when none.
+     *  The read peer of {@code GroupEditor.setAnnotation}, symmetric with {@link FieldInfo#annotations()}. */
+    public java.util.List<Annotation> annotations() {
+        return model.annotationsOfGroup(path);
+    }
+
+    /** The annotation named {@code name}, if present. */
+    public java.util.Optional<Annotation> annotation(String name) {
+        return annotations().stream().filter(a -> a.name().equals(name)).findFirst();
+    }
+
     @Override
     public String toString() {
         return path + (repeating ? " (repeating)" : "");

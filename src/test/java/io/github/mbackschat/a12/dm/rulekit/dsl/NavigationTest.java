@@ -131,8 +131,8 @@ class NavigationTest {
 
         FieldInfo fee = bound.fieldAt("/Subscription/Billing/BaseFee").orElseThrow();
         assertEquals(List.of(
-                new FieldInfo.Annotation("audited", "true"),
-                new FieldInfo.Annotation("owner", "billing-team")), fee.annotations());
+                new Annotation("audited", "true"),
+                new Annotation("owner", "billing-team")), fee.annotations());
 
         // convenience lookup by name
         assertEquals("true", fee.annotation("audited").orElseThrow().value());
@@ -140,6 +140,25 @@ class NavigationTest {
 
         // a field with no annotations → empty list, never null
         assertTrue(bound.fieldAt("/Subscription/Tier").orElseThrow().annotations().isEmpty());
+    }
+
+    @Test
+    void readsGroupAnnotationsTheSameWay() {
+        // symmetry with fields: a group carries the same element-level annotations, read identically.
+        String json = EditSession.read(Fixtures.subscriptionJson())
+                .setAnnotation("/Subscription/Billing", "owner", "billing-team")
+                .toJson();
+        BoundModel bound = BoundModel.ofJson(json);
+
+        GroupInfo billing = bound.groups()
+                .filter(g -> g.path().equals("/Subscription/Billing")).findFirst().orElseThrow();
+        assertEquals(List.of(new Annotation("owner", "billing-team")), billing.annotations());
+        assertEquals("billing-team", billing.annotation("owner").orElseThrow().value());
+        assertTrue(billing.annotation("absent").isEmpty());
+
+        GroupInfo addons = bound.groups()
+                .filter(g -> g.path().endsWith("Addons")).findFirst().orElseThrow();
+        assertTrue(addons.annotations().isEmpty(), "a group with no annotations → empty, never null");
     }
 
     @Test

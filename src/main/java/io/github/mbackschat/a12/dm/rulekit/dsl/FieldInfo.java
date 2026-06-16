@@ -53,9 +53,6 @@ public final class FieldInfo {
 
     // --- annotations: the read peer of EditSession.setAnnotation (study finding 9, annotation reads) --
 
-    /** One element-level name/value annotation pair (the kernel's {@code annotations}). */
-    public record Annotation(String name, String value) {}
-
     /** This field's element-level annotations, in document order; empty (never {@code null}) when none. */
     public java.util.List<Annotation> annotations() {
         return model.annotationsOf(path);
