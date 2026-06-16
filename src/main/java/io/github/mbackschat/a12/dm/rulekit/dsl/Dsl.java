@@ -800,6 +800,29 @@ public final class Dsl {
         return new RepetitionNotUniqueCondition(keys, java.util.Optional.empty());
     }
 
+    /** {@code AllFieldsFilled(f1, …)} over a built list — the list peer of the varargs form, for bulk
+     *  authoring (e.g. a presence guard over a set of fields gathered by navigation). Empty list is an error. */
+    public static Condition allFieldsFilled(List<? extends FieldOperand> fields) {
+        return nonEmptyFieldList(Quantifier.ALL_FIELDS_FILLED, fields);
+    }
+
+    /** {@code NoFieldFilled(f1, …)} over a built list. */
+    public static Condition noFieldFilled(List<? extends FieldOperand> fields) {
+        return nonEmptyFieldList(Quantifier.NO_FIELD_FILLED, fields);
+    }
+
+    /** {@code AtLeastOneFieldFilled(f1, …)} over a built list. */
+    public static Condition atLeastOneFieldFilled(List<? extends FieldOperand> fields) {
+        return nonEmptyFieldList(Quantifier.AT_LEAST_ONE_FIELD_FILLED, fields);
+    }
+
+    private static Condition nonEmptyFieldList(Quantifier quantifier, List<? extends FieldOperand> fields) {
+        if (fields.isEmpty()) {
+            throw new IllegalArgumentException(quantifier + " needs at least one field");
+        }
+        return fieldList(quantifier, fields);
+    }
+
     private static Condition fieldList(Quantifier quantifier, FieldOperand first, FieldOperand... rest) {
         List<FieldOperand> fields = new ArrayList<>();
         fields.add(first);
@@ -926,6 +949,25 @@ public final class Dsl {
             folded = folded.or(c);
         }
         return folded;
+    }
+
+    /** And-fold over a built list (the generated/bulk-authoring form, e.g. one clause per navigated field):
+     *  a single element returns as-is, an empty list is an error. Renders identically to the varargs form. */
+    public static Condition allOf(List<Condition> conditions) {
+        requireNonEmpty(conditions, "allOf");
+        return conditions.stream().reduce(Condition::and).orElseThrow();
+    }
+
+    /** Or-fold over a built list — the list peer of {@link #anyOf(Condition, Condition, Condition...)}. */
+    public static Condition anyOf(List<Condition> conditions) {
+        requireNonEmpty(conditions, "anyOf");
+        return conditions.stream().reduce(Condition::or).orElseThrow();
+    }
+
+    private static void requireNonEmpty(List<Condition> conditions, String name) {
+        if (conditions.isEmpty()) {
+            throw new IllegalArgumentException(name + " needs at least one condition");
+        }
     }
 
     // --- group predicates (the group twin of the field forms) ----------------------------------

@@ -78,6 +78,44 @@ class DslFacadeTest {
     }
 
     @Test
+    void allOfOverAListFoldsLikeTheVarargsForm() {
+        Condition a = m.field(NAME).filled();
+        Condition b = m.field(MONTHLY_FEE).filled();
+        Condition c = m.num(MONTHLY_FEE).gt(0);
+        // the bulk/generated-authoring form: build the clauses, then fold the list
+        assertEquals(new DslRenderer().render(Dsl.allOf(a, b, c)),
+                new DslRenderer().render(Dsl.allOf(java.util.List.of(a, b, c))));
+        assertEquals(new DslRenderer().render(Dsl.anyOf(a, b, c)),
+                new DslRenderer().render(Dsl.anyOf(java.util.List.of(a, b, c))));
+    }
+
+    @Test
+    void foldOverASingletonListIsTheElementItself() {
+        Condition a = m.field(NAME).filled();
+        assertEquals(new DslRenderer().render(a), new DslRenderer().render(Dsl.allOf(java.util.List.of(a))));
+        assertEquals(new DslRenderer().render(a), new DslRenderer().render(Dsl.anyOf(java.util.List.of(a))));
+    }
+
+    @Test
+    void foldOverAnEmptyListIsAnError() {
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> Dsl.allOf(java.util.List.<Condition>of()));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> Dsl.anyOf(java.util.List.<Condition>of()));
+    }
+
+    @Test
+    void presenceOverAListMatchesTheVarargsForm() {
+        var fields = java.util.List.of(m.field(NAME), m.field(MONTHLY_FEE));
+        assertEquals(new DslRenderer().render(allFieldsFilled(m.field(NAME), m.field(MONTHLY_FEE))),
+                new DslRenderer().render(Dsl.allFieldsFilled(fields)));
+        assertEquals(new DslRenderer().render(Dsl.noFieldFilled(m.field(NAME), m.field(MONTHLY_FEE))),
+                new DslRenderer().render(Dsl.noFieldFilled(fields)));
+        assertEquals(new DslRenderer().render(Dsl.atLeastOneFieldFilled(m.field(NAME), m.field(MONTHLY_FEE))),
+                new DslRenderer().render(Dsl.atLeastOneFieldFilled(fields)));
+    }
+
+    @Test
     void lengthFactoryMatchesTheHandleForm() {
         Condition viaDsl = length(m.str(NAME)).gt(10);
         assertEquals("Length(/Subscription/Addons/Name) > 10", new DslRenderer().render(viaDsl));

@@ -5,6 +5,7 @@ import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.anyOf;
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.de;
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Severity.ERROR;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -49,9 +50,11 @@ class StudySnippetsTest {
         // tag::nary[]
         Condition c = allOf(r1, r2, r3);            // And-fold: "r1 And r2 And r3" — no redundant parentheses
         Condition d = allOf(r1, anyOf(r2, r3));     // "r1 And (r2 Or r3)" — parens per the kernel's mixing rule
+        Condition e = allOf(List.of(r1, r2, r3));   // the LIST form — fold clauses a loop/stream built (bulk authoring)
         // end::nary[]
         assertNotNull(new DslRenderer().render(c));
         assertTrue(new DslRenderer().render(d).contains(" Or "));
+        assertEquals(new DslRenderer().render(c), new DslRenderer().render(e));
     }
 
     @Test
