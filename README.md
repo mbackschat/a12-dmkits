@@ -134,7 +134,7 @@ The condition language is rich; a flavour of what the typed builder covers (each
 | string patterns (portable regex) | `PatternViolated(PostalCode, "[0-9]{5}")` |
 | "for every add-on row, the fee is present" | `GroupFilled(/Subscription/Addons) And FieldNotFilled(MonthlyFee)` |
 
-Browse the full, self-verifying catalogue (every operator with its meaning, examples, and **gotchas**) via the CLI's `operators` verb, or in the [API study](docs/API-GUIDE.md).
+Browse the full, self-verifying catalogue (every operator with its meaning, examples, and **gotchas**) via the CLI's `operators` verb, or in the [API guide](docs/API-GUIDE.md).
 
 ### Read a foreign rule back
 
@@ -181,9 +181,9 @@ The CLI mirrors it: a `comment` key on `rule add` and `computation add`, plus `r
 
 ### Validation-pattern catalogue
 
-The recurring validation idioms (date-order, required-when, mutually-exclusive, at-least-one-of, sum-of-line-items) are a **catalogue** — `PatternCatalog.load().byId("date-order")` — where each entry builds its condition through the **typed DSL**, so it's correct by construction (right polarity, a referenced error field). The library returns the rule-spec parts; the CLI `patterns` verb scaffolds + `--apply`s them. Each entry's example is kernel-validated in CI, so the catalogue can't go stale. Full API + the typed-vs-data design: [API study](docs/API-GUIDE.md).
+The recurring validation idioms (date-order, required-when, mutually-exclusive, at-least-one-of, sum-of-line-items) are a **catalogue** — `PatternCatalog.load().byId("date-order")` — where each entry builds its condition through the **typed DSL**, so it's correct by construction (right polarity, a referenced error field). The library returns the rule-spec parts; the CLI `patterns` verb scaffolds + `--apply`s them. Each entry's example is kernel-validated in CI, so the catalogue can't go stale. Full API + the typed-vs-data design: [API guide](docs/API-GUIDE.md).
 
-More rulekit idioms and the design rationale are in the [API study](docs/API-GUIDE.md).
+More rulekit idioms and the design rationale are in the [API guide](docs/API-GUIDE.md).
 
 ---
 
@@ -230,7 +230,7 @@ order.addRule(r -> r                                         // a TYPED rule (ru
 String updated = s.validate().toJson();                      // one kernel gate
 ```
 
-**Refs are the currency.** `order.num("Discount")` resolves *only because* `addField` ran first — and it returns a typed ref, not a string path you re-type. Rules author in place (`order.addRule(r -> …)`, the builder pre-scoped to the group) or take the editor straight as a scope (`m.rule(order)`); either way the immutable AST holds **only the pure ref, never the session**, so a rule can't leak an effect. `GroupEditor` also nests (`addGroup(name, sub -> …)`) and carries the same per-type field builders as the from-scratch builder (`order.numberField("Surcharge", n -> n.fractionDigits(2))`, `enumField`, `dateField`, … — a *configured* field mid-edit, byte-identical to one built from scratch); `FieldEditor` re-types/labels/annotates a field; `RuleEditor` / `ComputationEditor` modify or remove by held reference — a rule's condition, **or its severity / messages in place** (`s.rule(name).severity(WARNING).messages(en("…")))`). `EditSession` also carries the **reference-preserving refactors** — `renameField`/`renameGroup`/`moveField`/`moveGroup` rewrite every reference to the element (via the kernel's `MoveSupportDM`) and re-validate, so a rename or relocation never dangles a referrer. Design + rationale: [API study §5c](docs/API-GUIDE.md).
+**Refs are the currency.** `order.num("Discount")` resolves *only because* `addField` ran first — and it returns a typed ref, not a string path you re-type. Rules author in place (`order.addRule(r -> …)`, the builder pre-scoped to the group) or take the editor straight as a scope (`m.rule(order)`); either way the immutable AST holds **only the pure ref, never the session**, so a rule can't leak an effect. `GroupEditor` also nests (`addGroup(name, sub -> …)`) and carries the same per-type field builders as the from-scratch builder (`order.numberField("Surcharge", n -> n.fractionDigits(2))`, `enumField`, `dateField`, … — a *configured* field mid-edit, byte-identical to one built from scratch); `FieldEditor` re-types/labels/annotates a field; `RuleEditor` / `ComputationEditor` modify or remove by held reference — a rule's condition, **or its severity / messages in place** (`s.rule(name).severity(WARNING).messages(en("…")))`). `EditSession` also carries the **reference-preserving refactors** — `renameField`/`renameGroup`/`moveField`/`moveGroup` rewrite every reference to the element (via the kernel's `MoveSupportDM`) and re-validate, so a rename or relocation never dangles a referrer. Design + rationale: [API guide §5c](docs/API-GUIDE.md).
 
 **Blend both as a developer would** — the editor for a field you just added, a path lookup for one that already exists, in the same condition (they are the same pure ref):
 
@@ -246,7 +246,7 @@ s.addRule(m -> m.rule(billing.ref()).name("SurchargeUnderBase").errorField(surch
 
 The flat session verbs are still there for a quick one-off — `s.addField(path, …)`, `s.addRule(m -> m.rule(m.group(path)) …)` — and a raw-string condition overload backs the CLI's `apply`/spec path (conditions arrive as text), but it's not the idiom for library code.
 
-More library idioms and the design rationale live in the [API study](docs/API-GUIDE.md); every doc is indexed in [`docs/`](docs/README.md).
+More library idioms and the design rationale live in the [API guide](docs/API-GUIDE.md); every doc is indexed in [`docs/`](docs/README.md).
 
 ---
 
@@ -376,7 +376,7 @@ dmtool -m order.dm.json patterns date-order \
   --arg earlier=/Order/OrderDate --arg later=/Order/DeliveryDate --apply   # …or persist it directly (--dry-run previews)
 ```
 
-The catalogue is **self-verifying**: every idiom's example is CI-instantiated and run through the real kernel, so a pattern that no longer scaffolds a valid rule fails the build. See [CLI-SPEC](docs/CLI-SPEC.md) and the [API study](docs/API-GUIDE.md).
+The catalogue is **self-verifying**: every idiom's example is CI-instantiated and run through the real kernel, so a pattern that no longer scaffolds a valid rule fails the build. See [CLI-SPEC](docs/CLI-SPEC.md) and the [API guide](docs/API-GUIDE.md).
 
 ### Author & check — confirmed by the kernel
 
