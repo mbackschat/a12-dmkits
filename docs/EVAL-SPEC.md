@@ -61,7 +61,7 @@ The accepted tradeoff: the *default* (bare-tool) benchmark **does not measure th
 
 ## 3. Task families & scoring
 
-Five families (the four authoring/modify variants share one scoring shape; comprehension is its mirror), each with an **objective, deterministic backbone** (the kernel is the oracle):
+The families, grouped by scoring shape (the authoring/modify variants — including self-correction, which rides the authoring path — share one shape; comprehension is its mirror; the modelkit/mixed families are deterministically scored, §8d B), each with an **objective, deterministic backbone** (the kernel is the oracle):
 
 - **Authoring** — intent (NL) → a rule. Scored: (a) **kernel accepts it** (run the CLI's validate/check — hard pass/fail), and (b) **matches intent** (the rendered condition equals an expected canonical form, or read→re-render→compare for semantic equivalence).
 - **Authoring-computation** — intent (NL) → a *computation* (computed field + alternatives). Scored the same way, but the kernel gate is `cli add` (which validates before persisting) and the judge compares **computation** equivalence (same value per document).
