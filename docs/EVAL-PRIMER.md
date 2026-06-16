@@ -42,7 +42,7 @@ Plain-language definitions. The first group is general LLM-eval vocabulary; the 
 | **Gold** (gold answer, gold standard) | The reference correct answer for a task, authored and kernel-verified by us in advance. Scoring asks "does the model's output match the gold?". Lives in each task file under `eval/tasks/<kit>/` (the folder is the kit — rulekit/modelkit/mixed). |
 | **Oracle** | The trusted automatic judge of a *factual* property. Our oracle is the **real A12 kernel**: it says yes/no to "is this rule valid?" deterministically — no model judgement involved. |
 | **Judge** | A model used to score a *semantic* property the oracle can't — e.g. "does this rule mean the same as the gold?" (catches a rule that is kernel-valid but says the opposite thing). Softer and non-deterministic, so used in addition to the oracle. |
-| **Pass@k** | Run a task **k** times; report how often the model succeeds. Used because a single run is noisy. "pass@k = 2/3" means it passed on 2 of 3 attempts. |
+| **Pass@k** | Run a task **k** times; report how often the model succeeds. Used because a single run is noisy. "pass@k = 2/3" means it passed on 2 of 3 attempts. **⚠️ Our meaning deviates from the literature — see the note right below the table.** |
 | **Clean context / clean subagent / LLM-under-test** | A freshly spawned model with no memory of this project — the faithful stand-in for "a first-time consumer". The main assistant can't grade itself (it already knows the design), so the eval always uses a clean one. |
 | **Probe** | One run of one task by one clean subagent — the atomic unit of the eval. |
 | **Deterministic vs. soft scoring** | *Deterministic*: the oracle gives the same verdict every time (kernel accepts / rejects) — safe to gate CI. *Soft*: depends on model judgement or luck across runs (pass@k, judge scores) — tracked as a trend, not a hard gate. |
@@ -50,6 +50,16 @@ Plain-language definitions. The first group is general LLM-eval vocabulary; the 
 | **Teaching to the test** | The anti-pattern of making the shipped material (e.g. a skill example) too close in shape to a benchmark task — then a "pass" measures copying, not genuine ability. Tasks are kept structurally distinct from skill examples to avoid it. |
 | **Lift** | The measured improvement from one change — e.g. "the skill lifted T1 from multi-attempt to first-attempt". The build-measure-learn loop chases lifts. |
 | **Model pinning** | Fixing the subagent's model tier (`opus`/`sonnet`/`haiku`) explicitly, instead of inheriting the session model, so results are reproducible and tiers are comparable. |
+
+> **⚠️ Our "pass@k" is a pass-rate — it deviates from the literature's pass@k. Read this before comparing numbers.**
+>
+> In the LLM-eval literature (Chen et al. 2021, *HumanEval*), **pass@k** is the probability that **at least one** of *k* samples is correct — a task counts as *solved* if **any** of *k* attempts pass (often estimated unbiasedly from *n* ≥ *k* samples). It rewards "can the model ever get it right in *k* tries."
+>
+> **We report something stricter and different.** For each `(model, task)` cell we run *k* probes and report **how many of the *k* pass** — `2/3` means *2 of 3 runs passed* — i.e. a per-cell **pass-rate**. A cell is **"clean" only when all *k* pass** (`k/k`), and a benchmark aggregates as **"*X/N* clean (*R*/total runs)"** (e.g. `22/28 clean, 76/84 runs`).
+>
+> **Why we deviate:** we measure **reliability/consistency**, not best-of-*k*. For rule authoring, "got it right once in three tries" is a weak signal we deliberately do **not** count as a solve — we want the shipped material to yield a correct rule *repeatably*. So the literature's pass@k (≥1 of *k*) would be **more lenient** than ours (clean = *k*/*k*); our `R/total runs` is the per-run success rate, not P(≥1 correct).
+>
+> **So when this repo says "pass@3 = 2/3", read "2 of 3 runs passed," not "P(≥1 of 3 correct)."** (Same caveat applies wherever EVAL-SPEC and `eval/RESULTS.md` say pass@k.)
 
 ### Project-specific shorthand
 

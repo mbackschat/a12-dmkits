@@ -85,6 +85,8 @@ A task may also be **multi-file**: it carries a `modelPath` (a nested layout) an
 - Run **periodically / on-demand**, not per-commit; alert on drops rather than blocking merges.
 - It **composes with N7** (which already runs every catalog example through the kernel, fully deterministic): N7 guards the catalog's truth; this benchmark guards the LLM-in-the-loop usability on top.
 
+**Notation — our "pass@k" deviates from the literature (defined once, in the [primer](EVAL-PRIMER.md#glossary), referenced everywhere).** The literature's **pass@k** (Chen et al. 2021, *HumanEval*) is *P(at least one of k samples correct)* — a task is solved if **any** of *k* attempts pass. **Ours is a stricter pass-rate:** per `(model, task)` cell we run *k* probes and report **how many pass** (`2/3` = 2 of 3 runs passed); a cell is **"clean" only when all *k* pass** (`k/k`), and a run aggregates as **"*X/N* clean (*R*/total runs)"**. We measure **reliability** (does the material *repeatably* yield a correct rule), not best-of-*k* — so "right once in three" is **not** a solve for us, where the literature's metric would count it. `pass` (per probe) `= kernel-valid AND semantically-right` (the judge). Full rationale + the side-by-side: the primer's ⚠️ pass@k note.
+
 ## 4. The build-measure-learn loop (run it in-session)
 
 ```
