@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -46,6 +47,51 @@ class FieldModifyCommandTest {
         assertEquals("/Adresse/PLZ", env.path("changed").path("modified").asText());
         assertTrue(Files.readString(m).contains("[0-9]{5}"),
                 "the pattern is persisted into the field's type — no delete-and-recreate");
+        assertFalse(hasCode(env, "RK_RETYPE_AFFECTS_READERS"),
+                "a within-kind config change is not a kind change → no reader advisory");
+    }
+
+    @Test
+    void warnsWhenAKindChangeAffectsReaders(@TempDir Path dir) throws Exception {
+        Path m = CliTestSupport.orderRuled(dir);
+        Path spec = dir.resolve("retype.json");
+        // CustomerName is read only by FieldFilled (kind-agnostic) + a named CustomCondition, so STRING→ENUM
+        // is kernel-accepted — yet a reader exists, so the author gets a heads-up advisory to audit it.
+        Files.writeString(spec, """
+                {"group":"/Order","name":"CustomerName","kind":"ENUM",
+                 "enum":{"values":[{"value":"RETAIL"},{"value":"WHOLESALE"}]}}""");
+
+        CliTestSupport.Result res = CliTestSupport.run("-m", m.toString(), "field", "modify", spec.toString());
+
+        assertEquals(0, res.code(), res::err);
+        JsonNode env = MAPPER.readTree(res.out());
+        assertEquals("applied", env.path("outcome").asText());
+        assertTrue(hasCode(env, "RK_RETYPE_AFFECTS_READERS"),
+                () -> "a kind change with readers warns: " + res.out());
+    }
+
+    @Test
+    void noAdvisoryWhenKindChangeHasNoReaders(@TempDir Path dir) throws Exception {
+        Path m = freshModel(dir);                       // /Adresse/PLZ STRING, no rules
+        Path spec = dir.resolve("plz-num.json");
+        Files.writeString(spec, """
+                {"group":"/Adresse","name":"PLZ","kind":"NUMBER"}""");
+
+        CliTestSupport.Result res = CliTestSupport.run("-m", m.toString(), "field", "modify", spec.toString());
+
+        assertEquals(0, res.code(), res::err);
+        JsonNode env = MAPPER.readTree(res.out());
+        assertEquals("applied", env.path("outcome").asText());
+        assertFalse(hasCode(env, "RK_RETYPE_AFFECTS_READERS"), "no readers → no advisory");
+    }
+
+    private static boolean hasCode(JsonNode env, String code) {
+        for (JsonNode d : env.path("diagnostics")) {
+            if (code.equals(d.path("code").asText())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Test

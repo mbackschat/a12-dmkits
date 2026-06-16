@@ -121,6 +121,9 @@ public enum RkCode {
     APPLY_OP_FAILED(Severity.ERROR, DiagnosticSource.PRECHECK,
             "an op in an atomic apply sequence failed, so the whole sequence was rolled back (nothing written).",
             "fix the failing op (see its per-op diagnostic) and re-run the sequence."),
+    RETYPE_AFFECTS_READERS(Severity.WARNING, DiagnosticSource.PRECHECK,
+            "a field re-type changes the field's KIND, and rules/computations read it — operators that assume the old type (e.g. a pattern comparison on a now-enum) can break; an advisory, not a refusal (the kernel re-validate is the hard gate).",
+            "review the listed referrers; if the change is rejected, fix or remove the conditions that depend on the old kind."),
 
     // --- environment / version (advisory or fail-fast) ------------------------------------------
     KERNEL_VERSION_SKEW(Severity.INFO, DiagnosticSource.ENVIRONMENT,

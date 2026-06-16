@@ -3,15 +3,21 @@ package io.github.mbackschat.a12.dm.cli;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 
+import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
@@ -69,6 +75,7 @@ final class FieldModifyCommand extends BaseCommand {
 
         String fieldPath;
         ObjectNode changed = MAPPER.createObjectNode();
+        List<Diagnostic> advisories;
         try {
             JsonNode spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
             FieldSpec.Parsed parsed = FieldSpec.parse(spec);
@@ -81,6 +88,11 @@ final class FieldModifyCommand extends BaseCommand {
             if (refusal.isPresent()) {
                 return refuse("field", "modify", refusal.get());
             }
+            // a KIND change (vs a within-kind config tweak) can invalidate conditions that read the field;
+            // surface the readers up front as an advisory — the kernel re-validate stays the hard gate (§6).
+            String oldType = doc.fieldType(fieldPath).orElse(null);
+            String newType = parsed.field().type().jsonType();
+            advisories = reTypeAdvisories(modelJson, resolver, fieldPath, oldType, newType);
             doc.setFieldType(fieldPath, parsed.field().type());
             changed.put("modified", fieldPath);
             changed.put("kind", spec.hasNonNull("typedef") ? "TypeDefType" : spec.path("kind").asText());
@@ -99,7 +111,7 @@ final class FieldModifyCommand extends BaseCommand {
             return fail(e.getMessage());
         }
         if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("field", "modify", "would re-type " + fieldPath, changed);
+            ResultEnvelope env = ResultEnvelope.preview("field", "modify", "would re-type " + fieldPath, changed, advisories);
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -109,8 +121,35 @@ final class FieldModifyCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot write output: " + e.getMessage());
         }
-        ResultEnvelope env = ResultEnvelope.applied("field", "modify", "re-typed " + fieldPath, changed, dest);
+        ResultEnvelope env = ResultEnvelope.applied("field", "modify", "re-typed " + fieldPath, changed, advisories, dest);
         out().print(env.toJsonString());
         return env.exitCode();
+    }
+
+    /**
+     * The reader advisory for a re-type: empty unless the re-type changes the field's KIND (the DM-JSON
+     * {@code fieldType.type} discriminator) <em>and</em> a rule/computation reads the field. A WARNING, not a
+     * refusal — a kind change with only kind-agnostic readers (e.g. {@code FieldFilled}) is fine, and the
+     * kernel re-validate authoritatively rejects any that genuinely break.
+     */
+    private static List<Diagnostic> reTypeAdvisories(String modelJson, IDocumentModelReferenceResolver resolver,
+            String fieldPath, String oldType, String newType) {
+        if (oldType == null || oldType.equals(newType)) {
+            return List.of();
+        }
+        KernelAdapter adapter = KernelAdapter.ofJson(modelJson, resolver);
+        Set<String> readers = new TreeSet<>(adapter.whereUsed(fieldPath));
+        readers.addAll(adapter.whereUsedInComputations(fieldPath));
+        if (readers.isEmpty()) {
+            return List.of();
+        }
+        Diagnostic advisory = Diagnostic.precheckWarning(
+                Optional.of(RkCode.RETYPE_AFFECTS_READERS.code()),
+                "re-typing " + fieldPath + " (" + oldType + " → " + newType + ") changes its kind; "
+                        + readers.size() + " rule(s)/computation(s) read it: " + readers,
+                Diagnostic.Where.path(fieldPath),
+                Optional.of(RkCode.RETYPE_AFFECTS_READERS.fix()),
+                Optional.empty());
+        return List.of(advisory);
     }
 }
