@@ -1,6 +1,6 @@
 # rulekit & modelkit — the API guide
 
-> What the dmkits library (**rulekit** + **modelkit**) feels like to use, as a typed Java library: bind a model, author rules and computations the compiler steers, edit structure, read foreign rules back, explain them, and run them against data — all confirmed by the real A12 kernel. **Part I** motivates it with a worked case study; **Part II** walks the parts in detail. The per-capability **status board** and the numbered **design findings** live in [`API-STATUS.md`](API-STATUS.md) (this guide stays status-free, so titles read clean).
+> What the dmkits library (**rulekit** + **modelkit**) feels like to use, as a typed Java library: bind a model, author rules and computations the compiler steers, edit structure, read foreign rules back, explain them, and run them against data — all confirmed by the real A12 kernel. **Part I** motivates it with a worked case study; **Part II** introduces the handle families everything is built from; **Parts III–V** take authoring, the edit loop, and discovery + the agent loop in turn. The per-capability **status board** and the numbered **design findings** live in [`API-STATUS.md`](API-STATUS.md) (this guide stays status-free).
 
 ---
 ## Part I — Motivation & case study
@@ -69,11 +69,11 @@ EvalResult violating = KernelAdapter.ofJson(updated)
 assertTrue(violating.firedCodes().contains("DISCOUNT_NEG"));     // a negative discount — the rule fires
 ```
 
-That's the arc — **bind → explore → author → validate → edit → write back → run** — and rulekit also **reads** foreign `errorCondition` strings back into the same typed form and **explains** them. The rest of this guide (Part II) takes each part in turn; the handle families you'll see throughout are next.
+That's the arc — **bind → explore → author → validate → edit → write back → run** — and rulekit also **reads** foreign `errorCondition` strings back into the same typed form and **explains** them. The handle families you'll work with throughout come next (Part II); Parts III–V then take authoring, the edit loop, and discovery in turn.
 
-## 1a. The handle families — `Ref` · `Info` · `Editor` (read this first)
+## Part II — The handle families (`Ref` · `Info` · `Editor`)
 
-Almost everything you hold is one of **three handle families**, and the **suffix tells you the role** — point at an element, describe it, or change it. They sit on a deliberate **purity gradient**, which is the single most important thing to internalize:
+Read this first — it's the vocabulary the rest of the guide is built from. Almost everything you hold is one of **three handle families**, and the **suffix tells you the role** — point at an element, describe it, or change it. They sit on a deliberate **purity gradient**, which is the single most important thing to internalize:
 
 ```
    Ref  (pure value, no model)     →   Info  (model-aware, read-only)   →   Editor (session-aware, mutating)
@@ -81,11 +81,9 @@ Almost everything you hold is one of **three handle families**, and the **suffix
    goes INTO the immutable AST          narrows to a Ref                     produces Refs of what it creates
 ```
 
-| family | what it is | get it from | it holds | use it to | members |
-|---|---|---|---|---|---|
-| **`XRef`** | a **typed pointer** to a model element — the *currency* of authoring. A **pure immutable value** (no model/session inside), so it's safe to embed in the AST | `BoundModel` lookup (`m.num(path)`) or relative nav off an `Info`/`Editor` (`app.str("Zip")`) | nothing but the path + static type facts | **author** — operands, error fields, rule/computation scopes | per-kind scalars `NumberRef` `StringRef` `EnumRef` `BoolRef` `ConfirmRef` `DateRef` `TimeRef` `DateTimeRef` `DateFragmentRef` `DateRangeRef`; `GroupRef`; `CategoryRef`; list/wildcard `FieldListRef` `GroupListRef`; the kind-erased base `FieldRef`; read-back `CustomConditionRef` |
-| **`XInfo`** | a **rich read-only descriptor** — the navigation/exploration currency (jOOQ-`Meta` style) | `BoundModel.fields()`/`groups()`/`fieldAt()`/`groupAt()` | the model (so it can read metadata + navigate) | **explore** — read `kind`/`scale`/`annotations`, filter, then **narrow** to a `Ref` to author | `FieldInfo` · `GroupInfo` |
-| **`XEditor`** | a **session-bound mutator** (jOOQ `UpdatableRecord`/active-record style) — the *one* editing idiom | `EditSession` (`s.group(path)`, `s.field(path)`, …) | the live `EditSession` | **change** — fluent edits chain; relative nav yields `Ref`s of just-created elements | `GroupEditor` `FieldEditor` `RuleEditor` `ComputationEditor` `TypeDefEditor` `IncludeEditor` `ConfigEditor` |
+- **`XRef` — point at it, to author.** A **typed pointer** to a model element, and the *currency* of authoring: a **pure immutable value** (no model/session inside), so it's safe to embed in the AST. You get one from a `BoundModel` lookup (`m.num(path)`) or relative navigation off an `Info`/`Editor` (`app.str("Zip")`); it holds nothing but the path + static type facts, and you use it for operands, error fields, and rule/computation scopes. *Members:* the per-kind scalars `NumberRef` `StringRef` `EnumRef` `BoolRef` `ConfirmRef` `DateRef` `TimeRef` `DateTimeRef` `DateFragmentRef` `DateRangeRef`; `GroupRef`; `CategoryRef`; the list/wildcard `FieldListRef` `GroupListRef`; the kind-erased base `FieldRef`; and the read-back `CustomConditionRef`.
+- **`XInfo` — describe it, to explore.** A **rich read-only descriptor** — the navigation/exploration currency (jOOQ-`Meta` style). You get one from `BoundModel.fields()`/`groups()`/`fieldAt()`/`groupAt()`; it holds the model (so it can read metadata and navigate), and you use it to read `kind`/`scale`/`annotations`, filter, then **narrow** to a `Ref` to author. *Members:* `FieldInfo` · `GroupInfo`.
+- **`XEditor` — change it.** A **session-bound mutator** (jOOQ `UpdatableRecord`/active-record style) — the *one* editing idiom. You get one from an `EditSession` (`s.group(path)`, `s.field(path)`, …); it holds the live session, and you use it to mutate: fluent edits chain, and relative navigation yields `Ref`s of just-created elements. *Members:* `GroupEditor` `FieldEditor` `RuleEditor` `ComputationEditor` `TypeDefEditor` `IncludeEditor` `ConfigEditor`.
 
 **The invariant that ties it together (decision §5c / D7):** the immutable AST holds **only pure `Ref`s — never an `Info` or `Editor`**. That's the functional-core / effects-at-the-edge split: a `Ref` carries no model or session, so a rule can't accidentally capture one and leak a side effect; the model-awareness lives on `Info` (read) and the mutation on `Editor` (write), at the edges. It's also why relative navigation lives on `Info`/`Editor` (they hold the model) and **not** on `GroupRef` (a pure value) — see finding 40.
 
@@ -112,9 +110,9 @@ Read the rest of this guide with that gradient in mind: §3–§4 author with **
 
 
 
-## Part II — The parts in detail
+## Part III — Authoring rules
 
-Each part below uses the committed **subscription** fixture (our own original): a `Subscription` root with `Tier` (enum `BASIC/PRO/ENTERPRISE`, category `Pricing` FREE/PAID), `AutoRenew` (boolean), `TermsAccepted` (confirm), a repeatable `Addons{Name, MonthlyFee(scale 2)}`, and `Billing{InvoiceEmail, BaseFee(scale 2), EffectiveFee(scale 2)}`; declared locales `en_US` + `de_DE` (header locales are arbitrary — en/de are not special). A few examples use the **order** fixture (`ShippingAddress`/`BillingAddress` groups, boolean/confirm fields), or extend a model illustratively where a construct needs it. Snippets marked as locked are byte-identical to a kernel-run test; teasers (elided/illustrative) are hand-maintained. Each part's build status lives on the board in [`API-STATUS.md`](API-STATUS.md).
+The detailed parts (III–V) all use the committed **subscription** fixture (our own original): a `Subscription` root with `Tier` (enum `BASIC/PRO/ENTERPRISE`, category `Pricing` FREE/PAID), `AutoRenew` (boolean), `TermsAccepted` (confirm), a repeatable `Addons{Name, MonthlyFee(scale 2)}`, and `Billing{InvoiceEmail, BaseFee(scale 2), EffectiveFee(scale 2)}`; declared locales `en_US` + `de_DE` (header locales are arbitrary — en/de are not special). A few examples use the **order** fixture (`ShippingAddress`/`BillingAddress` groups, boolean/confirm fields), or extend a model illustratively where a construct needs it. Snippets marked as locked are byte-identical to a kernel-run test; teasers (elided/illustrative) are hand-maintained.
 
 ---
 
@@ -125,9 +123,9 @@ Each part below uses the committed **subscription** fixture (our own original): 
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.*;
 import io.github.mbackschat.a12.dm.rulekit.dsl.*;
 
-BoundModel m = BoundModel.of(ModelIndex.of(ModelLoader.loadSelfContained(reader)));   // ✅ today
-// BoundModel m = BoundModel.load(path);                      // 🔮 path-loading sugar (today: read the text yourself)
-BoundModel withIncludes = BoundModel.ofJson(json, resolver);  // ✅ a model with includes — rulekit expands via the resolver (F0; §5d)
+BoundModel m = BoundModel.ofJson(json);                       // bind self-contained DM-JSON
+BoundModel fromFile = BoundModel.load(path);                  // …or straight from a file on disk
+BoundModel withIncludes = BoundModel.ofJson(json, resolver);  // a model with includes — rulekit expands via the resolver (F0; §5d)
 
 NumberRef  fee   = m.num("/Subscription/Addons/MonthlyFee");  // knows: number, scale 2
 EnumRef    tier  = m.enumOf("/Subscription/Tier");            // knows: BASIC, PRO, ENTERPRISE
@@ -204,23 +202,24 @@ Condition r3 = groupNotBlank(addons, m.field("/Subscription/Addons/Name"));
 /** Tolerance check — only the fixed 1/2/5/10 variants exist (the catalog teaches this; the enum enforces it). */
 static Condition withinTolerance(NumberRef actual, NumberRef expected, Tolerance t) {
     return allFieldsFilled(actual.field(), expected.field())
-            .and(actual.differsWithTolerance(t, expected));   // ✅ DiffersWithToleranceRange{N} (NumberRef.differsWithTolerance)
+            .and(actual.differsWithTolerance(t, expected));   // DiffersWithToleranceRange{N} (NumberRef.differsWithTolerance)
 }
 
-/** Chronology over a repeating group — composes the iteration cluster (backlog item 7).
- *  `currentRepetition(group)` ✅ (7e), semantic index `num(f).forIndex("k")` ✅ (7f); date+atRepetition 🔮. */
-static Condition chronological(GroupRef repeating, DateRef date) {
-    return date.value().lt(date.atRepetition(currentRepetition(repeating).plus(1)));  // ✅ currentRepetition; 🔮 rest
+/** Per-row threshold over a repeating group — composes the iteration cluster (item 7): the semantic index
+ *  `num(f).forIndex("k")` (7f) reads this field's value in the row whose index field equals "k", so a row
+ *  can be compared against a keyed baseline row. */
+static Condition exceedsBaselineRow(GroupRef repeating, NumberRef amount, String baselineKey) {
+    return groupFilled(repeating).and(amount.gt(amount.forIndex(baselineKey)));
 }
 
-/** Uniqueness by key ✅ (7b) — one operator, but the fragment names the business intent.
+/** Uniqueness by key (7b) — one operator, but the fragment names the business intent.
  *  The rule sits at the PARENT of the repeating group (kernel position law, KERNEL-FINDINGS §9). */
 static Condition uniqueBy(GroupRef repeating, FieldRef key) {
-    return groupFilled(repeating).and(repetitionNotUnique(key));               // ✅ + .from(scope) for @From
+    return groupFilled(repeating).and(repetitionNotUnique(key));               // + .from(scope) for @From
 }
 ```
 
-The fragments show how backlog items compose into the **business idioms** the proposal's §2 names (`mandatory`, `withinTolerance`, `chronological`, `uniqueBy`) — each is 1–3 lines once its operators exist.
+The fragments show how the shipped primitives compose into the **business idioms** the proposal's §2 names (`mandatory`, `withinTolerance`, per-row thresholds, `uniqueBy`) — each is 1–3 lines built from the operators in hand.
 
 ### 3.3 A domain fragment library — packaging reuse
 
@@ -239,40 +238,40 @@ public final class SubscriptionIdioms {
     public static Condition feePositiveWhenPresent(NumberRef fee) {
         return fee.filled().and(fee.le(0));    // error scenario: fee present but not positive
     }
-    /** Format idiom ✅ — present-but-malformed (the FieldFilled guard is the kernel's own pattern habit). */
+    /** Format idiom — present-but-malformed (the FieldFilled guard is the kernel's own pattern habit). */
     public static Condition malformedEmail(StringRef email) {
         return email.filled().and(email.violates(".+@.+\\..+"));   // regex renders verbatim — no escaping layer
     }
-    /** Reserved-prefix idiom ✅ — the shape of the metamodel's own HEADER_ID_STARTS_WITH_XML rule. */
+    /** Reserved-prefix idiom — the shape of the metamodel's own HEADER_ID_STARTS_WITH_XML rule. */
     public static Condition reservedPrefix(StringRef id) {
         return id.matches("[xX][mM][lL].*");                       // anchored whole-value match (§7)
     }
-    /** Allow-list idiom ✅ — enum membership beats chained Or; the domain is pre-checked. */
+    /** Allow-list idiom — enum membership beats chained Or; the domain is pre-checked. */
     public static Condition rushOrder(EnumRef priority) {
         return priority.in("EXPRESS", "OVERNIGHT");                // FieldValueIncludedInValueList(…)
     }
-    /** Placeholder sweep ✅ — one quantifier over several same-type fields (In-list shape). */
+    /** Placeholder sweep — one quantifier over several same-type fields (In-list shape). */
     public static Condition noTestPlaceholders(StringRef first, StringRef... more) {
         return noFieldValueIncludedInValueList(List.of("test", "demo", "n/a"), first, more);
     }
-    /** Threshold idiom ✅ — the count is an ordinary number expression (kinds may be mixed). */
+    /** Threshold idiom — the count is an ordinary number expression (kinds may be mixed). */
     public static Condition incompleteBilling(BoundModel m) {
         return numberOfFilledFields(m.group("/Subscription/Billing")).lt(3);   // group form: count inside
     }
-    /** Aggregate idiom ✅ (7c) — Sum over a repetition list; unspecified rows count as 0. */
+    /** Aggregate idiom (7c) — Sum over a repetition list; unspecified rows count as 0. */
     public static Condition addonBudgetExceeded(BoundModel m, String budget) {
         return sum(m.flatten("/Subscription/Addons*/MonthlyFee")).gt(budget);  // scale-faithful literal
     }
-    /** Filtered aggregate ✅ (7d) — Having narrows the *-list before Sum consumes it. */
+    /** Filtered aggregate (7d) — Having narrows the *-list before Sum consumes it. */
     public static Condition paidAddonBudget(BoundModel m, String budget) {
         return sum(m.flatten("/Subscription/Addons*/MonthlyFee")
                 .having(m.num("/Subscription/Addons/MonthlyFee").gt(0))).gt(budget);
     }
-    /** Escape hatch ✅ (item 8) — the Zod `.refine` analogue: name a host-registered check. */
+    /** Escape hatch (item 8) — the Zod `.refine` analogue: name a host-registered check. */
     public static Condition reversibleTier(EnumRef tier) {
         return tier.is("ENTERPRISE").and(customCondition("NotReverse"));   // host code decides NotReverse
     }
-    /** Date threshold ✅ (9a) — the most frequent date pattern; Today composes directly. */
+    /** Date threshold (9a) — the most frequent date pattern; Today composes directly. */
     public static Condition deliveryWithinDays(DateRef order, DateRef delivery, long days) {
         return allOf(order.filled(), delivery.filled(),
                 delivery.after(addDays(order, days)));        // [Delivery] > AddDays(Order, days)
@@ -288,15 +287,15 @@ No framework, no registry — a fragment library is a Java class; discoverabilit
 ```java
 /** One rule per monetary field: never negative. Navigation (§6c) drives the loop. */
 static List<Rule> nonNegativeMoneyRules(BoundModel m) {
-    return m.fields()                                             // ✅ Level-1 navigation
+    return m.fields()                                             // Level-1 navigation
             .filter(f -> f.kind() == ValueKind.NUMBER && f.scale() == 2)   // "money" by convention
-            .map(f -> m.rule(f.group())                         // ✅ Rule authoring object (F2a)
+            .map(f -> m.rule(f.group())                         // Rule authoring object (F2a)
                     .name(f.name() + "NonNegativeRule")
                     .errorField(f.asNum())
                     .when(f.asNum().filled().and(f.asNum().lt(0)))
                     .code("NON_NEGATIVE_" + f.name().toUpperCase())
                     .severity(Severity.ERROR)
-                    .message(en(f.name() + " must not be negative."),   // ✅ F2a: interpolate via Dsl.fieldValue(f) → $path.value$
+                    .message(en(f.name() + " must not be negative."),   // F2a: interpolate via Dsl.fieldValue(f) → $path.value$
                              de(f.name() + " darf nicht negativ sein.")) // a message per declared locale (the locale law)
                     .build())
             .toList();
@@ -316,14 +315,14 @@ When you author **many rules in Java that compare the same multi-field structure
 //   renders ( (AllFieldsFilled(a,b) And [a]==[b]) Or NoFieldFilled(a,b) ) — rulekit auto-parenthesizes
 record Address(StringRef street, StringRef zip, StringRef city, /* … 7 */) {}
 static Condition sameAddress(Address x, Address y) {
-    return allOf(List.of(x.street().agreesWith(y.street()),   // ✅ agreesWith (39) folded by allOf(List) (38)
+    return allOf(List.of(x.street().agreesWith(y.street()),   // agreesWith (39) folded by allOf(List) (38)
                          x.zip().agreesWith(y.zip()), /* … */));
 }
 // each rule then reads at intent level — e.g. "the warehouse ships from the sender's or the buyer's address":
 m.rule(g).when(warehouseAddr.filled().and(sameAddress(warehouse, sender).or(sameAddress(warehouse, buyer)))) …
 ```
 
-`agreesWith` ships the most-repeated mirroring idiom as a one-call ref combinator on `StringRef`, `NumberRef`, and `EnumRef` (number inherits the equal-scale gate; enum compares by stored value via `is`). It's written — and its polarity reviewed — **once**, not per pair. **Field-vs-field equality** (`a.eq(b)`) underneath landed for string + number (finding 18); **enum-vs-enum ✅** (`EnumRef.is(EnumRef)`/`isNot(EnumRef)`). `sameAddress` is then just `agreesWith` zipped over the fields and folded with `allOf(List)` (38) — the full worked rebuild is the **Study, §3.6**. (Later: a `sameAddress(GroupRef, GroupRef)` that zips like-named fields via the model index — Level-2 navigation.)
+`agreesWith` ships the most-repeated mirroring idiom as a one-call ref combinator on `StringRef`, `NumberRef`, and `EnumRef` (number inherits the equal-scale gate; enum compares by stored value via `is`). It's written — and its polarity reviewed — **once**, not per pair. **Field-vs-field equality** (`a.eq(b)`) underneath landed for string + number (finding 18); **enum-vs-enum** (`EnumRef.is(EnumRef)`/`isNot(EnumRef)`). `sameAddress` is then just `agreesWith` zipped over the fields and folded with `allOf(List)` (38) — the full worked rebuild is the **Study, §3.6**. (Later: a `sameAddress(GroupRef, GroupRef)` that zips like-named fields via the model index — Level-2 navigation.)
 
 ### 3.5 n-ary composition
 
@@ -498,7 +497,7 @@ Rule rule = m.rule(addons)                        // model-aware entry: rule liv
         .code("ADDON_FEE_REQUIRED_FOR_PRO")
         .severity(Severity.ERROR)
         .message(en("A PRO subscription requires a monthly fee per add-on."),
-                 de("Ein PRO-Abo erfordert eine Monatsgebühr je Zusatzoption."))   // ✅ F2a landed: interpolate via Dsl.fieldValue(name) → $Name.value$
+                 de("Ein PRO-Abo erfordert eine Monatsgebühr je Zusatzoption."))   // F2a landed: interpolate via Dsl.fieldValue(name) → $Name.value$
         .build();   // pre-checks at build(): error field under the group; error-field-referenced
                     // (directly or via enclosing group ref — kernel-verified); the LOCALE LAW:
                     // a message for EVERY declared locale (MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING),
@@ -512,19 +511,19 @@ Rule rule = m.rule(addons)                        // model-aware entry: rule liv
 
 <!-- teaser -->
 ```java
-new DslRenderer().render(condition);                       // ✅ canonical EN, absolute paths (no group context)
-rule.render();                                             // ✅ fork-9: paths relative to the rule's group (../ to siblings)
-new DslRenderer(ConditionLanguage.DE).render(condition);   // ✅ same AST, German keywords
+new DslRenderer().render(condition);                       // canonical EN, absolute paths (no group context)
+rule.render();                                             // fork-9: paths relative to the rule's group (../ to siblings)
+new DslRenderer(ConditionLanguage.DE).render(condition);   // same AST, German keywords
 
-ValidationResult vr = new RuleValidator().check(modelJson, draftRule);   // ✅ F4: real kernel, no compile
-vr.diagnostics().forEach(d -> System.out.println(d.code() + " " + d.fix()));  // ✅ F4a: code + catalog-joined fix
+ValidationResult vr = new RuleValidator().check(modelJson, draftRule);   // F4: real kernel, no compile
+vr.diagnostics().forEach(d -> System.out.println(d.code() + " " + d.fix()));  // F4a: code + catalog-joined fix
 
-// ✅ F4a unified surface: KERNEL (span-pointed) + LINT warnings + gotcha INFO in one result
+// F4a unified surface: KERNEL (span-pointed) + LINT warnings + gotcha INFO in one result
 ValidationResult all = new RuleDiagnostics().diagnose(boundModel, rule);
-System.out.println(all.toJson());                          // ✅ agent-parseable, one array, every origin (files-as-API)
+System.out.println(all.toJson());                          // agent-parseable, one array, every origin (files-as-API)
 
-BoundModel m2 = m.add(rule);                               // ✅ snapshot (F0): write → NEW binding, re-validated
-m2.writeTo(path);                                          // ✅ DM-JSON write path — authored JSON, includes preserved (D9, F6)
+BoundModel m2 = m.add(rule);                               // snapshot (F0): write → NEW binding, re-validated
+m2.writeTo(path);                                          // DM-JSON write path — authored JSON, includes preserved (D9, F6)
 ```
 
 ### 4.3 A computation, same materials
@@ -544,7 +543,13 @@ Computation tiered = m.computation(m.num("/Subscription/Billing/EffectiveFee")) 
 
 **Cross-slot reuse for free:** `SubscriptionIdioms.paidTier(tier)` drops unchanged into a rule `errorCondition` *or* a computation `precondition` — one expression language, many slots (§5). That is the concrete payoff of combinators + the slot model.
 
-## 5. The bidirectional edit loop — modify studies
+---
+
+## Part IV — The bidirectional edit loop
+
+Read foreign rules back into the typed AST, modify them, edit structure and rules in one session, work across included models, run rules against data, carry comments through, and reach for ready-made validation patterns — every change gated by the real kernel.
+
+## 5. Modify studies — read a rule back, re-express it
 
 ### 5.1 In-session transform
 
@@ -642,13 +647,13 @@ The flat `operators` list answers *which* constructs appear; the **`tree`** answ
 
 <!-- teaser -->
 ```java
-Condition current = ((ReadResult.Converted) adapter.read("/Subscription/Addons/FeeCapRule")).condition();  // ✅ F10
-Condition fixed   = current.and(m.num(FEE).filled());            // ✅ re-express: compose (or transform inside)
-RenderedDiff diff = adapter.diff("/Subscription/Addons/FeeCapRule", fixed);   // ✅ F8 — before/after + lossiness
+Condition current = ((ReadResult.Converted) adapter.read("/Subscription/Addons/FeeCapRule")).condition();  // F10
+Condition fixed   = current.and(m.num(FEE).filled());            // re-express: compose (or transform inside)
+RenderedDiff diff = adapter.diff("/Subscription/Addons/FeeCapRule", fixed);   // F8 — before/after + lossiness
 //  diff.unified() → "- [/…/MonthlyFee] > 1000  / + [/…/MonthlyFee] > 1000 And FieldFilled(/…/MonthlyFee)"
 //  diff.lossiness() → ["…inline/trailing comments not preserved…"] (the leading comment is carried — §5f/finding 27)
-ValidationResult vr = new RuleDiagnostics().diagnose(m, m.rule(g).errorField(fee).when(fixed)…build());  // ✅ F4/F4a
-BoundModel m2 = model.replaceCondition("/Subscription/Addons/FeeCapRule", fixed);  // ✅ F8 #3 — new binding (F0), re-validated; persist via m2.writeTo(...) (§5.2)
+ValidationResult vr = new RuleDiagnostics().diagnose(m, m.rule(g).errorField(fee).when(fixed)…build());  // F4/F4a
+BoundModel m2 = model.replaceCondition("/Subscription/Addons/FeeCapRule", fixed);  // F8 #3 — new binding (F0), re-validated; persist via m2.writeTo(...) (§5.2)
 ```
 
 Note how 3.3's fragment library closes the loop: **re-expression frequently means recognizing a known idiom** — the LLM maps a foreign rule onto `feeRequired(...)` and the diff shows the cleanup.
@@ -831,7 +836,7 @@ s.addRule(m -> m.rule(order).errorField(discount)           // rulekit: the edit
 s.validate().toJson();
 ```
 
-> ✅ **The whole block runs today** — test-backed by `GroupEditorTest` / `FieldEditorTest` / `RuleComputationEditorTest` (2026-06-12): `EditSession.group(path)` → a `GroupEditor`, chaining `addField` (kind or `FieldTypeSpec`) / `addTypedefField`, relative navigation to pure refs across **every** kind (`num`/`str`/`date`/`time`/`dateTime`/`bool`/`confirm`/`enumOf`/…), the nested-builder `addGroup`/`addRepeatableGroup` lambdas, editor-scoped `addRule`/`addComputation`, and `m.rule(order)` taking the editor straight as the scope — it downgrades to its `GroupRef` internally (the AST stores only the pure ref) via a `GroupReference` type both `GroupRef` and `GroupEditor` satisfy (no `rulekit → dm.edit` dependency). The `addRule(…)` chain above is **abbreviated** (the full builder — `name`/`code`/`severity`/`message`/`build` — is in the test).
+> **The whole block runs today** — test-backed by `GroupEditorTest` / `FieldEditorTest` / `RuleComputationEditorTest` (2026-06-12): `EditSession.group(path)` → a `GroupEditor`, chaining `addField` (kind or `FieldTypeSpec`) / `addTypedefField`, relative navigation to pure refs across **every** kind (`num`/`str`/`date`/`time`/`dateTime`/`bool`/`confirm`/`enumOf`/…), the nested-builder `addGroup`/`addRepeatableGroup` lambdas, editor-scoped `addRule`/`addComputation`, and `m.rule(order)` taking the editor straight as the scope — it downgrades to its `GroupRef` internally (the AST stores only the pure ref) via a `GroupReference` type both `GroupRef` and `GroupEditor` satisfy (no `rulekit → dm.edit` dependency). The `addRule(…)` chain above is **abbreviated** (the full builder — `name`/`code`/`severity`/`message`/`build` — is in the test).
 
 **The one safety rule:** the immutable AST holds **only pure value refs**, never the session-carrying editor — operators (`.lt`, `.filled`, `.eq`) live on the pure ref and produce immutable `Condition`s, so the session never leaks into a rule. (Functional core / effects at the edge — the same discipline that keeps jOOQ's `Field<T>` pure and Roslyn's `SyntaxNode` immutable.)
 
@@ -1008,11 +1013,17 @@ The condition is built — not string-templated — inside the pattern: `Dsl.all
 
 **CLI peer.** `dmtool patterns` lists the idioms, `patterns <id>` details one, and `patterns <id> --arg k=v …` scaffolds a rule-spec and **auto-checks** it (the G4 verdict folded in); `--apply` persists it through the same path as `rule add`. *Test-backed: `rulekit.catalog.PatternCatalogTest` (structure) + `PatternCatalogKernelTest` (the kernel no-rot gate); `cli.PatternsVerbTest`. Demo: `examples/cli-tour.md`.*
 
+---
+
+## Part V — Discovery & the agent loop
+
+The semantics an agent reads — the queryable operator catalog, the model-context projections, model navigation — and the LLM session loop those feed, for both the developer and the BA persona.
+
 ## 6. Semantics as data — the catalog is queryable today
 
 <!-- snippet: catalog -->
 ```java
-OperatorCatalog catalog = OperatorCatalog.load();                                  // ✅
+OperatorCatalog catalog = OperatorCatalog.load();
 OperatorEntry e = catalog.byId("GroupFilled").orElseThrow();
 e.meaning();      // "True iff the referenced group is filled. For a repeatable group this means the row EXISTS — ..."
 e.gotchas();      // ["'filled' means 'row exists', not 'row has data' — ...", "an enclosing GroupFilled(Group) counts as referencing the rule's error field ..."]
@@ -1028,34 +1039,27 @@ The agent's entry point is usually a *name*, not a rule. Three projections compo
 
 <!-- teaser -->
 ```java
-ModelCard card = Context.describe(m);             // ✅ 2026-06-04 — the agent's map, PROGRESSIVE: default is the
+ModelCard card = Context.describe(m);             // 2026-06-04 — the agent's map, PROGRESSIVE: default is the
                                                   //    skeleton (group tree + counts/kind histograms — low-1000s
                                                   //    of tokens even on a 10k-field model); drill down per group:
 ModelCard addons = Context.describe(m, m.group("/Subscription/Addons"));
-List<FieldMatch> hits = Context.find(m, "birthdate");   // ✅ 2026-06-04
+List<FieldMatch> hits = Context.find(m, "birthdate");   // 2026-06-04
 // → [/Customer/BirthDate (date, format dd.MM.yyyy, in group /Customer)]   — dumb string ranking, deliberately;
 //    fuzzy/NL interpretation is the LLM's job
 
-Set<String> rules = adapter.whereUsed(field);                   // ✅ 2026-06-07 exact (adapter) — validation rules
-Set<String> comps = adapter.whereUsedInComputations(field);     // ✅ 2026-06-08 — computations, attributed separately
+Set<String> rules = adapter.whereUsed(field);                   // 2026-06-07 exact (adapter) — validation rules
+Set<String> comps = adapter.whereUsedInComputations(field);     // 2026-06-08 — computations, attributed separately
 // → rules: [/Customer/AgeCheckRule, /Customer/BirthDateRule]   computations: [/Customer/AgeComp]
 //   (a computation is also a rule in the kernel's getAllRules(); the two legs keep the kinds distinct — a field
 //    read only inside a computation's operation shows up under computations, never under rules)
 
-if (adapter.read(rule) instanceof ReadResult.Converted c) ctx.explain(c.condition());  // F9 explain ✅ → RuleExplanation
-ctx.explainComputation(comp);                                   // ✅ 2026-06-08 → ComputationExplanation
+if (adapter.read(rule) instanceof ReadResult.Converted c) ctx.explain(c.condition());  // F9 explain → RuleExplanation
+ctx.explainComputation(comp);                                   // 2026-06-08 → ComputationExplanation
 ```
 
 The N8 seam: `context` lives in the public-tier core; the exact `whereUsed` comes from the Phase-2 adapter (`getDirectlyReferencedEntities`, one kernel call per rule, no converter needed). **Rules and computations stay attributed separately** — `KernelAdapter.whereUsed`/`ruleFullNames`/`readAll` are validation rules only, the computation peers are `whereUsedInComputations`/`computationFullNames`/`readAllComputations`/`readModel` (a computation is stored as a rule in `getAllRules()`, so the partition is deliberate; see KERNEL-INTEGRATION-NOTES "`getAllRules()` ⊇ computations").
 
-**And for agents, the primary form is files** (owner direction — agents are trained to export-then-grep). The same projections, two persona surfaces (N10): the **in-repo developer** calls them programmatically; the **modeller/BA's** agent runs the **CLI verb** (which serializes the same projections) — no Java toolchain.
-
-<!-- teaser -->
-```java
-// developer, in their own project — programmatic projection (core):
-Context.export(m, Artifact.FIELDS, System.out);   // 🔮 stream-first primitive — stdout pipes like git
-Context.export(m, Path.of("ctx/"));               // 🔮 convenience: all four artifacts to files
-```
+**And for agents, the primary form is files** (owner direction — agents are trained to export-then-grep). The same projections, two persona surfaces (N10): the **in-repo developer** reads them programmatically off the navigation surface (`m.fields()`/`m.groups()`, §6c); the **modeller/BA's** agent runs the **CLI verb** `dmtool export` (which serializes the same projections to JSONL + a model card) — no Java toolchain.
 
 ```bash
 # modeller/BA — the standalone CLI verb (JVM bundled; no jbang, no .m2):
@@ -1100,7 +1104,7 @@ List<Rule> rules = m.fields()
         .toList();
 ```
 
-Safe by F0's snapshot semantics (immutable binding → internal memoization, clients never index); **Level 2** (glob paths) stays parked behind named triggers — see finding 9. **Relative navigation** off a known group landed (finding 40, §3.6): `m.groupAt(path)` → `GroupInfo`, then `app.str("Schedule/Name")`/`group`/`field`/… resolve relative to it — the read peer of `GroupEditor`, so a combinator can take a root group and apply to any subtree. (The *static* codegen-refs counterpart, once mooted as L2b, was **dropped** — proposal D7; the ergonomic layer **L2c** — runtime value refs + a session-bound editor, across both kits — replaces it (✅ §5c).)
+Safe by F0's snapshot semantics (immutable binding → internal memoization, clients never index); **Level 2** (glob paths) stays parked behind named triggers — see finding 9. **Relative navigation** off a known group landed (finding 40, §3.6): `m.groupAt(path)` → `GroupInfo`, then `app.str("Schedule/Name")`/`group`/`field`/… resolve relative to it — the read peer of `GroupEditor`, so a combinator can take a root group and apply to any subtree. (The *static* codegen-refs counterpart, once mooted as L2b, was **dropped** — proposal D7; the ergonomic layer **L2c** — runtime value refs + a session-bound editor, across both kits — replaces it (§5c).)
 
 **Reading annotations closes the write/read asymmetry (finding 37).** `FieldInfo` (and, symmetrically, `GroupInfo`) now exposes the element-level `annotations()` it could already *write* (`EditSession.setAnnotation`), plus `annotation(name)` as the matcher — the pair share a top-level `Annotation` record. So "find every field tagged `audited`, then attach a sibling `_AUDIT` group" is one stream over the navigation surface composed with an `EditSession`, no query language:
 
@@ -1155,7 +1159,3 @@ proNeedsFee.render();                                            // identical ca
 ```
 
 The contract is data (catalog + DM-JSON + render rules), so this is a parallel reading, not a port — and naming parity means an agent transfers Java↔TS knowledge 1:1.
-
-## Part III — Status & reference
-
-The canonical capability **status board** and the numbered **design-findings** log live in their own doc — [`API-STATUS.md`](API-STATUS.md) — kept separate so this guide stays a user-facing capability narrative. (Findings are referenced as "finding N" throughout; they live there.)

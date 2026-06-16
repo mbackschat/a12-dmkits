@@ -94,7 +94,7 @@ class StudySnippetsTest {
     @Test
     void semanticsAsData() {
         // tag::catalog[]
-        OperatorCatalog catalog = OperatorCatalog.load();                                  // ✅
+        OperatorCatalog catalog = OperatorCatalog.load();
         OperatorEntry e = catalog.byId("GroupFilled").orElseThrow();
         e.meaning();      // "True iff the referenced group is filled. For a repeatable group this means the row EXISTS — ..."
         e.gotchas();      // ["'filled' means 'row exists', not 'row has data' — ...", "an enclosing GroupFilled(Group) counts as referencing the rule's error field ..."]
