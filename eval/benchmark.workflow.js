@@ -104,6 +104,15 @@ const METADATA = TASKS.filter(t => t.family === 'metadata' && t.status !== 'defe
 const TEMPLATE = TASKS.filter(t => t.family === 'template' && t.status !== 'deferred')
 const REFACTOR = TASKS.filter(t => t.family === 'refactor' && t.status !== 'deferred')
 
+// Fail-fast on a missing routing key — a modify-rule task with no `rule` (or modify-computation with no
+// `computation`) would otherwise resolve to `undefined` in the produce prompt AND the recheck command,
+// silently scoring the task 0/k (it did, on the 2026-06-17 full run, when the bundle dropped `rule`). A
+// dropped key is an input bug, never a real gap — abort loudly so it can't masquerade as one.
+const missingRule = MODIFY_RULE.filter(t => !t.rule).map(t => t.id)
+if (missingRule.length) throw new Error(`modify-rule task(s) missing the \`rule\` key (the existing rule to re-express): ${missingRule.join(', ')} — pass the whole task object or include \`rule\``)
+const missingComp = MODIFY_COMP.filter(t => !t.computation).map(t => t.id)
+if (missingComp.length) throw new Error(`modify-computation task(s) missing the \`computation\` key: ${missingComp.join(', ')} — pass the whole task object or include \`computation\``)
+
 // ---- prompts (EVAL-SPEC §5: neutral, material-only, no leaking the technique/polarity) ------------
 
 function authorPrompt(task) {

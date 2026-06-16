@@ -16,6 +16,28 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-17 00:34 CEST — full pass@3 baseline on the post-rename surface (sonnet, k=3, 28 tasks, bare-tool)
+
+First full N6 baseline since the **`doc`→`model`** target rename, the **`--include-dir`→`-w/--workspace`** flag collapse, and the ~26 CLI commits of 2026-06-13/14 (new verbs `workspace list/graph`, `model info/new`, `meta`, `rule deps`, `diagnostics`; the `RkCode` registry; coded refusals). Bare-tool (no skill). `wf_bee704d3`, 166 agents, **4.61M tokens**, ~28 min — plus a targeted task-17 re-run (`wf_88a4f3de`, 8 agents, 0.22M).
+
+**pass@3, sonnet, bare-tool: 23/28 clean** (76/84 runs) — *after* correcting one harness artifact (below).
+
+| result | tasks |
+|---|---|
+| **3/3** | 02-effective-fee-not-below-base · 03-product-code-pattern · 05-delivery-not-before-order · 06-autorenew-paid-tier · 07-read-two-rules · 08-read-custom-condition · 09-order-before-2020 · 11-fullname-equals-first-last · 12-tax-id-validity · 13-coverage-window-daterange · 14-effective-fee-double-base · 15-storefront-name-multifile · 16-modify-effective-fee-sum-addons · **17-tighten-delivery-rule** · 01-add-field-and-group · 02-safe-delete-referenced-field · 03-rename-field · 04-describe-field · 05-annotate-rule · 06-model-comment · 07-multiselect-template · 08-attachment-template · 01-apply-add-field-and-rule · 02-fix-rejected-batch |
+| **2/3** | 04-quantity-vs-rush-sum · 18-read-value-operator-rules |
+| **1/3** | 01-pro-addon-fee-required |
+| **0/3** | 10-express-needs-full-address |
+
+Headline: **the post-rename self-describing CLI is broadly self-sufficient for a cold Sonnet agent.** The two breaking renames cost nothing — the multi-file task (15, which exercises `-w/--workspace`) is 3/3, and all ten modelkit/mixed families (structure · delete-safety · metadata×3 · template×2 · refactor · session×2, deterministically scored) are 3/3. Every miss was triaged against the judge-by-execution rationales:
+
+- **17-tighten-delivery-rule: 0/3 → 3/3 — harness artifact (operator bundling), FIXED.** The full-run bundle **dropped the `rule` routing key** when trimming task objects, so the produce prompt *and* the `rule modify … --dry-run` recheck both resolved `${task.rule}` to `undefined` → every candidate rejected. The candidate matched the gold and is kernel-valid; the targeted re-run with the full task object scored **3/3** (judge: identical `rule.fired` across edge docs, differing only by bare-vs-absolute path notation). Fixes so it can't recur: the `run-rulekit-eval` skill now lists `rule` as a required routing key (and recommends passing **whole** task objects), and `benchmark.workflow.js` **fail-fasts** if a modify-rule/modify-computation task is missing its `rule`/`computation` key instead of silently scoring 0/k. *Lesson reaffirmed: a 0/k cell whose candidate matches the gold is an artifact — reproduce the recheck before recording.*
+- **10-express-needs-full-address: 0/3 — GENUINE bare-tool difficulty.** Agents anchored the rule's error field on `/Order/ShippingAddress/Street` and hand-enumerated sub-fields (`FieldNotFilled(ShippingAddress/Street) Or …`); that combination is `MVK_INVALID_ENTITY` (verified — only the gold's `/Order/ExpressShipping` anchor with the group-level `NotAllFieldsFilled(ShippingAddress)` validates). The agents' own `kernelAccepted=true` self-report didn't match the field they reported — the authoritative recheck correctly caught it. Worklist: the group-level `NotAllFieldsFilled` operator + error-field-anchor judgment (skill/catalog).
+- **01-pro-addon 1/3 · 02-effective-fee 2/3 · 04-quantity 2/3 — real authoring difficulty (skill-lift targets), judge-verified by kernel execution.** Pro-addon: candidates used a cross-row aggregate (`NumberOfFilledGroups > NumberOfFilledFields`) instead of the gold's per-row check → different error count/attachment. Effective-fee: a `FieldFilled(BaseFee)` guard over a NUMBER comparison changes the fire set (empty number = 0 — the empty-value trap). Quantity: `PatternMatched "RUSH.*"` vs exact `== "RUSH"` includes an extra `RUSH-01` row.
+- **18-read-value-operator-rules 2/3 — one comprehension miss.** Two readings correct; one misread `FirstFilledValue` (claimed earlier rows suppress the rule via formal errors, vs. it simply skips empty rows and takes the first non-empty Count).
+
+**Scope note:** `rulekit/19-self-correct-date-rule` (family `self-correction`) was **excluded** — the runner has no stage for that family, so including it would have silently dropped it. 28 of 29 tasks ran; the `self-correction` family has no runner support (a follow-up).
+
 ### 2026-06-12 05:14 CEST — #45/B landed: the modelkit/mixed agentic path (structure · session · delete-safety), sonnet k=1 smoke-verified
 
 Wired the modelkit/mixed families into `benchmark.workflow.js` (the Layer-2 agentic runner), all **deterministically scored — no LLM judge** (the "structural diff" choice): a clean agent produces the edit from the bare CLI; a score agent applies it via `-o` to a fresh `/tmp` file and reports raw facts; the workflow decides pass.
