@@ -153,6 +153,16 @@ public record NumberRef(FieldRef field, int scale, boolean correlated) {
         return fieldCmp(CompareOp.NE, other);
     }
 
+    /**
+     * Null-safe field agreement: both filled and equal, <em>or</em> both empty — renders
+     * {@code (AllFieldsFilled(a,b) And [a]==[b]) Or NoFieldFilled(a,b)}. Inherits {@link #eq(NumberRef)}'s
+     * equal-scale gate. The string peer is {@link StringRef#agreesWith(StringRef)} (study §3.4a/§3.6).
+     */
+    public Condition agreesWith(NumberRef other) {
+        return Dsl.allFieldsFilled(field, other.field).and(eq(other))
+                .or(Dsl.noFieldFilled(field, other.field));
+    }
+
     private Condition fieldCmp(CompareOp op, NumberRef other) {
         return new ComparisonCondition(value(), op, other.value());
     }

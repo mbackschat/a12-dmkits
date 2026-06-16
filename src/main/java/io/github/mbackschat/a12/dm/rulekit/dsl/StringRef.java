@@ -48,6 +48,16 @@ public record StringRef(FieldRef field, boolean correlated) {
         return new ComparisonCondition(value(), CompareOp.NE, other.value());
     }
 
+    /**
+     * Null-safe field agreement: both filled and equal, <em>or</em> both empty — renders
+     * {@code (AllFieldsFilled(a,b) And [a]==[b]) Or NoFieldFilled(a,b)}. The single most repeated idiom in
+     * field-mirroring rules (study §3.4a/§3.6), shipped so it is written — and its polarity reviewed — once.
+     */
+    public Condition agreesWith(StringRef other) {
+        return Dsl.allFieldsFilled(field, other.field).and(eq(other))
+                .or(Dsl.noFieldFilled(field, other.field));
+    }
+
     /** This field as a string expression — the entry point for concatenation ({@code asString().plus(…)}). */
     public StringExpr asString() {
         return new StringExpr(field.value());
