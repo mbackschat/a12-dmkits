@@ -7,7 +7,8 @@
 # STNoSuchPropertyException / "Can't find bundle"). So we DON'T need byte-identity vs the JVM (no
 # normalization layer) — we drive a BROAD, derived input matrix through the native binary and assert none of
 # those signatures appears. Coverage is derived from enumerable sources (every committed fixture × the
-# read/validate verbs + the FieldKind × constraint matrix + invalid conditions per locale), so it grows as
+# read/validate verbs + the FieldKind × constraint matrix + invalid conditions per locale + the
+# self-describing surface (manifest/operators) + a real rule read-back), so it grows as
 # the corpus does. A legitimate kernel rejection (valid:false with a real MVK_* code) is NOT a failure here —
 # only a native-image signature is.
 #
@@ -65,6 +66,18 @@ for loc in en_US de_DE; do
   "$NATIVE" -m "$lm" field add --group /R --name F --kind STRING >/dev/null 2>&1
   run "invalid condition ($loc) → must format the parser error" -m "$lm" rule check --field /R/F --condition 'Bogus(F)' --code X
 done
+
+echo "== self-describing surface + rule read-back (catalog + adapter reflection the read/validate sweep misses) =="
+# manifest builds the full picocli command tree AND deserializes the operator catalog (rulekit.catalog POJOs);
+# operators re-reads it. NOTE: the fixture sweep's 'rule read' above runs with NO <rulePathInModel> — picocli
+# rejects it before the read tier, so it never exercised the typed-AST read-back. Drive a real rule here so
+# manifest/operators (catalog reflection) and rule read/explain (adapter read-back) are covered on native,
+# not only by the Windows CI smoke (RELEASE-SPEC §4).
+run "manifest"  manifest
+run "operators" operators
+RULE_MODEL="examples/models/order-ruled.dm.json"
+run "rule read /Order/DeliveryNotBeforeOrder"    -m "$RULE_MODEL" rule read /Order/DeliveryNotBeforeOrder
+run "rule explain /Order/DeliveryNotBeforeOrder" -m "$RULE_MODEL" rule explain /Order/DeliveryNotBeforeOrder
 
 echo "----"
 if [[ $fails -eq 0 ]]; then
