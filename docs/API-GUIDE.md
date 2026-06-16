@@ -108,11 +108,13 @@ addons.addField("Discount", FieldKind.NUMBER);          // mutate (chains)
 NumberRef discount = addons.num("Discount");            // Ref of the just-added field
 ```
 
-Read the rest of this study with that gradient in mind: §3–§4 author with **`Ref`s**, §6c explores with **`Info`s**, §5b/§5c edit with **`Editor`s**.
+Read the rest of this guide with that gradient in mind: §3–§4 author with **`Ref`s**, §6c explores with **`Info`s**, §5b/§5c edit with **`Editor`s**.
 
 
 
 ## Part II — The parts in detail
+
+Each part below uses the committed **subscription** fixture (our own original): a `Subscription` root with `Tier` (enum `BASIC/PRO/ENTERPRISE`, category `Pricing` FREE/PAID), `AutoRenew` (boolean), `TermsAccepted` (confirm), a repeatable `Addons{Name, MonthlyFee(scale 2)}`, and `Billing{InvoiceEmail, BaseFee(scale 2), EffectiveFee(scale 2)}`; declared locales `en_US` + `de_DE` (header locales are arbitrary — en/de are not special). A few examples use the **order** fixture (`ShippingAddress`/`BillingAddress` groups, boolean/confirm fields), or extend a model illustratively where a construct needs it. Snippets marked as locked are byte-identical to a kernel-run test; teasers (elided/illustrative) are hand-maintained. Each part's build status lives on the board in [`API-STATUS.md`](API-STATUS.md).
 
 ---
 
@@ -366,7 +368,7 @@ And (
 )
 ```
 
-Look at what that is: the same null-safe-equality idiom `(AllFieldsFilled(a,b) And [a]==[b]) Or NoFieldFilled(a,b)` **hand-written 12 times** across **4 near-identical branches** — a `FieldFilled`/`FieldNotFilled` × `AtLeastOneFieldFilled`/`NoFieldFilled` cross-product whose 2×2 structure is invisible in the flat text. A one-field change is four edits; the polarity is re-judged on every line; a wrong paste between branches is undetectable by eye. This is what we want to stop writing — and the rest of this study is how.
+Look at what that is: the same null-safe-equality idiom `(AllFieldsFilled(a,b) And [a]==[b]) Or NoFieldFilled(a,b)` **hand-written 12 times** across **4 near-identical branches** — a `FieldFilled`/`FieldNotFilled` × `AtLeastOneFieldFilled`/`NoFieldFilled` cross-product whose 2×2 structure is invisible in the flat text. A one-field change is four edits; the polarity is re-judged on every line; a wrong paste between branches is undetectable by eye. This is what we want to stop writing — and the rest of this guide is how.
 
 **After** — the build that produces *exactly* the string above (the test asserts the full rendered output, so the rebuild is provably faithful):
 
@@ -490,7 +492,7 @@ Applied to `/Application`, `scheduleConsistency(...)` reproduces the flagship ru
 <!-- teaser -->
 ```java
 Rule rule = m.rule(addons)                        // model-aware entry: rule lives in a group by construction
-        .name("AddonFeeRequiredRule")             // the element name (the study originally forgot it)
+        .name("AddonFeeRequiredRule")             // the element name (the guide originally forgot it)
         .errorField(fee)                          // errorEntityRelPath computed — "../MonthlyFee"
         .when(SubscriptionIdioms.feeRequired(tier, fee))
         .code("ADDON_FEE_REQUIRED_FOR_PRO")
