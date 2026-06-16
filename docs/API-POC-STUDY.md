@@ -229,9 +229,7 @@ Condition e = allOf(List.of(r1, r2, r3));   // the LIST form — fold clauses a 
 
 ### 3.6 Study — a real, highly-repetitive rule, rebuilt (before → after) ✅ (2026-06-16, findings 38–39; `MirroringRuleStudyTest`)
 
-A shape that shows up in real models: an **effective** block (here a 3-field address) must **mirror** one of several source blocks — *null-safe*, so "both empty" counts as equal — and the source is chosen by a **2×2 of flags** (is a preferred name given? is a PO-box block in use?). Written by hand it's the same null-safe-equality idiom copy-pasted **12 times** across **4 near-identical branches**, with the 2×2 flattened into the prose.
-
-**Before** — the rendered `errorCondition` you'd otherwise type and maintain by hand (the four branches are a `FieldFilled`/`FieldNotFilled` × `AtLeastOneFieldFilled`/`NoFieldFilled` cross-product; one branch shown in full, the rest abbreviated — the **complete** string is pinned verbatim in `MirroringRuleStudyTest`):
+**The rule we're up against.** A shape that shows up in real models (transferred here to an invoice domain): an **effective** address block must **mirror** one of several source blocks — *null-safe*, so "both empty" counts as equal — with the source chosen by a **2×2 of flags** (is a preferred name given? is a PO-box block in use?). Authored by hand, its `errorCondition` reads like this — the **full** rendered rule, wrapped for reading (the kernel sees one flat expression; this exact string is pinned in `MirroringRuleStudyTest`):
 
 ```text
 GroupFilled(/Invoice/DigitalChannel)
@@ -241,15 +239,27 @@ And (
     And ((AllFieldsFilled(/Invoice/PreferredName, /Invoice/Effective/Name) And [/Invoice/PreferredName] == [/Invoice/Effective/Name]) Or NoFieldFilled(/Invoice/PreferredName, /Invoice/Effective/Name))
     And ((AllFieldsFilled(/Invoice/PoBox/Zip, /Invoice/Effective/Zip) And [/Invoice/PoBox/Zip] == [/Invoice/Effective/Zip]) Or NoFieldFilled(/Invoice/PoBox/Zip, /Invoice/Effective/Zip))
     And ((AllFieldsFilled(/Invoice/PoBox/City, /Invoice/Effective/City) And [/Invoice/PoBox/City] == [/Invoice/Effective/City]) Or NoFieldFilled(/Invoice/PoBox/City, /Invoice/Effective/City)) )
-  Or ( FieldFilled(/Invoice/PreferredName)    And NoFieldFilled(PoBox…)        And ⟨the same 3 null-safe-equality clauses, sources = PreferredName + Street/Zip + Street/City⟩ )
-  Or ( FieldNotFilled(/Invoice/PreferredName) And AtLeastOneFieldFilled(PoBox…) And ⟨… sources = LegalName + PoBox/Zip + PoBox/City⟩ )
-  Or ( FieldNotFilled(/Invoice/PreferredName) And NoFieldFilled(PoBox…)        And ⟨… sources = LegalName + Street/Zip + Street/City⟩ )
+  Or
+  ( FieldFilled(/Invoice/PreferredName) And NoFieldFilled(/Invoice/PoBox/Zip, /Invoice/PoBox/City)
+    And ((AllFieldsFilled(/Invoice/PreferredName, /Invoice/Effective/Name) And [/Invoice/PreferredName] == [/Invoice/Effective/Name]) Or NoFieldFilled(/Invoice/PreferredName, /Invoice/Effective/Name))
+    And ((AllFieldsFilled(/Invoice/Street/Zip, /Invoice/Effective/Zip) And [/Invoice/Street/Zip] == [/Invoice/Effective/Zip]) Or NoFieldFilled(/Invoice/Street/Zip, /Invoice/Effective/Zip))
+    And ((AllFieldsFilled(/Invoice/Street/City, /Invoice/Effective/City) And [/Invoice/Street/City] == [/Invoice/Effective/City]) Or NoFieldFilled(/Invoice/Street/City, /Invoice/Effective/City)) )
+  Or
+  ( FieldNotFilled(/Invoice/PreferredName) And AtLeastOneFieldFilled(/Invoice/PoBox/Zip, /Invoice/PoBox/City)
+    And ((AllFieldsFilled(/Invoice/LegalName, /Invoice/Effective/Name) And [/Invoice/LegalName] == [/Invoice/Effective/Name]) Or NoFieldFilled(/Invoice/LegalName, /Invoice/Effective/Name))
+    And ((AllFieldsFilled(/Invoice/PoBox/Zip, /Invoice/Effective/Zip) And [/Invoice/PoBox/Zip] == [/Invoice/Effective/Zip]) Or NoFieldFilled(/Invoice/PoBox/Zip, /Invoice/Effective/Zip))
+    And ((AllFieldsFilled(/Invoice/PoBox/City, /Invoice/Effective/City) And [/Invoice/PoBox/City] == [/Invoice/Effective/City]) Or NoFieldFilled(/Invoice/PoBox/City, /Invoice/Effective/City)) )
+  Or
+  ( FieldNotFilled(/Invoice/PreferredName) And NoFieldFilled(/Invoice/PoBox/Zip, /Invoice/PoBox/City)
+    And ((AllFieldsFilled(/Invoice/LegalName, /Invoice/Effective/Name) And [/Invoice/LegalName] == [/Invoice/Effective/Name]) Or NoFieldFilled(/Invoice/LegalName, /Invoice/Effective/Name))
+    And ((AllFieldsFilled(/Invoice/Street/Zip, /Invoice/Effective/Zip) And [/Invoice/Street/Zip] == [/Invoice/Effective/Zip]) Or NoFieldFilled(/Invoice/Street/Zip, /Invoice/Effective/Zip))
+    And ((AllFieldsFilled(/Invoice/Street/City, /Invoice/Effective/City) And [/Invoice/Street/City] == [/Invoice/Effective/City]) Or NoFieldFilled(/Invoice/Street/City, /Invoice/Effective/City)) )
 )
 ```
 
-The problems are all repetition: the `(AllFieldsFilled(a,b) And [a]==[b]) Or NoFieldFilled(a,b)` idiom is hand-written 12×; the 2×2 is invisible (four pasted blocks); a one-field change is four edits; and the polarity is re-judged every line.
+Look at what that is: the **same null-safe-equality idiom `(AllFieldsFilled(a,b) And [a]==[b]) Or NoFieldFilled(a,b)` hand-written 12 times** across **4 near-identical branches** — a `FieldFilled`/`FieldNotFilled` × `AtLeastOneFieldFilled`/`NoFieldFilled` cross-product whose 2×2 structure is invisible in the flat text. A one-field change is four edits; the polarity is re-judged on every line; a wrong paste between branches is undetectable by eye. This is what we want to stop writing — and the rest of this study is how.
 
-**After** — the build that produces *exactly* that string (the assertion in the test pins the full rendered output, so the rebuild is provably faithful):
+**After** — the build that produces *exactly* the string above (the test asserts the full rendered output, so the rebuild is provably faithful):
 
 <!-- snippet: study-mirroring -->
 ```java
