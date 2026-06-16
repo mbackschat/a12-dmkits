@@ -76,29 +76,10 @@ class MirroringRuleStudyTest {
     void theSameShapeBecomesAReusableBuilder() {
         BoundModel m = BoundModel.ofJson(model());
 
-        // (a) the flagship rule, now via the reusable mirrorRule — renders IDENTICALLY to the inline build,
-        //     so the extraction is provably faithful; the 2×2 just builds the `choices` list.
-        List<StringRef> schedule = List.of(m.str("/Application/Schedule/Name"),
-                m.str("/Application/Schedule/Zip"), m.str("/Application/Schedule/City"));
-        StringRef isOrg = m.str("/Application/PolicyholderIsOrganization");
-        List<FieldRef> correspondence = List.of(
-                m.field("/Application/Correspondence/Zip"), m.field("/Application/Correspondence/City"));
-        List<SourceChoice> scheduleChoices = new ArrayList<>();
-        for (boolean org : new boolean[] {true, false}) {
-            for (boolean useCorrespondence : new boolean[] {true, false}) {
-                scheduleChoices.add(new SourceChoice(
-                        (org ? isOrg.filled() : isOrg.notFilled())
-                                .and(useCorrespondence ? atLeastOneFieldFilled(correspondence)
-                                        : noFieldFilled(correspondence)),
-                        List.of(org ? m.str("/Application/OrgName") : m.str("/Application/PersonName"),
-                                useCorrespondence ? m.str("/Application/Correspondence/Zip")
-                                        : m.str("/Application/Residence/Zip"),
-                                useCorrespondence ? m.str("/Application/Correspondence/City")
-                                        : m.str("/Application/Residence/City"))));
-            }
-        }
+        // (a) the flagship rule written as a function of its ROOT group — relative navigation makes it
+        //     location-independent; applied to /Application it renders IDENTICALLY to the inline build.
         assertEquals(EXPECTED, new DslRenderer().render(
-                mirrorRule(m.group("/Application/BrokerSubmission"), schedule, scheduleChoices)));
+                scheduleConsistency(m.groupAt("/Application").orElseThrow())));
 
         // (b) a DIFFERENT rule of the same kind — provide new target + sources, call the builder. That's it.
         // tag::study-mirror-reuse[]
@@ -133,6 +114,29 @@ class MirroringRuleStudyTest {
                 .and(anyOf(choices.stream().map(c -> c.when().and(mirrors(c.sources(), target))).toList()));
     }
     // end::study-mirror-combinators[]
+
+    // tag::study-mirror-relative[]
+    /** The flagship rule as a function of its ROOT group — navigates RELATIVE to {@code app} (GroupInfo), so
+     *  the same rule applies to any {@code /Application} subtree (a mounted/included sub-form), not one path. */
+    static Condition scheduleConsistency(GroupInfo app) {
+        List<StringRef> schedule = List.of(app.str("Schedule/Name"), app.str("Schedule/Zip"), app.str("Schedule/City"));
+        StringRef isOrg = app.str("PolicyholderIsOrganization");
+        List<FieldRef> correspondence = List.of(app.field("Correspondence/Zip"), app.field("Correspondence/City"));
+        List<SourceChoice> choices = new ArrayList<>();
+        for (boolean org : new boolean[] {true, false}) {
+            for (boolean useCorrespondence : new boolean[] {true, false}) {
+                choices.add(new SourceChoice(
+                        (org ? isOrg.filled() : isOrg.notFilled())
+                                .and(useCorrespondence ? atLeastOneFieldFilled(correspondence)
+                                        : noFieldFilled(correspondence)),
+                        List.of(org ? app.str("OrgName") : app.str("PersonName"),
+                                useCorrespondence ? app.str("Correspondence/Zip") : app.str("Residence/Zip"),
+                                useCorrespondence ? app.str("Correspondence/City") : app.str("Residence/City"))));
+            }
+        }
+        return mirrorRule(app.group("BrokerSubmission"), schedule, choices);
+    }
+    // end::study-mirror-relative[]
 
     /** The rendered output the ~15-line build produces — the repetitive form you'd otherwise hand-write. */
     private static final String EXPECTED =

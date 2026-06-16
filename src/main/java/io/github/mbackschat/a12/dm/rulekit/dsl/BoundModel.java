@@ -330,8 +330,7 @@ public final class BoundModel {
 
     /** Every group (root groups included), in model order. */
     public java.util.stream.Stream<GroupInfo> groups() {
-        return index.groupPaths()
-                .map(p -> new GroupInfo(this, p, index.nameOf(p), index.isRepeating(p)));
+        return index.groupPaths().map(this::groupInfo);
     }
 
     /** The declared message-locale codes (header {@code locales}), in document order — every rule and
@@ -345,8 +344,18 @@ public final class BoundModel {
         return index.isField(path) ? java.util.Optional.of(fieldInfo(path)) : java.util.Optional.empty();
     }
 
+    /** The non-throwing group peek — the group peer of {@link #fieldAt}; relative navigation hangs off
+     *  {@link GroupInfo} (so a combinator can be written against a root group and applied to any subtree). */
+    public java.util.Optional<GroupInfo> groupAt(String path) {
+        return index.isGroup(path) ? java.util.Optional.of(groupInfo(path)) : java.util.Optional.empty();
+    }
+
     private FieldInfo fieldInfo(String path) {
         return new FieldInfo(this, path, index.nameOf(path), index.kindOf(path));
+    }
+
+    private GroupInfo groupInfo(String path) {
+        return new GroupInfo(this, path, index.nameOf(path), index.isRepeating(path));
     }
 
     /** A field's element-level annotations, read back through the kernel {@link com.mgmtp.a12.kernel.md.model.api.IField}

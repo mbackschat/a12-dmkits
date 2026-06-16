@@ -60,6 +60,8 @@ class DocSnippetFreshnessTest {
                     "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/MirroringRuleStudyTest.java"),
             new Lock("study-mirror-reuse", "docs/API-POC-STUDY.md",
                     "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/MirroringRuleStudyTest.java"),
+            new Lock("study-mirror-relative", "docs/API-POC-STUDY.md",
+                    "src/test/java/io/github/mbackschat/a12/dm/rulekit/dsl/MirroringRuleStudyTest.java"),
             new Lock("editor-number-field", "docs/API-POC-STUDY.md",
                     "src/test/java/io/github/mbackschat/a12/dm/edit/GroupEditorTest.java"));
 

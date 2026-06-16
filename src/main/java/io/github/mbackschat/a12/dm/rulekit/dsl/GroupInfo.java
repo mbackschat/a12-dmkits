@@ -46,6 +46,63 @@ public final class GroupInfo {
         return annotations().stream().filter(a -> a.name().equals(name)).findFirst();
     }
 
+    // --- relative navigation: typed refs by path RELATIVE to this group (the read peer of GroupEditor) ---
+    //     so a combinator can take a root GroupInfo and apply to any subtree — e.g. a mounted sub-form.
+
+    private String at(String relative) {
+        return path + "/" + relative;
+    }
+
+    public NumberRef num(String relative) {
+        return model.num(at(relative));
+    }
+
+    public StringRef str(String relative) {
+        return model.str(at(relative));
+    }
+
+    public EnumRef enumOf(String relative) {
+        return model.enumOf(at(relative));
+    }
+
+    public BoolRef bool(String relative) {
+        return model.bool(at(relative));
+    }
+
+    public ConfirmRef confirm(String relative) {
+        return model.confirm(at(relative));
+    }
+
+    public DateRef date(String relative) {
+        return model.date(at(relative));
+    }
+
+    public TimeRef time(String relative) {
+        return model.time(at(relative));
+    }
+
+    public DateTimeRef dateTime(String relative) {
+        return model.dateTime(at(relative));
+    }
+
+    public DateFragmentRef dateFragment(String relative) {
+        return model.dateFragment(at(relative));
+    }
+
+    public DateRangeRef dateRange(String relative) {
+        return model.dateRange(at(relative));
+    }
+
+    /** An untyped field handle relative to this group. */
+    public FieldRef field(String relative) {
+        return model.field(at(relative));
+    }
+
+    /** A child group handle relative to this group. */
+    public GroupRef group(String relative) {
+        return model.group(at(relative));
+    }
+
     @Override
     public String toString() {
         return path + (repeating ? " (repeating)" : "");

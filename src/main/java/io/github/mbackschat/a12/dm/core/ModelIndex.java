@@ -170,6 +170,11 @@ public final class ModelIndex {
         return byPath.get(path) instanceof IField;
     }
 
+    /** Whether a group exists at {@code path} (the non-throwing peek behind {@code groupAt}). */
+    public boolean isGroup(String path) {
+        return byPath.get(path) instanceof IGroup;
+    }
+
     /** The element's short name (last path segment, as modeled). */
     public String nameOf(String path) {
         return require(path).getName();

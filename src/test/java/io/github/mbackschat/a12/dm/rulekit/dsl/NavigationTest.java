@@ -177,6 +177,22 @@ class NavigationTest {
         assertEquals(List.of("/Subscription/Addons/MonthlyFee", "/Subscription/Billing/BaseFee"), audited);
     }
 
+    @Test
+    void groupInfoNavigatesRelativeToTypedRefs() {
+        // location-independence: a combinator can take a root GroupInfo and navigate relatively, so it
+        // applies to any subtree (e.g. a mounted/included sub-form), not one hardcoded path.
+        GroupInfo sub = m.groupAt("/Subscription").orElseThrow();
+        assertEquals("/Subscription/Addons/MonthlyFee", sub.num("Addons/MonthlyFee").field().path());
+        assertEquals("/Subscription/Addons/Name", sub.str("Addons/Name").field().path());
+        assertEquals("/Subscription/Tier", sub.enumOf("Tier").field().path());
+        assertEquals("/Subscription/Billing", sub.group("Billing").path());
+        assertEquals("/Subscription/Addons/MonthlyFee", sub.field("Addons/MonthlyFee").path());
+
+        // groupAt is the non-throwing group peer of fieldAt
+        assertTrue(m.groupAt("/Subscription/Nope").isEmpty());
+        assertTrue(m.groupAt("/Subscription/Tier").isEmpty(), "a field is not a group");
+    }
+
     private static Reader fixture(String classpathLocation) {
         InputStream in = NavigationTest.class.getClassLoader().getResourceAsStream(classpathLocation);
         assertNotNull(in, "fixture not found: " + classpathLocation);
