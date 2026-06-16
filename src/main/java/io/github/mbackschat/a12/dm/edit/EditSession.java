@@ -61,6 +61,12 @@ public final class EditSession {
         return new EditSession(dmJson, resolver);
     }
 
+    /** Start a session resolving references via a <b>kernel-free</b> {@link io.github.mbackschat.a12.dm.core.ModelResolver}
+     *  ({@code id → DM-JSON}) — the common multi-model case without touching {@code com.mgmtp.a12.kernel.*}. */
+    public static EditSession read(String dmJson, io.github.mbackschat.a12.dm.core.ModelResolver resolver) {
+        return new EditSession(dmJson, ReferenceResolvers.of(resolver));
+    }
+
     // --- structure edits (modelkit) -------------------------------------------------------------
 
     /** Apply one modelkit structure edit to the current DM-JSON and write it back (the shared rep). */

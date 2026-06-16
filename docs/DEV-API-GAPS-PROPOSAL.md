@@ -78,7 +78,7 @@ Each gap: the dev need → what's missing today → the proposal. Ordered by val
 ### Smaller edges  *(lower individual value; batch alongside whichever area they touch)*
 
 - **Catalog discovery queries.** — ✅ shipped 2026-06-16 ([API-POC-STUDY](API-POC-STUDY.md) finding 42): `OperatorCatalog.byKeyword`/`byKind`/`byReturns` (the catalog exists *to be discovered*; `byId`/`byInvalidError` were the only lookups before). *(small)*
-- **Kernel-free resolver SAM.** Multi-model loading (`BoundModel.ofJson(json, resolver)`, `EditSession.read(json, resolver)`) takes the kernel's `IDocumentModelReferenceResolver`, pulling a dev into `com.mgmtp.a12.kernel.*` at exactly the include/import seam. A thin dmkits `ModelResolver` SAM (`String id → String json`) wrapper keeps the common case kernel-free. *(small–medium)*
+- **Kernel-free resolver SAM.** — ✅ shipped 2026-06-16 ([API-POC-STUDY](API-POC-STUDY.md) finding 43): a `core.ModelResolver` SAM (`String id → String json`), `ReferenceResolvers.of(ModelResolver)`, and `BoundModel.ofJson`/`EditSession.read` overloads — multi-model loading no longer pulls a dev into `com.mgmtp.a12.kernel.*` at the include/import seam. *(small–medium)*
 - **Read→modify→write cohesion on the adapter.** `KernelAdapter` exposes `read` + `diff` but no write-back — a dev reading only the adapter sees half the loop (write-back lives on `BoundModel`/`EditSession`). A pointer or a convenience method would close it. *(small)*
 - **`Dsl` is one flat ~130-method factory.** Discovery is autocomplete-only; lightweight sub-facades (`Dsl.dates()…`) or grouping would aid exploration. *(small, cosmetic)*
 

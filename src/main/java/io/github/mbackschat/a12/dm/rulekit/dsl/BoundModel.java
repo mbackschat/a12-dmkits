@@ -56,6 +56,12 @@ public final class BoundModel {
         }
     }
 
+    /** Bind with a <b>kernel-free</b> {@link io.github.mbackschat.a12.dm.core.ModelResolver} ({@code id → DM-JSON})
+     *  for includes / type-def imports — the common multi-model case without touching {@code com.mgmtp.a12.kernel.*}. */
+    public static BoundModel ofJson(String modelJson, io.github.mbackschat.a12.dm.core.ModelResolver resolver) {
+        return ofJson(modelJson, io.github.mbackschat.a12.dm.core.ReferenceResolvers.of(resolver));
+    }
+
     /**
      * Bind <b>without</b> the kernel consistency gate (expand-only) — for <em>read-only</em> inspection of a
      * model that may be inconsistent (e.g. a candidate rule whose error field is not yet valid, G4: read its
