@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 _Empty._
 
+## [0.1.3] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
+
+### Added
+
+- **`field modify`** — change an existing field's type/config in place (e.g. add a STRING `pattern`, tighten a NUMBER's scale) from the same rich spec as `field add`, **without delete-and-recreate**. Located by `group`+`name`; kernel-gated; a missing field refuses cleanly.
+- **Operator `seeAlso`** — the operator catalog now cross-links the pattern / comparison / value-list operators to their field-config twin (`string.pattern`, `number.min`/`max`, `enum.values`), and the field schema points back. Factual and bidirectional, so an agent can discover that a constraint has both a field-config and a rule form (choosing between them stays a modelling judgment).
+
 ## [0.1.2] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
 ### Fixed

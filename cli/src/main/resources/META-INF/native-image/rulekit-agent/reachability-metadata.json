@@ -7846,6 +7846,26 @@
             "java.lang.String",
             "java.util.List"
           ]
+        },
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String",
+            "io.github.mbackschat.a12.dm.rulekit.catalog.OperatorKind",
+            "io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry$Keywords",
+            "java.util.List",
+            "java.lang.String",
+            "java.lang.String",
+            "java.util.List",
+            "java.util.List",
+            "io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry$Example",
+            "io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry$InvalidExample",
+            "io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry$ComputationExample",
+            "io.github.mbackschat.a12.dm.rulekit.catalog.OperatorStatus",
+            "java.lang.String",
+            "java.util.List",
+            "java.util.List"
+          ]
         }
       ]
     },
@@ -9510,6 +9530,29 @@
           "java.util.function.Supplier"
         ]
       }
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.FieldModifyCommand",
+      "fields": [
+        {
+          "name": "dryRun"
+        },
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "specPath"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
     }
   ],
   "resources": [

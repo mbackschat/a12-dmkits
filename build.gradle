@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'io.github.mbackschat.a12.dm'
-version = '0.1.2'
+version = '0.1.3'
 
 // PUBLIC + LOCAL repositories only. The A12 kernel is resolved from the local Maven
 // repository (~/.m2), where the dedicated a12-kernel-bootstrap kit publishes it from
