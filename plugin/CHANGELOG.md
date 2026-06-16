@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 _Empty._
 
+## [0.2.1] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
+
+### Changed
+
+- **Clearer fix hint when a date is compared with an ISO-style literal.** Ordering a date field against an ISO literal (`[DeliveryDate] > "2024-12-31"`) is rejected as `MVK_INVALID_TYPE_FOR_COMPARISON`; the diagnostic's `fix` hint now names the real remedy — write the literal in German `dd.MM.yyyy` form (e.g. `"31.12.2024"`) — instead of only suggesting `== / !=` (which is wrong for a date). The bundled authoring skill's matching note is softened to match.
+
 ## [0.2.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
 ### Added
