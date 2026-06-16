@@ -41,22 +41,40 @@ The library jars/JavaDoc are out of v1 scope; the full build + consume + licensi
 
 ## 4. Release runbook
 
+**The publish glue is a committed script — [`scripts/publish-release.sh`](../scripts/publish-release.sh) — not prose** (the CLAUDE.md rule: deterministic side-effecting setup lives in a script). It does the mirror-content push, the draft + mac upload, the linux/windows CI dispatch, the `SHA256SUMS` ordering, and the final flip. Two manual things bracket it: the **version bump** (maintainer judgment, below) before tagging, and a **review of the draft** before `--go-live`.
+
+**Step 1 — version bump (before tagging). NONE of these is caught by `VersionMentionFreshnessTest`** (it guards only the *kernel* pin), so a missed file drifts the project version silently:
+
+| File | What |
+|---|---|
+| `build.gradle` | `version = 'X.Y.Z'` — source of truth; baked into `--version` / `manifest.version` |
+| `plugin/.claude-plugin/plugin.json` | `"version": "X.Y.Z"` |
+| `plugin-codex/.codex-plugin/plugin.json` | `"version": "X.Y.Z"` |
+| `examples/cli-version.md` | regen the captured `--version` + `manifest.version` (showboat-gated — drifts the demo otherwise) |
+| `plugin/CHANGELOG.md` | flip `[Unreleased]` → `[X.Y.Z] — kernel <pin>`; **this section is the release `--notes`** (the script extracts it) |
+
+Then rebuild + verify the demo, commit, tag, push:
 ```
-git tag vX.Y.Z ──► (CI, when present)
-                     ├─ job linux-x64   → nativeCompile → verify (§5) → upload
-                     ├─ job windows-x64 → nativeCompile → verify (§5) → upload
-                     └─ job release      → gather + SHA256SUMS → create DRAFT release
-                                                                          │
-   locally (mac):  nativeCompile → verify (§5) → gh release upload  ──────┤
-   locally:        :cli/library jars (3b) ──────────────────────────────► (same Release)
-                                                                          │
-                                              review the draft ──► publish (--latest)
+./gradlew :cli:installDist && export PATH="$PWD/bin:$PATH" && uvx showboat@0.6.1 verify examples/cli-version.md
+git commit -am "chore(release): vX.Y.Z — kernel <pin> (A12 Tools <quarter>)"
+git tag -a vX.Y.Z -m "vX.Y.Z — kernel <pin> (A12 Tools <quarter>)" && git push origin main vX.Y.Z
 ```
 
-- A **draft** release is the seam for the local-mac step: CI assembles linux+windows into a draft; the maintainer adds the locally-built mac binary (+ its checksum) and the library jars, reviews, then publishes. A failed mac build never leaves a half-published release.
-- **`SHA256SUMS`** covers every binary + jar — the integrity story that substitutes for code-signing (§7).
-- Tag command form: `git tag -a "vX.Y.Z" -m "…"; gh release create "vX.Y.Z" --title "vX.Y.Z — kernel <kver> (A12 Tools <quarter>)" --notes-file … --latest`.
-- **Changelog:** [`plugin/CHANGELOG.md`](../plugin/CHANGELOG.md) (ships to the mirror root) is the public record of the released artifacts. Before tagging, flip the new version's `— unreleased` to the date and confirm the entries; that section doubles as the release `--notes`. It tracks only the public artifact (the CLI + plugins), never internal development.
+**Step 2 — stage the release** (`./scripts/publish-release.sh vX.Y.Z`), which runs:
+```
+build mac native (§3a) + native-gate.sh (§5)
+  └─ assemble-release-repo.sh ──► rsync --delete into a fresh clone of the mirror ──► commit + push   (mirror CONTENT)
+       └─ gh release create --draft  ──► upload mac binary (dmtool-macos-arm64)                        (BEFORE the dispatch ↓)
+            └─ gh workflow run build-native (source_ref+release_tag) ─► linux/windows nativeCompile+verify,
+                 upload dmtool-linux-x64 / dmtool-windows-x64.exe, then re-sum EVERY dmtool-* into SHA256SUMS
+```
+- **Ordering that bites (why the script enforces it):** the CI `publish` job re-sums *every* `dmtool-*` already attached to the release, so the **mac binary must be uploaded before the dispatch** — upload it late and `SHA256SUMS` silently won't cover it. (The earlier "CI creates the draft" diagram was wrong: the workflow only *uploads to* an existing release; the script creates the draft.)
+- **Mirror CONTENT vs. Release ASSETS are two pushes:** the plugin/skill/examples/README/CHANGELOG go into the mirror *repo tree* (rsync `--delete`, so the tree must equal the assembled output exactly); the per-OS binaries + `SHA256SUMS` go to the mirror *GitHub Release*. The CI workflow ships to the mirror from `.github/mirror-workflows/build-native.yml` (assembled into the tree — §4 below).
+
+**Step 3 — review the draft, then go live** (`./scripts/publish-release.sh vX.Y.Z --go-live`): verifies all three binaries + `SHA256SUMS` are present and that the checksums match, then `gh release edit --draft=false --latest`. A failed CI build never leaves a half-published release (it stays a draft).
+
+- **`SHA256SUMS`** covers every binary — the integrity story that substitutes for code-signing (§7).
+- **Changelog:** [`plugin/CHANGELOG.md`](../plugin/CHANGELOG.md) (ships to the mirror root) is the public record of the released artifacts; it tracks only the public artifact (the CLI + plugins), never internal development.
 
 **CI runs in the PUBLIC mirror repo — free Actions (incl. the 10× macOS / 2× Windows multipliers), no Team plan needed.** The mirror's build workflow **checks out the private source via a read-token secret**, bootstraps the kernel, builds linux/windows native, and publishes to the mirror's Releases. **Guardrail:** the workflow is **maintainer-triggered only** (`workflow_dispatch` / tag / `repository_dispatch` from the private repo) — **never `pull_request`** — so the private-source token is never exposed to a fork PR. The private source only lands transiently on the ephemeral runner; only the binaries become public. (mac stays local; on a Team plan linux+windows are already ~free within the 3000 included minutes, so this mainly buys "no Team needed" + headroom.)
 
