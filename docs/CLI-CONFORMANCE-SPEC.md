@@ -131,4 +131,4 @@ The checklist is the human shadow of the gates above; the gates fail the build i
 - [ ] **Diagnosed:** every domain-error path returns a structured envelope (`refused`/`rejected`), not `fail()`; every error diagnostic has `code` + `where` + `fix`; each `code` is an `RkCode` registry entry (so it's catalogued + explorable via `diagnostics`).
 - [ ] **Symmetric:** every input position that can be wrong has a diagnostic (no AP2); no input is silently accepted (no AP3).
 - [ ] **Proven:** the conformance fuzzer is green for the verb; each new refusal has a does-fire test (the §6 refactor-gate rule); a new gate has a negative-control rehearsal.
-- [ ] **Documented as capability** in the living surfaces (the §9 board + the `examples/` demo for a CLI change), per the user-facing-no-status rule.
+- [ ] **Documented as capability** in the living surfaces (the status board + the `examples/` demo for a CLI change), per the user-facing-no-status rule.

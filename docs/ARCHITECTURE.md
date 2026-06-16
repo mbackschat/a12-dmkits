@@ -1,6 +1,6 @@
 # a12-dmkits — architecture (physical view)
 
-The **concrete** structure: the Gradle subprojects, the core's internal package layering, what couples to the kernel and how, and what crosses each boundary as an artifact. This complements the **conceptual** component view in [`PROJECT-PROPOSAL.md` §15](PROJECT-PROPOSAL.md) (the six components — catalog spine, model index, typed AST, kernel bridge, write path, integration/LLM artifacts) — read that for *why*; read this for *where the code lives and what it ships*. The per-feature status board stays in [`API-GUIDE.md` §9](API-GUIDE.md).
+The **concrete** structure: the Gradle subprojects, the core's internal package layering, what couples to the kernel and how, and what crosses each boundary as an artifact. This complements the **conceptual** component view in [`PROJECT-PROPOSAL.md` §15](PROJECT-PROPOSAL.md) (the six components — catalog spine, model index, typed AST, kernel bridge, write path, integration/LLM artifacts) — read that for *why*; read this for *where the code lives and what it ships*. The per-feature status board stays in [`API-STATUS.md`](API-STATUS.md).
 
 ## 1. Subprojects & artifacts
 
@@ -152,7 +152,7 @@ rulekit deliberately emits **plain data**, never kernel objects — so every art
 
 ## 5. Proposed components (TBD)
 
-Everything below is **not yet built** — it's laid out here so the home of each proposed part is decided in advance and the boundaries above (§3 public-only core, §4 data-only out-surface) are honored when it lands. Status flips happen on the [`API-GUIDE.md` §9](API-GUIDE.md) board, not here; this section says *where the code goes*, not *when*. Nothing in this section is a commitment to a date.
+Everything below is **not yet built** — it's laid out here so the home of each proposed part is decided in advance and the boundaries above (§3 public-only core, §4 data-only out-surface) are honored when it lands. Status flips happen on the [`API-STATUS.md`](API-STATUS.md) board, not here; this section says *where the code goes*, not *when*. Nothing in this section is a commitment to a date.
 
 ### 5.1 Near-term (Phase 2)
 

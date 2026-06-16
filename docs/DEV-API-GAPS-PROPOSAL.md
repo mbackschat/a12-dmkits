@@ -34,13 +34,13 @@ The gaps below are the **ergonomic and consistency remainder** — what still ad
 
 Each gap: the dev need → what's missing today → the proposal. Ordered by value. The `DGn` label is this review's item id.
 
-### DG1 — Per-type field configuration when EDITING, not just authoring from scratch  *(medium; the dominant ergonomic divergence)* — ✅ shipped 2026-06-14 ([API-GUIDE](API-GUIDE.md) finding 36)
+### DG1 — Per-type field configuration when EDITING, not just authoring from scratch  *(medium; the dominant ergonomic divergence)* — ✅ shipped 2026-06-14 ([API-STATUS](API-STATUS.md) finding 36)
 
 - **Dev need.** Editing an existing model should read like authoring one — same fluent, per-kind configuration.
 - **Today.** From-scratch authoring is rich: `GroupBuilder.numberField(n -> n.fractionDigits(2).min("1"))`, `enumField(e -> …)`, etc. But the **edit** surface (`GroupEditor.addField(name, FieldKind)` / `addField(name, FieldTypeSpec)`, `ModelDocument.addField`) takes only a bare kind or a hand-constructed `FieldTypeSpec`. A developer fluent in the builder **drops to constructing records** to add a configured field mid-edit.
 - **Proposal.** Bring the same `Consumer<XFieldBuilder>` builders to the editor surface — `GroupEditor.numberField(name, n -> …)`, `enumField`, `stringField`, `dateField`, … — reusing the from-scratch builders. Authoring and editing then read identically (the §5c "refs & editors" thesis), and the rich-config path is never lost when the model already exists.
 
-### DG2 — Rule/computation API parity  *(medium)* — ✅ shipped 2026-06-14 ([API-GUIDE](API-GUIDE.md) finding 34)
+### DG2 — Rule/computation API parity  *(medium)* — ✅ shipped 2026-06-14 ([API-STATUS](API-STATUS.md) finding 34)
 
 - **Dev need.** A developer treats rules and computations as siblings and expects symmetric tooling.
 - **Today.** Three asymmetries, all verified:
@@ -49,14 +49,14 @@ Each gap: the dev need → what's missing today → the proposal. Ordered by val
   3. `ReadResult.Opaque` carries `canonicalText` (an unconverted rule round-trips verbatim); `ReadComputation.Opaque` carries only `reason` — an opaque computation **can't be re-emitted**, which will bite a computation write-back path.
 - **Proposal.** Add `ComputationDiagnostics.diagnose(BoundModel, Computation)`; make `Computation.Builder.build()` throw the structured `PrecheckException`; add `canonicalText` to `ReadComputation.Opaque`. Closes the parity a dev assumes is already there.
 
-### DG3 — One structured error vocabulary across write/edit/adapter  *(medium)* — ✅ shipped (rulekit-aware surfaces) 2026-06-16 ([API-GUIDE](API-GUIDE.md) finding 41)
+### DG3 — One structured error vocabulary across write/edit/adapter  *(medium)* — ✅ shipped (rulekit-aware surfaces) 2026-06-16 ([API-STATUS](API-STATUS.md) finding 41)
 
 - **Dev need.** Consistent, catalogued, catchable errors regardless of which layer the dev touches.
 - **Today.** Validate/lint speak the structured `Diagnostic` (+ `PrecheckException` carrying it, with stable `RkCode`s). But the **write/edit/adapter** surfaces threw bare `IllegalArgumentException("no rule at path: …")` / `UncheckedIOException` — even though `RkCode` already defines `NO_SUCH_RULE`/`NO_SUCH_GROUP`/`NO_SUCH_COMPUTATION` that fit exactly. A dev catches two different error models depending on the layer.
 - **Proposal.** Route the not-found / bad-target paths through the same structured `Diagnostic`, thrown as `PrecheckException`. One error model, one code set.
 - **Shipped (2026-06-16).** A reusable `PrecheckException.notFound(RkCode, path)` factory, adopted by the not-found paths in **`ModelWriter`** (rule/group/computation — so `BoundModel.removeRule`/`removeComputation`/`replaceCondition`/`replaceComputation` propagate it) and **`KernelAdapter`** (computation). `PrecheckException` stays an `IllegalStateException`, so it's additive — a caller can now `catch (PrecheckException e) e.diagnostic()` for the coded shape. Lock: `rulekit.validate.ErrorVocabularyTest`. **Boundary note (by design, not an oversight):** `modelkit`'s `ModelDocument` and `core`'s `ModelIndex` keep bare exceptions — the `dm.modelkit ⊥ dm.rulekit` invariant and the `core → no rulekit` layering forbid them importing `Diagnostic`/`RkCode`. So a *structure* not-found raised purely inside modelkit (e.g. a bad path to `ModelDocument.setFieldType`) stays an `IllegalArgumentException`; the rule/computation surfaces — where the dev-facing edit loop lives — now speak the one vocabulary.
 
-### DG4 — `java.time` date & time literals  *(small)* — ✅ shipped 2026-06-14 ([API-GUIDE](API-GUIDE.md) finding 33)
+### DG4 — `java.time` date & time literals  *(small)* — ✅ shipped 2026-06-14 ([API-STATUS](API-STATUS.md) finding 33)
 
 - **Dev need.** The library's whole thesis is "typed beats fragile strings." The last place a string sneaks in is a date/time constant.
 - **Today.** `Dsl.dateValue("01.01.2022")` / `Dsl.timeValue("17:00:00")` take a **format-coupled raw string** — a typo or wrong format is caught only at the kernel, the exact failure mode the typed builder erases everywhere else.
@@ -71,7 +71,7 @@ Each gap: the dev need → what's missing today → the proposal. Ordered by val
 - **Proposal.** Use `Severity`/`ValueKind` (and small enums for compute-outcome / message-type) on the public inputs and result records. Removes a whole class of "invalid string caught late."
 - **Shipped (the narrow slice, finding 35).** The cryptic `"?"` is gone: the computed-field kind is sourced from the typed `FieldRef` (provably never unknown), and the remaining tolerant fallbacks surface a self-describing `UNKNOWN` token. The broader `String`→enum retype of the public surface is the open, lower-value remainder — do it opportunistically (and note `DraftRule.severity`-as-`String` is arguably correct: it's the deserialization boundary).
 
-### DG6 — Model-modularity vocabulary completeness  *(medium)* — ✅ shipped 2026-06-16 ([API-GUIDE](API-GUIDE.md) finding 44)
+### DG6 — Model-modularity vocabulary completeness  *(medium)* — ✅ shipped 2026-06-16 ([API-STATUS](API-STATUS.md) finding 44)
 
 - **Dev need.** The dev doc enumerates the model's modularity surface: an include's **`includeLevel`** (`SINGLE_RG` — the included model becomes one repeatable group — vs `MODEL_ROOT`), and four reference *purposes* (`include`, `transitiveInclude`, `typeDefinitions`, `import`).
 - **Today (before).** modelkit authored includes + type-def imports, but did **not** model `includeLevel` at all, so a dev couldn't author a `MODEL_ROOT` include, and `transitiveInclude` wasn't distinguished on read.
@@ -80,8 +80,8 @@ Each gap: the dev need → what's missing today → the proposal. Ordered by val
 
 ### Smaller edges  *(lower individual value; batch alongside whichever area they touch)*
 
-- **Catalog discovery queries.** — ✅ shipped 2026-06-16 ([API-GUIDE](API-GUIDE.md) finding 42): `OperatorCatalog.byKeyword`/`byKind`/`byReturns` (the catalog exists *to be discovered*; `byId`/`byInvalidError` were the only lookups before). *(small)*
-- **Kernel-free resolver SAM.** — ✅ shipped 2026-06-16 ([API-GUIDE](API-GUIDE.md) finding 43): a `core.ModelResolver` SAM (`String id → String json`), `ReferenceResolvers.of(ModelResolver)`, and `BoundModel.ofJson`/`EditSession.read` overloads — multi-model loading no longer pulls a dev into `com.mgmtp.a12.kernel.*` at the include/import seam. *(small–medium)*
+- **Catalog discovery queries.** — ✅ shipped 2026-06-16 ([API-STATUS](API-STATUS.md) finding 42): `OperatorCatalog.byKeyword`/`byKind`/`byReturns` (the catalog exists *to be discovered*; `byId`/`byInvalidError` were the only lookups before). *(small)*
+- **Kernel-free resolver SAM.** — ✅ shipped 2026-06-16 ([API-STATUS](API-STATUS.md) finding 43): a `core.ModelResolver` SAM (`String id → String json`), `ReferenceResolvers.of(ModelResolver)`, and `BoundModel.ofJson`/`EditSession.read` overloads — multi-model loading no longer pulls a dev into `com.mgmtp.a12.kernel.*` at the include/import seam. *(small–medium)*
 - **Read→modify→write cohesion on the adapter.** `KernelAdapter` exposes `read` + `diff` but no write-back — a dev reading only the adapter sees half the loop (write-back lives on `BoundModel`/`EditSession`). A pointer or a convenience method would close it. *(small)*
 - **`Dsl` is one flat ~130-method factory.** Discovery is autocomplete-only; lightweight sub-facades (`Dsl.dates()…`) or grouping would aid exploration. *(small, cosmetic)*
 
@@ -95,7 +95,7 @@ Each gap: the dev need → what's missing today → the proposal. Ordered by val
 - **Then DG6** (modularity completeness) when a `MODEL_ROOT` use case appears.
 - The **smaller edges** ride alongside whichever area they touch.
 
-When one ships it graduates onto the [`API-GUIDE.md` §9 board](API-GUIDE.md) (the single source of truth for what's built) with its own test lock — exactly as the BA-gap items did.
+When one ships it graduates onto the [status board](API-STATUS.md) (the single source of truth for what's built) with its own test lock — exactly as the BA-gap items did.
 
 ---
 
