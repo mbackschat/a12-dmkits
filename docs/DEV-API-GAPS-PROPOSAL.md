@@ -69,10 +69,11 @@ Each gap: the dev need → what's missing today → the proposal. Ordered by val
 - **Proposal.** Use `Severity`/`ValueKind` (and small enums for compute-outcome / message-type) on the public inputs and result records. Removes a whole class of "invalid string caught late."
 - **Shipped (the narrow slice, finding 35).** The cryptic `"?"` is gone: the computed-field kind is sourced from the typed `FieldRef` (provably never unknown), and the remaining tolerant fallbacks surface a self-describing `UNKNOWN` token. The broader `String`→enum retype of the public surface is the open, lower-value remainder — do it opportunistically (and note `DraftRule.severity`-as-`String` is arguably correct: it's the deserialization boundary).
 
-### DG6 — Model-modularity vocabulary completeness  *(medium)*
+### DG6 — Model-modularity vocabulary completeness  *(medium)* — ✅ shipped 2026-06-16 ([API-POC-STUDY](API-POC-STUDY.md) finding 44)
 
 - **Dev need.** The dev doc enumerates the model's modularity surface: an include's **`includeLevel`** (`SINGLE_RG` — the included model becomes one repeatable group — vs `MODEL_ROOT`), and four reference *purposes* (`include`, `transitiveInclude`, `typeDefinitions`, `import`).
-- **Today.** modelkit authors includes + type-def imports, but does **not** model `includeLevel` at all (a repo grep finds zero occurrences of `MODEL_ROOT`/`includeLevel`/`transitiveInclude`), so a dev can't author a `MODEL_ROOT` include, and `transitiveInclude` isn't distinguished on read.
+- **Today (before).** modelkit authored includes + type-def imports, but did **not** model `includeLevel` at all, so a dev couldn't author a `MODEL_ROOT` include, and `transitiveInclude` wasn't distinguished on read.
+- **Shipped (2026-06-16).** An `IncludeLevel` enum (`SINGLE_RG`/`MODEL_ROOT`, default SINGLE_RG) on `MountOptions` (`MountOptions.single().asModelRoot()`), emitted as the group's `includeLevel` attribute (SINGLE_RG omitted, matching the kernel default-absent) and threaded through every mount path (from-scratch `mount(name, alias, MountOptions)` + `IncludeEditor.mount`); the kernel accepts it (`ModelLoader.load` expands it). On read, `ModelDocument.includes()` is now exact (purpose `include`/blank) and `transitiveIncludes()` reads the kernel-added transitive references separately. Lock: `modelkit.IncludeLevelTest`.
 - **Proposal.** Add an `includeLevel` option to the include builder/editor (default `SINGLE_RG`, matching the kernel) and recognize `transitiveInclude` on read. Completes the includes vocabulary the dev doc treats as standard.
 
 ### Smaller edges  *(lower individual value; batch alongside whichever area they touch)*

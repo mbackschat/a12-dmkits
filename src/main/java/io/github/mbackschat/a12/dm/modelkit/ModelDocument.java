@@ -41,6 +41,10 @@ public final class ModelDocument {
 
     /** The {@code modelReferences.purpose} value for a type-def import (kernel {@code PURPOSE_4_ONLY_TYPE_DEFS}). */
     private static final String IMPORT_PURPOSE = "typeDefinitions";
+    /** A direct, authored mount (the classic include). Absent/blank purpose is treated as this. */
+    private static final String INCLUDE_PURPOSE = "include";
+    /** A reference the kernel adds for an include pulled in <em>transitively</em> (DG6/A12K-3234). */
+    private static final String TRANSITIVE_INCLUDE_PURPOSE = "transitiveInclude";
 
     private final ObjectNode root;
 
@@ -94,11 +98,27 @@ public final class ModelDocument {
         return out;
     }
 
-    /** The declared model includes (header {@code modelReferences} with {@code purpose: "include"}), in document order. */
+    /** The directly-declared model includes (header {@code modelReferences} with {@code purpose: "include"},
+     *  or a blank/absent purpose — the classic default), in document order. <b>Transitive</b> includes the
+     *  kernel adds are excluded here — read those via {@link #transitiveIncludes()}. */
     public List<Include> includes() {
         List<Include> out = new ArrayList<>();
         for (JsonNode r : root.path("header").path("modelReferences")) {
-            if (!IMPORT_PURPOSE.equals(r.path("purpose").asText())) {
+            String purpose = r.path("purpose").asText();
+            if (INCLUDE_PURPOSE.equals(purpose) || purpose.isEmpty()) {
+                out.add(new Include(r.path("alias").asText(), r.path("reference").asText()));
+            }
+        }
+        return out;
+    }
+
+    /** The <b>transitive</b> includes (header {@code modelReferences} with {@code purpose: "transitiveInclude"})
+     *  the kernel records for includes pulled in via another include — distinct from the author's direct
+     *  {@link #includes()} (DG6/A12K-3234). */
+    public List<Include> transitiveIncludes() {
+        List<Include> out = new ArrayList<>();
+        for (JsonNode r : root.path("header").path("modelReferences")) {
+            if (TRANSITIVE_INCLUDE_PURPOSE.equals(r.path("purpose").asText())) {
                 out.add(new Include(r.path("alias").asText(), r.path("reference").asText()));
             }
         }

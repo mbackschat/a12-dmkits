@@ -241,6 +241,10 @@ public final class DocumentModelDraft {
         MountOptions options = mount.options();
         body.put("repeatability", options.repeatability());
         body.put("modelAlias", mount.alias());
+        // includeLevel sits on the mount group beside modelAlias; omit SINGLE_RG (the kernel default-absent, A12K-3234)
+        if (options.includeLevel() == IncludeLevel.MODEL_ROOT) {
+            body.put("includeLevel", "MODEL_ROOT");
+        }
         // rule/computation exclusions sit on the mount group beside modelAlias (metamodel MM_Group, §3.9)
         if (options.excludeRules()) {
             body.put("excludeRules", true);
