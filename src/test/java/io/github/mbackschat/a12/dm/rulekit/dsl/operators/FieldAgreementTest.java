@@ -45,4 +45,20 @@ class FieldAgreementTest {
                 .or(Dsl.noFieldFilled(fee.field(), base.field()));
         assertEquals(new DslRenderer().render(hand), new DslRenderer().render(fee.agreesWith(base)));
     }
+
+    @Test
+    void enumAgreementUsesEnumEquality() {
+        // a small 2-enum model — subscription has only one enum field
+        String json = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("policy").locale("en_US")
+                .rootGroup("Policy", p -> p
+                        .enumField("Tier", e -> e.value("BASIC").value("PREMIUM"))
+                        .enumField("DeclaredTier", e -> e.value("BASIC").value("PREMIUM")))
+                .build().toJson();
+        BoundModel pm = BoundModel.ofJson(json);
+        var tier = pm.enumOf("/Policy/Tier");
+        var declared = pm.enumOf("/Policy/DeclaredTier");
+        var hand = Dsl.allFieldsFilled(tier.field(), declared.field()).and(tier.is(declared))
+                .or(Dsl.noFieldFilled(tier.field(), declared.field()));
+        assertEquals(new DslRenderer().render(hand), new DslRenderer().render(tier.agreesWith(declared)));
+    }
 }

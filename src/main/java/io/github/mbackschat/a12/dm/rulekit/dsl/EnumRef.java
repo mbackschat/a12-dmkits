@@ -73,6 +73,16 @@ public record EnumRef(FieldRef field, List<String> allowedValues, Map<String, Li
         return new ComparisonCondition(value(), CompareOp.NE, other.value());
     }
 
+    /**
+     * Null-safe field agreement: both filled and equal, <em>or</em> both empty — renders
+     * {@code (AllFieldsFilled(a,b) And [a]==[b]) Or NoFieldFilled(a,b)} via {@link #is(EnumRef)}. The enum
+     * peer of {@link StringRef#agreesWith(StringRef)} / {@link NumberRef#agreesWith(NumberRef)} (study §3.4a/§3.6).
+     */
+    public Condition agreesWith(EnumRef other) {
+        return Dsl.allFieldsFilled(field, other.field).and(is(other))
+                .or(Dsl.noFieldFilled(field, other.field));
+    }
+
     /** {@code [this] == <enum expression>} (e.g. a {@link Dsl#firstFilledEnum}) — compared by stored value. */
     public Condition is(EnumExpr other) {
         return new ComparisonCondition(value(), CompareOp.EQ, other.expression());
