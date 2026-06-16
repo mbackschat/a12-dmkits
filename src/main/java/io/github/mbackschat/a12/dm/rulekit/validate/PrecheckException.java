@@ -16,6 +16,20 @@ public class PrecheckException extends IllegalStateException {
         this.diagnostic = diagnostic;
     }
 
+    /**
+     * A not-found / bad-target failure carrying the canonical {@code RK_NO_SUCH_*} code located at
+     * {@code path} — so write/edit/adapter surfaces speak the one structured vocabulary instead of a bare
+     * {@link IllegalArgumentException} (DG3). {@code code}'s catalog meaning + fix ride the diagnostic.
+     */
+    public static PrecheckException notFound(RkCode code, String path) {
+        return new PrecheckException(Diagnostic.precheck(
+                java.util.Optional.of(code.code()),
+                code.meaning() + " (" + path + ")",
+                Diagnostic.Where.path(path),
+                java.util.Optional.of(code.fix()),
+                java.util.Optional.empty()));
+    }
+
     /** The structured PRECHECK diagnostic for this failure. */
     public Diagnostic diagnostic() {
         return diagnostic;

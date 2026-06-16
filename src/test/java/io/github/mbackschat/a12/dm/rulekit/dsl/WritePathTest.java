@@ -90,8 +90,9 @@ class WritePathTest {
         BoundModel without = withRule.removeRule(rulePath);
         assertFalse(without.toJson().contains("FeePositiveRule"), "the rule is gone");
         assertTrue(withRule.toJson().contains("FeePositiveRule"), "prior binding untouched (F0)");
-        // removing a non-existent rule fails loudly
-        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+        // removing a non-existent rule fails loudly with the coded diagnostic (DG3)
+        org.junit.jupiter.api.Assertions.assertThrows(
+                io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException.class,
                 () -> bind().removeRule("/Subscription/Addons/NoSuchRule"));
     }
 

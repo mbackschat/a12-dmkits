@@ -38,6 +38,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.RenderedDiff;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
+import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.core.ModelIndex;
@@ -398,7 +400,7 @@ public final class KernelAdapter {
                 return cr;
             }
         }
-        throw new IllegalArgumentException("no computation in model at: " + computationFullName);
+        throw PrecheckException.notFound(RkCode.NO_SUCH_COMPUTATION, computationFullName);
     }
 
     /**

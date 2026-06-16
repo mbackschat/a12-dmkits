@@ -16,6 +16,8 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
+import io.github.mbackschat.a12.dm.rulekit.validate.PrecheckException;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
 /**
  * The F6 DM-JSON write path for <b>rules</b> (D9: the public, polyglot write surface — no internal
@@ -61,7 +63,7 @@ public final class ModelWriter {
                     (com.fasterxml.jackson.databind.node.ObjectNode) MAPPER.readTree(modelJson);
             ObjectNode rule = DmJson.findElement(root, "Rule", ruleFullName);
             if (rule == null) {
-                throw new IllegalArgumentException("no rule at path: " + ruleFullName);
+                throw PrecheckException.notFound(RkCode.NO_SUCH_RULE, ruleFullName);
             }
             ObjectNode body = (ObjectNode) rule.path("Rule");
             String oldText = body.path("errorCondition").asText("");
@@ -82,7 +84,7 @@ public final class ModelWriter {
                     (com.fasterxml.jackson.databind.node.ObjectNode) MAPPER.readTree(modelJson);
             ObjectNode rule = DmJson.findElement(root, "Rule", ruleFullName);
             if (rule == null) {
-                throw new IllegalArgumentException("no rule at path: " + ruleFullName);
+                throw PrecheckException.notFound(RkCode.NO_SUCH_RULE, ruleFullName);
             }
             ((ObjectNode) rule.path("Rule")).put("severity", severity);
             return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
@@ -101,7 +103,7 @@ public final class ModelWriter {
                     (com.fasterxml.jackson.databind.node.ObjectNode) MAPPER.readTree(modelJson);
             ObjectNode rule = DmJson.findElement(root, "Rule", ruleFullName);
             if (rule == null) {
-                throw new IllegalArgumentException("no rule at path: " + ruleFullName);
+                throw PrecheckException.notFound(RkCode.NO_SUCH_RULE, ruleFullName);
             }
             ArrayNode messageArray = ((ObjectNode) rule.path("Rule")).putArray("errorMessage");
             for (LocalizedText text : messages) {
@@ -202,7 +204,7 @@ public final class ModelWriter {
             String groupPath = fullName.substring(0, fullName.lastIndexOf('/'));
             ArrayNode elements = DmJson.groupElements(root, groupPath);
             if (elements == null) {
-                throw new IllegalArgumentException("no group at path: " + groupPath);
+                throw PrecheckException.notFound(RkCode.NO_SUCH_GROUP, groupPath);
             }
             int idx = -1;
             for (int i = 0; i < elements.size(); i++) {
@@ -213,7 +215,8 @@ public final class ModelWriter {
                 }
             }
             if (idx < 0) {
-                throw new IllegalArgumentException("no " + type.toLowerCase(java.util.Locale.ROOT) + " at path: " + fullName);
+                throw PrecheckException.notFound(
+                        "Computation".equals(type) ? RkCode.NO_SUCH_COMPUTATION : RkCode.NO_SUCH_RULE, fullName);
             }
             elements.remove(idx);
             return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
