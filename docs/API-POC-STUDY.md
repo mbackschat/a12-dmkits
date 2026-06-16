@@ -229,69 +229,72 @@ Condition e = allOf(List.of(r1, r2, r3));   // the LIST form — fold clauses a 
 
 ### 3.6 Study — a real, highly-repetitive rule, rebuilt (before → after) ✅ (2026-06-16, findings 38–39; `MirroringRuleStudyTest`)
 
-**The rule we're up against.** A shape that shows up in real models (transferred here to an invoice domain): an **effective** address block must **mirror** one of several source blocks — *null-safe*, so "both empty" counts as equal — with the source chosen by a **2×2 of flags** (is a preferred name given? is a PO-box block in use?). Authored by hand, its `errorCondition` reads like this — the **full** rendered rule, wrapped for reading (the kernel sees one flat expression; this exact string is pinned in `MirroringRuleStudyTest`):
+**Where this comes from.** A12 models *forms*, and a real pattern in them is that the same logical block is captured in more than one place. Here (an **insurance** application submitted through a broker portal): the policyholder block restated on the **policy schedule** (`Schedule/*`) — a section captured apart from where the underlying name and address were entered — must stay **consistent with** the application data. The engine can't auto-sync across form sections, so a **consistency rule** enforces that the schedule block **mirrors** whichever source the application's flags select — *null-safe*, so a not-yet-filled block (both empty) is allowed. The source is a **2×2**: policyholder type (organization vs person → which **name**) × whether a separate correspondence address was given (correspondence vs residence → which **locality**).
+
+Authored by hand, that consistency condition reads like this — the **full** rendered rule, wrapped for reading (the kernel sees one flat expression; this exact string is pinned in `MirroringRuleStudyTest`):
 
 ```text
-GroupFilled(/Invoice/DigitalChannel)
-And AtLeastOneFieldFilled(/Invoice/Effective/Name, /Invoice/Effective/Zip, /Invoice/Effective/City)
+GroupFilled(/Application/BrokerSubmission)
+And AtLeastOneFieldFilled(/Application/Schedule/Name, /Application/Schedule/Zip, /Application/Schedule/City)
 And (
-  ( FieldFilled(/Invoice/PreferredName) And AtLeastOneFieldFilled(/Invoice/PoBox/Zip, /Invoice/PoBox/City)
-    And ((AllFieldsFilled(/Invoice/PreferredName, /Invoice/Effective/Name) And [/Invoice/PreferredName] == [/Invoice/Effective/Name]) Or NoFieldFilled(/Invoice/PreferredName, /Invoice/Effective/Name))
-    And ((AllFieldsFilled(/Invoice/PoBox/Zip, /Invoice/Effective/Zip) And [/Invoice/PoBox/Zip] == [/Invoice/Effective/Zip]) Or NoFieldFilled(/Invoice/PoBox/Zip, /Invoice/Effective/Zip))
-    And ((AllFieldsFilled(/Invoice/PoBox/City, /Invoice/Effective/City) And [/Invoice/PoBox/City] == [/Invoice/Effective/City]) Or NoFieldFilled(/Invoice/PoBox/City, /Invoice/Effective/City)) )
+  ( FieldFilled(/Application/PolicyholderIsOrganization) And AtLeastOneFieldFilled(/Application/Correspondence/Zip, /Application/Correspondence/City)
+    And ((AllFieldsFilled(/Application/OrgName, /Application/Schedule/Name) And [/Application/OrgName] == [/Application/Schedule/Name]) Or NoFieldFilled(/Application/OrgName, /Application/Schedule/Name))
+    And ((AllFieldsFilled(/Application/Correspondence/Zip, /Application/Schedule/Zip) And [/Application/Correspondence/Zip] == [/Application/Schedule/Zip]) Or NoFieldFilled(/Application/Correspondence/Zip, /Application/Schedule/Zip))
+    And ((AllFieldsFilled(/Application/Correspondence/City, /Application/Schedule/City) And [/Application/Correspondence/City] == [/Application/Schedule/City]) Or NoFieldFilled(/Application/Correspondence/City, /Application/Schedule/City)) )
   Or
-  ( FieldFilled(/Invoice/PreferredName) And NoFieldFilled(/Invoice/PoBox/Zip, /Invoice/PoBox/City)
-    And ((AllFieldsFilled(/Invoice/PreferredName, /Invoice/Effective/Name) And [/Invoice/PreferredName] == [/Invoice/Effective/Name]) Or NoFieldFilled(/Invoice/PreferredName, /Invoice/Effective/Name))
-    And ((AllFieldsFilled(/Invoice/Street/Zip, /Invoice/Effective/Zip) And [/Invoice/Street/Zip] == [/Invoice/Effective/Zip]) Or NoFieldFilled(/Invoice/Street/Zip, /Invoice/Effective/Zip))
-    And ((AllFieldsFilled(/Invoice/Street/City, /Invoice/Effective/City) And [/Invoice/Street/City] == [/Invoice/Effective/City]) Or NoFieldFilled(/Invoice/Street/City, /Invoice/Effective/City)) )
+  ( FieldFilled(/Application/PolicyholderIsOrganization) And NoFieldFilled(/Application/Correspondence/Zip, /Application/Correspondence/City)
+    And ((AllFieldsFilled(/Application/OrgName, /Application/Schedule/Name) And [/Application/OrgName] == [/Application/Schedule/Name]) Or NoFieldFilled(/Application/OrgName, /Application/Schedule/Name))
+    And ((AllFieldsFilled(/Application/Residence/Zip, /Application/Schedule/Zip) And [/Application/Residence/Zip] == [/Application/Schedule/Zip]) Or NoFieldFilled(/Application/Residence/Zip, /Application/Schedule/Zip))
+    And ((AllFieldsFilled(/Application/Residence/City, /Application/Schedule/City) And [/Application/Residence/City] == [/Application/Schedule/City]) Or NoFieldFilled(/Application/Residence/City, /Application/Schedule/City)) )
   Or
-  ( FieldNotFilled(/Invoice/PreferredName) And AtLeastOneFieldFilled(/Invoice/PoBox/Zip, /Invoice/PoBox/City)
-    And ((AllFieldsFilled(/Invoice/LegalName, /Invoice/Effective/Name) And [/Invoice/LegalName] == [/Invoice/Effective/Name]) Or NoFieldFilled(/Invoice/LegalName, /Invoice/Effective/Name))
-    And ((AllFieldsFilled(/Invoice/PoBox/Zip, /Invoice/Effective/Zip) And [/Invoice/PoBox/Zip] == [/Invoice/Effective/Zip]) Or NoFieldFilled(/Invoice/PoBox/Zip, /Invoice/Effective/Zip))
-    And ((AllFieldsFilled(/Invoice/PoBox/City, /Invoice/Effective/City) And [/Invoice/PoBox/City] == [/Invoice/Effective/City]) Or NoFieldFilled(/Invoice/PoBox/City, /Invoice/Effective/City)) )
+  ( FieldNotFilled(/Application/PolicyholderIsOrganization) And AtLeastOneFieldFilled(/Application/Correspondence/Zip, /Application/Correspondence/City)
+    And ((AllFieldsFilled(/Application/PersonName, /Application/Schedule/Name) And [/Application/PersonName] == [/Application/Schedule/Name]) Or NoFieldFilled(/Application/PersonName, /Application/Schedule/Name))
+    And ((AllFieldsFilled(/Application/Correspondence/Zip, /Application/Schedule/Zip) And [/Application/Correspondence/Zip] == [/Application/Schedule/Zip]) Or NoFieldFilled(/Application/Correspondence/Zip, /Application/Schedule/Zip))
+    And ((AllFieldsFilled(/Application/Correspondence/City, /Application/Schedule/City) And [/Application/Correspondence/City] == [/Application/Schedule/City]) Or NoFieldFilled(/Application/Correspondence/City, /Application/Schedule/City)) )
   Or
-  ( FieldNotFilled(/Invoice/PreferredName) And NoFieldFilled(/Invoice/PoBox/Zip, /Invoice/PoBox/City)
-    And ((AllFieldsFilled(/Invoice/LegalName, /Invoice/Effective/Name) And [/Invoice/LegalName] == [/Invoice/Effective/Name]) Or NoFieldFilled(/Invoice/LegalName, /Invoice/Effective/Name))
-    And ((AllFieldsFilled(/Invoice/Street/Zip, /Invoice/Effective/Zip) And [/Invoice/Street/Zip] == [/Invoice/Effective/Zip]) Or NoFieldFilled(/Invoice/Street/Zip, /Invoice/Effective/Zip))
-    And ((AllFieldsFilled(/Invoice/Street/City, /Invoice/Effective/City) And [/Invoice/Street/City] == [/Invoice/Effective/City]) Or NoFieldFilled(/Invoice/Street/City, /Invoice/Effective/City)) )
+  ( FieldNotFilled(/Application/PolicyholderIsOrganization) And NoFieldFilled(/Application/Correspondence/Zip, /Application/Correspondence/City)
+    And ((AllFieldsFilled(/Application/PersonName, /Application/Schedule/Name) And [/Application/PersonName] == [/Application/Schedule/Name]) Or NoFieldFilled(/Application/PersonName, /Application/Schedule/Name))
+    And ((AllFieldsFilled(/Application/Residence/Zip, /Application/Schedule/Zip) And [/Application/Residence/Zip] == [/Application/Schedule/Zip]) Or NoFieldFilled(/Application/Residence/Zip, /Application/Schedule/Zip))
+    And ((AllFieldsFilled(/Application/Residence/City, /Application/Schedule/City) And [/Application/Residence/City] == [/Application/Schedule/City]) Or NoFieldFilled(/Application/Residence/City, /Application/Schedule/City)) )
 )
 ```
 
-Look at what that is: the **same null-safe-equality idiom `(AllFieldsFilled(a,b) And [a]==[b]) Or NoFieldFilled(a,b)` hand-written 12 times** across **4 near-identical branches** — a `FieldFilled`/`FieldNotFilled` × `AtLeastOneFieldFilled`/`NoFieldFilled` cross-product whose 2×2 structure is invisible in the flat text. A one-field change is four edits; the polarity is re-judged on every line; a wrong paste between branches is undetectable by eye. This is what we want to stop writing — and the rest of this study is how.
+Look at what that is: the same null-safe-equality idiom `(AllFieldsFilled(a,b) And [a]==[b]) Or NoFieldFilled(a,b)` **hand-written 12 times** across **4 near-identical branches** — a `FieldFilled`/`FieldNotFilled` × `AtLeastOneFieldFilled`/`NoFieldFilled` cross-product whose 2×2 structure is invisible in the flat text. A one-field change is four edits; the polarity is re-judged on every line; a wrong paste between branches is undetectable by eye. This is what we want to stop writing — and the rest of this study is how.
 
 **After** — the build that produces *exactly* the string above (the test asserts the full rendered output, so the rebuild is provably faithful):
 
 <!-- snippet: study-mirroring -->
 ```java
-// the fixed target block — the "effective" address (mirrored in every branch)
-List<StringRef> target = List.of(m.str("/Invoice/Effective/Name"),
-        m.str("/Invoice/Effective/Zip"), m.str("/Invoice/Effective/City"));
+// the fixed target block — the policyholder block restated on the policy schedule
+List<StringRef> target = List.of(m.str("/Application/Schedule/Name"),
+        m.str("/Application/Schedule/Zip"), m.str("/Application/Schedule/City"));
 
 // the two binary axes that SELECT the source block
-StringRef preferred = m.str("/Invoice/PreferredName");
-List<FieldRef> poBox = List.of(m.field("/Invoice/PoBox/Zip"), m.field("/Invoice/PoBox/City"));
+StringRef isOrg = m.str("/Application/PolicyholderIsOrganization");
+List<FieldRef> correspondence = List.of(
+        m.field("/Application/Correspondence/Zip"), m.field("/Application/Correspondence/City"));
 
-// assemble the source block from the two axis choices (primary name? PO-box in use?)
-BiFunction<Boolean, Boolean, List<StringRef>> sources = (primary, useExtras) -> List.of(
-        primary ? preferred : m.str("/Invoice/LegalName"),
-        useExtras ? m.str("/Invoice/PoBox/Zip") : m.str("/Invoice/Street/Zip"),
-        useExtras ? m.str("/Invoice/PoBox/City") : m.str("/Invoice/Street/City"));
+// assemble the source block from the two axis choices (organization or person? correspondence address?)
+BiFunction<Boolean, Boolean, List<StringRef>> sources = (org, useCorrespondence) -> List.of(
+        org ? m.str("/Application/OrgName") : m.str("/Application/PersonName"),
+        useCorrespondence ? m.str("/Application/Correspondence/Zip") : m.str("/Application/Residence/Zip"),
+        useCorrespondence ? m.str("/Application/Correspondence/City") : m.str("/Application/Residence/City"));
 
-// every target mirrors its source, null-safe — the inner 3× repetition collapses to a zip + fold
+// every target field mirrors its source, null-safe — the inner 3× repetition collapses to a zip + fold
 BiFunction<List<StringRef>, List<StringRef>, Condition> mirrors = (src, tgt) -> allOf(
         IntStream.range(0, tgt.size()).mapToObj(i -> src.get(i).agreesWith(tgt.get(i))).toList());
 
 // the 4 branches ARE the 2×2 cross-product — a loop, not four copy-pasted blocks
 List<Condition> branches = new ArrayList<>();
-for (boolean primary : new boolean[] {true, false}) {
-    for (boolean useExtras : new boolean[] {true, false}) {
-        Condition selector = (primary ? preferred.filled() : preferred.notFilled())
-                .and(useExtras ? atLeastOneFieldFilled(poBox) : noFieldFilled(poBox));
-        branches.add(selector.and(mirrors.apply(sources.apply(primary, useExtras), target)));
+for (boolean org : new boolean[] {true, false}) {
+    for (boolean useCorrespondence : new boolean[] {true, false}) {
+        Condition selector = (org ? isOrg.filled() : isOrg.notFilled())
+                .and(useCorrespondence ? atLeastOneFieldFilled(correspondence) : noFieldFilled(correspondence));
+        branches.add(selector.and(mirrors.apply(sources.apply(org, useCorrespondence), target)));
     }
 }
 
-Condition rule = m.group("/Invoice/DigitalChannel").filled()
+Condition rule = m.group("/Application/BrokerSubmission").filled()
         .and(atLeastOneFieldFilled(target.stream().map(StringRef::field).toList()))
         .and(anyOf(branches));
 ```
@@ -307,6 +310,45 @@ Condition rule = m.group("/Invoice/DigitalChannel").filled()
 | add a field pair → 4 identical edits | one entry in `target` + each source block |
 
 ~15 lines instead of ~40, correct by construction (each pair type- and scale-checked, auto-parenthesized). As always (§3.4a) this is authoring-time only — it **renders to the identical flat kernel DSL**, so it stays exactly what the kernel accepts.
+
+#### Going parametric — the same shape, reused across rules
+
+The build above still tangles the rule's *shape* (a context guard → "the target has data" → an OR of guarded mirrors) with *this* rule's data. Extract the shape **once** as parametric combinators:
+
+<!-- snippet: study-mirror-combinators -->
+```java
+/** Null-safe block mirror: each target field agrees with its source (both filled & equal, or both empty). */
+static Condition mirrors(List<StringRef> sources, List<StringRef> target) {
+    return allOf(IntStream.range(0, target.size())
+            .mapToObj(i -> sources.get(i).agreesWith(target.get(i))).toList());
+}
+
+/** One guarded source alternative: when {@code when} holds, the target must mirror {@code sources}. */
+record SourceChoice(Condition when, List<StringRef> sources) {}
+
+/** The whole rule SHAPE, parameterized: a context guard + "target has data" + an OR of guarded mirrors. */
+static Condition mirrorRule(GroupRef context, List<StringRef> target, List<SourceChoice> choices) {
+    return context.filled()
+            .and(atLeastOneFieldFilled(target.stream().map(StringRef::field).toList()))
+            .and(anyOf(choices.stream().map(c -> c.when().and(mirrors(c.sources(), target))).toList()));
+}
+```
+
+Now any rule of this kind is just **data + a call**. A different one — *the premium-payer block must mirror either the policyholder or a designated third-party payer* — is its target, its guarded sources, and `mirrorRule(...)`:
+
+<!-- snippet: study-mirror-reuse -->
+```java
+// the premium-payer block must mirror either the policyholder or a designated third-party payer
+StringRef byThirdParty = m.str("/Application/PaidByThirdParty");
+List<StringRef> payer = List.of(m.str("/Application/Payer/Name"), m.str("/Application/Payer/Iban"));
+Condition payerRule = mirrorRule(m.group("/Application/BrokerSubmission"), payer, List.of(
+        new SourceChoice(byThirdParty.filled(),
+                List.of(m.str("/Application/ThirdParty/Name"), m.str("/Application/ThirdParty/Iban"))),
+        new SourceChoice(byThirdParty.notFilled(),
+                List.of(m.str("/Application/Policyholder/Name"), m.str("/Application/Policyholder/Iban")))));
+```
+
+`mirrorRule` reproduces the flagship rule above byte-for-byte too (the test asserts it), so the extraction is faithful, not a lookalike. This is the §3.2/finding-24 endgame: a team accrues a small library of **rule-shaped combinators**, and each new rule of a known shape supplies only what differs — restrained to plain functions over the shipped primitives (`agreesWith` 39, `allOf`/presence-`List` 38), no templating DSL.
 
 ## 4. Authoring a rule end-to-end (F1, F2, F2a, F3, F4, F6)
 
