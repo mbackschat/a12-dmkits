@@ -492,7 +492,7 @@ The CLI face of the unified `EditSession` above — **modelkit structure edits a
 dmtool -m order.dm.json apply <ops.json>
 ```
 
-`apply` runs a list of op-records (e.g. *add field `Discount`*, then *rename `Note`→`Memo`* rewriting its references, then *add a rule that references `Discount`*) on a single in-memory session, tolerates transient-invalid intermediate states, gates once at the end, and **rolls back atomically** if any op fails — reporting which op, and why (with did-you-mean correctives for typos). The op-set spans add·modify·remove·read **plus the reference-rewriting refactors** (field/group rename·move, rule/typedef rename — each runs its safety gate at its turn, so a refused refactor rolls the whole sequence back). See [`cli-apply`](examples/cli-apply.md) and the gate contract in [CLI-SPEC §6/§7](docs/CLI-SPEC.md).
+`apply` runs a list of op-records (e.g. *add field `Discount`*, then *re-type `Plz` to add a pattern*, then *rename `Note`→`Memo`* rewriting its references, then *add a rule that references `Discount`*) on a single in-memory session, tolerates transient-invalid intermediate states, gates once at the end, and **rolls back atomically** if any op fails — reporting which op, and why (with did-you-mean correctives for typos). The op-set spans add·**modify (incl. `field` re-type)**·remove·read **plus the reference-rewriting refactors** (field/group rename·move, rule/typedef rename — each runs its safety gate at its turn, so a refused refactor rolls the whole sequence back). See [`cli-apply`](examples/cli-apply.md) and the gate contract in [CLI-SPEC §6/§7](docs/CLI-SPEC.md).
 
 ### Works on real, multi-file apps
 

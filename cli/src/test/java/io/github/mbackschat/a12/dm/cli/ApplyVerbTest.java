@@ -48,6 +48,27 @@ class ApplyVerbTest {
     }
 
     @Test
+    void appliesAFieldRetypeInOneSession(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path ops = dir.resolve("ops.json");
+        // re-type (field modify) now rides an apply transaction: add a STRING field, then re-type it
+        // with a pattern — one read, one gate, one write
+        Files.writeString(ops, """
+                [ {"target":"field","op":"add","group":"/Order","name":"Plz","kind":"STRING"},
+                  {"target":"field","op":"modify","group":"/Order","name":"Plz","kind":"STRING",
+                   "string":{"pattern":"[0-9]{5}","patternMessage":"five digits"}} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertEquals(2, j.path("ops").asInt());
+        assertEquals("staged", j.path("results").get(1).path("outcome").asText());
+        assertTrue(Files.readString(model).contains("[0-9]{5}"),
+                "the re-type is persisted in the same transaction");
+    }
+
+    @Test
     void rollsBackOnAFailingOp(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         String before = Files.readString(model);

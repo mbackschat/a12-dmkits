@@ -59,6 +59,8 @@ final class ApplyCommand extends BaseCommand {
      */
     private enum Op {
         FIELD_ADD("field", "add", Set.of("group", "name", "kind", "typedef")),
+        FIELD_MODIFY("field", "modify", Set.of("group", "name", "kind", "typedef",
+                "string", "number", "enum", "date", "time", "dateTime", "dateRange", "dateFragment", "custom")),
         FIELD_REMOVE("field", "remove", Set.of("fieldPathInModel")),
         GROUP_ADD("group", "add", Set.of("parent", "name", "repeatable")),
         GROUP_REMOVE("group", "remove", Set.of("groupPathInModel")),
@@ -221,6 +223,16 @@ final class ApplyCommand extends BaseCommand {
                 session.addField(group, field, FieldKind.valueOf(req(op, "kind")));
                 changed.put("added", group + "/" + field);
                 changed.put("kind", req(op, "kind"));
+                yield staged(which, changed, session);
+            }
+            case FIELD_MODIFY -> {
+                // re-type a field's config in place (e.g. add a STRING pattern) — same rich spec as `field
+                // modify`/`field add`; metadata untouched. The terminal gate re-binds the whole sequence.
+                FieldSpec.Parsed parsed = FieldSpec.parse(op);
+                String path = parsed.group() + "/" + parsed.field().name();
+                session.setFieldType(path, parsed.field().type());
+                changed.put("modified", path);
+                changed.put("kind", op.hasNonNull("typedef") ? "TypeDefType" : op.path("kind").asText());
                 yield staged(which, changed, session);
             }
             case FIELD_REMOVE -> {
