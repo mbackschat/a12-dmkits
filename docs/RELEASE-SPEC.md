@@ -64,7 +64,7 @@ git tag vX.Y.Z ──► (CI, when present)
 
 Single-sourced in the private repo at **`.github/mirror-workflows/build-native.yml`** (inert there — *not* under `.github/workflows/`, so it never runs in the private repo) and shipped to the mirror's `.github/workflows/` by `assemble-release-repo.sh`. It **must** be assembled, not hand-kept on the mirror: the release push rsyncs with `--delete`, so anything not in the assembled tree is wiped.
 
-**One-time setup (before the first run):** add a fine-grained PAT with **`contents: read` on `a12-dmkits` only** as the mirror secret **`SOURCE_REPO_TOKEN`**. (The mirror's default `GITHUB_TOKEN` can read/write the *mirror's* own releases but cannot read the private source.)
+**One-time setup (before the first run):** add a fine-grained PAT with **`contents: read` on `a12-dmkits` only** as the mirror secret **`SOURCE_REPO_TOKEN`**. (The mirror's default `GITHUB_TOKEN` can read/write the *mirror's* own releases but cannot read the private source.) **The secret must hold a real value, not merely exist** — an empty/placeholder `SOURCE_REPO_TOKEN` fails both per-OS jobs at the private-source checkout with `Input required and not supplied: token` (the `token:` input resolves to empty, so `actions/checkout` rejects it). This silently kept **every release through v0.1.3 mac-only** (the all-OS CI had never run end-to-end); the token was first set for **v0.2.0**. A fine-grained PAT **expires**, so a later release can regress here — if the native jobs fail at *checkout*, re-issue the PAT and re-set the secret.
 
 **Run it:** the mirror → Actions → *build-native* → *Run workflow*, with `source_ref` (the `a12-dmkits` tag/branch to build, e.g. `v0.1.1`) and `release_tag` (the mirror release to attach to; blank = upload workflow artifacts only).
 
@@ -77,6 +77,16 @@ The three jobs and why they're shaped this way:
 | `publish` (only if `release_tag` set) | ubuntu | upload the two binaries to the release, then **regenerate `SHA256SUMS` over all assets** (incl. the locally-uploaded mac binary) | keeps the checksum file covering the full per-OS set |
 
 **Per-OS verification asymmetry (deliberate):** Linux runs the full **`native-gate.sh`** (byte-for-byte showboat, §5). Windows runs a **lighter smoke** (`--version` / `manifest` / `model validate` / `rule read`, CRLF-normalized) instead — the showboat demos are bash/`jq`/`python` heredocs that don't run cleanly on Windows, but the smoke still exercises the reflection metadata, which is the real cross-OS porting risk (it's captured on macOS; if Windows surfaces a `MissingReflection`/`MissingResource`, add a Windows `capture-native-config.sh` run).
+
+**Windows-smoke authoring gotchas (learned v0.2.0 — the job had never run before the token was set, so all three were latent and not binary faults).** The smoke is bash under `set -e -o pipefail`:
+
+| Gotcha | Symptom | Fix |
+|---|---|---|
+| **Grep a FILE, never a pipe** | `"$BIN" manifest \| … \| grep -q PAT` — `grep -q` exits on first match and **SIGPIPEs** the upstream producer (manifest is ~66 KB), so the step dies with **exit 141** under `pipefail` | write to a temp file, then `grep PAT file` (what the `--version` check already does via `tee`). `--version` only survived the pipe form because its output is a few lines |
+| **Match Jackson's pretty spacing** | the CLI emits `"key" : value` (space *before* the colon); `grep '"key": value'` (compact) never matches → false failure | spacing-tolerant `grep -Eq '"key" *: *value'` |
+| **Complete the verb invocation** | `rule read` bare exits 2 (`Missing required parameter: <rulePathInModel>`) | pass a real rule path (e.g. `/Order/DeliveryNotBeforeOrder`) |
+
+**Meta-lesson — verify smoke / release-script logic LOCALLY before pushing to CI.** Each mirror-CI round-trip is ~10 min, and a never-run smoke hides bugs until its first real run; all three above reproduce instantly against the local native binary, e.g. `bash -c 'set -o pipefail; ./dmtool manifest | sed "s/\r$//" | grep -Eq PAT; echo $?'` prints `141` (piped) vs `0` (file form). Drive the smoke locally; only push once it's green.
 
 ## 5. The verification gate — native↔JVM byte-identity
 
