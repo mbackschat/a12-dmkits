@@ -24,6 +24,22 @@ class OperatorCatalogTest {
     }
 
     @Test
+    void discoveryQueriesExploreTheCatalog() {
+        // by keyword — either language resolves to the one operator
+        assertEquals("FieldFilled", CATALOG.byKeyword("FieldFilled").orElseThrow().id());
+        assertEquals("FieldFilled", CATALOG.byKeyword("FeldAngegeben").orElseThrow().id(), "the DE keyword resolves too");
+        assertTrue(CATALOG.byKeyword("NotAKeyword").isEmpty());
+
+        // by kind — a family of operators
+        assertTrue(CATALOG.byKind(OperatorKind.PREDICATE).stream().anyMatch(e -> e.id().equals("FieldFilled")));
+        assertTrue(CATALOG.byKind(OperatorKind.PREDICATE).stream().allMatch(e -> e.kind() == OperatorKind.PREDICATE));
+
+        // by return type
+        assertTrue(CATALOG.byReturns("boolean").stream().anyMatch(e -> e.id().equals("And")));
+        assertTrue(CATALOG.byReturns("boolean").stream().allMatch(e -> e.returns().equals("boolean")));
+    }
+
+    @Test
     void operatorIdsAreUnique() {
         long distinct = CATALOG.entries().stream().map(OperatorEntry::id).distinct().count();
         assertEquals(CATALOG.size(), distinct, "operator ids must be unique");

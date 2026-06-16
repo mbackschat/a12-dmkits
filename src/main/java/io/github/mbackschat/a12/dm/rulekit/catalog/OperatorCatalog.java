@@ -74,6 +74,27 @@ public final class OperatorCatalog {
         return Optional.ofNullable(byId.get(id));
     }
 
+    /** The operator whose EN <em>or</em> DE keyword equals {@code keyword} — the catalog is keyword-indexed,
+     *  so a reader who has the rendered DSL token can look up what it means. */
+    public Optional<OperatorEntry> byKeyword(String keyword) {
+        return entries.stream()
+                .filter(e -> e.keywords() != null
+                        && (keyword.equals(e.keywords().en()) || keyword.equals(e.keywords().de())))
+                .findFirst();
+    }
+
+    /** Every operator of a given {@link OperatorKind} (predicate / operator / function / aggregate / …) —
+     *  for browsing a family rather than guessing an id. */
+    public List<OperatorEntry> byKind(OperatorKind kind) {
+        return entries.stream().filter(e -> e.kind() == kind).toList();
+    }
+
+    /** Every operator that returns {@code returns} (e.g. {@code "boolean"}, {@code "number"}) — "what can I
+     *  put in this slot?" discovery. */
+    public List<OperatorEntry> byReturns(String returns) {
+        return entries.stream().filter(e -> returns.equals(e.returns())).toList();
+    }
+
     /**
      * The first catalog entry that documents this kernel error code in its {@code invalidExample} —
      * the catalog-join behind F4a, letting a kernel {@code MVK_*} diagnostic inherit that entry's
