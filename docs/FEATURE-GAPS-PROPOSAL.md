@@ -35,22 +35,57 @@ When a residual or a §4 candidate ships, it graduates the same way — a status
 
 ---
 
-## 3. Open residuals
+## 3. Open backlog
 
-- **R1 (was G2) — pattern idioms beyond `kind:rule`.** `patterns` ships 5 *rule* idioms. Not covered: **computation idioms** (mutually-exclusive precondition tables — the BA doc's other half) and **field-constraint idioms**. *(medium)*
-- **R2 (was G7) — extend the `seeAlso` constraint↔operator bridge.** The mechanism ships and renders, but only the **7 NUMBER comparison ops** carry a `seeAlso` (→ `number.min/max` field config). Still unbridged: **STRING** (`pattern` ↔ `PatternMatched`/`PatternViolated`; `min/maxLength` ↔ `Length`), **ENUM** (value set ↔ `FieldValueIncludedInValueList` / `EnumCategory`), and the **date-relational** families. Extend the single-sourced map (and keep the honest "none / see typedef" entries). *(small, incremental)*
-- **R3 (from G1) — a message preview on the shipped *native* CLI.** G1's interpolated-message preview rides `model eval`, a runtime-eval verb that is **Groovy-only → hidden on the native binary** ([`NATIVE-IMAGE-GRAALVM.md`](NATIVE-IMAGE-GRAALVM.md) §4). So on the shipped artifact the BA cannot preview the rendered message. Either accept it as a JVM-dev affordance, or find a native-capable render path (structural message interpolation without the runtime). *(open question — not obviously worth building)*
+**New — from the OQ1 probe** ([`archived/OQ1-INVESTIGATION.md`](archived/OQ1-INVESTIGATION.md) §5), each grounded in a friction agents had to *script around*.
+
+### G8 — `apply`/`batch` field ops accept the rich per-kind spec  *(small)*
+
+- **Need.** A bulk or transactional edit that adds a *constrained* field — a whole-number `<N>Fee` (`number.maxFractionalDigits:0`), a STRING with a `pattern`, … — in one gated `apply`/`batch`.
+- **Today.** An `apply`/`batch` `field add` / `field modify` op-record accepts only `group/name/kind/typedef` and **rejects the rich per-kind block with `RK_UNKNOWN_ARG`**; the rich spec is accepted only by the *standalone* `field add <spec>`. So a constrained-field bulk edit must drop to a `batch` of standalone specs, or an awkward `add`-then-`modify`. **Both OQ1 C-arm agents hit this** and worked around it.
+- **Proposal.** The `apply`/`batch` field op-records take the **same rich `<spec>`** the standalone verb does — single-source the field-spec parse (`FieldSpec.parse`) across both paths, so one atomic gated write is the natural path for constrained-field bulk edits.
+
+### G9 — a model-wide usage / audit read  *(medium; highest leverage)*
+
+- **Need.** Cross-cutting questions over the whole model: *"which fields does no rule reference?"*, *"for every field, which rules constrain it?"* — a maintainer/audit staple.
+- **Today.** Reads are **per-target** (`where-used --entity=X`, one entity). The only path is to **loop `where-used` over every field and aggregate by hand** — OQ1 **A and D both did exactly this**. No predicate / aggregate read exists.
+- **Proposal.** A model-wide usage read returning, in one call, the **field → referencing-rules/computations map** plus the **unreferenced set** (derived from the same `getDirectlyReferencedEntities` primitive `where-used` / `rule deps` already use). **Contract to decide:** a new verb (`model usage` / `model audit`) vs a flag on an existing read (`field read --all --with-usage`). Closes the aggregate-query gap — the CLI's one structural weak spot (= OQ1 task **A**'s axis).
+
+### G10 — expose a rule's message text in a read verb  *(small)*
+
+- **Need.** Read back what a rule *says* — to audit message length / locale coverage, or show the BA the current wording.
+- **Today.** `rule read` returns the condition (DSL), **not the message text**. To get it, OQ1's A agent reached for `model eval` — a **runtime-eval verb that is JVM-only / hidden on native** — just to read stored strings.
+- **Proposal.** `rule read` (and/or `meta`) returns the rule's `messages[]` (locale → text), **raw + uninterpolated** — **native-capable** (the text is in the model; no runtime needed). The *interpolated* preview is the separate, harder case (parked — §4).
+
+### G11 — accept a positional entity for `where-used`  *(trivial tag-along)*
+
+- **Today.** `where-used` requires `--entity=<path>`; a positional path errors (*"Missing required option: --entity"*) — OQ1 E-k1 fumbled this.
+- **Proposal.** Accept the entity **positionally** (keep `--entity` as the explicit alias), for consistency with `rule read <path>` / `field read <path>`.
+
+**Residuals of shipped features (§2) — incremental side-tracks.**
+
+- **R1 (was G2) — pattern idioms beyond `kind:rule`.** `patterns` ships 5 *rule* idioms. Not covered: **computation idioms** (mutually-exclusive precondition tables — the BA doc's other half) and **field-constraint idioms**. *(medium; separate track)*
+- **R2 (was G7) — extend the `seeAlso` constraint↔operator bridge.** The mechanism ships + renders, but only the **7 NUMBER comparison ops** carry a `seeAlso` (→ `number.min/max`). Still unbridged: **STRING** (`pattern` ↔ `PatternMatched`/`PatternViolated`; `min/maxLength` ↔ `Length`), **ENUM** (value set ↔ `FieldValueIncludedInValueList` / `EnumCategory`), the **date-relational** families. Extend the single-sourced map (keep honest "none / see typedef" entries). *(small, incremental)*
+
+**Sequencing.** First wave — **G8 + G9 + G10** (best value/effort; they remove the documented frictions). **G11** rides along (trivial). **R2** incremental; **R1** a separate computation-idiom track.
+
+### Building these — start-work pointers
+
+All four are **tool** improvements (capability/discoverability in the CLI, not skill text). Each follows the **schema/conformance discipline** (`CLAUDE.md` "Schema discipline — no drift, no rot"; [`CLI-CONFORMANCE-SPEC.md`](CLI-CONFORMANCE-SPEC.md)): a new verb / changed op-record / new result key **updates its schema *and* flips the matching guard in the same commit**. Evidence + re-test for all four: [`archived/OQ1-INVESTIGATION.md`](archived/OQ1-INVESTIGATION.md) §3 (the verbatim scripted-around calls) + §5 (the improvement write-ups); re-run the relevant fixture from [`archived/oq1-fixtures.zip`](archived/oq1-fixtures.zip) to reproduce the friction, then to confirm the fix. The "Today" facts below were **live-verified 2026-06-17**.
+
+- **G8** — reuse **`FieldSpec.parse`** (the standalone `field add`'s rich-spec parser, `cli/.../FieldSpec.java`) in the `apply`/`batch` **field-op dispatch** (`ApplyCommand`); update **`apply.schema.json`** + **`batch.schema.json`** (+ their CI-executed `examples`) and **`ApplyCommand.KNOWN_KEYS`**; guard = **`SchemaExamplesGuardTest`**. *Done-when:* an `apply` op with `number.maxFractionalDigits` / `string.pattern` **commits + validates** (today → `RK_UNKNOWN_ARG`).
+- **G9** — **first decide the contract: a new verb (`model usage` / `model audit`) vs a flag (`field read --all --with-usage`).** Aggregate the adapter's where-used primitive (**`KernelAdapter.getDirectlyReferencedEntities`**, already behind `where-used` / `rule deps`) over every field. A new verb ⇒ flip **`ManifestVerbTest.EXPECTED_VERBS`**, add a read-only **`verb-examples.json`** demonstration, satisfy **`CliConformanceMatrixTest`** (described · params-described · schema-resolves · demonstrated) + **`CommandReferencesResolveTest`**; new result keys ⇒ **`result.schema`** + **`SchemaVerbTest`**. *Done-when:* one call returns the **field → referencing-rules/computations map** + the **unreferenced set**, locked by a golden test.
+- **G10** — extend the **`rule read`** command's output with **`messages[]`** (locale → text) read straight from the model — **native-capable** (no `model eval`); update **`result.schema`** + **`SchemaVerbTest`**. *Done-when:* `rule read <path>` surfaces the message text with no runtime-eval verb.
+- **G11** — add a **positional `<entity>`** param to **`WhereUsedCommand`** aliasing `--entity` (picocli params auto-derive into `manifest`/`--help` — no schema change). *Done-when:* `where-used /Order/X <model>` ≡ `where-used --entity=/Order/X <model>`.
+
+When one ships it graduates into §2 (a status-board row + a CLI-SPEC contract + its test lock), exactly as G1–G7 did.
 
 ---
 
-## 4. Next: CLI-improvement candidates from the OQ1 probe (to triage)
+## 4. Out of scope / won't build
 
-The OQ1 code-mode-vs-CLI probe ([`archived/OQ1-INVESTIGATION.md`](archived/OQ1-INVESTIGATION.md) §5) surfaced a fresh set of CLI improvements — grounded in what agents had to *script around*. They are **candidates, not yet adopted**; triage them into this backlog (or reject) in the upcoming discussion. In brief: let `apply`/`batch` field ops take the rich per-kind spec; a model-wide usage/audit read (replacing the `where-used`×N loop); a positional entity for `where-used`; and a workspace-wide refactor. (R2/R3 above also originate partly from that probe's findings.)
-
----
-
-## 5. Adjacent but out of scope
-
+- **Workspace-wide cross-model refactor (OQ1 candidate, dropped).** Composable today by looping a per-model verb — OQ1 E ran `for m in orderA orderB orderC; do field rename …; done` cleanly. A cross-model refactor verb adds real complexity (reference resolution across includes, the per-model safety gate, partial-failure semantics over N files) for a loop that already works. Not worth a verb.
+- **Native interpolated-message preview (was R3, parked).** `model eval` (JVM) interpolates the message; on the shipped **native** binary it's absent because runtime-eval is Groovy-only / hidden ([`NATIVE-IMAGE-GRAALVM.md`](NATIVE-IMAGE-GRAALVM.md) §4). A native structural-interpolation render isn't worth building unless a real need appears — the **raw-text read (G10)** covers the common "what does it say" case.
 - **`dmtool serve` (warm-kernel daemon / stdin REPL) — won't build (decided 2026-06-15).** Examined and **rejected**; the premise collapsed once checked. Don't re-litigate without new evidence against these assumptions:
   - **The premise is dead.** "Seconds, not ms" was the *JVM* path (~600 ms+). The shipped CLI is the **native binary at ~37 ms** ([`NATIVE-IMAGE-GRAALVM.md`](NATIVE-IMAGE-GRAALVM.md) §6) — a warm process exists only to amortize JVM startup + JIT + kernel static init, none of which native pays.
   - **The cheap tier doesn't fix the real cost.** A stateless serve (re-passes `-m` per op, like `batch`) re-pays the per-model bootstrap every op. Only a **stateful warm-model** serve removes it — and that drags in the whole cache-coherence problem (staleness over the resolved file set, a `reload` that refuses on conflict, compare-and-swap on commit), the bulk of a ~1–2 week build and the part most able to corrupt work silently.
