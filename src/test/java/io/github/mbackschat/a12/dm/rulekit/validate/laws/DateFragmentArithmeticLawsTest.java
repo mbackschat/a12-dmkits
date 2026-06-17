@@ -6,6 +6,9 @@ import org.junit.jupiter.api.Test;
 /**
  * KERNEL-FINDINGS §6 — Add* on a date fragment is gated by the fragment's granularity (BA L4076-4091):
  * days only if the format has a day, months only if it has a month, years only if it has a year.
+ *
+ * <p>Source: {@code CheckDatumAddOpImpl.check} → {@code DateUtils.checkOperationConsistentToDateFormat},
+ * gated on {@code format.hasComponent(dateFragment)} → {@code MVK_WRONG_DATE_FORMAT_FOR_OP}.
  */
 class DateFragmentArithmeticLawsTest {
 

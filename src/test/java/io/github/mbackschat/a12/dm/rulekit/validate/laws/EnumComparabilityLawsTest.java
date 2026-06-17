@@ -8,6 +8,9 @@ import org.junit.jupiter.api.Test;
  * <b>texts-bearing</b> enum (values carrying per-locale display texts) is incomparable with a plain
  * string and with a texts-less enum; two texts-bearing enums compare only when their value-to-text maps
  * agree on the overlap. A string and a texts-less enum DO compare.
+ *
+ * <p>Source: {@code CheckVergleichsBedingungImpl.checkEnumVsStringType} / {@code checkEnumValuesWithoutCategories},
+ * both gated on {@code FieldUtils.isEnumWithDisplayValues} (a category comparison is exempt).
  */
 class EnumComparabilityLawsTest {
 

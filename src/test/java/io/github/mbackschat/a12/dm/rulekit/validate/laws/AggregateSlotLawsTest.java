@@ -3,7 +3,9 @@ package io.github.mbackschat.a12.dm.rulekit.validate.laws;
 import org.junit.jupiter.api.Test;
 
 /** KERNEL-FINDINGS — aggregate/count slot laws: {@code NumberOfValueInFields} forbids listing a field
- *  more than once ({@code MVK_DUPLICATE_PARAM1} directly, {@code MVK_DUPLICATE_PARAM2} via a group). */
+ *  more than once ({@code MVK_DUPLICATE_PARAM1} directly, {@code MVK_DUPLICATE_PARAM2} via a group).
+ *  Source: {@code CheckEntityListenUtils.checkParamsReferencedOnlyOnce} →
+ *  {@code checkDuplicatesInDirectRefs} (PARAM1) / {@code checkDuplicatesInIndirectRefs} (PARAM2). */
 class AggregateSlotLawsTest {
 
     @Test

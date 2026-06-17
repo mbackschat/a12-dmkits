@@ -8,6 +8,8 @@ import org.junit.jupiter.api.Test;
  * ({@code MVK_NO_WILDCARDS_G_ALLOWED}). (BA also bars a rootGroup argument for these three — not probed
  * here: the order fixture's single root contains every group, so a rootGroup arg trips the
  * duplicate-reference check first; left BA-stated, unverified.)
+ *
+ * <p>Source: {@code CheckEntityListenUtils.checkNoWildCardsInGroup}, fired on {@code ref.hasWildCardsInGroup()}.
  */
 class GroupQuantifierLawsTest {
 

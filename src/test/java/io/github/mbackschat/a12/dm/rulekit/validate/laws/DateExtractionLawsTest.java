@@ -6,6 +6,9 @@ import org.junit.jupiter.api.Test;
  * KERNEL-FINDINGS §6 — the date-extraction / shift families accept a <b>DateTime</b> source, not only a
  * Date. The kernel's date-and-time table types {@code AddDays} and {@code Day/Month/Year/QuarterFromDate}
  * as "X can be Date or DateTime" (BA L2924-2954), so a DateTime field flows into them directly.
+ *
+ * <p>Partial-known-date gating source: {@code CheckDatumExtractOpImpl} → {@code DateUtils.checkOperationConsistentToPartialKnown}
+ * rejects extracting the field's <i>optional</i> component (DAY_OPTIONAL &times; {@code DayFromDate}) with {@code MVK_INVALID_DATE_TYPE}.
  */
 class DateExtractionLawsTest {
 

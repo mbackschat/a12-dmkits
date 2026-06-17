@@ -58,6 +58,7 @@ class IterationLawsTest {
     @Test
     void repetitionNotUniqueKeysMustLieOnOnePath() {
         // keys in two parallel repeatable groups (Lines, Picks — neither below the other) → rejected.
+        // Source: CheckEntityListenUtils.checkAllRepeatableGroupsOnSamePath (no longest-shared-path → throw).
         KernelLaws.rejectsLogistics("/Shipment/Lines", "../LineRef",
                 "RepetitionNotUnique(/Shipment/Lines/LineRef, /Shipment/Picks/LineRef)", "MVK_NOT_IN_SAME_PATH");
     }
@@ -65,6 +66,7 @@ class IterationLawsTest {
     @Test
     void repetitionNotUniqueFromScopeMustContainTheKeys() {
         // @From Picks is repeatable, but the key lives in Lines (not under Picks) → MVK_NOT_IN_GROUP.
+        // Source: CheckEntityListenUtils.checkAllEntitiesInGroup (each key's parent path must start with the @From group path).
         KernelLaws.rejectsLogistics("/Shipment/Lines", "../LineRef",
                 "RepetitionNotUnique(/Shipment/Lines/LineRef @From /Shipment/Picks)", "MVK_NOT_IN_GROUP");
     }
@@ -74,6 +76,7 @@ class IterationLawsTest {
         // BA L919: in a parallel iteration a negative condition is disallowed UNLESS combined with a
         // positive one. A bare NoFieldFilled over the two parallel-iterated groups is rejected; the
         // positive-bearing FieldsNotCollectivelyFilled form (locked above) is accepted.
+        // Source: ParserService → IterationNotValidVisitor.testParallelIteration (IterationType.PARALLEL traversal).
         KernelLaws.rejectsLogistics("/Shipment/Lines", "../OrderedQty",
                 "NoFieldFilled(/Shipment/Lines/OrderedQty, /Shipment/Picks/PickedQty)",
                 "MVK_PARALLEL_ITERATION_INVALID");
