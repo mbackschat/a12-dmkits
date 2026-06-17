@@ -462,6 +462,10 @@ The aggregate combiners track whether their result *could still change if more f
 
 *(Locked: `ComputationAuthoringTest`; the BA-doc worked-example shapes — concat, tiered+rounding, division/grouping, common-precondition concat, current-repetition, parallel-iteration — transferred to own domains in `adapter.BaComputationCorpusTest`.)*
 
+## §11/§12 supplement — every computation is ALSO a validation rule (runtime, 2026-06-17)
+
+The kernel auto-generates, per computation, an **implicit validation rule** `FieldFilled(F) And [F] != <term>` — so `validateFull` fires when a document's **stored** computed value disagrees with what the computation would produce. Probed deterministically with `CoverageWindow = DateRange(OrderDate, DeliveryDate)`: a stored `CoverageWindow` differing from the computed range fires; an agreeing one does not. **The fired errorCode is the computation's own name** (`CoverageWindowComp`). This is the mechanism behind the BA's two "Computation Rules as Validation Rules" self-fire traps: computing **`Now` into a field** self-fires (time elapses between the compute and validate steps), and **copying a precise date into a coarser date field** self-fires (the fragment's missing day/month read as `01`, so `[F] != [G]`). Authoring guidance: don't compute `Now` into a field; rebuild a coarse date with `Date("1","1",YearFromDate(G))` rather than copying it. *(Locked: `adapter.laws.ComputationValidationLawsTest`; the `Now`/precise-coarse cases are BA-described instances of the locked general mechanism.)*
+
 ## §12 supplement — every fired message is typed value-vs-omission (runtime, 2026-06-10, RT-semantics drain)
 
 A dimension KERNEL-SEMANTICS doesn't cover (it presents the logic as two-valued): every message `validateFull` raises carries a **`MessageType`** — `OMISSION_ERROR` when the rule could be satisfied by *filling* one or more additional fields, `VALUE_ERROR` when only changing a value can satisfy it. Public surface: `IMessage.getMessageType()` (kernel-md-runtime-api). Internally this is the three-state `ValidierungsErgebnis` (`TRUE_WF` / `TRUE_AF` / `FALSE_OR_UNKNOWN`) with a combination algebra:
