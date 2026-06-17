@@ -70,7 +70,7 @@ The recurring failure mode is subtle: you add a verb, it *works*, it's *listed* 
 **The contract exemption is a reasoned ledger, not a silent skip.** `schema <verb>` serves a contract only for verbs that return the **result envelope**. The exceptions live in `SchemaCommand.CONTRACT_EXEMPT` as a `verb → why` map — the single source the manifest reads to decide the pointer *and* the matrix reads as the ledger:
 
 - the four **self-describing** verbs (`manifest`/`schema`/`operators`/`diagnostics`) emit their own JSON — you run them to see it;
-- `export` **renders an artifact** (model card / dot / …), and `where-used` returns a **custom referrers payload** — neither is the `{outcome,…}` envelope (a dedicated `where-used` output schema is a follow-up).
+- `export` **renders an artifact** (model card / dot / …) and `model new` **emits a brand-new model document** — neither is the `{outcome,…}` envelope. (`where-used` *was* a custom payload but now rides the result envelope with a published `WhereUsed` dataSchema, like its model-wide sibling `model usage` — so the only output-contract exemptions left are the artifact verbs + the self-describing verbs that emit their own catalog.)
 
 The matrix proves the ledger is **honest**: every exempt verb exists in the manifest (no stale row) and carries a non-blank reason. Anything not exempt **must** be contract-discoverable — which is how `meta` (an envelope verb that was wrongly missing its pointer) is now locked in.
 

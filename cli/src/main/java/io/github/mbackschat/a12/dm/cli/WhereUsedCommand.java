@@ -1,8 +1,8 @@
 package io.github.mbackschat.a12.dm.cli;
 
+import java.util.List;
 import java.util.Set;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -24,7 +24,9 @@ import picocli.CommandLine.Parameters;
  * <p>The model is the {@code -m} context (like every other verb); the entity is a <b>positional</b> path
  * (G11) — consistent with {@code rule read <path>} / {@code field read <path>}. {@code --entity} stays as
  * the explicit alias. The pre-G11 {@code where-used <model> --entity=…} form (model passed positionally)
- * self-corrects to the new shape.
+ * self-corrects to the new shape. The referrers payload ({@code entity}, {@code rules}, {@code computations},
+ * {@code count}) rides the <b>result envelope</b>'s {@code data} (its sibling aggregate read is {@code model
+ * usage}); the shape is published as {@code where-used.schema}.
  */
 @Command(name = "where-used", mixinStandardHelpOptions = true,
         description = "List the rules and computations whose condition directly references a given field or group.")
@@ -67,25 +69,20 @@ final class WhereUsedCommand extends BaseCommand {
             KernelAdapter adapter = KernelAdapter.ofJson(modelJson, workspace.resolverFor(model));
             Set<String> rules = adapter.whereUsed(entity);
             Set<String> computations = adapter.whereUsedInComputations(entity);
-            ObjectNode root = MAPPER.createObjectNode();
-            root.put("entity", entity);
-            ArrayNode rulesArr = root.putArray("rules");
+            ObjectNode data = MAPPER.createObjectNode();
+            data.put("entity", entity);
+            ArrayNode rulesArr = data.putArray("rules");
             rules.forEach(rulesArr::add);
-            ArrayNode compsArr = root.putArray("computations");
+            ArrayNode compsArr = data.putArray("computations");
             computations.forEach(compsArr::add);
-            root.put("count", rules.size() + computations.size());
-            out().print(pretty(root));
-            return 0;
+            int count = rules.size() + computations.size();
+            data.put("count", count);
+            ResultEnvelope env = ResultEnvelope.read("where-used", "read",
+                    count + " referrer(s) of " + entity, true, List.of(), data);
+            out().print(env.toJsonString());
+            return env.exitCode();
         } catch (RuntimeException e) {
             return fail("where-used failed: " + e.getMessage());
-        }
-    }
-
-    private static String pretty(ObjectNode root) {
-        try {
-            return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root) + "\n";
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException("cannot serialize where-used result", e);
         }
     }
 }

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/where-used.schema.json",
+  "title": "WhereUsed",
+  "description": "The `data` payload of `dmtool -m <model> where-used <entityPath>` (CLI-SPEC §6) — the rules and computations whose condition directly references a given field or group. The inverse of a rule's referenced entities; the per-entity peer of the model-wide `model usage`. Built on the kernel's `getDirectlyReferencedEntities`, so it can never disagree with `model usage` / `rule deps`. `rules` and `computations` are kept as separate arrays (a field read only inside a computation's operation appears under `computations`, not `rules`).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["entity", "rules", "computations", "count"],
+  "properties": {
+    "entity": { "type": "string", "description": "the queried field/group's full (absolute) path" },
+    "rules": {
+      "type": "array",
+      "description": "the full names of the validation rules whose condition directly references the entity",
+      "items": { "type": "string" }
+    },
+    "computations": {
+      "type": "array",
+      "description": "the full names of the computations that directly reference the entity (kept separate from rules)",
+      "items": { "type": "string" }
+    },
+    "count": { "type": "integer", "description": "rules.length + computations.length — the total referrer count" }
+  }
+}

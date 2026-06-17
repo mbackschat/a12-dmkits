@@ -9,7 +9,7 @@ The companion to [`cli-tour.md`](cli-tour.md) (which reads & inspects): this dem
 
 ## where-used — what depends on a field
 
-Before you touch a field, see what references it. `where-used` is a cross-cutting verb that keeps its own `{entity, rules, computations, count}` shape rather than the result envelope. The entity is **positional** — like `rule read <path>` — with the model as the `-m` context (`--entity` stays as the explicit alias). It reports the rules **and** computations that read an entity — so you know the blast radius of a change.
+Before you touch a field, see what references it. `where-used` reports the rules **and** computations that read an entity — so you know the blast radius of a change. The entity is **positional** — like `rule read <path>` — with the model as the `-m` context (`--entity` stays as the explicit alias); the referrers ride the result envelope's `data`, like every read (its model-wide sibling is `model usage`).
 
 ```bash
 dmtool -m examples/models/subscription-computed.dm.json \
@@ -18,14 +18,24 @@ dmtool -m examples/models/subscription-computed.dm.json \
 
 ```output
 {
-  "entity" : "/Subscription/Billing/BaseFee",
-  "rules" : [ ],
-  "computations" : [ "/Subscription/Billing/EffectiveFeeComp" ],
-  "count" : 1
+  "target" : "where-used",
+  "op" : "read",
+  "outcome" : "read",
+  "ok" : true,
+  "valid" : true,
+  "summary" : "1 referrer(s) of /Subscription/Billing/BaseFee",
+  "data" : {
+    "entity" : "/Subscription/Billing/BaseFee",
+    "rules" : [ ],
+    "computations" : [ "/Subscription/Billing/EffectiveFeeComp" ],
+    "count" : 1
+  },
+  "diagnostics" : [ ],
+  "written" : false
 }
 ```
 
-→ `BaseFee` feeds **one** element — the computation `/Subscription/Billing/EffectiveFeeComp` (no validation rules). The split `rules` / `computations` arrays matter: a computation is stored as a rule in the kernel, but dmtool reports them apart so you see which is which.
+→ `BaseFee` feeds **one** element — the computation `/Subscription/Billing/EffectiveFeeComp` (no validation rules). The split `data.rules` / `data.computations` arrays matter: a computation is stored as a rule in the kernel, but dmtool reports them apart so you see which is which.
 
 ## computation explain — read the existing computation
 

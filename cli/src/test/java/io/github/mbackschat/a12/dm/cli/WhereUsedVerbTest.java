@@ -36,13 +36,18 @@ class WhereUsedVerbTest {
                 "where-used", "/Subscription/Addons/MonthlyFee");
         assertEquals(0, res.code(), res::err);
         JsonNode j = MAPPER.readTree(res.out());
-        assertEquals("/Subscription/Addons/MonthlyFee", j.get("entity").asText());
+        // where-used rides the result envelope — its payload is under `data` (consistent with model usage)
+        assertEquals("where-used", j.path("target").asText());
+        assertEquals("read", j.path("op").asText());
+        assertEquals("read", j.path("outcome").asText());
+        JsonNode data = j.path("data");
+        assertEquals("/Subscription/Addons/MonthlyFee", data.path("entity").asText());
         boolean found = false;
-        for (JsonNode r : j.path("rules")) {
+        for (JsonNode r : data.path("rules")) {
             found |= CliTestSupport.RULE_FULL_NAME.equals(r.asText());
         }
         assertTrue(found, () -> "where-used should list " + CliTestSupport.RULE_FULL_NAME + ": " + res.out());
-        assertEquals(1, j.get("count").asInt());
+        assertEquals(1, data.path("count").asInt());
     }
 
     @Test
@@ -51,7 +56,8 @@ class WhereUsedVerbTest {
         var res = CliTestSupport.run("-m", modelWithRule(dir).toString(),
                 "where-used", "--entity", "/Subscription/Addons/MonthlyFee");
         assertEquals(0, res.code(), res::err);
-        assertEquals("/Subscription/Addons/MonthlyFee", MAPPER.readTree(res.out()).get("entity").asText());
+        assertEquals("/Subscription/Addons/MonthlyFee",
+                MAPPER.readTree(res.out()).path("data").path("entity").asText());
     }
 
     @Test
@@ -60,7 +66,7 @@ class WhereUsedVerbTest {
                 "where-used", "/Subscription/NoSuchField");
         assertEquals(0, res.code(), res::err);
         JsonNode j = MAPPER.readTree(res.out());
-        assertEquals(0, j.get("count").asInt(), () -> "no rule references it: " + res.out());
+        assertEquals(0, j.path("data").path("count").asInt(), () -> "no rule references it: " + res.out());
     }
 
     @Test
@@ -88,14 +94,14 @@ class WhereUsedVerbTest {
         var res = CliTestSupport.run("-m", model.toString(),
                 "where-used", "/Subscription/Billing/BaseFee");
         assertEquals(0, res.code(), res::err);
-        JsonNode j = MAPPER.readTree(res.out());
-        assertTrue(j.path("rules").isEmpty(), () -> "no validation rule references BaseFee: " + res.out());
+        JsonNode data = MAPPER.readTree(res.out()).path("data");
+        assertTrue(data.path("rules").isEmpty(), () -> "no validation rule references BaseFee: " + res.out());
         boolean inComputations = false;
-        for (JsonNode c : j.path("computations")) {
+        for (JsonNode c : data.path("computations")) {
             inComputations |= CliTestSupport.COMPUTATION_FULL_NAME.equals(c.asText());
         }
         assertTrue(inComputations,
                 () -> "where-used should list the computation under 'computations': " + res.out());
-        assertEquals(1, j.get("count").asInt(), () -> "count spans rules + computations: " + res.out());
+        assertEquals(1, data.path("count").asInt(), () -> "count spans rules + computations: " + res.out());
     }
 }

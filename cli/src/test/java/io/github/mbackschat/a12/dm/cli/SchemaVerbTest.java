@@ -111,6 +111,8 @@ class SchemaVerbTest {
                 MAPPER.readTree(CliTestSupport.run("schema", "model", "describe").out()).path("dataSchema").path("title").asText());
         assertEquals("ModelUsage",
                 MAPPER.readTree(CliTestSupport.run("schema", "model", "usage").out()).path("dataSchema").path("title").asText());
+        assertEquals("WhereUsed",
+                MAPPER.readTree(CliTestSupport.run("schema", "where-used").out()).path("dataSchema").path("title").asText());
         assertEquals("EvalDocResult",
                 MAPPER.readTree(CliTestSupport.run("schema", "model", "eval").out()).path("dataSchema").path("title").asText());
         assertEquals("WorkspaceList",

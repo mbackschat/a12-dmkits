@@ -64,6 +64,7 @@ final class SchemaCommand extends BaseCommand {
             Map.entry("model info", "model-info"),
             Map.entry("model describe", "describe"),
             Map.entry("model usage", "model-usage"),
+            Map.entry("where-used", "where-used"),
             Map.entry("model validate", "validate"),
             Map.entry("rule check", "validate"),
             Map.entry("rule read", "read"),
@@ -88,7 +89,6 @@ final class SchemaCommand extends BaseCommand {
             "patterns", "emits the validation-idiom catalog (and a scaffolded rule-spec) itself — run it",
             "diagnostics", "emits the diagnostic registry itself — run it",
             "export", "renders an artifact (model card / dot / …), not the result envelope",
-            "where-used", "returns a referrers payload, not the result envelope (a dedicated output schema is a follow-up)",
             "model new", "emits a brand-new model document (an artifact), not the result envelope");
 
     /** Leaf op-names whose verb returns a read payload in the envelope's {@code data}. */

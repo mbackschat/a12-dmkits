@@ -91,7 +91,7 @@ class VerbDemonstrationTest {
                         () -> verb + " demo expected outcome=" + expect + ": " + res.out());
             }
             case "raw" -> {
-                // a non-envelope verb (export renders an artifact; where-used returns a referrers payload)
+                // a non-envelope verb (export renders an artifact; model new emits a brand-new model document)
                 assertEquals(0, res.code(), () -> verb + " demo failed (" + command + "): " + res.err());
                 assertFalse(res.out().isBlank(), () -> verb + " demo produced no output: " + command);
             }
