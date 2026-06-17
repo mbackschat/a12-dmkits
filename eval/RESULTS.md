@@ -16,6 +16,17 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-17 13:06 CEST — targeted regression: session family after the FEATURE-GAPS §3 verb changes (sonnet, k=2, bare-tool)
+
+A **targeted** re-run (§8b) confirming the day's CLI-surface changes didn't regress a cold agent's `apply` session authoring. The changes under test: **G8** (`apply`'s `field add` now takes the rich per-kind spec — the field-add dispatch was refactored to `FieldSpec.parse`), **G11** (`where-used` clean break to `-m` + positional entity), and the **`where-used` envelope-ification** (its output moved from a bare payload to the result envelope, so the session scorer's `data.rules` path is now literally correct rather than LLM-bridged). The session family is the only agentic task set that exercises these (apply op-list authoring + the `where-used` scorer); **fresh** run (material changed), bare-tool (no skill).
+
+| task | axis | sonnet pass@2 | facts (every run) |
+|---|---|---|---|
+| `mixed/01-apply-add-field-and-rule` | apply: add field → add rule referencing it, one gated session | **2/2** | `committed · fieldExists · ruleOnField` all true |
+| `mixed/02-fix-rejected-batch` | apply: atomic rollback + per-op repair (date-diff slip) | **2/2** | `committed · fieldExists · ruleOnField` all true |
+
+**4/4 — no regression.** `ruleOnField:true` on every run confirms the enveloped `where-used`'s `data.rules` is read correctly by the deterministic scorer (the latent mismatch the schema review surfaced is closed end-to-end), and a cold agent still composes the `apply` op-list with the rule referencing the just-added field. **Boundary audit clean** (bare-tool): all 9 agents read only their own `/tmp/rk-sess-ops-*.json` op-lists; zero reads of `docs/`/`src/`/`*Test`/skill/`eval/tasks`/committed models — the model was touched only through the CLI's `-m`. Cost: **9 agents, 261,870 subagent tokens, 131 s**. Scope note: **G9** (`model usage`) and **G10** (`rule read` messages) are reads with no authoring task, so the eval doesn't exercise them — they're covered by the unit tests + the cli-tour demo, not here.
+
 ### 2026-06-17 03:03 CEST — OQ1: code-mode (`dmcode`) vs bare-tool CLI, head-to-head (opus, k=2, 7 tasks)
 
 The [DMCODE-PROPOSAL](../docs/DMCODE-PROPOSAL.md) OQ1 probe: is **code-against-the-API** (a clean agent authoring Java via the typed kits, compiler + `RuleValidator` as feedback) **more powerful** than the **bare-tool CLI** for BA authoring? Two arms, **neither given the skill**. CLI arm = self-describing `dmtool` + the model (bare-tool boundary). Code arm = a `/tmp` **`api.txt` proxy** (scoped signatures + javadoc) + `operators.json` + the model, source-launched against the kits classpath (no `src/` — boundary-audited clean, both arms). Tasks chosen from a verb-surface study to hit the CLI's *theoretical* difficulty axes.
