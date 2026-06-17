@@ -4,7 +4,7 @@ The stable **method** for the rulekit CLI demos: how to author, verify, and exte
 
 The demos are authored with [showboat](https://github.com/simonw/showboat): each `examples/*.md` interleaves prose, a command, and its **captured output**, and `showboat verify` re-runs every command to prove the output still matches the live CLI. So a demo is documentation *and* a doc-drift regression test.
 
-Three demos so far, split by workflow: [`../examples/cli-tour.md`](../examples/cli-tour.md) — the **read/inspect** surface (`manifest`·`model describe`·`model validate`·`rule read`·`rule explain`·`rule check`), opening with the model it guards; [`../examples/cli-edit-loop.md`](../examples/cli-edit-loop.md) — the **write/edit** surface (`where-used`·`computation explain`·`computation modify`·`rule add`·`model describe -w/--workspace`·`batch`·`operators`/`schema`), the F8 modify-by-re-express loop end to end; and [`../examples/cli-structure-edit.md`](../examples/cli-structure-edit.md) — the **structure-edit** surface (`field add`·`group add`·`field remove` with the safe-delete gate).
+Three demos so far, split by workflow: [`../examples/cli-tour.md`](../examples/cli-tour.md) — the **read/inspect** surface (`manifest`·`model describe`·`model usage`·`model validate`·`rule read`·`rule explain`·`rule check`), opening with the model it guards; [`../examples/cli-edit-loop.md`](../examples/cli-edit-loop.md) — the **write/edit** surface (`where-used`·`computation explain`·`computation modify`·`rule add`·`model describe -w/--workspace`·`batch`·`operators`/`schema`), the F8 modify-by-re-express loop end to end; and [`../examples/cli-structure-edit.md`](../examples/cli-structure-edit.md) — the **structure-edit** surface (`field add`·`group add`·`field remove` with the safe-delete gate).
 
 ## Run / verify / regenerate
 
@@ -70,7 +70,7 @@ A fork of showboat to add a redaction hook is the wrong bet — in-band scrubbin
 
 **Six demos now cover the whole verb surface** on the `dmtool` target-first surface + the result envelope; the CI gate re-verifies all six (`.github/workflows/ci.yml`). Index: [`../examples/README.md`](../examples/README.md).
 
-- ✅ **Discover + read** (`cli-tour.md`) — `manifest` · `operators`(+`<id>`) · `schema result`/`<target> <op>` · `model describe`/`read`/`validate` · `rule read`/`explain`/`check` · `field`/`group`/`config read`. Doubles as the discovery/self-describing showcase (assemble a call from `manifest` + `schema` alone).
+- ✅ **Discover + read** (`cli-tour.md`) — `manifest` · `operators`(+`<id>`) · `schema result`/`<target> <op>` · `model describe`/`read`/`usage`/`validate` · `rule read`/`explain`/`check` · `field`/`group`/`config read`. Doubles as the discovery/self-describing showcase (assemble a call from `manifest` + `schema` alone).
 - ✅ **Rulekit write/edit** (`cli-edit-loop.md`) — `where-used` · the full `rule` + `computation` CRUD (add/read/explain/modify/remove) · `batch` · the F8 re-express loop (`--dry-run` preview vs in-place write) · **`;;` comments** (the `comment` key / `rule modify --comment`, preserved across a comment-less re-express).
 - ✅ **Modelkit structure** (`cli-structure-edit.md`) — `field`/`group` add·read·remove (the safe-delete gate + `--cascade`) · `typedef` + `field --typedef` · `include` (`-w/--workspace`) · `config read`/`modify` · `export`.
 - ✅ **The `apply` session** (`cli-apply.md`) — atomic multi-op · rollback · op-arg corrective (`RK_UNKNOWN_ARG`/`RK_UNKNOWN_OP` + did-you-mean) · cross-type corrective · read-mid-sequence · `schema apply` (the op-record frame).

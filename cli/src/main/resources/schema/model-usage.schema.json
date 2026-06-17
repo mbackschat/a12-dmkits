@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/model-usage.schema.json",
+  "title": "ModelUsage",
+  "description": "The `data` payload of `dmtool -m <model> model usage` (CLI-SPEC §6) — the model-wide usage/audit read. `usage` maps EVERY field path to the full names of the rules and computations whose condition directly references it (an empty array = referenced by nothing); `unreferenced` is the subset of fields with no referrer. Built on the same `getDirectlyReferencedEntities` primitive as `where-used`, so the two can never disagree about what 'references' means. Fields are in model order; referrers are sorted.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["usage", "unreferenced"],
+  "properties": {
+    "usage": {
+      "type": "object",
+      "description": "field path → the rule/computation full names that directly reference it (empty array = nothing reads the field)",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string", "description": "a referencing rule's or computation's full name" }
+      }
+    },
+    "unreferenced": {
+      "type": "array",
+      "description": "the fields no rule or computation reads — the audit headline (candidates for removal, or a missing rule)",
+      "items": { "type": "string", "description": "an unreferenced field's full path" }
+    }
+  }
+}

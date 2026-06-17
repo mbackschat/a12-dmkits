@@ -323,6 +323,7 @@ dmtool -m order.dm.json rule explain /Order/DeliveryNotBeforeOrder  # what it ch
 dmtool -m order.dm.json rule deps  /Order/DeliveryNotBeforeOrder    # its forward deps: the fields it references (+ iteration)
 dmtool -m order.dm.json rule format /Order/DeliveryNotBeforeOrder --lang DE  # the kernel's canonical text, switched EN↔DE
 dmtool -m order.dm.json where-used /Order/DeliveryDate             # the inverse: which rules/computations use a field
+dmtool -m order.dm.json model usage                                # whole-model audit: every field's referrers + the unreferenced set
 ```
 
 ### Explore a whole folder of models
@@ -510,7 +511,7 @@ The [`examples/`](examples/) directory has **verifiable** walkthroughs of every 
 
 | Demo | Shows |
 |---|---|
-| [`cli-tour`](examples/cli-tour.md) | discover + read (`manifest` · `operators` · `diagnostics` · `schema` · `model describe`/`validate` · `rule read`/`explain`) |
+| [`cli-tour`](examples/cli-tour.md) | discover + read (`manifest` · `operators` · `diagnostics` · `schema` · `model describe`/`usage`/`validate` · `rule read`/`explain`) |
 | [`cli-edit-loop`](examples/cli-edit-loop.md) | author/modify rules & computations, `batch`, the re-express loop |
 | [`cli-structure-edit`](examples/cli-structure-edit.md) | fields/groups/typedefs/includes/config + the safe-delete gate |
 | [`cli-apply`](examples/cli-apply.md) | the atomic multi-op session + rollback + correctives + in-session refactors |

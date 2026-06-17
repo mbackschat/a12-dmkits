@@ -19,6 +19,7 @@ model info
 model validate
 model describe
 model read
+model usage
 model eval
 model compute
 rule check
@@ -515,6 +516,37 @@ dmtool -m examples/models/order-ruled.dm.json model read
 ```
 
 → All three rules at once, each rendered to canonical DSL (the `DeliveryNotBeforeOrder` one is the rule the per-rule sections drilled into). `data.summary` confirms the conversion was total — `convertedRules: 3` of `3`, `fullyTyped: true` — so dmtool modeled every construct with no `Opaque` passthrough. The header `summary` ("read 3 rule(s), 0 computation(s)") is the one-line read; `data` is the full card.
+
+## model usage — the whole-model audit
+
+Where `rule read` / `model read` render conditions, `model usage` answers the **maintainer's** question across the whole model at once: which rules or computations reference each field — and, the headline, which fields **nothing** references. One call replaces a `where-used`-per-field loop. The payload rides `data` (`usage` maps every field to its referrers; `unreferenced` is the subset with none); projected here to the *referenced* fields plus a count of the rest.
+
+```bash
+dmtool -m examples/models/order-ruled.dm.json model usage \
+  | jq '{ referenced: (.data.usage | to_entries | map(select(.value | length > 0)) | from_entries), unreferencedCount: (.data.unreferenced | length) }'
+```
+
+```output
+{
+  "referenced": {
+    "/Order/CustomerName": [
+      "/Order/EligibilityCheck"
+    ],
+    "/Order/BillingAddress/PostalCode": [
+      "/Order/BillingAddress/PostalCodeFormat"
+    ],
+    "/Order/OrderDate": [
+      "/Order/DeliveryNotBeforeOrder"
+    ],
+    "/Order/DeliveryDate": [
+      "/Order/DeliveryNotBeforeOrder"
+    ]
+  },
+  "unreferencedCount": 11
+}
+```
+
+→ Four fields carry rules (each value is the referencing rule's full name — `OrderDate` and `DeliveryDate` both feed the delivery-date rule); the other **11** fields nothing reads. That's the audit a `where-used`-per-field loop used to assemble by hand — useful for spotting a field a rule *should* guard, or dead structure. Built on the same reference primitive as `where-used`, so the two never disagree.
 
 ## field / group / config read — the structural facts
 

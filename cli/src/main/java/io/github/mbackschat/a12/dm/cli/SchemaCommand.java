@@ -60,17 +60,18 @@ final class SchemaCommand extends BaseCommand {
             "rule test", "document-instance");
 
     /** Read ops whose {@code data} payload has a published schema → surfaced so the agent learns the output shape. */
-    static final Map<String, String> DATA_SCHEMA = Map.of(
-            "model info", "model-info",
-            "model describe", "describe",
-            "model validate", "validate",
-            "rule check", "validate",
-            "rule read", "read",
-            "rule explain", "explain",
-            "model eval", "eval-doc",
-            "model compute", "compute-doc",
-            "workspace list", "workspace-list",
-            "workspace graph", "workspace-graph");
+    static final Map<String, String> DATA_SCHEMA = Map.ofEntries(
+            Map.entry("model info", "model-info"),
+            Map.entry("model describe", "describe"),
+            Map.entry("model usage", "model-usage"),
+            Map.entry("model validate", "validate"),
+            Map.entry("rule check", "validate"),
+            Map.entry("rule read", "read"),
+            Map.entry("rule explain", "explain"),
+            Map.entry("model eval", "eval-doc"),
+            Map.entry("model compute", "compute-doc"),
+            Map.entry("workspace list", "workspace-list"),
+            Map.entry("workspace graph", "workspace-graph"));
 
     /**
      * Verbs for which {@code schema <verb>} serves <b>no</b> directional contract — because they do not return
@@ -92,7 +93,7 @@ final class SchemaCommand extends BaseCommand {
 
     /** Leaf op-names whose verb returns a read payload in the envelope's {@code data}. */
     private static final Set<String> READ_OPS =
-            Set.of("read", "explain", "deps", "format", "test", "describe", "validate", "eval", "compute", "meta");
+            Set.of("read", "explain", "deps", "format", "test", "describe", "usage", "validate", "eval", "compute", "meta");
 
     @Parameters(arity = "0..*", paramLabel = "<schema>",
             description = "result | diagnostic (structures), or a verb's directional contract "
