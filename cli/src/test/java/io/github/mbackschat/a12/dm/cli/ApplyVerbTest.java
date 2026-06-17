@@ -69,6 +69,28 @@ class ApplyVerbTest {
     }
 
     @Test
+    void addsAConstrainedFieldInOneRichOp(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path ops = dir.resolve("ops.json");
+        // G8: a single rich `field add` op carries the per-kind constraint block — no add-then-modify dance.
+        // a whole-number Fee (number.maxFractionalDigits:0) + a patterned Plz (string.pattern), added atomically.
+        Files.writeString(ops, """
+                [ {"target":"field","op":"add","group":"/Order","name":"Fee","kind":"NUMBER",
+                   "number":{"maxFractionalDigits":0}},
+                  {"target":"field","op":"add","group":"/Order","name":"Plz","kind":"STRING",
+                   "string":{"pattern":"[0-9]{5}","patternMessage":"five digits"}} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertEquals("staged", j.path("results").get(0).path("outcome").asText());
+        String written = Files.readString(model);
+        assertTrue(written.contains("[0-9]{5}"), "the STRING pattern is persisted by the rich add (not add-then-modify)");
+        assertTrue(written.contains("Fee"), "the constrained NUMBER field is persisted");
+    }
+
+    @Test
     void rollsBackOnAFailingOp(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         String before = Files.readString(model);

@@ -2,7 +2,7 @@
 
 > **What this is.** dmkits (rulekit + modelkit + `dmtool`) is driven by a **business analyst working through an LLM agent**: the BA holds a requirement in business terms ("delivery can't precede the order date"), the agent turns it into a rule or computation via `dmtool`. This doc tracks **ergonomic gaps in that BA+agent loop**.
 >
-> **Status (re-verified 2026-06-17): the 2026-06-14 review's gaps G1–G7 have all shipped** — like the *structural* authoring-coverage inventory that preceded them (also long closed). Each is now contracted + test-locked where it lives: the [status board](API-STATUS.md) (the single source of truth for what's built), [`CLI-SPEC.md`](CLI-SPEC.md) (verb/gate contracts), [`KERNEL-FINDINGS.md`](KERNEL-FINDINGS.md) (kernel facts), or the operator catalog. **Code comments citing `FEATURE-GAPS §N` / `Gn` resolve via the graduation table (§2).** Only **two thin residuals** remain open (§3). A fresh set of CLI-improvement candidates surfaced by the OQ1 probe is queued for triage (§4).
+> **Status (re-verified 2026-06-17): the 2026-06-14 review's gaps G1–G7 have all shipped** — like the *structural* authoring-coverage inventory that preceded them (also long closed). Each is now contracted + test-locked where it lives: the [status board](API-STATUS.md) (the single source of truth for what's built), [`CLI-SPEC.md`](CLI-SPEC.md) (verb/gate contracts), [`KERNEL-FINDINGS.md`](KERNEL-FINDINGS.md) (kernel facts), or the operator catalog. **Code comments citing `FEATURE-GAPS §N` / `Gn` resolve via the graduation table (§2).** **G8** (the first OQ1 gap — the rich per-kind field spec in `apply`'s `field add`) shipped 2026-06-17. The **open backlog (§3)** is the remaining OQ1 gaps **G9–G11** plus two thin residuals **R1/R2**; **§4** records what's out of scope or parked.
 
 ---
 
@@ -17,7 +17,7 @@ dmkits serves the **correctness** axis well, and these strengths are the baselin
 
 ---
 
-## 2. Graduated since the 2026-06-14 review (verified shipped 2026-06-17)
+## 2. Graduated gaps (G1–G7 from the 2026-06-14 review; G8 from the OQ1 probe — all verified shipped 2026-06-17)
 
 Each `Gn` below is **built, contracted, and test-locked**. The "verified" column is the live check run on 2026-06-17.
 
@@ -30,6 +30,7 @@ Each `Gn` below is **built, contracted, and test-locked**. The "verified" column
 | **G5** | computation author-time lints | **`computation add`** emits `RK_COMPUTATION_FORBIDDEN_CONSTRUCT` (CustomCondition / RepetitionNotUnique in a precondition) and `RK_COMPUTATION_OVERLAPPING_PRECONDITIONS` *before* the kernel round-trip | both codes in `ComputationAddCommand` |
 | **G6** | edit a field's config in place | **`field modify <spec>`** re-types/constrains a field (e.g. give a STRING a `pattern`) — no destructive delete+recreate | `field modify` in the manifest; CLI-SPEC §5 (G6) |
 | **G7** | bridge field-config constraints ↔ rule operators | operator-catalog **`seeAlso`** (single-sourced, factual, neutral), rendered by `operators <id>` | mechanism shipped + rendered, but coverage is **NUMBER value-bounds only** (**→ R2**) |
+| **G8** *(OQ1)* | add a *constrained* field in one atomic op | `apply`'s **`field add`** op-record now takes the same rich `<spec>` as the standalone verb (kind + per-kind config + metadata), single-sourced via `FieldSpec.parse` (the `Op` enum's field keys come from `FieldSpec.{ADD,MODIFY}_KEYS`) — no add-then-modify dance | an `apply` op with `string.pattern` + `number.maxFractionalDigits` commits + validates (`ApplyVerbTest.addsAConstrainedFieldInOneRichOp` + the CI-executed `apply.schema` example). Scope note: `batch` (standalone dispatch) and `apply`'s `field modify` (G6) already accepted the rich block — the only gap was apply's `field add` |
 
 When a residual or a §4 candidate ships, it graduates the same way — a status-board row + (for a CLI verb) a CLI-SPEC contract, with its own test lock.
 
@@ -37,13 +38,7 @@ When a residual or a §4 candidate ships, it graduates the same way — a status
 
 ## 3. Open backlog
 
-**New — from the OQ1 probe** ([`archived/OQ1-INVESTIGATION.md`](archived/OQ1-INVESTIGATION.md) §5), each grounded in a friction agents had to *script around*.
-
-### G8 — `apply`/`batch` field ops accept the rich per-kind spec  *(small)*
-
-- **Need.** A bulk or transactional edit that adds a *constrained* field — a whole-number `<N>Fee` (`number.maxFractionalDigits:0`), a STRING with a `pattern`, … — in one gated `apply`/`batch`.
-- **Today.** An `apply`/`batch` `field add` / `field modify` op-record accepts only `group/name/kind/typedef` and **rejects the rich per-kind block with `RK_UNKNOWN_ARG`**; the rich spec is accepted only by the *standalone* `field add <spec>`. So a constrained-field bulk edit must drop to a `batch` of standalone specs, or an awkward `add`-then-`modify`. **Both OQ1 C-arm agents hit this** and worked around it.
-- **Proposal.** The `apply`/`batch` field op-records take the **same rich `<spec>`** the standalone verb does — single-source the field-spec parse (`FieldSpec.parse`) across both paths, so one atomic gated write is the natural path for constrained-field bulk edits.
+**New — from the OQ1 probe** ([`archived/OQ1-INVESTIGATION.md`](archived/OQ1-INVESTIGATION.md) §5), each grounded in a friction agents had to *script around*. **G8 has shipped → §2** (apply's `field add` takes the rich per-kind spec).
 
 ### G9 — a model-wide usage / audit read  *(medium; highest leverage)*
 
@@ -67,13 +62,12 @@ When a residual or a §4 candidate ships, it graduates the same way — a status
 - **R1 (was G2) — pattern idioms beyond `kind:rule`.** `patterns` ships 5 *rule* idioms. Not covered: **computation idioms** (mutually-exclusive precondition tables — the BA doc's other half) and **field-constraint idioms**. *(medium; separate track)*
 - **R2 (was G7) — extend the `seeAlso` constraint↔operator bridge.** The mechanism ships + renders, but only the **7 NUMBER comparison ops** carry a `seeAlso` (→ `number.min/max`). Still unbridged: **STRING** (`pattern` ↔ `PatternMatched`/`PatternViolated`; `min/maxLength` ↔ `Length`), **ENUM** (value set ↔ `FieldValueIncludedInValueList` / `EnumCategory`), the **date-relational** families. Extend the single-sourced map (keep honest "none / see typedef" entries). *(small, incremental)*
 
-**Sequencing.** First wave — **G8 + G9 + G10** (best value/effort; they remove the documented frictions). **G11** rides along (trivial). **R2** incremental; **R1** a separate computation-idiom track.
+**Sequencing.** **G8 shipped** (§2). Remaining first wave — **G9 + G10** (best value/effort; they remove the documented frictions). **G11** rides along (trivial). **R2** incremental; **R1** a separate computation-idiom track.
 
 ### Building these — start-work pointers
 
-All four are **tool** improvements (capability/discoverability in the CLI, not skill text). Each follows the **schema/conformance discipline** (`CLAUDE.md` "Schema discipline — no drift, no rot"; [`CLI-CONFORMANCE-SPEC.md`](CLI-CONFORMANCE-SPEC.md)): a new verb / changed op-record / new result key **updates its schema *and* flips the matching guard in the same commit**. Evidence + re-test for all four: [`archived/OQ1-INVESTIGATION.md`](archived/OQ1-INVESTIGATION.md) §3 (the verbatim scripted-around calls) + §5 (the improvement write-ups); re-run the relevant fixture from [`archived/oq1-fixtures.zip`](archived/oq1-fixtures.zip) to reproduce the friction, then to confirm the fix. The "Today" facts below were **live-verified 2026-06-17**.
+All three remaining (G9–G11) are **tool** improvements (capability/discoverability in the CLI, not skill text). Each follows the **schema/conformance discipline** (`CLAUDE.md` "Schema discipline — no drift, no rot"; [`CLI-CONFORMANCE-SPEC.md`](CLI-CONFORMANCE-SPEC.md)): a new verb / changed op-record / new result key **updates its schema *and* flips the matching guard in the same commit**. Evidence + re-test: [`archived/OQ1-INVESTIGATION.md`](archived/OQ1-INVESTIGATION.md) §3 (the verbatim scripted-around calls) + §5 (the improvement write-ups); re-run the relevant fixture from [`archived/oq1-fixtures.zip`](archived/oq1-fixtures.zip) to reproduce the friction, then to confirm the fix. The "Today" facts below were **live-verified 2026-06-17**. *(G8's pattern, now shipped: reuse `FieldSpec.parse` in `ApplyCommand`'s field-op dispatch + update `apply.schema.json`'s CI-executed example — the template for the rest.)*
 
-- **G8** — reuse **`FieldSpec.parse`** (the standalone `field add`'s rich-spec parser, `cli/.../FieldSpec.java`) in the `apply`/`batch` **field-op dispatch** (`ApplyCommand`); update **`apply.schema.json`** + **`batch.schema.json`** (+ their CI-executed `examples`) and **`ApplyCommand.KNOWN_KEYS`**; guard = **`SchemaExamplesGuardTest`**. *Done-when:* an `apply` op with `number.maxFractionalDigits` / `string.pattern` **commits + validates** (today → `RK_UNKNOWN_ARG`).
 - **G9** — **first decide the contract: a new verb (`model usage` / `model audit`) vs a flag (`field read --all --with-usage`).** Aggregate the adapter's where-used primitive (**`KernelAdapter.getDirectlyReferencedEntities`**, already behind `where-used` / `rule deps`) over every field. A new verb ⇒ flip **`ManifestVerbTest.EXPECTED_VERBS`**, add a read-only **`verb-examples.json`** demonstration, satisfy **`CliConformanceMatrixTest`** (described · params-described · schema-resolves · demonstrated) + **`CommandReferencesResolveTest`**; new result keys ⇒ **`result.schema`** + **`SchemaVerbTest`**. *Done-when:* one call returns the **field → referencing-rules/computations map** + the **unreferenced set**, locked by a golden test.
 - **G10** — extend the **`rule read`** command's output with **`messages[]`** (locale → text) read straight from the model — **native-capable** (no `model eval`); update **`result.schema`** + **`SchemaVerbTest`**. *Done-when:* `rule read <path>` surfaces the message text with no runtime-eval verb.
 - **G11** — add a **positional `<entity>`** param to **`WhereUsedCommand`** aliasing `--entity` (picocli params auto-derive into `manifest`/`--help` — no schema change). *Done-when:* `where-used /Order/X <model>` ≡ `where-used --entity=/Order/X <model>`.

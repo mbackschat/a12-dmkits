@@ -23,9 +23,10 @@
       { "target": "field", "op": "rename", "fieldPathInModel": "/Subscription/Memo", "to": "Comment" }
     ],
     [
-      { "target": "field", "op": "add", "group": "/Subscription", "name": "Plz", "kind": "STRING" },
-      { "target": "field", "op": "modify", "group": "/Subscription", "name": "Plz", "kind": "STRING",
-        "string": { "pattern": "[0-9]{5}", "patternMessage": "five digits" } }
+      { "target": "field", "op": "add", "group": "/Subscription", "name": "Plz", "kind": "STRING",
+        "string": { "pattern": "[0-9]{5}", "patternMessage": "five digits" } },
+      { "target": "field", "op": "add", "group": "/Subscription", "name": "Fee", "kind": "NUMBER",
+        "number": { "maxFractionalDigits": 0 } }
     ]
   ]
 }

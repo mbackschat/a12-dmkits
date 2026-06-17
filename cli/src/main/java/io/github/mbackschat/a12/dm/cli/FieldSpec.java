@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -26,6 +27,35 @@ final class FieldSpec {
 
     /** The parse result: the group to add into, and the fully-built field. */
     record Parsed(String group, ElementDraft.Field field) {
+    }
+
+    /** The locator keys every field spec carries — where the field lives. */
+    static final Set<String> LOCATOR_KEYS = Set.of("group", "name");
+
+    /**
+     * The type-selection keys: a {@code typedef} reference, or a {@code kind} plus its per-kind config
+     * block ({@code string}/{@code number}/{@code enum}/{@code custom} and the date/time families).
+     */
+    static final Set<String> TYPE_KEYS = Set.of("kind", "typedef",
+            "string", "number", "enum", "date", "time", "dateTime", "dateRange", "dateFragment", "custom");
+
+    /** The field-level metadata keys {@link #parse} reads (requiredness, labels, descriptions, flags). */
+    static final Set<String> METADATA_KEYS = Set.of("required", "label", "annotations",
+            "global", "transient", "internalDescription", "externalDescription", "helperText");
+
+    /** Every key a rich {@code field add} spec may carry (locator + type + metadata) — the apply FIELD_ADD op surface. */
+    static final Set<String> ADD_KEYS = union(LOCATOR_KEYS, TYPE_KEYS, METADATA_KEYS);
+
+    /** The keys a {@code field modify} op reads — locator + type only; field metadata is left untouched. */
+    static final Set<String> MODIFY_KEYS = union(LOCATOR_KEYS, TYPE_KEYS);
+
+    @SafeVarargs
+    private static Set<String> union(Set<String>... sets) {
+        Set<String> out = new java.util.HashSet<>();
+        for (Set<String> s : sets) {
+            out.addAll(s);
+        }
+        return Set.copyOf(out);
     }
 
     static Parsed parse(JsonNode spec) {

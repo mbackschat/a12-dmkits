@@ -58,9 +58,8 @@ final class ApplyCommand extends BaseCommand {
      * the valid-key set can never drift from the dispatch (the brittleness of parallel string lists is gone).
      */
     private enum Op {
-        FIELD_ADD("field", "add", Set.of("group", "name", "kind", "typedef")),
-        FIELD_MODIFY("field", "modify", Set.of("group", "name", "kind", "typedef",
-                "string", "number", "enum", "date", "time", "dateTime", "dateRange", "dateFragment", "custom")),
+        FIELD_ADD("field", "add", FieldSpec.ADD_KEYS),
+        FIELD_MODIFY("field", "modify", FieldSpec.MODIFY_KEYS),
         FIELD_REMOVE("field", "remove", Set.of("fieldPathInModel")),
         GROUP_ADD("group", "add", Set.of("parent", "name", "repeatable")),
         GROUP_REMOVE("group", "remove", Set.of("groupPathInModel")),
@@ -218,11 +217,15 @@ final class ApplyCommand extends BaseCommand {
         ObjectNode changed = MAPPER.createObjectNode();
         return switch (which) {
             case FIELD_ADD -> {
-                String group = req(op, "group");
-                String field = req(op, "name");
-                session.addField(group, field, FieldKind.valueOf(req(op, "kind")));
-                changed.put("added", group + "/" + field);
-                changed.put("kind", req(op, "kind"));
+                // the same rich <spec> the standalone `field add` takes — kind + per-kind config + field
+                // metadata, single-sourced through FieldSpec.parse (a bare {group,name,kind} stays the
+                // simple case). So a constrained-field bulk add is one atomic gated write (G8), no
+                // add-then-modify dance.
+                FieldSpec.Parsed parsed = FieldSpec.parse(op);
+                String path = parsed.group() + "/" + parsed.field().name();
+                session.addField(parsed.group(), parsed.field());
+                changed.put("added", path);
+                changed.put("kind", op.hasNonNull("typedef") ? "TypeDefType" : op.path("kind").asText());
                 yield staged(which, changed, session);
             }
             case FIELD_MODIFY -> {
