@@ -1,96 +1,61 @@
-# dmkits — BA-workflow gaps (open proposals)
+# dmkits — BA-workflow gaps
 
-> **What this is.** In practice dmkits (rulekit + modelkit + `dmtool`) is driven by a **business analyst working through an LLM agent**: the BA holds a requirement in business terms ("delivery can't precede the order date"), and the agent turns it into a rule or computation via `dmtool`. This doc is the **open backlog for that BA+agent loop** — ergonomic capabilities that would make the loop faster or safer — surfaced by a 2026-06-14 review against the kernel team's BA reference (`a12-kernel/documentation/_merged/kernel-ba.md`). Every item here is **proposed, not built**.
+> **What this is.** dmkits (rulekit + modelkit + `dmtool`) is driven by a **business analyst working through an LLM agent**: the BA holds a requirement in business terms ("delivery can't precede the order date"), the agent turns it into a rule or computation via `dmtool`. This doc tracks **ergonomic gaps in that BA+agent loop**.
 >
-> **What was here before.** This file used to hold the *structural* authoring-coverage inventory (field config, field/element metadata, group templates, refactors, …). **That backlog is closed — every one of those capabilities shipped**, and each is documented where it is contracted and tested: the [status board](API-STATUS.md) (the single source of truth for what's built), [`CLI-SPEC.md`](CLI-SPEC.md) (verb/gate contracts), and [`KERNEL-FINDINGS.md`](KERNEL-FINDINGS.md) (kernel facts). Code comments that cite `FEATURE-GAPS §3.x` / `§2` name those now-shipped features — find each on the status board (it carries the same capabilities by name).
+> **Status (re-verified 2026-06-17): the 2026-06-14 review's gaps G1–G7 have all shipped** — like the *structural* authoring-coverage inventory that preceded them (also long closed). Each is now contracted + test-locked where it lives: the [status board](API-STATUS.md) (the single source of truth for what's built), [`CLI-SPEC.md`](CLI-SPEC.md) (verb/gate contracts), [`KERNEL-FINDINGS.md`](KERNEL-FINDINGS.md) (kernel facts), or the operator catalog. **Code comments citing `FEATURE-GAPS §N` / `Gn` resolve via the graduation table (§2).** Only **two thin residuals** remain open (§3). A fresh set of CLI-improvement candidates surfaced by the OQ1 probe is queued for triage (§4).
 
 ---
 
 ## 1. The loop we're improving
 
-A BA does not write DSL. The kernel BA doc frames the BA's job as mapping business requirements onto rules that **describe the violation** (not the requirement), each carrying a **rule group**, an **error field**, an **error text**, and a **severity** — plus **computation tables** (mutually-exclusive preconditions → calculations). Its recurring pitfalls — *polarity* (the rule is the error scenario), *"no generic negation"* (use the paired predicate), *error-field placement*, *computation-table exclusivity* — are exactly where an agent stumbles.
+A BA does not write DSL. The kernel BA doc frames the job as mapping a business requirement onto a rule that **describes the violation** (not the requirement), carrying a **rule group**, an **error field**, an **error text**, and a **severity** — plus **computation tables** (mutually-exclusive preconditions → calculations). Its recurring pitfalls — *polarity* (the rule is the error scenario), *"no generic negation"* (use the paired predicate), *error-field placement*, *computation-table exclusivity* — are where an agent stumbles.
 
-dmkits already serves the **correctness** axis well, and these strengths are the baseline the gaps below build on:
-
-- `schema rule add` **teaches polarity inline** (its `condition` field: *"TRUE on a VIOLATION … to enforce a requirement write its violation"*; its `field` note: *"its parent group is the rule's iteration scope"*).
-- `rule test --doc` **confirms polarity by execution** — fired / passed / **suppressed** (it correctly distinguishes a rule the kernel skipped because a referenced field was formally invalid).
-- `RK_INVERTED_REQUIREDNESS` backstops the #1 trap; diagnostics are coded, located, and fix-carrying (`diagnostics <CODE>` explains any of them).
-
-The gaps below are the **ergonomic** remainder — what still slows or risks the loop.
+dmkits serves the **correctness** axis well, and these strengths are the baseline:
+- `schema rule add` **teaches polarity inline** ("TRUE on a VIOLATION … to enforce a requirement write its violation").
+- `rule test --doc` / `model eval --doc` **confirm polarity by execution** (fired / passed / suppressed) and now also return the **interpolated end-user message** (G1).
+- `RK_INVERTED_REQUIREDNESS` backstops the #1 trap; diagnostics are coded, located, fix-carrying (`diagnostics <CODE>`).
 
 ---
 
-## 2. The gaps
+## 2. Graduated since the 2026-06-14 review (verified shipped 2026-06-17)
 
-Each gap: the BA need → what's missing today → the proposal. Ordered by value. The `Gn` label maps to the 2026-06-14 review item.
+Each `Gn` below is **built, contracted, and test-locked**. The "verified" column is the live check run on 2026-06-17.
 
-### G1 — Preview the resolved end-user message  *(small)*
+| gap | capability | shipped as | verified |
+|---|---|---|---|
+| **G1** | preview the resolved end-user message | `model eval --doc` returns the **interpolated** message per fired rule (`$Field.value$` → the value) — closes the loop on the BA's real deliverable | `model eval` → `data.messages[].message` interpolated. **Caveat → R3:** `model eval` is a runtime-eval verb (Groovy), **hidden on the native binary** — so this is a JVM-dev affordance, not on the shipped CLI |
+| **G2** | common validation-pattern templates | **`dmtool patterns`** — named rule idioms (`date-order`, `mutually-exclusive`, `at-least-one-of`, `required-when`, `sum-of-line-items`) + `--apply` (correct polarity + a valid error field baked in) | `patterns` = 5 idioms, all `kind:rule` (**→ R1**) |
+| **G3** | negation / opposite discoverability | operator-catalog **`opposite`**, rendered by `operators <id>` — "express the inverse" is one hop | 30 entries carry `opposite`; rendered as a top-level key |
+| **G4** | proactive error-field guidance | **`rule check --suggest-error-field`** lists the valid error-field candidates (the condition's referenced fields in scope) — cuts the `MVK_ERROR_FIELD_NOT_REFERENCED` reject→fix round-trip | the flag is live in `rule check --help` |
+| **G5** | computation author-time lints | **`computation add`** emits `RK_COMPUTATION_FORBIDDEN_CONSTRUCT` (CustomCondition / RepetitionNotUnique in a precondition) and `RK_COMPUTATION_OVERLAPPING_PRECONDITIONS` *before* the kernel round-trip | both codes in `ComputationAddCommand` |
+| **G6** | edit a field's config in place | **`field modify <spec>`** re-types/constrains a field (e.g. give a STRING a `pattern`) — no destructive delete+recreate | `field modify` in the manifest; CLI-SPEC §5 (G6) |
+| **G7** | bridge field-config constraints ↔ rule operators | operator-catalog **`seeAlso`** (single-sourced, factual, neutral), rendered by `operators <id>` | mechanism shipped + rendered, but coverage is **NUMBER value-bounds only** (**→ R2**) |
 
-- **BA need.** The BA's actual deliverable is the **error text the end-user reads**. With message interpolation (`$Field$`, `$#Group$`, `$Field.value$`) they cannot tell what it renders to.
-- **Today.** `rule test --doc` returns `{rule, fired, verdict}` — **no message text**; neither `rule test` nor `model eval` interpolates the message.
-- **Proposal.** Have `rule test` / `model eval` return the **interpolated message** for each fired rule (`data.message`), resolved against the supplied `--doc`. Turns "did it fire" into "here is exactly what the user will read" — closing the loop on the BA's real output.
-
-### G2 — Common validation-pattern templates  *(medium–large; highest leverage)*
-
-- **BA need.** The BA doc is organized around *typical* validation tasks — required-when, date-order, mutually-exclusive, at-least-one-of, sum-of-line-items. The agent re-derives each from scratch, re-risking polarity and error-field choice every time.
-- **Status — largely shipped (reconcile to the status board).** The parameterized **`dmtool patterns`** catalog now exists with named rule idioms + params (`date-order`, `mutually-exclusive`, `at-least-one-of`, `required-when`, `sum-of-line-items`) and an `--apply` authoring path that bakes in correct polarity + a valid error field. *Remaining backlog*: extend beyond `kind:rule` (computation idioms; field-constraint idioms) — and G7 connects the *field-config* constraint vocabulary to the operator side, which the rule-only catalog doesn't cover. The original "no catalog exists" claim is obsolete; the verb attacks the polarity trap structurally, as planned.
-
-### G3 — Negation / opposite discoverability  *(small)*
-
-- **BA need.** The doc's core model is "**no generic negation** — use the paired predicate." An agent sitting on `AllFieldsFilled` needs the pointer to `NotAllFieldsFilled` / `NoFieldFilled`.
-- **Today.** `operators <id>` gives a `meaning` but **no pairing** (`opposite` / `family` / `seeAlso`).
-- **Proposal.** Add an **`opposite` / `family`** field to the operator catalog (`OperatorCatalog` / `operators.json`) linking each predicate to its negative/positive partner(s). "Express the inverse" becomes one hop — directly serving the doc's central negation model.
-
-### G4 — Proactive error-field guidance  *(small–medium)*
-
-- **BA need.** The error field must be **referenced** in the condition AND lie inside **every repeatably-referenced group** — a top rejection class, learned today only by getting rejected.
-- **Today.** `schema rule add` teaches polarity + iteration-scope, but not the full error-field law; a bad choice surfaces as `MVK_ERROR_FIELD_NOT_REFERENCED` *after* the kernel round-trip.
-- **Proposal.** `rule check --suggest-error-field` (or enrich that reject diagnostic) to list the **valid error-field candidates** from the condition's referenced fields — already computed by `rule deps` / the adapter's `referencedFields`. Cuts the reject→fix round-trip.
-
-### G5 — Computation author-time lints  *(medium)*
-
-- **BA need.** The doc mandates **mutually-exclusive** preconditions and **forbids** `CustomCondition` / `RepetitionNotUnique` in computations.
-- **Today.** These surface only as kernel rejects at `computation add`.
-- **Proposal.** A proactive lint in `computation add`: warn on (a) overlapping / non-exclusive preconditions and (b) the forbidden constructs (the latter trivial via the AST) — a corrective `RK_*` *before* the kernel round-trip.
-
-### G6 — Edit an existing field's config without delete + re-create  *(✅ shipped 2026-06-16 — `field modify`, CLI-SPEC §5; surfaced by a real agent session)*
-
-- **BA need.** "Change the postal-code field to enforce a 5-digit pattern" — i.e. *edit an existing field's type spec* (add/change a `pattern`, `fractionDigits`, length bounds, …).
-- **Today.** `field` has add / read / remove / rename / move but **no config-edit**; `config modify` is document-level only. So the only path is **delete the field and re-create it** with a rich spec. A real agent session did exactly this ("No field edit — I'll re-create PLZ"), and because delete-then-recreate isn't atomic, a failure mid-sequence left the model in an uncertain state (the field gone, the re-add not landed).
-- **Proposal.** A `field modify <spec.json>` (or `field config`) that edits a field's type spec in place — the CLI peer of the library's typed per-type field config (the DG1 `GroupEditor` builders). Removes the destructive workaround and the non-atomic-state trap.
-
-### G7 — Bridge field-config constraints ↔ rule operators with a factual `seeAlso`  *(✅ shipped 2026-06-16 — operator-catalog `seeAlso` + field-schema notes, neutral; STRING/NUMBER/ENUM ops bridged, others extendable)*
-
-- **Need.** "Constrain a value" almost always has **two** expressions — a **field-config** constraint (intrinsic to the field) *or* a **rule** using the matching operator — and this is **general across field types**, not a STRING/pattern special case:
-  - **STRING** `pattern` ↔ `PatternViolated`/`PatternMatched`; `min/maxLength` ↔ `Length`.
-  - **NUMBER** value bounds ↔ `LessThan`/`GreaterThan`/`Equal`, `DiffersWithToleranceRange*` (decimal **scale/fractionDigits** is config-only — no operator twin).
-  - **ENUM** the allowed value set ↔ `FieldValueIncludedInValueList` family / `EnumCategory` (the cleanest second instance).
-  - **DATE/TIME/DATETIME** little intrinsic config (mostly `precision`); the constraints are *relational* → comparisons + `DifferenceIn…`/`…FromDate` operators (**rule-dominant** here).
-  - **CUSTOM / TYPEDEF** constraints are **indirected** — defined by the custom type / the referenced typedef.
-- **Today.** Each mechanism is discoverable *separately* (`schema field add` shows the per-type config; `operators <id>` self-describes the operator incl. regex dialect/anchoring/gotchas) but **nothing connects them**, so an agent must already know to look in both places ("How to learn about string pattern?").
-- **Proposal — neutral, not opinionated.** Add a **type-aware, partial, bidirectional `seeAlso`** between field-config constraints and operators: `operators <id>` → the related field-config constraint(s); `schema field add`'s per-type knobs → the related operator(s); single-sourced so both directions derive from one map. It states *what relates and what's available* — including an **honest "none" / "see typedef X" / "see custom type Y"**, which is real signal (e.g. "decimal scale has no rule twin"; "this temporal constraint is rule-only"). **Which mechanism to choose is NOT the tool's call** — the per-type variety (config-rich for STRING/NUMBER/ENUM, rule-dominant for dates, indirected for custom/typedef) means a generic default would be wrong as often as right. Modeling judgment stays **skill territory**, where a real modeler can weigh it (the skill is exactly the expert-authored-judgment mechanism; the tool stays factual). Composes with G3's operator-catalog relations (`opposite`/`family`).
+When a residual or a §4 candidate ships, it graduates the same way — a status-board row + (for a CLI verb) a CLI-SPEC contract, with its own test lock.
 
 ---
 
-## 3. Sequencing
+## 3. Open residuals
 
-- **First, the cheap high-value pair:** **G1** (close the loop on the BA's deliverable) and **G3** (serve the doc's negation model) — both small.
-- **Then the lever:** **G2** — the biggest BA-efficiency win and the most BA-shaped feature still missing.
-- **Then the round-trip-savers:** **G4**, **G5**.
-- **G6** (field-config edit) is the highest-value of the agent-surfaced pair — it removes a destructive workaround; **G7** (the factual constraint↔operator `seeAlso`) is the neutral discoverability bridge and composes with G3's operator relations.
-
-When one ships it graduates into the **shipped** record — a row on the [status board](API-STATUS.md) and, for a CLI verb, a [`CLI-SPEC.md`](CLI-SPEC.md) contract — with its own test lock, exactly as the former structural inventory did.
+- **R1 (was G2) — pattern idioms beyond `kind:rule`.** `patterns` ships 5 *rule* idioms. Not covered: **computation idioms** (mutually-exclusive precondition tables — the BA doc's other half) and **field-constraint idioms**. *(medium)*
+- **R2 (was G7) — extend the `seeAlso` constraint↔operator bridge.** The mechanism ships and renders, but only the **7 NUMBER comparison ops** carry a `seeAlso` (→ `number.min/max` field config). Still unbridged: **STRING** (`pattern` ↔ `PatternMatched`/`PatternViolated`; `min/maxLength` ↔ `Length`), **ENUM** (value set ↔ `FieldValueIncludedInValueList` / `EnumCategory`), and the **date-relational** families. Extend the single-sourced map (and keep the honest "none / see typedef" entries). *(small, incremental)*
+- **R3 (from G1) — a message preview on the shipped *native* CLI.** G1's interpolated-message preview rides `model eval`, a runtime-eval verb that is **Groovy-only → hidden on the native binary** ([`NATIVE-IMAGE-GRAALVM.md`](NATIVE-IMAGE-GRAALVM.md) §4). So on the shipped artifact the BA cannot preview the rendered message. Either accept it as a JVM-dev affordance, or find a native-capable render path (structural message interpolation without the runtime). *(open question — not obviously worth building)*
 
 ---
 
-## 4. Adjacent but out of scope
+## 4. Next: CLI-improvement candidates from the OQ1 probe (to triage)
 
-- **`dmtool serve` (warm-kernel daemon / stdin REPL) — won't build (decided 2026-06-15).** A long-running process the agent streams ops to, with a warm kernel. Examined in detail and **rejected**; the case collapsed once the premise was checked. Don't re-litigate without new evidence against the assumptions below.
-  - **Why the premise is dead.** "Seconds, not git-ms" was the *JVM* path (~600 ms+). The shipped CLI is the **native binary at ~37 ms** ([`NATIVE-IMAGE-GRAALVM.md`](NATIVE-IMAGE-GRAALVM.md) §6) — and a "warm process" exists only to amortize JVM startup + JIT + kernel static init, **none of which native has to amortize.** A stateless warm-process serve over the native binary buys ≈ nothing.
-  - **The cheap tier doesn't fix the loop's real cost.** A stateless serve (re-passes `-m` per op, like `batch`) re-pays the per-model bootstrap (deserialize + expand + MVK service build) every op — so the thing a tight try→check→adjust loop most wants gone is *not* removed. Only a **stateful warm-model** serve removes it, and that drags in the full cache-coherence problem: an external app (A12 Tools, `git checkout`, a human editor) changes the model file mid-session, so it needs staleness detection over the **whole resolved file set** (root + includes + typedef imports, not just `-m`), a `reload` verb that **refuses on conflict** (in-memory edits × on-disk change) rather than silently clobbering, and an optimistic **compare-and-swap on `commit`** (refuse `RK_STALE_WRITE` when the file changed since `open`). That is the bulk of the ~1–2 week build and the part most able to corrupt work silently.
-  - **`batch`/`apply` already occupy the space.** [`CLI-SPEC.md`](CLI-SPEC.md) §7: `batch` amortizes warm-up across a known op-list; `apply` keeps a warm in-memory model across an ordered transaction with one terminal gate + atomic rollback. Those are the two legitimate "warm" scenarios, already purpose-built.
-  - **It fights the agent-facing thesis.** The CLI is deliberately a **self-explaining, stateless** surface (each verb = `{target, op, args}` in, one envelope out — the *Self-explaining surface* standing requirement). serve adds session handles, lifecycle, reload/conflict semantics, stale-write gates — a second, *stateful* mental model that makes the agent's reasoning **harder** to save milliseconds it isn't spending. The skill must stay simple; serve cuts against that.
-  - **Assumptions this rests on (revisit only if one breaks):** (1) the shipped CLI stays the **native** binary at ~tens of ms cold start; (2) the per-model load (deserialize + expand + MVK build) is **fast** relative to a human/agent author step — *not separately measured*, but the verdict holds either way: if load were slow it would argue for the warm-*model* tier, which the reload/coherence cost makes too expensive anyway. (3) `batch`/`apply` continue to cover the known-op-list and one-model-transaction cases.
-  - **The one narrow exception, conditional and future.** The JVM-only runtime-eval verbs (`model eval` / `rule test` / `model compute`) *do* pay real Groovy-codegen warm-up every call, can't be native, and aren't shipped in v1. *If* they ever ship as a JVM artifact *and* an agent runs them in a tight **interactive** loop (where `batch`'s known-list amortization doesn't apply), a warm process becomes the only way to make them fast. Re-open only under those conditions.
-- **Whole-model NL summary.** "Explain every rule in business terms" for a BA inheriting a model — composable today by looping `rule explain`; a `model explain` convenience is minor.
-- **Model-version migration.** Bumping a model to a newer kernel format is a distinct concern with its own existing tool (`kernel-md-cli` → `MigratorCli`). dmkits authors and edits; it deliberately never bumps a model's version on write. Not an authoring feature.
+The OQ1 code-mode-vs-CLI probe ([`archived/OQ1-INVESTIGATION.md`](archived/OQ1-INVESTIGATION.md) §5) surfaced a fresh set of CLI improvements — grounded in what agents had to *script around*. They are **candidates, not yet adopted**; triage them into this backlog (or reject) in the upcoming discussion. In brief: let `apply`/`batch` field ops take the rich per-kind spec; a model-wide usage/audit read (replacing the `where-used`×N loop); a positional entity for `where-used`; and a workspace-wide refactor. (R2/R3 above also originate partly from that probe's findings.)
+
+---
+
+## 5. Adjacent but out of scope
+
+- **`dmtool serve` (warm-kernel daemon / stdin REPL) — won't build (decided 2026-06-15).** Examined and **rejected**; the premise collapsed once checked. Don't re-litigate without new evidence against these assumptions:
+  - **The premise is dead.** "Seconds, not ms" was the *JVM* path (~600 ms+). The shipped CLI is the **native binary at ~37 ms** ([`NATIVE-IMAGE-GRAALVM.md`](NATIVE-IMAGE-GRAALVM.md) §6) — a warm process exists only to amortize JVM startup + JIT + kernel static init, none of which native pays.
+  - **The cheap tier doesn't fix the real cost.** A stateless serve (re-passes `-m` per op, like `batch`) re-pays the per-model bootstrap every op. Only a **stateful warm-model** serve removes it — and that drags in the whole cache-coherence problem (staleness over the resolved file set, a `reload` that refuses on conflict, compare-and-swap on commit), the bulk of a ~1–2 week build and the part most able to corrupt work silently.
+  - **`batch`/`apply` already occupy the space** ([`CLI-SPEC.md`](CLI-SPEC.md) §7): `batch` amortizes warm-up over a known op-list; `apply` keeps a warm in-memory model across an ordered transaction with one terminal gate + atomic rollback.
+  - **It fights the agent-facing thesis** — the CLI is deliberately a self-explaining, **stateless** surface; serve adds session/lifecycle/reload/stale-write semantics, a second mental model that makes agent reasoning harder.
+  - **The one narrow, future exception:** the JVM-only runtime-eval verbs (`model eval`/`rule test`/`model compute`) *do* pay Groovy-codegen warm-up every call. *If* they ever ship as a JVM artifact *and* an agent runs them in a tight interactive loop, a warm process becomes the only way to make them fast. Re-open only then.
+- **Whole-model NL summary** ("explain every rule in business terms") — composable today by looping `rule explain`; a `model explain` convenience is minor.
+- **Model-version migration** — a distinct concern with its own tool (`kernel-md-cli` → `MigratorCli`). dmkits authors/edits; it deliberately never bumps a model's version on write.
