@@ -14,6 +14,23 @@ import io.github.mbackschat.a12.dm.core.ValueKind;
  * handle-method chain. Every factory takes <em>model-resolved handles</em> ({@link FieldRef},
  * {@link StringRef}, …), never string paths: model-awareness stays mandatory (§5a) because handles
  * only come from {@link BoundModel}. Grows with the operator catalog.
+ *
+ * <p><b>This file is intentionally a long, flat facade</b> — one delegating factory per operator, not a
+ * candidate for splitting (a single static import is the whole point; see ARCHITECTURE §2). Read it by
+ * section; the sections, in file order, are:
+ * <ol>
+ *   <li>presence &amp; pattern — {@code fieldFilled}, {@code patternMatched}, {@code length}</li>
+ *   <li>filled-count aggregates — {@code numberOfFilledFields}, {@code sum}, {@code maxValue}, rounding-of-field</li>
+ *   <li>operand-list math &amp; rounding — {@code abs}, {@code min}/{@code max}, {@code roundDown}/{@code roundUp}</li>
+ *   <li>date/time family — {@code today}, {@code dateValue}, differences, extractions, constructions, shifts</li>
+ *   <li>string/number coercions — {@code text}, {@code fieldValueAsString}, {@code rangeAsNumber}, {@code customCondition}</li>
+ *   <li>repetition &amp; value-in-field counts — {@code currentRepetition}, {@code numberOfValueInFields}</li>
+ *   <li>field-list &amp; value-list quantifiers — {@code atLeastOneFieldValueIncludedInValueList}, {@code dateRangesOverlap}</li>
+ *   <li>field-list fill quantifiers — {@code allFieldsFilled}, {@code noFieldFilled}, … (varargs, list, and {@code Group*} scopes)</li>
+ *   <li>localized message tokens (F2a) — {@code en}/{@code de}/{@code text}, {@code fieldValue}, {@code fieldLabel}, {@code repetitionIndex}</li>
+ *   <li>n-ary composition — {@code allOf}/{@code anyOf}</li>
+ *   <li>group predicates — {@code groupFilled}, {@code allGroupsFilled}, …</li>
+ * </ol>
  */
 public final class Dsl {
 

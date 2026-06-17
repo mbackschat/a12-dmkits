@@ -89,7 +89,7 @@ Eight packages, strictly acyclic (verified by import sweep). Bottom = no rulekit
                    │          └──────┬───────┘         │
                    │                 │                 │
             ┌──────┴─────────────────┴─────────────────┴───────┐
-   heart    │   dsl  (59 files) — typed AST + handles + renderer │
+   heart    │   dsl  (~105 files) — typed AST + handles + renderer│
             │   Condition/Calculation, BoundModel, DslRenderer,  │
             │   Rule/Computation builders, RenderedDiff (F8)      │
             └──────┬───────────────────────────────┬────────────┘
@@ -123,6 +123,8 @@ Exact edges (each package → the rulekit packages it imports):
 | `write` | `dsl` | the F6 DM-JSON write path (Jackson tree surgery), the only shipped write surface (D9) |
 
 `dsl` is the hub; `lint`/`context`/`write` are independent consumers of it (no edges between them). `catalog` and `model` never depend on anything rulekit, so the spine and the index are reusable foundations.
+
+**Why `dsl` is one flat package of ~105 files (and stays that way).** It is *not* an oversight, and it should not be split into sub-packages. The package is the typed AST, and its spine is **sealed**: `Condition` and `Calculation` are `sealed interface`s with ~40 permitted subtypes each, plus the sealed operand hierarchy (`FieldOperand`, `TemporalOperand`, `DateOperand`, …). The project has **no `module-info.java`**, so every type compiles into the *unnamed module* — and the JLS requires every permitted subclass of a sealed type to live in the **same package** as its sealed parent when they share the unnamed module. Moving, say, `ComparisonCondition` into a `dsl.conditions` sub-package therefore would not compile. The only ways to sub-package it are to (a) introduce a `module-info.java` (a heavy, risky change given the kernel / Groovy / GraalVM-native interplay, for no real navigability win) or (b) drop `sealed` (which forfeits the exhaustive-`switch` guarantee the renderer and visitors rely on — a core design value, proposal §18.5). Neither trade is worth it. The package is *already* one class per file, so the flatness costs little: navigate by filename (the AST nodes are named after the operators they model). The one genuinely large file in it, the `Dsl` static-import facade, carries a section index at the top — it is a flat list of delegating factories by design (the jOOQ-style single static import, proposal §10), not a candidate for splitting.
 
 **`dm.modelkit` (folded in 2026-06-09) is a *sibling* of this rulekit stack, not part of it** — it sits over the same `dm.core`/`model` foundation and must not import any `dm.rulekit` package (nor rulekit it; `SiblingBoundaryTest` sweeps both directions). Its DSL-free write primitive `DmJson` **moved down to `dm.core` (2026-06-10, M8)** — both kits now share it. modelkit reads + edits an existing model (`ModelDocument`: read structure, round-trip, add/modify/delete fields+groups, re-bound to the kernel gate), beyond build-from-scratch.
 
