@@ -221,6 +221,10 @@ KERNEL-SEMANTICS §6 notes the shifts "disagree across leap years"; the drained 
 
 *(Locked: `adapter.laws.DateRangeOverlapLawsTest`.)*
 
+### §6 supplement — partially-known-date extraction gating + the *FromDate date-time source (source + probe, 2026-06-17)
+
+`DayFromDate`/`MonthFromDate`/`YearFromDate`/`QuarterFromDate` (and `AddDays`) accept a **DateTime** source, not only a Date (kernel date table: "X can be Date or DateTime") — `DifferenceInDays`/`AddYears`/`AddMonths` stay Date-only. On a **partially-known date** (a `DateType` carrying a `datePrecision` other than FULL): **`DayFromDate` is rejected outright** — `MVK_INVALID_DATE_TYPE` (probed on a DAY_OPTIONAL field; distinct from `ValueAsDate`'s `MVK_INVALID_DATE_TYPE_FOR_OP`) — while `MonthFromDate`/`YearFromDate`/`QuarterFromDate` are **accepted on a DAY_OPTIONAL** date (probed). The finer precision gradient (BA L4123-4125: Month only DAY_OPTIONAL; Year DAY/MONTH_OPTIONAL; Quarter only DAY_OPTIONAL) is BA-stated and awaits a MONTH/YEAR_OPTIONAL fixture to lock. *(Locked: `validate.laws.DateExtractionLawsTest`.)*
+
 ### §6 supplement — TIME and DATE_TIME value kinds (implemented 2026-06-07)
 
 **`TIME` is orderable exactly like `DATE`** (no scale, no D13 machinery): `[ServiceWindowStart] >= [ServiceWindowEnd]` is kernel-valid (a time field vs another time field). Modeled as `TimeRef`/`TimeOperand`/`TimeExpr`, obtained from `BoundModel.time(path)`; the same six order operators as dates. Time constant literals (`"17:00:00"`) are implemented (family 1, see the §6 supplement above).

@@ -1123,6 +1123,7 @@
     "returns": "number",
     "meaning": "The day-of-month component of a date, as a number.",
     "constraints": [ "the operand is a date or date-time (a field or expression)" ],
+    "gotchas": [ { "text": "rejected on a partially-known date (a DateType with a date precision other than FULL, e.g. DAY_OPTIONAL) — MVK_INVALID_DATE_TYPE; resolve it to a concrete date with ValueAsDate first. (MonthFromDate/YearFromDate/QuarterFromDate ARE permitted on a DAY_OPTIONAL date.)", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And DayFromDate(OrderDate) > 28", "note": "fires for orders late in the month" },
     "sinceKernel": "30.8.x"
   },

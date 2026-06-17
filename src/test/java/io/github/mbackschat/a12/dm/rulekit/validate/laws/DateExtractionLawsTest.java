@@ -23,4 +23,19 @@ class DateExtractionLawsTest {
         KernelLaws.acceptsOrder("/Order", "../CompletedAt",
                 "AllFieldsFilled(ScheduledAt, CompletedAt) And [CompletedAt] > AddDays(ScheduledAt, 1)");
     }
+
+    @Test
+    void dayFromDateIsRejectedOnAPartiallyKnownDate() {
+        // ApproxDate is DAY_OPTIONAL (a partially-known date); DayFromDate is never usable on one.
+        KernelLaws.rejectsOrder("/Order", "../ApproxDate",
+                "FieldFilled(ApproxDate) And DayFromDate(ApproxDate) > 1", "MVK_INVALID_DATE_TYPE");
+    }
+
+    @Test
+    void monthYearQuarterFromDateAcceptADayOptionalDate() {
+        for (String c : new String[]{"MonthFromDate(ApproxDate) == 1", "YearFromDate(ApproxDate) > 2020",
+                "QuarterFromDate(ApproxDate) == 1"}) {
+            KernelLaws.acceptsOrder("/Order", "../ApproxDate", "FieldFilled(ApproxDate) And " + c);
+        }
+    }
 }
