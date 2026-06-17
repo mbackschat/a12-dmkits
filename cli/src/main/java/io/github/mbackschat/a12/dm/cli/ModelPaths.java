@@ -19,12 +19,12 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
  *
  * <p>Each method returns {@code null} when the path resolves, or an actionable error string when it doesn't.
  */
-final class ModelPaths {
+public final class ModelPaths {
 
     private ModelPaths() {
     }
 
-    static String fieldProblem(BoundModel model, String path) {
+    public static String fieldProblem(BoundModel model, String path) {
         return model.fieldAt(path).isPresent() ? null : problem(path, "field", "/Group/Field");
     }
 
@@ -37,7 +37,7 @@ final class ModelPaths {
      * if its full path or its short name appears as a word in the condition. Returns {@code null} when the
      * condition names no model field (no confident suggestion to make).
      */
-    static String suggestField(BoundModel model, String condition) {
+    public static String suggestField(BoundModel model, String condition) {
         if (condition == null || condition.isBlank()) {
             return null;
         }
@@ -64,12 +64,12 @@ final class ModelPaths {
                 .matcher(condition).find();
     }
 
-    static String groupProblem(BoundModel model, String path) {
+    public static String groupProblem(BoundModel model, String path) {
         boolean resolves = model.groups().anyMatch(g -> g.path().equals(path));
         return resolves ? null : problem(path, "group", "/Group");
     }
 
-    static String ruleProblem(Set<String> ruleFullNames, String path) {
+    public static String ruleProblem(Set<String> ruleFullNames, String path) {
         return ruleProblem(ruleFullNames, Set.of(), path);
     }
 
@@ -78,7 +78,7 @@ final class ModelPaths {
      * field, not a validation rule) the error says so and points at the computation-aware verbs, instead
      * of the misleading "not a rule" — computations are a distinct element kind.
      */
-    static String ruleProblem(Set<String> ruleFullNames, Set<String> computationFullNames, String path) {
+    public static String ruleProblem(Set<String> ruleFullNames, Set<String> computationFullNames, String path) {
         if (ruleFullNames.contains(path)) {
             return null;
         }

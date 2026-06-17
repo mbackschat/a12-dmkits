@@ -27,7 +27,7 @@ import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
  * result into its session and defers to the one terminal gate. This type does the gate-and-edit, nothing
  * else.
  */
-final class StructureRefactor {
+public final class StructureRefactor {
 
     private final String target;
     private final String op;
@@ -69,12 +69,12 @@ final class StructureRefactor {
         return source;
     }
 
-    String newPath() {
+    public String newPath() {
         return newPath;
     }
 
     /** The first failing precondition against THIS model state, or empty when the refactor is safe. */
-    Optional<Refusal> firstFailure(ModelDocument doc, KernelAdapter adapter) {
+    public Optional<Refusal> firstFailure(ModelDocument doc, KernelAdapter adapter) {
         return gate.apply(doc, adapter).firstFailure();
     }
 
@@ -87,7 +87,7 @@ final class StructureRefactor {
      * Rewrite every reference (if any) then apply the node change, on a fresh document parsed from
      * {@code modelJson}. The result is NOT validated — the caller owns the kernel gate.
      */
-    ModelDocument rewriteAndMutate(String modelJson) {
+    public ModelDocument rewriteAndMutate(String modelJson) {
         String rewritten = entityMoves.isEmpty() ? modelJson
                 : ReferenceRewriter.rewriteReferences(modelJson, entityMoves);
         ModelDocument doc = ModelDocument.read(rewritten);
@@ -97,7 +97,7 @@ final class StructureRefactor {
 
     // --- factories: one per refactor op, each single-sourcing its gate + entity-moves + node change ----
 
-    static StructureRefactor fieldRename(String fieldPath, String newName) {
+    public static StructureRefactor fieldRename(String fieldPath, String newName) {
         String to = renamePath(fieldPath, newName);
         return new StructureRefactor("field", "rename", "renamed", fieldPath, to, Map.of(fieldPath, to),
                 (doc, adapter) -> new SafetyGate()
@@ -107,7 +107,7 @@ final class StructureRefactor {
                 (adapter, doc) -> singleReferrers(adapter, fieldPath));
     }
 
-    static StructureRefactor groupRename(String groupPath, String newName) {
+    public static StructureRefactor groupRename(String groupPath, String newName) {
         String to = renamePath(groupPath, newName);
         return new StructureRefactor("group", "rename", "renamed", groupPath, to, Map.of(groupPath, to),
                 (doc, adapter) -> new SafetyGate()
@@ -117,7 +117,7 @@ final class StructureRefactor {
                 (adapter, doc) -> subtreeReferrers(adapter, doc, groupPath));
     }
 
-    static StructureRefactor fieldMove(String fieldPath, String newParent) {
+    public static StructureRefactor fieldMove(String fieldPath, String newParent) {
         String to = movePath(newParent, fieldPath);
         return new StructureRefactor("field", "move", "moved", fieldPath, to, Map.of(fieldPath, to),
                 (doc, adapter) -> new SafetyGate()
@@ -128,7 +128,7 @@ final class StructureRefactor {
                 (adapter, doc) -> singleReferrers(adapter, fieldPath));
     }
 
-    static StructureRefactor groupMove(String groupPath, String newParent) {
+    public static StructureRefactor groupMove(String groupPath, String newParent) {
         String to = movePath(newParent, groupPath);
         return new StructureRefactor("group", "move", "moved", groupPath, to, Map.of(groupPath, to),
                 (doc, adapter) -> new SafetyGate()
@@ -140,7 +140,7 @@ final class StructureRefactor {
                 (adapter, doc) -> subtreeReferrers(adapter, doc, groupPath));
     }
 
-    static StructureRefactor ruleRename(String ruleFullName, String newName) {
+    public static StructureRefactor ruleRename(String ruleFullName, String newName) {
         String to = renamePath(ruleFullName, newName);
         // a rule is referenced by nothing, so there are no references to rewrite (entityMoves empty).
         return new StructureRefactor("rule", "rename", "renamed", ruleFullName, to, Map.of(),
@@ -151,7 +151,7 @@ final class StructureRefactor {
                 (adapter, doc) -> Set.of());
     }
 
-    static StructureRefactor typedefRename(String id, String newId) {
+    public static StructureRefactor typedefRename(String id, String newId) {
         // a typedef never appears in a condition; renameTypeDefinition repoints the using fields' ids in step.
         return new StructureRefactor("typedef", "rename", "renamed", id, newId, Map.of(),
                 (doc, adapter) -> new SafetyGate()

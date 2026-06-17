@@ -18,6 +18,15 @@ Gradle units (core + adapter) plus the CLI — the standalone front-end — and 
 
 **There is no separate *developer* deployment unit (N10).** A developer uses rulekit as a library inside their own project; Claude Code edits that project's source and the project's own compiler supplies the type-steering. The only standalone front-end is the **CLI**, for the modeller/BA who has no Java toolchain.
 
+**The CLI's internal layout (`:cli`), split 2026-06-17.** The command tree used to be one flat `dm.cli` package of 113 classes. It is now nine **verb-family sub-packages** — `cli.{rule,field,group,computation,typedef,include,workspace,model,config}` — over a root `cli` **hub**:
+
+| Layer | Holds |
+|---|---|
+| `cli` (root hub) | the picocli tree (`Cli`/`CliMain`/`RootCommand`), the shared command infrastructure (`BaseCommand`, `ResultEnvelope`, `Refusal`, `SafetyGate`/`SafetyChecks`/`SafetyCheck`, `StructureRefactor`/`StructureWrite`, `ModelPaths`/`DocInstance`/`LintBackstop`/`FormatVerbs`, the `WorkspaceOption` `-m` mixin, the `@ParamKind` taxonomy) and the **cross-cutting target-first verbs** that don't belong to one family (`add`/`modify`/`remove`/`read`/`apply`/`batch`/`export`/`explain`/`describe`/`manifest`/`schema`/`operators`/`diagnostics`/`patterns`/`where-used`/…) |
+| `cli.<family>` | one family's parent command + its subcommands + that family's spec (`FieldSpec`/`ComputationSpec`) |
+
+A family's parent and its subcommands sit together, so the **subcommands stay package-private**; only the **family roots + shared infra are `public`** (they're referenced across packages). Widening them is harmless: **`:cli` is a leaf application module that nothing depends on**, so the old package-private discipline guarded no external surface — splitting just makes the CLI's now-explicit internal API public. Unlike the sealed `dsl` package (§2 — *legally* forced flat), nothing forces the CLI flat; the families make it navigable. The mirroring `:cli` test sources moved into the same family sub-packages; the cross-cutting/conformance tests (manifest, schema, the conformance matrix, native hygiene) stay at the root.
+
 ### Subproject layering (today)
 
 How the Gradle units stack, what each depends on, and where the kernel coupling sits. Arrows = "depends on". Widening kernel coupling top-to-bottom.

@@ -16,7 +16,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * array of row objects, a non-repeatable group a nested object, a field its text value. One source so the
  * runtime verbs can't drift on the document shape.
  */
-final class DocInstance {
+public final class DocInstance {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -29,7 +29,7 @@ final class DocInstance {
      * @throws IOException if the file can't be read or isn't valid JSON
      * @throws IllegalArgumentException if there is no top-level {@code "fields"} object (nor a root object)
      */
-    static Map<String, Object> readFields(String docPath) throws IOException {
+    public static Map<String, Object> readFields(String docPath) throws IOException {
         JsonNode root = MAPPER.readTree(Files.readString(Path.of(docPath)));
         JsonNode fieldsNode = root.has("fields") ? root.get("fields") : root;
         if (!fieldsNode.isObject()) {

@@ -1,0 +1,79 @@
+package io.github.mbackschat.a12.dm.cli.rule;
+
+import io.github.mbackschat.a12.dm.cli.CliTestSupport;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+/**
+ * {@code rule check --suggest-error-field} (FEATURE-GAPS G4) — proactive error-field guidance. The error
+ * field must be REFERENCED by the condition and lie inside its iteration scope; getting it wrong is a top
+ * reject class ({@code MVK_ERROR_FIELD_NOT_REFERENCED}). The flag lists the valid candidates up front so an
+ * agent picks one before the round-trip, instead of learning by rejection. The fixture's {@code Addons} is a
+ * repeatable group with {@code Name} + {@code MonthlyFee}.
+ */
+class RuleCheckSuggestVerbTest {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    private static Path model(Path dir) throws IOException {
+        Path f = dir.resolve("m.dm.json");
+        Files.writeString(f, CliTestSupport.subscriptionJson());
+        return f;
+    }
+
+    @Test
+    void listsTheReferencedFieldAsACandidateForAValidRule(@TempDir Path dir) throws Exception {
+        var res = CliTestSupport.run("-m", model(dir).toString(), "rule", "check",
+                "--field", "/Subscription/Addons/MonthlyFee",
+                "--condition", "[MonthlyFee] > 1000", "--code", "FEE_CAP", "--suggest-error-field");
+        assertEquals(0, res.code(), res::err);
+        JsonNode data = MAPPER.readTree(res.out()).path("data");
+        assertEquals(List.of("/Subscription/Addons/MonthlyFee"), strings(data.path("candidates")), res::out);
+        assertTrue(data.path("fieldIsCandidate").asBoolean(), () -> "MonthlyFee is referenced → valid: " + res.out());
+    }
+
+    @Test
+    void aReferencedButUnchosenFieldStillSurfacesAsTheCorrectiveCandidate(@TempDir Path dir) throws Exception {
+        // Name is inside the iterated Addons group but the condition references only MonthlyFee, so Name is
+        // NOT a valid error field — the kernel would reject it. The suggestion names MonthlyFee, the fix.
+        var res = CliTestSupport.run("-m", model(dir).toString(), "rule", "check",
+                "--field", "/Subscription/Addons/Name",
+                "--condition", "[MonthlyFee] > 1000", "--code", "FEE_CAP", "--suggest-error-field");
+        JsonNode data = MAPPER.readTree(res.out()).path("data");
+        assertEquals(List.of("/Subscription/Addons/MonthlyFee"), strings(data.path("candidates")), res::out);
+        assertFalse(data.path("fieldIsCandidate").asBoolean(),
+                () -> "Name is not referenced by the condition → not a candidate: " + res.out());
+    }
+
+    @Test
+    void withoutTheFlagThereIsNoCandidateData(@TempDir Path dir) throws Exception {
+        // the flag is opt-in — a plain check must keep its existing shape (no data payload), no drift.
+        var res = CliTestSupport.run("-m", model(dir).toString(), "rule", "check",
+                "--field", "/Subscription/Addons/MonthlyFee",
+                "--condition", "[MonthlyFee] > 1000", "--code", "FEE_CAP");
+        assertEquals(0, res.code(), res::err);
+        assertTrue(MAPPER.readTree(res.out()).path("data").isMissingNode()
+                        || MAPPER.readTree(res.out()).path("data").isNull(),
+                () -> "no --suggest-error-field → no candidate data: " + res.out());
+    }
+
+    private static List<String> strings(JsonNode array) {
+        List<String> out = new ArrayList<>();
+        array.forEach(n -> out.add(n.asText()));
+        return out;
+    }
+}

@@ -15,7 +15,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
  * read envelope's {@code data}. The two verbs differ only in their target kind and which element-kind names
  * they accept; the canonical-text round-trip is identical, so it lives here (one source, no drift).
  */
-final class FormatVerbs {
+public final class FormatVerbs {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -26,7 +26,7 @@ final class FormatVerbs {
      * The read envelope for formatting {@code fullName}: the kernel's canonical text — in {@code lang}'s
      * keywords, or the model's own language when {@code lang} is {@code null} — under {@code data.canonical}.
      */
-    static ResultEnvelope envelope(String target, KernelAdapter adapter, String fullName, ConditionLanguage lang) {
+    public static ResultEnvelope envelope(String target, KernelAdapter adapter, String fullName, ConditionLanguage lang) {
         String canonical = lang == null
                 ? adapter.canonicalConditionText(fullName)
                 : adapter.canonicalConditionText(fullName, lang);

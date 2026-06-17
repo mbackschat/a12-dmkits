@@ -22,7 +22,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
  * rule/computation may not be removed (it would dangle the referrers) unless {@code --cascade}. Rename
  * does <em>not</em> use it — it rewrites references via {@code adapter.ReferenceRewriter} instead.
  */
-final class SafetyChecks {
+public final class SafetyChecks {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -33,7 +33,7 @@ final class SafetyChecks {
     }
 
     /** A multi-select group must be repeatable — refuse a non-repeatable {@code --max-rows} (&lt; 2). */
-    static SafetyCheck multiSelectMinRows(int maxRows) {
+    public static SafetyCheck multiSelectMinRows(int maxRows) {
         return () -> {
             if (maxRows >= 2) {
                 return Optional.empty();
@@ -51,7 +51,7 @@ final class SafetyChecks {
      * The attachment-group template generates complete en/de rules — refuse a model that declares any other
      * locale (the generated rules would lack a message for it, and couldn't render in its DSL keywords).
      */
-    static SafetyCheck attachmentLocaleSupported(ModelDocument doc) {
+    public static SafetyCheck attachmentLocaleSupported(ModelDocument doc) {
         return () -> {
             List<String> unsupported = doc.locales().stream()
                     .filter(locale -> !ATTACHMENT_LOCALES.contains(locale)).toList();
@@ -69,7 +69,7 @@ final class SafetyChecks {
     }
 
     /** Refuse a rename whose new path collides with an existing field or group (the collision gate). */
-    static SafetyCheck pathAvailable(ModelDocument doc, String newPath) {
+    public static SafetyCheck pathAvailable(ModelDocument doc, String newPath) {
         return () -> doc.fieldPaths().contains(newPath) || doc.groupPaths().contains(newPath)
                 ? Optional.of(nameExists(newPath, "field or group",
                         "choose a name not already used by a sibling, or rename/remove the existing one first"))
@@ -80,7 +80,7 @@ final class SafetyChecks {
      * Refuse a typedef rename when {@code newId} is already a declared type definition — a rename must not
      * collide with (and silently merge into) an existing one. The new-id check runs before any mutation.
      */
-    static SafetyCheck typeDefIdAvailable(ModelDocument doc, String newId) {
+    public static SafetyCheck typeDefIdAvailable(ModelDocument doc, String newId) {
         return () -> doc.typeDefinitionIds().contains(newId)
                 ? Optional.of(nameExists(newId, "type definition",
                         "choose a new id that is not already declared, or remove the existing '" + newId + "' first"))
@@ -91,7 +91,7 @@ final class SafetyChecks {
      * Refuse a typedef extract when the {@code fieldPaths} do not all exist and share one concrete type —
      * there is no single type to factor out (and we never silently coerce). Runs before any mutation.
      */
-    static SafetyCheck fieldsShareConcreteType(ModelDocument doc, List<String> fieldPaths) {
+    public static SafetyCheck fieldsShareConcreteType(ModelDocument doc, List<String> fieldPaths) {
         return () -> {
             if (doc.fieldsShareConcreteType(fieldPaths)) {
                 return Optional.empty();
@@ -109,7 +109,7 @@ final class SafetyChecks {
      * Refuse extracting a <b>repeatable</b> group as an include — the kernel requires an include's root
      * group to be single and non-repeatable (RK_REPEATABLE_INCLUDE_ROOT).
      */
-    static SafetyCheck includableAsRoot(ModelDocument doc, String groupPath) {
+    public static SafetyCheck includableAsRoot(ModelDocument doc, String groupPath) {
         return () -> {
             if (!doc.isRepeating(groupPath)) {
                 return Optional.empty();
@@ -129,7 +129,7 @@ final class SafetyChecks {
      * references stay inside travel fine. References pointing <em>into</em> the subtree from outside are
      * unaffected (the mount preserves the path), so they don't block. RK_OUTWARD_REFERENCE.
      */
-    static SafetyCheck subtreeSelfContained(KernelAdapter adapter, String groupPath) {
+    public static SafetyCheck subtreeSelfContained(KernelAdapter adapter, String groupPath) {
         return () -> {
             String inside = groupPath + "/";
             Set<String> escaping = new TreeSet<>();
@@ -161,7 +161,7 @@ final class SafetyChecks {
      * located at the offending path. The source must resolve before any reference rewrite or node change is
      * attempted, so a typo'd path yields a structured, corrective diagnostic (not a bare downstream error).
      */
-    static SafetyCheck exists(ModelDocument doc, String path, boolean isGroup) {
+    public static SafetyCheck exists(ModelDocument doc, String path, boolean isGroup) {
         return () -> {
             boolean present = isGroup ? doc.groupPaths().contains(path) : doc.fieldPaths().contains(path);
             if (present) {
@@ -182,7 +182,7 @@ final class SafetyChecks {
      * Refuse a rule refactor whose target rule does not exist (RK_NO_SUCH_RULE). A rule is not a field/group,
      * so its existence is read from the bound model's rule names rather than the path tree.
      */
-    static SafetyCheck ruleExists(KernelAdapter adapter, String ruleFullName) {
+    public static SafetyCheck ruleExists(KernelAdapter adapter, String ruleFullName) {
         return () -> {
             if (adapter.ruleFullNames().contains(ruleFullName)) {
                 return Optional.empty();
@@ -197,28 +197,28 @@ final class SafetyChecks {
     }
 
     /** Refuse a typedef refactor whose target type definition is not declared (RK_NO_SUCH_TYPEDEF). */
-    static SafetyCheck typedefExists(ModelDocument doc, String id) {
+    public static SafetyCheck typedefExists(ModelDocument doc, String id) {
         return () -> doc.typeDefinitionIds().contains(id)
                 ? Optional.empty()
                 : Optional.of(notFound(RkCode.NO_SUCH_TYPEDEF, "type definition", id));
     }
 
     /** Refuse a metadata edit whose target element/type-def does not exist (RK_NO_SUCH_ELEMENT). */
-    static SafetyCheck elementExists(ModelDocument doc, String pathOrTypeDefId) {
+    public static SafetyCheck elementExists(ModelDocument doc, String pathOrTypeDefId) {
         return () -> doc.describableExists(pathOrTypeDefId)
                 ? Optional.empty()
                 : Optional.of(notFound(RkCode.NO_SUCH_ELEMENT, "element or type definition", pathOrTypeDefId));
     }
 
     /** Refuse an include refactor whose target alias is not a declared model include (RK_NO_SUCH_INCLUDE). */
-    static SafetyCheck includeExists(ModelDocument doc, String alias) {
+    public static SafetyCheck includeExists(ModelDocument doc, String alias) {
         return () -> doc.includes().stream().anyMatch(i -> i.alias().equals(alias))
                 ? Optional.empty()
                 : Optional.of(notFound(RkCode.NO_SUCH_INCLUDE, "include", alias));
     }
 
     /** Refuse a computation op whose target computation does not exist (RK_NO_SUCH_COMPUTATION). */
-    static SafetyCheck computationExists(KernelAdapter adapter, String computationFullName) {
+    public static SafetyCheck computationExists(KernelAdapter adapter, String computationFullName) {
         return () -> adapter.computationFullNames().contains(computationFullName)
                 ? Optional.empty()
                 : Optional.of(notFound(RkCode.NO_SUCH_COMPUTATION, "computation", computationFullName));
@@ -230,7 +230,7 @@ final class SafetyChecks {
      * silently accepted (AP3). Only the decimal separator needs this pre-check; a bad time zone / condition
      * language is already rejected by the kernel on re-bind.
      */
-    static SafetyCheck decimalSeparatorValid(String separator) {
+    public static SafetyCheck decimalSeparatorValid(String separator) {
         return () -> {
             if (separator == null || separator.length() == 1) {
                 return Optional.empty();
@@ -256,7 +256,7 @@ final class SafetyChecks {
      * Refuse a move whose destination parent group does not exist (RK_NO_SUCH_GROUP) — there is nowhere to
      * re-home the element. Runs before any mutation.
      */
-    static SafetyCheck groupExists(ModelDocument doc, String groupPath) {
+    public static SafetyCheck groupExists(ModelDocument doc, String groupPath) {
         return () -> {
             if (doc.groupPaths().contains(groupPath)) {
                 return Optional.empty();
@@ -275,7 +275,7 @@ final class SafetyChecks {
      * Refuse moving a group into itself or its own subtree (RK_MOVE_INTO_SELF) — re-homing a group beneath
      * one of its own descendants would orphan the whole subtree. Runs before any mutation.
      */
-    static SafetyCheck notIntoOwnSubtree(String groupPath, String newParentPath) {
+    public static SafetyCheck notIntoOwnSubtree(String groupPath, String newParentPath) {
         return () -> {
             if (!newParentPath.equals(groupPath) && !newParentPath.startsWith(groupPath + "/")) {
                 return Optional.empty();
@@ -291,7 +291,7 @@ final class SafetyChecks {
     }
 
     /** The RK_NAME_EXISTS refusal: a rename whose chosen new name/id is already taken (the collision gate). */
-    static Refusal nameExists(String name, String kind, String fix) {
+    public static Refusal nameExists(String name, String kind, String fix) {
         Diagnostic diagnostic = Diagnostic.precheck(Optional.of("RK_NAME_EXISTS"),
                 "a " + kind + " named '" + name + "' already exists",
                 Diagnostic.Where.path(name), Optional.of(fix), Optional.empty());
@@ -299,7 +299,7 @@ final class SafetyChecks {
     }
 
     /** The RK_REFERENCED refusal for safe-delete: the referrers in {@code data.referencedBy}, with a fix. */
-    static Refusal referencedBy(String target, Set<String> rules, Set<String> computations, String fix) {
+    public static Refusal referencedBy(String target, Set<String> rules, Set<String> computations, String fix) {
         ObjectNode data = MAPPER.createObjectNode();
         ObjectNode referencedBy = data.putObject("referencedBy");
         ArrayNode ruleArray = referencedBy.putArray("rules");

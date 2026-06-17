@@ -13,19 +13,19 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
 /** Shared CLI test helpers — run a verb at the {@link Cli#run} seam, and build fixtures once. */
-final class CliTestSupport {
+public final class CliTestSupport {
 
-    static final String RULE_FULL_NAME = "/Subscription/Addons/FeeCapRule";
-    static final String COMPUTATION_FULL_NAME = "/Subscription/Billing/EffectiveFeeComp";
+    public static final String RULE_FULL_NAME = "/Subscription/Addons/FeeCapRule";
+    public static final String COMPUTATION_FULL_NAME = "/Subscription/Billing/EffectiveFeeComp";
 
     private CliTestSupport() {
     }
 
     /** Result of invoking the CLI in-process: exit code + captured stdout/stderr. */
-    record Result(int code, String out, String err) {
+    public record Result(int code, String out, String err) {
     }
 
-    static Result run(String... args) {
+    public static Result run(String... args) {
         StringBuilder out = new StringBuilder();
         StringBuilder err = new StringBuilder();
         int code = Cli.run(args, out, err);
@@ -33,7 +33,7 @@ final class CliTestSupport {
     }
 
     /** Run with the <b>native build profile</b> forced (the JVM-only verbs hidden) — for the native-hiding guard. */
-    static Result runNative(String... args) {
+    public static Result runNative(String... args) {
         StringBuilder out = new StringBuilder();
         StringBuilder err = new StringBuilder();
         int code = Cli.run(args, out, err, true);
@@ -41,7 +41,7 @@ final class CliTestSupport {
     }
 
     /** The subscription fixture + one valid rule, as DM-JSON. */
-    static String modelWithRuleJson() {
+    public static String modelWithRuleJson() {
         BoundModel base = BoundModel.ofJson(subscriptionJson());
         Rule rule = base.rule(base.group("/Subscription/Addons"))
                 .name("FeeCapRule")
@@ -53,14 +53,14 @@ final class CliTestSupport {
     }
 
     /** Write {@link #modelWithRuleJson()} to a temp file the CLI can read. */
-    static Path modelWithRule(Path dir) throws IOException {
+    public static Path modelWithRule(Path dir) throws IOException {
         Path file = dir.resolve("subscription.dm.json");
         Files.writeString(file, modelWithRuleJson());
         return file;
     }
 
     /** The subscription fixture + the {@link #modelWithRuleJson()} rule + a computation (EffectiveFee = BaseFee). */
-    static String modelWithRuleAndComputationJson() {
+    public static String modelWithRuleAndComputationJson() {
         BoundModel base = BoundModel.ofJson(modelWithRuleJson());
         Computation comp = base.computation(base.num("/Subscription/Billing/EffectiveFee"))
                 .name("EffectiveFeeComp")
@@ -70,23 +70,23 @@ final class CliTestSupport {
     }
 
     /** Write {@link #modelWithRuleAndComputationJson()} to a temp file the CLI can read. */
-    static Path modelWithRuleAndComputation(Path dir) throws IOException {
+    public static Path modelWithRuleAndComputation(Path dir) throws IOException {
         Path file = dir.resolve("subscription.dm.json");
         Files.writeString(file, modelWithRuleAndComputationJson());
         return file;
     }
 
-    static String subscriptionJson() {
+    public static String subscriptionJson() {
         return resource("models/subscription.dm.json");
     }
 
     /** The committed {@code order-ruled} fixture (rules: POSTAL_CODE_MALFORMED, DELIVERY_BEFORE_ORDER, INELIGIBLE_ORDER). */
-    static String orderRuledJson() {
+    public static String orderRuledJson() {
         return resource("models/order-ruled.dm.json");
     }
 
     /** Write the {@code order-ruled} fixture to a temp file the CLI can read. */
-    static Path orderRuled(Path dir) throws IOException {
+    public static Path orderRuled(Path dir) throws IOException {
         Path file = dir.resolve("order-ruled.dm.json");
         Files.writeString(file, orderRuledJson());
         return file;

@@ -1,5 +1,15 @@
 package io.github.mbackschat.a12.dm.cli;
 
+import io.github.mbackschat.a12.dm.cli.computation.ComputationCommand;
+import io.github.mbackschat.a12.dm.cli.config.ConfigCommand;
+import io.github.mbackschat.a12.dm.cli.field.FieldCommand;
+import io.github.mbackschat.a12.dm.cli.group.GroupCommand;
+import io.github.mbackschat.a12.dm.cli.include.IncludeCommand;
+import io.github.mbackschat.a12.dm.cli.model.ModelCommand;
+import io.github.mbackschat.a12.dm.cli.rule.RuleCommand;
+import io.github.mbackschat.a12.dm.cli.typedef.TypedefCommand;
+import io.github.mbackschat.a12.dm.cli.workspace.WorkspaceCommand;
+
 import java.util.concurrent.Callable;
 
 import picocli.CommandLine.Command;

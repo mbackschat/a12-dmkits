@@ -20,7 +20,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * operation executed as asked", {@code valid} (present for validate/check) is "the subject model is
  * kernel-valid" — a {@code model validate} that finds the model invalid is {@code ok:true, valid:false}.
  */
-record ResultEnvelope(
+public record ResultEnvelope(
         String target,
         String op,
         Outcome outcome,
@@ -37,45 +37,45 @@ record ResultEnvelope(
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    ResultEnvelope {
+    public ResultEnvelope {
         diagnostics = diagnostics == null ? List.of() : List.copyOf(diagnostics);
     }
 
     /** A mutating op that succeeded and wrote the model. */
-    static ResultEnvelope applied(String target, String op, String summary, JsonNode changed, String output) {
+    public static ResultEnvelope applied(String target, String op, String summary, JsonNode changed, String output) {
         return applied(target, op, summary, changed, List.of(), output);
     }
 
     /** A mutating op that succeeded, carrying advisory diagnostics (e.g. lint warnings) alongside the write. */
-    static ResultEnvelope applied(String target, String op, String summary, JsonNode changed,
+    public static ResultEnvelope applied(String target, String op, String summary, JsonNode changed,
             List<Diagnostic> diagnostics, String output) {
         return new ResultEnvelope(target, op, Outcome.APPLIED, summary, changed, null, diagnostics, null, true, output);
     }
 
     /** A mutating op previewed under {@code --dry-run} — nothing written. */
-    static ResultEnvelope preview(String target, String op, String summary, JsonNode changed) {
+    public static ResultEnvelope preview(String target, String op, String summary, JsonNode changed) {
         return preview(target, op, summary, changed, List.of());
     }
 
     /** A mutating op previewed under {@code --dry-run} — nothing written — carrying advisory diagnostics. */
-    static ResultEnvelope preview(String target, String op, String summary, JsonNode changed,
+    public static ResultEnvelope preview(String target, String op, String summary, JsonNode changed,
             List<Diagnostic> diagnostics) {
         return new ResultEnvelope(target, op, Outcome.PREVIEW, summary, changed, null, diagnostics, null, false, null);
     }
 
     /** A refactor/cascade safety gate refused (CLI-SPEC §6) — nothing written, exit 2. */
-    static ResultEnvelope refused(String target, String op, String summary, List<Diagnostic> diagnostics) {
+    public static ResultEnvelope refused(String target, String op, String summary, List<Diagnostic> diagnostics) {
         return refused(target, op, summary, null, diagnostics);
     }
 
     /** A gate refused, carrying structured {@code data} (e.g. the referrers) — nothing written, exit 2. */
-    static ResultEnvelope refused(String target, String op, String summary, JsonNode data,
+    public static ResultEnvelope refused(String target, String op, String summary, JsonNode data,
             List<Diagnostic> diagnostics) {
         return new ResultEnvelope(target, op, Outcome.REFUSED, summary, null, data, diagnostics, null, false, null);
     }
 
     /** The kernel rejected the op (an invalid candidate/edit) — nothing written, exit 1. */
-    static ResultEnvelope rejected(String target, String op, String summary, List<Diagnostic> diagnostics) {
+    public static ResultEnvelope rejected(String target, String op, String summary, List<Diagnostic> diagnostics) {
         return new ResultEnvelope(target, op, Outcome.REJECTED, summary, null, null, diagnostics, null, false, null);
     }
 
@@ -83,7 +83,7 @@ record ResultEnvelope(
      * A read-only op (read/validate/check/explain): the op executed; {@code valid} reports the subject,
      * {@code data} carries the read payload (an explanation tree, model card, fired-list, …) or {@code null}.
      */
-    static ResultEnvelope read(String target, String op, String summary, boolean valid,
+    public static ResultEnvelope read(String target, String op, String summary, boolean valid,
             List<Diagnostic> diagnostics, JsonNode data) {
         return new ResultEnvelope(target, op, Outcome.READ, summary, null, data, diagnostics, valid, false, null);
     }
@@ -97,7 +97,7 @@ record ResultEnvelope(
     }
 
     /** 0 = ok and not invalid; 1 = rejected, or a read that found the subject invalid; 2 = refused. */
-    int exitCode() {
+    public int exitCode() {
         if (outcome == Outcome.REFUSED) {
             return 2;
         }
@@ -140,7 +140,7 @@ record ResultEnvelope(
     }
 
     /** Pretty-printed, newline-terminated — what a verb prints to stdout. */
-    String toJsonString() {
+    public String toJsonString() {
         try {
             return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(toJson()) + "\n";
         } catch (JsonProcessingException e) {

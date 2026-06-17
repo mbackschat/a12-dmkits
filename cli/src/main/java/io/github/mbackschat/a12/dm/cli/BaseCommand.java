@@ -25,7 +25,7 @@ import picocli.CommandLine.Spec;
  * (picocli-codegen requires it); the abstract base is never registered as a runnable command.
  */
 @Command
-abstract class BaseCommand implements Callable<Integer> {
+public abstract class BaseCommand implements Callable<Integer> {
 
     @Spec
     protected CommandSpec spec;

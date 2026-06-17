@@ -12,7 +12,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
  * corrective {@link Diagnostic} (detect → locate → repair). A {@link SafetyCheck} yields a Refusal
  * <em>instead of</em> mutating; {@link BaseCommand#refuse} turns it into a {@code refused} envelope.
  */
-record Refusal(String summary, ObjectNode data, Diagnostic diagnostic) {
+public record Refusal(String summary, ObjectNode data, Diagnostic diagnostic) {
 
     List<Diagnostic> diagnostics() {
         return List.of(diagnostic);

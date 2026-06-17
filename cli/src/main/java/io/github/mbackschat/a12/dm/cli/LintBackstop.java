@@ -23,7 +23,7 @@ import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
  * then run the AST {@link Linter}. Advisory only: any failure returns no findings — lint never blocks
  * a kernel-valid rule.
  */
-final class LintBackstop {
+public final class LintBackstop {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -31,7 +31,7 @@ final class LintBackstop {
     }
 
     /** Lint a rule already persisted (and loadable) in {@code model}; never throws. */
-    static List<Diagnostic> lintPersisted(BoundModel model, String ruleFullName, String errorFieldPath) {
+    public static List<Diagnostic> lintPersisted(BoundModel model, String ruleFullName, String errorFieldPath) {
         try {
             ReadResult read = KernelAdapter.of(model).read(ruleFullName);
             if (!(read instanceof ReadResult.Converted converted)) {
@@ -49,7 +49,7 @@ final class LintBackstop {
      * {@link #lintPersisted}. This is what lets {@code check} surface the same lint findings as
      * {@code add} without saving anything. Never throws.
      */
-    static List<Diagnostic> lintCandidate(String modelJson, String group, String name,
+    public static List<Diagnostic> lintCandidate(String modelJson, String group, String name,
             String errorEntityRelPath, String code, String condition, String severity,
             String errorFieldPath, IDocumentModelReferenceResolver resolver) {
         try {

@@ -43,7 +43,7 @@ import picocli.CommandLine.Option;
  * {@code add}/{@code remove}/{@code extract}/{@code inline}.
  */
 @Command
-abstract class ReferenceRewritingRefactorCommand extends BaseCommand {
+public abstract class ReferenceRewritingRefactorCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -58,7 +58,7 @@ abstract class ReferenceRewritingRefactorCommand extends BaseCommand {
     WorkspaceOption workspace = new WorkspaceOption();
 
     /** The refactor to run — its gate, reference entity-moves, node change, labels (one of the factories). */
-    abstract StructureRefactor refactor();
+    protected abstract StructureRefactor refactor();
 
     @Override
     public final Integer call() {

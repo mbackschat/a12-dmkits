@@ -1,0 +1,153 @@
+package io.github.mbackschat.a12.dm.cli.rule;
+
+import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.LintBackstop;
+import io.github.mbackschat.a12.dm.cli.ParamKind;
+import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
+import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
+
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
+import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
+import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
+import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
+import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Mixin;
+import picocli.CommandLine.Option;
+import picocli.CommandLine.Parameters;
+
+/**
+ * {@code dmtool rule add <rule-spec.json>} — persist a rule from a JSON rule-spec, kernel-validated before
+ * (the condition) and after (message/locale coverage), then written back (in place; {@code -o} redirects,
+ * {@code --dry-run} previews). A rejected condition yields a {@code rejected} envelope (nothing written);
+ * a kernel-valid persist yields {@code applied}, with the {@code RK_INVERTED_REQUIREDNESS} / unguarded-number
+ * lint findings carried as advisory diagnostics so the polarity trap surfaces here too.
+ */
+@Command(name = "add", mixinStandardHelpOptions = true,
+        description = "Persist a rule from a JSON rule-spec (kernel-validated before + after). See `schema rule add`.")
+final class RuleAddCommand extends BaseCommand {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    @ParamKind(ParamKind.Kind.FILE)
+    @Parameters(index = "0", paramLabel = "<rule-spec.json>",
+            description = "the rule envelope as JSON (field, condition, code, messages, …) — see `schema rule add`")
+    String specPath;
+
+    @Option(names = {"--output", "-o"}, paramLabel = "<file>",
+            description = "write the result here instead of in place (overwriting the model)")
+    String outputPath;
+
+    @Option(names = "--dry-run", description = "preview only — print what would be added and write NOTHING")
+    boolean dryRun;
+
+    @Mixin
+    WorkspaceOption workspace = new WorkspaceOption();
+
+    @Override
+    public Integer call() {
+        String model = model();
+        if (model == null) {
+            return fail("pass -m <model.json> (before or after the verb)");
+        }
+        String modelJson;
+        JsonNode spec;
+        try {
+            modelJson = Files.readString(Path.of(model));
+            spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
+        } catch (IOException e) {
+            return fail("cannot read input: " + e.getMessage());
+        }
+
+        String field = text(spec, "field");
+        String condition = text(spec, "condition");
+        String code = text(spec, "code");
+        if (field == null || condition == null || code == null) {
+            return fail("rule-spec needs field, condition, and code (see `schema rule add`)");
+        }
+        // an explanatory ;; comment, attached as a leading line on the condition (the kernel tolerates it)
+        condition = io.github.mbackschat.a12.dm.rulekit.dsl.Comments.withLeadingComment(text(spec, "comment"), condition);
+        List<LocalizedText> messages = messages(spec);
+        if (messages.isEmpty()) {
+            return fail("rule-spec needs at least one message {locale,text} (see `schema rule add`)");
+        }
+        String severity = spec.hasNonNull("severity") ? spec.get("severity").asText() : "ERROR";
+        String name = spec.hasNonNull("name") ? spec.get("name").asText() : code;
+        int slash = field.lastIndexOf('/');
+        if (slash <= 0) {
+            return fail("field must be an absolute path (e.g. /Group/Field)");
+        }
+        String group = field.substring(0, slash);
+        String errorEntityRelPath = "../" + field.substring(group.length() + 1);
+        IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
+
+        ValidationResult check = new RuleValidator().check(modelJson,
+                new DraftRule(group, name, errorEntityRelPath, condition, code, severity), resolver);
+        if (!check.ok()) {
+            ResultEnvelope env = ResultEnvelope.rejected("rule", "add",
+                    "condition rejected by the kernel (" + check.diagnostics().size() + " finding(s))",
+                    check.diagnostics());
+            out().print(env.toJsonString());
+            return env.exitCode();
+        }
+
+        String persisted = ModelWriter.addRule(modelJson, group, name, errorEntityRelPath,
+                code, condition, severity, messages);
+        BoundModel reModel;
+        try {
+            reModel = BoundModel.ofJson(persisted, resolver);
+        } catch (RuntimeException e) {
+            return fail("persisted rule is invalid (e.g. missing a message for a declared locale): "
+                    + e.getMessage());
+        }
+        String ruleFullName = group + "/" + name;
+        List<Diagnostic> warnings = LintBackstop.lintPersisted(reModel, ruleFullName, field);
+
+        ObjectNode changed = MAPPER.createObjectNode();
+        changed.put("rule", ruleFullName);
+        if (dryRun) {
+            ResultEnvelope env = ResultEnvelope.preview("rule", "add", "would add rule " + ruleFullName, changed, warnings);
+            out().print(env.toJsonString());
+            return env.exitCode();
+        }
+        String dest = outputPath != null ? outputPath : model;
+        try {
+            Files.writeString(Path.of(dest), persisted);
+        } catch (IOException e) {
+            return fail("cannot write output: " + e.getMessage());
+        }
+        ResultEnvelope env = ResultEnvelope.applied("rule", "add", "added rule " + ruleFullName, changed, warnings, dest);
+        out().print(env.toJsonString());
+        return env.exitCode();
+    }
+
+    private static List<LocalizedText> messages(JsonNode spec) {
+        List<LocalizedText> messages = new ArrayList<>();
+        JsonNode array = spec.path("messages");
+        if (array.isArray()) {
+            for (JsonNode m : array) {
+                if (m.hasNonNull("locale") && m.hasNonNull("text")) {
+                    messages.add(new LocalizedText(m.get("locale").asText(), m.get("text").asText()));
+                }
+            }
+        }
+        return messages;
+    }
+
+    private static String text(JsonNode spec, String field) {
+        return spec.hasNonNull(field) ? spec.get(field).asText() : null;
+    }
+}

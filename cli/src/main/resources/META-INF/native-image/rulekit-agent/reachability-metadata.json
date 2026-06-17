@@ -7147,7 +7147,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ComputationAddCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.computation.ComputationAddCommand",
       "fields": [
         {
           "name": "dryRun"
@@ -7170,7 +7170,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ComputationCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.computation.ComputationCommand",
       "fields": [
         {
           "name": "spec"
@@ -7184,7 +7184,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ComputationExplainCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.computation.ComputationExplainCommand",
       "fields": [
         {
           "name": "computation"
@@ -7201,7 +7201,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ComputationFormatCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.computation.ComputationFormatCommand",
       "fields": [
         {
           "name": "computation"
@@ -7221,7 +7221,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ComputationModifyCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.computation.ComputationModifyCommand",
       "fields": [
         {
           "name": "computation"
@@ -7247,7 +7247,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ComputationReadCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.computation.ComputationReadCommand",
       "fields": [
         {
           "name": "computation"
@@ -7264,7 +7264,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ComputationRemoveCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.computation.ComputationRemoveCommand",
       "fields": [
         {
           "name": "computation"
@@ -7310,7 +7310,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ConfigCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.config.ConfigCommand",
       "fields": [
         {
           "name": "spec"
@@ -7324,7 +7324,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ConfigModifyCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.config.ConfigModifyCommand",
       "fields": [
         {
           "name": "annotations"
@@ -7365,7 +7365,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ConfigReadCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.config.ConfigReadCommand",
       "methods": [
         {
           "name": "<init>",
@@ -7515,7 +7515,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.FieldAddCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.field.FieldAddCommand",
       "fields": [
         {
           "name": "dryRun"
@@ -7547,7 +7547,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.FieldAddCommand$FieldType",
+      "type": "io.github.mbackschat.a12.dm.cli.field.FieldAddCommand$FieldType",
       "fields": [
         {
           "name": "kind"
@@ -7564,7 +7564,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.FieldCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.field.FieldCommand",
       "fields": [
         {
           "name": "spec"
@@ -7578,7 +7578,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.FieldModifyCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.field.FieldModifyCommand",
       "fields": [
         {
           "name": "dryRun"
@@ -7601,7 +7601,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.FieldMoveCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.field.FieldMoveCommand",
       "fields": [
         {
           "name": "field"
@@ -7618,7 +7618,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.FieldReadCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.field.FieldReadCommand",
       "fields": [
         {
           "name": "field"
@@ -7632,7 +7632,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.FieldRemoveCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.field.FieldRemoveCommand",
       "fields": [
         {
           "name": "cascade"
@@ -7658,7 +7658,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.FieldRenameCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.field.FieldRenameCommand",
       "fields": [
         {
           "name": "field"
@@ -7675,7 +7675,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.GroupAddCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.group.GroupAddCommand",
       "fields": [
         {
           "name": "dryRun"
@@ -7704,7 +7704,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.GroupAttachmentCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.group.GroupAttachmentCommand",
       "fields": [
         {
           "name": "allowedMime"
@@ -7742,7 +7742,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.GroupCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.group.GroupCommand",
       "fields": [
         {
           "name": "spec"
@@ -7756,7 +7756,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.GroupExtractCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.group.GroupExtractCommand",
       "fields": [
         {
           "name": "dryRun"
@@ -7782,7 +7782,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.GroupMoveCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.group.GroupMoveCommand",
       "fields": [
         {
           "name": "group"
@@ -7799,7 +7799,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.GroupMultiSelectCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.group.GroupMultiSelectCommand",
       "fields": [
         {
           "name": "dryRun"
@@ -7837,7 +7837,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.GroupReadCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.group.GroupReadCommand",
       "fields": [
         {
           "name": "group"
@@ -7851,7 +7851,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.GroupRemoveCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.group.GroupRemoveCommand",
       "fields": [
         {
           "name": "cascade"
@@ -7877,7 +7877,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.GroupRenameCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.group.GroupRenameCommand",
       "fields": [
         {
           "name": "group"
@@ -7894,7 +7894,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.IncludeAddCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.include.IncludeAddCommand",
       "fields": [
         {
           "name": "alias"
@@ -7935,7 +7935,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.IncludeCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.include.IncludeCommand",
       "fields": [
         {
           "name": "spec"
@@ -7949,7 +7949,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.IncludeInlineCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.include.IncludeInlineCommand",
       "fields": [
         {
           "name": "alias"
@@ -7972,7 +7972,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.IncludeReadCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.include.IncludeReadCommand",
       "methods": [
         {
           "name": "<init>",
@@ -7981,7 +7981,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.IncludeRemoveCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.include.IncludeRemoveCommand",
       "fields": [
         {
           "name": "alias"
@@ -8054,7 +8054,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ModelCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.model.ModelCommand",
       "fields": [
         {
           "name": "spec"
@@ -8068,7 +8068,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ModelComputeCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.model.ModelComputeCommand",
       "fields": [
         {
           "name": "doc"
@@ -8088,7 +8088,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ModelDescribeCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.model.ModelDescribeCommand",
       "fields": [
         {
           "name": "workspace"
@@ -8102,7 +8102,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ModelEvalCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.model.ModelEvalCommand",
       "fields": [
         {
           "name": "code"
@@ -8143,7 +8143,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ModelInfoCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.model.ModelInfoCommand",
       "fields": [
         {
           "name": "workspace"
@@ -8157,7 +8157,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ModelNewCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.model.ModelNewCommand",
       "fields": [
         {
           "name": "id"
@@ -8180,7 +8180,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ModelReadCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.model.ModelReadCommand",
       "fields": [
         {
           "name": "workspace"
@@ -8194,7 +8194,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ModelValidateCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.model.ModelValidateCommand",
       "fields": [
         {
           "name": "workspace"
@@ -8399,7 +8399,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.RuleAddCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.rule.RuleAddCommand",
       "fields": [
         {
           "name": "dryRun"
@@ -8422,7 +8422,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.RuleCheckCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.rule.RuleCheckCommand",
       "fields": [
         {
           "name": "code"
@@ -8457,7 +8457,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.RuleCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.rule.RuleCommand",
       "fields": [
         {
           "name": "spec"
@@ -8471,7 +8471,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.RuleDepsCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.rule.RuleDepsCommand",
       "fields": [
         {
           "name": "rule"
@@ -8488,7 +8488,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.RuleExplainCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.rule.RuleExplainCommand",
       "fields": [
         {
           "name": "rule"
@@ -8505,7 +8505,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.RuleFormatCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.rule.RuleFormatCommand",
       "fields": [
         {
           "name": "lang"
@@ -8525,7 +8525,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.RuleModifyCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.rule.RuleModifyCommand",
       "fields": [
         {
           "name": "comment"
@@ -8560,7 +8560,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.RuleReadCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.rule.RuleReadCommand",
       "fields": [
         {
           "name": "rule"
@@ -8577,7 +8577,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.RuleRemoveCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.rule.RuleRemoveCommand",
       "fields": [
         {
           "name": "dryRun"
@@ -8600,7 +8600,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.RuleRenameCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.rule.RuleRenameCommand",
       "fields": [
         {
           "name": "dryRun"
@@ -8626,7 +8626,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.RuleTestCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.rule.RuleTestCommand",
       "fields": [
         {
           "name": "doc"
@@ -8663,7 +8663,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.TypedefAddCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.typedef.TypedefAddCommand",
       "fields": [
         {
           "name": "dryRun"
@@ -8689,7 +8689,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.TypedefCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.typedef.TypedefCommand",
       "fields": [
         {
           "name": "spec"
@@ -8703,7 +8703,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.TypedefExtractCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.typedef.TypedefExtractCommand",
       "fields": [
         {
           "name": "dryRun"
@@ -8729,7 +8729,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.TypedefImportCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.typedef.TypedefImportCommand",
       "fields": [
         {
           "name": "dryRun"
@@ -8752,7 +8752,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.TypedefInlineCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.typedef.TypedefInlineCommand",
       "fields": [
         {
           "name": "dryRun"
@@ -8775,7 +8775,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.TypedefReadCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.typedef.TypedefReadCommand",
       "methods": [
         {
           "name": "<init>",
@@ -8784,7 +8784,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.TypedefRemoveCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.typedef.TypedefRemoveCommand",
       "fields": [
         {
           "name": "dryRun"
@@ -8807,7 +8807,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.TypedefRenameCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.typedef.TypedefRenameCommand",
       "fields": [
         {
           "name": "dryRun"
@@ -8882,7 +8882,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.WorkspaceCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.workspace.WorkspaceCommand",
       "fields": [
         {
           "name": "spec"
@@ -8896,7 +8896,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.WorkspaceGraphCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.workspace.WorkspaceGraphCommand",
       "fields": [
         {
           "name": "dir"
@@ -8916,7 +8916,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.WorkspaceListCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.workspace.WorkspaceListCommand",
       "fields": [
         {
           "name": "dir"
@@ -8947,7 +8947,7 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.WorkspaceValidateCommand",
+      "type": "io.github.mbackschat.a12.dm.cli.workspace.WorkspaceValidateCommand",
       "fields": [
         {
           "name": "dir"

@@ -15,17 +15,17 @@ import java.util.Optional;
  * shadow a costlier one. Each refactor op registers the checks that fit its blast radius (see
  * {@link SafetyChecks}).
  */
-final class SafetyGate {
+public final class SafetyGate {
 
     private final List<SafetyCheck> checks = new ArrayList<>();
 
-    SafetyGate require(SafetyCheck check) {
+    public SafetyGate require(SafetyCheck check) {
         checks.add(check);
         return this;
     }
 
     /** The first failing precondition (registration order), or empty when the refactor is safe. */
-    Optional<Refusal> firstFailure() {
+    public Optional<Refusal> firstFailure() {
         for (SafetyCheck check : checks) {
             Optional<Refusal> refusal = check.evaluate();
             if (refusal.isPresent()) {

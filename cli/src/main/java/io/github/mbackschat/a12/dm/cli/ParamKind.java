@@ -19,12 +19,12 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
-@interface ParamKind {
+public @interface ParamKind {
 
     Kind value();
 
     /** The semantic kinds. {@code entityRef} kinds must reference an existing model element. */
-    enum Kind {
+    public enum Kind {
         // --- references to existing model elements (a bogus value must yield a structured not-found) ----
         FIELD_PATH(true, "/__rk_absent__/__field__", null),
         GROUP_PATH(true, "/__rk_absent__/__group__", null),

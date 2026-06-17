@@ -24,17 +24,17 @@ import picocli.CommandLine.Spec;
  * chosen tree(s) by {@code header.id}; it is simply never called when the model is self-contained.
  */
 @Command // a mixin must be a "command"; it carries no options of its own — just @Spec, to read the root's -w
-final class WorkspaceOption {
+public final class WorkspaceOption {
 
     /** The environment variable that sets the session workspace root (lowest-precedence source). */
-    static final String WORKSPACE_ENV = "DMTOOL_WORKSPACE";
+    public static final String WORKSPACE_ENV = "DMTOOL_WORKSPACE";
 
     // the spec of the command this mixin is mixed INTO — so it can read the inherited -w/--workspace off the root
     @Spec(Spec.Target.MIXEE)
     CommandSpec mixee;
 
     /** The reference resolver for a model loaded from {@code modelPath}, over the {@link #roots(String) roots}. */
-    IDocumentModelReferenceResolver resolverFor(String modelPath) {
+    public IDocumentModelReferenceResolver resolverFor(String modelPath) {
         return ReferenceResolvers.directory(roots(modelPath).toArray(Path[]::new));
     }
 
@@ -43,7 +43,7 @@ final class WorkspaceOption {
      * {@code model info} / {@code workspace} scan path, and the include extract/inline write paths) resolve
      * references the same way the kernel resolver does.
      */
-    List<Path> roots(String modelPath) {
+    public List<Path> roots(String modelPath) {
         return roots(workspaceRoots(), System.getenv(WORKSPACE_ENV), modelPath);
     }
 
@@ -56,7 +56,7 @@ final class WorkspaceOption {
      * Pure precedence (so it is unit-testable, env included): the {@code -w/--workspace} root(s) &gt;
      * {@code $DMTOOL_WORKSPACE} &gt; the model's own directory.
      */
-    static List<Path> roots(List<Path> workspace, String workspaceEnv, String modelPath) {
+    public static List<Path> roots(List<Path> workspace, String workspaceEnv, String modelPath) {
         if (!workspace.isEmpty()) {
             return List.copyOf(workspace);
         }
