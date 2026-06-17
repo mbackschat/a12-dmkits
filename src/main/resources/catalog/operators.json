@@ -1277,6 +1277,7 @@
     "constraints": [ "the first operand is a string field; the two range bounds are integers — 1-based and inclusive, with start >= 1 and start <= end (MVK_INVALID_INTERVAL)" ],
     "gotchas": [ { "text": "a non-numeric substring (or an empty field) yields 0, not an error", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(ProductCode) And RangeAsNumber(ProductCode, 1, 2) == 0", "note": "fires when the first two characters are not a number (so 0)" },
+    "invalidExample": { "dsl": "RangeAsNumber(ProductCode, 0, 3) == 0", "error": "MVK_INVALID_INTERVAL", "fix": "the range is 1-based — start must be >= 1 and <= the end (start == end is allowed)" },
     "sinceKernel": "30.8.x"
   },
   {
