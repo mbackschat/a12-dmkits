@@ -56,6 +56,13 @@ class IterationLawsTest {
     }
 
     @Test
+    void repetitionNotUniqueKeysMustLieOnOnePath() {
+        // keys in two parallel repeatable groups (Lines, Picks — neither below the other) → rejected.
+        KernelLaws.rejectsLogistics("/Shipment/Lines", "../LineRef",
+                "RepetitionNotUnique(/Shipment/Lines/LineRef, /Shipment/Picks/LineRef)", "MVK_NOT_IN_SAME_PATH");
+    }
+
+    @Test
     void aPureNegativeInParallelIterationIsRejected() {
         // BA L919: in a parallel iteration a negative condition is disallowed UNLESS combined with a
         // positive one. A bare NoFieldFilled over the two parallel-iterated groups is rejected; the
