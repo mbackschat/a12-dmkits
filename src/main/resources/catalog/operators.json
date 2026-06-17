@@ -597,7 +597,7 @@
     "returns": "number",
     "meaning": "The number of listed groups that are filled (exist).",
     "constraints": [
-      "more than one group, OR a single repeatable group as a wildcard (Group*) counting its filled repetitions (MVK_PARAMSIZE_INVALIDGN); groups only (MVK_NO_FIELDS_ALLOWED); no root groups"
+      "more than one group, OR a single repeatable group as a wildcard (Group*) counting its filled repetitions (MVK_PARAMSIZE_INVALIDGN); groups only (MVK_NO_FIELDS_ALLOWED); a root group is allowed only as the sole, starred operand (NumberOfFilledGroups(/Root*)), never alongside another group"
     ],
     "gotchas": [
       { "text": "'filled' means the group row exists, not that it has data (same trap as GroupFilled)", "kind": "SURPRISE" }

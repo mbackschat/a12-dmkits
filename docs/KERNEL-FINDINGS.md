@@ -270,10 +270,10 @@ rulekit models the numeric ones as `DateExtraction` (kind NUMBER), the part-extr
 
 - **`NumberOfFilledFields` needs more than one field *or* at least one group *or* a single flattened repetition list** — a single plain field draws **`MVK_PARAMSIZE_INVALIDN`** ("There must be more than one field or at least one group"), but a single wildcard scope `Group*/field` is accepted (it counts filled reps). The group form counts the filled fields *inside* the group(s); multiple groups are legal. Field kinds may be **mixed** (boolean, enum, number together — it counts presence, not values).
 - **`NumberOfFilledGroups` needs more than one group *or* a single repeatable group as a wildcard scope** — two-or-more *distinct* groups are legal, and so is **one repeatable group written `Group*`** (counting that group's filled repetitions, kernel-verified 2026-06-06 against `NumberOfFilledGroups(/Order/Items*)`). A single *non-repeating* group still draws **`MVK_PARAMSIZE_INVALIDGN`**; a field argument draws the type-direction code **`MVK_NO_FIELDS_ALLOWED`**.
-- **Root groups are banned in both** — **`MVK_ROOT_GROUP_REFERENCED`** ("It is not allowed to reference a rootgroup").
+- **Root groups: banned in `NumberOfFilledFields`** (**`MVK_ROOT_GROUP_REFERENCED`**, "It is not allowed to reference a rootgroup"), but **allowed in `NumberOfFilledGroups` as the sole, starred operand** — `NumberOfFilledGroups(/Persons*)` over a repeatable root group validates (source `checkNoRootGroupWhenMoreThanOneParameter`; probe-confirmed 2026-06-17, **correcting the earlier "banned in both"**).
 - Comparing the count to a **decimal literal** (`<= 1.5`) is accepted (consistent with the §5 literal-scale exemption).
 
-*(Locked: N7 examples of both operators incl. the param-size/type-direction invalids; root-group ban pre-checked in `CountAggregate` — `dsl.operators.AggregateConditionTest`.)*
+*(Locked: N7 examples of both operators incl. the param-size/type-direction invalids; `NumberOfFilledGroups`'s sole-starred-root-group **acceptance** in `validate.laws.RootGroupCountLawsTest`; the `NumberOfFilledFields` root-group ban pre-checked in `CountAggregate` — `dsl.operators.AggregateConditionTest`. NB rulekit's typed `CountAggregate` builder is conservative — it can't yet author the root-group `NumberOfFilledGroups` form the kernel accepts; a DSL authoring gap, not a kernel limit.)*
 
 **Runtime counting semantics (2026-06-10, RT-semantics drain — `anzahlAngegebenerEntities`):**
 

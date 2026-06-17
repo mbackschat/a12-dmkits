@@ -65,6 +65,16 @@ public final class ModelDrafts {
                 .build();
     }
 
+    /** A repeatable root group (multi-form) + a plain root group — for the NumberOfFilledGroups root-group rule. */
+    public static DocumentModelDraft repeatableRoot() {
+        return DocumentModelDraft.named("multiform").locale("en_US")
+                .rootGroup("Persons", p -> p.repeatable(50)
+                        .field("Name", FieldKind.STRING))
+                .rootGroup("Header", h -> h
+                        .field("Title", FieldKind.STRING))
+                .build();
+    }
+
     /** The order model — every field kind, address groups, an index-keyed item list, a categorized enum. */
     public static DocumentModelDraft order() {
         return DocumentModelDraft.named("order").locale("en_US").baseYear(2020)
