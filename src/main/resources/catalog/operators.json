@@ -1026,8 +1026,8 @@
     "operands": [ { "type": "date" }, { "type": "integer" } ],
     "returns": "date",
     "meaning": "The date shifted forward by the given number of days.",
-    "constraints": [ "the first operand is a date (bare entity ref); the second an integer amount" ],
-    "gotchas": [ { "text": "fractional offsets are truncated, not rounded", "kind": "SURPRISE" } ],
+    "constraints": [ "the first operand is a date or date-time (bare entity ref); the second an integer amount" ],
+    "gotchas": [ { "text": "fractional offsets are truncated, not rounded", "kind": "SURPRISE" }, { "text": "over a date-time source AddDays shifts the day and preserves the time of day, returning a date-time; over a date it returns a date (AddYears/AddMonths/DifferenceInDays stay date-only)", "kind": "AUTHORING" } ],
     "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And [DeliveryDate] > AddDays(OrderDate, 7)", "note": "fires when delivery is more than a week out" },
     "sinceKernel": "30.8.x"
   },
@@ -1098,7 +1098,7 @@
     "operands": [ { "type": "date" } ],
     "returns": "number",
     "meaning": "The year component of a date, as a number.",
-    "constraints": [ "the operand is a date (a field or a date expression), rendered as a bare entity ref" ],
+    "constraints": [ "the operand is a date or date-time (a field or expression), rendered as a bare entity ref" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And YearFromDate(OrderDate) < 2020", "note": "fires for orders dated before 2020" },
     "sinceKernel": "30.8.x"
   },
@@ -1109,7 +1109,7 @@
     "operands": [ { "type": "date" } ],
     "returns": "number",
     "meaning": "The month component of a date (1-12), as a number.",
-    "constraints": [ "the operand is a date (a field or a date expression)" ],
+    "constraints": [ "the operand is a date or date-time (a field or expression)" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And MonthFromDate(OrderDate) == 12", "note": "fires for December orders" },
     "sinceKernel": "30.8.x"
   },
@@ -1120,7 +1120,7 @@
     "operands": [ { "type": "date" } ],
     "returns": "number",
     "meaning": "The day-of-month component of a date, as a number.",
-    "constraints": [ "the operand is a date (a field or a date expression)" ],
+    "constraints": [ "the operand is a date or date-time (a field or expression)" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And DayFromDate(OrderDate) > 28", "note": "fires for orders late in the month" },
     "sinceKernel": "30.8.x"
   },
@@ -1131,7 +1131,7 @@
     "operands": [ { "type": "date" } ],
     "returns": "number",
     "meaning": "The calendar quarter of a date (1-4), as a number.",
-    "constraints": [ "the operand is a date (a field or a date expression)" ],
+    "constraints": [ "the operand is a date or date-time (a field or expression)" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And QuarterFromDate(OrderDate) == 4", "note": "fires for fourth-quarter orders" },
     "sinceKernel": "30.8.x"
   },
