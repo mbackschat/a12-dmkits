@@ -32,6 +32,8 @@ Over a two-field list, the three negative fill-quantifiers disagree at the edges
 
 The trap is the all-empty column: `NotAllFieldsFilled` and `NotExactlyOneFieldFilled` **include** it, but `FieldsNotCollectivelyFilled` **excludes** it (needs ≥1 filled). Picking the wrong member changes which documents the rule reports. (Verified with the row filled by a sibling, so the list fields' emptiness is what's measured.) *(Locked: `adapter.laws.FieldListQuantifierLawsTest`.)*
 
+**Group-list quantifier asterisk bar (probe, 2026-06-17).** The *group*-list quantifiers `NotAllGroupsFilled`/`GroupsNotCollectivelyFilled`/`AllGroupsFilled` reject an **asterisk** argument — `NotAllGroupsFilled(Items*, ShippingAddress)` draws **`MVK_NO_WILDCARDS_G_ALLOWED`**. (BA L2397-2399 also bars a **rootGroup** argument for these three, unlike `NoGroupFilled`/`AtLeastOneGroupFilled` which allow one rootGroup — not separately probed: every group in the order fixture lives under the single root, so a rootGroup arg trips the duplicate-reference check first; left BA-stated.) *(Locked: `validate.laws.GroupQuantifierLawsTest`.)*
+
 ## §2 supplement — empty-as-0 is a *filled-row* behavior (runtime, 2026-06-06)
 
 KERNEL-SEMANTICS §2 says an empty **number** field has `0` substituted in a comparison, so `[Quantity] < 100` fires on an empty Quantity. Verified against the **runtime** engine (`IDocumentRtService.validateFull`) with one refinement the spec doesn't spell out: **the substitution applies to an empty field within a *filled* group row** — a row made non-empty by at least one sibling value. An **entirely empty row** (a group instance with no field values at all) is **not evaluated**, so the same rule does *not* fire there.

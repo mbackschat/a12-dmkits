@@ -347,7 +347,7 @@
     "operands": [ { "type": "group-list" } ],
     "returns": "boolean",
     "meaning": "True iff the listed groups are not all filled (at least one is missing).",
-    "constraints": [ "the operand is a list of group references" ],
+    "constraints": [ "the operand is a list of group references", "arguments may not use an asterisk (MVK_NO_WILDCARDS_G_ALLOWED) — the same bar applies to GroupsNotCollectivelyFilled and AllGroupsFilled" ],
     "gotchas": [ { "text": "the German keyword (NichtAlleOderKein...) spells out that the none-filled case also satisfies it", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "NotAllGroupsFilled(ShippingAddress, BillingAddress)", "note": "fires when at least one address group is missing" },
     "sinceKernel": "30.8.x"
