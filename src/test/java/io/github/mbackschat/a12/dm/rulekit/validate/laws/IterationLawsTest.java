@@ -54,4 +54,14 @@ class IterationLawsTest {
         // from the PARENT level → the canonical shape validates
         KernelLaws.accepts("/Subscription", "../Addons/Name", "RepetitionNotUnique(Addons/Name)");
     }
+
+    @Test
+    void aPureNegativeInParallelIterationIsRejected() {
+        // BA L919: in a parallel iteration a negative condition is disallowed UNLESS combined with a
+        // positive one. A bare NoFieldFilled over the two parallel-iterated groups is rejected; the
+        // positive-bearing FieldsNotCollectivelyFilled form (locked above) is accepted.
+        KernelLaws.rejectsLogistics("/Shipment/Lines", "../OrderedQty",
+                "NoFieldFilled(/Shipment/Lines/OrderedQty, /Shipment/Picks/PickedQty)",
+                "MVK_PARALLEL_ITERATION_INVALID");
+    }
 }

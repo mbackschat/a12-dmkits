@@ -56,6 +56,10 @@ final class KernelLaws {
         assertAccepts(LOGISTICS, group, errorField, condition);
     }
 
+    static void rejectsLogistics(String group, String errorField, String condition, String expectedCode) {
+        assertRejects(LOGISTICS, group, errorField, condition, expectedCode);
+    }
+
     /** Project-fixture variants (nested repeatable groups Milestones ▸ Tasks) — for §10 wildcard-path laws. */
     static void acceptsProject(String group, String errorField, String condition) {
         assertAccepts(PROJECT, group, errorField, condition);

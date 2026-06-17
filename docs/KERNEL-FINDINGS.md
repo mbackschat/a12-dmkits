@@ -402,6 +402,10 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 
 *(Locked: N7 `CurrentRepetition` valid (iterating) + invalid (non-iterating `MVK_NO_WILDCARD`); the iterating-position law in `validate.laws.IterationLawsTest`. Groups-only is structural.)*
 
+## §9 supplement — parallel iteration forbids a pure-negative condition (probe, 2026-06-17)
+
+In a **parallel iteration** (a rule referencing two repeatable groups that share an index field), a **pure negative** condition is rejected with **`MVK_PARALLEL_ITERATION_INVALID`** — `NoFieldFilled(/Shipment/Lines/OrderedQty, /Shipment/Picks/PickedQty)` over the two index-keyed groups fails (probed on the logistics fixture). BA L919: a negative is allowed in a parallel iteration only **combined with a positive** condition (else it would require a value for every joined iteration) — the positive-bearing `FieldsNotCollectivelyFilled` form *is* accepted (locked alongside). Note the code is the parallel-specific `MVK_PARALLEL_ITERATION_INVALID`, **not** the ordinary-iteration `MVK_NEG_CONDITION_IN_ITERATION`. *(Locked: `validate.laws.IterationLawsTest.aPureNegativeInParallelIterationIsRejected`.)*
+
 ## §9 supplement — the `Having` filter and `$` correlation (slice 7d, 2026-06-04 experiments)
 
 `Having` (DE `Mit`; grammar: `'Mit' bedingung` on an `entitySpec`) filters a `*`-repetition list before an aggregate/quantifier consumes it; `$` (`DOLLAR`, language-independent) pins a reference to the rule's outer repetition inside a filter.
