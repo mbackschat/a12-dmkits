@@ -31,6 +31,21 @@ public final class ModelDrafts {
                 .build();
     }
 
+    /**
+     * Date fragments of several formats with <b>no base year</b> — for the comparability partition
+     * (two date(-fragment) values compare only if both carry a year or neither does; a base year would
+     * relax that). BA "Date fragments" L4010-4074.
+     */
+    public static DocumentModelDraft dateFragments() {
+        return DocumentModelDraft.named("fragments").locale("en_US")
+                .rootGroup("Doc", d -> d
+                        .field("Ref", FieldKind.STRING)
+                        .dateFragmentField("MonthOnly", f -> f.fragmentFormat("MM"))
+                        .dateFragmentField("YearOnly", f -> f.fragmentFormat("yyyy"))
+                        .dateField("FullDate", dd -> dd.format("yyyy-MM-dd")))
+                .build();
+    }
+
     /** The order model — every field kind, address groups, an index-keyed item list, a categorized enum. */
     public static DocumentModelDraft order() {
         return DocumentModelDraft.named("order").locale("en_US").baseYear(2020)

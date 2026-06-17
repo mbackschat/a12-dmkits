@@ -65,6 +65,15 @@ final class KernelLaws {
         assertRejects(PROJECT, group, errorField, condition, expectedCode);
     }
 
+    /** Generic variants for an arbitrary modelkit-authored draft (its JSON passed in). */
+    static void acceptsModel(String json, String group, String errorField, String condition) {
+        assertAccepts(json, group, errorField, condition);
+    }
+
+    static void rejectsModel(String json, String group, String errorField, String condition, String expectedCode) {
+        assertRejects(json, group, errorField, condition, expectedCode);
+    }
+
     private static void assertAccepts(String json, String group, String errorField, String condition) {
         ValidationResult r = check(json, group, errorField, condition);
         assertTrue(r.ok(), () -> "expected acceptance of '" + condition + "', got: " + r.diagnostics());
