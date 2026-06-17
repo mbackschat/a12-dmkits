@@ -120,6 +120,17 @@ graalvmNative {
     toolchainDetection = false
     binaries {
         named('main') {
+            // Auto-discover the installed GraalVM 25 so `:cli:nativeCompile` needs no GRAALVM_HOME locally.
+            // CI still sets GRAALVM_HOME (RELEASE-SPEC) and that path is preserved untouched — this launcher
+            // only kicks in when the env var is absent. languageVersion 25 + the Oracle vendor uniquely select
+            // the Oracle GraalVM 25 (Gradle classifies it as "Oracle JDK 25"); the JDK-21 compile toolchain
+            // (wrong version) and any Homebrew OpenJDK 25 (vendor "Homebrew", no native-image) are excluded.
+            if (System.getenv('GRAALVM_HOME') == null) {
+                javaLauncher = javaToolchains.launcherFor {
+                    languageVersion = JavaLanguageVersion.of(25)
+                    vendor = JvmVendorSpec.ORACLE
+                }
+            }
             imageName = 'dmtool'
             buildArgs.add('--no-fallback')
             buildArgs.add('-Os')   // size optimization (GraalVM 25 supports it; 21 didn't)

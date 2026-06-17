@@ -7147,146 +7147,6 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.computation.ComputationAddCommand",
-      "fields": [
-        {
-          "name": "dryRun"
-        },
-        {
-          "name": "outputPath"
-        },
-        {
-          "name": "specPath"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.computation.ComputationCommand",
-      "fields": [
-        {
-          "name": "spec"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.computation.ComputationExplainCommand",
-      "fields": [
-        {
-          "name": "computation"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.computation.ComputationFormatCommand",
-      "fields": [
-        {
-          "name": "computation"
-        },
-        {
-          "name": "lang"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.computation.ComputationModifyCommand",
-      "fields": [
-        {
-          "name": "computation"
-        },
-        {
-          "name": "dryRun"
-        },
-        {
-          "name": "outputPath"
-        },
-        {
-          "name": "specPath"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.computation.ComputationReadCommand",
-      "fields": [
-        {
-          "name": "computation"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.computation.ComputationRemoveCommand",
-      "fields": [
-        {
-          "name": "computation"
-        },
-        {
-          "name": "dryRun"
-        },
-        {
-          "name": "outputPath"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
       "type": "io.github.mbackschat.a12.dm.cli.ComputeDocCommand",
       "fields": [
         {
@@ -7302,70 +7162,6 @@
           "name": "workspace"
         }
       ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.config.ConfigCommand",
-      "fields": [
-        {
-          "name": "spec"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.config.ConfigModifyCommand",
-      "fields": [
-        {
-          "name": "annotations"
-        },
-        {
-          "name": "comment"
-        },
-        {
-          "name": "conditionLanguage"
-        },
-        {
-          "name": "decimalSeparator"
-        },
-        {
-          "name": "dryRun"
-        },
-        {
-          "name": "labels"
-        },
-        {
-          "name": "outputPath"
-        },
-        {
-          "name": "supportedCharacters"
-        },
-        {
-          "name": "timeZone"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.config.ConfigReadCommand",
       "methods": [
         {
           "name": "<init>",
@@ -7507,6 +7303,522 @@
           "name": "workspace"
         }
       ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.ManifestCommand",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.MetaCommand",
+      "fields": [
+        {
+          "name": "annotate"
+        },
+        {
+          "name": "dryRun"
+        },
+        {
+          "name": "external"
+        },
+        {
+          "name": "internal"
+        },
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "ref"
+        },
+        {
+          "name": "removeAnnotation"
+        },
+        {
+          "name": "removeExternal"
+        },
+        {
+          "name": "removeInternal"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.ModifyCommand",
+      "fields": [
+        {
+          "name": "comment"
+        },
+        {
+          "name": "computationId"
+        },
+        {
+          "name": "condition"
+        },
+        {
+          "name": "dryRun"
+        },
+        {
+          "name": "model"
+        },
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "ruleId"
+        },
+        {
+          "name": "specPath"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.OperatorsCommand",
+      "fields": [
+        {
+          "name": "id"
+        },
+        {
+          "name": "keyword"
+        },
+        {
+          "name": "kind"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.PatternsCommand",
+      "fields": [
+        {
+          "name": "apply"
+        },
+        {
+          "name": "args"
+        },
+        {
+          "name": "code"
+        },
+        {
+          "name": "dryRun"
+        },
+        {
+          "name": "id"
+        },
+        {
+          "name": "messages"
+        },
+        {
+          "name": "name"
+        },
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.ReadCommand",
+      "fields": [
+        {
+          "name": "all"
+        },
+        {
+          "name": "model"
+        },
+        {
+          "name": "rule"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.ReferenceRewritingRefactorCommand",
+      "fields": [
+        {
+          "name": "dryRun"
+        },
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "workspace"
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.RemoveCommand",
+      "fields": [
+        {
+          "name": "cascade"
+        },
+        {
+          "name": "computation"
+        },
+        {
+          "name": "dryRun"
+        },
+        {
+          "name": "field"
+        },
+        {
+          "name": "group"
+        },
+        {
+          "name": "includeAlias"
+        },
+        {
+          "name": "model"
+        },
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "rule"
+        },
+        {
+          "name": "typedef"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.RootCommand",
+      "fields": [
+        {
+          "name": "model"
+        },
+        {
+          "name": "spec"
+        },
+        {
+          "name": "workspace"
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.SchemaCommand",
+      "fields": [
+        {
+          "name": "tokens"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.ValidateCommand",
+      "fields": [
+        {
+          "name": "extra"
+        },
+        {
+          "name": "model"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.VersionProvider",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.WhereUsedCommand",
+      "fields": [
+        {
+          "name": "entityArg"
+        },
+        {
+          "name": "entityOpt"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.WorkspaceOption",
+      "fields": [
+        {
+          "name": "mixee"
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.computation.ComputationAddCommand",
+      "fields": [
+        {
+          "name": "dryRun"
+        },
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "specPath"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.computation.ComputationCommand",
+      "fields": [
+        {
+          "name": "spec"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.computation.ComputationExplainCommand",
+      "fields": [
+        {
+          "name": "computation"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.computation.ComputationFormatCommand",
+      "fields": [
+        {
+          "name": "computation"
+        },
+        {
+          "name": "lang"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.computation.ComputationModifyCommand",
+      "fields": [
+        {
+          "name": "computation"
+        },
+        {
+          "name": "dryRun"
+        },
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "specPath"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.computation.ComputationReadCommand",
+      "fields": [
+        {
+          "name": "computation"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.computation.ComputationRemoveCommand",
+      "fields": [
+        {
+          "name": "computation"
+        },
+        {
+          "name": "dryRun"
+        },
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.config.ConfigCommand",
+      "fields": [
+        {
+          "name": "spec"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.config.ConfigModifyCommand",
+      "fields": [
+        {
+          "name": "annotations"
+        },
+        {
+          "name": "comment"
+        },
+        {
+          "name": "conditionLanguage"
+        },
+        {
+          "name": "decimalSeparator"
+        },
+        {
+          "name": "dryRun"
+        },
+        {
+          "name": "labels"
+        },
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "supportedCharacters"
+        },
+        {
+          "name": "timeZone"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.config.ConfigReadCommand",
       "methods": [
         {
           "name": "<init>",
@@ -8004,56 +8316,6 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ManifestCommand",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.MetaCommand",
-      "fields": [
-        {
-          "name": "annotate"
-        },
-        {
-          "name": "dryRun"
-        },
-        {
-          "name": "external"
-        },
-        {
-          "name": "internal"
-        },
-        {
-          "name": "outputPath"
-        },
-        {
-          "name": "ref"
-        },
-        {
-          "name": "removeAnnotation"
-        },
-        {
-          "name": "removeExternal"
-        },
-        {
-          "name": "removeInternal"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
       "type": "io.github.mbackschat.a12.dm.cli.model.ModelCommand",
       "fields": [
         {
@@ -8194,6 +8456,20 @@
       ]
     },
     {
+      "type": "io.github.mbackschat.a12.dm.cli.model.ModelUsageCommand",
+      "fields": [
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "io.github.mbackschat.a12.dm.cli.model.ModelValidateCommand",
       "fields": [
         {
@@ -8204,197 +8480,6 @@
         {
           "name": "<init>",
           "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.ModifyCommand",
-      "fields": [
-        {
-          "name": "comment"
-        },
-        {
-          "name": "computationId"
-        },
-        {
-          "name": "condition"
-        },
-        {
-          "name": "dryRun"
-        },
-        {
-          "name": "model"
-        },
-        {
-          "name": "outputPath"
-        },
-        {
-          "name": "ruleId"
-        },
-        {
-          "name": "specPath"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.OperatorsCommand",
-      "fields": [
-        {
-          "name": "id"
-        },
-        {
-          "name": "keyword"
-        },
-        {
-          "name": "kind"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.PatternsCommand",
-      "fields": [
-        {
-          "name": "apply"
-        },
-        {
-          "name": "args"
-        },
-        {
-          "name": "code"
-        },
-        {
-          "name": "dryRun"
-        },
-        {
-          "name": "id"
-        },
-        {
-          "name": "messages"
-        },
-        {
-          "name": "name"
-        },
-        {
-          "name": "outputPath"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.ReadCommand",
-      "fields": [
-        {
-          "name": "all"
-        },
-        {
-          "name": "model"
-        },
-        {
-          "name": "rule"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.ReferenceRewritingRefactorCommand",
-      "fields": [
-        {
-          "name": "dryRun"
-        },
-        {
-          "name": "outputPath"
-        },
-        {
-          "name": "workspace"
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.RemoveCommand",
-      "fields": [
-        {
-          "name": "cascade"
-        },
-        {
-          "name": "computation"
-        },
-        {
-          "name": "dryRun"
-        },
-        {
-          "name": "field"
-        },
-        {
-          "name": "group"
-        },
-        {
-          "name": "includeAlias"
-        },
-        {
-          "name": "model"
-        },
-        {
-          "name": "outputPath"
-        },
-        {
-          "name": "rule"
-        },
-        {
-          "name": "typedef"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.RootCommand",
-      "fields": [
-        {
-          "name": "model"
-        },
-        {
-          "name": "spec"
-        },
-        {
-          "name": "workspace"
         }
       ]
     },
@@ -8649,20 +8734,6 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.SchemaCommand",
-      "fields": [
-        {
-          "name": "tokens"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
       "type": "io.github.mbackschat.a12.dm.cli.typedef.TypedefAddCommand",
       "fields": [
         {
@@ -8833,55 +8904,6 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ValidateCommand",
-      "fields": [
-        {
-          "name": "extra"
-        },
-        {
-          "name": "model"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.VersionProvider",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.WhereUsedCommand",
-      "fields": [
-        {
-          "name": "entity"
-        },
-        {
-          "name": "model"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
       "type": "io.github.mbackschat.a12.dm.cli.workspace.WorkspaceCommand",
       "fields": [
         {
@@ -8935,14 +8957,6 @@
         {
           "name": "<init>",
           "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.WorkspaceOption",
-      "fields": [
-        {
-          "name": "mixee"
         }
       ]
     },
@@ -12306,6 +12320,9 @@
       "glob": "META-INF/groovy/org.codehaus.groovy.source.Extensions"
     },
     {
+      "glob": "META-INF/native-image/rulekit-agent/reachability-metadata.json"
+    },
+    {
       "glob": "META-INF/services/java.nio.channels.spi.SelectorProvider"
     },
     {
@@ -15480,6 +15497,9 @@
       "glob": "schema/model-info.schema.json"
     },
     {
+      "glob": "schema/model-usage.schema.json"
+    },
+    {
       "glob": "schema/read.schema.json"
     },
     {
@@ -15487,6 +15507,9 @@
     },
     {
       "glob": "schema/validate.schema.json"
+    },
+    {
+      "glob": "schema/where-used.schema.json"
     },
     {
       "glob": "schema/workspace-graph.schema.json"

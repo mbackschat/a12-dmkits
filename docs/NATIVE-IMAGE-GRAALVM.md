@@ -33,15 +33,15 @@ The single durable home for building the `dmtool` CLI as a **GraalVM native imag
 ## 2. Build (committed, opt-in)
 
 ```sh
-export GRAALVM_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home   # see the GOTCHA below
-export JAVA_HOME="$GRAALVM_HOME"
 export GRADLE_USER_HOME="$(cd .. && pwd)/.gradle-isolated"
-./gradlew :cli:nativeCompile        # → cli/build/native/nativeCompile/dmtool (~31 MB)
+./gradlew :cli:nativeCompile        # → cli/build/native/nativeCompile/dmtool (~33 MB)
 ```
 
-The `:cli` build file carries: the plugin, `graalvmNative { toolchainDetection = false; binaries.main { imageName='dmtool'; buildArgs += [--no-fallback, -Os, IncludeResources…] } }`, and a **native-only** Groovy exclusion (`configurations.named('nativeImageClasspath') { exclude group: 'org.codehaus.groovy' }`). The reflection metadata is bundled at `cli/src/main/resources/META-INF/native-image/rulekit-agent/reachability-metadata.json` (auto-detected).
+**GraalVM 25 is auto-discovered — no `GRAALVM_HOME` needed locally** (since 2026-06-17). The native binary declares an explicit toolchain launcher: when `GRAALVM_HOME` is unset, `graalvmNative.binaries.main` resolves `javaToolchains.launcherFor { languageVersion = 25; vendor = JvmVendorSpec.ORACLE }`, which Gradle's installation detection maps uniquely to the installed **Oracle GraalVM 25** (it reports as "Oracle JDK 25"). The JDK-21 *compile* toolchain (wrong version) and any **Homebrew OpenJDK 25** (vendor "Homebrew", and it has no `native-image`) are both excluded. So a plain `:cli:nativeCompile` builds with GraalVM 25 even when the daemon runs on the JDK-21 `JAVA_HOME`.
 
-> **GOTCHA — `GRAALVM_HOME` wins over `JAVA_HOME`.** The plugin (with `toolchainDetection=false`) resolves the GraalVM via **`GRAALVM_HOME`** first. If it points at an old GraalVM (e.g. a stale `…/graalvm-jdk-21…`), the build uses *that* regardless of `JAVA_HOME` — failing with *"native-image wasn't found / JDK isn't a GraalVM distribution."* Export `GRAALVM_HOME` to the GraalVM 25 home (and `./gradlew --stop` to drop a stale daemon).
+The `:cli` build file carries: the plugin, `graalvmNative { toolchainDetection = false; binaries.main { javaLauncher = …GraalVM 25…; imageName='dmtool'; buildArgs += [--no-fallback, -Os, IncludeResources…] } }`, and a **native-only** Groovy exclusion (`configurations.named('nativeImageClasspath') { exclude group: 'org.codehaus.groovy' }`). The reflection metadata is bundled at `cli/src/main/resources/META-INF/native-image/rulekit-agent/reachability-metadata.json` (auto-detected).
+
+> **Override / CI.** Setting **`GRAALVM_HOME`** still works and takes precedence (the auto-launcher only applies when it's unset) — CI keeps its explicit `GRAALVM_HOME` flow (RELEASE-SPEC). The historical gotcha was that `GRAALVM_HOME` wins over `JAVA_HOME`: if it points at a *stale* GraalVM (e.g. `…/graalvm-jdk-21…`) the build uses that regardless of `JAVA_HOME` and fails with *"native-image wasn't found / not a GraalVM distribution."* Fix: unset it (let auto-discovery pick GraalVM 25) or point it at the GraalVM 25 home, then `./gradlew --stop` to drop a stale daemon.
 
 ## 3. The three requirements beyond the defaults
 
