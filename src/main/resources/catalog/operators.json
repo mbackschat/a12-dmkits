@@ -1436,7 +1436,7 @@
     "operands": [ { "type": "number" }, { "type": "number" } ],
     "returns": "number",
     "meaning": "The element-wise sum of products across two parallel number field lists: Σ aᵢ·bᵢ (typically two wildcard repetition lists over the same group). Both operands render as bare entity refs.",
-    "constraints": [ "exactly two operands, both number fields or wildcard repetition lists" ],
+    "constraints": [ "exactly two number fields (or wildcard repetition lists), both in the SAME repeatable group (else MVK_DIFFERENT_GROUPS); the asterisk notates their lowest repeatable layer" ],
     "validExample": { "dsl": "FieldFilled(UnitPrice) And [UnitPrice] != SumOfProducts(Items*/Count, Items*/UnitWeight)", "note": "fires when the stored price disagrees with the summed count-weighted line items (both scale 2)" },
     "sinceKernel": "30.8.x"
   },

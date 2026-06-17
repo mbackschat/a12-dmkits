@@ -418,6 +418,10 @@ The aggregate combiners track whether their result *could still change if more f
 
 *(Locked: `adapter.laws.AggregateUncertaintyLawsTest` + `adapter.laws.FirstFilledValueLawsTest`.)*
 
+## §9 supplement — SumOfProducts same-group requirement (source + probe, 2026-06-17)
+
+`SumOfProducts(A*, B*)` requires its two repeatable number fields to live in the **same group** — fields from two different repeatable groups draw **`MVK_DIFFERENT_GROUPS`** (source `CheckEntityListenUtils.checkAllEntitiesInSameGroup`; probed: `SumOfProducts(Items*/Count, Items*/UnitWeight)` accepts, `SumOfProducts(Lines*/OrderedQty, Picks*/PickedQty)` across logistics' two repeatable groups rejects). BA adds (source-read, not separately probed): both operands must be Number with at least one repeatable layer, and the asterisk may notate only the lowest repeatable layer. *(Locked: `validate.laws.SumOfProductsLawsTest`.)*
+
 ## §9 supplement — `RepetitionNotUnique` slot laws (slice 7b, 2026-06-04 experiments)
 
 - **The rule sits at the parent**: every key field must have at least one repeatable group **between the rule group and the field** (or sit directly in a repeatable root group) — `RepetitionNotUnique(Addons/Name)` from *inside* `Addons` draws **`MVK_REPEATABLE_GROUP_MISSING`**; the same condition from the parent validates. Position-dependent → kernel-delegated, not pre-checked.
