@@ -127,6 +127,10 @@ In DM-JSON, a category's `values` list pairs **positionally** with the enumerati
 
 **Runtime (2026-06-10, RT-semantics drain):** the many-to-one mapping fires for *every* value sharing the category value (`STANDARD,EXPRESS,OVERNIGHT → NORMAL,FAST,FAST`: both `EXPRESS` and `OVERNIGHT` satisfy `== "FAST"`, `STANDARD` does not), and an empty enum rides the not-evaluated track — the category hop doesn't change that. *(Locked: `adapter.laws.EnumCategoryLawsTest`.)*
 
+## §8 supplement — the ==/!= string-enum compatibility matrix (display-texts, probe-confirmed 2026-06-17)
+
+For `==`/`!=` between string/enum fields (BA L1712-1742): an enumeration whose values carry **display texts** is incomparable with a plain **string** and with a **texts-less** enum — both draw **`MVK_INVALID_COMPARE_ENUM_TO_STRING`** ("not allowed to compare enumerations with display values to strings or to enumerations without display values"). A **string ↔ texts-less enum** comparison IS allowed, and **two texts-bearing enums** compare when their value→text maps agree on the overlap (BA: a shared value with mismatched texts — or a shared text with mismatched values — makes them incomparable). So the *presence of display texts*, not just the stored value, governs comparability. *(Locked: `validate.laws.EnumComparabilityLawsTest`.)*
+
 ## §8 supplement — table-backed (dynamic) enums are NOT DM-JSON-serializable ⇒ `ValueNotConsistent` is un-buildable (2026-06-08)
 
 `ValueNotConsistent(enumField <toOp> col1, col2, …)` (DE `WertNichtKonsistent`) checks a row's dependent columns against a **table-backed** enumeration. The checker (`CheckFieldAndValueListConditionImpl`) requires its first operand to be an enum field **with a table reference** (`IEnumerationType.getTableName()`/`getDependentColumns()` present), and verifies the dependent-param arity against the column count (value checks are skipped when the runtime data table is absent).

@@ -46,6 +46,25 @@ public final class ModelDrafts {
                 .build();
     }
 
+    /**
+     * Enum comparability fixture — a string, a texts-less enum, and two texts-bearing enums with matching
+     * value-to-text maps. For the {@code ==}/{@code !=} compatibility matrix (BA L1712-1742): a
+     * texts-bearing enum is incomparable with a string and with a texts-less enum.
+     */
+    public static DocumentModelDraft enumComparability() {
+        return DocumentModelDraft.named("enums").locale("en_US")
+                .rootGroup("Doc", d -> d
+                        .field("Str", FieldKind.STRING)
+                        .enumField("NoText", e -> e.value("A").value("B"))
+                        .enumField("WithText", e -> e
+                                .value("A", l -> l.label("en_US", "Alpha"))
+                                .value("B", l -> l.label("en_US", "Beta")))
+                        .enumField("WithText2", e -> e
+                                .value("A", l -> l.label("en_US", "Alpha"))
+                                .value("B", l -> l.label("en_US", "Beta"))))
+                .build();
+    }
+
     /** The order model — every field kind, address groups, an index-keyed item list, a categorized enum. */
     public static DocumentModelDraft order() {
         return DocumentModelDraft.named("order").locale("en_US").baseYear(2020)
