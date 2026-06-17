@@ -635,7 +635,7 @@
     "operands": [ { "type": "repeatable-group" } ],
     "returns": "scope",
     "meaning": "Names the reference group within whose repetitions RepetitionNotUnique checks uniqueness.",
-    "constraints": [ "the reference group must be repeatable (MVK_GROUP_NOT_REPEATABLE)" ],
+    "constraints": [ "the reference group must be repeatable (MVK_GROUP_NOT_REPEATABLE)", "the keyed fields must descend from the reference group (else MVK_NOT_IN_GROUP)" ],
     "gotchas": [ { "text": "a localized keyword (unlike the In separator): @From in EN, @Von in DE", "kind": "RENDERING" } ],
     "validExample": { "dsl": "RepetitionNotUnique(Items/Sku @From Items)", "note": "unique Sku within each Items scope" },
     "invalidExample": { "dsl": "RepetitionNotUnique(Items/Sku @From ShippingAddress)", "error": "MVK_GROUP_NOT_REPEATABLE", "fix": "@From needs a repeatable reference group" },

@@ -63,6 +63,13 @@ class IterationLawsTest {
     }
 
     @Test
+    void repetitionNotUniqueFromScopeMustContainTheKeys() {
+        // @From Picks is repeatable, but the key lives in Lines (not under Picks) → MVK_NOT_IN_GROUP.
+        KernelLaws.rejectsLogistics("/Shipment/Lines", "../LineRef",
+                "RepetitionNotUnique(/Shipment/Lines/LineRef @From /Shipment/Picks)", "MVK_NOT_IN_GROUP");
+    }
+
+    @Test
     void aPureNegativeInParallelIterationIsRejected() {
         // BA L919: in a parallel iteration a negative condition is disallowed UNLESS combined with a
         // positive one. A bare NoFieldFilled over the two parallel-iterated groups is rejected; the
