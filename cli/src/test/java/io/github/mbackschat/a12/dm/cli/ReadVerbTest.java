@@ -43,6 +43,30 @@ class ReadVerbTest {
     }
 
     @Test
+    void surfacesTheRulesStoredMessages(@TempDir Path dir) throws Exception {
+        // G10: read back what a rule SAYS (locale → text), raw + uninterpolated — no runtime-eval verb.
+        var res = CliTestSupport.run("read", modelWithRule(dir).toString(), "--rule", CliTestSupport.RULE_FULL_NAME);
+        assertEquals(0, res.code(), res::err);
+        JsonNode messages = MAPPER.readTree(res.out()).path("messages");
+        assertTrue(messages.isArray() && messages.size() == 2, () -> "both declared locales surfaced: " + res.out());
+        boolean foundEn = false;
+        for (JsonNode m : messages) {
+            foundEn |= "Too high.".equals(m.path("text").asText());
+            assertTrue(!m.path("locale").asText().isBlank(), () -> "each message names its locale: " + m);
+        }
+        assertTrue(foundEn, () -> "the stored message text is read back raw: " + res.out());
+    }
+
+    @Test
+    void ruleReadSubcommandSurfacesMessagesInData(@TempDir Path dir) throws Exception {
+        // the `rule read <path>` subcommand rides the result envelope — messages live under `data` (G10)
+        var res = CliTestSupport.run("-m", modelWithRule(dir).toString(), "rule", "read", CliTestSupport.RULE_FULL_NAME);
+        assertEquals(0, res.code(), res::err);
+        JsonNode messages = MAPPER.readTree(res.out()).path("data").path("messages");
+        assertTrue(messages.isArray() && messages.size() == 2, () -> "rule read surfaces messages in data: " + res.out());
+    }
+
+    @Test
     void missingModeFails(@TempDir Path dir) throws Exception {
         var res = CliTestSupport.run("read", modelWithRule(dir).toString());
         assertNotEquals(0, res.code(), "read needs --rule or --all");

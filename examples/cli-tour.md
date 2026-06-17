@@ -122,7 +122,7 @@ dmtool -m examples/models/order-ruled.dm.json model validate
 
 ## rule read
 
-Reads a rule stored in the model and renders its condition back as DSL — the kernel's own canonical text. The rule is named by a positional path; a read's payload rides the envelope's `data`. A partial parse returns a tolerant `Opaque` passthrough instead.
+Reads a rule stored in the model and renders its condition back as DSL — the kernel's own canonical text — plus the rule's stored error `messages` (locale → text, raw/uninterpolated, for auditing the wording without a runtime-eval verb). The rule is named by a positional path; a read's payload rides the envelope's `data`. A partial parse returns a tolerant `Opaque` passthrough instead.
 
 ```bash
 dmtool -m examples/models/order-ruled.dm.json rule read /Order/DeliveryNotBeforeOrder
@@ -139,7 +139,11 @@ dmtool -m examples/models/order-ruled.dm.json rule read /Order/DeliveryNotBefore
   "data" : {
     "rule" : "/Order/DeliveryNotBeforeOrder",
     "converted" : true,
-    "condition" : "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And DifferenceInDays(/Order/OrderDate, /Order/DeliveryDate) < 0"
+    "condition" : "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And DifferenceInDays(/Order/OrderDate, /Order/DeliveryDate) < 0",
+    "messages" : [ {
+      "locale" : "en_US",
+      "text" : "The delivery date must not be earlier than the order date."
+    } ]
   },
   "diagnostics" : [ ],
   "written" : false

@@ -6,12 +6,14 @@ import java.nio.file.Path;
 import java.util.List;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.adapter.ReadResult;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Parameters;
@@ -59,6 +61,7 @@ final class RuleReadCommand extends BaseCommand {
             ObjectNode data = MAPPER.createObjectNode();
             data.put("rule", rule);
             putRuleOutcome(data, read);
+            putMessages(data, adapter.ruleMessages(rule));
             ResultEnvelope env = ResultEnvelope.read("rule", "read",
                     read instanceof ReadResult.Converted ? "read " + rule : "read " + rule + " (Opaque)",
                     true, List.of(), data);
@@ -77,6 +80,14 @@ final class RuleReadCommand extends BaseCommand {
             node.put("converted", false);
             node.put("canonicalText", opaque.canonicalText());
             node.put("reason", opaque.reason());
+        }
+    }
+
+    /** Surface the rule's stored error messages (locale → text), raw + uninterpolated (G10) — native-capable. */
+    private static void putMessages(ObjectNode node, List<LocalizedText> messages) {
+        ArrayNode arr = node.putArray("messages");
+        for (LocalizedText m : messages) {
+            arr.addObject().put("locale", m.locale()).put("text", m.text());
         }
     }
 }

@@ -3,10 +3,12 @@ package io.github.mbackschat.a12.dm.cli;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.adapter.ReadResult;
@@ -16,6 +18,7 @@ import io.github.mbackschat.a12.dm.adapter.ModelRead;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
@@ -87,8 +90,17 @@ final class ReadCommand extends BaseCommand {
         ObjectNode root = MAPPER.createObjectNode();
         root.put("rule", rule);
         putRuleOutcome(root, adapter.read(rule));
+        putMessages(root, adapter.ruleMessages(rule));
         out().print(pretty(root));
         return 0;
+    }
+
+    /** Surface the rule's stored error messages (locale → text), raw + uninterpolated (G10) — native-capable. */
+    private static void putMessages(ObjectNode node, List<LocalizedText> messages) {
+        ArrayNode arr = node.putArray("messages");
+        for (LocalizedText m : messages) {
+            arr.addObject().put("locale", m.locale()).put("text", m.text());
+        }
     }
 
     private Integer readWholeModel(KernelAdapter adapter) {

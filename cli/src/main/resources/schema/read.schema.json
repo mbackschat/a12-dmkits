@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/read.schema.json",
   "title": "Read",
-  "description": "Output of `rule read`. Two modes. With --rule: one stored rule's condition read back — `converted` true = rulekit fully modeled every construct (an ordinary AST, ready for explain/diff); false = a tolerant Opaque passthrough preserving the kernel's text verbatim. With --all: the unified whole-model read — `rules` and `computations` (disjoint maps keyed by full name; a computation is stored as a rule in the kernel's getAllRules() but is reported only under `computations`) plus a `summary`.",
+  "description": "Output of `rule read`. Two modes. With --rule: one stored rule's condition read back — `converted` true = rulekit fully modeled every construct (an ordinary AST, ready for explain/diff); false = a tolerant Opaque passthrough preserving the kernel's text verbatim — plus the rule's stored `messages` (locale → text, raw/uninterpolated; native-capable). With --all: the unified whole-model read — `rules` and `computations` (disjoint maps keyed by full name; a computation is stored as a rule in the kernel's getAllRules() but is reported only under `computations`) plus a `summary`.",
   "type": "object",
   "additionalProperties": false,
   "oneOf": [
@@ -15,6 +15,18 @@
     "condition": { "type": "string", "description": "(--rule, Converted) the rendered DSL of the condition" },
     "canonicalText": { "type": "string", "description": "(--rule, Opaque) the raw kernel condition text, preserved verbatim" },
     "reason": { "type": "string", "description": "(--rule, Opaque) the not-yet-modeled construct" },
+    "messages": {
+      "type": "array",
+      "description": "(--rule) the rule's stored error messages — raw + uninterpolated (locale → text), native-capable (no runtime eval); for auditing wording / message length / locale coverage",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "locale": { "type": "string", "description": "the DM-JSON locale code, e.g. en_US" },
+          "text": { "type": "string", "description": "the stored message text (NOT interpolated — the runtime, value-substituted message is `model eval`)" }
+        }
+      }
+    },
     "rules": {
       "type": "object",
       "description": "(--all) validation rules keyed by full name; each value is a per-rule outcome",
