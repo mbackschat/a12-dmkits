@@ -366,6 +366,8 @@ The `*` suffix is per path segment (grammar `idNameRef: idName '*'?`) and builds
 
 **Runtime resolution (2026-06-10, RT-semantics drain):** `[Items/Count For "SKU-1"]` reads the `Count` of exactly the row whose index field (`Sku`) carries `"SKU-1"` — siblings are not read — and when **no row carries the index value, the comparison is not evaluated** (no fire), it does not fall back to the empty-number 0-substitution. *(Locked: `adapter.laws.SemanticIndexLawsTest`.)*
 
+**Operator-context restrictions + a BA-doc correction (source + probe, 2026-06-17).** The semantic index is **accepted inside `NumberOfFilledFields`** but **rejected inside `NumberOfFilledGroups` and `RepetitionNotUnique`** (`MVK_SEMANTIC_INDEX_NOT_ALLOWED`; source `CheckFeldListenAnzahlOpImpl` calls `checkNoSemanticIndex` in the `AnzahlAngegebenerKontexte` branch only, and `CheckWiederholungBedingungImpl`), and **rejected under a starred enclosing group** (`MVK_SEMANTIC_INDEX_AND_WILDCARD`). This **contradicts the BA reference** (L902, "not supported for `NumberOfFilledFields` and `RepetitionNotUnique`") — a *Felder/Kontexte* slip in the prose: the kernel rejects it for `NumberOfFilledGroups`, not `NumberOfFilledFields`. *(Locked: `validate.laws.SemanticIndexSlotLawsTest`.)*
+
 *(Locked: N7 `CurrentRepetition` valid (iterating) + invalid (non-iterating `MVK_NO_WILDCARD`); the iterating-position law in `validate.laws.IterationLawsTest`. Groups-only is structural.)*
 
 ## §9 supplement — the `Having` filter and `$` correlation (slice 7d, 2026-06-04 experiments)
