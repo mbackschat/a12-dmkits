@@ -4,8 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternKind;
 import io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam;
 
 /**
@@ -58,6 +63,25 @@ class PatternCatalogTest {
                         () -> p.id() + ": example is missing parameter " + param.name());
             }
         }
+    }
+
+    /**
+     * The exact idiom set + each idiom's {@code kind} — the LOCAL lock for the cli-tour's pinned {@code patterns}
+     * list (its {@code count} + {@code ids}). Adding/removing/renaming an idiom (or flipping a kind) forces this
+     * test to change, so the CI-only demo can't silently drift in a local commit (the diagnostics-count lesson,
+     * CLAUDE.md). Keep in sync with {@code examples/cli-tour.md}.
+     */
+    @Test
+    void theIdiomSetAndKindsAreLocked() {
+        Map<String, PatternKind> idsToKind = CATALOG.entries().stream()
+                .collect(Collectors.toMap(PatternEntry::id, PatternEntry::kind, (a, b) -> a, LinkedHashMap::new));
+        assertEquals(Map.of(
+                "date-order", PatternKind.RULE,
+                "mutually-exclusive", PatternKind.RULE,
+                "at-least-one-of", PatternKind.RULE,
+                "required-when", PatternKind.RULE,
+                "sum-of-line-items", PatternKind.RULE,
+                "tiered-amount", PatternKind.COMPUTATION), idsToKind);
     }
 
     @Test

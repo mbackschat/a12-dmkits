@@ -181,7 +181,7 @@ The CLI mirrors it: a `comment` key on `rule add` and `computation add`, plus `r
 
 ### Validation-pattern catalogue
 
-The recurring validation idioms (date-order, required-when, mutually-exclusive, at-least-one-of, sum-of-line-items) are a **catalogue** — `PatternCatalog.load().byId("date-order")` — where each entry builds its condition through the **typed DSL**, so it's correct by construction (right polarity, a referenced error field). The library returns the rule-spec parts; the CLI `patterns` verb scaffolds + `--apply`s them. Each entry's example is kernel-validated in CI, so the catalogue can't go stale. Full API + the typed-vs-data design: [API guide](docs/API-GUIDE.md).
+The recurring idioms (date-order, required-when, mutually-exclusive, at-least-one-of, sum-of-line-items, and the `tiered-amount` computation) are a **catalogue** — `PatternCatalog.load().byId("date-order")` — where each entry builds its artifact through the **typed DSL**, so it's correct by construction (a rule's right polarity + referenced error field, or a computation's mutually-exclusive precondition table). The library returns a sealed `RuleInstantiation` | `ComputationInstantiation`; the CLI `patterns` verb scaffolds + `--apply`s them. Each entry's example is kernel-validated in CI, so the catalogue can't go stale. Full API + the typed-vs-data design: [API guide](docs/API-GUIDE.md).
 
 More rulekit idioms and the design rationale are in the [API guide](docs/API-GUIDE.md).
 
@@ -359,7 +359,7 @@ Precedence: `-w/--workspace` > `$DMTOOL_WORKSPACE` > the model's own folder (see
 
 ### Scaffold from a validation pattern — polarity & error field baked in
 
-A BA's recurring tasks — *required-when*, *date-order*, *mutually-exclusive*, *at-least-one-of*, *sum-of-line-items* — are exactly where an agent re-risks the two hardest traps every time: getting the **polarity** right (an A12 rule fires on the *violation*) and picking a **valid error field** (it must be referenced + in scope, else `MVK_ERROR_FIELD_NOT_REFERENCED`). The `patterns` verb removes the re-derivation: each idiom is a **typed-DSL-backed** template — correct by construction — that scaffolds a kernel-valid rule from a few parameters.
+A BA's recurring tasks — *required-when*, *date-order*, *mutually-exclusive*, *at-least-one-of*, *sum-of-line-items* — are exactly where an agent re-risks the two hardest **rule** traps every time: getting the **polarity** right (an A12 rule fires on the *violation*) and picking a **valid error field** (it must be referenced + in scope, else `MVK_ERROR_FIELD_NOT_REFERENCED`). The `patterns` verb removes the re-derivation: each idiom is a **typed-DSL-backed** template — correct by construction — that scaffolds a kernel-valid artifact from a few parameters. Beyond the rule idioms, **`tiered-amount`** is a **computation** idiom — it scaffolds a `kind:computation` artifact whose preconditions form a **mutually-exclusive, exhaustive table** (`< threshold` / `>= threshold`), the trap on the BA's *computation* side.
 
 ```sh
 dmtool patterns                                  # list the idioms
@@ -375,6 +375,11 @@ dmtool -m order.dm.json patterns date-order \
 
 dmtool -m order.dm.json patterns date-order \
   --arg earlier=/Order/OrderDate --arg later=/Order/DeliveryDate --apply   # …or persist it directly (--dry-run previews)
+
+# A COMPUTATION idiom — a mutually-exclusive, exhaustive precondition table (scaffolds a computation-spec):
+dmtool -m order.dm.json patterns tiered-amount \
+  --arg computed=/Order/BackorderQuantity --arg driver=/Order/Quantity \
+  --arg threshold=10 --arg below=0 --arg atOrAbove=5      # --apply persists via `computation add`
 ```
 
 The catalogue is **self-verifying**: every idiom's example is CI-instantiated and run through the real kernel, so a pattern that no longer scaffolds a valid rule fails the build. See [CLI-SPEC](docs/CLI-SPEC.md) and the [API guide](docs/API-GUIDE.md).

@@ -999,8 +999,8 @@ The five built-ins span the BA-doc's typical tasks: **date-order**, **required-w
 ```java
 PatternEntry dateOrder = PatternCatalog.load().byId("date-order").orElseThrow();
 
-// instantiate against the model with the caller's field refs:
-PatternEntry.Instantiation it = dateOrder.instantiate(boundModel,
+// date-order scaffolds a RULE — instantiate against the model with the caller's field refs:
+var it = (PatternEntry.RuleInstantiation) dateOrder.instantiate(boundModel,
         Map.of("earlier", "/Order/OrderDate", "later", "/Order/DeliveryDate"));
 
 it.condition();    // "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And DifferenceInDays(…) < 0"

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 
 /**
  * One named validation idiom in the pattern catalog (FEATURE-GAPS G2) — the rule/computation-level peer of
@@ -31,7 +32,7 @@ public interface PatternEntry {
     /** A one-line description of the BA task this idiom serves. */
     String summary();
 
-    /** What the scaffolded artifact is — a rule (v1) or, later, a computation. */
+    /** What the scaffolded artifact is — a validation rule or a computation (R1). */
     PatternKind kind();
 
     /** The named parameters the idiom takes (field/value slots), in order. */
@@ -55,8 +56,10 @@ public interface PatternEntry {
 
     /** The artifact a pattern scaffolds. */
     enum PatternKind {
-        /** A validation rule. */
-        RULE
+        /** A validation rule (a violation condition + error field). */
+        RULE,
+        /** A computation (a calculated field + a mutually-exclusive precondition table). */
+        COMPUTATION
     }
 
     /** A pattern parameter — a named slot the caller fills (a field path or a literal value). */
@@ -82,10 +85,28 @@ public interface PatternEntry {
     }
 
     /**
-     * The result of {@link #instantiate} — the rule-spec parts an agent reviews and {@code rule add}s (or that
+     * The result of {@link #instantiate} — the spec an agent reviews and persists. Sealed over the two
+     * artifact kinds: a {@link RuleInstantiation} (a {@link PatternKind#RULE} pattern) or a
+     * {@link ComputationInstantiation} (a {@link PatternKind#COMPUTATION} pattern). The verb dispatches
+     * on the variant — a rule rides {@code rule add}, a computation {@code computation add}.
+     */
+    sealed interface Instantiation permits RuleInstantiation, ComputationInstantiation {
+    }
+
+    /**
+     * A {@link PatternKind#RULE} result — the rule-spec parts an agent reviews and {@code rule add}s (or that
      * {@code patterns <id> --apply} persists directly): the rendered violation {@code condition}, the chosen
      * {@code errorField} (a referenced field in the condition's scope), and a suggested error {@code code}.
      */
-    record Instantiation(String condition, String errorField, String suggestedCode) {
+    record RuleInstantiation(String condition, String errorField, String suggestedCode) implements Instantiation {
+    }
+
+    /**
+     * A {@link PatternKind#COMPUTATION} result — the typed {@link Computation} the idiom built (correct by
+     * construction: mutually-exclusive preconditions, kind-matched operations). The verb reads its
+     * {@code draft()} (the structural spec) and applies the caller's name/messages over the idiom's
+     * placeholders — so name/message overrides work the same as for a rule.
+     */
+    record ComputationInstantiation(Computation computation) implements Instantiation {
     }
 }

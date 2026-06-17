@@ -17,7 +17,9 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolve
 import io.github.mbackschat.a12.dm.rulekit.catalog.PatternCatalog;
 import io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
@@ -135,11 +137,11 @@ final class PatternsCommand extends BaseCommand {
         return n;
     }
 
-    /** Scaffold mode — instantiate the idiom, auto-check, and (with --apply) persist. */
+    /** Scaffold mode — instantiate the idiom, auto-check, and (with --apply) persist. Dispatches on the artifact kind. */
     private Integer scaffold(PatternEntry pattern) {
         String model = model();
         if (model == null) {
-            return fail("pass -m <model.json> to scaffold a rule from a pattern");
+            return fail("pass -m <model.json> to scaffold from a pattern");
         }
         String modelJson;
         try {
@@ -160,6 +162,15 @@ final class PatternsCommand extends BaseCommand {
             return fail("cannot scaffold from '" + pattern.id() + "': " + e.getMessage());
         }
 
+        return switch (inst) {
+            case PatternEntry.RuleInstantiation r -> scaffoldRule(pattern, r, bound, modelJson, resolver, model);
+            case PatternEntry.ComputationInstantiation c -> scaffoldComputation(pattern, c, bound, modelJson, resolver, model);
+        };
+    }
+
+    /** Scaffold a RULE pattern — build the rule-spec, auto-check, and (with --apply) persist via {@code addRule}. */
+    private Integer scaffoldRule(PatternEntry pattern, PatternEntry.RuleInstantiation inst,
+            BoundModel bound, String modelJson, IDocumentModelReferenceResolver resolver, String model) {
         String errorField = inst.errorField();
         int slash = errorField.lastIndexOf('/');
         String group = errorField.substring(0, slash);
@@ -207,6 +218,71 @@ final class PatternsCommand extends BaseCommand {
         root.put("applied", true);
         root.put("written", dest);
         root.put("rule", group + "/" + ruleName);
+        return emit(root);
+    }
+
+    /**
+     * Scaffold a COMPUTATION pattern — the idiom built a typed {@link Computation} (correct by construction:
+     * mutually-exclusive preconditions, kind-matched operations). Apply the caller's name/messages over the
+     * idiom's placeholders, auto-check, and (with --apply) persist via {@code addComputation}. ({@code --code}
+     * is a rule concept; a fired computation's code is its own name, so it is not used here.)
+     */
+    private Integer scaffoldComputation(PatternEntry pattern, PatternEntry.ComputationInstantiation inst,
+            BoundModel bound, String modelJson, IDocumentModelReferenceResolver resolver, String model) {
+        Computation computation = inst.computation();
+        DraftComputation built = computation.draft();
+        String compName = name != null ? name : built.name();
+        // re-stamp the caller's chosen name over the idiom's placeholder (the structural draft is unchanged)
+        DraftComputation draft = new DraftComputation(built.groupPath(), compName,
+                built.computedFieldRelPath(), built.commonPrecondition(), built.alternatives());
+        List<LocalizedText> msgs = messages(bound, pattern.summary());
+
+        ValidationResult check = new RuleValidator().check(modelJson, draft, resolver);
+
+        ObjectNode root = MAPPER.createObjectNode();
+        root.put("pattern", pattern.id());
+        ObjectNode spec = root.putObject("spec");
+        spec.put("computedField", computation.computedField().path());
+        spec.put("name", compName);
+        if (draft.commonPrecondition() != null) {
+            spec.put("commonPrecondition", draft.commonPrecondition());
+        }
+        ArrayNode alts = spec.putArray("alternatives");
+        for (DraftComputation.Alternative a : draft.alternatives()) {
+            ObjectNode an = alts.addObject();
+            if (a.precondition() != null) {
+                an.put("precondition", a.precondition());
+            }
+            an.put("operation", a.operation());
+        }
+        ArrayNode specMsgs = spec.putArray("messages");
+        msgs.forEach(m -> specMsgs.addObject().put("locale", m.locale()).put("text", m.text()));
+        root.put("valid", check.ok());
+        root.set("diagnostics", diagnostics(check));
+
+        if (!apply) {
+            return emit(root);                       // review the computation-spec (+ kernel verdict), then `computation add`
+        }
+        if (!check.ok()) {
+            root.put("applied", false);
+            root.put("reason", "the scaffolded computation is rejected by the kernel — fix the diagnostics before --apply");
+            return emit(root, 1);
+        }
+        String persisted = ModelWriter.addComputation(modelJson, draft, msgs);
+        if (dryRun) {
+            root.put("applied", false);
+            root.put("previewed", true);
+            return emit(root);
+        }
+        String dest = outputPath != null ? outputPath : model;
+        try {
+            Files.writeString(Path.of(dest), persisted);
+        } catch (IOException e) {
+            return fail("cannot write output: " + e.getMessage());
+        }
+        root.put("applied", true);
+        root.put("written", dest);
+        root.put("computation", draft.groupPath() + "/" + compName);
         return emit(root);
     }
 

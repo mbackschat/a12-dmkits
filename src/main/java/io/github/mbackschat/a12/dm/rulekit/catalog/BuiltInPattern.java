@@ -5,11 +5,15 @@ import java.util.List;
 import java.util.Map;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral;
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 
 import static io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind.DATE_FIELD;
 import static io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind.EQUATABLE_FIELD;
@@ -43,7 +47,7 @@ public enum BuiltInPattern implements PatternEntry {
             var later = m.date(req(a, "later"));
             Condition c = Dsl.allFieldsFilled(earlier.field(), later.field())
                     .and(Dsl.differenceInDays(earlier, later).lt(0));
-            return new Instantiation(render(c), req(a, "later"), "DATE_ORDER");
+            return new RuleInstantiation(render(c), req(a, "later"), "DATE_ORDER");
         }
     },
 
@@ -57,7 +61,7 @@ public enum BuiltInPattern implements PatternEntry {
         @Override
         public Instantiation instantiate(BoundModel m, Map<String, String> a) {
             Condition c = Dsl.allFieldsFilled(m.field(req(a, "a")), m.field(req(a, "b")));
-            return new Instantiation(render(c), req(a, "a"), "MUTUALLY_EXCLUSIVE");
+            return new RuleInstantiation(render(c), req(a, "a"), "MUTUALLY_EXCLUSIVE");
         }
     },
 
@@ -76,7 +80,7 @@ public enum BuiltInPattern implements PatternEntry {
             FieldRef first = m.field(paths.get(0));
             FieldRef[] rest = paths.subList(1, paths.size()).stream().map(m::field).toArray(FieldRef[]::new);
             Condition c = Dsl.noFieldFilled(first, rest);
-            return new Instantiation(render(c), paths.get(0), "AT_LEAST_ONE_OF");
+            return new RuleInstantiation(render(c), paths.get(0), "AT_LEAST_ONE_OF");
         }
     },
 
@@ -100,7 +104,7 @@ public enum BuiltInPattern implements PatternEntry {
                                 + m.field(triggerPath).kind() + " at " + triggerPath);
             };
             Condition c = triggered.and(Dsl.fieldNotFilled(m.field(req(a, "required"))));
-            return new Instantiation(render(c), req(a, "required"), "REQUIRED_WHEN");
+            return new RuleInstantiation(render(c), req(a, "required"), "REQUIRED_WHEN");
         }
     },
 
@@ -114,7 +118,42 @@ public enum BuiltInPattern implements PatternEntry {
         @Override
         public Instantiation instantiate(BoundModel m, Map<String, String> a) {
             Condition c = Dsl.sum(m.flatten(req(a, "items"))).gt(m.num(req(a, "cap")).asNumber());
-            return new Instantiation(render(c), req(a, "cap"), "SUM_OF_LINE_ITEMS");
+            return new RuleInstantiation(render(c), req(a, "cap"), "SUM_OF_LINE_ITEMS");
+        }
+    },
+
+    TIERED_AMOUNT("tiered-amount",
+            "compute a number field as one value below a threshold, another at/above it",
+            "the two preconditions partition the driver — `< threshold` vs `>= threshold` — so they are mutually"
+                    + " exclusive AND exhaustive by construction (no overlap for the kernel to reject); guarded by"
+                    + " FieldFilled(driver) so an empty driver computes nothing rather than the empty-as-0 band",
+            "computed=${computed}; common FieldFilled(${driver}); when [${driver}] < ${threshold} => ${below};"
+                    + " when [${driver}] >= ${threshold} => ${atOrAbove}",
+            List.of(param("computed", NUMBER_FIELD, "the number field the computation assigns (must differ from the driver)"),
+                    param("driver", NUMBER_FIELD, "the number field whose value selects the band"),
+                    param("threshold", VALUE, "the band boundary; driver `< threshold` vs `>= threshold`"),
+                    param("below", VALUE, "the value assigned when driver < threshold (same scale as `computed`)"),
+                    param("atOrAbove", VALUE, "the value assigned when driver >= threshold (same scale as `computed`)")),
+            Map.of("computed", "/Order/BackorderQuantity", "driver", "/Order/Quantity",
+                    "threshold", "10", "below", "0", "atOrAbove", "5")) {
+        @Override
+        public PatternKind kind() {
+            return PatternKind.COMPUTATION;
+        }
+
+        @Override
+        public Instantiation instantiate(BoundModel m, Map<String, String> a) {
+            NumberRef computed = m.num(req(a, "computed"));
+            NumberRef driver = m.num(req(a, "driver"));
+            String threshold = req(a, "threshold");
+            Computation c = m.computation(computed)
+                    .name(computedName(computed))
+                    .commonPrecondition(driver.filled())
+                    .when(driver.lt(threshold)).calc(NumberLiteral.of(req(a, "below")))
+                    .when(driver.ge(threshold)).calc(NumberLiteral.of(req(a, "atOrAbove")))
+                    .message(placeholderMessages(m))
+                    .build();
+            return new ComputationInstantiation(c);
         }
     };
 
@@ -171,5 +210,22 @@ public enum BuiltInPattern implements PatternEntry {
     /** Render a built condition to canonical EN DSL text (absolute paths). */
     static String render(Condition condition) {
         return new DslRenderer(ConditionLanguage.EN).render(condition);
+    }
+
+    /** A computation's default name — {@code <Field>Comp}, mirroring the CLI computation-spec default. */
+    static String computedName(NumberRef computed) {
+        String path = computed.field().path();
+        return path.substring(path.lastIndexOf('/') + 1) + "Comp";
+    }
+
+    /**
+     * Placeholder self-validation text per the model's declared locales — a computation needs ≥1 message to
+     * build, but the verb replaces these with the caller's {@code --message} (or its own placeholder) on scaffold.
+     */
+    static LocalizedText[] placeholderMessages(BoundModel m) {
+        List<String> locales = m.locales().isEmpty() ? List.of("en_US") : m.locales();
+        return locales.stream()
+                .map(locale -> new LocalizedText(locale, "computed value mismatch"))
+                .toArray(LocalizedText[]::new);
     }
 }

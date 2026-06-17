@@ -345,17 +345,17 @@ dmtool operators DifferenceInDays | jq '{id,kind,meaning}'
 
 ## patterns — scaffold a correct rule from an idiom
 
-Where `operators` is the *vocabulary*, `patterns` is the *idiom* catalogue — the recurring BA tasks (date-order, required-when, mutually-exclusive, …), each a typed-DSL-backed template that bakes in the two hardest traps: the **violation polarity** and a **referenced error field**. `patterns` lists them; the summary here is projected with `jq`.
+Where `operators` is the *vocabulary*, `patterns` is the *idiom* catalogue — the recurring BA tasks, each a typed-DSL-backed template that's correct by construction. Most are **rule** idioms (date-order, mutually-exclusive, …) that bake in the two hardest rule traps — the **violation polarity** and a **referenced error field**; `tiered-amount` is a **computation** idiom that bakes in a **mutually-exclusive, exhaustive precondition table**. `patterns` lists them, with each idiom's `kind`; the summary here is projected with `jq`.
 
 ```bash
 dmtool patterns | jq -c '{count, ids: (.patterns|map(.id))}'
 ```
 
 ```output
-{"count":5,"ids":["date-order","mutually-exclusive","at-least-one-of","required-when","sum-of-line-items"]}
+{"count":6,"ids":["date-order","mutually-exclusive","at-least-one-of","required-when","sum-of-line-items","tiered-amount"]}
 ```
 
-→ Five idioms. Pass an id with `--arg name=value` parameters (and `-m <model>`) to **scaffold** a rule-spec from one — the condition is built through the typed DSL, so it's correct by construction, and it's **auto-checked** against the kernel.
+→ Six idioms. Pass an id with `--arg name=value` parameters (and `-m <model>`) to **scaffold** the artifact from one — a rule-spec, or a computation-spec for `tiered-amount` — built through the typed DSL (correct by construction) and **auto-checked** against the kernel.
 
 ```bash
 dmtool -m examples/models/order-ruled.dm.json patterns date-order --arg earlier=/Order/OrderDate --arg later=/Order/DeliveryDate | jq '{pattern, spec: {field: .spec.field, condition: .spec.condition}, valid}'

@@ -16,9 +16,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * {@code patterns} (FEATURE-GAPS G2) — the validation-idiom catalog. Lists idioms, details one, and scaffolds
- * a kernel-valid rule (correct polarity + a referenced error field baked in), auto-checking the result and,
- * with {@code --apply}, persisting it. Fixture: {@code order-ruled} (OrderDate/DeliveryDate/…).
+ * {@code patterns} (FEATURE-GAPS G2/R1) — the idiom catalog. Lists idioms, details one, and scaffolds a
+ * kernel-valid artifact: a <b>rule</b> (correct polarity + a referenced error field) or a <b>computation</b>
+ * (a mutually-exclusive precondition table), auto-checking the result and, with {@code --apply}, persisting it.
+ * Fixture: {@code order-ruled} (OrderDate/DeliveryDate/Quantity/BackorderQuantity/…).
  */
 class PatternsVerbTest {
 
@@ -87,6 +88,35 @@ class PatternsVerbTest {
         assertTrue(j.path("applied").asBoolean(), res::out);
         assertEquals("/Order/NameXorCode", j.path("rule").asText());
         assertTrue(Files.readString(model).contains("NameXorCode"), "the rule is persisted to the model");
+    }
+
+    @Test
+    void scaffoldsAKernelValidComputationSpec(@TempDir Path dir) throws Exception {
+        var res = CliTestSupport.run("-m", model(dir).toString(), "patterns", "tiered-amount",
+                "--arg", "computed=/Order/BackorderQuantity", "--arg", "driver=/Order/Quantity",
+                "--arg", "threshold=10", "--arg", "below=0", "--arg", "atOrAbove=5");
+        assertEquals(0, res.code(), res::err);
+        JsonNode j = M.readTree(res.out());
+        JsonNode spec = j.path("spec");
+        assertEquals("/Order/BackorderQuantity", spec.path("computedField").asText(), res::out);
+        // the two preconditions partition the driver — mutually exclusive + exhaustive by construction
+        assertEquals(2, spec.path("alternatives").size(), res::out);
+        assertEquals("FieldFilled(Quantity)", spec.path("commonPrecondition").asText(), res::out);
+        assertTrue(j.path("valid").asBoolean(), () -> "the scaffolded computation is kernel-valid: " + res.out());
+    }
+
+    @Test
+    void applyPersistsTheScaffoldedComputation(@TempDir Path dir) throws Exception {
+        Path model = model(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "patterns", "tiered-amount",
+                "--arg", "computed=/Order/BackorderQuantity", "--arg", "driver=/Order/Quantity",
+                "--arg", "threshold=10", "--arg", "below=0", "--arg", "atOrAbove=5",
+                "--name", "BackorderTier", "--message", "en_US=backorder tier mismatch", "--apply");
+        assertEquals(0, res.code(), res::err);
+        JsonNode j = M.readTree(res.out());
+        assertTrue(j.path("applied").asBoolean(), res::out);
+        assertEquals("/Order/BackorderTier", j.path("computation").asText());
+        assertTrue(Files.readString(model).contains("BackorderTier"), "the computation is persisted to the model");
     }
 
     @Test
