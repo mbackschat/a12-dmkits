@@ -16,6 +16,32 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-17 03:03 CEST — OQ1: code-mode (`dmcode`) vs bare-tool CLI, head-to-head (opus, k=2, 7 tasks)
+
+The [DMCODE-PROPOSAL](../docs/DMCODE-PROPOSAL.md) OQ1 probe: is **code-against-the-API** (a clean agent authoring Java via the typed kits, compiler + `RuleValidator` as feedback) **more powerful** than the **bare-tool CLI** for BA authoring? Two arms, **neither given the skill**. CLI arm = self-describing `dmtool` + the model (bare-tool boundary). Code arm = a `/tmp` **`api.txt` proxy** (scoped signatures + javadoc) + `operators.json` + the model, source-launched against the kits classpath (no `src/` — boundary-audited clean, both arms). Tasks chosen from a verb-surface study to hit the CLI's *theoretical* difficulty axes.
+
+**Result — code-mode ties the CLI on correctness on every axis, never beats it, costs ~2.3×, and is worse on refactors.** Deterministic scores (k=2):
+
+| task | axis | CLI | code | note |
+|---|---|---|---|---|
+| C1 | bulk-5 | 2/2 | 2/2 | tie |
+| C2 | conditional (small set) | 2/2 | 1/2 | code-k1 miss is an **eval-design artifact** — the `RK_UNGUARDED` lint doesn't flag the field-vs-field case, so trusting it under-corrected; not a code deficiency |
+| C3 | built-in rename | 2/2 | 2/2 | code fragile (manual ref surgery) |
+| A | aggregate query / audit | 2/2 | 2/2 | CLI ground via `where-used`×N + read messages; code walked once |
+| C | data-driven ×25 | 2/2 | 2/2 | **CLI scripted `jq`→`batch`**; code looped |
+| D | state-parameterized edit | 2/2 | 2/2 | CLI `where-used`+`meta`; code walk + `setInternalDescription` |
+| E | multi-model rename ×3 | 2/2 | 2/2 | **CLI `field rename` cascades in one verb; code = 4–5-iteration manual `removeRule`→rename→`addRule` surgery** |
+
+Cost: CLI ~42k tok/task avg, code ~97k (~2.3×) — even with `api.txt` (the compile-iterate loop + the 38k api.txt read are inherent).
+
+**Why the thesis didn't hold:** a *coding agent* clears the "verb ceiling" the dmcode pitch assumed by **shell-scripting around it** — `jq`-generating the op-list → `batch` (bulk/data-driven), `where-used`×N + shell (queries), shell loops (multi-model). The CLI's fixed vocabulary isn't the agent's ceiling; the agent's shell is the loop/data-pipe. So code's expressiveness edge doesn't materialize for realistic BA authoring.
+
+**Verdict (OQ1): do not graduate `dmcode` as a general authoring tier — PARK.** The graduate criterion (beat the CLI on composition **and** tie on simple) is not met: code *ties* (doesn't beat) on composition, loses on cost, and is worse on refactors. Re-open only if (a) a real consumer hits a task the CLI+shell genuinely can't express, or (b) the **runtime-eval** capability (OQ2 — `model eval`/`rule test`, which native can't ship but the JVM bundle can) becomes a real need — **untested here** and dmcode's one un-superseded structural advantage.
+
+**Corroborated side-findings:** **OQ7** — `EditSession.renameField` does **not** cascade rule references (C3+E forced fragile manual surgery); the kit needs the refactor cascade promoted from `cli/` regardless of dmcode. **OQ5** — the scoped `api.txt` proxy is ~38k tokens, too big to always-load; needs trimming to the ~40 entry types before any ship.
+
+**Caveats:** a probe (k=2, 7 tasks) — directional, not definitive; the `api.txt` was an unrefined proxy; the task space isn't exhausted (very complex data-flow / custom analysis beyond shell+`jq`+CLI wasn't reached). Harness: clean Agent-tool subagents driven from the main loop (not the bare-tool Workflow runner); boundaries instructed + transcript-audited, not workflow-enforced.
+
 ### 2026-06-17 00:46 CEST — self-correction family wired + a catalog-quality fix it surfaced (sonnet, k=3, T19)
 
 Wired the **`self-correction`** family into `benchmark.workflow.js` (it had no runner stage, so the 28-task baseline above excluded `rulekit/19`). Self-correction is authoring with a recovery trap — the recovery loop happens *inside* the produce agent (it has the read-only `check` verb), so the pass criterion is identical to authoring (final rule kernel-valid AND gold-equivalent); it rides the authoring produce → `cli batch` recheck → judge-by-execution path verbatim. EVAL-SPEC §3.

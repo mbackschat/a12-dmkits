@@ -1,6 +1,8 @@
 # dmcode — the code-mode delivery (proposal)
 
-**Status: experiment.** This proposal captures the design of a second, experimental delivery tier — `dmcode` — alongside the shipped native `dmtool` CLI. It records requirements, the measured findings behind each choice, the settled decisions, the open questions, a transient plan, and the release approach. When the experiment graduates, its design extracts into a [`CLI-SPEC.md`](CLI-SPEC.md) section (or a `DMCODE-SPEC.md`) and the release detail into [`RELEASE-SPEC.md`](RELEASE-SPEC.md); this proposal then shrinks to intent + a pointer.
+**Status: experiment — OQ1 measured 2026-06-17 → PARKED** (see §4 OQ1 + [`eval/RESULTS.md`](../eval/RESULTS.md)). Code-mode tied the bare CLI on correctness across all probed axes (including four designed to favor it), at ~2.3× token cost and worse on refactors — so it does **not** graduate as a general authoring tier now. The design below is kept for the two re-open conditions (a task the CLI+shell genuinely can't express; or the runtime-eval need, OQ2).
+
+This proposal captures the design of a second, experimental delivery tier — `dmcode` — alongside the shipped native `dmtool` CLI. It records requirements, the measured findings behind each choice, the settled decisions, the open questions, a transient plan, and the release approach. When the experiment graduates, its design extracts into a [`CLI-SPEC.md`](CLI-SPEC.md) section (or a `DMCODE-SPEC.md`) and the release detail into [`RELEASE-SPEC.md`](RELEASE-SPEC.md); this proposal then shrinks to intent + a pointer.
 
 ## What dmcode is
 
@@ -68,17 +70,19 @@ Everything below was measured or verified during the design session (2026-06-16/
 
 | # | Question | Lean |
 |---|---|---|
-| **OQ1** | Measure `dmcode` head-to-head with the CLI at pass@k, with explicit **kill/graduate criteria**. | The self-correction eval family (`13d96cd`) is the harness. *Graduate* if it beats the CLI on composition tasks **and** ties on simple ones; *park* if it only ties at higher token/latency cost. **The central unmeasured question — resolve before building the full plugin.** |
+| **OQ1** | Measure `dmcode` head-to-head with the CLI, with explicit **kill/graduate criteria**. | **MEASURED 2026-06-17 → PARKED** ([`eval/RESULTS.md`](../eval/RESULTS.md), k=2, 7 tasks): code-mode **tied** the bare CLI on correctness on every axis — including the four designed to favor it (aggregate query, data-driven ×25, state-parameterized, multi-model) — at **~2.3× token cost** and **worse on refactors**. The graduate criterion (*beat* on composition + tie on simple) is not met. **Root cause:** a coding agent clears the "verb ceiling" by shell-scripting around it (`jq`→`batch`, `where-used`×N, shell loops). Re-open only on (a) a task the CLI+shell genuinely can't express, or (b) the runtime-eval need (OQ2). |
 | **OQ2** | Is **runtime-eval** (which native can't ship) the headline differentiator rather than authoring expressiveness? | Likely yes — explore showcasing it in samples/skill. |
 | **OQ3** | Ship the **full `dmtool` verb surface on the bundle** too (incl. runtime-eval as verbs)? | Deferred — weigh identity-drift + conformance re-coupling. |
 | **OQ4** | Compact-source (JEP 512) vs regular-class for the Compiler-API path. | Wrap the compact body (with a line-offset back-map), or accept regular classes for v0. |
-| **OQ5** | `api.txt` token budget; always-loaded spine vs fetched-on-demand. | Apply the prompted/unprompted rule (as for `operators.json`). |
+| **OQ5** | `api.txt` token budget; always-loaded spine vs fetched-on-demand. | **Corroborated (OQ1):** a scoped-but-untrimmed `api.txt` proxy = **~38k tokens** — too big to always-load. Trim to the ~40 entry types (drop the dsl AST nodes); apply the prompted/unprompted rule (as for `operators.json`). |
 | **OQ6** | The `samples/` manifest — which tasks, operator-family parity, size. | — |
-| **OQ7** | **Promote the refactor safety gate `cli/` → kits** so raw `EditSession` code can't unsafely delete/rename. | Required for safe code-mode authoring; the where-used primitive is already reusable in `adapter/`. |
+| **OQ7** | **Promote the refactor safety gate + reference-cascade `cli/` → kits** so kit code can rename/delete safely. | **Corroborated (OQ1, C3+E):** `EditSession.renameField` does **not** cascade rule references → code-mode needed fragile 4–5-iteration manual `removeRule`→rename→`addRule` surgery where the CLI's `field rename` does it in one verb. Worth doing **regardless of dmcode** (it's a real kit-API gap); the where-used primitive is already reusable in `adapter/`. |
 | **OQ8** | First-run AOT-gen UX + Codex's unconfirmed PATH/env contract. | Deterministic `$PLUGIN_DATA/bin/dmcode` fallback. |
 | **OQ9** | Release mirror choice. | **Resolved: a separate mirror (Option B) at graduation; the experiment publishes no marketplace** (see §6). |
 
 ## 5. Plan / sequencing (transient — delete on graduation)
+
+**Parked 2026-06-17 (OQ1 → no graduate).** The build steps below are deferred unless OQ1 re-opens — kept for that contingency. The two findings worth acting on *independently* of dmcode: **OQ7** (promote the refactor reference-cascade into the kits — a real kit-API gap) and, if the developer-library (B) wave proceeds, the trimmed real **`api.txt`** doclet (OQ5).
 
 1. **(B) developer-library resources first** — `api.txt`, `samples/`, the `llms.txt` API reference, the dev skill. Reused by `dmcode`.
 2. **Spike the doclet** — the only genuinely new code; confirm a JDK-21 `jdk.javadoc.doclet` emits the scoped flat `api.txt`.
