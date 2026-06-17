@@ -99,7 +99,12 @@ class BaCorpusTest {
             new R("MaxOf", "Weight", "AllFieldsFilled(Weight, DeclaredValue) And Max([Weight], [DeclaredValue]) > 1000"),
 
             // --- count-of-value aggregate (family 6) ----------------------------------------------------
-            new R("NumValueInFields", "TermsAccepted", "FieldFilled(TermsAccepted) And NumberOfValueInFields(True IN OptInA, OptInB, OptInC) >= 2"));
+            new R("NumValueInFields", "TermsAccepted", "FieldFilled(TermsAccepted) And NumberOfValueInFields(True IN OptInA, OptInB, OptInC) >= 2"),
+            // --- quantifier polarity + Category-2 value-list + semantic index (2026-06-17 BA review) -----
+            new R("NotAllFilled", "Weight", "NotAllFieldsFilled(Weight, DeclaredValue)"),
+            new R("PartialFill", "Weight", "FieldsNotCollectivelyFilled(Weight, DeclaredValue)"),
+            new R("ValueListAny", "ShipmentRef", "AtLeastOneFieldValueIncludedInValueList(ShipmentRef, Recipient In \"URGENT\", \"VOID\")"),
+            new R("SemIndexRead", "ShipmentRef", "FieldFilled(ShipmentRef) And [Parcels/ParcelWeight For \"T1\"] > 100"));
 
     private static final String MODEL = BaCorpusModel.json();
     private static final RuleValidator VALIDATOR = new RuleValidator();
