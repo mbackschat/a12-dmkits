@@ -233,9 +233,9 @@
     "keywords": { "en": "NotAllFieldsFilled", "de": "NichtAlleFelderOderKeinFeldAngegeben" },
     "operands": [ { "type": "field-list" } ],
     "returns": "boolean",
-    "meaning": "True iff the listed fields are not all filled (at least one is empty).",
+    "meaning": "True iff at least one listed field is empty — including when none are filled (the all-empty case is included).",
     "constraints": [ "the operand is a list of field references" ],
-    "gotchas": [ { "text": "the exact boundary vs NoFieldFilled (the DE name hints at 'not all OR none') — confirm against the BA guide before relying on edge semantics", "kind": "AUTHORING" } ],
+    "gotchas": [ { "text": "NOT the complement of NoFieldFilled: they agree when all listed fields are empty but diverge on a partial fill — NotAllFieldsFilled fires (at least one empty), NoFieldFilled does not. The DE keyword NichtAlleFelderOderKeinFeldAngegeben spells out the 'or none' branch.", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "NotAllFieldsFilled(CustomerName, ProductCode)", "note": "true unless both are filled" },
     "sinceKernel": "30.8.x"
   },
@@ -247,7 +247,7 @@
     "returns": "boolean",
     "meaning": "True iff the listed fields are not collectively filled — some filled and some not (a partial-fill check).",
     "constraints": [ "the operand is a list of field references" ],
-    "gotchas": [ { "text": "exact semantics (partial-fill vs other) — confirm against the BA guide", "kind": "AUTHORING" } ],
+    "gotchas": [ { "text": "a strict partial-fill check — fires only when at least one listed field is filled AND at least one is empty; the all-empty case does NOT fire (contrast NotAllFieldsFilled, which includes all-empty).", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldsNotCollectivelyFilled(CustomerName, ProductCode)", "note": "true on a partial fill" },
     "sinceKernel": "30.8.x"
   },
