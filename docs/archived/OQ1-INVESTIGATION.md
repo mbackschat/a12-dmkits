@@ -277,4 +277,4 @@ Scanned all 28 subagent transcripts for any direct touch of a model `.dm.json` o
 Verdict impact: **none.** Every model is genuinely kernel-valid; every *edit* was tool-/API-/kernel-gated. The leaks are verification-only raw reads (CLI) + API-output persisted via the Write tool (code C k2).
 
 ### Provenance
-Probe artifacts (fixtures, per-run model copies, the `api.txt` proxy, transcripts) under `/tmp/oq1/`. Subagent transcripts: `…/subagents/agent-<id>.jsonl`. k=2; opus subagents. Boundary audit: clean both arms (CLI read no repo files; code read only `api.txt` + `operators.json` + the model).
+**Fixtures archived:** [`oq1-fixtures.zip`](oq1-fixtures.zip) — the 8 starting models + `C-spec.json` + the `E-ws/` workspace + a README with the fixture→task→gold map and re-run instructions. The `/tmp/oq1/` working copies, the `api.txt` proxy (regenerable), and the subagent transcripts (`…/subagents/agent-<id>.jsonl`) are ephemeral. k=2; opus subagents. Material-boundary audit: no agent read repo `docs/`/`src/`/tests; the raw-DM-JSON touch audit is §9 above (3 CLI agents read the raw model for verification — no outcome impact).
