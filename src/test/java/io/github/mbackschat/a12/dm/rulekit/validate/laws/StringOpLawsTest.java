@@ -26,6 +26,15 @@ class StringOpLawsTest {
     }
 
     @Test
+    void fieldValueAsStringRequiresANumberOperand() {
+        // FieldValueAsString coerces a NUMBER's value to its string form; a string operand is rejected.
+        KernelLaws.rejectsOrder("/Order", "../CustomerName",
+                "FieldFilled(CustomerName) And FieldValueAsString(CustomerName) == \"x\"", "MVK_NO_NUMBER");
+        KernelLaws.acceptsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And FieldValueAsString(Quantity) == \"0\"");
+    }
+
+    @Test
     void startEqualToEndIsAccepted() {
         // begin == ende is allowed (the reject is begin > ende) — a single-character substring.
         KernelLaws.acceptsOrder("/Order", "../ProductCode",

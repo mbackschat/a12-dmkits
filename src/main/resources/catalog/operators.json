@@ -1260,10 +1260,10 @@
     "id": "FieldValueAsString",
     "kind": "function",
     "keywords": { "en": "FieldValueAsString", "de": "FeldWertAlsString" },
-    "operands": [ { "type": "field" } ],
+    "operands": [ { "type": "number-field" } ],
     "returns": "string",
-    "meaning": "A field's value coerced to its string representation — typically to compare against, or concatenate with, other strings.",
-    "constraints": [ "the operand is a single field" ],
+    "meaning": "A NUMBER field's value coerced to its string representation — typically to compare against, or concatenate with, other strings.",
+    "constraints": [ "the operand is a single Number field (no category access); a string/enum operand is rejected with MVK_NO_NUMBER (source: CheckFeldOpImpl FELD_WERT_ALS_STRING → checkIsNumber)" ],
     "validExample": { "dsl": "FieldFilled(Quantity) And FieldValueAsString(Quantity) == \"0\"", "note": "fires when the quantity's string form is exactly 0" },
     "sinceKernel": "30.8.x"
   },
