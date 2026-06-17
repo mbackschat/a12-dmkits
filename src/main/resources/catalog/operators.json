@@ -366,6 +366,7 @@
   },
   {
     "id": "EnumCategory",
+    "seeAlso": ["enum.categories — the field config that declares the categories this operator reads (see `schema field add`)"],
     "kind": "path-op",
     "keywords": { "en": "->", "de": "->" },
     "operands": [ { "type": "enumeration" }, { "type": "category-name" } ],
@@ -407,6 +408,7 @@
   },
   {
     "id": "Length",
+    "seeAlso": ["string.minLength / string.maxLength — a STRING field's intrinsic length bounds (field config); the field-level alternative to a Length comparison rule (see `schema field add`)"],
     "kind": "function",
     "keywords": { "en": "Length", "de": "Laenge" },
     "operands": [ { "type": "string" } ],
@@ -508,6 +510,7 @@
   {
     "id": "FieldValueNotIncludedInValueList",
     "opposite": ["FieldValueIncludedInValueList"],
+    "seeAlso": ["enum.values — restrict a field to a value set as an ENUM (field config); the field-level alternative to a value-list rule (see `schema field add`)"],
     "kind": "predicate",
     "keywords": { "en": "FieldValueNotIncludedInValueList", "de": "FeldWertNichtInWerteListe" },
     "operands": [ { "type": "string-enum-or-number-field" }, { "type": "literal-list" } ],

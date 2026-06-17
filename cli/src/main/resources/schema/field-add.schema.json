@@ -21,7 +21,7 @@
     "string": {
       "type": "object", "description": "(kind STRING) config",
       "properties": {
-        "minLength": { "type": "integer" }, "maxLength": { "type": "integer" },
+        "minLength": { "type": "integer", "description": "minimum character length. seeAlso: the Length operator — the rule-level way to bound length (`operators Length`)" }, "maxLength": { "type": "integer", "description": "maximum character length" },
         "pattern": { "type": "string", "description": "anchored regex; requires patternMessage. seeAlso: the PatternViolated/PatternMatched operators — the rule-level alternative (`operators PatternViolated`)" },
         "patternMessage": { "type": "string", "description": "the error text shown when the pattern fails" },
         "lineBreaks": { "type": "boolean", "description": "permit multi-line input" },
@@ -42,8 +42,8 @@
       "type": "object", "description": "(kind ENUM) config",
       "required": ["values"],
       "properties": {
-        "values": { "type": "array", "description": "≥1 { value, labels? } — stored value + optional per-locale labels. seeAlso: FieldValueIncludedInValueList — the rule-level way to restrict a field to a value set", "items": { "type": "object", "required": ["value"] } },
-        "categories": { "type": "array", "description": "named classifications; each has values[] aligned 1:1 with the enum values", "items": { "type": "object", "required": ["name", "values"] } },
+        "values": { "type": "array", "description": "≥1 { value, labels? } — stored value + optional per-locale labels. seeAlso: FieldValueIncludedInValueList / FieldValueNotIncludedInValueList — the rule-level way to (dis)allow a value set", "items": { "type": "object", "required": ["value"] } },
+        "categories": { "type": "array", "description": "named classifications; each has values[] aligned 1:1 with the enum values. seeAlso: the EnumCategory operator (`operators EnumCategory`) — reads a value's category in a rule", "items": { "type": "object", "required": ["name", "values"] } },
         "alphabeticalSorting": { "type": "boolean" },
         "invalidValueMessage": { "type": "string", "description": "error text for an out-of-domain value (one text, all locales)" }
       }

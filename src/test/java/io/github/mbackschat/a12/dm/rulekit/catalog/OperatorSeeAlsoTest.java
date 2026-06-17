@@ -17,14 +17,22 @@ import org.junit.jupiter.api.Test;
 class OperatorSeeAlsoTest {
 
     /** Operator id → a field-config knob its seeAlso must reference (the rich-duality cases: STRING/NUMBER/ENUM). */
-    private static final Map<String, String> EXPECTED = Map.of(
-            "PatternViolated", "string.pattern",
-            "PatternMatched", "string.pattern",
-            "LessThan", "number.min",
-            "GreaterThan", "number.min",
-            "LessThanOrEqual", "number.min",
-            "GreaterThanOrEqual", "number.min",
-            "FieldValueIncludedInValueList", "enum.values");
+    private static final Map<String, String> EXPECTED = Map.ofEntries(
+            // NUMBER value bounds ↔ ordering comparisons
+            Map.entry("LessThan", "number.min"),
+            Map.entry("GreaterThan", "number.min"),
+            Map.entry("LessThanOrEqual", "number.min"),
+            Map.entry("GreaterThanOrEqual", "number.min"),
+            // STRING format ↔ pattern operators
+            Map.entry("PatternViolated", "string.pattern"),
+            Map.entry("PatternMatched", "string.pattern"),
+            // STRING length bounds ↔ Length (R2)
+            Map.entry("Length", "string.minLength"),
+            // ENUM value set ↔ value-list operators (R2 extends to the exclusion twin)
+            Map.entry("FieldValueIncludedInValueList", "enum.values"),
+            Map.entry("FieldValueNotIncludedInValueList", "enum.values"),
+            // ENUM categories ↔ the category-reading operator (R2)
+            Map.entry("EnumCategory", "enum.categories"));
 
     @Test
     void operatorsWithAFieldConfigTwinPointAtIt() {
