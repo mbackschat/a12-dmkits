@@ -1,8 +1,5 @@
 package io.github.mbackschat.a12.dm.cli;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Set;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -23,6 +20,11 @@ import picocli.CommandLine.Parameters;
  * adapter (no converter coverage needed), so it works regardless of whether read models its construct.
  * Rules and computations are reported in separate arrays so the two element kinds stay distinguishable —
  * a field read only inside a computation's operation appears under {@code computations}, not {@code rules}.
+ *
+ * <p>The model is the {@code -m} context (like every other verb); the entity is a <b>positional</b> path
+ * (G11) — consistent with {@code rule read <path>} / {@code field read <path>}. {@code --entity} stays as
+ * the explicit alias. The pre-G11 {@code where-used <model> --entity=…} form (model passed positionally)
+ * self-corrects to the new shape.
  */
 @Command(name = "where-used", mixinStandardHelpOptions = true,
         description = "List the rules and computations whose condition directly references a given field or group.")
@@ -30,24 +32,36 @@ final class WhereUsedCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @Parameters(index = "0", paramLabel = "<model.json>",
-            description = "the DM-JSON model FILE (a file path) — distinct from --entity, a path inside it")
-    String model;
+    @Parameters(index = "0", arity = "0..1", paramLabel = "<entityPath>",
+            description = "the field or group's full (absolute) path inside the model, e.g. /Order/Quantity "
+                    + "(positional, like `rule read <path>`; or pass --entity)")
+    String entityArg;
 
-    @Option(names = "--entity", required = true, paramLabel = "<entityPath>",
-            description = "the field or group's full (absolute) path inside the model, e.g. /Order/Quantity")
-    String entity;
+    @Option(names = "--entity", paramLabel = "<entityPath>",
+            description = "the explicit alias for the positional <entityPath>")
+    String entityOpt;
 
     @Mixin
     WorkspaceOption workspace = new WorkspaceOption();
 
     @Override
     public Integer call() {
-        String modelJson;
-        try {
-            modelJson = Files.readString(Path.of(model));
-        } catch (IOException e) {
-            return fail("cannot read model: " + e.getMessage());
+        String entity = entityArg != null ? entityArg : entityOpt;
+        String model = model();
+        if (model == null) {
+            // the model is now -m (consistent with every other verb); the pre-G11
+            // `where-used <model> --entity=…` form (model passed positionally, no -m) lands here — name the
+            // change so it self-corrects rather than failing opaquely
+            return fail("where-used now takes -m <model> + a positional <entity> — it no longer takes the model "
+                    + "as a positional argument. Try: -m <model.json> where-used "
+                    + (entity != null ? entity : "/Group/Field"));
+        }
+        if (entity == null) {
+            return fail("pass the entity to inspect — positionally (`where-used /Order/Quantity`) or via --entity");
+        }
+        String modelJson = readModelJson(model);
+        if (modelJson == null) {
+            return 2;
         }
         try {
             KernelAdapter adapter = KernelAdapter.ofJson(modelJson, workspace.resolverFor(model));

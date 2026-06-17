@@ -9,11 +9,11 @@ The companion to [`cli-tour.md`](cli-tour.md) (which reads & inspects): this dem
 
 ## where-used — what depends on a field
 
-Before you touch a field, see what references it. `where-used` is a cross-cutting root verb (it spans the whole model, so it takes the model as a **positional** and keeps its own `{entity, rules, computations, count}` shape rather than the envelope). It reports the rules **and** computations that read an entity — so you know the blast radius of a change.
+Before you touch a field, see what references it. `where-used` is a cross-cutting verb that keeps its own `{entity, rules, computations, count}` shape rather than the result envelope. The entity is **positional** — like `rule read <path>` — with the model as the `-m` context (`--entity` stays as the explicit alias). It reports the rules **and** computations that read an entity — so you know the blast radius of a change.
 
 ```bash
-dmtool where-used examples/models/subscription-computed.dm.json \
-  --entity /Subscription/Billing/BaseFee
+dmtool -m examples/models/subscription-computed.dm.json \
+  where-used /Subscription/Billing/BaseFee
 ```
 
 ```output

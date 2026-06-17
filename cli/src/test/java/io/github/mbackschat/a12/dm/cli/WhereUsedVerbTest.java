@@ -16,7 +16,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * The {@code where-used} verb (F9a) — the exact inverse of a rule's referenced entities: which rules
- * reference a given field/group. Backed by the kernel's {@code getDirectlyReferencedEntities}.
+ * reference a given field/group. Backed by the kernel's {@code getDirectlyReferencedEntities}. The model
+ * is the {@code -m} context (like every other read verb); the entity is positional (G11) — {@code --entity}
+ * stays as the explicit alias.
  */
 class WhereUsedVerbTest {
 
@@ -29,9 +31,9 @@ class WhereUsedVerbTest {
     }
 
     @Test
-    void listsTheRuleThatReferencesTheField(@TempDir Path dir) throws Exception {
-        var res = CliTestSupport.run("where-used", modelWithRule(dir).toString(),
-                "--entity", "/Subscription/Addons/MonthlyFee");
+    void listsTheRuleThatReferencesThePositionalEntity(@TempDir Path dir) throws Exception {
+        var res = CliTestSupport.run("-m", modelWithRule(dir).toString(),
+                "where-used", "/Subscription/Addons/MonthlyFee");
         assertEquals(0, res.code(), res::err);
         JsonNode j = MAPPER.readTree(res.out());
         assertEquals("/Subscription/Addons/MonthlyFee", j.get("entity").asText());
@@ -44,18 +46,38 @@ class WhereUsedVerbTest {
     }
 
     @Test
+    void acceptsTheEntityViaExplicitFlagToo(@TempDir Path dir) throws Exception {
+        // --entity stays as the explicit alias for the positional entity
+        var res = CliTestSupport.run("-m", modelWithRule(dir).toString(),
+                "where-used", "--entity", "/Subscription/Addons/MonthlyFee");
+        assertEquals(0, res.code(), res::err);
+        assertEquals("/Subscription/Addons/MonthlyFee", MAPPER.readTree(res.out()).get("entity").asText());
+    }
+
+    @Test
     void anUnreferencedEntityYieldsAnEmptyList(@TempDir Path dir) throws Exception {
-        var res = CliTestSupport.run("where-used", modelWithRule(dir).toString(),
-                "--entity", "/Subscription/NoSuchField");
+        var res = CliTestSupport.run("-m", modelWithRule(dir).toString(),
+                "where-used", "/Subscription/NoSuchField");
         assertEquals(0, res.code(), res::err);
         JsonNode j = MAPPER.readTree(res.out());
         assertEquals(0, j.get("count").asInt(), () -> "no rule references it: " + res.out());
     }
 
     @Test
-    void missingEntityFlagFails(@TempDir Path dir) throws Exception {
-        var res = CliTestSupport.run("where-used", modelWithRule(dir).toString());
-        assertNotEquals(0, res.code(), "where-used needs --entity");
+    void missingEntityFails(@TempDir Path dir) throws Exception {
+        var res = CliTestSupport.run("-m", modelWithRule(dir).toString(), "where-used");
+        assertNotEquals(0, res.code(), "where-used needs an entity (positional or --entity)");
+    }
+
+    @Test
+    void theOldModelPositionalFormSelfCorrects(@TempDir Path dir) throws Exception {
+        // the agent fumble: where-used <model> --entity=… (model passed positionally, no -m) — must name the
+        // change (model is now -m) rather than fail opaquely
+        var res = CliTestSupport.run("where-used", modelWithRule(dir).toString(),
+                "--entity", "/Subscription/Addons/MonthlyFee");
+        assertNotEquals(0, res.code(), "the old model-positional form no longer works");
+        assertTrue(res.err().contains("-m") && res.err().contains("positional"),
+                () -> "the error names the new -m + positional <entity> form: " + res.err());
     }
 
     @Test
@@ -63,8 +85,8 @@ class WhereUsedVerbTest {
         Path model = dir.resolve("m.dm.json");
         Files.writeString(model, CliTestSupport.modelWithRuleAndComputationJson());
         // BaseFee is read only by the computation EffectiveFee = BaseFee — no validation rule touches it
-        var res = CliTestSupport.run("where-used", model.toString(),
-                "--entity", "/Subscription/Billing/BaseFee");
+        var res = CliTestSupport.run("-m", model.toString(),
+                "where-used", "/Subscription/Billing/BaseFee");
         assertEquals(0, res.code(), res::err);
         JsonNode j = MAPPER.readTree(res.out());
         assertTrue(j.path("rules").isEmpty(), () -> "no validation rule references BaseFee: " + res.out());
