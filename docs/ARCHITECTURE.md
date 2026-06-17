@@ -137,6 +137,8 @@ Exact edges (each package → the rulekit packages it imports):
 
 **`dm.modelkit` (folded in 2026-06-09) is a *sibling* of this rulekit stack, not part of it** — it sits over the same `dm.core`/`model` foundation and must not import any `dm.rulekit` package (nor rulekit it; `SiblingBoundaryTest` sweeps both directions). Its DSL-free write primitive `DmJson` **moved down to `dm.core` (2026-06-10, M8)** — both kits now share it. modelkit reads + edits an existing model (`ModelDocument`: read structure, round-trip, add/modify/delete fields+groups, re-bound to the kernel gate), beyond build-from-scratch.
 
+**`DocumentModelDraft`'s file layout (field builders extracted 2026-06-17).** The from-scratch builder kept the *structure* builders (`Builder`/`GroupBuilder`/`TypeDefBuilder`/`MultiSelectBuilder`/`AttachmentBuilder`) nested, because they're bound to the draft's private construction (`build()` → the private ctor, the private `TypeDefDecl`/`Include` records). The **field-kind builder hierarchy** — `ElementMeta` → `FieldAttrs` → `StringFieldBuilder`/`NumberFieldBuilder`/`EnumFieldBuilder`/… — is self-contained (it only assembles `ElementDraft.Field`s and shares nothing private with `DocumentModelDraft`), so it moved to its own top-level files in `dm.modelkit`. That cut the 1488-line file to ~1100 and gives each field-kind builder a named file (`StringFieldBuilder.java`, …). The fluent API is unchanged: `GroupBuilder.stringField(…)` still returns `StringFieldBuilder` (same package, unqualified).
+
 ## 3. The kernel-coupling boundary (N8 / D15)
 
 Three tiers of access to the kernel API, per proposal §N8:
