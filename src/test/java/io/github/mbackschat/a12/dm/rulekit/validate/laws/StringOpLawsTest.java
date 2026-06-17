@@ -28,6 +28,7 @@ class StringOpLawsTest {
     @Test
     void fieldValueAsStringRequiresANumberOperand() {
         // FieldValueAsString coerces a NUMBER's value to its string form; a string operand is rejected.
+        // Source: CheckFeldOpImpl, the FELD_WERT_ALS_STRING case → checkIsNumber(ref, MVK_NO_NUMBER).
         KernelLaws.rejectsOrder("/Order", "../CustomerName",
                 "FieldFilled(CustomerName) And FieldValueAsString(CustomerName) == \"x\"", "MVK_NO_NUMBER");
         KernelLaws.acceptsOrder("/Order", "../Quantity",
