@@ -38,6 +38,17 @@ class NumberLawsTest {
     }
 
     @Test
+    void multiplicationRaisesScaleSoEqualityRejectsEvenWithMatchingFieldScales() {
+        // UnitPrice is scale 2; [UnitPrice] * [UnitPrice] is scale 4, so the ==/!= scale gate rejects
+        // even though every field shares a scale. Wrapping the product in RoundAccounting(...,2) fixes it.
+        KernelLaws.rejectsOrder("/Order", "../UnitPrice",
+                "FieldFilled(UnitPrice) And [UnitPrice] == [UnitPrice] * [UnitPrice]",
+                "MVK_INVALID_COMPARE_DEC_PLACES");
+        KernelLaws.acceptsOrder("/Order", "../UnitPrice",
+                "FieldFilled(UnitPrice) And [UnitPrice] == RoundAccounting([UnitPrice] * [UnitPrice], 2)");
+    }
+
+    @Test
     void powerOperatorRejectsUnparenthesizedNesting() {
         // KERNEL-FINDINGS §5 / BA "power operator": a^b^c is rejected — nesting needs explicit grouping.
         KernelLaws.rejectsOrder("/Order", "../Quantity",
