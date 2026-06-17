@@ -1,8 +1,8 @@
 # dmcode — the code-mode delivery (proposal)
 
-**Status: experiment — OQ1 measured 2026-06-17 → PARKED** (see §4 OQ1 + [`eval/RESULTS.md`](../eval/RESULTS.md)). Code-mode tied the bare CLI on correctness across all probed axes (including four designed to favor it), at ~2.3× token cost and worse on refactors — so it does **not** graduate as a general authoring tier now. The design below is kept for the two re-open conditions (a task the CLI+shell genuinely can't express; or the runtime-eval need, OQ2).
+**Status: ARCHIVED — not feasible, on hold** (2026-06-17). OQ1 measured → **parked**: code-mode tied the bare CLI on correctness across all probed axes (including four designed to favor it), at **~2.3× token cost** and worse on refactors — no advantage over the CLI for BA authoring, and a coding agent clears the verb ceiling by shell-scripting around it. The design below is retained for the record + the two re-open conditions (a task the CLI+shell genuinely can't express; or the runtime-eval need, OQ2). Full probe analysis: [`OQ1-INVESTIGATION.md`](OQ1-INVESTIGATION.md) (companion). Results: [`eval/RESULTS.md`](../../eval/RESULTS.md).
 
-This proposal captures the design of a second, experimental delivery tier — `dmcode` — alongside the shipped native `dmtool` CLI. It records requirements, the measured findings behind each choice, the settled decisions, the open questions, a transient plan, and the release approach. When the experiment graduates, its design extracts into a [`CLI-SPEC.md`](CLI-SPEC.md) section (or a `DMCODE-SPEC.md`) and the release detail into [`RELEASE-SPEC.md`](RELEASE-SPEC.md); this proposal then shrinks to intent + a pointer.
+This proposal captures the design of a second, experimental delivery tier — `dmcode` — alongside the shipped native `dmtool` CLI. It records requirements, the measured findings behind each choice, the settled decisions, the open questions, a transient plan, and the release approach. When the experiment graduates, its design extracts into a [`CLI-SPEC.md`](../CLI-SPEC.md) section (or a `DMCODE-SPEC.md`) and the release detail into [`RELEASE-SPEC.md`](../RELEASE-SPEC.md); this proposal then shrinks to intent + a pointer.
 
 ## What dmcode is
 
@@ -19,7 +19,7 @@ The two tiers are complementary, not competing:
 | Delivery | native binary, eager hook | JVM bundle, lazy hook |
 | Runtime evaluation | **can't** (`model eval`/`rule test` need Groovy → hidden) | **can** (full JVM has Groovy) |
 
-This proposal is the code-mode side of the broader agent-first thesis. It is sequenced **after** the developer-library path (the "(B)" path: shipping the kits as a Maven artifact for developers already in a JVM project — [`RELEASE-SPEC.md`](RELEASE-SPEC.md) §11), whose agent resources `dmcode` reuses wholesale.
+This proposal is the code-mode side of the broader agent-first thesis. It is sequenced **after** the developer-library path (the "(B)" path: shipping the kits as a Maven artifact for developers already in a JVM project — [`RELEASE-SPEC.md`](../RELEASE-SPEC.md) §11), whose agent resources `dmcode` reuses wholesale.
 
 ## 1. Requirements
 
@@ -63,14 +63,14 @@ Everything below was measured or verified during the design session (2026-06-16/
 | **D5** | **A managed Runner**, not bare `java App.java`: compile **in-process** via the Compiler API (structured diagnostics, English via `-Duser.language=en`, **code-first**, cap/dedupe cascades, render the source line+caret) → run **in-process** (no fork — see D6) → **auto-surface `validate()` + the lint** (fixing the probe's discoverability gap) → emit **one `ResultEnvelope`-shaped JSON** with a `phase` discriminator. Learning aids: a `fix` per diagnostic (reuse the catalog `invalidExample.fix`), did-you-mean (`Suggest`), a **compile-code → API-guidance map**, and pointers to the skill/catalog for recurring traps. |
 | **D6** | **Safety = inherit the host OS sandbox** (Claude Code Seatbelt/bubblewrap, Codex gVisor) + **self-defend at the app layer** (input validation, the typed builder, the promoted refactor gate, fail-closed). The classpath is naturally restricted (only the kits ship). **No custom in-JVM sandbox or scratch-CWD fork** (F9). A container is the option only for untrusted *non-agent* deployments. |
 | **D7** | **Resources** (the discoverability layer that replaces `manifest`/`schema`): `api.txt` (doclet-derived, scoped to ~40 authoring types, signatures + **javadoc prose** + spliced locked snippets) · `samples/` (authoring regions extracted from **passing tests** via the existing `DocSnippetFreshnessTest` lock engine; operator-family parity; trap-correct) · `operators.json` (raw on-demand + a derived gotchas sheet) · an `App.java` template · the **skill** (judgment + the loop, minimal). All **derived/CI-locked**; built via a scoped doclet + the snippet-lock; assembled via `sync-plugin-assets.sh`; gated lightly (samples compile + signatures resolve + snippet-lock + the dev-path probe — *not* the CLI conformance matrix). |
-| **D8** | **Licensing = an aggregate**: EUPL-1.2 (the embedded kernel) + **GPLv2-with-Classpath-Exception** (the bundled OpenJDK). The CPE shields our code → **not GPL-infected**; it is **not MIT** (already true once the kernel is embedded). Use a clean Temurin build; carry the OpenJDK license + source-pointer. Record in [`LICENSING.md`](LICENSING.md). |
+| **D8** | **Licensing = an aggregate**: EUPL-1.2 (the embedded kernel) + **GPLv2-with-Classpath-Exception** (the bundled OpenJDK). The CPE shields our code → **not GPL-infected**; it is **not MIT** (already true once the kernel is embedded). Use a clean Temurin build; carry the OpenJDK license + source-pointer. Record in [`LICENSING.md`](../LICENSING.md). |
 | **D9** | **Sequence (B) before (A)** — build the developer-library resources first (provisioning-free, already probed); `dmcode` reuses `api.txt`/samples/skill wholesale. |
 
 ## 4. Open questions
 
 | # | Question | Lean |
 |---|---|---|
-| **OQ1** | Measure `dmcode` head-to-head with the CLI, with explicit **kill/graduate criteria**. | **MEASURED 2026-06-17 → PARKED** ([`eval/RESULTS.md`](../eval/RESULTS.md), k=2, 7 tasks): code-mode **tied** the bare CLI on correctness on every axis — including the four designed to favor it (aggregate query, data-driven ×25, state-parameterized, multi-model) — at **~2.3× token cost** and **worse on refactors**. The graduate criterion (*beat* on composition + tie on simple) is not met. **Root cause:** a coding agent clears the "verb ceiling" by shell-scripting around it (`jq`→`batch`, `where-used`×N, shell loops). Re-open only on (a) a task the CLI+shell genuinely can't express, or (b) the runtime-eval need (OQ2). |
+| **OQ1** | Measure `dmcode` head-to-head with the CLI, with explicit **kill/graduate criteria**. | **MEASURED 2026-06-17 → PARKED** ([`eval/RESULTS.md`](../../eval/RESULTS.md), k=2, 7 tasks): code-mode **tied** the bare CLI on correctness on every axis — including the four designed to favor it (aggregate query, data-driven ×25, state-parameterized, multi-model) — at **~2.3× token cost** and **worse on refactors**. The graduate criterion (*beat* on composition + tie on simple) is not met. **Root cause:** a coding agent clears the "verb ceiling" by shell-scripting around it (`jq`→`batch`, `where-used`×N, shell loops). Re-open only on (a) a task the CLI+shell genuinely can't express, or (b) the runtime-eval need (OQ2). |
 | **OQ2** | Is **runtime-eval** (which native can't ship) the headline differentiator rather than authoring expressiveness? | Likely yes — explore showcasing it in samples/skill. |
 | **OQ3** | Ship the **full `dmtool` verb surface on the bundle** too (incl. runtime-eval as verbs)? | Deferred — weigh identity-drift + conformance re-coupling. |
 | **OQ4** | Compact-source (JEP 512) vs regular-class for the Compiler-API path. | Wrap the compact body (with a line-offset back-map), or accept regular classes for v0. |
@@ -157,9 +157,9 @@ Then **B = a second config + a second mirror, not a fork of the scripts.**
 
 ## Related docs
 
-- [`CLI-SPEC.md`](CLI-SPEC.md) — the verb tier and the refactor safety gate (the `cli/`-only gate OQ7 would promote).
-- [`RELEASE-SPEC.md`](RELEASE-SPEC.md) — the plugin pattern (§6) and the developer-library wave (§11) `dmcode` sequences after.
-- [`NATIVE-IMAGE-GRAALVM.md`](NATIVE-IMAGE-GRAALVM.md) — why the native CLI can't run code or runtime-eval (the constraint that motivates this tier).
-- [`LICENSING.md`](LICENSING.md) — the home for the EUPL + GPLv2+CPE aggregate (D8).
-- [`EVAL-SPEC.md`](EVAL-SPEC.md) — the developer-path harness (OQ1).
-- [`API-GUIDE.md`](API-GUIDE.md) — the library surface `api.txt`/samples derive from.
+- [`CLI-SPEC.md`](../CLI-SPEC.md) — the verb tier and the refactor safety gate (the `cli/`-only gate OQ7 would promote).
+- [`RELEASE-SPEC.md`](../RELEASE-SPEC.md) — the plugin pattern (§6) and the developer-library wave (§11) `dmcode` sequences after.
+- [`NATIVE-IMAGE-GRAALVM.md`](../NATIVE-IMAGE-GRAALVM.md) — why the native CLI can't run code or runtime-eval (the constraint that motivates this tier).
+- [`LICENSING.md`](../LICENSING.md) — the home for the EUPL + GPLv2+CPE aggregate (D8).
+- [`EVAL-SPEC.md`](../EVAL-SPEC.md) — the developer-path harness (OQ1).
+- [`API-GUIDE.md`](../API-GUIDE.md) — the library surface `api.txt`/samples derive from.
