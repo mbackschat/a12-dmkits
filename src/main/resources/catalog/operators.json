@@ -427,11 +427,14 @@
     "meaning": "Arithmetic on numeric operands: addition (+), subtraction (-), multiplication (*), division (/), and power (^). The result is a number expression, usable wherever a number is — most often one side of a comparison, e.g. [a] < [b] + 2.",
     "constraints": [
       "operands must be numeric: number fields, numeric literals, Length, aggregates, or nested arithmetic",
-      "the result is a number, not a condition — wrap it in a comparison to form a rule's errorCondition"
+      "the result is a number, not a condition — wrap it in a comparison to form a rule's errorCondition",
+      "the power operator ^ may not be nested without grouping (a ^ b ^ c is rejected, MVK_TOO_MANY_POW_FOR_CALC); its exponent must be a whole number — a scale-0 field or an integer literal, never a decimal-scale field (MVK_INVALID_NUMBER_FOR_EXP)"
     ],
     "gotchas": [
       { "text": "the symbols (+ - * / ^) are language-independent — identical in every condition language, not localized keywords", "kind": "RENDERING" }
-    , { "text": "division by zero evaluates quietly: the condition becomes unknown (no fire), a computation computes nothing and clears a stale value; a bare division also has unknown scale — wrap it in RoundAccounting(expr, n) to assign to a scaled field", "kind": "SURPRISE" } ],
+    , { "text": "division by zero evaluates quietly: the condition becomes unknown (no fire), a computation computes nothing and clears a stale value; a bare division also has unknown scale — wrap it in RoundAccounting(expr, n) to assign to a scaled field", "kind": "SURPRISE" }
+    , { "text": "operator precedence is ^ first, then * and /, then + and -; group arithmetic sub-expressions with CURLY braces { } (e.g. 3 ^ {2 + 1}), not round or square brackets", "kind": "AUTHORING" }
+    , { "text": "the power a ^ b is not executed — so a rule using it silently does NOT fire — when the exponent is out of the range [-1000, 1000], or for 0 raised to a negative power; the same quiet behavior as division by zero", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And [Quantity] < [BackorderQuantity] + 2", "note": "fires when Quantity is below the backorder count plus two" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And [Quantity] < [ProductCode] + 1", "error": "arithmetic needs numeric operands", "fix": "ProductCode is a string; arithmetic operands must be numeric" },
     "sinceKernel": "30.8.x"

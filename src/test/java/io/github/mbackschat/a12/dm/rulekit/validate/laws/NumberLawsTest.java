@@ -36,4 +36,23 @@ class NumberLawsTest {
         KernelLaws.acceptsOrder("/Order", "../CustomerName",
                 "AllFieldsFilled(CustomerName, ProductCode) And [CustomerName] == [ProductCode]");
     }
+
+    @Test
+    void powerOperatorRejectsUnparenthesizedNesting() {
+        // KERNEL-FINDINGS §5 / BA "power operator": a^b^c is rejected — nesting needs explicit grouping.
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                "FieldFilled(Quantity) And [Quantity] ^ [Quantity] ^ [Quantity] > 1",
+                "MVK_TOO_MANY_POW_FOR_CALC");
+    }
+
+    @Test
+    void powerExponentMustHaveNoDecimalPlaces() {
+        // The exponent must be a whole number: a scale-2 field (UnitPrice) is rejected; a scale-0 field
+        // (Quantity) is a valid exponent. (CheckOperationImpl.checkNoFractionalDigitsInExponent.)
+        KernelLaws.rejectsOrder("/Order", "../Quantity",
+                "AllFieldsFilled(Quantity, UnitPrice) And [Quantity] ^ [UnitPrice] > 1",
+                "MVK_INVALID_NUMBER_FOR_EXP");
+        KernelLaws.acceptsOrder("/Order", "../Quantity",
+                "AllFieldsFilled(Quantity, UnitPrice) And [UnitPrice] ^ [Quantity] > 1");
+    }
 }
