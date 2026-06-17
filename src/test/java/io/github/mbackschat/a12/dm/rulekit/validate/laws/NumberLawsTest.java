@@ -49,6 +49,14 @@ class NumberLawsTest {
     }
 
     @Test
+    void roundingDecimalPlacesAboveFourteenIsRejected() {
+        // Source CheckOpUtils: reject if dec > 14 || dec < 0 — valid range is 0..14 (the catalog's
+        // RoundDown(...,0) example confirms 0 is allowed; KERNEL-SEMANTICS's "1 to 14" is slightly off).
+        KernelLaws.rejectsOrder("/Order", "../UnitPrice",
+                "FieldFilled(UnitPrice) And RoundDown([UnitPrice], 15) > 1", "MVK_INVALID_DIGIT_FOR_ROUNDING");
+    }
+
+    @Test
     void powerOperatorRejectsUnparenthesizedNesting() {
         // KERNEL-FINDINGS §5 / BA "power operator": a^b^c is rejected — nesting needs explicit grouping.
         KernelLaws.rejectsOrder("/Order", "../Quantity",

@@ -714,7 +714,7 @@
     "returns": "number",
     "meaning": "Rounds a numeric expression DOWN (toward zero) to the given number of decimal places. The first operand is any numeric expression (a field, an arithmetic expression, an aggregate), not just a field.",
     "constraints": [
-      "the first operand is a numeric expression; the second is the integer count of decimal places"
+      "the first operand is a numeric expression; the second is the integer count of decimal places (0–14, else MVK_INVALID_DIGIT_FOR_ROUNDING)"
     ],
     "gotchas": [
       { "text": "distinct from the field-only RoundDownValue family — this operand-list form rounds the result of an expression", "kind": "AUTHORING" }
@@ -810,7 +810,7 @@
     "returns": "number",
     "meaning": "Rounds a numeric expression UP (away from zero) to the given number of decimal places.",
     "constraints": [
-      "the first operand is a numeric expression; the second is the integer count of decimal places"
+      "the first operand is a numeric expression; the second is the integer count of decimal places (0–14, else MVK_INVALID_DIGIT_FOR_ROUNDING)"
     ],
     "gotchas": [ { "text": "rounds toward plus infinity (ceiling): RoundUp(-1.4, 0) = -1", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "FieldFilled(UnitPrice) And RoundUp([UnitPrice], 1) > 1000", "note": "fires when the unit price rounded up to one decimal exceeds 1000" },
@@ -824,7 +824,7 @@
     "returns": "number",
     "meaning": "Rounds a numeric expression to the given number of decimal places using commercial (accounting) rounding.",
     "constraints": [
-      "the first operand is a numeric expression; the second is the integer count of decimal places"
+      "the first operand is a numeric expression; the second is the integer count of decimal places (0–14, else MVK_INVALID_DIGIT_FOR_ROUNDING)"
     ],
     "gotchas": [ { "text": "half-up, away from zero on the .5 boundary in both signs: RoundAccounting(-2.5, 0) = -3", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(Quantity, UnitPrice) And RoundAccounting([UnitPrice] * [Quantity], 2) > 10000", "note": "fires when the commercially-rounded line total exceeds 10000" },
@@ -856,7 +856,8 @@
     "meaning": "The count of the listed fields whose value equals a given constant — NumberOfValueInFields(value In f1, f2, …). The constant may be a boolean, number, string, or date.",
     "constraints": [
       "at least two fields (or at least one group), else MVK_PARAMSIZE_INVALIDN",
-      "the constant follows the 'In' grammar literal; the fields are bare entity refs"
+      "the constant follows the 'In' grammar literal; the fields are bare entity refs",
+      "a field may not be listed more than once (MVK_DUPLICATE_PARAM1; MVK_DUPLICATE_PARAM2 via a group)"
     ],
     "validExample": { "dsl": "FieldFilled(Quantity) And NumberOfValueInFields(0 In Quantity, BackorderQuantity) > 0", "note": "fires when at least one of the two amounts is zero" },
     "sinceKernel": "30.8.x"
