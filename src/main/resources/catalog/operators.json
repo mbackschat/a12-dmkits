@@ -1386,7 +1386,7 @@
     "keywords": { "en": "Valid", "de": "Gueltig" },
     "operands": [ { "type": "date" } ],
     "returns": "boolean",
-    "meaning": "True iff a constructed date is a real calendar date (e.g. Date(31, 2, 2024) is invalid). This is the date-construct overload (IDateValidityCondition); the custom-field-type overload Valid(field, \"Type\") is the separate ValidType entry.",
+    "meaning": "True iff a constructed date is real AND all its referenced fields are specified (Date(31, 2, 2024) is not real; an unspecified part also makes it not Valid). This is the date-construct overload (IDateValidityCondition); the custom-field-type overload Valid(field, \"Type\") is the separate ValidType entry.",
     "constraints": [ "the operand is a Date(...) construction (or a date)" ],
     "validExample": { "dsl": "FieldFilled(BirthDay) And Valid(Date(BirthDay, BirthMonth, BirthYear))", "note": "fires when the entered birth-date parts form a real calendar date" },
     "sinceKernel": "30.8.x"
@@ -1398,9 +1398,10 @@
     "keywords": { "en": "Invalid", "de": "Ungueltig" },
     "operands": [ { "type": "date" } ],
     "returns": "boolean",
-    "meaning": "True iff a constructed date is not a real calendar date (the negation of Valid over a Date(...) construction).",
+    "meaning": "True iff a constructed date is not a real calendar date OR any referenced field is unspecified — so it is NOT the pure negation of Valid. The date-construct overload, distinct from the custom-field-type Invalid (see InvalidType).",
     "constraints": [ "the operand is a Date(...) construction (or a date)" ],
-    "validExample": { "dsl": "FieldFilled(BirthDay) And Invalid(Date(BirthDay, BirthMonth, BirthYear))", "note": "fires when the entered birth-date parts do not form a real calendar date" },
+    "gotchas": [ { "text": "also fires when a referenced part is unspecified (not only on an impossible date) — so it is not Valid's complement; prefix AllFieldsFilled(...) to fire only on a complete-but-impossible date (runtime-verified)", "kind": "SURPRISE" } ],
+    "validExample": { "dsl": "AllFieldsFilled(BirthDay, BirthMonth, BirthYear) And Invalid(Date(BirthDay, BirthMonth, BirthYear))", "note": "fires when complete birth-date parts do not form a real calendar date" },
     "sinceKernel": "30.8.x"
   },
   {
