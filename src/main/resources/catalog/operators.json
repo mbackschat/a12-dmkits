@@ -1030,7 +1030,7 @@
     "returns": "date",
     "meaning": "The date shifted forward by the given number of days.",
     "constraints": [ "the first operand is a date or date-time (bare entity ref); the second an integer amount" ],
-    "gotchas": [ { "text": "fractional offsets are truncated, not rounded", "kind": "SURPRISE" }, { "text": "over a date-time source AddDays shifts the day and preserves the time of day, returning a date-time; over a date it returns a date (AddYears/AddMonths/DifferenceInDays stay date-only)", "kind": "AUTHORING" } ],
+    "gotchas": [ { "text": "fractional offsets are truncated, not rounded", "kind": "SURPRISE" }, { "text": "over a date-time source AddDays shifts the day and preserves the time of day, returning a date-time; over a date it returns a date (AddYears/AddMonths/DifferenceInDays stay date-only)", "kind": "AUTHORING" }, { "text": "on a date FRAGMENT, Add* is gated by the format's granularity — AddDays needs a day, AddMonths a month, AddYears a year, else MVK_WRONG_DATE_FORMAT_FOR_OP", "kind": "SURPRISE" } ],
     "validExample": { "dsl": "AllFieldsFilled(OrderDate, DeliveryDate) And [DeliveryDate] > AddDays(OrderDate, 7)", "note": "fires when delivery is more than a week out" },
     "sinceKernel": "30.8.x"
   },
