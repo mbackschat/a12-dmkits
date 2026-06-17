@@ -361,7 +361,7 @@
     "meaning": "True iff the listed groups are not collectively filled — some filled and some not (a partial-fill check).",
     "constraints": [ "the operand is a list of group references" ],
     "gotchas": [  ],
-    "validExample": { "dsl": "GroupsNotCollectivelyFilled(ShippingAddress, BillingAddress)", "note": "fires when exactly one of the two address groups is present" },
+    "validExample": { "dsl": "GroupsNotCollectivelyFilled(ShippingAddress, BillingAddress)", "note": "fires when some but not all listed groups are filled (with two groups that means exactly one)" },
     "sinceKernel": "30.8.x"
   },
   {
