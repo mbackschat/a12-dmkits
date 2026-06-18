@@ -16,6 +16,15 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-18 19:34 CEST — first `workspace-roles` run: access-control audit, task 09 (sonnet, k=1, bare-tool, cheap)
+
+**1/1 pass.** Validates the new **`workspace-roles`** eval family (R4) + the `dmtool workspace roles` lint. A cold **bare-tool** agent, given only the workspace dir + the self-describing CLI, **discovered `workspace roles` on its own** (6 invocations, **0 file reads**) and reported exactly the two seeded problems on `roles-ws` — Storefront_DM's undefined role `reviewer` and user bob's undefined authority `supervisor` — naming the defined roles (shopper/merchant) and inventing no false positives. ~3 agents (1 produce + 1 judge + 1 prep-verify), ~80k tokens, ~57 s (k=1, the cheap floor).
+
+- **Why it matters:** the first **workspace-level** (cross-file access-control) eval. It measures *discoverability* (can a cold agent find `workspace roles` from the CLI alone?) + *comprehension* (does it report the right findings?) — and the produce agent did both with zero file reads.
+- **Boundary — produce agent CLEAN; judge over-explored (does not invalidate).** The audit found the **produce** agent (the measured instrument) used only the CLI: 0 Read-tool reads, 6× `workspace roles`. The **judge** agent, though, explored the repo (read the source fixtures + the eval task file) to self-verify — it already carries the rubric in its prompt, so its verdict is sound, and it is *not* the measured instrument, so the self-sufficiency result stands. But judge-reading-the-repo is poor hygiene → tightened the roles judge prompt to "decide from the rubric + findings only, no file/command access" (committed `0875c89`; this run used the pre-hardening judge). A general judge-hygiene pass (all LLM judges) is a possible follow-up.
+- **Deterministic backbone:** `EvalGoldOracleTest` lints `roles-ws` and asserts the produced finding codes == `expectedCodes` ({UNDEFINED_ROLE, UNDEFINED_AUTHORITY}) — green, no agents.
+- **Caveat:** a single task at k=1 (cheap, as requested) — a positive first signal that the family + verb are agent-discoverable, not a trend point.
+
 ### 2026-06-18 19:21 CEST — targeted: `rule explain` polarity + stored message, comprehension task 07 (sonnet, k=3, bare-tool)
 
 **3/3 pass.** Validates the `rule explain` polarity + stored-message additions (committed `a316d0f`): a cold **bare-tool** agent reading `/Order/DeliveryNotBeforeOrder` + `/Order/BillingAddress/PostalCodeFormat` on `order-ruled` now explains both **with correct polarity** — all three judge rationales explicitly confirm the agent framed the condition as the VIOLATION (not the requirement) and named the presence guard (`AllFieldsFilled`/`FieldFilled`).
