@@ -657,20 +657,20 @@ dmtool workspace roles examples/models/storefront-workspace \
 {"rolesFile":"auth/roles.yaml","definedRoles":["shopper","merchant"],"models":[{"id":"Catalog_DM","roles":["merchant"]},{"id":"Storefront_DM","roles":["shopper","merchant"]}],"findings":[]}
 ```
 
-→ Both models gate to roles `auth/roles.yaml` defines (`shopper`/`merchant`), so the lint is clean. The headline finding is an **undefined role** — a model gating to a role the file doesn't declare, which even the A12 model editor permits silently. Resolving the same models against a roles file that omits `merchant` surfaces it, and the verb **exits 1** so a pre-commit hook or CI step gates on it:
+→ Both models gate to roles `auth/roles.yaml` defines (`shopper`/`merchant`), so the lint is clean. The headline finding is an **undefined role** — a model gating to a role the file doesn't declare, which even the A12 model editor permits silently. Resolving the same models against a roles file that omits `merchant` surfaces it. The lint is **purely advisory — it warns, it never blocks** (access-control config is often a dev seed or owned by an external IdP, so it must not stop work on the models); the verb **always exits 0**:
 
 ```bash
 dmtool workspace roles examples/models/storefront-workspace \
   --roles examples/models/shopper-only-roles.yaml 2>&1 \
-  | jq -c '{errors: .data.errors, findings: [.data.findings[] | {code, modelId, role}]}'; echo "(exit ${PIPESTATUS[0]})"
+  | jq -c '{warnings: .data.warnings, findings: [.data.findings[] | {severity, code, modelId, role}]}'; echo "(exit ${PIPESTATUS[0]})"
 ```
 
 ```output
-{"errors":2,"findings":[{"code":"UNDEFINED_ROLE","modelId":"Catalog_DM","role":"merchant"},{"code":"UNDEFINED_ROLE","modelId":"Storefront_DM","role":"merchant"}]}
-(exit 1)
+{"warnings":2,"findings":[{"severity":"WARNING","code":"UNDEFINED_ROLE","modelId":"Catalog_DM","role":"merchant"},{"severity":"WARNING","code":"UNDEFINED_ROLE","modelId":"Storefront_DM","role":"merchant"}]}
+(exit 0)
 ```
 
-→ `merchant` gates both models but isn't declared, so each draws an `UNDEFINED_ROLE` error and the gate fails. The lint also flags a model left ungated when a roles file exists (`MISSING_ROLE_ASSIGNMENT`), a model that declares roles with no roles file in the workspace (`NO_ROLES_FILE`, a warning), and more than one roles file (`MULTIPLE_ROLES_FILES`). `--roles` overrides discovery, as here.
+→ `merchant` gates both models but isn't declared, so each draws an `UNDEFINED_ROLE` **warning** (never an error — exit stays 0). The lint also flags a model left ungated when a roles file exists (`MISSING_ROLE_ASSIGNMENT`), a model that declares roles with no roles file in the workspace (`NO_ROLES_FILE`), and more than one roles file (`MULTIPLE_ROLES_FILES`) — all warnings. `--roles` overrides discovery, as here.
 
 Every finding carries a **`fix`** alongside its `message` — the concrete remedy, not just the diagnosis (the same `{message, fix}` shape the `RK_*` diagnostic catalog uses). So an agent reads what to *do*, not only what's wrong:
 

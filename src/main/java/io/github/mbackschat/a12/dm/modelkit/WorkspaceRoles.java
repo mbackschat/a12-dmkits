@@ -14,16 +14,22 @@ import java.util.Optional;
  * <b>modelkit structure-consistency check</b> (a sibling of the kernel structural checks, <em>not</em> a rule
  * {@code MVK_*}): the kernel never sees {@code roles.yaml}, so this linkage is modelkit's to make.
  *
- * <p>It mirrors the three states the A12 SME enforces and <b>adds the one it doesn't</b>:
+ * <p><b>Advisory, never blocking.</b> Access-control config is often a dev seed and/or owned by an external
+ * IdP (a full-stack workspace has no users file at all), so a roles inconsistency must <em>inform</em> a BA /
+ * agent, never <em>stop</em> them working on the models. Every finding is therefore a {@link Severity#WARNING}
+ * (or a softer {@link Severity#INFO}) — <b>never an error, never a gate</b>. The verb always exits 0.
+ *
+ * <p>It surfaces the states the A12 SME treats as errors — but as warnings, deliberately more lenient (the SME
+ * <em>enforces</em>; this tool <em>advises</em>):
  * <ul>
- *   <li><b>{@code UNDEFINED_ROLE}</b> (ERROR, the flagship) — a model gates to a role the file doesn't
- *       declare. The SME explicitly permits this ("additional roles can be specified"), so a dangling role
- *       reference ships silently today; this is the value R3 adds.</li>
- *   <li><b>{@code MISSING_ROLE_ASSIGNMENT}</b> (ERROR) — a roles file is present but a model carries no
- *       {@code roles} annotation (the SME requires every model to be gated once a file exists).</li>
- *   <li><b>{@code NO_ROLES_FILE}</b> (WARNING) — a model declares roles but no roles file was found.</li>
- *   <li><b>{@code MULTIPLE_ROLES_FILES}</b> (ERROR) — more than one roles file (the SME blocks the
- *       workspace); which one defines the roles is ambiguous, so name-checking is skipped.</li>
+ *   <li><b>{@code UNDEFINED_ROLE}</b> (the flagship) — a model gates to a role the file doesn't declare. The
+ *       SME explicitly permits this ("additional roles can be specified"), so a dangling role reference ships
+ *       silently today; surfacing it is the value R3 adds.</li>
+ *   <li><b>{@code MISSING_ROLE_ASSIGNMENT}</b> — a roles file is present but a model carries no {@code roles}
+ *       annotation.</li>
+ *   <li><b>{@code NO_ROLES_FILE}</b> — a model declares roles but no roles file was found.</li>
+ *   <li><b>{@code MULTIPLE_ROLES_FILES}</b> — more than one roles file; which one defines the roles is
+ *       ambiguous, so name-checking is skipped.</li>
  * </ul>
  *
  * <p>{@link #resolve} locates the file (the {@code auth/roles.yaml} SME convention, then the project-template
@@ -69,14 +75,18 @@ public final class WorkspaceRoles {
     public record RoleFinding(Severity severity, Code code, String message, String fix,
             Optional<String> modelId, Optional<String> modelPath, Optional<String> role) {
 
-        /** A finding's blocking weight — only an {@link #ERROR} fails the workspace gate. */
-        public enum Severity { ERROR, WARNING }
+        /**
+         * A finding's weight — purely advisory ranking, <b>never blocking</b>: {@link #WARNING} for a real
+         * cross-file inconsistency, {@link #INFO} for a softer tidiness note. There is deliberately no
+         * {@code ERROR} — a roles/users finding never fails a gate (the verb always exits 0).
+         */
+        public enum Severity { WARNING, INFO }
 
         /** The class of inconsistency (a stable, machine-readable discriminator). */
         public enum Code { UNDEFINED_ROLE, MISSING_ROLE_ASSIGNMENT, NO_ROLES_FILE, MULTIPLE_ROLES_FILES }
 
         static RoleFinding undefinedRole(Workspace.Model m, String role) {
-            return new RoleFinding(Severity.ERROR, Code.UNDEFINED_ROLE,
+            return new RoleFinding(Severity.WARNING, Code.UNDEFINED_ROLE,
                     "role '" + role + "' gating " + m.id() + " is not defined in the workspace roles file",
                     "declare '" + role + "' in the workspace roles file, or remove it from " + m.id()
                             + "'s roles annotation",
@@ -84,7 +94,7 @@ public final class WorkspaceRoles {
         }
 
         static RoleFinding missingAssignment(Workspace.Model m) {
-            return new RoleFinding(Severity.ERROR, Code.MISSING_ROLE_ASSIGNMENT,
+            return new RoleFinding(Severity.WARNING, Code.MISSING_ROLE_ASSIGNMENT,
                     m.id() + " has no roles annotation, but the workspace has a roles file "
                             + "(every model must be gated once a roles file exists)",
                     "add a roles annotation to " + m.id() + " naming the role(s) that may access it "
@@ -102,7 +112,7 @@ public final class WorkspaceRoles {
         }
 
         static RoleFinding multipleRolesFiles(List<Path> files) {
-            return new RoleFinding(Severity.ERROR, Code.MULTIPLE_ROLES_FILES,
+            return new RoleFinding(Severity.WARNING, Code.MULTIPLE_ROLES_FILES,
                     "found " + files.size() + " roles files — a workspace must have exactly one: " + files,
                     "keep exactly one roles file in the workspace; remove the extra(s): " + files,
                     Optional.empty(), Optional.empty(), Optional.empty());

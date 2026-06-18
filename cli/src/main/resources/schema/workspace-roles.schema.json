@@ -2,9 +2,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/workspace-roles.schema.json",
   "title": "WorkspaceRoles",
-  "description": "Output of `dmtool workspace roles <dir>` — the workspace roles lint (FEATURE-GAPS R3). Resolves every model's `roles` header annotation against the workspace roles.yaml and reports the cross-file inconsistencies the kernel can't see. A read, but it GATES: the process exits 1 when any finding is an ERROR (the envelope's `outcome` stays `read`; `valid` is false). The roles file is discovered under the workspace root (auth/roles.yaml, then import/auth/roles.yaml, then user/access-rights.yaml); `--roles` overrides discovery. Models are scanned recursively (a workspace is a tree; roles gate it workspace-wide).",
+  "description": "Output of `dmtool workspace roles <dir>` — the workspace roles lint (FEATURE-GAPS R3). Resolves every model's `roles` header annotation against the workspace roles.yaml and reports the cross-file inconsistencies the kernel can't see. PURELY ADVISORY and NEVER BLOCKING: every finding is a WARNING (or a softer INFO) — never an error — and the verb ALWAYS exits 0, so it informs a BA / agent without stopping their work on the models. The roles file is discovered under the workspace root (auth/roles.yaml, then import/auth/roles.yaml, then user/access-rights.yaml); `--roles` overrides discovery. Models are scanned recursively (a workspace is a tree; roles gate it workspace-wide).",
   "type": "object",
-  "required": ["root", "rolesFile", "definedRoles", "modelCount", "models", "errors", "warnings", "findings"],
+  "required": ["root", "rolesFile", "definedRoles", "modelCount", "models", "warnings", "infos", "findings"],
   "additionalProperties": false,
   "properties": {
     "root": { "type": "string", "description": "the workspace root directory, as passed" },
@@ -38,8 +38,8 @@
         }
       }
     },
-    "errors": { "type": "integer", "description": "number of ERROR findings (any > 0 → exit 1)" },
-    "warnings": { "type": "integer", "description": "number of WARNING findings (do not fail the gate)" },
+    "warnings": { "type": "integer", "description": "number of WARNING findings (advisory — never blocks; the verb still exits 0)" },
+    "infos": { "type": "integer", "description": "number of INFO findings (softer, tidiness-level; also non-blocking)" },
     "findings": {
       "type": "array",
       "description": "the cross-file roles inconsistencies, in model then gating-role order",
@@ -48,7 +48,7 @@
         "required": ["severity", "code", "message", "fix"],
         "additionalProperties": false,
         "properties": {
-          "severity": { "type": "string", "enum": ["ERROR", "WARNING"], "description": "ERROR fails the gate; WARNING does not" },
+          "severity": { "type": "string", "enum": ["WARNING", "INFO"], "description": "advisory weight — never blocking: WARNING for a real cross-file inconsistency, INFO for a softer tidiness note. There is no ERROR (the verb always exits 0)." },
           "code": {
             "type": "string",
             "enum": ["UNDEFINED_ROLE", "MISSING_ROLE_ASSIGNMENT", "NO_ROLES_FILE", "MULTIPLE_ROLES_FILES"],

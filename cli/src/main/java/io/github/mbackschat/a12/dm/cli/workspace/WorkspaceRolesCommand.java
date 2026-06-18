@@ -23,20 +23,22 @@ import picocli.CommandLine.Parameters;
  * {@code dmtool workspace roles <dir>} — the workspace roles lint (FEATURE-GAPS R3). Resolve every model's
  * {@code roles} header annotation against the workspace {@code roles.yaml} and report the cross-file
  * inconsistencies the kernel can't see — the flagship being an <b>undefined role</b> (a model gates to a role
- * the file doesn't declare), which even the A12 SME doesn't catch. A read (never mutates), but it <b>gates</b>:
- * it exits 1 if any finding is an ERROR (undefined role / a model left ungated when a roles file exists /
- * multiple roles files), 0 otherwise — so a pre-commit hook or CI step can call it directly.
+ * the file doesn't declare), which even the A12 SME doesn't catch. <b>Purely advisory and never blocking:</b>
+ * access-control config is often a dev seed or owned by an external IdP, so every finding is a WARNING (or a
+ * softer INFO) — never an error — and the verb <b>always exits 0</b>. It informs a BA / agent; it never stops
+ * them working on the models.
  *
  * <p>The {@code data} payload surfaces the workspace's access-control picture: the resolved {@code rolesFile},
  * the {@code definedRoles} (+ their access rights), each model's gating {@code roles}, and the {@code
- * findings}. The roles file is discovered under the workspace root ({@code auth/roles.yaml}, then {@code
- * import/auth/roles.yaml}, then {@code user/access-rights.yaml}); {@code --roles} overrides discovery. Models
- * are scanned recursively — a workspace is a tree and roles gate it workspace-wide (unlike {@code list}/{@code
- * graph}, which mimic {@code ls}).
+ * findings} (with {@code warnings}/{@code infos} counts). The roles file is discovered under the workspace
+ * root ({@code auth/roles.yaml}, then {@code import/auth/roles.yaml}, then {@code user/access-rights.yaml});
+ * {@code --roles} overrides discovery. Models are scanned recursively — a workspace is a tree and roles gate
+ * it workspace-wide (unlike {@code list}/{@code graph}, which mimic {@code ls}).
  */
 @Command(name = "roles", mixinStandardHelpOptions = true,
         description = "Lint a workspace's roles: resolve each model's `roles` annotation against roles.yaml; "
-                + "flag undefined roles (+ ungated models / missing or multiple roles files); exit 1 on any ERROR.")
+                + "flag undefined roles (+ ungated models / missing or multiple roles files). Advisory — "
+                + "warnings only, never blocks (always exits 0).")
 final class WorkspaceRolesCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -72,8 +74,8 @@ final class WorkspaceRolesCommand extends BaseCommand {
         }
 
         List<RoleFinding> findings = WorkspaceRoles.check(models, resolution);
-        long errors = findings.stream().filter(f -> f.severity() == RoleFinding.Severity.ERROR).count();
-        long warnings = findings.size() - errors;
+        long warnings = findings.stream().filter(f -> f.severity() == RoleFinding.Severity.WARNING).count();
+        long infos = findings.size() - warnings;
 
         ObjectNode data = MAPPER.createObjectNode();
         data.put("root", dir);
@@ -81,14 +83,15 @@ final class WorkspaceRolesCommand extends BaseCommand {
         data.set("definedRoles", definedRoles(resolution));
         data.put("modelCount", models.size());
         data.set("models", modelsJson(models));
-        data.put("errors", errors);
         data.put("warnings", warnings);
+        data.put("infos", infos);
         data.set("findings", findingsJson(findings));
 
-        String summary = summary(resolution, models.size(), errors, warnings);
-        ResultEnvelope env = ResultEnvelope.read("workspace", "roles", summary, errors == 0, List.of(), data);
+        String summary = summary(resolution, models.size(), warnings, infos);
+        // advisory only — never blocks: valid is always true, so the verb always exits 0
+        ResultEnvelope env = ResultEnvelope.read("workspace", "roles", summary, true, List.of(), data);
         out().print(env.toJsonString());
-        return env.exitCode(); // 0 when no ERROR finding, 1 otherwise (the gate)
+        return env.exitCode(); // always 0 — a roles finding informs, never gates
     }
 
     private ArrayNode definedRoles(WorkspaceRoles.Resolution resolution) {
@@ -139,10 +142,11 @@ final class WorkspaceRolesCommand extends BaseCommand {
         return file.startsWith(root) ? root.relativize(file).toString().replace('\\', '/') : file.toString();
     }
 
-    private static String summary(WorkspaceRoles.Resolution resolution, int modelCount, long errors, long warnings) {
+    private static String summary(WorkspaceRoles.Resolution resolution, int modelCount, long warnings, long infos) {
         String files = resolution.multiple() ? "multiple roles files"
                 : resolution.found() ? "1 roles file" : "no roles file";
         return files + ", " + modelCount + " model" + (modelCount == 1 ? "" : "s") + " — "
-                + errors + " error" + (errors == 1 ? "" : "s") + ", " + warnings + " warning" + (warnings == 1 ? "" : "s");
+                + warnings + " warning" + (warnings == 1 ? "" : "s") + ", " + infos + " info" + (infos == 1 ? "" : "s")
+                + " (advisory)";
     }
 }

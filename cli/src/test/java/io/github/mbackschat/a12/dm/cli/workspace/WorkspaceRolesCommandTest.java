@@ -67,14 +67,17 @@ class WorkspaceRolesCommandTest {
     }
 
     @Test
-    void anUndefinedRoleFailsTheGate(@TempDir Path dir) throws Exception {
+    void anUndefinedRoleIsANonBlockingWarning(@TempDir Path dir) throws Exception {
         roles(dir, "auth/roles.yaml");
         model(dir, "models/Storefront_DM.json", "Storefront_DM", "shopper,reviewer"); // reviewer undefined
 
         var res = CliTestSupport.run("workspace", "roles", dir.toString());
-        assertNotEquals(0, res.code(), "an undefined role is an ERROR — the gate fails (exit 1)");
-        JsonNode finding = M.readTree(res.out()).path("data").path("findings").get(0);
+        assertEquals(0, res.code(), () -> "roles findings never block — the verb always exits 0: " + res.err());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("read", j.path("outcome").asText());
+        JsonNode finding = j.path("data").path("findings").get(0);
         assertEquals("UNDEFINED_ROLE", finding.path("code").asText());
+        assertEquals("WARNING", finding.path("severity").asText(), "advisory only — never an error");
         assertEquals("reviewer", finding.path("role").asText());
         assertEquals("Storefront_DM", finding.path("modelId").asText());
         // the finding is actionable: it carries a `fix` naming the remedy (parity with RK_* diagnostics)
