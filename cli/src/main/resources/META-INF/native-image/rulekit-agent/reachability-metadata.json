@@ -6899,174 +6899,6 @@
       "type": "int[][]"
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.AddCommand",
-      "fields": [
-        {
-          "name": "model"
-        },
-        {
-          "name": "outputPath"
-        },
-        {
-          "name": "specPath"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.AddFieldCommand",
-      "fields": [
-        {
-          "name": "dryRun"
-        },
-        {
-          "name": "group"
-        },
-        {
-          "name": "model"
-        },
-        {
-          "name": "name"
-        },
-        {
-          "name": "outputPath"
-        },
-        {
-          "name": "type"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.AddFieldCommand$FieldType",
-      "fields": [
-        {
-          "name": "kind"
-        },
-        {
-          "name": "typedef"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.AddGroupCommand",
-      "fields": [
-        {
-          "name": "dryRun"
-        },
-        {
-          "name": "model"
-        },
-        {
-          "name": "name"
-        },
-        {
-          "name": "outputPath"
-        },
-        {
-          "name": "parent"
-        },
-        {
-          "name": "repeatable"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.AddIncludeCommand",
-      "fields": [
-        {
-          "name": "alias"
-        },
-        {
-          "name": "dryRun"
-        },
-        {
-          "name": "model"
-        },
-        {
-          "name": "name"
-        },
-        {
-          "name": "outputPath"
-        },
-        {
-          "name": "parent"
-        },
-        {
-          "name": "reference"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.AddTypedefCommand",
-      "fields": [
-        {
-          "name": "dryRun"
-        },
-        {
-          "name": "id"
-        },
-        {
-          "name": "kind"
-        },
-        {
-          "name": "model"
-        },
-        {
-          "name": "outputPath"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
       "type": "io.github.mbackschat.a12.dm.cli.ApplyCommand",
       "fields": [
         {
@@ -7112,81 +6944,6 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.CheckCommand",
-      "fields": [
-        {
-          "name": "code"
-        },
-        {
-          "name": "condition"
-        },
-        {
-          "name": "field"
-        },
-        {
-          "name": "group"
-        },
-        {
-          "name": "model"
-        },
-        {
-          "name": "name"
-        },
-        {
-          "name": "severity"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.ComputeDocCommand",
-      "fields": [
-        {
-          "name": "doc"
-        },
-        {
-          "name": "localeTag"
-        },
-        {
-          "name": "model"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.DescribeCommand",
-      "fields": [
-        {
-          "name": "model"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
       "type": "io.github.mbackschat.a12.dm.cli.DiagnosticsCommand",
       "fields": [
         {
@@ -7197,87 +6954,6 @@
         },
         {
           "name": "source"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.DocTombstoneCommand",
-      "fields": [
-        {
-          "name": "rest"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.EvalDocCommand",
-      "fields": [
-        {
-          "name": "code"
-        },
-        {
-          "name": "condition"
-        },
-        {
-          "name": "doc"
-        },
-        {
-          "name": "field"
-        },
-        {
-          "name": "group"
-        },
-        {
-          "name": "localeTag"
-        },
-        {
-          "name": "model"
-        },
-        {
-          "name": "name"
-        },
-        {
-          "name": "ruleId"
-        },
-        {
-          "name": "severity"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.ExplainCommand",
-      "fields": [
-        {
-          "name": "computation"
-        },
-        {
-          "name": "model"
-        },
-        {
-          "name": "rule"
-        },
-        {
-          "name": "workspace"
         }
       ],
       "methods": [
@@ -7361,44 +7037,6 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ModifyCommand",
-      "fields": [
-        {
-          "name": "comment"
-        },
-        {
-          "name": "computationId"
-        },
-        {
-          "name": "condition"
-        },
-        {
-          "name": "dryRun"
-        },
-        {
-          "name": "model"
-        },
-        {
-          "name": "outputPath"
-        },
-        {
-          "name": "ruleId"
-        },
-        {
-          "name": "specPath"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
       "type": "io.github.mbackschat.a12.dm.cli.OperatorsCommand",
       "fields": [
         {
@@ -7457,29 +7095,6 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.ReadCommand",
-      "fields": [
-        {
-          "name": "all"
-        },
-        {
-          "name": "model"
-        },
-        {
-          "name": "rule"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
       "type": "io.github.mbackschat.a12.dm.cli.ReferenceRewritingRefactorCommand",
       "fields": [
         {
@@ -7494,50 +7109,6 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.RemoveCommand",
-      "fields": [
-        {
-          "name": "cascade"
-        },
-        {
-          "name": "computation"
-        },
-        {
-          "name": "dryRun"
-        },
-        {
-          "name": "field"
-        },
-        {
-          "name": "group"
-        },
-        {
-          "name": "includeAlias"
-        },
-        {
-          "name": "model"
-        },
-        {
-          "name": "outputPath"
-        },
-        {
-          "name": "rule"
-        },
-        {
-          "name": "typedef"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
       "type": "io.github.mbackschat.a12.dm.cli.RootCommand",
       "fields": [
         {
@@ -7545,6 +7116,9 @@
         },
         {
           "name": "spec"
+        },
+        {
+          "name": "text"
         },
         {
           "name": "workspace"
@@ -7556,26 +7130,6 @@
       "fields": [
         {
           "name": "tokens"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.ValidateCommand",
-      "fields": [
-        {
-          "name": "extra"
-        },
-        {
-          "name": "model"
-        },
-        {
-          "name": "workspace"
         }
       ],
       "methods": [
@@ -8961,6 +8515,26 @@
       ]
     },
     {
+      "type": "io.github.mbackschat.a12.dm.cli.workspace.WorkspaceRolesCommand",
+      "fields": [
+        {
+          "name": "dir"
+        },
+        {
+          "name": "rolesOverride"
+        },
+        {
+          "name": "usersOverride"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "io.github.mbackschat.a12.dm.cli.workspace.WorkspaceValidateCommand",
       "fields": [
         {
@@ -9512,6 +9086,9 @@
       "type": "java.sql.Connection"
     },
     {
+      "type": "java.sql.Date"
+    },
+    {
       "type": "java.sql.Driver"
     },
     {
@@ -9691,6 +9268,21 @@
     },
     {
       "type": "java.util.HashSetCustomizer"
+    },
+    {
+      "type": "java.util.ImmutableCollections$AbstractImmutableCollection"
+    },
+    {
+      "type": "java.util.ImmutableCollections$AbstractImmutableList"
+    },
+    {
+      "type": "java.util.ImmutableCollections$AbstractImmutableMap"
+    },
+    {
+      "type": "java.util.ImmutableCollections$ListN"
+    },
+    {
+      "type": "java.util.ImmutableCollections$Map1"
     },
     {
       "type": "java.util.Iterator"
@@ -15449,10 +15041,25 @@
       "glob": "models/order-ruled.dm.json"
     },
     {
+      "glob": "models/order-tiered.dm.json"
+    },
+    {
       "glob": "models/order.dm.json"
     },
     {
       "glob": "models/person.dm.json"
+    },
+    {
+      "glob": "models/roles-ws"
+    },
+    {
+      "glob": "models/roles/Catalog_DM.json"
+    },
+    {
+      "glob": "models/roles/Storefront_DM.json"
+    },
+    {
+      "glob": "models/roles/storefront-roles.yaml"
     },
     {
       "glob": "models/subscription-computed.dm.json"
@@ -15516,6 +15123,9 @@
     },
     {
       "glob": "schema/workspace-list.schema.json"
+    },
+    {
+      "glob": "schema/workspace-roles.schema.json"
     },
     {
       "glob": "verb-examples.json"
