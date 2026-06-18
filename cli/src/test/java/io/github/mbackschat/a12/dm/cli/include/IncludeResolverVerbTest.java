@@ -62,7 +62,7 @@ class IncludeResolverVerbTest {
 
     @Test
     void validateResolvesASiblingIncludeByDefault(@TempDir Path dir) throws Exception {
-        var res = CliTestSupport.run("validate", workspace(dir).toString());
+        var res = CliTestSupport.run("-m", workspace(dir).toString(), "model", "validate");
         assertEquals(0, res.code(), () -> "the multi-file model should validate: " + res.err() + res.out());
         JsonNode j = MAPPER.readTree(res.out());
         assertTrue(j.get("valid").asBoolean(), () -> "valid: " + res.out());
@@ -70,7 +70,7 @@ class IncludeResolverVerbTest {
 
     @Test
     void describeSeesIncludedAndTypedefFields(@TempDir Path dir) throws Exception {
-        var res = CliTestSupport.run("describe", workspace(dir).toString());
+        var res = CliTestSupport.run("-m", workspace(dir).toString(), "model", "describe");
         assertEquals(0, res.code(), res::err);
         // the mounted include's field and the typedef field both surface in the model card
         assertTrue(res.out().contains("/Storefront/Prices/ListPrice"),
@@ -84,7 +84,7 @@ class IncludeResolverVerbTest {
         // exercises the RuleValidator resolver path: the candidate lives in the owned /Storefront group, but
         // the model includes pricelist, so the injected-rule model can only be expanded + checked with the
         // resolver — without it the kernel's expand step fails on the unresolved include
-        var res = CliTestSupport.run("check", workspace(dir).toString(),
+        var res = CliTestSupport.run("-m", workspace(dir).toString(), "rule", "check",
                 "--field", "/Storefront/StoreName",
                 "--condition", "FieldNotFilled(StoreName)", "--code", "STORE_NAME_REQ");
         assertEquals(0, res.code(), () -> "the candidate should validate over the multi-file model: " + res.err() + res.out());
@@ -102,7 +102,7 @@ class IncludeResolverVerbTest {
         Path locked = Files.createDirectory(dir.resolve("locked"));   // a sibling dir the walk will hit
         Files.setPosixFilePermissions(locked, Set.of());              // chmod 000 → can't be entered
         try {
-            var res = CliTestSupport.run("validate", model.toString());   // default include-dir = dir (holds `locked`)
+            var res = CliTestSupport.run("-m", model.toString(), "model", "validate");   // default include-dir = dir (holds `locked`)
             assertEquals(0, res.code(), () -> "the unreadable sibling dir must be skipped, not fatal: " + res.err() + res.out());
             assertTrue(MAPPER.readTree(res.out()).get("valid").asBoolean(), () -> "valid: " + res.out());
         } finally {
@@ -122,10 +122,10 @@ class IncludeResolverVerbTest {
         Files.writeString(storefront, storefrontJson());
 
         // no sibling pricelist → the default (apps/) can't resolve it; -w/--workspace lib does
-        var noHint = CliTestSupport.run("validate", storefront.toString());
+        var noHint = CliTestSupport.run("-m", storefront.toString(), "model", "validate");
         assertEquals(1, noHint.code(), () -> "without -w/--workspace the sibling default can't resolve it: " + noHint.out());
 
-        var withDir = CliTestSupport.run("validate", storefront.toString(), "-w", lib.toString());
+        var withDir = CliTestSupport.run("-m", storefront.toString(), "model", "validate", "-w", lib.toString());
         assertEquals(0, withDir.code(), () -> "-w/--workspace resolves the include: " + withDir.err() + withDir.out());
         assertTrue(MAPPER.readTree(withDir.out()).get("valid").asBoolean());
     }

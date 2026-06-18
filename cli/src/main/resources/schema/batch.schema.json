@@ -16,8 +16,8 @@
   },
   "examples": [
     [
-      { "id": "fee-check", "verb": "check",
-        "args": ["MODEL", "--field", "/Subscription/Billing/EffectiveFee", "--condition", "[EffectiveFee] < [BaseFee]", "--code", "FEE"] }
+      { "id": "fee-check", "verb": "rule",
+        "args": ["check", "-m", "MODEL", "--field", "/Subscription/Billing/EffectiveFee", "--condition", "[EffectiveFee] < [BaseFee]", "--code", "FEE"] }
     ]
   ]
 }

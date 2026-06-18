@@ -35,7 +35,7 @@ class CheckVerbTest {
         // the recurring N6 slip: the <model.json> file path pasted into --field. The ModelPaths guard
         // now names the exact confusion instead of a generic "not a field".
         Path m = model(dir);
-        var res = CliTestSupport.run("check", m.toString(),
+        var res = CliTestSupport.run("-m", m.toString(), "rule", "check",
                 "--field", m.toString(), "--condition", "FieldFilled(MonthlyFee)", "--code", "X");
         assertNotEquals(0, res.code(), "a file path in --field must fail");
         assertTrue(res.err().contains("looks like a FILE path") && res.err().contains("--field"),
@@ -47,7 +47,7 @@ class CheckVerbTest {
         // Beyond "you passed a file": name the concrete field the --condition references, so a weaker
         // agent has a value to copy, not just a rule to re-read. BaseFee is unique in the model.
         Path m = model(dir);
-        var res = CliTestSupport.run("check", m.toString(),
+        var res = CliTestSupport.run("-m", m.toString(), "rule", "check",
                 "--field", m.toString(), "--condition", "[BaseFee] > 100", "--code", "FEE_CAP");
         assertNotEquals(0, res.code(), "a file path in --field must fail");
         assertTrue(res.err().contains("Did you mean") && res.err().contains("/Subscription/Billing/BaseFee"),
@@ -57,7 +57,7 @@ class CheckVerbTest {
     @Test
     void acceptsAValidCandidateRule(@TempDir Path dir) throws Exception {
         // --field is the error field's absolute path; --group defaults to its parent (iterate per add-on).
-        var res = CliTestSupport.run("check", model(dir).toString(),
+        var res = CliTestSupport.run("-m", model(dir).toString(), "rule", "check",
                 "--field", "/Subscription/Addons/MonthlyFee",
                 "--condition", "[MonthlyFee] > 1000", "--code", "FEE_CAP");
         assertEquals(0, res.code(), res::err);
@@ -68,7 +68,7 @@ class CheckVerbTest {
 
     @Test
     void rejectsABadCandidateWithKernelDiagnostics(@TempDir Path dir) throws Exception {
-        var res = CliTestSupport.run("check", model(dir).toString(),
+        var res = CliTestSupport.run("-m", model(dir).toString(), "rule", "check",
                 "--field", "/Subscription/Addons/MonthlyFee",
                 "--condition", "@@@ not a condition @@@", "--code", "X");
         assertEquals(1, res.code(), "a rejected candidate exits non-zero");
@@ -83,7 +83,7 @@ class CheckVerbTest {
         // inverted polarity (it fires when the fee IS present). check accepts it (valid stays true)
         // yet surfaces the RK_INVERTED_REQUIREDNESS lint warning in the diagnostics — the same silent
         // gap the kernel can't catch and that `add` warns on, now caught at the check stage too.
-        var res = CliTestSupport.run("check", model(dir).toString(),
+        var res = CliTestSupport.run("-m", model(dir).toString(), "rule", "check",
                 "--field", "/Subscription/Addons/MonthlyFee",
                 "--condition", "FieldFilled(MonthlyFee)", "--code", "FEE_PRESENT");
         assertEquals(0, res.code(), res::err);
@@ -95,7 +95,7 @@ class CheckVerbTest {
 
     @Test
     void missingRequiredFlagFails(@TempDir Path dir) throws Exception {
-        var res = CliTestSupport.run("check", model(dir).toString(),
+        var res = CliTestSupport.run("-m", model(dir).toString(), "rule", "check",
                 "--field", "/Subscription/Addons/MonthlyFee", "--code", "X"); // no --condition
         assertNotEquals(0, res.code(), "a missing required flag is an error");
         assertTrue(res.err().toLowerCase().contains("condition") || res.err().toLowerCase().contains("usage"),

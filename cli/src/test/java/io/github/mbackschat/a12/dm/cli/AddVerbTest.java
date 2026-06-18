@@ -48,9 +48,11 @@ class AddVerbTest {
 
     @Test
     void validSpecPersistsTheRule(@TempDir Path dir) throws Exception {
-        var res = CliTestSupport.run("add", model(dir).toString(), spec(dir, GOOD_SPEC).toString());
+        Path m = model(dir);
+        var res = CliTestSupport.run("-m", m.toString(), "rule", "add", spec(dir, GOOD_SPEC).toString());
         assertEquals(0, res.code(), res::err);
-        String newModel = res.out();
+        // the rule is written back into the model file (in place by default)
+        String newModel = Files.readString(m);
         assertTrue(newModel.contains("EffectiveFeeNotBelowBase"), "the new model carries the rule");
         assertTrue(newModel.contains("EFFECTIVE_FEE_BELOW_BASE"), "with its code");
         assertTrue(newModel.contains("must not be below the base fee"), "and its real message");
@@ -74,22 +76,27 @@ class AddVerbTest {
                   ]
                 }
                 """;
-        var res = CliTestSupport.run("add", model(dir).toString(), spec(dir, withComment).toString());
+        Path m = model(dir);
+        var res = CliTestSupport.run("-m", m.toString(), "rule", "add", spec(dir, withComment).toString());
         assertEquals(0, res.code(), res::err);
-        assertTrue(res.out().contains(";; effective fee must never dip below the base fee"),
-                () -> "the comment key lands as a leading ;; line on the persisted condition: " + res.out());
+        String newModel = Files.readString(m);
+        assertTrue(newModel.contains(";; effective fee must never dip below the base fee"),
+                () -> "the comment key lands as a leading ;; line on the persisted condition: " + newModel);
         // still a valid, kernel-reloadable model (the kernel tolerates the comment)
-        assertTrue(BoundModel.ofJson(res.out()).toJson().contains("EffectiveFeeNotBelowBase"),
+        assertTrue(BoundModel.ofJson(newModel).toJson().contains("EffectiveFeeNotBelowBase"),
                 "the commented rule round-trips through the kernel");
     }
 
     @Test
     void invalidConditionIsNotPersisted(@TempDir Path dir) throws Exception {
         String bad = GOOD_SPEC.replace("[EffectiveFee] < [BaseFee]", "@@@ not a condition @@@");
-        var res = CliTestSupport.run("add", model(dir).toString(), spec(dir, bad).toString());
+        Path m = model(dir);
+        String before = Files.readString(m);
+        var res = CliTestSupport.run("-m", m.toString(), "rule", "add", spec(dir, bad).toString());
         assertEquals(1, res.code(), "a kernel-rejected condition is not persisted");
-        assertTrue(res.err().contains("\"persisted\" : false"), () -> "stderr reports the rejection: " + res.err());
-        assertTrue(res.out().isBlank(), "and nothing is emitted to stdout");
+        assertTrue(res.out().contains("\"outcome\" : \"rejected\""),
+                () -> "the envelope reports the rejection: " + res.out());
+        assertEquals(before, Files.readString(m), "and nothing is written to the model file");
     }
 
     @Test
@@ -99,7 +106,7 @@ class AddVerbTest {
                 {"field":"/Subscription/Billing/EffectiveFee","condition":"[EffectiveFee] < [BaseFee]",
                  "code":"X","name":"R","messages":[{"locale":"en_US","text":"x"}]}
                 """;
-        var res = CliTestSupport.run("add", model(dir).toString(), spec(dir, oneLocale).toString());
+        var res = CliTestSupport.run("-m", model(dir).toString(), "rule", "add", spec(dir, oneLocale).toString());
         assertNotEquals(0, res.code(), "missing a declared-locale message must fail");
     }
 
@@ -107,17 +114,18 @@ class AddVerbTest {
     void warnsOnInvertedRequirednessButStillPersists(@TempDir Path dir) throws Exception {
         // the requirement written positively (FieldFilled on the error field): kernel-valid, but it's
         // the inverted polarity — fires when the fee IS present. add persists it (it's valid) and the
-        // best-effort lint backstop warns RK_INVERTED_REQUIREDNESS on stderr.
+        // lint backstop rides the applied envelope's diagnostics as RK_INVERTED_REQUIREDNESS.
         String inverted = """
                 {"field":"/Subscription/Addons/MonthlyFee","condition":"FieldFilled(MonthlyFee)",
                  "code":"FEE_PRESENT","name":"FeePresent",
                  "messages":[{"locale":"en_US","text":"x"},{"locale":"de_DE","text":"y"}]}
                 """;
-        var res = CliTestSupport.run("add", model(dir).toString(), spec(dir, inverted).toString());
+        Path m = model(dir);
+        var res = CliTestSupport.run("-m", m.toString(), "rule", "add", spec(dir, inverted).toString());
         assertEquals(0, res.code(), res::err);
-        assertTrue(res.out().contains("FeePresent"), "the (valid) rule is still persisted");
-        assertTrue(res.err().contains("RK_INVERTED_REQUIREDNESS"),
-                () -> "the lint backstop warns about the inverted polarity: " + res.err());
+        assertTrue(Files.readString(m).contains("FeePresent"), "the (valid) rule is still persisted");
+        assertTrue(res.out().contains("RK_INVERTED_REQUIREDNESS"),
+                () -> "the lint backstop warns about the inverted polarity: " + res.out());
     }
 
     @Test
@@ -125,7 +133,7 @@ class AddVerbTest {
         String noMsg = """
                 {"field":"/Subscription/Billing/EffectiveFee","condition":"[EffectiveFee] < [BaseFee]","code":"X"}
                 """;
-        var res = CliTestSupport.run("add", model(dir).toString(), spec(dir, noMsg).toString());
+        var res = CliTestSupport.run("-m", model(dir).toString(), "rule", "add", spec(dir, noMsg).toString());
         assertNotEquals(0, res.code(), "a rule-spec without messages is an error");
         assertTrue(res.err().toLowerCase().contains("message"), () -> "names the gap: " + res.err());
     }

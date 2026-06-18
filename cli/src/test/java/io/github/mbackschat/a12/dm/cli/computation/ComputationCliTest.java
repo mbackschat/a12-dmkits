@@ -44,18 +44,18 @@ class ComputationCliTest {
         Path model = write(dir, "m.dm.json", CliTestSupport.subscriptionJson());
         Path spec = write(dir, "comp.json", EFFECTIVE_FEE_SPEC);
 
-        var res = CliTestSupport.run("add", model.toString(), spec.toString());
+        var res = CliTestSupport.run("-m", model.toString(), "computation", "add", spec.toString());
         assertEquals(0, res.code(), res::err);
-        // the persisted DM-JSON carries the computation element
-        assertTrue(res.out().contains("\"Computation\"") && res.out().contains("EffectiveFeeComp"),
-                () -> "persisted model should hold the computation: " + res.out());
+        // the persisted DM-JSON (written in place) carries the computation element
+        String persistedModel = Files.readString(model);
+        assertTrue(persistedModel.contains("\"Computation\"") && persistedModel.contains("EffectiveFeeComp"),
+                () -> "persisted model should hold the computation: " + persistedModel);
 
         // and it round-trips: read the persisted model and the computation is typed
-        Path persisted = write(dir, "persisted.dm.json", res.out());
-        var read = CliTestSupport.run("read", persisted.toString(), "--all");
+        var read = CliTestSupport.run("-m", model.toString(), "model", "read");
         assertEquals(0, read.code(), read::err);
-        JsonNode j = MAPPER.readTree(read.out());
-        assertTrue(j.path("computations").path("/Subscription/Billing/EffectiveFeeComp").path("converted").asBoolean(),
+        JsonNode data = MAPPER.readTree(read.out()).path("data");
+        assertTrue(data.path("computations").path("/Subscription/Billing/EffectiveFeeComp").path("converted").asBoolean(),
                 () -> "the added computation reads as Converted: " + read.out());
     }
 
@@ -67,7 +67,7 @@ class ComputationCliTest {
                   "alternatives": [ { } ],
                   "messages": [ {"locale":"en_US","text":"x"}, {"locale":"de_DE","text":"y"} ] }
                 """);
-        var res = CliTestSupport.run("add", model.toString(), spec.toString());
+        var res = CliTestSupport.run("-m", model.toString(), "computation", "add", spec.toString());
         assertNotEquals(0, res.code(), "an alternative without an operation is malformed");
         assertTrue(res.err().contains("operation"), () -> "names the gap: " + res.err());
     }
@@ -82,32 +82,36 @@ class ComputationCliTest {
                                 {"locale":"de_DE","text":"Effektivgebühr ist doppelte Basisgebühr."} ] }
                 """);
         String before = Files.readString(model);
-        var res = CliTestSupport.run("modify", model.toString(),
-                "--computation", CliTestSupport.COMPUTATION_FULL_NAME, "--spec", spec.toString(), "--dry-run");
+        var res = CliTestSupport.run("-m", model.toString(), "computation", "modify",
+                CliTestSupport.COMPUTATION_FULL_NAME, "--spec", spec.toString(), "--dry-run");
         assertEquals(0, res.code(), res::err);
-        JsonNode j = MAPPER.readTree(res.out());
-        assertTrue(j.get("changed").asBoolean(), () -> "the re-expression is a change: " + res.out());
-        assertTrue(j.get("after").asText().contains("2"), () -> "after carries the markup: " + res.out());
+        // the before/after diff rides the envelope's `changed`
+        JsonNode changed = MAPPER.readTree(res.out()).get("changed");
+        assertTrue(changed.get("changed").asBoolean(), () -> "the re-expression is a change: " + res.out());
+        assertTrue(changed.get("after").asText().contains("2"), () -> "after carries the markup: " + res.out());
         assertEquals(before, Files.readString(model), "--dry-run writes nothing");
     }
 
     @Test
     void modifySpecMustMatchTheComputation(@TempDir Path dir) throws Exception {
         Path model = write(dir, "m.dm.json", CliTestSupport.modelWithRuleAndComputationJson());
-        Path spec = write(dir, "spec.json", EFFECTIVE_FEE_SPEC);   // derives EffectiveFeeComp
-        var res = CliTestSupport.run("modify", model.toString(),
-                "--computation", "/Subscription/Billing/SomeOtherComp", "--spec", spec.toString(), "--dry-run");
-        assertNotEquals(0, res.code(), "the spec must re-express the same computation named by --computation");
+        // a well-formed spec whose computedField is a DIFFERENT field than the targeted (existing) computation
+        Path spec = write(dir, "spec.json", """
+                { "computedField": "/Subscription/Billing/BaseFee",
+                  "alternatives": [ { "operation": "[EffectiveFee]" } ],
+                  "messages": [ {"locale":"en_US","text":"x"}, {"locale":"de_DE","text":"y"} ] }
+                """);
+        var res = CliTestSupport.run("-m", model.toString(), "computation", "modify",
+                CliTestSupport.COMPUTATION_FULL_NAME, "--spec", spec.toString(), "--dry-run");
+        assertNotEquals(0, res.code(), "the spec must re-express the same computation named positionally");
     }
 
     @Test
-    void modifyNeedsExactlyOneMode(@TempDir Path dir) throws Exception {
+    void modifyNeedsASpec(@TempDir Path dir) throws Exception {
         Path model = write(dir, "m.dm.json", CliTestSupport.modelWithRuleAndComputationJson());
-        var both = CliTestSupport.run("modify", model.toString(),
-                "--rule", CliTestSupport.RULE_FULL_NAME, "--computation", CliTestSupport.COMPUTATION_FULL_NAME, "--dry-run");
-        assertNotEquals(0, both.code(), "--rule and --computation are mutually exclusive");
-        var neither = CliTestSupport.run("modify", model.toString());
-        assertNotEquals(0, neither.code(), "modify needs a mode");
+        var noSpec = CliTestSupport.run("-m", model.toString(), "computation", "modify",
+                CliTestSupport.COMPUTATION_FULL_NAME);
+        assertNotEquals(0, noSpec.code(), "computation modify needs --spec");
     }
 
     @Test
@@ -133,7 +137,7 @@ class ComputationCliTest {
                 """);
 
         // sibling pricelist resolves by default → the including model loads + the computation validates
-        var res = CliTestSupport.run("add", model.toString(), spec.toString());
+        var res = CliTestSupport.run("-m", model.toString(), "computation", "add", spec.toString());
         assertEquals(0, res.code(), () -> "add a computation over a multi-file model: " + res.err() + res.out());
         assertTrue(res.out().contains("TotalComp"), () -> "the computation is persisted: " + res.out());
     }

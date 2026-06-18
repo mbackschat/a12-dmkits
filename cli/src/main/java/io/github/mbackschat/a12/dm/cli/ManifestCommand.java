@@ -75,8 +75,8 @@ final class ManifestCommand extends BaseCommand {
 
     /**
      * Walk the tree: emit each runnable leaf op under its qualified name, recursing into target groups.
-     * Hidden commands (the legacy flat verbs kept as aliases for one release) are skipped — the manifest is
-     * the canonical target-first surface.
+     * Hidden commands are skipped — the manifest is the canonical target-first surface. (None today; this
+     * stays as the invariant so a hidden command can never leak into the contract.)
      */
     private void collect(String prefix, Map<String, CommandLine> subs, ArrayNode verbs) {
         for (Map.Entry<String, CommandLine> e : subs.entrySet()) {

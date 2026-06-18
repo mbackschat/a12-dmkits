@@ -48,9 +48,9 @@ class BatchVerbTest {
         String m = model(dir).toString();
         String ops = """
                 [
-                  {"verb":"check","args":["%s","--field","/Subscription/Billing/EffectiveFee","--condition","[EffectiveFee] < [BaseFee]","--code","FEE"]},
-                  {"verb":"check","args":["%s","--field","/Subscription/Billing/EffectiveFee","--condition","@@@ not a condition @@@","--code","X"]},
-                  {"verb":"describe","args":["%s"]}
+                  {"verb":"rule","args":["check","-m","%s","--field","/Subscription/Billing/EffectiveFee","--condition","[EffectiveFee] < [BaseFee]","--code","FEE"]},
+                  {"verb":"rule","args":["check","-m","%s","--field","/Subscription/Billing/EffectiveFee","--condition","@@@ not a condition @@@","--code","X"]},
+                  {"verb":"model","args":["describe","-m","%s"]}
                 ]""".formatted(m, m, m);
         Path opsFile = dir.resolve("ops.json");
         Files.writeString(opsFile, ops);
@@ -61,7 +61,7 @@ class BatchVerbTest {
         assertEquals(3, arr.size(), () -> "one result per op: " + res.out());
 
         // op0 — a valid candidate: exit 0, its JSON result embedded
-        assertEquals("check", arr.get(0).get("verb").asText());
+        assertEquals("rule", arr.get(0).get("verb").asText());
         assertEquals(0, arr.get(0).get("exit").asInt());
         assertTrue(arr.get(0).get("result").get("valid").asBoolean(), "valid candidate");
 
@@ -70,7 +70,7 @@ class BatchVerbTest {
         assertFalse(arr.get(1).get("result").get("valid").asBoolean());
 
         // op2 — a different verb ran in the same process (warm cache)
-        assertEquals("describe", arr.get(2).get("verb").asText());
+        assertEquals("model", arr.get(2).get("verb").asText());
         assertEquals(0, arr.get(2).get("exit").asInt());
     }
 
@@ -82,8 +82,8 @@ class BatchVerbTest {
         String m = model(dir).toString();
         String ops = """
                 [
-                  {"id":"neg-in-iter","verb":"check","args":["%s","--field","/Subscription/Addons/MonthlyFee","--condition","FieldNotFilled(MonthlyFee)","--code","A"]},
-                  {"id":"syntax","verb":"check","args":["%s","--field","/Subscription/Addons/MonthlyFee","--condition","@@@ junk @@@","--code","B"]}
+                  {"id":"neg-in-iter","verb":"rule","args":["check","-m","%s","--field","/Subscription/Addons/MonthlyFee","--condition","FieldNotFilled(MonthlyFee)","--code","A"]},
+                  {"id":"syntax","verb":"rule","args":["check","-m","%s","--field","/Subscription/Addons/MonthlyFee","--condition","@@@ junk @@@","--code","B"]}
                 ]""".formatted(m, m);
         Path opsFile = dir.resolve("ops.json");
         Files.writeString(opsFile, ops);

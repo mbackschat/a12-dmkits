@@ -36,9 +36,9 @@ class CliHelpTest {
 
     @Test
     void perVerbHelpShowsParameters() {
-        CliTestSupport.Result res = CliTestSupport.run("explain", "--help");
+        CliTestSupport.Result res = CliTestSupport.run("rule", "check", "--help");
         assertEquals(0, res.code(), res::err);
-        assertTrue(res.out().contains("--rule"), () -> "explain --help shows --rule: " + res.out());
+        assertTrue(res.out().contains("--field"), () -> "rule check --help shows --field: " + res.out());
     }
 
     @Test

@@ -28,7 +28,7 @@ class RemoveVerbTest {
     @Test
     void removesAnUnreferencedField(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
-        var res = CliTestSupport.run("remove", model.toString(), "--field", "/Order/Quantity");
+        var res = CliTestSupport.run("-m", model.toString(), "field", "remove", "/Order/Quantity");
         assertEquals(0, res.code(), res.err());
         assertFalse(Files.readString(model).contains("\"/Order/Quantity\""));
     }
@@ -36,32 +36,33 @@ class RemoveVerbTest {
     @Test
     void refusesToRemoveAReferencedFieldWithoutCascade(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
-        var res = CliTestSupport.run("remove", model.toString(), "--field", "/Order/DeliveryDate");
+        var res = CliTestSupport.run("-m", model.toString(), "field", "remove", "/Order/DeliveryDate");
         assertEquals(2, res.code());
-        // the problem is surfaced STRUCTURED (agent-parseable), not buried in a flat message
-        JsonNode refusal = new ObjectMapper().readTree(res.err());
-        assertEquals("/Order/DeliveryDate", refusal.path("blocked").asText());
-        JsonNode rules = refusal.path("referencedBy").path("rules");
+        // the problem is surfaced STRUCTURED (agent-parseable) through the refused envelope on stdout
+        JsonNode env = new ObjectMapper().readTree(res.out());
+        assertEquals("refused", env.path("outcome").asText());
+        JsonNode rules = env.path("data").path("referencedBy").path("rules");
         assertTrue(rules.isArray() && rules.toString().contains("/Order/DeliveryNotBeforeOrder"),
-                "must list the referencing rule under referencedBy.rules: " + res.err());
-        assertTrue(refusal.path("hint").asText().contains("--cascade"), "must hint at --cascade");
+                "must list the referencing rule under data.referencedBy.rules: " + res.out());
+        assertTrue(env.path("diagnostics").toString().contains("--cascade"), "must hint at --cascade");
         assertTrue(Files.readString(model).contains("/Order/DeliveryDate"), "file must be untouched");
     }
 
     @Test
     void cascadeRemovesTheFieldAndItsReferencingRules(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
-        var res = CliTestSupport.run("remove", model.toString(), "--field", "/Order/DeliveryDate", "--cascade");
+        var res = CliTestSupport.run("-m", model.toString(), "field", "remove", "/Order/DeliveryDate", "--cascade");
         assertEquals(0, res.code(), res.err());
         String written = Files.readString(model);
         assertFalse(written.contains("DeliveryNotBeforeOrder"), "the referencing rule should cascade away");
-        assertEquals(0, CliTestSupport.run("validate", model.toString()).code(), "result must stay kernel-valid");
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code(),
+                "result must stay kernel-valid");
     }
 
     @Test
     void removesARuleDirectly(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
-        var res = CliTestSupport.run("remove", model.toString(), "--rule", "/Order/EligibilityCheck");
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "remove", "/Order/EligibilityCheck");
         assertEquals(0, res.code(), res.err());
         assertFalse(Files.readString(model).contains("EligibilityCheck"));
     }
@@ -69,7 +70,7 @@ class RemoveVerbTest {
     @Test
     void dryRunPreviewsWithoutWriting(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
-        var res = CliTestSupport.run("remove", model.toString(), "--rule", "/Order/EligibilityCheck", "--dry-run");
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "remove", "/Order/EligibilityCheck", "--dry-run");
         assertEquals(0, res.code(), res.err());
         assertTrue(Files.readString(model).contains("EligibilityCheck"), "--dry-run must write nothing");
     }
@@ -77,15 +78,15 @@ class RemoveVerbTest {
     @Test
     void unknownPathFailsFast(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
-        var res = CliTestSupport.run("remove", model.toString(), "--field", "/Order/DoesNotExist");
+        var res = CliTestSupport.run("-m", model.toString(), "field", "remove", "/Order/DoesNotExist");
         assertEquals(2, res.code());
     }
 
     @Test
     void removesATypeDefinition(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
-        assertEquals(0, CliTestSupport.run("add-typedef", model.toString(), "--id", "Money", "--kind", "NUMBER").code());
-        var res = CliTestSupport.run("remove", model.toString(), "--typedef", "Money");
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "typedef", "add", "--id", "Money", "--kind", "NUMBER").code());
+        var res = CliTestSupport.run("-m", model.toString(), "typedef", "remove", "Money");
         assertEquals(0, res.code(), res.err());
         assertFalse(Files.readString(model).contains("\"Money\""));
     }
@@ -96,11 +97,11 @@ class RemoveVerbTest {
         Files.writeString(dir.resolve("catalog.dm.json"),
                 DocumentModelDraft.named("catalog").locale("en_US")
                         .rootGroup("Catalog", g -> g.field("Sku", FieldKind.STRING)).build().toJson());
-        assertEquals(0, CliTestSupport.run("add-include", model.toString(), "--alias", "catalog",
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "include", "add", "--alias", "catalog",
                 "--reference", "catalog", "--parent", "/Order", "--name", "Catalog",
                 "-w", dir.toString()).code());
 
-        var res = CliTestSupport.run("remove", model.toString(), "--include", "catalog");
+        var res = CliTestSupport.run("-m", model.toString(), "include", "remove", "catalog");
         assertEquals(0, res.code(), res.err());
         assertFalse(Files.readString(model).contains("modelAlias"));
     }

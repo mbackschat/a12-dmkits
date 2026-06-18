@@ -34,7 +34,7 @@ class EvalDocVerbTest {
     }
 
     private static boolean firedContains(String out, String code) throws Exception {
-        for (JsonNode c : MAPPER.readTree(out).get("fired")) {
+        for (JsonNode c : MAPPER.readTree(out).get("data").get("fired")) {
             if (c.asText().equals(code)) {
                 return true;
             }
@@ -47,12 +47,12 @@ class EvalDocVerbTest {
         Path model = CliTestSupport.orderRuled(dir);
         Path d = doc(dir, """
                 { "fields": { "Order": { "OrderDate": "2024-02-01", "DeliveryDate": "2024-01-01" } } }""");
-        var res = CliTestSupport.run("eval-doc", model.toString(), "--doc", d.toString());
+        var res = CliTestSupport.run("-m", model.toString(), "model", "eval", "--doc", d.toString());
         assertEquals(0, res.code(), res::err);
         assertTrue(firedContains(res.out(), "DELIVERY_BEFORE_ORDER"),
                 () -> "delivery before order fires the rule: " + res.out());
         // the firing message attributes to the rule (rule path present, the formal-error discriminator)
-        assertTrue(MAPPER.readTree(res.out()).get("messages").toString().contains("/Order/DeliveryNotBeforeOrder"),
+        assertTrue(MAPPER.readTree(res.out()).get("data").get("messages").toString().contains("/Order/DeliveryNotBeforeOrder"),
                 () -> "the message names its rule: " + res.out());
     }
 
@@ -61,7 +61,7 @@ class EvalDocVerbTest {
         Path model = CliTestSupport.orderRuled(dir);
         Path d = doc(dir, """
                 { "fields": { "Order": { "OrderDate": "2024-01-01", "DeliveryDate": "2024-02-01" } } }""");
-        var res = CliTestSupport.run("eval-doc", model.toString(), "--doc", d.toString());
+        var res = CliTestSupport.run("-m", model.toString(), "model", "eval", "--doc", d.toString());
         assertEquals(0, res.code(), res::err);
         assertFalse(firedContains(res.out(), "DELIVERY_BEFORE_ORDER"),
                 () -> "a compliant delivery date does not fire: " + res.out());
@@ -74,9 +74,9 @@ class EvalDocVerbTest {
                 { "fields": { "Order": { "BillingAddress": { "PostalCode": "1234" } } } }""");
         Path ok = doc(dir, """
                 { "fields": { "Order": { "BillingAddress": { "PostalCode": "12345" } } } }""");
-        assertTrue(firedContains(CliTestSupport.run("eval-doc", model.toString(), "--doc", bad.toString()).out(),
+        assertTrue(firedContains(CliTestSupport.run("-m", model.toString(), "model", "eval", "--doc", bad.toString()).out(),
                 "POSTAL_CODE_MALFORMED"), "a 4-digit postal code violates the 5-digit pattern");
-        assertFalse(firedContains(CliTestSupport.run("eval-doc", model.toString(), "--doc", ok.toString()).out(),
+        assertFalse(firedContains(CliTestSupport.run("-m", model.toString(), "model", "eval", "--doc", ok.toString()).out(),
                 "POSTAL_CODE_MALFORMED"), "a 5-digit postal code complies");
     }
 
@@ -87,14 +87,14 @@ class EvalDocVerbTest {
                 { "fields": { "Order": { "Quantity": "150" } } }""");
         Path under = doc(dir, """
                 { "fields": { "Order": { "Quantity": "50" } } }""");
-        var fired = CliTestSupport.run("eval-doc", model.toString(), "--doc", over.toString(),
+        var fired = CliTestSupport.run("-m", model.toString(), "model", "eval", "--doc", over.toString(),
                 "--field", "/Order/Quantity", "--condition", "[Quantity] > 100", "--code", "QTY_CAP");
         assertEquals(0, fired.code(), fired::err);
-        assertTrue(MAPPER.readTree(fired.out()).get("rule").get("fired").asBoolean(),
+        assertTrue(MAPPER.readTree(fired.out()).get("data").get("rule").get("fired").asBoolean(),
                 () -> "the candidate fires on Quantity 150: " + fired.out());
-        var notFired = CliTestSupport.run("eval-doc", model.toString(), "--doc", under.toString(),
+        var notFired = CliTestSupport.run("-m", model.toString(), "model", "eval", "--doc", under.toString(),
                 "--field", "/Order/Quantity", "--condition", "[Quantity] > 100", "--code", "QTY_CAP");
-        assertFalse(MAPPER.readTree(notFired.out()).get("rule").get("fired").asBoolean(),
+        assertFalse(MAPPER.readTree(notFired.out()).get("data").get("rule").get("fired").asBoolean(),
                 () -> "the candidate does not fire on Quantity 50: " + notFired.out());
     }
 
@@ -103,10 +103,10 @@ class EvalDocVerbTest {
         Path model = CliTestSupport.orderRuled(dir);
         Path d = doc(dir, """
                 { "fields": { "Order": { "OrderDate": "2024-02-01", "DeliveryDate": "2024-01-01" } } }""");
-        var res = CliTestSupport.run("eval-doc", model.toString(), "--doc", d.toString(),
+        var res = CliTestSupport.run("-m", model.toString(), "model", "eval", "--doc", d.toString(),
                 "--rule", "/Order/DeliveryNotBeforeOrder");
         assertEquals(0, res.code(), res::err);
-        JsonNode rule = MAPPER.readTree(res.out()).get("rule");
+        JsonNode rule = MAPPER.readTree(res.out()).get("data").get("rule");
         assertEquals("/Order/DeliveryNotBeforeOrder", rule.get("name").asText());
         assertTrue(rule.get("fired").asBoolean(), () -> "the named rule fired: " + res.out());
     }
@@ -119,13 +119,13 @@ class EvalDocVerbTest {
                 { "fields": { "Order": { "Items": [ { "Sku": "A", "Count": "10" }, { "Sku": "B", "Count": "80" } ] } } }""");
         // a per-row rule reaching THROUGH the repeatable Items is scoped to the PARENT group (/Order),
         // not Items itself (a rule whose group IS the repeatable group is rejected MVK_INVALID_ENTITY)
-        var res = CliTestSupport.run("eval-doc", model.toString(), "--doc", d.toString(),
+        var res = CliTestSupport.run("-m", model.toString(), "model", "eval", "--doc", d.toString(),
                 "--field", "/Order/Items/Count", "--group", "/Order",
                 "--condition", "FieldFilled(Items/Count) And [Items/Count] > 50", "--code", "COUNT_CAP");
         assertEquals(0, res.code(), res::err);
         // look only at the candidate's own messages — it fires on row 2 ([1, 2, 1]), not row 1 ([1, 1, 1])
         StringBuilder countCap = new StringBuilder();
-        for (JsonNode m : MAPPER.readTree(res.out()).get("messages")) {
+        for (JsonNode m : MAPPER.readTree(res.out()).get("data").get("messages")) {
             if (m.get("code").asText().equals("COUNT_CAP")) {
                 countCap.append(m.get("field").asText()).append('\n');
             }
@@ -142,9 +142,9 @@ class EvalDocVerbTest {
         Path model = CliTestSupport.orderRuled(dir);
         Path d = doc(dir, """
                 { "fields": { "Order": { "Quantity": "1.5" } } }""");
-        var res = CliTestSupport.run("eval-doc", model.toString(), "--doc", d.toString());
+        var res = CliTestSupport.run("-m", model.toString(), "model", "eval", "--doc", d.toString());
         assertEquals(0, res.code(), res::err);
-        JsonNode messages = MAPPER.readTree(res.out()).get("messages");
+        JsonNode messages = MAPPER.readTree(res.out()).get("data").get("messages");
         assertTrue(messages.size() > 0, () -> "a malformed value raises a kernel message: " + res.out());
         assertTrue(java.util.stream.StreamSupport.stream(messages.spliterator(), false)
                         .anyMatch(m -> m.has("rule") && !m.get("rule").asText().startsWith("/")),
@@ -156,7 +156,7 @@ class EvalDocVerbTest {
         Path model = CliTestSupport.orderRuled(dir);
         Path d = doc(dir, """
                 { "fields": { "Order": { "Quantity": "1" } } }""");
-        var res = CliTestSupport.run("eval-doc", model.toString(), "--doc", d.toString(),
+        var res = CliTestSupport.run("-m", model.toString(), "model", "eval", "--doc", d.toString(),
                 "--rule", "/Order/DeliveryNotBeforeOrder", "--condition", "[Quantity] > 0", "--field", "/Order/Quantity");
         assertNotEquals(0, res.code(), "--rule and a candidate are mutually exclusive");
     }
@@ -166,7 +166,7 @@ class EvalDocVerbTest {
         Path model = CliTestSupport.orderRuled(dir);
         Path d = doc(dir, """
                 { "fields": { "Order": { "Quantity": "1" } } }""");
-        var res = CliTestSupport.run("eval-doc", model.toString(), "--doc", d.toString(), "--rule", "/Order/Nope");
+        var res = CliTestSupport.run("-m", model.toString(), "model", "eval", "--doc", d.toString(), "--rule", "/Order/Nope");
         assertNotEquals(0, res.code(), "an unknown rule is an error");
         assertTrue(res.err().contains("/Order/Nope"), () -> "names the bad rule: " + res.err());
     }
@@ -176,7 +176,7 @@ class EvalDocVerbTest {
         Path model = CliTestSupport.orderRuled(dir);
         Path d = doc(dir, """
                 { "fields": { "Order": { "Nope": "x" } } }""");
-        var res = CliTestSupport.run("eval-doc", model.toString(), "--doc", d.toString());
+        var res = CliTestSupport.run("-m", model.toString(), "model", "eval", "--doc", d.toString());
         assertNotEquals(0, res.code(), "an unknown path in the document is an error");
         assertTrue(res.err().contains("/Order/Nope"), () -> "names the bad path: " + res.err());
     }
@@ -199,9 +199,9 @@ class EvalDocVerbTest {
         Path d = doc(dir, """
                 { "fields": { "Storefront": { "StoreName": "Acme" } } }""");
 
-        var withDir = CliTestSupport.run("eval-doc", model.toString(), "--doc", d.toString(),
+        var withDir = CliTestSupport.run("-m", model.toString(), "model", "eval", "--doc", d.toString(),
                 "-w", lib.toString());
         assertEquals(0, withDir.code(), () -> "-w/--workspace resolves the multi-file model: " + withDir.err());
-        assertTrue(MAPPER.readTree(withDir.out()).has("fired"), () -> "emits a result: " + withDir.out());
+        assertTrue(MAPPER.readTree(withDir.out()).get("data").has("fired"), () -> "emits a result: " + withDir.out());
     }
 }

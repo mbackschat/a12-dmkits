@@ -75,17 +75,16 @@ class RuleVerbTest {
     @Test
     void explainReturnsTheRuleExplanationInData(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
-        JsonNode legacy = M.readTree(
-                CliTestSupport.run("explain", model.toString(), "--rule", CliTestSupport.RULE_FULL_NAME).out());
         var res = CliTestSupport.run("-m", model.toString(), "rule", "explain", CliTestSupport.RULE_FULL_NAME);
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
         assertEquals("rule", j.get("target").asText());
         assertEquals("explain", j.get("op").asText());
         assertEquals("read", j.get("outcome").asText());
-        assertEquals(legacy, j.get("data"), "rule explain carries the RuleExplanation in `data`");
 
         JsonNode data = j.get("data");
+        assertTrue(data.has("operators") && data.has("references"),
+                () -> "rule explain carries the RuleExplanation in `data`: " + res.out());
         // polarity — so an agent explaining the rule to a user doesn't invert its meaning (the A12 trap)
         assertEquals("violation", data.path("polarity").path("firesOn").asText(),
                 () -> "explain states the rule fires on a VIOLATION: " + res.out());

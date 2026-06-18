@@ -184,8 +184,8 @@ final class SchemaCommand extends BaseCommand {
             cur = cl.getCommandSpec();
             subs = cur.subcommands();
         }
-        // a runnable, non-hidden leaf — the hidden legacy flat aliases aren't part of the canonical surface
-        // (the manifest skips them too), so `schema add` must not resolve to the hidden flat `add`.
+        // a runnable, non-hidden leaf — hidden commands aren't part of the canonical surface (the manifest
+        // skips them too). Stays as the invariant; the legacy flat aliases this once guarded against are gone.
         return cur != null && cur.subcommands().isEmpty() && !cur.usageMessage().hidden();
     }
 

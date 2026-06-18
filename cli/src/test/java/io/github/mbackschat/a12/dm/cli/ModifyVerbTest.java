@@ -37,11 +37,12 @@ class ModifyVerbTest {
     @Test
     void writesTheModifiedModelInPlaceByDefault(@TempDir Path dir) throws Exception {
         Path m = model(dir);
-        var res = CliTestSupport.run("modify", m.toString(),
-                "--rule", CliTestSupport.RULE_FULL_NAME, "--condition", "[MonthlyFee] > 2000");
+        var res = CliTestSupport.run("-m", m.toString(), "rule", "modify",
+                CliTestSupport.RULE_FULL_NAME, "--condition", "[MonthlyFee] > 2000");
         assertEquals(0, res.code(), res::err);
-        // the before/after diff still prints to stdout
-        assertTrue(MAPPER.readTree(res.out()).get("changed").asBoolean(), () -> "shows the change: " + res.out());
+        // the before/after diff rides the envelope's `changed` (its own `changed` flag marks the edit)
+        assertTrue(MAPPER.readTree(res.out()).get("changed").get("changed").asBoolean(),
+                () -> "shows the change: " + res.out());
         // and the model FILE now carries the new bound (written in place), still kernel-reloadable
         String written = Files.readString(m);
         assertTrue(written.contains("2000"), "the in-place model carries the new condition");
@@ -53,10 +54,11 @@ class ModifyVerbTest {
     void dryRunPreviewsAndWritesNothing(@TempDir Path dir) throws Exception {
         Path m = model(dir);
         String before = Files.readString(m);
-        var res = CliTestSupport.run("modify", m.toString(),
-                "--rule", CliTestSupport.RULE_FULL_NAME, "--condition", "[MonthlyFee] > 2000", "--dry-run");
+        var res = CliTestSupport.run("-m", m.toString(), "rule", "modify",
+                CliTestSupport.RULE_FULL_NAME, "--condition", "[MonthlyFee] > 2000", "--dry-run");
         assertEquals(0, res.code(), res::err);
-        assertTrue(MAPPER.readTree(res.out()).get("changed").asBoolean(), "still shows the before/after");
+        assertTrue(MAPPER.readTree(res.out()).get("changed").get("changed").asBoolean(),
+                "still shows the before/after");
         assertEquals(before, Files.readString(m), "--dry-run writes nothing: the model file is untouched");
     }
 
@@ -65,8 +67,8 @@ class ModifyVerbTest {
         Path m = model(dir);
         String before = Files.readString(m);
         Path out = dir.resolve("modified.dm.json");
-        var res = CliTestSupport.run("modify", m.toString(),
-                "--rule", CliTestSupport.RULE_FULL_NAME, "--condition", "[MonthlyFee] > 2000",
+        var res = CliTestSupport.run("-m", m.toString(), "rule", "modify",
+                CliTestSupport.RULE_FULL_NAME, "--condition", "[MonthlyFee] > 2000",
                 "-o", out.toString());
         assertEquals(0, res.code(), res::err);
         assertTrue(Files.readString(out).contains("2000"), "the new file carries the change");
@@ -77,15 +79,15 @@ class ModifyVerbTest {
     void commentOptionSetsALeadingCommentAndASecondModifyPreservesIt(@TempDir Path dir) throws Exception {
         Path m = model(dir);
         // --comment sets the leading ;; comment alongside the re-expression
-        var set = CliTestSupport.run("modify", m.toString(),
-                "--rule", CliTestSupport.RULE_FULL_NAME, "--condition", "[MonthlyFee] > 2000",
+        var set = CliTestSupport.run("-m", m.toString(), "rule", "modify",
+                CliTestSupport.RULE_FULL_NAME, "--condition", "[MonthlyFee] > 2000",
                 "--comment", "raised the cap to 2000");
         assertEquals(0, set.code(), set::err);
         assertTrue(Files.readString(m).contains(";; raised the cap to 2000"), "the --comment lands as a ;; line");
 
         // a later modify with NO --comment carries the existing comment forward (preserve-by-default)
-        var again = CliTestSupport.run("modify", m.toString(),
-                "--rule", CliTestSupport.RULE_FULL_NAME, "--condition", "[MonthlyFee] > 3000");
+        var again = CliTestSupport.run("-m", m.toString(), "rule", "modify",
+                CliTestSupport.RULE_FULL_NAME, "--condition", "[MonthlyFee] > 3000");
         assertEquals(0, again.code(), again::err);
         String written = Files.readString(m);
         assertTrue(written.contains(";; raised the cap to 2000"), "the comment survives a comment-less modify");
@@ -96,15 +98,15 @@ class ModifyVerbTest {
     void rejectsAnInvalidReExpressionWithoutWriting(@TempDir Path dir) throws Exception {
         Path m = model(dir);
         String before = Files.readString(m);
-        var res = CliTestSupport.run("modify", m.toString(),
-                "--rule", CliTestSupport.RULE_FULL_NAME, "--condition", "@@@ not a condition @@@");
+        var res = CliTestSupport.run("-m", m.toString(), "rule", "modify",
+                CliTestSupport.RULE_FULL_NAME, "--condition", "@@@ not a condition @@@");
         assertNotEquals(0, res.code(), "an invalid re-expression is not applied");
         assertEquals(before, Files.readString(m), "a rejected modify writes nothing");
     }
 
     @Test
-    void needsExactlyOneMode(@TempDir Path dir) throws Exception {
-        var neither = CliTestSupport.run("modify", model(dir).toString());
-        assertNotEquals(0, neither.code(), "modify needs a mode");
+    void needsAtLeastOneEdit(@TempDir Path dir) throws Exception {
+        var none = CliTestSupport.run("-m", model(dir).toString(), "rule", "modify", CliTestSupport.RULE_FULL_NAME);
+        assertNotEquals(0, none.code(), "modify needs at least one of --condition / --severity / --message");
     }
 }

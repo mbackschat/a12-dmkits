@@ -71,10 +71,12 @@ class ComputationVerbTest {
     @Test
     void explainReturnsTheComputationExplanationInData(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRuleAndComputation(dir);
-        JsonNode legacy = M.readTree(CliTestSupport.run("explain", model.toString(), "--computation", COMP).out());
         var res = CliTestSupport.run("-m", model.toString(), "computation", "explain", COMP);
         assertEquals(0, res.code(), res.err());
-        assertEquals(legacy, M.readTree(res.out()).get("data"), "carries the ComputationExplanation in `data`");
+        JsonNode data = M.readTree(res.out()).get("data");
+        assertEquals("/Subscription/Billing/EffectiveFee", data.get("computedField").asText(),
+                () -> "carries the ComputationExplanation in `data`: " + res.out());
+        assertTrue(data.has("alternatives"), () -> "with the computation's alternatives: " + res.out());
     }
 
     @Test

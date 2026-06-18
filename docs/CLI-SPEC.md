@@ -2,7 +2,7 @@
 
 The component spec for the standalone CLI (N10). The proposal's [§14/§16](PROJECT-PROPOSAL.md) state intent; [`ARCHITECTURE.md`](ARCHITECTURE.md) places it among the subprojects; this spec holds the design — the **op model**, the **verb surface**, the **diagnostics contract**, the dev/test workflow, sizing, and packaging. Per-verb implementation status lives on the [`API-STATUS.md`](API-STATUS.md) board; runnable demos in [`CLI-TOUR-SPEC.md`](CLI-TOUR-SPEC.md) ↔ [`../examples/`](../examples/).
 
-> **Status.** This spec is the **target surface** — binary `dmtool`, target-first verbs (`dmtool -m <model> <target> <op>`), and the uniform result envelope (§3). The verb-first surface is mid-migration: the legacy names still resolve as hidden aliases until the flip completes (per-verb status on the status board). The structural refactor ops (§6) have **shipped, safety-gated** — `typedef rename`/`extract`/`inline`, `field`/`group`/`rule rename` and `field`/`group move` (both **reference-rewriting** via the kernel's `MoveSupportDM`), `group extract` (group→include), and `include inline` (the extract inverse). The §3.1 refactor set is complete.
+> **Status.** This spec is the **target surface** — binary `dmtool`, target-first verbs (`dmtool -m <model> <target> <op>`), and the uniform result envelope (§3). The verb-first migration is **complete** — the CLI is target-first only (the legacy flat aliases were removed 2026-06-19; §5). The structural refactor ops (§6) have **shipped, safety-gated** — `typedef rename`/`extract`/`inline`, `field`/`group`/`rule rename` and `field`/`group move` (both **reference-rewriting** via the kernel's `MoveSupportDM`), `group extract` (group→include), and `include inline` (the extract inverse). The §3.1 refactor set is complete.
 
 ## 1. Purpose & persona
 
@@ -146,17 +146,7 @@ Every command is `dmtool -m <model> <target> <op> [args]`. Family (modelkit ⟂ 
 | *(root meta)* | `manifest · schema · operators · patterns · diagnostics · batch · apply` *(`patterns` = the validation-idiom catalogue; `patterns <id> --arg k=v` scaffolds a kernel-valid rule-spec, computation-spec, or field-spec + auto-checks it, `--apply` persists — G2/R1; CONTRACT_EXEMPT, self-describing like `operators`)* | rulekit |
 | *(cross-cutting)* | `where-used <entity>` *(positional path, `-m` model context, like the other reads; `--entity` is the explicit alias — G11)* · `meta <ref>` *(read/edit any element's descriptions + annotations — field/group/rule by path, type-def by id; `ELEMENT_REF`, refuses `RK_NO_SUCH_ELEMENT`)* | adapter / modelkit |
 
-**Legacy → target-first** (the migration map; legacy names stay as hidden aliases for one release):
-
-| legacy verb | target-first |
-|---|---|
-| `describe` / `validate` / `export` / `eval-doc` / `compute-doc` | `model describe` / `model validate` / `export` / `model eval --doc` / `model compute --doc` |
-| `add <spec>` (rule) / `add <spec>` (computation) | `rule add <spec>` / `computation add <spec>` |
-| `read --rule` / `read --all` / `explain --rule` / `explain --computation` | `rule read` / `model read --all` / `rule explain` / `computation explain` |
-| `check` | `rule check` |
-| `modify --rule --condition` / `modify --computation --spec` | `rule modify --condition` / `computation modify --spec` |
-| `add-field` / `add-group` / `add-typedef` / `add-include` | `field add` / `group add` / `typedef add` / `include add` |
-| `remove --field/--group/--rule/--computation/--typedef/--include` | `field remove` / `group remove` / `rule remove` / `computation remove` / `typedef remove` / `include remove` |
+**Target-first only — the migration is complete (2026-06-19).** The CLI surface is exclusively target-first (`<target> <op>`, the table above). The earlier flat verbs — `check`, `validate`, `read`, `explain`, `add`, `modify`, `remove`, `describe`, `eval-doc`, `compute-doc`, `add-field`/`-group`/`-typedef`/`-include` — were **hidden** aliases kept through the migration; they predate v0.1.0 (never shipped non-hidden), and have now been **removed** (their canonical spellings are the target-first verbs above). Their test coverage migrated onto the canonical surface in the same change.
 
 **`doc` → `model` is a clean rename.** The whole-model target was `doc`, but in A12 "document" is the runtime **instance** (the data) — the same word the `--doc` flag already means. So the target was renamed to **`model`** (the schema), leaving `doc`/`--doc` unambiguously the instance. The old `doc` target was **removed outright** (the rename predates v0.1.0, so it never shipped — no caller to migrate); `dmtool doc <op>` simply errors with picocli's unknown-subcommand message. Rationale: "document" (instance) and "model" (schema) must not share a word.
 

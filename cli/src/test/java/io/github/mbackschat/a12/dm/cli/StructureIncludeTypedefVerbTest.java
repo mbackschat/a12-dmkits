@@ -29,25 +29,25 @@ class StructureIncludeTypedefVerbTest {
     @Test
     void addsATypeDefinitionAndAFieldUsingIt(@TempDir Path dir) throws Exception {
         Path model = subscription(dir);
-        assertEquals(0, CliTestSupport.run("add-typedef", model.toString(), "--id", "Money", "--kind", "NUMBER").code());
-        var res = CliTestSupport.run("add-field", model.toString(),
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "typedef", "add", "--id", "Money", "--kind", "NUMBER").code());
+        var res = CliTestSupport.run("-m", model.toString(), "field", "add",
                 "--group", "/Subscription", "--name", "Credit", "--typedef", "Money");
         assertEquals(0, res.code(), res.err());
 
         String written = Files.readString(model);
         assertTrue(written.contains("\"Money\""));
         assertTrue(written.contains("TypeDefType"));
-        assertEquals(0, CliTestSupport.run("validate", model.toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code());
     }
 
     @Test
     void addFieldRequiresExactlyOneOfKindOrTypedef(@TempDir Path dir) throws Exception {
         Path model = subscription(dir);
         // neither
-        assertEquals(2, CliTestSupport.run("add-field", model.toString(),
+        assertEquals(2, CliTestSupport.run("-m", model.toString(), "field", "add",
                 "--group", "/Subscription", "--name", "X").code());
         // both
-        assertEquals(2, CliTestSupport.run("add-field", model.toString(),
+        assertEquals(2, CliTestSupport.run("-m", model.toString(), "field", "add",
                 "--group", "/Subscription", "--name", "X", "--kind", "STRING", "--typedef", "Money").code());
     }
 
@@ -60,7 +60,7 @@ class StructureIncludeTypedefVerbTest {
                         .rootGroup("Catalog", g -> g.field("Sku", FieldKind.STRING))
                         .build().toJson());
 
-        var res = CliTestSupport.run("add-include", model.toString(),
+        var res = CliTestSupport.run("-m", model.toString(), "include", "add",
                 "--alias", "catalog", "--reference", "catalog",
                 "--parent", "/Subscription", "--name", "Catalog",
                 "-w", dir.toString());
@@ -69,6 +69,6 @@ class StructureIncludeTypedefVerbTest {
         String written = Files.readString(model);
         assertTrue(written.contains("\"modelAlias\""));
         assertTrue(written.contains("\"reference\""));
-        assertEquals(0, CliTestSupport.run("validate", model.toString(), "-w", dir.toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate", "-w", dir.toString()).code());
     }
 }

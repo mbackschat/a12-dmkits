@@ -36,40 +36,40 @@ class ExplainVerbTest {
 
     @Test
     void explainsAnExistingRule(@TempDir Path dir) throws Exception {
-        var res = CliTestSupport.run("explain", modelWithRule(dir).toString(),
-                "--rule", CliTestSupport.RULE_FULL_NAME);
+        var res = CliTestSupport.run("-m", modelWithRule(dir).toString(),
+                "rule", "explain", CliTestSupport.RULE_FULL_NAME);
         assertEquals(0, res.code(), res::err);
-        JsonNode j = MAPPER.readTree(res.out());
-        assertTrue(j.has("operators") && j.has("references"),
+        JsonNode data = MAPPER.readTree(res.out()).path("data");
+        assertTrue(data.has("operators") && data.has("references"),
                 () -> "explanation carries operators + references: " + res.out());
         assertTrue(res.out().contains("MonthlyFee"), "names the referenced field");
     }
 
     @Test
     void explainsAComputation(@TempDir Path dir) throws Exception {
-        var res = CliTestSupport.run("explain", modelWithRuleAndComputation(dir).toString(),
-                "--computation", CliTestSupport.COMPUTATION_FULL_NAME);
+        var res = CliTestSupport.run("-m", modelWithRuleAndComputation(dir).toString(),
+                "computation", "explain", CliTestSupport.COMPUTATION_FULL_NAME);
         assertEquals(0, res.code(), res::err);
-        JsonNode j = MAPPER.readTree(res.out());
-        assertEquals("/Subscription/Billing/EffectiveFee", j.get("computedField").asText());
-        assertEquals("NUMBER", j.get("computedFieldKind").asText());
-        assertTrue(j.has("alternatives") && j.get("alternatives").size() == 1,
+        JsonNode data = MAPPER.readTree(res.out()).path("data");
+        assertEquals("/Subscription/Billing/EffectiveFee", data.get("computedField").asText());
+        assertEquals("NUMBER", data.get("computedFieldKind").asText());
+        assertTrue(data.has("alternatives") && data.get("alternatives").size() == 1,
                 () -> "the computation's single alternative: " + res.out());
         assertTrue(res.out().contains("BaseFee"), "the operation reads BaseFee");
     }
 
     @Test
-    void ruleFlagOnAComputationRedirects(@TempDir Path dir) throws Exception {
-        var res = CliTestSupport.run("explain", modelWithRuleAndComputation(dir).toString(),
-                "--rule", CliTestSupport.COMPUTATION_FULL_NAME);
+    void ruleExplainOnAComputationRedirects(@TempDir Path dir) throws Exception {
+        var res = CliTestSupport.run("-m", modelWithRuleAndComputation(dir).toString(),
+                "rule", "explain", CliTestSupport.COMPUTATION_FULL_NAME);
         assertNotEquals(0, res.code(), "a computation is not a validation rule");
         assertTrue(res.err().contains("computation explain"),
                 () -> "redirects to the `computation explain` verb: " + res.err());
     }
 
     @Test
-    void missingModeFails(@TempDir Path dir) throws Exception {
-        var res = CliTestSupport.run("explain", modelWithRule(dir).toString());
-        assertNotEquals(0, res.code(), "explain needs --rule or --computation");
+    void missingPathFails(@TempDir Path dir) throws Exception {
+        var res = CliTestSupport.run("-m", modelWithRule(dir).toString(), "rule", "explain");
+        assertNotEquals(0, res.code(), "rule explain needs the rule path");
     }
 }

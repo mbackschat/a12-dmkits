@@ -2,7 +2,6 @@ package io.github.mbackschat.a12.dm.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
@@ -23,7 +22,7 @@ class ValidateVerbTest {
 
     @Test
     void validateAcceptsAConsistentModel(@TempDir Path dir) throws Exception {
-        var res = CliTestSupport.run("validate", CliTestSupport.modelWithRule(dir).toString());
+        var res = CliTestSupport.run("-m", CliTestSupport.modelWithRule(dir).toString(), "model", "validate");
         assertEquals(0, res.code(), res::err);
         JsonNode j = MAPPER.readTree(res.out());
         assertTrue(j.get("valid").asBoolean(), "a consistent model validates");
@@ -38,18 +37,10 @@ class ValidateVerbTest {
         Path file = dir.resolve("broken.dm.json");
         Files.writeString(file, broken);
 
-        var res = CliTestSupport.run("validate", file.toString());
+        var res = CliTestSupport.run("-m", file.toString(), "model", "validate");
         assertEquals(1, res.code(), "an invalid model exits non-zero");
         JsonNode j = MAPPER.readTree(res.out());
         assertFalse(j.get("valid").asBoolean(), "valid is false");
         assertTrue(j.get("diagnostics").size() > 0, () -> "with at least one diagnostic: " + res.out());
-    }
-
-    @Test
-    void validateRejectsExtraArgsAndPointsAtCheck(@TempDir Path dir) throws Exception {
-        // N6 baseline finding: validate used to silently ignore extra args. Now it errors + redirects.
-        var res = CliTestSupport.run("validate", CliTestSupport.modelWithRule(dir).toString(), "MonthlyFee > 0");
-        assertNotEquals(0, res.code(), "extra args are no longer silently ignored");
-        assertTrue(res.err().toLowerCase().contains("check"), () -> "points at the check verb: " + res.err());
     }
 }

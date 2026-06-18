@@ -25,17 +25,17 @@ class StructureAddVerbTest {
     @Test
     void addsAField(@TempDir Path dir) throws Exception {
         Path model = subscription(dir);
-        var res = CliTestSupport.run("add-field", model.toString(),
+        var res = CliTestSupport.run("-m", model.toString(), "field", "add",
                 "--group", "/Subscription", "--name", "Discount", "--kind", "NUMBER");
         assertEquals(0, res.code(), res.err());
         assertTrue(Files.readString(model).contains("\"/Subscription/Discount\""));
-        assertEquals(0, CliTestSupport.run("validate", model.toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code());
     }
 
     @Test
     void addFieldIntoAMissingGroupFailsFast(@TempDir Path dir) throws Exception {
         Path model = subscription(dir);
-        var res = CliTestSupport.run("add-field", model.toString(),
+        var res = CliTestSupport.run("-m", model.toString(), "field", "add",
                 "--group", "/Nope", "--name", "X", "--kind", "STRING");
         assertEquals(2, res.code());
     }
@@ -43,7 +43,7 @@ class StructureAddVerbTest {
     @Test
     void addFieldRejectsAnUnknownKind(@TempDir Path dir) throws Exception {
         Path model = subscription(dir);
-        var res = CliTestSupport.run("add-field", model.toString(),
+        var res = CliTestSupport.run("-m", model.toString(), "field", "add",
                 "--group", "/Subscription", "--name", "X", "--kind", "MONEY");
         assertEquals(2, res.code());
     }
@@ -51,16 +51,16 @@ class StructureAddVerbTest {
     @Test
     void addsAGroup(@TempDir Path dir) throws Exception {
         Path model = subscription(dir);
-        var res = CliTestSupport.run("add-group", model.toString(), "--parent", "/Subscription", "--name", "Notes");
+        var res = CliTestSupport.run("-m", model.toString(), "group", "add", "--parent", "/Subscription", "--name", "Notes");
         assertEquals(0, res.code(), res.err());
         assertTrue(Files.readString(model).contains("\"/Subscription/Notes\""));
-        assertEquals(0, CliTestSupport.run("validate", model.toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code());
     }
 
     @Test
     void addsARepeatableGroup(@TempDir Path dir) throws Exception {
         Path model = subscription(dir);
-        var res = CliTestSupport.run("add-group", model.toString(),
+        var res = CliTestSupport.run("-m", model.toString(), "group", "add",
                 "--parent", "/Subscription", "--name", "History", "--repeatable", "10");
         assertEquals(0, res.code(), res.err());
         assertTrue(Files.readString(model).contains("\"/Subscription/History\""));
@@ -69,7 +69,7 @@ class StructureAddVerbTest {
     @Test
     void dryRunWritesNothing(@TempDir Path dir) throws Exception {
         Path model = subscription(dir);
-        var res = CliTestSupport.run("add-field", model.toString(),
+        var res = CliTestSupport.run("-m", model.toString(), "field", "add",
                 "--group", "/Subscription", "--name", "Discount", "--kind", "NUMBER", "--dry-run");
         assertEquals(0, res.code(), res.err());
         assertTrue(!Files.readString(model).contains("Discount"), "--dry-run must write nothing");

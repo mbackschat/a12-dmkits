@@ -19,17 +19,18 @@ class DescribeVerbTest {
 
     @Test
     void describeEmitsModelCardJson(@TempDir Path dir) throws Exception {
-        var res = CliTestSupport.run("describe", CliTestSupport.modelWithRule(dir).toString());
+        var res = CliTestSupport.run("-m", CliTestSupport.modelWithRule(dir).toString(), "model", "describe");
         assertEquals(0, res.code(), res::err);
-        JsonNode card = MAPPER.readTree(res.out());
+        JsonNode card = MAPPER.readTree(res.out()).get("data");
         assertTrue(card.has("fields") && card.has("groups"), "model card has fields + groups");
         assertTrue(res.out().contains("/Subscription/Addons/MonthlyFee"), "fields are listed");
     }
 
     @Test
     void describeMissingArgFails() {
-        var res = CliTestSupport.run("describe");
+        var res = CliTestSupport.run("model", "describe");
         assertNotEquals(0, res.code(), "no model path is an error");
-        assertTrue(res.err().toLowerCase().contains("usage"), "and prints usage");
+        assertTrue(res.err().toLowerCase().contains("-m") || res.err().toLowerCase().contains("model"),
+                "and names the missing model");
     }
 }
