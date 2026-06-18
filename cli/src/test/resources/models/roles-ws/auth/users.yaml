@@ -1,0 +1,5 @@
+users:
+  - username: alice
+    authorities: [shopper]
+  - username: bob
+    authorities: [merchant, supervisor]

@@ -15,7 +15,7 @@ A second, lighter instrument lives here too: **`gap-finder.workflow.js`** — th
 {
   "id": "01-pro-addon-fee-required",             // = the filename stem (no separate T<N>)
   "family": "authoring" | "authoring-computation" | "modify-computation" | "modify-rule" | "comprehension" | "self-correction"   // rulekit/
-           // | "structure" | "delete-safety" | "refactor" | "metadata" | "template"   // modelkit/      | "session"   // mixed/
+           // | "structure" | "delete-safety" | "refactor" | "metadata" | "template" | "workspace-roles"   // modelkit/      | "session"   // mixed/
   "difficulty": "simple" | "medium" | "complex", // intrinsic tag (EvalSuiteLedgerTest requires it)
   "suites": ["smoke", "simple"],                 // optional run-tier membership (derive a tier by filtering on this)
   "model": "subscription",                       // a fixture name under cli/src/test/resources/models/
@@ -23,6 +23,8 @@ A second, lighter instrument lives here too: **`gap-finder.workflow.js`** — th
   "includeDir": "cli/src/test/resources/models/multifile/lib",                    // multi-file: threaded as -w/--workspace
   "computation": "/Subscription/Billing/EffectiveFeeComp",                        // modify-computation: the existing computation's full name
   "rule": "/Order/DeliveryNotBeforeOrder",                                        // modify-rule: the existing rule's full name
+  "workspaceDir": "cli/src/test/resources/models/roles-ws",                       // workspace-roles: the workspace dir (holds auth/roles.yaml + models)
+  "expectedCodes": ["UNDEFINED_ROLE", "UNDEFINED_AUTHORITY"],                      // workspace-roles: the finding codes the lint must produce (oracle)
   "operators": ["GroupFilled", "Equal", ...],    // catalog families this task exercises (coverage axis)
   "intent": "When a subscription's Tier is PRO, each add-on's MonthlyFee must be provided.",
   "gold": {                                        // authoring: the expected, kernel-verified answer
@@ -41,6 +43,7 @@ A second, lighter instrument lives here too: **`gap-finder.workflow.js`** — th
 - **metadata** (the `modelkit/` describe/annotate family) — `{op: "describe" | "annotate" | "comment", ref?, kind?, locale?, name?, value?, text?}`: `describe` → `{ref, kind:"internal"|"external", locale, text}`; `annotate` → `{ref, name, value}`; `comment` → `{text}` (model-level). **Verified by `EvalGoldOracleTest`** (apply the gold metadata edit via `EditSession`, re-bind, and assert the value reads back through the kernel), and has a **Layer-2 agentic path** (deterministically scored — apply the agent's edit via `-o`, then the gold value reads back through `meta`/`config read`; EVAL-SPEC §8d **B**).
 - **template** (the `modelkit/` `usageType` group-template family, §3.8) — `{op: "group multiselect" | "group attachment", parent, name, expectGroup, field?, values?, maxRows?}`: `group multiselect` → `{parent, name, field, values, maxRows, expectGroup}`; `group attachment` → `{parent, name, expectGroup}`. **Verified by `EvalGoldOracleTest`** (expand the template via `EditSession`, re-bind — the kernel's `MultiSelect`/`AttachmentGroupRule` accept the composition — and assert the group exists), and has a **Layer-2 agentic path** (deterministically scored — `applied && expectGroup exists && the right usageType marker`; §8d **B**).
 - **refactor** (the `modelkit/` rename/move family) — `{op, field, to, expect:{renamed, to, rewroteReferences}}`. **Verified by `EvalGoldOracleTest`** (active since 2026-06-12 — the reference-rewriting rename/move engine shipped): the gold rename is applied via `adapter.ReferenceRewriter` + `ModelDocument`, must re-bind valid→valid, and the new path must exist while the old is gone. Now also has a **Layer-2 agentic path** (deterministically scored — `field rename --to` via `-o`, then `applied && new path resolves && old path gone`; §8d **B**).
+- **workspace-roles** (the `modelkit/` cross-file access-control family, R4) — no single `model`; instead `workspaceDir` (the workspace tree holding `auth/roles.yaml` + `auth/users.yaml` + models) + `expectedCodes` (the `WorkspaceRoles` finding codes the lint must produce — the deterministic oracle) + `expected` (the free-text rubric for the agent judge). **Verified by `EvalGoldOracleTest`** (lints the fixture via `WorkspaceRoles` and asserts the produced codes equal `expectedCodes`). Its **Layer-2 agentic path** is LLM-judged: the agent must *discover* `workspace roles` from the self-describing CLI and report the undefined references without inventing false ones.
 
 `modelPath`/`includeDir` are optional **multi-file** keys: present only when the task model `include`s a separate model that lives outside its own directory, so the runner threads `-w/--workspace` through every verb. `computation` is required for `modify-computation` (the existing computation to re-express); `rule` is required for `modify-rule` (the existing rule to re-express).
 

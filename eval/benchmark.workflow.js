@@ -53,6 +53,8 @@ const SRC_MODEL = t => t.modelPath || `${MODELS_ROOT}/${t.model}.dm.json`
 const MODEL_FILE = t => sandboxed(SRC_MODEL(t))
 const INCLUDE_ARGS = t => t.includeDir ? ['-w', sandboxed(t.includeDir)] : []
 const INCLUDE_HINT = t => t.includeDir ? ` -w ${sandboxed(t.includeDir)}` : ''
+// a workspace-level task (workspace-roles) names a DIRECTORY, not one model file — sandboxed like the rest
+const WS_DIR = t => sandboxed(t.workspaceDir)
 // Shell single-quote a value so agent-produced free text (descriptions, comments, names) can never break a
 // score-agent command. Used by the deterministic metadata/template/refactor scorers below.
 const sq = s => `'` + String(s).replace(/'/g, `'\\''`) + `'`
@@ -97,6 +99,7 @@ const AUTHORING_COMP = TASKS.filter(t => t.family === 'authoring-computation')
 const MODIFY_COMP = TASKS.filter(t => t.family === 'modify-computation')
 const MODIFY_RULE = TASKS.filter(t => t.family === 'modify-rule')
 const COMPREHENSION = TASKS.filter(t => t.family === 'comprehension')
+const WORKSPACE_ROLES = TASKS.filter(t => t.family === 'workspace-roles')
 // self-correction is authoring with a recovery trap: the obvious first attempt is kernel-rejected (e.g. an
 // ISO date literal → MVK_INVALID_TYPE_FOR_COMPARISON) and the agent must read the diagnostic's `fix` and
 // recover within its turns. The recovery loop happens INSIDE the produce agent (it has the check verb), so
@@ -254,6 +257,20 @@ explain exactly what makes a document INVALID (the violation the rule fires on) 
 Return ONLY JSON: {"explanations": { "<ruleName>": "<your explanation>", ... }}`
 }
 
+// workspace-roles (R4): audit a workspace's access control. Neutral — does NOT name the `workspace roles` verb;
+// the agent must DISCOVER it from the self-describing CLI (`<CLI> --help` → `workspace`, `<CLI> workspace --help`).
+function rolesAuditPrompt(task) {
+  return `You help a business analyst audit the ACCESS CONTROL of an A12 model workspace. Assume NO prior A12
+knowledge; use ONLY:
+  - the CLI:  ${CLI} <args>   (it is self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <verb> --help\` shows a verb's parameters)
+  - the workspace directory: ${WS_DIR(task)}   (it holds the models AND the workspace's access-control config)
+Do NOT read any source, docs, tests, or *.md files. A workspace defines its roles centrally; its models and its
+users each reference roles by name. Report EVERY access-control problem you find — for example a model or a user
+that references a role the workspace does not define. For each problem, state what is wrong and which model /
+user / role is involved.
+Return ONLY JSON: {"findings": ["<one problem per entry, in plain words>", ...]}`
+}
+
 const AUTHOR_SCHEMA = {
   type: 'object', additionalProperties: true,
   properties: { field: { type: 'string' }, condition: { type: 'string' },
@@ -332,6 +349,12 @@ const EXPLAIN_SCHEMA = {
   required: ['explanations'],
 }
 
+const ROLES_AUDIT_SCHEMA = {
+  type: 'object', additionalProperties: true,
+  properties: { findings: { type: 'array', items: { type: 'string' } } },
+  required: ['findings'],
+}
+
 // ---- Prep: VERIFY the model sandbox (committed fixtures stay read-only) ----------------------------
 // The COPY is done by eval/prep-sandbox.sh, which the operator runs from the main loop alongside
 // `:cli:installDist` — NOT by an agent. A workflow subagent runs under a restricted permission mode and
@@ -372,6 +395,16 @@ const explained = await parallel(explainRuns.map(r => () =>
   agent(explainPrompt(r.task), { label: `explain ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: EXPLAIN_SCHEMA })
     .then(out => ({ kind: 'comprehension', model: r.model, task: r.task, i: r.i, out }))
     .catch(() => ({ kind: 'comprehension', model: r.model, task: r.task, i: r.i, out: null }))))
+
+const rolesAuditRuns = []
+for (const model of MODELS)
+  for (const task of WORKSPACE_ROLES)
+    for (let i = 0; i < K; i++) rolesAuditRuns.push({ model, task, i })
+
+const rolesAudited = await parallel(rolesAuditRuns.map(r => () =>
+  agent(rolesAuditPrompt(r.task), { label: `roles-audit ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: ROLES_AUDIT_SCHEMA })
+    .then(out => ({ kind: 'workspace-roles', model: r.model, task: r.task, i: r.i, out }))
+    .catch(() => ({ kind: 'workspace-roles', model: r.model, task: r.task, i: r.i, out: null }))))
 
 const compRuns = []
 for (const model of MODELS)
@@ -701,6 +734,21 @@ Return ONLY JSON: {"correct": true|false, "why": "<one sentence>"}`,
     .then(v => ({ key: `${r.model}/${r.task.id}/${r.i}`, model: r.model, taskId: r.task.id, correct: !!(v && v.correct), why: v && v.why }))
     .catch(() => ({ key: `${r.model}/${r.task.id}/${r.i}`, model: r.model, taskId: r.task.id, correct: false }))))
 
+// workspace-roles judge — did the audit find the real problems (and not invent false ones)? scored vs the rubric.
+const rolesAuditJudged = await parallel(rolesAudited.filter(r => r && r.out).map(r => () =>
+  agent(
+    `Judge whether an analyst's ACCESS-CONTROL AUDIT of an A12 workspace is CORRECT against the reference rubric.
+The audit must identify each real problem and must NOT invent false ones (getting either wrong is incorrect).
+Decide using ONLY the rubric and the findings below — do NOT read any file or run any command (the rubric is
+the ground truth).
+Rubric (reference — the problems that exist + what must NOT be flagged): ${JSON.stringify(r.task.expected)}.
+Analyst's findings: ${JSON.stringify(r.out.findings)}.
+Return ONLY JSON: {"correct": true|false, "why": "<one sentence>"}`,
+    { label: `judge ${r.model}:${r.task.id}#${r.i}`, phase: 'Judge',
+      schema: { type: 'object', additionalProperties: true, properties: { correct: { type: 'boolean' }, why: { type: 'string' } }, required: ['correct'] } })
+    .then(v => ({ key: `${r.model}/${r.task.id}/${r.i}`, model: r.model, taskId: r.task.id, correct: !!(v && v.correct), why: v && v.why }))
+    .catch(() => ({ key: `${r.model}/${r.task.id}/${r.i}`, model: r.model, taskId: r.task.id, correct: false }))))
+
 const compJudged = await parallel(compCandidates.map(r => () => {
   const key = `${r.model}/${r.task.id}/${r.i}`
   const valid = compAuthoritative[key] === true
@@ -997,7 +1045,8 @@ for (const r of deleteScored) bump(r.model, r.taskId, r.pass)
 for (const r of metadataScored) bump(r.model, r.taskId, r.pass)
 for (const r of templateScored) bump(r.model, r.taskId, r.pass)
 for (const r of refactorScored) bump(r.model, r.taskId, r.pass)
+for (const r of rolesAuditJudged) bump(r.model, r.taskId, r.correct)
 
 log('pass@k by (model, task): ' + JSON.stringify(agg))
-return { agg, authorJudged, compJudged, modJudged, modRuleJudged, explainJudged,
+return { agg, authorJudged, compJudged, modJudged, modRuleJudged, explainJudged, rolesAuditJudged,
   structureScored, sessionScored, deleteScored, metadataScored, templateScored, refactorScored }

@@ -1,0 +1,7 @@
+roles:
+  - name: shopper
+    description: a customer placing orders
+    accessRights: [DOCUMENT_CREATE, QUERY]
+  - name: merchant
+    description: a seller managing the catalog
+    accessRights: [DOCUMENT_CREATE, MODEL_MANAGE]

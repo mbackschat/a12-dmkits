@@ -1,0 +1,15 @@
+{
+  "id": "09-workspace-roles-audit",
+  "family": "workspace-roles",
+  "workspaceDir": "cli/src/test/resources/models/roles-ws",
+  "intent": "Audit this A12 model workspace's access control: report every problem where a model or a user references a role the workspace does not define.",
+  "expectedCodes": ["UNDEFINED_AUTHORITY", "UNDEFINED_ROLE"],
+  "expected": {
+    "undefinedRole": "Storefront_DM gates to the role 'reviewer', which the workspace roles file (which declares shopper, merchant) does not define — an undefined-role reference.",
+    "undefinedAuthority": "user 'bob' (in users.yaml) holds the authority 'supervisor', which the roles file does not declare — an undefined-authority reference.",
+    "noFalsePositives": "Must NOT flag 'shopper' or 'merchant' (both declared and used), and must NOT claim any model is unreachable (every gating role is held by some user)."
+  },
+  "notes": "workspace-roles family (R4) — the FIRST workspace-level (cross-file access-control) task. Deterministic backbone: EvalGoldOracleTest lints the fixture via WorkspaceRoles and asserts the produced finding codes equal `expectedCodes`. The agentic layer measures whether a cold agent DISCOVERS `workspace roles` from the self-describing CLI and reports the two undefined references without inventing false ones. Fixture: roles-ws (own e-commerce domain) — roles.yaml defines shopper/merchant; Storefront_DM gates shopper,reviewer (reviewer undefined); users.yaml has bob holding supervisor (undefined).",
+  "difficulty": "medium",
+  "suites": []
+}

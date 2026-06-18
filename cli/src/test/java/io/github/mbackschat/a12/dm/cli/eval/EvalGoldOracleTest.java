@@ -11,6 +11,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,6 +30,8 @@ import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.modelkit.Workspace;
+import io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
@@ -125,6 +129,9 @@ class EvalGoldOracleTest {
             // Template (group multiselect/attachment): expand the usageType template, re-bind kernel-valid
             // (the kernel's MultiSelect/AttachmentGroupRule accept it), and assert the group exists.
             case "template" -> assertTemplateGoldValidates(task, model, taskFile);
+            // Workspace-roles (R4): lint the fixture workspace via WorkspaceRoles and assert the produced
+            // finding codes equal `expectedCodes` — the cross-file access-control backbone (no single model).
+            case "workspace-roles" -> assertRolesAudit(task, taskFile);
             default -> fail(taskFile.getFileName() + " has unknown family: " + task.path("family").asText());
         }
     }
@@ -229,6 +236,37 @@ class EvalGoldOracleTest {
             assertTrue(read instanceof ReadResult.Converted,
                     () -> taskFile.getFileName() + " rule " + rulePath
                             + " must read to Converted (readable by explain), got: " + read);
+        }
+    }
+
+    /**
+     * A workspace-roles gold (R4): lint the fixture workspace via {@link WorkspaceRoles} and assert the
+     * produced finding codes equal the task's {@code expectedCodes}. The cross-file access-control backbone —
+     * it locks the gold (the lint really produces those findings on the fixture) the same way an authoring
+     * gold is locked by the kernel accepting it.
+     */
+    private static void assertRolesAudit(JsonNode task, Path taskFile) {
+        Path ws = resourceDir(classpathTail(task.get("workspaceDir").asText()));
+        List<Workspace.Model> models = Workspace.scan(ws, true);
+        WorkspaceRoles.Resolution resolution = WorkspaceRoles.resolve(ws, Optional.empty(), Optional.empty());
+        Set<String> codes = new TreeSet<>();
+        WorkspaceRoles.check(models, resolution).forEach(f -> codes.add(f.code().name()));
+        Set<String> expected = new TreeSet<>();
+        task.get("expectedCodes").forEach(c -> expected.add(c.asText()));
+        assertEquals(expected, codes,
+                () -> taskFile.getFileName() + " lint must produce exactly the expected finding codes");
+    }
+
+    /** Resolve a classpath-relative directory (e.g. {@code models/roles-ws}) to a filesystem {@link Path}. */
+    private static Path resourceDir(String classpathTail) {
+        var url = EvalGoldOracleTest.class.getClassLoader().getResource(classpathTail);
+        if (url == null) {
+            throw new IllegalStateException("no workspace dir resource '" + classpathTail + "' on the test classpath");
+        }
+        try {
+            return Path.of(url.toURI());
+        } catch (java.net.URISyntaxException e) {
+            throw new IllegalStateException("bad workspace dir URI: " + url, e);
         }
     }
 
@@ -473,7 +511,10 @@ class EvalGoldOracleTest {
         if (task.hasNonNull("modelPath")) {
             return readResource(classpathTail(task.get("modelPath").asText()));
         }
-        return readModel(task.get("model").asText());
+        if (task.hasNonNull("model")) {
+            return readModel(task.get("model").asText());
+        }
+        return null; // a workspace-level task (workspace-roles) operates on a directory, not one model
     }
 
     /**
