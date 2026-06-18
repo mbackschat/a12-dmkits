@@ -16,6 +16,19 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-18 19:45 CEST — manual demo: `rule explain` → natural language, simple + complex rule (sonnet subagents, bare-tool)
+
+An **ad-hoc demonstration** (n=2, Agent-tool subagents — *not* the pass@k workflow): does a cold **bare-tool** agent turn `rule explain` into a correct, business-readable description? Two rules from `order-aggregates`, agent given only the self-describing CLI + the model file. Both nailed the **polarity** (fires-on-violation, restated as the positive requirement) — the payoff of the explain polarity/messages additions.
+
+- **Simple** — `/Order/UnitPriceRoundedCap`: `RoundDownValue(/Order/UnitPrice) > 10`
+  > "…rounds the unit price down to a whole number…an order is flagged as invalid whenever that rounded-down amount is greater than 10…10.99 stays valid, but 11.00 does not. When it fires, the order is rejected with the message that the rounded-down unit price exceeds 10."
+  Caught the `RoundDownValue` semantics *and* quoted the stored message.
+- **Complex** — `/Order/FirstCountVsQuantity`: `FirstFilledValue(/Order/Items*/Count) > [/Order/Quantity]`
+  > "…a repeating list of line items…looks only at the *first line item that actually has a count filled in* (skipping blank rows) and compares that single count to the order's total quantity. The order is invalid when that first filled line-item count is greater than the order quantity — the requirement being that the first line item's count must not exceed the total quantity ordered."
+  Correctly decoded the `FirstFilledValue` aggregate + the `Items*` repetition flatten.
+
+**Takeaway:** the operator glossary + `polarity` + `messages` in `rule explain` are sufficient for a cold agent to explain both a trivial and an aggregate/iteration rule correctly, from the binary alone. (These two rules are also the `comprehension` task `rulekit/18` — so this is covered by the scored suite too; this entry is the readable illustration.) **Coverage note:** rule comprehension is eval-covered (07/08/18); **computation** NL-explanation — computed field + preconditions/alternatives — is NOT yet a task (see EVAL-SPEC §8d "computation-comprehension gap").
+
 ### 2026-06-18 19:34 CEST — first `workspace-roles` run: access-control audit, task 09 (sonnet, k=1, bare-tool, cheap)
 
 **1/1 pass.** Validates the new **`workspace-roles`** eval family (R4) + the `dmtool workspace roles` lint. A cold **bare-tool** agent, given only the workspace dir + the self-describing CLI, **discovered `workspace roles` on its own** (6 invocations, **0 file reads**) and reported exactly the two seeded problems on `roles-ws` — Storefront_DM's undefined role `reviewer` and user bob's undefined authority `supervisor` — naming the defined roles (shopper/merchant) and inventing no false positives. ~3 agents (1 produce + 1 judge + 1 prep-verify), ~80k tokens, ~57 s (k=1, the cheap floor).
