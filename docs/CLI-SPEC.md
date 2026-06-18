@@ -29,6 +29,8 @@ The tool exists to be driven by a cold LLM agent. Two properties, above all else
 
 **Implementation: picocli** (§8). One `@Command`/`@Option(description=…)` declaration per op drives parsing, `--help`, *and* the `manifest` — help cannot drift from behavior. The manifest emits the **entire** target×op tree in one response, so an agent discovers everything without walking the subcommand tree interactively. Drift is caught at build: `ManifestVerbTest` (the verb tree), `SchemaVerbTest` (schema ↔ envelope coverage) — the F11 discipline.
 
+**Forward direction — orientation efficiency.** *How* a cold consumer minimizes the orientation tax (the read-when layering above, a `--help`→`manifest` pointer, single-sourced EXAMPLES-in-help, dual human/machine format, the indirect-primary/direct-secondary audience model) is worked out — as hypotheses ranked by a cheap-first measurement — in [`CLI-ORIENTATION-PROPOSAL.md`](CLI-ORIENTATION-PROPOSAL.md). Decisions land back in this section as they ship.
+
 ### 2a. Version & compatibility surface
 
 The tool reports **what it is and what it targets** on two peer surfaces fed from one `VersionInfo`: `--version` (human) and `manifest.version` (machine-readable, so a cold agent reads it like any other manifest fact). Six axes, each from its single source of truth: the **rulekit** release (baked from the build), the kernel **built-against** (the `build.gradle` pin) and **runtime** (the kernel jar on the classpath — may be newer), the **A12 Tools distribution** label the built-against kernel ships in (`build.gradle` `a12Distribution`; the human-facing tag for the kernel semver), the **catalog verified-against** floor (`operators.json`), and the **model-format reference** (`core.ModelFormat.VERSION`).
