@@ -2,7 +2,7 @@
 
 How a cold consumer **orients** to `dmtool` — finds what it can do, how to call it, and what comes back — with the fewest wasted tool calls and the fewest preventable errors, and what the **plugin/skill** should carry to support that. This is a **proposal** (design rationale + forward decisions), not a contract: the settled pieces already live in specs and this doc **references, never restates** them. Each decision **graduates** into its owning spec as it ships (§7).
 
-**Status (2026-06-19):** the premise was tested cheaply (§4) and **largely did not hold** — the help/guide system is *not* the bottleneck this doc first hypothesized. Two small recommendations survive (§3 R1, R2); the rest is shelved or routed out of scope. Read §3 first.
+**Status (2026-06-19):** the premise was tested cheaply (§4) and **largely did not hold** — the help/guide system is *not* the bottleneck this doc first hypothesized. Two small recommendations survive: **R1 (the `--help` orientation footer) is shipped**; **R2 (dual-format)** remains proposed. The rest is shelved or routed out of scope. Read §3 first.
 
 **Defers to (the contracts this builds on):**
 
@@ -53,18 +53,20 @@ Four candidates were considered; the §4 probe (2026-06-19) dispositioned each. 
 | **Top-level orientation footer** (new) | a few lines on the front `--help` screen | **Kept → R1.** The cheap middle ground the data points to. |
 | **Dual-format output** (~~H3~~) | `--text` alongside the JSON default | **Kept → R2.** Orthogonal to the orientation tax; independently justified for the secondary direct-BA/dev path. |
 
-### R1 — a top-level `--help` orientation footer (the cheap middle)
+### R1 — a top-level `--help` orientation footer (the cheap middle) — ✅ SHIPPED 2026-06-19
 
-Not per-verb examples (shelved) and not the 66 KB `manifest` (agents rationally skip it for focused work) — a **short footer on the *top-level* `--help`**, the one screen every agent hits first, exactly once. Sketch:
+Graduated into [`CLI-SPEC.md`](CLI-SPEC.md) §2; locked by `CliHelpTest`; single-sourced on `Cli.TOOL_NAME`; no new gate (the existing `CommandReferencesResolveTest` covers its verb refs). The shipped footer:
 
 ```
-Getting started:
-  • Whole verb tree as JSON, one call:     dmtool manifest
-  • Author a rule: find the idiom (patterns), check operator semantics
-    (operators <id>), validate (rule check) before rule add
-  • Decode an error code:                   dmtool diagnostics <CODE>
-  • A verb's params + a worked example:      dmtool <target> <op> --help
+Getting started (the tool describes itself):
+  Whole verb tree as JSON, one call:     dmtool manifest
+  A verb's params + a worked example:    dmtool <target> <op> --help
+  DSL vocabulary (all, or one by <id>):  dmtool operators
+  Rule/computation idioms (scaffolds):   dmtool patterns
+  Decode an error code:                  dmtool diagnostics <CODE>
 ```
+
+The design (the cheap middle ground): not per-verb examples (shelved) and not the 66 KB `manifest` (agents rationally skip it for focused work) — a **short footer on the *top-level* `--help`**, the one screen every agent hits first, exactly once.
 
 **Honest sizing:** for the *diligent* agents measured this is **marginal** — they already found that path unaided. Its value is (1) **legibility** for a less-thorough agent, (2) it **positions `manifest` correctly** at first contact ("the whole tree in one call" — the bulk option, not the only door — see the finding below), and (3) it is the **read-when map (§2) in miniature**, delivered in the binary. Cost is ~5 static lines referencing only verb names, so the existing `CommandReferencesResolveTest` already guards it against drift — no new gate. It is the cheapest defensible change.
 
@@ -104,7 +106,7 @@ The signal distinguished the candidates cleanly: many `--help` but zero `manifes
 **Decided (2026-06-19):**
 
 - **Audience model** — indirect-primary / direct-secondary (§1). The agent is the orientation target; human-format serves the secondary path.
-- **R1 — top-level `--help` orientation footer** — the recommended cheap change (no new gate; delivers the positioning correction at first contact).
+- **R1 — top-level `--help` orientation footer** — ✅ **SHIPPED 2026-06-19** (graduated into CLI-SPEC §2; locked by `CliHelpTest`; no new gate; delivers the positioning correction at first contact).
 - **R2 — dual-format, Design B** — JSON canonical default + explicit `--text`; never TTY-detection.
 - **`manifest` positioning** — the bulk/machine + conformance surface, not the agent's primary door (graduates into CLI-SPEC §2).
 - **`llms.txt` / static bundle file = dropped** unless a non-executing consumer is named.
@@ -125,7 +127,7 @@ This proposal shrinks to a pointer as items graduate (the FEATURE-GAPS pattern):
 |---|---|---|
 | The read-when model (§2) | [`CLI-SPEC.md`](CLI-SPEC.md) §2 | extend the "what an agent needs → where" table with the layer/audience framing |
 | The `manifest` positioning finding (§3) | CLI-SPEC §2 | reframe `manifest` as the bulk/machine + conformance surface; the agent's front door is `--help` + catalog verbs |
-| **R1** — `--help` orientation footer | CLI-SPEC §2 | the footer content (verb-name refs only → already drift-guarded) |
+| **R1** — `--help` orientation footer ✅ **shipped** | CLI-SPEC §2 (done) | the footer content (verb-name refs only → already drift-guarded); locked by `CliHelpTest` |
 | **R2** — dual-format (Design B) | CLI-SPEC §2 (a format section) | `--text` + conformance pinning `--json` |
 | Orientation index in the skill (§6) | [`RELEASE-SPEC.md`](RELEASE-SPEC.md) §6 + `skill/SKILL.md` | the read-when section |
 | *(shelved)* per-verb examples, `guide` verb | — | not graduating; re-open only on a real signal |

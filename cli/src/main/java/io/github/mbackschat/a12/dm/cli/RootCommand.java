@@ -30,6 +30,19 @@ import picocli.CommandLine.Spec;
         versionProvider = VersionProvider.class,
         synopsisSubcommandLabel = "<target> <op>",
         description = "Typed, model-aware authoring & edit kit for A12 document models. JSON in / JSON out.",
+        // R1 orientation footer (CLI-ORIENTATION-PROPOSAL §3): the read-when map in miniature, shown at
+        // first contact. Routes a cold agent to the catalog verbs and positions `manifest` as the one-call
+        // BULK map (not the only door — agents navigate via --help + the catalog verbs; see CLI-SPEC §2).
+        // Tool name is single-sourced via Cli.TOOL_NAME (a compile-time constant — never re-hardcoded);
+        // every command ref resolves (CommandReferencesResolveTest), and only the ROOT carries this footer.
+        footerHeading = "%nGetting started (the tool describes itself):%n",
+        footer = {
+            "  Whole verb tree as JSON, one call:     " + Cli.TOOL_NAME + " manifest",
+            "  A verb's params + a worked example:    " + Cli.TOOL_NAME + " <target> <op> --help",
+            "  DSL vocabulary (all, or one by <id>):  " + Cli.TOOL_NAME + " operators",
+            "  Rule/computation idioms (scaffolds):   " + Cli.TOOL_NAME + " patterns",
+            "  Decode an error code:                  " + Cli.TOOL_NAME + " diagnostics <CODE>",
+        },
         subcommands = {
             ModelCommand.class,
             DocTombstoneCommand.class,
