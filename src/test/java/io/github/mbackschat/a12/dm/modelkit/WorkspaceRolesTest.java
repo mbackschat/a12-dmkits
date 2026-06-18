@@ -63,8 +63,8 @@ class WorkspaceRolesTest {
         writeModel(dir, "models/Storefront_DM.json", "Storefront_DM", "shopper,merchant");
         writeModel(dir, "models/Catalog_DM.json", "Catalog_DM", "merchant");
 
-        WorkspaceRoles.Resolution res = WorkspaceRoles.resolve(dir, Optional.empty());
-        assertTrue(res.found() && !res.multiple(), "the single auth/roles.yaml is discovered");
+        WorkspaceRoles.Resolution res = WorkspaceRoles.resolve(dir, Optional.empty(), Optional.empty());
+        assertTrue(res.rolesFound() && !res.multipleRolesFiles(), "the single auth/roles.yaml is discovered");
         assertEquals(List.of("shopper", "merchant"), List.copyOf(res.roles().orElseThrow().names()));
         assertTrue(WorkspaceRoles.check(Workspace.scan(dir, true), res).isEmpty(), "every gated role is defined");
     }
@@ -75,7 +75,7 @@ class WorkspaceRolesTest {
         writeModel(dir, "models/Storefront_DM.json", "Storefront_DM", "shopper,reviewer"); // reviewer undefined
 
         List<RoleFinding> findings = WorkspaceRoles.check(Workspace.scan(dir, true),
-                WorkspaceRoles.resolve(dir, Optional.empty()));
+                WorkspaceRoles.resolve(dir, Optional.empty(), Optional.empty()));
         assertEquals(1, findings.size());
         RoleFinding f = findings.get(0);
         assertEquals(Code.UNDEFINED_ROLE, f.code());
@@ -93,7 +93,7 @@ class WorkspaceRolesTest {
         writeModel(dir, "models/Ungated_DM.json", "Ungated_DM", null); // no roles annotation
 
         List<RoleFinding> findings = WorkspaceRoles.check(Workspace.scan(dir, true),
-                WorkspaceRoles.resolve(dir, Optional.empty()));
+                WorkspaceRoles.resolve(dir, Optional.empty(), Optional.empty()));
         assertEquals(1, findings.size());
         assertEquals(Code.MISSING_ROLE_ASSIGNMENT, findings.get(0).code());
         assertEquals(Severity.WARNING, findings.get(0).severity());
@@ -105,8 +105,8 @@ class WorkspaceRolesTest {
     void rolesDeclaredButNoFileIsAWarning(@TempDir Path dir) throws Exception {
         writeModel(dir, "models/Storefront_DM.json", "Storefront_DM", "shopper");
 
-        WorkspaceRoles.Resolution res = WorkspaceRoles.resolve(dir, Optional.empty());
-        assertFalse(res.found(), "no roles file discovered");
+        WorkspaceRoles.Resolution res = WorkspaceRoles.resolve(dir, Optional.empty(), Optional.empty());
+        assertFalse(res.rolesFound(), "no roles file discovered");
         List<RoleFinding> findings = WorkspaceRoles.check(Workspace.scan(dir, true), res);
         assertEquals(1, findings.size());
         assertEquals(Code.NO_ROLES_FILE, findings.get(0).code());
@@ -119,23 +119,76 @@ class WorkspaceRolesTest {
         writeRoles(dir, "import/auth/roles.yaml", STOREFRONT_ROLES);
         writeModel(dir, "models/Storefront_DM.json", "Storefront_DM", "shopper");
 
-        WorkspaceRoles.Resolution res = WorkspaceRoles.resolve(dir, Optional.empty());
-        assertTrue(res.multiple(), "both conventional locations are found");
+        WorkspaceRoles.Resolution res = WorkspaceRoles.resolve(dir, Optional.empty(), Optional.empty());
+        assertTrue(res.multipleRolesFiles(), "both conventional locations are found");
         List<RoleFinding> findings = WorkspaceRoles.check(Workspace.scan(dir, true), res);
         assertEquals(Code.MULTIPLE_ROLES_FILES, findings.get(0).code());
         assertEquals(Severity.WARNING, findings.get(0).severity());
     }
 
     @Test
+    void aUserHoldingAnUndefinedAuthorityIsAWarning(@TempDir Path dir) throws Exception {
+        writeRoles(dir, "auth/roles.yaml", STOREFRONT_ROLES); // defines shopper, merchant
+        writeModel(dir, "models/Storefront_DM.json", "Storefront_DM", "shopper,merchant"); // both roles used (no orphan)
+        // alice covers both gating roles (model reachable); bob holds 'admin' — undefined (the users-edge twin)
+        writeRoles(dir, "auth/users.yaml", """
+                users:
+                  - username: alice
+                    authorities: [shopper, merchant]
+                  - username: bob
+                    authorities: [admin]
+                """);
+
+        WorkspaceRoles.Resolution res = WorkspaceRoles.resolve(dir, Optional.empty(), Optional.empty());
+        assertTrue(res.usersFound(), "auth/users.yaml is discovered");
+        List<RoleFinding> findings = WorkspaceRoles.check(Workspace.scan(dir, true), res);
+        assertEquals(1, findings.size(), () -> "only bob's undefined authority: " + findings);
+        RoleFinding f = findings.get(0);
+        assertEquals(Code.UNDEFINED_AUTHORITY, f.code());
+        assertEquals(Severity.WARNING, f.severity(), "advisory only — never an error");
+        assertEquals(Optional.of("admin"), f.role());
+        assertEquals(Optional.of("bob"), f.username());
+        assertTrue(f.fix().contains("admin") && f.fix().contains("bob"), () -> "fix names the authority + user: " + f.fix());
+    }
+
+    @Test
+    void reachabilityFlagsUnreachableModelsAndOrphanRoles(@TempDir Path dir) throws Exception {
+        // shopper is held + gating (clean); merchant gates Catalog but no user holds it (unreachable);
+        // auditor is declared but neither held nor gating (orphan).
+        writeRoles(dir, "auth/roles.yaml", """
+                roles:
+                  - name: shopper
+                  - name: merchant
+                  - name: auditor
+                """);
+        writeRoles(dir, "auth/users.yaml", "users:\n  - username: alice\n    authorities: [shopper]\n");
+        writeModel(dir, "models/Storefront_DM.json", "Storefront_DM", "shopper"); // reachable (alice)
+        writeModel(dir, "models/Catalog_DM.json", "Catalog_DM", "merchant");      // unreachable (no holder)
+
+        List<RoleFinding> findings = WorkspaceRoles.check(Workspace.scan(dir, true),
+                WorkspaceRoles.resolve(dir, Optional.empty(), Optional.empty()));
+
+        RoleFinding unreachable = findings.stream().filter(f -> f.code() == Code.UNREACHABLE_MODEL).findFirst().orElseThrow();
+        assertEquals(Severity.WARNING, unreachable.severity());
+        assertEquals(Optional.of("Catalog_DM"), unreachable.modelId());
+
+        RoleFinding orphan = findings.stream().filter(f -> f.code() == Code.ORPHAN_ROLE).findFirst().orElseThrow();
+        assertEquals(Severity.INFO, orphan.severity(), "orphan role is INFO — softest, still non-blocking");
+        assertEquals(Optional.of("auditor"), orphan.role());
+
+        assertTrue(findings.stream().noneMatch(f -> f.code() == Code.UNDEFINED_AUTHORITY), "alice is clean");
+    }
+
+    @Test
     void discoveryToleratesThePreviewAppConventionAndAnExplicitOverride(@TempDir Path dir) throws Exception {
         writeRoles(dir, "user/access-rights.yaml", STOREFRONT_ROLES); // the Preview-App workspace convention
         writeModel(dir, "models/Storefront_DM.json", "Storefront_DM", "shopper");
-        assertTrue(WorkspaceRoles.resolve(dir, Optional.empty()).found(), "user/access-rights.yaml is discovered");
+        assertTrue(WorkspaceRoles.resolve(dir, Optional.empty(), Optional.empty()).rolesFound(), "user/access-rights.yaml is discovered");
 
         // an explicit override bypasses discovery and is used verbatim
         Path override = dir.resolve("custom/my-roles.yaml");
         writeRoles(dir, "custom/my-roles.yaml", STOREFRONT_ROLES);
-        WorkspaceRoles.Resolution res = WorkspaceRoles.resolve(dir, Optional.of(override));
-        assertEquals(List.of(override), res.files());
+        WorkspaceRoles.Resolution res = WorkspaceRoles.resolve(dir, Optional.of(override), Optional.empty());
+        assertEquals(List.of(override), res.rolesFiles());
     }
 }

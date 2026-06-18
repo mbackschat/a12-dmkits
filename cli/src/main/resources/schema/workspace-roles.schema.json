@@ -4,11 +4,12 @@
   "title": "WorkspaceRoles",
   "description": "Output of `dmtool workspace roles <dir>` — the workspace roles lint (FEATURE-GAPS R3). Resolves every model's `roles` header annotation against the workspace roles.yaml and reports the cross-file inconsistencies the kernel can't see. PURELY ADVISORY and NEVER BLOCKING: every finding is a WARNING (or a softer INFO) — never an error — and the verb ALWAYS exits 0, so it informs a BA / agent without stopping their work on the models. The roles file is discovered under the workspace root (auth/roles.yaml, then import/auth/roles.yaml, then user/access-rights.yaml); `--roles` overrides discovery. Models are scanned recursively (a workspace is a tree; roles gate it workspace-wide).",
   "type": "object",
-  "required": ["root", "rolesFile", "definedRoles", "modelCount", "models", "warnings", "infos", "findings"],
+  "required": ["root", "rolesFile", "usersFile", "definedRoles", "users", "modelCount", "models", "warnings", "infos", "findings"],
   "additionalProperties": false,
   "properties": {
     "root": { "type": "string", "description": "the workspace root directory, as passed" },
     "rolesFile": { "type": ["string", "null"], "description": "the resolved roles file (relative to root when under it), or null when none was found or several were (see findings)" },
+    "usersFile": { "type": ["string", "null"], "description": "the resolved users file/dir (relative to root when under it), or null when none/several were found; --users overrides discovery" },
     "definedRoles": {
       "type": "array",
       "description": "the roles declared by the resolved roles file (empty when none/ambiguous)",
@@ -20,6 +21,19 @@
           "name": { "type": "string", "description": "the role identifier a model's `roles` annotation binds to" },
           "description": { "type": "string", "description": "the role's human description; absent when blank" },
           "accessRights": { "type": "array", "items": { "type": "string" }, "description": "the access-right tokens the role carries" }
+        }
+      }
+    },
+    "users": {
+      "type": "array",
+      "description": "the workspace's seed users and the roles each holds (empty when no users file / ambiguous)",
+      "items": {
+        "type": "object",
+        "required": ["username", "authorities"],
+        "additionalProperties": false,
+        "properties": {
+          "username": { "type": "string", "description": "the user's login name" },
+          "authorities": { "type": "array", "items": { "type": "string" }, "description": "the role names this user holds (the membership edge into roles.yaml)" }
         }
       }
     },
@@ -42,7 +56,7 @@
     "infos": { "type": "integer", "description": "number of INFO findings (softer, tidiness-level; also non-blocking)" },
     "findings": {
       "type": "array",
-      "description": "the cross-file roles inconsistencies, in model then gating-role order",
+      "description": "the cross-file access-control inconsistencies — roles findings first (model order), then users-edge findings (per user)",
       "items": {
         "type": "object",
         "required": ["severity", "code", "message", "fix"],
@@ -51,14 +65,15 @@
           "severity": { "type": "string", "enum": ["WARNING", "INFO"], "description": "advisory weight — never blocking: WARNING for a real cross-file inconsistency, INFO for a softer tidiness note. There is no ERROR (the verb always exits 0)." },
           "code": {
             "type": "string",
-            "enum": ["UNDEFINED_ROLE", "MISSING_ROLE_ASSIGNMENT", "NO_ROLES_FILE", "MULTIPLE_ROLES_FILES"],
-            "description": "UNDEFINED_ROLE: a model gates to a role the file doesn't declare (the flagship — even the SME permits this). MISSING_ROLE_ASSIGNMENT: a roles file is present but a model carries no `roles` annotation. NO_ROLES_FILE (warning): a model declares roles but no roles file was found. MULTIPLE_ROLES_FILES: more than one roles file (which governs is ambiguous)."
+            "enum": ["UNDEFINED_ROLE", "MISSING_ROLE_ASSIGNMENT", "NO_ROLES_FILE", "MULTIPLE_ROLES_FILES", "UNDEFINED_AUTHORITY"],
+            "description": "UNDEFINED_ROLE: a model gates to a role the file doesn't declare (the flagship — even the SME permits this). MISSING_ROLE_ASSIGNMENT: a roles file is present but a model carries no `roles` annotation. NO_ROLES_FILE: a model declares roles but no roles file was found. MULTIPLE_ROLES_FILES: more than one roles file (which governs is ambiguous). UNDEFINED_AUTHORITY: a user in users.yaml holds an authority (role name) the roles file doesn't declare (the users-edge twin of UNDEFINED_ROLE)."
           },
           "message": { "type": "string", "description": "the human-readable finding (the problem)" },
           "fix": { "type": "string", "description": "the concrete remedy (the action to take), parity with the RK_* diagnostic `fix`" },
-          "modelId": { "type": "string", "description": "the offending model's id; absent for workspace-level findings (NO_ROLES_FILE / MULTIPLE_ROLES_FILES)" },
-          "modelPath": { "type": "string", "description": "the offending model's path relative to root; absent for workspace-level findings" },
-          "role": { "type": "string", "description": "the undefined role name; present only for UNDEFINED_ROLE" }
+          "modelId": { "type": "string", "description": "the offending model's id; absent for workspace-level and user findings" },
+          "modelPath": { "type": "string", "description": "the offending model's path relative to root; absent for workspace-level and user findings" },
+          "role": { "type": "string", "description": "the role/authority name in question; present for UNDEFINED_ROLE and UNDEFINED_AUTHORITY" },
+          "username": { "type": "string", "description": "the offending user's name; present only for UNDEFINED_AUTHORITY" }
         }
       }
     }

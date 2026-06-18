@@ -1,0 +1,8 @@
+# The workspace users file (FEATURE-GAPS R4 demonstration fixture) — own e-commerce domain.
+# `authorities` are role names: the membership edge into roles.yaml. This set is clean —
+# every authority is a declared role, and it covers every model's gating roles.
+users:
+  - username: alice
+    authorities: [shopper]
+  - username: bob
+    authorities: [merchant]

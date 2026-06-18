@@ -48,6 +48,12 @@ class WorkspaceRolesCommandTest {
         Files.writeString(p, ROLES);
     }
 
+    private static void users(Path dir, String rel, String yaml) throws IOException {
+        Path p = dir.resolve(rel);
+        Files.createDirectories(p.getParent());
+        Files.writeString(p, yaml);
+    }
+
     @Test
     void aCleanWorkspaceReadsOkAndSurfacesDefinedRolesAndPerModelGating(@TempDir Path dir) throws Exception {
         roles(dir, "auth/roles.yaml");
@@ -82,6 +88,31 @@ class WorkspaceRolesCommandTest {
         assertEquals("Storefront_DM", finding.path("modelId").asText());
         // the finding is actionable: it carries a `fix` naming the remedy (parity with RK_* diagnostics)
         assertTrue(finding.path("fix").asText().contains("reviewer"), () -> "fix names the remedy: " + res.out());
+    }
+
+    @Test
+    void aUserWithAnUndefinedAuthorityIsANonBlockingWarning(@TempDir Path dir) throws Exception {
+        roles(dir, "auth/roles.yaml");                                       // defines shopper, merchant
+        model(dir, "models/Storefront_DM.json", "Storefront_DM", "shopper"); // clean model
+        users(dir, "auth/users.yaml", """
+                users:
+                  - username: alice
+                    authorities: [shopper]
+                  - username: bob
+                    authorities: [admin]
+                """);                                                        // bob's 'admin' is undefined
+
+        var res = CliTestSupport.run("workspace", "roles", dir.toString());
+        assertEquals(0, res.code(), () -> "users findings never block either — exit 0: " + res.err());
+        JsonNode data = M.readTree(res.out()).path("data");
+        assertTrue(data.path("usersFile").asText().endsWith("users.yaml"), () -> "names the users file: " + res.out());
+        assertEquals("bob", data.path("users").get(1).path("username").asText());
+        JsonNode finding = data.path("findings").get(0);
+        assertEquals("UNDEFINED_AUTHORITY", finding.path("code").asText());
+        assertEquals("WARNING", finding.path("severity").asText());
+        assertEquals("bob", finding.path("username").asText());
+        assertEquals("admin", finding.path("role").asText());
+        assertTrue(finding.path("fix").asText().contains("admin"), () -> "fix names the remedy: " + res.out());
     }
 
     @Test

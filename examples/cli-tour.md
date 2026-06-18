@@ -645,16 +645,16 @@ Product_Base (abstract)
 
 ## workspace roles — does every model gate to a defined role?
 
-A12 models carry a `roles` header annotation (a comma-separated list) naming who may access them; a workspace declares those roles once in `auth/roles.yaml`. `workspace roles` is the **access-control lint** that joins the two: it resolves every model's gating roles against the roles file and reports the cross-file inconsistencies the kernel never sees. It discovers the roles file under the workspace root (`auth/roles.yaml`, the project-template `import/auth/roles.yaml`, or the Preview-App `user/access-rights.yaml`), scans the models recursively, and surfaces the defined roles, each model's gating roles, and the findings:
+A12 models carry a `roles` header annotation (a comma-separated list) naming who may access them; a workspace declares those roles in `auth/roles.yaml` and its users (with the roles each holds) in `auth/users.yaml`. `workspace roles` is the **access-control lint** that joins all three: it resolves every model's gating roles — and every user's authorities — against the roles file and reports the cross-file inconsistencies the kernel never sees. It discovers both files under the workspace root (`auth/roles.yaml` / `auth/users.yaml`, also the project-template `import/auth/…` and the Preview-App conventions), scans the models recursively, and surfaces the defined roles, the users, each model's gating roles, and the findings:
 
 ```bash
 dmtool workspace roles examples/models/storefront-workspace \
-  | jq -c '{rolesFile: .data.rolesFile, definedRoles: [.data.definedRoles[].name],
-            models: [.data.models[] | {id, roles}], findings: .data.findings}'
+  | jq -c '{rolesFile: .data.rolesFile, usersFile: .data.usersFile, definedRoles: [.data.definedRoles[].name],
+            users: [.data.users[] | {username, authorities}], models: [.data.models[] | {id, roles}], findings: .data.findings}'
 ```
 
 ```output
-{"rolesFile":"auth/roles.yaml","definedRoles":["shopper","merchant"],"models":[{"id":"Catalog_DM","roles":["merchant"]},{"id":"Storefront_DM","roles":["shopper","merchant"]}],"findings":[]}
+{"rolesFile":"auth/roles.yaml","usersFile":"auth/users.yaml","definedRoles":["shopper","merchant"],"users":[{"username":"alice","authorities":["shopper"]},{"username":"bob","authorities":["merchant"]}],"models":[{"id":"Catalog_DM","roles":["merchant"]},{"id":"Storefront_DM","roles":["shopper","merchant"]}],"findings":[]}
 ```
 
 → Both models gate to roles `auth/roles.yaml` defines (`shopper`/`merchant`), so the lint is clean. The headline finding is an **undefined role** — a model gating to a role the file doesn't declare, which even the A12 model editor permits silently. Resolving the same models against a roles file that omits `merchant` surfaces it. The lint is **purely advisory — it warns, it never blocks** (access-control config is often a dev seed or owned by an external IdP, so it must not stop work on the models); the verb **always exits 0**:
@@ -662,15 +662,15 @@ dmtool workspace roles examples/models/storefront-workspace \
 ```bash
 dmtool workspace roles examples/models/storefront-workspace \
   --roles examples/models/shopper-only-roles.yaml 2>&1 \
-  | jq -c '{warnings: .data.warnings, findings: [.data.findings[] | {severity, code, modelId, role}]}'; echo "(exit ${PIPESTATUS[0]})"
+  | jq -c '{warnings: .data.warnings, findings: [.data.findings[] | {code, modelId, username, role}]}'; echo "(exit ${PIPESTATUS[0]})"
 ```
 
 ```output
-{"warnings":2,"findings":[{"severity":"WARNING","code":"UNDEFINED_ROLE","modelId":"Catalog_DM","role":"merchant"},{"severity":"WARNING","code":"UNDEFINED_ROLE","modelId":"Storefront_DM","role":"merchant"}]}
+{"warnings":3,"findings":[{"code":"UNDEFINED_ROLE","modelId":"Catalog_DM","username":null,"role":"merchant"},{"code":"UNDEFINED_ROLE","modelId":"Storefront_DM","username":null,"role":"merchant"},{"code":"UNDEFINED_AUTHORITY","modelId":null,"username":"bob","role":"merchant"}]}
 (exit 0)
 ```
 
-→ `merchant` gates both models but isn't declared, so each draws an `UNDEFINED_ROLE` **warning** (never an error — exit stays 0). The lint also flags a model left ungated when a roles file exists (`MISSING_ROLE_ASSIGNMENT`), a model that declares roles with no roles file in the workspace (`NO_ROLES_FILE`), and more than one roles file (`MULTIPLE_ROLES_FILES`) — all warnings. `--roles` overrides discovery, as here.
+→ The omission ripples across the whole **RBAC triangle** (models gate to roles ← `roles.yaml` → users hold authorities). `merchant` is referenced in three places this roles file no longer declares — the two models that **gate** to it (`UNDEFINED_ROLE`) and the user **bob** who **holds** it (`UNDEFINED_AUTHORITY`, the membership-edge twin) — so each draws a **warning** (never an error; exit stays 0). The lint surfaces the rest of the triangle too: a model left ungated when a roles file exists (`MISSING_ROLE_ASSIGNMENT`), roles declared with no roles file (`NO_ROLES_FILE`), more than one roles file (`MULTIPLE_ROLES_FILES`), a model gated to roles **no user holds** (`UNREACHABLE_MODEL` — nobody can open it), and, as an `INFO`, a declared role held by no user and gating no model (`ORPHAN_ROLE` — dead). `--roles` / `--users` override discovery.
 
 Every finding carries a **`fix`** alongside its `message` — the concrete remedy, not just the diagnosis (the same `{message, fix}` shape the `RK_*` diagnostic catalog uses). So an agent reads what to *do*, not only what's wrong:
 
@@ -682,6 +682,7 @@ dmtool workspace roles examples/models/storefront-workspace \
 ```output
 declare 'merchant' in the workspace roles file, or remove it from Catalog_DM's roles annotation
 declare 'merchant' in the workspace roles file, or remove it from Storefront_DM's roles annotation
+declare 'merchant' in the workspace roles file, or remove it from bob's authorities
 ```
 
-→ Each `UNDEFINED_ROLE` names its two remedies — declare the role, or drop the gating — so the next action is unambiguous. (A diagnostic `code` you get back from any verb is explorable too: `data.findings[]` codes via that verb's `schema <target> <op>`, `RK_*` codes via `dmtool diagnostics <code>`, `MVK_*` kernel codes via `dmtool operators` / `rule explain`.)
+→ Each finding names its remedy — declare the role, or drop the reference — so the next action is unambiguous. (A diagnostic `code` you get back from any verb is explorable too: `data.findings[]` codes via that verb's `schema <target> <op>`, `RK_*` codes via `dmtool diagnostics <code>`, `MVK_*` kernel codes via `dmtool operators` / `rule explain`.)

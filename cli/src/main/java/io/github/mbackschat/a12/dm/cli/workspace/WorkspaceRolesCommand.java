@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.modelkit.RolesFile;
+import io.github.mbackschat.a12.dm.modelkit.UsersFile;
 import io.github.mbackschat.a12.dm.modelkit.Workspace;
 import io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles;
 import io.github.mbackschat.a12.dm.modelkit.WorkspaceRoles.RoleFinding;
@@ -51,6 +52,10 @@ final class WorkspaceRolesCommand extends BaseCommand {
             description = "use this roles file instead of discovering one under the workspace root")
     String rolesOverride;
 
+    @Option(names = "--users", paramLabel = "<users.yaml>",
+            description = "use this users file instead of discovering one under the workspace root")
+    String usersOverride;
+
     @Override
     public Integer call() {
         Path root = Path.of(dir);
@@ -61,9 +66,10 @@ final class WorkspaceRolesCommand extends BaseCommand {
         WorkspaceRoles.Resolution resolution;
         try {
             resolution = WorkspaceRoles.resolve(root,
-                    java.util.Optional.ofNullable(rolesOverride).map(Path::of));
-        } catch (RuntimeException badRolesFile) {
-            return fail("cannot read roles file: " + badRolesFile.getMessage());
+                    java.util.Optional.ofNullable(rolesOverride).map(Path::of),
+                    java.util.Optional.ofNullable(usersOverride).map(Path::of));
+        } catch (RuntimeException badConfigFile) {
+            return fail("cannot read access-control config: " + badConfigFile.getMessage());
         }
 
         List<Workspace.Model> models;
@@ -79,8 +85,10 @@ final class WorkspaceRolesCommand extends BaseCommand {
 
         ObjectNode data = MAPPER.createObjectNode();
         data.put("root", dir);
-        data.put("rolesFile", resolution.files().size() == 1 ? display(root, resolution.files().get(0)) : null);
+        data.put("rolesFile", resolution.rolesFiles().size() == 1 ? display(root, resolution.rolesFiles().get(0)) : null);
+        data.put("usersFile", resolution.usersFiles().size() == 1 ? display(root, resolution.usersFiles().get(0)) : null);
         data.set("definedRoles", definedRoles(resolution));
+        data.set("users", usersJson(resolution));
         data.put("modelCount", models.size());
         data.set("models", modelsJson(models));
         data.put("warnings", warnings);
@@ -122,6 +130,19 @@ final class WorkspaceRolesCommand extends BaseCommand {
         return arr;
     }
 
+    private ArrayNode usersJson(WorkspaceRoles.Resolution resolution) {
+        ArrayNode arr = MAPPER.createArrayNode();
+        resolution.users().ifPresent(users -> {
+            for (UsersFile.User u : users.users()) {
+                ObjectNode n = arr.addObject();
+                n.put("username", u.username());
+                ArrayNode auth = n.putArray("authorities");
+                u.authorities().forEach(auth::add);
+            }
+        });
+        return arr;
+    }
+
     private ArrayNode findingsJson(List<RoleFinding> findings) {
         ArrayNode arr = MAPPER.createArrayNode();
         for (RoleFinding f : findings) {
@@ -133,18 +154,19 @@ final class WorkspaceRolesCommand extends BaseCommand {
             f.modelId().ifPresent(v -> n.put("modelId", v));
             f.modelPath().ifPresent(v -> n.put("modelPath", v));
             f.role().ifPresent(v -> n.put("role", v));
+            f.username().ifPresent(v -> n.put("username", v));
         }
         return arr;
     }
 
-    /** A roles-file path relative to the workspace root when it lives under it, else its full path. */
+    /** A config-file path relative to the workspace root when it lives under it, else its full path. */
     private static String display(Path root, Path file) {
         return file.startsWith(root) ? root.relativize(file).toString().replace('\\', '/') : file.toString();
     }
 
     private static String summary(WorkspaceRoles.Resolution resolution, int modelCount, long warnings, long infos) {
-        String files = resolution.multiple() ? "multiple roles files"
-                : resolution.found() ? "1 roles file" : "no roles file";
+        String files = resolution.multipleRolesFiles() ? "multiple roles files"
+                : resolution.rolesFound() ? "1 roles file" : "no roles file";
         return files + ", " + modelCount + " model" + (modelCount == 1 ? "" : "s") + " — "
                 + warnings + " warning" + (warnings == 1 ? "" : "s") + ", " + infos + " info" + (infos == 1 ? "" : "s")
                 + " (advisory)";
