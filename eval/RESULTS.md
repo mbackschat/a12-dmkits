@@ -16,6 +16,14 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-18 19:21 CEST — targeted: `rule explain` polarity + stored message, comprehension task 07 (sonnet, k=3, bare-tool)
+
+**3/3 pass.** Validates the `rule explain` polarity + stored-message additions (committed `a316d0f`): a cold **bare-tool** agent reading `/Order/DeliveryNotBeforeOrder` + `/Order/BillingAddress/PostalCodeFormat` on `order-ruled` now explains both **with correct polarity** — all three judge rationales explicitly confirm the agent framed the condition as the VIOLATION (not the requirement) and named the presence guard (`AllFieldsFilled`/`FieldFilled`).
+
+- **Why this task is the right probe:** task 07's rubric demands *"a correct reading must note the condition is the VIOLATION, not the requirement"* — the exact inversion an agent risks when the explain JSON showed only the bare condition (`DifferenceInDays(OrderDate, DeliveryDate) < 0`, which naively reads as "checks the difference is negative"). `rule explain` now hands the agent `polarity.firesOn: "violation"` + the modeler's message ("The delivery date must not be earlier than the order date."), so polarity is stated, not inferred from the A12 convention.
+- **Boundary:** bare-tool confirmed — the produce/judge agents used only the self-describing CLI (no Read-tool file access; no `docs/`/`src/`/skill bash reads). 7 agents · ~178k tokens · ~62 s.
+- **Caveat:** a single targeted task at k=3 — a positive signal that the additions land, not a trend point. No pre-change baseline re-measured (the fields shipped), but the rubric is polarity-specific, so a clean sweep is meaningful. Companion: still no `workspace roles` eval coverage (a `workspace-roles` family is the next corpus add).
+
 ### 2026-06-17 13:06 CEST — targeted regression: session family after the FEATURE-GAPS §3 verb changes (sonnet, k=2, bare-tool)
 
 A **targeted** re-run (§8b) confirming the day's CLI-surface changes didn't regress a cold agent's `apply` session authoring. The changes under test: **G8** (`apply`'s `field add` now takes the rich per-kind spec — the field-add dispatch was refactored to `FieldSpec.parse`), **G11** (`where-used` clean break to `-m` + positional entity), and the **`where-used` envelope-ification** (its output moved from a bare payload to the result envelope, so the session scorer's `data.rules` path is now literally correct rather than LLM-bridged). The session family is the only agentic task set that exercises these (apply op-list authoring + the `where-used` scorer); **fresh** run (material changed), bare-tool (no skill).
