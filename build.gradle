@@ -38,6 +38,9 @@ dependencies {
 
     // The operator catalog (proposal §9) is a bundled JSON resource parsed at load time.
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+    // YAML reader for the workspace `roles.yaml` access-control config (FEATURE-GAPS R3). Parsed as a
+    // Jackson tree (no reflective POJO binding), the same tree-walking style as ModelDocument's DM-JSON read.
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.18.2'
 
     // modelkit (the structure builder) now lives in this module's `dm.modelkit` package (folded in
     // 2026-06-09 — D10 superseded). Its dogfood fixtures (ModelDrafts) + tests are in this project's
