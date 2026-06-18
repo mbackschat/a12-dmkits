@@ -75,13 +75,16 @@ class PatternCatalogTest {
     void theIdiomSetAndKindsAreLocked() {
         Map<String, PatternKind> idsToKind = CATALOG.entries().stream()
                 .collect(Collectors.toMap(PatternEntry::id, PatternEntry::kind, (a, b) -> a, LinkedHashMap::new));
-        assertEquals(Map.of(
-                "date-order", PatternKind.RULE,
-                "mutually-exclusive", PatternKind.RULE,
-                "at-least-one-of", PatternKind.RULE,
-                "required-when", PatternKind.RULE,
-                "sum-of-line-items", PatternKind.RULE,
-                "tiered-amount", PatternKind.COMPUTATION), idsToKind);
+        assertEquals(Map.ofEntries(
+                Map.entry("date-order", PatternKind.RULE),
+                Map.entry("mutually-exclusive", PatternKind.RULE),
+                Map.entry("at-least-one-of", PatternKind.RULE),
+                Map.entry("required-when", PatternKind.RULE),
+                Map.entry("sum-of-line-items", PatternKind.RULE),
+                Map.entry("tiered-amount", PatternKind.COMPUTATION),
+                Map.entry("bounded-number", PatternKind.FIELD),
+                Map.entry("formatted-string", PatternKind.FIELD),
+                Map.entry("value-set-enum", PatternKind.FIELD)), idsToKind);
     }
 
     @Test

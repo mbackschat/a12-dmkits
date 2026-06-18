@@ -59,7 +59,9 @@ public interface PatternEntry {
         /** A validation rule (a violation condition + error field). */
         RULE,
         /** A computation (a calculated field + a mutually-exclusive precondition table). */
-        COMPUTATION
+        COMPUTATION,
+        /** A constrained field (a field-config — the field-level alternative to a rule). */
+        FIELD
     }
 
     /** A pattern parameter — a named slot the caller fills (a field path or a literal value). */
@@ -80,7 +82,11 @@ public interface PatternEntry {
             /** A comma-separated list of field paths. */
             FIELD_LIST,
             /** A literal value (e.g. the value an {@code EQUATABLE_FIELD} is compared against). */
-            VALUE
+            VALUE,
+            /** An existing group path a scaffolded field is added to (a {@code FIELD} idiom). */
+            GROUP,
+            /** A new field's name (a {@code FIELD} idiom). */
+            NAME
         }
     }
 
@@ -90,7 +96,7 @@ public interface PatternEntry {
      * {@link ComputationInstantiation} (a {@link PatternKind#COMPUTATION} pattern). The verb dispatches
      * on the variant — a rule rides {@code rule add}, a computation {@code computation add}.
      */
-    sealed interface Instantiation permits RuleInstantiation, ComputationInstantiation {
+    sealed interface Instantiation permits RuleInstantiation, ComputationInstantiation, FieldInstantiation {
     }
 
     /**
@@ -108,5 +114,17 @@ public interface PatternEntry {
      * placeholders — so name/message overrides work the same as for a rule.
      */
     record ComputationInstantiation(Computation computation) implements Instantiation {
+    }
+
+    /**
+     * A {@link PatternKind#FIELD} result — a constrained field (the field-level alternative to a rule, the
+     * twin R2's {@code seeAlso} bridge names) to add to {@code group}. Pure data: {@code kind} is the field
+     * kind ({@code NUMBER}/{@code STRING}/{@code ENUM}) and {@code config} the per-kind config block in
+     * {@code field add} shape (e.g. {@code {min, max}} / {@code {pattern, patternMessage}} /
+     * {@code {values: [{value}]}}). The rulekit catalog stays modelkit-free (the sibling boundary) — the CLI
+     * assembles + parses the field via {@code FieldSpec}.
+     */
+    record FieldInstantiation(String group, String name, String kind, java.util.Map<String, Object> config)
+            implements Instantiation {
     }
 }

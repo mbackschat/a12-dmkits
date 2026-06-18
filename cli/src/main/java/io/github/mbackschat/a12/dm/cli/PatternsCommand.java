@@ -14,6 +14,9 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 
+import io.github.mbackschat.a12.dm.cli.field.FieldSpec;
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.catalog.PatternCatalog;
 import io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
@@ -21,6 +24,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
+import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
@@ -165,6 +169,7 @@ final class PatternsCommand extends BaseCommand {
         return switch (inst) {
             case PatternEntry.RuleInstantiation r -> scaffoldRule(pattern, r, bound, modelJson, resolver, model);
             case PatternEntry.ComputationInstantiation c -> scaffoldComputation(pattern, c, bound, modelJson, resolver, model);
+            case PatternEntry.FieldInstantiation f -> scaffoldField(pattern, f, modelJson, resolver, model);
         };
     }
 
@@ -283,6 +288,74 @@ final class PatternsCommand extends BaseCommand {
         root.put("applied", true);
         root.put("written", dest);
         root.put("computation", draft.groupPath() + "/" + compName);
+        return emit(root);
+    }
+
+    /**
+     * Scaffold a FIELD pattern — a constrained field (the field-level alternative to a rule, the twin R2's
+     * {@code seeAlso} bridge names). The rulekit idiom returns a modelkit-free spec (kind + per-kind config);
+     * here we assemble it into the {@code field add} shape, build the field via {@link FieldSpec}, add it, and
+     * auto-check via the kernel re-bind ({@code ModelDocument.validate}); {@code --apply} persists. Name/code/
+     * message overrides are rule concepts and do not apply — a field carries its own config.
+     */
+    private Integer scaffoldField(PatternEntry pattern, PatternEntry.FieldInstantiation inst,
+            String modelJson, IDocumentModelReferenceResolver resolver, String model) {
+        ObjectNode fieldSpec = MAPPER.createObjectNode();
+        fieldSpec.put("group", inst.group());
+        fieldSpec.put("name", inst.name());
+        fieldSpec.put("kind", inst.kind());
+        fieldSpec.set(inst.kind().toLowerCase(java.util.Locale.ROOT), MAPPER.valueToTree(inst.config()));
+        String target = inst.group() + "/" + inst.name();
+
+        ModelDocument doc = ModelDocument.read(modelJson);
+        try {
+            FieldSpec.Parsed parsed = FieldSpec.parse(fieldSpec);
+            doc.addField(parsed.group(), parsed.field());
+        } catch (IllegalArgumentException bad) {
+            return fail(bad.getMessage());       // no such group, duplicate name, malformed config, …
+        }
+
+        boolean valid;
+        com.fasterxml.jackson.databind.JsonNode diagnostics;
+        String resultJson = null;
+        try {
+            resultJson = doc.validate(resolver).toJson();
+            valid = true;
+            diagnostics = MAPPER.createArrayNode();
+        } catch (ModelConsistencyException e) {
+            valid = false;
+            diagnostics = MAPPER.valueToTree(e.notifications().stream()
+                    .map(n -> KernelDiagnostics.enriched(n, null)).toList());
+        }
+
+        ObjectNode root = MAPPER.createObjectNode();
+        root.put("pattern", pattern.id());
+        root.set("spec", fieldSpec);
+        root.put("valid", valid);
+        root.set("diagnostics", diagnostics);
+
+        if (!apply) {
+            return emit(root);                   // review the field-spec (+ kernel verdict), then `field add`
+        }
+        if (!valid) {
+            root.put("applied", false);
+            root.put("reason", "the scaffolded field is rejected by the kernel — fix the diagnostics before --apply");
+            return emit(root, 1);
+        }
+        if (dryRun) {
+            root.put("applied", false);
+            root.put("previewed", true);
+            return emit(root);
+        }
+        String dest = outputPath != null ? outputPath : model;
+        try {
+            Files.writeString(Path.of(dest), resultJson);
+        } catch (IOException e) {
+            return fail("cannot write output: " + e.getMessage());
+        }
+        root.put("applied", true);
+        root.put("written", dest);
+        root.put("field", target);
         return emit(root);
     }
 

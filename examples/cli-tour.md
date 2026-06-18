@@ -345,17 +345,17 @@ dmtool operators DifferenceInDays | jq '{id,kind,meaning}'
 
 ## patterns — scaffold a correct rule from an idiom
 
-Where `operators` is the *vocabulary*, `patterns` is the *idiom* catalogue — the recurring BA tasks, each a typed-DSL-backed template that's correct by construction. Most are **rule** idioms (date-order, mutually-exclusive, …) that bake in the two hardest rule traps — the **violation polarity** and a **referenced error field**; `tiered-amount` is a **computation** idiom that bakes in a **mutually-exclusive, exhaustive precondition table**. `patterns` lists them, with each idiom's `kind`; the summary here is projected with `jq`.
+Where `operators` is the *vocabulary*, `patterns` is the *idiom* catalogue — the recurring BA tasks, each a typed-DSL-backed template that's correct by construction, across three `kind`s: **rule** idioms (date-order, mutually-exclusive, …) bake in the two hardest rule traps — the **violation polarity** and a **referenced error field**; the **computation** idiom `tiered-amount` bakes in a **mutually-exclusive, exhaustive precondition table**; the **field** idioms (bounded-number, formatted-string, value-set-enum) scaffold the **field-level alternative** to a rule (the constraint R2's `seeAlso` bridge names). `patterns` lists them, with each idiom's `kind`; the summary here is projected with `jq`.
 
 ```bash
 dmtool patterns | jq -c '{count, ids: (.patterns|map(.id))}'
 ```
 
 ```output
-{"count":6,"ids":["date-order","mutually-exclusive","at-least-one-of","required-when","sum-of-line-items","tiered-amount"]}
+{"count":9,"ids":["date-order","mutually-exclusive","at-least-one-of","required-when","sum-of-line-items","tiered-amount","bounded-number","formatted-string","value-set-enum"]}
 ```
 
-→ Six idioms. Pass an id with `--arg name=value` parameters (and `-m <model>`) to **scaffold** the artifact from one — a rule-spec, or a computation-spec for `tiered-amount` — built through the typed DSL (correct by construction) and **auto-checked** against the kernel.
+→ Nine idioms. Pass an id with `--arg name=value` parameters (and `-m <model>`) to **scaffold** the artifact from one — a rule-spec, a computation-spec (`tiered-amount`), or a field-spec (the field idioms) — built through the typed DSL (correct by construction) and **auto-checked** against the kernel.
 
 ```bash
 dmtool -m examples/models/order-ruled.dm.json patterns date-order --arg earlier=/Order/OrderDate --arg later=/Order/DeliveryDate | jq '{pattern, spec: {field: .spec.field, condition: .spec.condition}, valid}'

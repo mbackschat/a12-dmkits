@@ -8,12 +8,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.github.mbackschat.a12.dm.rulekit.catalog.PatternCatalog;
+import io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry;
 
 /**
  * {@code patterns} (FEATURE-GAPS G2/R1) — the idiom catalog. Lists idioms, details one, and scaffolds a
@@ -117,6 +122,58 @@ class PatternsVerbTest {
         assertTrue(j.path("applied").asBoolean(), res::out);
         assertEquals("/Order/BackorderTier", j.path("computation").asText());
         assertTrue(Files.readString(model).contains("BackorderTier"), "the computation is persisted to the model");
+    }
+
+    @Test
+    void scaffoldsAKernelValidFieldSpec(@TempDir Path dir) throws Exception {
+        var res = CliTestSupport.run("-m", model(dir).toString(), "patterns", "bounded-number",
+                "--arg", "group=/Order", "--arg", "name=RiskScore", "--arg", "min=0", "--arg", "max=100");
+        assertEquals(0, res.code(), res::err);
+        JsonNode j = M.readTree(res.out());
+        JsonNode spec = j.path("spec");
+        assertEquals("/Order", spec.path("group").asText(), res::out);
+        assertEquals("RiskScore", spec.path("name").asText(), res::out);
+        assertEquals("NUMBER", spec.path("kind").asText(), res::out);
+        // the spec is the field add shape — the bound (number.max) R2's seeAlso bridge names lives in the config
+        assertEquals(100, spec.path("number").path("max").asInt(), res::out);
+        assertTrue(j.path("valid").asBoolean(), () -> "the scaffolded field is kernel-valid: " + res.out());
+    }
+
+    /**
+     * The CLI-layer <b>no-rot</b> guard for FIELD idioms — the peer of {@code PatternCatalogKernelTest} (which
+     * covers rule/computation kernel-validity in rulekit). FIELD idioms produce a modelkit-free spec the rulekit
+     * guard can't kernel-check, so every field idiom's example is run through the real CLI here and must be
+     * kernel-valid. A field idiom that no longer scaffolds a valid field fails the build.
+     */
+    @Test
+    void everyFieldIdiomExampleScaffoldsAKernelValidField(@TempDir Path dir) throws Exception {
+        Path model = model(dir);
+        for (PatternEntry p : PatternCatalog.load().entries()) {
+            if (p.kind() != PatternEntry.PatternKind.FIELD) {
+                continue;
+            }
+            List<String> args = new ArrayList<>(List.of("-m", model.toString(), "patterns", p.id()));
+            p.example().forEach((k, v) -> {
+                args.add("--arg");
+                args.add(k + "=" + v);
+            });
+            var res = CliTestSupport.run(args.toArray(String[]::new));
+            assertEquals(0, res.code(), () -> p.id() + ": " + res.err());
+            assertTrue(M.readTree(res.out()).path("valid").asBoolean(),
+                    () -> "field idiom '" + p.id() + "' scaffolds a kernel-INVALID field: " + res.out());
+        }
+    }
+
+    @Test
+    void applyPersistsTheScaffoldedField(@TempDir Path dir) throws Exception {
+        Path model = model(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "patterns", "value-set-enum",
+                "--arg", "group=/Order", "--arg", "name=Channel", "--arg", "values=WEB,PHONE,STORE", "--apply");
+        assertEquals(0, res.code(), res::err);
+        JsonNode j = M.readTree(res.out());
+        assertTrue(j.path("applied").asBoolean(), res::out);
+        assertEquals("/Order/Channel", j.path("field").asText());
+        assertTrue(Files.readString(model).contains("Channel"), "the field is persisted to the model");
     }
 
     @Test

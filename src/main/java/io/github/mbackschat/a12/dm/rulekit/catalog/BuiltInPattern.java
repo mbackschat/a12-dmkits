@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.rulekit.catalog;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -20,6 +22,8 @@ import static io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternPa
 import static io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind.FIELD;
 import static io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind.FIELD_FLATTEN;
 import static io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind.FIELD_LIST;
+import static io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind.GROUP;
+import static io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind.NAME;
 import static io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind.NUMBER_FIELD;
 import static io.github.mbackschat.a12.dm.rulekit.catalog.PatternEntry.PatternParam.Kind.VALUE;
 
@@ -154,6 +158,79 @@ public enum BuiltInPattern implements PatternEntry {
                     .message(placeholderMessages(m))
                     .build();
             return new ComputationInstantiation(c);
+        }
+    },
+
+    BOUNDED_NUMBER("bounded-number",
+            "add a NUMBER field constrained to a [min, max] range (the field-level alternative to a comparison rule)",
+            "the bound lives in the field config (number.min / number.max), not a rule — see `operators LessThan`'s seeAlso",
+            "field ${name} in ${group}: NUMBER with number.min=${min}, number.max=${max}",
+            List.of(param("group", GROUP, "the existing group to add the field to (e.g. /Order)"),
+                    param("name", NAME, "the new field's name"),
+                    param("min", VALUE, "the minimum value (number.min)"),
+                    param("max", VALUE, "the maximum value (number.max)")),
+            Map.of("group", "/Order", "name", "RiskScore", "min", "0", "max", "100")) {
+        @Override
+        public PatternKind kind() {
+            return PatternKind.FIELD;
+        }
+
+        @Override
+        public Instantiation instantiate(BoundModel m, Map<String, String> a) {
+            Map<String, Object> config = new LinkedHashMap<>();
+            config.put("min", new BigDecimal(req(a, "min")));
+            config.put("max", new BigDecimal(req(a, "max")));
+            return new FieldInstantiation(req(a, "group"), req(a, "name"), "NUMBER", config);
+        }
+    },
+
+    FORMATTED_STRING("formatted-string",
+            "add a STRING field constrained to a regex format (the field-level alternative to a pattern rule)",
+            "the format lives in the field config (string.pattern + patternMessage), not a rule — see `operators PatternViolated`'s seeAlso",
+            "field ${name} in ${group}: STRING with string.pattern=${pattern} (message ${message})",
+            List.of(param("group", GROUP, "the existing group to add the field to (e.g. /Order)"),
+                    param("name", NAME, "the new field's name"),
+                    param("pattern", VALUE, "the anchored regex the value must match (string.pattern)"),
+                    param("message", VALUE, "the error text shown when the value does not match (patternMessage)")),
+            Map.of("group", "/Order", "name", "PostalCode", "pattern", "[0-9]{5}", "message", "must be five digits")) {
+        @Override
+        public PatternKind kind() {
+            return PatternKind.FIELD;
+        }
+
+        @Override
+        public Instantiation instantiate(BoundModel m, Map<String, String> a) {
+            Map<String, Object> config = new LinkedHashMap<>();
+            config.put("pattern", req(a, "pattern"));
+            config.put("patternMessage", req(a, "message"));
+            return new FieldInstantiation(req(a, "group"), req(a, "name"), "STRING", config);
+        }
+    },
+
+    VALUE_SET_ENUM("value-set-enum",
+            "add an ENUM field restricted to a fixed value set (the field-level alternative to a value-list rule)",
+            "the allowed set lives in the field config (enum.values), not a rule — see `operators FieldValueIncludedInValueList`'s seeAlso",
+            "field ${name} in ${group}: ENUM with enum.values=${values}",
+            List.of(param("group", GROUP, "the existing group to add the field to (e.g. /Order)"),
+                    param("name", NAME, "the new field's name"),
+                    param("values", VALUE, "the allowed values, comma-separated (enum.values)")),
+            Map.of("group", "/Order", "name", "Channel", "values", "WEB,PHONE,STORE")) {
+        @Override
+        public PatternKind kind() {
+            return PatternKind.FIELD;
+        }
+
+        @Override
+        public Instantiation instantiate(BoundModel m, Map<String, String> a) {
+            List<Map<String, Object>> values = list(req(a, "values")).stream()
+                    .map(v -> Map.<String, Object>of("value", v))
+                    .toList();
+            if (values.isEmpty()) {
+                throw new IllegalArgumentException("value-set-enum needs at least one value in --arg values=A,B,C");
+            }
+            Map<String, Object> config = new LinkedHashMap<>();
+            config.put("values", values);
+            return new FieldInstantiation(req(a, "group"), req(a, "name"), "ENUM", config);
         }
     };
 
