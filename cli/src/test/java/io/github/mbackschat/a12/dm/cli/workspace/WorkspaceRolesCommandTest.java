@@ -77,6 +77,8 @@ class WorkspaceRolesCommandTest {
         assertEquals("UNDEFINED_ROLE", finding.path("code").asText());
         assertEquals("reviewer", finding.path("role").asText());
         assertEquals("Storefront_DM", finding.path("modelId").asText());
+        // the finding is actionable: it carries a `fix` naming the remedy (parity with RK_* diagnostics)
+        assertTrue(finding.path("fix").asText().contains("reviewer"), () -> "fix names the remedy: " + res.out());
     }
 
     @Test

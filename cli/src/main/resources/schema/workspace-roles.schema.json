@@ -45,7 +45,7 @@
       "description": "the cross-file roles inconsistencies, in model then gating-role order",
       "items": {
         "type": "object",
-        "required": ["severity", "code", "message"],
+        "required": ["severity", "code", "message", "fix"],
         "additionalProperties": false,
         "properties": {
           "severity": { "type": "string", "enum": ["ERROR", "WARNING"], "description": "ERROR fails the gate; WARNING does not" },
@@ -54,7 +54,8 @@
             "enum": ["UNDEFINED_ROLE", "MISSING_ROLE_ASSIGNMENT", "NO_ROLES_FILE", "MULTIPLE_ROLES_FILES"],
             "description": "UNDEFINED_ROLE: a model gates to a role the file doesn't declare (the flagship — even the SME permits this). MISSING_ROLE_ASSIGNMENT: a roles file is present but a model carries no `roles` annotation. NO_ROLES_FILE (warning): a model declares roles but no roles file was found. MULTIPLE_ROLES_FILES: more than one roles file (which governs is ambiguous)."
           },
-          "message": { "type": "string", "description": "the human-readable finding" },
+          "message": { "type": "string", "description": "the human-readable finding (the problem)" },
+          "fix": { "type": "string", "description": "the concrete remedy (the action to take), parity with the RK_* diagnostic `fix`" },
           "modelId": { "type": "string", "description": "the offending model's id; absent for workspace-level findings (NO_ROLES_FILE / MULTIPLE_ROLES_FILES)" },
           "modelPath": { "type": "string", "description": "the offending model's path relative to root; absent for workspace-level findings" },
           "role": { "type": "string", "description": "the undefined role name; present only for UNDEFINED_ROLE" }

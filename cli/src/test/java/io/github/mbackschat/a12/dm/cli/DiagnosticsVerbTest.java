@@ -72,5 +72,9 @@ class DiagnosticsVerbTest {
         var res = CliTestSupport.run("diagnostics", "RK_TOTALLY_MADE_UP");
         assertEquals(2, res.code());
         assertTrue(res.err().contains("RK_TOTALLY_MADE_UP"), () -> res.err());
+        // the dead-end routes all three code classes: this RK_* catalog, MVK_* kernel codes (operators/explain),
+        // and a verb's data.findings code (the third class — e.g. workspace roles' UNDEFINED_ROLE) → its `schema`
+        assertTrue(res.err().contains("operators") && res.err().contains("schema"),
+                () -> "the not-found message routes MVK_* and data.findings codes, not just RK_*: " + res.err());
     }
 }

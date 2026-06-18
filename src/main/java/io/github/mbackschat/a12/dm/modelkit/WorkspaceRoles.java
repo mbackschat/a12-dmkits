@@ -60,8 +60,13 @@ public final class WorkspaceRoles {
         }
     }
 
-    /** One cross-file roles inconsistency — the modelkit-native peer of a kernel diagnostic (not an {@code MVK_*}). */
-    public record RoleFinding(Severity severity, Code code, String message,
+    /**
+     * One cross-file roles inconsistency — the modelkit-native peer of a kernel diagnostic (not an
+     * {@code MVK_*}). Carries a {@code message} (the problem) <b>and a {@code fix}</b> (the concrete remedy),
+     * parity with the {@code {meaning, fix}} shape of the {@code RK_*} diagnostic catalog — so a finding is
+     * actionable, not just descriptive.
+     */
+    public record RoleFinding(Severity severity, Code code, String message, String fix,
             Optional<String> modelId, Optional<String> modelPath, Optional<String> role) {
 
         /** A finding's blocking weight — only an {@link #ERROR} fails the workspace gate. */
@@ -73,6 +78,8 @@ public final class WorkspaceRoles {
         static RoleFinding undefinedRole(Workspace.Model m, String role) {
             return new RoleFinding(Severity.ERROR, Code.UNDEFINED_ROLE,
                     "role '" + role + "' gating " + m.id() + " is not defined in the workspace roles file",
+                    "declare '" + role + "' in the workspace roles file, or remove it from " + m.id()
+                            + "'s roles annotation",
                     Optional.of(m.id()), Optional.of(m.path()), Optional.of(role));
         }
 
@@ -80,6 +87,8 @@ public final class WorkspaceRoles {
             return new RoleFinding(Severity.ERROR, Code.MISSING_ROLE_ASSIGNMENT,
                     m.id() + " has no roles annotation, but the workspace has a roles file "
                             + "(every model must be gated once a roles file exists)",
+                    "add a roles annotation to " + m.id() + " naming the role(s) that may access it "
+                            + "(a defined role from the workspace roles file)",
                     Optional.of(m.id()), Optional.of(m.path()), Optional.empty());
         }
 
@@ -87,12 +96,15 @@ public final class WorkspaceRoles {
             return new RoleFinding(Severity.WARNING, Code.NO_ROLES_FILE,
                     "models declare roles but no workspace roles file was found "
                             + "(expected auth/roles.yaml beside models/)",
+                    "add a workspace roles file (auth/roles.yaml beside models/) declaring the roles the "
+                            + "models use, or remove the models' roles annotations",
                     Optional.empty(), Optional.empty(), Optional.empty());
         }
 
         static RoleFinding multipleRolesFiles(List<Path> files) {
             return new RoleFinding(Severity.ERROR, Code.MULTIPLE_ROLES_FILES,
                     "found " + files.size() + " roles files — a workspace must have exactly one: " + files,
+                    "keep exactly one roles file in the workspace; remove the extra(s): " + files,
                     Optional.empty(), Optional.empty(), Optional.empty());
         }
     }

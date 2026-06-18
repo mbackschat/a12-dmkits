@@ -46,7 +46,10 @@ final class DiagnosticsCommand extends BaseCommand {
             return RkCode.byCode(wire)
                     .map(c -> emit(full(c)))
                     .orElseGet(() -> fail("no diagnostic code '" + code
-                            + "' in the RK_* catalog (run `diagnostics` to list them; MVK_* codes are kernel codes — see `operators`/`explain`)"));
+                            + "' in the RK_* catalog (run `diagnostics` to list them). MVK_* codes are kernel codes "
+                            + "— see `operators`/`explain`. A code you got back in a verb's `data.findings[]` (not the "
+                            + "envelope `diagnostics[]`) is documented in that verb's output schema — run `schema "
+                            + "<target> <op>` for the verb that produced it (e.g. `schema workspace roles`)."));
         }
         ObjectNode root = MAPPER.createObjectNode();
         ArrayNode list = root.putArray("diagnostics");

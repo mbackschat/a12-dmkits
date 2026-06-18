@@ -126,6 +126,7 @@ final class WorkspaceRolesCommand extends BaseCommand {
             n.put("severity", f.severity().name());
             n.put("code", f.code().name());
             n.put("message", f.message());
+            n.put("fix", f.fix());
             f.modelId().ifPresent(v -> n.put("modelId", v));
             f.modelPath().ifPresent(v -> n.put("modelPath", v));
             f.role().ifPresent(v -> n.put("role", v));

@@ -82,6 +82,9 @@ class WorkspaceRolesTest {
         assertEquals(Severity.ERROR, f.severity());
         assertEquals(Optional.of("reviewer"), f.role());
         assertEquals(Optional.of("Storefront_DM"), f.modelId());
+        // the fix turns the diagnosis into an action — it names both remedies (declare the role / drop the gating)
+        assertTrue(f.fix().contains("reviewer") && f.fix().contains("Storefront_DM"),
+                () -> "the fix names the role and the model: " + f.fix());
     }
 
     @Test
@@ -95,6 +98,7 @@ class WorkspaceRolesTest {
         assertEquals(Code.MISSING_ROLE_ASSIGNMENT, findings.get(0).code());
         assertEquals(Severity.ERROR, findings.get(0).severity());
         assertEquals(Optional.of("Ungated_DM"), findings.get(0).modelId());
+        assertFalse(findings.get(0).fix().isBlank(), "every finding carries an actionable fix");
     }
 
     @Test

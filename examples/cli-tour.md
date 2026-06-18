@@ -671,3 +671,17 @@ dmtool workspace roles examples/models/storefront-workspace \
 ```
 
 → `merchant` gates both models but isn't declared, so each draws an `UNDEFINED_ROLE` error and the gate fails. The lint also flags a model left ungated when a roles file exists (`MISSING_ROLE_ASSIGNMENT`), a model that declares roles with no roles file in the workspace (`NO_ROLES_FILE`, a warning), and more than one roles file (`MULTIPLE_ROLES_FILES`). `--roles` overrides discovery, as here.
+
+Every finding carries a **`fix`** alongside its `message` — the concrete remedy, not just the diagnosis (the same `{message, fix}` shape the `RK_*` diagnostic catalog uses). So an agent reads what to *do*, not only what's wrong:
+
+```bash
+dmtool workspace roles examples/models/storefront-workspace \
+  --roles examples/models/shopper-only-roles.yaml | jq -r '.data.findings[].fix'
+```
+
+```output
+declare 'merchant' in the workspace roles file, or remove it from Catalog_DM's roles annotation
+declare 'merchant' in the workspace roles file, or remove it from Storefront_DM's roles annotation
+```
+
+→ Each `UNDEFINED_ROLE` names its two remedies — declare the role, or drop the gating — so the next action is unambiguous. (A diagnostic `code` you get back from any verb is explorable too: `data.findings[]` codes via that verb's `schema <target> <op>`, `RK_*` codes via `dmtool diagnostics <code>`, `MVK_*` kernel codes via `dmtool operators` / `rule explain`.)
