@@ -158,4 +158,4 @@ ROOT="$(cd .. && pwd)"; export GRADLE_USER_HOME="$ROOT/.gradle-isolated"; export
 ./gradlew :adapter:test --tests "*.Corpus1ReadCoverageTest" -Da12.corpus1.dir="…/workspaces"        # opt-in
 ```
 
-The self-sufficiency eval (N6) is **not** run from here — use the `run-rulekit-eval` skill (it loads the protocol guardrails at run time); method in [`EVAL-SPEC.md`](EVAL-SPEC.md), results in [`../eval/RESULTS.md`](../eval/RESULTS.md).
+The self-sufficiency eval (N6) is **not** run from here — use the `run-dmtool-eval` skill (it loads the protocol guardrails at run time); method in [`EVAL-SPEC.md`](EVAL-SPEC.md), results in [`../eval/RESULTS.md`](../eval/RESULTS.md).

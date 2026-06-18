@@ -1,5 +1,5 @@
 ---
-name: run-rulekit-eval
+name: run-dmtool-eval
 description: Run the a12-dmkits self-sufficiency eval / Layer-2 benchmark correctly. Use this whenever you (the main assistant) are about to run, resume, or score the N6 eval in this repo — e.g. the user says "run the benchmark", "run the eval", "re-run T4". It loads the protocol guardrails (clean subagent, material boundary, neutral prompts, pinned model, cost model, targeted re-runs) and the run procedure. This is the OPERATOR'S playbook — it is NOT shipped material and must never be given to the eval's subagents (in the wired **bare-tool** mode they get only the self-describing CLI + the model file — no skill; EVAL-SPEC §2a — and the CLI exposes the operator catalog via `cli operators`).
 ---
 

@@ -1,12 +1,12 @@
 # a12-dmkits — self-sufficiency eval & benchmark (N6/N1)
 
-How we measure — and improve — whether rulekit's bundled material lets an LLM author and understand A12 rules **without the kernel's BA docs**. This operationalizes the existing requirement **N6** (semantic self-sufficiency, proposal §14) and drives **N1** (the LLM skill). The proposal states the intent; this spec is the method, the scoring, and the living task suite.
+How we measure — and improve — whether **dmtool's** bundled material (its self-describing CLI surface) lets an LLM author and understand A12 models — rules, computations, and structure — **without the kernel's BA docs**. This operationalizes the existing requirement **N6** (semantic self-sufficiency, proposal §14) and drives **N1** (the LLM skill). The proposal states the intent; this spec is the method, the scoring, and the living task suite.
 
 > **New to LLM evals?** The [primer & glossary](EVAL-PRIMER.md) explains the idea in plain terms and defines the vocabulary (eval, gold, oracle, judge, pass@k, …). This document is the method, scoring, task suite, and runbook.
 
 ## 1. The core method — a clean subagent is the instrument
 
-**Self-evaluation is invalid.** The main-loop assistant that built rulekit has internalized the design; if *it* authors a rule, that proves nothing about the *material*. So the LLM-under-test is a **freshly spawned subagent with clean context**, given **only the material under test** + a task. It is a faithful stand-in for "an arbitrary LLM consumer meeting rulekit for the first time."
+**Self-evaluation is invalid.** The main-loop assistant that built dmkits has internalized the design; if *it* authors a rule, that proves nothing about the *material*. So the LLM-under-test is a **freshly spawned subagent with clean context**, given **only the material under test** + a task. It is a faithful stand-in for "an arbitrary LLM consumer meeting dmtool for the first time."
 
 - **Honest caveat:** the subagent is *Claude-family*, so this measures Claude-family self-sufficiency, not "any LLM." It is still vastly better than self-eval and is what we can run in-loop.
 - **Model dimension (pin it).** The subagent's model is a first-class benchmark axis: the `Agent`/`Workflow` `model` param (`opus`/`sonnet`/`haiku`) runs the *same task across tiers* → `model × task → pass@k`, so we can compare e.g. Sonnet vs Opus self-sufficiency. **Always pin the model explicitly** for reproducibility (don't inherit the session model — it drifts). Results are labeled by model; an unpinned baseline run measures the *strongest* tier (an upper bound: if Opus struggles, weaker tiers struggle more).
@@ -17,10 +17,10 @@ How we measure — and improve — whether rulekit's bundled material lets an LL
 The agent gets exactly the **shipped** material for the persona under test, and **nothing else**:
 
 - **BA/CLI path:** the **self-describing CLI** — its verbs plus their `--help`/`manifest`/`schema` output and the operator catalog reached through **`cli operators`** (since 2026-06-05; no separate `operators.json` hand-off) — and, *in production*, the **N1 skill** (`skill/SKILL.md`). The agent uses the `installDist` launcher (the JVM "java starter" — current code, identical behavior to native; the native binary is a stale spike artifact, never the eval vehicle). Whether the skill is included is the **run-mode** distinction in §2a.
-- **Developer path:** rulekit-the-library's **public API + javadoc** + the catalog, with the **compiler + lint (`RuleDiagnostics`)** as the feedback (N10 — no bespoke vehicle). *Harness:* a clean agent in a **git worktree** authors a rule via the typed builder and validates with `RuleValidator`, iterating against `javac`/gradle. (First probe 2026-06-05 — see [`../eval/RESULTS.md`](../eval/RESULTS.md); harness distinct from the CLI Workflow runner.)
+- **Developer path:** dmkits-the-library's **public API + javadoc** + the catalog, with the **compiler + lint (`RuleDiagnostics`)** as the feedback (N10 — no bespoke vehicle). *Harness:* a clean agent in a **git worktree** authors a rule via the typed builder and validates with `RuleValidator`, iterating against `javac`/gradle. (First probe 2026-06-05 — see [`../eval/RESULTS.md`](../eval/RESULTS.md); harness distinct from the CLI Workflow runner.)
 
 **Hard boundary — per persona** (no design notes, no answer keys; that's what makes the eval measure the *product*):
-- **BA/CLI:** only the CLI (which self-describes its operator catalog via `cli operators`) + (in production mode) the N1 skill — **not** rulekit's source, `docs/`, or tests.
+- **BA/CLI:** only the CLI (which self-describes its operator catalog via `cli operators`) + (in production mode) the N1 skill — **not** dmkits' source, `docs/`, or tests.
 - **Developer:** the public API **source + javadoc** + catalog + `README` *are* the material (that's what a library user sees) — but `skill/`, `docs/` (design notes), and **`eval/` (the golds)** are off-limits.
 
 Either way, reading the model file under test is allowed — it's the input.
@@ -46,7 +46,7 @@ Why bare-tool is the default instrument, not an afterthought: CLAUDE.md's standi
 
 With neither, the run is bare-tool exactly as before. The skill goes to **producers only** — judges stay skill-free (they score against the gold).
 
-**Mandatory boundary audit (production runs).** `skillPath` lets a producer agent read a file, so the run is only valid if the agents read **nothing but the skill**. After a production run, grep the producer transcripts (`…/subagents/workflows/wf_…/agent-*.jsonl`) for Read-tool `file_path` + bash read commands; the only files read may be `skill/SKILL.md`, the model `.dm.json`, and the agents' own `/tmp` docs — any `docs/` · `src/` · `*Test` · other `*.md` · `eval/tasks` read is a boundary breach that **invalidates the run**. (The grep + interpretation live in the `run-rulekit-eval` skill, checklist step 7.)
+**Mandatory boundary audit (production runs).** `skillPath` lets a producer agent read a file, so the run is only valid if the agents read **nothing but the skill**. After a production run, grep the producer transcripts (`…/subagents/workflows/wf_…/agent-*.jsonl`) for Read-tool `file_path` + bash read commands; the only files read may be `skill/SKILL.md`, the model `.dm.json`, and the agents' own `/tmp` docs — any `docs/` · `src/` · `*Test` · other `*.md` · `eval/tasks` read is a boundary breach that **invalidates the run**. (The grep + interpretation live in the `run-dmtool-eval` skill, checklist step 7.)
 
 **Bare-tool stays the default and the only mode CI / the historical trend line use** — a production number is labelled separately and is not comparable to the bare-tool series.
 
@@ -108,7 +108,7 @@ The benchmark is the **forcing function**: it tells us, objectively, which verbs
 
 ## 5. Probe protocol (how to run one)
 
-> **Operationally, run via the `run-rulekit-eval` skill** (`.claude/skills/`) — it loads these guardrails at point-of-use so they aren't run from memory. This section is the rationale behind them.
+> **Operationally, run via the `run-dmtool-eval` skill** (`.claude/skills/`) — it loads these guardrails at point-of-use so they aren't run from memory. This section is the rationale behind them.
 
 - Spawn a **fresh agent** (clean context; the `Agent` tool does this). For the suite at scale, a **Workflow** fans out tasks × k runs through clean agents, each scored via the CLI, aggregating pass@k (opt-in — it spawns many agents).
 - The prompt **must not leak the answer.** *(Protocol lesson from the 2026-06-05 baseline: the first probe prompt hinted at the error-scenario inversion — "think about when the condition is true" — which biases the result. Keep prompts neutral; state the business requirement and the constraints, not the technique.)*
@@ -199,7 +199,7 @@ The trap to avoid: resuming after a material change replays the **old** material
 The run has **three layers**, each with a deliberate role. Getting the layering right is what keeps the eval *valid* (the right thing is isolated) and the results *usable* (the right thing shares context).
 
 ```
-MAIN LOOP  (you, via the run-rulekit-eval skill)      — orchestration; shares your context
+MAIN LOOP  (you, via the run-dmtool-eval skill)      — orchestration; shares your context
   · invoke the skill   · ./gradlew :cli:installDist   · bash eval/prep-sandbox.sh   · bundle tasks → args
   · estimate cost (§8a)   · fold results → eval/RESULTS.md   · resume / cost-track (session-scoped)
   │

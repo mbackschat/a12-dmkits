@@ -67,7 +67,7 @@ const sq = s => `'` + String(s).replace(/'/g, `'\\''`) + `'`
 //     inlining; for a definitive run prefer skillPath so "verbatim" is trustworthy.
 // Either way the skill goes to PRODUCERS only; judges stay skill-free (they score against the gold). After a
 // production run, AUDIT the producer transcripts to confirm the agents read ONLY the skill — nothing else
-// (the material boundary IS the measurement): see EVAL-SPEC §2a / the run-rulekit-eval skill for the grep.
+// (the material boundary IS the measurement): see EVAL-SPEC §2a / the run-dmtool-eval skill for the grep.
 // Label every result as production — it is NOT comparable to the bare-tool trend line.
 const SKILL = (typeof A.skill === 'string' && A.skill.trim()) ? A.skill.trim() : null
 const SKILL_PATH = (typeof A.skillPath === 'string' && A.skillPath.trim()) ? A.skillPath.trim() : null

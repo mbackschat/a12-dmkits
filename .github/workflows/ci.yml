@@ -4,7 +4,7 @@ name: CI
 # rebuilds it from public sources via the sibling a12-kernel-bootstrap (the same path the README
 # documents for humans). That bootstrapped ~/.m2 is cached and keyed on the kernel version + the
 # bootstrap script, so the heavy kernel build runs only on a cache miss. The token-heavy N6 eval is
-# NOT run here (it's opt-in, run manually via the run-rulekit-eval skill).
+# NOT run here (it's opt-in, run manually via the run-dmtool-eval skill).
 
 on:
   push:
