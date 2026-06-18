@@ -16,6 +16,17 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-19 00:20 CEST — `manifest`-skip risk probe: do `apply`/batch agents need `manifest` for op-keys? session 01+02 (sonnet, k=1, bare-tool, cheap)
+
+**Closes the one open question from the orientation probe (00:07).** The positioning finding ("agents never call `manifest`") had one unverified risk: composing a multi-verb `apply` op-list needs each op's `key` (the `--`-stripped param name), which `manifest` carries — would an agent skipping `manifest` guess keys wrong? Both session tasks (`apply` op-lists interleaving a field add + a rule add) **passed 2/2** (`committed · fieldExists · ruleOnField` all true), and the clean transcript parse shows **how**:
+
+| produce agent | binary calls | used `manifest`? | how it got the op-keys |
+|---|---|---|---|
+| mixed/01 (add field → add rule) | 10 | **no** | `--help` → `schema apply` → `model describe` → `field add --help` → `rule add --help` → `patterns` → `schema rule add` → `apply --dry-run` |
+| mixed/02 (add field → date rule) | 14 | **no** | same shape + `operators` + `patterns date-order --help` |
+
+**Verdict: `manifest`-skip is NOT an issue, even in its hypothesized worst case.** Agents compose a correct `apply` op-list from `schema apply` (the list frame + worked example) + **per-verb `--help`** (whose flag names *are* the op-keys, `--`-stripped) + `schema rule add` (the spec shape). `--help` fully substitutes for `manifest` here. So `manifest` is confirmed as the **bulk/machine + conformance** surface, not a surface agents need — the [`../docs/CLI-ORIENTATION-PROPOSAL.md`](../docs/CLI-ORIENTATION-PROPOSAL.md) positioning finding stands with no residual risk. 5 agents (2 produce + 2 deterministic score-executors + 1 prep-verify; session has no LLM judge), ~153k tokens, ~116 s. Boundary: produce agents read only their own `/tmp` op-list + the sandbox model via `-m`.
+
 ### 2026-06-19 00:07 CEST — orientation-cost probe: do authoring agents pay an *orientation tax*? tasks 01+02 (sonnet, k=1, bare-tool, cheap)
 
 **Purpose, not pass@k.** This run exists to measure the **premise** of [`../docs/CLI-ORIENTATION-PROPOSAL.md`](../docs/CLI-ORIENTATION-PROPOSAL.md) — does a cold agent waste tool calls orienting, and would a richer `--help`/`guide` cut them? Scores were a side effect (**02 = 1/1**, byte-identical to gold; **01 = 0/1**, kernel-valid but over-constrained — added `FieldFilled(Name)`, judged non-equivalent on an empty-Name witness doc). The signal is the **produce agents' tool-call behavior**, parsed clean from the transcripts (actual Bash tool-calls, not raw token grep):
