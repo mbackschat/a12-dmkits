@@ -1,0 +1,83 @@
+{
+  "header" : {
+    "id" : "order-tiered",
+    "modelType" : "document",
+    "modelVersion" : "28.4.0",
+    "locales" : [ {
+      "code" : "en_US"
+    } ],
+    "labels" : [ ],
+    "annotations" : [ ],
+    "modelReferences" : [ ]
+  },
+  "content" : {
+    "modelInfo" : {
+      "name" : "order-tiered",
+      "variant" : "cockpit",
+      "revision" : "Arbeitsversion",
+      "immutable" : false
+    },
+    "modelConfig" : {
+      "decimalSeparator" : ".",
+      "timeZone" : "Europe/Berlin",
+      "conditionLanguage" : {
+        "code" : "en_US"
+      },
+      "fieldRefByShortNameAllowed" : true
+    },
+    "modelRoot" : {
+      "rootGroups" : [ {
+        "type" : "Group",
+        "id" : "/Order",
+        "name" : "Order",
+        "Group" : {
+          "repeatability" : 1,
+          "elements" : [ {
+            "type" : "Field",
+            "id" : "/Order/Subtotal",
+            "name" : "Subtotal",
+            "Field" : {
+              "fieldType" : {
+                "type" : "NumberType",
+                "NumberType" : {
+                  "maxFractionalDigits" : 2
+                }
+              }
+            }
+          }, {
+            "type" : "Field",
+            "id" : "/Order/ShippingFee",
+            "name" : "ShippingFee",
+            "Field" : {
+              "fieldType" : {
+                "type" : "NumberType",
+                "NumberType" : {
+                  "maxFractionalDigits" : 2
+                }
+              }
+            }
+          }, {
+            "type" : "Computation",
+            "id" : "/Order/ShippingTier",
+            "name" : "ShippingTier",
+            "Computation" : {
+              "computedFieldRelPath" : "../ShippingFee",
+              "commonPrecondition" : "FieldFilled(Subtotal)",
+              "computationAlternatives" : [ {
+                "precondition" : "[Subtotal] < 100",
+                "operation" : "9.99"
+              }, {
+                "precondition" : "[Subtotal] >= 100",
+                "operation" : "0"
+              } ],
+              "errorMessage" : [ {
+                "locale" : "en_US",
+                "text" : "Shipping fee by order subtotal"
+              } ]
+            }
+          } ]
+        }
+      } ]
+    }
+  }
+}

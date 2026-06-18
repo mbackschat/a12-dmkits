@@ -16,6 +16,15 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-18 20:23 CEST — first `computation-comprehension` run: explain a banded computation, task 20 (sonnet, k=1, bare-tool, cheap)
+
+**1/1 pass.** Validates the new **`computation-comprehension`** family (`rulekit/20-explain-computation`) + the Layer-2 runner wiring — the **computation twin** of the rule-comprehension family. A cold **bare-tool** agent, given only the self-describing CLI + the `order-tiered` model, **discovered `computation explain` on its own** (explored via `--help` 8× + `operators` 9×, read the computation with `computation read` 4×, then `computation explain` 4×) and turned the banded `ShippingTier` computation into correct NL. Judge rationale: *"correctly identifies the computed value (ShippingFee), the FieldFilled(Subtotal) guard, and both bands with the correct direction (below 100 → 9.99, at/above 100 → free/0)."* ~3 agents (1 produce + 1 judge + 1 prep-verify), ~80k tokens, ~48 s (k=1, the cheap floor).
+
+- **Why it matters:** closes the **computation-side NL-explanation gap** (EVAL-SPEC §8d). Rule comprehension was covered (07/08/18); now an agent's ability to explain a *computation* — the computed field, the **WHEN** (common precondition guard), and the **bands** (each `precondition → operation`, direction included) — is scored too, in the same managed-non-determinism shape.
+- **Managed non-determinism:** the soft LLM-rubric score rides a **deterministic backbone** (`EvalGoldOracleTest.assertComputationsExplainable` — the named computation reads to `Converted` and `computation explain` surfaces a present `commonPrecondition` + non-empty `computationAlternatives`; green, no agents).
+- **Boundary audit CLEAN** (bare-tool): across all 3 agent transcripts, **0 Read-tool reads, 0 cat/head/sed/less bash reads, 0 `docs/`/`src/`/`*Test`/`*.md`/`eval/tasks` touches** — the model was reached only through the CLI's `-m`. The prep-verify agent only `ls`'d the sandbox.
+- **Caveat:** a single task at k=1 (cheap, as requested) — a positive first signal that the family + `computation explain` are agent-discoverable and yield correct NL, not a trend point.
+
 ### 2026-06-18 19:45 CEST — manual demo: `rule explain` → natural language, simple + complex rule (sonnet subagents, bare-tool)
 
 An **ad-hoc demonstration** (n=2, Agent-tool subagents — *not* the pass@k workflow): does a cold **bare-tool** agent turn `rule explain` into a correct, business-readable description? Two rules from `order-aggregates`, agent given only the self-describing CLI + the model file. Both nailed the **polarity** (fires-on-violation, restated as the positive requirement) — the payoff of the explain polarity/messages additions.
@@ -27,7 +36,7 @@ An **ad-hoc demonstration** (n=2, Agent-tool subagents — *not* the pass@k work
   > "…a repeating list of line items…looks only at the *first line item that actually has a count filled in* (skipping blank rows) and compares that single count to the order's total quantity. The order is invalid when that first filled line-item count is greater than the order quantity — the requirement being that the first line item's count must not exceed the total quantity ordered."
   Correctly decoded the `FirstFilledValue` aggregate + the `Items*` repetition flatten.
 
-**Takeaway:** the operator glossary + `polarity` + `messages` in `rule explain` are sufficient for a cold agent to explain both a trivial and an aggregate/iteration rule correctly, from the binary alone. (These two rules are also the `comprehension` task `rulekit/18` — so this is covered by the scored suite too; this entry is the readable illustration.) **Coverage note:** rule comprehension is eval-covered (07/08/18); **computation** NL-explanation — computed field + preconditions/alternatives — is NOT yet a task (see EVAL-SPEC §8d "computation-comprehension gap").
+**Takeaway:** the operator glossary + `polarity` + `messages` in `rule explain` are sufficient for a cold agent to explain both a trivial and an aggregate/iteration rule correctly, from the binary alone. (These two rules are also the `comprehension` task `rulekit/18` — so this is covered by the scored suite too; this entry is the readable illustration.) **Coverage note:** rule comprehension is eval-covered (07/08/18); **computation** NL-explanation — computed field + preconditions/alternatives — is now covered too by the `computation-comprehension` family (`rulekit/20`, first run 2026-06-18 20:23 above).
 
 ### 2026-06-18 19:34 CEST — first `workspace-roles` run: access-control audit, task 09 (sonnet, k=1, bare-tool, cheap)
 

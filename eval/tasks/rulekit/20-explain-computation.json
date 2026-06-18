@@ -1,0 +1,16 @@
+{
+  "id": "20-explain-computation",
+  "family": "computation-comprehension",
+  "model": "order-tiered",
+  "computations": ["/Order/ShippingTier"],
+  "intent": "Read the computation already on this order model and explain, in plain business terms: which field it computes, the condition under which it computes at all, and each band (the case it covers and the value it assigns).",
+  "expected": {
+    "computedValue": "It computes the order's ShippingFee.",
+    "when": "It computes only when the order's Subtotal is filled (the common precondition — FieldFilled(Subtotal)); with no Subtotal it computes nothing.",
+    "bands": "Two mutually-exclusive bands on Subtotal: when Subtotal is below 100, ShippingFee = 9.99; when Subtotal is 100 or more, ShippingFee = 0 (free).",
+    "noInversion": "A correct reading must get the DIRECTION right — free at/above 100, charged (9.99) below 100 — not inverted, and must note the Subtotal-filled guard."
+  },
+  "notes": "computation-comprehension family (the rule-comprehension twin, for computations). Deterministic backbone: EvalGoldOracleTest reads the named computation to Converted and asserts `computation explain` surfaces its commonPrecondition + alternatives. The agentic layer (LLM-judged vs `expected`) measures whether a cold agent turns `computation explain` into correct NL — the computed value, the WHEN (precondition), and the BANDS. Fixture order-tiered: a banded ShippingTier computation (built via the tiered-amount pattern) over an own e-commerce domain.",
+  "difficulty": "medium",
+  "suites": []
+}

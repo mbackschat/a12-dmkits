@@ -4,7 +4,7 @@ The per-task catalog for the N6 self-sufficiency eval. **The method, scoring, co
 
 > **Keep this synced (no drift guard — it's hand-maintained).** The **authoritative, always-current task list is the corpus itself — `eval/tasks/<kit>/*.json`.** When you **add / rename / remove / change** a task, update the matching row here **in the same commit** (and `README.md` if the schema changed). The `T<N>` labels are legacy handles for the rulekit tasks → they map to `rulekit/<NN>-<slug>` (e.g. `T1` → `rulekit/01-pro-addon-fee-required`); new tasks are referenced by `<kit>/<NN>-<slug>`, no new `T<N>`.
 
-**Current corpus (2026-06-18): 30 tasks, 13 families** — `rulekit/` 01–19, `modelkit/` 01–09, `mixed/` 01–02.
+**Current corpus (2026-06-18): 31 tasks, 14 families** — `rulekit/` 01–20, `modelkit/` 01–09, `mixed/` 01–02.
 
 ## rulekit — rules, computations, and their comprehension (the operator-coverage catalog)
 
@@ -31,6 +31,7 @@ The **gold** (the exact condition / field / code, or the rules + rubric for comp
 | T17 | Modify-rule | "Tighten the delivery rule: delivery ≥ 2 days after the order date" (`order-ruled`) — `modify --rule` | The agent discovers `/Order/DeliveryNotBeforeOrder`, KEEPS the rule + error field, re-expresses the **condition** — polarity ("≥ 2 days after" → violation `< 2`). |
 | T18 | Comprehension | "Read three value-operator rules and explain each violation" (`order-aggregates`) | All three read to `Converted`. The operand-list operators that read awkwardly as authoring intents — operand-list `Max` (vs a row-aggregate), `RoundDownValue` (truncation), `FirstFilledValue` (first-non-empty vs sum) — + the violation polarity. |
 | T19 | Self-correction | "Delivery date must be on or before 31 December 2024" (order) — the ISO-vs-German-date trap | **Rides the authoring path** (§3): the agent hits the seeded date-format error, reads the diagnostic's `fix`, and retries until kernel-valid — a CLI/catalog diagnostic-quality signal. |
+| `rulekit/20` | Computation-comprehension | "Read the banded shipping computation and explain, in plain business terms, which field it computes, the condition under which it computes, and each band" (`order-tiered`) | **The comprehension twin for computations.** `computation explain` surfaces the `commonPrecondition` (the WHEN guard) + the `computationAlternatives` (the bands — each `precondition → operation`). Read-back must get the computed field, the precondition guard, and each band's direction right (no inversion). Managed non-determinism: deterministic backbone (`EvalGoldOracleTest` reads to `Converted` + asserts the precondition/alternatives surface) + an LLM rubric judge. |
 
 ## modelkit + mixed — structure, metadata, refactor, templates, access-control, sessions
 

@@ -23,7 +23,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import io.github.mbackschat.a12.dm.adapter.ReadResult;
+import io.github.mbackschat.a12.dm.adapter.ReadComputation;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.rulekit.context.ComputationExplanation;
+import io.github.mbackschat.a12.dm.rulekit.context.ModelContext;
 import io.github.mbackschat.a12.dm.adapter.ReferenceRewriter;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
@@ -111,6 +114,9 @@ class EvalGoldOracleTest {
             // i.e. they are actually readable by explain/read. The richer "did the agent explain
             // it right?" scoring is the agent layer's job (the task's `expected` rubric).
             case "comprehension" -> assertRulesRead(task, model, taskFile);
+            // Computation-comprehension: the named computation reads to Converted AND `computation explain`
+            // surfaces its commonPrecondition + alternatives — the structured material a correct NL reading needs.
+            case "computation-comprehension" -> assertComputationsExplainable(task, model, taskFile);
             // Modelkit structure (field/group add): applying the gold edit re-binds kernel-valid AND the
             // expected element exists.
             case "structure" -> assertStructureGoldValidates(task, model, taskFile);
@@ -236,6 +242,29 @@ class EvalGoldOracleTest {
             assertTrue(read instanceof ReadResult.Converted,
                     () -> taskFile.getFileName() + " rule " + rulePath
                             + " must read to Converted (readable by explain), got: " + read);
+        }
+    }
+
+    /**
+     * A computation-comprehension backbone: each named computation must read to {@code Converted} AND
+     * {@code computation explain} must surface its <b>commonPrecondition</b> + <b>alternatives</b> — the
+     * structured material (the *when* + the *bands*) a correct NL reading depends on. The richer "did the
+     * agent explain it right?" scoring is the agent layer's rubric (the task's {@code expected}).
+     */
+    private static void assertComputationsExplainable(JsonNode task, String modelJson, Path taskFile) {
+        BoundModel model = BoundModel.ofJson(modelJson);
+        KernelAdapter adapter = KernelAdapter.of(model);
+        for (JsonNode c : task.get("computations")) {
+            String path = c.asText();
+            ReadComputation read = adapter.readComputation(path);
+            assertTrue(read instanceof ReadComputation.Converted,
+                    () -> taskFile.getFileName() + " computation " + path + " must read to Converted, got: " + read);
+            ComputationExplanation exp =
+                    new ModelContext(model).explainComputation(((ReadComputation.Converted) read).computation());
+            assertTrue(exp.commonPrecondition().isPresent(),
+                    () -> taskFile.getFileName() + " computation " + path + " explain must surface a commonPrecondition");
+            assertFalse(exp.alternatives().isEmpty(),
+                    () -> taskFile.getFileName() + " computation " + path + " explain must surface alternatives (the bands)");
         }
     }
 

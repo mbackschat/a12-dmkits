@@ -100,6 +100,7 @@ const MODIFY_COMP = TASKS.filter(t => t.family === 'modify-computation')
 const MODIFY_RULE = TASKS.filter(t => t.family === 'modify-rule')
 const COMPREHENSION = TASKS.filter(t => t.family === 'comprehension')
 const WORKSPACE_ROLES = TASKS.filter(t => t.family === 'workspace-roles')
+const COMPUTATION_COMPREHENSION = TASKS.filter(t => t.family === 'computation-comprehension')
 // self-correction is authoring with a recovery trap: the obvious first attempt is kernel-rejected (e.g. an
 // ISO date literal → MVK_INVALID_TYPE_FOR_COMPARISON) and the agent must read the diagnostic's `fix` and
 // recover within its turns. The recovery loop happens INSIDE the produce agent (it has the check verb), so
@@ -271,6 +272,19 @@ user / role is involved.
 Return ONLY JSON: {"findings": ["<one problem per entry, in plain words>", ...]}`
 }
 
+// computation-comprehension: explain a banded computation in NL. Neutral — the agent discovers `computation explain`.
+function computationExplainPrompt(task) {
+  return `You help a business analyst understand the COMPUTATIONS already on an A12 model. A computation COMPUTES
+(fills in) a field's value from other fields, often in conditional bands. Assume NO prior A12 knowledge; use ONLY:
+  - the CLI:  ${CLI} <args>   (self-describing: \`${CLI} --help\` lists the verbs, \`${CLI} <target> <op> --help\` shows an op's parameters)
+  - the model file: ${MODEL_FILE(task)}${skillBlock()}
+Do NOT read any source, docs, tests, or other *.md files (beyond the skill named above, if any). For each of these
+computations: ${JSON.stringify(task.computations)}
+explain in plain business terms: (a) which field it computes, (b) the condition under which it computes at all (its
+common precondition / guard), and (c) each band — the case it covers and the value it assigns.
+Return ONLY JSON: {"explanations": { "<computationPath>": "<your explanation>", ... }}`
+}
+
 const AUTHOR_SCHEMA = {
   type: 'object', additionalProperties: true,
   properties: { field: { type: 'string' }, condition: { type: 'string' },
@@ -405,6 +419,16 @@ const rolesAudited = await parallel(rolesAuditRuns.map(r => () =>
   agent(rolesAuditPrompt(r.task), { label: `roles-audit ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: ROLES_AUDIT_SCHEMA })
     .then(out => ({ kind: 'workspace-roles', model: r.model, task: r.task, i: r.i, out }))
     .catch(() => ({ kind: 'workspace-roles', model: r.model, task: r.task, i: r.i, out: null }))))
+
+const compExplainRuns = []
+for (const model of MODELS)
+  for (const task of COMPUTATION_COMPREHENSION)
+    for (let i = 0; i < K; i++) compExplainRuns.push({ model, task, i })
+
+const compExplained = await parallel(compExplainRuns.map(r => () =>
+  agent(computationExplainPrompt(r.task), { label: `comp-explain ${r.model}:${r.task.id}#${r.i}`, phase: 'Produce', model: r.model, schema: EXPLAIN_SCHEMA })
+    .then(out => ({ kind: 'computation-comprehension', model: r.model, task: r.task, i: r.i, out }))
+    .catch(() => ({ kind: 'computation-comprehension', model: r.model, task: r.task, i: r.i, out: null }))))
 
 const compRuns = []
 for (const model of MODELS)
@@ -749,6 +773,22 @@ Return ONLY JSON: {"correct": true|false, "why": "<one sentence>"}`,
     .then(v => ({ key: `${r.model}/${r.task.id}/${r.i}`, model: r.model, taskId: r.task.id, correct: !!(v && v.correct), why: v && v.why }))
     .catch(() => ({ key: `${r.model}/${r.task.id}/${r.i}`, model: r.model, taskId: r.task.id, correct: false }))))
 
+// computation-comprehension judge — did the NL get the computed value, the WHEN (precondition), and the BANDS right?
+const compExplainJudged = await parallel(compExplained.filter(r => r && r.out).map(r => () =>
+  agent(
+    `Judge whether an analyst's explanations of A12 COMPUTATIONS are CORRECT against the reference rubric. Each
+explanation must get (a) the computed field/value, (b) the WHEN — the common precondition/guard, and (c) the
+BANDS — each case → the value it assigns — right, including the DIRECTION (inverting the bands is wrong).
+Decide using ONLY the rubric and the explanations below — do NOT read any file or run any command (the rubric is
+the ground truth).
+Rubric (reference): ${JSON.stringify(r.task.expected)}.
+Analyst's explanations: ${JSON.stringify(r.out.explanations)}.
+Return ONLY JSON: {"correct": true|false, "why": "<one sentence>"}`,
+    { label: `judge ${r.model}:${r.task.id}#${r.i}`, phase: 'Judge',
+      schema: { type: 'object', additionalProperties: true, properties: { correct: { type: 'boolean' }, why: { type: 'string' } }, required: ['correct'] } })
+    .then(v => ({ key: `${r.model}/${r.task.id}/${r.i}`, model: r.model, taskId: r.task.id, correct: !!(v && v.correct), why: v && v.why }))
+    .catch(() => ({ key: `${r.model}/${r.task.id}/${r.i}`, model: r.model, taskId: r.task.id, correct: false }))))
+
 const compJudged = await parallel(compCandidates.map(r => () => {
   const key = `${r.model}/${r.task.id}/${r.i}`
   const valid = compAuthoritative[key] === true
@@ -1046,7 +1086,8 @@ for (const r of metadataScored) bump(r.model, r.taskId, r.pass)
 for (const r of templateScored) bump(r.model, r.taskId, r.pass)
 for (const r of refactorScored) bump(r.model, r.taskId, r.pass)
 for (const r of rolesAuditJudged) bump(r.model, r.taskId, r.correct)
+for (const r of compExplainJudged) bump(r.model, r.taskId, r.correct)
 
 log('pass@k by (model, task): ' + JSON.stringify(agg))
-return { agg, authorJudged, compJudged, modJudged, modRuleJudged, explainJudged, rolesAuditJudged,
+return { agg, authorJudged, compJudged, modJudged, modRuleJudged, explainJudged, rolesAuditJudged, compExplainJudged,
   structureScored, sessionScored, deleteScored, metadataScored, templateScored, refactorScored }
