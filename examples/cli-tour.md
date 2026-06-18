@@ -252,6 +252,27 @@ dmtool -m examples/models/order-ruled.dm.json rule explain /Order/DeliveryNotBef
 
 → The shape is explicit: an `And` of a guard (`AllFieldsFilled`) and a comparison, with `DifferenceInDays` nested *inside* the `<`. Each node's `operator` keys into the glossary for its meaning/gotchas — stated **once**, even if it recurs. A flat list can't tell you the dates are **compared**, not merely referenced; the tree can.
 
+The same payload also carries the two facts an agent needs to **explain the rule to a user without inverting it** — `polarity` and the rule's stored `messages`:
+
+```bash
+dmtool -m examples/models/order-ruled.dm.json rule explain /Order/DeliveryNotBeforeOrder \
+  | jq '{polarity: .data.polarity, messages: [.data.messages[].text]}'
+```
+
+```output
+{
+  "polarity": {
+    "firesOn": "violation",
+    "note": "An A12 rule condition is TRUE when the rule is VIOLATED — it models the state to reject, not the requirement. Explain it as the forbidden case; the rule's message states the requirement positively."
+  },
+  "messages": [
+    "The delivery date must not be earlier than the order date."
+  ]
+}
+```
+
+→ Without `polarity`, the condition `DifferenceInDays(OrderDate, DeliveryDate) < 0` reads as "*checks the day difference is negative*" — the **opposite** of the rule's intent. `firesOn: "violation"` says the condition models the **state to reject**, and the modeler's `messages` state the requirement positively ("must not be earlier"). So an agent explains it correctly: *"flags an order whose delivery date is before its order date."* (The message is the same one `rule read` surfaces — one shared source.)
+
 ## rule check
 
 Validates a **candidate** rule you haven't persisted yet — kernel verdict *plus* dmtool's lint backstop, in the same envelope. The candidate below compares a number whose presence isn't guarded.

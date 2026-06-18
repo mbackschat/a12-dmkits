@@ -10,13 +10,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
-import io.github.mbackschat.a12.dm.adapter.ReadResult;
-import io.github.mbackschat.a12.dm.rulekit.context.ModelContext;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
@@ -32,8 +28,6 @@ import picocli.CommandLine.Parameters;
 @Command(name = "explain", mixinStandardHelpOptions = true,
         description = "Project a rule's condition as a structured explanation (operators, tree, refs, gloss).")
 final class RuleExplainCommand extends BaseCommand {
-
-    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Parameters(index = "0", paramLabel = "<rulePathInModel>",
             description = "the rule's full name — its slash-path in the model, e.g. /Order/SomeRule")
@@ -61,27 +55,11 @@ final class RuleExplainCommand extends BaseCommand {
             if (problem != null) {
                 return fail(problem);
             }
-            ReadResult read = adapter.read(rule);
-            JsonNode data;
-            String summary;
-            if (read instanceof ReadResult.Converted converted) {
-                data = MAPPER.readTree(new ModelContext(bound).explain(converted.condition()).toJson());
-                summary = "explained " + rule;
-            } else {
-                ReadResult.Opaque opaque = (ReadResult.Opaque) read;
-                ObjectNode d = MAPPER.createObjectNode();
-                d.put("rule", rule);
-                d.put("explained", false);
-                d.put("reason", opaque.reason());
-                d.put("canonicalText", opaque.canonicalText());
-                data = d;
-                summary = rule + " is Opaque (not modeled)";
-            }
+            ObjectNode data = RuleExplainData.build(adapter, bound, rule);
+            String summary = RuleExplainData.isOpaque(data) ? rule + " is Opaque (not modeled)" : "explained " + rule;
             ResultEnvelope env = ResultEnvelope.read("rule", "explain", summary, true, List.of(), data);
             out().print(env.toJsonString());
             return env.exitCode();
-        } catch (IOException e) {
-            return fail("explain failed: " + e.getMessage());
         } catch (RuntimeException e) {
             return fail("explain failed: " + e.getMessage());
         }

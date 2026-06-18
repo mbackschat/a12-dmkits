@@ -84,6 +84,15 @@ class RuleVerbTest {
         assertEquals("explain", j.get("op").asText());
         assertEquals("read", j.get("outcome").asText());
         assertEquals(legacy, j.get("data"), "rule explain carries the RuleExplanation in `data`");
+
+        JsonNode data = j.get("data");
+        // polarity — so an agent explaining the rule to a user doesn't invert its meaning (the A12 trap)
+        assertEquals("violation", data.path("polarity").path("firesOn").asText(),
+                () -> "explain states the rule fires on a VIOLATION: " + res.out());
+        assertFalse(data.path("polarity").path("note").asText().isBlank(), "polarity carries a human note");
+        // the rule's stored message — the modeler's own NL, the best explanation seed (G10, now on explain too)
+        assertEquals("Too high.", data.path("messages").get(0).path("text").asText(),
+                () -> "explain surfaces the rule's stored message: " + res.out());
     }
 
     @Test

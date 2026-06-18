@@ -6,7 +6,7 @@
   "type": "object",
   "additionalProperties": false,
   "oneOf": [
-    { "title": "rule (--rule)", "required": ["text", "operators", "references", "iterates", "tree", "gloss"] },
+    { "title": "rule (--rule)", "required": ["text", "operators", "references", "iterates", "tree", "gloss", "polarity", "messages"] },
     { "title": "computation (--computation)", "required": ["computedField", "computedFieldKind", "alternatives", "messages", "gloss"] },
     { "title": "not explained (tolerant Opaque)", "required": ["explained", "reason"] }
   ],
@@ -18,6 +18,16 @@
     "iterationGroup": { "type": "string", "description": "(rule) the repeatable group iterated over; present only when `iterates` is true" },
     "tree": { "$ref": "#/$defs/node" },
     "gloss": { "type": "string", "description": "a one-line natural-language summary" },
+    "polarity": {
+      "type": "object",
+      "description": "(rule) the rule's firing polarity — the constant A12 truth an agent needs so it doesn't explain the rule backwards",
+      "additionalProperties": false,
+      "required": ["firesOn", "note"],
+      "properties": {
+        "firesOn": { "type": "string", "enum": ["violation"], "description": "a rule condition is TRUE on a VIOLATION — it models the state to reject, not the requirement" },
+        "note": { "type": "string", "description": "the human guidance: explain the condition as the forbidden case; the message states the requirement positively" }
+      }
+    },
 
     "computedField": { "type": "string", "description": "(computation) the field the computation assigns" },
     "computedFieldKind": { "type": "string", "description": "(computation) the computed field's model value-kind" },
@@ -37,7 +47,7 @@
     },
     "messages": {
       "type": "array",
-      "description": "(computation) the self-validation error texts, by locale",
+      "description": "the stored error texts by locale, raw + uninterpolated — a computation's self-validation messages, or a rule's error messages (G10, the modeler's own NL); same shape `rule read` surfaces",
       "items": {
         "type": "object",
         "additionalProperties": false,

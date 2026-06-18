@@ -8,9 +8,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import io.github.mbackschat.a12.dm.adapter.ReadResult;
 import io.github.mbackschat.a12.dm.adapter.ReadComputation;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.cli.rule.RuleExplainData;
 import io.github.mbackschat.a12.dm.rulekit.context.ModelContext;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import picocli.CommandLine.Command;
@@ -80,12 +80,8 @@ final class ExplainCommand extends BaseCommand {
         if (problem != null) {
             return fail(problem);
         }
-        ReadResult read = adapter.read(rule);
-        if (read instanceof ReadResult.Converted converted) {
-            out().print(new ModelContext(boundModel).explain(converted.condition()).toJson() + "\n");
-        } else if (read instanceof ReadResult.Opaque opaque) {
-            out().print(notExplained("rule", rule, opaque.reason(), opaque.canonicalText()));
-        }
+        // single source with `rule explain` (incl. polarity + messages) — a parity test asserts byte-identity
+        out().print(pretty(RuleExplainData.build(adapter, boundModel, rule)));
         return 0;
     }
 
