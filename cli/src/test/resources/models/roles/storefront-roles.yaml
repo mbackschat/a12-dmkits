@@ -1,0 +1,17 @@
+# The workspace roles file (FEATURE-GAPS R3 demonstration fixture) — own e-commerce domain.
+# Each model's `roles` header annotation binds to a role `name` declared here.
+roles:
+  - name: shopper
+    description: a customer placing and tracking orders
+    accessRights:
+      - DOCUMENT_CREATE
+      - DOCUMENT_UPDATE
+      - QUERY
+  - name: merchant
+    description: a seller managing the catalog and fulfilling orders
+    accessRights:
+      - DOCUMENT_CREATE
+      - DOCUMENT_UPDATE
+      - DOCUMENT_DELETE
+      - MODEL_MANAGE
+      - QUERY

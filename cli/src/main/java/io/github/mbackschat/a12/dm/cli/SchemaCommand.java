@@ -72,7 +72,8 @@ final class SchemaCommand extends BaseCommand {
             Map.entry("model eval", "eval-doc"),
             Map.entry("model compute", "compute-doc"),
             Map.entry("workspace list", "workspace-list"),
-            Map.entry("workspace graph", "workspace-graph"));
+            Map.entry("workspace graph", "workspace-graph"),
+            Map.entry("workspace roles", "workspace-roles"));
 
     /**
      * Verbs for which {@code schema <verb>} serves <b>no</b> directional contract — because they do not return

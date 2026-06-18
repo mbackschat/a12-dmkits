@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/workspace-roles.schema.json",
+  "title": "WorkspaceRoles",
+  "description": "Output of `dmtool workspace roles <dir>` — the workspace roles lint (FEATURE-GAPS R3). Resolves every model's `roles` header annotation against the workspace roles.yaml and reports the cross-file inconsistencies the kernel can't see. A read, but it GATES: the process exits 1 when any finding is an ERROR (the envelope's `outcome` stays `read`; `valid` is false). The roles file is discovered under the workspace root (auth/roles.yaml, then import/auth/roles.yaml, then user/access-rights.yaml); `--roles` overrides discovery. Models are scanned recursively (a workspace is a tree; roles gate it workspace-wide).",
+  "type": "object",
+  "required": ["root", "rolesFile", "definedRoles", "modelCount", "models", "errors", "warnings", "findings"],
+  "additionalProperties": false,
+  "properties": {
+    "root": { "type": "string", "description": "the workspace root directory, as passed" },
+    "rolesFile": { "type": ["string", "null"], "description": "the resolved roles file (relative to root when under it), or null when none was found or several were (see findings)" },
+    "definedRoles": {
+      "type": "array",
+      "description": "the roles declared by the resolved roles file (empty when none/ambiguous)",
+      "items": {
+        "type": "object",
+        "required": ["name", "accessRights"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "description": "the role identifier a model's `roles` annotation binds to" },
+          "description": { "type": "string", "description": "the role's human description; absent when blank" },
+          "accessRights": { "type": "array", "items": { "type": "string" }, "description": "the access-right tokens the role carries" }
+        }
+      }
+    },
+    "modelCount": { "type": "integer", "description": "number of document models scanned under the root" },
+    "models": {
+      "type": "array",
+      "description": "each scanned model and its gating roles (surface (c): which roles gate each model)",
+      "items": {
+        "type": "object",
+        "required": ["id", "path", "roles"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "description": "the model id (header.id)" },
+          "path": { "type": "string", "description": "the model file's path relative to the scanned root" },
+          "roles": { "type": "array", "items": { "type": "string" }, "description": "the model's gating roles (the comma-split `roles` header annotation); empty if ungated" }
+        }
+      }
+    },
+    "errors": { "type": "integer", "description": "number of ERROR findings (any > 0 → exit 1)" },
+    "warnings": { "type": "integer", "description": "number of WARNING findings (do not fail the gate)" },
+    "findings": {
+      "type": "array",
+      "description": "the cross-file roles inconsistencies, in model then gating-role order",
+      "items": {
+        "type": "object",
+        "required": ["severity", "code", "message"],
+        "additionalProperties": false,
+        "properties": {
+          "severity": { "type": "string", "enum": ["ERROR", "WARNING"], "description": "ERROR fails the gate; WARNING does not" },
+          "code": {
+            "type": "string",
+            "enum": ["UNDEFINED_ROLE", "MISSING_ROLE_ASSIGNMENT", "NO_ROLES_FILE", "MULTIPLE_ROLES_FILES"],
+            "description": "UNDEFINED_ROLE: a model gates to a role the file doesn't declare (the flagship — even the SME permits this). MISSING_ROLE_ASSIGNMENT: a roles file is present but a model carries no `roles` annotation. NO_ROLES_FILE (warning): a model declares roles but no roles file was found. MULTIPLE_ROLES_FILES: more than one roles file (which governs is ambiguous)."
+          },
+          "message": { "type": "string", "description": "the human-readable finding" },
+          "modelId": { "type": "string", "description": "the offending model's id; absent for workspace-level findings (NO_ROLES_FILE / MULTIPLE_ROLES_FILES)" },
+          "modelPath": { "type": "string", "description": "the offending model's path relative to root; absent for workspace-level findings" },
+          "role": { "type": "string", "description": "the undefined role name; present only for UNDEFINED_ROLE" }
+        }
+      }
+    }
+  }
+}

@@ -63,6 +63,9 @@ class VerbDemonstrationTest {
             doc = dir.resolve("doc.json");
             Files.writeString(doc, ex.get("doc").toString());
         }
+        // a verb that needs an ISOLATED workspace with its own roles.yaml (workspace roles): the shared `dir`
+        // accumulates every example's models, so we stage this one's models + roles file in a private subtree.
+        Path rolesWorkspace = ex.has("rolesWorkspace") ? materializeRolesWorkspace(ex.get("rolesWorkspace"), dir) : null;
         List<String> out = new ArrayList<>();
         for (JsonNode tok : ex.path("command")) {
             String t = tok.asText();
@@ -77,6 +80,10 @@ class VerbDemonstrationTest {
                 }
                 // a directory verb (workspace list): the temp dir, already populated with the example's siblings
                 case "<workspace-dir>" -> dir.toString();
+                case "<roles-workspace>" -> {
+                    assertTrue(rolesWorkspace != null, () -> verb + " uses <roles-workspace> but declares no `rolesWorkspace`");
+                    yield rolesWorkspace.toString();
+                }
                 default -> t;
             });
         }
@@ -100,12 +107,30 @@ class VerbDemonstrationTest {
     }
 
     private static Path writeResource(String classpath, Path dir) throws Exception {
-        Path target = dir.resolve(classpath.substring(classpath.lastIndexOf('/') + 1));
+        return writeResourceTo(classpath, dir.resolve(classpath.substring(classpath.lastIndexOf('/') + 1)));
+    }
+
+    private static Path writeResourceTo(String classpath, Path target) throws Exception {
+        Files.createDirectories(target.getParent());
         try (InputStream in = VerbDemonstrationTest.class.getClassLoader().getResourceAsStream(classpath)) {
             assertTrue(in != null, () -> "fixture resource present: " + classpath);
             Files.writeString(target, new String(in.readAllBytes(), StandardCharsets.UTF_8));
         }
         return target;
+    }
+
+    /** Stage an isolated workspace: the spec's models under {@code models/}, its roles file at {@code auth/roles.yaml}. */
+    private static Path materializeRolesWorkspace(JsonNode spec, Path dir) throws Exception {
+        Path ws = dir.resolve("roles-workspace");
+        for (JsonNode m : spec.path("models")) {
+            writeResourceTo("models/" + m.asText(), ws.resolve("models").resolve(basename(m.asText())));
+        }
+        writeResourceTo("models/" + spec.get("roles").asText(), ws.resolve("auth").resolve("roles.yaml"));
+        return ws;
+    }
+
+    private static String basename(String path) {
+        return path.substring(path.lastIndexOf('/') + 1);
     }
 
     private static JsonNode corpus() throws Exception {

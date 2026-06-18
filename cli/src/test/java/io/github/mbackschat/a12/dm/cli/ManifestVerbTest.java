@@ -36,7 +36,7 @@ class ManifestVerbTest {
             "typedef import",
             "include add", "include read", "include remove", "include inline",
             "config read", "config modify",
-            "workspace list", "workspace graph", "workspace validate",
+            "workspace list", "workspace graph", "workspace validate", "workspace roles",
             "where-used", "meta", "export", "batch", "apply", "schema", "operators", "patterns", "diagnostics", "manifest");
 
     @Test

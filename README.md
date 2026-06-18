@@ -338,6 +338,7 @@ dmtool workspace list ./models --validate            # also flag which models ar
 dmtool workspace graph ./models                      # the sub/supertype inheritance hierarchy (nodes + edges)
 dmtool workspace graph ./models --format tree        # …as an indented hierarchy (or --format dot for Graphviz)
 dmtool workspace validate ./models                   # the project GATE: kernel-validate every model, exit 1 if any invalid
+dmtool workspace roles ./models                      # the access-control lint: resolve each model's `roles` vs roles.yaml
 ```
 
 `workspace validate` is the **gate** form — it runs the real kernel over every model in the directory (references resolved across the tree), reports per-model `{valid, diagnostics[]}` (the same rich `MVK_*` diagnostics as `model validate`), and **exits non-zero if any model is invalid**. That makes it a one-line pre-commit / CI check over a whole project:
@@ -347,6 +348,8 @@ dmtool workspace validate ./models || exit 1         # fail the commit/build on 
 ```
 
 (`workspace list --validate` differs: it only flags a per-model boolean; `validate` surfaces *why* and fails the build.)
+
+`workspace roles` is a second gate, on **access control**: A12 models carry a `roles` header annotation naming who may access them, and a workspace declares those roles in `auth/roles.yaml`. The lint resolves the two and flags an **undefined role** (a model gating to a role the file doesn't declare — something even the A12 model editor permits silently), plus ungated models, a missing roles file, and duplicate roles files. It exits non-zero on an error, so it too drops into a pre-commit / CI check (see the [`cli-tour`](examples/cli-tour.md) walkthrough).
 
 For multi-file models (one model `include`s or imports another *by id*), set the **workspace root once** so every verb resolves references with no per-call flag:
 

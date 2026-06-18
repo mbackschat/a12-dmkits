@@ -1,0 +1,46 @@
+{
+  "header": {
+    "id": "Storefront_DM",
+    "modelType": "document",
+    "modelVersion": "28.4.0",
+    "locales": [ { "code": "en_US" } ],
+    "labels": [],
+    "annotations": [ { "name": "roles", "value": "shopper,merchant" } ],
+    "modelReferences": []
+  },
+  "content": {
+    "modelInfo": { "name": "Storefront_DM", "variant": "cockpit", "revision": "Arbeitsversion", "immutable": false },
+    "modelConfig": {
+      "decimalSeparator": ".",
+      "timeZone": "Europe/Berlin",
+      "conditionLanguage": { "code": "en_US" },
+      "fieldRefByShortNameAllowed": true
+    },
+    "modelRoot": {
+      "rootGroups": [
+        {
+          "type": "Group",
+          "id": "/Order",
+          "name": "Order",
+          "Group": {
+            "repeatability": 1,
+            "elements": [
+              {
+                "type": "Field",
+                "id": "/Order/CustomerEmail",
+                "name": "CustomerEmail",
+                "Field": { "fieldType": { "type": "StringType" } }
+              },
+              {
+                "type": "Field",
+                "id": "/Order/Total",
+                "name": "Total",
+                "Field": { "fieldType": { "type": "NumberType", "NumberType": { "maxFractionalDigits": 2 } } }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

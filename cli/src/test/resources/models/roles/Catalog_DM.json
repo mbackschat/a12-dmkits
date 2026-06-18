@@ -1,0 +1,46 @@
+{
+  "header": {
+    "id": "Catalog_DM",
+    "modelType": "document",
+    "modelVersion": "28.4.0",
+    "locales": [ { "code": "en_US" } ],
+    "labels": [],
+    "annotations": [ { "name": "roles", "value": "merchant" } ],
+    "modelReferences": []
+  },
+  "content": {
+    "modelInfo": { "name": "Catalog_DM", "variant": "cockpit", "revision": "Arbeitsversion", "immutable": false },
+    "modelConfig": {
+      "decimalSeparator": ".",
+      "timeZone": "Europe/Berlin",
+      "conditionLanguage": { "code": "en_US" },
+      "fieldRefByShortNameAllowed": true
+    },
+    "modelRoot": {
+      "rootGroups": [
+        {
+          "type": "Group",
+          "id": "/Catalog",
+          "name": "Catalog",
+          "Group": {
+            "repeatability": 1,
+            "elements": [
+              {
+                "type": "Field",
+                "id": "/Catalog/Sku",
+                "name": "Sku",
+                "Field": { "fieldType": { "type": "StringType" } }
+              },
+              {
+                "type": "Field",
+                "id": "/Catalog/ListPrice",
+                "name": "ListPrice",
+                "Field": { "fieldType": { "type": "NumberType", "NumberType": { "maxFractionalDigits": 2 } } }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

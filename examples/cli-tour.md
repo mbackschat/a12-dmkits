@@ -68,6 +68,7 @@ config modify
 workspace list
 workspace graph
 workspace validate
+workspace roles
 export
 where-used
 meta
@@ -641,3 +642,32 @@ Product_Base (abstract)
 ```
 
 → `Product_Base` is the abstract root; its two subtypes nest under it. The default `--format json` returns the same hierarchy as `{nodes, edges}` (each edge `resolved` iff both ends are in the scan — a dangling supertype shows `resolved:false`), and `--format dot` emits a Graphviz digraph.
+
+## workspace roles — does every model gate to a defined role?
+
+A12 models carry a `roles` header annotation (a comma-separated list) naming who may access them; a workspace declares those roles once in `auth/roles.yaml`. `workspace roles` is the **access-control lint** that joins the two: it resolves every model's gating roles against the roles file and reports the cross-file inconsistencies the kernel never sees. It discovers the roles file under the workspace root (`auth/roles.yaml`, the project-template `import/auth/roles.yaml`, or the Preview-App `user/access-rights.yaml`), scans the models recursively, and surfaces the defined roles, each model's gating roles, and the findings:
+
+```bash
+dmtool workspace roles examples/models/storefront-workspace \
+  | jq -c '{rolesFile: .data.rolesFile, definedRoles: [.data.definedRoles[].name],
+            models: [.data.models[] | {id, roles}], findings: .data.findings}'
+```
+
+```output
+{"rolesFile":"auth/roles.yaml","definedRoles":["shopper","merchant"],"models":[{"id":"Catalog_DM","roles":["merchant"]},{"id":"Storefront_DM","roles":["shopper","merchant"]}],"findings":[]}
+```
+
+→ Both models gate to roles `auth/roles.yaml` defines (`shopper`/`merchant`), so the lint is clean. The headline finding is an **undefined role** — a model gating to a role the file doesn't declare, which even the A12 model editor permits silently. Resolving the same models against a roles file that omits `merchant` surfaces it, and the verb **exits 1** so a pre-commit hook or CI step gates on it:
+
+```bash
+dmtool workspace roles examples/models/storefront-workspace \
+  --roles examples/models/shopper-only-roles.yaml 2>&1 \
+  | jq -c '{errors: .data.errors, findings: [.data.findings[] | {code, modelId, role}]}'; echo "(exit ${PIPESTATUS[0]})"
+```
+
+```output
+{"errors":2,"findings":[{"code":"UNDEFINED_ROLE","modelId":"Catalog_DM","role":"merchant"},{"code":"UNDEFINED_ROLE","modelId":"Storefront_DM","role":"merchant"}]}
+(exit 1)
+```
+
+→ `merchant` gates both models but isn't declared, so each draws an `UNDEFINED_ROLE` error and the gate fails. The lint also flags a model left ungated when a roles file exists (`MISSING_ROLE_ASSIGNMENT`), a model that declares roles with no roles file in the workspace (`NO_ROLES_FILE`, a warning), and more than one roles file (`MULTIPLE_ROLES_FILES`). `--roles` overrides discovery, as here.
