@@ -64,6 +64,9 @@ public final class Workspace {
             boolean isAbstract,
             List<String> superTypes,
             List<String> subTypes,
+            // the access-control gating roles — the (comma-split) `roles` header annotation R3's lint resolves
+            // against the workspace roles.yaml; empty when the model carries no `roles` annotation.
+            List<String> roles,
             List<String> locales,
             List<Reference> includes,
             List<Reference> typedefImports,
@@ -170,6 +173,7 @@ public final class Workspace {
                 "true".equalsIgnoreCase(annotations.get("abstract")),
                 splitCsv(annotations.get("superTypes")),
                 splitCsv(annotations.get("subTypes")),
+                splitCsv(annotations.get("roles")),
                 doc.locales(),
                 List.copyOf(includes),
                 List.copyOf(imports),
