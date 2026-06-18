@@ -1,6 +1,17 @@
 # a12-dmkits — self-sufficiency benchmark corpus
 
-The curated task set for the N6 self-sufficiency eval. Method, scoring, and protocol live in [`../docs/EVAL-SPEC.md`](../docs/EVAL-SPEC.md); measured **results** are logged in [`RESULTS.md`](RESULTS.md) (dated, newest first); this directory holds the **corpus** and the **runner entry points** (`benchmark.workflow.js`).
+The curated task corpus for the N6 self-sufficiency eval, plus the **runner entry points** (`benchmark.workflow.js`).
+
+**Doc responsibilities (kept non-overlapping on purpose):**
+
+| Doc | Owns |
+|---|---|
+| [`../docs/EVAL-SPEC.md`](../docs/EVAL-SPEC.md) | the **method** — clean-subagent instrument, material boundary, scoring shapes, cost model, run tiers, protocol (the *stable contract*) |
+| **this file (`README.md`)** | the corpus **operating manual** — the task **schema** (fields), the per-family **gold shapes**, the two layers, and how to **run / add** a task |
+| [`TASKS.md`](TASKS.md) | the per-task **inventory/catalog** — every task's intent + what it exercises (the coverage map) |
+| [`RESULTS.md`](RESULTS.md) | the dated **measured results** — pass@k, lifts (newest first) |
+
+So: *shapes* live here, the *instances* live in `TASKS.md`, and the *authoritative current list* is always the corpus files (`tasks/<kit>/*.json`) themselves.
 
 A second, lighter instrument lives here too: **`gap-finder.workflow.js`** — the on-demand **self-explainability audit** (Option C, [`../docs/CLI-CONFORMANCE-SPEC.md`](../docs/CLI-CONFORMANCE-SPEC.md) "the gap-finder"). k cold agents critique the CLI's self-description for *qualitative* gaps the deterministic conformance matrix can't see; `gap-allowlist.json` is its reasoned tripwire state. It's ~3 agents (no corpus / kernel recheck / judge), distinct from the `benchmark` runner.
 
@@ -35,7 +46,7 @@ A second, lighter instrument lives here too: **`gap-finder.workflow.js`** — th
 }
 ```
 
-**`kit`** is **not a field** — it is the task's subfolder (`rulekit`/`modelkit`/`mixed`), so it can't drift from a map (`EvalSuiteLedgerTest`). The `gold` shape depends on the family:
+**`kit`** is **not a field** — it is the task's subfolder (`rulekit`/`modelkit`/`mixed`), so it can't drift from a map (`EvalSuiteLedgerTest`). The `gold` **shape** depends on the family (below — these are the *templates*; for the actual tasks that use each shape, see the catalog in [`TASKS.md`](TASKS.md)):
 - **authoring / self-correction / modify-rule** — `{field, condition, code}` (above). For *modify-rule* the `condition` is the intended re-expression, keeping the same rule (named by `rule`) + error field; *self-correction*'s gold is the recovered rule.
 - **authoring-computation / modify-computation** — `{computedField, alternatives: [{precondition?, operation}], commonPrecondition?}` (the computation the kernel should accept; for *modify* it's the intended re-expression, keeping the same `computedField`).
 - **comprehension** — no `gold`; instead `rules: [...]` (the model's rule names to read back) + `expected` (the rubric of explanation facts).
@@ -71,4 +82,5 @@ Phases pipeline where they can; the whole run is one background `Workflow`. A 0/
 
 1. Add a `tasks/<id>.json` with a fresh `id`, the `family`, a real `model`, the `operators` it covers, the `intent`, and a `gold` you've confirmed the kernel accepts. Verify per family: authoring → `cli check <model> --field … --condition "…" --code …` → `valid:true`; computation → `cli add <model> <spec.json>` → exit 0; modify-computation → `cli modify <model> --computation <name> --spec <spec.json> --dry-run` → exit 0 with `changed:true`; modify-rule → `cli modify <model> --rule <name> --condition "…" --dry-run` → exit 0 with `changed:true`; multi-file → add `-w <lib>` and the model's `modelPath`/`includeDir` keys.
 2. `EvalGoldOracleTest` picks it up automatically; run `./gradlew :cli:test` — a red oracle means the gold doesn't actually validate (fix the gold, not the test).
-3. Keep the corpus spanning the catalog operator families — coverage is the point (N6 measures self-sufficiency *per covered operator*).
+3. **Add the matching row to [`TASKS.md`](TASKS.md) in the same commit** — the catalog is hand-maintained (no drift guard), so a new/renamed/removed task must update it (and this `README` if the *schema* changed). If you added a new **family**, also wire it in `benchmark.workflow.js` + classify it in `EvalGoldOracleTest`.
+4. Keep the corpus spanning the catalog operator families — coverage is the point (N6 measures self-sufficiency *per covered operator*).
