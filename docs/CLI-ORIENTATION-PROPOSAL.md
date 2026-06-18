@@ -43,14 +43,26 @@ Framed as hypotheses because the evidence is thin (§4). Each names who it serve
 
 | # | Hypothesis | Serves | Cost / constraint |
 |---|---|---|---|
-| **H1** | **Agents flail finding `manifest`.** The one eval data point (a cold agent called `--help` **8×**) is at least as consistent with "never found `manifest`" as with "`--help` is too thin." Cheap fix: `--help` **points to** `manifest`/`operators` ("for the whole tree in one call: `dmtool manifest`"). | agent | ~one line; possibly the real highest-ROI, cheaper than H2. **Disambiguate before H2.** |
+| ~~**H1**~~ **REFUTED** | ~~Agents flail finding `manifest`.~~ The motivating "`--help` ×8" was a **grep artifact** (prompt text + operator-rich output), not real calls. The clean parse (§4 measured) shows agents **never call `manifest`** — they navigate via `--help` + the catalog verbs directly and efficiently. **No discovery gap; do not build.** | — | — |
 | **H2** | **EXAMPLES in `--help` text.** A worked example **already exists in `manifest`** (`example{intent,command}`, executed by `VerbDemonstrationTest`); the gap is the **human-facing `--help` text**. | agent + direct BA/dev | **Must be single-sourced** from the same `verb-examples.json` (custom picocli `IHelpSectionRenderer`) — a *second* hand-authored copy reintroduces the exact drift the project gates against. |
 | **H3** | **Dual-format output** (Design **B**: JSON stays the canonical/default contract; add an explicit `--text`/`--pretty`). | the **secondary** direct-BA/dev path only | Every envelope already has a `summary` field (`jq -r .summary` is a cheap human line *today*), so `--text`'s marginal value is the `data` block. **Not TTY-detection** — an agent in a PTY would silently get text. Conformance/eval/showboat must pin `--json`. |
 | **H4** | **A `guide <area>` verb** — one call emits the manifest+schemas+operators slice for an area (e.g. `guide rule`). | agent | **Conditional on §4 proving call-*count* is the bottleneck.** Marginal over `manifest`+`operators`; adds a verb + a new operator-taxonomy to maintain (which operators are "rule" vs "computation") + **over-delivers context** (all condition operators when the task needs two); borderline against arcjet's "don't embed docs in the binary." **Do not lead with it.** |
 
 **`llms.txt` framing — dropped.** It is a convention for *websites* crawled by LLMs; a local binary shipped via a plugin marketplace has **no passive non-executing consumer** to read such a file. Unless one is named, there is no warrant for a static bundle file — the *verb* (H4, if built) is the only sensible form, because it is derived and cannot drift.
 
+### Measured verdict (2026-06-19 — the cheap probe deflated most of this)
+
+The §4 cheap probe ran (read transcripts already on disk + one authoring run, 01+02, sonnet k=1; full data in [`../eval/RESULTS.md`](../eval/RESULTS.md)). What it found, and what it does to each hypothesis:
+
+- **The orientation tax is real for authoring (10–18 produce calls vs 3–5 for reads) but *productive, not flailing*** — operator-semantics lookups, `patterns`, `model describe`, and a working **error→`fix` loop** (task 01 hit `MVK_NEG_CONDITION_IN_ITERATION` and looked up `diagnostics <code>` — the self-correction surface working). These calls are the agent *learning the DSL per-task*, not waste a help-blurb removes.
+- **The one failure was a *judgment* miss** (task 01 over-constrained with `FieldFilled(Name)` — kernel-valid, narrower than intent — while it *had* the correct `patterns` guard idiom in hand). The real gap is **judgment/prevention**, which belongs to the **skill + catalog + lints**, *not* the help/guide system this proposal scopes.
+- **Hypothesis ledger after the probe:** **H1 — dead** (refuted, above). **H2** (EXAMPLES-in-help) — **weakly supported**: agents already pull examples/semantics from per-verb `--help` + `patterns <id>` + `operators <id>`; the call volume is operator-*semantics*, not "how do I call this verb." **H3** (dual-format) — **orthogonal & unaffected**; still reasonable for the secondary direct-BA/dev path. **H4** (`guide` bundle) — the **only** one with call-count support (01's ~6 `operators` round-trips would collapse to one), but it **over-delivers** (~41 operators when 3–4 were wanted) and would not have prevented the miss.
+
+**Net:** the help/guide system is not the bottleneck the proposal hypothesized. **Recommendation:** keep only **H3** as a small, independently-justified human-surface improvement; **shelve H1/H2/H4** pending a real signal; and route the genuine lever (judgment/over-constraint prevention, `patterns` trust) to the skill/catalog/lint work, outside this proposal's scope.
+
 ## 4. The measurement — cheap first, invest later
+
+**Status: executed 2026-06-19** (steps 1–2 below). Step 3 was **not triggered** — the cheap signal already deflated the premise (see *Measured verdict*, §3, and [`../eval/RESULTS.md`](../eval/RESULTS.md)). The method below stays as the record of *how* it was measured and the bar for any re-measurement.
 
 The premise ("reduce calls / prevent errors") is an empirical claim, and this project ranks by measured lift — but **the full N6 suite is too costly to spend on an efficiency question.** So the measurement is tiered by cost-vs-value:
 
@@ -69,7 +81,9 @@ The signal distinguishes the hypotheses: many `--help` calls but few `manifest` 
 - **EXAMPLES-in-help = single-sourced** from `verb-examples.json` if built — no second copy.
 - **`llms.txt` / static bundle file = dropped** unless a non-executing consumer is named.
 
-**Deferred to the §4 signal:** the *priority* among H1/H2/H4, and whether H4 (the `guide` verb) is built at all.
+**Settled by the §4 probe (2026-06-19):** **H1 dead** (no manifest-discovery gap); **H1/H2/H4 shelved** pending a real signal (the orientation cost is productive, not flailing); **H3 kept** as a small independently-justified human-surface item; the genuine lever (judgment/over-constraint prevention, `patterns` trust) is **routed out of scope** to the skill/catalog/lint work. See *Measured verdict* (§3).
+
+**Still deferred:** if a future, fuller authoring signal (more tasks, k≥3) shows a real reducible tax, re-open H2/H4 against it — the §4 method is the bar.
 
 ## 6. Packaging — what the plugin/skill carries for orientation
 

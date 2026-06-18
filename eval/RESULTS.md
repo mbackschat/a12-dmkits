@@ -16,6 +16,24 @@ All entries below are **single-probe (n=1 per cell)** unless noted; the Layer-2 
 
 ## Probe log
 
+### 2026-06-19 00:07 CEST — orientation-cost probe: do authoring agents pay an *orientation tax*? tasks 01+02 (sonnet, k=1, bare-tool, cheap)
+
+**Purpose, not pass@k.** This run exists to measure the **premise** of [`../docs/CLI-ORIENTATION-PROPOSAL.md`](../docs/CLI-ORIENTATION-PROPOSAL.md) — does a cold agent waste tool calls orienting, and would a richer `--help`/`guide` cut them? Scores were a side effect (**02 = 1/1**, byte-identical to gold; **01 = 0/1**, kernel-valid but over-constrained — added `FieldFilled(Name)`, judged non-equivalent on an empty-Name witness doc). The signal is the **produce agents' tool-call behavior**, parsed clean from the transcripts (actual Bash tool-calls, not raw token grep):
+
+| Task | produce calls | the actual sequence |
+|---|---|---|
+| read tasks (prior runs, for contrast) | 3–5 | `--help` → per-verb `--help` → do the work |
+| **02** (simple, field-vs-field) | **10** | `--help` → `model describe` → `patterns` → `operators` → `rule check --help` → `operators LessThan` → iterative `rule check` |
+| **01** (complex, iteration guard) | **18** | `--help` → `patterns` → `rule check --help` → patterns scaffold → `rule check` → **`diagnostics MVK_NEG_CONDITION_IN_ITERATION`** (looked up after hitting it) → `operators FieldNotFilled/FieldFilled/GroupFilled` + `operators` (list) ×several → iterative `rule check` |
+
+**Findings (these redirect the proposal):**
+- **`manifest` was never called** — in *any* run, read or authoring. Agents navigate via `--help` + the catalog verbs (`patterns`/`operators`/`diagnostics`) directly. → **proposal H1 (a "`--help`→`manifest` discovery gap") is refuted.** (It also corrects an earlier session claim of "`--help` ×8, `operators` ×9" on a read task — that was a *grep artifact* of the prompt text + the operator-rich `computation explain` output, **not** real calls; the clean parse showed ~3 `--help`, 0 `operators`.)
+- **Authoring *does* cost more (10–18 calls vs 3–5 for reads), but the calls are productive, not flailing**: operator-semantics lookups, `patterns`, `model describe`, and a working **error→`fix` loop** (01 hit `MVK_NEG_CONDITION_IN_ITERATION` and looked up `diagnostics <code>` — the self-correction surface doing its job). Not wasted exploration a help-blurb would remove.
+- **The one failure was a *judgment* miss, not an orientation gap.** 01 over-constrained (`FieldFilled(Name)`) — kernel-valid, semantically narrower than intent. It *had* `patterns` (the correct guard idiom) in hand and hand-rolled past it. More `--help`/examples wouldn't fix that; it's the **skill/lint** domain.
+- **Verdict on the hypotheses:** H1 **dead**; H2 (EXAMPLES-in-help) **weakly supported** (agents already pull semantics from per-verb `--help` + `patterns <id>` + `operators <id>`); H3 (dual-format) **orthogonal** (serves the secondary human path regardless); H4 (`guide` bundle) the **only** one with call-count support (01's ~6 `operators` round-trips would collapse to one) but it **over-delivers** (~41 operators when 3–4 were wanted) and wouldn't have prevented the miss. **The real lever the data surfaces is judgment/prevention — skill + catalog + lints, not the help/guide system.**
+- **Boundary CLEAN** (bare-tool): only `/tmp/rk-eval-ops.json` (the agent's own scratch op-list) was read; no `docs/`/`src/`/`*Test`/`*.md`/`eval/tasks` access. 6 agents, ~191k tokens, ~223 s.
+- **Caveat:** n=1 per task, 2 tasks — a directional signal that **deflates the proposal cheaply** ($-cents, 6 agents), not a trend. Exactly the cost-vs-value first step the proposal's §4 prescribes.
+
 ### 2026-06-18 20:23 CEST — first `computation-comprehension` run: explain a banded computation, task 20 (sonnet, k=1, bare-tool, cheap)
 
 **1/1 pass.** Validates the new **`computation-comprehension`** family (`rulekit/20-explain-computation`) + the Layer-2 runner wiring — the **computation twin** of the rule-comprehension family. A cold **bare-tool** agent, given only the self-describing CLI + the `order-tiered` model, **discovered `computation explain` on its own** (explored via `--help` 8× + `operators` 9×, read the computation with `computation read` 4×, then `computation explain` 4×) and turned the banded `ShippingTier` computation into correct NL. Judge rationale: *"correctly identifies the computed value (ShippingFee), the FieldFilled(Subtotal) guard, and both bands with the correct direction (below 100 → 9.99, at/above 100 → free/0)."* ~3 agents (1 produce + 1 judge + 1 prep-verify), ~80k tokens, ~48 s (k=1, the cheap floor).
