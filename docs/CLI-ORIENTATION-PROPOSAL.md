@@ -2,7 +2,7 @@
 
 How a cold consumer **orients** to `dmtool` — finds what it can do, how to call it, and what comes back — with the fewest wasted tool calls and the fewest preventable errors, and what the **plugin/skill** should carry to support that. This is a **proposal** (design rationale + forward decisions), not a contract: the settled pieces already live in specs and this doc **references, never restates** them. Each decision **graduates** into its owning spec as it ships (§7).
 
-**Status (2026-06-19):** the premise was tested cheaply (§4) and **largely did not hold** — the help/guide system is *not* the bottleneck this doc first hypothesized. Two small recommendations survive: **R1 (the `--help` orientation footer) is shipped**; **R2 (dual-format)** remains proposed. The rest is shelved or routed out of scope. Read §3 first.
+**Status (2026-06-19):** the premise was tested cheaply (§4) and **largely did not hold** — the help/guide system is *not* the bottleneck this doc first hypothesized. Two small recommendations survive, **both now shipped**: **R1 (the `--help` orientation footer)** and **R2 (dual-format `--text`)**. The rest is shelved or routed out of scope. Read §3 first.
 
 **Defers to (the contracts this builds on):**
 
@@ -70,9 +70,9 @@ The design (the cheap middle ground): not per-verb examples (shelved) and not th
 
 **Honest sizing:** for the *diligent* agents measured this is **marginal** — they already found that path unaided. Its value is (1) **legibility** for a less-thorough agent, (2) it **positions `manifest` correctly** at first contact ("the whole tree in one call" — the bulk option, not the only door — see the finding below), and (3) it is the **read-when map (§2) in miniature**, delivered in the binary. Cost is ~5 static lines referencing only verb names, so the existing `CommandReferencesResolveTest` already guards it against drift — no new gate. It is the cheapest defensible change.
 
-### R2 — dual-format output (Design B)
+### R2 — dual-format output (Design B) — ✅ SHIPPED 2026-06-19
 
-JSON stays the **canonical/default** contract; add an explicit `--text`/`--pretty`. Serves only the **secondary** direct-BA/dev path (§1). Every envelope already carries a `summary` field (`jq -r .summary` is a cheap human line today), so `--text`'s marginal value is a readable rendering of the `data` block. **Not TTY-detection** — an agent in a PTY would silently get text. Conformance/eval/showboat must pin `--json` explicitly.
+A global `--text` flag (graduated into [`CLI-SPEC.md`](CLI-SPEC.md) §2; locked by `CliTextFormatTest`). JSON stays the **canonical/default** contract; `--text` renders the result envelope as human text for the **secondary** direct-BA/dev path. **Not TTY-detection** — an explicit flag, so an agent in a PTY never silently gets text; JSON being the default means conformance/eval/showboat are unchanged (they never pass `--text`). Implementation: a gated boundary view-transform in `Cli.run` (`TextRenderer`) re-renders only an envelope and passes catalogs/artifacts (`operators`/`manifest`/`export`/…) through as JSON — so it needed no change to the ~88 emit sites. (The original sketch also mentioned `--pretty`; shipped as the single `--text`.)
 
 ### The positioning finding — `manifest` is the bulk/machine door, not the agent's front door
 
@@ -107,7 +107,7 @@ The signal distinguished the candidates cleanly: many `--help` but zero `manifes
 
 - **Audience model** — indirect-primary / direct-secondary (§1). The agent is the orientation target; human-format serves the secondary path.
 - **R1 — top-level `--help` orientation footer** — ✅ **SHIPPED 2026-06-19** (graduated into CLI-SPEC §2; locked by `CliHelpTest`; no new gate; delivers the positioning correction at first contact).
-- **R2 — dual-format, Design B** — JSON canonical default + explicit `--text`; never TTY-detection.
+- **R2 — dual-format, Design B** — ✅ **SHIPPED 2026-06-19** (the `--text` flag; graduated into CLI-SPEC §2; locked by `CliTextFormatTest`). JSON canonical default + explicit `--text`; never TTY-detection.
 - **`manifest` positioning** — the bulk/machine + conformance surface, not the agent's primary door (graduates into CLI-SPEC §2).
 - **`llms.txt` / static bundle file = dropped** unless a non-executing consumer is named.
 
@@ -128,7 +128,7 @@ This proposal shrinks to a pointer as items graduate (the FEATURE-GAPS pattern):
 | The read-when model (§2) | [`CLI-SPEC.md`](CLI-SPEC.md) §2 | extend the "what an agent needs → where" table with the layer/audience framing |
 | The `manifest` positioning finding (§3) | CLI-SPEC §2 | reframe `manifest` as the bulk/machine + conformance surface; the agent's front door is `--help` + catalog verbs |
 | **R1** — `--help` orientation footer ✅ **shipped** | CLI-SPEC §2 (done) | the footer content (verb-name refs only → already drift-guarded); locked by `CliHelpTest` |
-| **R2** — dual-format (Design B) | CLI-SPEC §2 (a format section) | `--text` + conformance pinning `--json` |
+| **R2** — dual-format (Design B) ✅ **shipped** | CLI-SPEC §2 (done) | the `--text` flag; locked by `CliTextFormatTest` |
 | Orientation index in the skill (§6) | [`RELEASE-SPEC.md`](RELEASE-SPEC.md) §6 + `skill/SKILL.md` | the read-when section |
 | *(shelved)* per-verb examples, `guide` verb | — | not graduating; re-open only on a real signal |
 

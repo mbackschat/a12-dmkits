@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli;
 
 import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
@@ -62,8 +63,20 @@ public final class Cli {
      * self-describing surface) before dispatch.
      */
     static int run(String[] args, Appendable out, Appendable err, boolean nativeProfile) {
-        PrintWriter outW = new PrintWriter(new AppendableWriter(out), true);
         PrintWriter errW = new PrintWriter(new AppendableWriter(err), true);
+        // R2 (CLI-ORIENTATION-PROPOSAL §3): with --text, capture stdout so a result envelope can be
+        // re-rendered as human-readable text; non-envelope output (catalogs, artifacts, --help, errors)
+        // passes through unchanged (TextRenderer is gated). JSON is the default. The flag is detected here,
+        // before execute, to choose the output sink — it is also a self-describing @Option on RootCommand.
+        boolean textMode = false;
+        for (String a : args) {
+            if (a.equals("--text")) {
+                textMode = true;
+                break;
+            }
+        }
+        StringWriter textBuf = textMode ? new StringWriter() : null;
+        PrintWriter outW = new PrintWriter(textMode ? textBuf : new AppendableWriter(out), true);
         try {
             CommandLine cli = new CommandLine(new RootCommand())
                     .setOut(outW)
@@ -76,6 +89,11 @@ public final class Cli {
         } finally {
             outW.flush();
             errW.flush();
+            if (textMode) {
+                PrintWriter realOut = new PrintWriter(new AppendableWriter(out), true);
+                realOut.print(TextRenderer.renderIfEnvelope(textBuf.toString()));
+                realOut.flush();
+            }
         }
     }
 

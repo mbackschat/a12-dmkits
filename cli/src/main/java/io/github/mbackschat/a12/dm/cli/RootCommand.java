@@ -94,6 +94,16 @@ final class RootCommand implements Callable<Integer> {
                     + "default is the model's own folder.")
     java.util.List<java.nio.file.Path> workspace = new java.util.ArrayList<>();
 
+    // R2 (CLI-ORIENTATION-PROPOSAL §3): render the result envelope as human text instead of JSON, for the
+    // secondary direct-BA/dev path. JSON stays the default + the machine contract; this is opt-in (never
+    // TTY-detected, so an agent in a PTY can't silently get text). Declared here so it is self-describing
+    // (manifest/--help); the value is detected by an arg-scan in Cli.run *before* execute (to set up output
+    // capture), so this field exists only to surface + accept the flag.
+    @Option(names = "--text", scope = ScopeType.INHERIT,
+            description = "render the result envelope as human-readable text instead of JSON (JSON is the "
+                    + "default and the machine contract). Catalogs (operators/manifest/…) stay JSON.")
+    boolean text;
+
     @Override
     public Integer call() {
         // no verb given → usage to stderr, exit 2 (preserves the prior bare-invocation behavior)

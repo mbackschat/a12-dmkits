@@ -29,8 +29,9 @@ dmtool -m examples/models/order-ruled.dm.json model eval --help
 ```
 
 ```output
-Usage: dmtool model eval [-hV] [--code=<errorCode>] [--condition=<DSL>]
-                         --doc=<document.json> [--field=<fieldPathInModel>]
+Usage: dmtool model eval [-hV] [--text] [--code=<errorCode>]
+                         [--condition=<DSL>] --doc=<document.json>
+                         [--field=<fieldPathInModel>]
                          [--group=<groupPathInModel>] [--locale=<locale>]
                          [-m=<model.json>] [--name=<name>]
                          [--rule=<rulePathInModel>] [--severity=ERROR|WARNING]
@@ -60,6 +61,10 @@ Run the kernel over a document INSTANCE; report which rules fire in `data`
                                slash-path)
       --severity=ERROR|WARNING
                              the candidate rule's severity (default: ERROR)
+      --text                 render the result envelope as human-readable text
+                               instead of JSON (JSON is the default and the
+                               machine contract). Catalogs
+                               (operators/manifest/…) stay JSON.
   -V, --version              Print version information and exit.
   -w, --workspace=<dir>      the workspace root(s): directory tree(s) to
                                resolve a model's included / type-def-imported
@@ -263,8 +268,8 @@ dmtool -m examples/models/subscription-computed.dm.json model compute --help
 ```
 
 ```output
-Usage: dmtool model compute [-hV] --doc=<document.json> [--locale=<locale>]
-                            [-m=<model.json>] [-w=<dir>]...
+Usage: dmtool model compute [-hV] [--text] --doc=<document.json>
+                            [--locale=<locale>] [-m=<model.json>] [-w=<dir>]...
 Run computations over a document INSTANCE; report each computed field's value
 in `data` (read-only).
       --doc=<document.json>  the document INSTANCE (field data) — a nested JSON
@@ -273,6 +278,10 @@ in `data` (read-only).
       --locale=<locale>      the computation locale (default: en_US)
   -m, --model=<model.json>   the DM-JSON model file to operate on (set once;
                                accepted before or after the verb)
+      --text                 render the result envelope as human-readable text
+                               instead of JSON (JSON is the default and the
+                               machine contract). Catalogs
+                               (operators/manifest/…) stay JSON.
   -V, --version              Print version information and exit.
   -w, --workspace=<dir>      the workspace root(s): directory tree(s) to
                                resolve a model's included / type-def-imported
