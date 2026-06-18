@@ -64,16 +64,6 @@ public final class Cli {
     static int run(String[] args, Appendable out, Appendable err, boolean nativeProfile) {
         PrintWriter outW = new PrintWriter(new AppendableWriter(out), true);
         PrintWriter errW = new PrintWriter(new AppendableWriter(err), true);
-        // the removed --include-dir option is a fail-fast tombstone (renamed to -w/--workspace) — a pre-parse
-        // guard so a stale caller is corrected, not met with a generic "Unknown option" (the no-silent-alias stance)
-        for (String a : args) {
-            if (a.equals("--include-dir") || a.startsWith("--include-dir=")) {
-                errW.println("the `--include-dir` option was renamed to `-w/--workspace` (the workspace root — "
-                        + "it resolves a model's includes AND type-def imports). Rerun with `-w <dir>`.");
-                errW.flush();
-                return 2;
-            }
-        }
         try {
             CommandLine cli = new CommandLine(new RootCommand())
                     .setOut(outW)
@@ -81,12 +71,6 @@ public final class Cli {
                     .setExpandAtFiles(false); // model paths are plain args, never @argfiles
             if (nativeProfile) {
                 hideJvmOnlyVerbs(cli);
-            }
-            // the renamed `doc` target is a fail-fast tombstone — let any trailing op/flags reach it (so it
-            // can echo the corrected `model …` command) instead of erroring on an unknown subcommand/option
-            CommandLine doc = cli.getSubcommands().get("doc");
-            if (doc != null) {
-                doc.setUnmatchedArgumentsAllowed(true).setUnmatchedOptionsArePositionalParams(true);
             }
             return cli.execute(args);
         } finally {

@@ -46,15 +46,6 @@ class WorkspaceRootTest {
                 () -> "the -w workspace root resolves the include: " + withRoot);
     }
 
-    @Test
-    void theRemovedIncludeDirOptionFailsFastWithACorrectiveMessage() {
-        // --include-dir was collapsed into -w/--workspace — a clean break, not a silent alias (CLI-SPEC §3a)
-        CliTestSupport.Result res = CliTestSupport.run("-m", "x.dm.json", "model", "validate", "--include-dir", "./models");
-        assertEquals(2, res.code(), res::out);
-        assertTrue(res.err().contains("-w/--workspace"),
-                () -> "the removed --include-dir names its replacement: " + res.err());
-    }
-
     private static JsonNode info(CliTestSupport.Result res) throws Exception {
         assertEquals(0, res.code(), res::err);
         return M.readTree(res.out()).path("data");

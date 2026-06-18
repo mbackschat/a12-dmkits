@@ -45,7 +45,6 @@ import picocli.CommandLine.Spec;
         },
         subcommands = {
             ModelCommand.class,
-            DocTombstoneCommand.class,
             RuleCommand.class,
             ComputationCommand.class,
             FieldCommand.class,
