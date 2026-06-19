@@ -174,6 +174,7 @@ final class FieldAddCommand extends BaseCommand {
     private boolean refused(ModelDocument doc, String groupPath, String target, String op) {
         Optional<Refusal> refusal = new SafetyGate()
                 .require(SafetyChecks.exists(doc, groupPath, true))
+                .require(SafetyChecks.notAnIncludeMount(doc, groupPath))
                 .firstFailure();
         if (refusal.isPresent()) {
             refuse(target, op, refusal.get());

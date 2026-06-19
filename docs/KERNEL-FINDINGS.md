@@ -537,6 +537,12 @@ Verified (experiment + the **a12-kernel-mm** corpus):
 
 *Consequence for rulekit:* a from-scratch model defaults `conditionLanguage` to **en_US regardless of the display locale** (it used to derive it from the first display locale — breaking English conditions on a `de_DE` model; surfaced by probe `01-de`). Treatment + the single-source guard in [`KERNEL-INTEGRATION-NOTES.md`](KERNEL-INTEGRATION-NOTES.md). *(Locked: `DocumentModelDraftTest.conditionLanguageDefaultsToEnglishRegardlessOfDisplayLocale` — a de_DE draft keeps en_US and the kernel accepts it; `ModelNewVerbTest.aGermanLocaleModelStillAcceptsEnglishDslKeywords` — English DSL validates end-to-end on a de_DE model; `ModelNewVerbTest.aGermanLocaleModelAlsoAcceptsEnglishKeywordComputationsAndPreconditions` — the sibling lock proving the model-level fix covers computation operations + preconditions, not just rule conditions.)*
 
+## A mount group's local elements SHADOW the include — the kernel does not expand it, and stays valid (2026-06-20)
+
+A group that mounts an include carries `Group.modelAlias`. If that same group **also** has its own `Group.elements`, the kernel uses the **local elements** and does **not** expand the include — and the model is still **kernel-valid** (no error, no warning). Experiment (`field add` into a mount group): a mount of `address` resolving `/Person/Addr/{Street,City}`, after adding a local `Extra`, resolves **only** `/Person/Addr/Extra` — `Street`/`City` silently gone — and `model validate` returns `valid:true`. So local content on a mount is a *silent override*, not an extension.
+
+*Consequence for rulekit:* a routine `field add`/`group add` whose target group is a mount used to write a local element and report `applied`, silently discarding the entire mounted include. rulekit now **refuses** an element-add into a mount group (`RK_MOUNT_NOT_EDITABLE`) — see KERNEL-INTEGRATION-NOTES; the kernel's silent-override behavior itself is the finding here. *(Surfaced by probe `01-de`; locked by `MountEditRefusalTest`.)*
+
 ## An include's locales must be a superset of the base's — not the reverse (2026-06-13)
 
 The kernel's include locale-compatibility rule, pinned by experiment, runs in the direction that's easy to get backwards: **the included model must declare a superset of the base model's locales** — it must *cover* every locale the base declares. Extra locales in the include are harmless.

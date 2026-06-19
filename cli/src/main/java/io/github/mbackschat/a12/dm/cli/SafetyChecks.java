@@ -179,6 +179,29 @@ public final class SafetyChecks {
     }
 
     /**
+     * Refuse adding a child element into a group that mounts an include ({@code modelAlias}) — the kernel would
+     * use the mount's own {@code elements} and stop expanding the include, silently discarding the mounted
+     * content (valid but wrong; KERNEL-FINDINGS, probe 01-de Finding 4). {@code RK_MOUNT_NOT_EDITABLE}.
+     */
+    public static SafetyCheck notAnIncludeMount(ModelDocument doc, String groupPath) {
+        return () -> {
+            Optional<String> alias = doc.mountAliasAt(groupPath);
+            if (alias.isEmpty()) {
+                return Optional.empty();
+            }
+            Diagnostic diagnostic = Diagnostic.precheck(Optional.of("RK_MOUNT_NOT_EDITABLE"),
+                    "group '" + groupPath + "' mounts the include '" + alias.get()
+                            + "' — adding a child here would shadow the mounted content (its included fields would silently vanish)",
+                    Diagnostic.Where.arg(null, "--group"),
+                    Optional.of("add the element to the included model '" + alias.get()
+                            + "' instead (edit that model's structure), or choose a non-mount group"),
+                    Optional.empty());
+            return Optional.of(new Refusal(
+                    "group '" + groupPath + "' is an include mount — refusing to add a shadowing child", null, diagnostic));
+        };
+    }
+
+    /**
      * Refuse a rule refactor whose target rule does not exist (RK_NO_SUCH_RULE). A rule is not a field/group,
      * so its existence is read from the bound model's rule names rather than the path tree.
      */

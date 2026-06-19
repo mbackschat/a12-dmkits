@@ -405,7 +405,7 @@ dmtool diagnostics | jq -c '{count, severities: (.diagnostics|map(.severity)|uni
 ```
 
 ```output
-{"count":37,"severities":["ERROR","INFO","WARNING"],"sources":["ENVIRONMENT","KERNEL","LINT","PRECHECK"]}
+{"count":38,"severities":["ERROR","INFO","WARNING"],"sources":["ENVIRONMENT","KERNEL","LINT","PRECHECK"]}
 ```
 
 Pass a code for its full entry — meaning + the canonical fix:

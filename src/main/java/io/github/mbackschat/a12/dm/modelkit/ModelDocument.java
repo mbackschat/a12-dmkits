@@ -1073,6 +1073,20 @@ public final class ModelDocument {
         return this;
     }
 
+    /**
+     * The include alias the group at {@code groupPath} mounts ({@code Group.modelAlias}), or empty if it is
+     * not an include mount. A mount group's own {@code elements} would <em>shadow</em> the include (the kernel
+     * stops expanding it, silently — KERNEL-FINDINGS), so callers use this to refuse editing into a mount.
+     */
+    public Optional<String> mountAliasAt(String groupPath) {
+        JsonNode group = locate(groupPath, true);
+        if (group == null) {
+            return Optional.empty();
+        }
+        String alias = group.path("Group").path("modelAlias").asText(null);
+        return alias == null || alias.isBlank() ? Optional.empty() : Optional.of(alias);
+    }
+
     // --- includes (header.modelReferences + mount groups) ---------------------------------------
 
     /** Declare a model include: a header {@code modelReference} aliased {@code alias} → {@code reference}. */
@@ -1377,6 +1391,13 @@ public final class ModelDocument {
         if (elements == null) {
             throw new IllegalArgumentException("no group at path: " + groupPath);
         }
+        // never write a local child into an include mount: the kernel would use the local elements and stop
+        // expanding the include, silently discarding the mounted content (KERNEL-FINDINGS). The loud backstop
+        // under every add/move; the CLI runs SafetyChecks.notAnIncludeMount first for a structured refusal.
+        mountAliasAt(groupPath).ifPresent(alias -> {
+            throw new IllegalArgumentException("group '" + groupPath + "' mounts the include '" + alias
+                    + "' — adding a child would shadow the mounted content; edit the included model, or use a non-mount group");
+        });
         return elements;
     }
 
