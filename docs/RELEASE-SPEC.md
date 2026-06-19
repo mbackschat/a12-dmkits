@@ -43,7 +43,7 @@ The library jars/JavaDoc are out of v1 scope; the full build + consume + licensi
 
 **The publish glue is a committed script — [`scripts/publish-release.sh`](../scripts/publish-release.sh) — not prose** (the CLAUDE.md rule: deterministic side-effecting setup lives in a script). It does the mirror-content push, the draft + mac upload, the linux/windows CI dispatch, the `SHA256SUMS` ordering, and the final flip. Two manual things bracket it: the **version bump** (maintainer judgment, below) before tagging, and a **review of the draft** before `--go-live`.
 
-**Step 1 — version bump (before tagging). NONE of these is caught by `VersionMentionFreshnessTest`** (it guards only the *kernel* pin), so a missed file drifts the project version silently:
+**Step 1 — version bump (before tagging).** Run **[`scripts/bump-version.sh X.Y.Z`](../scripts/bump-version.sh)** — it does the deterministic edits in the table below (the `build.gradle` version, both plugin manifests, and the `cli-version.md` capture), leaving only the CHANGELOG *content* and the build/verify/commit/tag to you. **NONE of these is caught by `VersionMentionFreshnessTest`** (it guards only the *kernel* pin), so a missed file drifts the project version silently — which is exactly why the edits are scripted:
 
 | File | What |
 |---|---|

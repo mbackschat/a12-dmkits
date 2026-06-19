@@ -12,7 +12,8 @@
 #
 # PREREQ — the release commit + annotated tag must already exist on main. The version bump is maintainer
 # judgment (the number) + this exact file set (NONE of these is caught by VersionMentionFreshnessTest,
-# which guards only the KERNEL pin — the project version drifts silently if you miss one):
+# which guards only the KERNEL pin — the project version drifts silently if you miss one). Run
+# `./scripts/bump-version.sh X.Y.Z` to make the first four edits below mechanically; flip the CHANGELOG by hand:
 #   • build.gradle                        `version = 'X.Y.Z'`   (source of truth → --version/manifest.version)
 #   • plugin/.claude-plugin/plugin.json   `"version": "X.Y.Z"`
 #   • plugin-codex/.codex-plugin/plugin.json  `"version": "X.Y.Z"`
