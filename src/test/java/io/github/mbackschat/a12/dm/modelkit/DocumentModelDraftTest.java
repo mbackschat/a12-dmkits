@@ -110,6 +110,22 @@ class DocumentModelDraftTest {
     }
 
     @Test
+    void conditionLanguageDefaultsToEnglishRegardlessOfDisplayLocale() {
+        // A German DISPLAY locale must NOT force German condition KEYWORDS. Condition language is independent
+        // of display locale: the kernel's own models (a12-kernel-mm) declare a de_DE display locale yet set
+        // conditionLanguage=en_US and author English-keyword rules (FieldFilled/And/…). English keywords are
+        // the default everywhere; the display locale only governs labels/messages.
+        String json = DocumentModelDraft.named("amt").locale("de_DE")
+                .rootGroup("Person", p -> p.field("Age", FieldKind.NUMBER))
+                .build().toJson();
+        assertEquals("en_US", ModelDocument.read(json).config().conditionLanguage(),
+                "a de_DE display locale must keep en_US condition keywords (locale ≠ keyword language)");
+        // the kernel accepts en_US condition language on a de_DE-ONLY model — conditionLanguage need not be a
+        // declared display locale (load() runs checkConsistency, throwing on any ERROR)
+        load(json);
+    }
+
+    @Test
     void aModelNeedsALocaleAndARootGroup() {
         try {
             DocumentModelDraft.named("x").build();

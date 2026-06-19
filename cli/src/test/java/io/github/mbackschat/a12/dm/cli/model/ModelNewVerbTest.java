@@ -50,6 +50,26 @@ class ModelNewVerbTest {
     }
 
     @Test
+    void aGermanLocaleModelStillAcceptsEnglishDslKeywords(@TempDir Path dir) throws Exception {
+        // The probe (01-de) found a German-prompted session got MVK_UNEXPECTED_TOKEN on `FieldFilled` because
+        // the new model derived its condition KEYWORD language from the de_DE DISPLAY locale. The two are
+        // independent (the kernel's own de_DE models author English-keyword rules); a fresh de_DE model must
+        // accept the English DSL the renderer + skill emit.
+        Path model = dir.resolve("person.dm.json");
+        CliTestSupport.Result created = CliTestSupport.run(
+                "model", "new", "--id", "person", "--locale", "de_DE", "--root", "Person", "-o", model.toString());
+        assertEquals(0, created.code(), created::err);
+        assertEquals(0, CliTestSupport.run("-m", model.toString(),
+                "field", "add", "--group", "/Person", "--name", "Age", "--kind", "NUMBER").code());
+
+        CliTestSupport.Result checked = CliTestSupport.run("-m", model.toString(), "rule", "check",
+                "--field", "/Person/Age", "--condition", "FieldFilled(/Person/Age) And [/Person/Age] < 18", "--code", "U18");
+        assertEquals(0, checked.code(), checked::err);
+        assertTrue(M.readTree(checked.out()).path("valid").asBoolean(),
+                () -> "English DSL keywords must validate on a de_DE model (locale ≠ keyword language): " + checked.out());
+    }
+
+    @Test
     void anInvalidLocaleIsReportedNotSilentlyEmitted() {
         CliTestSupport.Result res = CliTestSupport.run("model", "new", "--id", "x", "--locale", "not_a_locale");
         assertTrue(res.code() != 0, () -> "an unbuildable model is reported, not emitted: " + res.out() + res.err());

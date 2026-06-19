@@ -36,7 +36,9 @@ final class ModelNewCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.FREEFORM)
     @Option(names = "--locale", required = true, paramLabel = "<locale>",
-            description = "the condition + default locale, e.g. en_US or de_DE")
+            description = "the model's display locale — governs labels + messages, e.g. en_US or de_DE. "
+                    + "Condition KEYWORDS are always English (FieldFilled/And/…) regardless of this; change "
+                    + "that rare default with `config modify --condition-language`.")
     String locale;
 
     @ParamKind(ParamKind.Kind.NEW_NAME)

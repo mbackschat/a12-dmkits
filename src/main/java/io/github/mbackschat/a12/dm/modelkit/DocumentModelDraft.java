@@ -37,6 +37,16 @@ public final class DocumentModelDraft {
      *  {@code --version} surface compare a loaded model's {@code header.modelVersion} against the same value). */
     private static final String MODEL_VERSION = io.github.mbackschat.a12.dm.core.ModelFormat.VERSION;
 
+    /**
+     * The default condition KEYWORD language for a from-scratch model — English, regardless of the display
+     * locale. Condition language is independent of display locale (which governs labels + messages): the
+     * kernel's own models (a12-kernel-mm) declare a de_DE display locale yet author English-keyword rules.
+     * Single-sourced so the model-config default and the attachment-template authoring can't drift (a de_DE
+     * model authoring German attachment conditions against an en_US config is exactly what this prevents).
+     * Change the rare German-keyword case explicitly via {@code config().conditionLanguage("de_DE")}.
+     */
+    static final String DEFAULT_CONDITION_LANGUAGE = "en_US";
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final String id;
@@ -148,7 +158,8 @@ public final class DocumentModelDraft {
         ObjectNode config = content.putObject("modelConfig");
         config.put("decimalSeparator", ".");
         config.put("timeZone", "Europe/Berlin");
-        config.putObject("conditionLanguage").put("code", locales.get(0));
+        // Condition KEYWORD language is independent of the DISPLAY locale (see DEFAULT_CONDITION_LANGUAGE).
+        config.putObject("conditionLanguage").put("code", DEFAULT_CONDITION_LANGUAGE);
         config.put("fieldRefByShortNameAllowed", true);
         if (!supportedCharacters.isEmpty()) {
             // the allowed-character set: each entry a char or a range like " -~"; empty = all of Unicode-Plane-0
@@ -592,7 +603,10 @@ public final class DocumentModelDraft {
             }
             AttachmentBuilder b = new AttachmentBuilder();
             body.accept(b);
-            rootGroups.add(b.toGroup(name, List.copyOf(locales), locales.get(0)));
+            // author the attachment conditions in the model's CONDITION language (English by default), NOT the
+            // display locale — they must match the conditionLanguage the config declares (DEFAULT_CONDITION_LANGUAGE)
+            // or the kernel rejects the mandated rule strings as the wrong keyword language.
+            rootGroups.add(b.toGroup(name, List.copyOf(locales), DEFAULT_CONDITION_LANGUAGE));
             return this;
         }
 
