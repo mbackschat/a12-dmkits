@@ -642,7 +642,7 @@ The flat `operators` list answers *which* constructs appear; the **`tree`** answ
 }
 ```
 
-*Carried forward (the 2026-06-03 sketch's richer rule-envelope, not yet shipped):* per-reference **roles** (error-field / operand) and **severity** need the rule envelope, not just the condition; the **`suspicious`** hints are available separately today via `RuleDiagnostics`/`lint.Linter`; authored path-style is a render concern. See PROJECT-DESIGN §F9 ("rule-envelope enrichment").
+*Scope of condition-level `explain`:* per-reference **roles** (error-field / operand) and **severity** need the rule *envelope*, not just the condition, so they're out of this projection (tracked as PROJECT-DESIGN §F9 "rule-envelope enrichment"); the **`suspicious`** hints are available separately via `RuleDiagnostics`/`lint.Linter`; authored path-style is a render concern.
 
 ### 5.4 Re-express, diff, validate, write back
 

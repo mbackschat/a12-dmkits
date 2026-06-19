@@ -14,7 +14,7 @@ What each document under `docs/` holds, so you can jump to the right one. This i
 ## Release & packaging
 
 - **[RELEASE-SPEC.md](RELEASE-SPEC.md)** — the **durable** release contract: the two surfaces (the `dmtool` CLI + the dmkits developer library = rulekit + modelkit), how each artifact is built, the release runbook, the native↔JVM verification gate, versioning (SemVer + kernel compatibility metadata), and the distribution/trust posture (signing, escape hatch, channels). Survives and evolves per release.
-- **[NATIVE-IMAGE-GRAALVM.md](NATIVE-IMAGE-GRAALVM.md)** — everything about building the CLI as a **GraalVM native image**: the verified recipe (GraalVM 25), the reflection/Groovy walls (incl. the hard ceiling that bars the runtime-eval verbs), sizing + shrink levers, GraalVM-version notes, and status. Its own doc because it's a topic of its own; release-only, never in the dev loop. **Works for the authoring surface (5/6 demos, ~31 MB); not yet robust** (capture-bound reflection + the JVM-only runtime-eval verbs).
+- **[NATIVE-IMAGE-GRAALVM.md](NATIVE-IMAGE-GRAALVM.md)** — everything about building the CLI as a **GraalVM native image**: the verified recipe (GraalVM 25), the reflection/Groovy walls (incl. the hard ceiling that bars the runtime-eval verbs), sizing + shrink levers, GraalVM-version notes, and status. Its own doc because it's a topic of its own; release-only, never in the dev loop. **Covers the authoring surface (5/6 demos, ~31 MB); the runtime-eval verbs are JVM-only by the Groovy ceiling, and the reflection metadata is capture-bound** — see that doc for the current build assessment.
 
 ## Kernel truth (verified facts & their treatment)
 
