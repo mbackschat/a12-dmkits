@@ -24,7 +24,7 @@ The three you lean on:
 
 ## The loop
 
-1. **Orient** — `dmtool -m <model> model describe` (or `dmtool export <model>`) to learn the fields, their kinds, enum values, and which groups repeat.
+1. **Orient** — `dmtool -m <model> model describe` (or `dmtool -m <model> export`) to learn the fields, their kinds, enum values, and which groups repeat.
 2. **Pick operators** — from `dmtool operators`, by meaning.
 3. **Compose** the condition — minding **polarity**, **paths**, and **iteration** below.
 4. **Check** — `dmtool -m <model> rule check …`. If `valid:true`, done. If not, read each diagnostic.

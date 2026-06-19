@@ -869,7 +869,7 @@ dmtool -m /tmp/struct2-cfg.json config read | jq -c ".data"
 
 ## export — the artifacts, not the envelope
 
-`export` is the odd one out: it is a **root verb** that takes the model as a **positional** argument (`dmtool export <model>`), and it prints a plain artifact — *not* the JSON result envelope. With no artifact name it emits the **model card** (a Markdown summary); `fields | groups | rules` print line-delimited JSON instead, and `--out-dir` writes all four to files.
+`export` takes the model via the universal `-m` like every other verb (`dmtool -m <model> export [<artifact>]`), but it prints a plain artifact — *not* the JSON result envelope. With no artifact name it emits the **model card** (a Markdown summary); `fields | groups | rules` print line-delimited JSON instead, and `--out-dir` writes all four to files.
 
 ```bash
 cp examples/models/subscription.dm.json /tmp/struct2-exp.json && echo "copied subscription → /tmp/struct2-exp.json"
@@ -880,7 +880,7 @@ copied subscription → /tmp/struct2-exp.json
 ```
 
 ```bash
-dmtool export /tmp/struct2-exp.json
+dmtool -m /tmp/struct2-exp.json export
 ```
 
 ```output

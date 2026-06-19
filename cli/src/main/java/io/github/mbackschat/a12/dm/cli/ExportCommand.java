@@ -33,10 +33,7 @@ final class ExportCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @Parameters(index = "0", paramLabel = "<model.json>", description = "the DM-JSON model file")
-    String model;
-
-    @Parameters(index = "1", arity = "0..1", paramLabel = "<artifact>",
+    @Parameters(index = "0", arity = "0..1", paramLabel = "<artifact>",
             description = "one of: fields | groups | rules | card (default: card). Ignored with --out-dir.")
     String artifactArg;
 
@@ -56,6 +53,10 @@ final class ExportCommand extends BaseCommand {
                 return fail("unknown artifact: " + artifactArg + " (want fields|groups|rules|card)");
             }
             only = artifact.get();
+        }
+        String model = model();
+        if (model == null) {
+            return fail("pass -m <model.json> (before or after the verb)");
         }
         try {
             String json = Files.readString(Path.of(model));

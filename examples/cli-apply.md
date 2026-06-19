@@ -104,7 +104,7 @@ dmtool -m /tmp/apply-atomic.dm.json apply /tmp/apply-atomic-ops.json
 ```bash
 dmtool -m /tmp/apply-atomic.dm.json model validate | jq -c "{valid, diagnostics}"
 echo "--- field present: $(dmtool -m /tmp/apply-atomic.dm.json model describe | jq -c "[.data.fields[].path | select(test(\"Discount\"))]")"
-echo "--- rule present: $(dmtool export /tmp/apply-atomic.dm.json | grep -E "^- rules:")"
+echo "--- rule present: $(dmtool -m /tmp/apply-atomic.dm.json export | grep -E "^- rules:")"
 ```
 
 ```output

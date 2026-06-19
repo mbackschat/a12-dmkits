@@ -1066,9 +1066,9 @@ The N8 seam: `context` lives in the public-tier core; the exact `whereUsed` come
 ```bash
 # modeller/BA — the standalone CLI verb (JVM bundled; no jbang, no .m2):
 # one-shot question — pipe (mind JVM startup: seconds, not git-milliseconds):
-dmtool export model.json fields | grep -i birthdate
+dmtool -m model.json export fields | grep -i birthdate
 # repeated exploration — export once, then grep (the recommended loop):
-dmtool export model.json --output ctx/        # all artifacts
+dmtool -m model.json export --out-dir ctx/        # all artifacts
 grep -i birthdate ctx/fields.jsonl
 # {"path":"/Customer/BirthDate","kind":"date","format":"dd.MM.yyyy","group":"/Customer","repeatsUnder":null}
 grep BirthDate ctx/rules.jsonl

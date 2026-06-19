@@ -62,6 +62,6 @@
 
   "where-used":        { "intent": "list the rules/computations referencing a field", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "where-used", "/Order/Quantity"], "expect": "read" },
   "meta":              { "intent": "read an element's descriptions + annotations", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "meta", "/Order/Quantity"], "expect": "read" },
-  "export":            { "intent": "render the model card artifact to stdout", "model": "order-ruled.dm.json", "command": ["export", "<model.json>", "card"], "expect": "raw" },
+  "export":            { "intent": "render the model card artifact to stdout", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "export", "card"], "expect": "raw" },
   "patterns":          { "intent": "list the validation idioms an agent can scaffold a correct rule from", "command": ["patterns"], "expect": "raw" }
 }

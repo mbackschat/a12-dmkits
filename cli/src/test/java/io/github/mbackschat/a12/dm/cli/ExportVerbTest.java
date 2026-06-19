@@ -48,7 +48,7 @@ class ExportVerbTest {
 
     private static String export(Path model, String artifact) {
         StringBuilder out = new StringBuilder();
-        int code = Cli.run(new String[]{"export", model.toString(), artifact}, out, new StringBuilder());
+        int code = Cli.run(new String[]{"-m", model.toString(), "export", artifact}, out, new StringBuilder());
         assertEquals(0, code, "export should succeed");
         return out.toString();
     }
@@ -107,11 +107,30 @@ class ExportVerbTest {
     }
 
     @Test
+    void exportIsDrivenByTheUniversalModelOption(@TempDir Path dir) throws Exception {
+        // probe 01-de: export was the only verb that ignored -m and required a positional <model.json>, so an
+        // agent that learned -m everywhere couldn't drive it. It now uses the universal -m like every verb —
+        // and with no artifact arg defaults to the model card.
+        StringBuilder out = new StringBuilder();
+        int code = Cli.run(new String[]{"-m", modelWithRule(dir).toString(), "export"}, out, new StringBuilder());
+        assertEquals(0, code, "`-m <model> export` succeeds (the call that used to fail)");
+        assertTrue(out.toString().startsWith("#"), "the default artifact is the model card");
+    }
+
+    @Test
+    void exportWithoutAModelGivesTheStandardCorrectiveNotAStackTrace(@TempDir Path dir) {
+        StringBuilder err = new StringBuilder();
+        int code = Cli.run(new String[]{"export", "card"}, new StringBuilder(), err);
+        assertEquals(2, code, "no -m → a clean failure (fail() exit code)");
+        assertTrue(err.toString().contains("-m"), () -> "names the universal model option: " + err);
+    }
+
+    @Test
     void outDirWritesAllFourArtifacts(@TempDir Path dir) throws Exception {
         Path model = modelWithRule(dir);
         Path ctx = dir.resolve("ctx");
         StringBuilder err = new StringBuilder();
-        int code = Cli.run(new String[]{"export", model.toString(), "--out-dir", ctx.toString()},
+        int code = Cli.run(new String[]{"-m", model.toString(), "export", "--out-dir", ctx.toString()},
                 new StringBuilder(), err);
         assertEquals(0, code, () -> "export --out-dir should succeed: " + err);
         for (String name : List.of("fields.jsonl", "groups.jsonl", "rules.jsonl", "model-card.md")) {

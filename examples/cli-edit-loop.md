@@ -132,7 +132,7 @@ cp examples/models/subscription-computed.dm.json /tmp/edit-add.json
 dmtool -m /tmp/edit-add.json rule add /tmp/edit-rule.json \
   | jq -c "{outcome, rule: .changed.rule, written}"
 dmtool -m /tmp/edit-add.json model validate | jq -c "{valid, diagnostics}"
-dmtool export /tmp/edit-add.json | grep -E "^- rules:"
+dmtool -m /tmp/edit-add.json export | grep -E "^- rules:"
 ```
 
 ```output
@@ -270,9 +270,9 @@ echo "--- the written model still validates: $(dmtool -m /tmp/edit2-order.json m
 ```bash
 rm -f /tmp/edit2-rm-rule.json
 cp examples/models/order-ruled.dm.json /tmp/edit2-rm-rule.json
-echo "--- $(dmtool export /tmp/edit2-rm-rule.json | grep -E "^- rules:") (before)"
+echo "--- $(dmtool -m /tmp/edit2-rm-rule.json export | grep -E "^- rules:") (before)"
 dmtool -m /tmp/edit2-rm-rule.json rule remove /Order/DeliveryNotBeforeOrder
-echo "--- $(dmtool export /tmp/edit2-rm-rule.json | grep -E "^- rules:") (after)"
+echo "--- $(dmtool -m /tmp/edit2-rm-rule.json export | grep -E "^- rules:") (after)"
 echo "--- the written model still validates: $(dmtool -m /tmp/edit2-rm-rule.json model validate | jq -c ".valid")"
 ```
 
