@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.rulekit.validate;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,39 @@ class RuleValidatorTest {
         ValidationResult result = new RuleValidator().check(modelJson, rule);
 
         assertTrue(result.ok(), () -> "renderer output should validate against the kernel, got: " + result.diagnostics());
+    }
+
+    @Test
+    void rejectsADuplicateNameInsteadOfThrowing() {
+        // A rule whose name collides with an existing sibling (the MonthlyFee field) makes the kernel throw
+        // IllegalArgumentException ("two child elements with the same name") during conversion — inside
+        // checkConsistency, before it can report a problem. check() must catch the collision up front and
+        // return a clean RK_NAME_EXISTS rejection, never let the exception escape as a raw stack trace.
+        DraftRule rule = new DraftRule(
+                "/Subscription/Addons", "MonthlyFee", "../MonthlyFee",
+                "FieldFilled(MonthlyFee)", "DUP", "ERROR");
+
+        ValidationResult result = new RuleValidator().check(modelJson, rule);  // must NOT throw
+
+        assertFalse(result.ok(), "a name collision is rejected");
+        assertTrue(result.diagnostics().stream()
+                        .anyMatch(d -> d.code().filter("RK_NAME_EXISTS"::equals).isPresent()),
+                () -> "carries RK_NAME_EXISTS, got: " + result.diagnostics());
+    }
+
+    @Test
+    void rejectsAMissingGroupInsteadOfThrowing() {
+        // Adding to a non-existent group made inject() throw IllegalArgumentException("no group at path") —
+        // another escape of the same class. check() must return a clean RK_NO_SUCH_GROUP instead.
+        DraftRule rule = new DraftRule(
+                "/Subscription/DoesNotExist", "SomeRule", "../X", "FieldFilled(X)", "X", "ERROR");
+
+        ValidationResult result = new RuleValidator().check(modelJson, rule);  // must NOT throw
+
+        assertFalse(result.ok(), "a missing target group is rejected");
+        assertTrue(result.diagnostics().stream()
+                        .anyMatch(d -> d.code().filter("RK_NO_SUCH_GROUP"::equals).isPresent()),
+                () -> "carries RK_NO_SUCH_GROUP, got: " + result.diagnostics());
     }
 
     @Test

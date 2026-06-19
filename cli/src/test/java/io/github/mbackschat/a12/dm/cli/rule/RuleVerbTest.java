@@ -132,6 +132,32 @@ class RuleVerbTest {
     }
 
     @Test
+    void addRejectsADuplicateRuleNameWithoutLeakingAStackTrace(@TempDir Path dir) throws Exception {
+        // The probe's exact repro: add a rule, then add the SAME code again. The kernel throws
+        // IllegalArgumentException ("two child elements with the same name") during conversion; the verb
+        // must surface a clean, structured RK_NAME_EXISTS rejection — never a raw Java stack trace.
+        Path model = CliTestSupport.modelWithRule(dir);
+        Path spec = dir.resolve("dup.json");
+        Files.writeString(spec, """
+                { "field": "/Subscription/Billing/EffectiveFee", "condition": "[EffectiveFee] < [BaseFee]",
+                  "code": "DUP_RULE",
+                  "messages": [ {"locale":"en_US","text":"x"}, {"locale":"de_DE","text":"x"} ] }""");
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "rule", "add", spec.toString()).code(),
+                "first add succeeds");
+
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "add", spec.toString());
+        assertTrue(res.err().isBlank(), () -> "no stack trace / raw exception on stderr: " + res.err());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("rejected", j.get("outcome").asText());
+        assertFalse(j.get("written").asBoolean());
+        boolean nameExists = false;
+        for (JsonNode d : j.path("diagnostics")) {
+            nameExists |= "RK_NAME_EXISTS".equals(d.path("code").asText());
+        }
+        assertTrue(nameExists, () -> "carries RK_NAME_EXISTS: " + res.out());
+    }
+
+    @Test
     void addRejectsAnUnknownKeyInTheSpec(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
         Path spec = dir.resolve("typo.json");

@@ -5,6 +5,9 @@ import java.io.StringReader;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.function.Supplier;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -53,14 +56,80 @@ public final class RuleValidator {
      * {@code resolver} (F-RES) — the multi-file-application path (use {@link ReferenceResolvers#directory}).
      */
     public ValidationResult check(String modelJson, DraftRule rule, IDocumentModelReferenceResolver resolver) {
-        return checkInjected(inject(modelJson, rule), rule.groupPath() + "/" + rule.name(), resolver);
+        return checkDraft(modelJson, rule.groupPath(), rule.name(), "rule",
+                () -> inject(modelJson, rule), resolver);
     }
 
     /** Check {@code computation} against a model whose references are resolved by {@code resolver} (F-RES). */
     public ValidationResult check(String modelJson, DraftComputation computation,
             IDocumentModelReferenceResolver resolver) {
-        return checkInjected(inject(modelJson, computation),
-                computation.groupPath() + "/" + computation.name(), resolver);
+        return checkDraft(modelJson, computation.groupPath(), computation.name(), "computation",
+                () -> inject(modelJson, computation), resolver);
+    }
+
+    /**
+     * Inject-and-check a draft, but <b>never throw</b>. The kernel raises an {@link IllegalArgumentException}
+     * during conversion (inside {@code checkConsistency}) for a foreseeable authoring collision — most often a
+     * child name already taken — <em>before</em> it can report it as a structured problem, and {@link #inject}
+     * itself throws when the target group is missing. Either would otherwise escape the calling verb as a raw
+     * Java stack trace instead of a diagnostic (the diagnostic-contract leak this method closes for every
+     * caller — {@code rule add}, {@code computation add}, {@code rule check}, patterns, model eval). So:
+     * pre-check the two known cases into clean {@code RK_*} rejections, and wrap the kernel pass in a catch-all
+     * that turns any residual conversion error into a rejection too.
+     */
+    private ValidationResult checkDraft(String modelJson, String groupPath, String name, String kind,
+            Supplier<String> injector, IDocumentModelReferenceResolver resolver) {
+        String fullName = groupPath + "/" + name;
+        Optional<Diagnostic> precheck = addPrecheck(modelJson, groupPath, name, kind);
+        if (precheck.isPresent()) {
+            return ValidationResult.of(List.of(precheck.get()));
+        }
+        try {
+            return checkInjected(injector.get(), fullName, resolver);
+        } catch (RuntimeException e) {
+            String why = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            return ValidationResult.of(List.of(Diagnostic.precheck(Optional.empty(),
+                    "the kernel could not process the candidate " + kind + " '" + fullName + "': " + why,
+                    Diagnostic.Where.path(fullName),
+                    Optional.of("review the " + kind + " against the model's structure"
+                            + " (the kernel rejected it during conversion)"),
+                    Optional.empty())));
+        }
+    }
+
+    /**
+     * The foreseeable add-time collisions, pre-checked from the model JSON so the kernel never throws on them:
+     * the target group must exist ({@code RK_NO_SUCH_GROUP}), and the new name must be free among the group's
+     * children ({@code RK_NAME_EXISTS} — a field/group/rule/computation already owns it).
+     */
+    private Optional<Diagnostic> addPrecheck(String modelJson, String groupPath, String name, String kind) {
+        ArrayNode elements;
+        try {
+            JsonNode rootGroups = mapper.readTree(modelJson)
+                    .path("content").path("modelRoot").path("rootGroups");
+            elements = elementsOf(rootGroups, groupPath);
+        } catch (IOException e) {
+            return Optional.empty();   // unreadable model — let the kernel path be the one to report it
+        }
+        if (elements == null) {
+            return Optional.of(Diagnostic.precheck(Optional.of(RkCode.NO_SUCH_GROUP.code()),
+                    "no group at path '" + groupPath + "' to add the " + kind + " to",
+                    Diagnostic.Where.path(groupPath),
+                    Optional.of(RkCode.NO_SUCH_GROUP.fix()), Optional.empty()));
+        }
+        for (JsonNode element : elements) {
+            if (name.equals(element.path("name").asText(null))) {
+                String existing = element.path("type").asText("element").toLowerCase(Locale.ROOT);
+                return Optional.of(Diagnostic.precheck(Optional.of(RkCode.NAME_EXISTS.code()),
+                        "a " + existing + " named '" + name + "' already exists in '" + groupPath
+                                + "' — cannot add the " + kind,
+                        Diagnostic.Where.path(groupPath + "/" + name),
+                        Optional.of("choose a name/code not already used in '" + groupPath
+                                + "', or remove the existing '" + name + "' first"),
+                        Optional.empty()));
+            }
+        }
+        return Optional.empty();
     }
 
     private ValidationResult checkInjected(String injected, String rulePath,

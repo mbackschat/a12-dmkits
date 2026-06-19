@@ -43,6 +43,30 @@ class ComputationVerbTest {
     }
 
     @Test
+    void addRejectsADuplicateComputationNameWithoutLeakingAStackTrace(@TempDir Path dir) throws Exception {
+        // The same leak class as rule add, one verb over: computation add routes through the same
+        // RuleValidator.check, so a duplicate name must be a clean RK_NAME_EXISTS, never a raw stack trace.
+        Path model = CliTestSupport.modelWithRule(dir);
+        Path spec = dir.resolve("dupcomp.json");
+        Files.writeString(spec, """
+                { "computedField": "/Subscription/Billing/EffectiveFee", "name": "DupComp",
+                  "alternatives": [ {"operation": "[BaseFee] * 2"} ],
+                  "messages": [ {"locale":"en_US","text":"x"}, {"locale":"de_DE","text":"x"} ] }""");
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "computation", "add", spec.toString()).code(),
+                "first add succeeds");
+
+        var res = CliTestSupport.run("-m", model.toString(), "computation", "add", spec.toString());
+        assertTrue(res.err().isBlank(), () -> "no stack trace / raw exception on stderr: " + res.err());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("rejected", j.get("outcome").asText());
+        boolean nameExists = false;
+        for (JsonNode d : j.path("diagnostics")) {
+            nameExists |= "RK_NAME_EXISTS".equals(d.path("code").asText());
+        }
+        assertTrue(nameExists, () -> "carries RK_NAME_EXISTS: " + res.out());
+    }
+
+    @Test
     void addRejectsAnUnknownKeyInTheSpec(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
         Path spec = dir.resolve("typo.json");
