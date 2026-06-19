@@ -115,6 +115,22 @@ probe discovers a symptom ──► find the root cause ──► GENERALIZE: sw
 
 The canonical first guard this feeds is the **"applied ⇒ effected" round-trip sweep**: a matrix test over every writable attribute (FieldSpec / rule / computation keys) that writes → reads back → asserts the effect actually landed — the deterministic complement that would have caught the `field modify` silent drop without a bug report.
 
+## Recurring patterns across reports — what the probes have taught us
+
+A single report captures one run; the *patterns* only show up across runs, so they live here (the method doc), refreshed as new reports land. Each was seen in **≥2 reports** and is the lens to read the next one through.
+
+1. **The friction is structural *composition*, not rule authoring.** Where the surface is exercised most — polarity, operators, guarding, the lint, check-before-write — it works *well* (`01`'s "what worked well"; `01-de`'s age rule, right once the locale bug was gone). The thrash is always **model structure**: includes, mounts, group scope, extract, cross-group references. The skill and the eval both center rule authoring, which is *why* that side is strong and composition is under-supported — and why the probe (build-then-refactor, multi-turn) is the only instrument that sees it.
+
+2. **Turn 2 (evolve an existing model) is the hotspot.** Turn 1 (build from scratch) is smooth; the friction concentrates in turn 2 — `01` P4 (extract leaves a stale name), `01-de` (mount-field break + cross-group refusal + workspace confusion). Refactor/reuse (`extract`/`include`/mounts/`move`) is the least-supported, highest-thrash operation, and it's the most common real BA task.
+
+3. **Every deviation from the uniform shape is a thrash point — they're one class, not N bugs.** The agent learns `dmtool -m <model> <target> <op>` + the uniform result envelope, then trips on each exception: `export` (positional model, ignored `-m` — fixed), `workspace` (positional dir, ignored `-w` — Finding 5), `rule read` (reads one, no list affordance — fixed via read-unification), the `ok`/`valid` asymmetry (`01` P3). **Uniformity is the agent's only reliable prior**, so each exception costs calls — fix the *class* (audit for any verb that deviates from `-m`/`-w`/the envelope), not the instance.
+
+4. **The dangerous defect is *silent* divergence; loud refusals are fine — even good.** Loud + correct (the cross-group `RK_OUTWARD_REFERENCE`, the safe-delete `where-used` gate, the unguarded-number lint) cost a few recovery calls but *worked* — not defects. The damage is always **silent**: the mount-field break (`field add` succeeds, the include silently stops resolving), `01` P4 (stale `modelInfo.name`), and the original motivating bugs (field-modify drop, value-shape coerce). The recurring high-value finding is "looks fine / reports success but diverged unflagged"; the fix pattern is always **detect → be loud (refuse or advise)**. Bonus: a silent divergence also *inflates orientation* (the agent defensively re-reads state it can't trust — 44% of `01-de`'s calls), so fixing one pays twice.
+
+5. **"Success" hides thrash; a capable agent masks surface defects.** Both `01` and `01-de` produced kernel-valid, gold-matching models — the **eval would score both PASS** — yet `01` leaked a stack trace and `01-de` burned ~50 recovery calls. The better the model, the more a surface defect hides as *extra calls* rather than a failure. So the metric is **not "did it finish"** (it will) but **"how much thrash did the surface force"** — which is why the quantified efficiency breakdown (§2) is a report convention. *(Harness idea: a deliberate weaker-model run would fail where a strong one merely thrashes, surfacing what gets papered over.)*
+
+**Where these route:** composition/uniformity gaps are fixed in the **surface** (consistent flags, corrective diagnostics that explain extract/mount/scope) — **not** the skill, per the standing "self-explaining surface over skill" rule (the skill stays minimal N6 material). Silent divergences graduate into the "applied ⇒ effected" guard family above.
+
 ## Running it
 
 The runner is the **main assistant loop**, not a script — setup and the deep analysis-and-report are judgment; the subagent is the agent-under-observation. The pipeline:
