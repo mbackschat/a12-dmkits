@@ -67,6 +67,22 @@ Two pieces make an agent this good with `dmtool`:
 
 The plugin lives at the repository root (`.claude-plugin/`).
 
+### Activation — it's a `SessionStart` hook, so restart after installing
+
+The plugin does **not** fetch `dmtool` at install time. It registers a **`SessionStart` hook** that downloads the binary and adds it to `PATH`, and a `SessionStart` hook fires **only when a Claude Code session begins or resumes** — never retroactively in the session where you typed `/plugin install`.
+
+**So `dmtool` is not yet available in the session you installed it in. Start a new session — quit and relaunch `claude`, or `claude --resume` — for the hook to run.** (`/reload-plugins` loads the bundled judgment skill into the current session, but only a session *start* runs the hook that downloads the binary.)
+
+What the hook does on each session start:
+
+| When | What happens |
+|---|---|
+| **First new session** | Downloads the per-OS native binary from this repo's [Releases](../../releases) — anonymous, checksum-verified against `SHA256SUMS` — caches it at `$CLAUDE_PLUGIN_DATA/bin/dmtool`, and prepends that directory to `PATH`. Needs network; takes a few seconds (60 s timeout). |
+| **Every later session** | Binary is already cached → no download. It just re-adds the directory to `PATH` (also on `claude --resume` / `--continue`). Effectively instant. |
+| **On any failure** | The hook warns to stderr and exits cleanly — it never blocks or aborts your session; `dmtool` simply won't be on `PATH` that session, and the next session start retries the download. |
+
+The binary always lives at the fixed path `$CLAUDE_PLUGIN_DATA/bin/dmtool`, so even on a host where the hook can't inject `PATH`, your agent can invoke it there directly.
+
 ## Install — OpenAI Codex
 
 ```
@@ -76,7 +92,7 @@ codex plugin add dmtool
 
 The Codex plugin lives under [`codex/`](codex/); the marketplace manifest at `.agents/plugins/marketplace.json` points Codex at it. Codex users can also drop the bundled [`codex/AGENTS.md`](codex/AGENTS.md) into their own repo's `AGENTS.md` to keep dmtool guidance always in context.
 
-Either way, on the first session the plugin downloads the per-OS native binary from this repo's Releases and puts `dmtool` on PATH. If your host can't inject PATH, the binary is cached at `$PLUGIN_DATA/bin/dmtool`.
+Codex uses the **same `SessionStart` hook**, so the *Activation* note above applies here too: the binary is fetched on the first new session, not at install time — restart Codex for the hook to run. If your host can't inject `PATH`, the binary still sits at `$PLUGIN_DATA/bin/dmtool` (Codex's data dir) for direct invocation.
 
 ## Install — raw binary (no agent)
 
