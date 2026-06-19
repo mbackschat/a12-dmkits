@@ -108,12 +108,31 @@ The canonical first guard this feeds is the **"applied ⇒ effected" round-trip 
 The runner is the **main assistant loop**, not a script — setup and the deep analysis-and-report are judgment; the subagent is the agent-under-observation. The pipeline:
 
 ```
-build native binary → ./probe/prep-probe.sh → spawn the probe subagent (task prompts in order, one session)
-   → ./probe/audit-probe.sh <agentId>   (integrity gate — STOP if SUSPECT)
-   → read shim log + model files, analyze vs gold → write probe/reports/<date>-<task>.md
+build native binary
+  → ./probe/prep-probe.sh                              # sandbox + logging shim + skill   (script)
+  → spawn subagent: agent-preamble.md + task turns     # single-sourced preamble + the task's prompts, one session
+  → ./probe/audit-probe.sh <agentId>                   # integrity gate — STOP if SUSPECT  (script)
+  → ./probe/digest-probe.sh                            # deterministic trajectory facts + RED FLAGS  (script)
+  → analyze vs gold (judgment) → probe/reports/<date>-<task>.md
 ```
 
-The per-step detail (sandbox env, the no-look-ahead instruction, the audit) is in [`../probe/README.md`](../probe/README.md).
+The per-step detail (sandbox env, the no-look-ahead instruction, the audit, the digest) is in [`../probe/README.md`](../probe/README.md).
+
+### Repeatability — every step is a script, a single-sourced template, or a committed artifact (never ad-hoc)
+
+A probe is only useful if it can be re-run and compared; an analysis done by hand once isn't reproducible and silently misses things the second time. So the harness is built so that **nothing load-bearing is improvised**:
+
+| step | repeatable form |
+|---|---|
+| sandbox + shim | [`prep-probe.sh`](../probe/prep-probe.sh) (script) |
+| the subagent's framing (boundary, env, no-look-ahead, report format) | [`agent-preamble.md`](../probe/agent-preamble.md) — **single-sourced**; only the task's turns vary, so runs are comparable and the boundary can't drift |
+| the integrity check | [`audit-probe.sh`](../probe/audit-probe.sh) (script, verified to fire) |
+| the **mechanical** analysis | [`digest-probe.sh`](../probe/digest-probe.sh) (script) — counts, nonzero exits, repeated calls, and the **auto RED-FLAG for a raw exception escaping a verb** (the P1 class), so it's never again "found by eye"; exits 1 on a red flag, so it gates too |
+| the scenario | a committed `tasks/<n>.md` (prompts + gold) |
+| the findings | a committed `reports/<date>-<n>.md` |
+| a **root-cause repro** | the finding's TDD guard test (or a committed repro script) — *the repro is the test*, runnable by anyone/CI, not a one-off command |
+
+Only the genuinely judgment-bound parts stay in the agent's hands: the subagent's actual session (the thing under observation) and the deep correctness/misconception analysis. Everything else is committed and re-runnable. (Same principle as the eval's `prep-sandbox.sh` + `benchmark.workflow.js`: scripts for the deterministic skeleton, agents only where judgment is irreducible.)
 
 ### How a probe is triggered
 

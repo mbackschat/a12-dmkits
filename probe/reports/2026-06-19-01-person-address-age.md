@@ -17,6 +17,8 @@
 
 So the agent learned the tool solely from the skill + the binary's self-description. The trajectory is a real measurement, and the findings below are trustworthy.
 
+**Repeatable analysis:** `./probe/digest-probe.sh` mechanically reproduces the headline facts — it auto-flags **P1 as a RED FLAG** (a raw exception escaped a verb; exit 1), plus the two `rule read` exit-2s and the duplicate-add retry. The findings below are not eyeballed; the mechanical baseline is a script that gates.
+
 ## Outcome vs the gold (semantic)
 
 The session **succeeded** end-to-end and the final models are kernel-valid. Against the task gold:
