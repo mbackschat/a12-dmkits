@@ -8,6 +8,7 @@
 # normalization layer) — we drive a BROAD, derived input matrix through the native binary and assert none of
 # those signatures appears. Coverage is derived from enumerable sources (every committed fixture × the
 # read/validate verbs + the FieldKind × constraint matrix + invalid conditions per locale + the
+# current-date operators (Today/AddYears/YearFromDate/DifferenceInYears — the literal v0.1.0 crash) + the
 # self-describing surface (manifest/operators) + a real rule read-back), so it grows as
 # the corpus does. A legitimate kernel rejection (valid:false with a real MVK_* code) is NOT a failure here —
 # only a native-image signature is.
@@ -58,6 +59,20 @@ printf '{"group":"/R","name":"Pat","kind":"STRING","string":{"pattern":"[0-9]{5}
 cp "$base" "$WORK/c1.json"; run "STRING+pattern add"      -m "$WORK/c1.json" field add "$WORK/pat.json"; run "STRING+pattern validate" -m "$WORK/c1.json" model validate
 printf '{"group":"/R","name":"Amt","kind":"NUMBER","number":{"fractionDigits":2,"minValue":"0"}}' > "$WORK/num.json"
 cp "$base" "$WORK/c2.json"; run "NUMBER+constraints add" -m "$WORK/c2.json" field add "$WORK/num.json"; run "NUMBER+constraints validate" -m "$WORK/c2.json" model validate
+
+echo "== current-date operators (THE v0.1.0 native crash surface: Today / AddYears / YearFromDate / DifferenceInYears) =="
+# v0.1.0 crashed natively on the current-date operators: their codegen reflectively reaches date-runtime
+# classes the build didn't register. No fixture rule uses them (DeliveryNotBeforeOrder is field-vs-field), so
+# the sweeps above never drove that template — which is exactly how the bug shipped. Each `rule check` here
+# forces checkConsistency → generateValidationCode for the named operator on the NATIVE binary; a SIG hit = the
+# gap is back. (Conditions verified kernel-valid 2026-06-19; probe report 01b drove the same path end-to-end.)
+DM="$WORK/dates.json"
+"$NATIVE" model new --id dates --locale en_US --root R -o "$DM" >/dev/null 2>&1
+"$NATIVE" -m "$DM" field add --group /R --name D --kind DATE >/dev/null 2>&1
+run "date op: [D] > Today"                       -m "$DM" rule check --field /R/D --condition 'FieldFilled(D) And [D] > Today' --code C
+run "date op: DifferenceInYears(D, Today) < 18"  -m "$DM" rule check --field /R/D --condition 'FieldFilled(D) And DifferenceInYears(D, Today) < 18' --code C
+run "date op: [D] > AddYears(Today, 2)"          -m "$DM" rule check --field /R/D --condition 'FieldFilled(D) And [D] > AddYears(Today, 2)' --code C
+run "date op: YearFromDate(D) < 2000"            -m "$DM" rule check --field /R/D --condition 'FieldFilled(D) And YearFromDate(D) < 2000' --code C
 
 echo "== parser-error i18n bundle, per locale (the de_DE/en_US bug) =="
 for loc in en_US de_DE; do
