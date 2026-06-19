@@ -47,9 +47,9 @@ When a residual or a §4 candidate ships, it graduates the same way — a status
 
 ## 3. Open backlog
 
-**Empty — the backlog is clear.** Every gap surfaced by the 2026-06-14 review (G1–G7), the OQ1 probe (G8–G11), and the follow-on residuals (R1, R2, R3) has shipped and graduated to §2. The verified R3 SME-workspace findings (the `roles` annotation is a model-header CSV; `roles.yaml` lives at `<workspace-root>/auth/roles.yaml` beside `models/`; the SME validates role *presence* but not role *names*) are now recorded in the R3 row above and in [`CLI-SPEC.md`](CLI-SPEC.md) ("The workspace roles lint").
+**Empty — the backlog is clear.** Every gap surfaced by the 2026-06-14 review (G1–G7), the OQ1 probe (G8–G11), and the follow-on residuals (R1–R4) has shipped and graduated to §2. The verified R3 SME-workspace findings (the `roles` annotation is a model-header CSV; `roles.yaml` lives at `<workspace-root>/auth/roles.yaml` beside `models/`; the SME validates role *presence* but not role *names*) are now recorded in the R3 row above and in [`CLI-SPEC.md`](CLI-SPEC.md) ("The workspace roles lint").
 
-New gaps land here as they're discovered, then graduate to §2 the same way G1–G11 / R1–R3 did (a §2 row + (for a CLI verb) a CLI-SPEC contract + its test lock).
+New gaps land here as they're discovered, then graduate to §2 the same way G1–G11 / R1–R4 did (a §2 row + (for a CLI verb) a CLI-SPEC contract + its test lock).
 
 ---
 
