@@ -64,6 +64,11 @@ class GroupExtractVerbTest {
         assertEquals("shipping", j.path("changed").path("reference").asText());
 
         assertTrue(Files.exists(dir.resolve("shipping.dm.json")), "the sub-model file was written beside the base");
+        // the extracted sub-model is named for its reference — not left carrying the parent's name (probe P4)
+        JsonNode subModel = M.readTree(Files.readString(dir.resolve("shipping.dm.json")));
+        assertEquals("shipping", subModel.path("header").path("id").asText(), "sub-model header.id");
+        assertEquals("shipping", subModel.path("content").path("modelInfo").path("name").asText(),
+                "sub-model modelInfo.name is the reference, not the parent's ('order')");
         String baseAfter = Files.readString(model);
         assertTrue(baseAfter.contains("\"modelAlias\""), "the base now mounts the sub-model");
         assertFalse(baseAfter.contains("\"name\" : \"City\""), "Shipping's fields left the base");

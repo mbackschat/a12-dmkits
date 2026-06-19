@@ -1141,6 +1141,12 @@ public final class ModelDocument {
         ObjectNode subHeader = (ObjectNode) sub.path("header");
         subHeader.put("id", reference);
         subHeader.putArray("modelReferences");   // empty (not absent — the kernel expects a list), no inherited includes
+        // the deep-copy carried the parent's modelInfo.name — rename it for the new sub-model (else an
+        // extracted "address" sub-model stays named "person"; probe P4).
+        JsonNode subInfo = sub.path("content").path("modelInfo");
+        if (subInfo.isObject()) {
+            ((ObjectNode) subInfo).put("name", reference);
+        }
         ObjectNode subGroup = group.deepCopy();
         reprefixIds(subGroup, groupPath, "/" + mountName);
         ((ObjectNode) sub.path("content").path("modelRoot")).putArray("rootGroups").add(subGroup);
