@@ -47,12 +47,10 @@ class DataSchemaConformanceTest {
     /** Data-schemas whose verb needs a fixture beyond this audit's scope — exercised by their own verb test. */
     private static final Map<String, String> EXEMPT_SCHEMAS = Map.of(
             "workspace-graph", "needs a multi-model inheritance-graph dir; shape exercised by WorkspaceVerbTest",
-            "workspace-roles", "needs roles/users file fixtures; shape exercised by WorkspaceRolesTest",
-            // NOTE: `model validate` / `rule check` return NO `data` payload — their verdict rides the
-            // envelope's `valid` + `diagnostics` (validate.schema documents those envelope fields, not data).
-            // So they are out of this output-shape audit's scope; the `schema <verb>` contract claiming the
-            // payload "rides data" for them is a separate (surfaced) misclassification, not a data-shape rot.
-            "validate", "model validate / rule check carry the verdict in the envelope (valid+diagnostics), not data");
+            "workspace-roles", "needs roles/users file fixtures; shape exercised by WorkspaceRolesTest");
+    // (`model validate` / `rule check` used to map here as `validate` but emit NO `data` — they are now
+    // VERDICT_OPS in SchemaCommand: their result rides the envelope's valid + diagnostics, so they're out of
+    // this data-shape audit entirely, not exempt-within-it.)
 
     /** oneOf branch titles that can't be produced from a well-formed fixture (need an unmodeled construct). */
     private static final Set<String> EXEMPT_BRANCHES = Set.of("not explained (tolerant Opaque)");

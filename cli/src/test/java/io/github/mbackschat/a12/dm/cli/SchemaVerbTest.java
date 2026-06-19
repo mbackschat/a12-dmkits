@@ -88,6 +88,21 @@ class SchemaVerbTest {
     }
 
     @Test
+    void verdictVerbsNoteTheVerdictNotData() throws Exception {
+        // `model validate` / `rule check` carry their result in the ENVELOPE's valid + diagnostics, not a
+        // `data` payload — the contract must say so and must NOT claim a (nonexistent) data shape. Locks the
+        // VERDICT_OPS reclassification (they no longer mis-map to the retired validate.schema as a dataSchema).
+        for (String verb : new String[] {"model validate", "rule check"}) {
+            String[] t = verb.split(" ");
+            JsonNode c = MAPPER.readTree(CliTestSupport.run("schema", t[0], t[1]).out());
+            assertEquals("result", c.path("returns").asText());
+            assertTrue(c.has("verdict"), () -> verb + " contract notes the verdict: " + c);
+            assertFalse(c.has("data"), () -> verb + " emits no data payload, so the contract must not claim one: " + c);
+            assertFalse(c.has("dataSchema"), () -> verb + " must not serve a data-shape schema: " + c);
+        }
+    }
+
+    @Test
     void docInstanceVerbsSurfaceTheDocInputShape() throws Exception {
         // the gap-finder (Option C) found 3/3: `--help` promises the --doc instance shape via `schema <verb>`,
         // but the contract never served it. Now `schema model eval`/`model compute`/`rule test` carry `docInput`.

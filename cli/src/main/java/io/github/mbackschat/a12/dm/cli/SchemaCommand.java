@@ -65,8 +65,6 @@ final class SchemaCommand extends BaseCommand {
             Map.entry("model describe", "describe"),
             Map.entry("model usage", "model-usage"),
             Map.entry("where-used", "where-used"),
-            Map.entry("model validate", "validate"),
-            Map.entry("rule check", "validate"),
             Map.entry("rule read", "read"),
             Map.entry("rule explain", "explain"),
             Map.entry("model eval", "eval-doc"),
@@ -74,6 +72,15 @@ final class SchemaCommand extends BaseCommand {
             Map.entry("workspace list", "workspace-list"),
             Map.entry("workspace graph", "workspace-graph"),
             Map.entry("workspace roles", "workspace-roles"));
+
+    /**
+     * Verbs whose result is the kernel <b>verdict</b> — the envelope's {@code valid} + {@code diagnostics},
+     * <b>not</b> a {@code data} payload (`model validate` and `rule check` emit no {@code data}). So their
+     * contract documents the verdict and points at {@code schema result}/{@code schema diagnostic}; it does not
+     * claim a (nonexistent) data shape. ({@code workspace validate} is different — it <i>does</i> return a
+     * {@code data} payload of per-model results, so it is a normal read, not a verdict verb.)
+     */
+    static final Set<String> VERDICT_OPS = Set.of("model validate", "rule check");
 
     /**
      * Verbs for which {@code schema <verb>} serves <b>no</b> directional contract — because they do not return
@@ -157,15 +164,21 @@ final class SchemaCommand extends BaseCommand {
         }
         c.put("returns", "result");
         c.put("resultSchema", "result");
-        if (READ_OPS.contains(tokens.get(tokens.size() - 1)) || DATA_SCHEMA.containsKey(verb)) {
-            c.put("data", "this read returns its payload in the result envelope's `data` field");
-        }
-        // … and where that payload has its own published schema, surface it so the shape is discoverable
-        String dataSchema = DATA_SCHEMA.get(verb);
-        if (dataSchema != null) {
-            JsonNode schema = readSchema(dataSchema);
-            if (schema != null) {
-                c.set("dataSchema", schema);
+        if (VERDICT_OPS.contains(verb)) {
+            // a verdict verb carries its result in the envelope's valid + diagnostics, not a data payload
+            c.put("verdict", "the kernel verdict rides the envelope's `valid` (true iff no ERROR diagnostic)"
+                    + " and `diagnostics` — there is no `data` payload; see `schema result` and `schema diagnostic`");
+        } else {
+            if (READ_OPS.contains(tokens.get(tokens.size() - 1)) || DATA_SCHEMA.containsKey(verb)) {
+                c.put("data", "this read returns its payload in the result envelope's `data` field");
+            }
+            // … and where that payload has its own published schema, surface it so the shape is discoverable
+            String dataSchema = DATA_SCHEMA.get(verb);
+            if (dataSchema != null) {
+                JsonNode schema = readSchema(dataSchema);
+                if (schema != null) {
+                    c.set("dataSchema", schema);
+                }
             }
         }
         out().print(c.toPrettyString() + "\n");
