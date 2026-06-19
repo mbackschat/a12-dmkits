@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Scaffold smoke test: proves the public kernel consumer surface (kernel-md-facade) resolves
- * from mavenLocal and that the services rulekit's validate seam (proposal §11) will use are
+ * from mavenLocal and that the services rulekit's validate seam (PROJECT-DESIGN §11) will use are
  * reachable through the public API alone — no internal-tier dependency required.
  *
  * <p>This is the Phase-0/1 foundation check: if the bootstrap has published the kernel and the

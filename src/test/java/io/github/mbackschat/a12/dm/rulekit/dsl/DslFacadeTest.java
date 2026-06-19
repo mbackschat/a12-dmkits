@@ -18,7 +18,7 @@ import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 
 /**
- * The {@code Dsl.*} static facade (study finding 1, proposal §10): free-standing factories that
+ * The {@code Dsl.*} static facade (study finding 1, PROJECT-DESIGN §10): free-standing factories that
  * take <em>handles</em> — never string paths — so reusable combinators read naturally while
  * model-awareness stays mandatory (handles only come from {@link BoundModel}).
  */

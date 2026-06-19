@@ -5,7 +5,7 @@ import java.util.Locale;
 import com.fasterxml.jackson.annotation.JsonCreator;
 
 /**
- * The family a catalog entry belongs to (proposal §9). JSON uses the lower-case / hyphenated form
+ * The family a catalog entry belongs to (PROJECT-DESIGN §9). JSON uses the lower-case / hyphenated form
  * ({@code "operator"}, {@code "path-op"}, …); {@link #fromJson(String)} maps it to the constant.
  */
 public enum OperatorKind {

@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.catalog;
 
 /**
- * Whether rulekit builds a typed handle for a catalog operator yet (proposal §9, stub-entries
+ * Whether rulekit builds a typed handle for a catalog operator yet (PROJECT-DESIGN §9, stub-entries
  * policy). The catalog is a complete <em>map of the kernel operator space</em>, not only the built
  * subset, so an LLM (and {@code describe}/docs) can see that an operator exists and is deferred —
  * instead of hallucinating a handle that isn't there.

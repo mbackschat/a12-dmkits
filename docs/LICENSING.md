@@ -1,6 +1,6 @@
 # a12-dmkits — licensing & IP
 
-The settled licensing decision and the reasoning behind it. The proposal's [§19](PROJECT-PROPOSAL.md) states the decision in one line and points here for the full analysis.
+The settled licensing decision and the reasoning behind it. The proposal's [§19](PROJECT-DESIGN.md) states the decision in one line and points here for the full analysis.
 
 ## Decision (2026-06-04)
 

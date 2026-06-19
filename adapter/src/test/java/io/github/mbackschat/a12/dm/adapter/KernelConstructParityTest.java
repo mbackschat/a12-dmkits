@@ -25,7 +25,7 @@ import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry;
  *
  * <p>It is self-cleaning, which is what makes it a true alignment guard: a stale exclusion (a member
  * that became covered, or that the kernel removed/renamed) also fails. Adapter-tier because the
- * enums are {@code a12internal} (proposal D15/N8); complements the forward {@code KeywordParityTest}
+ * enums are {@code a12internal} (PROJECT-DESIGN D15/N8); complements the forward {@code KeywordParityTest}
  * (catalog → lexer terminals) in core.
  *
  * <p>The exclusions double as a coverage-backlog cross-check: most are operator families rulekit

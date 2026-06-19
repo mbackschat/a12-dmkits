@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * F0 foundation: rulekit binds to a fully-expanded, consistency-checked DocumentModel and indexes
- * its group tree / field types / repetition structure from the public model API alone (proposal §5a).
+ * its group tree / field types / repetition structure from the public model API alone (PROJECT-DESIGN §5a).
  *
  * <p>Fixture {@code subscription.dm.json}: non-repeatable {@code /Subscription} with an enum field
  * {@code Tier}; a repeatable subgroup {@code /Subscription/Addons} (repeatability 20) with a string

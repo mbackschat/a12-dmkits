@@ -9,7 +9,7 @@ import java.util.List;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
- * The static-import facade (proposal §10, jOOQ-style): free-standing factories for composing
+ * The static-import facade (PROJECT-DESIGN §10, jOOQ-style): free-standing factories for composing
  * conditions, made for reusable combinators — {@code gate.and(fieldNotFilled(field))} instead of a
  * handle-method chain. Every factory takes <em>model-resolved handles</em> ({@link FieldRef},
  * {@link StringRef}, …), never string paths: model-awareness stays mandatory (§5a) because handles

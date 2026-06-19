@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
- * {@link Condition#transform} — the in-session modify capability (#1, proposal §12): a bottom-up
+ * {@link Condition#transform} — the in-session modify capability (#1, PROJECT-DESIGN §12): a bottom-up
  * rewrite over the immutable sealed tree. Untouched subtrees keep reference identity (N5's cheap
  * modify), and the rewriter sees already-rewritten children (bottom-up order).
  */

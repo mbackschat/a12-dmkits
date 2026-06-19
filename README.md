@@ -536,7 +536,7 @@ Start at the **[docs index](docs/README.md)**; the rest of the map:
 
 | To find… | See |
 |---|---|
-| Vision, requirements, the decision log | [`docs/PROJECT-PROPOSAL.md`](docs/PROJECT-PROPOSAL.md) |
+| Vision, requirements, the decision log | [`docs/PROJECT-DESIGN.md`](docs/PROJECT-DESIGN.md) |
 | Per-feature implementation status | [`docs/API-STATUS.md`](docs/API-STATUS.md) |
 | The CLI contract | [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md) |
 | Verified kernel facts | [`docs/KERNEL-FINDINGS.md`](docs/KERNEL-FINDINGS.md) · [`docs/KERNEL-INTEGRATION-NOTES.md`](docs/KERNEL-INTEGRATION-NOTES.md) |

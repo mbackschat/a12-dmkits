@@ -71,7 +71,7 @@ import com.mgmtp.a12.kernel.md.rt.api.IModelCode;
 import com.mgmtp.a12.kernel.md.rt.api.IModelCodeCache;
 
 /**
- * Phase-2 kernel-adapter bootstrap (proposal D15 / N8 tier 3). Wraps the kernel's {@code a12internal}
+ * Phase-2 kernel-adapter bootstrap (PROJECT-DESIGN D15 / N8 tier 3). Wraps the kernel's {@code a12internal}
  * <em>read</em> surface for rules already in a model — the foreign-rule path that read (F10) and
  * exact whereUsed (F9a) build on. The bootstrap chain, verified against kernel {@code 30.8.1} and
  * staying entirely in the {@code a12internal.api} tier:

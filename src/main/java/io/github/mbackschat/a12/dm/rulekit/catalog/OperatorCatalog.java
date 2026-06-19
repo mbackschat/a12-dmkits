@@ -12,7 +12,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * The bundled operator catalog (proposal §9), loaded from the classpath resource
+ * The bundled operator catalog (PROJECT-DESIGN §9), loaded from the classpath resource
  * {@code catalog/operators.json}. This is the language-neutral spine the AST, renderer, docs, and
  * LLM context all read from. Loading fails fast on a duplicate id so the catalog can't silently
  * shadow an entry.

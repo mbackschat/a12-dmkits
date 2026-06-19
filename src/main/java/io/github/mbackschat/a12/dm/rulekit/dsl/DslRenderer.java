@@ -5,7 +5,7 @@ import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry;
 import io.github.mbackschat.a12.dm.rulekit.validate.Span;
 
 /**
- * Renders a {@link Condition} AST to canonical A12 DSL text (proposal §8, component 4). Every
+ * Renders a {@link Condition} AST to canonical A12 DSL text (PROJECT-DESIGN §8, component 4). Every
  * operator keyword — worded ({@code FieldFilled}, {@code And}/{@code Und}) or symbolic
  * ({@code <=}) — is looked up from the {@link OperatorCatalog} by the node's own
  * {@link Condition#operatorId() operator-id} (D14), so the same AST renders to EN or DE and no

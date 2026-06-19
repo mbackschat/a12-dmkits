@@ -1,10 +1,10 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 /**
- * A typed value expression (proposal §5) — the operand kind that supplies values inside conditions
+ * A typed value expression (PROJECT-DESIGN §5) — the operand kind that supplies values inside conditions
  * and renders into a computation's {@code operation}. The closed set keeps rendering exhaustive.
  *
- * <p><strong>The function-node pattern</strong> (proposal §8): every keyword construct gets its own
+ * <p><strong>The function-node pattern</strong> (PROJECT-DESIGN §8): every keyword construct gets its own
  * typed node (like {@link LengthOf}) carrying its catalog operator-id — type safety is the product,
  * so there is no generic {@code FunctionCall} node. Only <em>rendering</em> is generalized: the
  * renderer looks the keyword up from the catalog by id. Value nodes ({@link FieldValue}, the

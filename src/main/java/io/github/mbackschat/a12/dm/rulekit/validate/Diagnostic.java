@@ -10,7 +10,7 @@ import com.mgmtp.a12.model.notification.Severity;
 /**
  * One structured finding about a rule, modelled on LSP's {@code Diagnostic} so the same shape serves
  * the kernel ground-truth check (F4), the build-time pre-checks, and (later) the AST lint layer —
- * the lingua franca editors and agents already parse (proposal §F4a).
+ * the lingua franca editors and agents already parse (PROJECT-DESIGN §F4a).
  *
  * <p>The fields answer <b>what / where / how / why</b>: {@code summary} (what), {@code where} (which
  * rule, plus the AST operator-id once read lands), {@code fix} (an applicable DSL replacement or

@@ -1,17 +1,17 @@
 rootProject.name = 'a12-dmkits'
 
-// modelkit (docs/MODELKIT-PROPOSAL §H, ARCHITECTURE "the umbrella") folded into the root project as the
+// modelkit (docs/PROJECT-DESIGN.md §21H, ARCHITECTURE "the umbrella") folded into the root project as the
 // `dm.modelkit` package layer (2026-06-09 — D10 superseded by Architecture A: siblings over a shared
 // core). The `dm.modelkit ⊥ dm.rulekit` sibling boundary is enforced at the package level by the
 // import-sweep test `SiblingBoundaryTest` (no longer by module isolation). modelkit may now use
 // `dm.core` + the public kernel surface.
 
-// The kernel-adapter (proposal D15/N8): an opt-in, Java-only module that consumes the kernel's
+// The kernel-adapter (PROJECT-DESIGN D15/N8): an opt-in, Java-only module that consumes the kernel's
 // a12internal *read* surface (parser/formatter/meta) — never part of the shipped, polyglot core.
 // Build it with `:adapter:test`; `:test` keeps core free of the internal tier.
 include 'adapter'
 
-// The standalone CLI (proposal N10, docs/CLI-SPEC.md): the modeller/BA front-end — verbs + JSON I/O
+// The standalone CLI (PROJECT-DESIGN N10, docs/CLI-SPEC.md): the modeller/BA front-end — verbs + JSON I/O
 // over the engine. `application` plugin so dev runs go through `:cli:run`/`:cli:installDist` (no
 // jlink/jpackage in the inner loop). Depends on core now; +adapter when read/explain verbs land.
 include 'cli'

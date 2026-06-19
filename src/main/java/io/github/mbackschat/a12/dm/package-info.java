@@ -7,9 +7,9 @@
  *
  * <p>This is a personal exploration; it is <strong>not</strong> an official A12 artifact and is
  * not affiliated with or endorsed by mgm. Shipped code binds only to the kernel's public OSS
- * surface (see {@code docs/PROJECT-PROPOSAL.md} v2, N8/D15).
+ * surface (see {@code docs/PROJECT-DESIGN.md} v2, N8/D15).
  *
- * <p>The package tree is filled in incrementally per the phased roadmap (proposal §16); this root
+ * <p>The package tree is filled in incrementally per the phased roadmap (PROJECT-DESIGN §16); this root
  * package currently only establishes the namespace.
  */
 package io.github.mbackschat.a12.dm;

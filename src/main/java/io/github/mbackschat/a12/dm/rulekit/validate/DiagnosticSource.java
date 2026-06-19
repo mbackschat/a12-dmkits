@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.validate;
 
 /**
- * Where a {@link Diagnostic} originates (proposal §F4a). The origins are unified into one shape so
+ * Where a {@link Diagnostic} originates (PROJECT-DESIGN §F4a). The origins are unified into one shape so
  * editors and agents parse them identically:
  * <ul>
  *   <li>{@link #PRECHECK} — a rulekit pre-check: hard at {@code build()} (completeness/structural,

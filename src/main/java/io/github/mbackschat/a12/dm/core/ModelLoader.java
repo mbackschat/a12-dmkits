@@ -15,7 +15,7 @@ import com.mgmtp.a12.model.notification.Severity;
 
 /**
  * Loads a DocumentModel from DM-JSON into the fully-expanded, consistency-checked form rulekit
- * binds to (proposal §5a / F0). The pipeline is: {@code deserialize → expand(resolver) →
+ * binds to (PROJECT-DESIGN §5a / F0). The pipeline is: {@code deserialize → expand(resolver) →
  * checkConsistency}, failing fast on any {@code ERROR}-severity notification.
  *
  * <p>Uses only the public kernel surface ({@code kernel-md-facade}); no internal-tier dependency.

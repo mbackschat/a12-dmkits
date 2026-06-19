@@ -19,7 +19,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
 /**
- * Adapter bootstrap canary (Phase 2, proposal §16). Proves the full a12internal read chain wires up
+ * Adapter bootstrap canary (Phase 2, PROJECT-DESIGN §16). Proves the full a12internal read chain wires up
  * against the pinned kernel — and doubles as the N8 <b>canary</b> that fails loudly if a kernel
  * upgrade breaks the (unstable) internal surface. It authors a rule with rulekit, writes it into the
  * model (F6), then reads it back through the kernel adapter: parse+format round-trip, exact

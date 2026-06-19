@@ -7,7 +7,7 @@ version = '0.2.1'
 
 // PUBLIC + LOCAL repositories only. The A12 kernel is resolved from the local Maven
 // repository (~/.m2), where the dedicated a12-kernel-bootstrap kit publishes it from
-// public sources. No private registry is used. See docs/PROJECT-PROPOSAL.md §19.
+// public sources. No private registry is used. See docs/PROJECT-DESIGN.md §19.
 repositories {
     mavenLocal()
     mavenCentral()
@@ -36,7 +36,7 @@ dependencies {
     // `betterbuilders` the proposal excludes.
     api "com.mgmtp.a12.kernel:kernel-md-facade:${kernelVersion}"
 
-    // The operator catalog (proposal §9) is a bundled JSON resource parsed at load time.
+    // The operator catalog (PROJECT-DESIGN §9) is a bundled JSON resource parsed at load time.
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
     // YAML reader for the workspace `roles.yaml` access-control config (FEATURE-GAPS R3). Parsed as a
     // Jackson tree (no reflective POJO binding), the same tree-walking style as ModelDocument's DM-JSON read.

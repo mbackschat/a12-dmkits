@@ -7,7 +7,7 @@ import com.mgmtp.a12.model.notification.RankedNotification;
 
 /**
  * Thrown when the kernel reports {@code ERROR}-severity notifications while checking a model's
- * consistency (proposal §11, line 3 — the real-kernel ground-truth step). Carries the raw
+ * consistency (PROJECT-DESIGN §11, line 3 — the real-kernel ground-truth step). Carries the raw
  * notifications so callers can map {@code MVK_*} codes to actionable advice.
  */
 public class ModelConsistencyException extends RuntimeException {

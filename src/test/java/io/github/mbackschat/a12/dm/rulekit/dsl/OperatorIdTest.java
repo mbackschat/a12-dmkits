@@ -11,7 +11,7 @@ import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
- * The D14 invariant (proposal §8/§17): every operator-applying AST node carries its catalog
+ * The D14 invariant (PROJECT-DESIGN §8/§17): every operator-applying AST node carries its catalog
  * operator-id, and every id reachable from the DSL surface resolves to a catalog entry. This is
  * what makes explain (F9) and the text→AST converter (F10) cheap projections — and it forbids
  * keyword knowledge from living anywhere but the catalog.

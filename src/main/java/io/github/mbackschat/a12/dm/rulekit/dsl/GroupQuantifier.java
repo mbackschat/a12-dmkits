@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 /**
- * The group-list quantifier predicates — the group twin of {@link Quantifier} (proposal §5). Each
+ * The group-list quantifier predicates — the group twin of {@link Quantifier} (PROJECT-DESIGN §5). Each
  * maps to its catalog operator id, from which the renderer looks up the localized keyword.
  */
 public enum GroupQuantifier {

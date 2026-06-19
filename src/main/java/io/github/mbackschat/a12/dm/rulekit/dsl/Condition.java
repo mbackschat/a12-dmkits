@@ -4,11 +4,11 @@ import java.util.function.UnaryOperator;
 
 /**
  * A boolean expression — the kind that renders into a rule's {@code errorCondition} and into
- * computation pre-/common-preconditions (proposal §5). Immutable and composable: {@link #and} /
+ * computation pre-/common-preconditions (PROJECT-DESIGN §5). Immutable and composable: {@link #and} /
  * {@link #or} build new nodes (N5). The closed set of node types lets the renderer dispatch with an
  * exhaustive switch.
  *
- * <p><strong>D14 invariant</strong> (proposal §8/§17): every condition node is one operator
+ * <p><strong>D14 invariant</strong> (PROJECT-DESIGN §8/§17): every condition node is one operator
  * application and {@link #operatorId()} names its catalog entry; its field references are
  * model-resolved {@link FieldRef}s carrying a provenance {@link PathStyle} hint. That is what makes
  * explain (F9) and the text→AST converter (F10) cheap projections over this tree.
@@ -31,7 +31,7 @@ public sealed interface Condition
     }
 
     /**
-     * Bottom-up rewrite — the in-session modify capability (#1, proposal §12). The rewriter is
+     * Bottom-up rewrite — the in-session modify capability (#1, PROJECT-DESIGN §12). The rewriter is
      * applied to every <em>condition</em> node, children first (so it sees already-rewritten
      * children); returning the node unchanged keeps it. Untouched subtrees are reused by reference
      * (N5), so a no-op transform returns {@code this}.

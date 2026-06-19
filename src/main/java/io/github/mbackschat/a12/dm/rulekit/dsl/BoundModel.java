@@ -441,7 +441,7 @@ public final class BoundModel {
         return new Computation.Builder(computed, index.locales());
     }
 
-    // --- field-list quantifiers (proposal §5) — each validates every path against the model -------
+    // --- field-list quantifiers (PROJECT-DESIGN §5) — each validates every path against the model -------
 
     public Condition allFieldsFilled(String... paths) {
         return fieldList(Quantifier.ALL_FIELDS_FILLED, paths);

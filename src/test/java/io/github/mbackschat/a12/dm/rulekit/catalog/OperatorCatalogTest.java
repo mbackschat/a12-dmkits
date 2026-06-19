@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 /**
- * The operator catalog (proposal §9) is the language-neutral spine: a bundled JSON resource the
+ * The operator catalog (PROJECT-DESIGN §9) is the language-neutral spine: a bundled JSON resource the
  * builder, renderer, docs, and LLM context all read from. These are structural self-checks — the
  * grammar-parity coverage test (catalog ↔ lexer terminals) and the CI example validation (N7) are
  * separate, later anchors.
@@ -59,7 +59,7 @@ class OperatorCatalogTest {
     }
 
     /**
-     * The stub-entries policy (proposal §9): a {@code SUPPORTED} operator must carry a runnable example so
+     * The stub-entries policy (PROJECT-DESIGN §9): a {@code SUPPORTED} operator must carry a runnable example so
      * it can't silently escape the kernel-validation harness — a condition {@code validExample} (N7) or,
      * for a <b>computation-only</b> operator with no condition form (the {@code DateRange} constructor), a
      * {@code computationExample} (its N7 peer). Only {@code PLANNED} stubs are exempt.

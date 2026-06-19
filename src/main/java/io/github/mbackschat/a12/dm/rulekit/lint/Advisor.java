@@ -15,7 +15,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource;
 
 /**
- * The F4a <b>gotcha/INFO channel</b> — the third diagnostic kind (proposal §F4a). The
+ * The F4a <b>gotcha/INFO channel</b> — the third diagnostic kind (PROJECT-DESIGN §F4a). The
  * structural-error / semantic-surprise split is fundamental: {@code checkConsistency} catches the
  * former (F4) but is <em>silent</em> on the latter, because a surprising rule is still a
  * <em>valid</em> one. So for every operator a rule uses, the advisor surfaces that operator's

@@ -10,7 +10,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
- * F4 ground-truth <em>mechanics</em> (proposal §11): rulekit injects a rendered rule into the model
+ * F4 ground-truth <em>mechanics</em> (PROJECT-DESIGN §11): rulekit injects a rendered rule into the model
  * as DM-JSON, runs the real kernel's {@code checkConsistency} (no compile, no execute), and reports
  * problems. This file covers the injection/round-trip itself; the per-family kernel-law locks
  * (executable KERNEL-FINDINGS entries) live in {@code validate.laws.*}.

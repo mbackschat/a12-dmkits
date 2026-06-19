@@ -34,7 +34,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.TimeRef;
 
 /**
  * L2c — a thin, session-bound <b>editor</b> over one group: the <em>one</em> fluent editing idiom
- * (proposal §18.7 / D7; the name {@code Editor}, not "cursor", was a deliberate choice — §18.7). It
+ * (PROJECT-DESIGN §18.7 / D7; the name {@code Editor}, not "cursor", was a deliberate choice — §18.7). It
  * pairs a pure {@link GroupRef} location with the live {@link EditSession}, so it
  * <ol>
  *   <li>carries the structure-edit verbs, which <b>chain</b> (each returns {@code this}, mirroring

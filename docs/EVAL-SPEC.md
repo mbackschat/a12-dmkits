@@ -1,6 +1,6 @@
 # a12-dmkits — self-sufficiency eval & benchmark (N6/N1)
 
-How we measure — and improve — whether **dmtool's** bundled material (its self-describing CLI surface) lets an LLM author and understand A12 models — rules, computations, and structure — **without the kernel's BA docs**. This operationalizes the existing requirement **N6** (semantic self-sufficiency, proposal §14) and drives **N1** (the LLM skill). The proposal states the intent; this spec is the method, the scoring, and the living task suite.
+How we measure — and improve — whether **dmtool's** bundled material (its self-describing CLI surface) lets an LLM author and understand A12 models — rules, computations, and structure — **without the kernel's BA docs**. This operationalizes the existing requirement **N6** (semantic self-sufficiency, PROJECT-DESIGN §14) and drives **N1** (the LLM skill). The proposal states the intent; this spec is the method, the scoring, and the living task suite.
 
 > **New to LLM evals?** The [primer & glossary](EVAL-PRIMER.md) explains the idea in plain terms and defines the vocabulary (eval, gold, oracle, judge, pass@k, …). This document is the method, scoring, task suite, and runbook.
 

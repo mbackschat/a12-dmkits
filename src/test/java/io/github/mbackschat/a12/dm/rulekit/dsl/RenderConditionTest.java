@@ -9,7 +9,7 @@ import io.github.mbackschat.a12.dm.Fixtures;
 
 /**
  * The renderer/handle core: composition, parenthesization, literal quoting, typed-handle kind
- * checks (proposal §6/§10). Operator-family behavior lives in {@code dsl.operators.*} — one test
+ * checks (PROJECT-DESIGN §6/§10). Operator-family behavior lives in {@code dsl.operators.*} — one test
  * file per family (test-layout convention, CLAUDE.md). Paths render in absolute form for now; the
  * relative/short path policy + rule-group context (§18 fork 9, F3a) come later.
  */

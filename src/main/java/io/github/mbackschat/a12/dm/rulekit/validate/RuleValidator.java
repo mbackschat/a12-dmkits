@@ -21,7 +21,7 @@ import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 
 /**
- * Ground-truth rule check (proposal §11, line 3). Injects a {@link DraftRule} into the model as
+ * Ground-truth rule check (PROJECT-DESIGN §11, line 3). Injects a {@link DraftRule} into the model as
  * DM-JSON — the public, polyglot path (no internal {@code betterbuilders}, per D9/N8) — then runs
  * the real kernel's {@code checkConsistency} (a parse/convert pass: no compile, no execute) and
  * collects the reported problems.

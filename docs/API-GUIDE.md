@@ -642,7 +642,7 @@ The flat `operators` list answers *which* constructs appear; the **`tree`** answ
 }
 ```
 
-*Carried forward (the 2026-06-03 sketch's richer rule-envelope, not yet shipped):* per-reference **roles** (error-field / operand) and **severity** need the rule envelope, not just the condition; the **`suspicious`** hints are available separately today via `RuleDiagnostics`/`lint.Linter`; authored path-style is a render concern. See proposal §F9 ("rule-envelope enrichment").
+*Carried forward (the 2026-06-03 sketch's richer rule-envelope, not yet shipped):* per-reference **roles** (error-field / operand) and **severity** need the rule envelope, not just the condition; the **`suspicious`** hints are available separately today via `RuleDiagnostics`/`lint.Linter`; authored path-style is a render concern. See PROJECT-DESIGN §F9 ("rule-envelope enrichment").
 
 ### 5.4 Re-express, diff, validate, write back
 
@@ -772,7 +772,7 @@ Removing a field a rule still references is rejected at **`validate()`** (`Model
 
 ## 5c. Refs & editors — the L2c ergonomic layer
 
-> **Status: implemented 2026-06-12 (proposal D7 / binding level *L2c*).** This is the agreed design, now built, and **replaces the dropped L2b codegen**. It spans **both kits** — rulekit rule authoring *and* modelkit structure editing. The session-bound handles are the **`Editor`** family — `GroupEditor` / `FieldEditor` / `RuleEditor` / `ComputationEditor` / `TypeDefEditor` / `IncludeEditor` / `ConfigEditor` — a **complete surface**: every editable element has an editor, so asking "what editors exist?" finds no gaps. The earlier working name *"cursor"* was dropped — naming decision + rejected alternatives (`Node`, `Handle`) in proposal §18.7 (fork #7). **No deferrals** (§18.7): `IncludeEditor` also does `setReference` (re-point) and `rename` (header + every mount move in step, so rules over mounted content don't ripple).
+> **Status: implemented 2026-06-12 (PROJECT-DESIGN D7 / binding level *L2c*).** This is the agreed design, now built, and **replaces the dropped L2b codegen**. It spans **both kits** — rulekit rule authoring *and* modelkit structure editing. The session-bound handles are the **`Editor`** family — `GroupEditor` / `FieldEditor` / `RuleEditor` / `ComputationEditor` / `TypeDefEditor` / `IncludeEditor` / `ConfigEditor` — a **complete surface**: every editable element has an editor, so asking "what editors exist?" finds no gaps. The earlier working name *"cursor"* was dropped — naming decision + rejected alternatives (`Node`, `Handle`) in PROJECT-DESIGN §18.7 (fork #7). **No deferrals** (§18.7): `IncludeEditor` also does `setReference` (re-point) and `rename` (header + every mount move in step, so rules over mounted content don't ripple).
 
 Today you reference an element by **string path**, which returns a typed handle (L2a): `m.num("/Order/Discount")`, `m.group("/Order")`, `addField("/Order", "Discount", NUMBER)`. The path is a string (a typo throws at *bind*, not at compile), and after an edit you **re-type the path** to reference what you just created. L2c makes **refs/pointers the preferred currency** — for fields *and* groups, existing *or* just-created — across both kits, staying pure runtime (no codegen).
 
@@ -1105,7 +1105,7 @@ List<Rule> rules = m.fields()
         .toList();
 ```
 
-Safe by F0's snapshot semantics (immutable binding → internal memoization, clients never index); **Level 2** (glob paths) stays parked behind named triggers — see finding 9. **Relative navigation** off a known group landed (finding 40, §3.6): `m.groupAt(path)` → `GroupInfo`, then `app.str("Schedule/Name")`/`group`/`field`/… resolve relative to it — the read peer of `GroupEditor`, so a combinator can take a root group and apply to any subtree. (The *static* codegen-refs counterpart, once mooted as L2b, was **dropped** — proposal D7; the ergonomic layer **L2c** — runtime value refs + a session-bound editor, across both kits — replaces it (§5c).)
+Safe by F0's snapshot semantics (immutable binding → internal memoization, clients never index); **Level 2** (glob paths) stays parked behind named triggers — see finding 9. **Relative navigation** off a known group landed (finding 40, §3.6): `m.groupAt(path)` → `GroupInfo`, then `app.str("Schedule/Name")`/`group`/`field`/… resolve relative to it — the read peer of `GroupEditor`, so a combinator can take a root group and apply to any subtree. (The *static* codegen-refs counterpart, once mooted as L2b, was **dropped** — PROJECT-DESIGN D7; the ergonomic layer **L2c** — runtime value refs + a session-bound editor, across both kits — replaces it (§5c).)
 
 **Reading annotations closes the write/read asymmetry (finding 37).** `FieldInfo` (and, symmetrically, `GroupInfo`) now exposes the element-level `annotations()` it could already *write* (`EditSession.setAnnotation`), plus `annotation(name)` as the matcher — the pair share a top-level `Annotation` record. So "find every field tagged `audited`, then attach a sibling `_AUDIT` group" is one stream over the navigation surface composed with an `EditSession`, no query language:
 

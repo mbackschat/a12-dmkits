@@ -2,7 +2,7 @@ plugins {
     id 'java-library'
 }
 
-// The kernel-adapter (proposal D15 / N8 tier 3): an OPT-IN, Java-only module that consumes the
+// The kernel-adapter (PROJECT-DESIGN D15 / N8 tier 3): an OPT-IN, Java-only module that consumes the
 // kernel's `a12internal` *read* surface (parser / formatter / referenced-entities) under the four
 // guardrails — boundary conversion (kernel types never escape a public signature), read-only (never
 // construct/mutate kernel `…Impl`), pin + canary (pinned version + a CI canary failing loudly on an

@@ -1,10 +1,10 @@
 # Kernel & editor API survey — bidirectional rule modification
 
-> **Status:** comprehensive survey, 2026-06-03, against kernel **`30.8.1`** sources (sibling clones `a12-kernel`, `a12-antlr4-code-editor`). Prompted by the owner declaring **bidirectional rule modification** (text ⇄ Java builder) a project **vision/goal** — recorded in [`PROJECT-PROPOSAL.md`](./PROJECT-PROPOSAL.md) §2/§12/§16. This doc inventories *everything* in the kernel and the editor stack with potential value for that goal, so nothing is rediscovered later.
+> **Status:** comprehensive survey, 2026-06-03, against kernel **`30.8.1`** sources (sibling clones `a12-kernel`, `a12-antlr4-code-editor`). Prompted by the owner declaring **bidirectional rule modification** (text ⇄ Java builder) a project **vision/goal** — recorded in [`PROJECT-DESIGN.md`](./PROJECT-DESIGN.md) §2/§12/§16. This doc inventories *everything* in the kernel and the editor stack with potential value for that goal, so nothing is rediscovered later.
 >
-> **Verification legend:** ✅ = verified directly in source during this survey. ◐ = agent-surveyed (three deep parallel sweeps), signature plausible but **re-verify before first use**. Everything here is *reference, not dependency* until a design decision (proposal §17) adopts it.
+> **Verification legend:** ✅ = verified directly in source during this survey. ◐ = agent-surveyed (three deep parallel sweeps), signature plausible but **re-verify before first use**. Everything here is *reference, not dependency* until a design decision (PROJECT-DESIGN §17) adopts it.
 >
-> **Policy frame:** consumption is governed by the tiered **N8** policy (proposal D15): core = public-API-only; tests = internal allowed; an opt-in **Java-only kernel-adapter module** may use the `a12internal` *read* surface under guardrails (boundary conversion, read-only, pin + CI canary, fail-fast coverage).
+> **Policy frame:** consumption is governed by the tiered **N8** policy (PROJECT-DESIGN D15): core = public-API-only; tests = internal allowed; an opt-in **Java-only kernel-adapter module** may use the `a12internal` *read* surface under guardrails (boundary conversion, read-only, pin + CI canary, fail-fast coverage).
 
 ## 1. The goal and the architecture it implies
 
@@ -130,7 +130,7 @@ Public-tier confirmation ◐: `IRule`/`IComputation`/`IDocumentModel` expose **n
 ## 16. Negative findings (checked, not useful)
 
 - `kernel-rewrite` — OpenRewrite kernel-upgrade recipes, not rule rewriting.
-- `kernel-md-typed-accessor-gen` — document-instance accessors (a codegen precedent only; L2b itself was dropped — proposal D7).
+- `kernel-md-typed-accessor-gen` — document-instance accessors (a codegen precedent only; L2b itself was dropped — PROJECT-DESIGN D7).
 - `DocumentModelJoiningService` — deprecated (30.6.0) decoration joining; its visitor patterns (§8) are the useful residue.
 - Migration framework (`IDocumentModelMigrator`) — schema version migrations, not rule text.
 - General codegen modules (`kernel-core-codegen*` beyond condition) — code emission, not authoring; `CodeGenCreator` is only interesting as proof the AST is complete enough to compile from.
@@ -138,7 +138,7 @@ Public-tier confirmation ◐: `IRule`/`IComputation`/`IDocumentModel` expose **n
 
 ## 17. Consequences for rulekit (decided / proposed)
 
-1. **Bidirectional modification is now a recorded vision/goal** (proposal §2, 2026-06-03); the text→AST read path moves from "Phase 5, need-gated" to **Phase 2 scope** alongside explain/modify — see §16 of the proposal. The *working representation* remains rulekit's AST; the *source of truth* question (Q1) is amended: foreign text becomes a supported **input**, builder/rulekit-AST remains the canonical working form, rendered text + DM-JSON the output.
+1. **Bidirectional modification is now a recorded vision/goal** (PROJECT-DESIGN §2, 2026-06-03); the text→AST read path moves from "Phase 5, need-gated" to **Phase 2 scope** alongside explain/modify — see §16 of the proposal. The *working representation* remains rulekit's AST; the *source of truth* question (Q1) is amended: foreign text becomes a supported **input**, builder/rulekit-AST remains the canonical working form, rendered text + DM-JSON the output.
 2. **Adapter shape:** one Java-only module wrapping `getMvkServiceForModel` + the converter visitor + thin façades over format/translate/rename/referenced-entities. Kernel types never escape (N8 guardrails). The deprecation of `IChangeRuleSupport` (since 30.6.0) is exactly the instability N8 prices in — pin + canary; prefer re-render-from-AST over `changeConditionText` where rulekit's AST is available, and reserve the kernel rename for foreign-text bulk refactoring.
 3. **Cheap wins to adopt early (test tier, no policy change needed):** the differential render oracle and DE-translation oracle (§7); `hasValidConditionText` to speed up the N7 harness (§10); the name-enum parity anchor (§13).
 4. **Catalog authoring:** use the web content catalogs as a *drift-detection oracle* for EN/DE keywords and semantics — opt-in test, EUPL boundary respected (no verbatim copying).

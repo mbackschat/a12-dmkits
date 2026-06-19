@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 /**
- * The field-list quantifier predicates — predicates over a list of fields (proposal §5). Each maps
+ * The field-list quantifier predicates — predicates over a list of fields (PROJECT-DESIGN §5). Each maps
  * to its catalog operator id, from which the renderer looks up the localized keyword.
  */
 public enum Quantifier {

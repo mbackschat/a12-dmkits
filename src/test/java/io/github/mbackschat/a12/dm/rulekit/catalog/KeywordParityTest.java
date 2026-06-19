@@ -9,7 +9,7 @@ import java.util.ResourceBundle;
 import org.junit.jupiter.api.Test;
 
 /**
- * N3 keyword-parity anchor (proposal §9, honesty direction 2) — every catalog operator keyword is
+ * N3 keyword-parity anchor (PROJECT-DESIGN §9, honesty direction 2) — every catalog operator keyword is
  * reconciled against the kernel's own lexer terminals (`LexerTerminals_{en,de}`, loaded from the
  * classpath: a {@code ListResourceBundle} mapping keyword → token). A worded keyword must be a real
  * terminal in its language; a symbolic one ({@code <=}, {@code ==}, {@code ->}) is a

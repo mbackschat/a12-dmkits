@@ -6,7 +6,7 @@ import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry;
 
 /**
- * Enriches a raw kernel {@link Diagnostic} via the <b>catalog-join</b> (proposal §F4a): a
+ * Enriches a raw kernel {@link Diagnostic} via the <b>catalog-join</b> (PROJECT-DESIGN §F4a): a
  * {@code MVK_*} code is matched against the catalog entry that documents it in its
  * {@code invalidExample}, and that entry's curated {@code fix} and operator {@code meaning} are
  * attached. The fix database thus lives in one place — the N7-locked catalog — so kernel

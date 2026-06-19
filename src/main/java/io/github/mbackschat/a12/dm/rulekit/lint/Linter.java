@@ -38,7 +38,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.DiagnosticSource;
 
 /**
- * The F4a <b>lint layer</b> — valid-but-suspicious findings over the typed AST (proposal §F4a;
+ * The F4a <b>lint layer</b> — valid-but-suspicious findings over the typed AST (PROJECT-DESIGN §F4a;
  * study finding 7). This is the diagnostic kind {@code checkConsistency} cannot give an LLM: the
  * kernel only reports structural <em>errors</em>, so "compiles and is accepted, but probably not
  * what you meant" must come from rulekit.

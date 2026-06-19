@@ -3,7 +3,7 @@ plugins {
     id 'org.graalvm.buildtools.native' version '1.1.1'   // release native image (opt-in `:cli:nativeCompile`, GraalVM 25)
 }
 
-// The standalone CLI (proposal N10 / docs/CLI-SPEC.md): the modeller/BA front-end. The `application`
+// The standalone CLI (PROJECT-DESIGN N10 / docs/CLI-SPEC.md): the modeller/BA front-end. The `application`
 // plugin gives `run` / `installDist` / `distZip` so the dev inner loop never builds the self-contained
 // app-image (jlink/jpackage is Phase B, distribution only — it adds no behavior, just bundles a JVM).
 repositories {

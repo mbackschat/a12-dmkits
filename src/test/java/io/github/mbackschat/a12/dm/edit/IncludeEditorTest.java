@@ -20,7 +20,7 @@ import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 /**
  * L2c — the {@link IncludeEditor}: a held reference to a declared include (by alias), so mounting it again
  * or removing it doesn't re-type the alias. From {@link EditSession#include(String)}. (Re-alias is
- * deferred — it ripples to every mount; see proposal §18.7.)
+ * deferred — it ripples to every mount; see PROJECT-DESIGN §18.7.)
  */
 class IncludeEditorTest {
 

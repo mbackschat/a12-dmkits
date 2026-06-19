@@ -14,7 +14,7 @@ import com.mgmtp.a12.kernel.md.model.api.fieldtypes.INumberType;
 
 /**
  * A queryable index over a fully-expanded DocumentModel — the foundation everything else binds to
- * (proposal §5a / F0). Maps each element's absolute path to its model node so the AST, renderer,
+ * (PROJECT-DESIGN §5a / F0). Maps each element's absolute path to its model node so the AST, renderer,
  * and pre-checks can resolve paths, operand kinds, and repetition structure.
  *
  * <p>Build via {@link #of(IDocumentModel)} on a model already expanded + consistency-checked by

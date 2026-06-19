@@ -2,7 +2,7 @@ package io.github.mbackschat.a12.dm.rulekit.dsl;
 
 /**
  * Provenance hint on a {@link FieldRef}: how the reference's path form was (or should be) chosen
- * (D14/F10, proposal §8/§12). Builder-made refs are {@link #CANONICAL} — the renderer picks the
+ * (D14/F10, PROJECT-DESIGN §8/§12). Builder-made refs are {@link #CANONICAL} — the renderer picks the
  * correct/safest form per the path policy (§18 fork 9). The text→AST converter (F10) constructs
  * refs carrying the <em>authored</em> style it finds in the kernel's parse tree
  * ({@code PathNotationConfig}), so a re-render can preserve the author's notation where legal —

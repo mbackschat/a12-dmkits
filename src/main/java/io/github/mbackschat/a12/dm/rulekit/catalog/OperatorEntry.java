@@ -5,7 +5,7 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
- * One catalog entry — a single kernel construct described as data (proposal §9). It captures
+ * One catalog entry — a single kernel construct described as data (PROJECT-DESIGN §9). It captures
  * semantics, not just surface: {@code meaning} + {@code constraints}/{@code gotchas} + valid/invalid
  * examples are what let an LLM reason about correctness, not only spelling (N6).
  *

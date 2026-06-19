@@ -8,7 +8,7 @@ import java.util.function.BooleanSupplier;
 import picocli.CommandLine;
 
 /**
- * The standalone CLI (proposal N10 / docs/CLI-SPEC.md) — the modeller/BA front-end over the engine.
+ * The standalone CLI (PROJECT-DESIGN N10 / docs/CLI-SPEC.md) — the modeller/BA front-end over the engine.
  *
  * <p>{@link #run} is deliberately <b>pure and testable</b>: it returns an exit code and writes to the
  * passed sinks (no {@code System.exit}, no static streams), so every verb is a sub-second JUnit test

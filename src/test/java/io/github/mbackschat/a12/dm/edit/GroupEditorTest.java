@@ -17,7 +17,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
 /**
- * L2c (binding level, proposal §18.7 / D7) — the session-bound {@link GroupEditor}: refs are the currency.
+ * L2c (binding level, PROJECT-DESIGN §18.7 / D7) — the session-bound {@link GroupEditor}: refs are the currency.
  * One fluent idiom (the editor chains; the session-as-actor / ref-returning form is dropped), relative
  * navigation off a group to a pure ref for ANY child (existing or just-created), and an explicit downgrade
  * to the pure {@link GroupRef} to enter the immutable AST (so the session never leaks into a rule).
