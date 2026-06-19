@@ -44,8 +44,8 @@ final class WorkspaceRolesCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @Parameters(index = "0", paramLabel = "<dir>",
-            description = "the workspace root (the directory holding auth/roles.yaml beside models/)")
+    @Parameters(index = "0", arity = "0..1", paramLabel = "<dir>",
+            description = "the workspace root (the directory holding auth/roles.yaml beside models/) (defaults to -w/--workspace, then $DMTOOL_WORKSPACE)")
     String dir;
 
     @Option(names = "--roles", paramLabel = "<roles.yaml>",
@@ -58,6 +58,10 @@ final class WorkspaceRolesCommand extends BaseCommand {
 
     @Override
     public Integer call() {
+        dir = workspaceDir(dir).orElse(null);
+        if (dir == null) {
+            return fail("pass a workspace directory positionally (dmtool workspace <op> <dir>), or set -w/--workspace (or $DMTOOL_WORKSPACE)");
+        }
         Path root = Path.of(dir);
         if (!Files.isDirectory(root)) {
             return fail("not a directory: " + dir);

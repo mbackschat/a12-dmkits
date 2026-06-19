@@ -74,6 +74,25 @@ class WorkspaceListCommandTest {
     }
 
     @Test
+    void theDirComesFromTheUniversalWorkspaceOptionWhenThePositionalIsOmitted(@TempDir Path dir) throws Exception {
+        // probe 01-de Finding 5: workspace verbs ignored the inherited -w an agent had already set and demanded
+        // the dir positionally. The dir now falls back to -w/--workspace (the same universal option that
+        // resolves a -m model's includes), so `dmtool -w <dir> workspace list` works like the agent expected.
+        CliTestSupport.Result res = CliTestSupport.run("-w", catalog(dir).toString(), "workspace", "list");
+        assertEquals(0, res.code(), res::err);
+        assertEquals(3, M.readTree(res.out()).path("data").path("count").asInt(),
+                () -> "the -w root was used as the scan dir: " + res.out());
+    }
+
+    @Test
+    void noDirAndNoWorkspaceGivesACorrectiveNamingBothForms(@TempDir Path dir) {
+        CliTestSupport.Result res = CliTestSupport.run("workspace", "list");
+        assertEquals(2, res.code(), () -> "no dir + no -w → clean fail: " + res.out() + res.err());
+        assertTrue(res.err().contains("-w") || res.out().contains("-w"),
+                () -> "the corrective names the -w/--workspace fallback: " + res.err() + res.out());
+    }
+
+    @Test
     void recursiveWidensTheScopeSoASubfolderIncludeResolves(@TempDir Path dir) throws Exception {
         catalog(dir);
         Path lib = Files.createDirectory(dir.resolve("lib"));

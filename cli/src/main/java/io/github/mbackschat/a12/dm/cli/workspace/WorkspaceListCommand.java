@@ -41,8 +41,8 @@ final class WorkspaceListCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @Parameters(index = "0", paramLabel = "<dir>",
-            description = "the workspace directory to scan for DM-JSON document models")
+    @Parameters(index = "0", arity = "0..1", paramLabel = "<dir>",
+            description = "the workspace directory to scan for DM-JSON document models (defaults to -w/--workspace, then $DMTOOL_WORKSPACE)")
     String dir;
 
     @Option(names = {"--recursive", "-r"},
@@ -60,6 +60,10 @@ final class WorkspaceListCommand extends BaseCommand {
 
     @Override
     public Integer call() {
+        dir = workspaceDir(dir).orElse(null);
+        if (dir == null) {
+            return fail("pass a workspace directory positionally (dmtool workspace <op> <dir>), or set -w/--workspace (or $DMTOOL_WORKSPACE)");
+        }
         Path root = Path.of(dir);
         if (!Files.isDirectory(root)) {
             return fail("not a directory: " + dir);

@@ -146,11 +146,13 @@ This was **far too long**. The deterministic attribution (from the shim log) sho
 
 **Likely root cause (to confirm).** A mount group (`modelAlias` set) with its own non-empty `elements` is no longer expanded from the include — the local elements shadow/replace the mounted content. Whether this is kernel expand semantics or a rulekit authoring gap needs an experiment; if rulekit lets `field add` write into a mount group without warning, that is a silent-drop-class sibling worth a refusal or advisory. **Queued for a focused probe/experiment** (not yet fixed).
 
-## Finding 5 (DX, recorded — candidate, same class as Finding 2) — `workspace` can't be driven with `-w`
+## Finding 5 (DX, root-caused + FIXED) — `workspace` couldn't be driven with `-w`
 
-**Symptom.** Having set `-w <dir>` for the session, the agent ran `dmtool -w <dir> workspace validate` and `… workspace list` → `Missing required parameter: '<dir>'` ×4. `workspace <op>` takes the directory **positionally**, and the inherited `-w` (the include-resolution root) is ignored for it.
+**Symptom.** Having set `-w <dir>` for the session, the agent ran `dmtool -w <dir> workspace validate` and `… workspace list` → `Missing required parameter: '<dir>'` ×4. `workspace <op>` took the directory **only positionally** and ignored the inherited `-w`.
 
-**Root cause + relation.** This is the **same class as Finding 2** (`export`'s positional model vs the universal `-m`): a verb-specific positional that the agent expects to be the universal option it already set. Here it's `-w` (resolve-roots) vs `workspace <dir>` (scan target) — conceptually the *same directory*, so `workspace <op>` with no positional could sensibly fall back to `-w`. **Recommended (owner decision, like Finding 2):** let `workspace list`/`validate` accept the dir from `-w` when the positional is omitted (or align it the way `export` was). Recorded, not yet fixed — it overturns the current positional-only shape and wants the same explicit go-ahead `export` got.
+**Root cause + relation.** The **same class as Finding 2** (`export`'s positional vs the universal option): a verb-specific positional the agent expects to be the universal option it already set.
+
+**Fix (additive, the class closed).** All four `workspace` verbs (`list`/`graph`/`validate`/`roles`) now resolve the dir as **positional `<dir>` → `-w/--workspace` → `$DMTOOL_WORKSPACE`** (shared `BaseCommand.workspaceDir`). Unlike `export` (where the positional model was *removed* — a model is always `-m`), the positional `<dir>` **stays** — it's the verb's natural scan target and the documented "ls `<dir>`" idiom (5 cli-tour blocks + all workspace tests use it) — and `-w` is the session-default fallback. So `dmtool -w <dir> workspace list` now works *and* nothing churns. Locked by `WorkspaceListCommandTest.theDirComesFromTheUniversalWorkspaceOptionWhenThePositionalIsOmitted` (+ a no-dir corrective). The sibling audit confirmed these 4 were the **only** remaining verbs deviating from the `-m`/`-w` universal-option shape after the `export` fix.
 
 ## Standing low finding (carried from 01b)
 **F1:** `operators` has no narrowing flag; low priority.

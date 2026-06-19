@@ -108,6 +108,26 @@ public abstract class BaseCommand implements Callable<Integer> {
     }
 
     /**
+     * Resolve a {@code workspace} verb's scan directory under the same uniformity rule the rest of the CLI
+     * follows: the explicit positional {@code <dir>} if given, else the inherited {@code -w/--workspace} root,
+     * else {@code $DMTOOL_WORKSPACE} — so an agent that set {@code -w} once can drive {@code workspace} without
+     * repeating the path positionally (probe 01-de Finding 5). Empty when none is resolvable; the caller emits
+     * the corrective. (Unlike {@code -m}, the positional {@code <dir>} stays — it is the verb's natural scan
+     * target — and {@code -w} is the session-default fallback, not a replacement.)
+     */
+    protected Optional<String> workspaceDir(String positional) {
+        if (positional != null) {
+            return Optional.of(positional);
+        }
+        List<Path> roots = spec.root().userObject() instanceof RootCommand root ? root.workspace : List.of();
+        if (!roots.isEmpty()) {
+            return Optional.of(roots.get(0).toString());
+        }
+        String env = System.getenv(WorkspaceOption.WORKSPACE_ENV);
+        return env != null && !env.isBlank() ? Optional.of(env) : Optional.empty();
+    }
+
+    /**
      * Strict input gate: if {@code spec} carries a key the {@code schema/<schemaName>.schema.json} does not
      * declare (top-level or nested), emit a {@code rejected} envelope of {@code RK_UNKNOWN_ARG} diagnostics
      * (with a did-you-mean) and return its exit code; otherwise {@link Optional#empty()} so the caller proceeds.
