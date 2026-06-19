@@ -197,28 +197,48 @@ public final class FieldSpec {
 
     private static Requiredness requiredness(JsonNode spec) {
         JsonNode r = spec.path("required");
+        if (r.isMissingNode() || r.isNull()) {
+            return Requiredness.OPTIONAL;   // absent → the default (the add path calls this unconditionally)
+        }
         if (r.isBoolean()) {
             return r.asBoolean() ? Requiredness.REQUIRED : Requiredness.OPTIONAL;
         }
         if (r.isTextual() && "ifParentPresent".equalsIgnoreCase(r.asText())) {
             return Requiredness.REQUIRED_IF_PARENT_PRESENT;
         }
-        return Requiredness.OPTIONAL;
+        // reject a recognized-key/wrong-shaped value rather than silently coercing it to OPTIONAL and falsely
+        // reporting `required` applied — e.g. "MANDATORY"/"REQUIRED" (the kernel's own terms) used to fall here.
+        throw new IllegalArgumentException("\"required\" must be true, false, or \"ifParentPresent\" (got: "
+                + r.toString() + ")");
     }
 
     private static List<ElementDraft.Annotation> annotations(JsonNode node) {
-        List<ElementDraft.Annotation> out = new ArrayList<>();
-        if (node != null && node.isObject()) {
-            node.fieldNames().forEachRemaining(name -> out.add(new ElementDraft.Annotation(name, node.get(name).asText())));
+        if (node == null || node.isNull()) {
+            return List.of();
         }
+        // reject a wrong shape (e.g. the array form [{name,value}]) rather than silently returning an empty
+        // list and falsely reporting `annotations` applied — the schema declares an object { name: value }.
+        if (!node.isObject()) {
+            throw new IllegalArgumentException("\"annotations\" must be an object { \"<name>\": \"<value>\" } (got "
+                    + node.getNodeType().toString().toLowerCase(java.util.Locale.ROOT) + ")");
+        }
+        List<ElementDraft.Annotation> out = new ArrayList<>();
+        node.fieldNames().forEachRemaining(name -> out.add(new ElementDraft.Annotation(name, node.get(name).asText())));
         return out;
     }
 
     private static Map<String, String> textMap(JsonNode node) {
-        Map<String, String> out = new LinkedHashMap<>();
-        if (node != null && node.isObject()) {
-            node.fieldNames().forEachRemaining(key -> out.put(key, node.get(key).asText()));
+        if (node == null || node.isNull()) {
+            return Map.of();
         }
+        // reject a wrong shape (e.g. a bare string) rather than silently returning an empty map and falsely
+        // reporting the localized-text aspect (label/helperText/…/description) applied — it is { locale: text }.
+        if (!node.isObject()) {
+            throw new IllegalArgumentException("a localized-text field must be an object { \"<locale>\": \"<text>\" } (got "
+                    + node.getNodeType().toString().toLowerCase(java.util.Locale.ROOT) + ")");
+        }
+        Map<String, String> out = new LinkedHashMap<>();
+        node.fieldNames().forEachRemaining(key -> out.put(key, node.get(key).asText()));
         return out;
     }
 
