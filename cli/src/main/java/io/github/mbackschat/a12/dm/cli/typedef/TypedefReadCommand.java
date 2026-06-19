@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -14,17 +15,22 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Parameters;
 
 /**
- * {@code dmtool typedef read} — list the model's reusable type-definition ids. A read op: the payload rides
- * {@code data} ({@code typedefs}, an array of ids). Typedefs are a flat model-level list, so the read takes
- * no path argument (unlike {@code field read}/{@code group read}).
+ * {@code dmtool typedef read [<typeDefId>]} — read the model's reusable type definitions. Unified read
+ * contract: no argument lists every id ({@code data.typedefs}); a {@code <typeDefId>} reads just that one
+ * ({@code data.typedef}+{@code type}). Typedefs are a flat model-level list (addressed by id, not a path).
  */
 @Command(name = "read", mixinStandardHelpOptions = true,
-        description = "List the declared type-definition ids into `data`.")
+        description = "Read the declared type definitions into `data` — all ids, or one by <typeDefId>.")
 final class TypedefReadCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    @Parameters(index = "0", arity = "0..1", paramLabel = "<typeDefId>",
+            description = "a type-definition id to read just that one; omit to list every declared id")
+    String id;
 
     @Override
     public Integer call() {
@@ -39,7 +45,21 @@ final class TypedefReadCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         try {
-            List<String> ids = ModelDocument.read(json).typeDefinitionIds();
+            ModelDocument doc = ModelDocument.read(json);
+            List<String> ids = doc.typeDefinitionIds();
+            if (id != null) {
+                Optional<String> type = doc.typeDefinitionType(id);
+                if (type.isEmpty()) {
+                    return fail("no type definition '" + id + "' — typedefs: " + ids);
+                }
+                ObjectNode data = MAPPER.createObjectNode();
+                data.put("typedef", id);
+                data.put("type", type.get());
+                ResultEnvelope env = ResultEnvelope.read("typedef", "read",
+                        "read type definition " + id, true, List.of(), data);
+                out().print(env.toJsonString());
+                return env.exitCode();
+            }
             ObjectNode data = MAPPER.createObjectNode();
             ArrayNode arr = data.putArray("typedefs");
             ids.forEach(arr::add);

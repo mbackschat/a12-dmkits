@@ -193,6 +193,16 @@ public final class ModelDocument {
         return out;
     }
 
+    /** The field-type discriminator of the type definition {@code id} (e.g. {@code NumberType}), if declared. */
+    public Optional<String> typeDefinitionType(String id) {
+        for (JsonNode t : root.path("content").path("typeDefinitions")) {
+            if (id.equals(t.path("id").asText())) {
+                return Optional.ofNullable(t.path("fieldType").path("type").asText(null));
+            }
+        }
+        return Optional.empty();
+    }
+
     // --- the element tree (name-path addressed) -------------------------------------------------
 
     /** Every group's name-path (root groups + nested), in document order. */

@@ -14,17 +14,23 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Parameters;
 
 /**
- * {@code dmtool include read} — list the model's declared includes. A read op: the payload rides {@code data}
- * ({@code includes}, an array of {@code {alias, reference}}). Includes are a flat header-level list, so the
- * read takes no path argument; resolving the referenced models is not needed to list them.
+ * {@code dmtool include read [<alias>]} — read the model's declared includes. Unified read contract: no
+ * argument lists every include ({@code data.includes}, an array of {@code {alias, reference}}); an
+ * {@code <alias>} reads just that one ({@code data.alias}+{@code reference}). Includes are a flat
+ * header-level list; resolving the referenced models is not needed to read them.
  */
 @Command(name = "read", mixinStandardHelpOptions = true,
-        description = "List the declared model includes into `data`.")
+        description = "Read the declared model includes into `data` — all, or one by <alias>.")
 final class IncludeReadCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    @Parameters(index = "0", arity = "0..1", paramLabel = "<alias>",
+            description = "an include's alias to read just that one; omit to list every declared include")
+    String alias;
 
     @Override
     public Integer call() {
@@ -40,6 +46,20 @@ final class IncludeReadCommand extends BaseCommand {
         }
         try {
             List<ModelDocument.Include> incs = ModelDocument.read(json).includes();
+            if (alias != null) {
+                ModelDocument.Include one = incs.stream()
+                        .filter(i -> alias.equals(i.alias())).findFirst().orElse(null);
+                if (one == null) {
+                    return fail("no include with alias '" + alias + "' — includes: "
+                            + incs.stream().map(ModelDocument.Include::alias).toList());
+                }
+                ObjectNode data = MAPPER.createObjectNode();
+                data.put("alias", one.alias()).put("reference", one.reference());
+                ResultEnvelope env = ResultEnvelope.read("include", "read",
+                        "read include " + alias, true, List.of(), data);
+                out().print(env.toJsonString());
+                return env.exitCode();
+            }
             ObjectNode data = MAPPER.createObjectNode();
             ArrayNode arr = data.putArray("includes");
             for (ModelDocument.Include inc : incs) {

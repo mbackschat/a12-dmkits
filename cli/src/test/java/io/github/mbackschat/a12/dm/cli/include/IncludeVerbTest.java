@@ -109,6 +109,29 @@ class IncludeVerbTest {
     }
 
     @Test
+    void readWithAnAliasReadsThatOneInclude(@TempDir Path dir) throws Exception {
+        // unified read: a path/specifier reads one (here an alias), no arg lists — symmetric with the family.
+        Path model = subscriptionWithCatalog(dir);
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "include", "add",
+                "--alias", "catalog", "--reference", "catalog",
+                "--parent", "/Subscription", "--name", "Catalog",
+                "-w", dir.toString()).code());
+        var res = CliTestSupport.run("-m", model.toString(), "include", "read", "catalog");
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("read", j.get("outcome").asText());
+        assertEquals("catalog", j.path("data").path("alias").asText());
+        assertEquals("catalog", j.path("data").path("reference").asText());
+    }
+
+    @Test
+    void readWithAnUnknownAliasFails(@TempDir Path dir) throws Exception {
+        Path model = subscriptionWithCatalog(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "include", "read", "nope");
+        assertFalse(res.code() == 0, "an unknown alias is a clean failure");
+    }
+
+    @Test
     void removesAnInclude(@TempDir Path dir) throws Exception {
         Path model = subscriptionWithCatalog(dir);
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "include", "add",

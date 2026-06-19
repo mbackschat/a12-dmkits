@@ -52,6 +52,27 @@ class TypedefVerbTest {
     }
 
     @Test
+    void readWithAnIdReadsThatOneTypedef(@TempDir Path dir) throws Exception {
+        // unified read: an id reads one, no arg lists — symmetric with the family.
+        Path model = CliTestSupport.orderRuled(dir);
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "typedef", "add",
+                "--id", "MoneyAmount", "--kind", "NUMBER").code());
+        var res = CliTestSupport.run("-m", model.toString(), "typedef", "read", "MoneyAmount");
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("read", j.get("outcome").asText());
+        assertEquals("MoneyAmount", j.path("data").path("typedef").asText());
+        assertTrue(j.path("data").has("type"), () -> "the typedef's type is reported: " + res.out());
+    }
+
+    @Test
+    void readWithAnUnknownIdFails(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "typedef", "read", "Nope");
+        assertFalse(res.code() == 0, "an unknown typedef id is a clean failure");
+    }
+
+    @Test
     void removesAnAddedTypedef(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "typedef", "add",
