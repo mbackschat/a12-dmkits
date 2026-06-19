@@ -136,13 +136,15 @@ A single report captures one run; the *patterns* only show up across runs, so th
 The runner is the **main assistant loop**, not a script — setup and the deep analysis-and-report are judgment; the subagent is the agent-under-observation. The pipeline:
 
 ```
-build native binary
-  → ./probe/prep-probe.sh                              # sandbox + logging shim + skill   (script)
+re-capture metadata (if :cli src/tests changed) → rebuild native → native-gate   ← #1 precondition (below)
+  → ./probe/prep-probe.sh                              # sandbox + logging shim + skill   (script; FRESHNESS-GATED)
   → spawn subagent: agent-preamble.md + task turns     # single-sourced preamble + the task's prompts, one session
   → ./probe/audit-probe.sh <agentId>                   # integrity gate — STOP if SUSPECT  (script)
   → ./probe/digest-probe.sh                            # deterministic trajectory facts + RED FLAGS  (script)
   → analyze vs gold (judgment) → probe/reports/<date>-<task>.md
 ```
+
+> **#1 precondition — NEVER probe a stale native image.** A probe measures the *shipped product*; a stale binary measures a fiction, and its findings are worthless (worse: misleading). Two ways it goes stale, both must be closed before every run: **(1) code** — any `:cli`/`src` change → rebuild; **(2) reflection metadata** — the GraalVM capture is **test-suite-driven** ([`../scripts/capture-native-config.sh`](../scripts/capture-native-config.sh)), so a *new or changed test* alone stales it (its reflective surface may be uncaptured) — re-capture, *then* rebuild, *then* [`native-gate.sh`](../scripts/native-gate.sh). This is **not** only the verb/POJO/`operators.json` trigger list in [`../CLAUDE.md`](../CLAUDE.md); with a test-suite-driven capture the practical rule is: *touched `:cli` source or tests since the last capture? re-capture before rebuilding.* `prep-probe.sh` **enforces** this — it refuses (exit 3) if the binary is older than any `:cli`/`src` `.java`/`.json` or the bundled metadata, naming the re-capture + rebuild commands. (Learned the hard way: several runs this session rebuilt the binary on metadata captured a session earlier — the diff later proved it stale.)
 
 The per-step detail (sandbox env, the no-look-ahead instruction, the audit, the digest) is in [`../probe/README.md`](../probe/README.md).
 

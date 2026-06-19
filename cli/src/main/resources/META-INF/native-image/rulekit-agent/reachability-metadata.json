@@ -3587,7 +3587,7 @@
       "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.MainValidatorController$PruefErgebnisTypCustomizer"
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.MainValidatorController$addValidatorMessage$0",
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.MainValidatorController$addValidatorMessage$1",
       "methods": [
         {
           "name": "<init>",
@@ -3617,7 +3617,7 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.MainValidatorController$applikationsBedingung$1",
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.MainValidatorController$applikationsBedingung$0",
       "methods": [
         {
           "name": "<init>",
@@ -5408,6 +5408,12 @@
           "parameterTypes": [
             "com.mgmtp.a12.kernel.md.model.a12internal.RequirednessConfig"
           ]
+        },
+        {
+          "name": "setTransient",
+          "parameterTypes": [
+            "boolean"
+          ]
         }
       ]
     },
@@ -6970,9 +6976,6 @@
           "name": "artifactArg"
         },
         {
-          "name": "model"
-        },
-        {
           "name": "outputDir"
         },
         {
@@ -7839,6 +7842,11 @@
     },
     {
       "type": "io.github.mbackschat.a12.dm.cli.include.IncludeReadCommand",
+      "fields": [
+        {
+          "name": "alias"
+        }
+      ],
       "methods": [
         {
           "name": "<init>",
@@ -8401,6 +8409,11 @@
     },
     {
       "type": "io.github.mbackschat.a12.dm.cli.typedef.TypedefReadCommand",
+      "fields": [
+        {
+          "name": "id"
+        }
+      ],
       "methods": [
         {
           "name": "<init>",
@@ -15111,9 +15124,6 @@
     },
     {
       "glob": "schema/result.schema.json"
-    },
-    {
-      "glob": "schema/validate.schema.json"
     },
     {
       "glob": "schema/where-used.schema.json"

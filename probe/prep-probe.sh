@@ -27,6 +27,22 @@ LOG="$SANDBOX/dmtool-calls.log"
   exit 2
 }
 
+# FRESHNESS GATE — the #1 probe precondition: NEVER probe a stale native image (a probe measures the SHIPPED
+# product; a stale binary measures a fiction). The binary must be newer than every :cli source/test file AND
+# the captured reflection metadata. Because the metadata capture is TEST-SUITE-DRIVEN, a *new test* alone
+# stales the binary (its reflective surface may be uncaptured) — so the check covers src AND test AND the
+# bundled metadata. Read-only: this only VERIFIES + halts loudly; the main loop runs the capture + rebuild
+# (deterministic side-effecting setup lives in those scripts, per CLAUDE.md).
+stale="$(find "$ROOT/cli/src" "$ROOT/src" -type f \( -name '*.java' -o -name '*.json' \) -newer "$NATIVE" -print -quit 2>/dev/null)"
+if [[ -n "$stale" ]]; then
+  echo "STALE native binary — refusing to probe a fiction (newer than the build: $stale)" >&2
+  echo "  the capture is TEST-SUITE-DRIVEN, so re-capture metadata FIRST, then rebuild:" >&2
+  echo "    GRAALVM_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home ./scripts/capture-native-config.sh" >&2
+  echo "    GRAALVM_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home ./build.sh :cli:nativeCompile -Porg.gradle.java.installations.fromEnv=GRAALVM_HOME" >&2
+  echo "    ./scripts/native-gate.sh   # then confirm the rebuilt binary is clean" >&2
+  exit 3
+fi
+
 rm -rf "$SANDBOX"
 mkdir -p "$SANDBOX/bin" "$SANDBOX/work"
 : > "$LOG"
