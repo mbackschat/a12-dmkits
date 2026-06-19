@@ -43,6 +43,27 @@ class ComputationVerbTest {
     }
 
     @Test
+    void addRejectsAnUnknownKeyInTheSpec(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.modelWithRule(dir);
+        Path spec = dir.resolve("typo.json");
+        // an otherwise-valid computation with a typo'd key (`alternatves`) — rejected, not silently dropped
+        Files.writeString(spec, """
+                { "computedField": "/Subscription/Billing/EffectiveFee", "name": "TypoComp",
+                  "alternatves": [ {"operation": "[BaseFee] * 2"} ],
+                  "messages": [ {"locale":"en_US","text":"x"}, {"locale":"de_DE","text":"x"} ] }""");
+        var res = CliTestSupport.run("-m", model.toString(), "computation", "add", spec.toString());
+        assertEquals(1, res.code(), () -> "an unknown/typo'd key is rejected: " + res.out());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("rejected", j.get("outcome").asText());
+        boolean unknownArg = false;
+        for (JsonNode d : j.path("diagnostics")) {
+            unknownArg |= "RK_UNKNOWN_ARG".equals(d.path("code").asText());
+        }
+        assertTrue(unknownArg, () -> "carries RK_UNKNOWN_ARG: " + res.out());
+        assertFalse(Files.readString(model).contains("TypoComp"), "nothing persisted on reject");
+    }
+
+    @Test
     void addAttachesACommentKeyToTheOperation(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
         Path spec = dir.resolve("comp.json");

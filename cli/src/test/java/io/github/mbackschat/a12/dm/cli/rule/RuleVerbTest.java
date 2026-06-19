@@ -132,6 +132,27 @@ class RuleVerbTest {
     }
 
     @Test
+    void addRejectsAnUnknownKeyInTheSpec(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.modelWithRule(dir);
+        Path spec = dir.resolve("typo.json");
+        // an otherwise-valid rule with a typo'd optional key (`severty`) — must be rejected, not silently dropped
+        Files.writeString(spec, """
+                { "field": "/Subscription/Billing/EffectiveFee", "condition": "[EffectiveFee] < [BaseFee]",
+                  "code": "TYPO_RULE", "severty": "WARNING",
+                  "messages": [ {"locale":"en_US","text":"x"}, {"locale":"de_DE","text":"x"} ] }""");
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "add", spec.toString());
+        assertEquals(1, res.code(), () -> "an unknown/typo'd key is rejected: " + res.out());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("rejected", j.get("outcome").asText());
+        boolean unknownArg = false;
+        for (JsonNode d : j.path("diagnostics")) {
+            unknownArg |= "RK_UNKNOWN_ARG".equals(d.path("code").asText());
+        }
+        assertTrue(unknownArg, () -> "carries RK_UNKNOWN_ARG with a did-you-mean: " + res.out());
+        assertFalse(Files.readString(model).contains("TYPO_RULE"), "nothing persisted on reject");
+    }
+
+    @Test
     void removeDeletesARuleAndReportsApplied(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
         var res = CliTestSupport.run("-m", model.toString(), "rule", "remove", CliTestSupport.RULE_FULL_NAME);

@@ -16,6 +16,7 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolve
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.lint.ComputationLinter;
@@ -67,6 +68,10 @@ final class ComputationAddCommand extends BaseCommand {
             spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
         } catch (IOException e) {
             return fail("cannot read input: " + e.getMessage());
+        }
+        Optional<Integer> rejected = rejectUnknownKeys("computation", "add", "add", spec);
+        if (rejected.isPresent()) {
+            return rejected.get();
         }
         ComputationSpec.Parsed parsed = ComputationSpec.parse(spec);
         if (!parsed.ok()) {

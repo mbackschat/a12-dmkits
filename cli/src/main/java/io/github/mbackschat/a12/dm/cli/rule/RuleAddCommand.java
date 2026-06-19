@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -70,6 +71,10 @@ final class RuleAddCommand extends BaseCommand {
             spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
         } catch (IOException e) {
             return fail("cannot read input: " + e.getMessage());
+        }
+        Optional<Integer> rejected = rejectUnknownKeys("rule", "add", "add", spec);
+        if (rejected.isPresent()) {
+            return rejected.get();
         }
 
         String field = text(spec, "field");
