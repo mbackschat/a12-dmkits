@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 ### Changed
 
+- **`read` is now uniform across every target: no argument lists, an argument reads one.** `rule`/`computation`/`field`/`group read` with no path now return a lean name-index (the full names + a count) — the handle to then read one — instead of erroring; `include`/`typedef read` gained the inverse (read one by alias/id). So the whole read family obeys one rule — *no argument = everything in scope; an argument = that one* — closing the dead-end where listing a kind's members wasn't discoverable. (The served `schema rule read`/`rule explain` contracts, which still described removed `--rule`/`--all`/`--computation` flags, were corrected, and a guard now keeps a served schema from naming a flag the command lacks.)
 - **`field modify` can now change a field's metadata in place, not just re-type it.** It is a **partial** edit: a `kind`/per-kind config re-types the field (as before), and any metadata key — requiredness, label, helper text, descriptions, annotations, the global/transient flags — changes that metadata, with no delete-and-recreate. A metadata-only edit (no `kind`) is valid, and the result's `changed.aspects` reports exactly what was touched.
 
 ### Fixed
