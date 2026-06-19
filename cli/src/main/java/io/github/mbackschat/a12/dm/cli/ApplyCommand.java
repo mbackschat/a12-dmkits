@@ -536,8 +536,20 @@ final class ApplyCommand extends BaseCommand {
                             : "valid args: " + String.join(", ", new TreeSet<>(valid))),
                     Optional.empty()));
         }
+        // the flat key-set above covers the op-record's TOP level; for ops with a rich nested spec, add the
+        // schema-sourced NESTED check (e.g. a typo inside a `string` config block, or a message-item key) —
+        // the gap a flat key-set can't see (the same SpecKeys the standalone spec verbs use).
+        String nestedSchema = NESTED_SCHEMA.get(which);
+        if (nestedSchema != null) {
+            out.addAll(SpecKeys.forSchema(nestedSchema).validateNested(op));
+        }
         return out;
     }
+
+    /** Ops whose spec has nested objects worth schema-validating beyond the flat top-level key-set above. */
+    private static final java.util.Map<Op, String> NESTED_SCHEMA = java.util.Map.of(
+            Op.FIELD_ADD, "field-add", Op.FIELD_MODIFY, "field-add",
+            Op.RULE_ADD, "add", Op.COMPUTATION_ADD, "add", Op.COMPUTATION_MODIFY, "add");
 
     /** The supported {@code target op} labels, sorted — for the unknown-op diagnostic. */
     private static String supportedOps() {

@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
@@ -84,6 +85,28 @@ class ApplyVerbTest {
         assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
         assertTrue(Files.readString(model).contains("Postal code"),
                 "apply's field-modify must apply the label, not silently drop it");
+    }
+
+    @Test
+    void rejectsAnUnknownNestedKeyInAFieldOp(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path ops = dir.resolve("ops.json");
+        // a typo INSIDE the string config block — the flat top-level key check can't see it; the nested
+        // schema check must, so the op fails and the whole sequence rolls back (not a silent drop)
+        Files.writeString(ops, """
+                [ {"target":"field","op":"add","group":"/Order","name":"Plz","kind":"STRING","string":{"maxLenght":5}} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertNotEquals(0, res.code(), "a nested config typo in an apply op must fail, not silently drop");
+        JsonNode j = M.readTree(res.out());
+        assertFalse(j.path("committed").asBoolean(), "nothing committed when an op has an unknown nested key");
+        boolean unknownArg = false;
+        for (JsonNode r : j.path("results")) {
+            for (JsonNode d : r.path("diagnostics")) {
+                unknownArg |= "RK_UNKNOWN_ARG".equals(d.path("code").asText());
+            }
+        }
+        assertTrue(unknownArg, () -> "the failing op carries RK_UNKNOWN_ARG for the nested key: " + res.out());
     }
 
     @Test

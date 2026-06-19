@@ -67,6 +67,25 @@ public final class SpecKeys {
     }
 
     /**
+     * Validate only the <b>nested</b> keys — recurse into each declared property, but do not flag unknown
+     * <em>top-level</em> keys. For {@code apply}/{@code batch}, where the op-record's top-level keys are
+     * already checked tightly against the op's own key-set; this adds the nested coverage (e.g. a typo inside
+     * a {@code string} config block, or a message-item key) those flat checks miss.
+     */
+    public List<Diagnostic> validateNested(JsonNode input) {
+        List<Diagnostic> out = new ArrayList<>();
+        if (root != null && input.isObject()) {
+            input.fields().forEachRemaining(entry -> {
+                Node child = root.children().get(entry.getKey());
+                if (child != null) {
+                    child.validate(entry.getValue(), entry.getKey(), Set.of(), out);
+                }
+            });
+        }
+        return out;
+    }
+
+    /**
      * A schema object as an allowed-key tree: {@code closed} = its {@code additionalProperties:false} (so any
      * key outside {@code children} is rejected); {@code children} maps each declared property to its own tree
      * (a {@code null} child = an open sub-object, e.g. a locale map — not recursed). {@code arrayItem} carries
