@@ -227,7 +227,7 @@ The `ReadResult` peer for **computations** (calculated fields): `KernelAdapter.r
 
 **The read surface this unlocks (whole loop now symmetric for both kinds):**
 - **whereUsed (F9a) over computations** — `whereUsedInComputations(entity)` + `referencedFieldsOfComputation(name)` (the `whereUsed`/`referencedFields` peers, kernel-native so they work even on an `Opaque` computation). The CLI `where-used` emits `rules` and `computations` as separate arrays (`adapter.WhereUsedInComputationsTest`, `cli.WhereUsedVerbTest`).
-- **Unified whole-model read** — `readModel(): ModelRead{rules, computations}`, two disjoint maps + `convertedRules()`/`convertedComputations()`/`fullyTyped()`; the single entry point to round-trip a foreign model completely. CLI: `read --all` (`adapter.UnifiedModelReadTest`, `cli.ReadVerbTest`).
+- **Unified whole-model read** — `readModel(): ModelRead{rules, computations}`, two disjoint maps + `convertedRules()`/`convertedComputations()`/`fullyTyped()`; the single entry point to round-trip a foreign model completely. CLI: `model read` (`adapter.UnifiedModelReadTest`, `cli.ReadVerbTest`).
 - **explain a computation** — `ModelContext.explainComputation(Computation) → ComputationExplanation` (computed field + kind, common precondition + per-alternative precondition/operation projected with the catalog glossary + referenced fields, messages, gloss). CLI: `explain --computation` (`context.ComputationExplanationTest`, `cli.ExplainVerbTest`). A `--rule` that names a computation now redirects (`ModelPaths.ruleProblem` overload).
 
 ## Runtime behavioral-law oracle (F-LAW, 2026-06-06)

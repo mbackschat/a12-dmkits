@@ -30,7 +30,7 @@ class DiagnosticWhereTest {
                 Optional.of("RK_NO_SUCH_GROUP"),
                 "no group /Order/Lines in the model",
                 Diagnostic.Where.arg("/Order/Lines", "--group"),
-                Optional.of("list groups with `dmtool -m order.dm.json group read --all`"),
+                Optional.of("list groups with `dmtool -m order.dm.json group read`"),
                 Optional.empty());
         JsonNode w = where(d);
         assertEquals("/Order/Lines", w.get("path").asText());

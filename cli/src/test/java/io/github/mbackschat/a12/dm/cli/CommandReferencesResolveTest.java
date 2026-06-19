@@ -8,8 +8,10 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import picocli.CommandLine;
+import picocli.CommandLine.Model.OptionSpec;
 
 /**
  * The <b>positive</b> drift guard — the rename-proof companion to {@link NoStaleCommandSyntaxTest}. Where
@@ -74,6 +77,8 @@ class CommandReferencesResolveTest {
     private static final Pattern BAREWORD = Pattern.compile("[a-z][a-z0-9-]*");
     /** A backtick span (for the two-token shorthand check). */
     private static final Pattern BACKTICK = Pattern.compile("`([^`\\n]+)`");
+    /** A long-flag token, optionally with an {@code =value} ({@code --all}, {@code --field=/X}). */
+    private static final Pattern FLAG_TOKEN = Pattern.compile("(--[a-z][a-z0-9-]*)(=.*)?");
 
     /** Sanity floor: the rich help text carries dozens of {@code dmtool …} examples. A rename that leaves
      *  the literal old name in the text makes the live-name scan find ~0 — this floor catches that. */
@@ -139,6 +144,22 @@ class CommandReferencesResolveTest {
         assertTrue(violations.get(0).contains("frobnicate"), violations::toString);
     }
 
+    /** Does-fire proof for the flag seam (anti-rot guard #2): a phantom flag after a real verb path must
+     *  fire; a real option (here the {@code --workspace} mixin) must not. */
+    @Test
+    void theFlagGuardFiresOnAPhantomFlagButNotARealOne() {
+        CommandLine root = new CommandLine(new RootCommand());
+
+        List<String> phantom = new ArrayList<>();
+        checkSpanFlags(List.of("rule", "read", "--bogus"), 0, root, Path.of("x"), 1, "rule read --bogus", phantom);
+        assertEquals(1, phantom.size(), () -> "expected the phantom `--bogus` to fire, got: " + phantom);
+        assertTrue(phantom.get(0).contains("--bogus"), phantom::toString);
+
+        List<String> real = new ArrayList<>();
+        checkSpanFlags(List.of("rule", "read", "--workspace"), 0, root, Path.of("x"), 1, "rule read --workspace", real);
+        assertTrue(real.isEmpty(), () -> "a real option (`--workspace`) must not fire: " + real);
+    }
+
     private static void scan(Path file, CommandLine root, Pattern invocation,
             List<String> violations, int[] invocationCount) {
         List<String> lines = readLines(file);
@@ -148,6 +169,7 @@ class CommandReferencesResolveTest {
             Matcher b = BACKTICK.matcher(line);
             while (b.find()) {
                 checkTwoTokenShorthand(b.group(1), file, i + 1, root, violations);
+                checkSpanFlags(tokenize(b.group(1)), 0, root, file, i + 1, b.group(1), violations);
             }
         }
     }
@@ -174,6 +196,7 @@ class CommandReferencesResolveTest {
                     String span = b.group(1);
                     matchInvocations(span, file, lineNo, root, invocation, violations, invocationCount);
                     checkTwoTokenShorthand(span, file, lineNo, root, violations);
+                    checkSpanFlags(tokenize(span), 0, root, file, lineNo, span, violations);
                 }
             }
         }
@@ -192,12 +215,14 @@ class CommandReferencesResolveTest {
             Pattern invocation, List<String> violations, int[] invocationCount) {
         Matcher m = invocation.matcher(text);
         while (m.find()) {
-            String problem = resolveInvocation(root, tokenize(m.group(1)));
+            List<String> toks = tokenize(m.group(1));
+            String problem = resolveInvocation(root, toks);
+            String display = (root.getCommandName() + m.group(1)).trim();
             if (problem == PATH_PRESENT) {
                 invocationCount[0]++;
+                checkSpanFlags(toks, firstVerbIndex(root, toks), root, file, lineNo, display, violations);
             } else if (problem != null) {
-                violations.add(file + ":" + lineNo + " — `" + (root.getCommandName() + m.group(1)).trim()
-                        + "` — " + problem);
+                violations.add(file + ":" + lineNo + " — `" + display + "` — " + problem);
             }
         }
     }
@@ -218,11 +243,15 @@ class CommandReferencesResolveTest {
     /** Sentinel: a real, fully-resolved verb path was present (counts toward the invocation floor). */
     private static final String PATH_PRESENT = "<resolved>";
 
-    /** Strip leading global options before resolving the verb path — both the placeholder form
+    private static String resolveInvocation(CommandLine root, List<String> tokens) {
+        return resolvePath(root, tokens, firstVerbIndex(root, tokens));
+    }
+
+    /** Strip leading global options to find the first verb token — both the placeholder form
      *  ({@code -m <model.json>}) and the concrete form the READMEs/skill use ({@code -m order.dm.json}). The
      *  value is skipped only when it isn't itself a real top-level verb, so a boolean flag followed by a verb
      *  ({@code --dry-run rule modify}) still resolves the verb. */
-    private static String resolveInvocation(CommandLine root, List<String> tokens) {
+    private static int firstVerbIndex(CommandLine root, List<String> tokens) {
         int i = 0;
         while (i < tokens.size() && tokens.get(i).startsWith("-")) {
             i++;                                                    // the option flag
@@ -231,7 +260,63 @@ class CommandReferencesResolveTest {
                 i++;                                                // its value (placeholder or concrete file)
             }
         }
-        return resolvePath(root, tokens, i);
+        return i;
+    }
+
+    /**
+     * Anti-rot guard #2 (the flag seam): once the leading barewords resolve to a leaf op, every trailing
+     * {@code --long} flag must be a real option of that command (or an inherited/mixin global). This is what
+     * the verb-path resolver above misses — {@code rule read --all} resolves at {@code rule read} (a real
+     * verb) and the phantom {@code --all} rides through. Short flags are left alone (ambiguous with values);
+     * a flag only fires once the path is a leaf, so non-command prose can't false-positive.
+     */
+    private static void checkSpanFlags(List<String> tokens, int start, CommandLine root, Path file, int lineNo,
+            String display, List<String> violations) {
+        CommandLine node = root;
+        List<String> path = new ArrayList<>();
+        int i = start;
+        for (; i < tokens.size(); i++) {
+            String t = tokens.get(i);
+            if (!BAREWORD.matcher(t).matches()) {
+                break;
+            }
+            CommandLine sub = node.getSubcommands().get(t);
+            if (sub == null) {
+                return;                                             // path doesn't resolve — resolvePath reports it
+            }
+            node = sub;
+            path.add(t);
+        }
+        if (path.isEmpty() || !node.getSubcommands().isEmpty()) {
+            return;                                                 // no leaf op resolved — nothing to flag-check
+        }
+        Set<String> allowed = longFlags(node);
+        for (; i < tokens.size(); i++) {
+            String t = tokens.get(i);
+            if (t.startsWith("#")) {
+                break;                                              // a shell comment ends the command
+            }
+            Matcher fm = FLAG_TOKEN.matcher(t);
+            if (fm.matches() && !allowed.contains(fm.group(1))) {
+                violations.add(file + ":" + lineNo + " — `" + display.trim() + "` — `" + fm.group(1)
+                        + "` is not an option of `" + String.join(" ", path) + "`");
+            }
+        }
+    }
+
+    /** Every {@code --long} option of a command and its ancestors (so inherited/mixin globals are allowed). */
+    private static Set<String> longFlags(CommandLine leaf) {
+        Set<String> out = new HashSet<>();
+        for (CommandLine c = leaf; c != null; c = c.getParent()) {
+            for (OptionSpec o : c.getCommandSpec().options()) {
+                for (String n : o.names()) {
+                    if (n.startsWith("--")) {
+                        out.add(n);
+                    }
+                }
+            }
+        }
+        return out;
     }
 
     /**

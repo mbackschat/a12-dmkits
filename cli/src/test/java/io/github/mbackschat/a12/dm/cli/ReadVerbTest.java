@@ -87,8 +87,8 @@ class ReadVerbTest {
         Files.writeString(f, CliTestSupport.modelWithRuleAndComputationJson());
         var res = CliTestSupport.run("-m", f.toString(), "rule", "read", CliTestSupport.COMPUTATION_FULL_NAME);
         assertNotEquals(0, res.code(), "a computation is not a validation rule");
-        assertTrue(res.err().contains("computation") && res.err().contains("--all"),
-                () -> "redirects to the computation-aware verbs: " + res.err());
+        assertTrue(res.err().contains("computation read") && res.err().contains("model read"),
+                () -> "redirects to the real computation-aware verbs (no phantom flag): " + res.err());
     }
 
     private static String computationKey(JsonNode data) {

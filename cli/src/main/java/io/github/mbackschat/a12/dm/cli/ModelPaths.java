@@ -88,8 +88,8 @@ public final class ModelPaths {
         }
         if (computationFullNames.contains(path)) {
             return "'" + path + "' is a computation (a calculated field), not a validation rule — use"
-                    + " `computation explain " + path + "` to inspect it, or `rule read --all` to read the"
-                    + " whole model (rules and computations).";
+                    + " `computation read " + path + "` (or `computation explain " + path + "`) to read it,"
+                    + " or `model read` for the whole model (rules and computations).";
         }
         return "'" + path + "' is not a rule in this model — pass the rule's full name (its slash-path, e.g."
                 + " /Group/RuleName), not its short name, not the opaque element id, and not a file path. The model"

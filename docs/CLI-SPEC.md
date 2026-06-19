@@ -126,7 +126,7 @@ Two extensions this redesign adds (minimal, deliberate):
 1. **`Where` gains `path` and `arg`.** Today `Where` only points at a `rule` (+`operator`/`span`). Structure ops and arg-level errors have no locus — so `Where` grows a **model-element `path`** (any field/group/typedef/include) and an optional input **`arg`/token**, keeping `rule`/`operator`/`span`.
 2. **An `RK_*` curated-fix source.** `DiagnosticEnricher` only fixes catalog `MVK_*` codes; the new structure/refusal codes (`RK_NO_SUCH_GROUP`, the safe-delete `RK_REFERENCED`, …) get a curated-fix table so **every error-severity code carries a `fix`** — CI-guarded.
 
-**The corrective bar — detect → locate → repair.** A diagnostic that only says *what's wrong* lets the agent report failure; one that says *how to fix it* lets the agent close the loop. The `fix` is the highest-value field (an applicable DSL/path replacement or a discovery command, e.g. *"list paths with `field read --all`"*). Discipline: a "did-you-mean" only appears above an edit-distance threshold — a wrong suggestion is worse than none. A structured machine-applicable `suggest` field is **withheld until a consumer needs it** (an apply-the-fix harness) — the consumer-exists discipline; until then a correction rides the human-readable `fix`.
+**The corrective bar — detect → locate → repair.** A diagnostic that only says *what's wrong* lets the agent report failure; one that says *how to fix it* lets the agent close the loop. The `fix` is the highest-value field (an applicable DSL/path replacement or a discovery command, e.g. *"list paths with `field read`"*). Discipline: a "did-you-mean" only appears above an edit-distance threshold — a wrong suggestion is worse than none. A structured machine-applicable `suggest` field is **withheld until a consumer needs it** (an apply-the-fix harness) — the consumer-exists discipline; until then a correction rides the human-readable `fix`.
 
 Worked shapes (the real `Diagnostic` fields, inside the envelope):
 
@@ -142,7 +142,7 @@ Worked shapes (the real `Diagnostic` fields, inside the envelope):
 { "severity":"ERROR", "source":"PRECHECK", "code":"RK_NO_SUCH_GROUP",
   "summary":"no group /Order/Lines in the model",
   "where": { "path":"/Order/Lines", "arg":"--group" },
-  "fix":"list groups with `dmtool -m order.dm.json group read --all`" }
+  "fix":"list groups with `dmtool -m order.dm.json group read`" }
 ```
 
 ## 5. Verb surface — target × op
