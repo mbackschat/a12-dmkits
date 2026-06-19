@@ -932,7 +932,7 @@ The included price list's **own** rule travels with it — mounted twice, it app
 
 ## 5e. Run rules against data — does it actually fire? (runtime evaluation)
 
-Beyond "is this rule kernel-valid?" (the static gate) is "does it do the **right thing** on real data?" — the verify-by-execution angle that catches an *inverted-but-valid* rule. `KernelAdapter.evaluate` runs a model's rules over a **document instance** (a nested, name-keyed tree — repeatable groups as lists, field values as their kernel string form) and reports which rule **codes** fired; its peer `compute` reports what each field computes. (CLI: `eval-doc` / `compute-doc`.)
+Beyond "is this rule kernel-valid?" (the static gate) is "does it do the **right thing** on real data?" — the verify-by-execution angle that catches an *inverted-but-valid* rule. `KernelAdapter.evaluate` runs a model's rules over a **document instance** (a nested, name-keyed tree — repeatable groups as lists, field values as their kernel string form) and reports which rule **codes** fired; its peer `compute` reports what each field computes. (CLI: `model eval` / `model compute`.)
 
 <!-- teaser -->
 ```java
