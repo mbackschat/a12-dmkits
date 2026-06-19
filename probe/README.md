@@ -60,7 +60,8 @@ JAVA_HOME="$(/usr/libexec/java_home -v 21)" ./gradlew :cli:nativeCompile -Porg.g
 ./probe/digest-probe.sh
 
 # 6. (main loop, judgment) analyze vs the gold; record the audit verdict + the digest; investigate every
-#    finding to its ROOT CAUSE; write probe/reports/<date>-<task>.md
+#    finding to its ROOT CAUSE; EMBED the produced model JSON (sandbox output) for objective review;
+#    write probe/reports/<date>-<task>.md
 ```
 
 The "runner" is the main assistant loop, not a script: setup + the deep analysis-and-report are judgment, the subagent is the agent-under-observation. The **anti-cheat audit** (`audit-probe.sh`) is deterministic and non-negotiable — a probe's findings are only trustworthy if the agent didn't read the repo's gold/source or hand-edit a model file; see [`docs/PROBE-SPEC.md`](../docs/PROBE-SPEC.md) "Material boundary & the anti-cheat audit". The analysis dimensions and the discover→fix→graduate-into-a-guard loop are in the same spec.

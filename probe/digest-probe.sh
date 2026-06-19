@@ -18,12 +18,35 @@ LOG="${1:-$SANDBOX/dmtool-calls.log}"
 [[ -f "$LOG" ]] || { echo "shim log not found: $LOG" >&2; exit 3; }
 
 awk '
-function flush() {
+# the verb key (target + op) for a command, with -m/-w options stripped
+function verbof(c,   s, n, a, k) {
+  s = c
+  sub(/^dmtool[ \t]+/, "", s)
+  gsub(/-m[ \t]+[^ \t]+[ \t]+/, "", s)
+  gsub(/-w[ \t]+[^ \t]+[ \t]+/, "", s)
+  n = split(s, a, /[ \t]+/)
+  k = a[1]
+  if (n >= 2 && a[2] !~ /^[-\/]/) k = a[1] " " a[2]   # target op (skip flags/paths)
+  return k
+}
+# purpose bucket: author (mutate) | verify | orient (discover/read)
+function bucketof(v,   a, t1, t2) {
+  split(v, a, " "); t1 = a[1]; t2 = a[2]
+  if (t1 == "apply" || t1 == "batch") return "author"
+  if (t1 == "workspace") return (t2 == "validate") ? "verify" : "orient"
+  if (t1 ~ /help/ || t1 == "operators" || t1 == "manifest" || t1 == "schema" || t1 == "patterns" || t1 == "diagnostics" || t1 == "export") return "orient"
+  if (t2 == "add" || t2 == "remove" || t2 == "modify" || t2 == "rename" || t2 == "move" || t2 == "extract" || t2 == "inline" || t2 == "new") return "author"
+  if (t2 == "check" || t2 == "validate") return "verify"
+  return "orient"
+}
+function flush(   v, b) {
   if (cmd == "") return
   total++
   count[cmd]++
   order[cmd] = (cmd in order) ? order[cmd] : (++ord)
-  if (exitc != "" && exitc != "0") { nz[++nzn] = sprintf("%s  -> exit %s%s", cmd, exitc, (errfirst!="" ? "  | " errfirst : "")) }
+  v = verbof(cmd); b = bucketof(v)
+  vhist[v]++; vorder[v] = (v in vorder) ? vorder[v] : (++vord); bkt[b]++
+  if (exitc != "" && exitc != "0") { nz[++nzn] = sprintf("%s  -> exit %s%s", cmd, exitc, (errfirst!="" ? "  | " errfirst : "")); failv[v]++ }
   if (exc != "")                   { rf[++rfn] = sprintf("%s\n      %s", cmd, exc) }
 }
 /^\$ dmtool / { flush(); cmd=$0; sub(/^\$ /,"",cmd); instderr=0; exitc=""; errfirst=""; exc=""; next }
@@ -40,6 +63,14 @@ END {
   flush()
   printf "probe trajectory digest\n"
   printf "  total dmtool invocations : %d  (distinct: %d)\n", total, ord
+
+  printf "\n[purpose buckets]  author %d  ·  verify %d  ·  orient %d\n", bkt["author"]+0, bkt["verify"]+0, bkt["orient"]+0
+  printf "[verb histogram — calls (failed), most-used first]\n"
+  maxc = 0
+  for (v in vhist) if (vhist[v] > maxc) maxc = vhist[v]
+  for (rank=maxc; rank>=1; rank--) for (v in vhist) if (vhist[v]==rank) {
+    printf "  %3d%s  %s\n", vhist[v], (failv[v] ? sprintf(" (%d x)", failv[v]) : "     "), v
+  }
 
   printf "\n[nonzero exits] %d\n", nzn+0
   for (i=1;i<=nzn;i++) printf "  - %s\n", nz[i]

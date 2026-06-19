@@ -69,20 +69,27 @@ If the agent peeks at a committed gold model it can reproduce the answer without
 
 The gate is itself verified to *fire* (a synthetic cheating transcript must yield `SUSPECT`, not just the real run yielding `CLEAN`) — a gate that only ever passes is worthless. Every report records the verdict; a `SUSPECT` run is discarded, not analyzed. This is the same "scripts for deterministic checks, agents for judgment" split the eval uses — and the same material-boundary discipline as the eval's clean-subagent rule.
 
-## Gold from existing models — the correctness anchor
+## What "gold" is — the correctness anchor
 
-Each task is reverse-engineered from a model that **already encodes a correct, kernel-valid end-state** — a committed fixture under `cli/src/test/resources/models/`, or a domain-transferred workspace model (license-safe: own domain, **no tax/gov** — insurance/e-commerce). That source model **is the answer key**, which gives the deep analysis an **objective correctness anchor** ("did the agent build the right thing?") *underneath* the qualitative trajectory mining — without turning the probe into a pass/fail score.
+**Gold = a task's answer key: a specification of what a *correct* end-state must enforce** (the fields, groups, rules — right polarity, right scope, right locale). It is the objective anchor that turns "the agent finished" into "the agent built the *right* thing," sitting *underneath* the qualitative trajectory mining — not a pass/fail score.
 
-Gold is matched **semantically, not literally** (read → re-render → compare, like the eval judge): many valid expressions enforce one intent (`DifferenceInYears` vs an `AddYears` formulation for age; a field-list vs a group-scope quantifier). The bar is "the agent's model enforces the same thing, at least as completely as the reference." The kernel stays the validity oracle.
+Gold comes in **two forms**, by how the task was authored:
 
-This also makes the task backlog cheap: every rich fixture is a candidate scenario, and it naturally covers the operator/structure surface that model already exercises.
+| task origin | gold form | where it lives |
+|---|---|---|
+| **hand-built** (own domain, e.g. the `01`-family person/address) | **prose** — the task `.md`'s "Gold reference" section lists what must be true; there is **no** gold model file | `tasks/<n>.md` |
+| **reverse-engineered** from a rich model (a committed fixture under `cli/src/test/resources/models/`, or a license-safe domain-transferred workspace model — own domain, **no tax/gov**) | **that source model** *is* the answer key | the referenced fixture |
+
+Either way, gold is matched **semantically, not literally** (read → re-render → compare, like the eval judge): many valid expressions enforce one intent (`DifferenceInYears` vs an `AddYears` formulation for age; a field-list vs a group-scope quantifier; `[Age] < 18` stored-number vs a birth-date derivation). The bar is **"the agent's model enforces the same thing, at least as completely as the reference."** The kernel stays the validity oracle — gold says *what* should be enforced, the kernel says whether the agent's expression of it is *valid*.
+
+Gold is **never shown to the probe agent** (it is on the far side of the material boundary, §above) — it is the reviewer's key, not the agent's input. The reverse-engineered form also makes the task backlog cheap: every rich fixture is a candidate scenario, covering the operator/structure surface that model already exercises.
 
 ## The analysis method — the deep report (no score)
 
 From the objective shim log + the final model files (+ the agent's narrative), each report is structured around these dimensions:
 
 1. **Correctness vs the gold** *(the objective anchor)* — re-read the final model and verify, semantically, that it enforces the same rules / fields / structure / includes as the gold (right polarity, right scope), at least as completely. This is what catches **false successes / silent drops** — a label the agent "set" that isn't there.
-2. **Friction** — tool calls per sub-goal, retries, rejections hit and whether recovered, dead-ends.
+2. **Efficiency & friction** — a **quantified trajectory breakdown** the reader can audit, not a vibe. Every report carries: the headline (total invocations · distinct · agent tokens · wall-clock · nonzero exits · `apply`/`batch` *executed* vs merely *explored*); a **purpose-bucketed** call table (**orient/discover · author/mutate · verify**, with the per-verb histogram) that exposes how much was *undo/retry* vs net-new; an **attribution** mapping the failures + retries to their distinct causes (each a finding); and an **"efficient-run" baseline** (what the same task should take, e.g. "build each model in one `apply` ≈ 12–15 calls") so the gap is explicit. A long session is a finding — name where the calls went. The deterministic part (counts, buckets, failed-by-verb) is emitted by [`../probe/digest-probe.sh`](../probe/digest-probe.sh); the attribution to causes is the report's judgment.
 3. **Misconceptions** — did the agent reason about constraints that don't exist (e.g. "JVM startup is slow" → over-batching, when the native image starts in <100 ms)?
 4. **Diagnostic quality** — when it erred, did the diagnostic's `fix` text get it unstuck?
 5. **Self-describing-surface gaps** — did it guess? Did `manifest` / `schema` / `operators` mislead it?
@@ -91,6 +98,8 @@ From the objective shim log + the final model files (+ the agent's narrative), e
 **Every finding is investigated to its root cause, never left at the symptom.** A symptom is "`rule add` printed a Java stack trace"; the root cause is "the kernel throws `IllegalArgumentException` on a duplicate element name and `RuleAddCommand` doesn't catch/map it to a diagnostic." The report names the root cause (ideally the `file:line`) and the fix it implies — a probe that only logs symptoms just relocates the bug report inside the repo. This mirrors the standing "find the root cause, fix at root" rule for bug reports.
 
 A report that finds nothing states **"clean session — no DX defects on this task"** explicitly; that is itself a useful signal, not a non-result.
+
+**Every report embeds the produced document model(s) verbatim (the agent's actual output JSON).** The models the agent built live only in the ephemeral sandbox — so the report captures them inline (a fenced ```json block per model) for **objective review**: the reviewer reads what was *actually* produced (locale, `conditionLanguage`, every rule's stored `errorCondition`, field metadata) against the gold, rather than trusting the agent's prose summary or a since-wiped sandbox. This is the same "objective over self-report" principle as the shim log — the produced artifact is evidence, so it ships with the finding. (When a re-run validates a fix, embed the *new* output so the before/after is visible in one place.)
 
 ## The proactive loop — discover → root-cause → generalize → fix the class → graduate into a guard
 
