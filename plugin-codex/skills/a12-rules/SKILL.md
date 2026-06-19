@@ -20,7 +20,7 @@ The three you lean on:
 - **`dmtool operators`** — pick operators by meaning.
 - **`dmtool -m <model.json> rule check --field <ABSOLUTE field path> --condition "<DSL>" --code <ID>`** — submit a candidate and get the **real kernel's** verdict (the result envelope's `valid` + `diagnostics`). This is your ground truth. (`dmtool -m <model.json> model validate` re-checks a model's *existing* rules.)
 
-**It's a native binary, not a JVM** — startup is sub-100 ms, so call `dmtool` as often as a clear flow needs (one invocation per step is fine; no warmup to amortize). Reach for `apply`/`batch` when you want several edits to land **atomically** (all-or-nothing, rolled back on any failure), *not* to avoid startup cost.
+**Batch the edits you already know into one `apply`/`batch` call.** Binary startup is sub-100 ms (no warmup to amortize — so don't batch for *that*), but **every call is a round-trip *you* pay for**: reading the output and reasoning before the next one. So once you know several edits — fields, rules, an include mounted twice — land them in a single `apply`/`batch` (also **atomic**: all-or-nothing, rolled back on any failure) rather than one verb at a time. Keep single calls for **exploring and checking** (`describe`/`operators`/`rule check`), where you genuinely need each result before deciding the next.
 
 ## The loop
 
