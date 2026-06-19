@@ -152,6 +152,34 @@ class FieldModifyCommandTest {
     }
 
     @Test
+    void rejectsAnUnknownTopLevelKey(@TempDir Path dir) throws Exception {
+        Path m = freshModel(dir);
+        Path spec = dir.resolve("typo.json");
+        Files.writeString(spec, """
+                {"group":"/Adresse","name":"PLZ","requried":true}""");   // typo: requried
+
+        CliTestSupport.Result res = CliTestSupport.run("-m", m.toString(), "field", "modify", spec.toString());
+
+        assertNotEquals(0, res.code(), "an unknown/typo'd key must be rejected, not silently dropped");
+        JsonNode env = MAPPER.readTree(res.out());
+        assertEquals("rejected", env.path("outcome").asText());
+        assertTrue(hasCode(env, "RK_UNKNOWN_ARG"), () -> "carries RK_UNKNOWN_ARG with a did-you-mean: " + res.out());
+    }
+
+    @Test
+    void rejectsAnUnknownNestedConfigKey(@TempDir Path dir) throws Exception {
+        Path m = freshModel(dir);
+        Path spec = dir.resolve("nested.json");
+        Files.writeString(spec, """
+                {"group":"/Adresse","name":"PLZ","kind":"STRING","string":{"maxLenght":5}}""");   // typo inside string
+
+        CliTestSupport.Result res = CliTestSupport.run("-m", m.toString(), "field", "modify", spec.toString());
+
+        assertNotEquals(0, res.code(), "a typo inside a nested config block must be rejected too");
+        assertTrue(hasCode(MAPPER.readTree(res.out()), "RK_UNKNOWN_ARG"), () -> "nested unknown key flagged: " + res.out());
+    }
+
+    @Test
     void dryRunPreviewsAndWritesNothing(@TempDir Path dir) throws Exception {
         Path m = freshModel(dir);
         String before = Files.readString(m);

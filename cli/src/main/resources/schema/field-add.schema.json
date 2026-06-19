@@ -2,9 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/field-add.schema.json",
   "title": "field-add-spec",
-  "description": "INPUT of `dmtool -m <model> field add <spec.json>` — a field to add, with its full per-kind config (FEATURE-GAPS §3.4) and field-level metadata (§3.5). The simpler `field add --group --name (--kind|--typedef)` flags cover a bare field; this spec covers everything the typed builders express. The SAME shape is the input of `field modify`, where it is a PARTIAL edit of an existing field: only `group`+`name` are required, and every aspect present is applied (a `kind`/`typedef` re-types; any metadata key changes that metadata) while absent aspects are left untouched — nothing the spec carries is silently dropped. Validated against the real kernel before writing. (The flags and this spec are mutually exclusive.)",
+  "description": "INPUT of `dmtool -m <model> field add <spec.json>` — a field to add, with its full per-kind config (FEATURE-GAPS §3.4) and field-level metadata (§3.5). The simpler `field add --group --name (--kind|--typedef)` flags cover a bare field; this spec covers everything the typed builders express. The SAME shape is the input of `field modify`, where it is a PARTIAL edit of an existing field: only `group`+`name` are required, and every aspect present is applied (a `kind`/`typedef` re-types; any metadata key changes that metadata) while absent aspects are left untouched — nothing the spec carries is silently dropped. `additionalProperties:false` here is ENFORCED on input: an undeclared/typo'd key is rejected with RK_UNKNOWN_ARG, not silently ignored. Validated against the real kernel before writing. (The flags and this spec are mutually exclusive.)",
   "type": "object",
   "required": ["group", "name"],
+  "additionalProperties": false,
   "properties": {
     "group": { "type": "string", "description": "the parent group's ABSOLUTE name-path, e.g. /Order (must exist)" },
     "name": { "type": "string", "description": "the new field's name (unique within its group)" },
@@ -19,7 +20,7 @@
     "helperText": { "type": "object", "description": "per-locale inline UI help, { \"<locale>\": \"<text>\" }" },
     "annotations": { "type": "object", "description": "name/value element annotations, { \"<name>\": \"<value>\" }" },
     "string": {
-      "type": "object", "description": "(kind STRING) config",
+      "type": "object", "description": "(kind STRING) config", "additionalProperties": false,
       "properties": {
         "minLength": { "type": "integer", "description": "minimum character length. seeAlso: the Length operator — the rule-level way to bound length (`operators Length`)" }, "maxLength": { "type": "integer", "description": "maximum character length" },
         "pattern": { "type": "string", "description": "anchored regex; requires patternMessage. seeAlso: the PatternViolated/PatternMatched operators — the rule-level alternative (`operators PatternViolated`)" },
@@ -30,7 +31,7 @@
       }
     },
     "number": {
-      "type": "object", "description": "(kind NUMBER) config",
+      "type": "object", "description": "(kind NUMBER) config", "additionalProperties": false,
       "properties": {
         "minFractionalDigits": { "type": "integer" }, "maxFractionalDigits": { "type": "integer", "description": "the decimal scale; together they bound the fraction-digit range" },
         "min": { "type": "string", "description": "minimum value (decimal as a string). seeAlso: the LessThan/GreaterThan comparison operators — rule-level bounds" }, "max": { "type": "string", "description": "maximum value (decimal as a string)" },
@@ -39,17 +40,21 @@
       }
     },
     "enum": {
-      "type": "object", "description": "(kind ENUM) config",
+      "type": "object", "description": "(kind ENUM) config", "additionalProperties": false,
       "required": ["values"],
       "properties": {
-        "values": { "type": "array", "description": "≥1 { value, labels? } — stored value + optional per-locale labels. seeAlso: FieldValueIncludedInValueList / FieldValueNotIncludedInValueList — the rule-level way to (dis)allow a value set", "items": { "type": "object", "required": ["value"] } },
-        "categories": { "type": "array", "description": "named classifications; each has values[] aligned 1:1 with the enum values. seeAlso: the EnumCategory operator (`operators EnumCategory`) — reads a value's category in a rule", "items": { "type": "object", "required": ["name", "values"] } },
+        "values": { "type": "array", "description": "≥1 { value, labels? } — stored value + optional per-locale labels. seeAlso: FieldValueIncludedInValueList / FieldValueNotIncludedInValueList — the rule-level way to (dis)allow a value set",
+          "items": { "type": "object", "required": ["value"], "additionalProperties": false,
+            "properties": { "value": { "type": "string", "description": "the stored value" }, "labels": { "type": "object", "description": "per-locale display labels, { \"<locale>\": \"<text>\" }" } } } },
+        "categories": { "type": "array", "description": "named classifications; each has values[] aligned 1:1 with the enum values. seeAlso: the EnumCategory operator (`operators EnumCategory`) — reads a value's category in a rule",
+          "items": { "type": "object", "required": ["name", "values"], "additionalProperties": false,
+            "properties": { "name": { "type": "string" }, "values": { "type": "array", "items": { "type": "string" }, "description": "values aligned 1:1 with the enum values" } } } },
         "alphabeticalSorting": { "type": "boolean" },
         "invalidValueMessage": { "type": "string", "description": "error text for an out-of-domain value (one text, all locales)" }
       }
     },
     "custom": {
-      "type": "object", "description": "(kind CUSTOM) config",
+      "type": "object", "description": "(kind CUSTOM) config", "additionalProperties": false,
       "required": ["typeName"],
       "properties": {
         "typeName": { "type": "string", "description": "the registered kernel custom-type name" },
@@ -57,8 +62,26 @@
       }
     },
     "date": {
-      "type": "object", "description": "(kind DATE) config",
+      "type": "object", "description": "(kind DATE) config", "additionalProperties": false,
       "properties": { "format": { "type": "string" }, "precision": { "type": "string", "description": "FULL (default) | a partial-date precision" } }
+    },
+    "time": {
+      "type": "object", "description": "(kind TIME) config", "additionalProperties": false,
+      "properties": { "format": { "type": "string" } }
+    },
+    "dateTime": {
+      "type": "object", "description": "(kind DATETIME) config", "additionalProperties": false,
+      "properties": { "format": { "type": "string" } }
+    },
+    "dateRange": {
+      "type": "object", "description": "(kind DATERANGE) config", "additionalProperties": false,
+      "required": ["format", "separator"],
+      "properties": { "format": { "type": "string" }, "separator": { "type": "string", "description": "the range separator, e.g. \" - \"" } }
+    },
+    "dateFragment": {
+      "type": "object", "description": "(kind DATEFRAGMENT) config", "additionalProperties": false,
+      "required": ["format"],
+      "properties": { "format": { "type": "string" } }
     }
   },
   "examples": [

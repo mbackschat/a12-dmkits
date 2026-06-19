@@ -7,8 +7,10 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.mgmtp.a12.model.notification.RankedNotification;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
@@ -79,6 +81,25 @@ public abstract class BaseCommand implements Callable<Integer> {
      */
     protected String model() {
         return spec.root().userObject() instanceof RootCommand root ? root.model : null;
+    }
+
+    /**
+     * Strict input gate: if {@code spec} carries a key the {@code schema/<schemaName>.schema.json} does not
+     * declare (top-level or nested), emit a {@code rejected} envelope of {@code RK_UNKNOWN_ARG} diagnostics
+     * (with a did-you-mean) and return its exit code; otherwise {@link Optional#empty()} so the caller proceeds.
+     * The single defense against a typo'd/out-of-scope key being silently dropped into a false {@code applied}.
+     */
+    protected Optional<Integer> rejectUnknownKeys(String target, String op, String schemaName, JsonNode spec) {
+        List<Diagnostic> unknown = SpecKeys.forSchema(schemaName).validate(spec);
+        if (unknown.isEmpty()) {
+            return Optional.empty();
+        }
+        String summary = unknown.size() == 1
+                ? "1 unrecognized key in the spec"
+                : unknown.size() + " unrecognized keys in the spec";
+        ResultEnvelope env = ResultEnvelope.rejected(target, op, summary, unknown);
+        out().print(env.toJsonString());
+        return Optional.of(env.exitCode());
     }
 
     /**

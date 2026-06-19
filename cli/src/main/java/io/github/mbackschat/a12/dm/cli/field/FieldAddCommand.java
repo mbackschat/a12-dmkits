@@ -109,6 +109,10 @@ final class FieldAddCommand extends BaseCommand {
         try {
             if (specPath != null) {
                 JsonNode spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
+                Optional<Integer> rejected = rejectUnknownKeys("field", "add", "field-add", spec);
+                if (rejected.isPresent()) {
+                    return rejected.get();
+                }
                 FieldSpec.Parsed parsed = FieldSpec.parse(spec);
                 effGroup = parsed.group();
                 target = effGroup + "/" + parsed.field().name();
