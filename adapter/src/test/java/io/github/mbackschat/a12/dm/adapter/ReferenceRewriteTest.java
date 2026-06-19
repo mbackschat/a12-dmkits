@@ -13,7 +13,7 @@ import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 
 /**
- * The reference-rewriting primitive behind a true (non-refusing) rename/move (FEATURE-GAPS-PROPOSAL §3.1):
+ * The reference-rewriting primitive behind a true (non-refusing) rename/move (FEATURE-GAPS §3.1):
  * {@link ReferenceRewriter} wraps the kernel's own {@code MoveSupportDM}. This locks two behaviors the
  * wiring depends on — a plain referrer is rewritten to the new path, and (verified against the kernel,
  * <em>contrary</em> to {@code MoveSupportInternal}'s javadoc limitation #6 "References with * are not

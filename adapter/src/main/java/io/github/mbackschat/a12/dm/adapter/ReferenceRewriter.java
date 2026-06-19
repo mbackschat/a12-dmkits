@@ -14,7 +14,7 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
 import com.mgmtp.a12.kernel.md.serializer.model.internal.service.ExternalDocumentModelSerializerService;
 
 /**
- * The reference-rewriting primitive for a reference-preserving rename/move (FEATURE-GAPS-PROPOSAL §3.1) —
+ * The reference-rewriting primitive for a reference-preserving rename/move (FEATURE-GAPS §3.1) —
  * an N8-boundary wrapper over the kernel's internal {@code MoveSupportDM}. Given a model as DM-JSON and a
  * map of {@code oldFullPath -> newFullPath}, it rewrites every <b>reference</b> to those paths — rule
  * conditions, error texts, computations (preconditions/operations/common precondition), and the error /
