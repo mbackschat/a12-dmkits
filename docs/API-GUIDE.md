@@ -728,7 +728,7 @@ ModelDocument.read(json)
 
 ### Richer field types & element metadata
 
-Beyond easy kinds: add a fully-configured field (`FieldTypeSpec` — string bounds/pattern, number scale, enum values + categories, date format/precision, a `TypeDefRef`), **re-type** an existing field, and set per-locale **labels** + name/value **annotations** on a field or group.
+Beyond easy kinds: add a fully-configured field (`FieldTypeSpec` — string bounds/pattern, number scale, enum values + categories, date format/precision, a `TypeDefRef`), **re-type** an existing field, and set its metadata in place — requiredness, per-locale **labels** + **helper text**, descriptions, and name/value **annotations** on a field or group.
 
 <!-- teaser -->
 ```java
@@ -738,10 +738,11 @@ ModelDocument.read(json)
     .addField("/Subscription", "RiskBand", new FieldTypeSpec.EnumSpec(values, categories)) // enum + categories
     .setFieldType("/Subscription/AutoRenew", new FieldTypeSpec.ConfirmSpec())            // re-type a field
     .setLabel("/Subscription/Tier", Map.of("en_US", "Plan tier", "de_DE", "Tarifstufe")) // per-locale label
+    .setHelperText("/Subscription/Tier", Map.of("en_US", "Affects pricing"))             // per-locale helper text
     .setAnnotation("/Subscription/Tier", "ui:widget", "dropdown")                        // name/value metadata
     .validate();
 ```
-A label must cover every declared locale (fails fast otherwise); the add/re-type reuse the build-from-scratch emitter, so a configured field is shaped identically to a built one. *Locked by `modelkit.ModelMetadataTest`.* (The re-type — `setFieldType` — is also reachable from the CLI as **`field modify <spec.json>`** (G6), so an agent can add a STRING `pattern` to an existing field without delete-and-recreate; CLI-SPEC §5.)
+A label must cover every declared locale (fails fast otherwise); the add/re-type reuse the build-from-scratch emitter, so a configured field is shaped identically to a built one. *Locked by `modelkit.ModelMetadataTest`.* Each aspect has its own setter (`setRequiredness`/`setLabel`/`setHelperText`/`setGlobal`/…); `ModelDocument.applyModification(path, FieldModification)` applies a **partial** bundle of them at once (only the present aspects), which is what the CLI's **`field modify <spec.json>`** rides (G6) — so an agent can add a STRING `pattern` *or* change a label on an existing field without delete-and-recreate, and an aspect it asks for is never silently dropped (CLI-SPEC §5).
 
 ### Rules *along with* structure — one session
 

@@ -69,6 +69,24 @@ class ApplyVerbTest {
     }
 
     @Test
+    void appliesAFieldMetadataEditInOneSession(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path ops = dir.resolve("ops.json");
+        // a field-modify op carrying ONLY metadata (a label, no re-type) must apply it — not silently drop it
+        // as the old type-only modify did. Add a field, then label it, in one atomic session.
+        Files.writeString(ops, """
+                [ {"target":"field","op":"add","group":"/Order","name":"Plz","kind":"STRING"},
+                  {"target":"field","op":"modify","group":"/Order","name":"Plz","label":{"en_US":"Postal code"}} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertTrue(Files.readString(model).contains("Postal code"),
+                "apply's field-modify must apply the label, not silently drop it");
+    }
+
+    @Test
     void addsAConstrainedFieldInOneRichOp(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         Path ops = dir.resolve("ops.json");

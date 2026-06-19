@@ -17,11 +17,13 @@ import java.util.TreeSet;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
+import io.github.mbackschat.a12.dm.modelkit.FieldModification;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
@@ -31,18 +33,20 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
- * {@code dmtool field modify <spec.json>} — change an existing field's <b>type / config in place</b> (e.g.
- * add a STRING {@code pattern}, tighten a NUMBER's scale, extend an ENUM's value set) and write the model
- * back. The field is located by the spec's {@code group} + {@code name}; its {@code fieldType} is replaced
- * with the spec's kind + per-kind config — so a constraint can be added <em>without delete-and-recreate</em>
- * (FEATURE-GAPS §2 G6). It re-types the field only; field <em>metadata</em> (label/requiredness/descriptions)
- * is untouched. Same rich spec shape as {@code field add} ({@code schema field modify}); the result is
- * re-bound through the kernel, so a kernel-invalid change is a {@code rejected} envelope (nothing written).
- * In place by default; {@code -o} redirects, {@code --dry-run} previews.
+ * {@code dmtool field modify <spec.json>} — change an existing field <b>in place</b> and write the model
+ * back. The field is located by the spec's {@code group} + {@code name}; it is a <b>partial</b> edit — every
+ * aspect the spec carries is applied, every absent one is left untouched: a {@code kind}/{@code typedef}
+ * re-types it (add a STRING {@code pattern}, tighten a NUMBER's scale, …), and any metadata key changes that
+ * metadata (requiredness, label, helper text, descriptions, annotations, the global/transient flags). So a
+ * constraint <em>or</em> a label can be changed <em>without delete-and-recreate</em>, and an aspect the spec
+ * carries is never silently dropped (a spec that would change nothing is refused). Same rich spec shape as
+ * {@code field add} ({@code schema field modify}), only the locator is required; the result is re-bound
+ * through the kernel, so a kernel-invalid change is a {@code rejected} envelope (nothing written). In place
+ * by default; {@code -o} redirects, {@code --dry-run} previews.
  */
 @Command(name = "modify", mixinStandardHelpOptions = true,
-        description = "Change a field's type/config in place (re-type / add constraints) via a <spec.json> "
-                + "— no delete-and-recreate; -o redirects, --dry-run previews.")
+        description = "Change a field in place via a <spec.json> — re-type (kind + config) and/or edit metadata "
+                + "(required/label/helperText/…); partial, no delete-and-recreate; -o redirects, --dry-run previews.")
 final class FieldModifyCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -85,8 +89,13 @@ final class FieldModifyCommand extends BaseCommand {
         List<Diagnostic> advisories;
         try {
             JsonNode spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
-            FieldSpec.Parsed parsed = FieldSpec.parse(spec);
-            fieldPath = parsed.group() + "/" + parsed.field().name();
+            FieldSpec.ModificationSpec parsed = FieldSpec.parseModification(spec);
+            FieldModification mod = parsed.modification();
+            if (mod.isEmpty()) {
+                return fail("nothing to modify — give a \"kind\"/\"typedef\" to re-type, or a metadata key "
+                        + "(required/label/helperText/internalDescription/externalDescription/annotations/global/transient)");
+            }
+            fieldPath = parsed.group() + "/" + parsed.name();
             // the field-exists gate runs first, so modifying a missing field gets the structured refusal
             // (not delete-and-recreate, not a kernel stack trace)
             Optional<Refusal> refusal = new SafetyGate()
@@ -95,14 +104,20 @@ final class FieldModifyCommand extends BaseCommand {
             if (refusal.isPresent()) {
                 return refuse("field", "modify", refusal.get());
             }
-            // a KIND change (vs a within-kind config tweak) can invalidate conditions that read the field;
-            // surface the readers up front as an advisory — the kernel re-validate stays the hard gate (§6).
-            String oldType = doc.fieldType(fieldPath).orElse(null);
-            String newType = parsed.field().type().jsonType();
-            advisories = reTypeAdvisories(modelJson, resolver, fieldPath, oldType, newType);
-            doc.setFieldType(fieldPath, parsed.field().type());
+            // a KIND change (vs a within-kind config tweak or a metadata-only edit) can invalidate conditions
+            // that read the field; surface the readers up front — only when re-typing. The kernel re-validate
+            // stays the hard gate (§6).
+            advisories = mod.type().isPresent()
+                    ? reTypeAdvisories(modelJson, resolver, fieldPath,
+                            doc.fieldType(fieldPath).orElse(null), mod.type().get().jsonType())
+                    : List.of();
+            doc.applyModification(fieldPath, mod);
             changed.put("modified", fieldPath);
-            changed.put("kind", spec.hasNonNull("typedef") ? "TypeDefType" : spec.path("kind").asText());
+            if (mod.type().isPresent()) {
+                changed.put("kind", spec.hasNonNull("typedef") ? "TypeDefType" : spec.path("kind").asText());
+            }
+            ArrayNode aspects = changed.putArray("aspects");
+            mod.changedAspects().forEach(aspects::add);
         } catch (IllegalArgumentException badSpec) {
             return fail("invalid field spec: " + badSpec.getMessage());
         } catch (IOException e) {
@@ -118,7 +133,7 @@ final class FieldModifyCommand extends BaseCommand {
             return fail(e.getMessage());
         }
         if (dryRun) {
-            ResultEnvelope env = ResultEnvelope.preview("field", "modify", "would re-type " + fieldPath, changed, advisories);
+            ResultEnvelope env = ResultEnvelope.preview("field", "modify", "would modify " + fieldPath, changed, advisories);
             out().print(env.toJsonString());
             return env.exitCode();
         }
@@ -128,7 +143,7 @@ final class FieldModifyCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot write output: " + e.getMessage());
         }
-        ResultEnvelope env = ResultEnvelope.applied("field", "modify", "re-typed " + fieldPath, changed, advisories, dest);
+        ResultEnvelope env = ResultEnvelope.applied("field", "modify", "modified " + fieldPath, changed, advisories, dest);
         out().print(env.toJsonString());
         return env.exitCode();
     }

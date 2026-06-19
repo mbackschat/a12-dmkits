@@ -10,6 +10,7 @@ import java.util.Set;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import io.github.mbackschat.a12.dm.modelkit.ElementDraft;
+import io.github.mbackschat.a12.dm.modelkit.FieldModification;
 import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
 import io.github.mbackschat.a12.dm.modelkit.NumberTrait;
 import io.github.mbackschat.a12.dm.modelkit.Requiredness;
@@ -46,8 +47,12 @@ public final class FieldSpec {
     /** Every key a rich {@code field add} spec may carry (locator + type + metadata) — the apply FIELD_ADD op surface. */
     public static final Set<String> ADD_KEYS = union(LOCATOR_KEYS, TYPE_KEYS, METADATA_KEYS);
 
-    /** The keys a {@code field modify} op reads — locator + type only; field metadata is left untouched. */
-    public static final Set<String> MODIFY_KEYS = union(LOCATOR_KEYS, TYPE_KEYS);
+    /**
+     * The keys a {@code field modify} op reads. It is the <b>full</b> set: a modify is a partial, in-place
+     * edit of an existing field's type <em>and/or</em> its metadata — so it accepts every key {@code add}
+     * does (only the locator is required), and any present aspect is applied (never silently dropped).
+     */
+    public static final Set<String> MODIFY_KEYS = ADD_KEYS;
 
     @SafeVarargs
     private static Set<String> union(Set<String>... sets) {
@@ -71,6 +76,54 @@ public final class FieldSpec {
                 textMap(spec.get("internalDescription")), textMap(spec.get("externalDescription")),
                 textMap(spec.get("helperText")));
         return new Parsed(group, field);
+    }
+
+    /** The parse result for a MODIFY: the located field, and the partial edit to apply. */
+    public record ModificationSpec(String group, String name, FieldModification modification) {
+    }
+
+    /**
+     * Parse a {@code field modify} spec as a <b>partial</b> edit: only the aspects the spec actually carries
+     * become present in the returned {@link FieldModification} (a {@code kind}/{@code typedef} ⇒ a re-type;
+     * any metadata key ⇒ that metadata change), so an absent aspect is left untouched and a present one is
+     * never silently dropped. Unlike {@link #parse}, a {@code kind} is NOT required — a metadata-only edit
+     * (e.g. just a {@code label}) is valid.
+     */
+    public static ModificationSpec parseModification(JsonNode spec) {
+        String group = text(spec, "group");
+        String name = text(spec, "name");
+        if (group == null || name == null) {
+            throw new IllegalArgumentException("a field spec needs \"group\" (a group path) and \"name\"");
+        }
+        FieldModification.Builder mod = FieldModification.builder();
+        if (spec.hasNonNull("typedef") || spec.hasNonNull("kind")) {
+            mod.type(type(spec, name));
+        }
+        if (spec.hasNonNull("required")) {
+            mod.requiredness(requiredness(spec));
+        }
+        if (spec.hasNonNull("label")) {
+            mod.label(textMap(spec.get("label")));
+        }
+        if (spec.hasNonNull("helperText")) {
+            mod.helperText(textMap(spec.get("helperText")));
+        }
+        if (spec.hasNonNull("internalDescription")) {
+            mod.internalDescription(textMap(spec.get("internalDescription")));
+        }
+        if (spec.hasNonNull("externalDescription")) {
+            mod.externalDescription(textMap(spec.get("externalDescription")));
+        }
+        if (spec.hasNonNull("annotations")) {
+            mod.annotations(annotations(spec.get("annotations")));
+        }
+        if (spec.hasNonNull("global")) {
+            mod.global(spec.get("global").asBoolean(false));
+        }
+        if (spec.hasNonNull("transient")) {
+            mod.isTransient(spec.get("transient").asBoolean(false));
+        }
+        return new ModificationSpec(group, name, mod.build());
     }
 
     /** The typed config: a {@code typedef} ref wins; otherwise {@code kind} selects the per-kind config block. */

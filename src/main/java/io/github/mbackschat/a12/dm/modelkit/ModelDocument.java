@@ -440,19 +440,71 @@ public final class ModelDocument {
         return header.has(key) ? (ArrayNode) header.get(key) : header.putArray(key);
     }
 
-    /** Set (or clear, with {@link Requiredness#OPTIONAL}) the requiredness of an existing field. */
-    public ModelDocument setRequiredness(String fieldPath, Requiredness requiredness) {
+    /** The {@code Field} body object at {@code fieldPath}; fails fast if there is no field there. */
+    private ObjectNode fieldBody(String fieldPath) {
         JsonNode field = locate(fieldPath, false);
         if (field == null) {
             throw new IllegalArgumentException("no field at path: " + fieldPath);
         }
-        ObjectNode body = (ObjectNode) field.path("Field");
+        return (ObjectNode) field.path("Field");
+    }
+
+    /** Set (or clear, with {@link Requiredness#OPTIONAL}) the requiredness of an existing field. */
+    public ModelDocument setRequiredness(String fieldPath, Requiredness requiredness) {
+        ObjectNode body = fieldBody(fieldPath);
         String mode = requiredness.mode();
         if (mode == null) {
             body.remove("requirednessConfig");
         } else {
             body.putObject("requirednessConfig").put("mode", mode);
         }
+        return this;
+    }
+
+    /** Set a field's per-locale helper text (replacing any existing). Unlike a label it need not cover every locale. */
+    public ModelDocument setHelperText(String fieldPath, Map<String, String> localeToText) {
+        ObjectNode body = fieldBody(fieldPath);
+        ArrayNode helper = body.putArray("helperText");
+        localeToText.forEach((loc, text) -> helper.addObject().put("locale", loc).put("text", text));
+        return this;
+    }
+
+    /** Set a field's {@code global} flag (shared across repetitions); {@code false} removes it (the kernel default). */
+    public ModelDocument setGlobal(String fieldPath, boolean global) {
+        return setFieldFlag(fieldPath, "global", global);
+    }
+
+    /** Set a field's {@code transient} flag (not persisted); {@code false} removes it (the kernel default). */
+    public ModelDocument setTransient(String fieldPath, boolean isTransient) {
+        return setFieldFlag(fieldPath, "transient", isTransient);
+    }
+
+    private ModelDocument setFieldFlag(String fieldPath, String flag, boolean on) {
+        ObjectNode body = fieldBody(fieldPath);
+        if (on) {
+            body.put(flag, true);
+        } else {
+            body.remove(flag);
+        }
+        return this;
+    }
+
+    /**
+     * Apply a {@link FieldModification} to the field at {@code fieldPath} — each present aspect is set, each
+     * absent one left as-is. This is the <b>single</b> place a partial field edit is realized, shared by the
+     * CLI's standalone {@code field modify} and the {@code apply}/{@code batch} field-modify op, so neither
+     * can silently drop an aspect the spec carried (the false-{@code applied} trap a type-only modify caused).
+     */
+    public ModelDocument applyModification(String fieldPath, FieldModification mod) {
+        mod.type().ifPresent(t -> setFieldType(fieldPath, t));
+        mod.requiredness().ifPresent(r -> setRequiredness(fieldPath, r));
+        mod.label().ifPresent(l -> setLabel(fieldPath, l));
+        mod.helperText().ifPresent(h -> setHelperText(fieldPath, h));
+        mod.internalDescription().ifPresent(m -> m.forEach((loc, t) -> setInternalDescription(fieldPath, loc, t)));
+        mod.externalDescription().ifPresent(m -> m.forEach((loc, t) -> setExternalDescription(fieldPath, loc, t)));
+        mod.annotations().ifPresent(list -> list.forEach(a -> setAnnotation(fieldPath, a.name(), a.value())));
+        mod.global().ifPresent(g -> setGlobal(fieldPath, g));
+        mod.isTransient().ifPresent(t -> setTransient(fieldPath, t));
         return this;
     }
 

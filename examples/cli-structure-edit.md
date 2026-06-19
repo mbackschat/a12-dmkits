@@ -1131,9 +1131,9 @@ dmtool -m /tmp/extras.dm.json config read
 
 → Two more authoring verbs round out the model surface (multi-file, so shown via `-w/--workspace` rather than re-staged here): **`typedef import --reference <m>`** pulls another model's type definitions in by id (a `purpose=typeDefinitions` reference, not a mount), and **`include add --exclude-rules`** mounts a model while dropping its own rules/computations. Both are in `manifest` + `--help`; the contracts are in [`../docs/CLI-SPEC.md`](../docs/CLI-SPEC.md) §5/§6.
 
-## field modify — re-type a field in place (no delete-and-recreate)
+## field modify — change a field in place (re-type or edit metadata)
 
-Adding a constraint to an *existing* field — e.g. enforce that a postal code is exactly 5 digits — no longer means deleting and re-creating it. `field modify` re-types the field in place from the same rich spec as `field add`, located by its `group` + `name`:
+Changing an *existing* field — adding a constraint, or fixing its label — no longer means deleting and re-creating it. `field modify` is a **partial** edit located by `group` + `name`: it applies every aspect the spec carries and leaves the rest untouched. A `kind` + per-kind config re-types it (e.g. enforce that a postal code is exactly 5 digits); the `changed.aspects` list reports what was touched:
 
 ```bash
 dmtool model new --id addr --locale en_US --root Address -o /tmp/addr.dm.json >/dev/null
@@ -1144,5 +1144,17 @@ dmtool -m /tmp/addr.dm.json field modify /tmp/plz.spec.json | jq -c '{outcome, c
 ```
 
 ```output
-{"outcome":"applied","changed":{"modified":"/Address/PostalCode","kind":"STRING"}}
+{"outcome":"applied","changed":{"modified":"/Address/PostalCode","kind":"STRING","aspects":["type"]}}
+```
+
+The same verb edits field **metadata** in place — here just the label, with no re-type (so no `kind`). A spec carrying an aspect is never silently ignored; one that would change nothing is refused:
+
+```bash
+printf '%s' '{"group":"/Address","name":"PostalCode","label":{"en_US":"Postal code"}}' > /tmp/plz.meta.json
+dmtool -m /tmp/addr.dm.json field modify /tmp/plz.meta.json | jq -c '{outcome, changed}'
+
+```
+
+```output
+{"outcome":"applied","changed":{"modified":"/Address/PostalCode","aspects":["label"]}}
 ```

@@ -17,6 +17,7 @@ import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.ElementDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+import io.github.mbackschat.a12.dm.modelkit.FieldModification;
 import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.modelkit.MountOptions;
@@ -91,6 +92,14 @@ public final class EditSession {
 
     public EditSession setFieldType(String fieldPath, FieldTypeSpec type) {
         return editStructure(d -> d.setFieldType(fieldPath, type));
+    }
+
+    /**
+     * Apply a partial field edit (type and/or metadata) — the MODIFY peer of {@link #addField}. Each present
+     * aspect of {@code modification} is set, each absent one left as-is (see {@link ModelDocument#applyModification}).
+     */
+    public EditSession modifyField(String fieldPath, FieldModification modification) {
+        return editStructure(d -> d.applyModification(fieldPath, modification));
     }
 
     public EditSession setRequiredness(String fieldPath, Requiredness requiredness) {

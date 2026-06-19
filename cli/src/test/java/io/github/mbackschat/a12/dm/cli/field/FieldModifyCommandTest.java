@@ -111,6 +111,47 @@ class FieldModifyCommandTest {
     }
 
     @Test
+    void changesLabelInPlaceWithoutReTyping(@TempDir Path dir) throws Exception {
+        Path m = freshModel(dir);                       // /Adresse/PLZ STRING
+        Path spec = dir.resolve("label.json");
+        Files.writeString(spec, """
+                {"group":"/Adresse","name":"PLZ","label":{"en_US":"Postal code"}}""");
+
+        CliTestSupport.Result res = CliTestSupport.run("-m", m.toString(), "field", "modify", spec.toString());
+
+        assertEquals(0, res.code(), res::err);
+        assertEquals("applied", MAPPER.readTree(res.out()).path("outcome").asText());
+        assertTrue(Files.readString(m).contains("Postal code"),
+                "field modify must APPLY the label, not silently drop it");
+    }
+
+    @Test
+    void setsRequirednessWithoutReTyping(@TempDir Path dir) throws Exception {
+        Path m = freshModel(dir);
+        Path spec = dir.resolve("req.json");
+        Files.writeString(spec, """
+                {"group":"/Adresse","name":"PLZ","required":true}""");
+
+        CliTestSupport.Result res = CliTestSupport.run("-m", m.toString(), "field", "modify", spec.toString());
+
+        assertEquals(0, res.code(), res::err);
+        assertTrue(Files.readString(m).contains("requirednessConfig"),
+                "field modify must set requiredness with no kind given (a metadata-only edit)");
+    }
+
+    @Test
+    void refusesAModifyThatChangesNothing(@TempDir Path dir) throws Exception {
+        Path m = freshModel(dir);
+        Path spec = dir.resolve("empty.json");
+        Files.writeString(spec, """
+                {"group":"/Adresse","name":"PLZ"}""");
+
+        CliTestSupport.Result res = CliTestSupport.run("-m", m.toString(), "field", "modify", spec.toString());
+
+        assertNotEquals(0, res.code(), "a modify with neither a re-type nor any metadata must fail, not no-op-succeed");
+    }
+
+    @Test
     void dryRunPreviewsAndWritesNothing(@TempDir Path dir) throws Exception {
         Path m = freshModel(dir);
         String before = Files.readString(m);

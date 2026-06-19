@@ -24,6 +24,7 @@ import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
+import io.github.mbackschat.a12.dm.modelkit.FieldModification;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
@@ -232,13 +233,23 @@ final class ApplyCommand extends BaseCommand {
                 yield staged(which, changed, session);
             }
             case FIELD_MODIFY -> {
-                // re-type a field's config in place (e.g. add a STRING pattern) — same rich spec as `field
-                // modify`/`field add`; metadata untouched. The terminal gate re-binds the whole sequence.
-                FieldSpec.Parsed parsed = FieldSpec.parse(op);
-                String path = parsed.group() + "/" + parsed.field().name();
-                session.setFieldType(path, parsed.field().type());
+                // a PARTIAL in-place edit — re-type AND/OR change metadata — the same rich spec as `field
+                // modify`; every present aspect is applied, never silently dropped. The terminal gate re-binds
+                // the whole sequence.
+                FieldSpec.ModificationSpec parsed = FieldSpec.parseModification(op);
+                FieldModification mod = parsed.modification();
+                if (mod.isEmpty()) {
+                    throw new IllegalArgumentException("nothing to modify — give a \"kind\"/\"typedef\" to re-type, "
+                            + "or a metadata key (required/label/helperText/…)");
+                }
+                String path = parsed.group() + "/" + parsed.name();
+                session.modifyField(path, mod);
                 changed.put("modified", path);
-                changed.put("kind", op.hasNonNull("typedef") ? "TypeDefType" : op.path("kind").asText());
+                if (mod.type().isPresent()) {
+                    changed.put("kind", op.hasNonNull("typedef") ? "TypeDefType" : op.path("kind").asText());
+                }
+                ArrayNode aspects = changed.putArray("aspects");
+                mod.changedAspects().forEach(aspects::add);
                 yield staged(which, changed, session);
             }
             case FIELD_REMOVE -> {
