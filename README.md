@@ -563,6 +563,8 @@ export JAVA_HOME="$(/usr/libexec/java_home -v 21)"   # macOS; or point at any JD
 ./gradlew test
 ```
 
+**To avoid forgetting either variable** — the machine's global Gradle config can otherwise inject a private registry and fail confusingly ([root cause](docs/KERNEL-INTEGRATION-NOTES.md) under "Build / environment gotchas") — use the committed wrapper `./build.sh test` (it pins both, then runs Gradle), or [`.envrc`](.envrc) if you have [direnv](https://direnv.net).
+
 A green `test` means the kit's output is confirmed by the engine, not just plausible. The suite covers:
 
 - kernel wiring and the model index

@@ -101,6 +101,6 @@ The conventions below are enforced; the **map of the whole testing approach** (t
 
 ## Build
 
-Build with an isolated, public-repos-only Gradle home so the machine's global config (private registry) is bypassed, on JDK 21 — see the README's "Build & test" section. The kernel must first be published to `mavenLocal` via the sibling `a12-kernel-bootstrap` kit.
+Build with an isolated, public-repos-only Gradle home so the machine's global config (private registry) is bypassed, on JDK 21 — see the README's "Build & test" section. **Simplest: `./build.sh <gradle args>`** — the committed wrapper pins the isolated `GRADLE_USER_HOME` + JDK 21 then runs Gradle, so a bare `./gradlew` can't be silently contaminated by the machine's global `init.d` (root cause: [`docs/KERNEL-INTEGRATION-NOTES.md`](docs/KERNEL-INTEGRATION-NOTES.md) "Build / environment gotchas"). The kernel must first be published to `mavenLocal` via the sibling `a12-kernel-bootstrap` kit.
 
 **Release artifacts (native image, developer jars) and the release procedure are NOT here — they live in [`docs/RELEASE-SPEC.md`](docs/RELEASE-SPEC.md)** (the durable release spec: verification gate + versioning + distribution). **The GraalVM native-image build is its own topic in [`docs/NATIVE-IMAGE-GRAALVM.md`](docs/NATIVE-IMAGE-GRAALVM.md)** (recipe, findings, the reflection/Groovy walls, sizing, status) — consult it before touching the native build; it is currently NOT shippable. Everyday dev build (JVM/tests) stays in the README + above; native-image is release-only and never in the dev inner loop.
