@@ -6,7 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 ## [Unreleased]
 
-_Empty._
+### Fixed
+
+- **An upgraded plugin now actually picks up the new binary.** The downloader cached `dmtool` at a version-less path and only fetched it when absent, so once any binary was cached, bumping the plugin never replaced it — an upgrade kept running the old binary (and the v0.3.2 download-pin fix couldn't reach anyone who already had one cached). The cache is now **keyed by version**: a newer plugin re-downloads the matching binary on its first session, prunes the old one, and keeps the deterministic `…/bin/dmtool` path as a symlink to the current version. (Already running a stale binary from before this fix? Upgrading to this version self-heals on the next session.)
 
 ## [0.3.2] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 

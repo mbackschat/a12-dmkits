@@ -77,11 +77,12 @@ What the hook does on each session start:
 
 | When | What happens |
 |---|---|
-| **First new session** | Downloads the per-OS native binary from this repo's [Releases](../../releases) — anonymous, checksum-verified against `SHA256SUMS` — caches it at `$CLAUDE_PLUGIN_DATA/bin/dmtool`, and prepends that directory to `PATH`. Needs network; takes a few seconds (60 s timeout). |
-| **Every later session** | Binary is already cached → no download. It just re-adds the directory to `PATH` (also on `claude --resume` / `--continue`). Effectively instant. |
+| **First new session** | Downloads the per-OS native binary from this repo's [Releases](../../releases) — anonymous, checksum-verified against `SHA256SUMS` — caches it under `$CLAUDE_PLUGIN_DATA/bin/<version>/`, and prepends that directory to `PATH`. Needs network; takes a few seconds (60 s timeout). |
+| **Every later session** | Same version already cached → no download. It just re-adds the directory to `PATH` (also on `claude --resume` / `--continue`). Effectively instant. |
+| **After a plugin upgrade** | The cache is **keyed by version**, so a newer plugin re-downloads the matching binary on its first session (older versions are pruned) — an upgrade can never keep serving a stale binary. |
 | **On any failure** | The hook warns to stderr and exits cleanly — it never blocks or aborts your session; `dmtool` simply won't be on `PATH` that session, and the next session start retries the download. |
 
-The binary always lives at the fixed path `$CLAUDE_PLUGIN_DATA/bin/dmtool`, so even on a host where the hook can't inject `PATH`, your agent can invoke it there directly.
+The current binary is always reachable at the stable path `$CLAUDE_PLUGIN_DATA/bin/dmtool` (a symlink to the active version), so even on a host where the hook can't inject `PATH`, your agent can invoke it there directly.
 
 ## Install — OpenAI Codex
 
