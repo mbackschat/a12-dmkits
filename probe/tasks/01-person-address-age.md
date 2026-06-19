@@ -16,9 +16,12 @@ This is the exact prompt that surfaced the whole silent-drop class. Run it as ON
 ## Gold reference (what a correct end-state enforces — matched SEMANTICALLY, not literally)
 
 After **turn 1** the model should have, regardless of exact spelling/operators:
-- a root `Person` group with at least a name + a **date** birth-date field;
+- a root `Person` group with at least a name + an age signal (see the next bullet);
 - **two address groups** (home + work), each with the usual address fields (street, house no., postal code, city, country);
-- an **age ≥ 18** validation rule that is a *violation* condition (true when age < 18), guarded for presence, computed from the birth date relative to the current date (e.g. `DifferenceInYears(BirthDate, Today) < 18`, or an `AddYears`/`YearFromDate` formulation — any kernel-valid equivalent);
+- an **age ≥ 18** validation rule that is a *violation* condition (true when the person is under 18), guarded for presence. **"age ≥ 18" is genuinely ambiguous** and both readings are acceptable:
+  - **stored-number** — a `NUMBER` `Age` field with `FieldFilled(Age) And [Age] < 18` (the simpler, weaker model — a stored age goes stale);
+  - **birth-date-derived** — a `DATE` `BirthDate` field with `DifferenceInYears(BirthDate, Today) < 18` (or an `AddYears`/`YearFromDate` formulation — any kernel-valid equivalent).
+  > ⚠️ Only the **birth-date** reading exercises the native date operators (`Today`/`AddYears`/`YearFromDate`) — the exact surface that crashed natively in v0.1.0. This authentic prompt does **not** force that path (the 2026-06-19 run took the stored-number route), so it does **not** count as date-operator coverage. A dedicated date-forcing scenario (a future `01b`/`02`, prompt: "the person enters their **date of birth**…") owns that coverage. Do not "fix" this by editing the prompt — it is the user's verbatim real-world prompt and its ambiguity is itself a finding (H1).
 - the model is **kernel-valid** (the kernel is the oracle).
 - *(metadata, if the agent set any — labels/required — must actually be present on the fields, not silently dropped.)*
 
