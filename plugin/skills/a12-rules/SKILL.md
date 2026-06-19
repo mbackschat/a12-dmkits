@@ -20,6 +20,8 @@ The three you lean on:
 - **`dmtool operators`** — pick operators by meaning.
 - **`dmtool -m <model.json> rule check --field <ABSOLUTE field path> --condition "<DSL>" --code <ID>`** — submit a candidate and get the **real kernel's** verdict (the result envelope's `valid` + `diagnostics`). This is your ground truth. (`dmtool -m <model.json> model validate` re-checks a model's *existing* rules.)
 
+**It's a native binary, not a JVM** — startup is sub-100 ms, so call `dmtool` as often as a clear flow needs (one invocation per step is fine; no warmup to amortize). Reach for `apply`/`batch` when you want several edits to land **atomically** (all-or-nothing, rolled back on any failure), *not* to avoid startup cost.
+
 ## The loop
 
 1. **Orient** — `dmtool -m <model> model describe` (or `dmtool export <model>`) to learn the fields, their kinds, enum values, and which groups repeat.
