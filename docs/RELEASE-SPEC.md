@@ -43,7 +43,7 @@ The library jars/JavaDoc are out of v1 scope; the full build + consume + licensi
 
 **The publish glue is a committed script — [`scripts/publish-release.sh`](../scripts/publish-release.sh) — not prose** (the CLAUDE.md rule: deterministic side-effecting setup lives in a script). It does the mirror-content push, the draft + mac upload, the linux/windows CI dispatch, the `SHA256SUMS` ordering, and the final flip. Two manual things bracket it: the **version bump** (maintainer judgment, below) before tagging, and a **review of the draft** before `--go-live`.
 
-**Step 1 — version bump (before tagging).** Run **[`scripts/bump-version.sh X.Y.Z`](../scripts/bump-version.sh)** — it does the deterministic edits in the table below (the `build.gradle` version, both plugin manifests, and the `cli-version.md` capture), leaving only the CHANGELOG *content* and the build/verify/commit/tag to you. **NONE of these is caught by `VersionMentionFreshnessTest`** (it guards only the *kernel* pin), so a missed file drifts the project version silently — which is exactly why the edits are scripted:
+**Step 1 — version bump (before tagging).** Run **[`scripts/bump-version.sh X.Y.Z`](../scripts/bump-version.sh)** — it does the deterministic edits in the table below (the `build.gradle` version, both plugin manifests, the `cli-version.md` capture, and the plugin's **binary-download pin**), leaving only the CHANGELOG *content* and the build/verify/commit/tag to you. Most of these are caught by **no** guard (`VersionMentionFreshnessTest` guards only the *kernel* pin), so a missed file drifts the project version silently — which is exactly why the edits are scripted. The one exception is the download pin, now guarded by **`PluginHookVersionTest`**:
 
 | File | What |
 |---|---|
@@ -51,6 +51,7 @@ The library jars/JavaDoc are out of v1 scope; the full build + consume + licensi
 | `plugin/.claude-plugin/plugin.json` | `"version": "X.Y.Z"` |
 | `plugin-codex/.codex-plugin/plugin.json` | `"version": "X.Y.Z"` |
 | `examples/cli-version.md` | regen the captured `--version` + `manifest.version` (showboat-gated — drifts the demo otherwise) |
+| `scripts/ensure-dmtool.sh` → both plugin copies | `VERSION="vX.Y.Z"` — the **release tag the `SessionStart` hook downloads the binary from**. Set unconditionally, then propagated to `plugin/hooks/` + `plugin-codex/hooks/` by `sync-plugin-assets.sh`. **Guarded by `PluginHookVersionTest`** (it must equal the project version) — the pin lagging at `v0.1.0` shipped a long-fixed native crash to every install through v0.3.1, the incident this guard prevents. |
 | `plugin/CHANGELOG.md` | flip `[Unreleased]` → `[X.Y.Z] — kernel <pin>`; **this section is the release `--notes`** (the script extracts it) |
 
 Then rebuild + verify the demo, commit, tag, push:
