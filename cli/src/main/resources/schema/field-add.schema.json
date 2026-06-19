@@ -11,7 +11,7 @@
     "name": { "type": "string", "description": "the new field's name (unique within its group)" },
     "kind": { "type": "string", "description": "STRING | NUMBER | DATE | TIME | DATETIME | DATERANGE | DATEFRAGMENT | BOOLEAN | CONFIRM | ENUM | CUSTOM (omit when `typedef` is given)" },
     "typedef": { "type": "string", "description": "type the field by an existing type-definition id (wins over `kind`)" },
-    "required": { "description": "true (always required) | false (optional, default) | \"ifParentPresent\" (required only if the parent group is filled)" },
+    "required": { "enum": [true, false, "ifParentPresent"], "description": "true (always required) | false (optional, default) | \"ifParentPresent\" (required only if the parent group is filled)" },
     "label": { "type": "object", "description": "per-locale display label, { \"<locale>\": \"<text>\" }; once set, must cover every declared locale" },
     "global": { "type": "boolean", "description": "the kernel `global` flag (relevant to partial validation)" },
     "transient": { "type": "boolean", "description": "the kernel `transient` flag (present at runtime, not persisted)" },

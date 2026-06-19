@@ -61,6 +61,70 @@ class SpecKeysTest {
                 .isEmpty(), "open maps (label/annotations) carry no declared properties → keys unrestricted");
     }
 
+    // --- value-shape validation: a recognized key carrying a wrong-typed value (the sibling of the
+    //     unknown-key gate above). SpecKeys validates key NAMES and now their VALUE SHAPES, schema-driven,
+    //     for every served spec — so a wrong shape is a structured RK_INVALID_VALUE, not a plain `fail`. ----
+
+    @Test
+    void requiredWithAKernelTermIsRejectedAsInvalidValue() throws Exception {
+        // "MANDATORY" is the kernel's own term — exactly what an agent reaches for — but `required` only
+        // accepts true/false/"ifParentPresent". The tightened enum schema makes that machine-checkable.
+        List<Diagnostic> found = validateFieldAdd("""
+                {"group":"/G","name":"F","required":"MANDATORY"}""");
+        assertEquals(1, found.size(), () -> "exactly one invalid value: " + found);
+        assertEquals("RK_INVALID_VALUE", found.get(0).code().orElse(null));
+        assertEquals("required", found.get(0).where().arg().orElse(null),
+                () -> "the where points at 'required': " + found.get(0));
+    }
+
+    @Test
+    void everyValidRequirednessFormIsClean() throws Exception {
+        for (String form : List.of("true", "false", "\"ifParentPresent\"")) {
+            assertTrue(validateFieldAdd("{\"group\":\"/G\",\"name\":\"F\",\"required\":" + form + "}").isEmpty(),
+                    () -> "required:" + form + " is a valid form and must be clean");
+        }
+    }
+
+    @Test
+    void annotationsAsAnArrayIsRejectedAsInvalidValue() throws Exception {
+        // the schema declares annotations as an object { name: value }; the array form used to coerce to empty
+        List<Diagnostic> found = validateFieldAdd("""
+                {"group":"/G","name":"F","annotations":[{"name":"a","value":"v"}]}""");
+        assertEquals(1, found.size(), () -> "exactly one invalid value: " + found);
+        assertEquals("RK_INVALID_VALUE", found.get(0).code().orElse(null));
+    }
+
+    @Test
+    void aLocalizedTextFieldAsABareStringIsRejected() throws Exception {
+        // label is an OPEN object (a locale→text map): its VALUE must still be an object (a bare string used to
+        // coerce to an empty map → silent drop), while its KEYS stay unrestricted (leavesOpenMapsUnrestricted).
+        List<Diagnostic> found = validateFieldAdd("""
+                {"group":"/G","name":"F","label":"plain"}""");
+        assertEquals(1, found.size(), () -> "exactly one invalid value: " + found);
+        assertEquals("RK_INVALID_VALUE", found.get(0).code().orElse(null));
+    }
+
+    @Test
+    void aNestedScalarOfTheWrongTypeIsRejected() throws Exception {
+        // string.minLength is declared integer; a string slips past the key-name check but not the value check
+        List<Diagnostic> found = validateFieldAdd("""
+                {"group":"/G","name":"F","kind":"STRING","string":{"minLength":"five"}}""");
+        assertEquals(1, found.size(), () -> "the nested wrong-typed value is flagged: " + found);
+        assertEquals("RK_INVALID_VALUE", found.get(0).code().orElse(null));
+        assertEquals("string/minLength", found.get(0).where().arg().orElse(null),
+                () -> "the where points at the nested path 'string/minLength': " + found.get(0));
+    }
+
+    @Test
+    void theGateCoversEveryServedSpecNotJustFields() throws Exception {
+        // the add schema (rule/computation) declares `messages` as an array — a string is rejected uniformly,
+        // proving the value-shape gate is schema-driven across specs, not a field-only special case.
+        List<Diagnostic> found = SpecKeys.forSchema("add").validate(M.readTree("""
+                {"field":"/O/Q","condition":"x","code":"C","messages":"oops"}"""));
+        assertEquals(1, found.size(), () -> "rule `messages` as a string is rejected: " + found);
+        assertEquals("RK_INVALID_VALUE", found.get(0).code().orElse(null));
+    }
+
     @Test
     void fieldAddSchemaRootDeclaresExactlyFieldSpecAddKeys() throws Exception {
         // The schema IS the enforcement source. It must list exactly the keys FieldSpec accepts: a MISSING key

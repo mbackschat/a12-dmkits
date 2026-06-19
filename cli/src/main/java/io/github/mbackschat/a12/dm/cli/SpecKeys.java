@@ -18,12 +18,23 @@ import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 
 /**
- * Strict key validation for a rich JSON spec against its <b>published schema</b> — the single, schema-sourced
- * defense against the silent "false success" where a typo'd or out-of-scope key was parsed-and-ignored and
- * the verb still reported {@code applied}. Every input key, <b>top-level AND nested</b> (wherever the schema
- * declares {@code additionalProperties:false}), must be a declared property; an undeclared key yields an
- * {@code RK_UNKNOWN_ARG} diagnostic with a did-you-mean. Open maps (locale→text labels, name→value
- * annotations, …) carry no {@code properties}, so their keys are correctly left unrestricted.
+ * Strict, schema-sourced validation for a rich JSON spec against its <b>published schema</b> — the single
+ * defense against the silent "false success" where a bad key/value was parsed-and-ignored yet the verb still
+ * reported {@code applied}. Two sibling checks, both <b>top-level AND nested</b>, both derived from the schema:
+ * <ul>
+ *   <li><b>key names</b> — every input key (wherever the schema declares {@code additionalProperties:false})
+ *       must be a declared property; an undeclared key yields an {@code RK_UNKNOWN_ARG} with a did-you-mean.
+ *       Open maps (locale→text labels, name→value annotations, …) carry no {@code properties}, so their keys
+ *       are correctly left unrestricted.</li>
+ *   <li><b>key values</b> (Follow-on B) — a declared key's value must satisfy the schema's {@code type}/{@code enum}
+ *       for that key, or it is an {@code RK_INVALID_VALUE}: a string where an object/array is required
+ *       ({@code label:"x"}, {@code annotations:[…]}), or a value outside the declared set
+ *       ({@code required:"MANDATORY"} vs the {@code [true,false,"ifParentPresent"]} enum). An open object
+ *       (e.g. a locale map) still requires an <em>object</em> value while leaving its keys unrestricted — the
+ *       two checks compose. This generalizes the per-parser fail-fast in {@code FieldSpec} to every served spec,
+ *       with a structured diagnostic instead of a plain {@code fail}; the parsers keep their fail-fast invariant
+ *       behind the gate (it also backstops the {@code apply} op-record's top-level scalars).</li>
+ * </ul>
  *
  * <p>The allowed keys are <b>read from</b> {@code schema/<name>.schema.json} (the same file {@code dmtool
  * schema <target> <op>} serves), not a second hand-maintained list — so the contract an agent reads and the
@@ -86,31 +97,48 @@ public final class SpecKeys {
     }
 
     /**
-     * A schema object as an allowed-key tree: {@code closed} = its {@code additionalProperties:false} (so any
-     * key outside {@code children} is rejected); {@code children} maps each declared property to its own tree
-     * (a {@code null} child = an open sub-object, e.g. a locale map — not recursed). {@code arrayItem} carries
-     * the item tree for an array schema. A {@code null} tree anywhere means "open — do not restrict".
+     * A schema object as a validation tree, carrying everything {@link #validate} enforces:
+     * <ul>
+     *   <li>{@code type}/{@code enumValues} — the declared <b>value shape</b>: a present value whose JSON type
+     *       doesn't match {@code type} (or isn't one of {@code enumValues}) is an {@code RK_INVALID_VALUE} —
+     *       the value-shape gate (key <em>values</em>), the sibling of the unknown-<em>key</em> check below;</li>
+     *   <li>{@code closed} — its {@code additionalProperties:false}: a key outside {@code children} is rejected;</li>
+     *   <li>{@code children} — each declared property's own tree (a {@code null} child = an open sub-object with
+     *       nothing to enforce — not recursed); {@code arrayItem} — the item tree for an array schema.</li>
+     * </ul>
+     * A {@code null} tree means "open — nothing to enforce". An OPEN object (declared {@code type:object} with no
+     * {@code properties}, e.g. a locale→text map) is a NON-null node carrying only {@code type=object}: its value
+     * must be an object, but its keys stay unrestricted (no {@code children}, not {@code closed}).
      */
-    private record Node(boolean closed, Map<String, Node> children, Node arrayItem) {
+    private record Node(String type, List<JsonNode> enumValues, boolean closed,
+            Map<String, Node> children, Node arrayItem) {
 
         static Node from(JsonNode schema) {
             if (schema == null || !schema.isObject()) {
                 return null;
             }
+            String type = schema.path("type").isTextual() ? schema.get("type").asText() : null;
+            List<JsonNode> enumValues = null;
+            JsonNode en = schema.get("enum");
+            if (en != null && en.isArray()) {
+                enumValues = new ArrayList<>();
+                en.forEach(enumValues::add);
+            }
             Map<String, JsonNode> props = new LinkedHashMap<>();
             collectProperties(schema, props);
+            boolean closed = false;
+            Map<String, Node> children = new LinkedHashMap<>();
             if (!props.isEmpty()) {
                 JsonNode ap = schema.path("additionalProperties");
-                boolean closed = ap.isBoolean() && !ap.booleanValue();
-                Map<String, Node> children = new LinkedHashMap<>();
+                closed = ap.isBoolean() && !ap.booleanValue();
                 props.forEach((key, sub) -> children.put(key, from(sub)));
-                return new Node(closed, children, null);
             }
             JsonNode items = schema.get("items");
-            if (items != null && items.isObject()) {
-                return new Node(false, Map.of(), from(items));
+            Node arrayItem = items != null && items.isObject() ? from(items) : null;
+            if (type == null && enumValues == null && props.isEmpty() && arrayItem == null) {
+                return null; // nothing to enforce — open, unrestricted
             }
-            return null; // a scalar, or an open object (no declared properties) — unrestricted
+            return new Node(type, enumValues, closed, children, arrayItem);
         }
 
         /** Properties of this node plus any {@code oneOf}/{@code anyOf}/{@code allOf} branch (the union of allowed keys). */
@@ -128,6 +156,13 @@ public final class SpecKeys {
         }
 
         void validate(JsonNode input, String path, Set<String> ignore, List<Diagnostic> out) {
+            // value-shape gate: a PRESENT value must match the declared type/enum. An explicit null = "absent →
+            // default" (the parsers treat isNull() as the default), so it is not flagged. A mis-shaped value is
+            // reported and NOT recursed into (recursing would pile confusing child errors onto the real cause).
+            if (!input.isNull() && !valueMatches(input)) {
+                out.add(invalidValue(path, this));
+                return;
+            }
             if (arrayItem != null && input.isArray()) {
                 input.forEach(element -> arrayItem.validate(element, path + "[]", Set.of(), out));
                 return;
@@ -150,6 +185,46 @@ public final class SpecKeys {
                 }
             });
         }
+
+        /** Whether a present {@code input} satisfies this node's declared {@code enum} (preferred) or {@code type}. */
+        private boolean valueMatches(JsonNode input) {
+            if (enumValues != null) {
+                return enumValues.stream().anyMatch(allowed -> allowed.equals(input));
+            }
+            if (type == null) {
+                return true;
+            }
+            return switch (type) {
+                case "object" -> input.isObject();
+                case "array" -> input.isArray();
+                case "string" -> input.isTextual();
+                case "boolean" -> input.isBoolean();
+                case "integer" -> input.isIntegralNumber();
+                case "number" -> input.isNumber();
+                default -> true; // an unrecognized type keyword — don't restrict
+            };
+        }
+
+        /** What this node accepts, for the {@code RK_INVALID_VALUE} message/fix. */
+        private String expected() {
+            if (enumValues != null) {
+                StringBuilder b = new StringBuilder("one of ");
+                for (int i = 0; i < enumValues.size(); i++) {
+                    b.append(i == 0 ? "" : ", ").append(enumValues.get(i));
+                }
+                return b.toString();
+            }
+            return "a value of type " + type;
+        }
+    }
+
+    private static Diagnostic invalidValue(String path, Node node) {
+        String expected = node.expected();
+        return Diagnostic.precheck(Optional.of(RkCode.INVALID_VALUE.code()),
+                "invalid value for '" + path + "' — expected " + expected,
+                Diagnostic.Where.arg(null, path),
+                Optional.of("provide " + expected),
+                Optional.empty());
     }
 
     private static Diagnostic unknownArg(String key, String path, Set<String> allowed) {

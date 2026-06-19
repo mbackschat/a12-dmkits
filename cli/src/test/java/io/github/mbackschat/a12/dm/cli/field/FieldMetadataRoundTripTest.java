@@ -21,10 +21,11 @@ import org.junit.jupiter.api.io.TempDir;
  *       (write → read back; the original {@code field modify} metadata bug + the requiredness/annotations
  *       drop the probe's round-trip work surfaced);</li>
  *   <li><b>rejected</b> — a recognized key carrying a <em>wrong-shaped</em> value must be refused, NOT silently
- *       coerced to a default/empty and falsely reported {@code applied}. {@code SpecKeys} validates key
- *       <em>names</em>; this guards the value <em>shapes</em> the {@code FieldSpec} parsers used to swallow
- *       ({@code required:"MANDATORY"} → silently OPTIONAL; {@code annotations:[…]} / {@code label:"…"} →
- *       silently empty).</li>
+ *       coerced to a default/empty and falsely reported {@code applied}. The schema-driven {@code SpecKeys}
+ *       gate now validates key <em>values</em> as well as <em>names</em> (Follow-on B), so a wrong shape is a
+ *       structured {@code RK_INVALID_VALUE} — not a plain {@code fail} — end-to-end: {@code required:"MANDATORY"}
+ *       (outside the declared enum), {@code annotations:[…]} (array vs object), {@code label/helperText:"…"}
+ *       (string vs locale map). The {@code FieldSpec} parsers keep a fail-fast invariant behind the gate.</li>
  * </ul>
  */
 class FieldMetadataRoundTripTest {
@@ -67,6 +68,8 @@ class FieldMetadataRoundTripTest {
         Files.writeString(bad, "{ \"group\":\"/R\", \"name\":\"F\", \"required\":\"MANDATORY\" }");
         var res = CliTestSupport.run("-m", m.toString(), "field", "modify", bad.toString());
         assertNotEquals(0, res.code(), () -> "required:\"MANDATORY\" must be rejected, not silently applied: " + res.out());
+        assertTrue(res.out().contains("RK_INVALID_VALUE"),
+                () -> "rejected with the structured value-shape code, not a plain fail: " + res.out());
     }
 
     @Test
@@ -77,6 +80,8 @@ class FieldMetadataRoundTripTest {
         Files.writeString(bad, "{ \"group\":\"/R\", \"name\":\"F\", \"annotations\":[{\"name\":\"a\",\"value\":\"v\"}] }");
         var res = CliTestSupport.run("-m", m.toString(), "field", "modify", bad.toString());
         assertNotEquals(0, res.code(), () -> "annotations as an array must be rejected, not silently dropped: " + res.out());
+        assertTrue(res.out().contains("RK_INVALID_VALUE"),
+                () -> "rejected with the structured value-shape code, not a plain fail: " + res.out());
     }
 
     @Test
@@ -88,5 +93,7 @@ class FieldMetadataRoundTripTest {
         Files.writeString(bad, "{ \"group\":\"/R\", \"name\":\"F\", \"helperText\":\"just a string\" }");
         var res = CliTestSupport.run("-m", m.toString(), "field", "modify", bad.toString());
         assertNotEquals(0, res.code(), () -> "helperText as a bare string must be rejected, not silently dropped: " + res.out());
+        assertTrue(res.out().contains("RK_INVALID_VALUE"),
+                () -> "rejected with the structured value-shape code, not a plain fail: " + res.out());
     }
 }
