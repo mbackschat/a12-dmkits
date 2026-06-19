@@ -1,61 +1,64 @@
 # a12-dmkits
 
-Author, read, and safely edit the **rules** and **structure** of A12 Kernel document models — as typed Java code, or through a self-describing command-line tool. Every result is checked by the **real A12 kernel**, so what you produce is *accepted*, not merely plausible. JSON in, JSON out.
+Author, read, and safely edit the **rules** and **structure** of A12 Kernel document models — through a self-describing command-line tool (**`dmtool`**), or as typed Java code. Every result is checked by the **real A12 kernel**, so what you produce is *accepted*, not merely plausible. JSON in, JSON out.
 
 > **Not an official A12 artifact.** A personal exploration, not affiliated with or endorsed by mgm — currently a private project, built using GPT 5.5. Shipped code binds only to the kernel's **public** OSS surface — no internal systems. (An opt-in, Java-only adapter module may read the kernel's internal AST tier under strict guardrails.)
 
 ---
 
-## The idea — typed, model-bound, kernel-confirmed
+<!-- shared:dmtool-story — canonical HERE; mirrored verbatim into plugin/README.md (guarded by SharedReadmeRegionTest). Keep it link-light: NO docs/ links (the public mirror has no docs/ tree). -->
+## Why `dmtool`
 
-An A12 document model carries **validation rules** and **computations** whose logic is an expression written in the kernel's condition language. For example, *"a delivery date must not be before the order date"* is stored as a condition string:
+An A12 document model carries **validation rules** and **computations** whose logic is a condition in the kernel's expression language — *"a delivery date must not be before the order date"* becomes a string like:
 
 ```
 AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, DeliveryDate) < 0
 ```
 
-Writing those strings by hand is fragile. A mistyped field path, a wrong operator, the wrong decimal scale, or — most insidious — **inverted polarity** (a rule's condition is true on the *violation*, not on the requirement) slips through unnoticed until the kernel runs, if it's caught at all.
+Writing these by hand is fragile: a mistyped path, a wrong operator or decimal scale, or — most insidious — **inverted polarity** (the condition true on the *requirement* instead of the *violation*) slips through until the kernel runs, if it's caught at all.
 
-**rulekit builds the condition as typed code, bound to your model** — so whole classes of mistake become impossible or caught immediately:
+**`dmtool` closes that gap from the command line** — one self-describing native binary, **JSON in / JSON out**, no Java toolchain. It authors, reads, and safely edits a model's rules *and* structure, and **confirms every result against the real A12 kernel**, so *valid* means the engine accepts it, not that it merely looks right.
 
-```java
-BoundModel m = BoundModel.ofJson(Files.readString(modelPath));   // bind a model to the real kernel
+It is built **agent-first** — the #1 use is inside a coding-agent session (Claude Code, Codex):
 
-GroupRef  addons = m.group("/Subscription/Addons");              // resolve each element ONCE …
-NumberRef fee    = m.num("/Subscription/Addons/MonthlyFee");     // … then reuse the typed ref — no repeated paths
+- **Self-describing — a cold agent needs no external docs.** `manifest` lists every verb × parameter with a worked example; `operators` / `patterns` / `diagnostics` / `schema` expose the DSL vocabulary, the validation idioms, each diagnostic code, and the exact I/O shape — all from the binary itself.
+- **Judgment where `--help` can't reach.** A bundled skill teaches what the catalog can't — condition *polarity*, error-field paths, iteration scope — so a scaffolded rule has the right shape before the kernel ever sees it.
+- **Safe by construction.** Every result rides one uniform envelope; deletes and structural refactors are **gated** (a referenced field won't silently vanish); a multi-op `apply` session is **atomic** (rollback on any failure).
 
-Rule rule = m.rule(addons)
-    .name("FeeCapRule")
-    .errorField(fee)                                            // fields come OFF the model …
-    .when(fee.gt(1000))                                         // … a wrong path can't compile
-    .code("FEE_CAP").severity(Severity.ERROR)
-    .message(en("Monthly fee is too high."), de("Monatsgebühr ist zu hoch."))
-    .build();
+### A session, in natural language
 
-String dmJson = m.add(rule).toJson();   // re-validated through the kernel; ready to write back
+You don't type `dmtool` — your agent does. You state the rule in plain language; the agent resolves the model, reasons about **polarity** and **operator semantics**, and the **real kernel** confirms the result before anything is written:
+
+**You —** *"In the order model, a delivery date must never be before the order date."*
+
+**Agent —** *finds the fields, then checks the operator's sign convention:*
+
+```sh
+dmtool -m order.dm.json model describe | jq -c '.data.fields[] | select(.kind=="DATE") | .path'
+# → "/Order/OrderDate"   "/Order/DeliveryDate"
+dmtool operators DifferenceInDays          # its meaning, sign convention, gotchas, and OPPOSITE
 ```
 
-Or hold an **editor** on the group and navigate relatively — the model path is typed once, and the rule authors in place against it:
+*An A12 rule fires on the **violation**, so the condition must be true when delivery is before order — and that gets validated against the real kernel before anything is written:*
 
-```java
-EditSession s      = EditSession.read(dmJson);
-GroupEditor addons = s.group("/Subscription/Addons");           // a session-bound editor on the group
-NumberRef   fee    = addons.num("MonthlyFee");                  // a typed ref off the editor — relative, no full path
-addons.addRule(r -> r                                           // pre-scoped to /Subscription/Addons
-        .name("FeeCapRule").errorField(fee)
-        .when(fee.gt(1000))                                     // same typed condition, same kernel gate
-        .code("FEE_CAP").severity(Severity.ERROR)
-        .message(en("Monthly fee is too high."), de("Monatsgebühr ist zu hoch.")).build());
-String updated = s.validate().toJson();                         // one kernel gate
+```sh
+dmtool -m order.dm.json rule check --field /Order/DeliveryDate --code DELIVERY_BEFORE_ORDER \
+  --condition 'AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, DeliveryDate) < 0'
+# → { "valid": true, "diagnostics": [] }   ✓ accepted — polarity lint clean, error field legal & in scope
+dmtool -m order.dm.json rule add delivery-rule.json     # persist (kernel-checked again on write)
 ```
 
-Three things make this more than a string builder:
+**Done** — the rule is written and re-validated: true *exactly* when delivery precedes the order (the violation), with a referenced, in-scope error field. The agent didn't guess: had it written the condition true on the *requirement*, the built-in **polarity lint** would have flagged it; had it invented a field path or misread the operator, the kernel would have rejected it. That is the point — **deep rule + operator semantics, gated by the engine itself**, reachable from one English sentence.
 
-- **The model is the type system.** `m.num(...)`, `m.str(...)`, `m.date(...)`, `m.group(...)` return handles bound to real fields, so a path that doesn't exist (or a number operator on a date) fails *before* you ever reach the kernel. (That's a **path lookup** — one of two ways to name a field; the other is a session **editor** for the read→edit→reference flow, below.)
-- **It renders to the exact DSL the kernel expects** — English keywords by default, **German** on demand (`And`/`Und`, `Today`/`Heute`, …) — and the kernel confirms the rendered rule, so "valid" means *the engine accepts it*.
-- **It runs in reverse.** rulekit can **read an existing condition string back** into the same typed form — to explain it, analyze it, or re-express it with a reviewable diff. Anything it doesn't yet model is preserved *verbatim*, never dropped.
+### The skill & the plugin
 
-**modelkit** applies the identical idea to the model's **structure** — fields, groups, type definitions, includes, document config — emitting DM-JSON the kernel accepts.
+Two pieces make an agent this good with `dmtool`:
+
+- **The plugin** delivers the binary — its `SessionStart` hook downloads the right per-OS native build (anonymous, checksum-verified) on first use and puts `dmtool` on PATH. One install line (below); the same plugin model serves Claude Code and Codex.
+- **The skill** is a small `SKILL.md` of *judgment* — the traps `--help` can't teach: rule **polarity**, valid **error fields**, **iteration** scope, the date/number gotchas. The binary stays self-describing (`manifest` / `operators` / `schema`); the skill teaches *when* and *why*, and the same canonical skill backs both agents.
+<!-- /shared:dmtool-story -->
+
+Prefer typed Java in your own JVM project? The same engine is a library — see *The idea* and the rulekit / modelkit sections below.
 
 ---
 
@@ -63,190 +66,10 @@ Three things make this more than a string builder:
 
 | You are… | Use | Why |
 |---|---|---|
-| a **developer**, editing models in your own JVM project | **rulekit / modelkit** as a library | typed builders, kernel-checked, in your own code & compiler |
 | a **modeller / BA**, or an **LLM agent** | **`dmtool`**, the CLI | verbs + JSON I/O, single native binary, self-describing — no Java toolchain to install |
+| a **developer**, editing models in your own JVM project | **rulekit / modelkit** as a library | typed builders, kernel-checked, in your own code & compiler |
 
 *(Java first; a TypeScript twin may follow.)*
-
----
-
-## rulekit — the library
-
-### Referencing a field — by path, or through an editor
-
-Two ways to name the field a rule talks about; they return the **same pure refs**, so you blend them as fits:
-
-| Style | Looks like | Reach for it when |
-|---|---|---|
-| **By path** | `m.num("/Order/Discount")` | referencing an **existing** element while authoring against a loaded model — the common case |
-| **Through an editor** | `s.group("/Order").num("Discount")` | the read→**edit**→reference flow: a ref to a field you *just created*, or relative navigation, without re-typing paths — see *Both kits together* below |
-
-Neither is "older": a path lookup is the foundation; the editor adds relative navigation, refs that flow out of edits, and `m.rule(editor)` for when structure and rules move together. The examples below use whichever fits — and [mix both](#both-kits-together--editsession-one-model-one-gate) when a rule spans a just-added field and an existing one.
-
-### Author (a quick start)
-
-The rule above is the whole pattern: pick the **scope group**, the **error field**, the **condition** (true on the violation), a **code** and per-locale **messages**, then `build()`. A **computation** (a field whose value is derived from others) reads the same way:
-
-```java
-Computation comp = m.computation(m.num("/Subscription/Billing/EffectiveFee"))
-    .name("EffectiveFeeComp")
-    .calc(m.num("/Subscription/Billing/BaseFee").value())     // EffectiveFee := BaseFee
-    .message(en("Effective fee equals the base fee."), de("Effektivgebühr = Basisgebühr."))
-    .build();
-```
-
-### Interpolated error messages
-
-An error message can splice in the **runtime value**, the **label**, or the **row number** of a field/group through typed helpers — each takes a *ref*, so it can't name a field that doesn't exist. The kernel substitutes the token when it renders the message for a failing document:
-
-| Helper | Renders the token | Substituted with… |
-|---|---|---|
-| `fieldValue(ref)` | `$/Order/Items/Count.value$` | the field's runtime **value** |
-| `fieldLabel(ref)` | `$/Order/Items/Count$` | the field's localized **label** |
-| `repetitionIndex(groupRef)` | `$#/Order/Items$` | the repeatable group's 1-based **row number** |
-
-```java
-import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.*;   // en, de, fieldValue, fieldLabel, repetitionIndex
-
-NumberRef count = m.num("/Order/Items/Count");
-GroupRef  items = m.group("/Order/Items");
-// renders, e.g., "Row #2: Count (now 0) must be positive."
-m.rule(items).name("CountPositive").errorField(count)
-    .when(count.filled().and(count.le(0))).code("COUNT_POSITIVE").severity(Severity.ERROR)
-    .message(en("Row #" + repetitionIndex(items) + ": " + fieldLabel(count.field())
-            + " (now " + fieldValue(count.field()) + ") must be positive."))
-    .build();
-```
-
-The CLI `rule add` / `apply` message path accepts the same `$…$` tokens as plain text — the helpers are just the typed, ref-checked way to write them.
-
-### What you can express
-
-The condition language is rich; a flavour of what the typed builder covers (each renders to kernel-valid DSL):
-
-| Want to say… | DSL it produces |
-|---|---|
-| a field is present / absent | `FieldFilled(OrderDate)` · `FieldNotFilled(DeliveryDate)` |
-| compare a field to a value **or another field** | `[Quantity] > 0` · `[MinQty] <= [MaxQty]` |
-| enums by their stored value (incl. category navigation) | `[/Subscription/Tier] == "PRO"` · `[Tier -> Pricing] == "PAID"` |
-| dates & arithmetic | `DifferenceInDays(OrderDate, DeliveryDate) < 0` · `[OrderDate] >= Today` |
-| aggregates over a repeating group | `Sum(Items*/Amount) > 500` · `MaxValue(Items*/Price)` |
-| string patterns (portable regex) | `PatternViolated(PostalCode, "[0-9]{5}")` |
-| "for every add-on row, the fee is present" | `GroupFilled(/Subscription/Addons) And FieldNotFilled(MonthlyFee)` |
-
-Browse the full, self-verifying catalogue (every operator with its meaning, examples, and **gotchas**) via the CLI's `operators` verb, or in the [API guide](docs/API-GUIDE.md).
-
-### Read a foreign rule back
-
-```java
-KernelAdapter adapter = KernelAdapter.of(m);
-ReadResult read = adapter.read("/Order/DeliveryNotBeforeOrder");   // text → typed AST, tolerant
-// → ReadResult.Converted(condition)  … or  ReadResult.Opaque(text, reason)  (preserved verbatim)
-```
-
-### Explain, navigate, find
-
-```java
-ModelContext ctx = new ModelContext(m);
-ModelCard card  = ctx.describe();                 // every field + kind + enum domain + group repeatability
-RuleExplanation why = ctx.explain(condition);     // what it checks, and WHEN it fires (polarity made explicit)
-List<FieldMatch> hits = ctx.find("birthdate");    // resolve a fuzzy name to model fields
-Set<String> users = adapter.whereUsed("/Customer/BirthDate");   // which rules reference a field
-m.fields().filter(f -> f.annotation("audited").isPresent());    // find fields by annotation (GroupInfo too)
-```
-
-### Modify by re-expression, with a diff — and render to German
-
-```java
-new DslRenderer(ConditionLanguage.DE).render(condition);   // German keywords: Und, Heute, AlleFelderGefüllt …
-```
-
-Re-expressing an existing rule produces a **`RenderedDiff`** that discloses any lossiness *up front* — you review before you commit. The rule's **leading `;;` comment is preserved by default** across the loop (only inline/trailing comments are re-rendered away, and the diff says so).
-
-### Comments — author once, preserved across the loop
-
-Conditions can carry `;;` line comments (concrete syntax the kernel tolerates). Author them with the typed builder, and a comment-less `modify` keeps them:
-
-```java
-NumberRef fee = m.num("/Subscription/Addons/MonthlyFee");
-m.rule(m.group("/Subscription/Addons")).name("FeeCap").errorField(fee)
-        .when(fee.filled().and(fee.gt(1000)))
-        .comment("cap the monthly fee per policy")     // ← rendered as a leading ;; line, kernel-tolerated
-        .code("FEE_CAP").severity(Severity.ERROR)
-        .message(en("Monthly fee is too high."), de("Monatsgebühr ist zu hoch."))
-        .build();
-```
-
-The CLI mirrors it: a `comment` key on `rule add` and `computation add`, plus `rule modify --comment`. In the typed library, computations carry comments on operations and preconditions too.
-
-### Validation-pattern catalogue
-
-The recurring idioms are a **catalogue** — `PatternCatalog.load().byId("date-order")` — across three kinds: **rule** idioms (date-order, required-when, mutually-exclusive, at-least-one-of, sum-of-line-items), the **computation** idiom `tiered-amount`, and **field-constraint** idioms (bounded-number, formatted-string, value-set-enum — the field-level alternatives the `seeAlso` bridge names). Each builds its artifact through the **typed DSL**, so it's correct by construction (a rule's right polarity + referenced error field, a computation's mutually-exclusive precondition table, or a typed field config). The library returns a sealed `RuleInstantiation` | `ComputationInstantiation` | `FieldInstantiation`; the CLI `patterns` verb scaffolds + `--apply`s them. Each entry's example is kernel-validated in CI, so the catalogue can't go stale. Full API + the typed-vs-data design: [API guide](docs/API-GUIDE.md).
-
-More rulekit idioms and the design rationale are in the [API guide](docs/API-GUIDE.md).
-
----
-
-## modelkit — the library
-
-modelkit authors a model's **structure** the same way rulekit authors rules — typed, fluent, kernel-confirmed. Build a model from scratch:
-
-```java
-DocumentModelDraft order = DocumentModelDraft.named("order")
-    .locale("en_US")
-    .rootGroup("Order", g -> g
-        .field("OrderDate", FieldKind.DATE, Requiredness.REQUIRED)
-        .numberField("Quantity", n -> n.fractionDigits(0).min("1"))   // a whole number ≥ 1
-        .enumField("Priority", e -> e.value("LOW").value("HIGH"))
-        .group("Items", items -> items
-            .repeatable(99)                                           // a repeating line-item group
-            .field("Sku", FieldKind.STRING)
-            .numberField("Amount", n -> n.fractionDigits(2))))        // a money amount, scale 2
-    .build();
-
-String dmJson = order.toJson();   // DM-JSON the kernel accepts
-```
-
-**What it covers** — field kinds (string with length/pattern/suggestions/line-breaks/sorting, number with fraction-digit range/min/max/zero-not-allowed/leading-zeros/unit (amount·percent·permille), date / time / date-range, boolean, confirm, enum with values + categories + sorting + invalid-value message, and a **custom** field type), **element metadata** (per-locale internal/external **descriptions** + name/value **annotations** on any field/group/rule/type-def, field global/transient flags + helper text, and a model-level **comment**), **repeatable groups** (with index fields), the **Multi-Select** and **Attachment group templates** (`multiSelectGroup(...)` — a repeatable enum/string selection list; `attachmentGroup(...)` — the kernel's canonical file-attachment composition, generated whole), reusable **type definitions** (including a **type-def-only model** other models *import* via `typeDefModel(...)` + `importTypeDefs(...)`), **includes** (mount another model under a group, optionally repeatable or excluding the included model's rules/computations), and **document config** (locales, decimal separator, time zone, base year, model-level labels + annotations, plus a runtime-enforced supported-character set). To edit the structure of an *existing* model — add/remove fields & groups, declare type definitions, change config — use `EditSession` (below).
-
-**Illegal states are unrepresentable.** The builder rejects the mistakes the kernel would — a repeatable group with `max < 2`, a field referencing an undeclared type definition — *as you build*, not after a round-trip; and the kernel still has the final say (every result re-binds through `checkConsistency`).
-
-## Both kits together — `EditSession`: one model, one gate
-
-This is where modelkit and rulekit meet — **structure edits and rule edits on one in-memory model, behind a single kernel gate**. The north-star flow: read a model, make a series of structure *and* rule edits (a rule may reference a field added earlier in the same session), validate **once**, write back (intermediate invalid states are fine — only the final result must satisfy the kernel):
-
-The idiom is the **editor**: you hold an editor on a group rather than re-typing string paths — structure edits chain, a typed ref to a just-created field comes from relative navigation, and rules author in place against it.
-
-```java
-EditSession s = EditSession.read(dmJson);
-GroupEditor order = s.group("/Order");                       // a session-bound editor on /Order
-order.addField("Discount", FieldKind.NUMBER);                // structure edit (modelkit) — chains
-NumberRef discount = order.num("Discount");                  // a typed ref to the field just added
-order.addRule(r -> r                                         // a TYPED rule (rulekit), pre-scoped to /Order
-        .name("DiscountNotNegative").errorField(discount)
-        .when(discount.filled().and(discount.lt(0)))         // the violation: a discount below zero
-        .code("DISCOUNT_NEGATIVE").severity(Severity.ERROR)
-        .message(en("Discount must not be negative.")).build());
-String updated = s.validate().toJson();                      // one kernel gate
-```
-
-**Refs are the currency.** `order.num("Discount")` resolves *only because* `addField` ran first — and it returns a typed ref, not a string path you re-type. Rules author in place (`order.addRule(r -> …)`, the builder pre-scoped to the group) or take the editor straight as a scope (`m.rule(order)`); either way the immutable AST holds **only the pure ref, never the session**, so a rule can't leak an effect. `GroupEditor` also nests (`addGroup(name, sub -> …)`) and carries the same per-type field builders as the from-scratch builder (`order.numberField("Surcharge", n -> n.fractionDigits(2))`, `enumField`, `dateField`, … — a *configured* field mid-edit, byte-identical to one built from scratch); `FieldEditor` re-types/labels/annotates a field; `RuleEditor` / `ComputationEditor` modify or remove by held reference — a rule's condition, **or its severity / messages in place** (`s.rule(name).severity(WARNING).messages(en("…")))`). `EditSession` also carries the **reference-preserving refactors** — `renameField`/`renameGroup`/`moveField`/`moveGroup` rewrite every reference to the element (via the kernel's `MoveSupportDM`) and re-validate, so a rename or relocation never dangles a referrer. Design + rationale: [API guide §5c](docs/API-GUIDE.md).
-
-**Blend both as a developer would** — the editor for a field you just added, a path lookup for one that already exists, in the same condition (they are the same pure ref):
-
-```java
-GroupEditor billing = s.group("/Subscription/Billing");
-billing.addField("Surcharge", FieldKind.NUMBER);                       // NEW field — via the editor
-NumberRef surcharge = billing.num("Surcharge");                        // editor relative ref
-s.addRule(m -> m.rule(billing.ref()).name("SurchargeUnderBase").errorField(surcharge)
-        .when(surcharge.filled().and(surcharge.gt(m.num("/Subscription/Billing/BaseFee"))))  // ← path lookup, existing field
-        .code("SURCHARGE_OVER_BASE").severity(Severity.ERROR)
-        .message(en("Surcharge must not exceed the base fee.")).build());
-```
-
-The flat session verbs are still there for a quick one-off — `s.addField(path, …)`, `s.addRule(m -> m.rule(m.group(path)) …)` — and a raw-string condition overload backs the CLI's `apply`/spec path (conditions arrive as text), but it's not the idiom for library code.
-
-More library idioms and the design rationale live in the [API guide](docs/API-GUIDE.md); every doc is indexed in [`docs/`](docs/README.md).
 
 ---
 
@@ -256,7 +79,7 @@ Same engine, no Java required. Every command is `dmtool -m <model> <target> <op>
 
 ### Use it inside your coding agent (Claude Code, Codex)
 
-`dmtool` is **LLM-agent-first**. The primary way to use it is to install it as a **plugin** for your coding agent: the plugin downloads the right native binary for your OS (anonymous, checksum-verified) and loads a **rule-authoring skill** that teaches the judgment the tool's help can't — condition *polarity*, error-field paths, iteration scope. The same canonical skill backs both agents.
+Install it for your agent — the plugin fetches the per-OS binary on first use and loads the canonical skill (see *The skill & the plugin* above):
 
 ```text
 # Claude Code
@@ -494,7 +317,7 @@ dmtool -m order.dm.json field remove /Order/DeliveryDate --cascade
 
 ### Both kits at once, atomically — the `apply` session
 
-The CLI face of the unified `EditSession` above — **modelkit structure edits and rulekit rule edits in one transaction**:
+The CLI face of the unified `EditSession` (the library's one-model-one-gate session, below) — **modelkit structure edits and rulekit rule edits in one transaction**:
 
 ```sh
 # Read → ordered surgery (structure via modelkit + rules via rulekit) → ONE gate → ONE write, rollback on failure:
@@ -527,6 +350,296 @@ The [`examples/`](examples/) directory has **verifiable** walkthroughs of every 
 | [`cli-version`](examples/cli-version.md) | `--version`, `manifest.version`, the model-version policy |
 
 The full CLI contract: [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md).
+
+---
+
+## The idea — typed, model-bound, kernel-confirmed
+
+The same fragile-by-hand condition (see *Why `dmtool`* above) has a **typed** answer for developers.
+
+**rulekit** builds the condition as **typed code bound to your model** — so whole classes of mistake become impossible or caught immediately:
+
+```java
+BoundModel m = BoundModel.ofJson(Files.readString(modelPath));   // bind a model to the real kernel
+
+GroupRef  addons = m.group("/Subscription/Addons");              // resolve each element ONCE …
+NumberRef fee    = m.num("/Subscription/Addons/MonthlyFee");     // … then reuse the typed ref — no repeated paths
+
+Rule rule = m.rule(addons)
+    .name("FeeCapRule")
+    .errorField(fee)                                            // fields come OFF the model …
+    .when(fee.gt(1000))                                         // … a wrong path can't compile
+    .code("FEE_CAP").severity(Severity.ERROR)
+    .message(en("Monthly fee is too high."), de("Monatsgebühr ist zu hoch."))
+    .build();
+
+String dmJson = m.add(rule).toJson();   // re-validated through the kernel; ready to write back
+```
+
+Or hold an **editor** on the group and navigate relatively — the model path is typed once, and the rule authors in place against it:
+
+```java
+EditSession s      = EditSession.read(dmJson);
+GroupEditor addons = s.group("/Subscription/Addons");           // a session-bound editor on the group
+NumberRef   fee    = addons.num("MonthlyFee");                  // a typed ref off the editor — relative, no full path
+addons.addRule(r -> r                                           // pre-scoped to /Subscription/Addons
+        .name("FeeCapRule").errorField(fee)
+        .when(fee.gt(1000))                                     // same typed condition, same kernel gate
+        .code("FEE_CAP").severity(Severity.ERROR)
+        .message(en("Monthly fee is too high."), de("Monatsgebühr ist zu hoch.")).build());
+String updated = s.validate().toJson();                         // one kernel gate
+```
+
+Three things make this more than a string builder:
+
+- **The model is the type system.** `m.num(...)`, `m.str(...)`, `m.date(...)`, `m.group(...)` return handles bound to real fields, so a path that doesn't exist (or a number operator on a date) fails *before* you ever reach the kernel. (That's a **path lookup** — one of two ways to name a field; the other is a session **editor** for the read→edit→reference flow, below.)
+- **It renders to the exact DSL the kernel expects** — English keywords by default, **German** on demand (`And`/`Und`, `Today`/`Heute`, …) — and the kernel confirms the rendered rule, so "valid" means *the engine accepts it*.
+- **It runs in reverse.** rulekit can **read an existing condition string back** into the same typed form — to explain it, analyze it, or re-express it with a reviewable diff. Anything it doesn't yet model is preserved *verbatim*, never dropped.
+
+**modelkit** applies the identical idea to the model's **structure** — fields, groups, type definitions, includes, document config — emitting DM-JSON the kernel accepts.
+
+---
+
+## rulekit — the library
+
+### Referencing a field — by path, or through an editor
+
+Two ways to name the field a rule talks about; they return the **same pure refs**, so you blend them as fits:
+
+| Style | Looks like | Reach for it when |
+|---|---|---|
+| **By path** | `m.num("/Order/Discount")` | referencing an **existing** element while authoring against a loaded model — the common case |
+| **Through an editor** | `s.group("/Order").num("Discount")` | the read→**edit**→reference flow: a ref to a field you *just created*, or relative navigation, without re-typing paths — see *Both kits together* below |
+
+Neither is "older": a path lookup is the foundation; the editor adds relative navigation, refs that flow out of edits, and `m.rule(editor)` for when structure and rules move together. The examples below use whichever fits — and [mix both](#both-kits-together--editsession-one-model-one-gate) when a rule spans a just-added field and an existing one.
+
+### Author (a quick start)
+
+The rule above is the whole pattern: pick the **scope group**, the **error field**, the **condition** (true on the violation), a **code** and per-locale **messages**, then `build()`. A **computation** (a field whose value is derived from others) reads the same way:
+
+```java
+Computation comp = m.computation(m.num("/Subscription/Billing/EffectiveFee"))
+    .name("EffectiveFeeComp")
+    .calc(m.num("/Subscription/Billing/BaseFee").value())     // EffectiveFee := BaseFee
+    .message(en("Effective fee equals the base fee."), de("Effektivgebühr = Basisgebühr."))
+    .build();
+```
+
+### Interpolated error messages
+
+An error message can splice in the **runtime value**, the **label**, or the **row number** of a field/group through typed helpers — each takes a *ref*, so it can't name a field that doesn't exist. The kernel substitutes the token when it renders the message for a failing document:
+
+| Helper | Renders the token | Substituted with… |
+|---|---|---|
+| `fieldValue(ref)` | `$/Order/Items/Count.value$` | the field's runtime **value** |
+| `fieldLabel(ref)` | `$/Order/Items/Count$` | the field's localized **label** |
+| `repetitionIndex(groupRef)` | `$#/Order/Items$` | the repeatable group's 1-based **row number** |
+
+```java
+import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.*;   // en, de, fieldValue, fieldLabel, repetitionIndex
+
+NumberRef count = m.num("/Order/Items/Count");
+GroupRef  items = m.group("/Order/Items");
+// renders, e.g., "Row #2: Count (now 0) must be positive."
+m.rule(items).name("CountPositive").errorField(count)
+    .when(count.filled().and(count.le(0))).code("COUNT_POSITIVE").severity(Severity.ERROR)
+    .message(en("Row #" + repetitionIndex(items) + ": " + fieldLabel(count.field())
+            + " (now " + fieldValue(count.field()) + ") must be positive."))
+    .build();
+```
+
+The CLI `rule add` / `apply` message path accepts the same `$…$` tokens as plain text — the helpers are just the typed, ref-checked way to write them.
+
+### What you can express
+
+The condition language is rich; a flavour of what the typed builder covers (each renders to kernel-valid DSL):
+
+| Want to say… | DSL it produces |
+|---|---|
+| a field is present / absent | `FieldFilled(OrderDate)` · `FieldNotFilled(DeliveryDate)` |
+| compare a field to a value **or another field** | `[Quantity] > 0` · `[MinQty] <= [MaxQty]` |
+| enums by their stored value (incl. category navigation) | `[/Subscription/Tier] == "PRO"` · `[Tier -> Pricing] == "PAID"` |
+| dates & arithmetic | `DifferenceInDays(OrderDate, DeliveryDate) < 0` · `[OrderDate] >= Today` |
+| aggregates over a repeating group | `Sum(Items*/Amount) > 500` · `MaxValue(Items*/Price)` |
+| string patterns (portable regex) | `PatternViolated(PostalCode, "[0-9]{5}")` |
+| "for every add-on row, the fee is present" | `GroupFilled(/Subscription/Addons) And FieldNotFilled(MonthlyFee)` |
+
+Browse the full, self-verifying catalogue (every operator with its meaning, examples, and **gotchas**) via the CLI's `operators` verb, or in the [API guide](docs/API-GUIDE.md).
+
+### Read a foreign rule back
+
+```java
+KernelAdapter adapter = KernelAdapter.of(m);
+ReadResult read = adapter.read("/Order/DeliveryNotBeforeOrder");   // text → typed AST, tolerant
+// → ReadResult.Converted(condition)  … or  ReadResult.Opaque(text, reason)  (preserved verbatim)
+```
+
+### Explain, navigate, find
+
+```java
+ModelContext ctx = new ModelContext(m);
+ModelCard card  = ctx.describe();                 // every field + kind + enum domain + group repeatability
+RuleExplanation why = ctx.explain(condition);     // what it checks, and WHEN it fires (polarity made explicit)
+List<FieldMatch> hits = ctx.find("birthdate");    // resolve a fuzzy name to model fields
+Set<String> users = adapter.whereUsed("/Customer/BirthDate");   // which rules reference a field
+m.fields().filter(f -> f.annotation("audited").isPresent());    // find fields by annotation (GroupInfo too)
+```
+
+### Modify by re-expression, with a diff — and render to German
+
+```java
+new DslRenderer(ConditionLanguage.DE).render(condition);   // German keywords: Und, Heute, AlleFelderGefüllt …
+```
+
+Re-expressing an existing rule produces a **`RenderedDiff`** that discloses any lossiness *up front* — you review before you commit. The rule's **leading `;;` comment is preserved by default** across the loop (only inline/trailing comments are re-rendered away, and the diff says so).
+
+### Comments — author once, preserved across the loop
+
+Conditions can carry `;;` line comments (concrete syntax the kernel tolerates). Author them with the typed builder, and a comment-less `modify` keeps them:
+
+```java
+NumberRef fee = m.num("/Subscription/Addons/MonthlyFee");
+m.rule(m.group("/Subscription/Addons")).name("FeeCap").errorField(fee)
+        .when(fee.filled().and(fee.gt(1000)))
+        .comment("cap the monthly fee per policy")     // ← rendered as a leading ;; line, kernel-tolerated
+        .code("FEE_CAP").severity(Severity.ERROR)
+        .message(en("Monthly fee is too high."), de("Monatsgebühr ist zu hoch."))
+        .build();
+```
+
+The CLI mirrors it: a `comment` key on `rule add` and `computation add`, plus `rule modify --comment`. In the typed library, computations carry comments on operations and preconditions too.
+
+### Validation-pattern catalogue
+
+The recurring idioms are a **catalogue** — `PatternCatalog.load().byId("date-order")` — across three kinds: **rule** idioms (date-order, required-when, mutually-exclusive, at-least-one-of, sum-of-line-items), the **computation** idiom `tiered-amount`, and **field-constraint** idioms (bounded-number, formatted-string, value-set-enum — the field-level alternatives the `seeAlso` bridge names). Each builds its artifact through the **typed DSL**, so it's correct by construction (a rule's right polarity + referenced error field, a computation's mutually-exclusive precondition table, or a typed field config). The library returns a sealed `RuleInstantiation` | `ComputationInstantiation` | `FieldInstantiation`; the CLI `patterns` verb scaffolds + `--apply`s them. Each entry's example is kernel-validated in CI, so the catalogue can't go stale. Full API + the typed-vs-data design: [API guide](docs/API-GUIDE.md).
+
+More rulekit idioms and the design rationale are in the [API guide](docs/API-GUIDE.md).
+
+---
+
+## modelkit — the library
+
+modelkit authors a model's **structure** the same way rulekit authors rules — typed, fluent, kernel-confirmed. It is the mirror of rulekit: rulekit writes the *rules*, modelkit writes the *shape* they run on.
+
+### Build a model from scratch
+
+```java
+DocumentModelDraft order = DocumentModelDraft.named("order")
+    .locale("en_US")
+    .rootGroup("Order", g -> g
+        .field("OrderDate", FieldKind.DATE, Requiredness.REQUIRED)
+        .numberField("Quantity", n -> n.fractionDigits(0).min("1"))   // a whole number ≥ 1
+        .enumField("Priority", e -> e.value("LOW").value("HIGH"))
+        .group("Items", items -> items
+            .repeatable(99)                                           // a repeating line-item group
+            .field("Sku", FieldKind.STRING)
+            .numberField("Amount", n -> n.fractionDigits(2))))        // a money amount, scale 2
+    .build();
+
+String dmJson = order.toJson();   // DM-JSON the kernel accepts
+```
+
+### Field kinds, fully configured
+
+Each kind carries its full configuration — string length/line-breaks, number scale/min/max/unit, dates with a format, enums, and a **custom** field type:
+
+```java
+DocumentModelDraft policy = DocumentModelDraft.named("policy").locale("en_US")
+    .rootGroup("Policy", g -> g
+        .stringField("Reference", s -> s.minLength(3).maxLength(12))                       // bounded text
+        .stringField("Notes",     s -> s.lineBreaks().maxLength(500))                      // multi-line
+        .numberField("Premium",   n -> n.unit(NumberTrait.AMOUNT).fractionDigits(2).min("0"))  // money ≥ 0
+        .numberField("Discount",  n -> n.unit(NumberTrait.PERCENT).fractionDigits(1))      // a percentage
+        .dateField("EffectiveOn", d -> d.format("dd.MM.yyyy"))
+        .dateRangeField("CoverageYears", d -> d.format("yyyy").separator("/"))             // a from–to range
+        .enumField("Tier", "BRONZE", "SILVER", "GOLD")                                     // enum (varargs shorthand)
+        .customField("Iban", c -> c.type("IbanType").minLength(15).maxLength(34)))         // a custom field type
+    .build();
+```
+
+### Group templates — multi-select & attachment
+
+Two ready-made compositions: a repeatable selection list, and the kernel's canonical file-attachment group (generated whole):
+
+```java
+DocumentModelDraft claim = DocumentModelDraft.named("claim").locale("en_US")
+    .rootGroup("Claim", g -> g
+        .multiSelectGroup("Conditions", ms -> ms.enumField("Condition", "NEW", "USED").maxRows(2)))  // pick up to 2
+    .attachmentGroup("Evidence", a -> a.repeatable(10))   // canonical file-attachment group, generated whole
+    .build();
+```
+
+### Type definitions & includes
+
+Declare a reusable **type** once and reference it by name; **include** another model's tree under a group, or **import** a type-def-only model's types (merged by id, not mounted):
+
+```java
+DocumentModelDraft catalog = DocumentModelDraft.named("catalog").locale("en_US")
+    .typeDef("Money", t -> t.number(n -> n.unit(NumberTrait.AMOUNT).fractionDigits(2)))  // a reusable type, declared once
+    .typeDef("Sku",   t -> t.string(s -> s.maxLength(12)))
+    .rootGroup("Catalog", g -> g
+        .typedefField("ListPrice", "Money")      // …then a field OF that type, referenced by id
+        .typedefField("Code",      "Sku"))
+    .include("supplier", "SupplierModel")        // mount another model's tree under a group named "supplier"
+    .importTypeDefs("SharedTypes")               // merge a type-def-only model's types (by id), no mount
+    .build();
+```
+
+### Document config & metadata
+
+Locale, base year, a runtime-enforced character set — plus per-locale labels, a model comment, and name/value annotations on any element:
+
+```java
+DocumentModelDraft m = DocumentModelDraft.named("order").locale("en_US")
+    .baseYear(2026)                                       // anchors relative-date comparisons
+    .supportedCharacters("A-Z", "a-z", "0-9", " ", "-")   // runtime-enforced character set
+    .comment("the customer order model")                 // a model-level note
+    .label("en_US", "Order").label("de_DE", "Bestellung")// per-locale display labels
+    .annotation("owner", "orders-team")                  // a name/value annotation
+    .rootGroup("Order", g -> g.field("Reference", FieldKind.STRING))
+    .build();
+```
+
+### Illegal states are unrepresentable
+
+The builder rejects the mistakes the kernel would — a repeatable group with `max < 2`, a field referencing an undeclared type definition — *as you build*, not after a round-trip; and the kernel still has the final say (every result re-binds through `checkConsistency`). To edit the structure of an *existing* model — add/remove fields & groups, declare type definitions, change config — use `EditSession` (below).
+
+## Both kits together — `EditSession`: one model, one gate
+
+This is where modelkit and rulekit meet — **structure edits and rule edits on one in-memory model, behind a single kernel gate**. The north-star flow: read a model, make a series of structure *and* rule edits (a rule may reference a field added earlier in the same session), validate **once**, write back (intermediate invalid states are fine — only the final result must satisfy the kernel):
+
+The idiom is the **editor**: you hold an editor on a group rather than re-typing string paths — structure edits chain, a typed ref to a just-created field comes from relative navigation, and rules author in place against it.
+
+```java
+EditSession s = EditSession.read(dmJson);
+GroupEditor order = s.group("/Order");                       // a session-bound editor on /Order
+order.addField("Discount", FieldKind.NUMBER);                // structure edit (modelkit) — chains
+NumberRef discount = order.num("Discount");                  // a typed ref to the field just added
+order.addRule(r -> r                                         // a TYPED rule (rulekit), pre-scoped to /Order
+        .name("DiscountNotNegative").errorField(discount)
+        .when(discount.filled().and(discount.lt(0)))         // the violation: a discount below zero
+        .code("DISCOUNT_NEGATIVE").severity(Severity.ERROR)
+        .message(en("Discount must not be negative.")).build());
+String updated = s.validate().toJson();                      // one kernel gate
+```
+
+**Refs are the currency.** `order.num("Discount")` resolves *only because* `addField` ran first — and it returns a typed ref, not a string path you re-type. Rules author in place (`order.addRule(r -> …)`, the builder pre-scoped to the group) or take the editor straight as a scope (`m.rule(order)`); either way the immutable AST holds **only the pure ref, never the session**, so a rule can't leak an effect. `GroupEditor` also nests (`addGroup(name, sub -> …)`) and carries the same per-type field builders as the from-scratch builder (`order.numberField("Surcharge", n -> n.fractionDigits(2))`, `enumField`, `dateField`, … — a *configured* field mid-edit, byte-identical to one built from scratch); `FieldEditor` re-types/labels/annotates a field; `RuleEditor` / `ComputationEditor` modify or remove by held reference — a rule's condition, **or its severity / messages in place** (`s.rule(name).severity(WARNING).messages(en("…")))`). `EditSession` also carries the **reference-preserving refactors** — `renameField`/`renameGroup`/`moveField`/`moveGroup` rewrite every reference to the element (via the kernel's `MoveSupportDM`) and re-validate, so a rename or relocation never dangles a referrer. Design + rationale: [API guide §5c](docs/API-GUIDE.md).
+
+**Blend both as a developer would** — the editor for a field you just added, a path lookup for one that already exists, in the same condition (they are the same pure ref):
+
+```java
+GroupEditor billing = s.group("/Subscription/Billing");
+billing.addField("Surcharge", FieldKind.NUMBER);                       // NEW field — via the editor
+NumberRef surcharge = billing.num("Surcharge");                        // editor relative ref
+s.addRule(m -> m.rule(billing.ref()).name("SurchargeUnderBase").errorField(surcharge)
+        .when(surcharge.filled().and(surcharge.gt(m.num("/Subscription/Billing/BaseFee"))))  // ← path lookup, existing field
+        .code("SURCHARGE_OVER_BASE").severity(Severity.ERROR)
+        .message(en("Surcharge must not exceed the base fee.")).build());
+```
+
+The flat session verbs are still there for a quick one-off — `s.addField(path, …)`, `s.addRule(m -> m.rule(m.group(path)) …)` — and a raw-string condition overload backs the CLI's `apply`/spec path (conditions arrive as text), but it's not the idiom for library code.
+
+More library idioms and the design rationale live in the [API guide](docs/API-GUIDE.md); every doc is indexed in [`docs/`](docs/README.md).
 
 ---
 

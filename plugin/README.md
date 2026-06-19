@@ -6,7 +6,57 @@ Public distribution for **`dmtool`**, a CLI for authoring and validating **A12 K
 
 This release targets **A12 Kernel 30.8.1** (A12 Tools distribution **2025.06-ext5**) — reported by `dmtool --version` and `dmtool manifest`, and recorded per entry in the [`CHANGELOG`](CHANGELOG.md).
 
-`dmtool` is **LLM-agent-first**: it installs as a plugin for your coding agent, which downloads the right native binary for your OS (anonymous, checksum-verified) and loads a **rule-authoring skill** that teaches the judgment the tool's help can't — condition *polarity*, error-field paths, iteration scope.
+<!-- shared:dmtool-story — MIRRORED from the top-level README.md; do NOT edit here. Edit the canonical block there, then re-copy (SharedReadmeRegionTest enforces parity). -->
+## Why `dmtool`
+
+An A12 document model carries **validation rules** and **computations** whose logic is a condition in the kernel's expression language — *"a delivery date must not be before the order date"* becomes a string like:
+
+```
+AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, DeliveryDate) < 0
+```
+
+Writing these by hand is fragile: a mistyped path, a wrong operator or decimal scale, or — most insidious — **inverted polarity** (the condition true on the *requirement* instead of the *violation*) slips through until the kernel runs, if it's caught at all.
+
+**`dmtool` closes that gap from the command line** — one self-describing native binary, **JSON in / JSON out**, no Java toolchain. It authors, reads, and safely edits a model's rules *and* structure, and **confirms every result against the real A12 kernel**, so *valid* means the engine accepts it, not that it merely looks right.
+
+It is built **agent-first** — the #1 use is inside a coding-agent session (Claude Code, Codex):
+
+- **Self-describing — a cold agent needs no external docs.** `manifest` lists every verb × parameter with a worked example; `operators` / `patterns` / `diagnostics` / `schema` expose the DSL vocabulary, the validation idioms, each diagnostic code, and the exact I/O shape — all from the binary itself.
+- **Judgment where `--help` can't reach.** A bundled skill teaches what the catalog can't — condition *polarity*, error-field paths, iteration scope — so a scaffolded rule has the right shape before the kernel ever sees it.
+- **Safe by construction.** Every result rides one uniform envelope; deletes and structural refactors are **gated** (a referenced field won't silently vanish); a multi-op `apply` session is **atomic** (rollback on any failure).
+
+### A session, in natural language
+
+You don't type `dmtool` — your agent does. You state the rule in plain language; the agent resolves the model, reasons about **polarity** and **operator semantics**, and the **real kernel** confirms the result before anything is written:
+
+**You —** *"In the order model, a delivery date must never be before the order date."*
+
+**Agent —** *finds the fields, then checks the operator's sign convention:*
+
+```sh
+dmtool -m order.dm.json model describe | jq -c '.data.fields[] | select(.kind=="DATE") | .path'
+# → "/Order/OrderDate"   "/Order/DeliveryDate"
+dmtool operators DifferenceInDays          # its meaning, sign convention, gotchas, and OPPOSITE
+```
+
+*An A12 rule fires on the **violation**, so the condition must be true when delivery is before order — and that gets validated against the real kernel before anything is written:*
+
+```sh
+dmtool -m order.dm.json rule check --field /Order/DeliveryDate --code DELIVERY_BEFORE_ORDER \
+  --condition 'AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, DeliveryDate) < 0'
+# → { "valid": true, "diagnostics": [] }   ✓ accepted — polarity lint clean, error field legal & in scope
+dmtool -m order.dm.json rule add delivery-rule.json     # persist (kernel-checked again on write)
+```
+
+**Done** — the rule is written and re-validated: true *exactly* when delivery precedes the order (the violation), with a referenced, in-scope error field. The agent didn't guess: had it written the condition true on the *requirement*, the built-in **polarity lint** would have flagged it; had it invented a field path or misread the operator, the kernel would have rejected it. That is the point — **deep rule + operator semantics, gated by the engine itself**, reachable from one English sentence.
+
+### The skill & the plugin
+
+Two pieces make an agent this good with `dmtool`:
+
+- **The plugin** delivers the binary — its `SessionStart` hook downloads the right per-OS native build (anonymous, checksum-verified) on first use and puts `dmtool` on PATH. One install line (below); the same plugin model serves Claude Code and Codex.
+- **The skill** is a small `SKILL.md` of *judgment* — the traps `--help` can't teach: rule **polarity**, valid **error fields**, **iteration** scope, the date/number gotchas. The binary stays self-describing (`manifest` / `operators` / `schema`); the skill teaches *when* and *why*, and the same canonical skill backs both agents.
+<!-- /shared:dmtool-story -->
 
 ## Install — Claude Code
 
