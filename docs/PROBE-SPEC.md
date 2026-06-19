@@ -50,6 +50,25 @@ An agent will not self-report a false success it never noticed — so we don't a
 
 `prep-probe.sh` installs a logging `dmtool` shim on the sandbox PATH that records every invocation's **command + stdout + stderr + exit code**, then execs the real native binary and replays its output (so `dmtool … | jq` still works). The analysis reads that log **plus the resulting model files** (plus the agent's narrative) — so a silently-dropped edit surfaces regardless of what the agent believed happened.
 
+## Material boundary & the anti-cheat audit (a hard requirement)
+
+A probe's findings are only trustworthy if the agent-under-observation stayed inside its **material boundary**. The boundary is exactly what a real shipped-product user has, and nothing else:
+
+| the agent MAY use | the agent MUST NOT |
+|---|---|
+| the skill at `<sandbox>/SKILL.md` | read this repo (gold fixtures, source, docs, `eval/`, `examples/`) |
+| the `dmtool` binary, via the shim | read the A12 Tools workspaces or the `a12-kernel*` checkouts |
+| files it itself created under `<sandbox>/work` | read or write **any** path outside the sandbox |
+| | hand-edit a **model file** (every model mutation must go through `dmtool` — the tool is what's under test) |
+
+If the agent peeks at a committed gold model it can reproduce the answer without the tool teaching it anything (the trajectory becomes a copy, not a measurement); if it hand-edits the JSON it bypasses the very surface we're probing. Either contaminates the run. **The probe instruction tells the agent its knowledge must come only from the skill + the tool's self-description — but an instruction is not enforcement.** Enforcement is [`../probe/audit-probe.sh`](../probe/audit-probe.sh): a deterministic gate, run after the session and **before the findings are trusted**, that inspects the subagent's transcript + the shim log and fails loud (`VERDICT: SUSPECT`, exit 1) if the boundary was crossed. It checks three things:
+
+1. **No forbidden material** — no repo / workspace / kernel path in any Bash command or file op.
+2. **File ops confined to the sandbox** — every `Read`/`Write`/`Edit`/`Glob`/`Grep` path is under the sandbox.
+3. **Tool-only mutations** — the model files (mined from the call log's `-m`/`-o`/`export`/`--reference`) were never a `Write`/`Edit` target, i.e. the agent never hand-authored a model.
+
+The gate is itself verified to *fire* (a synthetic cheating transcript must yield `SUSPECT`, not just the real run yielding `CLEAN`) — a gate that only ever passes is worthless. Every report records the verdict; a `SUSPECT` run is discarded, not analyzed. This is the same "scripts for deterministic checks, agents for judgment" split the eval uses — and the same material-boundary discipline as the eval's clean-subagent rule.
+
 ## Gold from existing models — the correctness anchor
 
 Each task is reverse-engineered from a model that **already encodes a correct, kernel-valid end-state** — a committed fixture under `cli/src/test/resources/models/`, or a domain-transferred workspace model (license-safe: own domain, **no tax/gov** — insurance/e-commerce). That source model **is the answer key**, which gives the deep analysis an **objective correctness anchor** ("did the agent build the right thing?") *underneath* the qualitative trajectory mining — without turning the probe into a pass/fail score.
@@ -69,6 +88,8 @@ From the objective shim log + the final model files (+ the agent's narrative), e
 5. **Self-describing-surface gaps** — did it guess? Did `manifest` / `schema` / `operators` mislead it?
 6. **Concrete tool-defect findings** — ranked, actionable, → root-cause fixes.
 
+**Every finding is investigated to its root cause, never left at the symptom.** A symptom is "`rule add` printed a Java stack trace"; the root cause is "the kernel throws `IllegalArgumentException` on a duplicate element name and `RuleAddCommand` doesn't catch/map it to a diagnostic." The report names the root cause (ideally the `file:line`) and the fix it implies — a probe that only logs symptoms just relocates the bug report inside the repo. This mirrors the standing "find the root cause, fix at root" rule for bug reports.
+
 A report that finds nothing states **"clean session — no DX defects on this task"** explicitly; that is itself a useful signal, not a non-result.
 
 ## The proactive loop — discover → fix at root → graduate into a guard
@@ -84,4 +105,16 @@ The canonical first guard this feeds is the **"applied ⇒ effected" round-trip 
 
 ## Running it
 
-The runner is the **main assistant loop**, not a script — setup and the deep analysis-and-report are judgment; the subagent is the agent-under-observation. The steps (build the native binary → `./probe/prep-probe.sh` → drive a general-purpose subagent through a task's prompts **in order, as one session** in the sandbox → read the shim log + model files → write `probe/reports/<date>-<task>.md`) are detailed in [`../probe/README.md`](../probe/README.md).
+The runner is the **main assistant loop**, not a script — setup and the deep analysis-and-report are judgment; the subagent is the agent-under-observation. The pipeline:
+
+```
+build native binary → ./probe/prep-probe.sh → spawn the probe subagent (task prompts in order, one session)
+   → ./probe/audit-probe.sh <agentId>   (integrity gate — STOP if SUSPECT)
+   → read shim log + model files, analyze vs gold → write probe/reports/<date>-<task>.md
+```
+
+The per-step detail (sandbox env, the no-look-ahead instruction, the audit) is in [`../probe/README.md`](../probe/README.md).
+
+### How a probe is triggered
+
+Today a probe is **started manually** — the user asks ("run probe task 01") and the main loop orchestrates the pipeline above. There is **no scheduled or CI trigger**, by design: unlike the eval (which produces a numeric score from a headless `benchmark.workflow.js` and can gate CI), the probe's deliverable is a *qualitative deep read* that needs an agent in the loop, so it is a "run-and-read" instrument, not a red/green gate. What *does* become automated is the **graduation step** — once a probe surfaces a defect class, the deterministic guard it feeds (e.g. the "applied ⇒ effected" sweep) runs in CI forever after. So: the probe is human-triggered; the guards it spawns are machine-enforced. (A periodic/scheduled probe cadence is possible later, but it would still hand its report to a human/agent to read — the analysis is the point.)

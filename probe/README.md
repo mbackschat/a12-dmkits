@@ -34,7 +34,13 @@ JAVA_HOME="$(/usr/libexec/java_home -v 21)" ./gradlew :cli:nativeCompile -Porg.g
 
 # 3. (main loop) drive a general-purpose subagent through a task's prompts IN ORDER, as one session,
 #    with cwd = <sandbox>/work, PATH = <sandbox>/bin:$PATH (bare `dmtool` → the shim), skill at <sandbox>/SKILL.md.
-#    Then read <sandbox>/dmtool-calls.log + the resulting model files and write probe/reports/<date>-<task>.md
+
+# 4. INTEGRITY GATE — confirm the agent stayed within its material boundary (skill + dmtool + own work files).
+#    Pass the agentId the Agent tool reported (or the transcript path). STOP and discard if it says SUSPECT:
+./probe/audit-probe.sh <agentId>
+
+# 5. read <sandbox>/dmtool-calls.log + the resulting model files; analyze vs the gold; record the audit
+#    verdict; write probe/reports/<date>-<task>.md
 ```
 
-The "runner" is the main assistant loop, not a script: setup + the deep analysis-and-report are judgment, the subagent is the agent-under-observation. The analysis dimensions and the discover→fix→graduate-into-a-guard loop are in [`docs/PROBE-SPEC.md`](../docs/PROBE-SPEC.md).
+The "runner" is the main assistant loop, not a script: setup + the deep analysis-and-report are judgment, the subagent is the agent-under-observation. The **anti-cheat audit** (`audit-probe.sh`) is deterministic and non-negotiable — a probe's findings are only trustworthy if the agent didn't read the repo's gold/source or hand-edit a model file; see [`docs/PROBE-SPEC.md`](../docs/PROBE-SPEC.md) "Material boundary & the anti-cheat audit". The analysis dimensions and the discover→fix→graduate-into-a-guard loop are in the same spec.
