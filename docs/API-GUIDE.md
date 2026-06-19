@@ -1,6 +1,6 @@
 # rulekit & modelkit — the API guide
 
-> What the dmkits library (**rulekit** + **modelkit**) feels like to use, as a typed Java library: bind a model, author rules and computations the compiler steers, edit structure, read foreign rules back, explain them, and run them against data — all confirmed by the real A12 kernel. **Part I** motivates it with a worked case study; **Part II** introduces the handle families everything is built from; **Parts III–V** take authoring, the edit loop, and discovery + the agent loop in turn. The per-capability **status board** and the numbered **design findings** live in [`API-STATUS.md`](API-STATUS.md) (this guide stays status-free).
+> What the dmkits library (**rulekit** + **modelkit**) feels like to use, as a typed Java library: bind a model, author rules and computations the compiler steers, edit structure, read foreign rules back, explain them, and run them against data — all confirmed by the real A12 kernel. **Part I** motivates it with a worked case study; **Part II** introduces the handle families everything is built from; **Parts III–V** take authoring, the edit loop, and discovery + the agent loop in turn. The numbered **design findings** — the *why* behind these capabilities — live in [`API-FINDINGS.md`](API-FINDINGS.md) (this guide stays a clean capability narrative).
 
 ---
 ## Part I — Motivation & case study

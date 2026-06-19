@@ -83,7 +83,7 @@ class DocSnippetFreshnessTest {
      * must be immediately preceded by either {@code <!-- snippet: <id> -->} (locked to a run test, above) or
      * {@code <!-- teaser -->} (acknowledged hand-maintained — elided or deliberately non-compiling, e.g. §2's
      * "what you cannot write"). Independent of heading status markers (the guide's user-facing titles carry no
-     * ✅/🔮 — status lives on the board in {@code API-STATUS.md}), so a new snippet can't dodge the lock.
+     * ✅/🔮 — the project no longer tracks per-feature status; {@code API-FINDINGS.md} holds design rationale), so a new snippet can't dodge the lock.
      */
     @Test
     @DisabledIfSystemProperty(named = "snippets.fix", matches = "true")
