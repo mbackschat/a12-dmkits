@@ -1,38 +1,25 @@
 # `probe/` — proactive, deep DX analysis of the shipped product
 
-A **different instrument from [`eval/`](../eval/)**. The eval measures whether the *self-describing CLI surface* lets a cold agent author/read rules (bare-tool, scored, pass@k). This probe asks a different question:
+A **different instrument from [`eval/`](../eval/)**: the eval measures whether the *self-describing CLI surface* lets a cold agent author/read rules (bare-tool, scored, pass@k); the probe asks how a real agent uses the **shipped product** — the **native binary** + the **skill** — over a realistic **multi-prompt** session, to find DX defects *proactively*, before a bug report.
 
-> When a real agent uses the **shipped product** — the **native binary** + the **skill** — over a realistic **multi-prompt** session, how does it actually go? Where does it get a **false success**, hit **friction**, or get **misled**?
-
-It exists because the defects that kept biting us were invisible to the eval: they lived in the **native** image (a reflection crash the JVM eval never ran), in **multi-step** flows (the eval is single-shot), and in the **trajectory** the eval discards by scoring only the final artifact. The probe is **proactive**: find DX defects here, before a bug report.
-
-## How it differs from the eval
-
-| | `eval/` | `probe/` |
-|---|---|---|
-| Goal | CLI self-sufficiency (does the surface teach the agent?) | shipped-product DX (how does a real session go?) |
-| Binary | freshly-built **JVM** CLI | the **native** image (`cli/build/native/nativeCompile/dmtool`) |
-| Tasks | single-shot (one rule/field/edit) | **multi-prompt** single sessions (a BA iterating) |
-| Repetition | **pass@k** | **no k** — one **deep** session per task |
-| Output | a score (kernel-valid + gold-equivalent) | a **diagnostic report** — correctness-vs-gold + trajectory mining |
-
-## The keystone: objective capture
-
-The agent will not self-report a false success it didn't notice — so we don't ask it to. `prep-probe.sh` installs a **logging `dmtool` shim** on the sandbox PATH that records every invocation's command + stdout + stderr + exit, then runs the real native binary. The analysis reads that **objective** log + the **resulting model files** (+ the agent's narrative), so a silently-dropped edit shows up regardless of what the agent believed.
-
-## Gold from existing models
-
-Each task is reverse-engineered from a model that **already encodes a correct end-state** — a committed fixture under `cli/src/test/resources/models/`, or a domain-transferred workspace model (license-safe: own domain, no tax/gov). That source **is the answer key**, so the deep analysis has an **objective correctness anchor** ("did the agent build the right thing?") *under* the qualitative trajectory mining. Gold is matched **semantically** (read→re-render→compare), not literally — many valid expressions enforce the same intent.
+> **Method & rationale — why this exists, what it captures, how the analysis works: [`docs/PROBE-SPEC.md`](../docs/PROBE-SPEC.md).**
+> This README is the operational how-to: layout + run steps. (`PROBE-SPEC` ↔ `probe/` mirrors the `EVAL-SPEC` ↔ `eval/` split.)
 
 ## Layout
 
 ```
 probe/
-  README.md          # this file
+  README.md          # this file — how to run
   prep-probe.sh      # isolated sandbox + the logging shim + the skill copy (run this first)
   tasks/             # multi-prompt scenarios: the prompts + the gold + what to mine
   reports/           # dated deep session reports — the proactive findings record
 ```
+
+The method doc is [`docs/PROBE-SPEC.md`](../docs/PROBE-SPEC.md); the scenario inventory is the markdown under `tasks/`; the findings are the dated reports under `reports/` (the `eval/RESULTS.md` analog).
+
+## The keystone, in one line
+
+`prep-probe.sh` installs a **logging `dmtool` shim** on the sandbox PATH that records every invocation's command + stdout + stderr + exit, then runs the real native binary. The analysis reads that **objective** log + the **resulting model files**, so a silently-dropped edit surfaces regardless of what the agent believed. (Full rationale: PROBE-SPEC "The keystone".)
 
 ## Run
 
@@ -50,8 +37,4 @@ JAVA_HOME="$(/usr/libexec/java_home -v 21)" ./gradlew :cli:nativeCompile -Porg.g
 #    Then read <sandbox>/dmtool-calls.log + the resulting model files and write probe/reports/<date>-<task>.md
 ```
 
-The "runner" is the main assistant loop, not a script: setup + the deep analysis-and-report are judgment, the subagent is the agent-under-observation.
-
-## The proactive loop
-
-A probe **discovers** a defect class → fix it at root → **graduate the class into a deterministic guard** (e.g. an "applied ⇒ effected" round-trip test) so it can't regress. The probe finds unknowns; the guards enforce knowns.
+The "runner" is the main assistant loop, not a script: setup + the deep analysis-and-report are judgment, the subagent is the agent-under-observation. The analysis dimensions and the discover→fix→graduate-into-a-guard loop are in [`docs/PROBE-SPEC.md`](../docs/PROBE-SPEC.md).
