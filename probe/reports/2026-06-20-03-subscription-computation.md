@@ -20,13 +20,13 @@
 
 The aggregate-over-repeatable (`Sum(Addons*/MonthlyFee)`) and the modify/re-express path — the least-probed computation surface — both worked, on the recently-changed `computation add`/`modify` paths (en_US-keyword default + value-shape gate). No false success, no silent drop.
 
-## Finding P03-1 (discoverability, LOW–MED) — `model --help` advertises `eval`/`compute`, which are hidden on the native binary
+## Finding P03-1 (discoverability, FIXED) — `model --help` advertised `eval`/`compute`, hidden on the native binary
 
 **Symptom.** The agent wanted to numerically check the formula and reached for `model compute`. On the **native** binary the runtime verbs (`model eval`/`model compute`/`rule test`) are hidden (they need kernel Groovy codegen, not in the native image) — but `model --help`'s description string still reads *"Whole-model operations: new, info, validate, describe, read, usage, **eval, compute** …"*, and `dmtool model compute --help` falls back to printing the **`model` parent help** rather than a clear "not available". So the self-description **advertises verbs that aren't executable here**, and the agent gets a confusing non-answer instead of "this verb needs the JVM build."
 
 **Root cause.** The `@Command(name="model", description=…)` prose hard-codes the full subcommand list including `eval, compute`; that string is static, so it ships on the native binary even though `NativeImageVerbHiding` removes those subcommands from the tree. The self-describing surface is native-aware for the *tree* (`manifest`/the hidden subcommands) but not for this hard-coded *description prose*.
 
-**Fix direction (not yet done).** Either drop the explicit `eval, compute` from the `model` description (let the live subcommand list speak), or make the description native-aware; and/or have an attempted-but-hidden runtime verb emit a clear "needs the JVM build" diagnostic instead of the parent help. Recorded for a focused fix — it's the recurring "self-description must be accurate" class (uniformity/accuracy), native-subset corner.
+**Fix (done).** Dropped the runtime-verb names (`eval`/`compute`, and `rule`'s `test`) from the parent `@Command` descriptions — the *live* subcommand list (already native-aware) does the enumerating — and added a build-independent clause: *"Running a model/rule against a sample document is a JVM-only capability — absent from the native binary."* Accurate on both builds; a native agent no longer reads a verb it can't run, and learns the capability needs the JVM. Locked by `NativeImageVerbHidingTest` (native help omits the op names). The recurring "self-description must be accurate" class, native-subset corner.
 
 ## What worked well (the positives)
 - **`apply` for the build + `computation modify` for the change** — efficient and correct; the dry-run-then-commit discipline was used on both.
