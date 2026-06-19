@@ -2,25 +2,24 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/explain.schema.json",
   "title": "Explanation",
-  "description": "Output of `rule explain`. With --rule: a RuleExplanation — `operators` is the glossary (each distinct construct once, with meaning/gotchas), `tree` is the structure and every node's `operator` BACKLINKS into `operators[].id`. With --computation: a ComputationExplanation — the computed field, common precondition + per-alternative precondition/operation, messages, gloss. Either mode is tolerant: a construct the converter doesn't model yet returns `{explained:false, reason, …}` instead.",
+  "description": "Output of `rule explain <rulePathInModel>` — a RuleExplanation: `operators` is the glossary (each distinct construct once, with meaning/gotchas), `tree` is the structure and every node's `operator` BACKLINKS into `operators[].id`, plus `references`, `polarity`, and the stored `messages`. Tolerant: a construct the converter doesn't model yet returns `{explained:false, reason, …}` instead. (A computation's explanation is `computation explain`.)",
   "type": "object",
   "additionalProperties": false,
   "oneOf": [
-    { "title": "rule (--rule)", "required": ["text", "operators", "references", "iterates", "tree", "gloss", "polarity", "messages"] },
-    { "title": "computation (--computation)", "required": ["computedField", "computedFieldKind", "alternatives", "messages", "gloss"] },
+    { "title": "rule explanation", "required": ["text", "operators", "references", "iterates", "tree", "gloss", "polarity", "messages"] },
     { "title": "not explained (tolerant Opaque)", "required": ["explained", "reason"] }
   ],
   "properties": {
-    "text": { "type": "string", "description": "(rule) the canonical EN rendering of the whole condition" },
+    "text": { "type": "string", "description": "the canonical EN rendering of the whole condition" },
     "operators": { "$ref": "#/$defs/operators" },
     "references": { "$ref": "#/$defs/references" },
-    "iterates": { "type": "boolean", "description": "(rule) whether the condition ranges over a repeatable group" },
-    "iterationGroup": { "type": "string", "description": "(rule) the repeatable group iterated over; present only when `iterates` is true" },
+    "iterates": { "type": "boolean", "description": "whether the condition ranges over a repeatable group" },
+    "iterationGroup": { "type": "string", "description": "the repeatable group iterated over; present only when `iterates` is true" },
     "tree": { "$ref": "#/$defs/node" },
     "gloss": { "type": "string", "description": "a one-line natural-language summary" },
     "polarity": {
       "type": "object",
-      "description": "(rule) the rule's firing polarity — the constant A12 truth an agent needs so it doesn't explain the rule backwards",
+      "description": "the rule's firing polarity — the constant A12 truth an agent needs so it doesn't explain the rule backwards",
       "additionalProperties": false,
       "required": ["firesOn", "note"],
       "properties": {
@@ -28,26 +27,9 @@
         "note": { "type": "string", "description": "the human guidance: explain the condition as the forbidden case; the message states the requirement positively" }
       }
     },
-
-    "computedField": { "type": "string", "description": "(computation) the field the computation assigns" },
-    "computedFieldKind": { "type": "string", "description": "(computation) the computed field's model value-kind" },
-    "commonPrecondition": { "$ref": "#/$defs/ruleExplanation", "description": "(computation) the guard shared by all alternatives, if any" },
-    "alternatives": {
-      "type": "array",
-      "description": "(computation) the (precondition?, operation) tiers",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["operation"],
-        "properties": {
-          "precondition": { "$ref": "#/$defs/ruleExplanation", "description": "the tier's guard (absent for the single unconditional alternative)" },
-          "operation": { "$ref": "#/$defs/operation" }
-        }
-      }
-    },
     "messages": {
       "type": "array",
-      "description": "the stored error texts by locale, raw + uninterpolated — a computation's self-validation messages, or a rule's error messages (G10, the modeler's own NL); same shape `rule read` surfaces",
+      "description": "the rule's stored error messages by locale, raw + uninterpolated (G10, the modeler's own NL); same shape `rule read` surfaces",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -60,10 +42,9 @@
     },
 
     "rule": { "type": "string", "description": "(not explained) the rule's full name" },
-    "computation": { "type": "string", "description": "(not explained) the computation's full name" },
     "explained": { "type": "boolean", "description": "(not explained) always false — the construct is not yet modeled" },
     "reason": { "type": "string", "description": "(not explained) the not-yet-modeled construct" },
-    "canonicalText": { "type": "string", "description": "(not explained, rule) the raw kernel condition text, preserved verbatim" }
+    "canonicalText": { "type": "string", "description": "(not explained) the raw kernel condition text, preserved verbatim" }
   },
   "$defs": {
     "operators": {
@@ -104,32 +85,6 @@
         "operator": { "type": "string", "description": "operator-id — a key into the `operators` glossary" },
         "text": { "type": "string", "description": "the rendered DSL of this subtree" },
         "children": { "type": "array", "items": { "$ref": "#/$defs/node" } }
-      }
-    },
-    "ruleExplanation": {
-      "type": "object",
-      "description": "a condition projected for understanding (the same shape as the top-level --rule output)",
-      "required": ["text", "operators", "references", "iterates", "tree", "gloss"],
-      "additionalProperties": false,
-      "properties": {
-        "text": { "type": "string" },
-        "operators": { "$ref": "#/$defs/operators" },
-        "references": { "$ref": "#/$defs/references" },
-        "iterates": { "type": "boolean" },
-        "iterationGroup": { "type": "string" },
-        "tree": { "$ref": "#/$defs/node" },
-        "gloss": { "type": "string" }
-      }
-    },
-    "operation": {
-      "type": "object",
-      "description": "a computation operation projected as a formula: rendered text, operator glossary, referenced fields",
-      "required": ["text", "operators", "references"],
-      "additionalProperties": false,
-      "properties": {
-        "text": { "type": "string", "description": "the rendered DSL of the value expression" },
-        "operators": { "$ref": "#/$defs/operators" },
-        "references": { "$ref": "#/$defs/references" }
       }
     }
   }
