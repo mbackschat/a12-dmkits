@@ -26,7 +26,7 @@ The method doc is [`docs/PROBE-SPEC.md`](../docs/PROBE-SPEC.md); the scenario in
 |---|---|---|
 | `01` person + home/work address + extract | groups · metadata · extract→include | **probed** (report 2026-06-19; found P1–P4, H1) |
 | `01b` person DOB → date-derived age + date rules | the native **date operators** (the v0.1.0 crash surface) | **probed** (report 2026-06-19; clean — surface confirmed green) |
-| `01-de` task 01 in **German prompting** | a German-prompted session must produce a `de_DE` locale + German names/descriptions/messages on its own (locale + condition-language stress) | **TODO** (requested 2026-06-19; author the German variant of 01 + probe) |
+| `01-de` task 01 in **German prompting** | a German-prompted session must produce a `de_DE` locale + German names/descriptions/messages on its own (locale + condition-language stress) | **authored** (`tasks/01-de-person-address-age.md`); probe pending |
 | `02` order date/pattern | **pattern** rules (`violates "[0-9]{5}"`) — date now covered by 01b | TODO |
 | `03` subscription computation | **computations** (add/modify) — least-probed surface; the `computation add` path changed this session | TODO (highest-value next) |
 | `04` multifile includes | includes + `-w` from scratch — partially covered by 01 turn 2 | TODO (lower) |
