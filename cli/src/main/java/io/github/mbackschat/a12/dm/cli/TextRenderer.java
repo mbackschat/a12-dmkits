@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Renders a {@link ResultEnvelope} JSON string as human-readable text for the {@code --text} flag (R2,
- * CLI-ORIENTATION-PROPOSAL §3 — the secondary direct-BA/dev path). It is a <b>boundary view-transform</b>
+ * CLI-SPEC §2 — the secondary direct-BA/dev path). It is a <b>boundary view-transform</b>
  * applied once in {@link Cli#run}: it re-parses the just-serialized envelope rather than threading a
  * formatter through every emit site, and it is <b>gated</b> — anything that is not a result envelope (the
  * {@code operators}/{@code manifest}/… catalogs, {@code export} artifacts, {@code --help}, errors) passes

@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * R2 (CLI-ORIENTATION-PROPOSAL §3): a global {@code --text} flag renders the result envelope
+ * R2 (CLI-SPEC §2): a global {@code --text} flag renders the result envelope
  * human-readably for the secondary direct-BA/dev path. JSON stays the default + the machine contract;
  * non-envelope output (the operators/manifest/... catalogs) passes through as JSON. Not TTY-detection —
  * an explicit flag, so an agent in a PTY never silently gets text.

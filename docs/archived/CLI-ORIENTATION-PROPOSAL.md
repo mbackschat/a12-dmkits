@@ -1,14 +1,16 @@
 # CLI orientation — efficient cold-start for the agent (and the direct BA)
 
+> **Archived / resolved (2026-06-19).** This proposal is complete: its two surviving recommendations — **R1** (the `--help` orientation footer) and **R2** (`--text` dual-format) — shipped, and the rest were measured-and-shelved. The durable design (the audience model + the read-when layer map) and the `manifest`-positioning finding now live in [`../CLI-SPEC.md`](../CLI-SPEC.md) §2. This file is kept as the **measurement record** (the §4 probe, the H1–H4 dispositioning); it is not a live contract.
+
 How a cold consumer **orients** to `dmtool` — finds what it can do, how to call it, and what comes back — with the fewest wasted tool calls and the fewest preventable errors, and what the **plugin/skill** should carry to support that. This is a **proposal** (design rationale + forward decisions), not a contract: the settled pieces already live in specs and this doc **references, never restates** them. Each decision **graduates** into its owning spec as it ships (§7).
 
 **Status (2026-06-19):** the premise was tested cheaply (§4) and **largely did not hold** — the help/guide system is *not* the bottleneck this doc first hypothesized. Two small recommendations survive, **both now shipped**: **R1 (the `--help` orientation footer)** and **R2 (dual-format `--text`)**. The rest is shelved or routed out of scope. Read §3 first.
 
 **Defers to (the contracts this builds on):**
 
-- [`CLI-SPEC.md`](CLI-SPEC.md) §2 — the self-explaining design *principle* + the "what an agent needs → where" table (the home this proposal's orientation decisions graduate into).
-- [`CLI-CONFORMANCE-SPEC.md`](CLI-CONFORMANCE-SPEC.md) §2 — the self-explain *contract* + the gates (`CliConformanceMatrixTest`/`VerbDemonstrationTest`) that prove every verb is surfaced and demonstrated.
-- [`RELEASE-SPEC.md`](RELEASE-SPEC.md) §6 — the *packaging* contract (the plugin, the COPY-synced skill, binary delivery). This proposal adds only the **orientation angle** on packaging (§6), not the mechanics.
+- [`CLI-SPEC.md`](../CLI-SPEC.md) §2 — the self-explaining design *principle* + the "what an agent needs → where" table (the home this proposal's orientation decisions graduate into).
+- [`CLI-CONFORMANCE-SPEC.md`](../CLI-CONFORMANCE-SPEC.md) §2 — the self-explain *contract* + the gates (`CliConformanceMatrixTest`/`VerbDemonstrationTest`) that prove every verb is surfaced and demonstrated.
+- [`RELEASE-SPEC.md`](../RELEASE-SPEC.md) §6 — the *packaging* contract (the plugin, the COPY-synced skill, binary delivery). This proposal adds only the **orientation angle** on packaging (§6), not the mechanics.
 
 ## 1. The problem, and who actually consumes the surface
 
@@ -55,7 +57,7 @@ Four candidates were considered; the §4 probe (2026-06-19) dispositioned each. 
 
 ### R1 — a top-level `--help` orientation footer (the cheap middle) — ✅ SHIPPED 2026-06-19
 
-Graduated into [`CLI-SPEC.md`](CLI-SPEC.md) §2; locked by `CliHelpTest`; single-sourced on `Cli.TOOL_NAME`; no new gate (the existing `CommandReferencesResolveTest` covers its verb refs). The shipped footer:
+Graduated into [`CLI-SPEC.md`](../CLI-SPEC.md) §2; locked by `CliHelpTest`; single-sourced on `Cli.TOOL_NAME`; no new gate (the existing `CommandReferencesResolveTest` covers its verb refs). The shipped footer:
 
 ```
 Getting started (the tool describes itself):
@@ -72,7 +74,7 @@ The design (the cheap middle ground): not per-verb examples (shelved) and not th
 
 ### R2 — dual-format output (Design B) — ✅ SHIPPED 2026-06-19
 
-A global `--text` flag (graduated into [`CLI-SPEC.md`](CLI-SPEC.md) §2; locked by `CliTextFormatTest`). JSON stays the **canonical/default** contract; `--text` renders the result envelope as human text for the **secondary** direct-BA/dev path. **Not TTY-detection** — an explicit flag, so an agent in a PTY never silently gets text; JSON being the default means conformance/eval/showboat are unchanged (they never pass `--text`). Implementation: a gated boundary view-transform in `Cli.run` (`TextRenderer`) re-renders only an envelope and passes catalogs/artifacts (`operators`/`manifest`/`export`/…) through as JSON — so it needed no change to the ~88 emit sites. (The original sketch also mentioned `--pretty`; shipped as the single `--text`.)
+A global `--text` flag (graduated into [`CLI-SPEC.md`](../CLI-SPEC.md) §2; locked by `CliTextFormatTest`). JSON stays the **canonical/default** contract; `--text` renders the result envelope as human text for the **secondary** direct-BA/dev path. **Not TTY-detection** — an explicit flag, so an agent in a PTY never silently gets text; JSON being the default means conformance/eval/showboat are unchanged (they never pass `--text`). Implementation: a gated boundary view-transform in `Cli.run` (`TextRenderer`) re-renders only an envelope and passes catalogs/artifacts (`operators`/`manifest`/`export`/…) through as JSON — so it needed no change to the ~88 emit sites. (The original sketch also mentioned `--pretty`; shipped as the single `--text`.)
 
 ### The positioning finding — `manifest` is the bulk/machine door, not the agent's front door
 
@@ -91,7 +93,7 @@ Measured across every run (read **and** authoring), produce agents **never call 
 
 ## 4. The measurement — cheap first (executed 2026-06-19)
 
-**Done.** Step 3 (a dedicated metric / larger run) was **not triggered** — the cheap signal already settled the question (data in [`../eval/RESULTS.md`](../eval/RESULTS.md)). The tiering below stays as the record of *how* it was measured and the bar for any re-measurement.
+**Done.** Step 3 (a dedicated metric / larger run) was **not triggered** — the cheap signal already settled the question (data in [`../eval/RESULTS.md`](../../eval/RESULTS.md)). The tiering below stays as the record of *how* it was measured and the bar for any re-measurement.
 
 The premise ("reduce calls / prevent errors") is empirical, and this project ranks by measured lift — but **the full N6 suite is too costly to spend on an efficiency question.** So the measurement was tiered by cost-vs-value:
 
@@ -117,7 +119,7 @@ The signal distinguished the candidates cleanly: many `--help` but zero `manifes
 
 ## 6. Packaging — what the plugin/skill carries for orientation
 
-The packaging *contract* is [`RELEASE-SPEC.md`](RELEASE-SPEC.md) §6 (the plugin vehicle, the COPY-synced skill, the `SessionStart` binary delivery). The only **orientation** addition: the skill should carry, beyond its judgment content, a **thin "read-when" index** pointing at the binary's self-describing surfaces (the §2 map) — *not* a catalog dump. R1 (the `--help` footer) is the **binary-side twin** of that skill index: the same read-when routing, delivered at first contact for an agent that never reads the skill. This keeps the skill minimal (the standing requirement) and honors arcjet's "docs in the skill, not the binary." Version-skew caveat: the skill is COPY-synced across plugin versions, so it must not reference a verb an installed older binary lacks.
+The packaging *contract* is [`RELEASE-SPEC.md`](../RELEASE-SPEC.md) §6 (the plugin vehicle, the COPY-synced skill, the `SessionStart` binary delivery). The only **orientation** addition: the skill should carry, beyond its judgment content, a **thin "read-when" index** pointing at the binary's self-describing surfaces (the §2 map) — *not* a catalog dump. R1 (the `--help` footer) is the **binary-side twin** of that skill index: the same read-when routing, delivered at first contact for an agent that never reads the skill. This keeps the skill minimal (the standing requirement) and honors arcjet's "docs in the skill, not the binary." Version-skew caveat: the skill is COPY-synced across plugin versions, so it must not reference a verb an installed older binary lacks.
 
 ## 7. Graduation — where each piece lands when it ships
 
@@ -125,11 +127,11 @@ This proposal shrinks to a pointer as items graduate (the FEATURE-GAPS pattern):
 
 | Item | Graduates into | Form |
 |---|---|---|
-| The read-when model (§2) | [`CLI-SPEC.md`](CLI-SPEC.md) §2 | extend the "what an agent needs → where" table with the layer/audience framing |
+| The read-when model (§2) | [`CLI-SPEC.md`](../CLI-SPEC.md) §2 | extend the "what an agent needs → where" table with the layer/audience framing |
 | The `manifest` positioning finding (§3) | CLI-SPEC §2 | reframe `manifest` as the bulk/machine + conformance surface; the agent's front door is `--help` + catalog verbs |
 | **R1** — `--help` orientation footer ✅ **shipped** | CLI-SPEC §2 (done) | the footer content (verb-name refs only → already drift-guarded); locked by `CliHelpTest` |
 | **R2** — dual-format (Design B) ✅ **shipped** | CLI-SPEC §2 (done) | the `--text` flag; locked by `CliTextFormatTest` |
-| Orientation index in the skill (§6) | [`RELEASE-SPEC.md`](RELEASE-SPEC.md) §6 + `skill/SKILL.md` | the read-when section |
+| Orientation index in the skill (§6) | [`RELEASE-SPEC.md`](../RELEASE-SPEC.md) §6 + `skill/SKILL.md` | the read-when section |
 | *(shelved)* per-verb examples, `guide` verb | — | not graduating; re-open only on a real signal |
 
 ## 8. Open questions & risks

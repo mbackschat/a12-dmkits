@@ -64,7 +64,7 @@ public final class Cli {
      */
     static int run(String[] args, Appendable out, Appendable err, boolean nativeProfile) {
         PrintWriter errW = new PrintWriter(new AppendableWriter(err), true);
-        // R2 (CLI-ORIENTATION-PROPOSAL §3): with --text, capture stdout so a result envelope can be
+        // R2 (CLI-SPEC §2): with --text, capture stdout so a result envelope can be
         // re-rendered as human-readable text; non-envelope output (catalogs, artifacts, --help, errors)
         // passes through unchanged (TextRenderer is gated). JSON is the default. The flag is detected here,
         // before execute, to choose the output sink — it is also a self-describing @Option on RootCommand.

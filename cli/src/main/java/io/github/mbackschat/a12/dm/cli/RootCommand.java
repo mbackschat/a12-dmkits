@@ -30,7 +30,7 @@ import picocli.CommandLine.Spec;
         versionProvider = VersionProvider.class,
         synopsisSubcommandLabel = "<target> <op>",
         description = "Typed, model-aware authoring & edit kit for A12 document models. JSON in / JSON out.",
-        // R1 orientation footer (CLI-ORIENTATION-PROPOSAL §3): the read-when map in miniature, shown at
+        // R1 orientation footer (CLI-SPEC §2): the read-when map in miniature, shown at
         // first contact. Routes a cold agent to the catalog verbs and positions `manifest` as the one-call
         // BULK map (not the only door — agents navigate via --help + the catalog verbs; see CLI-SPEC §2).
         // Tool name is single-sourced via Cli.TOOL_NAME (a compile-time constant — never re-hardcoded);
@@ -80,7 +80,7 @@ final class RootCommand implements Callable<Integer> {
                     + "default is the model's own folder.")
     java.util.List<java.nio.file.Path> workspace = new java.util.ArrayList<>();
 
-    // R2 (CLI-ORIENTATION-PROPOSAL §3): render the result envelope as human text instead of JSON, for the
+    // R2 (CLI-SPEC §2): render the result envelope as human text instead of JSON, for the
     // secondary direct-BA/dev path. JSON stays the default + the machine contract; this is opt-in (never
     // TTY-detected, so an agent in a PTY can't silently get text). Declared here so it is self-describing
     // (manifest/--help); the value is detected by an arg-scan in Cli.run *before* execute (to set up output
