@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 _Empty._
 
+## [0.3.1] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
+
+### Changed
+
+- **The README now leads with `dmtool`** — a "Why dmtool" hook, a natural-language agent-session walkthrough (describe a rule in plain English → the agent authors a kernel-valid rule with the right polarity), and a clear explanation of the bundled **skill** and the **plugin**, so the tool's value shows up front. Documentation only; the CLI binary is unchanged.
+
 ## [0.3.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
 ### Added
