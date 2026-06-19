@@ -527,7 +527,7 @@ The model header carries **two distinct, unrelated** language settings — confl
 | setting | where | governs |
 |---|---|---|
 | **display locale(s)** | header `locales[]` | labels + messages — a rule must carry a message for every declared locale (§13) |
-| **condition language** | `modelConfig.conditionLanguage.code` | the keyword language the kernel **parses and stores** conditions in — `FieldFilled`/`And` (en_US) vs `FeldAngegeben`/`Und` (de_DE); one of the two `SUPPORTED_CONDITION_LANGUAGES` (§above) |
+| **condition language** | `modelConfig.conditionLanguage.code` | the keyword language the kernel **parses and stores** *all* DSL in — rule conditions, computation **operations**, and **preconditions** (`precondition`/`commonPrecondition`) alike: `FieldFilled`/`And` (en_US) vs `FeldAngegeben`/`Und` (de_DE); one of the two `SUPPORTED_CONDITION_LANGUAGES` (§above) |
 
 Verified (experiment + the **a12-kernel-mm** corpus):
 
@@ -535,7 +535,7 @@ Verified (experiment + the **a12-kernel-mm** corpus):
 - **`conditionLanguage` need NOT be a declared display locale.** A model declaring only `de_DE` with `conditionLanguage=en_US` and English-keyword conditions is kernel-valid (`checkConsistency` passes — confirmed by a hand-flip experiment and `DocumentModelDraftTest`). The condition language is a free choice between the two supported, not constrained to `locales[]`.
 - **English is the corpus convention.** All 59 a12-kernel-mm models — which declare `de_DE` as their *first* display locale — set `conditionLanguage=en_US` and author English-keyword rules (`FieldFilled`/`And`/`PatternViolated`/`RepetitionNotUnique`). German-keyword conditions are the rare, explicit case.
 
-*Consequence for rulekit:* a from-scratch model defaults `conditionLanguage` to **en_US regardless of the display locale** (it used to derive it from the first display locale — breaking English conditions on a `de_DE` model; surfaced by probe `01-de`). Treatment + the single-source guard in [`KERNEL-INTEGRATION-NOTES.md`](KERNEL-INTEGRATION-NOTES.md). *(Locked: `DocumentModelDraftTest.conditionLanguageDefaultsToEnglishRegardlessOfDisplayLocale` — a de_DE draft keeps en_US and the kernel accepts it; `ModelNewVerbTest.aGermanLocaleModelStillAcceptsEnglishDslKeywords` — English DSL validates end-to-end on a de_DE model.)*
+*Consequence for rulekit:* a from-scratch model defaults `conditionLanguage` to **en_US regardless of the display locale** (it used to derive it from the first display locale — breaking English conditions on a `de_DE` model; surfaced by probe `01-de`). Treatment + the single-source guard in [`KERNEL-INTEGRATION-NOTES.md`](KERNEL-INTEGRATION-NOTES.md). *(Locked: `DocumentModelDraftTest.conditionLanguageDefaultsToEnglishRegardlessOfDisplayLocale` — a de_DE draft keeps en_US and the kernel accepts it; `ModelNewVerbTest.aGermanLocaleModelStillAcceptsEnglishDslKeywords` — English DSL validates end-to-end on a de_DE model; `ModelNewVerbTest.aGermanLocaleModelAlsoAcceptsEnglishKeywordComputationsAndPreconditions` — the sibling lock proving the model-level fix covers computation operations + preconditions, not just rule conditions.)*
 
 ## An include's locales must be a superset of the base's — not the reverse (2026-06-13)
 

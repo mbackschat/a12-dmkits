@@ -70,6 +70,30 @@ class ModelNewVerbTest {
     }
 
     @Test
+    void aGermanLocaleModelAlsoAcceptsEnglishKeywordComputationsAndPreconditions(@TempDir Path dir) throws Exception {
+        // The condition-language fix is at the MODEL level (conditionLanguage in modelConfig), and the kernel
+        // parses ALL DSL against it — rule conditions, computation OPERATIONS, and PRECONDITIONS alike. So the
+        // sibling of finding 01-de must hold too: a de_DE model accepts an English-keyword computation whose
+        // alternative carries an English precondition. (Locks the generalization, not just the reported rule case.)
+        Path model = dir.resolve("p.dm.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "p", "--locale", "de_DE",
+                "--root", "Person", "-o", model.toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(),
+                "field", "add", "--group", "/Person", "--name", "Age", "--kind", "NUMBER").code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(),
+                "field", "add", "--group", "/Person", "--name", "Rabatt", "--kind", "NUMBER").code());
+
+        Path spec = dir.resolve("comp.json");
+        Files.writeString(spec, """
+                { "computedField": "/Person/Rabatt", "name": "RabattComp",
+                  "alternatives": [ {"precondition": "FieldFilled(/Person/Age) And [/Person/Age] >= 65", "operation": "10"} ],
+                  "messages": [ {"locale": "de_DE", "text": "Rabatt berechnet."} ] }""");
+        CliTestSupport.Result res = CliTestSupport.run("-m", model.toString(), "computation", "add", spec.toString());
+        assertEquals(0, res.code(),
+                () -> "an English-keyword computation + precondition must validate on a de_DE model: " + res.out() + res.err());
+    }
+
+    @Test
     void anInvalidLocaleIsReportedNotSilentlyEmitted() {
         CliTestSupport.Result res = CliTestSupport.run("model", "new", "--id", "x", "--locale", "not_a_locale");
         assertTrue(res.code() != 0, () -> "an unbuildable model is reported, not emitted: " + res.out() + res.err());
