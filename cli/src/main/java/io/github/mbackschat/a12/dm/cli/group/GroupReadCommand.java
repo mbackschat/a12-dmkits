@@ -25,8 +25,8 @@ final class GroupReadCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @Parameters(index = "0", paramLabel = "<groupPathInModel>",
-            description = "the group's full name-path, e.g. /Order/BillingAddress")
+    @Parameters(index = "0", arity = "0..1", paramLabel = "<groupPathInModel>",
+            description = "the group's full name-path, e.g. /Order/BillingAddress; omit to list every group's path")
     String group;
 
     @Override
@@ -43,6 +43,9 @@ final class GroupReadCommand extends BaseCommand {
         }
         try {
             ModelDocument doc = ModelDocument.read(json);
+            if (group == null) {
+                return readNameIndex("group", "groups", doc.groupPaths());
+            }
             if (!doc.groupPaths().contains(group)) {
                 return fail("no group '" + group + "' in the model");
             }

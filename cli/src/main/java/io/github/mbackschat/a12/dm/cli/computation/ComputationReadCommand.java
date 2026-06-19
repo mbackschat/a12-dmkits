@@ -29,8 +29,9 @@ final class ComputationReadCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @Parameters(index = "0", paramLabel = "<computationPathInModel>",
-            description = "the computation's full name — its slash-path in the model, e.g. /Order/TotalComp")
+    @Parameters(index = "0", arity = "0..1", paramLabel = "<computationPathInModel>",
+            description = "the computation's full name — its slash-path in the model, e.g. /Order/TotalComp; "
+                    + "omit to list every computation's full name")
     String computation;
 
     @Mixin
@@ -50,6 +51,9 @@ final class ComputationReadCommand extends BaseCommand {
         }
         try {
             KernelAdapter adapter = KernelAdapter.ofJson(json, workspace.resolverFor(model));
+            if (computation == null) {
+                return readNameIndex("computation", "computations", adapter.computationFullNames());
+            }
             if (!adapter.computationFullNames().contains(computation)) {
                 return fail("'" + computation + "' is not a computation in this model — computations: "
                         + adapter.computationFullNames());

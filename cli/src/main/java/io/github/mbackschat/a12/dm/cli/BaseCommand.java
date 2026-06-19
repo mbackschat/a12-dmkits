@@ -5,12 +5,16 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.model.notification.RankedNotification;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
@@ -28,6 +32,8 @@ import picocli.CommandLine.Spec;
  */
 @Command
 public abstract class BaseCommand implements Callable<Integer> {
+
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     @Spec
     protected CommandSpec spec;
@@ -62,6 +68,24 @@ public abstract class BaseCommand implements Callable<Integer> {
             fail("cannot read model: " + e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * A no-specifier read: the lean <b>name-index</b> of a kind — {@code data.<plural>} is the full-name list,
+     * plus a {@code count}. The uniform "no path = list everything in scope" half of the read contract
+     * (CLI-SPEC §5), shared by {@code rule}/{@code computation}/{@code field}/{@code group read}. Deliberately
+     * lean (names only): it is the navigation handle to then {@code <target> read <name>} for one — distinct
+     * from {@code model read} (full DSL of everything) and {@code export} (a takeaway artifact).
+     */
+    protected int readNameIndex(String target, String plural, Collection<String> names) {
+        ObjectNode data = JSON.createObjectNode();
+        ArrayNode arr = data.putArray(plural);
+        names.forEach(arr::add);
+        data.put("count", names.size());
+        String summary = names.size() + " " + target + (names.size() == 1 ? "" : "s");
+        ResultEnvelope env = ResultEnvelope.read(target, "read", summary, true, List.of(), data);
+        out().print(env.toJsonString());
+        return env.exitCode();
     }
 
     /**

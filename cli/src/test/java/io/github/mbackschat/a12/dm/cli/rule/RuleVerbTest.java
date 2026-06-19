@@ -57,6 +57,20 @@ class RuleVerbTest {
     }
 
     @Test
+    void readWithNoPathListsTheRuleNames(@TempDir Path dir) throws Exception {
+        // P2: no path → a lean name-index (the navigation handle), uniform with include/typedef read.
+        Path model = CliTestSupport.modelWithRule(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "read");
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("read", j.get("outcome").asText());
+        assertTrue(j.get("ok").asBoolean());
+        JsonNode rules = j.path("data").path("rules");
+        assertTrue(rules.isArray() && rules.size() > 0, () -> "lists rule full-names: " + res.out());
+        assertTrue(rules.toString().contains(CliTestSupport.RULE_FULL_NAME), () -> "includes the known rule: " + res.out());
+    }
+
+    @Test
     void readReturnsARulesConditionInData(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
         var res = CliTestSupport.run("-m", model.toString(), "rule", "read", CliTestSupport.RULE_FULL_NAME);

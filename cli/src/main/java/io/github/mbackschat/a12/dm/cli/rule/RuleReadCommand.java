@@ -35,8 +35,9 @@ final class RuleReadCommand extends BaseCommand {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final DslRenderer EN = new DslRenderer(ConditionLanguage.EN);
 
-    @Parameters(index = "0", paramLabel = "<rulePathInModel>",
-            description = "the rule's full name — its slash-path in the model, e.g. /Order/SomeRule")
+    @Parameters(index = "0", arity = "0..1", paramLabel = "<rulePathInModel>",
+            description = "the rule's full name — its slash-path in the model, e.g. /Order/SomeRule; "
+                    + "omit to list every rule's full name")
     String rule;
 
     @Mixin
@@ -56,6 +57,9 @@ final class RuleReadCommand extends BaseCommand {
         }
         try {
             KernelAdapter adapter = KernelAdapter.ofJson(json, workspace.resolverFor(model));
+            if (rule == null) {
+                return readNameIndex("rule", "rules", adapter.ruleFullNames());
+            }
             String problem = ModelPaths.ruleProblem(adapter.ruleFullNames(), adapter.computationFullNames(), rule);
             if (problem != null) {
                 return fail(problem);

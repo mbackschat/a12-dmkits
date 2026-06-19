@@ -26,8 +26,8 @@ final class FieldReadCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @Parameters(index = "0", paramLabel = "<fieldPathInModel>",
-            description = "the field's full name-path, e.g. /Order/Quantity")
+    @Parameters(index = "0", arity = "0..1", paramLabel = "<fieldPathInModel>",
+            description = "the field's full name-path, e.g. /Order/Quantity; omit to list every field's path")
     String field;
 
     @Override
@@ -43,7 +43,11 @@ final class FieldReadCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         try {
-            Optional<String> type = ModelDocument.read(json).fieldType(field);
+            ModelDocument doc = ModelDocument.read(json);
+            if (field == null) {
+                return readNameIndex("field", "fields", doc.fieldPaths());
+            }
+            Optional<String> type = doc.fieldType(field);
             if (type.isEmpty()) {
                 return fail("no field '" + field + "' in the model");
             }

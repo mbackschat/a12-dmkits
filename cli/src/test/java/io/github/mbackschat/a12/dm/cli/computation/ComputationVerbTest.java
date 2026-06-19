@@ -103,6 +103,19 @@ class ComputationVerbTest {
     }
 
     @Test
+    void readWithNoPathListsTheComputationNames(@TempDir Path dir) throws Exception {
+        // P2: no path → a lean name-index, uniform with the read family.
+        Path model = CliTestSupport.modelWithRuleAndComputation(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "computation", "read");
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("read", j.get("outcome").asText());
+        JsonNode comps = j.path("data").path("computations");
+        assertTrue(comps.isArray() && comps.size() > 0, () -> "lists computation full-names: " + res.out());
+        assertTrue(comps.toString().contains(CliTestSupport.COMPUTATION_FULL_NAME), () -> res.out());
+    }
+
+    @Test
     void readReturnsTheComputationInData(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRuleAndComputation(dir);
         var res = CliTestSupport.run("-m", model.toString(), "computation", "read", COMP);

@@ -38,6 +38,19 @@ class FieldVerbTest {
     }
 
     @Test
+    void readWithNoPathListsTheFieldPaths(@TempDir Path dir) throws Exception {
+        // P2: no path → a lean name-index, uniform with the read family.
+        Path model = CliTestSupport.orderRuled(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "field", "read");
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("read", j.get("outcome").asText());
+        JsonNode fields = j.path("data").path("fields");
+        assertTrue(fields.isArray() && fields.size() > 0, () -> "lists field paths: " + res.out());
+        assertTrue(fields.toString().contains("/Order/Quantity"), () -> res.out());
+    }
+
+    @Test
     void readReturnsTheFieldTypeInData(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         var res = CliTestSupport.run("-m", model.toString(), "field", "read", "/Order/Quantity");

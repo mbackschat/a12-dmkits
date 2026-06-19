@@ -59,13 +59,9 @@ class ReadVerbTest {
         assertTrue(foundEn, () -> "the stored message text is read back raw: " + res.out());
     }
 
-    @Test
-    void missingPathFails(@TempDir Path dir) throws Exception {
-        var res = CliTestSupport.run("-m", modelWithRule(dir).toString(), "rule", "read");
-        assertNotEquals(0, res.code(), "rule read needs the rule path");
-        assertTrue(res.err().toLowerCase().contains("missing") || res.err().toLowerCase().contains("usage"),
-                () -> "names the missing parameter: " + res.err());
-    }
+    // No-arg `rule read` now LISTS the rule full-names (the unified read contract: no path = list everything
+    // in scope) — it no longer errors. Locked by RuleVerbTest.readWithNoPathListsTheRuleNames; not re-asserted
+    // here to avoid duplication.
 
     @Test
     void allReadsRulesAndComputationsAsDisjointSections(@TempDir Path dir) throws Exception {

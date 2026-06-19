@@ -46,6 +46,19 @@ class GroupVerbTest {
     }
 
     @Test
+    void readWithNoPathListsTheGroupPaths(@TempDir Path dir) throws Exception {
+        // P2: no path → a lean name-index, uniform with the read family.
+        Path model = CliTestSupport.orderRuled(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "group", "read");
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("read", j.get("outcome").asText());
+        JsonNode groups = j.path("data").path("groups");
+        assertTrue(groups.isArray() && groups.size() > 0, () -> "lists group paths: " + res.out());
+        assertTrue(groups.toString().contains("/Order/BillingAddress"), () -> res.out());
+    }
+
+    @Test
     void readReturnsRepeatability(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         var res = CliTestSupport.run("-m", model.toString(), "group", "read", "/Order/BillingAddress");
