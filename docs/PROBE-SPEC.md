@@ -92,14 +92,17 @@ From the objective shim log + the final model files (+ the agent's narrative), e
 
 A report that finds nothing states **"clean session — no DX defects on this task"** explicitly; that is itself a useful signal, not a non-result.
 
-## The proactive loop — discover → fix at root → graduate into a guard
+## The proactive loop — discover → root-cause → generalize → fix the class → graduate into a guard
 
-The probe's job is to find **unknowns**; deterministic guards enforce **knowns**. So a finding isn't done when it's fixed — it's done when its *class* can't regress:
+The probe's job is to find **unknowns**; deterministic guards enforce **knowns**. A finding isn't done when the one symptom is fixed — it's done when its whole *class* is fixed and can't regress:
 
 ```
-probe discovers a defect class  ──►  fix at root  ──►  graduate the class into a deterministic guard
-   (qualitative, one session)                            (e.g. the "applied ⇒ effected" round-trip sweep)
+probe discovers a symptom ──► find the root cause ──► GENERALIZE: sweep every sibling site of the same
+                                                      class ──► fix them all at the shared root ──►
+                                                      graduate into a deterministic guard
 ```
+
+**Generalize before you fix.** Once the root cause is known, sweep for every place the same class can occur — never patch the single symptom. P1 (a raw stack trace from a duplicate rule name) was *not* "a `rule add` bug": the root cause was `RuleValidator.check` letting a kernel conversion exception escape, a path shared by **six** callers (`rule add`, `computation add`, `rule check`, `patterns`, `model eval`). So the fix went in the shared validator, and the guard tests cover a sibling (`computation add`), not just the reported verb — a symptom-only patch would have left five other verbs able to leak the same way. (This is the standing "root-cause generalization" rule in [`../CLAUDE.md`](../CLAUDE.md).)
 
 The canonical first guard this feeds is the **"applied ⇒ effected" round-trip sweep**: a matrix test over every writable attribute (FieldSpec / rule / computation keys) that writes → reads back → asserts the effect actually landed — the deterministic complement that would have caught the `field modify` silent drop without a bug report.
 

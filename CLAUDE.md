@@ -36,6 +36,12 @@ The **no-rot** lever is that **every schema `examples` block is CI-executed thro
 
 An ungated, undocumented, or untested-on-refusal refactor is not shippable. Full principle + per-refactor preconditions: [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md) §6.
 
+## Root-cause generalization (standing requirement, 2026-06-19)
+
+**When you find a defect — from a bug report or a probe — fix the *class*, not the symptom.** Once you know the root cause, **always sweep for every sibling site where the same class can occur** *before* declaring it fixed, and fix them together at the shared root. A symptom-only patch (the one verb/path that was reported) leaves the rest of the class live — that is how whack-a-mole starts.
+
+The drill: **reproduce → root-cause → generalize (enumerate every site of the class) → fix at the shared root → lock with a guard that covers the siblings, not just the reported case.** Worked example: P1 — a raw stack trace from a duplicate `rule add` — root-caused to `RuleValidator.check` letting a kernel conversion exception escape, a path shared by six callers; the fix went in the validator and the guard covers `computation add` too, not only the reported `rule add`. This complements the anti-whack-a-mole mining below (mine constraints proactively) and the probe's proactive loop ([`docs/PROBE-SPEC.md`](docs/PROBE-SPEC.md)).
+
 ## Test & sample document models
 
 - **Research freely; commit only own-domain re-expressions.** All three sources — **`a12-kernel-demo`**, the **A12 Tools workspaces** (`/Volumes/Buffer/Apps/A12 Tools/A12 Tools - 2025.06-ext5/workspaces`, the 2025.06-ext5 distribution = kernel `30.8.1`, our pin), and **`a12-kernel-mm`** — may be read and studied without limit. What gets **committed** must be our own original fixtures.
