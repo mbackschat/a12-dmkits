@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/validate.schema.json",
   "title": "ValidationResult",
-  "description": "Output of `model validate` (and `check`) — the real-kernel verdict plus any diagnostics (kernel consistency problems and rulekit lint). `valid` is false iff any diagnostic is an ERROR.",
+  "description": "Output of `model validate` (and `rule check`) — the real-kernel verdict plus any diagnostics (kernel consistency problems and rulekit lint). `valid` is false iff any diagnostic is an ERROR.",
   "type": "object",
   "required": ["valid", "diagnostics"],
   "additionalProperties": false,

@@ -28,7 +28,7 @@ final class BatchCommand extends BaseCommand {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Parameters(index = "0", paramLabel = "<ops.json>",
-            description = "a JSON array of ops: [{\"verb\":\"check\",\"args\":[\"model.json\", …],\"id\"?}, …]")
+            description = "a JSON array of ops: [{\"verb\":\"rule\",\"args\":[\"check\",\"-m\",\"model.json\", …],\"id\"?}, …]")
     String opsFile;
 
     @Override

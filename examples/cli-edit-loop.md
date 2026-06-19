@@ -163,10 +163,10 @@ dmtool -m examples/models/multifile/app/storefront.dm.json \
 
 ## batch — many ops in one warm JVM
 
-`batch` runs a JSON array of verb invocations in a single process, amortizing the kernel's warm-up. Each op is `{id, verb, args}` and dispatches to the flat verb name (`check`); each result is tagged by its `id`, so a producer can attribute every verdict.
+`batch` runs a JSON array of verb invocations in a single process, amortizing the kernel's warm-up. Each op is `{id, verb, args}`, where `verb` is the **target** (`rule`) and the operation (`check`) leads `args` — the same target-first form a standalone call uses; each result is tagged by its `id`, so a producer can attribute every verdict.
 
 ```bash
-printf "%s" "[{\"id\":\"ok\",\"verb\":\"check\",\"args\":[\"examples/models/subscription-computed.dm.json\",\"--field\",\"/Subscription/Billing/EffectiveFee\",\"--condition\",\"[EffectiveFee] < [BaseFee]\",\"--code\",\"X\"]},{\"id\":\"bad\",\"verb\":\"check\",\"args\":[\"examples/models/subscription-computed.dm.json\",\"--field\",\"/Subscription/Billing/EffectiveFee\",\"--condition\",\"[EffectiveFee] PatternViolated \\\"x\\\"\",\"--code\",\"Y\"]}]" > /tmp/edit-ops.json
+printf "%s" "[{\"id\":\"ok\",\"verb\":\"rule\",\"args\":[\"check\",\"-m\",\"examples/models/subscription-computed.dm.json\",\"--field\",\"/Subscription/Billing/EffectiveFee\",\"--condition\",\"[EffectiveFee] < [BaseFee]\",\"--code\",\"X\"]},{\"id\":\"bad\",\"verb\":\"rule\",\"args\":[\"check\",\"-m\",\"examples/models/subscription-computed.dm.json\",\"--field\",\"/Subscription/Billing/EffectiveFee\",\"--condition\",\"[EffectiveFee] PatternViolated \\\"x\\\"\",\"--code\",\"Y\"]}]" > /tmp/edit-ops.json
 dmtool batch /tmp/edit-ops.json | jq -c ".[] | {id, valid: .result.valid}"
 ```
 
@@ -175,7 +175,7 @@ dmtool batch /tmp/edit-ops.json | jq -c ".[] | {id, valid: .result.valid}"
 {"id":"bad","valid":false}
 ```
 
-→ Two `check`s in one JVM: the numeric comparison is `valid`, the pattern comparison on a number field is rejected — each verdict carries its `id`. This is how the eval runner re-validates many candidates at once.
+→ Two `rule check`s in one JVM: the numeric comparison is `valid`, the pattern comparison on a number field is rejected — each verdict carries its `id`. This is how the eval runner re-validates many candidates at once.
 
 ## The tool describes itself — operators & schema
 
