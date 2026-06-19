@@ -8,6 +8,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 _Empty._
 
+## [0.3.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
+
+### Added
+
+- **`workspace roles` — workspace access-control lint.** Resolves each model's `roles` annotation against the workspace's `roles.yaml` (and `users.yaml`) and flags undefined roles, ungated models, and missing/duplicate roles files. Advisory — it emits warnings and never blocks (always exits 0), and each finding carries an actionable fix.
+- **`model usage` — model-wide usage audit.** Reports every field's referencing rules/computations plus the unreferenced set in one pass, so the blast radius of a change is visible before you make it.
+- **`--text` global flag** renders the JSON result envelope as human-readable text for terminal use. JSON stays the default machine contract, and the catalogs (`operators`/`manifest`/…) stay JSON.
+- **`apply`/`batch`'s `field add` takes the rich per-kind spec** — adding a field inside an atomic session now accepts the same full per-kind configuration (string patterns, number ranges, enum values, …) as the standalone `field add`.
+- **`rule read` and `rule explain` surface a rule's stored messages and polarity**, so an agent can explain in natural language when a rule fires and which message it shows.
+- **Richer, more accurate operator catalog** — many corrections and additions (date/date-time operand widening, interval-bound rules, the power-operator parse laws, semantic-index context, …) plus an extended `seeAlso` bridge cross-linking the comparison/pattern/value-list operators to their field-config twins.
+- **The root `--help` carries an orientation footer** pointing a cold agent at `manifest` / `operators` / `schema` for self-guided discovery.
+
+### Changed
+
+- **`where-used` is now target-first and rides the standard result envelope** *(breaking)*. The entity to audit is passed positionally with the model via `-m` (e.g. `dmtool where-used /Order/Total -m model.json`), and its output now uses the same result-envelope shape as every other verb. Scripts on the old calling form must update — see `dmtool schema where-used`.
+
+### Fixed
+
+- **The self-describing surface no longer names removed verbs.** A few schema descriptions and `batch`'s help text referenced legacy hidden verbs (`check`, `eval-doc`) that were removed; they now name the canonical target-first verbs.
+
 ## [0.2.1] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
 ### Changed
