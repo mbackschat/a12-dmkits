@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/apply.schema.json",
   "title": "ApplyOps",
-  "description": "INPUT of `dmtool -m <model> apply <ops.json>` (CLI-SPEC §7) — an ORDERED array of op-records applied to ONE model in a single session: one read → ordered surgery → one terminal kernel gate → one write, with atomic rollback (a mid-sequence failure writes nothing). Each op-record is {target, op, …args}; the per-op fields are that verb's params — discover them from `manifest` + `schema <target> <op>`. The op-set spans add·modify·remove·read PLUS the reference-rewriting refactors: `field`/`group` rename·move, `rule` rename, `typedef` rename (each runs its §6 safety gate at its turn against the live model — a refused refactor rolls the whole sequence back). `extract`/`inline` stay standalone verbs. An unsupported target/op self-corrects via RK_UNKNOWN_OP, which lists the ops apply DOES support. Distinct from `batch` (which takes {verb, args} for stateless per-op dispatch). Each op emits a per-op result envelope (a successful edit is `staged` until the terminal gate commits the whole sequence); the wrapper is {ops, committed, failedAt, written, results[]}.",
+  "description": "INPUT of `dmtool -m <model> apply <ops.json>` (CLI-SPEC §7) — an ORDERED array of op-records applied to ONE model in a single session: one read → ordered surgery → one terminal kernel gate → one write, with atomic rollback (a mid-sequence failure writes nothing). Each op-record is {target, op, …args}; the per-op fields are that verb's params — discover them from `manifest` + `schema <target> <op>`. The op-set spans add·modify·remove·read PLUS the reference-rewriting refactors: `field`/`group` rename·move, `rule` rename, `typedef` rename (each runs its §6 safety gate at its turn against the live model — a refused refactor rolls the whole sequence back). A `group remove` takes the same `cascade` safe-delete gate as the standalone verb (a group still referenced from outside its subtree is refused unless `cascade:true`); `rule remove` deletes a rule. `extract`/`inline` stay standalone verbs. An unsupported target/op self-corrects via RK_UNKNOWN_OP, which lists the ops apply DOES support. Distinct from `batch` (which takes {verb, args} for stateless per-op dispatch). Each op emits a per-op result envelope (a successful edit is `staged` until the terminal gate commits the whole sequence); the wrapper is {ops, committed, failedAt, written, results[]}.",
   "type": "array",
   "items": {
     "type": "object",
@@ -27,6 +27,20 @@
         "string": { "pattern": "[0-9]{5}", "patternMessage": "five digits" } },
       { "target": "field", "op": "add", "group": "/Subscription", "name": "Fee", "kind": "NUMBER",
         "number": { "maxFractionalDigits": 0 } }
+    ],
+    [
+      { "target": "rule", "op": "add", "field": "/Subscription/AutoRenew", "code": "BILLING_GUARD",
+        "condition": "FieldFilled(/Subscription/AutoRenew) And GroupFilled(/Subscription/Billing)",
+        "messages": [ { "locale": "en_US", "text": "Billing details are required to auto-renew." },
+                      { "locale": "de_DE", "text": "Fuer die Verlaengerung sind Rechnungsdaten erforderlich." } ] },
+      { "target": "group", "op": "remove", "groupPathInModel": "/Subscription/Billing", "cascade": true }
+    ],
+    [
+      { "target": "rule", "op": "add", "field": "/Subscription/AutoRenew", "code": "AUTO_RENEW_SET",
+        "condition": "FieldFilled(/Subscription/AutoRenew)",
+        "messages": [ { "locale": "en_US", "text": "Confirm the auto-renew choice." },
+                      { "locale": "de_DE", "text": "Auto-Verlaengerung bestaetigen." } ] },
+      { "target": "rule", "op": "remove", "rule": "/Subscription/AUTO_RENEW_SET" }
     ]
   ]
 }

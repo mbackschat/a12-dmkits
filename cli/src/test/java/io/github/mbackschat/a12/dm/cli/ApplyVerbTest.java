@@ -314,4 +314,75 @@ class ApplyVerbTest {
         assertFalse(j.path("written").asBoolean());
         assertEquals(before, Files.readString(model), "--dry-run writes nothing");
     }
+
+    // --- G12: apply op-set parity with the standalone verbs — `rule remove` + `group remove --cascade` ---
+
+    @Test
+    void appliesARuleRemoveOp(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path ops = dir.resolve("ops.json");
+        // a "delete a rule" edit is now expressible IN apply (was RK_UNKNOWN_OP — forced a drop to standalone)
+        Files.writeString(ops, """
+                [ {"target":"rule","op":"remove","rule":"/Order/EligibilityCheck"} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertTrue(j.path("written").asBoolean());
+        assertEquals("/Order/EligibilityCheck", j.path("results").get(0).path("changed").path("removed").asText());
+        assertFalse(Files.readString(model).contains("EligibilityCheck"), "the rule is gone from the model");
+    }
+
+    @Test
+    void groupRemoveCascadeDropsAReferrerInOneSession(@TempDir Path dir) throws Exception {
+        Path model = dir.resolve("subscription.dm.json");
+        Files.writeString(model, CliTestSupport.subscriptionJson());
+        Path ops = dir.resolve("ops.json");
+        // author a rule that references the /Subscription/Billing group node, then remove that group with
+        // cascade — the referrer is dropped with it, atomically (was impossible: `cascade` was RK_UNKNOWN_ARG)
+        Files.writeString(ops, """
+                [ {"target":"rule","op":"add","field":"/Subscription/AutoRenew","code":"BILLING_GUARD",
+                   "condition":"FieldFilled(/Subscription/AutoRenew) And GroupFilled(/Subscription/Billing)",
+                   "messages":[{"locale":"en_US","text":"Billing required."},{"locale":"de_DE","text":"Rechnung noetig."}]},
+                  {"target":"group","op":"remove","groupPathInModel":"/Subscription/Billing","cascade":true} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
+        JsonNode removeResult = j.path("results").get(1);
+        assertEquals("/Subscription/Billing", removeResult.path("changed").path("removed").asText());
+        assertTrue(removeResult.path("changed").path("cascaded").toString().contains("/Subscription/BILLING_GUARD"),
+                () -> "the referring rule is reported as cascaded: " + removeResult);
+        String written = Files.readString(model);
+        assertFalse(written.contains("BILLING_GUARD"), "the cascaded rule is gone");
+        assertFalse(written.contains("\"/Subscription/Billing\""), "the group is gone");
+    }
+
+    @Test
+    void groupRemoveRefusesAReferencedGroupWithoutCascade(@TempDir Path dir) throws Exception {
+        Path model = dir.resolve("subscription.dm.json");
+        Files.writeString(model, CliTestSupport.subscriptionJson());
+        String before = Files.readString(model);
+        Path ops = dir.resolve("ops.json");
+        // same scenario, no cascade — the §6 safe-delete gate fires mid-sequence and the WHOLE thing rolls back
+        Files.writeString(ops, """
+                [ {"target":"rule","op":"add","field":"/Subscription/AutoRenew","code":"BILLING_GUARD",
+                   "condition":"FieldFilled(/Subscription/AutoRenew) And GroupFilled(/Subscription/Billing)",
+                   "messages":[{"locale":"en_US","text":"Billing required."},{"locale":"de_DE","text":"Rechnung noetig."}]},
+                  {"target":"group","op":"remove","groupPathInModel":"/Subscription/Billing"} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(1, res.code());
+        JsonNode j = M.readTree(res.out());
+        assertFalse(j.path("committed").asBoolean());
+        assertEquals(1, j.path("failedAt").asInt());
+        JsonNode refusal = j.path("results").get(1);
+        assertEquals("refused", refusal.path("outcome").asText(), () -> "the gate refuses: " + refusal);
+        assertEquals("RK_REFERENCED", refusal.path("diagnostics").get(0).path("code").asText());
+        assertTrue(refusal.path("data").path("referencedBy").path("rules").toString().contains("/Subscription/BILLING_GUARD"),
+                () -> "the refusal lists the referrer: " + refusal);
+        assertEquals(before, Files.readString(model), "rollback — the model file is untouched");
+    }
 }

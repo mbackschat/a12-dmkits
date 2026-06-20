@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 ## [Unreleased]
 
+### Added
+
+- **`apply` now covers the full delete op-set — `rule remove` and `group remove` with `cascade`.** A "delete a rule" or "delete a referenced group and its referrers" edit could not be expressed inside an `apply` transaction (`rule remove` was an unknown op; `group remove` rejected `cascade` as an unknown arg), forcing a drop to standalone calls mid-transaction. `apply` now has a `rule remove` op, and its `group remove` op takes the same `cascade` safe-delete gate as the standalone verb — both single-sourced with the standalone verbs so they can't drift.
+
 ### Changed
 
 - **`workspace list`/`graph`/`validate`/`roles` now honor `-w/--workspace` (and `$DMTOOL_WORKSPACE`), not only a positional `<dir>`.** Having set the workspace root once with `-w`, an agent's `dmtool -w <dir> workspace list` used to fail with `Missing required parameter: '<dir>'` because these verbs took the directory *only* positionally and ignored the inherited `-w`. The directory now falls back to `-w` (then `$DMTOOL_WORKSPACE`) when the positional is omitted — the same universal option that resolves a `-m` model's includes. The positional `<dir>` still works (it's the natural scan target); this just lets the session-wide root drive `workspace` too.

@@ -44,7 +44,9 @@ import picocli.CommandLine.Parameters;
  * whole sequence); a batch summary {@code {ops, committed, failedAt, written, results[]}} wraps them. A
  * mid-sequence op failure rolls back (nothing written). The op surface (the {@link Op} enum) covers the
  * <b>Local</b> ops — field/group/typedef/include add·remove, rule/computation add·modify, config modify, and
- * the structure reads — plus the reference-rewriting <b>Refactor</b> ops field/group rename·move, rule rename,
+ * the structure reads (a {@code group remove} takes the same {@code cascade} safe-delete gate as the
+ * standalone verb, and {@code rule remove} deletes a rule) — plus the reference-rewriting <b>Refactor</b>
+ * ops field/group rename·move, rule rename,
  * and typedef rename: each runs its §6 safety gate at its turn against the live (transiently-edited) model, so
  * a refused refactor rolls the whole sequence back. Op-arg validation ({@code RK_UNKNOWN_ARG}/{@code RK_UNKNOWN_OP}
  * + did-you-mean) guards every op-record. (extract/inline stay standalone verbs — they produce a second artifact.)
@@ -66,9 +68,10 @@ final class ApplyCommand extends BaseCommand {
         FIELD_MODIFY("field", "modify", FieldSpec.MODIFY_KEYS),
         FIELD_REMOVE("field", "remove", Set.of("fieldPathInModel")),
         GROUP_ADD("group", "add", Set.of("parent", "name", "repeatable")),
-        GROUP_REMOVE("group", "remove", Set.of("groupPathInModel")),
+        GROUP_REMOVE("group", "remove", Set.of("groupPathInModel", "cascade")),
         RULE_ADD("rule", "add", Set.of("field", "condition", "comment", "code", "severity", "name", "messages")),
         RULE_MODIFY("rule", "modify", Set.of("rule", "condition", "comment")),
+        RULE_REMOVE("rule", "remove", Set.of("rule")),
         COMPUTATION_ADD("computation", "add", Set.of("computedField", "alternatives", "commonPrecondition", "comment", "name", "messages")),
         COMPUTATION_MODIFY("computation", "modify", Set.of("computation", "computedField", "alternatives", "commonPrecondition", "comment", "name", "messages")),
         TYPEDEF_ADD("typedef", "add", Set.of("id", "kind")),
@@ -272,8 +275,27 @@ final class ApplyCommand extends BaseCommand {
             }
             case GROUP_REMOVE -> {
                 String path = req(op, "groupPathInModel");
-                session.removeGroup(path);
+                boolean cascade = op.path("cascade").asBoolean(false);
+                // the SAME safe-delete gate as the standalone `group remove` verb (G12), run against the live
+                // (transiently-edited) session: a group still referenced from outside its subtree is refused
+                // unless cascade — and a refused gate rolls the whole apply sequence back.
+                KernelAdapter adapter = KernelAdapter.ofJson(session.toJson(), resolver);
+                GroupRemoval.Plan plan = GroupRemoval.plan(adapter, path, cascade,
+                        "set \"cascade\": true to remove the referrers too, or remove them first");
+                if (plan.refused()) {
+                    throw new RefactorRefused("group", "remove", plan.refusal().get());
+                }
                 changed.put("removed", path);
+                ArrayNode cascaded = changed.putArray("cascaded");
+                for (String r : plan.cascadeRules()) {
+                    session.removeRule(r);
+                    cascaded.add(r);
+                }
+                for (String c : plan.cascadeComputations()) {
+                    session.removeComputation(c);
+                    cascaded.add(c);
+                }
+                session.removeGroup(path);
                 yield staged(which, changed, session);
             }
             case RULE_ADD -> {
@@ -300,6 +322,13 @@ final class ApplyCommand extends BaseCommand {
                 String rule = req(op, "rule");
                 session.modifyRule(rule, Comments.withLeadingComment(opt(op, "comment"), req(op, "condition")));
                 changed.put("modified", rule);
+                yield staged(which, changed, session);
+            }
+            case RULE_REMOVE -> {
+                // a rule has no dependents (unlike a field/group), so no cascade gate — just remove it (G12)
+                String rule = req(op, "rule");
+                session.removeRule(rule);
+                changed.put("removed", rule);
                 yield staged(which, changed, session);
             }
             case COMPUTATION_ADD -> {

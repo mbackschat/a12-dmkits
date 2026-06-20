@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.group;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.GroupRemoval;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.Refusal;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -12,8 +13,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
-import java.util.Set;
-import java.util.TreeSet;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -78,28 +77,22 @@ final class GroupRemoveCommand extends BaseCommand {
         EditSession session = EditSession.read(modelJson, resolver);
         ArrayNode cascaded = MAPPER.createArrayNode();
         try {
+            // The safe-delete cascade is computed by GroupRemoval — the SAME helper the `apply` group-remove
+            // op uses, so the standalone verb and the op stay in lockstep (G12). Referrers inside the removed
+            // subtree go away with the group (a composite group's internal rules) and never gate.
             KernelAdapter adapter = KernelAdapter.ofJson(modelJson, resolver);
-            Set<String> refRules = new TreeSet<>(adapter.whereUsed(group));
-            Set<String> refComputations = new TreeSet<>(adapter.whereUsedInComputations(group));
-            // rules/computations that live INSIDE the removed subtree go away with it — they are not external
-            // dependents, so they must not trigger the gate. This is what lets a composite group (attachment,
-            // §3.8) — whose internal rules the author never sees — be removed without a spurious --cascade.
-            String subtree = group + "/";
-            refRules.removeIf(r -> r.startsWith(subtree));
-            refComputations.removeIf(c -> c.startsWith(subtree));
-            if (!refRules.isEmpty() || !refComputations.isEmpty()) {
-                if (!cascade) {
-                    return refuse("group", "remove", SafetyChecks.referencedBy(group, refRules, refComputations,
-                            "pass --cascade to remove the referrers too, or remove them first"));
-                }
-                for (String r : refRules) {
-                    session.removeRule(r);
-                    cascaded.add(r);
-                }
-                for (String c : refComputations) {
-                    session.removeComputation(c);
-                    cascaded.add(c);
-                }
+            GroupRemoval.Plan plan = GroupRemoval.plan(adapter, group, cascade,
+                    "pass --cascade to remove the referrers too, or remove them first");
+            if (plan.refused()) {
+                return refuse("group", "remove", plan.refusal().get());
+            }
+            for (String r : plan.cascadeRules()) {
+                session.removeRule(r);
+                cascaded.add(r);
+            }
+            for (String c : plan.cascadeComputations()) {
+                session.removeComputation(c);
+                cascaded.add(c);
             }
             session.removeGroup(group);
         } catch (RuntimeException e) {
