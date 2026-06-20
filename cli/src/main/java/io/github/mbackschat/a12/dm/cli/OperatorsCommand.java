@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli;
 
 import java.util.Locale;
+import java.util.Optional;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,18 +18,21 @@ import picocli.CommandLine.Parameters;
  * The {@code operators} verb (CLI-SPEC §4) — exposes the DSL <b>operator catalog</b> so an agent can
  * explore the vocabulary it authors with, on demand, without the N1 skill (the self-explaining
  * requirement, CLI-SPEC §1a). Bare/filtered: a compact list ({@code id, keyword, kind, supported,
- * meaning}); with an id: that operator's full semantics (keywords EN/DE, operands, meaning,
+ * meaning}) — narrowed by a positional substring (matched over id/keyword/meaning, the agent's natural
+ * reach), {@code --kind}, or {@code --keyword}; with an exact id: that operator's full semantics (keywords EN/DE, operands, meaning,
  * constraints, gotchas, a valid + an invalid example). This is the proactive complement to
  * {@code explain}, which only surfaces operators a given rule already uses.
  */
 @Command(name = "operators", mixinStandardHelpOptions = true,
-        description = "Explore the DSL operator catalog: list all (filterable) or one operator's full semantics.")
+        description = "Explore the DSL operator catalog: list all (filter by a substring, --kind, or --keyword) "
+                + "or pass an exact operator id for its full semantics.")
 final class OperatorsCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @Parameters(index = "0", arity = "0..1", paramLabel = "<operatorId>",
-            description = "an operator id (e.g. DifferenceInDays) for its full semantics; omit to list all")
+    @Parameters(index = "0", arity = "0..1", paramLabel = "<operatorIdOrSubstring>",
+            description = "an exact operator id (e.g. DifferenceInDays) for its full semantics; a non-id "
+                    + "substring filters the list (e.g. `operators date`); omit to list all")
     String id;
 
     @Option(names = "--kind", paramLabel = "<kind>",
@@ -43,9 +47,12 @@ final class OperatorsCommand extends BaseCommand {
     public Integer call() {
         OperatorCatalog catalog = OperatorCatalog.load();
         if (id != null) {
-            return catalog.byId(id)
-                    .map(e -> emit(full(e)))
-                    .orElseGet(() -> fail("no operator '" + id + "' in the catalog (run `operators` to list them)"));
+            Optional<OperatorEntry> exact = catalog.byId(id);
+            if (exact.isPresent()) {
+                return emit(full(exact.get()));   // an exact id → that operator's full semantics
+            }
+            // G13: a non-id positional is the agent's natural reach for a filter — treat it as a substring
+            // needle over the list (composes with --kind/--keyword below), instead of failing outright
         }
         ObjectNode root = MAPPER.createObjectNode();
         root.put("verifiedAgainst", catalog.verifiedAgainst());
@@ -53,8 +60,14 @@ final class OperatorsCommand extends BaseCommand {
         catalog.entries().stream()
                 .filter(e -> kind == null || e.kind().name().equalsIgnoreCase(kind))
                 .filter(e -> keyword == null || containsKeyword(e, keyword))
+                .filter(e -> id == null || matchesSubstring(e, id))
                 .forEach(e -> list.add(compact(e)));
         root.put("count", list.size());
+        if (id != null && list.isEmpty()) {
+            // neither an exact id nor a substring match → keep the corrective failure (a genuine typo)
+            return fail("no operator '" + id + "' — not an id, and nothing matched it as a substring "
+                    + "(run `operators` to list all, or try a shorter substring)");
+        }
         return emit(root);
     }
 
@@ -63,6 +76,19 @@ final class OperatorsCommand extends BaseCommand {
         String en = e.keywords() == null ? "" : String.valueOf(e.keywords().en()).toLowerCase(Locale.ROOT);
         String de = e.keywords() == null ? "" : String.valueOf(e.keywords().de()).toLowerCase(Locale.ROOT);
         return en.contains(n) || de.contains(n);
+    }
+
+    /** The positional substring filter (G13): match the needle against the id, EN/DE keyword, or meaning. */
+    private static boolean matchesSubstring(OperatorEntry e, String needle) {
+        String n = needle.toLowerCase(Locale.ROOT);
+        StringBuilder hay = new StringBuilder(e.id());
+        if (e.keywords() != null) {
+            hay.append(' ').append(e.keywords().en()).append(' ').append(e.keywords().de());
+        }
+        if (e.meaning() != null) {
+            hay.append(' ').append(e.meaning());
+        }
+        return hay.toString().toLowerCase(Locale.ROOT).contains(n);
     }
 
     private ObjectNode compact(OperatorEntry e) {

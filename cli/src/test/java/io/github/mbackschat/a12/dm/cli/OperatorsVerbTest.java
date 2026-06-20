@@ -64,4 +64,34 @@ class OperatorsVerbTest {
             assertEquals("PREDICATE", it.next().path("kind").asText());
         }
     }
+
+    @Test
+    void aNonIdPositionalFiltersTheCatalogBySubstring() throws Exception {
+        // G13: an agent's natural reach — `operators <substring>` — narrows the list instead of failing
+        // (an exact id still gives the full single operator; a non-id positional is a substring needle)
+        CliTestSupport.Result res = CliTestSupport.run("operators", "Difference");
+        assertEquals(0, res.code(), res::err);
+        JsonNode j = MAPPER.readTree(res.out());
+        assertTrue(j.has("operators"), () -> "a substring returns the LIST shape, not one full operator: " + res.out());
+        assertTrue(j.path("count").asInt() >= 2, () -> "lists every match: " + res.out());
+        boolean hasDays = false;
+        boolean hasYears = false;
+        for (Iterator<JsonNode> it = j.path("operators").elements(); it.hasNext();) {
+            String id = it.next().path("id").asText();
+            hasDays |= "DifferenceInDays".equals(id);
+            hasYears |= "DifferenceInYears".equals(id);
+        }
+        assertTrue(hasDays && hasYears, () -> "the substring surfaces the matching operators: " + res.out());
+    }
+
+    @Test
+    void aSubstringComposesWithKind() throws Exception {
+        CliTestSupport.Result res = CliTestSupport.run("operators", "filled", "--kind", "PREDICATE");
+        assertEquals(0, res.code(), res::err);
+        JsonNode ops = MAPPER.readTree(res.out()).path("operators");
+        assertTrue(ops.size() > 0, () -> "filled predicates exist: " + res.out());
+        for (Iterator<JsonNode> it = ops.elements(); it.hasNext();) {
+            assertEquals("PREDICATE", it.next().path("kind").asText(), "the --kind filter still applies");
+        }
+    }
 }

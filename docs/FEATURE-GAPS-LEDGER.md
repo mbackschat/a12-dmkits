@@ -44,12 +44,13 @@ Legacy **`FEATURE-GAPS §3.x`** section refs in code/docs are *pre-restructure* 
 
 | gap | what it is | contract home when built |
 |---|---|---|
-| **G13** | **`operators` has no narrowing flag.** Browsing the operator catalog is all-or-one (`operators` / `operators <id>`); an agent guessed `operators --filter` (probe 01b, standing finding **F1**). A positional/substring filter (`operators <substring>`) would cut the scan. Low priority. | CLI-SPEC §5 (the `operators` verb) |
+| *(none open)* | G12–G14 shipped 2026-06-20 — see below. | — |
 
 When one ships, its durable *why* goes to API-FINDINGS (a DSL/API gap) or the CLI specs (a `dmtool` gap), and its row leaves this section.
 
 **Shipped 2026-06-20 (graduated out of the open backlog):**
 - **G12 — `apply` op-set parity** (no `rule remove` op; `group remove` lacked `cascade`, so a "delete a referenced group / delete a rule" edit couldn't be expressed atomically in `apply`; surfaced by probe `01-de` Finding 8). Built: a `rule remove` op + a `cascade` key on the `group remove` op, the cascade single-sourced with the standalone verb via `GroupRemoval` so they can't drift. Contract: **CLI-SPEC §6/§7** + the `apply` schema.
+- **G13 — `operators` ergonomic narrowing** (the catalog had `--kind`/`--keyword` even at probe time, but an agent reached for the shape we *didn't* offer — a bare `operators <substring>`; probe 01b, the former standing finding **F1**). Built: the positional now falls back to a substring filter over id/keyword/meaning when it isn't an exact id (an exact id still gives full semantics), composable with `--kind`/`--keyword`. Contract: **CLI-SPEC §5** (the `operators` verb).
 - **G14 — invalid-on-disk load uniformity** (Finding 7's handler rendered an *escaped* `ModelConsistencyException` as a structured `rejected` envelope, but `rule read`/`model describe` caught it internally into a plain `"… failed:"`). Built: those verbs now **re-throw** `ModelConsistencyException` so the one `Cli` seam renders the same structured envelope. Contract: **CLI-SPEC §3** (the result-envelope contract).
 
 ---

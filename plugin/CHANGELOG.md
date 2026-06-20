@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 ### Added
 
 - **`apply` now covers the full delete op-set — `rule remove` and `group remove` with `cascade`.** A "delete a rule" or "delete a referenced group and its referrers" edit could not be expressed inside an `apply` transaction (`rule remove` was an unknown op; `group remove` rejected `cascade` as an unknown arg), forcing a drop to standalone calls mid-transaction. `apply` now has a `rule remove` op, and its `group remove` op takes the same `cascade` safe-delete gate as the standalone verb — both single-sourced with the standalone verbs so they can't drift.
+- **`operators <substring>` now filters the catalog.** Narrowing the operator list was only possible via `--kind`/`--keyword`; an agent's natural reach — a bare `operators date` — failed as "no such operator." A non-id positional is now a substring filter (matched over id, keyword, and meaning) that composes with `--kind`/`--keyword`; an exact id still returns that operator's full semantics.
 
 ### Changed
 

@@ -31,7 +31,7 @@ The method doc is [`docs/PROBE-SPEC.md`](../docs/PROBE-SPEC.md); the scenario in
 | `03` subscription computation | **computations** (add/modify) — least-probed surface | **probed** (report 2026-06-20; correctness MET, efficient; 1 discoverability finding P03-1, fixed) |
 | `04` multifile includes | includes + `-w` from scratch — partially covered by 01 turn 2 | TODO (lower) |
 
-Standing low finding **F1** (from 01b): `operators` has no narrowing flag (an agent guessed `operators --filter`); a positional/substring filter would help. Low priority.
+Former standing finding **F1** (from 01b): an agent guessed `operators --filter` to narrow the catalog. **Resolved 2026-06-20 (G13):** `operators <substring>` now filters the list (matched over id/keyword/meaning), composing with `--kind`/`--keyword`; an exact id still gives full semantics.
 
 ## The keystone, in one line
 
