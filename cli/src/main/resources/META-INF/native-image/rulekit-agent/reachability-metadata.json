@@ -15547,6 +15547,10 @@
       "glob": "sun/text/resources/LineBreakIteratorData"
     },
     {
+      "module": "java.base",
+      "glob": "sun/text/resources/WordBreakIteratorData"
+    },
+    {
       "bundle": "com.mgmtp.a12.kernel.core.parser.internal.grammar.languages.LexerTerminals"
     },
     {
