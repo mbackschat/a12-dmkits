@@ -2,9 +2,11 @@ package io.github.mbackschat.a12.dm.cli;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import picocli.CommandLine;
 
 /**
@@ -81,7 +83,23 @@ public final class Cli {
             CommandLine cli = new CommandLine(new RootCommand())
                     .setOut(outW)
                     .setErr(errW)
-                    .setExpandAtFiles(false); // model paths are plain args, never @argfiles
+                    .setExpandAtFiles(false) // model paths are plain args, never @argfiles
+                    // No raw exception escapes a verb (CLI-CONFORMANCE) — on the model-LOAD path too. A verb
+                    // that loads an invalid-on-disk model (strict ofJson → checkConsistency) throws
+                    // ModelConsistencyException; without this it surfaces as a Java stack trace (probe 01-de
+                    // Finding 7). Map it, at this single seam covering every verb, to the same structured
+                    // `rejected` envelope a write-path kernel rejection produces.
+                    .setExecutionExceptionHandler((ex, commandLine, parseResult) -> {
+                        if (ex instanceof ModelConsistencyException mce) {
+                            String[] to = targetOp(parseResult);
+                            ResultEnvelope env = BaseCommand.kernelRejectionEnvelope(to[0], to[1],
+                                    "the model is rejected by the kernel — it is invalid as stored", mce);
+                            commandLine.getOut().print(env.toJsonString());
+                            commandLine.getOut().flush();
+                            return env.exitCode();
+                        }
+                        throw ex; // anything else keeps picocli's default handling
+                    });
             if (nativeProfile) {
                 hideJvmOnlyVerbs(cli);
             }
@@ -102,6 +120,16 @@ public final class Cli {
      * and {@code --help} are all derived from this tree (the no-drift contract), this single removal hides
      * them from every self-describing surface — so a cold native agent can't even explore them.
      */
+    /** The {@code (target, op)} names below the root for a parse result — e.g. {@code {"rule","modify"}};
+     *  {@code op} is {@code ""} for a single-token verb. Used to stamp the load-failure {@code rejected} envelope. */
+    private static String[] targetOp(CommandLine.ParseResult pr) {
+        List<String> names = new ArrayList<>();
+        for (CommandLine.ParseResult cur = pr.subcommand(); cur != null; cur = cur.subcommand()) {
+            names.add(cur.commandSpec().name());
+        }
+        return new String[]{names.isEmpty() ? "model" : names.get(0), names.size() > 1 ? names.get(1) : ""};
+    }
+
     static void hideJvmOnlyVerbs(CommandLine cli) {
         for (String[] verb : JVM_ONLY_VERBS) {
             CommandLine target = cli.getSubcommands().get(verb[0]);

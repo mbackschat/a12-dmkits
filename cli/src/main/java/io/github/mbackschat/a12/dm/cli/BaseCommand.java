@@ -152,6 +152,19 @@ public abstract class BaseCommand implements Callable<Integer> {
      * modelkit edit verbs, whose {@code EditSession.validate()} funnels both kernel tiers into this exception.
      */
     protected int emitKernelRejection(String target, String op, String summary, ModelConsistencyException e) {
+        ResultEnvelope env = kernelRejectionEnvelope(target, op, summary, e);
+        out().print(env.toJsonString());
+        return env.exitCode();
+    }
+
+    /**
+     * Build (don't print) the {@code rejected} envelope for a kernel consistency failure — its {@code MVK_*}
+     * notifications as enriched {@link Diagnostic}s. Static + shared so the {@link Cli} execution-exception
+     * handler can map an <em>escaped</em> {@link ModelConsistencyException} (a verb that LOADS an
+     * invalid-on-disk model — probe 01-de Finding 7) to the same structured envelope, instead of letting it
+     * surface as a raw stack trace.
+     */
+    static ResultEnvelope kernelRejectionEnvelope(String target, String op, String summary, ModelConsistencyException e) {
         List<Diagnostic> diagnostics = new ArrayList<>();
         for (RankedNotification n : e.notifications()) {
             diagnostics.add(KernelDiagnostics.enriched(n, null));
@@ -160,8 +173,6 @@ public abstract class BaseCommand implements Callable<Integer> {
             diagnostics.add(Diagnostic.precheck(Optional.empty(), e.getMessage(),
                     new Diagnostic.Where((String) null, Optional.empty()), Optional.empty(), Optional.empty()));
         }
-        ResultEnvelope env = ResultEnvelope.rejected(target, op, summary, diagnostics);
-        out().print(env.toJsonString());
-        return env.exitCode();
+        return ResultEnvelope.rejected(target, op, summary, diagnostics);
     }
 }
