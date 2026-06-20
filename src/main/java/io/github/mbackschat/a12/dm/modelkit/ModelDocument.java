@@ -911,11 +911,38 @@ public final class ModelDocument {
         if (id != null && (id.equals(oldPrefix) || id.startsWith(oldPrefix + "/"))) {
             obj.put("id", newPrefix + id.substring(oldPrefix.length()));
         }
-        if ("Group".equals(obj.path("type").asText())) {
+        String type = obj.path("type").asText();
+        if ("Group".equals(type)) {
             for (JsonNode child : obj.path("Group").path("elements")) {
                 reprefixIds(child, oldPrefix, newPrefix);
             }
+        } else if ("Rule".equals(type) && obj.path("Rule") instanceof ObjectNode rule) {
+            // a carried rule's ABSOLUTE condition operands must re-base to the new root too (probe 01-de
+            // Finding 6) — else the sub-model references the old foreign root (MVK_INVALID_ROOT_GROUP). The
+            // errorEntityRelPath is relative ('../X') so it rides along unchanged.
+            reprefixText(rule, "errorCondition", oldPrefix, newPrefix);
+        } else if ("Computation".equals(type) && obj.path("Computation") instanceof ObjectNode comp) {
+            reprefixText(comp, "commonPrecondition", oldPrefix, newPrefix);
+            for (JsonNode alt : comp.path("computationAlternatives")) {
+                if (alt instanceof ObjectNode altObj) {
+                    reprefixText(altObj, "precondition", oldPrefix, newPrefix);
+                    reprefixText(altObj, "operation", oldPrefix, newPrefix);
+                }
+            }
         }
+    }
+
+    /** Re-prefix every ABSOLUTE path operand in {@code holder.field} from {@code oldPrefix} to {@code newPrefix},
+     *  only at a path-segment boundary (so {@code /Order/ShippingExtra} is never matched by {@code /Order/Shipping}). */
+    private static void reprefixText(ObjectNode holder, String field, String oldPrefix, String newPrefix) {
+        String text = holder.path(field).asText(null);
+        if (text == null || !text.contains(oldPrefix)) {
+            return;
+        }
+        String rebased = text.replaceAll(
+                java.util.regex.Pattern.quote(oldPrefix) + "(?=[/)\\],\\s]|$)",
+                java.util.regex.Matcher.quoteReplacement(newPrefix));
+        holder.put(field, rebased);
     }
 
     /** Find any element (field/group/rule/computation) by its full-name id; {@code null} if absent. */

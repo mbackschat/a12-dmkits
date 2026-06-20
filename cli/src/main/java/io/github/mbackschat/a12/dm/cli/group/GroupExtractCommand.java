@@ -108,6 +108,15 @@ final class GroupExtractCommand extends BaseCommand {
         } catch (ModelConsistencyException e) {
             return emitKernelRejection("group", "extract", "extraction left the model invalid", e);
         }
+        // §6 gate: the sub-model must be valid ON ITS OWN, not only inside the composed pair — else a carried
+        // rule whose absolute operands couldn't be re-based ships as a broken artifact (probe 01-de Finding 6).
+        // The path-rewrite in extractGroupAsInclude handles the common case; this refuses any residual.
+        try {
+            EditSession.read(subModel).validate();
+        } catch (ModelConsistencyException e) {
+            return emitKernelRejection("group", "extract",
+                    "the extracted sub-model is invalid on its own — a carried rule's paths could not be re-based to the sub-model root", e);
+        }
 
         // write the extracted sub-model into the first workspace root (-w / $DMTOOL_WORKSPACE / the model's folder)
         Path subFile = workspace.roots(model).get(0).resolve(reference + ".dm.json");

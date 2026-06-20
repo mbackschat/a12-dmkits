@@ -77,6 +77,36 @@ class GroupExtractVerbTest {
     }
 
     @Test
+    void extractedSubModelIsValidStandalone_carriedRuleAbsolutePathsAreReBased(@TempDir Path dir) throws Exception {
+        // probe 01-de Finding 6: a carried rule's ABSOLUTE operands (/Order/Shipping/*) were copied verbatim
+        // into the sub-model (root /Shipping) → invalid STANDALONE (MVK_INVALID_ROOT_GROUP), though the
+        // composed pair validated (masking it). The operands must re-base to the sub-model root on extract.
+        String base = DocumentModelDraft.named("order").locale("en_US")
+                .rootGroup("Order", o -> o
+                        .field("OrderDate", FieldKind.DATE)
+                        .group("Shipping", sh -> sh.field("Zip", FieldKind.STRING).field("City", FieldKind.STRING)))
+                .build().toJson();
+        String withRule = EditSession.read(base)
+                .addRule(m -> m.rule(m.group("/Order/Shipping")).name("CityNeedsZip")
+                        .errorField(m.str("/Order/Shipping/Zip"))
+                        .when(m.str("/Order/Shipping/City").filled().and(m.str("/Order/Shipping/Zip").notFilled()))
+                        .code("CITY_ZIP").severity(Severity.ERROR).message(en("A zip is required with a city.")).build())
+                .toJson();
+        Path model = write(dir, "order.dm.json", withRule);
+
+        var res = CliTestSupport.run("-m", model.toString(), "group", "extract", "/Order/Shipping", "--reference", "shipping");
+        assertEquals(0, res.code(), res.err());
+
+        // THE GUARD: the produced sub-model is valid ON ITS OWN, not only inside the composed pair
+        assertEquals(0, CliTestSupport.run("-m", dir.resolve("shipping.dm.json").toString(), "model", "validate").code(),
+                "the extracted sub-model must be valid standalone (carried rule operands re-based to its root)");
+        // and the carried rule's operands were rewritten from /Order/Shipping/* to /Shipping/*
+        String sub = Files.readString(dir.resolve("shipping.dm.json"));
+        assertTrue(sub.contains("/Shipping/Zip"), () -> "operands re-based to the sub-model root: " + sub);
+        assertFalse(sub.contains("/Order/Shipping"), () -> "no stale /Order/Shipping operand survives: " + sub);
+    }
+
+    @Test
     void refusesExtractingARepeatableGroup(@TempDir Path dir) throws Exception {
         String json = DocumentModelDraft.named("order").locale("en_US")
                 .rootGroup("Order", o -> o
