@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.adapter.ReadResult;
+import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import picocli.CommandLine.Command;
@@ -74,6 +75,8 @@ final class RuleReadCommand extends BaseCommand {
                     true, List.of(), data);
             out().print(env.toJsonString());
             return env.exitCode();
+        } catch (ModelConsistencyException e) {
+            throw e; // G14: an invalid-on-disk model → the one Cli handler renders the structured `rejected` envelope (CLI-SPEC §3)
         } catch (RuntimeException e) {
             return fail("read failed: " + e.getMessage());
         }

@@ -45,12 +45,12 @@ Legacy **`FEATURE-GAPS §3.x`** section refs in code/docs are *pre-restructure* 
 | gap | what it is | contract home when built |
 |---|---|---|
 | **G13** | **`operators` has no narrowing flag.** Browsing the operator catalog is all-or-one (`operators` / `operators <id>`); an agent guessed `operators --filter` (probe 01b, standing finding **F1**). A positional/substring filter (`operators <substring>`) would cut the scan. Low priority. | CLI-SPEC §5 (the `operators` verb) |
-| **G14** | **Invalid-on-disk model load: structured envelope only on the *uncaught* path.** Finding 7's handler maps an *escaped* `ModelConsistencyException` to a structured `rejected` envelope (e.g. `rule modify`), but verbs that catch it *internally* (`rule read`, `model describe`) still emit a plain `"… failed: <MVK msg>"` (no stack trace, but not the structured envelope). A consistency gap. Fix direction: have those verbs **re-throw** `ModelConsistencyException` (let the one handler render it) instead of catching it into a plain `fail`. Low-med. | CLI-SPEC §3 (the result-envelope contract) |
 
 When one ships, its durable *why* goes to API-FINDINGS (a DSL/API gap) or the CLI specs (a `dmtool` gap), and its row leaves this section.
 
 **Shipped 2026-06-20 (graduated out of the open backlog):**
 - **G12 — `apply` op-set parity** (no `rule remove` op; `group remove` lacked `cascade`, so a "delete a referenced group / delete a rule" edit couldn't be expressed atomically in `apply`; surfaced by probe `01-de` Finding 8). Built: a `rule remove` op + a `cascade` key on the `group remove` op, the cascade single-sourced with the standalone verb via `GroupRemoval` so they can't drift. Contract: **CLI-SPEC §6/§7** + the `apply` schema.
+- **G14 — invalid-on-disk load uniformity** (Finding 7's handler rendered an *escaped* `ModelConsistencyException` as a structured `rejected` envelope, but `rule read`/`model describe` caught it internally into a plain `"… failed:"`). Built: those verbs now **re-throw** `ModelConsistencyException` so the one `Cli` seam renders the same structured envelope. Contract: **CLI-SPEC §3** (the result-envelope contract).
 
 ---
 

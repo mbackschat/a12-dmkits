@@ -113,6 +113,8 @@ Every verb and every batch op emits the same shape. It **embeds the existing dia
 
 **The `ok` / `valid` split fixes a real overload:** `ok` = "the tool did the job"; `valid` = "the model is kernel-valid." A `model validate` that finds the model invalid is `ok:true, valid:false` — the tool worked, the model didn't. **Exit codes** key off this: **0** = `ok` and not `valid:false` (applied/preview/read of a valid subject); **1** = `rejected`, or a validate/check with `valid:false`; **2** = `refused` (safe-gate) or a usage error. Everything else lives in the envelope.
 
+**Invalid *on disk* → a `rejected` envelope, uniformly (no raw stack trace).** A model that fails the kernel's consistency check at *load* (a strict `ofJson`) throws `ModelConsistencyException`. One execution-exception seam in `Cli` maps an *escaped* one to the same structured `rejected` envelope (`MVK_*` code + message in `diagnostics[]`) a write-path rejection produces — so the rule holds for every verb, not just the write path. The corollary (**G14**): a verb must *let it escape* — a read verb that loads a model (`rule read`, `model describe`) **re-throws** `ModelConsistencyException` rather than catching it into a plain `"… failed:"` string, so it reaches that one seam and renders the same envelope. (`model validate` is tolerant by design and stays so.)
+
 ## 4. Diagnostics — reuse, extend, correct
 
 The diagnostic is **already defined** — reuse it, don't reinvent it.

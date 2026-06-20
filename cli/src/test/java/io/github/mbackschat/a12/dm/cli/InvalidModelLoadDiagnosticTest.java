@@ -65,10 +65,27 @@ class InvalidModelLoadDiagnosticTest {
     }
 
     @Test
-    void modelDescribeOnAnInvalidStoredModelDoesNotLeakAStackTrace(@TempDir Path dir) throws Exception {
-        // the class, not one verb: another load verb on the same invalid model must also stay trace-free
+    void modelDescribeOnAnInvalidStoredModelGivesAStructuredRejection_notAStackTrace(@TempDir Path dir) throws Exception {
+        // the class, not one verb: another load verb on the same invalid model must give the SAME structured
+        // envelope (G14 — it used to catch the exception into a plain "describe failed:" string, not the envelope)
         CliTestSupport.Result res = CliTestSupport.run("-m", invalidModel(dir).toString(), "model", "describe");
         assertNotEquals(0, res.code());
         assertNoStackTrace(res);
+        var env = M.readTree(res.out());
+        assertEquals("rejected", env.path("outcome").asText(), () -> "a structured rejected envelope: " + res.out());
+        assertTrue(res.out().contains("MVK_INVALID_ROOT_GROUP"),
+                () -> "the kernel's code surfaces in the envelope: " + res.out());
+    }
+
+    @Test
+    void ruleReadOnAnInvalidStoredModelGivesAStructuredRejection_notAStackTrace(@TempDir Path dir) throws Exception {
+        // rule read caught the load exception into a plain "read failed:" string (G14) — same model, same fix
+        CliTestSupport.Result res = CliTestSupport.run("-m", invalidModel(dir).toString(), "rule", "read", "/R/BAD");
+        assertNotEquals(0, res.code(), "an invalid-on-disk model is a refusal, not success");
+        assertNoStackTrace(res);
+        var env = M.readTree(res.out());
+        assertEquals("rejected", env.path("outcome").asText(), () -> "a structured rejected envelope: " + res.out());
+        assertTrue(res.out().contains("MVK_INVALID_ROOT_GROUP"),
+                () -> "the kernel's code surfaces in the envelope: " + res.out());
     }
 }
