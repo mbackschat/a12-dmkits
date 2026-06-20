@@ -17,9 +17,9 @@ dmkits serves the **correctness** axis well, and these strengths are the baselin
 
 ---
 
-## 2. The gaps, and where their rationale lives
+## 2. Shipped gaps — and where their rationale lives
 
-The 2026-06-14 review's **G1–G7**, the OQ1-probe **G8–G11**, and the residuals **R1–R4** all shipped. Their *identity* (so a `Gn` code ref means something) and *where the durable why now lives*:
+The 2026-06-14 review's **G1–G7**, the OQ1-probe **G8–G11**, the residuals **R1–R4**, and the 2026-06-20 probe gaps **G12–G14** all shipped. Their *identity* (so a `Gn` code ref means something) and *where the durable why now lives*:
 
 | gap | what it is | rationale / contract now in |
 |---|---|---|
@@ -35,6 +35,9 @@ The 2026-06-14 review's **G1–G7**, the OQ1-probe **G8–G11**, and the residua
 | **G10** | `rule read` surfaces a rule's stored message text (native-capable) | CLI-SPEC §5 |
 | **G11** | `where-used` takes the entity positionally; output rides the result envelope | CLI-SPEC §6 |
 | **R3 / R4** | the `workspace roles` lint (model `roles` ↔ `roles.yaml` ↔ `users.yaml`, advisory) | CLI-SPEC §5 ("the workspace roles lint") |
+| **G12** | `apply` op-set parity — a `rule remove` op + a `cascade` key on `group remove`, the cascade single-sourced with the standalone verb via `GroupRemoval` so they can't drift (probe `01-de` Finding 8) | CLI-SPEC §6/§7 + the `apply` schema |
+| **G13** | `operators <substring>` narrows the catalog (id/keyword/meaning) — the agent's natural reach; composes with `--kind`/`--keyword`, an exact id still gives full semantics (probe 01b, former finding **F1**) | CLI-SPEC §5 (the `operators` verb) |
+| **G14** | invalid-on-disk load uniformity — `rule read`/`model describe` **re-throw** `ModelConsistencyException` so the one `Cli` seam renders the structured `rejected` envelope (Finding 7's residual two read verbs) | CLI-SPEC §3 (the result-envelope contract) |
 
 Legacy **`FEATURE-GAPS §3.x`** section refs in code/docs are *pre-restructure* numbers — they resolve by **topic** (the gap rows above, or API-FINDINGS / CLI-SPEC §5–§6), not to a literal `§3.x` section in this doc (e.g. the §3.1 refactor set → CLI-SPEC §6 + API-FINDINGS finding 23). The earlier *structural authoring-coverage* inventory is likewise closed.
 
@@ -42,16 +45,9 @@ Legacy **`FEATURE-GAPS §3.x`** section refs in code/docs are *pre-restructure* 
 
 ## 3. Open backlog
 
-| gap | what it is | contract home when built |
-|---|---|---|
-| *(none open)* | G12–G14 shipped 2026-06-20 — see below. | — |
+*(none open — G12–G14 shipped 2026-06-20 and moved up to §2.)*
 
-When one ships, its durable *why* goes to API-FINDINGS (a DSL/API gap) or the CLI specs (a `dmtool` gap), and its row leaves this section.
-
-**Shipped 2026-06-20 (graduated out of the open backlog):**
-- **G12 — `apply` op-set parity** (no `rule remove` op; `group remove` lacked `cascade`, so a "delete a referenced group / delete a rule" edit couldn't be expressed atomically in `apply`; surfaced by probe `01-de` Finding 8). Built: a `rule remove` op + a `cascade` key on the `group remove` op, the cascade single-sourced with the standalone verb via `GroupRemoval` so they can't drift. Contract: **CLI-SPEC §6/§7** + the `apply` schema.
-- **G13 — `operators` ergonomic narrowing** (the catalog had `--kind`/`--keyword` even at probe time, but an agent reached for the shape we *didn't* offer — a bare `operators <substring>`; probe 01b, the former standing finding **F1**). Built: the positional now falls back to a substring filter over id/keyword/meaning when it isn't an exact id (an exact id still gives full semantics), composable with `--kind`/`--keyword`. Contract: **CLI-SPEC §5** (the `operators` verb).
-- **G14 — invalid-on-disk load uniformity** (Finding 7's handler rendered an *escaped* `ModelConsistencyException` as a structured `rejected` envelope, but `rule read`/`model describe` caught it internally into a plain `"… failed:"`). Built: those verbs now **re-throw** `ModelConsistencyException` so the one `Cli` seam renders the same structured envelope. Contract: **CLI-SPEC §3** (the result-envelope contract).
+**Lifecycle — the convention (so this section never carries shipped work).** A gap lives here only while **open**. When it ships, **move its row up into §2** (Shipped gaps) in the *same commit*, with its rationale/contract column pointing at its owning spec — **API-FINDINGS** for a DSL/API gap, the **CLI specs** for a `dmtool` gap. This section is the live to-do list; §2 is the graduation record. Never leave a shipped item in this backlog, and never record a shipped item *only* here as a "shipped" sub-list — it belongs in §2.
 
 ---
 
