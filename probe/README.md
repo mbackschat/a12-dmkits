@@ -49,8 +49,10 @@ JAVA_HOME="$(/usr/libexec/java_home -v 21)" ./gradlew :cli:nativeCompile -Porg.g
 ./probe/prep-probe.sh
 
 # 3. (main loop) drive a general-purpose subagent through a task's prompts IN ORDER, as one session.
-#    Build its prompt as: agent-preamble.md (single-sourced framing) + the task's TURN blocks (verbatim).
-#    cwd = <sandbox>/work, PATH = <sandbox>/bin:$PATH (bare `dmtool` → the shim), skill at <sandbox>/SKILL.md.
+#    FIRST clear the main-loop TaskList — the subagent INHERITS it via system-reminders and a revealing task
+#    name biases the probe (PROBE-SPEC, audit check 5). Build its prompt as: agent-preamble.md (single-sourced
+#    framing) + the task's TURN blocks (verbatim). cwd = <sandbox>/work, PATH = <sandbox>/bin:$PATH (bare
+#    `dmtool` → the shim), skill at <sandbox>/SKILL.md.
 
 # 4. INTEGRITY GATE — confirm the agent stayed within its material boundary (skill + dmtool + own work files).
 #    Pass the agentId the Agent tool reported (or the transcript path). STOP and discard if it says SUSPECT:

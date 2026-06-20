@@ -42,7 +42,13 @@ Legacy **`FEATURE-GAPS §3.x`** section refs in code/docs are *pre-restructure* 
 
 ## 3. Open backlog
 
-**Empty.** New BA-workflow gaps land here as they're discovered; when one ships, its durable *why* goes to API-FINDINGS (a DSL/API gap) or the CLI specs (a `dmtool` gap), and this section returns to empty.
+| gap | what it is | contract home when built |
+|---|---|---|
+| **G12** | **`apply` op-set parity with the standalone verbs.** The `apply` `group remove` op lacks `--cascade` (→ `RK_UNKNOWN_ARG`, "valid args: groupPathInModel") and there is **no `rule remove` op** (→ `RK_UNKNOWN_OP`; apply's rule ops are add/modify/rename). So a "delete a referenced group / delete a rule" refactor **cannot be expressed atomically in `apply`** — it forces a drop to standalone calls. Same uniformity class as the export-`-m` / workspace-`-w` fixes, here between the standalone surface and the apply op-set. Surfaced by probe `01-de` (Finding 8). Fix: add the `cascade` key to the `group remove` op + a `rule remove` `Op`. | CLI-SPEC §7 + the `apply` schema |
+| **G13** | **`operators` has no narrowing flag.** Browsing the operator catalog is all-or-one (`operators` / `operators <id>`); an agent guessed `operators --filter` (probe 01b, standing finding **F1**). A positional/substring filter (`operators <substring>`) would cut the scan. Low priority. | CLI-SPEC §5 (the `operators` verb) |
+| **G14** | **Invalid-on-disk model load: structured envelope only on the *uncaught* path.** Finding 7's handler maps an *escaped* `ModelConsistencyException` to a structured `rejected` envelope (e.g. `rule modify`), but verbs that catch it *internally* (`rule read`, `model describe`) still emit a plain `"… failed: <MVK msg>"` (no stack trace, but not the structured envelope). A consistency gap. Fix direction: have those verbs **re-throw** `ModelConsistencyException` (let the one handler render it) instead of catching it into a plain `fail`. Low-med. | CLI-SPEC §3 (the result-envelope contract) |
+
+When one ships, its durable *why* goes to API-FINDINGS (a DSL/API gap) or the CLI specs (a `dmtool` gap), and its row leaves this section.
 
 ---
 

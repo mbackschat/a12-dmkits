@@ -137,6 +137,20 @@ else
   note "clean — no Bash command hand-edited a model file (no non-dmtool write to a managed model)"
 fi
 
+# --- Check 5: no main-loop CONTEXT leaked into the subagent (isolation, not just the file boundary) ---
+# The Agent-tool subagent inherits the runner's session TaskList via system-reminders — so a main-loop task
+# (its SUBJECT included) bleeds into the probe's context and can BIAS it (it once leaked "findings 6+7",
+# steering the agent away from the path under test). The runner must clear its TaskList before spawning
+# (PROBE-SPEC); this tripwire catches a forgotten clear: a `task #<n>` reference in the subagent transcript is
+# a leaked TaskList id (0 in a clean run; the probe never authors that token itself).
+taskleak="$(grep -oiE "task #[0-9]+" "$T" 2>/dev/null | sort -u | tr '\n' ' ')"
+echo "[5] context isolation — no main-loop TaskList leaked into the subagent"
+if [[ -n "${taskleak// /}" ]]; then
+  fail=1; note "SUSPECT — main-loop task context leaked into the probe (clear the TaskList before spawning): $taskleak"
+else
+  note "clean — no main-loop task reference in the subagent's context"
+fi
+
 echo
 if [[ "$fail" -ne 0 ]]; then
   echo "VERDICT: SUSPECT — material boundary crossed; this run's findings are NOT trustworthy."
