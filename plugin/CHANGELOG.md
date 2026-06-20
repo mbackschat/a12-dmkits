@@ -4,7 +4,7 @@ All notable changes to the **publicly released `dmtool` artifacts** — the nati
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/) plus **A12 Kernel compatibility metadata** (the kernel each release targets is recorded per entry, never folded into the version string).
 
-## [Unreleased]
+## [0.4.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
 ### Added
 
