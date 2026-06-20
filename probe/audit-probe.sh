@@ -61,6 +61,11 @@ file_paths() {
     | select(.name=="Read" or .name=="Write" or .name=="Edit" or .name=="NotebookEdit" or .name=="Glob" or .name=="Grep")
     | .input.file_path // .input.path // empty' "$T"
 }
+# Every Bash command body, one per line, JSON-escaped (a multi-line/heredoc command stays a single line).
+bash_cmds() {
+  jq -rc 'select(.message.content) | .message.content[]? | select(.type=="tool_use" and .name=="Bash")
+    | .input.command // empty | @json' "$T"
+}
 write_basenames() {
   jq -rc 'select(.message.content) | .message.content[]? | select(.type=="tool_use" and (.name=="Write" or .name=="Edit" or .name=="NotebookEdit"))
     | .input.file_path // empty' "$T" | while read -r p; do [[ -n "$p" ]] && basename -- "$p"; done | sort -u
@@ -106,6 +111,30 @@ if [[ -n "${clash// /}" ]]; then
   fail=1; note "SUSPECT — agent Write/Edit targeted a model file dmtool also manages:"; printf '%s\n' "$clash" | sed '/^$/d;s/^/      /'
 else
   note "clean — model files [$(printf '%s' "$modelfiles" | paste -sd' ' -)] were only ever touched by dmtool"
+fi
+
+# --- Check 4: model files were not hand-edited via BASH either (the Write/Edit check above misses sed/python/redirect) ---
+# A model file's content must come only from dmtool. A Bash command that WRITES a model file (redirect / tee /
+# in-place editor / cp·mv / a python·node open-for-write) without invoking dmtool is a hand-edit that bypasses
+# the very surface the probe measures — and the agent reasoned about doing exactly this ("rather than
+# hand-editing JSON"). A redirect FED BY dmtool (`dmtool … > m`) is legitimate (the content is the tool's), so
+# the command is exempt when it invokes dmtool.
+echo "[4] tool-only mutations — agent never hand-edited a MODEL file via Bash (sed/python/redirect/cp)"
+bashhit=""
+while IFS= read -r cmd; do
+  [[ -z "$cmd" || "$cmd" == '""' ]] && continue
+  printf '%s' "$cmd" | grep -q 'dmtool' && continue   # content originates from the tool → not a hand-edit
+  while IFS= read -r m; do
+    [[ -z "$m" ]] && continue
+    if printf '%s' "$cmd" | grep -qE "((>>?|tee)[^|;&]*${m}|(sed|perl|ruby)[[:space:]]+-i[^|]*${m}|(cp|mv|install|dd)[^|;&]*${m}|open\([^)]*${m}[^)]*['\"]?w|>[[:space:]]*['\"]?${m})"; then
+      bashhit+="$m :: ${cmd:0:160}"$'\n'; break
+    fi
+  done <<< "$modelfiles"
+done < <(bash_cmds)
+if [[ -n "${bashhit// /}" ]]; then
+  fail=1; note "SUSPECT — a Bash command hand-edited a model file outside dmtool:"; printf '%s\n' "$bashhit" | sed '/^$/d;s/^/      /'
+else
+  note "clean — no Bash command hand-edited a model file (no non-dmtool write to a managed model)"
 fi
 
 echo
