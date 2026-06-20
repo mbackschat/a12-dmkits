@@ -24,11 +24,11 @@ The method doc is [`docs/PROBE-SPEC.md`](../docs/PROBE-SPEC.md); the scenario in
 
 | task | covers | status |
 |---|---|---|
-| `01` person + home/work address + extract | groups · metadata · extract→include | **probed** (report 2026-06-19; found P1–P4, H1) |
-| `01b` person DOB → date-derived age + date rules | the native **date operators** (the v0.1.0 crash surface) | **probed** (report 2026-06-19; clean — surface confirmed green) |
-| `01-de` task 01 in **German prompting** | a German-prompted session must produce a `de_DE` locale + German names/descriptions/messages on its own (locale + condition-language stress) | **authored** (`tasks/01-de-person-address-age.md`); probe pending |
+| `01` person + home/work address + extract | groups · metadata · extract→include | **probed + fixed** (P1–P4 all resolved + regression-confirmed; the dated report was cleaned once superseded — fixes live in git + the specs) |
+| `01b` person DOB → date-derived age + date rules | the native **date operators** (the v0.1.0 crash surface) | **probed** (clean — surface confirmed green; the dated report was cleaned once superseded) |
+| `01-de` task 01 in **German prompting** | a German-prompted session must produce a `de_DE` locale + German names/descriptions/messages on its own (locale + condition-language stress) | **probed** (report 2026-06-20; drove findings 1–8 — condition-language, export `-m`, mount-edit, extract path-rebase, load-path stack trace; all fixed except G12/G13/G14 in the gaps ledger) |
 | `02` order date/pattern | **pattern** rules (`violates "[0-9]{5}"`) — date now covered by 01b | TODO |
-| `03` subscription computation | **computations** (add/modify) — least-probed surface | **probed** (report 2026-06-20; correctness MET, efficient; 1 discoverability finding P03-1) |
+| `03` subscription computation | **computations** (add/modify) — least-probed surface | **probed** (report 2026-06-20; correctness MET, efficient; 1 discoverability finding P03-1, fixed) |
 | `04` multifile includes | includes + `-w` from scratch — partially covered by 01 turn 2 | TODO (lower) |
 
 Standing low finding **F1** (from 01b): `operators` has no narrowing flag (an agent guessed `operators --filter`); a positional/substring filter would help. Low priority.
