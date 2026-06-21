@@ -49,6 +49,30 @@ class ApplyVerbTest {
     }
 
     @Test
+    void appliesGroupModifyTypedefEnumAndConfigRolesInOneSession(@TempDir Path dir) throws Exception {
+        // apply-parity for the verbs widened this session: group modify --index-field (G24), the rich
+        // typedef add ENUM spec (G25), and config modify --role (G26) all reachable as op-records.
+        Path model = dir.resolve("subscription.dm.json");
+        Files.writeString(model, CliTestSupport.subscriptionJson());
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, """
+                [ {"target":"group","op":"modify","groupPathInModel":"/Subscription/Addons","index-field":"Name"},
+                  {"target":"typedef","op":"add","id":"Tier","kind":"ENUM",
+                   "enum":{"values":[{"value":"GOLD"},{"value":"SILVER"}]}},
+                  {"target":"config","op":"modify","role":["admin","editor"]} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(0, res.code(), res.err());
+        assertTrue(M.readTree(res.out()).path("committed").asBoolean(), () -> "committed: " + res.out());
+        // the three edits all landed in one write
+        assertEquals("Name", M.readTree(CliTestSupport.run("-m", model.toString(),
+                "group", "read", "/Subscription/Addons").out()).path("data").path("indexField").asText());
+        assertEquals("admin,editor", M.readTree(CliTestSupport.run("-m", model.toString(),
+                "config", "read").out()).path("data").path("annotations").path("roles").asText());
+        assertTrue(Files.readString(model).contains("Tier"), "the enum typedef is persisted");
+    }
+
+    @Test
     void appliesAFieldRetypeInOneSession(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         Path ops = dir.resolve("ops.json");

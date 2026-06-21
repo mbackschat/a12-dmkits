@@ -41,6 +41,12 @@
         "messages": [ { "locale": "en_US", "text": "Confirm the auto-renew choice." },
                       { "locale": "de_DE", "text": "Auto-Verlaengerung bestaetigen." } ] },
       { "target": "rule", "op": "remove", "rule": "/Subscription/AUTO_RENEW_SET" }
+    ],
+    [
+      { "target": "group", "op": "modify", "groupPathInModel": "/Subscription/Addons", "index-field": "Name" },
+      { "target": "typedef", "op": "add", "id": "Tier", "kind": "ENUM",
+        "enum": { "values": [ { "value": "GOLD" }, { "value": "SILVER" } ] } },
+      { "target": "config", "op": "modify", "role": [ "admin", "editor" ], "comment": "managed by the platform team" }
     ]
   ]
 }

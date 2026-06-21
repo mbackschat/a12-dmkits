@@ -242,6 +242,21 @@ public final class EditSession {
         return editStructure(d -> d.setModelComment(text));
     }
 
+    /** Remove a model-level header annotation (no-op if absent). */
+    public EditSession removeModelAnnotation(String name) {
+        return editStructure(d -> d.removeModelAnnotation(name));
+    }
+
+    /** Register a display locale on the model ({@code header.locales}; idempotent). */
+    public EditSession addLocale(String code) {
+        return editStructure(d -> d.addLocale(code));
+    }
+
+    /** Read the model-level header annotations (name→value) — the read peer of {@link #setModelAnnotation}. */
+    public java.util.Map<String, String> modelAnnotations() {
+        return ModelDocument.read(json).modelAnnotations();
+    }
+
     public EditSession setTimeZone(String timeZone) {
         return editStructure(d -> d.setTimeZone(timeZone));
     }

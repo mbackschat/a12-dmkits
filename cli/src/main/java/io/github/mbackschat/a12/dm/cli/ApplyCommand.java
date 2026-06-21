@@ -68,17 +68,21 @@ final class ApplyCommand extends BaseCommand {
         FIELD_MODIFY("field", "modify", FieldSpec.MODIFY_KEYS),
         FIELD_REMOVE("field", "remove", Set.of("fieldPathInModel")),
         GROUP_ADD("group", "add", Set.of("parent", "name", "repeatable")),
+        GROUP_MODIFY("group", "modify", Set.of("groupPathInModel", "repeatable", "non-repeatable",
+                "index-field", "clear-index-field")),
         GROUP_REMOVE("group", "remove", Set.of("groupPathInModel", "cascade")),
         RULE_ADD("rule", "add", Set.of("field", "condition", "comment", "code", "severity", "name", "messages")),
         RULE_MODIFY("rule", "modify", Set.of("rule", "condition", "comment")),
         RULE_REMOVE("rule", "remove", Set.of("rule")),
         COMPUTATION_ADD("computation", "add", Set.of("computedField", "alternatives", "commonPrecondition", "comment", "name", "messages")),
         COMPUTATION_MODIFY("computation", "modify", Set.of("computation", "computedField", "alternatives", "commonPrecondition", "comment", "name", "messages")),
-        TYPEDEF_ADD("typedef", "add", Set.of("id", "kind")),
+        TYPEDEF_ADD("typedef", "add", Set.of("id", "kind", "string", "number", "enum", "custom",
+                "date", "time", "dateTime", "dateRange", "dateFragment")),
         TYPEDEF_REMOVE("typedef", "remove", Set.of("typeDefId")),
         INCLUDE_ADD("include", "add", Set.of("alias", "reference", "parent", "name")),
         INCLUDE_REMOVE("include", "remove", Set.of("alias")),
-        CONFIG_MODIFY("config", "modify", Set.of("decimal-separator", "time-zone", "condition-language")),
+        CONFIG_MODIFY("config", "modify", Set.of("decimal-separator", "time-zone", "condition-language",
+                "label", "annotation", "comment", "add-locale", "role", "clear-roles")),
         FIELD_RENAME("field", "rename", Set.of("fieldPathInModel", "to")),
         FIELD_MOVE("field", "move", Set.of("fieldPathInModel", "to")),
         GROUP_RENAME("group", "rename", Set.of("groupPathInModel", "to")),
@@ -275,6 +279,40 @@ final class ApplyCommand extends BaseCommand {
                 changed.put("added", parent + "/" + groupName);
                 yield staged(which, changed, session);
             }
+            case GROUP_MODIFY -> {
+                // the same repeatability (G15) + index-field (G24) edits as the standalone `group modify`
+                String path = req(op, "groupPathInModel");
+                Integer repeatable = op.hasNonNull("repeatable") ? op.get("repeatable").asInt() : null;
+                boolean nonRepeatable = op.path("non-repeatable").asBoolean(false);
+                String indexField = op.hasNonNull("index-field") ? op.get("index-field").asText() : null;
+                boolean clearIndex = op.path("clear-index-field").asBoolean(false);
+                if (repeatable != null && nonRepeatable) {
+                    throw new IllegalArgumentException("group modify: pass at most one of repeatable / non-repeatable");
+                }
+                if (indexField != null && clearIndex) {
+                    throw new IllegalArgumentException("group modify: pass at most one of index-field / clear-index-field");
+                }
+                if (repeatable == null && !nonRepeatable && indexField == null && !clearIndex) {
+                    throw new IllegalArgumentException("group modify needs one of "
+                            + "repeatable / non-repeatable / index-field / clear-index-field");
+                }
+                if (repeatable != null) {
+                    session.setRepeatable(path, repeatable);
+                    changed.put("repeatable", true);
+                } else if (nonRepeatable) {
+                    session.setNonRepeatable(path);
+                    changed.put("repeatable", false);
+                }
+                if (indexField != null) {
+                    session.setIndexField(path, indexField);
+                    changed.put("indexField", indexField);
+                } else if (clearIndex) {
+                    session.clearIndexField(path);
+                    changed.putNull("indexField");
+                }
+                changed.put("group", path);
+                yield staged(which, changed, session);
+            }
             case GROUP_REMOVE -> {
                 String path = req(op, "groupPathInModel");
                 boolean cascade = op.path("cascade").asBoolean(false);
@@ -353,9 +391,13 @@ final class ApplyCommand extends BaseCommand {
                 yield staged(which, changed, session);
             }
             case TYPEDEF_ADD -> {
+                // the same rich per-kind config as the standalone `typedef add <spec>` (G25), via the shared
+                // FieldSpec.parseType — a bare {id,kind} stays the simple case, an `enum`/`string` block makes
+                // an ENUM/restricted type. Single-sourced so the op and the verb can't drift.
                 String id = req(op, "id");
-                session.addTypeDefinition(id, FieldKind.valueOf(req(op, "kind")));
+                session.addTypeDefinition(id, FieldSpec.parseType(op, id));
                 changed.put("added", id);
+                changed.put("kind", op.path("kind").asText());
                 yield staged(which, changed, session);
             }
             case TYPEDEF_REMOVE -> {
@@ -390,9 +432,49 @@ final class ApplyCommand extends BaseCommand {
                     session.setConditionLanguage(op.get("condition-language").asText());
                     changed.put("conditionLanguage", op.get("condition-language").asText());
                 }
+                if (op.hasNonNull("label")) {
+                    op.get("label").fields().forEachRemaining(e -> {
+                        session.setModelLabel(e.getKey(), e.getValue().asText());
+                        changed.put("label." + e.getKey(), e.getValue().asText());
+                    });
+                }
+                if (op.hasNonNull("annotation")) {
+                    op.get("annotation").fields().forEachRemaining(e -> {
+                        session.setModelAnnotation(e.getKey(), e.getValue().asText());
+                        changed.put("annotation." + e.getKey(), e.getValue().asText());
+                    });
+                }
+                if (op.hasNonNull("comment")) {
+                    session.setModelComment(op.get("comment").asText());
+                    changed.put("comment", op.get("comment").asText());
+                }
+                for (JsonNode code : op.path("add-locale")) {
+                    session.addLocale(code.asText());           // idempotent
+                    changed.put("addedLocale." + code.asText(), true);
+                }
+                if (op.has("role")) {
+                    // MERGE into the comma-separated `roles` annotation (G26 semantics)
+                    java.util.LinkedHashSet<String> merged = new java.util.LinkedHashSet<>();
+                    String existing = session.modelAnnotations().get("roles");
+                    if (existing != null && !existing.isBlank()) {
+                        for (String r : existing.split(",")) {
+                            if (!r.isBlank()) {
+                                merged.add(r.trim());
+                            }
+                        }
+                    }
+                    op.get("role").forEach(r -> merged.add(r.asText()));
+                    String joined = String.join(",", merged);
+                    session.setModelAnnotation("roles", joined);
+                    changed.put("roles", joined);
+                }
+                if (op.path("clear-roles").asBoolean(false)) {
+                    session.removeModelAnnotation("roles");
+                    changed.putNull("roles");
+                }
                 if (changed.isEmpty()) {
-                    throw new IllegalArgumentException("config modify needs one of "
-                            + "decimal-separator, time-zone, condition-language");
+                    throw new IllegalArgumentException("config modify needs one of decimal-separator, time-zone, "
+                            + "condition-language, label, annotation, comment, add-locale, role, clear-roles");
                 }
                 yield staged(which, changed, session);
             }
@@ -580,7 +662,8 @@ final class ApplyCommand extends BaseCommand {
     /** Ops whose spec has nested objects worth schema-validating beyond the flat top-level key-set above. */
     private static final java.util.Map<Op, String> NESTED_SCHEMA = java.util.Map.of(
             Op.FIELD_ADD, "field-add", Op.FIELD_MODIFY, "field-add",
-            Op.RULE_ADD, "add", Op.COMPUTATION_ADD, "add", Op.COMPUTATION_MODIFY, "add");
+            Op.RULE_ADD, "add", Op.COMPUTATION_ADD, "add", Op.COMPUTATION_MODIFY, "add",
+            Op.TYPEDEF_ADD, "typedef-add");
 
     /** The supported {@code target op} labels, sorted — for the unknown-op diagnostic. */
     private static String supportedOps() {
