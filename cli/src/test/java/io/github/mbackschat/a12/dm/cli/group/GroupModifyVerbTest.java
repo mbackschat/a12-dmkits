@@ -76,6 +76,55 @@ class GroupModifyVerbTest {
                 () -> "names the missing group: " + res.out() + res.err());
     }
 
+    // G24 — the repetition row-key (indexFieldName). Settable only via the builder before; this exposes it on
+    // `group modify`. It designates a direct-child field as the key and arms RepetitionNotUnique / parallel
+    // iteration, so it requires a repeatable group + an existing child field.
+
+    @Test
+    void setsAGroupIndexField(@TempDir Path dir) throws Exception {
+        Path m = subscription(dir);
+        // /Subscription/Addons is repeatable with child fields Name + MonthlyFee
+        var res = CliTestSupport.run("-m", m.toString(), "group", "modify", "/Subscription/Addons",
+                "--index-field", "Name");
+        assertEquals(0, res.code(), res::err);
+        assertEquals("applied", M.readTree(res.out()).path("outcome").asText());
+        var read = CliTestSupport.run("-m", m.toString(), "group", "read", "/Subscription/Addons");
+        assertEquals("Name", M.readTree(read.out()).path("data").path("indexField").asText(),
+                () -> "group read echoes the index field: " + read.out());
+    }
+
+    @Test
+    void clearsAGroupIndexField(@TempDir Path dir) throws Exception {
+        Path m = subscription(dir);
+        CliTestSupport.run("-m", m.toString(), "group", "modify", "/Subscription/Addons", "--index-field", "Name");
+        var res = CliTestSupport.run("-m", m.toString(), "group", "modify", "/Subscription/Addons", "--clear-index-field");
+        assertEquals(0, res.code(), res::err);
+        var read = CliTestSupport.run("-m", m.toString(), "group", "read", "/Subscription/Addons");
+        assertTrue(M.readTree(read.out()).path("data").path("indexField").isMissingNode(),
+                () -> "the index field is gone: " + read.out());
+    }
+
+    @Test
+    void indexFieldOnANonRepeatableGroupIsRejected(@TempDir Path dir) throws Exception {
+        Path m = subscription(dir);
+        // /Subscription/Billing is a single group — an index field there is a degenerate row-key
+        var res = CliTestSupport.run("-m", m.toString(), "group", "modify", "/Subscription/Billing",
+                "--index-field", "BaseFee");
+        assertNotEquals(0, res.code());
+        assertTrue((res.out() + res.err()).toLowerCase().contains("repeat"),
+                () -> "names the repeatability requirement: " + res.out() + res.err());
+    }
+
+    @Test
+    void indexFieldNamingANonChildIsRejected(@TempDir Path dir) throws Exception {
+        Path m = subscription(dir);
+        var res = CliTestSupport.run("-m", m.toString(), "group", "modify", "/Subscription/Addons",
+                "--index-field", "Nope");
+        assertNotEquals(0, res.code());
+        assertTrue((res.out() + res.err()).contains("Nope"),
+                () -> "names the missing child field: " + res.out() + res.err());
+    }
+
     @Test
     void dryRunWritesNothing(@TempDir Path dir) throws Exception {
         Path m = subscription(dir);

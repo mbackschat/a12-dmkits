@@ -11,6 +11,8 @@ import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,15 +28,19 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
- * {@code dmtool group modify <groupPath> (--repeatable <max> | --non-repeatable)} — change an existing
- * group's <b>repeatability</b> in place and write the model back (in place; {@code -o} redirects,
- * {@code --dry-run} previews). {@code --repeatable <max>} (≥2) makes a single group a repetition list;
- * {@code --non-repeatable} collapses a list back to one. The change is re-bound through the kernel gate, so
- * one that breaks the model (e.g. a {@code *}-wildcard rule that now has no list to range over) fails loudly
- * as a {@code rejected} envelope. (Repeatability was settable only at {@code group add} — G15.)
+ * {@code dmtool group modify <groupPath>} — change an existing group's <b>repeatability</b> and/or its
+ * <b>index field</b> in place and write the model back (in place; {@code -o} redirects, {@code --dry-run}
+ * previews). {@code --repeatable <max>} (≥2) makes a single group a repetition list, {@code --non-repeatable}
+ * collapses a list back to one; {@code --index-field <fieldName>} designates a direct-child field as the
+ * repetition row-key (arms {@code RepetitionNotUnique} + parallel iteration; requires a repeatable group),
+ * {@code --clear-index-field} removes it. At least one directive is required. The change is re-bound through
+ * the kernel gate, so one that breaks the model (e.g. a {@code *}-wildcard rule that now has no list to range
+ * over) fails loudly as a {@code rejected} envelope. (Repeatability was settable only at {@code group add} —
+ * G15; the index field only via the builder — G24.)
  */
 @Command(name = "modify", mixinStandardHelpOptions = true,
-        description = "Change a group's repeatability in place: --repeatable <max> (>=2) or --non-repeatable.")
+        description = "Change a group's repeatability (--repeatable <max> / --non-repeatable) and/or its index "
+                + "field (--index-field <fieldName> / --clear-index-field) in place.")
 final class GroupModifyCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -50,6 +56,14 @@ final class GroupModifyCommand extends BaseCommand {
 
     @Option(names = "--non-repeatable", description = "make it a single (non-repeating) group")
     boolean nonRepeatable;
+
+    @Option(names = "--index-field", paramLabel = "<fieldName>",
+            description = "designate a direct-child field as the repetition row-key (the index field — arms "
+                    + "RepetitionNotUnique + parallel iteration; requires a repeatable group)")
+    String indexField;
+
+    @Option(names = "--clear-index-field", description = "remove the group's index field")
+    boolean clearIndexField;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the result here instead of in place (overwriting the model)")
@@ -76,8 +90,17 @@ final class GroupModifyCommand extends BaseCommand {
         if (notFound.isPresent()) {
             return refuse("group", "modify", notFound.get());
         }
-        if ((repeatable != null) == nonRepeatable) {
-            return fail("pass exactly one of --repeatable <max> or --non-repeatable");
+        if (repeatable != null && nonRepeatable) {
+            return fail("pass at most one of --repeatable <max> or --non-repeatable");
+        }
+        if (indexField != null && clearIndexField) {
+            return fail("pass at most one of --index-field <fieldName> or --clear-index-field");
+        }
+        boolean repeatabilityChange = repeatable != null || nonRepeatable;
+        boolean indexChange = indexField != null || clearIndexField;
+        if (!repeatabilityChange && !indexChange) {
+            return fail("nothing to change — pass --repeatable/--non-repeatable and/or "
+                    + "--index-field/--clear-index-field");
         }
         if (repeatable != null && repeatable < 2) {
             return fail("--repeatable <max> must be >= 2 (use --non-repeatable to make it a single group)");
@@ -86,8 +109,13 @@ final class GroupModifyCommand extends BaseCommand {
         try {
             if (repeatable != null) {
                 session.setRepeatable(group, repeatable);
-            } else {
+            } else if (nonRepeatable) {
                 session.setNonRepeatable(group);
+            }
+            if (indexField != null) {
+                session.setIndexField(group, indexField);
+            } else if (clearIndexField) {
+                session.clearIndexField(group);
             }
         } catch (RuntimeException e) {
             return fail(e.getMessage());
@@ -97,17 +125,28 @@ final class GroupModifyCommand extends BaseCommand {
         try {
             resultJson = session.validate().toJson();
         } catch (ModelConsistencyException e) {
-            return emitKernelRejection("group", "modify", "the repeatability change left the model invalid", e);
+            return emitKernelRejection("group", "modify", "the change left the model invalid", e);
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("group", group);
-        changed.put("repeatable", repeatable != null);
-        if (repeatable != null) {
-            changed.put("maxRepetitions", repeatable);
+        List<String> summaryParts = new ArrayList<>();
+        if (repeatabilityChange) {
+            changed.put("repeatable", repeatable != null);
+            if (repeatable != null) {
+                changed.put("maxRepetitions", repeatable);
+                summaryParts.add("repeatable (max " + repeatable + ")");
+            } else {
+                summaryParts.add("non-repeating");
+            }
         }
-        String summary = repeatable != null
-                ? "made " + group + " repeatable (max " + repeatable + ")"
-                : "made " + group + " non-repeating";
+        if (indexField != null) {
+            changed.put("indexField", indexField);
+            summaryParts.add("index field " + indexField);
+        } else if (clearIndexField) {
+            changed.putNull("indexField");
+            summaryParts.add("index field cleared");
+        }
+        String summary = "set " + group + ": " + String.join(", ", summaryParts);
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("group", "modify", "would have " + summary, changed);
             out().print(env.toJsonString());

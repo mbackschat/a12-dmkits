@@ -52,6 +52,8 @@ final class GroupReadCommand extends BaseCommand {
             ObjectNode data = MAPPER.createObjectNode();
             data.put("group", group);
             data.put("repeatable", doc.isRepeating(group));
+            // echo the index field (repetition row-key) so a `group modify --index-field` edit round-trips
+            doc.indexField(group).ifPresent(idx -> data.put("indexField", idx));
             ResultEnvelope env = ResultEnvelope.read("group", "read", "read " + group, true, List.of(), data);
             out().print(env.toJsonString());
             return env.exitCode();

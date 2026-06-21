@@ -163,6 +163,14 @@ public final class EditSession {
         return editStructure(d -> d.setNonRepeatable(groupPath));
     }
 
+    public EditSession setIndexField(String groupPath, String fieldName) {
+        return editStructure(d -> d.setIndexField(groupPath, fieldName));
+    }
+
+    public EditSession clearIndexField(String groupPath) {
+        return editStructure(d -> d.clearIndexField(groupPath));
+    }
+
     public EditSession addTypeDefinition(String id, FieldKind underlying) {
         return editStructure(d -> d.addTypeDefinition(id, underlying));
     }

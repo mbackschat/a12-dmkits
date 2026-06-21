@@ -748,6 +748,54 @@ public final class ModelDocument {
         return this;
     }
 
+    /** The group's index field (repetition row-key), if one is set. Fails fast if no group is there. */
+    public Optional<String> indexField(String groupPath) {
+        ObjectNode body = groupBody(groupPath);
+        return Optional.ofNullable(body.path("indexFieldName").asText(null));
+    }
+
+    /**
+     * Designate a direct-child field of the <b>repeatable</b> group at {@code groupPath} as its index field
+     * — the repetition row-key that arms {@code RepetitionNotUnique} + parallel iteration. Requires a
+     * repeatable group (an index field on a single group is a degenerate row-key) and an existing
+     * direct-child field; fails fast otherwise. The {@code validate()} gate stays the authoritative check.
+     */
+    public ModelDocument setIndexField(String groupPath, String fieldName) {
+        ObjectNode body = groupBody(groupPath);
+        if (body.path("repeatability").asInt(1) <= 1) {
+            throw new IllegalArgumentException("an index field needs a repeatable group; " + groupPath
+                    + " is not repeatable");
+        }
+        boolean childField = false;
+        for (JsonNode e : body.path("elements")) {
+            if ("Field".equals(e.path("type").asText()) && fieldName.equals(e.path("name").asText())) {
+                childField = true;
+                break;
+            }
+        }
+        if (!childField) {
+            throw new IllegalArgumentException("index field '" + fieldName
+                    + "' is not a direct child field of " + groupPath);
+        }
+        body.put("indexFieldName", fieldName);
+        return this;
+    }
+
+    /** Clear the group's index field (no-op if none). Fails fast if no group is there. */
+    public ModelDocument clearIndexField(String groupPath) {
+        groupBody(groupPath).remove("indexFieldName");
+        return this;
+    }
+
+    /** The {@code "Group"} payload object at {@code groupPath}; fails fast if no group is there. */
+    private ObjectNode groupBody(String groupPath) {
+        JsonNode group = locate(groupPath, true);
+        if (group == null) {
+            throw new IllegalArgumentException("no group at path: " + groupPath);
+        }
+        return (ObjectNode) group.path("Group");
+    }
+
     // --- doc config (content.modelConfig) -------------------------------------------------------
 
     /** Set the decimal separator (e.g. {@code "."} or {@code ","} — the comma-vs-point concern). */

@@ -235,6 +235,35 @@ dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons
 
 → `data.repeatable: true` says `/Subscription/Addons` is a repetition list. A plain sub-group would read `false`.
 
+## group modify — the index field (repetition row-key)
+
+A repetition list can name one direct-child field as its **index field** — the row-key that arms the `RepetitionNotUnique` uniqueness check and parallel iteration. `group modify --index-field` sets it (it requires a repeatable group + an existing child field); `group read` then echoes `data.indexField`:
+
+```bash
+dmtool -m /tmp/struct2.dm.json group modify /Subscription/Addons --index-field Name
+dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons | jq -c '.data'
+```
+
+```output
+{
+  "target" : "group",
+  "op" : "modify",
+  "outcome" : "applied",
+  "ok" : true,
+  "summary" : "set /Subscription/Addons: index field Name",
+  "changed" : {
+    "group" : "/Subscription/Addons",
+    "indexField" : "Name"
+  },
+  "diagnostics" : [ ],
+  "written" : true,
+  "output" : "/tmp/struct2.dm.json"
+}
+{"group":"/Subscription/Addons","repeatable":true,"indexField":"Name"}
+```
+
+→ `changed.indexField: Name` and the read's `data.indexField` confirm the row-key landed. `--clear-index-field` removes it; an index field on a single (non-repeating) group is refused.
+
 ## group remove — drop a whole sub-tree
 
 `group remove` deletes the group and everything under it. Like `field remove`, it runs the reference check first and refuses (exit 2) a group still referenced by a rule or computation unless you pass `--cascade`. `/Subscription/Addons` is unreferenced, so it goes cleanly — `changed.cascaded` is empty, meaning nothing else had to come with it:
