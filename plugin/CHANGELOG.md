@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 
 ### Changed
 
+- **`batch -m <model>` is now the default model for ops that omit their own.** `batch` accepted a top-level `-m` but ignored it, so every op needed its own `-m` and a whole batch failed identically with `pass -m`. The batch-level `-m` now fills in for any op that doesn't carry its own (an op with its own `-m` still wins) — the same universal-`-m` convention as the rest of the CLI.
 - **`rule modify --message` now merges translations instead of replacing them all.** It replaced the rule's whole message set, so adding one locale's message during a localization pass silently dropped the others (leaving the model invalid). It now upserts per locale — the locales you pass are set/added, the rest are kept.
 
 - **`workspace list`/`graph`/`validate`/`roles` now honor `-w/--workspace` (and `$DMTOOL_WORKSPACE`), not only a positional `<dir>`.** Having set the workspace root once with `-w`, an agent's `dmtool -w <dir> workspace list` used to fail with `Missing required parameter: '<dir>'` because these verbs took the directory *only* positionally and ignored the inherited `-w`. The directory now falls back to `-w` (then `$DMTOOL_WORKSPACE`) when the positional is omitted — the same universal option that resolves a `-m` model's includes. The positional `<dir>` still works (it's the natural scan target); this just lets the session-wide root drive `workspace` too.

@@ -279,6 +279,8 @@ Two batch verbs, because they solve different problems — conflating them would
 | verb | op shape | model | semantics | for |
 |---|---|---|---|---|
 | **`batch`** | `{verb, args:[…], id?}` — the verb + its CLI argv | many ops, **any verb** (incl. refactors), possibly **different models** | stateless dispatch — each op is a full `Cli.run`; never rolls back | independent checks/reads/refactors; **the N6 eval runner** ([`eval/benchmark.workflow.js`](../eval/benchmark.workflow.js)) |
+
+A **batch-level `-m`** is the default model for ops that omit their own `-m` (G18 — the universal-`-m` convention); an op carrying its own `-m` keeps it. So `dmtool -m m.json batch ops.json` runs every op against `m.json` without repeating it per op, while a heterogeneous batch can still point individual ops at different models.
 | **`apply`** | `{target, op, …args}` — the op-record | one model, ordered edits | one read → ordered surgery on one `EditSession` → **one terminal gate** → one write; **atomic rollback** | the north-star: read → add fields/groups → add/modify rules → **rename/move** → delete → write back |
 
 **`apply` semantics.** It tolerates **transient-invalid states between ops** (defers the kernel gate to the end) and emits a **per-op result envelope** plus a batch summary (`{ops, committed, failedAt, written, results[]}`); a read op's payload rides its envelope's `data` (§3b). On a mid-sequence failure it **rolls back** (nothing written), the failing op's diagnostic cross-op aware (*"op f1 added /Order/Discount — fix the spelling"*). Rule ops carry **raw DSL/spec text** (the surgery path), so a transient-invalid model doesn't block authoring the fix; clean per-op attribution comes from validating per-op while the model is currently valid.

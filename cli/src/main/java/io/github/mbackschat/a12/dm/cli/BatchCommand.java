@@ -20,6 +20,8 @@ import picocli.CommandLine.Parameters;
  * Reads a JSON array of ops {@code {"verb","args":[…],"id"?}}, dispatches each through {@link Cli#run}
  * (the same seam as a standalone call), and emits a JSON array of self-describing per-op results.
  * A batch-level error (missing/malformed file) exits 2; otherwise exit 0 with each op's own exit code.
+ * A batch-level {@code -m} is the <b>default model</b> for ops that omit their own (G18 — the universal
+ * {@code -m} convention); an op carrying its own {@code -m} keeps it.
  */
 @Command(name = "batch", mixinStandardHelpOptions = true,
         description = "Run a JSON array of verb invocations in one process (amortizes JVM + kernel warm-up).")
@@ -43,9 +45,10 @@ final class BatchCommand extends BaseCommand {
             return fail("ops file must be a JSON array");
         }
         ArrayNode results = MAPPER.createArrayNode();
+        String batchModel = model();   // G18: the batch-level -m is the default for ops that omit their own
         int index = 0;
         for (JsonNode op : ops) {
-            results.add(runOp(op, index++));
+            results.add(runOp(op, index++, batchModel));
         }
         try {
             out().print(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(results) + "\n");
@@ -55,7 +58,7 @@ final class BatchCommand extends BaseCommand {
         }
     }
 
-    private static ObjectNode runOp(JsonNode op, int index) {
+    private static ObjectNode runOp(JsonNode op, int index, String batchModel) {
         // Every result is SELF-DESCRIBING so a diagnostic can never be mis-attributed: the explicit
         // `op` index, the caller's optional `id`, the `verb`, and the echoed `args`.
         ObjectNode result = MAPPER.createObjectNode();
@@ -83,10 +86,21 @@ final class BatchCommand extends BaseCommand {
 
         List<String> argv = new ArrayList<>();
         argv.add(verb);
+        boolean opHasModel = false;
         if (argsNode.isArray()) {
             for (JsonNode a : argsNode) {
-                argv.add(a.asText());
+                String arg = a.asText();
+                if ("-m".equals(arg) || "--model".equals(arg)) {
+                    opHasModel = true;
+                }
+                argv.add(arg);
             }
+        }
+        // G18: an op that omits its own -m inherits the batch-level one (the universal -m default); an op
+        // carrying its own -m keeps it. `-m` is a global inherited option, so injecting it is always safe.
+        if (!opHasModel && batchModel != null) {
+            argv.add("-m");
+            argv.add(batchModel);
         }
 
         StringBuilder opOut = new StringBuilder();

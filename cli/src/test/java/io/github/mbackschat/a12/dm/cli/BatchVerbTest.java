@@ -124,4 +124,34 @@ class BatchVerbTest {
         assertEquals(2, arr.get(0).get("exit").asInt(), "but a nested batch op is rejected");
         assertTrue(arr.get(0).get("stderr").asText().toLowerCase().contains("nest"));
     }
+
+    // --- G18: a batch-level -m is the default for ops that omit their own (was accepted but ignored) ---
+
+    @Test
+    void batchLevelModelIsPropagatedToOpsThatOmitIt(@TempDir Path dir) throws Exception {
+        Path m = model(dir);
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, "[ {\"verb\":\"model\",\"args\":[\"validate\"]}, {\"verb\":\"config\",\"args\":[\"read\"]} ]");
+        // set -m once on the batch; the ops carry no -m of their own and should inherit it
+        var res = CliTestSupport.run("-m", m.toString(), "batch", ops.toString());
+        assertEquals(0, res.code(), res::err);
+        JsonNode arr = MAPPER.readTree(res.out());
+        assertEquals(0, arr.get(0).get("exit").asInt(), () -> "model validate used the batch -m: " + arr);
+        assertEquals(0, arr.get(1).get("exit").asInt(), () -> "config read used the batch -m: " + arr);
+    }
+
+    @Test
+    void anOpsOwnModelOverridesTheBatchLevelOne(@TempDir Path dir) throws Exception {
+        Path subscription = model(dir);                   // has no /Order rules
+        Path orderRuled = CliTestSupport.orderRuled(dir);  // has /Order/EligibilityCheck
+        Path ops = dir.resolve("ops.json");
+        // the op carries its own -m (orderRuled); the batch-level -m (subscription) must NOT override it
+        Files.writeString(ops, "[ {\"verb\":\"rule\",\"args\":[\"read\",\"/Order/EligibilityCheck\",\"-m\","
+                + MAPPER.writeValueAsString(orderRuled.toString()) + "]} ]");
+        var res = CliTestSupport.run("-m", subscription.toString(), "batch", ops.toString());
+        assertEquals(0, res.code(), res::err);
+        JsonNode arr = MAPPER.readTree(res.out());
+        assertEquals(0, arr.get(0).get("exit").asInt(),
+                () -> "the op's own -m (orderRuled) won — it read an Order rule the batch model lacks: " + arr);
+    }
 }
