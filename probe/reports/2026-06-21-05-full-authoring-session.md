@@ -9,7 +9,7 @@
 | native binary | `a12-dmkits 0.6.0` (fixed: annotation getters re-captured, `RK_INTERNAL_ERROR` boundary) |
 | anti-cheat audit | **clean** 4/4 — material boundary respected; model files mutated only by `dmtool` (no hand-edits → repro is trustworthy) |
 | digest | **0 RED FLAGS**; 21 structured rejections; retry signals on `workspace roles` (×7) and the wildcard rules |
-| report authorship | narrative = the **probe agent's own** end-of-session report (it holds the *why*); verification = the harness audit/digest + maintainer minimal-repro. *(SendMessage to continue a finished agent was unavailable this run; future runs append `report-preamble.md` as a final turn so the agent writes the full `REPORT.md` itself.)* |
+| report authorship | narrative = the **probe agent's own** end-of-session report (it holds the *why*); verification = the harness audit/digest + maintainer minimal-repro. *(SendMessage to continue a finished agent was unavailable this run; future runs append `report-pass.md` as a final turn — pointing the agent at the shipped `a12-dmtool-bug-report` skill — so the agent writes the full report itself.)* |
 
 ## Findings (classified — defect vs friction vs expected)
 

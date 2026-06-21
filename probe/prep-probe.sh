@@ -80,11 +80,14 @@ if [[ -n "$FIXTURE" ]]; then
 fi
 
 cp "$ROOT/skill/SKILL.md" "$SANDBOX/SKILL.md"
+# the SHIPPED bug-report skill (the same one plugin users get) — the probe's report pass points the agent at
+# it, so the report rigor has one source (no probe-only preamble) and the agent files exactly as a user would.
+cp "$ROOT/skill-bug-report/SKILL.md" "$SANDBOX/BUG-REPORT-SKILL.md"
 
 echo "probe sandbox ready: $SANDBOX"
 echo "  native : $("$NATIVE" --version 2>/dev/null | head -1)"
 echo "  shim   : $SANDBOX/bin/dmtool   (objective call log → $LOG)"
-echo "  skill  : $SANDBOX/SKILL.md"
+echo "  skill  : $SANDBOX/SKILL.md  (+ $SANDBOX/BUG-REPORT-SKILL.md for the report pass)"
 echo "  start  : $( [[ -n "$FIXTURE" ]] && echo "seeded from $FIXTURE (given-workspace)" || echo "clean (from-scratch)" )"
 echo "  workdir: $SANDBOX/work"
 echo

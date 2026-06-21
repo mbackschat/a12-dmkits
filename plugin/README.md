@@ -58,6 +58,8 @@ Two pieces make an agent this good with `dmtool`:
 - **The skill** is a small `SKILL.md` of *judgment* — the traps `--help` can't teach: rule **polarity**, valid **error fields**, **iteration** scope, the date/number gotchas. The binary stays self-describing (`manifest` / `operators` / `schema`); the skill teaches *when* and *why*, and the same canonical skill backs both agents.
 <!-- /shared:dmtool-story -->
 
+**A second bundled skill — `/a12-dmtool-bug-report`.** When something breaks, ask your agent to file a bug report. It isolates a **minimal reproduction**, tells a genuine **tool defect** apart from a rejected input (an internal error surfaces as a structured `error` envelope with `RK_INTERNAL_ERROR`, exit 70 — never a raw stack trace), captures the friction it hit, and writes a crisp report to **a folder you choose** — ready to attach to an issue or send however you like. Good reports help us fix the tool fast; it's the same report rigor we use to probe `dmtool` ourselves.
+
 ## Install — Claude Code
 
 ```

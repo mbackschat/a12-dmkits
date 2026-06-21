@@ -58,7 +58,8 @@ JAVA_HOME="$(/usr/libexec/java_home -v 21)" ./gradlew :cli:nativeCompile -Porg.g
 #    name biases the probe (PROBE-SPEC, audit check 5). Build its prompt as: agent-preamble.md (single-sourced
 #    framing) + the task's TURN blocks (verbatim). cwd = <sandbox>/work, PATH = <sandbox>/bin:$PATH (bare
 #    `dmtool` → the shim), skill at <sandbox>/SKILL.md. The subagent prompt = `agent-preamble.md` + the task
-#    turns + `report-preamble.md` as a FINAL turn — so the agent writes its OWN bug-and-findings report
+#    turns + `report-pass.md` as a FINAL turn (it points the agent at the SHIPPED a12-dmtool-bug-report skill,
+#    copied into the sandbox) — so the agent writes its OWN bug-and-findings report
 #    (`<sandbox>/work/REPORT.md`) from the full context it holds (what it did and WHY). The report narrative
 #    is the AGENT's; the main loop verifies it (step 6), it does not author it.
 
