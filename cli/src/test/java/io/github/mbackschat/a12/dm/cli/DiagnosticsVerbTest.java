@@ -57,6 +57,22 @@ class DiagnosticsVerbTest {
     }
 
     @Test
+    void explainsAStructuralKernelCode() throws Exception {
+        // P-mini-1 (probe-observed): an agent that meets a structural kernel code — one no operator
+        // documents, so `operators`/`explain` can't help — naturally tries `diagnostics <code>`. It must
+        // RESOLVE (meaning + fix), not dead-end. Covers the placement + iteration-scope codes.
+        for (String code : java.util.List.of("MVK_ERROR_FIELD_NOT_IN_RULEGROUP", "MVK_NEG_CONDITION_IN_ITERATION")) {
+            var res = CliTestSupport.run("diagnostics", code);
+            assertEquals(0, res.code(), () -> code + ": " + res.err());
+            JsonNode j = M.readTree(res.out());
+            assertEquals(code, j.path("code").asText());
+            assertEquals("KERNEL", j.path("source").asText());
+            assertFalse(j.path("meaning").asText().isBlank(), () -> code + " carries a meaning");
+            assertFalse(j.path("fix").asText().isBlank(), () -> code + " carries a fix");
+        }
+    }
+
+    @Test
     void filtersBySeverity() throws Exception {
         var res = CliTestSupport.run("diagnostics", "--severity", "INFO");
         assertEquals(0, res.code(), res::err);

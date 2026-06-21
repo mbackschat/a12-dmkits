@@ -16,11 +16,16 @@ import java.util.Optional;
  * (e.g. {@code RuleValidatorTest.attachesAPlacementFixToTheNotInRuleGroupCode}), so the text can't
  * drift away from the behavior it explains. The placement law itself is locked in
  * {@code validate.laws.IterationLawsTest} (KERNEL-FINDINGS §9).
+ *
+ * <p>Public because it is also the single source for the {@code diagnostics <code>} lookup of these
+ * codes — a probe (P-mini-1) found an agent that hit one of them naturally tries {@code diagnostics
+ * <code>}, which used to dead-end ("see operators/explain") since they have no operator home. The CLI
+ * resolves them through {@link #forCode} instead.
  */
-final class StructuralKernelFix {
+public final class StructuralKernelFix {
 
     /** A corrective {@code (fix, explain)} pair for one structural kernel code. */
-    record Hint(String fix, String explain) {
+    public record Hint(String fix, String explain) {
     }
 
     private static final Map<String, Hint> HINTS = Map.of(
@@ -31,13 +36,20 @@ final class StructuralKernelFix {
                             + "by aggregating the per-row operand (e.g. Sum(Group*/Field)) so it no longer iterates.",
                     "A rule's iteration scope is the set of repeatable groups among the fields it references "
                             + "(including the error field); the error field must lie in every repeatably-referenced group, "
-                            + "otherwise the per-row error has nowhere to attach."));
+                            + "otherwise the per-row error has nowhere to attach."),
+            "MVK_NEG_CONDITION_IN_ITERATION", new Hint(
+                    "Guard the negative predicate with a positive existence check on the row: "
+                            + "GroupFilled(<the repeatable group>) And <your negative condition> — so the rule fires "
+                            + "only for rows that actually exist, not for the empty/absent repetitions.",
+                    "A bare negative (FieldNotFilled/NoFieldFilled) inside an iterating rule would also fire on the "
+                            + "empty/non-existent repetitions of the iterated group; the kernel requires a positive "
+                            + "guard to scope it to real rows."));
 
     private StructuralKernelFix() {
     }
 
-    /** The curated hint for {@code code}, when it is a known structural code. */
-    static Optional<Hint> forCode(String code) {
+    /** The curated hint for {@code code}, when it is a known structural kernel code. */
+    public static Optional<Hint> forCode(String code) {
         return Optional.ofNullable(HINTS.get(code));
     }
 }

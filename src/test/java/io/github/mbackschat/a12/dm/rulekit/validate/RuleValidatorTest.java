@@ -100,6 +100,25 @@ class RuleValidatorTest {
     }
 
     @Test
+    void attachesAFixToTheNegConditionInIterationCode() {
+        // The other structural code a probe agent hit + tried to look up (P-mini-1): a bare negative in an
+        // iterating rule. Like the placement code it has no operator home, so the enricher's structural
+        // fallback must give it a corrective fix instead of a bare kernel message.
+        DraftRule rule = new DraftRule(
+                "/Subscription/Addons", "BareNegRule", "../MonthlyFee",
+                "FieldNotFilled(MonthlyFee)", "BARE_NEG", "ERROR");
+
+        ValidationResult result = new RuleValidator().check(modelJson, rule);
+
+        Diagnostic neg = result.diagnostics().stream()
+                .filter(d -> d.code().filter("MVK_NEG_CONDITION_IN_ITERATION"::equals).isPresent())
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("expected MVK_NEG_CONDITION_IN_ITERATION, got: " + result.diagnostics()));
+        assertTrue(neg.fix().filter(f -> !f.isBlank()).isPresent(),
+                () -> "the iteration-scope code must carry a corrective fix, got: " + neg);
+    }
+
+    @Test
     void validatesEnumComparisonAgainstTheKernel() {
         BoundModel m = Fixtures.subscription();
         // Tier is a text-bearing enum (BASIC/PRO/ENTERPRISE) — comparison by stored value is accepted.
