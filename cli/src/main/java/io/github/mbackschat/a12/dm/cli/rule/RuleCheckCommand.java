@@ -54,7 +54,7 @@ final class RuleCheckCommand extends BaseCommand {
             description = "the rule's iteration scope (group path inside the model); defaults to the field's parent")
     String group;
 
-    @Option(names = "--severity", defaultValue = "ERROR", paramLabel = "ERROR|WARNING",
+    @Option(names = "--severity", defaultValue = "ERROR", paramLabel = "ERROR|WARNING|INFO",
             description = "rule severity (default: ${DEFAULT-VALUE})")
     String severity;
 

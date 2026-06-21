@@ -129,6 +129,24 @@ class RuleVerbTest {
     }
 
     @Test
+    void addPersistsAnInfoSeverityRule(@TempDir Path dir) throws Exception {
+        // The self-describing surface (add.schema severity description, rule check --severity paramLabel,
+        // DraftRule javadoc) advertises INFO alongside ERROR|WARNING; this locks that INFO is real —
+        // kernel-accepted and persisted — not just documented.
+        Path model = CliTestSupport.modelWithRule(dir);
+        Path spec = dir.resolve("info-rule.json");
+        Files.writeString(spec, """
+                { "field": "/Subscription/Billing/EffectiveFee", "condition": "[EffectiveFee] < [BaseFee]",
+                  "code": "EFFECTIVE_FEE_BELOW_BASE", "severity": "INFO",
+                  "messages": [ {"locale":"en_US","text":"Effective fee below base."},
+                                {"locale":"de_DE","text":"Effektivgebuehr unter Basis."} ] }""");
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "add", spec.toString());
+        assertEquals(0, res.code(), res.err());
+        assertEquals("applied", M.readTree(res.out()).get("outcome").asText());
+        assertTrue(Files.readString(model).contains("INFO"), "the INFO severity is persisted");
+    }
+
+    @Test
     void addRejectsAnInvalidRuleAndWritesNothing(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
         Path spec = dir.resolve("bad.json");

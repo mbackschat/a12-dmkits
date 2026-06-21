@@ -14,7 +14,7 @@
     "condition": { "type": "string", "description": "(rule) the condition in A12 DSL — TRUE on a VIOLATION/the error scenario (the rule fires when it holds), so to enforce a requirement write its violation, e.g. FieldNotFilled(X) not FieldFilled(X)" },
     "comment": { "type": "string", "description": "(rule/computation) optional explanatory note, persisted as a leading ;; comment — on the rule's condition, or on a computation's first operation (the kernel tolerates it; it survives a later modify)" },
     "code": { "type": "string", "description": "(rule) the rule's error code" },
-    "severity": { "type": "string", "description": "(rule) ERROR | WARNING (default ERROR)" },
+    "severity": { "type": "string", "description": "(rule) ERROR | WARNING | INFO (default ERROR)" },
 
     "computedField": { "type": "string", "description": "(computation) the calculated field's ABSOLUTE path; the computation element is placed in its group" },
     "commonPrecondition": { "type": "string", "description": "(computation) optional guard (A12 DSL) shared by all alternatives" },
