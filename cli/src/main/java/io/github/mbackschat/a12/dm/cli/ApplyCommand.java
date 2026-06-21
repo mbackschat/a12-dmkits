@@ -237,6 +237,11 @@ final class ApplyCommand extends BaseCommand {
                 FieldSpec.Parsed parsed = FieldSpec.parse(op);
                 String path = parsed.group() + "/" + parsed.field().name();
                 session.addField(parsed.group(), parsed.field());
+                // G23: the custom required-field message attaches to the (now-created) requirednessConfig
+                java.util.Map<String, String> requiredMessages = FieldSpec.requiredMessages(op);
+                if (!requiredMessages.isEmpty()) {
+                    session.modifyField(path, FieldModification.builder().requiredMessages(requiredMessages).build());
+                }
                 changed.put("added", path);
                 changed.put("kind", op.hasNonNull("typedef") ? "TypeDefType" : op.path("kind").asText());
                 yield staged(which, changed, session);

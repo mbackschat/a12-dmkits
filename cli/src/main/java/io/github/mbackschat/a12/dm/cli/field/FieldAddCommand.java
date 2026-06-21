@@ -120,6 +120,12 @@ final class FieldAddCommand extends BaseCommand {
                     return 2;
                 }
                 doc.addField(effGroup, parsed.field());
+                // G23: a custom required-field message attaches to the field's requirednessConfig, so it
+                // applies AFTER the field (with its requiredness) is created
+                java.util.Map<String, String> requiredMessages = FieldSpec.requiredMessages(spec);
+                if (!requiredMessages.isEmpty()) {
+                    doc.setRequiredErrorMessages(target, requiredMessages);
+                }
                 changed.put("added", target);
                 changed.put("kind", spec.hasNonNull("typedef") ? "TypeDefType" : spec.path("kind").asText());
             } else {

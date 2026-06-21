@@ -18,6 +18,7 @@
     "internalDescription": { "type": "object", "description": "per-locale internal/maintenance text, { \"<locale>\": \"<text>\" }" },
     "externalDescription": { "type": "object", "description": "per-locale end-user-facing text, { \"<locale>\": \"<text>\" }" },
     "helperText": { "type": "object", "description": "per-locale inline UI help, { \"<locale>\": \"<text>\" }" },
+    "requiredMessages": { "type": "object", "description": "per-locale custom error text shown when this REQUIRED field is left empty, { \"<locale>\": \"<text>\" } — the 'Use Default Error Messages' deselected case; needs `required` true/\"ifParentPresent\", must cover every declared locale, omit to use the kernel default" },
     "annotations": { "type": "object", "description": "name/value element annotations, { \"<name>\": \"<value>\" }" },
     "string": {
       "type": "object", "description": "(kind STRING) config", "additionalProperties": false,
@@ -50,7 +51,8 @@
           "items": { "type": "object", "required": ["name", "values"], "additionalProperties": false,
             "properties": { "name": { "type": "string" }, "values": { "type": "array", "items": { "type": "string" }, "description": "values aligned 1:1 with the enum values" } } } },
         "alphabeticalSorting": { "type": "boolean" },
-        "invalidValueMessage": { "type": "string", "description": "error text for an out-of-domain value (one text, all locales)" }
+        "invalidValueMessage": { "type": "string", "description": "error text for an out-of-domain value — one text expanded across ALL declared locales (the shorthand)" },
+        "errorMessages": { "type": "object", "description": "per-locale invalid-value error text, { \"<locale>\": \"<text>\" } — wins over invalidValueMessage; must cover every declared locale (omit both to use the kernel default)" }
       }
     },
     "custom": {

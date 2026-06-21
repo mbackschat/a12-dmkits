@@ -42,7 +42,7 @@ public final class FieldSpec {
 
     /** The field-level metadata keys {@link #parse} reads (requiredness, labels, descriptions, flags). */
     public static final Set<String> METADATA_KEYS = Set.of("required", "label", "annotations",
-            "global", "transient", "internalDescription", "externalDescription", "helperText");
+            "global", "transient", "internalDescription", "externalDescription", "helperText", "requiredMessages");
 
     /** Every key a rich {@code field add} spec may carry (locator + type + metadata) — the apply FIELD_ADD op surface. */
     public static final Set<String> ADD_KEYS = union(LOCATOR_KEYS, TYPE_KEYS, METADATA_KEYS);
@@ -76,6 +76,15 @@ public final class FieldSpec {
                 textMap(spec.get("internalDescription")), textMap(spec.get("externalDescription")),
                 textMap(spec.get("helperText")));
         return new Parsed(group, field);
+    }
+
+    /**
+     * The per-locale custom <b>required</b>-field error message a spec carries (G23), or an empty map. The
+     * field-add path applies it as a post-step (after the field — with its requiredness — is created), since
+     * the message attaches to the field's {@code requirednessConfig}.
+     */
+    public static Map<String, String> requiredMessages(JsonNode spec) {
+        return textMap(spec.get("requiredMessages"));
     }
 
     /** The parse result for a MODIFY: the located field, and the partial edit to apply. */
@@ -116,6 +125,9 @@ public final class FieldSpec {
         }
         if (spec.hasNonNull("annotations")) {
             mod.annotations(annotations(spec.get("annotations")));
+        }
+        if (spec.hasNonNull("requiredMessages")) {
+            mod.requiredMessages(textMap(spec.get("requiredMessages")));
         }
         if (spec.hasNonNull("global")) {
             mod.global(spec.get("global").asBoolean(false));
@@ -197,7 +209,8 @@ public final class FieldSpec {
             categories.add(new FieldTypeSpec.EnumCategory(req(c, "name"), stringList(c.get("values"))));
         }
         return new FieldTypeSpec.EnumSpec(values, categories,
-                e.path("alphabeticalSorting").asBoolean(false), text(e, "invalidValueMessage"));
+                e.path("alphabeticalSorting").asBoolean(false), text(e, "invalidValueMessage"),
+                textMap(e.get("errorMessages")));   // G23: per-locale invalid-value text (wins over the single shorthand)
     }
 
     private static FieldTypeSpec custom(JsonNode c) {

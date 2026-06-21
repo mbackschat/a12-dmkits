@@ -70,6 +70,20 @@ dmtool -m /tmp/struct.dm.json field add --group /Order --name Discount --kind NU
 
 → `outcome: applied` with `changed.added = /Order/Discount` is the whole story: the field exists now, and `written: true` / `output` says it was persisted to the file. The kernel re-binds the edited model on the way out, so a structurally invalid edit would surface as diagnostics rather than a silent write.
 
+A rich `<spec.json>` carries the full per-kind config + metadata — including **per-locale custom error messages**: `requiredMessages` for a required field's empty-error text (omit to use the kernel default). Here a required `CustomerRef` field with its own message:
+
+```bash
+echo '{"group":"/Order","name":"CustomerRef","kind":"STRING","required":true,
+       "requiredMessages":{"en_US":"A customer reference is required"}}' > /tmp/ref-spec.json
+dmtool -m /tmp/struct.dm.json field add /tmp/ref-spec.json | jq -c '{outcome, added: .changed.added}'
+```
+
+```output
+{"outcome":"applied","added":"/Order/CustomerRef"}
+```
+
+→ The custom text lives on the field's requiredness config; `enum.errorMessages` does the same for an enum's invalid-value error. (Both are field-level — distinct from a *rule's* messages.)
+
 ## group add — a repeatable group
 
 `group add` attaches a child group to `--parent`. Pass `--repeatable <max>` to make it a repetition list (a line-item-style group that repeats up to `max` times); the envelope echoes `changed.repeatable: true`.

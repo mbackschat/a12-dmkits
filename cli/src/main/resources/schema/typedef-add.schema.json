@@ -39,7 +39,8 @@
           "items": { "type": "object", "required": ["name", "values"], "additionalProperties": false,
             "properties": { "name": { "type": "string" }, "values": { "type": "array", "items": { "type": "string" }, "description": "values aligned 1:1 with the enum values" } } } },
         "alphabeticalSorting": { "type": "boolean" },
-        "invalidValueMessage": { "type": "string", "description": "error text for an out-of-domain value (one text, all locales)" }
+        "invalidValueMessage": { "type": "string", "description": "error text for an out-of-domain value — one text expanded across ALL declared locales (the shorthand)" },
+        "errorMessages": { "type": "object", "description": "per-locale invalid-value error text, { \"<locale>\": \"<text>\" } — wins over invalidValueMessage; must cover every declared locale (omit both to use the kernel default)" }
       }
     },
     "custom": {

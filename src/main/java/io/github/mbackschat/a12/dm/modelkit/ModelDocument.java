@@ -527,6 +527,24 @@ public final class ModelDocument {
         return this;
     }
 
+    /**
+     * Set the per-locale custom error message shown when a <b>required</b> field is left empty
+     * ({@code requirednessConfig.errorMessage} — the "Use Default Error Messages" deselected case, G23). The
+     * field must already be required (carry a {@code requirednessConfig}); the kernel requires every declared
+     * locale to be covered. Omit it to fall back to the kernel's default required-field message.
+     */
+    public ModelDocument setRequiredErrorMessages(String fieldPath, Map<String, String> localeToText) {
+        ObjectNode body = fieldBody(fieldPath);
+        JsonNode rc = body.path("requirednessConfig");
+        if (!rc.isObject()) {
+            throw new IllegalArgumentException("a required error message needs " + fieldPath
+                    + " to be required first (set required:true or \"ifParentPresent\")");
+        }
+        ArrayNode messages = ((ObjectNode) rc).putArray("errorMessage");
+        localeToText.forEach((loc, text) -> messages.addObject().put("locale", loc).put("text", text));
+        return this;
+    }
+
     /** Set a field's per-locale helper text (replacing any existing). Unlike a label it need not cover every locale. */
     public ModelDocument setHelperText(String fieldPath, Map<String, String> localeToText) {
         ObjectNode body = fieldBody(fieldPath);
@@ -564,6 +582,8 @@ public final class ModelDocument {
     public ModelDocument applyModification(String fieldPath, FieldModification mod) {
         mod.type().ifPresent(t -> setFieldType(fieldPath, t));
         mod.requiredness().ifPresent(r -> setRequiredness(fieldPath, r));
+        // after requiredness, so the requirednessConfig exists for the custom message to attach to (G23)
+        mod.requiredMessages().ifPresent(m -> setRequiredErrorMessages(fieldPath, m));
         mod.label().ifPresent(l -> setLabel(fieldPath, l));
         mod.helperText().ifPresent(h -> setHelperText(fieldPath, h));
         mod.internalDescription().ifPresent(m -> m.forEach((loc, t) -> setInternalDescription(fieldPath, loc, t)));

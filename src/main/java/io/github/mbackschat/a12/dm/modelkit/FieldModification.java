@@ -26,7 +26,8 @@ public record FieldModification(
         Optional<Map<String, String>> externalDescription,
         Optional<List<ElementDraft.Annotation>> annotations,
         Optional<Boolean> global,
-        Optional<Boolean> isTransient) {
+        Optional<Boolean> isTransient,
+        Optional<Map<String, String>> requiredMessages) {
 
     /** True iff this would change nothing — the caller should reject it (no silent no-op success). */
     public boolean isEmpty() {
@@ -45,6 +46,7 @@ public record FieldModification(
         annotations.ifPresent(a -> aspects.add("annotations"));
         global.ifPresent(g -> aspects.add("global"));
         isTransient.ifPresent(t -> aspects.add("transient"));
+        requiredMessages.ifPresent(m -> aspects.add("requiredMessages"));
         return aspects;
     }
 
@@ -63,6 +65,7 @@ public record FieldModification(
         private List<ElementDraft.Annotation> annotations;
         private Boolean global;
         private Boolean isTransient;
+        private Map<String, String> requiredMessages;
 
         public Builder type(FieldTypeSpec v) { this.type = v; return this; }
         public Builder requiredness(Requiredness v) { this.requiredness = v; return this; }
@@ -73,12 +76,14 @@ public record FieldModification(
         public Builder annotations(List<ElementDraft.Annotation> v) { this.annotations = v; return this; }
         public Builder global(Boolean v) { this.global = v; return this; }
         public Builder isTransient(Boolean v) { this.isTransient = v; return this; }
+        public Builder requiredMessages(Map<String, String> v) { this.requiredMessages = v; return this; }
 
         public FieldModification build() {
             return new FieldModification(Optional.ofNullable(type), Optional.ofNullable(requiredness),
                     Optional.ofNullable(label), Optional.ofNullable(helperText),
                     Optional.ofNullable(internalDescription), Optional.ofNullable(externalDescription),
-                    Optional.ofNullable(annotations), Optional.ofNullable(global), Optional.ofNullable(isTransient));
+                    Optional.ofNullable(annotations), Optional.ofNullable(global), Optional.ofNullable(isTransient),
+                    Optional.ofNullable(requiredMessages));
         }
     }
 }

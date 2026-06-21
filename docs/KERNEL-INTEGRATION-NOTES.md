@@ -151,6 +151,14 @@ Structure edits (`ModelDocument.addField`/`addGroup`/`removeField`/`removeGroup`
 
 **Owned by the CLI remove verb** (which has the adapter): a *proactive* `whereUsed`-based check that lists referencing rules and **refuses without `--force`** / offers an **explicit `--cascade`** (never a silent cascade-delete). That's where the capability lives; it's a UX layer over the same gate.
 
+## Field-level custom error messages — `requiredMessages` / `enum.errorMessages` (G23, 2026-06-21)
+
+rulekit's treatment of the per-locale field error messages (kernel shape in KERNEL-FINDINGS §4/§8 — a `requirednessConfig.errorMessage` / `EnumerationType.errorMessage` array; "use default" = absence):
+
+- **Two field-spec keys** (`field add`/`field modify`, same on the `apply` ops): `requiredMessages: {locale: text}` (the required-field message) and `enum.errorMessages: {locale: text}` (the enum invalid-value message). `enum.invalidValueMessage` (a single string) stays as a shorthand that the writer expands across every declared locale.
+- **`EnumSpec` carries a per-locale `invalidValueMessages` map** (the single string is back-compat, expanded at serialize); **`requirednessConfig` messages** ride a new `ModelDocument.setRequiredErrorMessages` applied *after* requiredness (so the config exists) via `FieldModification.requiredMessages`.
+- **Fail-fast precondition:** `requiredMessages` on a non-required field is refused at the modelkit layer (`IllegalArgumentException` → the verb's spec-error exit) — the message needs a `requirednessConfig` to attach to. "Use default" is simply omitting the keys; there is no `useDefault` flag to set.
+
 ## Reference-rewriting refactors — one `StructureRefactor` seam, standalone + `apply` (2026-06-13)
 
 The reference-rewriting refactors (`field`/`group` rename·move, `rule` rename, `typedef` rename) are single-sourced in `cli.StructureRefactor`: per op it carries the **safety-gate composition**, the **reference entity-moves** (empty for rule/typedef — they rewrite no AST references), and the **node mutation**. The two callers share it, so the §6 gate can't drift:

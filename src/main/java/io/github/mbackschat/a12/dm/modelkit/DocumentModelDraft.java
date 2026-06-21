@@ -457,8 +457,13 @@ public final class DocumentModelDraft {
                 if (e.alphabeticalSorting()) {
                     enumeration.put("alphabeticalSorting", true);
                 }
-                if (e.invalidValueMessage() != null) {
-                    // the invalid-value error text, one entry per declared locale (the kernel's localized map)
+                if (!e.invalidValueMessages().isEmpty()) {
+                    // G23: per-locale invalid-value text — written verbatim (the kernel requires every declared
+                    // locale to be covered, like the enum value labels)
+                    ArrayNode messages = enumeration.putArray("errorMessage");
+                    e.invalidValueMessages().forEach((loc, text) -> messages.addObject().put("locale", loc).put("text", text));
+                } else if (e.invalidValueMessage() != null) {
+                    // the single-text shorthand, expanded across every declared locale (the kernel's localized map)
                     ArrayNode messages = enumeration.putArray("errorMessage");
                     locales.forEach(loc -> messages.addObject().put("locale", loc).put("text", e.invalidValueMessage()));
                 }

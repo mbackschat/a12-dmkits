@@ -171,10 +171,11 @@ public sealed interface FieldTypeSpec {
      * every value (length checked here).
      */
     record EnumSpec(List<EnumValue> values, List<EnumCategory> categories, boolean alphabeticalSorting,
-            String invalidValueMessage) implements FieldTypeSpec {
+            String invalidValueMessage, Map<String, String> invalidValueMessages) implements FieldTypeSpec {
         public EnumSpec {
             values = List.copyOf(values);
             categories = List.copyOf(categories);
+            invalidValueMessages = invalidValueMessages == null ? Map.of() : Map.copyOf(invalidValueMessages);
             for (EnumCategory category : categories) {
                 if (category.values().size() != values.size()) {
                     throw new IllegalArgumentException("category '" + category.name() + "' classifies "
@@ -184,9 +185,18 @@ public sealed interface FieldTypeSpec {
             }
         }
 
+        /**
+         * The §3.4 form: a single invalid-value message expanded across every declared locale (G23 added
+         * the {@code invalidValueMessages} per-locale map below). Empty per-locale map.
+         */
+        public EnumSpec(List<EnumValue> values, List<EnumCategory> categories, boolean alphabeticalSorting,
+                String invalidValueMessage) {
+            this(values, categories, alphabeticalSorting, invalidValueMessage, Map.of());
+        }
+
         /** The pre-§3.4 form: values + categories, no alphabetical-sort or invalid-value-message slot. */
         public EnumSpec(List<EnumValue> values, List<EnumCategory> categories) {
-            this(values, categories, false, null);
+            this(values, categories, false, null, Map.of());
         }
 
         @Override

@@ -64,6 +64,60 @@ class FieldAddSpecTest {
     }
 
     @Test
+    void enumSpecWithPerLocaleErrorMessages(@TempDir Path dir) throws Exception {
+        // G23: per-locale invalid-value text (not the single-string shorthand). Build a clean bilingual
+        // model (en_US + de_DE) — both the value labels and the error messages must cover both locales.
+        Path model = dir.resolve("loc.dm.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "loc", "--locale", "en_US",
+                "--root", "Doc", "-o", model.toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "config", "modify", "--add-locale", "de_DE").code());
+        Path specFile = dir.resolve("tier.json");
+        Files.writeString(specFile, """
+            {"group":"/Doc","name":"Tier","kind":"ENUM",
+             "enum":{"values":[{"value":"GOLD","labels":{"en_US":"Gold","de_DE":"Gold"}},
+                               {"value":"SILVER","labels":{"en_US":"Silver","de_DE":"Silber"}}],
+                     "errorMessages":{"en_US":"pick a valid tier","de_DE":"bitte eine gueltige Stufe waehlen"}}}""");
+        var res = CliTestSupport.run("-m", model.toString(), "field", "add", specFile.toString());
+        assertEquals(0, res.code(), res::err);
+        String written = Files.readString(model);
+        assertTrue(written.contains("pick a valid tier"), "en_US message emitted");
+        assertTrue(written.contains("bitte eine gueltige Stufe waehlen"), "de_DE message emitted (per-locale, not duplicated)");
+    }
+
+    @Test
+    void requiredFieldWithACustomRequiredMessage(@TempDir Path dir) throws Exception {
+        // G23: per-locale custom error text for a REQUIRED field (the "Use Default Error Messages" deselected
+        // case) — attaches to requirednessConfig.errorMessage.
+        Path model = dir.resolve("loc.dm.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "loc", "--locale", "en_US",
+                "--root", "Doc", "-o", model.toString()).code());
+        Path specFile = dir.resolve("email.json");
+        Files.writeString(specFile, """
+            {"group":"/Doc","name":"Email","kind":"STRING","required":true,
+             "requiredMessages":{"en_US":"An email address is required"}}""");
+        var res = CliTestSupport.run("-m", model.toString(), "field", "add", specFile.toString());
+        assertEquals(0, res.code(), res::err);
+        String written = Files.readString(model);
+        assertTrue(written.contains("An email address is required"), "the custom required message persists");
+        assertTrue(written.contains("requirednessConfig"), "it lives on the requiredness config");
+    }
+
+    @Test
+    void requiredMessageOnAnOptionalFieldIsRejected(@TempDir Path dir) throws Exception {
+        // a custom required message needs the field to be required (have a requirednessConfig) — fail-fast
+        Path model = dir.resolve("loc.dm.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "loc", "--locale", "en_US",
+                "--root", "Doc", "-o", model.toString()).code());
+        Path specFile = dir.resolve("x.json");
+        Files.writeString(specFile, """
+            {"group":"/Doc","name":"X","kind":"STRING","requiredMessages":{"en_US":"oops"}}""");
+        var res = CliTestSupport.run("-m", model.toString(), "field", "add", specFile.toString());
+        assertEquals(2, res.code(), () -> "a required message without requiredness is a spec error: " + res.out() + res.err());
+        assertTrue(res.err().toLowerCase().contains("required"),
+                () -> "names the requiredness precondition: " + res.err());
+    }
+
+    @Test
     void customSpec(@TempDir Path dir) throws Exception {
         String written = Files.readString(run(dir, """
             {"group":"/Order","name":"Iban","kind":"CUSTOM","custom":{"typeName":"IbanType","minLength":15,"maxLength":34}}"""));

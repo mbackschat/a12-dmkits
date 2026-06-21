@@ -100,6 +100,20 @@ The field-editor "required" checkbox is encoded in DM-JSON as `Field.requirednes
 
 **The gotcha — what "filled" means here.** For `relativeToParent`, "the parent is filled" means **at least one descendant field of the parent is filled** (`IRequirednessConfig` Javadoc), **not** the §9 "row exists" `GroupFilled` notion. Verified on a sub-group field (`/Order/ShippingAddress/Street`): a created-but-empty `ShippingAddress` row → **not** required (no `mandatoryField`); once a sibling (`City`) is filled → required → empty Street raises `mandatoryField`. Under `absoluteOrRelativeToNextRepAncestor` the same empty sub-group still requires Street (always). The requiredness is **stronger than `FieldNotFilled`**: it makes the field unknown, so e.g. a required-but-empty **number** is *not* the §2 empty-as-0 — a `[Quantity] < 100` rule does not fire on it (only `mandatoryField` does). *(Locked: `adapter.laws.RequiredPropertyLawsTest`.)*
 
+## §4/§8 supplement — field-level custom error messages live in a per-locale `errorMessage` array (source-verified, 2026-06-21)
+
+A field carries **two** kinds of custom validation error text, both the "Use Default Error Messages" deselected case (SME 840, 1123) — and both are stored the same way: a per-locale `errorMessage` array `[{locale, text}]`.
+
+| message | DM-JSON location | kernel accessor |
+|---|---|---|
+| **required-field** (shown when a required field is empty) | `Field.requirednessConfig.errorMessage` | `IRequirednessConfig.getErrorMessage(Locale)` |
+| **enum invalid-value** (shown for an out-of-domain value) | `EnumerationType.errorMessage` | (validated by `FieldErrorTextParser`) |
+
+- **"Use default" = absence.** There is **no** explicit `useDefaultErrorMessage` boolean — omitting the `errorMessage` array uses the kernel default; providing it is the custom case. (So the editor checkbox maps to presence/absence, not a stored flag.)
+- **Must cover every declared locale** (like enum value labels): a partial map is kernel-rejected. The required-message array also needs the field to *be* required (have a `requirednessConfig`).
+
+Source-read from the kernel (`IField.IRequirednessConfig.getErrorMessage`, `FieldErrorTextParser.hasValidErrorTextInRequirednessConfig`); rulekit's treatment (the `requiredMessages` / `enum.errorMessages` field-spec keys, G23) is in KERNEL-INTEGRATION-NOTES. *(Locked: `cli.field.FieldAddSpecTest` — per-locale enum + required messages round-trip; `modelkit.FieldConfigExtrasTest` reads the enum message back.)*
+
 ## §5 supplement — numeric literals are exempt from the scale check
 
 The `==`/`!=` decimal-scale gate applies to **field/expression operands only**. Against a scale-2 field, `== 0`, `== 0.0`, `== 0.00`, `!= 0`, and `<= 0.000` are all accepted — only field-vs-field/expression comparisons of differing declared scale draw `MVK_INVALID_COMPARE_DEC_PLACES`. Consequence: scale-explicit literals (`0.00`) are a rendering-fidelity nicety, not a correctness requirement. *(Locked: `validate.laws.NumberLawsTest`.)*
