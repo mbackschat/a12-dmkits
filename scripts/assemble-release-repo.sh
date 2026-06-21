@@ -19,6 +19,10 @@ if ! git -C "$KERNEL" log -1 --format=%s 2>/dev/null | grep -q "$PIN"; then
   git -C "$KERNEL" log -1 --format='  HEAD: %s' >&2; exit 1
 fi
 
+# Full rebuild: wipe any previous assembly first. `cp -Rf` only OVERWRITES — it never removes a file that no
+# longer exists in source, so a structural deletion (e.g. dropping the SessionStart `hooks/` dir) would
+# silently survive in a stale DEST and get rsync'd back onto the mirror. DEST is always a derived build tree.
+rm -rf "$DEST"
 mkdir -p "$DEST/licenses"
 # 1a. the CLAUDE CODE plugin at the mirror ROOT + the public-repo README (already EUPL-aware: per-artifact
 #     licensing + source pointer + disclaimer). Claude's marketplace.json has source "." → the repo root.
