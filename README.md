@@ -91,6 +91,8 @@ codex plugin marketplace add mbackschat/a12-dmtool-releases
 codex plugin add dmtool
 ```
 
+> **After installing, start a fresh session — or resume this one (`claude --continue`, which keeps your whole conversation).** The plugin loads `dmtool` via a `SessionStart` hook, so it isn't on `PATH` in the very session where you ran `/plugin install`; the binary fetches on the next session start. (If you ask for `dmtool` work before then, the bundled skill tells the agent to point you here — it won't try to install the tool by hand.)
+
 The plugins, the per-OS binaries, and full install/licensing details live in the public release repo — **[`a12-dmtool-releases`](https://github.com/mbackschat/a12-dmtool-releases)**. (This source repo holds the plugin *source* under [`plugin/`](plugin/) (Claude Code) and [`plugin-codex/`](plugin-codex/) (Codex); they ship to the mirror at release.)
 
 ### Install the binary directly (no agent)
