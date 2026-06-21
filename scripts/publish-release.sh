@@ -10,7 +10,9 @@
 #   5. the linux/windows CI dispatch via `gh workflow run` (not a click-path);
 #   6. the final --latest flip, kept as a SEPARATE explicit step (the runbook's draft-review seam).
 #
-# PREREQ — the release commit + annotated tag must already exist on main. The version bump is maintainer
+# PREREQ — the release commit + annotated tag must exist on main AND be PUSHED TO ORIGIN (the mirror's
+# build-native CI builds the binary from the private source at `ref: $TAG`, so a tag that's only local makes
+# CI fail; §0 below now enforces this — `git push origin main vX.Y.Z` before running this). The version bump is maintainer
 # judgment (the number) + this exact file set (NONE of these is caught by VersionMentionFreshnessTest,
 # which guards only the KERNEL pin — the project version drifts silently if you miss one). Run
 # `./scripts/bump-version.sh X.Y.Z` to make the first four edits below mechanically; flip the CHANGELOG by hand:
@@ -84,6 +86,22 @@ fi
 say "0. Preconditions"
 [[ -z "$(git status --porcelain)" ]] || { echo "working tree not clean — commit/stash first" >&2; exit 1; }
 git rev-parse "$TAG" >/dev/null 2>&1 || { echo "tag $TAG does not exist — bump+commit+tag first (see header)" >&2; exit 1; }
+# The tag MUST be on origin and point at the same commit as the local tag: step 6 dispatches the mirror's
+# build-native CI, which checks out the PRIVATE source at `ref: $TAG` (see .github/mirror-workflows/
+# build-native.yml). If the tag isn't pushed (or origin's is stale), that checkout fails — a confusing
+# mid-flight CI failure AFTER we've already pushed the mirror + created a draft. Catch it here, fail fast
+# with the exact push. (We don't push for you — pushing source is the maintainer's call.)
+local_tag_commit="$(git rev-parse "$TAG^{}")"
+remote_tag_commit="$(git ls-remote origin "refs/tags/$TAG^{}" 2>/dev/null | awk '{print $1}')"
+[[ -n "$remote_tag_commit" ]] || remote_tag_commit="$(git ls-remote origin "refs/tags/$TAG" 2>/dev/null | awk '{print $1}')"
+if [[ -z "$remote_tag_commit" ]]; then
+  echo "tag $TAG is not on origin — the mirror's build-native CI builds the binary from the private source at $TAG." >&2
+  echo "  push it first:  git push origin main $TAG" >&2; exit 1
+fi
+if [[ "$remote_tag_commit" != "$local_tag_commit" ]]; then
+  echo "origin's $TAG ($remote_tag_commit) differs from local ($local_tag_commit) — CI would build the wrong commit." >&2
+  echo "  push the current tag:  git push --force-with-lease origin $TAG" >&2; exit 1
+fi
 # The tag marks the version-bump commit; tooling/doc commits may legitimately follow it. The real invariant
 # is that the SHIPPED content (build.gradle version, the working tree the binary+mirror are built from) is
 # this release — so we check the version, not HEAD==tag identity.
