@@ -45,6 +45,7 @@ field remove
 field rename
 field move
 group add
+group modify
 group multiselect
 group attachment
 group read

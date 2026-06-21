@@ -159,6 +159,10 @@ public final class EditSession {
         return editStructure(d -> d.setRepeatable(groupPath, maxRepetitions));
     }
 
+    public EditSession setNonRepeatable(String groupPath) {
+        return editStructure(d -> d.setNonRepeatable(groupPath));
+    }
+
     public EditSession addTypeDefinition(String id, FieldKind underlying) {
         return editStructure(d -> d.addTypeDefinition(id, underlying));
     }

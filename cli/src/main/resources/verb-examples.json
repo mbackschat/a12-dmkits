@@ -31,6 +31,7 @@
   "field remove":      { "intent": "preview removing a field (safe-delete gate)", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "field", "remove", "/Order/Quantity", "--dry-run"], "expect": "preview" },
 
   "group add":         { "intent": "preview adding a sub-group", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "group", "add", "--parent", "/Order", "--name", "Notes", "--dry-run"], "expect": "preview" },
+  "group modify":      { "intent": "preview making a group repeatable", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "group", "modify", "/Order/ShippingAddress", "--repeatable", "5", "--dry-run"], "expect": "preview" },
   "group multiselect": { "intent": "preview a multi-select group template", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "group", "multiselect", "--parent", "/Order", "--name", "Conditions", "--field", "Condition", "--values", "NEW,USED,REFURBISHED", "--max-rows", "3", "--dry-run"], "expect": "preview" },
   "group attachment":  { "intent": "preview a file-attachment group template", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "group", "attachment", "--parent", "/Order", "--name", "Invoice", "--dry-run"], "expect": "preview" },
   "group read":        { "intent": "read a group's structure into data", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "group", "read", "/Order/Items"], "expect": "read" },

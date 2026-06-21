@@ -693,6 +693,16 @@ public final class ModelDocument {
         return this;
     }
 
+    /** Set the group at {@code groupPath} non-repeating (a single group, {@code repeatability == 1}). */
+    public ModelDocument setNonRepeatable(String groupPath) {
+        JsonNode group = locate(groupPath, true);
+        if (group == null) {
+            throw new IllegalArgumentException("no group at path: " + groupPath);
+        }
+        ((ObjectNode) group.path("Group")).put("repeatability", 1);
+        return this;
+    }
+
     // --- doc config (content.modelConfig) -------------------------------------------------------
 
     /** Set the decimal separator (e.g. {@code "."} or {@code ","} — the comma-vs-point concern). */
