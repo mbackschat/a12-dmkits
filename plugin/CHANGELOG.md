@@ -4,22 +4,48 @@ All notable changes to the **publicly released `dmtool` artifacts** — the nati
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/) plus **A12 Kernel compatibility metadata** (the kernel each release targets is recorded per entry, never folded into the version string).
 
+## [0.5.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
+
+A document-model **editor-coverage** wave: the structure/metadata edits the A12 Tools editor exposes are now CLI verbs (so an agent never hand-edits the model JSON), plus self-describing, corrective diagnostics for rule/computation placement.
+
+### Added
+
+- **Change a group's repeatability in place — `group modify --repeatable <max>` / `--non-repeatable`.** Repeatability could be set only at `group add`; making an existing group a repetition list (or collapsing one) meant hand-editing the JSON. Re-bound to the kernel gate, so a change that breaks the model fails loudly.
+- **Set a group's repetition row-key — `group modify --index-field <fieldName>` / `--clear-index-field`.** Designates a direct-child field as the row-key (requires a repeatable group); `group read` echoes it.
+- **Register / remove a display locale — `config modify --add-locale <code>` / `--remove-locale <code>`.** Adding a locale then requires every rule/computation to carry its message (provision those first, or do both in one `apply`); removing refuses the last locale.
+- **Manage the model's access-control roles — `config modify --role <name>` (merges) / `--clear-roles`.** A merge-safe peer of the raw `--annotation roles=…`; `config read` surfaces the header annotations so it round-trips.
+- **Set a field/group display label — `meta <ref> --label <locale>=<text>`.** Merges per locale; the `meta` read echoes the label.
+- **Rich type definitions — `typedef add --id <id> <spec.json>`** for an ENUM (`enum.values`) or a restricted STRING (`string.pattern`), the same per-kind spec a `field add` takes; and **`typedef unimport --reference <r>`** removes a type-definition import (the inverse of `typedef import`, re-validated so a still-used import is refused).
+- **Rename a model's id — `model rename --to <newId>`, safety-gated.** With a workspace (`-w`) it refuses when a sibling includes/imports the old id (`RK_REFERENCED`) or the new id collides (`RK_NAME_EXISTS`); nothing is written.
+- **Field-level custom error messages — `requiredMessages` + `enum.errorMessages`** on the `field add`/`field modify` spec (and the `apply` field ops): per-locale custom text for a required field left empty / an invalid enum value. Omit to use the kernel default.
+- **Enum-category `description`** — an editor-level note on an enum category that the kernel tolerates.
+- **`rule add` spec key `allowDifferingDecimals`** — the editor's "Allow Differing Decimal Places"; prepends `@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)` so a field-vs-field `==`/`!=` across differing decimal scales is accepted (the kernel's one suppressible warning).
+- **`batch -m <model>` is the default model for ops that omit their own** — an op with its own `-m` still wins.
+- **`field read` / `field remove` accept `--group`/`--name`, not just a positional path** — the same locator style as `field add`.
+
+### Changed
+
+- **`field read` echoes the field's `required` state** (`true` / `false` / `"ifParentPresent"`), so a requiredness edit is verifiable straight from the tool.
+- **`rule modify --message` merges per-locale** instead of replacing the whole message set (adding one locale's message no longer silently drops the others).
+- **`typedef read` surfaces import provenance** — `data.importedFrom` distinguishes local from imported type definitions (resolve to files via `model info`).
+- **More model conventions are discoverable from `--help`** — `config read` explains the locale registry + per-locale-message rule; `workspace roles` the roles/users/annotation contract; `apply`/`batch --help` point at `schema apply`/`schema batch`.
+- **The internal/external description wording is sharpened** on the `field` schema and the `meta --internal`/`--external` flags: *external* = the end-user-facing hint shown in the form UI; *internal* = a maintenance note shown read-only to Form modelers, never to end users.
+- **`apply` covers the widened verbs** — the new typedef/group/config edit ops run inside an `apply` transaction at parity with their standalone forms (single-sourced, so they can't drift).
+
+### Fixed
+
+- **INFO rule severity is now advertised on the `rule add` / `rule check` surface.** It worked end-to-end but the schema/paramLabel/javadoc said only `ERROR | WARNING`, so a cold agent couldn't discover INFO.
+- **Rule/computation placement is now self-describing and corrective.** `schema rule add` / `computation add` state the error-field **placement law** (a per-row rule's error field must lie inside the repeatable group it iterates; for a whole-document rule, aggregate the per-row operands), and the kernel's `MVK_ERROR_FIELD_NOT_IN_RULEGROUP` now carries a corrective `fix` instead of a bare message — across `field move` / `rule add` / `computation add` / `apply` / `batch`.
+- **`diagnostics <code>` resolves the structural kernel codes** (`MVK_ERROR_FIELD_NOT_IN_RULEGROUP`, `MVK_NEG_CONDITION_IN_ITERATION`) with a meaning + fix, instead of dead-ending — an agent that meets one in an error can look it up.
+
 ## [0.4.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
 ### Added
 
 - **`apply` now covers the full delete op-set — `rule remove` and `group remove` with `cascade`.** A "delete a rule" or "delete a referenced group and its referrers" edit could not be expressed inside an `apply` transaction (`rule remove` was an unknown op; `group remove` rejected `cascade` as an unknown arg), forcing a drop to standalone calls mid-transaction. `apply` now has a `rule remove` op, and its `group remove` op takes the same `cascade` safe-delete gate as the standalone verb — both single-sourced with the standalone verbs so they can't drift.
-- **`config modify --add-locale <code>` — register a display locale on an existing model.** A locale could be set only at `model new`; adding `de_DE` labels/messages didn't register it (the `header.locales` registry is explicit), so the model silently stayed mono-locale until you hand-edited the header. `--add-locale` now appends to the registry (idempotent, re-validated). The kernel then requires every rule/computation to carry a message for the locale — so provision those first, or do both in one `apply`.
-- **`group modify` — change an existing group's repeatability in place.** Repeatability could be set only at `group add`; making an existing group a repetition list (or collapsing one back) meant hand-editing the model JSON. `dmtool -m <model> group modify <groupPath> --repeatable <max>` (or `--non-repeatable`) now does it, re-bound to the kernel gate so a change that breaks the model fails loudly.
 - **`operators <substring>` now filters the catalog.** Narrowing the operator list was only possible via `--kind`/`--keyword`; an agent's natural reach — a bare `operators date` — failed as "no such operator." A non-id positional is now a substring filter (matched over id, keyword, and meaning) that composes with `--kind`/`--keyword`; an exact id still returns that operator's full semantics.
 
 ### Changed
-
-- **More of the model's conventions are now discoverable from `--help`, not just example files.** `config read` explains the locale registry + the per-locale-message rule; `workspace roles` describes the full roles/users/annotation contract (the `roles` annotation, `roles.yaml`, and `users.yaml`'s `username`/`authorities` edge); and `apply`/`batch --help` point at `schema apply`/`schema batch` for the op-record shape (whose examples now include rule/group ops, not just `field add`).
-- **`field read` now echoes the field's `required` state** (`true`/`false`/`"ifParentPresent"`), so you can verify a requiredness edit straight from the tool instead of decoding the stored config.
-- **`field read` and `field remove` now also accept `--group`/`--name`, not just a positional path.** They took only a positional `<fieldPath>`, so the `--group`/`--name` style learned from `field add` failed with `Unknown options`. Both forms now work on the read/remove verbs (the positional path still works; passing both is a usage error).
-- **`batch -m <model>` is now the default model for ops that omit their own.** `batch` accepted a top-level `-m` but ignored it, so every op needed its own `-m` and a whole batch failed identically with `pass -m`. The batch-level `-m` now fills in for any op that doesn't carry its own (an op with its own `-m` still wins) — the same universal-`-m` convention as the rest of the CLI.
-- **`rule modify --message` now merges translations instead of replacing them all.** It replaced the rule's whole message set, so adding one locale's message during a localization pass silently dropped the others (leaving the model invalid). It now upserts per locale — the locales you pass are set/added, the rest are kept.
 
 - **`workspace list`/`graph`/`validate`/`roles` now honor `-w/--workspace` (and `$DMTOOL_WORKSPACE`), not only a positional `<dir>`.** Having set the workspace root once with `-w`, an agent's `dmtool -w <dir> workspace list` used to fail with `Missing required parameter: '<dir>'` because these verbs took the directory *only* positionally and ignored the inherited `-w`. The directory now falls back to `-w` (then `$DMTOOL_WORKSPACE`) when the positional is omitted — the same universal option that resolves a `-m` model's includes. The positional `<dir>` still works (it's the natural scan target); this just lets the session-wide root drive `workspace` too.
 - **`export` now takes the model via the universal `-m`, like every other verb.** It was the one verb that required the model as a positional argument (`dmtool export <model> [artifact]`) and silently ignored the inherited `-m`, so an agent that had learned `-m` everywhere couldn't drive it (and `export rules` mis-read "rules" as the model path). It is now `dmtool -m <model> export [<artifact>]` — one consistent shape across the whole tool; the artifact stays positional (`fields`/`groups`/`rules`/`card`, default `card`).
