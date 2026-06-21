@@ -5527,6 +5527,12 @@
           ]
         },
         {
+          "name": "setLabel",
+          "parameterTypes": [
+            "com.mgmtp.a12.kernel.md.model.api.ILocalizedTextMap"
+          ]
+        },
+        {
           "name": "setRepeatability",
           "parameterTypes": [
             "int"
@@ -5564,6 +5570,12 @@
         {
           "name": "<init>",
           "parameterTypes": []
+        },
+        {
+          "name": "setErrorMessage",
+          "parameterTypes": [
+            "com.mgmtp.a12.kernel.md.model.api.ILocalizedTextMap"
+          ]
         },
         {
           "name": "setMode",
@@ -5804,6 +5816,12 @@
         {
           "name": "getValues",
           "parameterTypes": []
+        },
+        {
+          "name": "setDescription",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
         },
         {
           "name": "setName",
@@ -7039,6 +7057,9 @@
           "name": "internal"
         },
         {
+          "name": "label"
+        },
+        {
           "name": "outputPath"
         },
         {
@@ -7368,6 +7389,9 @@
           "name": "annotations"
         },
         {
+          "name": "clearRoles"
+        },
+        {
           "name": "comment"
         },
         {
@@ -7384,6 +7408,12 @@
         },
         {
           "name": "outputPath"
+        },
+        {
+          "name": "removeLocales"
+        },
+        {
+          "name": "roles"
         },
         {
           "name": "supportedCharacters"
@@ -7694,10 +7724,16 @@
       "type": "io.github.mbackschat.a12.dm.cli.group.GroupModifyCommand",
       "fields": [
         {
+          "name": "clearIndexField"
+        },
+        {
           "name": "dryRun"
         },
         {
           "name": "group"
+        },
+        {
+          "name": "indexField"
         },
         {
           "name": "nonRepeatable"
@@ -8087,6 +8123,29 @@
       ]
     },
     {
+      "type": "io.github.mbackschat.a12.dm.cli.model.ModelRenameCommand",
+      "fields": [
+        {
+          "name": "dryRun"
+        },
+        {
+          "name": "newId"
+        },
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "io.github.mbackschat.a12.dm.cli.model.ModelUsageCommand",
       "fields": [
         {
@@ -8380,6 +8439,9 @@
           "name": "outputPath"
         },
         {
+          "name": "specPath"
+        },
+        {
           "name": "workspace"
         }
       ],
@@ -8527,6 +8589,29 @@
         },
         {
           "name": "outputPath"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.typedef.TypedefUnimportCommand",
+      "fields": [
+        {
+          "name": "dryRun"
+        },
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "reference"
         },
         {
           "name": "workspace"
@@ -14568,6 +14653,9 @@
       "glob": "internal/templates/validation/groovy/meta_entityDir/Fehlertext.st"
     },
     {
+      "glob": "internal/templates/validation/groovy/meta_entityDir/Fehlertext_4Req.st"
+    },
+    {
       "glob": "internal/templates/validation/groovy/meta_entityDir/MetaContainerInfo.st"
     },
     {
@@ -14581,6 +14669,9 @@
     },
     {
       "glob": "internal/templates/validation/groovy/meta_entityDir/MetaFeldFehlertexte.st"
+    },
+    {
+      "glob": "internal/templates/validation/groovy/meta_entityDir/MetaFeldFehlertexte_4Req.st"
     },
     {
       "glob": "internal/templates/validation/groovy/meta_entityDir/MetaGemeinsameFormate.st"
@@ -15126,6 +15217,9 @@
       "glob": "models/order-aggregates.dm.json"
     },
     {
+      "glob": "models/order-imports-types.dm.json"
+    },
+    {
       "glob": "models/order-ruled.dm.json"
     },
     {
@@ -15199,6 +15293,9 @@
     },
     {
       "glob": "schema/result.schema.json"
+    },
+    {
+      "glob": "schema/typedef-add.schema.json"
     },
     {
       "glob": "schema/where-used.schema.json"
