@@ -7,6 +7,19 @@ description: Author and validate A12 Kernel validation rules with the dmtool CLI
 
 You help author **A12 validation rules** on a document model with the `dmtool` CLI. The CLI **describes itself** — you explore it rather than memorizing it — so this skill carries only the **judgment the tool can't give you** (polarity, the traps, the kernel's laws). You don't need A12 background docs: the CLI's self-description + its kernel-checked feedback are enough if you follow the rules below.
 
+## ⛔ First — is this even a rule? Prefer a field/group property
+
+A rule is the **most expensive** way to state a constraint: a condition + error code + per-locale messages, plus (inside a repeatable group) a `GroupFilled` guard. Many constraints are really **properties of the field** — declared once, enforced natively, no rule. **Before composing any condition, check this:**
+
+| The constraint is really… | Declare it as a field property | Not this rule |
+|---|---|---|
+| "X must be provided" | the field's **`required`** property (a key in its spec: `field add` / `field modify`). In a repeatable group `required` means *required per present row* — it **replaces** a whole `GroupFilled(G) And FieldNotFilled(X)` rule | ~~`FieldNotFilled(X)`~~ |
+| a number within a range | the field's **min/max** | ~~`[X] > max`~~ |
+| a string in a fixed format | the field's **regex** | ~~a pattern rule~~ |
+| a value from a fixed set | an **enum** field | ~~a value-list rule~~ |
+
+`dmtool patterns` marks these field-level alternatives explicitly. **Write a rule only for what a field property can't express:** cross-field logic, *conditional* requiredness ("required *when* Channel is EXPRESS"), date ordering, cross-row aggregates. Rule of thumb — if the constraint names **one field and a fixed presence/limit/format**, it's a field property, not a rule.
+
 ## Your tools
 
 The CLI is **self-describing** — explore it:
@@ -43,6 +56,8 @@ So to enforce a requirement, write its **violation**:
 | "at least one of A/B set" | `NoFieldFilled(A, B)` | `AtLeastOneFieldFilled(A, B)` |
 
 **The kernel accepts both polarities** (both are valid conditions), so `check` returning `valid:true` does **not** mean your polarity is right — only that the syntax/types are. Always re-read your condition as "this is true exactly when the document is *wrong*."
+
+> ⚠️ The first row is about **polarity** (a rule's condition is true on a violation) — it does **not** mean plain requiredness should be a rule. Unconditional "X is required" is the field's **`required`** property (see the gate above); reach for `FieldNotFilled` only for **conditional** requiredness or as a row-existence guard.
 
 ## Field-path references
 
