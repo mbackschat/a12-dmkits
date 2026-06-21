@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 
@@ -31,8 +32,8 @@ import picocli.CommandLine.Option;
  * At least one setting is required. Re-bound through the kernel; an invalid result is a {@code rejected} envelope.
  */
 @Command(name = "modify", mixinStandardHelpOptions = true,
-        description = "Set decimal-separator / time-zone / condition-language / model label / annotation "
-                + "(at least one required).")
+        description = "Set decimal-separator / time-zone / condition-language / model label / annotation / "
+                + "add a display locale (at least one required).")
 final class ConfigModifyCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -73,6 +74,13 @@ final class ConfigModifyCommand extends BaseCommand {
             description = "set the model-level comment (a free-text model note / description)")
     String comment;
 
+    @ParamKind(ParamKind.Kind.SCALAR)
+    @Option(names = "--add-locale", paramLabel = "<code>",
+            description = "register a display locale on the model (repeatable), e.g. --add-locale de_DE — "
+                    + "appends to the header.locales registry. The kernel then requires every rule/computation "
+                    + "to carry a message for it, so provision those first (or in the same `apply`)")
+    java.util.List<String> addLocales = new java.util.ArrayList<>();
+
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the result here instead of in place (overwriting the model)")
     String outputPath;
@@ -90,9 +98,10 @@ final class ConfigModifyCommand extends BaseCommand {
             return fail("pass -m <model.json> (before or after the verb)");
         }
         if (decimalSeparator == null && timeZone == null && conditionLanguage == null
-                && labels.isEmpty() && annotations.isEmpty() && supportedCharacters.isEmpty() && comment == null) {
+                && labels.isEmpty() && annotations.isEmpty() && supportedCharacters.isEmpty() && comment == null
+                && addLocales.isEmpty()) {
             return fail("nothing to change — pass at least one of --decimal-separator, --time-zone, "
-                    + "--condition-language, --label, --annotation, --supported-character, --comment");
+                    + "--condition-language, --label, --annotation, --supported-character, --comment, --add-locale");
         }
         String modelJson;
         try {
@@ -139,6 +148,16 @@ final class ConfigModifyCommand extends BaseCommand {
             if (comment != null) {
                 doc.setModelComment(comment);
                 changed.put("comment", comment);
+            }
+            ArrayNode addedLocales = MAPPER.createArrayNode();
+            for (String code : addLocales) {
+                if (!doc.locales().contains(code)) {
+                    doc.addLocale(code);
+                    addedLocales.add(code);
+                }
+            }
+            if (!addedLocales.isEmpty()) {
+                changed.set("addedLocales", addedLocales);
             }
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {

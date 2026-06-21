@@ -98,6 +98,26 @@ public final class ModelDocument {
         return out;
     }
 
+    /**
+     * Register a display locale — append {@code code} to the {@code header.locales} registry (idempotent: a
+     * no-op if already declared). The registry is explicit (adding per-element labels/messages does NOT
+     * derive it), and the kernel then requires every rule/computation message to cover it, so a
+     * {@code validate} after this rejects until each carries the locale's message (G16).
+     */
+    public ModelDocument addLocale(String code) {
+        ObjectNode header = (ObjectNode) root.path("header");
+        ArrayNode locales = header.path("locales").isArray()
+                ? (ArrayNode) header.get("locales")
+                : header.putArray("locales");
+        for (JsonNode l : locales) {
+            if (code.equals(l.path("code").asText())) {
+                return this;   // already declared
+            }
+        }
+        locales.addObject().put("code", code);
+        return this;
+    }
+
     /** The directly-declared model includes (header {@code modelReferences} with {@code purpose: "include"},
      *  or a blank/absent purpose — the classic default), in document order. <b>Transitive</b> includes the
      *  kernel adds are excluded here — read those via {@link #transitiveIncludes()}. */

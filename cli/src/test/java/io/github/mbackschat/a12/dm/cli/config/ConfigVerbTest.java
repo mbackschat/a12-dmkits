@@ -114,4 +114,55 @@ class ConfigVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "config", "modify");
         assertEquals(2, res.code());
     }
+
+    // --- G16: register a locale on an existing model (config modify --add-locale) ---
+
+    /** A label-light single-locale model (plain string field — no enum value labels to force per-locale coverage). */
+    private static Path enOnlyModel(Path dir) throws Exception {
+        Path m = dir.resolve("loc.dm.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "loc", "--locale", "en_US",
+                "--root", "Doc", "-o", m.toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", m.toString(), "field", "add",
+                "--group", "/Doc", "--name", "Note", "--kind", "STRING").code());
+        return m;
+    }
+
+    @Test
+    void modifyRegistersANewLocale(@TempDir Path dir) throws Exception {
+        Path model = enOnlyModel(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "config", "modify", "--add-locale", "de_DE");
+        assertEquals(0, res.code(), res.err());
+        assertTrue(M.readTree(res.out()).path("changed").path("addedLocales").toString().contains("de_DE"),
+                () -> "reports the added locale: " + res.out());
+        var read = CliTestSupport.run("-m", model.toString(), "config", "read");
+        assertTrue(M.readTree(read.out()).path("data").path("locales").toString().contains("de_DE"),
+                () -> "the locale is now in the registry: " + read.out());
+    }
+
+    @Test
+    void addLocaleIsIdempotent(@TempDir Path dir) throws Exception {
+        Path model = enOnlyModel(dir);
+        // en_US is already declared — re-adding must not duplicate it
+        var res = CliTestSupport.run("-m", model.toString(), "config", "modify", "--add-locale", "en_US");
+        assertEquals(0, res.code(), res.err());
+        var read = CliTestSupport.run("-m", model.toString(), "config", "read");
+        JsonNode locales = M.readTree(read.out()).path("data").path("locales");
+        long n = 0;
+        for (JsonNode l : locales) {
+            if ("en_US".equals(l.asText())) {
+                n++;
+            }
+        }
+        assertEquals(1, n, () -> "en_US is not duplicated: " + read.out());
+    }
+
+    @Test
+    void addingALocaleRulesDoNotCoverIsRejected(@TempDir Path dir) throws Exception {
+        // orderRuled is en_US-only and has rules; adding de_DE leaves those rules without a de_DE message,
+        // so the kernel gate rejects it (a structured envelope, not a silent half-edit)
+        Path model = CliTestSupport.orderRuled(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "config", "modify", "--add-locale", "de_DE");
+        assertEquals(1, res.code(), () -> "the kernel rejects the uncovered locale: " + res.out());
+        assertEquals("rejected", M.readTree(res.out()).path("outcome").asText());
+    }
 }
