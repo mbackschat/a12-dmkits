@@ -21,11 +21,17 @@ final class DiagnosticEnricher {
     }
 
     /**
-     * {@code diagnostic} with a fix/explain attached when its code is known: first the operator
-     * catalog-join (operator-level {@code MVK_*} codes), then the {@link StructuralKernelFix}
-     * fallback for placement / iteration-scope codes that no operator documents.
+     * {@code diagnostic} with a fix/explain attached when its code is known: <b>first</b> the
+     * {@link StructuralKernelFix} hints (placement / iteration-scope codes <em>and</em> the shared
+     * structural codes like {@code MVK_NO_WILDCARD} that several operators trigger — these must win over
+     * any single operator's {@code invalidExample}, else the fix is mis-stamped: probe finding F06-2),
+     * <b>then</b> the operator catalog-join for operator-specific {@code MVK_*} codes.
      */
     Diagnostic enrich(Diagnostic diagnostic) {
+        Optional<StructuralKernelFix.Hint> hint = diagnostic.code().flatMap(StructuralKernelFix::forCode);
+        if (hint.isPresent()) {
+            return diagnostic.withFix(hint.map(StructuralKernelFix.Hint::fix), hint.map(StructuralKernelFix.Hint::explain));
+        }
         Optional<OperatorEntry> entry = diagnostic.code().flatMap(catalog::byInvalidError);
         if (entry.isPresent()) {
             Optional<String> fix = entry
@@ -36,10 +42,6 @@ final class DiagnosticEnricher {
                     .map(OperatorEntry::meaning)
                     .filter(s -> s != null && !s.isBlank());
             return diagnostic.withFix(fix, explain);
-        }
-        Optional<StructuralKernelFix.Hint> hint = diagnostic.code().flatMap(StructuralKernelFix::forCode);
-        if (hint.isPresent()) {
-            return diagnostic.withFix(hint.map(StructuralKernelFix.Hint::fix), hint.map(StructuralKernelFix.Hint::explain));
         }
         return diagnostic;
     }

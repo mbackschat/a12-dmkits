@@ -625,9 +625,10 @@
     "gotchas": [
       { "text": "omitting or changing @From changes the uniqueness scope (unique per parent row vs. across all rows)", "kind": "SURPRISE" },
       { "text": "not allowed together with parallel iteration", "kind": "SURPRISE" },
-      { "text": "the rule must sit at the PARENT of the repeated group — each key field needs a repeatable group between the rule's group and the field, so authoring it INSIDE the repeated group is rejected (MVK_REPEATABLE_GROUP_MISSING)", "kind": "SURPRISE" }
+      { "text": "the rule must sit at the PARENT of the repeated group — each key field needs a repeatable group between the rule's group and the field, so authoring it INSIDE the repeated group is rejected (MVK_REPEATABLE_GROUP_MISSING)", "kind": "SURPRISE" },
+      { "text": "via the CLI, author it with the rule group set to the PARENT and the error field INSIDE the repeated group: `rule check --group <parentGroup> --field <parentGroup>/<repeatedGroup>/<keyField>` (e.g. --group /Order --field /Order/Items/Sku). The DEFAULT grouping (rule at the error field's own group) puts the rule at the repeated group itself and is rejected — MVK_NO_WILDCARD with a non-repeatable error field, MVK_INVALID_ENTITY / MVK_REPEATABLE_GROUP_MISSING with the error field in the row", "kind": "AUTHORING" }
     ],
-    "validExample": { "dsl": "RepetitionNotUnique(Items/Sku)", "note": "fires on each line item whose Sku also appears on another line" },
+    "validExample": { "dsl": "RepetitionNotUnique(Items/Sku)", "note": "fires on each line item whose Sku also appears on another line (error field inside Items, rule group at the parent /Order — pass --group /Order to rule check/add)" },
     "invalidExample": { "dsl": "RepetitionNotUnique(CustomerName)", "error": "MVK_REPEATABLE_GROUP_MISSING", "fix": "the key must sit under a repeatable group between rule group and field" },
     "sinceKernel": "30.8.x"
   },

@@ -5,11 +5,14 @@ import java.util.Optional;
 
 /**
  * Curated {@code fix}/{@code explain} for <b>structural</b> kernel codes — the placement /
- * iteration-scope family that no operator's {@code invalidExample} documents, so
- * {@link DiagnosticEnricher}'s operator-keyed catalog-join cannot reach them. The enricher consults
- * this as a <em>fallback</em> (after the catalog miss), so operator-level codes keep their
- * N7-locked catalog fix and structural codes still get a corrective hint instead of a bare kernel
- * message.
+ * iteration-scope / wildcard family. Two kinds live here: codes <em>no</em> operator's
+ * {@code invalidExample} documents (placement / iteration-scope), and <b>shared</b> codes that
+ * <em>several</em> operators trigger ({@code MVK_NO_WILDCARD} — CurrentRepetition, RepetitionNotUnique,
+ * aggregates, a model-scope group reference) where keying the fix off a single operator's
+ * {@code invalidExample} mis-stamps every occurrence (probe finding F06-2: every {@code MVK_NO_WILDCARD}
+ * got CurrentRepetition's "put the error field inside Items" fix). {@link DiagnosticEnricher} consults
+ * this <b>first</b>, so a shared structural code gets the generic, operator-independent hint; an
+ * operator-specific code misses here and falls through to the N7-locked catalog-join.
  *
  * <p>Hand-authored guidance, like the {@code RK_*} meanings in {@link RkCode} — but locked the same
  * way the catalog fixes are: a test triggers the real kernel code and asserts the fix attaches
@@ -29,6 +32,18 @@ public final class StructuralKernelFix {
     }
 
     private static final Map<String, Hint> HINTS = Map.of(
+            "MVK_NO_WILDCARD", new Hint(
+                    "A repeatable group is referenced from a rule that does not iterate over it — the fix is "
+                            + "operator-dependent. For an AGGREGATE, flatten the repetitions with the `*` wildcard: "
+                            + "Sum(Lines*/Amount), NumberOfFilledFields(Lines*/Sku), NumberOfFilledGroups(Lines*). "
+                            + "For a PER-REPETITION predicate (RepetitionNotUnique / CurrentRepetition), make the rule "
+                            + "iterate by putting its group at the PARENT of the repeated group with the error field "
+                            + "inside it — via the CLI, `rule check --group <parentGroup> --field <parentGroup>/<repeatedGroup>/<field>` "
+                            + "(e.g. --group /Order --field /Order/Items/Sku for RepetitionNotUnique(Items/Sku)).",
+                    "MVK_NO_WILDCARD fires when a repeatable group is referenced from a non-iterating scope: the kernel "
+                            + "expected either a flattening `*` (aggregates) or a rule that iterates over that group "
+                            + "(per-repetition predicates). The required form depends on the operator, so this code is "
+                            + "not specific to any single one."),
             "MVK_ERROR_FIELD_NOT_IN_RULEGROUP", new Hint(
                     "Place the error field inside every repeatable group the rule iterates over. The condition "
                             + "references a per-row field, so the rule iterates and its error field must live in that "
