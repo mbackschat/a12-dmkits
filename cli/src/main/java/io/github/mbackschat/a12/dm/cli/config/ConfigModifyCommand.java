@@ -33,7 +33,7 @@ import picocli.CommandLine.Option;
  */
 @Command(name = "modify", mixinStandardHelpOptions = true,
         description = "Set decimal-separator / time-zone / condition-language / model label / annotation / "
-                + "add a display locale (at least one required).")
+                + "roles / add a display locale (at least one required).")
 final class ConfigModifyCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -62,6 +62,16 @@ final class ConfigModifyCommand extends BaseCommand {
     @Option(names = "--annotation", paramLabel = "<name>=<value>",
             description = "set a model-level annotation (repeatable), e.g. --annotation owner=permits-team")
     Map<String, String> annotations = new LinkedHashMap<>();
+
+    @ParamKind(ParamKind.Kind.SCALAR)
+    @Option(names = "--role", paramLabel = "<name>",
+            description = "add an access-control role to the model's `roles` header annotation (repeatable). "
+                    + "MERGES with the existing roles (a one-role edit keeps the rest); the `workspace roles` "
+                    + "lint binds these to auth/roles.yaml")
+    java.util.List<String> roles = new java.util.ArrayList<>();
+
+    @Option(names = "--clear-roles", description = "remove the model's `roles` header annotation entirely")
+    boolean clearRoles;
 
     @ParamKind(ParamKind.Kind.SCALAR)
     @Option(names = "--supported-character", paramLabel = "<char-or-range>",
@@ -99,9 +109,13 @@ final class ConfigModifyCommand extends BaseCommand {
         }
         if (decimalSeparator == null && timeZone == null && conditionLanguage == null
                 && labels.isEmpty() && annotations.isEmpty() && supportedCharacters.isEmpty() && comment == null
-                && addLocales.isEmpty()) {
+                && addLocales.isEmpty() && roles.isEmpty() && !clearRoles) {
             return fail("nothing to change — pass at least one of --decimal-separator, --time-zone, "
-                    + "--condition-language, --label, --annotation, --supported-character, --comment, --add-locale");
+                    + "--condition-language, --label, --annotation, --supported-character, --comment, --add-locale, "
+                    + "--role, --clear-roles");
+        }
+        if (!roles.isEmpty() && clearRoles) {
+            return fail("pass either --role <name> (add roles) or --clear-roles, not both");
         }
         String modelJson;
         try {
@@ -158,6 +172,27 @@ final class ConfigModifyCommand extends BaseCommand {
             }
             if (!addedLocales.isEmpty()) {
                 changed.set("addedLocales", addedLocales);
+            }
+            if (!roles.isEmpty()) {
+                // MERGE into the comma-separated `roles` annotation (dedupe, keep order) — a one-role edit
+                // keeps the rest (the G17 rule), unlike a raw `--annotation roles=…` that clobbers the list
+                java.util.LinkedHashSet<String> merged = new java.util.LinkedHashSet<>();
+                String existing = doc.modelAnnotations().get("roles");
+                if (existing != null && !existing.isBlank()) {
+                    for (String r : existing.split(",")) {
+                        if (!r.isBlank()) {
+                            merged.add(r.trim());
+                        }
+                    }
+                }
+                merged.addAll(roles);
+                String joined = String.join(",", merged);
+                doc.setModelAnnotation("roles", joined);
+                changed.put("roles", joined);
+            }
+            if (clearRoles) {
+                doc.removeModelAnnotation("roles");
+                changed.putNull("roles");
             }
             resultJson = doc.validate(resolver).toJson();
         } catch (ModelConsistencyException e) {

@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -54,6 +55,13 @@ final class ConfigReadCommand extends BaseCommand {
             c.supportedCharacters().forEach(supported::add);
             // the model-level comment (modelInfo.comment), if set
             doc.modelComment().ifPresent(comment -> data.put("comment", comment));
+            // the model-level header annotations (incl. the access-control `roles`, G26) — the read peer of
+            // `config modify --annotation`/`--role`; surfaced so a roles edit round-trips
+            Map<String, String> modelAnnotations = doc.modelAnnotations();
+            if (!modelAnnotations.isEmpty()) {
+                ObjectNode annotations = data.putObject("annotations");
+                modelAnnotations.forEach(annotations::put);
+            }
             // The declared message locales (header.locales) drive the per-locale-message law
             // (MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING) — surface the full set so an agent can provision a
             // rule/computation message per locale up front. `conditionLanguage` alone doesn't reveal it.

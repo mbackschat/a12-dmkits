@@ -441,6 +441,15 @@ public final class ModelDocument {
         return this;
     }
 
+    /** Remove the model-level header annotation named {@code name} (no-op if absent; drops the array if it empties). */
+    public ModelDocument removeModelAnnotation(String name) {
+        JsonNode header = root.path("header");
+        if (header.isObject()) {
+            filterArray((ObjectNode) header, "annotations", "name", name);
+        }
+        return this;
+    }
+
     /** Set the model-level {@code comment} ({@code modelInfo.comment} — a free-text model description/note). */
     public ModelDocument setModelComment(String text) {
         modelInfo().put("comment", text);

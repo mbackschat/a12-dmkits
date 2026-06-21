@@ -911,6 +911,20 @@ dmtool -m /tmp/struct2-cfg.json config read | jq -c ".data"
 
 → The comma stuck; the other settings are untouched. (`config modify` also takes `--time-zone` and `--condition-language`; at least one of the three is required.) Note `locales: ["en_US", "de_DE"]` — this model is **bilingual**, so a new rule or computation must carry both an `en_US` and a `de_DE` message.
 
+A model's **access-control roles** live in a `roles` header annotation (the `workspace roles` lint binds them to `auth/roles.yaml`). `config modify --role` **merges** a role in — adding one keeps the rest — and `config read` echoes the header `annotations`:
+
+```bash
+dmtool -m /tmp/struct2-cfg.json config modify --role shopper --role merchant >/dev/null
+dmtool -m /tmp/struct2-cfg.json config modify --role reviewer >/dev/null
+dmtool -m /tmp/struct2-cfg.json config read | jq -c ".data.annotations"
+```
+
+```output
+{"roles":"shopper,merchant,reviewer"}
+```
+
+→ All three roles survive — the second `--role reviewer` merged rather than clobbering `shopper,merchant`. `--clear-roles` drops the annotation entirely.
+
 ## export — the artifacts, not the envelope
 
 `export` takes the model via the universal `-m` like every other verb (`dmtool -m <model> export [<artifact>]`), but it prints a plain artifact — *not* the JSON result envelope. With no artifact name it emits the **model card** (a Markdown summary); `fields | groups | rules` print line-delimited JSON instead, and `--out-dir` writes all four to files.

@@ -267,6 +267,9 @@ dmtool -m order.dm.json typedef add --id Tier tier-enum.json   # { "kind":"ENUM"
 dmtool -m order.dm.json config modify \
   --decimal-separator "," --label en_US="Customer Order"
 
+# access-control roles (merge-safe; the `workspace roles` lint binds them to auth/roles.yaml)
+dmtool -m order.dm.json config modify --role shopper --role merchant
+
 # restrict the allowed-character set (runtime-enforced)
 dmtool -m order.dm.json config modify \
   --supported-character A-Z --supported-character 0-9

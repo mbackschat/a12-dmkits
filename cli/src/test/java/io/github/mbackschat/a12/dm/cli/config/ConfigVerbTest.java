@@ -68,6 +68,33 @@ class ConfigVerbTest {
         assertTrue(written.contains("orders-team"), "the model annotation is written to the header");
     }
 
+    // G26 — the model's access-control roles (a `roles` header annotation, comma-separated, the lint binds to
+    // roles.yaml). `--role` MERGES (so adding one keeps the rest — the G17 rule); `config read` echoes them.
+
+    @Test
+    void modifyMergesRolesAndConfigReadEchoesThem(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "config", "modify",
+                "--role", "admin", "--role", "editor").code());
+        var second = CliTestSupport.run("-m", model.toString(), "config", "modify", "--role", "viewer");
+        assertEquals(0, second.code(), second.err());
+        var read = CliTestSupport.run("-m", model.toString(), "config", "read");
+        assertEquals("admin,editor,viewer",
+                M.readTree(read.out()).path("data").path("annotations").path("roles").asText(),
+                () -> "roles merged, not clobbered: " + read.out());
+    }
+
+    @Test
+    void clearRolesRemovesTheAnnotation(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "config", "modify", "--role", "admin").code());
+        var res = CliTestSupport.run("-m", model.toString(), "config", "modify", "--clear-roles");
+        assertEquals(0, res.code(), res.err());
+        var read = CliTestSupport.run("-m", model.toString(), "config", "read");
+        assertTrue(M.readTree(read.out()).path("data").path("annotations").path("roles").isMissingNode(),
+                () -> "the roles annotation is gone: " + read.out());
+    }
+
     @Test
     void modifyChangesTheDecimalSeparator(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
