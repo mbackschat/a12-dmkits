@@ -20,6 +20,7 @@ model validate
 model describe
 model read
 model usage
+model rename
 model eval
 model compute
 rule check

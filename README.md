@@ -306,6 +306,9 @@ dmtool -m order.dm.json typedef rename Currency --to Money
 # inverse: typedef inline Money
 dmtool -m order.dm.json typedef extract --from /Order/Price,/Order/Cost --id Money
 
+# rename the model's own id (single-model; -w refuses if a sibling includes the old id)
+dmtool -m order.dm.json model rename --to purchase-order -w ./models
+
 # field/group/rule rename rewrites every reference to the element (via the kernel's MoveSupportDM), then re-validates:
 dmtool -m order.dm.json field rename /Order/DeliveryDate --to ShipDate
 

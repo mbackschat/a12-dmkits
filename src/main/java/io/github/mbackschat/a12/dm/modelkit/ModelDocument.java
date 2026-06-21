@@ -80,6 +80,20 @@ public final class ModelDocument {
         return root.path("header").path("id").asText();
     }
 
+    /**
+     * Set the model's header {@code id} (its identity — what cross-model {@code include}/type-def imports
+     * bind to). A <b>single-model</b> edit: it does NOT repoint includers in other files (that cross-model
+     * cascade is out of scope — the CLI's {@code model rename} gate refuses when a workspace sibling
+     * references the old id). Fails fast on a blank id.
+     */
+    public ModelDocument setModelId(String newId) {
+        if (newId == null || newId.isBlank()) {
+            throw new IllegalArgumentException("a model id must be non-empty");
+        }
+        ((ObjectNode) root.path("header")).put("id", newId);
+        return this;
+    }
+
     public String modelVersion() {
         return root.path("header").path("modelVersion").asText();
     }

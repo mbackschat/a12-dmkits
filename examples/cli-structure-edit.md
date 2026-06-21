@@ -925,6 +925,20 @@ dmtool -m /tmp/struct2-cfg.json config read | jq -c ".data.annotations"
 
 → All three roles survive — the second `--role reviewer` merged rather than clobbering `shopper,merchant`. `--clear-roles` drops the annotation entirely.
 
+## model rename — change the model's id
+
+`model rename --to <newId>` changes the model's header `id` — a §6 **safety-gated** refactor. With a workspace (`-w`) it refuses if a sibling **includes** the old id (the cross-model cascade is out of scope); here it's a standalone single-model edit:
+
+```bash
+dmtool -m /tmp/struct2-cfg.json model rename --to subscription-v2 | jq -c "{outcome, changed}"
+```
+
+```output
+{"outcome":"applied","changed":{"id":"subscription-v2","from":"subscription"}}
+```
+
+→ `changed.from`/`changed.id` show the id moved `subscription → subscription-v2`. Run with `-w <workspace>` to arm the cross-model gate that refuses (writing nothing) when another model would be left including a now-missing id.
+
 ## export — the artifacts, not the envelope
 
 `export` takes the model via the universal `-m` like every other verb (`dmtool -m <model> export [<artifact>]`), but it prints a plain artifact — *not* the JSON result envelope. With no artifact name it emits the **model card** (a Markdown summary); `fields | groups | rules` print line-delimited JSON instead, and `--out-dir` writes all four to files.
