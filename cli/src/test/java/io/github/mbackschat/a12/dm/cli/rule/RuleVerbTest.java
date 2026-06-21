@@ -147,6 +147,30 @@ class RuleVerbTest {
     }
 
     @Test
+    void addWithAllowDifferingDecimalsAcceptsACrossScaleComparison(@TempDir Path dir) throws Exception {
+        // /Order/Quantity (scale 0) == /Order/UnitPrice (scale 2) draws MVK_INVALID_COMPARE_DEC_PLACES;
+        // the "Allow Differing Decimal Places" flag (G7b) prepends @SuppressWarning to waive it.
+        Path model = CliTestSupport.orderRuled(dir);
+        Path bare = dir.resolve("bare.json");
+        Files.writeString(bare, """
+                { "field": "/Order/Quantity", "condition": "[Quantity] == [UnitPrice]", "code": "SCALE_BARE",
+                  "messages": [ {"locale":"en_US","text":"x"} ] }""");
+        assertEquals(1, CliTestSupport.run("-m", model.toString(), "rule", "add", bare.toString()).code(),
+                "without the flag the cross-scale comparison is rejected");
+
+        Path ok = dir.resolve("ok.json");
+        Files.writeString(ok, """
+                { "field": "/Order/Quantity", "condition": "[Quantity] == [UnitPrice]", "code": "SCALE_OK",
+                  "allowDifferingDecimals": true,
+                  "messages": [ {"locale":"en_US","text":"x"} ] }""");
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "add", ok.toString());
+        assertEquals(0, res.code(), res::err);
+        assertEquals("applied", M.readTree(res.out()).path("outcome").asText());
+        assertTrue(Files.readString(model).contains("SuppressWarning"),
+                "the @SuppressWarning directive is persisted on the condition");
+    }
+
+    @Test
     void addRejectsAnInvalidRuleAndWritesNothing(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
         Path spec = dir.resolve("bad.json");

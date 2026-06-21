@@ -71,7 +71,8 @@ final class ApplyCommand extends BaseCommand {
         GROUP_MODIFY("group", "modify", Set.of("groupPathInModel", "repeatable", "non-repeatable",
                 "index-field", "clear-index-field")),
         GROUP_REMOVE("group", "remove", Set.of("groupPathInModel", "cascade")),
-        RULE_ADD("rule", "add", Set.of("field", "condition", "comment", "code", "severity", "name", "messages")),
+        RULE_ADD("rule", "add", Set.of("field", "condition", "comment", "code", "severity", "name", "messages",
+                "allowDifferingDecimals")),
         RULE_MODIFY("rule", "modify", Set.of("rule", "condition", "comment")),
         RULE_REMOVE("rule", "remove", Set.of("rule")),
         COMPUTATION_ADD("computation", "add", Set.of("computedField", "alternatives", "commonPrecondition", "comment", "name", "messages")),
@@ -359,6 +360,9 @@ final class ApplyCommand extends BaseCommand {
                     throw new IllegalArgumentException("rule add needs messages [{locale,text}, …]");
                 }
                 String condition = Comments.withLeadingComment(opt(op, "comment"), req(op, "condition"));
+                if (op.path("allowDifferingDecimals").asBoolean(false)) {
+                    condition = "@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) " + condition;
+                }
                 session.addRule(group, ruleName, errorEntityRelPath, code, condition, severity, messages);
                 changed.put("rule", group + "/" + ruleName);
                 yield staged(which, changed, session);

@@ -15,6 +15,7 @@
     "comment": { "type": "string", "description": "(rule/computation) optional explanatory note, persisted as a leading ;; comment — on the rule's condition, or on a computation's first operation (the kernel tolerates it; it survives a later modify)" },
     "code": { "type": "string", "description": "(rule) the rule's error code" },
     "severity": { "type": "string", "description": "(rule) ERROR | WARNING | INFO (default ERROR)" },
+    "allowDifferingDecimals": { "type": "boolean", "description": "(rule) the editor's 'Allow Differing Decimal Places' — prepend @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) so a field-vs-field == / != across differing decimal scales is accepted (the kernel's one suppressible warning). Default false." },
 
     "computedField": { "type": "string", "description": "(computation) the calculated field's ABSOLUTE path; the computation element is placed in its group" },
     "commonPrecondition": { "type": "string", "description": "(computation) optional guard (A12 DSL) shared by all alternatives" },
