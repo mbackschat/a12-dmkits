@@ -17,7 +17,8 @@ import picocli.CommandLine.Parameters;
 
 /**
  * {@code dmtool group read <groupPath>} — read a group's repeatability. A read op: the payload rides {@code
- * data} ({@code group}, {@code repeatable}); a path that names no group fails fast.
+ * data} ({@code group}, {@code repeatable}, {@code maxRepetitions} when repeatable, {@code indexField} when
+ * set); a path that names no group fails fast.
  */
 @Command(name = "read", mixinStandardHelpOptions = true,
         description = "Read a group's repeatability into `data`.")
@@ -51,7 +52,11 @@ final class GroupReadCommand extends BaseCommand {
             }
             ObjectNode data = MAPPER.createObjectNode();
             data.put("group", group);
-            data.put("repeatable", doc.isRepeating(group));
+            boolean repeatable = doc.isRepeating(group);
+            data.put("repeatable", repeatable);
+            if (repeatable) {
+                data.put("maxRepetitions", doc.maxRepetitions(group));  // the numeric max rows, not just the boolean
+            }
             // echo the index field (repetition row-key) so a `group modify --index-field` edit round-trips
             doc.indexField(group).ifPresent(idx -> data.put("indexField", idx));
             ResultEnvelope env = ResultEnvelope.read("group", "read", "read " + group, true, List.of(), data);

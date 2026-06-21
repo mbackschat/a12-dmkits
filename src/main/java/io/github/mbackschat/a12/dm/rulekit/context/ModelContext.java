@@ -203,7 +203,7 @@ public final class ModelContext {
     public ModelCard describe() {
         List<ModelCard.Field> fields = model.fields().map(this::fieldCard).toList();
         List<ModelCard.Group> groups = model.groups()
-                .map(g -> new ModelCard.Group(g.path(), g.repeating()))
+                .map(g -> new ModelCard.Group(g.path(), g.repeating(), g.maxRepetitions()))
                 .toList();
         return new ModelCard(fields, groups, model.locales());
     }

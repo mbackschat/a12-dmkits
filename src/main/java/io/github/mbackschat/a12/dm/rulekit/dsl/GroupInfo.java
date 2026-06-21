@@ -30,6 +30,11 @@ public final class GroupInfo {
         return repeating;
     }
 
+    /** This group's maximum repetitions — the repeatability count ({@code 1} = non-repeatable). */
+    public int maxRepetitions() {
+        return model.maxRepetitions(path);
+    }
+
     /** This group as a typed authoring handle. */
     public GroupRef ref() {
         return model.group(path);

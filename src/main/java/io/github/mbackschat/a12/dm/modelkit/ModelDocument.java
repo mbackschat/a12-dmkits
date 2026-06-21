@@ -309,6 +309,12 @@ public final class ModelDocument {
         return group != null && group.path("Group").path("repeatability").asInt(1) > 1;
     }
 
+    /** The group's maximum repetitions — the repeatability count ({@code 1} = non-repeatable). */
+    public int maxRepetitions(String groupPath) {
+        JsonNode group = locate(groupPath, true);
+        return group == null ? 1 : group.path("Group").path("repeatability").asInt(1);
+    }
+
     // --- structure edits (M8) — surgical mutations of the source tree; validate() is the kernel gate -
 
     /**

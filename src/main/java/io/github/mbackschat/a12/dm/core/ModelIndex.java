@@ -142,6 +142,11 @@ public final class ModelIndex {
         return group(groupPath).getRepeatability() != 1;
     }
 
+    /** The group's maximum repetitions — the repeatability count ({@code 1} = non-repeatable). */
+    public int maxRepetitions(String groupPath) {
+        return group(groupPath).getRepeatability();
+    }
+
     // --- navigation (Level 1, study finding 9): streams of facts in model order -----------------
 
     /** Paths of all fields, in model order. */

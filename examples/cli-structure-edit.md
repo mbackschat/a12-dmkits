@@ -240,7 +240,8 @@ dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons
   "summary" : "read /Subscription/Addons",
   "data" : {
     "group" : "/Subscription/Addons",
-    "repeatable" : true
+    "repeatable" : true,
+    "maxRepetitions" : 20
   },
   "diagnostics" : [ ],
   "written" : false
@@ -273,7 +274,7 @@ dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons | jq -c '.data'
   "written" : true,
   "output" : "/tmp/struct2.dm.json"
 }
-{"group":"/Subscription/Addons","repeatable":true,"indexField":"Name"}
+{"group":"/Subscription/Addons","repeatable":true,"maxRepetitions":20,"indexField":"Name"}
 ```
 
 → `changed.indexField: Name` and the read's `data.indexField` confirm the row-key landed. `--clear-index-field` removes it; an index field on a single (non-repeating) group is refused.

@@ -355,6 +355,11 @@ public final class BoundModel {
         return index.locales();
     }
 
+    /** The group's maximum repetitions — the repeatability count ({@code 1} = non-repeatable). */
+    public int maxRepetitions(String path) {
+        return index.maxRepetitions(path);
+    }
+
     /** The non-throwing peek — exploring is lenient; narrowing (on {@link FieldInfo}) is strict. */
     public java.util.Optional<FieldInfo> fieldAt(String path) {
         return index.isField(path) ? java.util.Optional.of(fieldInfo(path)) : java.util.Optional.empty();

@@ -33,8 +33,8 @@ public record ModelCard(List<Field> fields, List<Group> groups, List<String> loc
         }
     }
 
-    /** A group: path and whether it repeats. */
-    public record Group(String path, boolean repeatable) {
+    /** A group: path, whether it repeats, and (when it does) its maximum repetitions. */
+    public record Group(String path, boolean repeatable, int maxRepetitions) {
     }
 
     /** The card as agent-parseable JSON (files-as-API): {@code {fields:[…], groups:[…], locales:[…]}}. */
@@ -57,6 +57,9 @@ public record ModelCard(List<Field> fields, List<Group> groups, List<String> loc
             ObjectNode node = groupNodes.addObject();
             node.put("path", g.path());
             node.put("repeatable", g.repeatable());
+            if (g.repeatable()) {
+                node.put("maxRepetitions", g.maxRepetitions());   // the numeric max rows, only when it repeats
+            }
         }
         ArrayNode localeNodes = root.putArray("locales");
         locales.forEach(localeNodes::add);

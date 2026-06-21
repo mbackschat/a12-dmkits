@@ -35,7 +35,8 @@
         "additionalProperties": false,
         "properties": {
           "path": { "type": "string" },
-          "repeatable": { "type": "boolean", "description": "whether the group repeats (rules over it iterate)" }
+          "repeatable": { "type": "boolean", "description": "whether the group repeats (rules over it iterate)" },
+          "maxRepetitions": { "type": "integer", "description": "the maximum number of rows; present only for a repeatable group" }
         }
       }
     }

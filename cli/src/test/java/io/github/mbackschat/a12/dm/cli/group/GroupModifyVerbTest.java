@@ -40,10 +40,13 @@ class GroupModifyVerbTest {
         JsonNode env = M.readTree(res.out());
         assertEquals("applied", env.path("outcome").asText(), () -> "applied: " + res.out());
         assertTrue(env.path("changed").path("repeatable").asBoolean(), () -> "reports the new repeatability: " + res.out());
-        // the change is real — group read now reports it repeatable
+        // the change is real — group read now reports it repeatable AND its numeric max (report #121: the
+        // tool reported only `repeatable:true`, so confirming max=10 meant parsing raw JSON — now surfaced).
         var read = CliTestSupport.run("-m", m.toString(), "group", "read", "/Subscription/Billing");
-        assertTrue(M.readTree(read.out()).path("data").path("repeatable").asBoolean(),
-                () -> "the group is now repeatable: " + read.out());
+        JsonNode data = M.readTree(read.out()).path("data");
+        assertTrue(data.path("repeatable").asBoolean(), () -> "the group is now repeatable: " + read.out());
+        assertEquals(10, data.path("maxRepetitions").asInt(),
+                () -> "group read surfaces the numeric max, not just the boolean: " + read.out());
     }
 
     @Test
