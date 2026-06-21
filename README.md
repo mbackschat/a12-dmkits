@@ -77,41 +77,11 @@ Prefer typed Java in your own JVM project? The same engine is a library — see 
 
 Same engine, no Java required. Every command is `dmtool -m <model> <target> <op> [args]` and prints a uniform JSON **result envelope** (`{ok, valid, outcome, data, diagnostics[], …}`). It is **self-describing**, so a cold agent (or you) can discover the whole surface from the binary alone.
 
-### Use it inside your coding agent (Claude Code, Codex)
+### Install — see the release repo (single source of truth)
 
-Install it for your agent — the plugin fetches the per-OS binary on first use and loads the canonical skill (see *The skill & the plugin* above):
+`dmtool` is distributed from the public release repo — **[`a12-dmtool-releases`](https://github.com/mbackschat/a12-dmtool-releases)**, which holds the **single source of install truth**. Both paths are documented there in full: the **agent plugin** (Claude Code / Codex — bundles the binary + the canonical skill, *including the post-install activation step*) and the **raw per-OS binary** (+ `SHA256SUMS`) for plain terminal use. (This source repo holds the plugin *source* under [`plugin/`](plugin/) (Claude Code) and [`plugin-codex/`](plugin-codex/) (Codex); they ship to the mirror at release.)
 
-```text
-# Claude Code
-/plugin marketplace add mbackschat/a12-dmtool-releases
-/plugin install dmtool
-
-# OpenAI Codex
-codex plugin marketplace add mbackschat/a12-dmtool-releases
-codex plugin add dmtool
-```
-
-> **After installing, start a fresh session — or resume this one (`claude --continue`, which keeps your whole conversation).** The plugin loads `dmtool` via a `SessionStart` hook, so it isn't on `PATH` in the very session where you ran `/plugin install`; the binary fetches on the next session start. (If you ask for `dmtool` work before then, the bundled skill tells the agent to point you here — it won't try to install the tool by hand.)
-
-The plugins, the per-OS binaries, and full install/licensing details live in the public release repo — **[`a12-dmtool-releases`](https://github.com/mbackschat/a12-dmtool-releases)**. (This source repo holds the plugin *source* under [`plugin/`](plugin/) (Claude Code) and [`plugin-codex/`](plugin-codex/) (Codex); they ship to the mirror at release.)
-
-### Install the binary directly (no agent)
-
-For terminal use without an agent, grab the native binary from the [`a12-dmtool-releases`](https://github.com/mbackschat/a12-dmtool-releases) Releases and verify its checksum:
-
-```sh
-# macOS (Apple Silicon)
-base=https://github.com/mbackschat/a12-dmtool-releases/releases/latest/download
-curl -fsSLO "$base/dmtool-macos-arm64"
-curl -fsSLO "$base/SHA256SUMS"
-shasum -a 256 -c SHA256SUMS --ignore-missing             # verify integrity
-chmod +x dmtool-macos-arm64
-xattr -d com.apple.quarantine dmtool-macos-arm64 2>/dev/null || true   # only if a browser download was quarantined
-sudo mv dmtool-macos-arm64 /usr/local/bin/dmtool         # put it on PATH as `dmtool`
-dmtool --version
-```
-
-Linux/Windows binaries and Homebrew/Scoop come later; the binary is **EUPL-1.2** (it embeds the A12 Kernel — see the mirror's `LICENSE`/`NOTICE`). The runtime-evaluation verbs (`model eval`, `rule test`, `model compute`) need a JVM and are **not** in the native binary.
+The binary is **EUPL-1.2** (it embeds the A12 Kernel — see the mirror's `LICENSE`/`NOTICE`); Linux/Windows binaries and Homebrew/Scoop come later. The runtime-evaluation verbs (`model eval`, `rule test`, `model compute`) need a JVM and are **not** in the native binary.
 
 ### Discover the tool itself
 
