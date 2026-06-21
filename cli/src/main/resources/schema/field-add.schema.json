@@ -49,7 +49,7 @@
             "properties": { "value": { "type": "string", "description": "the stored value" }, "labels": { "type": "object", "description": "per-locale display labels, { \"<locale>\": \"<text>\" }" } } } },
         "categories": { "type": "array", "description": "named classifications; each has values[] aligned 1:1 with the enum values. seeAlso: the EnumCategory operator (`operators EnumCategory`) — reads a value's category in a rule",
           "items": { "type": "object", "required": ["name", "values"], "additionalProperties": false,
-            "properties": { "name": { "type": "string" }, "values": { "type": "array", "items": { "type": "string" }, "description": "values aligned 1:1 with the enum values" } } } },
+            "properties": { "name": { "type": "string" }, "description": { "type": "string", "description": "optional editor-level note for the category (the kernel core ignores it; preserved for the editor's Category table)" }, "values": { "type": "array", "items": { "type": "string" }, "description": "values aligned 1:1 with the enum values" } } } },
         "alphabeticalSorting": { "type": "boolean" },
         "invalidValueMessage": { "type": "string", "description": "error text for an out-of-domain value — one text expanded across ALL declared locales (the shorthand)" },
         "errorMessages": { "type": "object", "description": "per-locale invalid-value error text, { \"<locale>\": \"<text>\" } — wins over invalidValueMessage; must cover every declared locale (omit both to use the kernel default)" }

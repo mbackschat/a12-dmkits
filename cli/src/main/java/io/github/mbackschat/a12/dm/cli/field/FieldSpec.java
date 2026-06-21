@@ -206,7 +206,8 @@ public final class FieldSpec {
         }
         List<FieldTypeSpec.EnumCategory> categories = new ArrayList<>();
         for (JsonNode c : e.path("categories")) {
-            categories.add(new FieldTypeSpec.EnumCategory(req(c, "name"), stringList(c.get("values"))));
+            categories.add(new FieldTypeSpec.EnumCategory(req(c, "name"), stringList(c.get("values")),
+                    text(c, "description")));
         }
         return new FieldTypeSpec.EnumSpec(values, categories,
                 e.path("alphabeticalSorting").asBoolean(false), text(e, "invalidValueMessage"),

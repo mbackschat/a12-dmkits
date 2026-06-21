@@ -118,6 +118,17 @@ class FieldAddSpecTest {
     }
 
     @Test
+    void enumCategoryCarriesAnOptionalDescription(@TempDir Path dir) throws Exception {
+        // SME 1133: a category may carry an optional description. It's an editor-level note (part of the
+        // model, not workspace settings) the kernel core tolerates + preserves (KERNEL-FINDINGS §8).
+        String written = Files.readString(run(dir, """
+            {"group":"/Order","name":"Urgency","kind":"ENUM",
+             "enum":{"values":[{"value":"LOW"},{"value":"HIGH"}],
+                     "categories":[{"name":"Tier","description":"escalation grouping","values":["calm","urgent"]}]}}"""));
+        assertTrue(written.contains("escalation grouping"), "the category description persists in the model");
+    }
+
+    @Test
     void customSpec(@TempDir Path dir) throws Exception {
         String written = Files.readString(run(dir, """
             {"group":"/Order","name":"Iban","kind":"CUSTOM","custom":{"typeName":"IbanType","minLength":15,"maxLength":34}}"""));

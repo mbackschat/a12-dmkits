@@ -450,6 +450,9 @@ public final class DocumentModelDraft {
                     for (FieldTypeSpec.EnumCategory c : e.categories()) {
                         ObjectNode categoryNode = categories.addObject();
                         categoryNode.put("name", c.name());
+                        if (c.description() != null) {
+                            categoryNode.put("description", c.description());   // editor note; kernel tolerates it
+                        }
                         ArrayNode catValues = categoryNode.putArray("values");
                         c.values().forEach(catValues::add);
                     }

@@ -237,10 +237,19 @@ public sealed interface FieldTypeSpec {
         }
     }
 
-    /** A named classification of the enum's values: {@code values[i]} is the category of enum value {@code i}. */
-    record EnumCategory(String name, List<String> values) {
+    /**
+     * A named classification of the enum's values: {@code values[i]} is the category of enum value {@code i}.
+     * The optional {@code description} is an editor-level note (the kernel core doesn't model it — it tolerates
+     * and preserves it; KERNEL-FINDINGS §8); {@code null} for none.
+     */
+    record EnumCategory(String name, List<String> values, String description) {
         public EnumCategory {
             values = List.copyOf(values);
+        }
+
+        /** A category with no description (the common case). */
+        public EnumCategory(String name, List<String> values) {
+            this(name, values, null);
         }
     }
 }
