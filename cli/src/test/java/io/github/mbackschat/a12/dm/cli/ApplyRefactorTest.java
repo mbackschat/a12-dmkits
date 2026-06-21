@@ -134,7 +134,7 @@ class ApplyRefactorTest {
     void renamesARuleInApply(@TempDir Path dir) throws Exception {
         Path model = orderModel(dir);
         JsonNode j = applyOps(model, dir, """
-                [ {"target":"rule","op":"rename","rule":"/Order/ZipGuard","to":"ZipRequired"} ]""");
+                [ {"target":"rule","op":"rename","rulePathInModel":"/Order/ZipGuard","to":"ZipRequired"} ]""");
 
         assertEquals(0, j.path("_exit").asInt(), () -> "committed: " + j);
         assertTrue(j.path("committed").asBoolean());

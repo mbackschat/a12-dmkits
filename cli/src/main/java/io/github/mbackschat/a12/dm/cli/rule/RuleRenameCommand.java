@@ -25,7 +25,7 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
- * {@code dmtool rule rename <ruleFullName> --to <newName>} — a Tier-2 safe rename (CLI-SPEC §6). A rule is
+ * {@code dmtool rule rename <rulePathInModel> --to <newName>} — a Tier-2 safe rename (CLI-SPEC §6). A rule is
  * not referenced by anything (conditions reference fields, not rules), so the only gate is a name
  * collision ({@code RK_NAME_EXISTS}); the kernel re-validate is the backstop. Renames the rule's name + id.
  */
@@ -36,7 +36,7 @@ final class RuleRenameCommand extends BaseCommand {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @ParamKind(ParamKind.Kind.RULE_PATH)
-    @Parameters(index = "0", paramLabel = "<ruleFullName>", description = "the rule's full name (group-path + name)")
+    @Parameters(index = "0", paramLabel = "<rulePathInModel>", description = "the rule's full name — its slash-path in the model, e.g. /Order/SomeRule")
     String rule;
 
     @ParamKind(ParamKind.Kind.NEW_NAME)

@@ -28,6 +28,7 @@ import io.github.mbackschat.a12.dm.modelkit.FieldModification;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
 import picocli.CommandLine.Command;
@@ -73,10 +74,10 @@ final class ApplyCommand extends BaseCommand {
         GROUP_REMOVE("group", "remove", Set.of("groupPathInModel", "cascade")),
         RULE_ADD("rule", "add", Set.of("field", "condition", "comment", "code", "severity", "name", "messages",
                 "allowDifferingDecimals")),
-        RULE_MODIFY("rule", "modify", Set.of("rule", "condition", "comment")),
-        RULE_REMOVE("rule", "remove", Set.of("rule")),
+        RULE_MODIFY("rule", "modify", Set.of("rulePathInModel", "condition", "comment", "severity", "messages")),
+        RULE_REMOVE("rule", "remove", Set.of("rulePathInModel")),
         COMPUTATION_ADD("computation", "add", Set.of("computedField", "alternatives", "commonPrecondition", "comment", "name", "messages")),
-        COMPUTATION_MODIFY("computation", "modify", Set.of("computation", "computedField", "alternatives", "commonPrecondition", "comment", "name", "messages")),
+        COMPUTATION_MODIFY("computation", "modify", Set.of("computationPathInModel", "computedField", "alternatives", "commonPrecondition", "comment", "name", "messages")),
         TYPEDEF_ADD("typedef", "add", Set.of("id", "kind", "string", "number", "enum", "custom",
                 "date", "time", "dateTime", "dateRange", "dateFragment")),
         TYPEDEF_REMOVE("typedef", "remove", Set.of("typeDefId")),
@@ -88,7 +89,7 @@ final class ApplyCommand extends BaseCommand {
         FIELD_MOVE("field", "move", Set.of("fieldPathInModel", "to")),
         GROUP_RENAME("group", "rename", Set.of("groupPathInModel", "to")),
         GROUP_MOVE("group", "move", Set.of("groupPathInModel", "to")),
-        RULE_RENAME("rule", "rename", Set.of("rule", "to")),
+        RULE_RENAME("rule", "rename", Set.of("rulePathInModel", "to")),
         TYPEDEF_RENAME("typedef", "rename", Set.of("typeDefId", "to")),
         FIELD_READ("field", "read", Set.of("fieldPathInModel")),
         GROUP_READ("group", "read", Set.of("groupPathInModel")),
@@ -367,14 +368,39 @@ final class ApplyCommand extends BaseCommand {
                 yield staged(which, changed, session);
             }
             case RULE_MODIFY -> {
-                String rule = req(op, "rule");
-                session.modifyRule(rule, Comments.withLeadingComment(opt(op, "comment"), req(op, "condition")));
+                // parity with the standalone `rule modify`: edit condition AND/OR severity AND/OR messages —
+                // at least one. Messages MERGE per locale (G17), so a one-locale edit can't drop the rest. The
+                // terminal gate re-binds the whole sequence.
+                String rule = req(op, "rulePathInModel");
+                boolean any = false;
+                if (op.hasNonNull("condition")) {
+                    session.modifyRule(rule, Comments.withLeadingComment(opt(op, "comment"), op.get("condition").asText()));
+                    any = true;
+                }
+                if (op.hasNonNull("severity")) {
+                    session.modifyRuleSeverity(rule, severity(op.get("severity").asText()));
+                    changed.put("severity", op.get("severity").asText());
+                    any = true;
+                }
+                if (op.has("messages")) {
+                    List<LocalizedText> provided = messages(op);
+                    if (provided.isEmpty()) {
+                        throw new IllegalArgumentException("rule modify 'messages' must be [{locale,text}, …]");
+                    }
+                    session.modifyRuleMessages(rule, mergeRuleMessages(session, resolver, rule, provided));
+                    ArrayNode m = changed.putArray("messages");
+                    provided.forEach(t -> m.addObject().put("locale", t.locale()).put("text", t.text()));
+                    any = true;
+                }
+                if (!any) {
+                    throw new IllegalArgumentException("rule modify needs one of condition / severity / messages");
+                }
                 changed.put("modified", rule);
                 yield staged(which, changed, session);
             }
             case RULE_REMOVE -> {
                 // a rule has no dependents (unlike a field/group), so no cascade gate — just remove it (G12)
-                String rule = req(op, "rule");
+                String rule = req(op, "rulePathInModel");
                 session.removeRule(rule);
                 changed.put("removed", rule);
                 yield staged(which, changed, session);
@@ -389,7 +415,7 @@ final class ApplyCommand extends BaseCommand {
                 yield staged(which, changed, session);
             }
             case COMPUTATION_MODIFY -> {
-                String comp = req(op, "computation");
+                String comp = req(op, "computationPathInModel");
                 ComputationSpec.Parsed parsed = ComputationSpec.parse(op);
                 if (parsed.error() != null) {
                     throw new IllegalArgumentException(parsed.error());
@@ -499,7 +525,7 @@ final class ApplyCommand extends BaseCommand {
             case GROUP_MOVE -> applyRefactor(session, resolver,
                     StructureRefactor.groupMove(req(op, "groupPathInModel"), req(op, "to")));
             case RULE_RENAME -> applyRefactor(session, resolver,
-                    StructureRefactor.ruleRename(req(op, "rule"), req(op, "to")));
+                    StructureRefactor.ruleRename(req(op, "rulePathInModel"), req(op, "to")));
             case TYPEDEF_RENAME -> applyRefactor(session, resolver,
                     StructureRefactor.typedefRename(req(op, "typeDefId"), req(op, "to")));
             case FIELD_READ -> {
@@ -674,7 +700,7 @@ final class ApplyCommand extends BaseCommand {
     /** Ops whose spec has nested objects worth schema-validating beyond the flat top-level key-set above. */
     private static final java.util.Map<Op, String> NESTED_SCHEMA = java.util.Map.of(
             Op.FIELD_ADD, "field-add", Op.FIELD_MODIFY, "field-add",
-            Op.RULE_ADD, "add", Op.COMPUTATION_ADD, "add", Op.COMPUTATION_MODIFY, "add",
+            Op.RULE_ADD, "add", Op.RULE_MODIFY, "add", Op.COMPUTATION_ADD, "add", Op.COMPUTATION_MODIFY, "add",
             Op.TYPEDEF_ADD, "typedef-add");
 
     /** The supported {@code target op} labels, sorted — for the unknown-op diagnostic. */
@@ -702,6 +728,33 @@ final class ApplyCommand extends BaseCommand {
             }
         }
         return messages;
+    }
+
+    /** Parse a severity arg, with a clean corrective for a bad value (not the raw enum-{@code valueOf} message). */
+    private static Severity severity(String raw) {
+        try {
+            return Severity.valueOf(raw);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("severity must be ERROR|WARNING|INFO (got: " + raw + ")");
+        }
+    }
+
+    /**
+     * Merge the provided per-locale messages into the rule's existing ones (G17 upsert): keep every existing
+     * locale, overwrite only the ones provided — so a one-locale edit via {@code apply} can't silently drop the
+     * rest, exactly as the standalone {@code rule modify --message} does. Reads the existing set from the live
+     * (staged) session, so it sees earlier ops' effects.
+     */
+    private static List<LocalizedText> mergeRuleMessages(EditSession session,
+            IDocumentModelReferenceResolver resolver, String rule, List<LocalizedText> provided) {
+        java.util.LinkedHashMap<String, String> merged = new java.util.LinkedHashMap<>();
+        for (LocalizedText existing : KernelAdapter.ofJson(session.toJson(), resolver).ruleMessages(rule)) {
+            merged.put(existing.locale(), existing.text());
+        }
+        for (LocalizedText p : provided) {
+            merged.put(p.locale(), p.text());
+        }
+        return merged.entrySet().stream().map(e -> new LocalizedText(e.getKey(), e.getValue())).toList();
     }
 
     /** A failing op's per-op envelope — corrective: names the op index, the cause, and the offending locus. */

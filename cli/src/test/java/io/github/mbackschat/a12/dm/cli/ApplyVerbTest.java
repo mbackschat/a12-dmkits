@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
@@ -368,7 +369,7 @@ class ApplyVerbTest {
         Path ops = dir.resolve("ops.json");
         // a "delete a rule" edit is now expressible IN apply (was RK_UNKNOWN_OP — forced a drop to standalone)
         Files.writeString(ops, """
-                [ {"target":"rule","op":"remove","rule":"/Order/EligibilityCheck"} ]""");
+                [ {"target":"rule","op":"remove","rulePathInModel":"/Order/EligibilityCheck"} ]""");
 
         var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), res.err());
@@ -377,6 +378,133 @@ class ApplyVerbTest {
         assertTrue(j.path("written").asBoolean());
         assertEquals("/Order/EligibilityCheck", j.path("results").get(0).path("changed").path("removed").asText());
         assertFalse(Files.readString(model).contains("EligibilityCheck"), "the rule is gone from the model");
+    }
+
+    // --- F2: apply op-record locator keys match the standalone verb positionals ---
+
+    @Test
+    void appliesARuleModifyOpEditingSeverityAndMergingMessages(@TempDir Path dir) throws Exception {
+        Path model = dir.resolve("subscription.dm.json");
+        Files.writeString(model, CliTestSupport.subscriptionJson());
+        Path ops = dir.resolve("ops.json");
+        // parity with the standalone `rule modify`: add a bilingual rule, then edit its severity + ONLY the
+        // en_US message in one session — the de_DE message must survive (G17 merge), and the locator is the
+        // standalone-matching rulePathInModel (was: rule modify couldn't touch severity/messages at all in apply).
+        Files.writeString(ops, """
+                [ {"target":"rule","op":"add","field":"/Subscription/AutoRenew","code":"AUTO_RENEW_SET",
+                   "condition":"FieldFilled(/Subscription/AutoRenew)",
+                   "messages":[{"locale":"en_US","text":"Confirm auto-renew."},{"locale":"de_DE","text":"Verlaengerung bestaetigen."}]},
+                  {"target":"rule","op":"modify","rulePathInModel":"/Subscription/AUTO_RENEW_SET","severity":"WARNING",
+                   "messages":[{"locale":"en_US","text":"Please confirm auto-renew."}]} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertEquals("WARNING", j.path("results").get(1).path("changed").path("severity").asText());
+        String written = Files.readString(model);
+        assertTrue(written.contains("Please confirm auto-renew."), "the en_US message was updated");
+        assertTrue(written.contains("Verlaengerung bestaetigen."),
+                "the de_DE message survived the one-locale edit (G17 merge, like the standalone verb)");
+    }
+
+    @Test
+    void appliesAComputationModifyOpWithComputationPathInModel(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.subscriptionComputed(dir);
+        Path ops = dir.resolve("ops.json");
+        // the locator is computationPathInModel (matching the standalone positional), not the old short `computation`
+        Files.writeString(ops, """
+                [ {"target":"computation","op":"modify","computationPathInModel":"/Subscription/Billing/EffectiveFeeComp",
+                   "computedField":"/Subscription/Billing/EffectiveFee",
+                   "alternatives":[{"operation":"[BaseFee] * 3"}],
+                   "messages":[{"locale":"en_US","text":"Triple base."},{"locale":"de_DE","text":"Dreifache Basis."}]} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertEquals("/Subscription/Billing/EffectiveFeeComp",
+                j.path("results").get(0).path("changed").path("modified").asText());
+    }
+
+    @Test
+    void appliesARuleRenameOpWithRulePathInModel(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, """
+                [ {"target":"rule","op":"rename","rulePathInModel":"/Order/EligibilityCheck","to":"Eligibility"} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertEquals("/Order/Eligibility", j.path("results").get(0).path("changed").path("to").asText());
+    }
+
+    @Test
+    void everyPathLocatedApplyOpAcceptsTheLocatorKeyTheManifestAdvertises(@TempDir Path dir) throws Exception {
+        // F2 class-guard: an apply op-record's locator key MUST equal the key the manifest advertises for that
+        // verb (its --stripped positional). They drifted once — manifest said rulePathInModel/computationPathInModel
+        // while apply accepted only `rule`/`computation`, so an agent copying from the manifest hit RK_UNKNOWN_ARG.
+        // Covers every path-located edit op (the siblings), not just the reported rule case.
+        JsonNode manifest = M.readTree(CliTestSupport.run("manifest").out());
+        Path model = CliTestSupport.orderRuled(dir);
+        Path ops = dir.resolve("ops.json");
+        String[][] pathOps = {
+                {"rule", "remove"}, {"rule", "modify"}, {"rule", "rename"},
+                {"computation", "modify"}, {"field", "remove"}, {"group", "remove"} };
+        for (String[] to : pathOps) {
+            String target = to[0];
+            String op = to[1];
+            String key = manifestPositionalKey(manifest, target, op);
+            assertNotNull(key, () -> "manifest advertises a positional key for " + target + " " + op);
+            Files.writeString(ops, "[ {\"target\":\"" + target + "\",\"op\":\"" + op + "\",\""
+                    + key + "\":\"/Order/EligibilityCheck\"} ]");
+            var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+            // the op may fail for OTHER reasons (a missing `to`, no such element) — but NEVER because the
+            // manifest-advertised locator key is unknown to apply.
+            for (JsonNode r : M.readTree(res.out()).path("results")) {
+                for (JsonNode d : r.path("diagnostics")) {
+                    if ("RK_UNKNOWN_ARG".equals(d.path("code").asText())) {
+                        assertNotEquals(key, d.path("where").path("arg").asText(),
+                                () -> "apply rejects the manifest-advertised locator key '" + key + "' for "
+                                        + target + " " + op + " (manifest/apply drift): " + res.out());
+                    }
+                }
+            }
+        }
+    }
+
+    /** The op-record key the manifest advertises for {@code <target> <op>}'s positional (the locator path). */
+    private static String manifestPositionalKey(JsonNode manifest, String target, String op) {
+        for (JsonNode v : manifest.path("verbs")) {
+            if (target.equals(v.path("target").asText()) && op.equals(v.path("op").asText())) {
+                for (JsonNode p : v.path("params")) {
+                    if (!p.path("flag").asText().startsWith("--")) {   // the positional carries the locator path
+                        return p.path("key").asText();
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    @Test
+    void theOldShortRuleKeySelfCorrectsAfterTheAlignment(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path ops = dir.resolve("ops.json");
+        // clean break (no hidden alias, per the fail-fast preference): the pre-alignment `rule` key is gone, so
+        // apply names it via RK_UNKNOWN_ARG — the corrective the probe agent already recovered through.
+        Files.writeString(ops, """
+                [ {"target":"rule","op":"remove","rule":"/Order/EligibilityCheck"} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(1, res.code());
+        JsonNode j = M.readTree(res.out());
+        assertFalse(j.path("committed").asBoolean());
+        JsonNode diag = j.path("results").get(0).path("diagnostics").get(0);
+        assertEquals("RK_UNKNOWN_ARG", diag.path("code").asText());
+        assertEquals("rule", diag.path("where").path("arg").asText());
     }
 
     @Test
