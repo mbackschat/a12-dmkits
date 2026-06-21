@@ -552,17 +552,29 @@ public final class ModelDocument {
     }
 
     /** The element node (field or group) at {@code path}; fails fast if absent. */
-    private ObjectNode element(String path) {
+    private Optional<ObjectNode> findElement(String path) {
         JsonNode[] found = new JsonNode[1];
         walk((p, node, isGroup) -> {
             if (found[0] == null && p.equals(path)) {
                 found[0] = node;
             }
         });
-        if (found[0] == null) {
-            throw new IllegalArgumentException("no element at path: " + path);
-        }
-        return (ObjectNode) found[0];
+        return Optional.ofNullable((ObjectNode) found[0]);
+    }
+
+    private ObjectNode element(String path) {
+        return findElement(path).orElseThrow(() -> new IllegalArgumentException("no element at path: " + path));
+    }
+
+    /**
+     * Read the per-locale display labels of the element at {@code elementPath}. Present (possibly an empty
+     * map) only for a <b>field or group</b> — the only describables that carry a display label; empty
+     * {@code Optional} for a rule/computation/type-def (they have no label slot). The read peer of
+     * {@link #setLabel}.
+     */
+    public Optional<Map<String, String>> labels(String elementPath) {
+        return findElement(elementPath)
+                .map(el -> localizedOf((ObjectNode) el.path(el.path("type").asText()), "label"));
     }
 
     /** The typed payload object ({@code "Field"} or {@code "Group"}) of the element at {@code path}. */

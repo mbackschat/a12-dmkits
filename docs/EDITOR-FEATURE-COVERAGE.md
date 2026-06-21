@@ -1,6 +1,6 @@
 # A12 editor feature-coverage audit (resumable)
 
-> **What this is.** A **resumable audit** of how much of the A12 Tools Document-Model *editor* feature surface dmkits (modelkit/rulekit) + the `dmtool` CLI cover — driven by a user review on 2026-06-21. It records the **concept definitions** (the authoritative meaning of each editor feature), the **support matrix** (modelkit vs CLI vs whether it's explained to a CLI user), the **verification status** of each row (so a future session knows what's *confirmed* vs *still to exercise*), and the **gaps** (graduated to [`FEATURE-GAPS-LEDGER.md`](FEATURE-GAPS-LEDGER.md) §3 as G21–G23).
+> **What this is.** A **resumable audit** of how much of the A12 Tools Document-Model *editor* feature surface dmkits (modelkit/rulekit) + the `dmtool` CLI cover — driven by a user review on 2026-06-21. It records the **concept definitions** (the authoritative meaning of each editor feature), the **support matrix** (modelkit vs CLI vs whether it's explained to a CLI user), the **verification status** of each row (so a future session knows what's *confirmed* vs *still to exercise*), and the **gaps** (graduated to [`FEATURE-GAPS-LEDGER.md`](FEATURE-GAPS-LEDGER.md); G21/G22 shipped via the `meta` verb, G23–G27 open).
 >
 > **To resume / finish the audit:** work the checklist in [§6](#6-to-complete-the-audit-the-checklist). The matrix is **mostly checked by schema/spec-keys + existing tests**; "completely checked" means **exercising each ✅ row end-to-end through the CLI** (write→read-back→confirm effected) and closing the few 🟡 rows.
 
@@ -31,9 +31,9 @@ Legend — **modelkit** = the builder/`EditSession` substrate · **CLI** = a `dm
 
 | # | Feature | modelkit | CLI | explained to CLI user? | status |
 |---|---|---|---|---|---|
-| 1 | **Group — Label** | ✅ `EditSession.setLabel` (any element) | 🔴 no verb (`group add`=parent/name/repeatable; `group modify`=repeatability only) | — | 🔴 **G21** |
-| 1 | **Group — Internal/External description** | ✅ `setInternal/ExternalDescription` (tested: `ElementMetadataEditTest`) | 🔴 not exposed | — | 🔴 **G21** |
-| 1 | **Group — Annotations** | ✅ `setAnnotation` | 🔴 not exposed | — | 🔴 **G21** |
+| 1 | **Group — Label** | ✅ `EditSession.setLabel` (any element) | ✅ `meta <ref> --label` (field/group-only; merges per locale) | ✅ `meta --help`/schema | 🟢 **G21** (`MetaVerbTest`) |
+| 1 | **Group — Internal/External description** | ✅ `setInternal/ExternalDescription` (tested: `ElementMetadataEditTest`) | ✅ `meta <ref> --internal`/`--external` | ✅ | 🟢 **G21** (`MetaVerbTest`) |
+| 1 | **Group — Annotations** | ✅ `setAnnotation` | ✅ `meta <ref> --annotate` | ✅ | 🟢 **G21** (`MetaVerbTest`) |
 | 2 | **Field — Type Definition (reuse)** | ✅ | ✅ `--typedef` / spec `typedef` | ✅ schema | 🟢 |
 | 2 | **Field — Required** | ✅ | ✅ spec `required` | ✅ schema | 🟢 (`FieldMetadataRoundTripTest`) |
 | 2 | **Field — "Only if parent filled"** | ✅ `REQUIRED_IF_PARENT_PRESENT` | ✅ `required:"ifParentPresent"` | ✅ ("required only if the parent group is filled") | 🟢 |
@@ -44,25 +44,24 @@ Legend — **modelkit** = the builder/`EditSession` substrate · **CLI** = a `dm
 | 3 | **Field config — Internal/External description** | ✅ | ✅ `internalDescription`/`externalDescription` | ✅ **terse** (see Minor below) | 🟢 (`FieldMetadataRoundTripTest`) |
 | 3 | **Field config — Helper Text** | ✅ | ✅ `helperText` | ✅ schema | 🟢 |
 | 3 | **Field config — Annotations** | ✅ | ✅ `annotations` | ✅ schema | 🟢 |
-| 4 | **Rule — Internal/External description** | ✅ `setInternal/ExternalDescription` on a rule path (tested: `ElementMetadataEditTest`) | 🔴 not in `rule add` spec / `rule modify` (`--comment` is the inline `;;` note, a *different* thing) | — | 🔴 **G22** |
-| 4 | **Rule — Annotations** | ✅ `setAnnotation` on a rule path | 🔴 not exposed | — | 🔴 **G22** |
+| 4 | **Rule/Computation — Internal/External description** | ✅ `setInternal/ExternalDescription` on a rule/computation path (tested: `ElementMetadataEditTest`) | ✅ `meta <ref> --internal`/`--external` (the `--comment` `;;` note is a *different* thing) | ✅ | 🟢 **G22** (`MetaVerbTest`) |
+| 4 | **Rule/Computation — Annotations** | ✅ `setAnnotation` on a rule/computation path | ✅ `meta <ref> --annotate` | ✅ | 🟢 **G22** (`MetaVerbTest`) |
 | 5 | **Condition — Level (Error/Warning/Info)** | ✅ Severity | ✅ `--severity` / spec `severity` | ✅ | 🟢 (`RuleVerbTest`) |
 | 6 | **Doc config — Timezone** | ✅ | ✅ `config modify --time-zone` | ✅ | 🟢 (`ConfigVerbTest`) |
 | 6 | **Doc config — Supported Characters** | ✅ | ✅ `config modify --supported-character` | ✅ | 🟢 (`ConfigVerbTest`) |
 
-**Minor (sharpen, not a gap):** the field schema's `internalDescription`/`externalDescription` descriptions are terse ("internal/maintenance text" vs "end-user-facing text"). The precise A12 semantics — **external = the end-user UI hint; internal = technical doc shown read-only to *Form* modelers** — would help a CLI user choose. Worth tightening when G21/G22 land (so the same wording covers group/rule/field).
+**Minor (sharpen, not a gap):** the field schema's `internalDescription`/`externalDescription` descriptions are terse ("internal/maintenance text" vs "end-user-facing text"). The precise A12 semantics — **external = the end-user UI hint; internal = technical doc shown read-only to *Form* modelers** — would help a CLI user choose. (The same wording should cover the `meta` verb's `--internal`/`--external` flags, since they're the group/rule path to the same fields.)
 
 ## 4. The gaps (→ FEATURE-GAPS-LEDGER §3)
 
-- **G21 — Group metadata in the CLI** (label, internal/external description, annotations). Substrate done + tested (`EditSession.setLabel`/`setInternal/ExternalDescription`/`setAnnotation` over any element path); **no CLI verb exposes it for groups**. Fix: extend `group modify` (or `group add`) with `--label`/`--internal-description`/`--external-description`/`--annotation`. *Low-med, mostly thin verb surface.*
-- **G22 — Rule metadata in the CLI** (internal/external description, annotations). Same substrate, same tested support over a rule path; **not in the `rule add` spec or `rule modify`**. Fix: add the keys to the rule spec + `rule modify`. *Low-med, thin surface.*
+- **G21 / G22 — element metadata in the CLI. SHIPPED (see ledger §2).** *Correction to the original audit:* the cross-cutting **`meta <ref>` verb already exposed** internal/external descriptions + annotations for any field/group/rule/computation/type-def (the audit's "no CLI verb exposes it" was stale). The one residual was the display **label** — now `meta <ref> --label <locale>=<text>` (field/group-only; merges per locale; echoed on the `meta` read). Locked by `MetaVerbTest`.
 - **G23 — Field-level error messages** ("Use Default Error Messages" toggle + custom per-locale text for the field's **required**/**enum** errors). Only the string `patternMessage` exists today; `enum.invalidValueMessage` is single-string + no use-default. The general control needs **new modelkit support** (write the field's `errorMessages` + the use-default flag) + CLI keys. *Medium-large — needs modelkit work, then CLI.*
 
 > The **full-doc subagent sweep (§7)** found more beyond these — new gaps **G24–G27** (group index field, typedef enum/restrictions, roles management, model-id rename) + surface defects (the INFO-severity drift, undocumented `$$` escape + date format-sets) + a long tail. Work **§7** alongside this list.
 
 ## 5. What is already strong (don't re-litigate)
 
-The **field** surface is near-complete: `required` (+`ifParentPresent`), `global`, `transient`, `internalDescription`, `externalDescription`, `helperText`, `annotations`, `suggestions`, per-kind config (string pattern/length, number scale/bounds/unit, enum values/labels/categories) — all via the `field add`/`field modify` spec, schema-validated, kernel-checked. The modelkit element-metadata substrate (`EditSession.{setLabel,setInternalDescription,setExternalDescription,setAnnotation}`) already works for **field + group + rule** alike — the gaps are only that the CLI exposes it for fields and not yet for groups/rules.
+The **field** surface is near-complete: `required` (+`ifParentPresent`), `global`, `transient`, `internalDescription`, `externalDescription`, `helperText`, `annotations`, `suggestions`, per-kind config (string pattern/length, number scale/bounds/unit, enum values/labels/categories) — all via the `field add`/`field modify` spec, schema-validated, kernel-checked. The modelkit element-metadata substrate (`EditSession.{setLabel,setInternalDescription,setExternalDescription,setAnnotation}`) works for **field + group + rule + computation** alike, and the cross-cutting **`meta <ref>` verb exposes all of it** — label (field/group-only), internal/external descriptions, and annotations — for any element path or type-def id.
 
 ## 6. To complete the audit (the checklist)
 
@@ -71,8 +70,8 @@ A future session: tick each to take the matrix from "schema-checked" to **comple
 - [ ] **Exercise the 🟡 rows end-to-end through the CLI** (write→`field read`/`model describe`/JSON read-back→assert effected), upgrading to 🟢: `global`, `transient`, `string.suggestions`. (The `FieldMetadataRoundTripTest` pattern is the model; consider adding these to it.)
 - [ ] **Re-confirm the 🟢 rows** are genuinely round-trip-locked (not just schema-declared) — most already are via the named tests; spot-check any that aren't.
 - [ ] **G23 scope check:** confirm there is *no* field-level error-message support beyond `string.patternMessage` (grep `errorMessage`/`useDefault`/enum-message/required-message returned empty on 2026-06-21) — and decide the modelkit shape (`requirednessConfig` error text + enum-value error text + a use-default flag).
-- [ ] **Implement G21/G22** (thin CLI exposure of the existing metadata substrate) and **G23** (modelkit + CLI), each TDD'd + ledger-graduated; then re-run this matrix.
-- [ ] **Sharpen** the internal/external schema wording (Minor above) when G21/G22 add group/rule descriptions, so one phrasing covers all three.
+- [x] **G21/G22 shipped** via the `meta` verb (`--label` was the only residual; descriptions/annotations were already exposed). **G23** (modelkit + CLI) still open.
+- [ ] **Sharpen** the internal/external description wording (Minor above) — the precise external=end-user-hint / internal=Form-modeler-doc semantics on the `field` schema + the `meta --internal`/`--external` flags.
 - [ ] When a row ships, **move its gap row to FEATURE-GAPS-LEDGER §2** and flip the status here.
 - [ ] **Act on the §7 reverse-audit findings** (below) — start with §7a (the surface defects).
 
@@ -93,7 +92,7 @@ A 5-subagent sweep of the **entire** SME doc (not just the §3 areas) — each a
 - **Smaller new gaps** (record; lower priority): Enum **Category `description`** (per-category metadata; `EnumCategory(name,values)` has no description slot — SME 1133) · **locale removal** (we add via `--add-locale`/G16, no remove) · **no "remove import" inverse** for an imported typedef-model (verify — may force a header hand-edit, the G15–G20 anti-pattern) · **no `computation move`** (field/group move exist) · **"Allow Differing Decimal Places"** one-step flag for rules/computations (today: hand-prepend `@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)` — SME 1275–1283, 1362) · **"Insert From DM"** (one-time copy of another model's *resolved* content as plain children — distinct from `include add`/`include inline`; SME 508–510).
 
 ### 7c. Scope-sharpening of existing gaps
-- **G22** also covers **computation** internal/external description + annotations (same CLI-exposure gap + substrate) — not just rules.
+- **G22** also covers **computation** internal/external description + annotations — **confirmed shipped:** `meta <ref>` resolves a computation path and edits its metadata (verified end-to-end), not just rules.
 - **G23**: an enum invalid-value message *does* exist (`enum.invalidValueMessage`) but is **single-string for all locales** with **no use-default toggle** — sharper than "only `patternMessage` exists." The field error-message gap spans **required + enum** (both need per-locale + a use-default flag).
 
 ### 7d. Kernel-delegated, no early local diagnostic (mostly accept — F11 "loud at build")

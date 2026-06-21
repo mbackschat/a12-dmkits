@@ -972,11 +972,12 @@ dmtool -m /tmp/extras.dm.json \
 
 ## Element metadata — describe & annotate anything
 
-`meta <ref>` reads or edits an element's **internal/external descriptions** and **annotations** — uniformly across a field, group, rule (by name-path), or type-def (by id). With write flags it sets/removes them:
+`meta <ref>` reads or edits an element's **label**, **internal/external descriptions**, and **annotations** — uniformly across a field, group, rule (by name-path), or type-def (by id). With write flags it sets/removes them. The display `--label` applies to a field/group (the only describables that carry one):
 
 ```bash
 dmtool -m /tmp/extras.dm.json \
   meta /Order/CustomerName \
+  --label en_US="Customer Name" \
   --internal en_US="the customer's full legal name" \
   --annotate owner=orders-team
 ```
@@ -989,6 +990,7 @@ dmtool -m /tmp/extras.dm.json \
   "ok" : true,
   "summary" : "changed metadata of /Order/CustomerName",
   "changed" : {
+    "label.en_US" : "Customer Name",
     "internal.en_US" : "the customer's full legal name",
     "annotation.owner" : "orders-team"
   },
@@ -1013,6 +1015,9 @@ dmtool -m /tmp/extras.dm.json meta /Order/CustomerName
   "valid" : true,
   "summary" : "read metadata of /Order/CustomerName",
   "data" : {
+    "label" : {
+      "en_US" : "Customer Name"
+    },
     "internalDescription" : {
       "en_US" : "the customer's full legal name"
     },
@@ -1026,7 +1031,15 @@ dmtool -m /tmp/extras.dm.json meta /Order/CustomerName
 }
 ```
 
-The same verb reaches a **rule** (not just fields/groups) — the metadata is element-wide:
+A **group** is labelled the same way — the label merges per locale, so a one-locale edit keeps the rest:
+
+```bash
+dmtool -m /tmp/extras.dm.json \
+  meta /Order/ShippingAddress \
+  --label en_US="Shipping Address"
+```
+
+The same verb reaches a **rule** (not just fields/groups) — descriptions + annotations are element-wide (a rule has no display label, so `--label` on one is refused):
 
 ```bash
 dmtool -m /tmp/extras.dm.json \

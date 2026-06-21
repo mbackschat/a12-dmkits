@@ -53,4 +53,48 @@ class MetaVerbTest {
         assertEquals("RK_NO_SUCH_ELEMENT", j.path("diagnostics").path(0).path("code").asText());
         assertTrue(!j.path("written").asBoolean(true), "a refused op writes nothing");
     }
+
+    // G21 — the display LABEL is the one metadata aspect `meta` didn't cover (it had internal/external
+    // descriptions + annotations). A group's label was settable only via the builder; this is the missing
+    // CLI surface, kept on the cross-cutting `meta` verb so field + group labels share one path.
+
+    @Test
+    void setsAndReadsAGroupLabel(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        var set = CliTestSupport.run("-m", model.toString(), "meta", "/Order/ShippingAddress",
+                "--label", "en_US=Shipping Address");
+        assertEquals(0, set.code(), set.err());
+        assertEquals("applied", M.readTree(set.out()).get("outcome").asText());
+
+        var read = CliTestSupport.run("-m", model.toString(), "meta", "/Order/ShippingAddress");
+        assertEquals(0, read.code(), read.err());
+        assertEquals("Shipping Address",
+                M.readTree(read.out()).path("data").path("label").path("en_US").asText());
+    }
+
+    @Test
+    void labelMergePreservesOtherLocales(@TempDir Path dir) throws Exception {
+        // subscription-computed is en_US + de_DE; setting one locale's label must not drop the other (G17 rule)
+        Path model = CliTestSupport.subscriptionComputed(dir);
+        CliTestSupport.run("-m", model.toString(), "meta", "/Subscription/Billing",
+                "--label", "en_US=Billing", "--label", "de_DE=Abrechnung");
+        var update = CliTestSupport.run("-m", model.toString(), "meta", "/Subscription/Billing",
+                "--label", "en_US=Billing Details");
+        assertEquals(0, update.code(), update.err());
+        JsonNode label = M.readTree(CliTestSupport.run("-m", model.toString(), "meta", "/Subscription/Billing")
+                .out()).path("data").path("label");
+        assertEquals("Billing Details", label.path("en_US").asText());
+        assertEquals("Abrechnung", label.path("de_DE").asText(), "the other locale is preserved");
+    }
+
+    @Test
+    void labelOnANonLabelableRefIsRefused(@TempDir Path dir) throws Exception {
+        // rules/computations/type-defs have no display label; --label on one fails with a clear message
+        Path model = CliTestSupport.orderRuled(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "meta", "/Order/EligibilityCheck",
+                "--label", "en_US=x");
+        assertTrue(res.code() != 0, "a label on a rule is an error");
+        assertTrue((res.out() + res.err()).toLowerCase().contains("label"),
+                () -> "names the label problem: " + res.out() + res.err());
+    }
 }

@@ -92,6 +92,13 @@ public final class CliTestSupport {
         return file;
     }
 
+    /** Write the {@code subscription-computed} fixture (en_US + de_DE, a computation) to a temp file. */
+    public static Path subscriptionComputed(Path dir) throws IOException {
+        Path file = dir.resolve("subscription-computed.dm.json");
+        Files.writeString(file, resource("models/subscription-computed.dm.json"));
+        return file;
+    }
+
     private static String resource(String classpathPath) {
         try (InputStream in = CliTestSupport.class.getClassLoader().getResourceAsStream(classpathPath)) {
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);

@@ -21,16 +21,18 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
- * {@code dmtool meta <ref>} — read or edit an element's <b>descriptions + annotations</b> (the kernel's
- * {@code IDescribed}/{@code IAnnotated}). {@code <ref>} is any describable: a field/group/rule by full
- * name-path, or a type definition by id. With <b>no write flags</b> it reads (the current internal/external
- * descriptions + annotations into {@code data}); with write flags it sets/removes them, re-binds through the
- * kernel, and writes back ({@code -o}/{@code --dry-run}). A reference that doesn't exist is a {@code refused}
+ * {@code dmtool meta <ref>} — read or edit an element's <b>label + descriptions + annotations</b> (the
+ * kernel's {@code ILabelled}/{@code IDescribed}/{@code IAnnotated}). {@code <ref>} is any describable: a
+ * field/group/rule by full name-path, or a type definition by id. With <b>no write flags</b> it reads (the
+ * current label + internal/external descriptions + annotations into {@code data}); with write flags it
+ * sets/removes them, re-binds through the kernel, and writes back ({@code -o}/{@code --dry-run}). The display
+ * {@code --label} applies only to a field/group (the only describables that carry one); on a
+ * rule/computation/type-def it fails with a clear message. A reference that doesn't exist is a {@code refused}
  * envelope ({@code RK_NO_SUCH_ELEMENT}). (The model-level comment lives on {@code config modify --comment};
  * inline {@code ;;} condition comments are authored in the rule/computation DSL.)
  */
 @Command(name = "meta", mixinStandardHelpOptions = true,
-        description = "Read or edit an element's descriptions + annotations (field/group/rule by path, type-def by id).")
+        description = "Read or edit an element's label + descriptions + annotations (field/group/rule by path, type-def by id).")
 final class MetaCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -39,6 +41,12 @@ final class MetaCommand extends BaseCommand {
     @Parameters(index = "0", paramLabel = "<ref>",
             description = "the element's full name-path (field/group/rule) or a type-definition id")
     String ref;
+
+    @ParamKind(ParamKind.Kind.SCALAR)
+    @Option(names = "--label", paramLabel = "<locale>=<text>",
+            description = "set the display label for a locale (repeatable; field/group only). MERGES with the "
+                    + "element's existing labels, so a one-locale edit keeps the rest")
+    Map<String, String> label = new LinkedHashMap<>();
 
     @ParamKind(ParamKind.Kind.SCALAR)
     @Option(names = "--internal", paramLabel = "<locale>=<text>",
@@ -78,7 +86,7 @@ final class MetaCommand extends BaseCommand {
     WorkspaceOption workspace = new WorkspaceOption();
 
     private boolean hasWrites() {
-        return !internal.isEmpty() || !external.isEmpty() || !annotate.isEmpty()
+        return !label.isEmpty() || !internal.isEmpty() || !external.isEmpty() || !annotate.isEmpty()
                 || !removeInternal.isEmpty() || !removeExternal.isEmpty() || !removeAnnotation.isEmpty();
     }
 
@@ -101,6 +109,8 @@ final class MetaCommand extends BaseCommand {
 
         if (!hasWrites()) {
             ObjectNode data = MAPPER.createObjectNode();
+            // label rides only for a field/group (the only describables that carry one)
+            doc.labels(ref).ifPresent(labels -> putMap(data.putObject("label"), labels));
             putMap(data.putObject("internalDescription"), doc.internalDescription(ref));
             putMap(data.putObject("externalDescription"), doc.externalDescription(ref));
             putMap(data.putObject("annotations"), doc.annotations(ref));
@@ -109,9 +119,25 @@ final class MetaCommand extends BaseCommand {
             return env.exitCode();
         }
 
+        if (!label.isEmpty()) {
+            Optional<Map<String, String>> existing = doc.labels(ref);
+            if (existing.isEmpty()) {
+                return fail("a label applies only to a field or group; " + ref
+                        + " is a rule/computation/type definition (it has no display label)");
+            }
+        }
+
         ObjectNode changed = MAPPER.createObjectNode();
         String resultJson;
         try {
+            if (!label.isEmpty()) {
+                // MERGE with the element's existing labels so a one-locale edit keeps the rest (G17 rule);
+                // setLabel still enforces full locale coverage, so an under-specified fresh label fails loudly
+                Map<String, String> merged = new LinkedHashMap<>(doc.labels(ref).orElseThrow());
+                merged.putAll(label);
+                doc.setLabel(ref, merged);
+                label.forEach((loc, text) -> changed.put("label." + loc, text));
+            }
             internal.forEach((loc, text) -> { doc.setInternalDescription(ref, loc, text); changed.put("internal." + loc, text); });
             external.forEach((loc, text) -> { doc.setExternalDescription(ref, loc, text); changed.put("external." + loc, text); });
             annotate.forEach((name, value) -> { doc.setAnnotation(ref, name, value); changed.put("annotation." + name, value); });
