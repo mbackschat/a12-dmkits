@@ -56,7 +56,9 @@ Legend — **modelkit** = the builder/`EditSession` substrate · **CLI** = a `dm
 
 - **G21 — Group metadata in the CLI** (label, internal/external description, annotations). Substrate done + tested (`EditSession.setLabel`/`setInternal/ExternalDescription`/`setAnnotation` over any element path); **no CLI verb exposes it for groups**. Fix: extend `group modify` (or `group add`) with `--label`/`--internal-description`/`--external-description`/`--annotation`. *Low-med, mostly thin verb surface.*
 - **G22 — Rule metadata in the CLI** (internal/external description, annotations). Same substrate, same tested support over a rule path; **not in the `rule add` spec or `rule modify`**. Fix: add the keys to the rule spec + `rule modify`. *Low-med, thin surface.*
-- **G23 — Field-level error messages** ("Use Default Error Messages" toggle + custom per-locale text for the field's **required**/**enum** errors). Only the string `patternMessage` exists today; the general control needs **new modelkit support** (write the field's `errorMessages` + the use-default flag) + CLI keys. *Medium-large — needs modelkit work, then CLI.*
+- **G23 — Field-level error messages** ("Use Default Error Messages" toggle + custom per-locale text for the field's **required**/**enum** errors). Only the string `patternMessage` exists today; `enum.invalidValueMessage` is single-string + no use-default. The general control needs **new modelkit support** (write the field's `errorMessages` + the use-default flag) + CLI keys. *Medium-large — needs modelkit work, then CLI.*
+
+> The **full-doc subagent sweep (§7)** found more beyond these — new gaps **G24–G27** (group index field, typedef enum/restrictions, roles management, model-id rename) + surface defects (the INFO-severity drift, undocumented `$$` escape + date format-sets) + a long tail. Work **§7** alongside this list.
 
 ## 5. What is already strong (don't re-litigate)
 
@@ -72,3 +74,41 @@ A future session: tick each to take the matrix from "schema-checked" to **comple
 - [ ] **Implement G21/G22** (thin CLI exposure of the existing metadata substrate) and **G23** (modelkit + CLI), each TDD'd + ledger-graduated; then re-run this matrix.
 - [ ] **Sharpen** the internal/external schema wording (Minor above) when G21/G22 add group/rule descriptions, so one phrasing covers all three.
 - [ ] When a row ships, **move its gap row to FEATURE-GAPS-LEDGER §2** and flip the status here.
+- [ ] **Act on the §7 reverse-audit findings** (below) — start with §7a (the surface defects).
+
+## 7. Reverse-audit findings — full-doc subagent sweep (2026-06-21)
+
+A 5-subagent sweep of the **entire** SME doc (not just the §3 areas) — each agent extracted every capability in a section range and checked it against the CLI/dmkit. Below are the items **beyond G21–G23**, by action. New ledger gaps: **G24–G27** (recorded in FEATURE-GAPS-LEDGER §3).
+
+### 7a. Self-describing-surface defects / drift (fix — the surface is *wrong* or silent)
+- **INFO severity is undiscoverable (defect).** `rule add` with `severity:"INFO"` works end-to-end (kernel accepts + persists; `rule modify --severity` advertises INFO; `dsl.Severity` has INFO) — but the **`rule add` schema says "ERROR | WARNING (default ERROR)"**, **`rule check --severity` paramLabel is `ERROR|WARNING`**, and **`DraftRule` javadoc says "ERROR/WARNING".** A cold agent can't discover INFO on the add/check surface. **Fix (≈3 lines, high value):** align the `rule add` schema description + `rule check` paramLabel + `DraftRule` javadoc to `ERROR | WARNING | INFO`. *(SME 1231.)*
+- **Error-message `$$` escape undocumented.** The `messages.text` schema documents `$F$`/`$F.value$`/`$#Group$` interpolation but not the `$$` literal-dollar escape (SME 1308) — a message with a currency amount silently mis-interpolates. Fix: add the `$$` note to the schema.
+- **DateFragment/DateRange `format` is an undocumented free string.** The fixed sets (4 fragment formats `MM`/`YYYY`/`YYYY-MM`/`MM-DD`; 5 range formats — SME 1012–1015, 1023–1029) aren't enumerated or exampled in the schema/modelkit; undiscoverable from the self-describing surface (only the kernel rejects a bad value). Fix: enumerate/example them in the `dateFragment`/`dateRange` schema blocks.
+
+### 7b. New capability gaps (→ ledger G24–G27)
+- **G24 — Group Index Field via the CLI.** modelkit has it (`DocumentModelDraft.GroupBuilder.indexField` → `indexFieldName`), but **no `group add`/`group modify` flag**. It's the repetition row-key that auto-generates the mandatory + `RepetitionNotUnique` rules and enables Semantic Index / Parallel Iteration (SME 1167–1184). G21-class shape (substrate present, no verb) but distinct from G21. *Also verify:* modelkit's `indexField` requires `repeatable`, but SME 1184 allows an index field on a **non-repeatable** group — possible modelkit over-restriction.
+- **G25 — `typedef add` can't create ENUMERATION or restricted typedefs.** Only STRING/NUMBER/DATE/BOOLEAN/CONFIRM **bare** specs; the SME's *primary* typedef use case is reusable **enums** (genders/countries) + **restricted** types (email pattern/length) — SME 1517–1525. modelkit supports it (`addTypeDefinition(id, FieldTypeSpec)`); the CLI reaches it only via `typedef extract` from a pre-built field. Fix: `typedef add` accepts an enum kind + `--values` and per-kind restriction flags (reuse the field-config plumbing).
+- **G26 — Roles management on the model.** No verb sets/adds/removes the model's own `roles` annotation, and no `model new --role`. We only *lint* roles (`workspace roles`). (`config modify --annotation` could set it raw, but there's no first-class roles editor.) SME 336, 679–682.
+- **G27 — Model-id rename.** No verb changes a model's header `id` (`config modify` won't touch it). SME 609–613. *(The **cross-model** refactoring cascade — rename a sub-model, repair every including model — is already FEATURE-GAPS-LEDGER §4 **out-of-scope** (OQ1); G27 is only the single-model id rename.)*
+- **Smaller new gaps** (record; lower priority): Enum **Category `description`** (per-category metadata; `EnumCategory(name,values)` has no description slot — SME 1133) · **locale removal** (we add via `--add-locale`/G16, no remove) · **no "remove import" inverse** for an imported typedef-model (verify — may force a header hand-edit, the G15–G20 anti-pattern) · **no `computation move`** (field/group move exist) · **"Allow Differing Decimal Places"** one-step flag for rules/computations (today: hand-prepend `@SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)` — SME 1275–1283, 1362) · **"Insert From DM"** (one-time copy of another model's *resolved* content as plain children — distinct from `include add`/`include inline`; SME 508–510).
+
+### 7c. Scope-sharpening of existing gaps
+- **G22** also covers **computation** internal/external description + annotations (same CLI-exposure gap + substrate) — not just rules.
+- **G23**: an enum invalid-value message *does* exist (`enum.invalidValueMessage`) but is **single-string for all locales** with **no use-default toggle** — sharper than "only `patternMessage` exists." The field error-message gap spans **required + enum** (both need per-locale + a use-default flag).
+
+### 7d. Kernel-delegated, no early local diagnostic (mostly accept — F11 "loud at build")
+Kernel-rejected on `validate`, but no early/local diagnostic: name format/length/`xml`-prefix rules (field + model name), pattern ≤1000-chars + valid-regex pre-check, amount-unit ⇒ {0,2} decimal-places coupling, the 5 include-ability preconditions, the local-vs-imported typedef-mode mixing constraint. Correctness sound; pre-flight-diagnostic opportunities, low priority. *Also: `field add` doesn't pre-gate sibling-name collision the way `field rename` does (`RK_NAME_EXISTS`) — a minor asymmetry.*
+
+### 7e. Documented divergences from the editor (intentional supersets — doc-note, not gaps)
+- `group attachment --repeatable` allows multiple attachments; the editor disallows multi-upload (SME 1431).
+- `group multiselect --max-rows` is a configurable knob; the editor fixes repeatability at 999,999 (SME 1441).
+- We split the editor's single "Exclude Rules" into `--exclude-rules` + `--exclude-computations`.
+- `date` fields carry an extra `format` knob (SME says date has no config).
+
+### 7f. Likely intentional non-goals (expert-mode / compatibility-only — record, don't build)
+SME §Expert-Mode (277–291) marks these "not recommended / compatibility-only": String `noValueValidation`; Number `min/maxLength`, `maxIntegerDigits`, `positivesOnly`; Date `partiallyKnownAllowed`, must-be-after-1900; DateRange year-interpretation. Treat as non-goals unless a real model needs one.
+
+### 7g. Verification TODO (carried from the sweep — confirm before acting)
+- Does `typedef read` surface the **source provenance** (local / included-from-`<model>` / imported-from-`<model>`) the editor's Source column shows? (SME 1533/1581/1587)
+- Is there any CLI path to **drop a typedef import** (the editor's "REMOVE IMPORT")? (SME 1591)
+- Is an index field on a **non-repeatable** group actually kernel-legal (SME 1184) vs modelkit's `requires repeatable`?
