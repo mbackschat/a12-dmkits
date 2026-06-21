@@ -55,3 +55,16 @@ The anti-cheat audit confirms **tool-only mutations** — no model file was hand
 ## Next
 
 F1 and F4 are confirmed tool defects (not the agent's mistakes). Per the discover→fix→graduate loop, each should be fixed at root and locked with a guard (F1: a `string.patternMessage` per-locale-map test + `field modify` reaching the config block; F4: a `workspace roles` test that a zero-defined-roles parse warns/refuses). The friction items (F2/F3/F5) are skill/material refinements.
+
+## Resolution (2026-06-22)
+
+All five findings are fixed at root and guarded — the discover→fix→graduate loop is closed for this run.
+
+| # | fix | graduated guard |
+|---|---|---|
+| F1(a) | `string.patternMessages` is a per-locale map (mirrors `enum.errorMessages`) | `FieldAddSpecTest.stringSpecWithPerLocalePatternMessages` |
+| F1(b) | `field modify` with a config block but no `kind` now gets a precise corrective (name the kind, warn the re-type replaces) — same for the apply op | `FieldModifyCommandTest.aConfigBlockWithoutAKindGetsAPreciseCorrective` + `ApplyVerbTest.aFieldModifyOpWithAConfigBlockButNoKindGetsTheCorrective` |
+| F2 | apply op-record locator keys aligned to the manifest/standalone (`rulePathInModel`/`computationPathInModel`); apply `rule modify` reaches condition/severity/messages | `ApplyVerbTest.everyPathLocatedApplyOpAcceptsTheLocatorKeyTheManifestAdvertises` (class-guard) + the rule/computation modify/rename tests + the CI-executed `apply.schema` example |
+| F3 | skill: `*` flattens a field inside an aggregate (never a group ref); absolute wildcard path across branches; row-count is `NumberOfFilledGroups` | skill judgment (N6 material) |
+| F4 | a nameless `roles:` entry is rejected, not silently dropped | `RolesFileTest.aRolesEntryWithoutANameIsRejectedNotSilentlyDropped` |
+| F5 | `group extract`'s `--reference` help + skill point at the result's `subModel` path (`<reference>.dm.json`) | self-describing surface (help text) + skill note |
