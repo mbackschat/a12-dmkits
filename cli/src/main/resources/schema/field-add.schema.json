@@ -76,12 +76,15 @@
     "dateRange": {
       "type": "object", "description": "(kind DATERANGE) config", "additionalProperties": false,
       "required": ["format", "separator"],
-      "properties": { "format": { "type": "string" }, "separator": { "type": "string", "description": "the range separator, e.g. \" - \"" } }
+      "properties": {
+        "format": { "type": "string", "description": "a both-endpoints date pattern. The A12 editor offers five presets — YYYY/YYYY, YYYY-MM-DD/YYYY-MM-DD, MM/MM, YYYY-MM/YYYY-MM, MM-DD/MM-DD — but the kernel accepts any Java date pattern (e.g. dd.MM.yyyy)" },
+        "separator": { "type": "string", "description": "the range separator, e.g. \" - \"" }
+      }
     },
     "dateFragment": {
       "type": "object", "description": "(kind DATEFRAGMENT) config", "additionalProperties": false,
       "required": ["format"],
-      "properties": { "format": { "type": "string" } }
+      "properties": { "format": { "type": "string", "description": "a partial-date pattern (a date that isn't a full calendar date). The A12 editor offers four presets — MM, YYYY, YYYY-MM, MM-DD — but the kernel accepts any Java date pattern (e.g. yyyy-MM)" } }
     }
   },
   "examples": [

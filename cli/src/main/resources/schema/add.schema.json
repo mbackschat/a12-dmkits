@@ -43,7 +43,7 @@
         "additionalProperties": false,
         "properties": {
           "locale": { "type": "string", "description": "a full locale code, e.g. en_US (bare 'en' is rejected by the kernel)" },
-          "text": { "type": "string", "description": "the message text; may interpolate kernel tokens, each using a model path: $<Field>.value$ (the field's runtime value), $<Field>$ (its localized label), $#<Group>$ (a repeatable group's 1-based row index) — e.g. \"Row $#/Order/Items$: $/Order/Items/Qty$ ($/Order/Items/Qty.value$) is invalid\"" }
+          "text": { "type": "string", "description": "the message text; may interpolate kernel tokens, each using a model path: $<Field>.value$ (the field's runtime value), $<Field>$ (its localized label), $#<Group>$ (a repeatable group's 1-based row index) — e.g. \"Row $#/Order/Items$: $/Order/Items/Qty$ ($/Order/Items/Qty.value$) is invalid\". A LITERAL dollar sign is written $$ (so a price text reads \"Amount must exceed $$100\")" }
         }
       }
     },
