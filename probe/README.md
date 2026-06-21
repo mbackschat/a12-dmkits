@@ -30,6 +30,10 @@ The method doc is [`docs/PROBE-SPEC.md`](../docs/PROBE-SPEC.md); the scenario in
 | `02` order date/pattern | **pattern** rules (`violates "[0-9]{5}"`) — date now covered by 01b | TODO |
 | `03` subscription computation | **computations** (add/modify) — least-probed surface | **probed** (report 2026-06-20; correctness MET, efficient; 1 discoverability finding P03-1, fixed) |
 | `04` multifile includes | includes + `-w` from scratch — partially covered by 01 turn 2 | TODO (lower) |
+| `05` full realistic authoring session (**clean**) | groups · metadata · `de_DE` locale · **roles annotation** · repeatability max+flag · extract — the broad surface `01` missed | **task added** — the maintainer session that surfaced the v0.6.0 annotation crash, promoted as a DISCOVERY task (its regression lives in native-battery, not here) |
+| `06` evolve an EXISTING ruled model (**fixture**) | **rules over repeats** · **cross-row correlation / parallel indices** · **flag→rule promotion** (conditional requiredness with deps) · rename-rewrite — the maintain/refactor surface a clean start can't reach | **task added** |
+
+**Start mode — clean vs fixture (the family extends along this axis).** A task declares `**Start:** clean` (empty `work/` → a from-scratch session) or `**Start:** fixture <repo-relative-path>` (a committed model/workspace seeded into `work/` → a maintain/refactor session). For a fixture task, pass the path to prep: `./probe/prep-probe.sh cli/src/test/resources/models/order-ruled.dm.json`. The seeded model is **given** material (read + edited freely); the task's **gold** stays out of the sandbox, so the anti-cheat audit is unaffected. Add a new sequence by dropping a task file with its `Start:` line + `## The session` turns — nothing else to wire.
 
 Former standing finding **F1** (from 01b): an agent guessed `operators --filter` to narrow the catalog. **Resolved 2026-06-20 (G13):** `operators <substring>` now filters the list (matched over id/keyword/meaning), composing with `--kind`/`--keyword`; an exact id still gives full semantics.
 
@@ -45,8 +49,9 @@ GRADLE_USER_HOME="$(cd .. && pwd)/.gradle-isolated" \
 GRAALVM_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home \
 JAVA_HOME="$(/usr/libexec/java_home -v 21)" ./gradlew :cli:nativeCompile -Porg.gradle.java.installations.fromEnv=GRAALVM_HOME
 
-# 2. set up the isolated sandbox + logging shim
-./probe/prep-probe.sh
+# 2. set up the isolated sandbox + logging shim — per the task's `Start:` line:
+./probe/prep-probe.sh                                                   #   clean start (from-scratch)
+./probe/prep-probe.sh cli/src/test/resources/models/order-ruled.dm.json #   fixture start (seed work/)
 
 # 3. (main loop) drive a general-purpose subagent through a task's prompts IN ORDER, as one session.
 #    FIRST clear the main-loop TaskList — the subagent INHERITS it via system-reminders and a revealing task

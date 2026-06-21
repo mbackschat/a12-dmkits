@@ -86,6 +86,25 @@ Either way, gold is matched **semantically, not literally** (read → re-render 
 
 Gold is **never shown to the probe agent** (it is on the far side of the material boundary, §above) — it is the reviewer's key, not the agent's input. The reverse-engineered form also makes the task backlog cheap: every rich fixture is a candidate scenario, covering the operator/structure surface that model already exercises.
 
+## Scenario design — clean vs fixture start, extensible, and not overfit
+
+The task family extends along **two axes**, governed by one anti-overfitting rule.
+
+**Start mode — clean vs fixture.** A task declares its starting point with a `**Start:**` line:
+
+| Start | sandbox `work/` | what it exercises |
+|---|---|---|
+| `clean` | empty — the agent builds from `dmtool model new` | from-scratch authoring (the `01`/`05` family) |
+| `fixture <repo-relative-path>` | a committed model/workspace seeded by `prep-probe.sh <path>` | maintain / refactor / extend an EXISTING model (task `06`) — the surface a clean start *can't* reach: pre-existing references to rewrite, a repeatable group to add per-row rules to, a flag to promote to a rule |
+
+The seeded fixture is **given** material (read + edited freely, like a real handover); the **gold** still stays out of the sandbox (§above), so the anti-cheat audit is unchanged. Adding a sequence = dropping a `tasks/<n>.md` with its `Start:` line + `## The session` turns; `prep-probe.sh`, `agent-preamble.md`, and `digest-probe.sh` are single-sourced and need no per-task change.
+
+**The anti-overfitting rule — a probe is DISCOVERY; regression is the guards' job.** The temptation, once a probe finds a bug, is to pin the exact crashing sequence as the task. That is **maximal overfit**: it turns the probe into a worse, non-deterministic duplicate of the deterministic guard the finding *already* graduated into (native-battery, a law test) — and it stops finding the *next* class. So:
+
+- **Prompts stay intent-level, never verb-level** — "create some users and roles and attach them" (intent), not "run `config modify --role`" (script). The agent's own verb/operator choice is *where DX friction surfaces*; scripting it tests a replay, not a session.
+- **A known finding's regression lives in a deterministic guard, not the probe.** Task `05` exercises the annotation surface, but the annotation-crash *regression* is the native-battery block; the task's job is to surface what's *new*.
+- **A green-and-boring task must rotate or grow** — vary the domain / op-mix, or add a turn toward an **un-probed** construct — rather than deepen on covered ground. This is the §3.5 bounded-coverage law (NATIVE-IMAGE-GRAALVM) applied to the probe: *an instrument only finds what it exercises*, so coverage must keep moving, not ossify. (It was precisely a non-moving probe — `01-de` never added a `roles` annotation — that let the v0.6.0 annotation crash slip past it while a hand-run fuller session caught it.)
+
 ## The analysis method — the deep report (no score)
 
 From the objective shim log + the final model files (+ the agent's narrative), each report is structured around these dimensions:

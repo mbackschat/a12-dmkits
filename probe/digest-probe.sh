@@ -3,9 +3,11 @@
 #
 # The deep, qualitative analysis (correctness vs gold, misconceptions) is the agent's judgment — but the
 # MECHANICAL signals must not depend on a human reading 4000 log lines by eye. This script extracts the
-# repeatable facts so every probe gets the same baseline analysis, and so the highest-value DX defect — a raw
-# exception / stack trace escaping a verb instead of a structured diagnostic — is flagged AUTOMATICALLY, every
-# run. (That P1 class was found by eye on the first run; it must never depend on that again.)
+# repeatable facts so every probe gets the same baseline analysis, and so the highest-value DX defect — an
+# internal tool error — is flagged AUTOMATICALLY, every run. That is either a raw exception/stack trace
+# escaping a verb, OR (after the CLI-boundary fix) a STRUCTURED `outcome:"error"` / `RK_INTERNAL_ERROR`
+# envelope on stdout with the trace on stderr / exit 70 — both are caught. (That P1 class was found by eye on
+# the first run; it must never depend on that again.)
 #
 #   ./probe/digest-probe.sh            # digest $RK_PROBE_SANDBOX/dmtool-calls.log
 #   RK_PROBE_SANDBOX=/path ./probe/digest-probe.sh
@@ -47,9 +49,12 @@ function flush(   v, b) {
   v = verbof(cmd); b = bucketof(v)
   vhist[v]++; vorder[v] = (v in vorder) ? vorder[v] : (++vord); bkt[b]++
   if (exitc != "" && exitc != "0") { nz[++nzn] = sprintf("%s  -> exit %s%s", cmd, exitc, (errfirst!="" ? "  | " errfirst : "")); failv[v]++ }
-  if (exc != "")                   { rf[++rfn] = sprintf("%s\n      %s", cmd, exc) }
+  if (exc != "" || internalerr != "" || exitc == "70") {
+    reason = (exc != "") ? exc : (internalerr != "" ? internalerr : "exit 70 — internal tool error (RK_INTERNAL_ERROR)")
+    rf[++rfn] = sprintf("%s\n      %s", cmd, reason)
+  }
 }
-/^\$ dmtool / { flush(); cmd=$0; sub(/^\$ /,"",cmd); instderr=0; exitc=""; errfirst=""; exc=""; next }
+/^\$ dmtool / { flush(); cmd=$0; sub(/^\$ /,"",cmd); instderr=0; exitc=""; errfirst=""; exc=""; internalerr=""; next }
 /^--- stdout:/ { instderr=0; next }
 /^--- stderr:/ { instderr=1; next }
 /^\[exit /     { e=$0; gsub(/[^0-9]/,"",e); exitc=e; instderr=0; next }
@@ -57,6 +62,10 @@ function flush(   v, b) {
   if (instderr && $0 != "") {
     if (errfirst == "") errfirst=$0
     if (exc == "" && ($0 ~ /Exception|Throwable|Caused by:|[ \t]+at [A-Za-z0-9_.$]+\([A-Za-z0-9_]+\.java:[0-9]+\)/)) exc=$0
+  } else if (!instderr && $0 != "") {
+    # Post-CLI-boundary fix, an internal tool error is a STRUCTURED envelope on stdout (outcome:"error" +
+    # RK_INTERNAL_ERROR), with the trace on stderr — not a raw trace on stdout. Catch that signal too.
+    if (internalerr == "" && ($0 ~ /"outcome"[^}]*"error"/ || $0 ~ /RK_INTERNAL_ERROR/)) internalerr=$0
   }
 }
 END {
@@ -76,9 +85,9 @@ END {
   for (i=1;i<=nzn;i++) printf "  - %s\n", nz[i]
   if (nzn==0) printf "  (none)\n"
 
-  printf "\n[RED FLAGS — raw exception/stack trace escaped a verb] %d\n", rfn+0
+  printf "\n[RED FLAGS — internal tool error: escaped exception, RK_INTERNAL_ERROR, or exit 70] %d\n", rfn+0
   for (i=1;i<=rfn;i++) printf "  ! %s\n", rf[i]
-  if (rfn==0) printf "  (none — every error surfaced as a structured envelope)\n"
+  if (rfn==0) printf "  (none — every error surfaced as a structured, non-internal envelope)\n"
 
   printf "\n[repeated identical invocations — retry/confusion signal]\n"
   rep=0

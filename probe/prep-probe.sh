@@ -7,12 +7,20 @@
 # Deterministic side-effecting setup lives here, not in an agent prompt (a subagent can't self-approve
 # rm/mkdir — the CLAUDE.md "scripts for setup, agents for judgment" rule).
 #
-#   ./probe/prep-probe.sh            # verify native binary, (re)create sandbox + logging shim + skill copy
+#   ./probe/prep-probe.sh                       # CLEAN start: empty work/ (a from-scratch authoring session)
+#   ./probe/prep-probe.sh <repo-relative-path>  # GIVEN-WORKSPACE start: seed work/ from a committed fixture
+#                                               #   (a model file OR a workspace dir) — a maintain/refactor session
+#
+# A task declares which it needs with a `**Start:** clean | fixture <path>` line; the main loop passes the
+# fixture path here. A seeded fixture is GIVEN material (the model under edit), distinct from the task's GOLD
+# (the expected end-state, never given to the agent) — the agent reads work/ legitimately; the anti-cheat
+# audit only flags reading the repo's gold/source, not the sandbox.
 #
 # Env: RK_PROBE_SANDBOX (default /tmp/rk-probe-sandbox). Idempotent — safe to re-run.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SANDBOX="${RK_PROBE_SANDBOX:-/tmp/rk-probe-sandbox}"
+FIXTURE="${1:-}"   # optional: a repo-relative model file or workspace dir to seed work/ (clean if absent)
 NATIVE="$ROOT/cli/build/native/nativeCompile/dmtool"
 LOG="$SANDBOX/dmtool-calls.log"
 
@@ -62,12 +70,22 @@ exit \$code
 SHIM
 chmod +x "$SANDBOX/bin/dmtool"
 
+# GIVEN-WORKSPACE start: seed work/ from a committed fixture (a model file OR a workspace dir), or leave it
+# clean for a from-scratch session. The fixture is OWN-domain committed material (license-safe); the agent
+# discovers + edits it (it never sees the task's gold — that stays in the task file, not the sandbox).
+if [[ -n "$FIXTURE" ]]; then
+  src="$ROOT/$FIXTURE"
+  [[ -e "$src" ]] || { echo "fixture not found: $src" >&2; exit 2; }
+  if [[ -d "$src" ]]; then cp -R "$src"/. "$SANDBOX/work/"; else cp "$src" "$SANDBOX/work/"; fi
+fi
+
 cp "$ROOT/skill/SKILL.md" "$SANDBOX/SKILL.md"
 
 echo "probe sandbox ready: $SANDBOX"
 echo "  native : $("$NATIVE" --version 2>/dev/null | head -1)"
 echo "  shim   : $SANDBOX/bin/dmtool   (objective call log → $LOG)"
 echo "  skill  : $SANDBOX/SKILL.md"
+echo "  start  : $( [[ -n "$FIXTURE" ]] && echo "seeded from $FIXTURE (given-workspace)" || echo "clean (from-scratch)" )"
 echo "  workdir: $SANDBOX/work"
 echo
 echo "drive the probe agent with: cwd=$SANDBOX/work, PATH=$SANDBOX/bin:\$PATH, skill at $SANDBOX/SKILL.md"
