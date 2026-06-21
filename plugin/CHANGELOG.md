@@ -4,6 +4,12 @@ All notable changes to the **publicly released `dmtool` artifacts** — the nati
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/) plus **A12 Kernel compatibility metadata** (the kernel each release targets is recorded per entry, never folded into the version string).
 
+## [0.5.1] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
+
+### Fixed
+
+- **Installing the plugin mid-session no longer leaves the agent guessing how to get `dmtool`.** The binary is delivered by a `SessionStart` hook, which does not fire at `/plugin install` — so `dmtool` isn't on `PATH` in the session you installed it in, and the agent would try to download or build it on its own. The bundled skill now tells the agent, on a missing `dmtool`, to point you at a **context-preserving resume** (`claude --continue` / `--resume` — it keeps your whole conversation, no `/clear` needed) and to **not** self-install the tool; the README's activation note emphasizes the same. The CLI binary itself is unchanged from 0.5.0.
+
 ## [0.5.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
 A document-model **editor-coverage** wave: the structure/metadata edits the A12 Tools editor exposes are now CLI verbs (so an agent never hand-edits the model JSON), plus self-describing, corrective diagnostics for rule/computation placement.
