@@ -42,6 +42,7 @@ class RepDoc(
         override fun filled(path: String) = outer.containsKey(path)
         override fun star(path: String) = starOf(path)
         override fun starOmission(path: String) = starOmissionOf(path)
+        override fun displayValue(path: String) = outer[path]
     }
 
     /** One context per item row — a per-row rule fires independently in each. */
@@ -58,6 +59,8 @@ class RepDoc(
 
             override fun star(path: String) = starOf(path)
             override fun starOmission(path: String) = starOmissionOf(path)
+            override fun displayValue(path: String) =
+                if (path.startsWith("$itemsPath/")) row[path] else outer[path]
         }
     }
 }

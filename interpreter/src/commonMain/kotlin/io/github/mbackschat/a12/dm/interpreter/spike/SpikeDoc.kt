@@ -26,4 +26,6 @@ class SpikeDoc(
         error("spike: a single-row doc has no repetition for $path")
 
     override fun starOmission(path: String): Boolean = false
+
+    override fun displayValue(path: String): String? = values[path]
 }

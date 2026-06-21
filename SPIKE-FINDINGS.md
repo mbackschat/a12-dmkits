@@ -35,9 +35,9 @@ So the tree-walk is comfortably fast for large single-level repetition — the o
 
 Threading a declared-repetition count through `RepDoc` (+ a `starOmission` context method), the interpreter types a starred aggregate **OMISSION while it can still grow** — an empty operand OR an un-instantiated tail below the declared reps — and **VALUE only once exhausted**. Matches the kernel on the `AggregateUncertaintyLawsTest` cases (empty-operand → OMISSION; 3-of-50 → OMISSION; all-50-filled → VALUE).
 
-### Localized message text (paused)
+### Localized message text (closed, scoped)
 
-Not landed. The kernel placeholder syntax is confirmed (`$field.value$` = value via `getValueForDisplay`; `$field$` = display name via `identifierToString`; **same placeholder across locales**, only the surrounding text is localized). Value-interpolation + locale-selection are tractable (the harness groundwork — per-locale `errorMessage` injection + reading `getErrorText` — is scoped); the `$field$` display-name placeholder needs the field's label metadata, and the formal-error (type-error) message *bundles* are a separate tier.
+The interpreter renders a fired rule's per-locale `errorMessage` with `$field.value$` substituted, and the rendering matches the kernel's `getErrorText` in **both en_US and de_DE** (`LocalizedMessageDiffTest`) — proving value-interpolation **and** locale-selection from one engine; the `$field.value$` renderer is `commonMain` (runs on JS too). Confirmed placeholder syntax: `$field.value$` = value (`getValueForDisplay`), `$field$` = display name (`identifierToString`); **same placeholder across locales**, only the surrounding text is localized. Also learned: a model must *declare* a locale (order.dm.json ships only en_US) for the kernel to render it — the test adds de_DE to the model's `locales`. **Scope boundary (still open):** the `$field$` display-name placeholder needs the field's label metadata, and the formal-error (type-error) message bundles are a separate, German-keyed tier.
 
 ## What was built
 
@@ -94,7 +94,7 @@ Every case asserts `interpreterFires == kernelFires` over the *same* document in
 
 After the follow-ups above (big.js, polarity, parser, throughput, omitted-tail polarity), what remains:
 
-- **Localized message text** — paused (see Update 2). Value-interpolation + locale-selection are tractable; the `$field$` display-name placeholder needs the field's label metadata; the formal-error (type-error) message bundles are a separate tier.
+- **Localized message text — display-name + formal-error tiers** — value-interpolation + locale-selection are *done* (Update 2); still open: the `$field$` display-name placeholder (needs field label metadata) and the formal-error (type-error) message bundles (a separate German-keyed tier).
 - **Parser is a subset** — covers the shapes exercised; the full grammar (and the kernel-parse-tree-api-vs-ANTLR choice) is still §11's open decision.
 - **Benchmark is an in-test bound, not a tracked baseline** — fine as a gross-regression guard; a real perf-regression harness (JMH / recorded baselines) is Phase-1 work.
 - `expect/actual class` emits a beta warning (harmless; suppressible with `-Xexpect-actual-classes`).

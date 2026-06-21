@@ -150,4 +150,10 @@ class InterpreterMultiplatformTest {
         // harness (JMH / tracked baselines) is Phase-1 work — this just trips on catastrophic slowdowns.
         assertTrue(elapsed < 5.seconds, "throughput regression: $n rows took $elapsed (expected well under 5s)")
     }
+
+    @Test
+    fun rendersMessagePlaceholderOnBothPlatforms() {
+        val ctx = SpikeDoc("/Order", mapOf(q to "50"), kinds)
+        assertEquals("low: 50", renderMessage("low: \$Quantity.value\$", "/Order", ctx))
+    }
 }

@@ -21,4 +21,7 @@ interface EvalContext {
     /** Whether a starred aggregate over [path] could still grow (an empty operand, or an
      *  un-instantiated tail below the declared repetition) → types a fired comparison OMISSION. */
     fun starOmission(path: String): Boolean
+
+    /** The raw display value of a field (for message interpolation), or null if empty. */
+    fun displayValue(path: String): String?
 }
