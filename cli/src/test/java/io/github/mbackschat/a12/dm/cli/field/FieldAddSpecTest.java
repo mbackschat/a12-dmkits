@@ -85,6 +85,27 @@ class FieldAddSpecTest {
     }
 
     @Test
+    void stringSpecWithPerLocalePatternMessages(@TempDir Path dir) throws Exception {
+        // F1 (probe 05): a patterned STRING field could carry only a SINGLE patternMessage string, so a
+        // bilingual model couldn't localize the pattern error (unlike an enum's invalidValueMessages). Now a
+        // per-locale patternMessages map wins per locale (the single message is the fallback for the rest).
+        Path model = dir.resolve("loc.dm.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "loc", "--locale", "en_US",
+                "--root", "Doc", "-o", model.toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "config", "modify", "--add-locale", "de_DE").code());
+        Path specFile = dir.resolve("zip.json");
+        Files.writeString(specFile, """
+            {"group":"/Doc","name":"Zip","kind":"STRING",
+             "string":{"pattern":"[0-9]{5}","patternMessage":"five digits",
+                       "patternMessages":{"en_US":"five digits","de_DE":"fuenf Ziffern"}}}""");
+        var res = CliTestSupport.run("-m", model.toString(), "field", "add", specFile.toString());
+        assertEquals(0, res.code(), res::err);
+        String written = Files.readString(model);
+        assertTrue(written.contains("five digits"), "en_US pattern message emitted");
+        assertTrue(written.contains("fuenf Ziffern"), "de_DE pattern message emitted (per-locale, not the en_US text)");
+    }
+
+    @Test
     void requiredFieldWithACustomRequiredMessage(@TempDir Path dir) throws Exception {
         // G23: per-locale custom error text for a REQUIRED field (the "Use Default Error Messages" deselected
         // case) — attaches to requirednessConfig.errorMessage.

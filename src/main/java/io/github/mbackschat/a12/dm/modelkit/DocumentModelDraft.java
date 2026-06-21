@@ -339,10 +339,13 @@ public final class DocumentModelDraft {
                         || s.lineBreaksPermitted() || s.alphabeticalSorting() || !s.suggestions().isEmpty()
                         || s.noValueValidation()) {
                     ObjectNode inner = fieldType.putObject("StringType");
-                    // a pattern needs an error text for every declared locale (MVK_ERROR_MESSAGE_AND_PATTERN_INVALID)
+                    // a pattern needs an error text for every declared locale (MVK_ERROR_MESSAGE_AND_PATTERN_INVALID).
+                    // A per-locale override (patternMessages) wins for its locale; the single patternMessage is the
+                    // fallback for the rest — so a bilingual model can carry a localized pattern error (G23).
                     if (s.pattern() != null) {
                         ArrayNode messages = inner.putArray("errorMessage");
-                        locales.forEach(loc -> messages.addObject().put("locale", loc).put("text", s.patternMessage()));
+                        locales.forEach(loc -> messages.addObject().put("locale", loc)
+                                .put("text", s.patternMessages().getOrDefault(loc, s.patternMessage())));
                     }
                     if (s.minLength() != null) {
                         inner.put("minLength", s.minLength());

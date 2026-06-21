@@ -49,7 +49,7 @@ public sealed interface FieldTypeSpec {
      */
     record StringSpec(Integer minLength, Integer maxLength, String pattern, String patternMessage,
             boolean lineBreaksPermitted, boolean alphabeticalSorting, Map<String, List<String>> suggestions,
-            boolean noValueValidation) implements FieldTypeSpec {
+            boolean noValueValidation, Map<String, String> patternMessages) implements FieldTypeSpec {
         public StringSpec {
             if (minLength != null && minLength < 0) {
                 throw new IllegalArgumentException("minLength must be ≥ 0: " + minLength);
@@ -64,6 +64,19 @@ public sealed interface FieldTypeSpec {
             suggestions = suggestions == null
                     ? Map.of()
                     : java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(suggestions));
+            // per-locale override for the pattern error text (G23, the string sibling of the enum's
+            // invalidValueMessages) — empty means the single patternMessage covers every declared locale.
+            patternMessages = patternMessages == null
+                    ? Map.of()
+                    : java.util.Collections.unmodifiableMap(new java.util.LinkedHashMap<>(patternMessages));
+        }
+
+        /** No per-locale override: the single {@code patternMessage} is applied to every declared locale. */
+        public StringSpec(Integer minLength, Integer maxLength, String pattern, String patternMessage,
+                boolean lineBreaksPermitted, boolean alphabeticalSorting, Map<String, List<String>> suggestions,
+                boolean noValueValidation) {
+            this(minLength, maxLength, pattern, patternMessage, lineBreaksPermitted, alphabeticalSorting,
+                    suggestions, noValueValidation, Map.of());
         }
 
         /** Pre-attachment form: no {@code noValueValidation} (the value-skipping flag the attachment {@code content} field uses). */

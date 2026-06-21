@@ -10,6 +10,7 @@ public final class StringFieldBuilder extends FieldAttrs<StringFieldBuilder> {
     private Integer maxLength;
     private String pattern;
     private String patternMessage;
+    private final Map<String, String> patternMessages = new LinkedHashMap<>();
     private boolean lineBreaksPermitted;
     private boolean alphabeticalSorting;
     private final Map<String, List<String>> suggestions = new LinkedHashMap<>();
@@ -28,6 +29,16 @@ public final class StringFieldBuilder extends FieldAttrs<StringFieldBuilder> {
     public StringFieldBuilder pattern(String regex, String message) {
         this.pattern = regex;
         this.patternMessage = message;
+        return this;
+    }
+
+    /**
+     * A per-locale override for the pattern error message — for that locale it wins over the single message
+     * set by {@link #pattern}, which remains the fallback for unspecified locales (the string sibling of an
+     * enum's per-locale invalid-value text, G23). Lets a bilingual model carry a localized pattern error.
+     */
+    public StringFieldBuilder patternMessage(String locale, String text) {
+        this.patternMessages.put(locale, text);
         return this;
     }
 
@@ -51,6 +62,6 @@ public final class StringFieldBuilder extends FieldAttrs<StringFieldBuilder> {
 
     protected FieldTypeSpec spec() {
         return new FieldTypeSpec.StringSpec(minLength, maxLength, pattern, patternMessage,
-                lineBreaksPermitted, alphabeticalSorting, suggestions);
+                lineBreaksPermitted, alphabeticalSorting, suggestions, false, patternMessages);
     }
 }

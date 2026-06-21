@@ -185,7 +185,8 @@ public final class FieldSpec {
         sug.fieldNames().forEachRemaining(loc -> suggestions.put(loc, stringList(sug.get(loc))));
         return new FieldTypeSpec.StringSpec(intOrNull(s, "minLength"), intOrNull(s, "maxLength"),
                 text(s, "pattern"), text(s, "patternMessage"),
-                s.path("lineBreaks").asBoolean(false), s.path("alphabeticalSorting").asBoolean(false), suggestions);
+                s.path("lineBreaks").asBoolean(false), s.path("alphabeticalSorting").asBoolean(false), suggestions,
+                false, textMap(s.get("patternMessages")));  // G23: per-locale pattern-error text (wins over the single)
     }
 
     private static FieldTypeSpec number(JsonNode n) {
