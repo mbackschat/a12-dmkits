@@ -1,0 +1,26 @@
+// SPIKE (docs/INTERPRETER-PROPOSAL.md §10) — a Kotlin Multiplatform module proving the interpreter
+// compiles and runs on BOTH the JVM and JS (Node). Throwaway prototype; not part of the shipped build.
+plugins {
+    id 'org.jetbrains.kotlin.multiplatform' version '2.2.0'
+}
+
+repositories {
+    mavenCentral()
+}
+
+kotlin {
+    jvmToolchain(21)
+
+    jvm()
+    js {
+        nodejs()
+    }
+
+    sourceSets {
+        commonTest {
+            dependencies {
+                implementation kotlin('test')
+            }
+        }
+    }
+}

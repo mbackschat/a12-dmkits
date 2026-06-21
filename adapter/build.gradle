@@ -1,5 +1,7 @@
 plugins {
     id 'java-library'
+    // Kotlin JVM — for the interpreter SPIKE prototype (test-scope only, throwaway). See SPIKE-PLAN.md.
+    id 'org.jetbrains.kotlin.jvm' version '2.2.0'
 }
 
 // The kernel-adapter (PROJECT-DESIGN D15 / N8 tier 3): an OPT-IN, Java-only module that consumes the
@@ -46,6 +48,10 @@ dependencies {
 
     // modelkit (structure builder) folded into the root project (2026-06-09) — its classes arrive via
     // `api project(':')`, so a read round-trip's test can author a model with it without a separate dep.
+
+    // SPIKE (docs/INTERPRETER-PROPOSAL.md §10): the KMP interpreter under test — its JVM target is
+    // consumed here, where the kernel oracle (RuntimeLaws) runs the differential comparison.
+    testImplementation project(':interpreter')
 
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
