@@ -12,8 +12,11 @@
 #   ./probe/digest-probe.sh            # digest $RK_PROBE_SANDBOX/dmtool-calls.log
 #   RK_PROBE_SANDBOX=/path ./probe/digest-probe.sh
 #
-# Output is a scannable digest; exit is 0 normally, 1 if any RED FLAG (escaped exception) is present — so it
-# can also gate. "scripts for deterministic facts, agents for judgment" (CLAUDE.md).
+# Output leads with a DX HEADLINE — calls · nonzero (ratio) · RED FLAGS — the at-a-glance effort/friction
+# metric to track across runs (a fix should drop the call count and the nonzero ratio; RED FLAGS are the real
+# internal-error defects, distinct from a legitimate rejection/refusal). Then a scannable digest; exit is 0
+# normally, 1 if any RED FLAG (escaped exception) is present — so it can also gate. "scripts for deterministic
+# facts, agents for judgment" (CLAUDE.md).
 set -euo pipefail
 SANDBOX="${RK_PROBE_SANDBOX:-/tmp/rk-probe-sandbox}"
 LOG="${1:-$SANDBOX/dmtool-calls.log}"
@@ -72,6 +75,10 @@ END {
   flush()
   printf "probe trajectory digest\n"
   printf "  total dmtool invocations : %d  (distinct: %d)\n", total, ord
+  # DX headline: the at-a-glance effort/friction metric (track it across runs — a fix should drop calls and the
+  # nonzero ratio; RED FLAGS are the real internal-error defects, distinct from a legitimate rejection/refusal).
+  printf "  DX headline              : %d calls  ·  %d nonzero (%.0f%%)  ·  %d RED FLAGS\n",
+         total, nzn+0, (total ? 100.0*nzn/total : 0), rfn+0
 
   printf "\n[purpose buckets]  author %d  ·  verify %d  ·  orient %d\n", bkt["author"]+0, bkt["verify"]+0, bkt["orient"]+0
   printf "[verb histogram — calls (failed), most-used first]\n"
