@@ -94,6 +94,32 @@ RULE_MODEL="examples/models/order-ruled.dm.json"
 run "rule read /Order/DeliveryNotBeforeOrder"    -m "$RULE_MODEL" rule read /Order/DeliveryNotBeforeOrder
 run "rule explain /Order/DeliveryNotBeforeOrder" -m "$RULE_MODEL" rule explain /Order/DeliveryNotBeforeOrder
 
+echo "== header annotation on the SERIALIZE path (AnnotationImpl.getName/getValue — the v0.6.0 native crash) =="
+# A `roles` header annotation serializes via Jackson getters, which fire only during kernel EXPAND/copy — so
+# no read/validate over an UN-annotated fixture drove them, and the capture had the annotation SETTERS but not
+# the GETTERS. That is exactly how the crash shipped. Drive both report triggers on the native binary:
+#   A) extract a subgroup of an annotated model (its own annotation serializes during the validate-the-pair),
+#   B) validate/describe/export a parent that INCLUDES an annotated sub-model (expansion serializes the sub).
+# ORDER MATTERS: annotate the sub AFTER `include add` attaches it — on a still-buggy binary `include add`
+# itself expands+serializes, so annotating first would crash setup and silently skip the guard (false GREEN).
+AW="$(mktemp -d)"
+"$NATIVE" model new --id catalog --locale en_US --root Catalog -o "$AW/catalog.dm.json" >/dev/null 2>&1
+"$NATIVE" -m "$AW/catalog.dm.json" group add --parent /Catalog --name G >/dev/null 2>&1
+"$NATIVE" -m "$AW/catalog.dm.json" field add --group /Catalog/G --name F --kind STRING >/dev/null 2>&1
+"$NATIVE" model new --id store --locale en_US --root Store -o "$AW/store.dm.json" >/dev/null 2>&1
+"$NATIVE" -m "$AW/store.dm.json" -w "$AW" include add --alias catalog --reference catalog --parent /Store --name Catalog >/dev/null 2>&1
+"$NATIVE" -m "$AW/catalog.dm.json" config modify --role admin >/dev/null 2>&1     # annotate the sub AFTER attaching
+"$NATIVE" -m "$AW/store.dm.json"   config modify --role manager >/dev/null 2>&1   # and the parent
+# Fail LOUD if setup didn't take, so a broken setup can't make the guard a silent no-op (testing-strategy rule).
+if ! grep -q modelAlias "$AW/store.dm.json" || ! grep -q roles "$AW/catalog.dm.json"; then
+  fails=$((fails+1)); checks=$((checks+1))
+  echo "  FAIL  annotated-include setup did not take (include or roles annotation missing) — guard would be a no-op"
+fi
+run "annotated model: group extract"    -m "$AW/catalog.dm.json" -w "$AW" group extract /Catalog/G --reference subg
+run "annotated include: model validate" -m "$AW/store.dm.json" -w "$AW" model validate
+run "annotated include: model describe" -m "$AW/store.dm.json" -w "$AW" model describe
+run "annotated include: export"         -m "$AW/store.dm.json" -w "$AW" export
+
 echo "----"
 if [[ $fails -eq 0 ]]; then
   echo "native battery: GREEN — $checks checks, 0 native-image signatures"

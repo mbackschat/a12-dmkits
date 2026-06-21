@@ -6233,6 +6233,14 @@
           "parameterTypes": []
         },
         {
+          "name": "getName",
+          "parameterTypes": []
+        },
+        {
+          "name": "getValue",
+          "parameterTypes": []
+        },
+        {
           "name": "setName",
           "parameterTypes": [
             "java.lang.String"
