@@ -112,6 +112,27 @@ class ApplyVerbTest {
     }
 
     @Test
+    void aFieldModifyOpWithAConfigBlockButNoKindGetsTheCorrective(@TempDir Path dir) throws Exception {
+        // the F1(b) slip in an apply op: a `string` block with no `kind` can't re-type → empty modify. apply
+        // must give the SAME precise corrective as the standalone verb (name the kind, warn it replaces), and
+        // roll the sequence back — not a generic, mystifying "nothing to modify".
+        Path model = CliTestSupport.orderRuled(dir);
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, """
+                [ {"target":"field","op":"add","group":"/Order","name":"Plz","kind":"STRING"},
+                  {"target":"field","op":"modify","group":"/Order","name":"Plz",
+                   "string":{"patternMessages":{"en_US":"five digits"}}} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(1, res.code(), () -> "the empty modify rolls the sequence back: " + res.out());
+        JsonNode j = M.readTree(res.out());
+        assertFalse(j.path("committed").asBoolean());
+        String diag = j.path("results").get(1).path("diagnostics").get(0).path("summary").asText();
+        assertTrue(diag.contains("STRING") && diag.contains("REPLACES"),
+                () -> "the failing op names the kind to add + warns it replaces the type: " + diag);
+    }
+
+    @Test
     void rejectsAnUnknownNestedKeyInAFieldOp(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         Path ops = dir.resolve("ops.json");

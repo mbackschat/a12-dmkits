@@ -254,8 +254,7 @@ final class ApplyCommand extends BaseCommand {
                 FieldSpec.ModificationSpec parsed = FieldSpec.parseModification(op);
                 FieldModification mod = parsed.modification();
                 if (mod.isEmpty()) {
-                    throw new IllegalArgumentException("nothing to modify — give a \"kind\"/\"typedef\" to re-type, "
-                            + "or a metadata key (required/label/helperText/…)");
+                    throw new IllegalArgumentException(FieldSpec.emptyModificationCorrective(op));
                 }
                 String path = parsed.group() + "/" + parsed.name();
                 session.modifyField(path, mod);

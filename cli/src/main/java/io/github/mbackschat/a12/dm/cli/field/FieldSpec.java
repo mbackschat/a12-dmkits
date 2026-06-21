@@ -40,6 +40,15 @@ public final class FieldSpec {
     public static final Set<String> TYPE_KEYS = Set.of("kind", "typedef",
             "string", "number", "enum", "date", "time", "dateTime", "dateRange", "dateFragment", "custom");
 
+    /**
+     * The per-kind config-block keys — {@link #TYPE_KEYS} without the two selectors ({@code kind}/{@code typedef}).
+     * A block only takes effect once a {@code kind} selects it (so {@code "string": {…}} alone can't re-type a
+     * field); {@link #configBlockWithoutKind} uses this to give that mistake a precise corrective.
+     */
+    public static final Set<String> CONFIG_BLOCK_KEYS =
+            TYPE_KEYS.stream().filter(k -> !k.equals("kind") && !k.equals("typedef"))
+                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
+
     /** The field-level metadata keys {@link #parse} reads (requiredness, labels, descriptions, flags). */
     public static final Set<String> METADATA_KEYS = Set.of("required", "label", "annotations",
             "global", "transient", "internalDescription", "externalDescription", "helperText", "requiredMessages");
@@ -136,6 +145,47 @@ public final class FieldSpec {
             mod.isTransient(spec.get("transient").asBoolean(false));
         }
         return new ModificationSpec(group, name, mod.build());
+    }
+
+    /**
+     * The per-kind config-block key a spec carries WITHOUT a {@code kind}/{@code typedef} selector (e.g. a lone
+     * {@code "string": {…}}), or {@code null}. Such a spec can't re-type a field — a re-type needs the
+     * {@code kind} that selects the block — so {@code parseModification} treats it as carrying no type change;
+     * the caller uses this to turn the otherwise-confusing "nothing to modify" into a precise corrective (add
+     * the {@code kind} that selects this block). Returns the FIRST such key in the spec's own order (one block
+     * is the realistic case).
+     */
+    public static String configBlockWithoutKind(JsonNode spec) {
+        if (spec.hasNonNull("kind") || spec.hasNonNull("typedef")) {
+            return null;
+        }
+        for (java.util.Iterator<String> it = spec.fieldNames(); it.hasNext();) {
+            String key = it.next();
+            if (CONFIG_BLOCK_KEYS.contains(key)) {
+                return key;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The corrective for an empty {@code field modify} (a spec that would change nothing) — context-aware: if
+     * it carries a per-kind config block without a {@code kind} (the common slip, e.g. {@code "string": {…}}
+     * to add a {@code patternMessage}), it names the {@code kind} to add and warns that a modify REPLACES the
+     * field's type (so the full block must be supplied); otherwise the generic "give a kind/typedef or a
+     * metadata key". Single-sourced so the standalone {@code field modify} and the {@code apply} FIELD_MODIFY
+     * op give identical guidance.
+     */
+    public static String emptyModificationCorrective(JsonNode spec) {
+        String block = configBlockWithoutKind(spec);
+        if (block != null) {
+            String kind = block.toUpperCase(java.util.Locale.ROOT);
+            return "a \"" + block + "\" config block alone can't re-type a field — add \"kind\": \"" + kind
+                    + "\" so the block takes effect. NOTE: modify REPLACES the field's type, so include the FULL \""
+                    + block + "\" block (every key to keep), not only the changed one.";
+        }
+        return "nothing to modify — give a \"kind\"/\"typedef\" to re-type, or a metadata key "
+                + "(required/label/helperText/internalDescription/externalDescription/annotations/global/transient)";
     }
 
     /**

@@ -152,6 +152,25 @@ class FieldModifyCommandTest {
     }
 
     @Test
+    void aConfigBlockWithoutAKindGetsAPreciseCorrective(@TempDir Path dir) throws Exception {
+        // the probe-05 F1(b) slip: agent passes a per-kind block to amend config (here a patternMessage) but
+        // forgets `kind` — without it the block can't re-type, so the edit is empty. The corrective must name
+        // the kind to add (not the generic "give a kind/typedef"), and warn that a modify REPLACES the type.
+        Path m = freshModel(dir);
+        Path spec = dir.resolve("plz-msg.json");
+        Files.writeString(spec, """
+                {"group":"/Adresse","name":"PLZ",
+                 "string":{"patternMessages":{"en_US":"five digits"}}}""");
+
+        CliTestSupport.Result res = CliTestSupport.run("-m", m.toString(), "field", "modify", spec.toString());
+
+        assertNotEquals(0, res.code(), "a lone config block (no kind) can't re-type — must fail, not no-op-succeed");
+        String msg = res.out() + res.err();
+        assertTrue(msg.contains("\"kind\": \"STRING\""), () -> "names the kind to add: " + msg);
+        assertTrue(msg.contains("REPLACES"), () -> "warns the modify replaces the type: " + msg);
+    }
+
+    @Test
     void rejectsAnUnknownTopLevelKey(@TempDir Path dir) throws Exception {
         Path m = freshModel(dir);
         Path spec = dir.resolve("typo.json");

@@ -96,8 +96,7 @@ final class FieldModifyCommand extends BaseCommand {
             FieldSpec.ModificationSpec parsed = FieldSpec.parseModification(spec);
             FieldModification mod = parsed.modification();
             if (mod.isEmpty()) {
-                return fail("nothing to modify — give a \"kind\"/\"typedef\" to re-type, or a metadata key "
-                        + "(required/label/helperText/internalDescription/externalDescription/annotations/global/transient)");
+                return fail(FieldSpec.emptyModificationCorrective(spec));
             }
             fieldPath = parsed.group() + "/" + parsed.name();
             // the field-exists gate runs first, so modifying a missing field gets the structured refusal
