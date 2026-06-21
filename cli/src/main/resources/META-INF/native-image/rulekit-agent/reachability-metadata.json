@@ -2260,6 +2260,31 @@
       ]
     },
     {
+      "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.RootGroupCondition",
+      "methods": [
+        {
+          "name": "getBedingungNameCode",
+          "parameterTypes": []
+        },
+        {
+          "name": "getEntityIdCodeRef",
+          "parameterTypes": []
+        },
+        {
+          "name": "getLfdNummerCode",
+          "parameterTypes": []
+        },
+        {
+          "name": "getRootGroupName",
+          "parameterTypes": []
+        },
+        {
+          "name": "getUsbCode",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.conditions.ValueListCondition",
       "methods": [
         {
@@ -7337,6 +7362,9 @@
       "type": "io.github.mbackschat.a12.dm.cli.config.ConfigModifyCommand",
       "fields": [
         {
+          "name": "addLocales"
+        },
+        {
           "name": "annotations"
         },
         {
@@ -7491,6 +7519,12 @@
       "fields": [
         {
           "name": "field"
+        },
+        {
+          "name": "group"
+        },
+        {
+          "name": "name"
         }
       ],
       "methods": [
@@ -7511,6 +7545,12 @@
         },
         {
           "name": "field"
+        },
+        {
+          "name": "group"
+        },
+        {
+          "name": "name"
         },
         {
           "name": "outputPath"
@@ -7638,6 +7678,35 @@
         },
         {
           "name": "reference"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.group.GroupModifyCommand",
+      "fields": [
+        {
+          "name": "dryRun"
+        },
+        {
+          "name": "group"
+        },
+        {
+          "name": "nonRepeatable"
+        },
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "repeatable"
         },
         {
           "name": "workspace"
@@ -14325,6 +14394,9 @@
       "glob": "internal/templates/validation/groovy/conditionsDir/PredefinedTypeValidityCondition.st"
     },
     {
+      "glob": "internal/templates/validation/groovy/conditionsDir/RootGroupCondition.st"
+    },
+    {
       "glob": "internal/templates/validation/groovy/conditionsDir/ValueListCondition.st"
     },
     {
@@ -14359,6 +14431,9 @@
     },
     {
       "glob": "internal/templates/validation/groovy/entityidDir/EntityId_varAssignment.st"
+    },
+    {
+      "glob": "internal/templates/validation/groovy/entityidDir/UsbIndexCode.st"
     },
     {
       "glob": "internal/templates/validation/groovy/formatdefinition.stg"
