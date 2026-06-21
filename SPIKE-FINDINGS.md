@@ -106,3 +106,26 @@ After the follow-ups above (big.js, polarity, parser, throughput, omitted-tail p
 3. Add the **`MessageType`/polarity** dimension next — it's the largest remaining fidelity gap and has real subtleties (the omitted-tail typing).
 4. Decide the **parser** (kernel parse-tree-api vs ANTLR-from-grammar) — the first thing that forces real condition *text* through the engine.
 5. Drive everything with the `RuntimeLaws`/`KernelLaws` differential oracle, expanding shape coverage.
+
+## Resuming this work — state & how to continue (on `main`, post-merge)
+
+> The "Recommended scope" list just above predates the follow-ups: items 2–4 (big.js, MessageType/polarity, parser) are **done** (see Updates 1–2). This section is the live state.
+
+**Where it is.** The spike is **merged into `main`** (merge commit `56a622f`). No branch/worktree remains.
+
+**Module layout (on `main`):**
+- **`:interpreter`** — the engine, a Kotlin Multiplatform module, **kernel-free** (the publishable, native-safe artifact). `commonMain` = `Ast` · `Dec` (expect) · `EvalContext` · `Interpreter` · `Message` · `Parser` · `RepDoc` · `SpikeDoc`; `jvmMain`/`jsMain` = the `Dec` actuals (BigDecimal / big.js); `commonTest` = `InterpreterMultiplatformTest` (runs on JVM **and** JS, no kernel).
+- **`:adapter`** (test scope) — the kernel-**differential** tests (`…/adapter/laws/*DiffTest.kt`) that compare the interpreter to the real kernel via the `RuntimeLaws` oracle; they consume `:interpreter`.
+
+**Build / verify (always via `./build.sh` — isolated Gradle home + JDK 21, never bare `./gradlew`):**
+- Everything: `./build.sh :interpreter:allTests :adapter:test`
+- JS only: `./build.sh :interpreter:jsNodeTest` · JVM engine tests: `./build.sh :interpreter:jvmTest`
+
+**Open decisions / residue:**
+1. **Test placement** — the differential tests + a Kotlin test toolchain currently live in `:adapter` (otherwise Java-only). Options: leave it (spike pragmatism) · rewrite them in Java to keep adapter Java-only · or move them to `:interpreter`'s `jvmTest` with a *test-only* kernel dep (the proposal §8 Phase-2 shape, which also needs the `RuntimeLaws` oracle ported/shared since adapter's own law tests still need it).
+2. `$field$` display-name + formal-error message tiers (localized-text residue).
+3. Full parser grammar + the kernel-parse-tree-api-vs-ANTLR choice (§11).
+4. A real perf-regression harness (JMH / tracked baselines) vs. the in-test bound.
+5. **Phase-2 extraction** (proposal §8): lift `:interpreter` into a sibling repo `a12-dm-interpreter` (its own conformance suite, test-only kernel dep) — removes the KMP toolchain from this repo's build.
+
+**Design record:** `docs/INTERPRETER-PROPOSAL.md` (intent + §10 spike result) · this file.
