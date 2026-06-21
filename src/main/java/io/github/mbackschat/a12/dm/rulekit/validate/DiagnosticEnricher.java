@@ -20,19 +20,27 @@ final class DiagnosticEnricher {
         this.catalog = catalog;
     }
 
-    /** {@code diagnostic} with the catalog-joined fix/explain attached when its code is known. */
+    /**
+     * {@code diagnostic} with a fix/explain attached when its code is known: first the operator
+     * catalog-join (operator-level {@code MVK_*} codes), then the {@link StructuralKernelFix}
+     * fallback for placement / iteration-scope codes that no operator documents.
+     */
     Diagnostic enrich(Diagnostic diagnostic) {
         Optional<OperatorEntry> entry = diagnostic.code().flatMap(catalog::byInvalidError);
-        if (entry.isEmpty()) {
-            return diagnostic;
+        if (entry.isPresent()) {
+            Optional<String> fix = entry
+                    .map(OperatorEntry::invalidExample)
+                    .map(OperatorEntry.InvalidExample::fix)
+                    .filter(s -> s != null && !s.isBlank());
+            Optional<String> explain = entry
+                    .map(OperatorEntry::meaning)
+                    .filter(s -> s != null && !s.isBlank());
+            return diagnostic.withFix(fix, explain);
         }
-        Optional<String> fix = entry
-                .map(OperatorEntry::invalidExample)
-                .map(OperatorEntry.InvalidExample::fix)
-                .filter(s -> s != null && !s.isBlank());
-        Optional<String> explain = entry
-                .map(OperatorEntry::meaning)
-                .filter(s -> s != null && !s.isBlank());
-        return diagnostic.withFix(fix, explain);
+        Optional<StructuralKernelFix.Hint> hint = diagnostic.code().flatMap(StructuralKernelFix::forCode);
+        if (hint.isPresent()) {
+            return diagnostic.withFix(hint.map(StructuralKernelFix.Hint::fix), hint.map(StructuralKernelFix.Hint::explain));
+        }
+        return diagnostic;
     }
 }

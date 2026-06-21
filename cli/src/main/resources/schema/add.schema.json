@@ -10,14 +10,14 @@
     { "title": "computation-spec", "required": ["computedField", "alternatives", "messages"] }
   ],
   "properties": {
-    "field": { "type": "string", "description": "(rule) the error field's ABSOLUTE path, e.g. /Order/Quantity; its parent group is the rule's iteration scope" },
+    "field": { "type": "string", "description": "(rule) the error field's ABSOLUTE path, e.g. /Order/Quantity; its parent group becomes the rule group (iteration scope). PLACEMENT LAW: a rule iterates over every repeatable group whose per-row fields it references, and the error field MUST lie inside each of those groups (else MVK_ERROR_FIELD_NOT_IN_RULEGROUP). So for a per-row rule ('each row must …') pick an error field INSIDE the repeatable group; for a whole-document rule aggregate the per-row operands (e.g. Sum(Group*/Field)) and use a non-repeatable error field. Tip: choose the error field at the lowest group that contains all referenced fields — relative paths stay short and survive a group move." },
     "condition": { "type": "string", "description": "(rule) the condition in A12 DSL — TRUE on a VIOLATION/the error scenario (the rule fires when it holds), so to enforce a requirement write its violation, e.g. FieldNotFilled(X) not FieldFilled(X)" },
     "comment": { "type": "string", "description": "(rule/computation) optional explanatory note, persisted as a leading ;; comment — on the rule's condition, or on a computation's first operation (the kernel tolerates it; it survives a later modify)" },
     "code": { "type": "string", "description": "(rule) the rule's error code" },
     "severity": { "type": "string", "description": "(rule) ERROR | WARNING | INFO (default ERROR)" },
     "allowDifferingDecimals": { "type": "boolean", "description": "(rule) the editor's 'Allow Differing Decimal Places' — prepend @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES) so a field-vs-field == / != across differing decimal scales is accepted (the kernel's one suppressible warning). Default false." },
 
-    "computedField": { "type": "string", "description": "(computation) the calculated field's ABSOLUTE path; the computation element is placed in its group" },
+    "computedField": { "type": "string", "description": "(computation) the calculated field's ABSOLUTE path; the computation is placed in its parent group (its iteration scope). Same PLACEMENT LAW as a rule's error field: a computation that reads per-row fields must compute a field INSIDE that repeatable group; to compute a non-repeatable field from per-row data, aggregate first (e.g. Sum(Group*/Field)) — else MVK_ERROR_FIELD_NOT_IN_RULEGROUP." },
     "commonPrecondition": { "type": "string", "description": "(computation) optional guard (A12 DSL) shared by all alternatives" },
     "alternatives": {
       "type": "array",

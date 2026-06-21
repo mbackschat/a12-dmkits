@@ -81,6 +81,25 @@ class RuleValidatorTest {
     }
 
     @Test
+    void attachesAPlacementFixToTheNotInRuleGroupCode() {
+        // The natural agent mistake: a per-row condition (reaches into repeatable Addons) but a
+        // top-level error field (Tier) → MVK_ERROR_FIELD_NOT_IN_RULEGROUP. Today that surfaces bare;
+        // the enricher must attach a corrective fix so the agent can recover (CLI-SPEC §6).
+        DraftRule rule = new DraftRule(
+                "/Subscription/Addons", "MisplacedRule", "../../Tier",
+                "FieldFilled(MonthlyFee) And [MonthlyFee] > 100", "MISPLACED", "ERROR");
+
+        ValidationResult result = new RuleValidator().check(modelJson, rule);
+
+        Diagnostic placement = result.diagnostics().stream()
+                .filter(d -> d.code().filter("MVK_ERROR_FIELD_NOT_IN_RULEGROUP"::equals).isPresent())
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("expected MVK_ERROR_FIELD_NOT_IN_RULEGROUP, got: " + result.diagnostics()));
+        assertTrue(placement.fix().filter(f -> !f.isBlank()).isPresent(),
+                () -> "the placement code must carry a corrective fix, got: " + placement);
+    }
+
+    @Test
     void validatesEnumComparisonAgainstTheKernel() {
         BoundModel m = Fixtures.subscription();
         // Tier is a text-bearing enum (BASIC/PRO/ENTERPRISE) — comparison by stored value is accepted.

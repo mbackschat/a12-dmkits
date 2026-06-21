@@ -29,6 +29,8 @@ The **no-rot** lever is that **every schema `examples` block is CI-executed thro
 
 ## Refactoring safety gate (standing requirement, 2026-06-12)
 
+**Before proposing a *new* refactor verb, apply the earns-a-verb bar (CLI-SPEC §6).** A refactoring deserves a first-class verb only when hand-composing it from primitives (`read` + `add`/`remove`/`modify`) is unreliable — it trips **reference fan-out**, **non-trivial mechanical correctness** (path rebasing), or **atomicity/loss**. If none trips, prefer teaching the primitives (schema + diagnostics) to compose correctly — *self-explaining primitives > more verbs*. (This is the standing trigger for "should we add refactor X?" discussions; e.g. `rule/computation move` is deferred under it.) For any refactor we *do* add, the gate below applies.
+
 **Any refactor — now or in the future — checks safety *before* it changes anything; if the specific refactor isn't safe on this model it refuses with rich, corrective diagnostics and mutates nothing; only when safe does it proceed.** We gate the refactor and stay in control — never a best-effort rewrite, never a silent degrade. This generalizes the safe-delete `where-used` gate to the whole Refactor class (rename, move, extract/inline). Two non-negotiables for every refactor:
 
 - **Document the gate well in the md docs** — each refactor's safety preconditions, what it refuses on, and the diagnostics it emits. Its home is [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md) §6; never leave the safety contract implicit in code.
