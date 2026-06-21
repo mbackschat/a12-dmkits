@@ -6,7 +6,9 @@ package io.github.mbackschat.a12.dm.interpreter.spike
  *  - [outerContext] — for an aggregate rule evaluated once in the outer row (Sum/MaxValue over `star`);
  *  - [rowContexts] — one per item row, for a per-row rule that iterates the repetition.
  *
- * Item-field values live under [itemsPath]; outer values under [outerPath].
+ * Item-field values live under [itemsPath]; outer values under [outerPath]. [declaredReps] is the
+ * group's declared max repetition count: the un-instantiated tail below it is a fillable omission, so a
+ * starred aggregate stays OMISSION-typed until every declared row is instantiated and filled.
  */
 class RepDoc(
     private val outerPath: String,
@@ -14,6 +16,7 @@ class RepDoc(
     private val outer: Map<String, String>,
     private val itemRows: List<Map<String, String>>,
     private val kinds: Map<String, Kind>,
+    private val declaredReps: Int = Int.MAX_VALUE,
 ) {
     private fun kindOf(path: String): Kind =
         kinds[path] ?: error("spike: no kind declared for $path")
@@ -25,6 +28,11 @@ class RepDoc(
     private fun starOf(path: String): List<Val> =
         itemRows.mapNotNull { row -> row[path]?.let { typedValue(kindOf(path), it) } }
 
+    /** Whether a starred aggregate over [path] could still grow — an empty operand, or an
+     *  un-instantiated tail below [declaredReps] — making a fired comparison an OMISSION. */
+    private fun starOmissionOf(path: String): Boolean =
+        itemRows.size < declaredReps || itemRows.any { it[path] == null }
+
     private val outerFilled: Boolean = outer.keys.any { it.startsWith("$outerPath/") }
 
     /** The outer (/Order) row context — aggregates collapse the item rows via [EvalContext.star]. */
@@ -33,6 +41,7 @@ class RepDoc(
         override fun field(path: String) = resolve(outer, path)
         override fun filled(path: String) = outer.containsKey(path)
         override fun star(path: String) = starOf(path)
+        override fun starOmission(path: String) = starOmissionOf(path)
     }
 
     /** One context per item row — a per-row rule fires independently in each. */
@@ -48,6 +57,7 @@ class RepDoc(
                 if (path.startsWith("$itemsPath/")) row.containsKey(path) else outer.containsKey(path)
 
             override fun star(path: String) = starOf(path)
+            override fun starOmission(path: String) = starOmissionOf(path)
         }
     }
 }

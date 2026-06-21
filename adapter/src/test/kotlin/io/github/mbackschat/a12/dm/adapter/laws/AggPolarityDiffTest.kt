@@ -1,0 +1,83 @@
+package io.github.mbackschat.a12.dm.adapter.laws
+
+import io.github.mbackschat.a12.dm.interpreter.spike.CmpOp
+import io.github.mbackschat.a12.dm.interpreter.spike.Cond
+import io.github.mbackschat.a12.dm.interpreter.spike.Expr
+import io.github.mbackschat.a12.dm.interpreter.spike.Interpreter
+import io.github.mbackschat.a12.dm.interpreter.spike.Kind
+import io.github.mbackschat.a12.dm.interpreter.spike.MsgType
+import io.github.mbackschat.a12.dm.interpreter.spike.RepDoc
+import io.github.mbackschat.a12.dm.interpreter.spike.dec
+import org.junit.jupiter.api.Assertions.assertAll
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.function.Executable
+
+/**
+ * SPIKE gap-close — the omitted-tail aggregate polarity (mirrors `AggregateUncertaintyLawsTest`). A
+ * starred aggregate is OMISSION-typed while it could still grow — an empty operand OR an
+ * un-instantiated tail below the declared repetition (`Items` declares 50) — and only VALUE once every
+ * declared row is instantiated and filled. Differential vs the real kernel's `MessageType`.
+ */
+class AggPolarityDiffTest {
+
+    private val order = RuntimeLaws.model("models/order.dm.json")
+    private val kinds = mapOf(CN to Kind.STRING, IC to Kind.NUMBER, IS to Kind.STRING)
+
+    private val filledCn = Cond.Pred("FieldFilled", listOf(Expr.Field(CN)))
+    private fun ndvEq1() = Cond.And(
+        filledCn,
+        Cond.Cmp(CmpOp.EQ, Expr.Func("NumberOfDifferentValues", listOf(Expr.Star(IC))), Expr.NumLit(dec(1))),
+    )
+    private fun sumLt100() = Cond.And(
+        filledCn,
+        Cond.Cmp(CmpOp.LT, Expr.Func("Sum", listOf(Expr.Star(IC))), Expr.NumLit(dec(100))),
+    )
+
+    @Test
+    fun starredAggregateTypingAgreesWithKernel() {
+        assertAll(
+            typeDiff("ndv, empty operand → OMISSION", "ONE_SIZE",
+                "NumberOfDifferentValues(Items*/Count) == 1", ndvEq1(), listOf("5", null, "5")),
+            typeDiff("ndv, 3-of-50 instantiated → OMISSION (fillable tail)", "ONE_SIZE",
+                "NumberOfDifferentValues(Items*/Count) == 1", ndvEq1(), listOf("5", "5", "5")),
+            typeDiff("sum, all 50 filled → VALUE (exhausted)", "TOTAL_LOW",
+                "Sum(Items*/Count) < 100", sumLt100(), List(50) { "1" }),
+        )
+    }
+
+    private fun typeDiff(name: String, code: String, condText: String, ast: Cond, counts: List<String?>): Executable {
+        val model = RuntimeLaws.withRule(order, "/Order", code, "../CustomerName", code,
+            "FieldFilled(CustomerName) And $condText")
+        val kernel = RuntimeLaws.typeOf(model, code, items(counts)).map { it.name }.orElse(null)
+        val interp = Interpreter(rep(counts).outerContext()).firedType(ast)
+            ?.let { if (it == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR" }
+        return Executable { assertEquals(kernel, interp, "$name  [kernel=$kernel interp=$interp]") }
+    }
+
+    private fun items(counts: List<String?>): RuntimeLaws.Doc {
+        val d = RuntimeLaws.doc().group("/Order", 1).field(CN, "Acme", 1, 1)
+        counts.forEachIndexed { i, c ->
+            val r = i + 1
+            d.group("/Order/Items", 1, r).field(IS, "S$r", 1, r, 1)
+            if (c != null) d.field(IC, c, 1, r, 1) else d.emptyField(IC, 1, r, 1)
+        }
+        return d
+    }
+
+    private fun rep(counts: List<String?>): RepDoc {
+        val rows = counts.mapIndexed { i, c ->
+            buildMap {
+                put(IS, "S${i + 1}")
+                if (c != null) put(IC, c)
+            }
+        }
+        return RepDoc("/Order", "/Order/Items", mapOf(CN to "Acme"), rows, kinds, declaredReps = 50)
+    }
+
+    private companion object {
+        const val CN = "/Order/CustomerName"
+        const val IC = "/Order/Items/Count"
+        const val IS = "/Order/Items/Sku"
+    }
+}

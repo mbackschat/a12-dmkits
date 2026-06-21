@@ -4,6 +4,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.measureTime
 
 /**
  * Runs the SAME commonMain interpreter on EVERY KMP target (JVM + JS via Node) with hand-asserted
@@ -122,5 +124,30 @@ class InterpreterMultiplatformTest {
             listOf(mapOf(ic to "40"), mapOf(ic to "40")), kinds,
         )
         assertTrue(Interpreter(rep.outerContext()).fires(agg), "Sum(40, 40) == 80 from parsed text")
+    }
+
+    @Test
+    fun scalesToManyRepetitionRows() {
+        // Throughput sanity: a per-row rule over N rows + a starred aggregate. Correctness at scale +
+        // a printed timing (no hard bound — CI-variance-free). Runs on JVM and JS (Node).
+        val n = 20_000
+        val rows = (1..n).map { mapOf(ic to (it % 100).toString()) }
+        val rep = RepDoc("/Order", "/Order/Items", mapOf(cn to "Acme"), rows, kinds)
+        val perRow = Cond.Cmp(CmpOp.GT, Expr.Field(ic), Expr.NumLit(dec(50)))
+        val sumNonNeg = Cond.Cmp(CmpOp.GE, Expr.Func("Sum", listOf(Expr.Star(ic))), Expr.NumLit(dec(0)))
+
+        var firing = 0
+        var sumFires = false
+        val elapsed = measureTime {
+            firing = rep.rowContexts().count { Interpreter(it).fires(perRow) }
+            sumFires = Interpreter(rep.outerContext()).fires(sumNonNeg)
+        }
+        assertEquals(n / 100 * 49, firing, "rows with Count in 51..99 fire (49 per 100)")
+        assertTrue(sumFires)
+        println("[spike] interpreted $n rows (per-row + Sum aggregate) in $elapsed")
+        // Regression guard: ~30ms actual on the JVM; a gross O(n^2)-type regression would blow past this.
+        // Generous headroom so JS (Node, interpreted) and CI variance don't flake. A real perf-regression
+        // harness (JMH / tracked baselines) is Phase-1 work — this just trips on catastrophic slowdowns.
+        assertTrue(elapsed < 5.seconds, "throughput regression: $n rows took $elapsed (expected well under 5s)")
     }
 }

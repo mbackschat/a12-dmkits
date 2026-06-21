@@ -59,18 +59,19 @@ class Interpreter(private val ctx: EvalContext) {
         return if (trueBranchTypes.contains(MsgType.VALUE)) MsgType.VALUE else MsgType.OMISSION
     }
 
-    /** A comparison that fired on a substituted EMPTY field is fillable → OMISSION; else VALUE. */
+    /** A comparison that fired on a substituted-empty field — or on a still-fillable starred aggregate
+     *  — is fillable → OMISSION; else VALUE. */
     private fun leafType(left: Expr, right: Expr): MsgType =
-        if (fieldsIn(left).any { !ctx.filled(it) } || fieldsIn(right).any { !ctx.filled(it) })
-            MsgType.OMISSION else MsgType.VALUE
+        if (leafOmission(left) || leafOmission(right)) MsgType.OMISSION else MsgType.VALUE
 
     private fun predType(p: Cond.Pred): MsgType =
         if (p.name == "FieldNotFilled" || p.name == "GroupNotFilled") MsgType.OMISSION else MsgType.VALUE
 
-    private fun fieldsIn(e: Expr): List<String> = when (e) {
-        is Expr.Field -> listOf(e.path)
-        is Expr.Func -> e.args.flatMap { fieldsIn(it) }
-        else -> emptyList()
+    private fun leafOmission(e: Expr): Boolean = when (e) {
+        is Expr.Field -> !ctx.filled(e.path)
+        is Expr.Star -> ctx.starOmission(e.path)
+        is Expr.Func -> e.args.any { leafOmission(it) }
+        else -> false
     }
 
     private fun evalCond(c: Cond): Tri = when (c) {

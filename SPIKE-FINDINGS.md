@@ -16,6 +16,29 @@ Three of the originally-listed gaps were closed:
 | **MessageType / polarity** | A typed eval pass reproduces VALUE-vs-OMISSION (comparison over filled → VALUE, over empty-substituted → OMISSION; **And = omission wins, Or = value wins**; `FieldNotFilled` → OMISSION). **7 cases match the kernel** (`PolarityDiffTest`, mirrors `ErrorTypeLawsTest`); the typing also runs on JS. |
 | **Real parser** | A minimal recursive-descent parser in `commonMain` turns condition **text → AST** (resolving relative paths against the rule's group). Proof: `ParserDiffTest` drives the interpreter from parsed text and matches the kernel across single-row, starred-aggregate, and per-row shapes; the parser also runs on JS. (Full grammar / kernel-parser-vs-ANTLR choice stays open — §11.) |
 
+## Update 2 — performance + the last gaps (2026-06-21)
+
+### Performance
+
+A `commonTest` benchmark interprets a per-row rule **plus** a starred `Sum` aggregate over **20,000 repetition rows**:
+
+| platform | 20,000 rows (per-row + aggregate) | per row-evaluation |
+|---|---|---|
+| JVM | **~25–39 ms** | ≈ 1–2 µs |
+| JS (Node) | green (same correctness; timing in the JS test report) | — |
+
+So the tree-walk is comfortably fast for large single-level repetition — the original "huge nested datasets" worry doesn't bite at this scale, and nested groups compose the *same* per-row `EvalContext` primitive (nested iteration, no new mechanism). The benchmark now carries a **loose upper-bound assertion as a regression guard** — it trips on a gross O(n²)-type slowdown but has enough headroom (≈150×) not to flake on JS or CI variance.
+
+**On benchmarks as regression guards (your point — agreed):** an in-test time bound is the *floor*, not the real thing. A Phase-1 build should track **recorded baselines** (JMH micro-benchmarks, or a dedicated perf CI job that stores per-commit numbers and fails on a percentage regression) rather than a hand-picked `< 5s`. The in-test guard here is a cheap stand-in that catches the catastrophic case immediately; the proper harness is itself a Phase-1 item.
+
+### Omitted-tail aggregate polarity (closed)
+
+Threading a declared-repetition count through `RepDoc` (+ a `starOmission` context method), the interpreter types a starred aggregate **OMISSION while it can still grow** — an empty operand OR an un-instantiated tail below the declared reps — and **VALUE only once exhausted**. Matches the kernel on the `AggregateUncertaintyLawsTest` cases (empty-operand → OMISSION; 3-of-50 → OMISSION; all-50-filled → VALUE).
+
+### Localized message text (paused)
+
+Not landed. The kernel placeholder syntax is confirmed (`$field.value$` = value via `getValueForDisplay`; `$field$` = display name via `identifierToString`; **same placeholder across locales**, only the surrounding text is localized). Value-interpolation + locale-selection are tractable (the harness groundwork — per-locale `errorMessage` injection + reading `getErrorText` — is scoped); the `$field$` display-name placeholder needs the field's label metadata, and the formal-error (type-error) message *bundles* are a separate tier.
+
 ## What was built
 
 A real Kotlin Multiplatform module — one interpreter, two targets, consumed two ways:
@@ -69,12 +92,11 @@ Every case asserts `interpreterFires == kernelFires` over the *same* document in
 
 ## Caveats / still not proven
 
-After the follow-up above (big.js, polarity, parser closed), what genuinely remains:
+After the follow-ups above (big.js, polarity, parser, throughput, omitted-tail polarity), what remains:
 
-- **Throughput unmeasured** — the spike is correctness-only. Deferred on purpose: the kernel's scale optimizations are *algorithmic* (caches, `*`-prune) and reimplementable in the same `EvalContext`/iteration layer; measure when a real big-document scenario exists.
-- **Localized message text + formal-error model** — only the diagnostic *shape* (code / where / severity / `MessageType`) is reproduced, not the 4-locale rendered prose. The fiddliest fidelity tier; lower priority.
-- **Aggregate polarity (the omitted-tail)** — comparison / And / Or / presence typing matches the kernel; the starred-aggregate "OMISSION until the repetition is exhausted" typing needs declared-repeatability metadata the spike doesn't carry. Simplified for now.
+- **Localized message text** — paused (see Update 2). Value-interpolation + locale-selection are tractable; the `$field$` display-name placeholder needs the field's label metadata; the formal-error (type-error) message bundles are a separate tier.
 - **Parser is a subset** — covers the shapes exercised; the full grammar (and the kernel-parse-tree-api-vs-ANTLR choice) is still §11's open decision.
+- **Benchmark is an in-test bound, not a tracked baseline** — fine as a gross-regression guard; a real perf-regression harness (JMH / recorded baselines) is Phase-1 work.
 - `expect/actual class` emits a beta warning (harmless; suppressible with `-Xexpect-actual-classes`).
 
 ## Recommended scope for Phase 1

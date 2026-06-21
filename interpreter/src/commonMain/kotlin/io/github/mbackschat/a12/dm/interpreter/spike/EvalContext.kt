@@ -17,4 +17,8 @@ interface EvalContext {
 
     /** The FILLED values of a starred field across the repeatable group's rows (for aggregates). */
     fun star(path: String): List<Val>
+
+    /** Whether a starred aggregate over [path] could still grow (an empty operand, or an
+     *  un-instantiated tail below the declared repetition) → types a fired comparison OMISSION. */
+    fun starOmission(path: String): Boolean
 }
