@@ -71,7 +71,7 @@ The plugin lives at the repository root (`.claude-plugin/`).
 
 The plugin does **not** fetch `dmtool` at install time. It registers a **`SessionStart` hook** that downloads the binary and adds it to `PATH`, and a `SessionStart` hook fires **only when a Claude Code session begins or resumes** — never retroactively in the session where you typed `/plugin install`.
 
-**So `dmtool` is not yet available in the session you installed it in. Start a new session — quit and relaunch `claude`, or `claude --resume` — for the hook to run.** (`/reload-plugins` loads the bundled judgment skill into the current session, but only a session *start* runs the hook that downloads the binary.)
+**So `dmtool` is not yet available in the session you installed it in.** Run the hook by either **resuming this conversation** — `claude --continue` (or `claude --resume`), which **keeps your whole conversation intact** (no need to `/clear` or lose context) — or starting a fresh session. (`/reload-plugins` loads the bundled judgment skill into the current session, but only a session *start* runs the hook that downloads the binary.) The bundled skill knows this too: if you ask for `dmtool` work before the binary has loaded, the agent will tell you to resume the session — it won't try to download or build the tool by hand.
 
 What the hook does on each session start:
 

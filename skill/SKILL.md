@@ -37,6 +37,8 @@ The three you lean on:
 
 **Naming model files.** When you name a new model file (e.g. `model new -o <file>`), match the workspace's existing convention: A12 Tools names a document model `<Name>_DM.json` and a type-definition model `<Name>_TDM.json`; some repos use `.dm.json`. Match the files already there; with nothing to match, default to **`_DM.json`**. (References resolve by the model's `id`, not its filename — so this is recognizability, not correctness.)
 
+**If `dmtool` is `command not found`:** the plugin delivers the binary via a hook that runs at **session start**, so it is not on PATH in the very session where the plugin was just installed. **Do not try to download, build, or otherwise install it yourself.** Tell the user to **start a fresh session, or resume this one** (resuming, e.g. `claude --continue`, keeps the whole conversation) — the binary loads then. (In an environment where `dmtool` already runs, this never applies.)
+
 ## The loop
 
 1. **Orient** — `dmtool -m <model> model describe` (or `dmtool -m <model> export`) to learn the fields, their kinds, enum values, and which groups repeat.
