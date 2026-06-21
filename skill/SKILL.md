@@ -95,19 +95,21 @@ So **guard a number comparison** when an empty value shouldn't trip it — `Fiel
 
 ## Aggregates over a repeatable group
 
-When a rule reasons about **all the rows at once** (not one row), use an **aggregate** over the flattened group — `Group*/Field` (the `*` flattens *every row's value* of that field).
+When a rule reasons about **all the rows at once** (not one row), it folds the repetitions with an **aggregate**, and the **`*` wildcard is what flattens them**. Such a rule is **model-level** (it spans rows), so its error field is a **non-repeatable** field — it does **not** iterate per row.
 
-- **`*` goes ONLY on a *field* path inside an aggregate** (`Sum(Lines*/Amount)`). A **group** reference never takes `*` — `GroupFilled`, `NumberOfFilledGroups`, and `Having`'s group take the plain group **path** (`GroupFilled(/Order/Lines)`, not `Lines*`). `GroupFilled(Lines*)` is rejected.
-- **Use the ABSOLUTE wildcard path unless the repeatable group sits directly under the rule's scope.** Like any ref, `Group*/Field` resolves relative to the rule's scope (the error field's group); from a different branch a relative `Lines*/Amount` is `MVK_INVALID_ENTITY` — write the absolute `/Order/Lines*/Amount`. When unsure, go absolute.
-- **`Sum(/Order/Lines*/Amount)` sums the field's *values* — not a row count.** Pick the operator by the question: total of the amounts → `Sum`; **how many rows** → `NumberOfFilledGroups(/Order/Lines)` (a group path, no `*`); how many filled instances of a field → `NumberOfFilledFields(/Order/Lines*/Field)`. `Min` / `Max` exist too — confirm names/operands with `dmtool operators`.
-- An aggregate **is a number**, so compare it like one: `Sum(/Order/Lines*/Amount) > 500`. To compare against another field instead of a literal, bracket the field: `[Cap] < Sum(/Order/Lines*/Amount)`.
+- **The `*` goes on whatever flattens the repetitions** — the **field** for a value aggregate (`Sum(Lines*/Amount)`, `NumberOfFilledFields(Lines*/Sku)`, `Min` / `Max`), or the **group itself** to count rows (`NumberOfFilledGroups(Lines*)`). A *single* repeatable group reference needs that `*`: `NumberOfFilledGroups(Lines)` without it is rejected `MVK_NO_WILDCARD`, and a `*` where the group must stay whole (`GroupFilled(Lines*)`) is rejected `MVK_NO_WILDCARDS_ALLOWED`. (Plain `GroupFilled(Group)` takes no `*` — it's the **per-row** existence guard from the section above, valid only from *inside* the iterating group, never as a model-level reference.)
+- **Pick the operator by the question:** total of the amounts → `Sum(Lines*/Amount)`; **how many rows** → `NumberOfFilledGroups(Lines*)`; how many filled instances of a field → `NumberOfFilledFields(Lines*/Sku)`. Confirm names/operands with `dmtool operators`.
+- **Resolve from the rule's scope, or go absolute.** A wildcard path resolves relative to the error field's group; from a different branch a relative `Lines*/Amount` is `MVK_INVALID_ENTITY` — write the absolute `/Invoice/Lines*/Amount`. When unsure, go absolute.
+- **An aggregate is a number**, so compare it: `Sum(Lines*/Amount) > 500`, or against a field by bracketing it: `[FeeCap] < Sum(Lines*/Amount)`.
 - **`Having` filters which rows are folded:** `Sum(Lines*/Amount Having [Lines/Type] == "FEE")` sums only the fee lines.
-- An aggregate rule is **model-level** (it spans rows), so put its error field on a **non-repeatable** field — it does **not** iterate per row.
+- **The error field must appear in the condition** (any rule — kernel `MVK_ERROR_FIELD_NOT_REFERENCED`). A model-level aggregate's error field is *not* referenced by the aggregate's own path, so reference it explicitly: put the error field on the **cap/limit you compare the aggregate against** (`[FeeCap] < Sum(...)` references `FeeCap`), or guard with `FieldFilled(<errorField>)`. "Put it on a non-repeatable field" is necessary but **not sufficient** — the field still has to be named in the condition.
 
-Example — *"the total of all FEE lines must not exceed 500"* (an invoice with repeatable `/Invoice/Lines`):
+Example — *"the FEE-line total must not exceed the invoice's FeeCap"* (repeatable `/Invoice/Lines` with `Amount`/`Type`; non-repeatable `/Invoice/FeeCap`):
 ```
-dmtool -m invoice.json rule check --field /Invoice/Total \
-  --condition "Sum(Lines*/Amount Having [Lines/Type] == \"FEE\") > 500" --code FEE_TOTAL_TOO_HIGH
+dmtool -m invoice.json rule check --field /Invoice/FeeCap \
+  --condition "FieldFilled(FeeCap) And [FeeCap] < Sum(Lines*/Amount Having [Lines/Type] == \"FEE\")" \
+  --code FEE_OVER_CAP
+# → "valid": true — FeeCap is referenced (via the comparison), so the error field appears in the condition
 ```
 
 ## Dates
