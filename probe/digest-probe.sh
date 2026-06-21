@@ -57,7 +57,10 @@ function flush(   v, b) {
     rf[++rfn] = sprintf("%s\n      %s", cmd, reason)
   }
 }
-/^\$ dmtool / { flush(); cmd=$0; sub(/^\$ /,"",cmd); instderr=0; exitc=""; errfirst=""; exc=""; internalerr=""; next }
+/^\$ dmtool / { flush(); cmd=$0; sub(/^\$ /,"",cmd); instderr=0; exitc=""; errfirst=""; exc=""; internalerr="";
+  # a catalog/self-describe verb ECHOES diagnostic codes as DATA — its stdout mentioning RK_INTERNAL_ERROR is a
+  # lookup, not a verb erroring (the agent ran `diagnostics RK_INTERNAL_ERROR`). Exempt it from stdout flagging.
+  catalogcmd = (verbof(cmd) ~ /^(diagnostics|manifest|schema|operators|patterns)( |$)/); next }
 /^--- stdout:/ { instderr=0; next }
 /^--- stderr:/ { instderr=1; next }
 /^\[exit /     { e=$0; gsub(/[^0-9]/,"",e); exitc=e; instderr=0; next }
@@ -67,8 +70,9 @@ function flush(   v, b) {
     if (exc == "" && ($0 ~ /Exception|Throwable|Caused by:|[ \t]+at [A-Za-z0-9_.$]+\([A-Za-z0-9_]+\.java:[0-9]+\)/)) exc=$0
   } else if (!instderr && $0 != "") {
     # Post-CLI-boundary fix, an internal tool error is a STRUCTURED envelope on stdout (outcome:"error" +
-    # RK_INTERNAL_ERROR), with the trace on stderr — not a raw trace on stdout. Catch that signal too.
-    if (internalerr == "" && ($0 ~ /"outcome"[^}]*"error"/ || $0 ~ /RK_INTERNAL_ERROR/)) internalerr=$0
+    # RK_INTERNAL_ERROR), with the trace on stderr — not a raw trace on stdout. Catch that signal too — but
+    # NOT when a catalog/self-describe verb is just echoing the code as data (exit 70 still flags those).
+    if (!catalogcmd && internalerr == "" && ($0 ~ /"outcome"[^}]*"error"/ || $0 ~ /RK_INTERNAL_ERROR/)) internalerr=$0
   }
 }
 END {

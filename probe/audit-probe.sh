@@ -143,7 +143,9 @@ fi
 # steering the agent away from the path under test). The runner must clear its TaskList before spawning
 # (PROBE-SPEC); this tripwire catches a forgotten clear: a `task #<n>` reference in the subagent transcript is
 # a leaked TaskList id (0 in a clean run; the probe never authors that token itself).
-taskleak="$(grep -oiE "task #[0-9]+" "$T" 2>/dev/null | sort -u | tr '\n' ' ')"
+# `|| true` inside the group: a clean run has NO matches, and a no-match grep exits 1 — which under
+# `set -euo pipefail` would crash the script (truncating the report) instead of reporting CLEAN.
+taskleak="$({ grep -oiE "task #[0-9]+" "$T" 2>/dev/null || true; } | sort -u | tr '\n' ' ')"
 echo "[5] context isolation — no main-loop TaskList leaked into the subagent"
 if [[ -n "${taskleak// /}" ]]; then
   fail=1; note "SUSPECT — main-loop task context leaked into the probe (clear the TaskList before spawning): $taskleak"
