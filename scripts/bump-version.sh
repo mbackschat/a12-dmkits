@@ -25,17 +25,17 @@ export OLD NEW
 perl -i -pe 's/\Q$ENV{OLD}\E/$ENV{NEW}/ if /^version = /'                    build.gradle                                          # 1. source of truth (--version / manifest.version)
 perl -i -pe 's/\Q$ENV{OLD}\E/$ENV{NEW}/ if /"version"\s*:/'                  plugin/.claude-plugin/plugin.json plugin-codex/.codex-plugin/plugin.json  # 2+3. the agent-plugin manifests
 perl -i -pe 's/\Q$ENV{OLD}\E/$ENV{NEW}/ if /^a12-dmkits / || /"rulekit"\s*:/' examples/cli-version.md                              # 4. the showboat-gated capture (project-version lines only)
-# 5. the plugin's binary-download pin (the SessionStart hook fetches the v$NEW release). Set UNCONDITIONALLY
-# (not a swap of $OLD) so it self-heals even if it ever drifted, then propagate to both plugin copies. The
-# pin lagging the project version is exactly what shipped the stale v0.1.0 binary; PluginHookVersionTest now
-# fails the build if this step is skipped.
+# 5. the plugin's binary-download pin (the skill's on-demand installer fetches the v$NEW release). Set
+# UNCONDITIONALLY (not a swap of $OLD) so it self-heals even if it ever drifted, then propagate to both plugin
+# copies. The pin lagging the project version is exactly what shipped the stale v0.1.0 binary;
+# PluginInstallerVersionTest now fails the build if this step is skipped.
 perl -i -pe 's/^VERSION="v[^"]+"/VERSION="v$ENV{NEW}"/'                       scripts/ensure-dmtool.sh
 ./scripts/sync-plugin-assets.sh >/dev/null
 
 FILES=(build.gradle plugin/.claude-plugin/plugin.json plugin-codex/.codex-plugin/plugin.json examples/cli-version.md \
-       scripts/ensure-dmtool.sh plugin/hooks/ensure-dmtool.sh plugin-codex/hooks/ensure-dmtool.sh)
+       scripts/ensure-dmtool.sh plugin/skills/a12-rules/ensure-dmtool.sh plugin-codex/skills/a12-rules/ensure-dmtool.sh)
 for f in build.gradle plugin/.claude-plugin/plugin.json plugin-codex/.codex-plugin/plugin.json \
-         scripts/ensure-dmtool.sh plugin/hooks/ensure-dmtool.sh plugin-codex/hooks/ensure-dmtool.sh; do
+         scripts/ensure-dmtool.sh plugin/skills/a12-rules/ensure-dmtool.sh plugin-codex/skills/a12-rules/ensure-dmtool.sh; do
   grep -q "$NEW" "$f" || { echo "FAILED to set $NEW in $f — left as-is, check manually" >&2; exit 1; }
 done
 echo "edited:"; git --no-pager diff --stat -- "${FILES[@]}"

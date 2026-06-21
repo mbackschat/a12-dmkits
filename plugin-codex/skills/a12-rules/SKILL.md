@@ -37,7 +37,7 @@ The three you lean on:
 
 **Naming model files.** When you name a new model file (e.g. `model new -o <file>`), match the workspace's existing convention: A12 Tools names a document model `<Name>_DM.json` and a type-definition model `<Name>_TDM.json`; some repos use `.dm.json`. Match the files already there; with nothing to match, default to **`_DM.json`**. (References resolve by the model's `id`, not its filename — so this is recognizability, not correctness.)
 
-**If `dmtool` is `command not found`:** the plugin delivers the binary via a hook that runs at **session start**, so it is not on PATH in the very session where the plugin was just installed. **Do not try to download, build, or otherwise install it yourself.** Tell the user to **start a fresh session, or resume this one** (resuming, e.g. `claude --continue`, keeps the whole conversation) — the binary loads then. (In an environment where `dmtool` already runs, this never applies.)
+**If `dmtool` is `command not found`:** the plugin bundles an installer next to this skill — run it to download the binary on demand: `bash "${CLAUDE_SKILL_DIR}/ensure-dmtool.sh"` (that variable is this skill's own directory on Claude Code; on Codex run the `ensure-dmtool.sh` that sits beside this `SKILL.md`). It fetches the per-OS native build, checksum-verifies it, and prints a line like `dmtool ready: <absolute path>`. **Use that printed path to invoke `dmtool`** for the rest of the session — a script you run mid-session can't reliably add it to `PATH`. **Don't build it from source or fetch it any other way.** (Where `dmtool` already runs, none of this applies — just use it.)
 
 ## The loop
 

@@ -148,7 +148,7 @@ The **verification gate is the trip-wire**: if any source lags, a fresh reflecti
 
 ## 7. Decision — native-only for v1 (B2)
 
-**Decided: v1 ships native-only.** The shipped CLI is the GraalVM 25 native binary — the right fit for the agent-first, latency-sensitive use case (~37 ms start, ~31 MB, downloaded by the plugin's `SessionStart` hook). GraalVM 25 closed both earlier blockers:
+**Decided: v1 ships native-only.** The shipped CLI is the GraalVM 25 native binary — the right fit for the agent-first, latency-sensitive use case (~37 ms start, ~31 MB, downloaded on demand by the plugin's skill-run installer). GraalVM 25 closed both earlier blockers:
 
 1. ~~Reflection coverage~~ — **done** (§3.3, the comprehensive capture).
 2. ~~The 3 runtime-eval verbs~~ — **done** (§4, the registration gate hides them from every surface; guarded by `NativeImageVerbHidingTest`).

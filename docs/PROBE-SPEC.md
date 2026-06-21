@@ -32,7 +32,7 @@ It is **not** the eval: no k, no gold-equivalence scoring, no edits to `eval/`. 
 
 ### Scope boundary — the delivery layer is out
 
-The probe runs the native binary **directly** (via the logging shim), not through the real `SessionStart` hook. So the hook/cache/download/version-pin layer — where defect #2 lived — is **out of scope here**. That layer needs its own small **delivery smoke** (an isolated install/upgrade simulation asserting *delivered-version == plugin-version*), tracked separately. The probe covers native + skill + multi-step authoring DX; it does not cover delivery.
+The probe runs the native binary **directly** (via the logging shim), not through the real on-demand installer. So the install/cache/download/version-pin layer — where defect #2 lived — is **out of scope here**. That layer needs its own small **delivery smoke** (an isolated install/upgrade simulation asserting *delivered-version == plugin-version*), tracked separately. The probe covers native + skill + multi-step authoring DX; it does not cover delivery.
 
 ## The keystone — objective trajectory capture
 

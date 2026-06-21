@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
-# SessionStart hook — ensure the `dmtool` native CLI is on PATH for this agent session.
+# On-demand installer — fetch the `dmtool` native CLI when the agent needs it. The bundled skill runs THIS
+# script (it is NOT a session hook): when `dmtool` is `command not found`, the skill instructs the agent to
+# run it, so the binary is delivered the moment it's first needed — including the very session the plugin was
+# installed in (a SessionStart hook can't do that — it never fires at `/plugin install`).
 #
 # CANONICAL SOURCE. This one script serves BOTH plugins (Claude Code and Codex); it is copy-synced into
-# each plugin's hooks/ by scripts/sync-plugin-assets.sh (never hand-edit the copies — a CI --check fails
-# on drift). It is agent-agnostic: it reads whichever env vars the host provides (CLAUDE_* or PLUGIN_*/
-# CODEX_*), so the same downloader works unmodified under either agent.
+# each plugin's skill dir by scripts/sync-plugin-assets.sh (never hand-edit the copies — a CI --check fails
+# on drift), so it sits beside SKILL.md and the agent can run it via the skill's directory. It is
+# agent-agnostic: it reads whichever env vars the host provides (CLAUDE_* or PLUGIN_*/CODEX_*), so the same
+# downloader works unmodified under either agent.
 #
 #   • PRODUCTION — download the per-OS binary from the a12-dmtool-releases GitHub Release (anonymous,
-#     public mirror), checksum-verify against SHA256SUMS, cache in the plugin data dir, add to PATH.
+#     public mirror), checksum-verify against SHA256SUMS, cache in the plugin data dir. Prints the
+#     absolute path on success — a script the agent runs mid-session cannot inject PATH, so the skill
+#     tells the agent to invoke `dmtool` by the printed path (also exported via the host env-file if one
+#     is offered, harmless best-effort).
 #   • DEV — if an explicit override or a sibling source-repo build is present, use that instead, so the
 #     plugin is testable from a checkout before any release exists.
 #
@@ -38,12 +45,14 @@ STABLE="$BIN_ROOT/dmtool"   # self-correcting symlink → the current version's 
 mkdir -p "$BIN_DIR"
 
 warn() { echo "dmtool plugin: $*" >&2; }
-# Inject PATH via the host's session env-file if it offers one; the binary is always at $STABLE regardless,
-# so an agent whose hooks can't set PATH can still invoke it by that deterministic path (see AGENTS.md).
+# Best-effort PATH via the host env-file if one is offered (honored only by some hosts / some events). The
+# binary is always at the deterministic $STABLE path, so the agent can invoke `dmtool` there directly — the
+# skill instructs exactly that, because a script the agent runs mid-session can't reliably inject PATH.
 put_on_path() { [[ -n "$ENV_FILE" ]] && echo "export PATH=\"$BIN_DIR:\$PATH\"" >> "$ENV_FILE"; }
-# Repoint the stable path at the resolved binary (re-run every session, so it tracks the pinned VERSION and
-# can never go stale across a bump — it replaces any legacy fixed-path BINARY left by an old hook), then PATH.
-finalize() { ln -sf "$DEST" "$STABLE"; put_on_path; }
+# Repoint the stable path at the resolved binary (tracks the pinned VERSION, never stale across a bump — it
+# also replaces any legacy fixed-path binary left by an older install), export PATH best-effort, and PRINT
+# the absolute path so the agent can run dmtool there even when PATH injection didn't take.
+finalize() { ln -sf "$DEST" "$STABLE"; put_on_path; echo "dmtool ready: $STABLE"; }
 # Bound disk to the current version: drop sibling version dirs + the legacy version-less SHA256SUMS. The old
 # fixed-path binary at $STABLE is replaced by the symlink in finalize(), so an upgrade self-heals its disk.
 prune_stale_cache() {
@@ -91,7 +100,7 @@ fi
 
 # Defense-in-depth (loud, never fatal): the resolved binary must self-report the pinned version. A mismatch
 # means the release tag's asset disagrees with the pin (a mispublished release) — surface it, never run a
-# skewed binary silently. This is the check that would have caught the v0.1.0-pin bug at session start.
+# skewed binary silently. This is the check that would have caught the v0.1.0-pin bug when the agent installs it.
 have="$("$DEST" --version 2>/dev/null | awk 'NR==1{print $2}')"
 [[ -n "$have" && "$have" != "${VERSION#v}" ]] \
   && warn "binary self-reports $have but the plugin pinned ${VERSION#v} — possible mispublished release tag"

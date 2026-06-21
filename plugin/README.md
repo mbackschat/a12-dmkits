@@ -54,7 +54,7 @@ dmtool -m order.dm.json rule add delivery-rule.json     # persist (kernel-checke
 
 Two pieces make an agent this good with `dmtool`:
 
-- **The plugin** delivers the binary — its `SessionStart` hook downloads the right per-OS native build (anonymous, checksum-verified) on first use and puts `dmtool` on PATH. One install line (below); the same plugin model serves Claude Code and Codex.
+- **The plugin** delivers the binary — a bundled installer the skill runs **on demand** (the first time `dmtool` is needed, in that same session) fetches the right per-OS native build (anonymous, checksum-verified). One install line (below); the same plugin model serves Claude Code and Codex.
 - **The skill** is a small `SKILL.md` of *judgment* — the traps `--help` can't teach: rule **polarity**, valid **error fields**, **iteration** scope, the date/number gotchas. The binary stays self-describing (`manifest` / `operators` / `schema`); the skill teaches *when* and *why*, and the same canonical skill backs both agents.
 <!-- /shared:dmtool-story -->
 
@@ -67,17 +67,17 @@ Two pieces make an agent this good with `dmtool`:
 
 The plugin lives at the repository root (`.claude-plugin/`).
 
-### Activation — resume (or start) a session after installing
+### Activation — on demand, no restart
 
-`dmtool` is **not** fetched at install time: the plugin registers a `SessionStart` hook that downloads the per-OS binary (checksum-verified) and puts it on `PATH`, and that hook runs only when a session **starts or resumes** — never in the session where you typed `/plugin install`. So once installed, **resume this conversation** (`claude --continue` — it keeps your whole conversation, no `/clear` needed) or start a fresh session, and `dmtool` loads. If you ask for `dmtool` work before then, the bundled skill tells the agent to point you here — it won't try to install the tool by hand.
+`dmtool` is fetched **the first time your agent needs it** — no restart, no resume, no session hook. The plugin bundles a small installer beside the skill; when the agent reaches for `dmtool` and it isn't there, the skill runs that installer. Because it's triggered by *use* (not by a session starting), it works **in the very session you installed the plugin in**.
 
-| On a session start | |
+| The installer | |
 |---|---|
-| **first time / a new version** | downloads the binary from [Releases](../../releases), checksum-verifies it, caches it under `$CLAUDE_PLUGIN_DATA/bin/<version>/` (version-keyed, so an upgrade can't serve a stale binary) — a few seconds. |
-| **thereafter** | already cached → just re-adds it to `PATH` (incl. on `--resume` / `--continue`). Instant. |
-| **on any failure** | warns to stderr, never blocks the session; the next start retries. |
+| **on first use / a new version** | downloads the per-OS binary from [Releases](../../releases), checksum-verifies it against `SHA256SUMS`, caches it under `$CLAUDE_PLUGIN_DATA/bin/<version>/` (version-keyed, so an upgrade can't serve a stale binary), and **prints the absolute path** — a few seconds. |
+| **thereafter** | already cached → resolves instantly. |
+| **on any failure** | warns, and is retried the next time `dmtool` is requested; never blocks your session. |
 
-The current binary is always reachable at the stable path `$CLAUDE_PLUGIN_DATA/bin/dmtool` (a symlink to the active version), so even on a host where the hook can't inject `PATH`, your agent can invoke it there directly.
+A script the agent runs mid-session can't reliably add a binary to `PATH`, so the agent invokes `dmtool` by the path the installer prints — always the stable `$CLAUDE_PLUGIN_DATA/bin/dmtool` (a symlink to the active version).
 
 ## Install — OpenAI Codex
 
@@ -88,7 +88,7 @@ codex plugin add dmtool
 
 The Codex plugin lives under [`codex/`](codex/); the marketplace manifest at `.agents/plugins/marketplace.json` points Codex at it. Codex users can also drop the bundled [`codex/AGENTS.md`](codex/AGENTS.md) into their own repo's `AGENTS.md` to keep dmtool guidance always in context.
 
-Codex uses the **same `SessionStart` hook**, so the *Activation* note above applies here too: the binary is fetched when a session begins, not at install time — **resume or start a Codex session** for the hook to run (resuming keeps your conversation). If your host can't inject `PATH`, the binary still sits at `$PLUGIN_DATA/bin/dmtool` (Codex's data dir) for direct invocation.
+Codex uses the **same on-demand installer**, so the *Activation* note above applies here too: the skill fetches the binary the first time you need it — no restart. The binary lands at `$PLUGIN_DATA/bin/dmtool` (Codex's data dir), and the agent invokes it by the path the installer prints.
 
 ## Install — raw binary (no agent)
 

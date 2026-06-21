@@ -54,7 +54,7 @@ dmtool -m order.dm.json rule add delivery-rule.json     # persist (kernel-checke
 
 Two pieces make an agent this good with `dmtool`:
 
-- **The plugin** delivers the binary — its `SessionStart` hook downloads the right per-OS native build (anonymous, checksum-verified) on first use and puts `dmtool` on PATH. One install line (below); the same plugin model serves Claude Code and Codex.
+- **The plugin** delivers the binary — a bundled installer the skill runs **on demand** (the first time `dmtool` is needed, in that same session) fetches the right per-OS native build (anonymous, checksum-verified). One install line (below); the same plugin model serves Claude Code and Codex.
 - **The skill** is a small `SKILL.md` of *judgment* — the traps `--help` can't teach: rule **polarity**, valid **error fields**, **iteration** scope, the date/number gotchas. The binary stays self-describing (`manifest` / `operators` / `schema`); the skill teaches *when* and *why*, and the same canonical skill backs both agents.
 <!-- /shared:dmtool-story -->
 

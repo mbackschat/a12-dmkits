@@ -1,6 +1,6 @@
 # dmtool — A12 rule authoring (Codex context)
 
-`dmtool` is a self-describing CLI for authoring and validating **A12 Kernel** document-model validation rules. This plugin installs it (the `SessionStart` hook downloads the native binary on the first session start) and loads the rule-authoring **skill**, which teaches the judgment that the tool's help can't — condition *polarity*, error-field paths, iteration scope.
+`dmtool` is a self-describing CLI for authoring and validating **A12 Kernel** document-model validation rules. This plugin loads the rule-authoring **skill** (which teaches the judgment that the tool's help can't — condition *polarity*, error-field paths, iteration scope) and bundles an installer the skill runs **on demand** to download the native binary the first time you need it.
 
 > This file is also a ready-made template: copy it into your project's `AGENTS.md` if you want dmtool guidance always in context (not only when the skill is invoked).
 
@@ -15,7 +15,7 @@ dmtool operators                  # the A12 DSL operator catalog
 dmtool schema <target> <op>       # a verb's input/output shape
 ```
 
-If `dmtool` is **`command not found`**, the per-session hook hasn't run in this session yet — most often because the plugin was just installed here, and the hook only runs when a session starts or resumes. **Don't try to download, build, or install it yourself.** Tell the user to start a fresh session or resume this one (resuming keeps the conversation); the hook delivers the binary then. If `dmtool` *does* run but a specific call can't find it on PATH, the binary also sits at `$PLUGIN_DATA/bin/dmtool` — invoke it by that path.
+If `dmtool` is **`command not found`**, run the `ensure-dmtool.sh` installer bundled in the skill's directory (beside the rule-authoring skill's `SKILL.md`) to download it on demand. It fetches the per-OS native build, checksum-verifies it, and prints `dmtool ready: <absolute path>`; **invoke `dmtool` by that printed path** for the rest of the session (a script you run can't reliably add it to `PATH`). The binary also sits at the stable `$PLUGIN_DATA/bin/dmtool`. **Don't build it from source or install it any other way.**
 
 A rule's condition is **true on a violation** (the error scenario), so to *enforce* a requirement you write its violation. Validate a candidate against the real kernel before persisting:
 

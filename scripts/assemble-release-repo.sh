@@ -23,11 +23,11 @@ mkdir -p "$DEST/licenses"
 # 1a. the CLAUDE CODE plugin at the mirror ROOT + the public-repo README (already EUPL-aware: per-artifact
 #     licensing + source pointer + disclaimer). Claude's marketplace.json has source "." → the repo root.
 cp -Rf "$ROOT/plugin/." "$DEST/"
-# 1b. the CODEX plugin under codex/ (its hooks.json differs from Claude's, so it can't share the root),
-#     with its marketplace manifest at the Codex-standard location pointing back at ./codex (git-subdir).
+# 1b. the CODEX plugin under codex/ (its manifest .codex-plugin/plugin.json + AGENTS.md differ from Claude's,
+#     so it can't share the root), with its marketplace manifest at the Codex-standard location pointing back
+#     at ./codex (git-subdir). The on-demand installer rides inside skills/ (no hooks dir — there is no hook).
 mkdir -p "$DEST/codex" "$DEST/.agents/plugins"
 cp -Rf "$ROOT/plugin-codex/.codex-plugin"    "$DEST/codex/"
-cp -Rf "$ROOT/plugin-codex/hooks"            "$DEST/codex/"
 cp -Rf "$ROOT/plugin-codex/skills"           "$DEST/codex/"
 cp -f  "$ROOT/plugin-codex/AGENTS.md"        "$DEST/codex/"
 cp -f  "$ROOT/plugin-codex/marketplace.json" "$DEST/.agents/plugins/marketplace.json"
