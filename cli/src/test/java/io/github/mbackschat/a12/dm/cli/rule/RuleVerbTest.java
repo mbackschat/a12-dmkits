@@ -235,6 +235,21 @@ class RuleVerbTest {
     }
 
     @Test
+    void modifyMergesMessagesRatherThanReplacing(@TempDir Path dir) throws Exception {
+        // G17: FeeCapRule has en_US "Too high." + de_DE "Zu hoch.". Updating ONLY en_US must PRESERVE de_DE —
+        // under the old replace-only behaviour de_DE was dropped, leaving the model invalid (kernel reject).
+        Path model = CliTestSupport.modelWithRule(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "modify", CliTestSupport.RULE_FULL_NAME,
+                "--message", "en_US=Way too high.");
+        assertEquals(0, res.code(), res::err);
+        assertEquals("applied", M.readTree(res.out()).get("outcome").asText());
+        var read = CliTestSupport.run("-m", model.toString(), "rule", "read", CliTestSupport.RULE_FULL_NAME);
+        String msgs = M.readTree(read.out()).path("data").path("messages").toString();
+        assertTrue(msgs.contains("Way too high."), () -> "en_US is updated: " + read.out());
+        assertTrue(msgs.contains("Zu hoch."), () -> "de_DE is preserved (merge, not replace): " + read.out());
+    }
+
+    @Test
     void modifyRejectsAnInvalidReExpression(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
         var res = CliTestSupport.run("-m", model.toString(), "rule", "modify", CliTestSupport.RULE_FULL_NAME,

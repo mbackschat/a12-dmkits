@@ -67,7 +67,8 @@ final class RuleModifyCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.SCALAR)
     @Option(names = "--message", paramLabel = "<locale>=<text>",
-            description = "set a per-locale error message (repeatable); replaces the rule's messages")
+            description = "upsert a per-locale error message (repeatable); MERGES with the rule's existing "
+                    + "messages — other locales are kept, so a one-locale edit can't drop the rest")
     Map<String, String> messages = new LinkedHashMap<>();
 
     @Option(names = "--comment", paramLabel = "<text>",
@@ -121,7 +122,15 @@ final class RuleModifyCommand extends BaseCommand {
                 modifiedJson = ModelWriter.replaceSeverity(modifiedJson, rule, severity.name());
             }
             if (!messages.isEmpty()) {
-                List<LocalizedText> msgs = messages.entrySet().stream()
+                // G17: merge (upsert) per locale rather than replacing the whole set — so updating one
+                // translation can't silently drop the others (a localization-pass footgun). Start from the
+                // rule's existing messages, then upsert each provided locale, preserving the rest.
+                Map<String, String> merged = new LinkedHashMap<>();
+                for (LocalizedText existing : KernelAdapter.ofJson(modelJson, resolver).ruleMessages(rule)) {
+                    merged.put(existing.locale(), existing.text());
+                }
+                merged.putAll(messages);
+                List<LocalizedText> msgs = merged.entrySet().stream()
                         .map(e -> new LocalizedText(e.getKey(), e.getValue())).toList();
                 modifiedJson = ModelWriter.replaceMessages(modifiedJson, rule, msgs);
             }
