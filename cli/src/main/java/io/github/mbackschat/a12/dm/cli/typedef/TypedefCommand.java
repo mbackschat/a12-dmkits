@@ -15,10 +15,10 @@ import picocli.CommandLine.Spec;
  * caught by the kernel on re-bind (a {@code rejected} envelope).
  */
 @Command(name = "typedef", mixinStandardHelpOptions = true,
-        description = "Type-definition operations: add, read, remove, rename, extract, inline, import.",
+        description = "Type-definition operations: add, read, remove, rename, extract, inline, import, unimport.",
         subcommands = { TypedefAddCommand.class, TypedefReadCommand.class, TypedefRemoveCommand.class,
                 TypedefRenameCommand.class, TypedefExtractCommand.class, TypedefInlineCommand.class,
-                TypedefImportCommand.class })
+                TypedefImportCommand.class, TypedefUnimportCommand.class })
 public final class TypedefCommand implements Callable<Integer> {
 
     @Spec

@@ -1308,6 +1308,36 @@ public final class ModelDocument {
         return this;
     }
 
+    /**
+     * Remove a type-definition import (the inverse of {@link #addImport} — the editor's "REMOVE IMPORT"):
+     * drop the header {@code modelReference} with {@code purpose: "typeDefinitions"} and this {@code reference}.
+     * Fails fast if no such import is declared. (A field still typed by an imported id will then dangle, so the
+     * {@code validate} after this rejects it — like the safe-delete contract.)
+     */
+    public ModelDocument removeImport(String reference) {
+        boolean present = false;
+        for (JsonNode r : root.path("header").path("modelReferences")) {
+            if (IMPORT_PURPOSE.equals(r.path("purpose").asText()) && reference.equals(r.path("reference").asText())) {
+                present = true;
+                break;
+            }
+        }
+        if (!present) {
+            throw new IllegalArgumentException("no type-definition import for '" + reference + "'");
+        }
+        JsonNode header = root.path("header");
+        ArrayNode kept = MAPPER.createArrayNode();
+        for (JsonNode r : header.path("modelReferences")) {
+            boolean isThisImport = IMPORT_PURPOSE.equals(r.path("purpose").asText())
+                    && reference.equals(r.path("reference").asText());
+            if (!isThisImport) {
+                kept.add(r);
+            }
+        }
+        ((ObjectNode) header).set("modelReferences", kept);
+        return this;
+    }
+
     /** The header's {@code modelReferences} array, created if absent. */
     private ArrayNode modelReferences() {
         JsonNode refs = root.path("header").path("modelReferences");

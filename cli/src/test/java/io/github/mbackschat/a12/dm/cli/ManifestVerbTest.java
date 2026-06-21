@@ -33,7 +33,7 @@ class ManifestVerbTest {
             "group add", "group multiselect", "group attachment", "group read", "group remove",
             "group rename", "group move", "group extract",
             "typedef add", "typedef read", "typedef remove", "typedef rename", "typedef extract", "typedef inline",
-            "typedef import",
+            "typedef import", "typedef unimport",
             "include add", "include read", "include remove", "include inline",
             "config read", "config modify",
             "workspace list", "workspace graph", "workspace validate", "workspace roles",

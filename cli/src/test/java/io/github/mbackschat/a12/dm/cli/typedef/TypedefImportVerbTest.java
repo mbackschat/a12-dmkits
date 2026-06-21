@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli.typedef;
 import io.github.mbackschat.a12.dm.cli.CliTestSupport;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
@@ -55,5 +56,29 @@ class TypedefImportVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "typedef", "import",
                 "--reference", "nope", "-w", dir.toString());
         assertTrue(res.code() != 0, "an unresolved type-def import is rejected by the kernel");
+    }
+
+    // typedef unimport — the inverse (the editor's "REMOVE IMPORT"); §7 long-tail item.
+
+    @Test
+    void unimportRemovesADeclaredImport(@TempDir Path dir) throws Exception {
+        Path model = orderWithTypeProvider(dir);
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "typedef", "import",
+                "--reference", "catalogtypes", "-w", dir.toString()).code());
+        var res = CliTestSupport.run("-m", model.toString(), "typedef", "unimport",
+                "--reference", "catalogtypes", "-w", dir.toString());
+        assertEquals(0, res.code(), res::err);
+        assertEquals("applied", M.readTree(res.out()).path("outcome").asText());
+        assertFalse(Files.readString(model).contains("\"purpose\" : \"typeDefinitions\""),
+                "the import declaration is gone");
+    }
+
+    @Test
+    void unimportingAnAbsentImportIsRefused(@TempDir Path dir) throws Exception {
+        Path model = orderWithTypeProvider(dir);   // no import declared yet
+        var res = CliTestSupport.run("-m", model.toString(), "typedef", "unimport",
+                "--reference", "catalogtypes", "-w", dir.toString());
+        assertEquals(2, res.code(), () -> "no such import → spec error: " + res.out() + res.err());
+        assertTrue(res.err().contains("catalogtypes"), () -> "names the missing import: " + res.err());
     }
 }

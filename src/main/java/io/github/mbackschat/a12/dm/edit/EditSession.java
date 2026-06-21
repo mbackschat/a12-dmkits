@@ -296,6 +296,11 @@ public final class EditSession {
         return editStructure(d -> d.addImport(reference));
     }
 
+    /** Remove a type-definition import (the inverse of {@link #addImport}); fails fast if not declared. */
+    public EditSession removeImport(String reference) {
+        return editStructure(d -> d.removeImport(reference));
+    }
+
     /** Add a Multi-Select group template (FEATURE-GAPS §3.8) under {@code parentPath}; see {@link ModelDocument#addMultiSelectGroup}. */
     public EditSession addMultiSelectGroup(String parentPath, String name,
             java.util.function.Consumer<DocumentModelDraft.MultiSelectBuilder> body) {
