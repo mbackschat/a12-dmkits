@@ -26,8 +26,8 @@ PLUGINS=("$ROOT/plugin" "$ROOT/plugin-codex")
 # "<src>|<relative dest under each plugin>". The installer lands in the skill dir (beside SKILL.md) so the
 # skill can run it on demand — there is no hooks/ dir any more.
 ASSETS=(
-  "$SKILL_SRC|skills/a12-rules/SKILL.md"
-  "$INSTALLER_SRC|skills/a12-rules/ensure-dmtool.sh"
+  "$SKILL_SRC|skills/a12-dmtool/SKILL.md"
+  "$INSTALLER_SRC|skills/a12-dmtool/ensure-dmtool.sh"
 )
 
 check=0

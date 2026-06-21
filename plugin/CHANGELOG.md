@@ -4,6 +4,12 @@ All notable changes to the **publicly released `dmtool` artifacts** — the nati
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/) plus **A12 Kernel compatibility metadata** (the kernel each release targets is recorded per entry, never folded into the version string).
 
+## [Unreleased]
+
+### Changed
+
+- **The skill is now `/a12-dmtool` and covers full document-model authoring, not just rules.** It was `/a12-rules`, scoped by its name *and* description to validation rules — so it wouldn't reliably activate for model-building work (create a model, add fields/groups, factor out an include), even though `dmtool` does all of that. Renamed and rebroadened to document-model authoring — **structure *and* rules** — with a description that names the structure verbs so the right tasks trigger it. The CLI binary is unchanged.
+
 ## [0.6.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
 ### Changed

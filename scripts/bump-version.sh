@@ -33,9 +33,9 @@ perl -i -pe 's/^VERSION="v[^"]+"/VERSION="v$ENV{NEW}"/'                       sc
 ./scripts/sync-plugin-assets.sh >/dev/null
 
 FILES=(build.gradle plugin/.claude-plugin/plugin.json plugin-codex/.codex-plugin/plugin.json examples/cli-version.md \
-       scripts/ensure-dmtool.sh plugin/skills/a12-rules/ensure-dmtool.sh plugin-codex/skills/a12-rules/ensure-dmtool.sh)
+       scripts/ensure-dmtool.sh plugin/skills/a12-dmtool/ensure-dmtool.sh plugin-codex/skills/a12-dmtool/ensure-dmtool.sh)
 for f in build.gradle plugin/.claude-plugin/plugin.json plugin-codex/.codex-plugin/plugin.json \
-         scripts/ensure-dmtool.sh plugin/skills/a12-rules/ensure-dmtool.sh plugin-codex/skills/a12-rules/ensure-dmtool.sh; do
+         scripts/ensure-dmtool.sh plugin/skills/a12-dmtool/ensure-dmtool.sh plugin-codex/skills/a12-dmtool/ensure-dmtool.sh; do
   grep -q "$NEW" "$f" || { echo "FAILED to set $NEW in $f — left as-is, check manually" >&2; exit 1; }
 done
 echo "edited:"; git --no-pager diff --stat -- "${FILES[@]}"

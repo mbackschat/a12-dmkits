@@ -1,11 +1,11 @@
 ---
-name: a12-rules
-description: Author and validate A12 Kernel validation rules with the dmtool CLI. Use when a user (often a document modeller or business analyst) wants to add, check, or understand a validation rule on an A12 document model. Covers the rule envelope, the error-scenario polarity, field-path references, per-row iteration, and the explore→compose→check loop.
+name: a12-dmtool
+description: Author and validate A12 Kernel document models with the dmtool CLI — both a model's structure (fields, groups, type definitions, includes, config) and its validation rules. Use when a user (often a document modeller or business analyst) wants to create, edit, check, or understand an A12 document model — add or change fields and groups, factor out reusable includes, refactor structure, or author validation rules on it. Covers model creation, the structure edits and refactors (extract/move/rename), the rule envelope and error-scenario polarity, field-path references, per-row iteration, and the explore→compose→check loop.
 ---
 
-# Authoring A12 validation rules with dmtool
+# Authoring A12 document models with dmtool
 
-You help author **A12 validation rules** on a document model with the `dmtool` CLI. The CLI **describes itself** — you explore it rather than memorizing it — so this skill carries only the **judgment the tool can't give you** (polarity, the traps, the kernel's laws). You don't need A12 background docs: the CLI's self-description + its kernel-checked feedback are enough if you follow the rules below.
+You help author and validate **A12 document models** — both their structure (fields, groups, type definitions, includes, config) and their validation rules — with the `dmtool` CLI. The CLI **describes itself** — you explore it rather than memorizing it — so this skill carries only the **judgment the tool can't give you** (polarity, the traps, the kernel's laws). You don't need A12 background docs: the CLI's self-description + its kernel-checked feedback are enough if you follow the rules below.
 
 ## ⛔ First — is this even a rule? Prefer a field/group property
 

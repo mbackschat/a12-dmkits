@@ -32,8 +32,8 @@ class PluginInstallerVersionTest {
     /** The canonical installer and its two copy-synced plugin instances — all three carry the download pin. */
     private static final List<String> INSTALLER_FILES = List.of(
             "scripts/ensure-dmtool.sh",
-            "plugin/skills/a12-rules/ensure-dmtool.sh",
-            "plugin-codex/skills/a12-rules/ensure-dmtool.sh");
+            "plugin/skills/a12-dmtool/ensure-dmtool.sh",
+            "plugin-codex/skills/a12-dmtool/ensure-dmtool.sh");
 
     private static final Pattern INSTALLER_VERSION = Pattern.compile("^VERSION=\"v([^\"]+)\"", Pattern.MULTILINE);
 
