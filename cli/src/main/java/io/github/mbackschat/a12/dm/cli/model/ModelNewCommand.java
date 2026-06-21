@@ -31,7 +31,10 @@ final class ModelNewCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.NEW_NAME)
     @Option(names = "--id", required = true, paramLabel = "<id>",
-            description = "the new model's header id you choose (e.g. orders)")
+            description = "the new model's header id you choose (e.g. Order_DM). A12 Tools requires the "
+                    + "model's FILE BASENAME to equal this id and does not strip the suffix — so name the "
+                    + "file to match: `--id Order_DM -o Order_DM.json` (the convention is `<Name>_DM` for a "
+                    + "document model, `<Name>_TDM` for a type-definition model).")
     String id;
 
     @ParamKind(ParamKind.Kind.FREEFORM)
@@ -47,7 +50,8 @@ final class ModelNewCommand extends BaseCommand {
     String root;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
-            description = "write the model here instead of printing it to stdout")
+            description = "write the model here instead of printing it to stdout; A12 Tools expects its "
+                    + "basename to equal --id (e.g. Order_DM.json for --id Order_DM)")
     String outputPath;
 
     @Override

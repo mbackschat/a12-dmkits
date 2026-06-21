@@ -98,4 +98,15 @@ class ModelNewVerbTest {
         CliTestSupport.Result res = CliTestSupport.run("model", "new", "--id", "x", "--locale", "not_a_locale");
         assertTrue(res.code() != 0, () -> "an unbuildable model is reported, not emitted: " + res.out() + res.err());
     }
+
+    @Test
+    void theHelpTeachesTheBasenameEqualsIdConvention() {
+        // The SME flagged a model whose file basename (Person_DM) didn't match its id (person). The convention
+        // (A12 Tools requires basename == header id, suffix NOT stripped) must be DISCOVERABLE from the verb
+        // itself, not only the skill — so --help states it (report finding #122; CLI self-describing surface).
+        CliTestSupport.Result help = CliTestSupport.run("model", "new", "--help");
+        String text = help.out() + help.err();
+        assertTrue(text.contains("basename") && text.contains("id"),
+                () -> "`model new --help` must teach the file-basename = id convention: " + text);
+    }
 }
