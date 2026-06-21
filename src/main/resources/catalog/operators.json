@@ -579,7 +579,7 @@
     "keywords": { "en": "NumberOfFilledFields", "de": "AnzahlAngegebenerFelder" },
     "operands": [ { "type": "field-list-or-groups" } ],
     "returns": "number",
-    "meaning": "The number of listed fields that currently hold a value; with group arguments, the number of filled fields inside the group(s).",
+    "meaning": "Counts the listed fields that currently hold a value (the count/number of filled fields); with group arguments, the count of filled fields inside the group(s).",
     "constraints": [
       "more than one field, OR a single flattened repetition list (Group*/field), OR at least one group (MVK_PARAMSIZE_INVALIDN)",
       "field kinds may be mixed (it counts presence, not values)",
@@ -598,7 +598,7 @@
     "keywords": { "en": "NumberOfFilledGroups", "de": "AnzahlAngegebenerKontexte" },
     "operands": [ { "type": "group-list" } ],
     "returns": "number",
-    "meaning": "The number of listed groups that are filled (exist).",
+    "meaning": "Counts the listed groups that are filled/exist (the count/number of filled groups) — e.g. how many rows of a repeatable group.",
     "constraints": [
       "more than one group, OR a single repeatable group as a wildcard (Group*) counting its filled repetitions (MVK_PARAMSIZE_INVALIDGN); groups only (MVK_NO_FIELDS_ALLOWED); a root group is allowed only as the sole, starred operand (NumberOfFilledGroups(/Root*)), never alongside another group"
     ],
@@ -840,7 +840,7 @@
     "keywords": { "en": "NumberOfDifferentValues", "de": "AnzahlVerschiedenerWerte" },
     "operands": [ { "type": "homogeneous-field-list" } ],
     "returns": "number",
-    "meaning": "The number of distinct values among the listed fields, typically over a repetition list.",
+    "meaning": "Counts the distinct values among the listed fields (the count/number of different values), typically over a repetition list.",
     "constraints": [
       "operands must be type-homogeneous: string/enum together, or all numbers (MVK_STRING_ENUM_AND_NON_STRING_ENUM / MVK_NUMBER_AND_NON_NUMBER)",
       "no booleans/confirms (MVK_ONLY_STRING_ENUM_NUMBER_CMP_DATE_ALLOWED)",

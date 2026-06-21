@@ -85,6 +85,24 @@ class OperatorsVerbTest {
     }
 
     @Test
+    void searchingTheConceptWordFindsTheCountingOperators() throws Exception {
+        // The report (#120) hit `operators count` returning RoundAccounting (substring "count" in "Accounting")
+        // but NOT the real counters, whose names say "NumberOf…" not "count". Discovery is by the natural word,
+        // so the counters' MEANING now carries "count" — the positional search matches id/keyword/meaning.
+        CliTestSupport.Result res = CliTestSupport.run("operators", "count");
+        assertEquals(0, res.code(), res::err);
+        java.util.Set<String> ids = new java.util.HashSet<>();
+        for (Iterator<JsonNode> it = MAPPER.readTree(res.out()).path("operators").elements(); it.hasNext();) {
+            ids.add(it.next().path("id").asText());
+        }
+        for (String counter : new String[]{"NumberOfFilledFields", "NumberOfFilledGroups",
+                "NumberOfDifferentValues", "NumberOfValueInFields"}) {
+            assertTrue(ids.contains(counter),
+                    () -> "`operators count` must surface the counting operator " + counter + ": " + ids);
+        }
+    }
+
+    @Test
     void aSubstringComposesWithKind() throws Exception {
         CliTestSupport.Result res = CliTestSupport.run("operators", "filled", "--kind", "PREDICATE");
         assertEquals(0, res.code(), res::err);
