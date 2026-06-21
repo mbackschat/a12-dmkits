@@ -51,9 +51,19 @@ Legacy **`FEATURE-GAPS §3.x`** section refs in code/docs are *pre-restructure* 
 
 ## 3. Open backlog
 
-Surfaced by a **real authoring session against v0.4.0** (a cold Claude Code agent built a `Person` model end-to-end; write-ups: the user's `skill-fix-proposal.md` + `dmtool-improvement-notes.md`, 2026-06-21). The recurring shape: *the tool **reports** a property it gives no verb to **change**, so the agent falls back to hand-editing the model JSON* — exactly what a typed authoring kit must spare the user. **G15–G20 shipped 2026-06-20/21 (see §2); only skill finding S1 (broaden the skill) + a lower-value `model describe` slice of G20 remain open** (below).
+Surfaced by a **real authoring session against v0.4.0** (a cold Claude Code agent built a `Person` model end-to-end; write-ups: the user's `skill-fix-proposal.md` + `dmtool-improvement-notes.md`, 2026-06-21). The recurring shape: *the tool **reports** a property it gives no verb to **change**, so the agent falls back to hand-editing the model JSON* — exactly what a typed authoring kit must spare the user. **G15–G20 shipped 2026-06-20/21 (see §2).** Still open: the **editor feature-coverage gaps G21–G23** (the 2026-06-21 review, below), skill finding **S1** (broaden the skill — decided "not for now"), and a lower-value `model describe` slice of G20.
 
-*(no open tool gaps — G15–G20 shipped 2026-06-20/21, see §2.)*
+### Editor feature-coverage gaps — G21–G23 (2026-06-21 review)
+
+A user review of dmkits/CLI coverage of the A12 Tools **editor** feature surface (full audit + concept definitions + verification status + resume checklist: [`EDITOR-FEATURE-COVERAGE.md`](EDITOR-FEATURE-COVERAGE.md)). The field surface is near-complete; three gaps remain — G21/G22 are **pure CLI-exposure** (the modelkit `EditSession.{setLabel,setInternalDescription,setExternalDescription,setAnnotation}` substrate already works over any element path and is tested by `ElementMetadataEditTest`), G23 needs new modelkit support.
+
+| gap | what it is | contract home when built |
+|---|---|---|
+| **G21** | **Group metadata via the CLI** — set a group's **label / internal description / external description / annotations**. Substrate done + tested; no CLI verb exposes it (`group add`=parent/name/repeatable, `group modify`=repeatability only). Fix: `group modify --label/--internal-description/--external-description/--annotation` (or fold into `group add`). *Low-med — thin verb surface.* | CLI-SPEC §5 (the group verbs) |
+| **G22** | **Rule metadata via the CLI** — set a rule's **internal/external description + annotations** (the `--comment` `;;` note is a *different* thing). Same tested substrate over a rule path; not in the `rule add` spec or `rule modify`. Fix: add the keys to the rule spec + `rule modify`. *Low-med — thin surface.* | CLI-SPEC §5 (the rule verb) |
+| **G23** | **Field-level error messages** — the "Use Default Error Messages" toggle + custom per-locale text for a field's **required**/**enum** errors (today only `string.patternMessage` exists). Needs **new modelkit support** (field `errorMessages` + the use-default flag) then CLI keys. *Medium-large.* | CLI-SPEC §5 (the field verb) + the `field-add` schema |
+
+**Verification note:** the audit's matrix is checked by schema/spec-keys + the named tests; to mark it *completely* checked, exercise the 🟡 rows (`global`/`transient`/`suggestions`) end-to-end and close G21–G23 — the checklist is in [`EDITOR-FEATURE-COVERAGE.md`](EDITOR-FEATURE-COVERAGE.md) §6.
 
 A residual lower-value slice of **G20** is left as a separate, optional follow-on: surfacing **requiredness + the rule list inside `model describe`** (the model card). The high-value half — `field read` echoing the friendly `required` state, which closes the "verify my requiredness refactor without grepping JSON" loop — shipped (§2, G20). The `model describe` enrichment is a larger card change of lower marginal value; not scheduled.
 
