@@ -212,7 +212,18 @@ A refactoring deserves a first-class `dmtool` verb **only when an agent composin
 
 It is **overkill** — leave it to the agent composing primitives — when none trips: a pure single-element edit `modify` already covers, a cosmetic reordering (DM child-order is largely non-semantic), or a rare/judgment-heavy transform ("extract a shared sub-condition", "merge/split rules"). The bias is the project thesis — **self-explaining primitives that compose correctly > more verbs**: invest in the schema + diagnostics so the agent composes the edit right, and reserve verbs for the fan-out cases where hand-composition reliably fails.
 
-Worked application — **`rule`/`computation move`:** *no* fan-out (nothing references a rule), but **yes** on #2 (rebasing the `../` operands + `errorEntityRelPath`) and #3 (remove+add is non-atomic/lossy) → a *medium* case: legitimate but optional, **deferred** pending evidence that agents actually botch repositioning (EDITOR-FEATURE-COVERAGE §7b).
+Worked application — **`rule`/`computation move`:** *no* fan-out (nothing references a rule), but **yes** on #2 (rebasing the `../` operands + `errorEntityRelPath`) and #3 (remove+add is non-atomic/lossy) → a *medium* case: legitimate but optional, **deferred** — the mini-probe (P-mini-1) found a cold agent places the error field correctly *at add-time*, so there is no pull yet; re-open if a probe shows agents botch repositioning (EDITOR-FEATURE-COVERAGE §7b).
+
+**Candidate verdicts (the bar applied — a decision record, not a roadmap):**
+
+| candidate | trips the bar? | verdict |
+|---|---|---|
+| `field`/`group`/`rule`/`typedef rename`, `field`/`group move`, `group extract` / `include inline`, `model rename` | ✓ (#1 fan-out + #2 rebasing + #3 atomic) | **shipped** — the bar's positive cases |
+| `rule`/`computation move` (reposition to another valid group) | partial (#2 + #3; **no** #1) | **deferred** — medium; no probe pull (above) |
+| reorder fields/groups within a parent | ✗ — DM child-order is largely non-semantic; no fan-out/rebasing/loss | **non-goal** (cosmetic) |
+| merge / split a rule | ✗ — rare + judgment-heavy; the agent composes `read`+`add`+`remove` | **non-goal** |
+| extract a shared sub-condition into a reusable rule | ✗ — no real fan-out; rare | **non-goal** |
+| copy / duplicate a field/group/rule | ✗ — a *new* element has no referrers to rewrite; `read`+`add` suffices | **non-goal** |
 
 ### The refactor safety gate — *check before you change* (standing principle, every refactor, now and future)
 
