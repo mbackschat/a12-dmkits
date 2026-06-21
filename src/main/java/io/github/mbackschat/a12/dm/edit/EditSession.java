@@ -252,6 +252,11 @@ public final class EditSession {
         return editStructure(d -> d.addLocale(code));
     }
 
+    /** Remove a display locale from the model (the inverse of {@link #addLocale}; refuses the last one). */
+    public EditSession removeLocale(String code) {
+        return editStructure(d -> d.removeLocale(code));
+    }
+
     /** Read the model-level header annotations (name→value) — the read peer of {@link #setModelAnnotation}. */
     public java.util.Map<String, String> modelAnnotations() {
         return ModelDocument.read(json).modelAnnotations();

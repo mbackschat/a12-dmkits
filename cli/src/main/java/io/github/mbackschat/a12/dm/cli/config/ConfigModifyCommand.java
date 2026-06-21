@@ -91,6 +91,12 @@ final class ConfigModifyCommand extends BaseCommand {
                     + "to carry a message for it, so provision those first (or in the same `apply`)")
     java.util.List<String> addLocales = new java.util.ArrayList<>();
 
+    @ParamKind(ParamKind.Kind.SCALAR)
+    @Option(names = "--remove-locale", paramLabel = "<code>",
+            description = "remove a display locale from the model (repeatable; the inverse of --add-locale). "
+                    + "Refuses removing the last locale; the re-validate confirms the model stays kernel-valid")
+    java.util.List<String> removeLocales = new java.util.ArrayList<>();
+
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the result here instead of in place (overwriting the model)")
     String outputPath;
@@ -109,10 +115,10 @@ final class ConfigModifyCommand extends BaseCommand {
         }
         if (decimalSeparator == null && timeZone == null && conditionLanguage == null
                 && labels.isEmpty() && annotations.isEmpty() && supportedCharacters.isEmpty() && comment == null
-                && addLocales.isEmpty() && roles.isEmpty() && !clearRoles) {
+                && addLocales.isEmpty() && removeLocales.isEmpty() && roles.isEmpty() && !clearRoles) {
             return fail("nothing to change — pass at least one of --decimal-separator, --time-zone, "
                     + "--condition-language, --label, --annotation, --supported-character, --comment, --add-locale, "
-                    + "--role, --clear-roles");
+                    + "--remove-locale, --role, --clear-roles");
         }
         if (!roles.isEmpty() && clearRoles) {
             return fail("pass either --role <name> (add roles) or --clear-roles, not both");
@@ -172,6 +178,16 @@ final class ConfigModifyCommand extends BaseCommand {
             }
             if (!addedLocales.isEmpty()) {
                 changed.set("addedLocales", addedLocales);
+            }
+            ArrayNode removedLocales = MAPPER.createArrayNode();
+            for (String code : removeLocales) {
+                if (doc.locales().contains(code)) {
+                    doc.removeLocale(code);
+                    removedLocales.add(code);
+                }
+            }
+            if (!removedLocales.isEmpty()) {
+                changed.set("removedLocales", removedLocales);
             }
             if (!roles.isEmpty()) {
                 // MERGE into the comma-separated `roles` annotation (dedupe, keep order) — a one-role edit

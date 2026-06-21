@@ -96,6 +96,31 @@ class ConfigVerbTest {
     }
 
     @Test
+    void removeLocaleIsTheInverseOfAddLocale(@TempDir Path dir) throws Exception {
+        Path model = dir.resolve("loc.dm.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "loc", "--locale", "en_US",
+                "--root", "Doc", "-o", model.toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "config", "modify", "--add-locale", "de_DE").code());
+        var res = CliTestSupport.run("-m", model.toString(), "config", "modify", "--remove-locale", "de_DE");
+        assertEquals(0, res.code(), res::err);
+        JsonNode locales = M.readTree(CliTestSupport.run("-m", model.toString(), "config", "read").out())
+                .path("data").path("locales");
+        assertEquals(1, locales.size(), () -> "de_DE removed: " + locales);
+        assertEquals("en_US", locales.path(0).asText());
+    }
+
+    @Test
+    void removingTheLastLocaleIsRefused(@TempDir Path dir) throws Exception {
+        Path model = dir.resolve("loc.dm.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "loc", "--locale", "en_US",
+                "--root", "Doc", "-o", model.toString()).code());
+        var res = CliTestSupport.run("-m", model.toString(), "config", "modify", "--remove-locale", "en_US");
+        assertEquals(2, res.code(), () -> "removing the last locale is a spec error: " + res.out() + res.err());
+        assertTrue(res.err().toLowerCase().contains("last locale"),
+                () -> "names the last-locale rule: " + res.err());
+    }
+
+    @Test
     void modifyChangesTheDecimalSeparator(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         var res = CliTestSupport.run("-m", model.toString(), "config", "modify", "--decimal-separator", ",");

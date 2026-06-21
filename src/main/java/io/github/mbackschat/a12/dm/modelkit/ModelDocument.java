@@ -132,6 +132,26 @@ public final class ModelDocument {
         return this;
     }
 
+    /**
+     * Remove a display locale from the {@code header.locales} registry (the inverse of {@link #addLocale};
+     * no-op if not declared). Per-element labels/messages already written for that locale are left in place
+     * (harmless once the locale is undeclared); the {@code validate} after this confirms the model stays
+     * kernel-valid. Fails fast on removing the <b>last</b> locale (a model needs at least one).
+     */
+    public ModelDocument removeLocale(String code) {
+        JsonNode header = root.path("header");
+        if (!header.path("locales").isArray()) {
+            return this;
+        }
+        ArrayNode locales = (ArrayNode) header.get("locales");
+        if (locales.size() == 1 && code.equals(locales.path(0).path("code").asText())) {
+            throw new IllegalArgumentException("cannot remove the last locale '" + code
+                    + "' — a model needs at least one declared locale");
+        }
+        filterArray((ObjectNode) header, "locales", "code", code);
+        return this;
+    }
+
     /** The directly-declared model includes (header {@code modelReferences} with {@code purpose: "include"},
      *  or a blank/absent purpose — the classic default), in document order. <b>Transitive</b> includes the
      *  kernel adds are excluded here — read those via {@link #transitiveIncludes()}. */

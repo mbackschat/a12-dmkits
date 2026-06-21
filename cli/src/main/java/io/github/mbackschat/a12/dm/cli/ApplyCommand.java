@@ -82,7 +82,7 @@ final class ApplyCommand extends BaseCommand {
         INCLUDE_ADD("include", "add", Set.of("alias", "reference", "parent", "name")),
         INCLUDE_REMOVE("include", "remove", Set.of("alias")),
         CONFIG_MODIFY("config", "modify", Set.of("decimal-separator", "time-zone", "condition-language",
-                "label", "annotation", "comment", "add-locale", "role", "clear-roles")),
+                "label", "annotation", "comment", "add-locale", "remove-locale", "role", "clear-roles")),
         FIELD_RENAME("field", "rename", Set.of("fieldPathInModel", "to")),
         FIELD_MOVE("field", "move", Set.of("fieldPathInModel", "to")),
         GROUP_RENAME("group", "rename", Set.of("groupPathInModel", "to")),
@@ -456,6 +456,10 @@ final class ApplyCommand extends BaseCommand {
                 for (JsonNode code : op.path("add-locale")) {
                     session.addLocale(code.asText());           // idempotent
                     changed.put("addedLocale." + code.asText(), true);
+                }
+                for (JsonNode code : op.path("remove-locale")) {
+                    session.removeLocale(code.asText());
+                    changed.put("removedLocale." + code.asText(), true);
                 }
                 if (op.has("role")) {
                     // MERGE into the comma-separated `roles` annotation (G26 semantics)
