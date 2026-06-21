@@ -104,18 +104,26 @@ Every verb and every batch op emits the same shape. It **embeds the existing dia
 | field | meaning |
 |---|---|
 | `target`, `op` | echo the request — self-identifying, never mis-attributed |
-| `outcome` | `applied · preview · refused · rejected · read · staged` (the execution result class) |
+| `outcome` | `applied · preview · refused · rejected · read · staged · error` (the execution result class; `error` = the **tool itself** failed) |
 | `ok` | the operation executed as asked (`outcome ∈ {applied, preview, read, staged}`) |
 | `valid` | *(validate/check, and after a mutating op)* the **subject model** is kernel-valid — **distinct from `ok`** |
 | `summary` | one human-readable line (the agent's quick read / log line) |
 | `changed` | *(mutations)* the delta on success — e.g. `{added, kind}`, a refactor's rewritten refs |
 | `data` | *(reads/queries)* the op's payload — explanation tree · model card · fired-list · … ; shape is op-specific (`schema <target> <op>`) |
 | `diagnostics` | exactly `ValidationResult.toJson()` — an array of `Diagnostic` (§4) |
-| `written`, `output` | whether the model was written, and where (`null` for read/preview/refused/rejected) |
+| `written`, `output` | whether the model was written, and where (`null` for read/preview/refused/rejected/error) |
 
-**The `ok` / `valid` split fixes a real overload:** `ok` = "the tool did the job"; `valid` = "the model is kernel-valid." A `model validate` that finds the model invalid is `ok:true, valid:false` — the tool worked, the model didn't. **Exit codes** key off this: **0** = `ok` and not `valid:false` (applied/preview/read of a valid subject); **1** = `rejected`, or a validate/check with `valid:false`; **2** = `refused` (safe-gate) or a usage error. Everything else lives in the envelope.
+**The `ok` / `valid` split fixes a real overload:** `ok` = "the tool did the job"; `valid` = "the model is kernel-valid." A `model validate` that finds the model invalid is `ok:true, valid:false` — the tool worked, the model didn't. **Exit codes** key off this: **0** = `ok` and not `valid:false` (applied/preview/read of a valid subject); **1** = `rejected`, or a validate/check with `valid:false`; **2** = `refused` (safe-gate) or a usage error; **70** = `error` (the tool itself failed). Everything else lives in the envelope.
 
-**Invalid *on disk* → a `rejected` envelope, uniformly (no raw stack trace).** A model that fails the kernel's consistency check at *load* (a strict `ofJson`) throws `ModelConsistencyException`. One execution-exception seam in `Cli` maps an *escaped* one to the same structured `rejected` envelope (`MVK_*` code + message in `diagnostics[]`) a write-path rejection produces — so the rule holds for every verb, not just the write path. The corollary (**G14**): a verb must *let it escape* — a read verb that loads a model (`rule read`, `model describe`) **re-throws** `ModelConsistencyException` rather than catching it into a plain `"… failed:"` string, so it reaches that one seam and renders the same envelope. (`model validate` is tolerant by design and stays so.)
+**No raw stack trace escapes a verb — one `Cli` seam classifies every throwable into a structured envelope.** picocli routes a thrown `Exception` to the execution-exception handler; an `Error` (e.g. GraalVM's `MissingReflectionRegistrationError` — a native reflection-metadata gap) propagates uncaught, so the seam *also* wraps `execute()` in a `catch (Throwable)`. Both funnels classify into three shapes, never a bare trace:
+
+| Thrown | Meaning | Envelope | Exit |
+|---|---|---|---|
+| `ModelConsistencyException` | the model is invalid *as stored* (a strict `ofJson` at load) | `rejected` — the same `MVK_*` `diagnostics[]` a write-path rejection produces | 1 |
+| `UnresolvedReferenceException` | an `include` / type-def import the workspace can't provide | `rejected` — corrective **`RK_UNRESOLVED_REFERENCE`** (`where.arg` = the reference; `fix` points at `-w`) | 1 |
+| *any other throwable* | the **tool itself** failed (a bug, a native gap) — **not** an input rejection | `error` — **`RK_INTERNAL_ERROR`** (the real cause in `summary`); the full trace goes to **stderr**, stdout stays the machine-readable envelope | 70 |
+
+The first two are **input** problems (exit 1, a clean corrective). The third is distinguishable as a *tool* failure (`outcome:error`, exit 70) so an agent/CI can tell "the tool broke" from "my input was rejected" rather than parsing a stack trace. **G14 corollary:** a read verb that loads a model (`rule read`, `model describe`) must *let* `ModelConsistencyException`/`UnresolvedReferenceException` escape to this seam rather than catching them into a plain `"… failed:"` string. (`model validate` is tolerant by design and stays so.)
 
 ## 4. Diagnostics — reuse, extend, correct
 

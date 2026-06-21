@@ -79,6 +79,9 @@ public enum RkCode {
     NO_SUCH_INCLUDE(Severity.ERROR, DiagnosticSource.PRECHECK,
             "no model include with the given alias is declared on the model.",
             "pass an existing include alias (see `include read`)."),
+    UNRESOLVED_REFERENCE(Severity.ERROR, DiagnosticSource.PRECHECK,
+            "a model reference (an include or a type-definition import) could not be resolved against the workspace — the referenced model id was not found among the indexed models, or a found model failed to parse. The model cannot be loaded/validated until the reference resolves.",
+            "ensure the referenced model is on the include path: pass -w <dir> (or set $DMTOOL_WORKSPACE) pointing at the directory that holds it, and check the reference matches the target model's header id (see `include read`)."),
     NO_SUCH_ELEMENT(Severity.ERROR, DiagnosticSource.PRECHECK,
             "no element (field, group, or rule by name-path) or type definition (by id) exists at the given reference.",
             "pass an existing element's full name-path or a declared type-definition id (see `model describe`)."),
@@ -140,7 +143,12 @@ public enum RkCode {
             "no action required; align the modelVersion if you want the note gone."),
     MODEL_VERSION_INCOMPATIBLE(Severity.ERROR, DiagnosticSource.KERNEL,
             "the kernel rejects the document's modelVersion (a newer or different-major version) — fail-fast.",
-            "load a model whose version is compatible with this kernel, or migrate the model.");
+            "load a model whose version is compatible with this kernel, or migrate the model."),
+
+    // --- internal tool failure (ERROR; INTERNAL) ------------------------------------------------
+    INTERNAL_ERROR(Severity.ERROR, DiagnosticSource.INTERNAL,
+            "the tool itself failed while executing the command — an unexpected exception/error caught at the boundary (not a rejected input), e.g. a native-image reflection-metadata gap. The result is untrustworthy and nothing was written; the full stack trace is on stderr.",
+            "this is a dmtool defect, not an invalid input: report it with the stderr trace; a JVM build (if available) may not have the native gap.");
 
     private final Severity severity;
     private final DiagnosticSource source;

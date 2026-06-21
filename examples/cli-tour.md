@@ -408,7 +408,7 @@ dmtool diagnostics | jq -c '{count, severities: (.diagnostics|map(.severity)|uni
 ```
 
 ```output
-{"count":38,"severities":["ERROR","INFO","WARNING"],"sources":["ENVIRONMENT","KERNEL","LINT","PRECHECK"]}
+{"count":40,"severities":["ERROR","INFO","WARNING"],"sources":["ENVIRONMENT","INTERNAL","KERNEL","LINT","PRECHECK"]}
 ```
 
 Pass a code for its full entry — meaning + the canonical fix:
@@ -451,8 +451,8 @@ dmtool schema result | jq "{required, properties: (.properties | map_values(.des
   "properties": {
     "target": "the element family acted on: model | rule | computation | field | group | typedef | include | config | workspace",
     "op": "the operation: add | read | modify | remove | validate | check | explain | describe | export | eval | compute | …",
-    "outcome": "the execution result class",
-    "ok": "the operation executed as asked (outcome in applied | preview | read | staged)",
+    "outcome": "the execution result class; `error` = the tool itself failed (an unexpected throwable caught at the boundary, exit 70), distinct from `rejected` (input rejected, exit 1)",
+    "ok": "the operation executed as asked (outcome in applied | preview | read | staged); false for refused | rejected | error",
     "valid": "validate/check (and after a mutating op): the subject model is kernel-valid — distinct from `ok`",
     "summary": "one human-readable line (the agent's quick read / log line)",
     "changed": "(mutations) the delta on success — e.g. {added, kind}, a refactor's rewritten references",

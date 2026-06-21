@@ -109,6 +109,15 @@ public record Diagnostic(
     }
 
     /**
+     * A tool-internal failure (INTERNAL origin, ERROR): an unexpected throwable caught at the command
+     * boundary — the tool itself broke (e.g. a native-image reflection gap), distinct from a kernel
+     * rejection of valid-but-invalid input. The {@code fix} points at recovery; carries no {@code explain}.
+     */
+    public static Diagnostic internal(Optional<String> code, String summary, Where where, Optional<String> fix) {
+        return new Diagnostic(Severity.ERROR, DiagnosticSource.INTERNAL, code, summary, where, fix, Optional.empty());
+    }
+
+    /**
      * A raw kernel notification, before catalog-join enrichment. The {@code MVK_*} code is extracted
      * from the message when present; {@code fix}/{@code explain} stay empty until
      * {@link DiagnosticEnricher} joins the catalog.

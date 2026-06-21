@@ -18,8 +18,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.model.notification.RankedNotification;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
+import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Spec;
@@ -174,5 +176,45 @@ public abstract class BaseCommand implements Callable<Integer> {
                     new Diagnostic.Where((String) null, Optional.empty()), Optional.empty(), Optional.empty()));
         }
         return ResultEnvelope.rejected(target, op, summary, diagnostics);
+    }
+
+    /**
+     * Build (don't print) the {@code rejected} envelope for an unresolvable model reference — an include /
+     * type-def import whose target the workspace can't provide. An INPUT problem, so it gets a corrective
+     * {@code RK_UNRESOLVED_REFERENCE} diagnostic (exit 1), not the generic internal-error shape; the
+     * {@link Cli} seam routes {@link UnresolvedReferenceException} here so it never escapes as a raw trace.
+     */
+    static ResultEnvelope unresolvedReferenceEnvelope(String target, String op, UnresolvedReferenceException e) {
+        Diagnostic d = Diagnostic.precheck(Optional.of(RkCode.UNRESOLVED_REFERENCE.code()),
+                e.getMessage(),
+                Diagnostic.Where.arg(null, e.reference()),
+                Optional.of(RkCode.UNRESOLVED_REFERENCE.fix()),
+                Optional.empty());
+        return ResultEnvelope.rejected(target, op,
+                "a model reference could not be resolved: " + e.reference(), List.of(d));
+    }
+
+    /**
+     * Build (don't print) the {@code error} envelope for an unexpected throwable caught at the command
+     * boundary — the tool itself failed (e.g. a native-image reflection gap), distinct from a kernel
+     * rejection of valid-but-invalid input. Shared so the {@link Cli} seam maps BOTH a routed
+     * {@code Exception} and an escaped {@code Error} to one structured shape, so no raw stack trace escapes
+     * a verb — generalizing the single-{@link ModelConsistencyException} seam to the whole throwable class.
+     */
+    static ResultEnvelope internalErrorEnvelope(String target, String op, Throwable t) {
+        String detail = t.getClass().getSimpleName()
+                + (t.getMessage() != null && !t.getMessage().isBlank() ? ": " + firstLine(t.getMessage()) : "");
+        String verb = (op == null || op.isEmpty()) ? target : target + " " + op;
+        Diagnostic d = Diagnostic.internal(Optional.of(RkCode.INTERNAL_ERROR.code()),
+                "internal error while executing `" + verb + "`: " + detail,
+                new Diagnostic.Where((String) null, Optional.empty()),
+                Optional.of(RkCode.INTERNAL_ERROR.fix()));
+        return ResultEnvelope.internalError(target, op == null ? "" : op,
+                "the tool failed internally — not an input rejection", List.of(d));
+    }
+
+    private static String firstLine(String s) {
+        int nl = s.indexOf('\n');
+        return (nl < 0 ? s : s.substring(0, nl)).strip();
     }
 }

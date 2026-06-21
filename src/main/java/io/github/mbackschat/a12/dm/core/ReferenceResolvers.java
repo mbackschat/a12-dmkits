@@ -46,12 +46,12 @@ public final class ReferenceResolvers {
         return reference -> {
             String json = resolver.resolve(reference);
             if (json == null) {
-                throw new IllegalStateException("no model resolved for reference \"" + reference + "\"");
+                throw new UnresolvedReferenceException(reference, "no model resolved for reference \"" + reference + "\"");
             }
             try {
                 return serializer.deserialize(new StringReader(json));
             } catch (IOException e) {
-                throw new UncheckedIOException("failed to deserialize resolved model \"" + reference + "\"", e);
+                throw new UnresolvedReferenceException(reference, "failed to deserialize resolved model \"" + reference + "\"", e);
             }
         };
     }
@@ -79,13 +79,13 @@ public final class ReferenceResolvers {
         return reference -> {
             String json = modelsById.get(reference);
             if (json == null) {
-                throw new IllegalStateException("no document model with id \"" + reference + "\" found in "
+                throw new UnresolvedReferenceException(reference, "no document model with id \"" + reference + "\" found in "
                         + modelsById.size() + " indexed models under " + java.util.Arrays.toString(roots));
             }
             try {
                 return serializer.deserialize(new StringReader(json));
             } catch (IOException e) {
-                throw new UncheckedIOException("failed to deserialize referenced model \"" + reference + "\"", e);
+                throw new UnresolvedReferenceException(reference, "failed to deserialize referenced model \"" + reference + "\"", e);
             }
         };
     }

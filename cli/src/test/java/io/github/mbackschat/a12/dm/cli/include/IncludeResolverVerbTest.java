@@ -124,6 +124,11 @@ class IncludeResolverVerbTest {
         // no sibling pricelist → the default (apps/) can't resolve it; -w/--workspace lib does
         var noHint = CliTestSupport.run("-m", storefront.toString(), "model", "validate");
         assertEquals(1, noHint.code(), () -> "without -w/--workspace the sibling default can't resolve it: " + noHint.out());
+        // an unresolvable reference is a STRUCTURED rejection (corrective), not a raw stack trace / internal error
+        assertEquals("rejected", MAPPER.readTree(noHint.out()).get("outcome").asText(),
+                () -> "an unresolvable include must be a structured rejection: " + noHint.out());
+        assertEquals("RK_UNRESOLVED_REFERENCE",
+                MAPPER.readTree(noHint.out()).get("diagnostics").get(0).get("code").asText());
 
         var withDir = CliTestSupport.run("-m", storefront.toString(), "model", "validate", "-w", lib.toString());
         assertEquals(0, withDir.code(), () -> "-w/--workspace resolves the include: " + withDir.err() + withDir.out());

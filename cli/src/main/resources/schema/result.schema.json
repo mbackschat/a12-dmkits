@@ -9,8 +9,8 @@
   "properties": {
     "target": { "type": "string", "description": "the element family acted on: model | rule | computation | field | group | typedef | include | config | workspace" },
     "op": { "type": "string", "description": "the operation: add | read | modify | remove | validate | check | explain | describe | export | eval | compute | …" },
-    "outcome": { "type": "string", "enum": ["applied", "preview", "refused", "rejected", "read", "staged"], "description": "the execution result class" },
-    "ok": { "type": "boolean", "description": "the operation executed as asked (outcome in applied | preview | read | staged)" },
+    "outcome": { "type": "string", "enum": ["applied", "preview", "refused", "rejected", "read", "staged", "error"], "description": "the execution result class; `error` = the tool itself failed (an unexpected throwable caught at the boundary, exit 70), distinct from `rejected` (input rejected, exit 1)" },
+    "ok": { "type": "boolean", "description": "the operation executed as asked (outcome in applied | preview | read | staged); false for refused | rejected | error" },
     "valid": { "type": "boolean", "description": "validate/check (and after a mutating op): the subject model is kernel-valid — distinct from `ok`" },
     "summary": { "type": "string", "description": "one human-readable line (the agent's quick read / log line)" },
     "changed": { "type": "object", "description": "(mutations) the delta on success — e.g. {added, kind}, a refactor's rewritten references" },

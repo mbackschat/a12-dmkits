@@ -12,11 +12,16 @@ package io.github.mbackschat.a12.dm.rulekit.validate;
  *   <li>{@link #LINT} — a valid-but-suspicious finding over the AST, plus the gotcha INFO channel.</li>
  *   <li>{@link #ENVIRONMENT} — a toolchain note about the run itself, not the rule: chiefly the
  *       kernel-version skew advisory (F11), always INFO, never an error.</li>
+ *   <li>{@link #INTERNAL} — the tool itself failed: an unexpected throwable caught at the command
+ *       boundary (e.g. a native-image reflection-metadata gap), NOT a rejection of the input. Always
+ *       ERROR; carried by an {@code RK_INTERNAL_ERROR} diagnostic so "the tool broke" is distinguishable
+ *       from "the input was rejected".</li>
  * </ul>
  */
 public enum DiagnosticSource {
     PRECHECK,
     KERNEL,
     LINT,
-    ENVIRONMENT
+    ENVIRONMENT,
+    INTERNAL
 }

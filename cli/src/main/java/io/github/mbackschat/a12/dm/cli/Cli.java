@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.function.BooleanSupplier;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
+import io.github.mbackschat.a12.dm.core.UnresolvedReferenceException;
 import picocli.CommandLine;
 
 /**
@@ -54,7 +55,7 @@ public final class Cli {
     static BooleanSupplier nativeImageDetector =
             () -> System.getProperty("org.graalvm.nativeimage.imagecode") != null;
 
-    /** Dispatch a verb. Returns a process exit code (0 = success, 1 = invalid, 2 = usage/IO error). */
+    /** Dispatch a verb. Returns a process exit code (0 = success, 1 = invalid, 2 = usage/IO error, 70 = internal tool error). */
     public static int run(String[] args, Appendable out, Appendable err) {
         return run(args, out, err, nativeImageDetector.getAsBoolean());
     }
@@ -79,31 +80,56 @@ public final class Cli {
         }
         StringWriter textBuf = textMode ? new StringWriter() : null;
         PrintWriter outW = new PrintWriter(textMode ? textBuf : new AppendableWriter(out), true);
+        // Built OUTSIDE the try so the catch below can read its ParseResult to label the error envelope.
+        CommandLine cli = new CommandLine(new RootCommand())
+                .setOut(outW)
+                .setErr(errW)
+                .setExpandAtFiles(false) // model paths are plain args, never @argfiles
+                // No raw exception escapes a verb (CLI-CONFORMANCE). Three escape classes, ONE structured shape:
+                // (1) a verb that LOADS an invalid-on-disk model throws ModelConsistencyException → the same
+                //     `rejected` envelope a write-path kernel rejection produces (probe 01-de Finding 7);
+                // (2) an unresolvable include / type-def import (UnresolvedReferenceException) is an INPUT
+                //     problem → a corrective `rejected` (RK_UNRESOLVED_REFERENCE), exit 1 — not an internal error;
+                // (3) ANY other thrown Exception is the tool failing unexpectedly → a structured `error`
+                //     envelope (RK_INTERNAL_ERROR), never a raw stack trace. picocli routes only Exceptions
+                //     here; an Error (e.g. a native reflection gap) is caught around execute() below.
+                .setExecutionExceptionHandler((ex, commandLine, parseResult) -> {
+                    String[] to = targetOp(parseResult);
+                    boolean internal = !(ex instanceof ModelConsistencyException)
+                            && !(ex instanceof UnresolvedReferenceException);
+                    ResultEnvelope env;
+                    if (ex instanceof ModelConsistencyException mce) {
+                        env = BaseCommand.kernelRejectionEnvelope(to[0], to[1],
+                                "the model is rejected by the kernel — it is invalid as stored", mce);
+                    } else if (ex instanceof UnresolvedReferenceException ure) {
+                        env = BaseCommand.unresolvedReferenceEnvelope(to[0], to[1], ure);
+                    } else {
+                        env = BaseCommand.internalErrorEnvelope(to[0], to[1], ex);
+                    }
+                    commandLine.getOut().print(env.toJsonString());
+                    commandLine.getOut().flush();
+                    if (internal) {
+                        ex.printStackTrace(commandLine.getErr()); // a real failure: keep the trace on stderr (stdout is the envelope)
+                    }
+                    return env.exitCode();
+                });
+        if (nativeProfile) {
+            hideJvmOnlyVerbs(cli);
+        }
         try {
-            CommandLine cli = new CommandLine(new RootCommand())
-                    .setOut(outW)
-                    .setErr(errW)
-                    .setExpandAtFiles(false) // model paths are plain args, never @argfiles
-                    // No raw exception escapes a verb (CLI-CONFORMANCE) — on the model-LOAD path too. A verb
-                    // that loads an invalid-on-disk model (strict ofJson → checkConsistency) throws
-                    // ModelConsistencyException; without this it surfaces as a Java stack trace (probe 01-de
-                    // Finding 7). Map it, at this single seam covering every verb, to the same structured
-                    // `rejected` envelope a write-path kernel rejection produces.
-                    .setExecutionExceptionHandler((ex, commandLine, parseResult) -> {
-                        if (ex instanceof ModelConsistencyException mce) {
-                            String[] to = targetOp(parseResult);
-                            ResultEnvelope env = BaseCommand.kernelRejectionEnvelope(to[0], to[1],
-                                    "the model is rejected by the kernel — it is invalid as stored", mce);
-                            commandLine.getOut().print(env.toJsonString());
-                            commandLine.getOut().flush();
-                            return env.exitCode();
-                        }
-                        throw ex; // anything else keeps picocli's default handling
-                    });
-            if (nativeProfile) {
-                hideJvmOnlyVerbs(cli);
-            }
             return cli.execute(args);
+        } catch (Throwable t) {
+            // picocli routes only Exceptions to the handler above; an Error — notably GraalVM's
+            // MissingReflectionRegistrationError (a native reflection-metadata gap) — propagates uncaught on
+            // the calling thread. Map it to the SAME structured `error` envelope so no raw stack trace
+            // escapes a verb; the full trace goes to stderr (never the machine-readable stdout).
+            CommandLine.ParseResult pr = cli.getParseResult();
+            String[] to = pr != null ? targetOp(pr) : new String[]{"model", ""};
+            ResultEnvelope env = BaseCommand.internalErrorEnvelope(to[0], to[1], t);
+            outW.print(env.toJsonString());
+            outW.flush();
+            t.printStackTrace(errW);
+            return env.exitCode();
         } finally {
             outW.flush();
             errW.flush();

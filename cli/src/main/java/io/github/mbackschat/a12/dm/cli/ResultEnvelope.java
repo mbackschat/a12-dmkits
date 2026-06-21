@@ -33,7 +33,7 @@ public record ResultEnvelope(
         String output) {
 
     /** The execution result class (distinct from the subject's validity). */
-    enum Outcome { APPLIED, PREVIEW, REFUSED, REJECTED, READ, STAGED }
+    enum Outcome { APPLIED, PREVIEW, REFUSED, REJECTED, READ, STAGED, ERROR }
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -80,6 +80,15 @@ public record ResultEnvelope(
     }
 
     /**
+     * The tool itself failed — an unexpected throwable caught at the command boundary (CLI-CONFORMANCE: no
+     * raw stack trace escapes a verb), NOT a kernel rejection of input. {@code ok:false}, exit 70, nothing
+     * written; the carried {@code RK_INTERNAL_ERROR} diagnostic names the failure (full trace on stderr).
+     */
+    public static ResultEnvelope internalError(String target, String op, String summary, List<Diagnostic> diagnostics) {
+        return new ResultEnvelope(target, op, Outcome.ERROR, summary, null, null, diagnostics, null, false, null);
+    }
+
+    /**
      * A read-only op (read/validate/check/explain): the op executed; {@code valid} reports the subject,
      * {@code data} carries the read payload (an explanation tree, model card, fired-list, …) or {@code null}.
      */
@@ -92,12 +101,15 @@ public record ResultEnvelope(
     boolean ok() {
         return switch (outcome) {
             case APPLIED, PREVIEW, READ, STAGED -> true;
-            case REFUSED, REJECTED -> false;
+            case REFUSED, REJECTED, ERROR -> false;
         };
     }
 
-    /** 0 = ok and not invalid; 1 = rejected, or a read that found the subject invalid; 2 = refused. */
+    /** 0 = ok and not invalid; 1 = rejected, or a read that found the subject invalid; 2 = refused; 70 = internal tool error. */
     public int exitCode() {
+        if (outcome == Outcome.ERROR) {
+            return 70; // EX_SOFTWARE — the tool itself failed (distinct from rejected=1 / refused=2)
+        }
         if (outcome == Outcome.REFUSED) {
             return 2;
         }
