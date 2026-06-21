@@ -61,6 +61,7 @@ typedef rename
 typedef extract
 typedef inline
 typedef import
+typedef unimport
 include add
 include read
 include remove
@@ -478,6 +479,7 @@ dmtool schema rule add | jq '{op, returns, inputKeys: (.input.properties|keys)}'
   "op": "rule add",
   "returns": "result",
   "inputKeys": [
+    "allowDifferingDecimals",
     "alternatives",
     "code",
     "comment",

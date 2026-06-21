@@ -369,7 +369,7 @@ dmtool -m /tmp/struct2-td.json typedef read
   "outcome" : "read",
   "ok" : true,
   "valid" : true,
-  "summary" : "read 2 type definition(s)",
+  "summary" : "read 2 local type definition(s)",
   "data" : {
     "typedefs" : [ "Currency", "BillingCycle" ]
   },
