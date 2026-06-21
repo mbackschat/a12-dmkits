@@ -52,12 +52,14 @@ Legend — **modelkit** = the builder/`EditSession` substrate · **CLI** = a `dm
 
 **Minor (sharpen, not a gap):** the field schema's `internalDescription`/`externalDescription` descriptions are terse ("internal/maintenance text" vs "end-user-facing text"). The precise A12 semantics — **external = the end-user UI hint; internal = technical doc shown read-only to *Form* modelers** — would help a CLI user choose. (The same wording should cover the `meta` verb's `--internal`/`--external` flags, since they're the group/rule path to the same fields.)
 
-## 4. The gaps (→ FEATURE-GAPS-LEDGER §3)
+## 4. The original gaps (G21–G23) — all SHIPPED (record + corrections; → FEATURE-GAPS-LEDGER §2)
+
+> These are kept as the audit record + the corrections found on implementation (not open work). The genuinely-open items are the **§7 long tail** below (mostly non-goals / kernel-delegated). Open backlog lives in [`FEATURE-GAPS-LEDGER.md`](FEATURE-GAPS-LEDGER.md) §3; shipped graduates to its §2.
 
 - **G21 / G22 — element metadata in the CLI. SHIPPED (see ledger §2).** *Correction to the original audit:* the cross-cutting **`meta <ref>` verb already exposed** internal/external descriptions + annotations for any field/group/rule/computation/type-def (the audit's "no CLI verb exposes it" was stale). The one residual was the display **label** — now `meta <ref> --label <locale>=<text>` (field/group-only; merges per locale; echoed on the `meta` read). Locked by `MetaVerbTest`.
 - **G23 — Field-level error messages. SHIPPED (ledger §2).** Per-locale custom text for a field's **required** error (`requiredMessages`) and an enum's **invalid-value** error (`enum.errorMessages`), on the `field add`/`field modify` spec (+ the `apply` field ops). Kernel shape (KERNEL-FINDINGS §4/§8): both are per-locale `errorMessage` arrays; **"use default" = omit the keys** (there is no stored boolean — the original "use-default flag" framing was wrong). The single-string `enum.invalidValueMessage` stays a shorthand expanded across all locales; a required message on a non-required field is refused (fail-fast). Locked by `FieldAddSpecTest`.
 
-> The **full-doc subagent sweep (§7)** found more beyond these — new gaps **G24–G27** (group index field, typedef enum/restrictions, roles management, model-id rename — **all shipped**) + surface defects (the INFO-severity drift, undocumented `$$` escape + date format-sets — **all shipped**) + a long tail. Work the **§7** long tail next.
+> The **full-doc subagent sweep (§7)** found more beyond these — new gaps **G24–G27** (group index field, typedef enum/restrictions, roles management, model-id rename — **all shipped**) + surface defects (the INFO-severity drift, undocumented `$$` escape + date format-sets — **all shipped**) + a long tail. The §7 long tail is now **resolved**: shipped, or reasoned **non-goals** (standalone `computation move`, `field move` co-move) / **deferred** ("Insert From DM") — see §7b for the rationale. No open editor-coverage work remains beyond the 🟡 end-to-end exercises in §6.
 
 ## 5. What is already strong (don't re-litigate)
 
