@@ -37,9 +37,11 @@ import picocli.CommandLine.Parameters;
  * it workspace-wide (unlike {@code list}/{@code graph}, which mimic {@code ls}).
  */
 @Command(name = "roles", mixinStandardHelpOptions = true,
-        description = "Lint a workspace's roles: resolve each model's `roles` annotation against roles.yaml; "
-                + "flag undefined roles (+ ungated models / missing or multiple roles files). Advisory — "
-                + "warnings only, never blocks (always exits 0).")
+        description = "Lint a workspace's roles. The contract: a model is gated by a `roles` header ANNOTATION "
+                + "(value = comma-separated role names); `auth/roles.yaml` declares the roles; `auth/users.yaml` "
+                + "lists users as `username` + `authorities` (the authorities are the edge into roles.yaml). The "
+                + "lint resolves that triangle and flags undefined roles / authorities, unreachable + ungated "
+                + "models, missing or multiple roles files. Advisory — warnings only, never blocks (always exits 0).")
 final class WorkspaceRolesCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

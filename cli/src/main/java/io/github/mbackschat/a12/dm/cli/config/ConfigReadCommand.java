@@ -22,7 +22,9 @@ import picocli.CommandLine.Command;
  * declared message locales that a rule/computation must each carry a message for).
  */
 @Command(name = "read", mixinStandardHelpOptions = true,
-        description = "Read the document configuration into `data`.")
+        description = "Read the document configuration into `data` — incl. `locales`, the declared display-locale "
+                + "registry (header.locales). Every rule/computation must carry a message for EACH declared "
+                + "locale (the kernel enforces it on validate); register one with `config modify --add-locale`.")
 final class ConfigReadCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

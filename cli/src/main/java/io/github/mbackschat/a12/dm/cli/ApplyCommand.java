@@ -118,7 +118,9 @@ final class ApplyCommand extends BaseCommand {
     }
 
     @Parameters(index = "0", paramLabel = "<ops.json>",
-            description = "a JSON array of op-records: [{\"target\":\"field\",\"op\":\"add\",\"group\":…,\"name\":…,\"kind\":…}, …]")
+            description = "a JSON array of op-records [{\"target\",\"op\",…args}, …] — the per-op fields are that "
+                    + "verb's params (copy from `<target> <op> --help`). See `dmtool schema apply` for the frame "
+                    + "+ worked examples (incl. rule/group ops, not just field add).")
     String opsFile;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
