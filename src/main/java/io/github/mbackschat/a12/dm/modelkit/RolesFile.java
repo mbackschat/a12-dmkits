@@ -21,7 +21,8 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
  * <p>Parsed as a Jackson tree (no reflective POJO binding — the same tree-walking style as {@link
  * ModelDocument}'s DM-JSON read), so it stays kernel-free and reflection-light. Tolerant of an absent
  * {@code description}/{@code accessRights} (both optional in real workspaces); a document that isn't a
- * {@code roles:} mapping is rejected rather than silently read as empty.
+ * {@code roles:} mapping — or a {@code roles:} entry with no {@code name:} (e.g. a bare-string list) — is
+ * rejected rather than silently read as empty.
  */
 public record RolesFile(List<Role> roles) {
 
@@ -43,7 +44,8 @@ public record RolesFile(List<Role> roles) {
      * {@code accessRights} (reads as empty); a roleless / empty document yields an empty role set.
      *
      * @throws IllegalArgumentException if the content isn't a YAML mapping (a roles file is a {@code roles:}
-     *         document, not a scalar or a bare sequence) or can't be parsed as YAML
+     *         document, not a scalar or a bare sequence), if a {@code roles:} entry has no {@code name:} (a
+     *         bare-string list like {@code - admin} is malformed), or if it can't be parsed as YAML
      */
     public static RolesFile parse(String yaml) {
         JsonNode root;
@@ -60,10 +62,17 @@ public record RolesFile(List<Role> roles) {
                     + root.getNodeType().toString().toLowerCase());
         }
         List<Role> roles = new ArrayList<>();
+        int index = 0;
         for (JsonNode r : root.path("roles")) {
+            index++;
             String name = r.path("name").asText("");
             if (name.isBlank()) {
-                continue; // a nameless entry can't be referenced — skip it rather than index an empty key
+                // A nameless entry can't be referenced. Silently skipping it (the old behavior) meant a
+                // bare-string list — `- admin` instead of the schema's `- name: admin`, a common YAML idiom —
+                // parsed to an EMPTY role set, so the lint then checked nothing while reporting success
+                // (probe 05, F4). Reject it loudly, like a non-mapping document: fail-fast, never a silent drop.
+                throw new IllegalArgumentException("roles.yaml entry #" + index + " has no `name:` — each `roles:`"
+                        + " entry must be a mapping like `- name: admin` (a bare string `- admin` is not a role)");
             }
             List<String> accessRights = new ArrayList<>();
             for (JsonNode a : r.path("accessRights")) {

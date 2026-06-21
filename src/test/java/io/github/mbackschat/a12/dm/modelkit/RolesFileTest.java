@@ -85,4 +85,19 @@ class RolesFileTest {
         assertThrows(IllegalArgumentException.class, () -> RolesFile.parse("- just\n- a\n- list\n"));
         assertThrows(IllegalArgumentException.class, () -> RolesFile.parse(": : not yaml : :"));
     }
+
+    @Test
+    void aRolesEntryWithoutANameIsRejectedNotSilentlyDropped() {
+        // F4 (probe 05): `- admin` is a common YAML idiom, but the schema is `- name: admin`. The old parser
+        // silently SKIPPED every nameless entry, so a bare-string list parsed to an EMPTY role set and the
+        // lint then checked nothing (outcome:read, exit 0 — a silent mis-parse). Now a nameless entry is a
+        // corrective error, like a non-mapping document — fail-fast, never a silent drop.
+        IllegalArgumentException bareList = assertThrows(IllegalArgumentException.class,
+                () -> RolesFile.parse("roles:\n  - admin\n  - editor\n"));
+        assertTrue(bareList.getMessage().contains("name"),
+                () -> "the error names the expected `name:` shape: " + bareList.getMessage());
+        // even a SINGLE nameless entry mixed with valid ones is rejected (no silent partial drop)
+        assertThrows(IllegalArgumentException.class,
+                () -> RolesFile.parse("roles:\n  - name: admin\n  - editor\n"));
+    }
 }
