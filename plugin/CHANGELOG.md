@@ -4,6 +4,12 @@ All notable changes to the **publicly released `dmtool` artifacts** — the nati
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/) plus **A12 Kernel compatibility metadata** (the kernel each release targets is recorded per entry, never folded into the version string).
 
+## [0.6.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
+
+### Changed
+
+- **`dmtool` is now delivered on demand by the skill — the `SessionStart` hook is gone.** A session-start hook never fires in the session where you ran `/plugin install`, so `dmtool` was mysteriously absent right after installing (0.5.1 worked around that by telling you to resume the session). The plugin now bundles a small installer beside the skill; the first time the agent needs `dmtool` and finds it missing, the skill runs that installer — which downloads the per-OS binary, checksum-verifies it, caches it version-aware, and prints its absolute path. So the tool is available **in the very session you installed the plugin in** — no restart, no resume. Because a script the agent runs mid-session can't reliably put a binary on `PATH`, the agent invokes `dmtool` by the printed path (the stable `$PLUGIN_DATA/bin/dmtool`). The CLI binary itself is unchanged from 0.5.1.
+
 ## [0.5.1] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
 ### Fixed
