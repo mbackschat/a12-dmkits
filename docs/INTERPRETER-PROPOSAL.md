@@ -1,6 +1,6 @@
 # Interpreter proposal — a native-safe, cross-platform runtime evaluator
 
-**Status:** proposal (intent + rationale, not yet built). Graduates to a spec / folds into [`ARCHITECTURE.md`](ARCHITECTURE.md) once it ships; until then nothing here is built.
+**Status:** proposal (intent + rationale). The §10 spike has been **built and validated** (2026-06-21, branch `spike-interpreter`) — see §10 "Spike result"; the full evaluator remains unbuilt. Graduates to a spec / folds into [`ARCHITECTURE.md`](ARCHITECTURE.md) once it ships.
 
 **One line:** an isolated runtime evaluator for conditions + computations that **interprets** the rule AST directly — instead of generating and executing code on the fly — so it runs cleanly in a GraalVM native image *and* in the browser, from one source.
 
@@ -122,6 +122,8 @@ Before committing to scope, interpret **3–4 condition shapes end-to-end in Kot
 4. a **nested-repetition `*`-iteration** (exercises the metadata/iteration bridge and the `STERN_OPTIMIERUNGS_SCHWELLE` strategy).
 
 Success: green laws + confirmed native-image-clean + the parser/AST bridge proven. This surfaces the message-fidelity question (§11) concretely.
+
+**Spike result (2026-06-21, branch `spike-interpreter`).** Executed, and **all four shapes match the real kernel** — 25 differential cases via the `RuntimeLaws` oracle (JVM): comparison + three-valued logic; the empty-value type asymmetry (number→0, confirm→False, boolean/string/empty-row not-evaluated) with the `FieldFilled` guard; operand-list + starred aggregates (`Sum` substitutes 0, `MaxValue` ignores empties, chronological dates); and per-row `*`-iteration firing on exactly the offending rows. Beyond the plan, the interpreter was lifted into a real **Kotlin Multiplatform `:interpreter` module**, and the **same `commonMain` engine runs on Kotlin/JS (Node)** — proving the §5 cross-platform claim, with the only platform-specific code an `expect/actual` decimal shim (BigDecimal on JVM, Double in the POC). **Native-safe confirmed:** `commonMain` has zero `java.*` / `com.mgmtp.*` / groovy imports. Both the Kotlin-JVM and the KMP/JS toolchains resolve in the isolated, public-repos-only Gradle home. (Working notes: `SPIKE-PLAN.md` / `SPIKE-FINDINGS.md` on the branch.) **What the spike did NOT prove** — the Phase-1 backlog: the `MessageType`/polarity typing and localized message text, throughput, arbitrary-precision JS decimal (the POC used Double), and a real parser (the AST was hand-built). These are §11's open decisions, made concrete.
 
 ## 11. Open decisions
 
