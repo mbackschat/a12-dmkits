@@ -1383,11 +1383,25 @@ public final class ModelDocument {
      * refuse (the kernel re-validate of the composed pair is the backstop). Fails fast if the group is absent.
      */
     public String extractGroupAsInclude(String groupPath, String reference) {
+        return extractGroupAsInclude(groupPath, reference, null);
+    }
+
+    /**
+     * As {@link #extractGroupAsInclude(String, String)}, but {@code rootName} (when non-blank) names the
+     * sub-model's single <b>root group</b> — independent of the base's <b>mount</b> name, which always keeps
+     * the extracted group's name so every composed path is preserved. Use it when the sub-model is meant for
+     * <b>reuse</b> under a different mount name (extract {@code /Person/HomeAddress} as a shared {@code Address}
+     * mounted under both Home and Work); {@code null} keeps the extracted group's name (probe F05-3 spared the
+     * follow-up {@code group rename}). The mount is by {@code reference}/alias, not by the root name, so the
+     * two are free to differ.
+     */
+    public String extractGroupAsInclude(String groupPath, String reference, String rootName) {
         JsonNode group = locate(groupPath, true);
         if (group == null) {
             throw new IllegalArgumentException("no group at: " + groupPath);
         }
-        String mountName = group.path("name").asText();
+        String mountName = group.path("name").asText();   // the base mount keeps this — preserves composed paths
+        String subRoot = (rootName != null && !rootName.isBlank()) ? rootName : mountName;
 
         // the sub-model: the base envelope, its own id, no inherited includes, one root = the rebased subtree.
         ObjectNode sub = root.deepCopy();
@@ -1401,7 +1415,8 @@ public final class ModelDocument {
             ((ObjectNode) subInfo).put("name", reference);
         }
         ObjectNode subGroup = group.deepCopy();
-        reprefixIds(subGroup, groupPath, "/" + mountName);
+        subGroup.put("name", subRoot);   // the sub-model root's own name (= the group's, unless rootName overrides)
+        reprefixIds(subGroup, groupPath, "/" + subRoot);
         ((ObjectNode) sub.path("content").path("modelRoot")).putArray("rootGroups").add(subGroup);
         String subModelJson;
         try {

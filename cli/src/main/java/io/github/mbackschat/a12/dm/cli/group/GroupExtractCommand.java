@@ -56,6 +56,14 @@ final class GroupExtractCommand extends BaseCommand {
                     + "include-dir — read the exact path from the result's `subModel`, don't guess the filename")
     String reference;
 
+    @ParamKind(ParamKind.Kind.NEW_NAME)
+    @Option(names = "--root-name", paramLabel = "<groupName>",
+            description = "name the sub-model's ROOT GROUP (defaults to the extracted group's name). Set it when "
+                    + "the sub-model is for REUSE under a different mount name — extract a HomeAddress group as a "
+                    + "shared `Address`, then include it under both Home and Work. The base mount keeps the original "
+                    + "name, so composed paths are preserved either way")
+    String rootName;
+
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the slimmed base here instead of in place (the sub-model still goes to the include-dir)")
     String outputPath;
@@ -87,7 +95,7 @@ final class GroupExtractCommand extends BaseCommand {
 
         String subModel;
         try {
-            subModel = doc.extractGroupAsInclude(group, reference);
+            subModel = doc.extractGroupAsInclude(group, reference, rootName);
         } catch (RuntimeException e) {
             return fail(e.getMessage());
         }

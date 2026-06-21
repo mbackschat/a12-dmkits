@@ -50,4 +50,13 @@ The anti-cheat audit confirms tool-only mutations — `order-ruled.dm.json` and 
 
 ## Next
 
-F06-1 + F06-2 are confirmed defects (not the agent's mistakes), in the **catalog/diagnostics material**, not the engine. The graduating guard is the operator-`validExample` CI-execution (mirrors `SchemaExamplesGuardTest`). The friction is fully recovered-from in-session via `FieldValuesNotUnique`, so impact is DX, not a blocker.
+F06-1 + F06-2 are confirmed defects (not the agent's mistakes), in the **catalog/diagnostics material**, not the engine. The friction is fully recovered-from in-session via `FieldValuesNotUnique`, so impact is DX, not a blocker.
+
+## Resolution (2026-06-22)
+
+Root-causing F06-1 corrected the diagnosis: **`RepetitionNotUnique`'s `validExample` is NOT broken** — it's kernel-valid and already CI-executed by `CatalogExamplesAreKernelValidTest` (which builds the rule at the *parent* of the repeated group). The probe couldn't author it because `rule check` defaults the rule group to the error field's own parent (the repeated group itself) → rejected; the kernel-valid structure needs the rule at the *parent* with the error field inside, reachable via the existing **`--group`** flag (`rule check --group /Order --field /Order/Items/Sku` → VALID, verified). So F06-1 + F06-2 collapse into one root cause and one fix:
+
+- **The `MVK_NO_WILDCARD` fix hint was misattributed** (F06-2): it's a *shared* structural code (CurrentRepetition, RepetitionNotUnique, aggregates, model-scope `GroupFilled`), but the operator catalog-join stamped CurrentRepetition's "inside Items" fix on every occurrence. Moved to `StructuralKernelFix` with a generic hint (flatten with `*` / `--group` at the parent), consulted before the catalog-join. Reaches `rule check` / `apply` / `batch` / `diagnostics <code>`.
+- **Discoverability** (F06-1): `RepetitionNotUnique`'s catalog gotcha now teaches the `--group` authoring; `FieldValuesNotUnique(Items*/Sku)` remains the no-`--group` alternative for plain cross-row uniqueness.
+
+Locked by `DiagnosticEnricherTest` + `DiagnosticsVerbTest`; kernel fact recorded in KERNEL-FINDINGS §9 supplement + the treatment in KERNEL-INTEGRATION-NOTES.

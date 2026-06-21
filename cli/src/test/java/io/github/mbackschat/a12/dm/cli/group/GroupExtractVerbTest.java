@@ -77,6 +77,37 @@ class GroupExtractVerbTest {
     }
 
     @Test
+    void rootNameNamesTheSubModelRootIndependentlyOfTheMount(@TempDir Path dir) throws Exception {
+        // F05-3: extracting for REUSE — --root-name names the sub-model's root group (e.g. a shared `Address`)
+        // independently of the base mount name (which keeps the extracted group's name to preserve composed
+        // paths). Spares the follow-up `group rename` the probe agent had to do. Three distinct names here:
+        // mount=Shipping, sub-model id=SharedAddress, sub-model root group=Address.
+        String base = DocumentModelDraft.named("order").locale("en_US")
+                .rootGroup("Order", o -> o
+                        .field("OrderDate", FieldKind.DATE)
+                        .group("Shipping", sh -> sh.field("Zip", FieldKind.STRING).field("City", FieldKind.STRING)))
+                .build().toJson();
+        Path model = write(dir, "order.dm.json", base);
+
+        var res = CliTestSupport.run("-m", model.toString(), "group", "extract", "/Order/Shipping",
+                "--reference", "SharedAddress", "--root-name", "Address");
+        assertEquals(0, res.code(), res.err());
+        assertEquals("applied", M.readTree(res.out()).get("outcome").asText());
+
+        // the sub-model's ROOT GROUP is named by --root-name (not the extracted group's name "Shipping")
+        JsonNode subRoot = M.readTree(Files.readString(dir.resolve("SharedAddress.dm.json")))
+                .path("content").path("modelRoot").path("rootGroups").get(0);
+        assertEquals("Address", subRoot.path("name").asText(), "sub-model root group is named by --root-name");
+        assertTrue(subRoot.path("id").asText().contains("/Address"), "the root group's id is rebased to /Address");
+
+        // the BASE mount keeps the ORIGINAL name (so /Order/Shipping/* paths are preserved) and the composed
+        // pair re-validates — proving mount-name != sub-model-root-name composes cleanly
+        assertTrue(Files.readString(model).contains("\"name\" : \"Shipping\""), "the base mount keeps the original name");
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code(),
+                "composed model is valid with mount-name (Shipping) != sub-model-root-name (Address)");
+    }
+
+    @Test
     void extractedSubModelIsValidStandalone_carriedRuleAbsolutePathsAreReBased(@TempDir Path dir) throws Exception {
         // probe 01-de Finding 6: a carried rule's ABSOLUTE operands (/Order/Shipping/*) were copied verbatim
         // into the sub-model (root /Shipping) → invalid STANDALONE (MVK_INVALID_ROOT_GROUP), though the
