@@ -61,9 +61,8 @@ Surfaced by a **real authoring session against v0.4.0** (a cold Claude Code agen
 
 ### Editor feature-coverage — residual open items
 
-The 2026-06-21 editor-coverage audit (a user review + a full-doc SME sweep) is **complete** — its gaps G21–G27 shipped (§2); the non-goals + intentional divergences it surfaced are in §4. Genuinely-open residue, all low-value:
+The 2026-06-21 editor-coverage audit (a user review + a full-doc SME sweep) is **complete** — its gaps G21–G27 shipped (§2); the non-goals + intentional divergences it surfaced are in §4. One genuinely-open, low-value residue:
 
-- **Description-wording sharpen** — the `field` schema's `internalDescription`/`externalDescription` and the `meta --internal`/`--external` flags are terse; state the precise semantics (external = the end-user UI hint; internal = the read-only Form-modeler doc).
 - **Pre-flight-diagnostic opportunities (kernel-delegated, low priority)** — several constraints are kernel-rejected on `validate` with no *early* local diagnostic: field/model name format/length/`xml`-prefix, pattern ≤1000-chars + valid-regex, amount-unit ⇒ {0,2} decimals, the 5 include-ability preconditions, local-vs-imported typedef-mode mixing, and `field add` not pre-gating a sibling-name collision the way `field rename` does. Correctness is sound (the kernel refuses); these are earlier-diagnostic niceties.
 
 A residual lower-value slice of **G20** is left as a separate, optional follow-on: surfacing **requiredness + the rule list inside `model describe`** (the model card). The high-value half — `field read` echoing the friendly `required` state, which closes the "verify my requiredness refactor without grepping JSON" loop — shipped (§2, G20). The `model describe` enrichment is a larger card change of lower marginal value; not scheduled.

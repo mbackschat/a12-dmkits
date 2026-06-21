@@ -50,12 +50,12 @@ final class MetaCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.SCALAR)
     @Option(names = "--internal", paramLabel = "<locale>=<text>",
-            description = "set the internal description for a locale (repeatable), e.g. --internal en_US=\"…\"")
+            description = "set the INTERNAL description — a maintenance/technical note shown read-only to Form modelers, never to end users — for a locale (repeatable), e.g. --internal en_US=\"…\"")
     Map<String, String> internal = new LinkedHashMap<>();
 
     @ParamKind(ParamKind.Kind.SCALAR)
     @Option(names = "--external", paramLabel = "<locale>=<text>",
-            description = "set the external (end-user) description for a locale (repeatable)")
+            description = "set the EXTERNAL description — the end-user-facing hint shown beside the field in the form UI — for a locale (repeatable)")
     Map<String, String> external = new LinkedHashMap<>();
 
     @ParamKind(ParamKind.Kind.SCALAR)
