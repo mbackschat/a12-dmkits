@@ -57,15 +57,7 @@ Legacy **`FEATURE-GAPS §3.x`** section refs in code/docs are *pre-restructure* 
 
 ## 3. Open backlog
 
-Surfaced by a **real authoring session against v0.4.0** (a cold Claude Code agent built a `Person` model end-to-end, 2026-06-21). The recurring shape: *the tool **reports** a property it gives no verb to **change**, so the agent falls back to hand-editing the model JSON* — exactly what a typed authoring kit must spare the user. Those gaps (G15–G27) have shipped (§2); the open residue is below — small editor-coverage items, the `model describe` slice of G20, and skill finding **S1** (decided "not for now" — §4).
-
-### Editor feature-coverage — residual open items
-
-The 2026-06-21 editor-coverage audit (a user review + a full-doc SME sweep) is **complete** — its gaps G21–G27 shipped (§2); the non-goals + intentional divergences it surfaced are in §4. One genuinely-open, low-value residue:
-
-- **Pre-flight-diagnostic opportunities (kernel-delegated, low priority)** — several constraints are kernel-rejected on `validate` with no *early* local diagnostic: field/model name format/length/`xml`-prefix, pattern ≤1000-chars + valid-regex, amount-unit ⇒ {0,2} decimals, the 5 include-ability preconditions, local-vs-imported typedef-mode mixing, and `field add` not pre-gating a sibling-name collision the way `field rename` does. Correctness is sound (the kernel refuses); these are earlier-diagnostic niceties.
-
-A residual lower-value slice of **G20** is left as a separate, optional follow-on: surfacing **requiredness + the rule list inside `model describe`** (the model card). The high-value half — `field read` echoing the friendly `required` state, which closes the "verify my requiredness refactor without grepping JSON" loop — shipped (§2, G20). The `model describe` enrichment is a larger card change of lower marginal value; not scheduled.
+_Empty._ The v0.4.0 authoring-session gaps + the editor-coverage gaps (**G15–G27**, **R1–R4**) all shipped (§2); everything considered-and-declined is in §4 (each with a re-open trigger). New gaps land here as they surface.
 
 **Lifecycle — the convention (so this section never carries shipped work).** A gap lives here only while **open**. When it ships, **move its row up into §2** (Shipped gaps) in the *same commit*, with its rationale/contract column pointing at its owning spec — **API-FINDINGS** for a DSL/API gap, the **CLI specs** for a `dmtool` gap. This section is the live to-do list; §2 is the graduation record. Never leave a shipped item in this backlog, and never record a shipped item *only* here as a "shipped" sub-list — it belongs in §2.
 
