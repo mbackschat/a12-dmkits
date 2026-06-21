@@ -257,7 +257,12 @@ dmtool -m order.dm.json field add --group /Order --name LoyaltyPoints --kind NUM
 dmtool -m order.dm.json field add fee-spec.json
 
 dmtool -m order.dm.json group add --parent /Order --name Shipping
-dmtool -m order.dm.json typedef add …
+# repeatable group + its index field (the row-key arming RepetitionNotUnique / parallel iteration)
+dmtool -m order.dm.json group modify /Order/Items --index-field Sku
+
+# a reusable type — simple via --kind, or a rich ENUM/restricted type via a spec
+dmtool -m order.dm.json typedef add --id Money --kind NUMBER
+dmtool -m order.dm.json typedef add --id Tier tier-enum.json   # { "kind":"ENUM", "enum":{"values":[…]} }
 
 dmtool -m order.dm.json config modify \
   --decimal-separator "," --label en_US="Customer Order"
@@ -284,9 +289,9 @@ dmtool -m order.dm.json group attachment \
   --parent /Order --name Invoice \
   --max-size-bytes 10000000 --allowed-mime application/pdf
 
-# describe/annotate any element (field/group/rule by path, type-def by id); `meta /Order/Total` reads it back
+# label/describe/annotate any element (field/group/rule by path, type-def by id); `meta /Order/Total` reads it back
 dmtool -m order.dm.json meta /Order/Total \
-  --internal en_US="the order total" --annotate owner=orders-team
+  --label en_US="Order Total" --internal en_US="the order total" --annotate owner=orders-team
 
 # severity/message edit, condition untouched
 dmtool -m order.dm.json rule modify /Order/SomeRule \

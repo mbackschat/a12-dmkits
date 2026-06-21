@@ -328,6 +328,20 @@ dmtool -m /tmp/struct2-td.json typedef add --id Currency --kind NUMBER
 
 → `changed.added = Currency` over `kind: NUMBER`: the model now carries a reusable type named `Currency`.
 
+For a richer type — a reusable **enum** or a **restricted** string/number — pass a `<spec.json>` instead of `--kind` (the same per-kind config a `field add` spec takes; see `schema typedef add`). Here a reusable `BillingCycle` enum:
+
+```bash
+echo '{ "kind": "ENUM", "enum": { "values": [ {"value":"MONTHLY"}, {"value":"ANNUAL"} ] } }' > /tmp/cycle.json
+dmtool -m /tmp/struct2-td.json typedef add --id BillingCycle /tmp/cycle.json \
+  | jq -c '{outcome, added: .changed.added, kind: .changed.kind}'
+```
+
+```output
+{"outcome":"applied","added":"BillingCycle","kind":"ENUM"}
+```
+
+→ The enum type-def is reusable across fields — every `BillingCycle` field shares the one value set. (`typedef add` carries only a type; set a type-def's descriptions/annotations with `meta <id>`.)
+
 `typedef read` lists the declared ids under `data.typedefs` (a non-mutating query):
 
 ```bash
@@ -341,9 +355,9 @@ dmtool -m /tmp/struct2-td.json typedef read
   "outcome" : "read",
   "ok" : true,
   "valid" : true,
-  "summary" : "read 1 type definition(s)",
+  "summary" : "read 2 type definition(s)",
   "data" : {
-    "typedefs" : [ "Currency" ]
+    "typedefs" : [ "Currency", "BillingCycle" ]
   },
   "diagnostics" : [ ],
   "written" : false

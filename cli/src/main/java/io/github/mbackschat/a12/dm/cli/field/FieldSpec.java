@@ -126,6 +126,15 @@ public final class FieldSpec {
         return new ModificationSpec(group, name, mod.build());
     }
 
+    /**
+     * Parse just the type config ({@code kind} + the per-kind block) into a {@link FieldTypeSpec} — the
+     * {@code typedef add <spec.json>} path (G25), which reuses the field-add per-kind shape but carries no
+     * locator/metadata. {@code label} names the thing being typed (for error messages).
+     */
+    public static FieldTypeSpec parseType(JsonNode spec, String label) {
+        return type(spec, label);
+    }
+
     /** The typed config: a {@code typedef} ref wins; otherwise {@code kind} selects the per-kind config block. */
     private static FieldTypeSpec type(JsonNode spec, String name) {
         if (spec.hasNonNull("typedef")) {

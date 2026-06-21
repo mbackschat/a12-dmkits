@@ -82,4 +82,60 @@ class TypedefVerbTest {
         assertEquals("applied", M.readTree(res.out()).get("outcome").asText());
         assertFalse(Files.readString(model).contains("MoneyAmount"));
     }
+
+    // G25 — `typedef add <spec.json>` for ENUM / restricted typedefs (the SME's primary typedef use case).
+    // The `--kind` flag still covers a bare easy kind; the spec reuses the field-add per-kind config.
+
+    @Test
+    void addsAnEnumTypedefFromASpec(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path spec = dir.resolve("tier.json");
+        Files.writeString(spec, """
+                { "kind": "ENUM",
+                  "enum": { "values": [
+                    {"value":"GOLD","labels":{"en_US":"Gold"}},
+                    {"value":"SILVER","labels":{"en_US":"Silver"}} ] } }""");
+        var res = CliTestSupport.run("-m", model.toString(), "typedef", "add", "--id", "Tier", spec.toString());
+        assertEquals(0, res.code(), res.err());
+        assertEquals("applied", M.readTree(res.out()).path("outcome").asText());
+        // the enum typedef is real and usable — a field can be typed by it
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "field", "add",
+                "--group", "/Order", "--name", "CustomerTier", "--typedef", "Tier").code(),
+                "the enum typedef is usable as a field type");
+    }
+
+    @Test
+    void addsARestrictedStringTypedefFromASpec(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path spec = dir.resolve("email.json");
+        Files.writeString(spec, """
+                { "kind": "STRING",
+                  "string": { "pattern": "[^@]+@[^@]+", "patternMessage": "must be an email address" } }""");
+        var res = CliTestSupport.run("-m", model.toString(), "typedef", "add", "--id", "Email", spec.toString());
+        assertEquals(0, res.code(), res.err());
+        assertEquals("applied", M.readTree(res.out()).path("outcome").asText());
+        assertTrue(Files.readString(model).contains("Email"));
+    }
+
+    @Test
+    void rejectsLocatorOrMetadataKeysInATypedefSpec(@TempDir Path dir) throws Exception {
+        // a type def carries only a type — group/name/label don't apply (auto-rejected by the typedef-add schema)
+        Path model = CliTestSupport.orderRuled(dir);
+        Path spec = dir.resolve("bad.json");
+        Files.writeString(spec, """
+                { "kind": "STRING", "name": "Nope", "label": {"en_US":"x"} }""");
+        var res = CliTestSupport.run("-m", model.toString(), "typedef", "add", "--id", "X", spec.toString());
+        assertEquals(1, res.code(), () -> "unknown keys rejected: " + res.out());
+        assertEquals("rejected", M.readTree(res.out()).path("outcome").asText());
+    }
+
+    @Test
+    void rejectsBothKindFlagAndSpec(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path spec = dir.resolve("s.json");
+        Files.writeString(spec, "{ \"kind\": \"NUMBER\" }");
+        assertFalse(CliTestSupport.run("-m", model.toString(), "typedef", "add",
+                "--id", "X", "--kind", "NUMBER", spec.toString()).code() == 0,
+                "passing both --kind and a spec is a usage error");
+    }
 }

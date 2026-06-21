@@ -112,6 +112,43 @@ class SchemaExamplesGuardTest {
     }
 
     @Test
+    void typedefAddExamplesAreAcceptedByTheTool(@TempDir Path dir) throws Exception {
+        Path model = dir.resolve("subscription.dm.json");
+        Files.writeString(model, CliTestSupport.subscriptionJson());
+
+        JsonNode examples = schema("typedef-add").path("examples");
+        assertTrue(examples.isArray() && examples.size() > 0, "typedef-add.schema declares examples");
+        int i = 0;
+        for (JsonNode ex : examples) {
+            Path spec = dir.resolve("typedef-" + i + ".json");
+            Files.writeString(spec, ex.toString());
+            CliTestSupport.Result res = CliTestSupport.run(
+                    "-m", model.toString(), "typedef", "add", "--id", "Td" + i++, spec.toString(), "--dry-run");
+            assertEquals(0, res.code(), () -> "typedef add rejected the schema example: " + res.err() + res.out());
+            assertEquals("preview", MAPPER.readTree(res.out()).path("outcome").asText(),
+                    "the typedef-add example previews cleanly");
+        }
+    }
+
+    /**
+     * No-drift guard for the duplicated per-kind config: the typedef-add schema reuses field-add's per-kind
+     * blocks (a type def's type is the same shape as a field's type), so every per-kind block they share must
+     * be byte-identical — else a field-config change would silently skip the typedef surface.
+     */
+    @Test
+    void typedefAddPerKindBlocksMatchFieldAdd() throws Exception {
+        // the per-kind CONFIG blocks must stay byte-identical (the type shape is shared); `kind` itself is
+        // excluded — its description legitimately differs (a type def cannot reference another `typedef`).
+        JsonNode fieldAdd = schema("field-add").path("properties");
+        JsonNode typedefAdd = schema("typedef-add").path("properties");
+        for (String kindBlock : List.of("string", "number", "enum", "custom",
+                "date", "time", "dateTime", "dateRange", "dateFragment")) {
+            assertEquals(fieldAdd.path(kindBlock), typedefAdd.path(kindBlock),
+                    () -> "typedef-add '" + kindBlock + "' must stay identical to field-add (no drift)");
+        }
+    }
+
+    @Test
     void documentInstanceExampleIsAcceptedByDocEval(@TempDir Path dir) throws Exception {
         // the --doc instance schema (surfaced by `schema model eval`/`compute`/`rule test`) must stay runnable:
         // its example, fed to `model eval`, must evaluate cleanly against a matching model.

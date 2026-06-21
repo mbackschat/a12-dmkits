@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/typedef-add.schema.json",
+  "title": "typedef-add-spec",
+  "description": "INPUT of `dmtool -m <model> typedef add --id <id> <spec.json>` — the reusable type definition's config: a `kind` + its per-kind block, the SAME per-kind shape a field's type takes in `field-add` (so an ENUM type-def declares `enum.values`, a restricted STRING declares `string.pattern`/`length`, etc.). A type definition carries ONLY a type — no group/name/requiredness/label/metadata (those are field/element concerns; set a type-def's descriptions/annotations with `meta <id>`), so any such key is rejected with RK_UNKNOWN_ARG. The simpler `typedef add --id <id> --kind <K>` flag covers a bare easy kind; this spec covers the rich ENUM/restricted kinds. Validated against the real kernel before writing. (`--kind` and this spec are mutually exclusive.)",
+  "type": "object",
+  "required": ["kind"],
+  "additionalProperties": false,
+  "properties": {
+    "kind": { "type": "string", "description": "STRING | NUMBER | DATE | TIME | DATETIME | DATERANGE | DATEFRAGMENT | BOOLEAN | CONFIRM | ENUM | CUSTOM" },
+    "string": {
+      "type": "object", "description": "(kind STRING) config", "additionalProperties": false,
+      "properties": {
+        "minLength": { "type": "integer", "description": "minimum character length. seeAlso: the Length operator — the rule-level way to bound length (`operators Length`)" }, "maxLength": { "type": "integer", "description": "maximum character length" },
+        "pattern": { "type": "string", "description": "anchored regex; requires patternMessage. seeAlso: the PatternViolated/PatternMatched operators — the rule-level alternative (`operators PatternViolated`)" },
+        "patternMessage": { "type": "string", "description": "the error text shown when the pattern fails" },
+        "lineBreaks": { "type": "boolean", "description": "permit multi-line input" },
+        "alphabeticalSorting": { "type": "boolean" },
+        "suggestions": { "type": "object", "description": "per-locale hint list, { \"<locale>\": [\"…\"] }; validated against the field's own pattern" }
+      }
+    },
+    "number": {
+      "type": "object", "description": "(kind NUMBER) config", "additionalProperties": false,
+      "properties": {
+        "minFractionalDigits": { "type": "integer" }, "maxFractionalDigits": { "type": "integer", "description": "the decimal scale; together they bound the fraction-digit range" },
+        "min": { "type": "string", "description": "minimum value (decimal as a string). seeAlso: the LessThan/GreaterThan comparison operators — rule-level bounds" }, "max": { "type": "string", "description": "maximum value (decimal as a string)" },
+        "zeroNotAllowed": { "type": "boolean" }, "leadingZerosAllowed": { "type": "boolean" },
+        "unit": { "type": "string", "description": "AMOUNT | PERCENT | PERMILLE (the kernel `trait`)" }
+      }
+    },
+    "enum": {
+      "type": "object", "description": "(kind ENUM) config", "additionalProperties": false,
+      "required": ["values"],
+      "properties": {
+        "values": { "type": "array", "description": "≥1 { value, labels? } — stored value + optional per-locale labels. seeAlso: FieldValueIncludedInValueList / FieldValueNotIncludedInValueList — the rule-level way to (dis)allow a value set",
+          "items": { "type": "object", "required": ["value"], "additionalProperties": false,
+            "properties": { "value": { "type": "string", "description": "the stored value" }, "labels": { "type": "object", "description": "per-locale display labels, { \"<locale>\": \"<text>\" }" } } } },
+        "categories": { "type": "array", "description": "named classifications; each has values[] aligned 1:1 with the enum values. seeAlso: the EnumCategory operator (`operators EnumCategory`) — reads a value's category in a rule",
+          "items": { "type": "object", "required": ["name", "values"], "additionalProperties": false,
+            "properties": { "name": { "type": "string" }, "values": { "type": "array", "items": { "type": "string" }, "description": "values aligned 1:1 with the enum values" } } } },
+        "alphabeticalSorting": { "type": "boolean" },
+        "invalidValueMessage": { "type": "string", "description": "error text for an out-of-domain value (one text, all locales)" }
+      }
+    },
+    "custom": {
+      "type": "object", "description": "(kind CUSTOM) config", "additionalProperties": false,
+      "required": ["typeName"],
+      "properties": {
+        "typeName": { "type": "string", "description": "the registered kernel custom-type name" },
+        "minLength": { "type": "integer" }, "maxLength": { "type": "integer" }
+      }
+    },
+    "date": {
+      "type": "object", "description": "(kind DATE) config", "additionalProperties": false,
+      "properties": { "format": { "type": "string" }, "precision": { "type": "string", "description": "FULL (default) | a partial-date precision" } }
+    },
+    "time": {
+      "type": "object", "description": "(kind TIME) config", "additionalProperties": false,
+      "properties": { "format": { "type": "string" } }
+    },
+    "dateTime": {
+      "type": "object", "description": "(kind DATETIME) config", "additionalProperties": false,
+      "properties": { "format": { "type": "string" } }
+    },
+    "dateRange": {
+      "type": "object", "description": "(kind DATERANGE) config", "additionalProperties": false,
+      "required": ["format", "separator"],
+      "properties": {
+        "format": { "type": "string", "description": "a both-endpoints date pattern. The A12 editor offers five presets — YYYY/YYYY, YYYY-MM-DD/YYYY-MM-DD, MM/MM, YYYY-MM/YYYY-MM, MM-DD/MM-DD — but the kernel accepts any Java date pattern (e.g. dd.MM.yyyy)" },
+        "separator": { "type": "string", "description": "the range separator, e.g. \" - \"" }
+      }
+    },
+    "dateFragment": {
+      "type": "object", "description": "(kind DATEFRAGMENT) config", "additionalProperties": false,
+      "required": ["format"],
+      "properties": { "format": { "type": "string", "description": "a partial-date pattern (a date that isn't a full calendar date). The A12 editor offers four presets — MM, YYYY, YYYY-MM, MM-DD — but the kernel accepts any Java date pattern (e.g. yyyy-MM)" } }
+    }
+  },
+  "examples": [
+    {
+      "kind": "ENUM",
+      "enum": { "values": [ { "value": "GOLD" }, { "value": "SILVER" } ] }
+    },
+    {
+      "kind": "STRING",
+      "string": { "pattern": "[^@]+@[^@]+", "patternMessage": "must be an email address" }
+    }
+  ]
+}
