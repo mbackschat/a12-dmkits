@@ -1,6 +1,6 @@
 plugins {
     id 'java-library'
-    // Kotlin JVM — for the interpreter SPIKE prototype (test-scope only, throwaway). See SPIKE-PLAN.md.
+    // Kotlin JVM — for the interpreter SPIKE prototype (test-scope only, throwaway). See docs/INTERPRETER-SPIKE-PLAN.md.
     id 'org.jetbrains.kotlin.jvm' version '2.2.0'
 }
 

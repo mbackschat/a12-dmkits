@@ -1,6 +1,6 @@
 # Interpreter spike — execution plan
 
-Working plan for the §10 spike of [`docs/INTERPRETER-PROPOSAL.md`](docs/INTERPRETER-PROPOSAL.md). This is a **throwaway prototype** to de-risk the foundational loop, not production code. It lives on the `spike-interpreter` branch (this worktree); findings fold back into the proposal, the code can be discarded or kept as a reference.
+Working plan for the §10 spike of [INTERPRETER-PROPOSAL.md](INTERPRETER-PROPOSAL.md). A **throwaway prototype** to de-risk the foundational loop, not production code — now executed (results in [INTERPRETER-SPIKE-FINDINGS.md](INTERPRETER-SPIKE-FINDINGS.md)) and merged into `main`.
 
 ## Goal & acceptance criterion
 

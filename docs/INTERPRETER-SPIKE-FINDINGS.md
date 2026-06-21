@@ -1,6 +1,6 @@
 # Interpreter spike — findings
 
-Result of the [`SPIKE-PLAN.md`](SPIKE-PLAN.md) spike for [`docs/INTERPRETER-PROPOSAL.md`](docs/INTERPRETER-PROPOSAL.md) §10. On branch `spike-interpreter` (throwaway prototype).
+Result of the [INTERPRETER-SPIKE-PLAN.md](INTERPRETER-SPIKE-PLAN.md) spike for [INTERPRETER-PROPOSAL.md](INTERPRETER-PROPOSAL.md) §10. Prototype, merged into `main`; the extract-to-sibling-repo plan is in the proposal §8.
 
 ## Verdict
 
@@ -128,4 +128,4 @@ After the follow-ups above (big.js, polarity, parser, throughput, omitted-tail p
 4. A real perf-regression harness (JMH / tracked baselines) vs. the in-test bound.
 5. **Phase-2 extraction** (proposal §8): lift `:interpreter` into a sibling repo `a12-dm-interpreter` (its own conformance suite, test-only kernel dep) — removes the KMP toolchain from this repo's build.
 
-**Design record:** `docs/INTERPRETER-PROPOSAL.md` (intent + §10 spike result) · this file.
+**Design record:** [INTERPRETER-PROPOSAL.md](INTERPRETER-PROPOSAL.md) (intent + §10 spike result; extraction plan in §8) · this file.
