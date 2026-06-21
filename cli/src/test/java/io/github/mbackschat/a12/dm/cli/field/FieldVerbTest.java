@@ -90,4 +90,31 @@ class FieldVerbTest {
         assertEquals("applied", M.readTree(res.out()).get("outcome").asText());
         assertFalse(Files.readString(model).contains("DeliveryNotBeforeOrder"), "the referencing rule cascades away");
     }
+
+    // --- G19: field read/remove accept --group/--name too (the locator style learned from `field add`) ---
+
+    @Test
+    void readAcceptsGroupAndNameLocator(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "field", "read", "--group", "/Order", "--name", "Quantity");
+        assertEquals(0, res.code(), res::err);
+        assertEquals("/Order/Quantity", M.readTree(res.out()).path("data").path("field").asText(),
+                () -> "--group/--name resolves to the same field as the positional path: " + res.out());
+    }
+
+    @Test
+    void removeAcceptsGroupAndNameLocator(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "field", "remove", "--group", "/Order", "--name", "Quantity");
+        assertEquals(0, res.code(), res::err);
+        assertFalse(Files.readString(model).contains("\"/Order/Quantity\""), "removed via the --group/--name locator");
+    }
+
+    @Test
+    void fieldLocatorRejectsBothForms(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "field", "read",
+                "/Order/Quantity", "--group", "/Order", "--name", "Quantity");
+        assertEquals(2, res.code(), "a positional AND --group/--name together is a usage error");
+    }
 }

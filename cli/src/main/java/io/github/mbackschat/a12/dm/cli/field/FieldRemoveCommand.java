@@ -42,9 +42,17 @@ final class FieldRemoveCommand extends BaseCommand {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @ParamKind(ParamKind.Kind.FIELD_PATH)
-    @Parameters(index = "0", paramLabel = "<fieldPathInModel>",
-            description = "the field's full name-path, e.g. /Order/Quantity")
+    @Parameters(index = "0", arity = "0..1", paramLabel = "<fieldPathInModel>",
+            description = "the field's full name-path, e.g. /Order/Quantity (or address it with --group + --name)")
     String field;
+
+    @Option(names = "--group", paramLabel = "<path>",
+            description = "the field's group (with --name, as an alternative to the positional path)")
+    String group;
+
+    @Option(names = "--name", paramLabel = "<name>",
+            description = "the field's name (with --group, as an alternative to the positional path)")
+    String name;
 
     @Option(names = "--cascade",
             description = "also remove the rules/computations that reference the field (else a referenced field is refused)")
@@ -66,6 +74,13 @@ final class FieldRemoveCommand extends BaseCommand {
         String modelJson = readModelJson(model);
         if (modelJson == null) {
             return 2;
+        }
+        // G19: address the field by the positional path OR --group/--name (resolve into `field`)
+        try {
+            field = FieldLocator.resolve(field, group, name)
+                    .orElseThrow(() -> new IllegalArgumentException("pass a <fieldPath> or --group + --name"));
+        } catch (IllegalArgumentException e) {
+            return fail(e.getMessage());
         }
         IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         Optional<Refusal> notFound = new SafetyGate()
