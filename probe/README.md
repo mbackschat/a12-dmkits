@@ -57,18 +57,24 @@ JAVA_HOME="$(/usr/libexec/java_home -v 21)" ./gradlew :cli:nativeCompile -Porg.g
 #    FIRST clear the main-loop TaskList — the subagent INHERITS it via system-reminders and a revealing task
 #    name biases the probe (PROBE-SPEC, audit check 5). Build its prompt as: agent-preamble.md (single-sourced
 #    framing) + the task's TURN blocks (verbatim). cwd = <sandbox>/work, PATH = <sandbox>/bin:$PATH (bare
-#    `dmtool` → the shim), skill at <sandbox>/SKILL.md.
+#    `dmtool` → the shim), skill at <sandbox>/SKILL.md. The subagent prompt = `agent-preamble.md` + the task
+#    turns + `report-preamble.md` as a FINAL turn — so the agent writes its OWN bug-and-findings report
+#    (`<sandbox>/work/REPORT.md`) from the full context it holds (what it did and WHY). The report narrative
+#    is the AGENT's; the main loop verifies it (step 6), it does not author it.
 
 # 4. INTEGRITY GATE — confirm the agent stayed within its material boundary (skill + dmtool + own work files).
 #    Pass the agentId the Agent tool reported (or the transcript path). STOP and discard if it says SUSPECT:
 ./probe/audit-probe.sh <agentId>
 
-# 5. DETERMINISTIC DIGEST — the mechanical trajectory facts + auto RED-FLAGS (exits 1 on an escaped exception):
+# 5. DETERMINISTIC DIGEST — the mechanical trajectory facts + auto RED-FLAGS (an internal tool error:
+#    an escaped exception OR a structured RK_INTERNAL_ERROR/outcome:error/exit 70 — exits 1 if any):
 ./probe/digest-probe.sh
 
-# 6. (main loop, judgment) analyze vs the gold; record the audit verdict + the digest; investigate every
-#    finding to its ROOT CAUSE; EMBED the produced model JSON (sandbox output) for objective review;
-#    write probe/reports/<date>-<task>.md
+# 6. (main loop, RECONCILE — do not re-author) read the agent's <sandbox>/work/REPORT.md (the narrative + the
+#    WHY), cross-check it against the OBJECTIVE backstop (the audit verdict + the digest), and confirm/correct
+#    each claimed finding with a minimal repro. The agent won't honestly report a false success it didn't
+#    notice — that gap is exactly what the digest/shim-log catch. Commit probe/reports/<date>-<task>.md =
+#    the agent's report + the objective backstop + the maintainer's repro verdicts.
 ```
 
-The "runner" is the main assistant loop, not a script: setup + the deep analysis-and-report are judgment, the subagent is the agent-under-observation. The **anti-cheat audit** (`audit-probe.sh`) is deterministic and non-negotiable — a probe's findings are only trustworthy if the agent didn't read the repo's gold/source or hand-edit a model file; see [`docs/PROBE-SPEC.md`](../docs/PROBE-SPEC.md) "Material boundary & the anti-cheat audit". The analysis dimensions and the discover→fix→graduate-into-a-guard loop are in the same spec.
+The "runner" is the main assistant loop, not a script — but the **report narrative is the agent's, not the main loop's**: the agent holds the *why* (its own attempts/rejections/recoveries), so re-deriving the narrative post-hoc both loses that reasoning and duplicates context. The main loop's job is the **objective backstop** — the **anti-cheat audit** (`audit-probe.sh`, deterministic + non-negotiable: a probe's findings are only trustworthy if the agent didn't read the repo's gold/source or hand-edit a model) and the **digest** (catches the false success the agent didn't notice) — plus minimal-repro verification of each claimed finding. Division of labor + the discover→fix→graduate loop: [`docs/PROBE-SPEC.md`](../docs/PROBE-SPEC.md).
