@@ -1,0 +1,33 @@
+// SPIKE (docs/INTERPRETER-PROPOSAL.md §10) — a Kotlin Multiplatform module proving the interpreter
+// compiles and runs on BOTH the JVM and JS (Node). Throwaway prototype; not part of the shipped build.
+plugins {
+    id 'org.jetbrains.kotlin.multiplatform' version '2.2.0'
+}
+
+repositories {
+    mavenCentral()
+}
+
+kotlin {
+    jvmToolchain(21)
+
+    jvm()
+    js {
+        nodejs()
+    }
+
+    sourceSets {
+        jsMain {
+            dependencies {
+                // SPIKE gap-close: arbitrary-precision decimal on JS (proposal §5's named choice),
+                // so JS matches the JVM's BigDecimal instead of the POC's lossy Double.
+                implementation npm('big.js', '6.2.2')
+            }
+        }
+        commonTest {
+            dependencies {
+                implementation kotlin('test')
+            }
+        }
+    }
+}

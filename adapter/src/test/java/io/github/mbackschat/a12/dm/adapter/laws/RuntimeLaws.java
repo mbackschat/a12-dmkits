@@ -79,11 +79,20 @@ final class RuntimeLaws {
      */
     static String withRule(String modelJson, String groupId, String ruleName, String errorEntityRelPath,
             String errorCode, String condition) {
+        return withRuleMessages(modelJson, groupId, ruleName, errorEntityRelPath, errorCode, condition, "x", "x");
+    }
+
+    /** As {@link #withRule}, but with explicit en_US / de_DE error-message texts (for localized-text laws). */
+    static String withRuleMessages(String modelJson, String groupId, String ruleName, String errorEntityRelPath,
+            String errorCode, String condition, String enText, String deText) {
         String escaped = condition.replace("\\", "\\\\").replace("\"", "\\\"");
+        String en = enText.replace("\\", "\\\\").replace("\"", "\\\"");
+        String de = deText.replace("\\", "\\\\").replace("\"", "\\\"");
         String rule = "{ \"type\": \"Rule\", \"id\": \"" + groupId + "/" + ruleName + "\", \"name\": \"" + ruleName + "\","
                 + " \"Rule\": { \"errorEntityRelPath\": \"" + errorEntityRelPath + "\", \"errorCode\": \"" + errorCode + "\","
                 + " \"errorCondition\": \"" + escaped + "\", \"severity\": \"ERROR\","
-                + " \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" } ] } },\n";
+                + " \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"" + en + "\" },"
+                + " { \"locale\": \"de_DE\", \"text\": \"" + de + "\" } ] } },\n";
         // insert after the group's own elements bracket (the group id locates it; first elements after it)
         int g = modelJson.indexOf("\"id\": \"" + groupId + "\"");
         if (g < 0) {
@@ -197,13 +206,8 @@ final class RuntimeLaws {
         return typeOf(modelJson, errorCode, doc);
     }
 
-    /** Evaluate an explicit document instance; return every message (code + pointer) the kernel raised. */
-    static List<Msg> messages(String modelJson, Doc doc) {
-        IDocumentModel model = expandedModel(modelJson);
-        IDocumentModelResolver resolver = id -> model;
-        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
-        IDocumentFactory df = new DocumentServiceFactory(resolver).createDocumentFactory();
-
+    /** Build the document instance described by {@code doc} against {@code modelJson}'s model. */
+    private static IDocument buildInstance(String modelJson, IDocumentFactory df, Doc doc) {
         IDocument d = df.createDocument(modelId(modelJson));
         for (Inst i : doc.insts) {
             if (i.group()) {
@@ -214,10 +218,31 @@ final class RuntimeLaws {
                 d.addEntityInstance(df.createFieldInstance(i.path(), i.reps()));   // present, no value = unfilled
             }
         }
-        IDocumentValidationResult result = rt.validateFull(d, Locale.US);
-        return result.getMessages().stream()
+        return d;
+    }
+
+    /** Run the kernel's {@code validateFull} over the instance, in the given locale. */
+    private static IDocumentValidationResult validate(String modelJson, Doc doc, Locale locale) {
+        IDocumentModel model = expandedModel(modelJson);
+        IDocumentModelResolver resolver = id -> model;
+        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
+        IDocumentFactory df = new DocumentServiceFactory(resolver).createDocumentFactory();
+        return rt.validateFull(buildInstance(modelJson, df, doc), locale);
+    }
+
+    /** Evaluate an explicit document instance; return every message (code + pointer) the kernel raised. */
+    static List<Msg> messages(String modelJson, Doc doc) {
+        return validate(modelJson, doc, Locale.US).getMessages().stream()
                 .map(m -> new Msg(m.getErrorCode(), String.valueOf(m.getErrorFieldPointer()), m.getMessageType()))
                 .toList();
+    }
+
+    /** The kernel's fully-rendered (localized, params substituted) error text for {@code errorCode}. */
+    static Optional<String> errorTextOf(String modelJson, String errorCode, Doc doc, Locale locale) {
+        return validate(modelJson, doc, locale).getMessages().stream()
+                .filter(m -> m.getErrorCode().equals(errorCode))
+                .map(IMessage::getErrorText)
+                .findFirst();
     }
 
     static Set<String> firedCodes(String modelJson, Doc doc) {
@@ -246,16 +271,7 @@ final class RuntimeLaws {
         IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
         IDocumentFactory df = new DocumentServiceFactory(resolver).createDocumentFactory();
 
-        IDocument d = df.createDocument(modelId(modelJson));
-        for (Inst i : doc.insts) {
-            if (i.group()) {
-                d.addEntityInstance(df.createGroupInstance(i.path(), i.reps()));
-            } else if (i.hasValue()) {
-                d.addEntityInstance(df.createFieldInstance(i.path(), i.reps(), i.value()));
-            } else {
-                d.addEntityInstance(df.createFieldInstance(i.path(), i.reps()));
-            }
-        }
+        IDocument d = buildInstance(modelJson, df, doc);
         IDocumentComputationResult result = rt.compute(d, Locale.US);
         List<Computed> out = new ArrayList<>();
         result.getComputedFieldInstancesWithChanges().forEach(c ->

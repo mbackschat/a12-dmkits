@@ -15,3 +15,7 @@ include 'adapter'
 // over the engine. `application` plugin so dev runs go through `:cli:run`/`:cli:installDist` (no
 // jlink/jpackage in the inner loop). Depends on core now; +adapter when read/explain verbs land.
 include 'cli'
+
+// SPIKE (docs/INTERPRETER-PROPOSAL.md §10): a Kotlin Multiplatform interpreter module (jvm + js) — a
+// throwaway prototype proving the cross-platform thesis. Not part of the shipped build.
+include 'interpreter'
