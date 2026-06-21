@@ -26,4 +26,17 @@ public enum Requiredness {
     String mode() {
         return mode;
     }
+
+    /** The inverse of {@link #mode()}: a stored {@code requirednessConfig.mode} (or {@code null}/absent) → the form. */
+    static Requiredness fromMode(String mode) {
+        if (mode == null || mode.isBlank()) {
+            return OPTIONAL;
+        }
+        for (Requiredness r : values()) {
+            if (mode.equals(r.mode)) {
+                return r;
+            }
+        }
+        return OPTIONAL;   // an unknown mode reads as not-required rather than guessing
+    }
 }

@@ -117,4 +117,29 @@ class FieldVerbTest {
                 "/Order/Quantity", "--group", "/Order", "--name", "Quantity");
         assertEquals(2, res.code(), "a positional AND --group/--name together is a usage error");
     }
+
+    // --- G20: field read echoes the friendly required state (closes the verify-a-refactor loop) ---
+
+    @Test
+    void readEchoesTheFriendlyRequiredState(@TempDir Path dir) throws Exception {
+        Path m = dir.resolve("loc.dm.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "loc", "--locale", "en_US",
+                "--root", "Doc", "-o", m.toString()).code());
+        // a required field (via a spec), a conditionally-required one, and a plain optional one
+        Path reqSpec = dir.resolve("req.json");
+        Files.writeString(reqSpec, "{\"group\":\"/Doc\",\"name\":\"Must\",\"kind\":\"STRING\",\"required\":true}");
+        assertEquals(0, CliTestSupport.run("-m", m.toString(), "field", "add", reqSpec.toString()).code());
+        Path condSpec = dir.resolve("cond.json");
+        Files.writeString(condSpec, "{\"group\":\"/Doc\",\"name\":\"Maybe\",\"kind\":\"STRING\",\"required\":\"ifParentPresent\"}");
+        assertEquals(0, CliTestSupport.run("-m", m.toString(), "field", "add", condSpec.toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", m.toString(), "field", "add",
+                "--group", "/Doc", "--name", "Free", "--kind", "STRING").code());
+
+        assertTrue(M.readTree(CliTestSupport.run("-m", m.toString(), "field", "read", "/Doc/Must").out())
+                .path("data").path("required").asBoolean(), "a required field reads required:true");
+        assertEquals("ifParentPresent", M.readTree(CliTestSupport.run("-m", m.toString(), "field", "read", "/Doc/Maybe").out())
+                .path("data").path("required").asText(), "a conditionally-required field reads \"ifParentPresent\"");
+        assertFalse(M.readTree(CliTestSupport.run("-m", m.toString(), "field", "read", "/Doc/Free").out())
+                .path("data").path("required").asBoolean(), "a plain field reads required:false");
+    }
 }

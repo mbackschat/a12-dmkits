@@ -256,6 +256,19 @@ public final class ModelDocument {
         return Optional.ofNullable(field.path("Field").path("fieldType").path("type").asText(null));
     }
 
+    /**
+     * The field's requiredness at {@code fieldPath} — the friendly form of the stored
+     * {@code Field.requirednessConfig.mode} (absent = {@link Requiredness#OPTIONAL}). Empty if no such field.
+     */
+    public Optional<Requiredness> requiredness(String fieldPath) {
+        JsonNode field = locate(fieldPath, false);
+        if (field == null) {
+            return Optional.empty();
+        }
+        return Optional.of(Requiredness.fromMode(
+                field.path("Field").path("requirednessConfig").path("mode").asText(null)));
+    }
+
     /** Whether the group at {@code groupPath} is repeatable (repeatability &gt; 1). */
     public boolean isRepeating(String groupPath) {
         JsonNode group = locate(groupPath, true);

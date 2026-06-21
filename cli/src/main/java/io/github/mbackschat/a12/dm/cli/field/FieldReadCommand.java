@@ -71,6 +71,15 @@ final class FieldReadCommand extends BaseCommand {
             ObjectNode data = MAPPER.createObjectNode();
             data.put("field", fieldPath);
             data.put("type", type.get());
+            // echo the friendly requiredness (G20) — same vocabulary `required` takes on write, so an agent
+            // can verify a requiredness edit without decoding the stored requirednessConfig.mode
+            doc.requiredness(fieldPath).ifPresent(req -> {
+                switch (req) {
+                    case OPTIONAL -> data.put("required", false);
+                    case REQUIRED -> data.put("required", true);
+                    case REQUIRED_IF_PARENT_PRESENT -> data.put("required", "ifParentPresent");
+                }
+            });
             ResultEnvelope env = ResultEnvelope.read("field", "read", "read " + fieldPath, true, List.of(), data);
             out().print(env.toJsonString());
             return env.exitCode();

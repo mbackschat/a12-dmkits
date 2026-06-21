@@ -200,7 +200,8 @@ dmtool -m /tmp/struct2.dm.json field read /Subscription/Billing/BaseFee
   "summary" : "read /Subscription/Billing/BaseFee",
   "data" : {
     "field" : "/Subscription/Billing/BaseFee",
-    "type" : "NumberType"
+    "type" : "NumberType",
+    "required" : false
   },
   "diagnostics" : [ ],
   "written" : false
