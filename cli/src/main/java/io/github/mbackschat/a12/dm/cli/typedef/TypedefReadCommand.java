@@ -19,7 +19,9 @@ import picocli.CommandLine.Parameters;
 
 /**
  * {@code dmtool typedef read [<typeDefId>]} — read the model's reusable type definitions. Unified read
- * contract: no argument lists every id ({@code data.typedefs}); a {@code <typeDefId>} reads just that one
+ * contract: no argument lists every LOCAL id ({@code data.typedefs}, this model's {@code content.typeDefinitions})
+ * plus the model ids it IMPORTS type-defs from ({@code data.importedFrom} — the source-provenance dimension,
+ * resolvable to files via {@code model info}); a {@code <typeDefId>} reads just that one local def
  * ({@code data.typedef}+{@code type}). Typedefs are a flat model-level list (addressed by id, not a path).
  */
 @Command(name = "read", mixinStandardHelpOptions = true,
@@ -63,8 +65,16 @@ final class TypedefReadCommand extends BaseCommand {
             ObjectNode data = MAPPER.createObjectNode();
             ArrayNode arr = data.putArray("typedefs");
             ids.forEach(arr::add);
+            // source provenance: `typedefs` are LOCAL (this model's content.typeDefinitions); a model can
+            // ALSO use type-defs IMPORTED from other models (merged by id at expand) — surface those import
+            // sources so an agent sees the full picture (resolve them to files via `model info`)
+            List<String> imports = doc.typeDefImports();
+            if (!imports.isEmpty()) {
+                ArrayNode importsArr = data.putArray("importedFrom");
+                imports.forEach(importsArr::add);
+            }
             ResultEnvelope env = ResultEnvelope.read("typedef", "read",
-                    "read " + ids.size() + " type definition(s)", true, List.of(), data);
+                    "read " + ids.size() + " local type definition(s)", true, List.of(), data);
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {

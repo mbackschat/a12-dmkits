@@ -74,6 +74,20 @@ class TypedefImportVerbTest {
     }
 
     @Test
+    void typedefReadSurfacesTheImportSource(@TempDir Path dir) throws Exception {
+        // provenance: `typedef read` lists local ids in `typedefs` and the imported-from model ids in
+        // `importedFrom` (the editor's Source dimension), so an agent sees types also come from elsewhere
+        Path model = orderWithTypeProvider(dir);
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "typedef", "import",
+                "--reference", "catalogtypes", "-w", dir.toString()).code());
+        var read = CliTestSupport.run("-m", model.toString(), "typedef", "read");
+        assertEquals(0, read.code(), read::err);
+        JsonNode importedFrom = M.readTree(read.out()).path("data").path("importedFrom");
+        assertTrue(importedFrom.isArray() && importedFrom.toString().contains("catalogtypes"),
+                () -> "the import source is surfaced: " + read.out());
+    }
+
+    @Test
     void unimportingAnAbsentImportIsRefused(@TempDir Path dir) throws Exception {
         Path model = orderWithTypeProvider(dir);   // no import declared yet
         var res = CliTestSupport.run("-m", model.toString(), "typedef", "unimport",
