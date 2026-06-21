@@ -4,7 +4,7 @@ This is the **contract** every `dmtool` verb must satisfy and the **gates** that
 
 > **Gates over checklists.** Anything an LLM (or a human) can skip, will eventually be skipped. A criterion that matters becomes an executable gate that fails the build — a checklist item is only the human-readable shadow of a gate.
 
-The home of the *safety-gate* contract is [`CLI-SPEC.md`](CLI-SPEC.md) §6; the *operator vocabulary* is the [`CATALOG-SPEC.md`](CATALOG-SPEC.md) / `operators` verb. This doc is the *conformance* contract — what makes a verb self-explaining and well-diagnosed, and the guards that prove it.
+The home of the *safety-gate* contract is [`CLI-SPEC.md`](CLI-SPEC.md) §6; the *operator vocabulary* is the `operators` verb (the self-describing catalog; its design is the catalog spine in [`PROJECT-DESIGN.md`](PROJECT-DESIGN.md)). This doc is the *conformance* contract — what makes a verb self-explaining and well-diagnosed, and the guards that prove it.
 
 ## The anti-patterns it forbids (grounded in observed misses)
 
