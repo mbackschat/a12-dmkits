@@ -14,12 +14,13 @@ import kotlin.test.assertTrue
 class InterpreterMultiplatformTest {
 
     private val q = "/Order/Quantity"
+    private val bq = "/Order/BackorderQuantity"
     private val es = "/Order/ExpressShipping"
     private val cn = "/Order/CustomerName"
     private val ic = "/Order/Items/Count"
 
     private val kinds = mapOf(
-        q to Kind.NUMBER, es to Kind.BOOLEAN, cn to Kind.STRING, ic to Kind.NUMBER,
+        q to Kind.NUMBER, bq to Kind.NUMBER, es to Kind.BOOLEAN, cn to Kind.STRING, ic to Kind.NUMBER,
     )
 
     private fun fires(values: Map<String, String>, cond: Cond) =
@@ -80,5 +81,46 @@ class InterpreterMultiplatformTest {
             if (Interpreter(ctx).fires(perRow)) i + 1 else null
         }
         assertEquals(listOf(2, 3), firing)
+    }
+
+    @Test
+    fun arbitraryPrecisionDecimalOnBothPlatforms() {
+        // 0.1 + 0.2 == 0.3 EXACTLY — holds with BigDecimal (JVM) and big.js (JS); a Double-backed JS
+        // actual would fail here (0.1 + 0.2 = 0.30000000000000004). Proves the JS decimal is real.
+        val rep = RepDoc(
+            "/Order", "/Order/Items", mapOf(cn to "Acme"),
+            listOf(mapOf(ic to "0.1"), mapOf(ic to "0.2")), kinds,
+        )
+        val cond = Cond.And(
+            Cond.Pred("FieldFilled", listOf(Expr.Field(cn))),
+            Cond.Cmp(CmpOp.EQ, Expr.Func("Sum", listOf(Expr.Star(ic))), Expr.NumLit(dec("0.3"))),
+        )
+        assertTrue(Interpreter(rep.outerContext()).fires(cond), "0.1 + 0.2 == 0.3 with no binary-float drift")
+    }
+
+    @Test
+    fun polarityTypingRunsOnBothPlatforms() {
+        // And: a filled VALUE branch + an empty-substituted OMISSION branch → OMISSION (omission wins)
+        val cond = Cond.And(
+            Cond.Cmp(CmpOp.GT, Expr.Field(q), Expr.NumLit(dec(5))),
+            Cond.Cmp(CmpOp.GE, Expr.Field(bq), Expr.NumLit(dec(0))),
+        )
+        val doc = SpikeDoc("/Order", mapOf(q to "10"), kinds)
+        assertEquals(MsgType.OMISSION, Interpreter(doc).firedType(cond))
+    }
+
+    @Test
+    fun parserProducesEvaluableAstOnBothPlatforms() {
+        // real condition text → AST → interpret, cross-platform (no kernel here)
+        val guarded = parseCondition("FieldFilled(Quantity) And [Quantity] < 100", "/Order")
+        assertTrue(Interpreter(SpikeDoc("/Order", mapOf(q to "50"), kinds)).fires(guarded))
+        assertFalse(Interpreter(SpikeDoc("/Order", mapOf(cn to "Acme"), kinds)).fires(guarded), "guard suppresses empty")
+
+        val agg = parseCondition("Sum(Items*/Count) == 80", "/Order")
+        val rep = RepDoc(
+            "/Order", "/Order/Items", mapOf(cn to "Acme"),
+            listOf(mapOf(ic to "40"), mapOf(ic to "40")), kinds,
+        )
+        assertTrue(Interpreter(rep.outerContext()).fires(agg), "Sum(40, 40) == 80 from parsed text")
     }
 }

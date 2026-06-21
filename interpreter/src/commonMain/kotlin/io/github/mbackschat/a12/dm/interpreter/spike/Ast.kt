@@ -28,6 +28,9 @@ sealed interface Val {
 
 enum class CmpOp { LT, LE, GT, GE, EQ, NE }
 
+/** Value-vs-omission polarity of a fired message (kernel `IMessage.MessageType`). */
+enum class MsgType { VALUE, OMISSION }
+
 /** Condition AST (hand-built; the spike has no parser — that decision is deferred, proposal §11). */
 sealed interface Cond {
     data class Cmp(val op: CmpOp, val left: Expr, val right: Expr) : Cond

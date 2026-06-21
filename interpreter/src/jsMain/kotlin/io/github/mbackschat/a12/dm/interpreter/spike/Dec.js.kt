@@ -1,14 +1,22 @@
 package io.github.mbackschat.a12.dm.interpreter.spike
 
 /**
- * JS decimal actual — Double for this POC (exact for the integer/simple-decimal fixtures). Production
- * would bind big.js or use a multiplatform bignum here; the interpreter above never changes.
+ * JS decimal actual — backed by **big.js** (proposal §5's named choice), so JS gets the SAME
+ * arbitrary-precision decimal arithmetic as the JVM's BigDecimal. The interpreter above never changes:
+ * the platform difference is confined to this one file.
  */
-actual class Dec(val v: Double) : Comparable<Dec> {
-    actual operator fun plus(other: Dec): Dec = Dec(v + other.v)
-    actual override fun compareTo(other: Dec): Int = v.compareTo(other.v)
+@JsModule("big.js")
+@JsNonModule
+external class Big(value: String) {
+    fun plus(other: Big): Big
+    fun cmp(other: Big): Int
 }
 
-actual fun dec(value: String): Dec = Dec(value.toDouble())
-actual fun dec(value: Int): Dec = Dec(value.toDouble())
-actual val DEC_ZERO: Dec = Dec(0.0)
+actual class Dec(val v: Big) : Comparable<Dec> {
+    actual operator fun plus(other: Dec): Dec = Dec(v.plus(other.v))
+    actual override fun compareTo(other: Dec): Int = v.cmp(other.v)
+}
+
+actual fun dec(value: String): Dec = Dec(Big(value))
+actual fun dec(value: Int): Dec = Dec(Big(value.toString()))
+actual val DEC_ZERO: Dec = Dec(Big("0"))

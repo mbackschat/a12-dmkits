@@ -18,6 +18,61 @@ class Interpreter(private val ctx: EvalContext) {
         return evalCond(cond)
     }
 
+    /** The polarity [MsgType] of a fired rule, or null when it does not fire — VALUE vs OMISSION. */
+    fun firedType(cond: Cond): MsgType? {
+        if (!ctx.evaluated) return null
+        val r = evalTyped(cond)
+        return if (r.truth == Tri.TRUE) r.type else null
+    }
+
+    private data class Res(val truth: Tri, val type: MsgType)
+
+    // The typing rides alongside the truth value (kernel: ValidierungsErgebnis.combineUND/combineODER):
+    //   And — omission wins (a fillable branch makes the whole error fillable);
+    //   Or  — value wins  (a satisfied value branch convicts regardless of filling).
+    private fun evalTyped(c: Cond): Res = when (c) {
+        is Cond.Cmp -> Res(evalCmp(c), leafType(c.left, c.right))
+        is Cond.Pred -> Res(evalPred(c), predType(c))
+        is Cond.And -> {
+            val a = evalTyped(c.left)
+            val b = evalTyped(c.right)
+            val type = if (a.type == MsgType.OMISSION || b.type == MsgType.OMISSION) MsgType.OMISSION else MsgType.VALUE
+            Res(and(a.truth, b.truth), type)
+        }
+        is Cond.Or -> {
+            val a = evalTyped(c.left)
+            val b = evalTyped(c.right)
+            Res(or(a.truth, b.truth), orType(a, b))
+        }
+        is Cond.Not -> {
+            val a = evalTyped(c.c)
+            Res(not(a.truth), a.type)
+        }
+    }
+
+    /** Or: among the branches that are TRUE, a VALUE branch convicts → VALUE; else OMISSION. */
+    private fun orType(a: Res, b: Res): MsgType {
+        val trueBranchTypes = buildList {
+            if (a.truth == Tri.TRUE) add(a.type)
+            if (b.truth == Tri.TRUE) add(b.type)
+        }
+        return if (trueBranchTypes.contains(MsgType.VALUE)) MsgType.VALUE else MsgType.OMISSION
+    }
+
+    /** A comparison that fired on a substituted EMPTY field is fillable → OMISSION; else VALUE. */
+    private fun leafType(left: Expr, right: Expr): MsgType =
+        if (fieldsIn(left).any { !ctx.filled(it) } || fieldsIn(right).any { !ctx.filled(it) })
+            MsgType.OMISSION else MsgType.VALUE
+
+    private fun predType(p: Cond.Pred): MsgType =
+        if (p.name == "FieldNotFilled" || p.name == "GroupNotFilled") MsgType.OMISSION else MsgType.VALUE
+
+    private fun fieldsIn(e: Expr): List<String> = when (e) {
+        is Expr.Field -> listOf(e.path)
+        is Expr.Func -> e.args.flatMap { fieldsIn(it) }
+        else -> emptyList()
+    }
+
     private fun evalCond(c: Cond): Tri = when (c) {
         is Cond.Cmp -> evalCmp(c)
         is Cond.And -> and(evalCond(c.left), evalCond(c.right))
@@ -28,6 +83,7 @@ class Interpreter(private val ctx: EvalContext) {
 
     private fun evalPred(p: Cond.Pred): Tri = when (p.name) {
         "FieldFilled" -> Tri.of(ctx.filled(pathOf(p.args.single())))
+        "FieldNotFilled" -> Tri.of(!ctx.filled(pathOf(p.args.single())))
         "AllFieldsFilled" -> Tri.of(p.args.all { ctx.filled(pathOf(it)) })
         else -> error("spike: unsupported predicate ${p.name}")
     }

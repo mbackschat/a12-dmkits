@@ -6,6 +6,16 @@ Result of the [`SPIKE-PLAN.md`](SPIKE-PLAN.md) spike for [`docs/INTERPRETER-PROP
 
 **The thesis holds on both axes.** A hand-rolled tree-walking interpreter (1) reproduces the kernel's runtime rule evaluation for all four target shapes — verified against the *real kernel* via the existing `RuntimeLaws` oracle on the JVM — and (2) the **same `commonMain` engine compiles to Kotlin/JS and runs in Node**, with the only platform-specific code being a tiny `expect/actual` decimal shim. Both the native-image-clean property and the cross-platform property are demonstrated, not asserted.
 
+## Update — gaps closed (2026-06-21 follow-up)
+
+Three of the originally-listed gaps were closed:
+
+| gap | how it was closed |
+|---|---|
+| **Arbitrary-precision JS decimal** | The JS `Dec` actual was swapped from `Double` to **big.js** (proposal §5's named choice) via `@JsModule`/`@JsNonModule` + an npm dependency. Proof: `0.1 + 0.2 == 0.3` *exactly* on **both** JVM and JS (a Double-backed actual gives 0.30000…04). Also proves the npm-binding path resolves in the isolated home. |
+| **MessageType / polarity** | A typed eval pass reproduces VALUE-vs-OMISSION (comparison over filled → VALUE, over empty-substituted → OMISSION; **And = omission wins, Or = value wins**; `FieldNotFilled` → OMISSION). **7 cases match the kernel** (`PolarityDiffTest`, mirrors `ErrorTypeLawsTest`); the typing also runs on JS. |
+| **Real parser** | A minimal recursive-descent parser in `commonMain` turns condition **text → AST** (resolving relative paths against the rule's group). Proof: `ParserDiffTest` drives the interpreter from parsed text and matches the kernel across single-row, starred-aggregate, and per-row shapes; the parser also runs on JS. (Full grammar / kernel-parser-vs-ANTLR choice stays open — §11.) |
+
 ## What was built
 
 A real Kotlin Multiplatform module — one interpreter, two targets, consumed two ways:
@@ -57,12 +67,14 @@ Every case asserts `interpreterFires == kernelFires` over the *same* document in
 - **Kotlin/JS works in the isolated home**: the plugin downloaded Node, ran the npm/yarn install, compiled to JS, and executed `jsNodeTest` — all offline-of-the-private-registry. This was the main unknown for the JS POC; it's cleared. (Implication: CI for the JS target needs network to nodejs.org + the npm registry the first time.)
 - **Native-safety: clean.** `commonMain` has zero `java.*` and zero `com.mgmtp.*`/groovy imports; the only JDK type is `BigDecimal` in the JVM `Dec` actual.
 
-## Caveats / not yet proven
+## Caveats / still not proven
 
-- **JS decimal is `Double` for the POC** — exact for the integer/simple-decimal fixtures, but not arbitrary-precision. Production swaps the JS `Dec` actual for big.js or a multiplatform bignum; the swap is localized to `Dec.js.kt` and the engine never changes.
-- **No `MessageType`/polarity, no localized message text, no formal-error model** — only fire/no-fire (+ per-row attribution).
-- **Throughput unmeasured.**
-- **No parser.** A handful of operators only (the four shapes' worth).
+After the follow-up above (big.js, polarity, parser closed), what genuinely remains:
+
+- **Throughput unmeasured** — the spike is correctness-only. Deferred on purpose: the kernel's scale optimizations are *algorithmic* (caches, `*`-prune) and reimplementable in the same `EvalContext`/iteration layer; measure when a real big-document scenario exists.
+- **Localized message text + formal-error model** — only the diagnostic *shape* (code / where / severity / `MessageType`) is reproduced, not the 4-locale rendered prose. The fiddliest fidelity tier; lower priority.
+- **Aggregate polarity (the omitted-tail)** — comparison / And / Or / presence typing matches the kernel; the starred-aggregate "OMISSION until the repetition is exhausted" typing needs declared-repeatability metadata the spike doesn't carry. Simplified for now.
+- **Parser is a subset** — covers the shapes exercised; the full grammar (and the kernel-parse-tree-api-vs-ANTLR choice) is still §11's open decision.
 - `expect/actual class` emits a beta warning (harmless; suppressible with `-Xexpect-actual-classes`).
 
 ## Recommended scope for Phase 1

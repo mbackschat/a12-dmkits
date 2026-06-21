@@ -17,6 +17,13 @@ kotlin {
     }
 
     sourceSets {
+        jsMain {
+            dependencies {
+                // SPIKE gap-close: arbitrary-precision decimal on JS (proposal §5's named choice),
+                // so JS matches the JVM's BigDecimal instead of the POC's lossy Double.
+                implementation npm('big.js', '6.2.2')
+            }
+        }
         commonTest {
             dependencies {
                 implementation kotlin('test')
