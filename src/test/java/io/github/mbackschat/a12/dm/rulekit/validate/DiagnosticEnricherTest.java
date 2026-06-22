@@ -46,6 +46,10 @@ class DiagnosticEnricherTest {
         String fix = enriched.fix().orElse("");
         assertTrue(fix.contains("True") && fix.contains("False"),
                 () -> "the syntax hint names the capitalized boolean literals True/False, got: " + fix);
+        // probe 08 Finding 3: a field used as a comparison VALUE without brackets (`Approved != True`) is also
+        // MVK_UNEXPECTED_TOKEN — the hint must name the bracket-the-operand cause, not just literals/keywords.
+        assertTrue(fix.contains("BRACKETED") && fix.contains("[Approved]"),
+                () -> "the syntax hint names the bracket-the-operand cause, got: " + fix);
     }
 
     @Test

@@ -72,7 +72,9 @@ public final class StructuralKernelFix {
                             + "must be CAPITALIZED — write `True` / `False`, not the JSON `true` / `false` "
                             + "(e.g. `[Flag] == True`); (2) a string value must be DOUBLE-QUOTED — `[Status] == \"OPEN\"`; "
                             + "(3) operator/keyword names are case-sensitive PascalCase — `FieldFilled`, `And`, `Or`, "
-                            + "`Not`. Re-check the token at the reported position against these.",
+                            + "`Not`; (4) a FIELD used as a comparison VALUE must be BRACKETED — `[Approved] != True`, "
+                            + "not `Approved != True` (bare names belong only inside a function/predicate's parentheses, "
+                            + "like `FieldFilled(Approved)`). Re-check the token at the reported position against these.",
                     "MVK_UNEXPECTED_TOKEN is the kernel's generic parse error — a token appeared where the grammar "
                             + "did not allow it — and it is raised WITHOUT a message, so the likely cause has to be "
                             + "inferred from the DSL's literal/keyword conventions (capitalized booleans True/False, "
