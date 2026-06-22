@@ -211,6 +211,24 @@ class FieldVerbTest {
     }
 
     @Test
+    void modifyRejectsAnOrphanConfigBlockEvenWithACoPresentAspect(@TempDir Path dir) throws Exception {
+        // 05-modify-drop (SILENT DROP): a kind-less `string` config block + a co-present `label` reported
+        // success (aspects:[label]) and silently DROPPED the pattern. It must now be rejected — the block can't
+        // take effect without `kind` — and NOTHING is applied (atomic), so the label isn't written either.
+        Path m = CliTestSupport.orderRuled(dir);
+        Path spec = dir.resolve("orphan.json");
+        Files.writeString(spec, """
+                {"group":"/Order/Items","name":"Sku","label":{"en_US":"Product SKU"},"string":{"pattern":"X[0-9]+","patternMessage":"bad"}}""");
+        var res = CliTestSupport.run("-m", m.toString(), "field", "modify", spec.toString());
+        assertNotEquals(0, res.code(), () -> "an orphaned config block must be rejected even with a co-present aspect: " + res.out());
+        assertTrue(res.err().contains("kind") && res.err().contains("re-type"),
+                () -> "the corrective names the missing kind: " + res.err());
+        String written = Files.readString(m);
+        assertFalse(written.contains("X[0-9]+"), "the orphaned pattern was NOT silently applied");
+        assertFalse(written.contains("Product SKU"), "nothing applied — the modify is atomic; the label isn't written either");
+    }
+
+    @Test
     void removesAnUnreferencedField(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         var res = CliTestSupport.run("-m", model.toString(), "field", "remove", "/Order/Quantity");

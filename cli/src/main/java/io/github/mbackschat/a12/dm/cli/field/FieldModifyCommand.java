@@ -95,7 +95,11 @@ final class FieldModifyCommand extends BaseCommand {
             }
             FieldSpec.ModificationSpec parsed = FieldSpec.parseModification(spec);
             FieldModification mod = parsed.modification();
-            if (mod.isEmpty()) {
+            // an orphaned per-kind config block (no `kind`/`typedef` to select it) can't take effect — reject it
+            // whether or not OTHER aspects are present, so it is never SILENTLY DROPPED (05-modify-drop: a
+            // co-present `label` made the modify non-empty, masking the dropped `string`/`number` block). The
+            // empty-modify case shares the same context-aware corrective.
+            if (FieldSpec.configBlockWithoutKind(spec) != null || mod.isEmpty()) {
                 return fail(FieldSpec.emptyModificationCorrective(spec));
             }
             fieldPath = parsed.group() + "/" + parsed.name();

@@ -255,7 +255,9 @@ final class ApplyCommand extends BaseCommand {
                 // the whole sequence.
                 FieldSpec.ModificationSpec parsed = FieldSpec.parseModification(op);
                 FieldModification mod = parsed.modification();
-                if (mod.isEmpty()) {
+                // reject an orphaned per-kind config block (no `kind`/`typedef`) whether or not other aspects
+                // are present — never SILENTLY DROP it (05-modify-drop); same corrective as the empty case.
+                if (FieldSpec.configBlockWithoutKind(op) != null || mod.isEmpty()) {
                     throw new IllegalArgumentException(FieldSpec.emptyModificationCorrective(op));
                 }
                 String path = parsed.group() + "/" + parsed.name();
