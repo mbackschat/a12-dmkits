@@ -53,6 +53,28 @@ class ApplyVerbTest {
     }
 
     @Test
+    void theApplyTerminalGateSurfacesTheKernelCauseNotABareNotValid(@TempDir Path dir) throws Exception {
+        // probe 07 (root-cause sweep): a rejection at the apply TERMINAL gate (EditSession.validate) used to
+        // flatten to a cause-less "the edited model is not kernel-valid" — unlike the per-edit gate
+        // (ModelDocument.validate), which probe 04 fixed inline. The duplication was the defect; both now
+        // route through ModelConsistencyException.notKernelValid, so the apply commit NAMES the cause.
+        // Trigger: a duplicate field name slips the per-op precheck and is caught only by the terminal gate.
+        Path model = CliTestSupport.orderRuled(dir);   // /Order/Items already has a Sku field
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, """
+                [ {"target":"field","op":"add","group":"/Order/Items","name":"Sku","kind":"STRING"} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertNotEquals(0, res.code(), () -> "the duplicate must be rejected: " + res.out());
+        JsonNode j = M.readTree(res.out());
+        assertFalse(j.path("committed").asBoolean());
+        assertFalse(j.path("written").asBoolean());
+        assertTrue(res.out().contains("the same name"),
+                () -> "the apply terminal-gate rejection must surface the kernel cause, not a bare 'not kernel-valid': "
+                        + res.out());
+    }
+
+    @Test
     void appliesGroupModifyTypedefEnumAndConfigRolesInOneSession(@TempDir Path dir) throws Exception {
         // apply-parity for the verbs widened this session: group modify --index-field (G24), the rich
         // typedef add ENUM spec (G25), and config modify --role (G26) all reachable as op-records.

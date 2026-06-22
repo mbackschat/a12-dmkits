@@ -501,7 +501,9 @@ public final class EditSession {
         } catch (ModelConsistencyException e) {
             throw e;
         } catch (IOException | RuntimeException e) {
-            throw new ModelConsistencyException("the edited model is not kernel-valid", e);
+            // deserialize/expand tier — surface the cause via the shared factory (probe 07: the terminal
+            // gate used to drop it, unlike the per-edit gate; one factory keeps them from drifting).
+            throw ModelConsistencyException.notKernelValid(e);
         }
         return this;
     }

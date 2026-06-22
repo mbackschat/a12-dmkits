@@ -33,6 +33,23 @@ public class ModelConsistencyException extends RuntimeException {
         this.notifications = List.of();
     }
 
+    /**
+     * The single uniform "edited model is not kernel-valid" wrap for a deserialize/expand-tier rejection (a
+     * non-{@code ModelConsistencyException} {@link RuntimeException} / {@code IOException} thrown while
+     * re-binding the edited model), <b>surfacing the cause's message</b> so the rejection is never
+     * content-free. This is the shared root for the two kernel-gate sites — the per-edit gate
+     * ({@code ModelDocument.validate}) and the session terminal gate ({@code EditSession.validate}), which
+     * backs the {@code apply}/{@code batch} commit — so the cause-append cannot drift between them. (Probe
+     * 04 fixed the per-edit site inline; probe 07 found the terminal gate still bare — the duplication was
+     * the defect, hence one factory.)
+     */
+    public static ModelConsistencyException notKernelValid(Throwable cause) {
+        String message = cause == null ? null : cause.getMessage();
+        return new ModelConsistencyException(
+                "the edited model is not kernel-valid" + (message != null && !message.isBlank() ? ": " + message : ""),
+                cause);
+    }
+
     /** The kernel notifications (ERROR severity) that caused this failure. */
     public List<RankedNotification> notifications() {
         return notifications;

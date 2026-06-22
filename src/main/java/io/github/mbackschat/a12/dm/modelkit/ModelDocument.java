@@ -1653,12 +1653,11 @@ public final class ModelDocument {
             throw e; // checkConsistency tier — already the uniform "model invalid" type
         } catch (IOException | RuntimeException e) {
             // deserialize/expand tier (e.g. a duplicate element id surfaces as IllegalArgumentException):
-            // funnel into the same type so a caller sees one "invalid edit" signal regardless of tier — but
-            // SURFACE the underlying cause's message (probe 04: a bare "not kernel-valid" with no code/where
-            // left an agent nothing to act on; e.g. an unresolvable type-def import now names what failed).
-            String cause = e.getMessage();
-            throw new ModelConsistencyException(
-                    "the edited model is not kernel-valid" + (cause != null && !cause.isBlank() ? ": " + cause : ""), e);
+            // funnel into the same type so a caller sees one "invalid edit" signal regardless of tier — and
+            // SURFACE the underlying cause's message via the shared factory (probe 04: a bare "not
+            // kernel-valid" with no code/where left an agent nothing to act on). Same factory as the session
+            // terminal gate (EditSession.validate) so the cause-append can't drift between the two gates.
+            throw ModelConsistencyException.notKernelValid(e);
         }
         return this;
     }
