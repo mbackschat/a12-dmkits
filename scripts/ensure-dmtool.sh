@@ -30,7 +30,7 @@
 # from the native binary (model eval / rule test / model compute are JVM-only — see the project docs).
 set -uo pipefail
 
-VERSION="v0.6.0"
+VERSION="v0.7.0"
 REPO="mbackschat/a12-dmtool-releases"
 # Host-provided dirs differ by agent: Claude Code sets CLAUDE_PLUGIN_*, Codex sets PLUGIN_* — accept both.
 DATA="${CLAUDE_PLUGIN_DATA:-${PLUGIN_DATA:-$HOME/.cache/dmtool-plugin}}"

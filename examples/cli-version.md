@@ -13,7 +13,7 @@ dmtool --version
 ```
 
 ```output
-a12-dmkits 0.6.0
+a12-dmkits 0.7.0
   kernel: 30.8.1 (built) / 30.8.1 (runtime)
   A12 Tools distribution: 2025.06-ext5
   catalog verified against: 30.8.1
@@ -29,7 +29,7 @@ dmtool manifest | jq .version
 
 ```output
 {
-  "rulekit": "0.6.0",
+  "rulekit": "0.7.0",
   "kernel": {
     "builtAgainst": "30.8.1",
     "a12Distribution": "2025.06-ext5",
