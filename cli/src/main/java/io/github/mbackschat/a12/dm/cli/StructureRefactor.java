@@ -123,6 +123,7 @@ public final class StructureRefactor {
                 (doc, adapter) -> new SafetyGate()
                         .require(SafetyChecks.exists(doc, fieldPath, false))
                         .require(SafetyChecks.groupExists(doc, newParent))
+                        .require(SafetyChecks.notAlreadyUnder(fieldPath, newParent))
                         .require(SafetyChecks.pathAvailable(doc, to)),
                 doc -> doc.moveField(fieldPath, newParent),
                 (adapter, doc) -> singleReferrers(adapter, fieldPath));
@@ -135,6 +136,7 @@ public final class StructureRefactor {
                         .require(SafetyChecks.exists(doc, groupPath, true))
                         .require(SafetyChecks.groupExists(doc, newParent))
                         .require(SafetyChecks.notIntoOwnSubtree(groupPath, newParent))
+                        .require(SafetyChecks.notAlreadyUnder(groupPath, newParent))
                         .require(SafetyChecks.pathAvailable(doc, to)),
                 doc -> doc.moveGroup(groupPath, newParent),
                 (adapter, doc) -> subtreeReferrers(adapter, doc, groupPath));

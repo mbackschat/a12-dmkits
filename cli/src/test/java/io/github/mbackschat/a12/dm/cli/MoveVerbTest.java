@@ -161,6 +161,23 @@ class MoveVerbTest {
     }
 
     @Test
+    void refusesANoOpMoveToTheCurrentParentWithANoOpAwareMessageNotABareClash(@TempDir Path dir) throws Exception {
+        // probe 09: moving an element to the parent it ALREADY has used to read as the generic name clash
+        // ("…already exists … choose a name not already used by a sibling"), masking that it's a no-op. The
+        // gate now names the real situation. Still RK_NAME_EXISTS (same gate class), still writes nothing.
+        Path model = orderModel(dir);             // /Order/Note is already directly under /Order
+        String before = Files.readString(model);
+        var res = CliTestSupport.run("-m", model.toString(), "field", "move", "/Order/Note", "--to", "/Order");
+        assertEquals(2, res.code());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("refused", j.get("outcome").asText());
+        String diag = j.path("diagnostics").toString();
+        assertTrue(diag.contains("nothing to move") && diag.contains("no-op"),
+                () -> "names the no-op, not a bare name clash: " + diag);
+        assertEquals(before, Files.readString(model), "a no-op move mutates nothing");
+    }
+
+    @Test
     void dryRunPreviewsWithoutWriting(@TempDir Path dir) throws Exception {
         Path model = orderModel(dir);
         String before = Files.readString(model);

@@ -313,6 +313,31 @@ public final class SafetyChecks {
         };
     }
 
+    /**
+     * Refuse a move whose destination parent is ALREADY the element's current parent — a no-op. Without it
+     * the generic {@code pathAvailable} collision reads as a name clash ("choose a name not already used by
+     * a sibling"), masking that the request was simply already satisfied (probe 09). Names the real
+     * situation instead; runs BEFORE {@code pathAvailable} so the no-op message wins over the generic clash.
+     * (Stays {@code RK_NAME_EXISTS} — same gate class — but with a no-op-accurate summary + fix.)
+     */
+    public static SafetyCheck notAlreadyUnder(String path, String newParent) {
+        return () -> {
+            int cut = path.lastIndexOf('/');
+            String currentParent = cut <= 0 ? "" : path.substring(0, cut);
+            if (!currentParent.equals(newParent)) {
+                return Optional.empty();
+            }
+            Diagnostic diagnostic = Diagnostic.precheck(Optional.of("RK_NAME_EXISTS"),
+                    "'" + path + "' is already directly under '" + newParent + "' — nothing to move",
+                    Diagnostic.Where.path(path),
+                    Optional.of("the element is already where you asked; a move only relocates to a DIFFERENT "
+                            + "parent, so this is a no-op — nothing was written"),
+                    Optional.empty());
+            return Optional.of(new Refusal(
+                    "'" + path + "' already under '" + newParent + "' — no move needed", null, diagnostic));
+        };
+    }
+
     /** The RK_NAME_EXISTS refusal: a rename whose chosen new name/id is already taken (the collision gate). */
     public static Refusal nameExists(String name, String kind, String fix) {
         Diagnostic diagnostic = Diagnostic.precheck(Optional.of("RK_NAME_EXISTS"),
