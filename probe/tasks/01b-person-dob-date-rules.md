@@ -10,6 +10,8 @@ Run as ONE session, prompts in order — the agent must NOT look ahead or optimi
 **Turn 1**
 > create a document model for a person: their full name, date of birth, and the date they joined. Add validation that the person is at least 18 years old (based on their date of birth), and that the join date is not in the future.
 
+STOP — do not read below until this turn is complete and verified.
+
 **Turn 2**
 > Add a renewal date field, and a rule that the renewal must be within 2 years after the join date.
 

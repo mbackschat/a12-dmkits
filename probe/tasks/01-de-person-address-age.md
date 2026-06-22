@@ -10,6 +10,8 @@ The headline question is **self-direction**: the prompts are German but **never 
 **Turn 1**
 > Erstelle ein Dokumentmodell für eine Person mit einer Privatadresse und einer Geschäftsadresse, füge passende Bedingungen hinzu. Und stelle sicher, dass die Person mindestens 18 Jahre alt ist.
 
+STOP — do not read below until this turn is complete and verified.
+
 **Turn 2**
 > Verschiebe die Felder der Adressgruppe in ein separates Dokumentmodell und binde es dann für die Privat- und die Geschäftsadresse ein.
 
