@@ -41,6 +41,13 @@ sealed interface Cond {
 
     /** A boolean-valued predicate function, e.g. FieldFilled(path), AllFieldsFilled(a, b). */
     data class Pred(val name: String, val args: List<Expr>) : Cond
+
+    /**
+     * An infix pattern test: `value PatternMatched "regex"` / `value PatternViolated "regex"`. The regex
+     * is anchored over the WHOLE value (kernel semantics). [expectMatch] = PatternMatched (fires when the
+     * value matches); PatternViolated fires when a *present* value does NOT match (empty → not evaluated).
+     */
+    data class Pattern(val value: Expr, val pattern: Expr, val expectMatch: Boolean) : Cond
 }
 
 /** Expression AST. */

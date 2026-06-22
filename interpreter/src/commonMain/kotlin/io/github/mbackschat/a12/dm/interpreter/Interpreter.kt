@@ -33,6 +33,9 @@ class Interpreter(private val ctx: EvalContext) {
     private fun evalTyped(c: Cond): Res = when (c) {
         is Cond.Cmp -> Res(evalCmp(c), leafType(c.left, c.right))
         is Cond.Pred -> Res(evalPred(c), predType(c))
+        // A pattern fires only on a PRESENT value (empty → not evaluated), so a fired pattern is always a
+        // present-value error → VALUE (there is no "fill more to fix it" omission — the field is filled).
+        is Cond.Pattern -> Res(evalPattern(c), MsgType.VALUE)
         is Cond.And -> {
             val a = evalTyped(c.left)
             val b = evalTyped(c.right)
@@ -80,6 +83,7 @@ class Interpreter(private val ctx: EvalContext) {
         is Cond.Or -> or(evalCond(c.left), evalCond(c.right))
         is Cond.Not -> not(evalCond(c.c))
         is Cond.Pred -> evalPred(c)
+        is Cond.Pattern -> evalPattern(c)
     }
 
     private fun evalPred(p: Cond.Pred): Tri = when (p.name) {
@@ -87,6 +91,15 @@ class Interpreter(private val ctx: EvalContext) {
         "FieldNotFilled" -> Tri.of(!ctx.filled(pathOf(p.args.single())))
         "AllFieldsFilled" -> Tri.of(p.args.all { ctx.filled(pathOf(it)) })
         else -> error("unsupported predicate ${p.name}")
+    }
+
+    /** `value PatternMatched/PatternViolated "regex"` — anchored full-value match; empty → not evaluated. */
+    private fun evalPattern(p: Cond.Pattern): Tri {
+        val v = evalExpr(p.value)
+        if (v is Val.Unknown) return Tri.UNKNOWN
+        val text = (v as? Val.Txt)?.v ?: error("pattern comparison needs a string value, got $v")
+        val matched = Regex((p.pattern as Expr.StrLit).v).matches(text)
+        return Tri.of(if (p.expectMatch) matched else !matched)
     }
 
     private fun evalCmp(c: Cond.Cmp): Tri {
