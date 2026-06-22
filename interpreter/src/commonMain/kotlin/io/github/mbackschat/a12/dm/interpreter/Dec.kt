@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.interpreter.spike
+package io.github.mbackschat.a12.dm.interpreter
 
 /**
  * The interpreter's decimal — the ONE platform-specific primitive (proposal §5's "thin shim"). All the

@@ -40,7 +40,7 @@ All under `adapter/src/test/kotlin/io/github/mbackschat/a12/dm/interpreter/spike
 3. **`Interpreter.kt`** — the tree-walking evaluator.
    - Walk `Cond`, resolve `FieldRef` against `SpikeDoc` in the current row context, apply operators with three-valued + type-driven empty semantics, return `Tri`. A rule **fires** when its error condition evaluates `TRUE`.
    - Model decimals with `java.math.BigDecimal` (the JVM half of the eventual `expect/actual` shim — see proposal §5).
-4. **`SpikeInterpreterDiffTest.kt`** (or `.java`) — in package `io.github.mbackschat.a12.dm.adapter.laws` so it can reach package-private `RuntimeLaws`. The differential battery (below).
+4. **`InterpreterDiffTest.kt`** (or `.java`) — in package `io.github.mbackschat.a12.dm.adapter.laws` so it can reach package-private `RuntimeLaws`. The differential battery (below).
 
 ## The four shapes (concrete, all on `models/order.dm.json`)
 
@@ -62,7 +62,7 @@ Reference templates already in the repo: `EmptyValueLawsTest` (shapes 1–2, ver
 ## Build & run
 
 - Build ONLY via `./build.sh <args>` (isolated Gradle home + JDK 21). Never bare `./gradlew`.
-- Run the battery: `./build.sh :adapter:test --tests '*SpikeInterpreterDiff*'`.
+- Run the battery: `./build.sh :adapter:test --tests '*InterpreterDiff*'`.
 
 ## Step-by-step checklist
 
@@ -70,7 +70,7 @@ Reference templates already in the repo: `EmptyValueLawsTest` (shapes 1–2, ver
 1. **Kotlin toolchain probe** — add `id 'org.jetbrains.kotlin.jvm' version '<match>'` to `adapter/build.gradle`, drop in a trivial `src/test/kotlin` file, `./build.sh :adapter:compileTestKotlin`. **If the plugin won't resolve in the isolated home → fall back to writing the interpreter in Java** and record the toolchain blocker as a key finding (it affects Phase-1). Decide this *before* investing.
 2. **`Ast.kt` + `SpikeDoc.kt`** — the AST, three-valued `Tri`, the plain doc + field-type map.
 3. **`Interpreter.kt`** — shapes 1–2 first (comparison + the empty asymmetry). Get the type-driven empty handling + filled-row precondition right.
-4. **`SpikeInterpreterDiffTest`** — wire the case spec that feeds both sides; battery for shapes 1–2; run; reach agreement with the kernel.
+4. **`InterpreterDiffTest`** — wire the case spec that feeds both sides; battery for shapes 1–2; run; reach agreement with the kernel.
 5. **Shape 3 (aggregate)** — operand-list vs starred.
 6. **Shape 4 (`*`-iteration)** — attempt full; if partial, document the gap precisely.
 7. **MessageType probe** — for the passing cases, also compare `messages(...)`'s `MessageType`; note how close polarity gets (message-fidelity finding).

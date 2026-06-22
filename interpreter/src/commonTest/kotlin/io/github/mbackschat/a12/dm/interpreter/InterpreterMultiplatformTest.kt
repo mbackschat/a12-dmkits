@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.interpreter.spike
+package io.github.mbackschat.a12.dm.interpreter
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -26,7 +26,7 @@ class InterpreterMultiplatformTest {
     )
 
     private fun fires(values: Map<String, String>, cond: Cond) =
-        Interpreter(SpikeDoc("/Order", values, kinds)).fires(cond)
+        Interpreter(SingleRowDoc("/Order", values, kinds)).fires(cond)
 
     @Test
     fun comparisonAndThreeValuedLogic() {
@@ -107,7 +107,7 @@ class InterpreterMultiplatformTest {
             Cond.Cmp(CmpOp.GT, Expr.Field(q), Expr.NumLit(dec(5))),
             Cond.Cmp(CmpOp.GE, Expr.Field(bq), Expr.NumLit(dec(0))),
         )
-        val doc = SpikeDoc("/Order", mapOf(q to "10"), kinds)
+        val doc = SingleRowDoc("/Order", mapOf(q to "10"), kinds)
         assertEquals(MsgType.OMISSION, Interpreter(doc).firedType(cond))
     }
 
@@ -115,8 +115,8 @@ class InterpreterMultiplatformTest {
     fun parserProducesEvaluableAstOnBothPlatforms() {
         // real condition text → AST → interpret, cross-platform (no kernel here)
         val guarded = parseCondition("FieldFilled(Quantity) And [Quantity] < 100", "/Order")
-        assertTrue(Interpreter(SpikeDoc("/Order", mapOf(q to "50"), kinds)).fires(guarded))
-        assertFalse(Interpreter(SpikeDoc("/Order", mapOf(cn to "Acme"), kinds)).fires(guarded), "guard suppresses empty")
+        assertTrue(Interpreter(SingleRowDoc("/Order", mapOf(q to "50"), kinds)).fires(guarded))
+        assertFalse(Interpreter(SingleRowDoc("/Order", mapOf(cn to "Acme"), kinds)).fires(guarded), "guard suppresses empty")
 
         val agg = parseCondition("Sum(Items*/Count) == 80", "/Order")
         val rep = RepDoc(
@@ -144,7 +144,7 @@ class InterpreterMultiplatformTest {
         }
         assertEquals(n / 100 * 49, firing, "rows with Count in 51..99 fire (49 per 100)")
         assertTrue(sumFires)
-        println("[spike] interpreted $n rows (per-row + Sum aggregate) in $elapsed")
+        println("[interpreter] interpreted $n rows (per-row + Sum aggregate) in $elapsed")
         // Regression guard: ~30ms actual on the JVM; a gross O(n^2)-type regression would blow past this.
         // Generous headroom so JS (Node, interpreted) and CI variance don't flake. A real perf-regression
         // harness (JMH / tracked baselines) is Phase-1 work — this just trips on catastrophic slowdowns.
@@ -153,7 +153,7 @@ class InterpreterMultiplatformTest {
 
     @Test
     fun rendersMessagePlaceholderOnBothPlatforms() {
-        val ctx = SpikeDoc("/Order", mapOf(q to "50"), kinds)
+        val ctx = SingleRowDoc("/Order", mapOf(q to "50"), kinds)
         assertEquals("low: 50", renderMessage("low: \$Quantity.value\$", "/Order", ctx))
     }
 }

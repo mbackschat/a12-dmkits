@@ -1,24 +1,24 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.interpreter.spike.CmpOp
-import io.github.mbackschat.a12.dm.interpreter.spike.Cond
-import io.github.mbackschat.a12.dm.interpreter.spike.Expr
-import io.github.mbackschat.a12.dm.interpreter.spike.Interpreter
-import io.github.mbackschat.a12.dm.interpreter.spike.Kind
-import io.github.mbackschat.a12.dm.interpreter.spike.SpikeDoc
-import io.github.mbackschat.a12.dm.interpreter.spike.dec
+import io.github.mbackschat.a12.dm.interpreter.CmpOp
+import io.github.mbackschat.a12.dm.interpreter.Cond
+import io.github.mbackschat.a12.dm.interpreter.Expr
+import io.github.mbackschat.a12.dm.interpreter.Interpreter
+import io.github.mbackschat.a12.dm.interpreter.Kind
+import io.github.mbackschat.a12.dm.interpreter.SingleRowDoc
+import io.github.mbackschat.a12.dm.interpreter.dec
 import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.function.Executable
 
 /**
- * SPIKE differential test (proposal §10): the hand-rolled [Interpreter] must agree with the REAL
- * kernel (via the package-private [RuntimeLaws] oracle) on whether each rule fires — over the SAME
- * document instance. Shapes 1-3: a comparison, the empty-value TYPE asymmetry, an operand-list
- * aggregate. The condition exists twice — as kernel text and as a hand-built AST (no parser; §11).
+ * Differential test (proposal §9): the [Interpreter] must agree with the REAL kernel (via the
+ * package-private [RuntimeLaws] oracle) on whether each rule fires — over the SAME document instance.
+ * Covers a comparison, the empty-value TYPE asymmetry, and an operand-list aggregate. The condition
+ * exists twice — as kernel text and as a hand-built interpreter AST.
  */
-class SpikeInterpreterDiffTest {
+class InterpreterDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
 
@@ -81,10 +81,10 @@ class SpikeInterpreterDiffTest {
     @Test
     fun interpreterAgreesWithKernelOnFiring() {
         val checks = cases.mapIndexed { i, c ->
-            val code = "SPIKE_$i"
+            val code = "DIFF_$i"
             val model = RuntimeLaws.withRule(order, "/Order", "R$i", c.errorRel, code, c.text)
             val kernelFires = RuntimeLaws.fires(model, code, setOf("/Order"), c.empties, c.values)
-            val interpFires = Interpreter(SpikeDoc("/Order", c.values, kinds)).fires(c.ast)
+            val interpFires = Interpreter(SingleRowDoc("/Order", c.values, kinds)).fires(c.ast)
             Executable {
                 assertEquals(kernelFires, interpFires,
                     "${c.name}  [kernel=$kernelFires interp=$interpFires]")

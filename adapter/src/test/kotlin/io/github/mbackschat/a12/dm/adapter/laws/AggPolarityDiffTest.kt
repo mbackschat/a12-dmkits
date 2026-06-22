@@ -1,20 +1,20 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.interpreter.spike.CmpOp
-import io.github.mbackschat.a12.dm.interpreter.spike.Cond
-import io.github.mbackschat.a12.dm.interpreter.spike.Expr
-import io.github.mbackschat.a12.dm.interpreter.spike.Interpreter
-import io.github.mbackschat.a12.dm.interpreter.spike.Kind
-import io.github.mbackschat.a12.dm.interpreter.spike.MsgType
-import io.github.mbackschat.a12.dm.interpreter.spike.RepDoc
-import io.github.mbackschat.a12.dm.interpreter.spike.dec
+import io.github.mbackschat.a12.dm.interpreter.CmpOp
+import io.github.mbackschat.a12.dm.interpreter.Cond
+import io.github.mbackschat.a12.dm.interpreter.Expr
+import io.github.mbackschat.a12.dm.interpreter.Interpreter
+import io.github.mbackschat.a12.dm.interpreter.Kind
+import io.github.mbackschat.a12.dm.interpreter.MsgType
+import io.github.mbackschat.a12.dm.interpreter.RepDoc
+import io.github.mbackschat.a12.dm.interpreter.dec
 import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.function.Executable
 
 /**
- * SPIKE gap-close — the omitted-tail aggregate polarity (mirrors `AggregateUncertaintyLawsTest`). A
+ * Differential — the omitted-tail aggregate polarity (mirrors `AggregateUncertaintyLawsTest`). A
  * starred aggregate is OMISSION-typed while it could still grow — an empty operand OR an
  * un-instantiated tail below the declared repetition (`Items` declares 50) — and only VALUE once every
  * declared row is instantiated and filled. Differential vs the real kernel's `MessageType`.

@@ -1,17 +1,17 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.interpreter.spike.Interpreter
-import io.github.mbackschat.a12.dm.interpreter.spike.Kind
-import io.github.mbackschat.a12.dm.interpreter.spike.RepDoc
-import io.github.mbackschat.a12.dm.interpreter.spike.SpikeDoc
-import io.github.mbackschat.a12.dm.interpreter.spike.parseCondition
+import io.github.mbackschat.a12.dm.interpreter.Interpreter
+import io.github.mbackschat.a12.dm.interpreter.Kind
+import io.github.mbackschat.a12.dm.interpreter.RepDoc
+import io.github.mbackschat.a12.dm.interpreter.SingleRowDoc
+import io.github.mbackschat.a12.dm.interpreter.parseCondition
 import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.function.Executable
 
 /**
- * SPIKE gap-close — a REAL parser end to end: the interpreter is driven from condition TEXT (parsed to
+ * Differential — a REAL parser end to end: the interpreter is driven from condition TEXT (parsed to
  * the AST) instead of a hand-built AST, and still agrees with the kernel. Differential vs RuntimeLaws
  * across single-row, starred-aggregate, and per-row shapes.
  */
@@ -49,7 +49,7 @@ class ParserDiffTest {
             val code = "PARSE_$i"
             val model = RuntimeLaws.withRule(order, "/Order", "R$i", c.errorRel, code, c.text)
             val kernel = RuntimeLaws.fires(model, code, setOf("/Order"), c.empties, c.values)
-            val interp = Interpreter(SpikeDoc("/Order", c.values, kinds)).fires(parseCondition(c.text, "/Order"))
+            val interp = Interpreter(SingleRowDoc("/Order", c.values, kinds)).fires(parseCondition(c.text, "/Order"))
             Executable {
                 assertEquals(kernel, interp, "\"${c.text}\" over ${c.values}/${c.empties} [k=$kernel i=$interp]")
             }

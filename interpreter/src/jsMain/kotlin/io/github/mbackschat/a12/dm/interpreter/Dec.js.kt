@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.interpreter.spike
+package io.github.mbackschat.a12.dm.interpreter
 
 /**
  * JS decimal actual — backed by **big.js** (proposal §5's named choice), so JS gets the SAME

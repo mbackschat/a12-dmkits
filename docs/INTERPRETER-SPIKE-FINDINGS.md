@@ -44,14 +44,14 @@ The interpreter renders a fired rule's per-locale `errorMessage` with `$field.va
 A real Kotlin Multiplatform module — one interpreter, two targets, consumed two ways:
 
 ```
-:interpreter (KMP)
-  commonMain/…/spike/   Ast, EvalContext, Interpreter, SpikeDoc, RepDoc, Dec(expect)   ← the engine (pure)
-  jvmMain/…/spike/      Dec.jvm  (java.math.BigDecimal)        ┐ the ONE platform-specific
-  jsMain/…/spike/       Dec.js   (Double, POC)                 ┘ primitive — the §5 "thin shim"
-  commonTest/…/spike/   InterpreterMultiplatformTest           → runs on JVM + JS (Node), no kernel
+:interpreter (KMP)            (package io.github.mbackschat.a12.dm.interpreter — de-spiked 2026-06-23)
+  commonMain/…/   Ast, Dec(expect), EvalContext, Interpreter, Message, Parser, RepDoc, SingleRowDoc  ← engine (pure)
+  jvmMain/…/      Dec.jvm  (java.math.BigDecimal)        ┐ the ONE platform-specific
+  jsMain/…/       Dec.js   (big.js)                      ┘ primitive — the §5 "thin shim"
+  commonTest/…/   InterpreterMultiplatformTest            → runs on JVM + JS (Node), no kernel
 
 :adapter (JVM)  testImplementation project(':interpreter')
-  …/adapter/laws/SpikeInterpreterDiffTest   shapes 1-3  ┐ differential vs the REAL kernel
+  …/adapter/laws/InterpreterDiffTest   shapes 1-3  ┐ differential vs the REAL kernel
   …/adapter/laws/RepetitionDiffTest         shape 4     ┘ (RuntimeLaws oracle), JVM only
 ```
 
@@ -114,7 +114,7 @@ After the follow-ups above (big.js, polarity, parser, throughput, omitted-tail p
 **Where it is.** The spike is **merged into `main`** (merge commit `56a622f`). No branch/worktree remains.
 
 **Module layout (on `main`):**
-- **`:interpreter`** — the engine, a Kotlin Multiplatform module, **kernel-free** (the publishable, native-safe artifact). `commonMain` = `Ast` · `Dec` (expect) · `EvalContext` · `Interpreter` · `Message` · `Parser` · `RepDoc` · `SpikeDoc`; `jvmMain`/`jsMain` = the `Dec` actuals (BigDecimal / big.js); `commonTest` = `InterpreterMultiplatformTest` (runs on JVM **and** JS, no kernel).
+- **`:interpreter`** — the engine, a Kotlin Multiplatform module, **kernel-free** (the publishable, native-safe artifact). `commonMain` = `Ast` · `Dec` (expect) · `EvalContext` · `Interpreter` · `Message` · `Parser` · `RepDoc` · `SingleRowDoc`; `jvmMain`/`jsMain` = the `Dec` actuals (BigDecimal / big.js); `commonTest` = `InterpreterMultiplatformTest` (runs on JVM **and** JS, no kernel).
 - **`:adapter`** (test scope) — the kernel-**differential** tests (`…/adapter/laws/*DiffTest.kt`) that compare the interpreter to the real kernel via the `RuntimeLaws` oracle; they consume `:interpreter`.
 
 **Build / verify (always via `./build.sh` — isolated Gradle home + JDK 21, never bare `./gradlew`):**

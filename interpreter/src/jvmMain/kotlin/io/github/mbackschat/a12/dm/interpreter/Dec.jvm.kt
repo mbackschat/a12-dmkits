@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.interpreter.spike
+package io.github.mbackschat.a12.dm.interpreter
 
 import java.math.BigDecimal
 

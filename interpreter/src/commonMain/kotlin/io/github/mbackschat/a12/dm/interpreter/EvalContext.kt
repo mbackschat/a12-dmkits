@@ -1,8 +1,8 @@
-package io.github.mbackschat.a12.dm.interpreter.spike
+package io.github.mbackschat.a12.dm.interpreter
 
 /**
  * What the interpreter needs from "the document, in the current evaluation context" — the seam that
- * lets the SAME evaluator serve a single row (SpikeDoc) and per-row / outer contexts of a repeatable
+ * lets the SAME evaluator serve a single row (SingleRowDoc) and per-row / outer contexts of a repeatable
  * group (RepDoc), without the operator logic knowing which it is.
  */
 interface EvalContext {

@@ -1,11 +1,11 @@
-package io.github.mbackschat.a12.dm.interpreter.spike
+package io.github.mbackschat.a12.dm.interpreter
 
 /**
- * A tree-walking interpreter for the spike's condition AST over an [EvalContext] — pure static common
- * code (no kernel/groovy; the only platform primitive is [Dec]). Reproduces the kernel's runtime
- * semantics for the spike shapes: three-valued logic, the TYPE-DRIVEN empty-value handling (number→0,
- * confirm→False, others→not evaluated) gated by the filled-row precondition, operand-list vs starred
- * aggregates, and chronological (lexicographic on ISO) date comparison.
+ * A tree-walking interpreter for the condition AST over an [EvalContext] — pure static common code
+ * (no kernel/groovy; the only platform primitive is [Dec]). Reproduces the kernel's runtime semantics:
+ * three-valued logic, the TYPE-DRIVEN empty-value handling (number→0, confirm→False, others→not
+ * evaluated) gated by the filled-row precondition, operand-list vs starred aggregates, and chronological
+ * (lexicographic on ISO) date comparison.
  *
  * A rule FIRES when its error condition evaluates to TRUE.
  */
@@ -86,7 +86,7 @@ class Interpreter(private val ctx: EvalContext) {
         "FieldFilled" -> Tri.of(ctx.filled(pathOf(p.args.single())))
         "FieldNotFilled" -> Tri.of(!ctx.filled(pathOf(p.args.single())))
         "AllFieldsFilled" -> Tri.of(p.args.all { ctx.filled(pathOf(it)) })
-        else -> error("spike: unsupported predicate ${p.name}")
+        else -> error("unsupported predicate ${p.name}")
     }
 
     private fun evalCmp(c: Cond.Cmp): Tri {
@@ -108,7 +108,7 @@ class Interpreter(private val ctx: EvalContext) {
         is Expr.StrLit -> Val.Txt(e.v)
         is Expr.BoolLit -> Val.Bool(e.v)
         is Expr.Field -> ctx.field(e.path)
-        is Expr.Star -> error("spike: a starred path must sit inside an aggregate (Sum/MaxValue/…)")
+        is Expr.Star -> error("a starred path must sit inside an aggregate (Sum/MaxValue/…)")
         is Expr.Func -> evalFunc(e)
     }
 
@@ -125,14 +125,14 @@ class Interpreter(private val ctx: EvalContext) {
             for (x in starNums(f)) if (distinct.none { it.compareTo(x) == 0 }) distinct.add(x)
             Val.Num(dec(distinct.size))
         }
-        else -> error("spike: unsupported function ${f.name}")
+        else -> error("unsupported function ${f.name}")
     }
 
     private fun starVals(f: Expr.Func): List<Val> = ctx.star((f.args.single() as Expr.Star).path)
     private fun starNums(f: Expr.Func): List<Dec> = starVals(f).map { num(it) }
 
     private fun pathOf(e: Expr): String = (e as Expr.Field).path
-    private fun num(v: Val): Dec = (v as? Val.Num)?.v ?: error("spike: expected a number, got $v")
+    private fun num(v: Val): Dec = (v as? Val.Num)?.v ?: error("expected a number, got $v")
 
     private fun eq(l: Val, r: Val): Boolean = when {
         l is Val.Num && r is Val.Num -> l.v.compareTo(r.v) == 0
@@ -165,7 +165,7 @@ class Interpreter(private val ctx: EvalContext) {
             when {
                 a is Val.Num && b is Val.Num -> a.v.compareTo(b.v)
                 a is Val.Txt && b is Val.Txt -> a.v.compareTo(b.v)
-                else -> error("spike: incomparable values $a vs $b")
+                else -> error("incomparable values $a vs $b")
             }
         }
     }

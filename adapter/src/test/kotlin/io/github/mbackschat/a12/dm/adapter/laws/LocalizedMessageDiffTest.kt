@@ -1,15 +1,15 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.interpreter.spike.Kind
-import io.github.mbackschat.a12.dm.interpreter.spike.SpikeDoc
-import io.github.mbackschat.a12.dm.interpreter.spike.renderMessage
+import io.github.mbackschat.a12.dm.interpreter.Kind
+import io.github.mbackschat.a12.dm.interpreter.SingleRowDoc
+import io.github.mbackschat.a12.dm.interpreter.renderMessage
 import java.util.Locale
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
- * SPIKE gap-close (scoped) — localized message text. A fired rule's per-locale errorMessage template
+ * Differential (scoped) — localized message text. A fired rule's per-locale errorMessage template
  * with a `$field.value$` placeholder is rendered, and the interpreter's rendering matches the kernel's
  * `getErrorText` in BOTH en_US and de_DE — proving value interpolation + locale selection from one
  * engine. The `$field$` display-name placeholder (needs the field's label metadata) is out of scope.
@@ -28,7 +28,7 @@ class LocalizedMessageDiffTest {
         val model = RuntimeLaws.withRuleMessages(bilingual, "/Order", "CodeReserved", "../ProductCode",
             "CODE_RESERVED", "[ProductCode] == \"ABC\"", en, de)
         val doc = RuntimeLaws.doc().group("/Order", 1).field(PC, "ABC", 1, 1)
-        val ctx = SpikeDoc("/Order", mapOf(PC to "ABC"), kinds)
+        val ctx = SingleRowDoc("/Order", mapOf(PC to "ABC"), kinds)
 
         val kernelEn = RuntimeLaws.errorTextOf(model, "CODE_RESERVED", doc, Locale.US).orElse(null)
         val kernelDe = RuntimeLaws.errorTextOf(model, "CODE_RESERVED", doc, Locale.GERMANY).orElse(null)

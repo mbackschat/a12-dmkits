@@ -1,19 +1,19 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.interpreter.spike.CmpOp
-import io.github.mbackschat.a12.dm.interpreter.spike.Cond
-import io.github.mbackschat.a12.dm.interpreter.spike.Expr
-import io.github.mbackschat.a12.dm.interpreter.spike.Interpreter
-import io.github.mbackschat.a12.dm.interpreter.spike.Kind
-import io.github.mbackschat.a12.dm.interpreter.spike.RepDoc
-import io.github.mbackschat.a12.dm.interpreter.spike.dec
+import io.github.mbackschat.a12.dm.interpreter.CmpOp
+import io.github.mbackschat.a12.dm.interpreter.Cond
+import io.github.mbackschat.a12.dm.interpreter.Expr
+import io.github.mbackschat.a12.dm.interpreter.Interpreter
+import io.github.mbackschat.a12.dm.interpreter.Kind
+import io.github.mbackschat.a12.dm.interpreter.RepDoc
+import io.github.mbackschat.a12.dm.interpreter.dec
 import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.function.Executable
 
 /**
- * SPIKE shape 4 — nested repetition (`*`-iteration) over /Order/Items, differential vs the REAL kernel:
+ * Differential — nested repetition (`*`-iteration) over /Order/Items, differential vs the REAL kernel:
  *  - per-row rules iterate once per row and fire on the offending rows (compared as the set of rows);
  *  - starred aggregates (Sum / MaxValue / NumberOfDifferentValues) collapse the rows — Sum substitutes
  *    0 / Max ignores empties — and the date aggregate compares chronologically.

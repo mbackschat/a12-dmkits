@@ -1,20 +1,20 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.interpreter.spike.CmpOp
-import io.github.mbackschat.a12.dm.interpreter.spike.Cond
-import io.github.mbackschat.a12.dm.interpreter.spike.Expr
-import io.github.mbackschat.a12.dm.interpreter.spike.Interpreter
-import io.github.mbackschat.a12.dm.interpreter.spike.Kind
-import io.github.mbackschat.a12.dm.interpreter.spike.MsgType
-import io.github.mbackschat.a12.dm.interpreter.spike.SpikeDoc
-import io.github.mbackschat.a12.dm.interpreter.spike.dec
+import io.github.mbackschat.a12.dm.interpreter.CmpOp
+import io.github.mbackschat.a12.dm.interpreter.Cond
+import io.github.mbackschat.a12.dm.interpreter.Expr
+import io.github.mbackschat.a12.dm.interpreter.Interpreter
+import io.github.mbackschat.a12.dm.interpreter.Kind
+import io.github.mbackschat.a12.dm.interpreter.MsgType
+import io.github.mbackschat.a12.dm.interpreter.SingleRowDoc
+import io.github.mbackschat.a12.dm.interpreter.dec
 import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.function.Executable
 
 /**
- * SPIKE gap-close — the VALUE-vs-OMISSION message typing (mirrors `ErrorTypeLawsTest`). Differential vs
+ * Differential — the VALUE-vs-OMISSION message typing (mirrors `ErrorTypeLawsTest`). Differential vs
  * the real kernel's `IMessage.MessageType`: a comparison over filled values → VALUE; over an
  * empty-substituted field → OMISSION; And → omission wins; Or → value wins; `FieldNotFilled` → OMISSION.
  */
@@ -61,7 +61,7 @@ class PolarityDiffTest {
             val model = RuntimeLaws.withRule(order, "/Order", "R$i", c.errorRel, code, c.text)
             val kernel = RuntimeLaws.typeOf(model, code, setOf("/Order"), c.empties, c.values)
                 .map { it.name }.orElse(null)
-            val interp = Interpreter(SpikeDoc("/Order", c.values, kinds)).firedType(c.ast)
+            val interp = Interpreter(SingleRowDoc("/Order", c.values, kinds)).firedType(c.ast)
                 ?.let { if (it == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR" }
             Executable { assertEquals(kernel, interp, "${c.name}  [kernel=$kernel interp=$interp]") }
         }

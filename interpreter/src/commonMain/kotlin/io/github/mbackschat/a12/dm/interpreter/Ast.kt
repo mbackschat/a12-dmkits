@@ -1,9 +1,10 @@
-package io.github.mbackschat.a12.dm.interpreter.spike
+package io.github.mbackschat.a12.dm.interpreter
 
 /**
- * Spike interpreter — hand-rolled AST + value model, in commonMain so it compiles to BOTH JVM and JS.
- * PURE static code over plain data: imports ZERO kernel (`com.mgmtp.*`) and ZERO groovy types, and the
- * only platform-specific primitive is [Dec]. Only the differential TESTS (JVM) touch the kernel.
+ * The interpreter's condition/value AST, in commonMain so it compiles to BOTH JVM and JS.
+ * PURE static code over plain data: imports ZERO kernel (`com.mgmtp.*`) and ZERO groovy types (enforced
+ * by the `verifyInterpreterPurity` lint), and the only platform-specific primitive is [Dec]. Only the
+ * differential TESTS (in `:adapter`, JVM) touch the kernel.
  */
 
 /** Field kinds the empty-value asymmetry depends on — the miniature "metadata bridge" (proposal §10). */
@@ -31,7 +32,7 @@ enum class CmpOp { LT, LE, GT, GE, EQ, NE }
 /** Value-vs-omission polarity of a fired message (kernel `IMessage.MessageType`). */
 enum class MsgType { VALUE, OMISSION }
 
-/** Condition AST (hand-built; the spike has no parser — that decision is deferred, proposal §11). */
+/** Condition AST — built from condition text by [parseCondition]. */
 sealed interface Cond {
     data class Cmp(val op: CmpOp, val left: Expr, val right: Expr) : Cond
     data class And(val left: Cond, val right: Cond) : Cond

@@ -1,7 +1,7 @@
-package io.github.mbackschat.a12.dm.interpreter.spike
+package io.github.mbackschat.a12.dm.interpreter
 
 /**
- * A spike doc with ONE repeatable subgroup (shape 4) — NO kernel types. Outer fields plus a list of
+ * A document with ONE repeatable subgroup — NO kernel types. Outer fields plus a list of
  * item rows. It produces two kinds of [EvalContext]:
  *  - [outerContext] — for an aggregate rule evaluated once in the outer row (Sum/MaxValue over `star`);
  *  - [rowContexts] — one per item row, for a per-row rule that iterates the repetition.
@@ -19,7 +19,7 @@ class RepDoc(
     private val declaredReps: Int = Int.MAX_VALUE,
 ) {
     private fun kindOf(path: String): Kind =
-        kinds[path] ?: error("spike: no kind declared for $path")
+        kinds[path] ?: error("no kind declared for $path")
 
     private fun resolve(map: Map<String, String>, path: String): Val =
         map[path]?.let { typedValue(kindOf(path), it) } ?: emptyValue(kindOf(path))
