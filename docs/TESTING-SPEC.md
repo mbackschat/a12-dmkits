@@ -15,6 +15,51 @@ a12-dmkits is tested at four tiers. The first two are **deterministic gates** (r
 
 Tiers 1–2 are machine-enforced (a break fails the build/CI). Tiers 3–4 are **run-and-read**: an agent is in the loop, the deliverable is a measurement/report, and a finding's lasting guard graduates back into tier 1.
 
+### Inside tier 1 — the JUnit layers & components
+
+Tier 1 is not one thing. It mirrors a **rule's lifecycle** — *render → accept → fire → read back* — as a chain of layers, each living in its own **component (Gradle module)** and backed by the real kernel at the stage that needs it. `:cli` wraps the lot behind verbs; `:interpreter` is a **second** evaluator implementation checked against the kernel; and a band of guardians/catalog/corpus tests cuts across all components.
+
+```mermaid
+flowchart LR
+  subgraph life["the rule lifecycle — each layer in its own module, backed by the real kernel"]
+    direction LR
+    R["render · : rulekit<br/>DSL → text · no kernel"]
+    A["accept / reject · : validate<br/>parse + checkConsistency · laws T1"]
+    F["fires / not · :adapter<br/>evaluate on data · laws T2"]
+    RB["read back · :adapter<br/>text → AST → re-render"]
+    R --> A --> F
+    A --> RB
+  end
+  CLI[":cli<br/>verb I/O · self-describe · conformance · diagnostics"]
+  INT[":interpreter spike<br/>2nd, native-safe evaluator"]
+  CC["cross-cutting<br/>structural guardians · catalog N7 · corpus · doc-snippet locks"]
+  CLI -.->|"wraps every layer"| A
+  INT -.->|"differential vs kernel<br/>(DiffTest in :adapter)"| F
+  CC -.->|"spans components"| life
+```
+
+#### The layers — a rule's lifecycle (what each proves)
+
+| layer | proves | component · oracle | representative tests |
+|---|---|---|---|
+| **render** | the DSL emits the right kernel text — composition, parenthesization, quoting, handle kind-checks | `:` rulekit · *no kernel* | `dsl/RenderConditionTest` + `dsl/operators/*` |
+| **accept / reject** | the kernel *accepts* a valid condition and *rejects* a bad one with the right `MVK_*` (+ F4 injection mechanics) | `:` validate · *real kernel* `checkConsistency` | `validate/laws/…LawsTest` (T1) · `validate/RuleValidatorTest` |
+| **fires / does-not-fire** | a *valid* rule *evaluates* as intended on real data — polarity, empty-as-0, null compares | `:adapter` · *real runtime* `validateFull` | `adapter/…/laws/…LawsTest` (T2) |
+| **read back** | render → kernel-parse → convert → render round-trips (F10) | `:adapter` · *real parser* + converter | `ReadRoundTripTest` + per-construct `…ReadTest` |
+
+Two parts of tier 1 are **not** lifecycle stages: **modelkit structure** (the field/group/type-def/include builders + the structure ops, in `:`) and the **cross-cutting** guardians / catalog-N7 / corpus / doc-snippet locks (each has its own section below).
+
+#### The components — Gradle modules (which *implementation* each exercises)
+
+| module | implementation under test | tests live in |
+|---|---|---|
+| **`:`** (core + rulekit + modelkit) | the DSL renderer/handles + modelkit structure; accept/reject + the structural guardians against the real kernel | `src/test/…` |
+| **`:adapter`** (opt-in) | the kernel-coupling **read** path + **runtime** behavior; kernel canaries; corpus | `adapter/src/test/…` |
+| **`:interpreter`** (spike) | a **second**, native-safe evaluator implementation — validated *differentially* against the kernel | `interpreter/src/commonTest/…` + the Kotlin `*DiffTest.kt` in `adapter/src/test/…` (option C) |
+| **`:cli`** | the `dmtool` verb surface — I/O contract, self-describe, conformance, diagnostics | `cli/src/test/…` |
+
+modelkit folded into the root `:` (2026-06-09 — no longer a `:modelkit` module). The aggregate `./gradlew test` runs core + rulekit + modelkit; **`:adapter:test` and `:cli:test` are separate** (the adapter is the opt-in kernel-coupling tier, kept out of core's `:test`). The full per-kind breakdown + oracle is the kinds-of-test table below.
+
 ### eval vs probe — same agents, opposite questions
 
 Both put an LLM agent in front of the tool, but they ask different things and must not be conflated:
@@ -32,27 +77,17 @@ There is **no mock kernel**. Every claim about how the A12 kernel parses, valida
 
 Consequence: the kernel is an unstable dependency, so the suite is also an **early-warning system** for kernel upgrades — many tests are deliberately "guardians" that fail loudly when a kernel bump shifts something. See [`KERNEL-UPGRADE.md`](KERNEL-UPGRADE.md).
 
-## Where tests live (module map)
-
-```
-:            (core+rulekit+modelkit)  src/test/…        — DSL render, F4 mechanics, accept/reject laws,
-                                                          structural guardians, modelkit structure tests,
-                                                          SiblingBoundaryTest (dm.modelkit ⊥ dm.rulekit)
-:adapter     (opt-in)                 adapter/src/test/… — read round-trip, runtime laws, kernel-coupling canaries, corpus harnesses
-:cli                                  cli/src/test/…     — verb I/O contract, batch, explain
-```
-
-modelkit folded into the root `:` project (2026-06-09 — no longer a `:modelkit` module); its tests live in the root test set alongside rulekit's. The aggregate `./gradlew test` runs core + rulekit + modelkit; `:adapter:test` and `:cli:test` are separate (the adapter is the opt-in kernel-coupling tier, kept out of core's `:test`).
-
 ## The kinds of test
 
 | kind | question it answers | where | backing oracle |
 |---|---|---|---|
 | **Example / unit** | does the DSL render the right text, parenthesize, quote, type-check handles? | `dsl/RenderConditionTest` + one file per family under `dsl/operators/` (`PatternConditionTest`, `AggregateConditionTest`, …) | pure rulekit (no kernel) |
+| **Modelkit structure** | do the field/group/type-def/include builders + structure ops (add·remove·rename·move, the safe-delete gate) produce kernel-consistent structure? | `modelkit/…` + `edit/EditSessionTest` (root `:`) | real kernel `BasicConsistencyCheck` / `checkConsistency` |
 | **F4 mechanics** | does injection → validate → problem-mapping work? | `validate/RuleValidatorTest` | real kernel `checkConsistency` |
 | **Law tier 1 — accept / reject** | does the kernel *accept* this condition (and reject the bad one with which `MVK_*`)? | `validate/laws/…LawsTest` (`NumberLawsTest`, `BooleanConfirmLawsTest`, …) via the `KernelLaws` harness | real kernel parse + `checkConsistency` |
 | **Law tier 2 — fires / does-not-fire** | does a *valid* rule *evaluate* as intended on data? | `adapter/…/laws/…LawsTest` (`PolarityLawsTest`, `EmptyValueLawsTest`) via the `RuntimeLaws` oracle | real kernel `IDocumentRtService.validateFull` |
 | **Read round-trip** | does render → kernel-parse → convert → render round-trip (F10)? | `adapter/…/ReadRoundTripTest` + per-construct `…ReadTest` | real kernel parser + the converter |
+| **Interpreter differential** (spike) | does the native-safe `:interpreter` evaluate a rule *identically to the kernel*? | Kotlin `adapter/…/laws/*DiffTest.kt` (`PolarityDiffTest`, `ParserDiffTest`, `SpikeInterpreterDiffTest`, …) | real kernel runtime, as the differential oracle |
 | **Structural-law guardians** | did the kernel *add/move/rename* a construct, code, slot, or category we must track? | see the guardian table below | reflective parity vs the kernel's own enums/accessors |
 | **CLI self-describing & conformance** | does the CLI describe its own verbs/params/I-O, and does every mutating verb refuse misuse with a *structured* diagnostic (not a bare fail)? | the `cli` conformance suite — see below | the live picocli tree + a derived fuzzer |
 | **Coverage harnesses** (opt-in) | what fraction of real foreign rules do we read? | `KernelMmReadCoverageTest`, `Corpus1ReadCoverageTest` | real corpora (gated; commit nothing) |
