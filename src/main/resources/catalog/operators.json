@@ -673,7 +673,8 @@
       "more than one field or a repetition list (MVK_PARAMSIZE_INVALIDN); no duplicates (MVK_DUPLICATE_PARAM1)"
     ],
     "gotchas": [
-      { "text": "an UNSPECIFIED field counts as 0 — unlike MaxValue/MinValue, which ignore unspecified fields (KERNEL-SEMANTICS §9)", "kind": "SURPRISE" }
+      { "text": "an UNSPECIFIED field counts as 0 — unlike MaxValue/MinValue, which ignore unspecified fields (KERNEL-SEMANTICS §9)", "kind": "SURPRISE" },
+      { "text": "DECIMAL-SCALE COUPLING in a computation: a sum of N-decimal operands is itself N decimals, so the COMPUTED FIELD's scale must match the operands' — a scale-0 computed field over 2-decimal amounts is rejected MVK_INVALID_COMPARE_DEC_PLACES ('fractional digits of lhs and rhs differ'). The same rejection reappears if you later RE-SCALE an operand without re-scaling the computed field. Align the computed field's minFractionalDigits/maxFractionalDigits to the operand scale.", "kind": "SURPRISE" }
     ],
     "validExample": { "dsl": "FieldFilled(CustomerName) And Sum(Items*/Count) > 100", "note": "fires when the order's total item count exceeds 100" },
     "invalidExample": { "dsl": "FieldFilled(CustomerName) And Sum(CustomerName, ProductCode) > 0", "error": "MVK_NO_NUMBER", "fix": "Sum takes number fields" },
@@ -1187,7 +1188,10 @@
     "operands": [ { "type": "date-range" } ],
     "returns": "boolean",
     "meaning": "True iff the first date-range field's interval overlaps at least one date-range field in the list (start and end inclusive).",
-    "gotchas": [ { "text": "ranges are closed intervals: periods sharing one boundary day count as overlapping", "kind": "SURPRISE" } ],
+    "gotchas": [
+      { "text": "ranges are closed intervals: periods sharing one boundary day count as overlapping", "kind": "SURPRISE" },
+      { "text": "SELF-MEMBERSHIP in a per-row rule: AtLeastOneDateRangeOverlaps(Period IN Group*/Period) from a rule iterating over Group flattens ALL rows' periods INCLUDING the current row's, so the current Period overlaps ITSELF and the rule fires on EVERY row (rule check still says valid:true — it is a semantic trap, not a syntax error; there is no self-exclusion). For 'no two rows overlap', author a MODEL-LEVEL rule with DateRangesOverlap(/Group*/Period) over the single flattened list (error field a non-repeatable field, referenced via a FieldFilled guard) — it fires ONCE for the document instead of per row.", "kind": "SURPRISE" }
+    ],
     "constraints": [ "a date-range field, then In, then a date-range field list (often a flattened repetition list)" ],
     "validExample": { "dsl": "FieldFilled(OrderDate) And AtLeastOneDateRangeOverlaps(CoverageWindow IN Items*/ItemCoverage)", "note": "fires when the coverage window overlaps any line-item coverage" },
     "sinceKernel": "30.8.x"
