@@ -27,7 +27,7 @@ A non-zero exit is usually a **legitimate rejection**, not a bug. Sort every err
 6. **Trim the evidence** — the distinctive codes/frames, never a whole multi-hundred-line trace.
 7. **Findings & improvements** — every place the tool's own signals **misled or slowed** the work, each with a concrete suggested fix aimed at one target: the **CLI**, its **material** (operator catalog / schemas / `--help` / diagnostics), or the **skill**. Reflect on the *whole* tool-call trail, not just the calls around an error.
 8. **Replay log** — the user's prompts that drove model changes, verbatim and in order, so the session is replayable.
-9. **Self-audit** — was any model file changed **outside** dmtool (an editor / `sed` / `echo` / `cp`)? State it explicitly; a direct edit can masquerade as a defect and taints the repro.
+9. **Self-audit** — did you stay inside dmtool's surface? Two checks, state both: **(a) writes** — was any model file *changed* **outside** dmtool (an editor / `sed` / `echo` / `cp`)? A direct edit can masquerade as a defect and taints the repro. **(b) reads** — did you *read* a model's raw `.dm.json` (via `cat` / `jq` / `python` / an editor) instead of `model describe` / `field read` / `rule read`? You shouldn't have needed to — and if you did, say so **and file it as a `[material]` finding**: the structured read that should have shown what you needed is incomplete (exactly the gap a raw read papers over).
 
 ## Where to save it
 **Ask the user where to save the report** (e.g. *"Which folder should I write the bug report to?"*). With no answer — or when you're running non-interactively — default to a **`dmtool-bug-reports/`** folder in the current working directory.
@@ -50,5 +50,5 @@ Then tell the user the folder path and that they can **upload it, attach it to a
 ## Exception (trimmed) — only the distinctive frames/codes
 ## Findings & improvements — [CLI] / [material] / [skill], each with a suggested fix
 ## Replay log         — the driving prompts, verbatim, in order
-## Self-audit         — any out-of-dmtool model edits (taint check)
+## Self-audit         — out-of-dmtool model writes (taint check) AND raw-JSON reads (→ a [material] finding)
 ```
