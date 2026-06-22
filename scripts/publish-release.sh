@@ -114,7 +114,11 @@ echo "ok — $TITLE"
 say "1. mac arm64 native binary + verification gate (§3a/§5)"
 if [[ ! -x "$NATIVE" ]]; then
   : "${GRAALVM_HOME:?set GRAALVM_HOME to a GraalVM 25 JDK}"
-  JAVA_HOME="$(/usr/libexec/java_home -v 21)" ./gradlew :cli:nativeCompile -Porg.gradle.java.installations.fromEnv=GRAALVM_HOME
+  # Route through ./build.sh — it pins the isolated, init.d-free GRADLE_USER_HOME + JDK 21, so this fallback
+  # can't be silently contaminated by the machine's global private-registry init script (a bare `./gradlew`
+  # resolves the native-image/Kotlin plugins from the private registry and fails). GRAALVM_HOME passes
+  # through the env for the native-image toolchain detection.
+  ./build.sh :cli:nativeCompile -Porg.gradle.java.installations.fromEnv=GRAALVM_HOME
 fi
 ./scripts/native-gate.sh "$NATIVE"
 
