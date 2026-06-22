@@ -4,33 +4,46 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Curated {@code fix}/{@code explain} for kernel codes the operator catalog does <em>not</em> document —
- * the <b>structural</b> placement / iteration-scope / wildcard family, a bare <b>syntax</b> code the
- * parser raises with no message of its own ({@code MVK_UNEXPECTED_TOKEN}, where the likely cause — a
- * lowercase boolean, an unquoted string — must be inferred from the DSL's literal conventions), an
- * <b>entity-resolution</b> code ({@code MVK_INVALID_ENTITY} — a bare/relative name that doesn't bind, where
- * the fix is the absolute path), and an <b>enum locale-coverage</b> code
- * ({@code MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES} — an enum value labeled in some declared locales but not
- * all, whose opaque "display value and XML value not specified together" message hides the per-locale gap).
- * Two kinds live here: codes <em>no</em> operator's {@code invalidExample} documents (placement /
- * iteration-scope / syntax / entity-resolution / enum-coverage), and <b>shared</b> codes that
- * <em>several</em> operators trigger ({@code MVK_NO_WILDCARD} — CurrentRepetition, RepetitionNotUnique,
- * aggregates, a model-scope group reference) where keying the fix off a single operator's
- * {@code invalidExample} mis-stamps every occurrence (probe finding F06-2: every {@code MVK_NO_WILDCARD}
- * got CurrentRepetition's "put the error field inside Items" fix). {@link DiagnosticEnricher} consults
- * this <b>first</b>, so a shared structural code gets the generic, operator-independent hint; an
- * operator-specific code misses here and falls through to the N7-locked catalog-join.
+ * Curated {@code fix}/{@code explain} for kernel codes the operator catalog-join can't correctly serve.
+ * {@link DiagnosticEnricher} consults this <b>first</b>, so these win over the join. Two kinds live here —
+ * and note the kind that is <em>not</em>: a <b>cross-operator</b> code documented by several operators with
+ * differing fixes is now handled soundly by the join itself (it attaches the <em>union</em>), so it does
+ * NOT need an entry here. What does:
+ * <ol>
+ *   <li><b>ORPHAN codes</b> — <em>no</em> operator's {@code invalidExample} documents them, so the join has
+ *       nothing to attach: the placement / iteration-scope family ({@code MVK_ERROR_FIELD_NOT_IN_RULEGROUP},
+ *       {@code MVK_NEG_CONDITION_IN_ITERATION}), the bare <b>syntax</b> code the parser raises with no message
+ *       of its own ({@code MVK_UNEXPECTED_TOKEN} — the likely cause, a lowercase boolean / unquoted string /
+ *       unbracketed field operand, must be inferred from the DSL's literal conventions), the
+ *       <b>entity-resolution</b> code ({@code MVK_INVALID_ENTITY} — a bare/relative name that doesn't bind;
+ *       the fix is the absolute path), and the <b>enum locale-coverage</b> code
+ *       ({@code MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES} — an enum value labeled in some declared locales but
+ *       not all, whose opaque "display value and XML value not specified together" message hides the gap).</li>
+ *   <li><b>CROSS-CONTEXT codes</b> — documented by operator(s), but ALSO fired by a construct the catalog
+ *       cannot describe, so the documenter's fix is <em>wrong</em> there (probe findings F06-2 / dec-places):
+ *       {@code MVK_NO_WILDCARD} (CurrentRepetition documents it, but a non-iterating aggregate / computation
+ *       raises it too — the per-repetition "put the error field inside Items" fix mis-stamps the aggregate
+ *       case) and {@code MVK_INVALID_COMPARE_DEC_PLACES} (Equal/NotEqual document it as a field-vs-field
+ *       comparison, but a computed field whose scale differs from its expression raises it too — the
+ *       "round one with RoundDown" comparison fix mis-stamps the computation case, where the fix is to
+ *       match the computed field's scale). The catalog can only see operators, never these other triggers,
+ *       so the corrective must be authored here at the code level.</li>
+ * </ol>
  *
  * <p>Hand-authored guidance, like the {@code RK_*} meanings in {@link RkCode} — but locked the same
  * way the catalog fixes are: a test triggers the real kernel code and asserts the fix attaches
- * (e.g. {@code RuleValidatorTest.attachesAPlacementFixToTheNotInRuleGroupCode}), so the text can't
- * drift away from the behavior it explains. The placement law itself is locked in
- * {@code validate.laws.IterationLawsTest} (KERNEL-FINDINGS §9).
+ * (e.g. {@code RuleValidatorTest.attachesAPlacementFixToTheNotInRuleGroupCode}; the cross-context
+ * {@code DEC_PLACES} two-context hint by {@code DiagnosticEnricherTest}), so the text can't drift away
+ * from the behavior it explains. The placement law itself is locked in
+ * {@code validate.laws.IterationLawsTest} (KERNEL-FINDINGS §9). The complementary cross-OPERATOR
+ * soundness — that the join never silently drops a corrective, so no such code needs an entry here — is
+ * guarded by {@code DiagnosticEnricherTest.noCrossOperatorCodeSilentlyDropsACorrective}.
  *
  * <p>Public because it is also the single source for the {@code diagnostics <code>} lookup of these
  * codes — a probe (P-mini-1) found an agent that hit one of them naturally tries {@code diagnostics
- * <code>}, which used to dead-end ("see operators/explain") since they have no operator home. The CLI
- * resolves them through {@link #forCode} instead.
+ * <code>}, which used to dead-end ("see operators/explain"): an ORPHAN code has no operator home, and a
+ * CROSS-CONTEXT code's operator home would give the wrong fix. The CLI resolves both through
+ * {@link #forCode} instead.
  */
 public final class StructuralKernelFix {
 
@@ -99,7 +112,23 @@ public final class StructuralKernelFix {
                     "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES (\"the display value and the XML value were not specified "
                             + "together\") fires when an enum value's internal (XML) value and its per-locale display "
                             + "labels are not specified together across the declared locales — a label-coverage gap on "
-                            + "the enum, not a condition error."));
+                            + "the enum, not a condition error."),
+            "MVK_INVALID_COMPARE_DEC_PLACES", new Hint(
+                    "The two decimal operands here must share the SAME declared scale (fractional digits) — only "
+                            + "== / != and a computed-field assignment are checked; ORDERING (< <= > >=) is exempt. TWO "
+                            + "contexts trigger it: (1) a COMPUTED FIELD whose declared scale differs from its "
+                            + "expression's operands (e.g. a field re-scaled to 2 places while the Sum-computed field "
+                            + "stays scale 0) — re-scale the computed field (or the operands) so their fractional digits "
+                            + "agree, doing both edits in ONE `apply` so the terminal gate sees a consistent model; "
+                            + "(2) a field-vs-field == / != across differing scales — either round one side to the "
+                            + "other's scale with RoundDown(expr, n), or accept the mismatch with "
+                            + "allowDifferingDecimals:true on the rule spec (the kernel's one suppressible warning — it "
+                            + "prepends @SuppressWarning(MVK_INVALID_COMPARE_DEC_PLACES)).",
+                    "MVK_INVALID_COMPARE_DEC_PLACES (\"the fractional digits of lhs and rhs are different\") fires "
+                            + "wherever the kernel compares two decimal operands of unequal declared scale — an == / != "
+                            + "field comparison OR a computed field whose scale doesn't match its expression. It is not "
+                            + "specific to any one operator (Sum, Equal, …); the scale-coupling is the constraint, so the "
+                            + "corrective is context-dependent."));
 
     private StructuralKernelFix() {
     }

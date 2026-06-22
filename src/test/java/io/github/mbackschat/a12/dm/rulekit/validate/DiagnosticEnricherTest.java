@@ -3,11 +3,16 @@ package io.github.mbackschat.a12.dm.rulekit.validate;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorCatalog;
+import io.github.mbackschat.a12.dm.rulekit.catalog.OperatorEntry;
 
 /**
  * {@link DiagnosticEnricher} catalog-join vs structural-hint precedence. The headline is probe finding
@@ -80,5 +85,63 @@ class DiagnosticEnricherTest {
         Diagnostic enriched = ENRICHER.enrich(raw("MVK_REPEATABLE_GROUP_MISSING"));
         assertTrue(enriched.fix().filter(f -> !f.isBlank()).isPresent(),
                 () -> "an operator-owned code keeps its catalog fix, got: " + enriched);
+    }
+
+    @Test
+    void aCrossOperatorCodeGetsTheUnionNotAnArbitraryFirstOperatorsFix() {
+        // ROOT CAUSE (the deeper flaw): byInvalidError did operatorsForError(code).findFirst(), so a code
+        // documented by >1 operator was stamped with whichever was FIRST in operators.json. MVK_NO_FIELDS_ALLOWED
+        // is documented by GroupFilled AND NumberOfFilledGroups with DIFFERENT correctives, so
+        // NumberOfFilledGroups(field) got GroupFilled's "use FieldFilled" — wrong. The sound join attaches the
+        // UNION, so BOTH correctives are present and neither construct is mis-stamped.
+        Diagnostic enriched = ENRICHER.enrich(raw("MVK_NO_FIELDS_ALLOWED"));
+        String fix = enriched.fix().orElse("");
+        assertTrue(fix.contains("FieldFilled"),
+                () -> "carries GroupFilled's corrective, got: " + fix);
+        assertTrue(fix.contains("NumberOfFilledFields"),
+                () -> "carries NumberOfFilledGroups's corrective (the one the old findFirst dropped), got: " + fix);
+    }
+
+    @Test
+    void theDecimalScaleCodeGetsTheTwoContextHintNotTheComparisonOnlyCatalogFix() {
+        // probe 07 (price a policy): re-scaling a Sum operand broke the computed field with
+        // MVK_INVALID_COMPARE_DEC_PLACES, but the catalog-join stamped the COMPARISON operators'
+        // ("round one with RoundDown") fix — wrong for the computed-field-scale context. A CROSS-CONTEXT code:
+        // StructuralKernelFix supplies the two-context corrective (match the computed field's scale; or, for
+        // == / !=, RoundDown / allowDifferingDecimals), and it wins over the join.
+        Diagnostic enriched = ENRICHER.enrich(raw("MVK_INVALID_COMPARE_DEC_PLACES"));
+        String fix = enriched.fix().orElse("");
+        assertTrue(fix.contains("computed field") && fix.contains("ONE `apply`"),
+                () -> "names the computed-field-scale corrective, got: " + fix);
+        assertTrue(fix.contains("RoundDown") && fix.contains("allowDifferingDecimals"),
+                () -> "names the == / != comparison correctives, got: " + fix);
+    }
+
+    @Test
+    void noCrossOperatorCodeSilentlyDropsACorrective() {
+        // GUARD (anti-whack-a-mole, catalog-derived so it covers siblings we never probed): for EVERY kernel
+        // code documented by >1 operator whose invalidExample fixes DISAGREE, the enriched fix must carry
+        // EVERY distinct corrective (the union) — unless a StructuralKernelFix code-level override replaces it.
+        // This fails the build if anyone reverts the sound join to the old findFirst (which drops all but one).
+        OperatorCatalog catalog = OperatorCatalog.load();
+        Map<String, Set<String>> fixesByCode = new HashMap<>();
+        for (OperatorEntry e : catalog.entries()) {
+            OperatorEntry.InvalidExample ix = e.invalidExample();
+            if (ix == null || ix.error() == null || ix.fix() == null || ix.fix().isBlank()) {
+                continue;
+            }
+            fixesByCode.computeIfAbsent(ix.error(), k -> new HashSet<>()).add(ix.fix());
+        }
+        for (Map.Entry<String, Set<String>> byCode : fixesByCode.entrySet()) {
+            if (byCode.getValue().size() < 2 || StructuralKernelFix.forCode(byCode.getKey()).isPresent()) {
+                continue; // single corrective (findFirst was already unambiguous) or a code-level override wins
+            }
+            String enrichedFix = ENRICHER.enrich(raw(byCode.getKey())).fix().orElse("");
+            for (String corrective : byCode.getValue()) {
+                assertTrue(enrichedFix.contains(corrective),
+                        () -> "shared code " + byCode.getKey() + " drops a corrective from the union (the old "
+                                + "findFirst mis-stamp): " + corrective + "\n  enriched: " + enrichedFix);
+            }
+        }
     }
 }

@@ -96,22 +96,13 @@ public final class OperatorCatalog {
     }
 
     /**
-     * The first catalog entry that documents this kernel error code in its {@code invalidExample} —
-     * the catalog-join behind F4a, letting a kernel {@code MVK_*} diagnostic inherit that entry's
-     * curated, N7-locked {@code fix}/{@code meaning} (no drift). When several operators share a code
-     * (e.g. all ordering operators report {@code MVK_INVALID_TYPE_FOR_COMPARISON}), the first in
-     * catalog order is representative; {@code lint.SpanResolver} pins the exact operator via
-     * AST↔problem span-linking (see {@link #operatorsForError}) when the rule's used operators
-     * disambiguate it.
-     */
-    public Optional<OperatorEntry> byInvalidError(String mvkCode) {
-        return operatorsForError(mvkCode).stream().findFirst();
-    }
-
-    /**
      * <em>All</em> catalog entries that document this kernel error code in their {@code invalidExample}
-     * — the candidate operators that can produce it. AST↔problem span-linking (F4a) intersects this
-     * with the operators a rule actually uses to pin the exact one (`where.operator`).
+     * — the candidate operators that can produce it. The {@code DiagnosticEnricher} joins on this:
+     * one documenter (or several that agree) yields that corrective; several that disagree yield the
+     * <em>union</em> — never an arbitrary first pick (the removed {@code byInvalidError}/{@code findFirst}
+     * mis-stamped every other construct: probe findings F06-2 / dec-places). AST↔problem span-linking
+     * (F4a, {@code lint.SpanResolver}) further intersects this with the operators a rule actually uses
+     * to pin the exact one (`where.operator`) once that lands on a read pass.
      */
     public List<OperatorEntry> operatorsForError(String mvkCode) {
         return entries.stream()
