@@ -143,6 +143,31 @@ class FieldVerbTest {
     }
 
     @Test
+    void readResolvesATypedefTypedFieldsConfig(@TempDir Path dir) throws Exception {
+        // probe 10: a typedef-TYPED field used to read back as only {type:TypeDefType, typedef:<id>} — the
+        // resolved scale/unit lived only on the typedef, forcing a cross-read of `typedef read`/`model
+        // describe`. field read now ALSO resolves the type definition's config into `resolvedType`, so a
+        // constraint on the reusable type is confirmable through this read alone.
+        Path m = dir.resolve("td.dm.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "td", "--locale", "en_US",
+                "--root", "R", "-o", m.toString()).code());
+        Path td = dir.resolve("money.json");
+        Files.writeString(td, """
+                {"kind":"NUMBER","number":{"maxFractionalDigits":2,"minFractionalDigits":2,"unit":"AMOUNT"}}""");
+        assertEquals(0, CliTestSupport.run("-m", m.toString(), "typedef", "add", "--id", "Money", td.toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", m.toString(), "field", "add",
+                "--group", "/R", "--name", "Cost", "--typedef", "Money").code());
+
+        JsonNode data = M.readTree(CliTestSupport.run("-m", m.toString(), "field", "read", "/R/Cost").out()).path("data");
+        assertEquals("TypeDefType", data.path("type").asText());
+        assertEquals("Money", data.path("typedef").asText(), "the typedef pointer is still there");
+        JsonNode resolved = data.path("resolvedType").path("number");
+        assertEquals(2, resolved.path("maxFractionalDigits").asInt(),
+                () -> "field read resolves the typedef's config into resolvedType: " + data);
+        assertEquals("AMOUNT", resolved.path("unit").asText(), "the typedef's unit resolves too");
+    }
+
+    @Test
     void dateAndTimeFieldFormatsAreFixedAndLocaleIndependent(@TempDir Path dir) throws Exception {
         // probe 08: date/time field FORMATS are lowercase Java patterns from a FIXED allowed set, independent
         // of the model's locale AND conditionLanguage. The editor's uppercase presets are rejected, TIME needs

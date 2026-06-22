@@ -10,10 +10,14 @@ import java.nio.file.Path;
 import java.util.List;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.adapter.ReadComputation;
+import io.github.mbackschat.a12.dm.cli.rule.RuleMessages;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
+import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
@@ -66,7 +70,24 @@ final class ComputationReadCommand extends BaseCommand {
             data.put("computation", computation);
             if (read instanceof ReadComputation.Converted converted) {
                 data.put("converted", true);
-                data.put("calculatedField", converted.computation().computedField().path());
+                Computation comp = converted.computation();
+                data.put("calculatedField", comp.computedField().path());
+                // slot parity (probe 07): echo the FORMULA — the commonPrecondition + each alternative's
+                // (precondition?, operation), rendered as DSL — so the computed value is confirmable through
+                // `computation read` alone, not only via `computation format`.
+                DraftComputation draft = comp.draft();
+                if (draft.commonPrecondition() != null) {
+                    data.put("commonPrecondition", draft.commonPrecondition());
+                }
+                ArrayNode alternatives = data.putArray("alternatives");
+                for (DraftComputation.Alternative alt : draft.alternatives()) {
+                    ObjectNode node = alternatives.addObject();
+                    if (alt.precondition() != null) {
+                        node.put("precondition", alt.precondition());
+                    }
+                    node.put("operation", alt.operation());
+                }
+                RuleMessages.putInto(data, comp.messages());
             } else {
                 data.put("converted", false);
                 data.put("reason", ((ReadComputation.Opaque) read).reason());

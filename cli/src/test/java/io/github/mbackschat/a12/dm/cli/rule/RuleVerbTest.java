@@ -84,6 +84,13 @@ class RuleVerbTest {
         assertEquals(CliTestSupport.RULE_FULL_NAME, data.get("rule").asText());
         assertTrue(data.get("converted").asBoolean(), "FeeCapRule reads to Converted");
         assertTrue(data.has("condition"), "carries the rendered condition");
+        // slot parity vs IRule (probe 11 + the slot sweep): a rule read must surface the severity, the
+        // error code, and the error field — not only the condition + messages — so each is confirmable
+        // through the structured surface (you can't confirm a severity/code you set otherwise).
+        assertTrue(data.path("severity").asText().matches("ERROR|WARNING|INFO"),
+                () -> "carries severity (ERROR/WARNING/INFO): " + data);
+        assertFalse(data.path("errorCode").asText().isBlank(), () -> "carries the error code: " + data);
+        assertFalse(data.path("errorField").asText().isBlank(), () -> "carries the error field: " + data);
     }
 
     @Test

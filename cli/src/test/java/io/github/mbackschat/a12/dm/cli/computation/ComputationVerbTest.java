@@ -122,8 +122,17 @@ class ComputationVerbTest {
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
         assertEquals("read", j.get("outcome").asText());
-        assertTrue(j.path("data").get("converted").asBoolean());
-        assertTrue(j.path("data").has("calculatedField"));
+        JsonNode data = j.path("data");
+        assertTrue(data.get("converted").asBoolean());
+        assertTrue(data.has("calculatedField"));
+        // slot parity (probe 07): a computation read must surface the FORMULA (each alternative's rendered
+        // operation) + its messages — not only the calculated field's path — so the computed value is
+        // confirmable through `computation read` alone, without `computation format`.
+        assertTrue(data.has("alternatives") && data.get("alternatives").size() >= 1,
+                () -> "carries the formula's alternatives: " + res.out());
+        assertFalse(data.get("alternatives").get(0).path("operation").asText().isBlank(),
+                () -> "each alternative carries its rendered operation: " + res.out());
+        assertTrue(data.has("messages"), () -> "carries the computation's messages: " + res.out());
     }
 
     @Test

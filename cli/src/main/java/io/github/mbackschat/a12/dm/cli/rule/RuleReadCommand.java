@@ -72,6 +72,9 @@ final class RuleReadCommand extends BaseCommand {
             ReadResult read = adapter.read(rule);
             ObjectNode data = MAPPER.createObjectNode();
             data.put("rule", rule);
+            data.put("severity", adapter.ruleSeverity(rule));
+            data.put("errorCode", adapter.ruleErrorCode(rule));
+            adapter.ruleErrorField(rule).ifPresent(f -> data.put("errorField", f));
             putRuleOutcome(data, read);
             RuleMessages.putInto(data, adapter.ruleMessages(rule));
             ResultEnvelope env = ResultEnvelope.read("rule", "read",

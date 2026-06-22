@@ -2,15 +2,18 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/read.schema.json",
   "title": "Read",
-  "description": "Output of `rule read`. With a `<rulePathInModel>` argument: one stored rule's condition read back — `converted` true = rulekit fully modeled every construct (an ordinary AST, ready for explain/diff); false = a tolerant Opaque passthrough preserving the kernel's text verbatim — plus the rule's stored `messages` (locale → text, raw/uninterpolated; native-capable). With NO argument: a lean name-index — `rules` (every rule's full name) + `count` — the navigation handle to then read one. (The whole-model read of every rule and computation is `model read`.)",
+  "description": "Output of `rule read`. With a `<rulePathInModel>` argument: one stored rule read back — `converted` true = rulekit fully modeled every construct (an ordinary AST, ready for explain/diff); false = a tolerant Opaque passthrough preserving the kernel's text verbatim — plus the rule's `severity`, `errorCode`, `errorField`, and stored `messages` (locale → text, raw/uninterpolated; all native-capable, so a severity/code you set is confirmable here). With NO argument: a lean name-index — `rules` (every rule's full name) + `count` — the navigation handle to then read one. (The whole-model read of every rule and computation is `model read`.)",
   "type": "object",
   "additionalProperties": false,
   "oneOf": [
-    { "title": "one rule (a path argument)", "required": ["rule", "converted"] },
+    { "title": "one rule (a path argument)", "required": ["rule", "converted", "severity", "errorCode"] },
     { "title": "name-index (no argument)", "required": ["rules", "count"] }
   ],
   "properties": {
     "rule": { "type": "string", "description": "(one rule) the rule's full name" },
+    "severity": { "type": "string", "enum": ["ERROR", "WARNING", "INFO"], "description": "(one rule) the rule's stored severity (kernel default ERROR) — confirms the `severity` set in the `rule add` spec" },
+    "errorCode": { "type": "string", "description": "(one rule) the rule's stored error code (distinct from its full name) — confirms the `code` set in the `rule add` spec" },
+    "errorField": { "type": "string", "description": "(one rule) the error entity's full path — the field/group the rule attaches to (its iteration anchor); omitted when the rule carries none" },
     "converted": { "type": "boolean", "description": "(one rule) true = Converted (full rulekit AST); false = Opaque (verbatim passthrough)" },
     "condition": { "type": "string", "description": "(one rule, Converted) the rendered DSL of the condition" },
     "canonicalText": { "type": "string", "description": "(one rule, Opaque) the raw kernel condition text, preserved verbatim" },

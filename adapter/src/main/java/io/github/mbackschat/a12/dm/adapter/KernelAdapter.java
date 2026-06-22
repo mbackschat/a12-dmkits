@@ -368,6 +368,37 @@ public final class KernelAdapter {
         return recoverMessages(rule(ruleFullName));
     }
 
+    /**
+     * A rule's stored <b>severity</b> ({@code ERROR}/{@code WARNING}/{@code INFO}), read straight from the
+     * model — native-capable, no runtime eval. Surfaced by {@code rule read} (probe 11) so an agent can
+     * confirm a severity it set with {@code rule add --severity} through the sanctioned structured surface,
+     * not just {@code condition}/{@code messages}; the kernel default is {@code ERROR}.
+     */
+    public String ruleSeverity(String ruleFullName) {
+        return rule(ruleFullName).getSeverityType().name();
+    }
+
+    /**
+     * A rule's stored <b>error code</b> ({@code IRule.getErrorCode()}) — the code an agent set with
+     * {@code rule add}'s {@code code}, distinct from the rule's full name. Read straight from the model
+     * (native-capable). Surfaced by {@code rule read} (slot parity vs {@code IRule}) so the code is
+     * confirmable through the structured surface.
+     */
+    public String ruleErrorCode(String ruleFullName) {
+        return rule(ruleFullName).getErrorCode();
+    }
+
+    /**
+     * A rule's <b>error entity</b> — the field (or group) the error attaches to, by full path
+     * ({@code IRule.getErrorEntity().getFullName()}). The rule's iteration anchor; surfaced by
+     * {@code rule read} (slot parity vs {@code IRule}) so an agent can confirm where a rule binds without
+     * re-deriving it. Empty when the rule carries no error entity.
+     */
+    public Optional<String> ruleErrorField(String ruleFullName) {
+        IEntity entity = rule(ruleFullName).getErrorEntity();
+        return entity == null ? Optional.empty() : Optional.ofNullable(entity.getFullName());
+    }
+
     // ── Computations (the calculated-field read path; the ReadComputation peer of read) ───────
 
     /**

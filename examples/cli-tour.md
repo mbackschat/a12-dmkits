@@ -143,6 +143,9 @@ dmtool -m examples/models/order-ruled.dm.json rule read /Order/DeliveryNotBefore
   "summary" : "read /Order/DeliveryNotBeforeOrder",
   "data" : {
     "rule" : "/Order/DeliveryNotBeforeOrder",
+    "severity" : "ERROR",
+    "errorCode" : "DELIVERY_BEFORE_ORDER",
+    "errorField" : "/Order/DeliveryDate",
     "converted" : true,
     "condition" : "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And DifferenceInDays(/Order/OrderDate, /Order/DeliveryDate) < 0",
     "messages" : [ {

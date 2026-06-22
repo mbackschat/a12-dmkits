@@ -347,7 +347,17 @@ dmtool -m /tmp/edit2-sub.json computation read /Subscription/Billing/EffectiveFe
   "data" : {
     "computation" : "/Subscription/Billing/EffectiveFeeComp",
     "converted" : true,
-    "calculatedField" : "/Subscription/Billing/EffectiveFee"
+    "calculatedField" : "/Subscription/Billing/EffectiveFee",
+    "alternatives" : [ {
+      "operation" : "[BaseFee] * 2"
+    } ],
+    "messages" : [ {
+      "locale" : "en_US",
+      "text" : "Effective fee is twice the base fee."
+    }, {
+      "locale" : "de_DE",
+      "text" : "Effektivgebuehr ist das Doppelte der Basisgebuehr."
+    } ]
   },
   "diagnostics" : [ ],
   "written" : false
@@ -446,4 +456,3 @@ applied
 ```
 
 → The comment survived a comment-less `modify`, and the threshold dropped to 500. To *change* the note, pass `rule modify --comment "<text>"` (it wins over the preserved one). The same `;;` comment is authorable from the typed library (`Rule.Builder.comment(...)` / `Computation.Builder.comment(...)`, on operations and preconditions too) and from `apply` rule ops (a `comment` key) — background in KERNEL-FINDINGS "Condition comments".
-
