@@ -147,6 +147,32 @@ class RuleVerbTest {
     }
 
     @Test
+    void addPersistsARuleWhoseMessageInterpolatesValueAndRowIndexTokens(@TempDir Path dir) throws Exception {
+        // probe 11 (native-only crash): a message with an error-text PARAMETER token ($<Field>.value$,
+        // $#<Group>$) invokes the kernel's error-text parameter parser (RuleErrortextChecker), whose
+        // ErrortextParameterMultiLanguageHandler.<clinit> loads a LexerTerminals ResourceBundle. No other
+        // :cli test exercised this path, so the test-suite-driven native CAPTURE never registered that
+        // bundle and ANY token message crashed the native binary (ExceptionInInitializerError / exit 70 on
+        // rule add/modify, even --dry-run). This test drives the capture to register the bundle (the fix)
+        // and locks that a token message is accepted + persisted. On the JVM the bundle is on the classpath,
+        // so this always passed there — the gap was native-only, which is exactly why a JVM guard alone
+        // can't catch it; the native-gate battery check is the trip-wire (see scripts/native-gate.sh).
+        Path model = CliTestSupport.orderRuled(dir);   // repeatable /Order/Items with Count
+        Path spec = dir.resolve("tokenmsg.json");
+        Files.writeString(spec, """
+                { "field": "/Order/Items/Count", "group": "/Order",
+                  "condition": "GroupFilled(Items) And [Count] <= 0", "code": "ITEM_COUNT_NOT_POSITIVE",
+                  "messages": [ {"locale":"en_US",
+                    "text":"Row $#/Order/Items$: count $/Order/Items/Count.value$ must be greater than zero."} ] }""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "add", spec.toString());
+        assertEquals(0, res.code(), res.err());
+        assertEquals("applied", M.readTree(res.out()).get("outcome").asText());
+        assertTrue(Files.readString(model).contains("ITEM_COUNT_NOT_POSITIVE"),
+                "the token-bearing rule persisted (the error-text parameter parser ran — the native capture path)");
+    }
+
+    @Test
     void addRejectsAFieldOutsideTheGivenGroup(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         Path spec = dir.resolve("bad.json");

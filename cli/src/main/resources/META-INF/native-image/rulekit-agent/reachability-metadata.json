@@ -14241,6 +14241,15 @@
       "glob": "com/mgmtp/a12/kernel/core/rt/internal/utils/IExtmpMetaKeysBase.groovy"
     },
     {
+      "glob": "com/mgmtp/a12/kernel/core/service/internal/errortext/grammar/languages/LexerTerminals.properties"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/service/internal/errortext/grammar/languages/LexerTerminals_de_DE.properties"
+    },
+    {
+      "glob": "com/mgmtp/a12/kernel/core/service/internal/errortext/grammar/languages/LexerTerminals_en_US.properties"
+    },
+    {
       "glob": "com/mgmtp/a12/kernel/md/model/internal/service/consistency/i18n/ErrorMessages.properties"
     },
     {
@@ -15735,6 +15744,9 @@
     },
     {
       "bundle": "com.mgmtp.a12.kernel.core.parser.internal.grammar.languages.LexerTerminals"
+    },
+    {
+      "bundle": "com.mgmtp.a12.kernel.core.service.internal.errortext.grammar.languages.LexerTerminals"
     },
     {
       "bundle": "com.mgmtp.a12.kernel.md.model.internal.service.consistency.i18n.ErrorMessages"

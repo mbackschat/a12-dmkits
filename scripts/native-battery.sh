@@ -82,6 +82,24 @@ for loc in en_US de_DE; do
   run "invalid condition ($loc) → must format the parser error" -m "$lm" rule check --field /R/F --condition 'Bogus(F)' --code X
 done
 
+echo "== error-text PARAMETER tokens (probe 11 native crash: ErrortextParameterMultiLanguageHandler LexerTerminals bundle) =="
+# A rule message with an error-text PARAMETER token ($<Field>.value$, $#<Group>$) invokes the kernel's
+# error-text PARAMETER parser (RuleErrortextChecker), whose ErrortextParameterMultiLanguageHandler.<clinit>
+# loads a LexerTerminals ResourceBundle — a DIFFERENT bundle from the condition parser-error one above. No
+# other battery/test path hit it, so a native resource-registration gap crashed ANY token message
+# (MissingResourceException "Can't find bundle" → ExceptionInInitializerError → exit 70), invisible to the
+# JVM. Drive rule add with a real token message on the native binary; a SIG hit = the bundle gap is back.
+TOK="$WORK/tok.json"
+"$NATIVE" model new --id tok --locale en_US --root Order -o "$TOK" >/dev/null 2>&1
+"$NATIVE" -m "$TOK" group add --parent /Order --name Items --repeatable 99 >/dev/null 2>&1
+"$NATIVE" -m "$TOK" field add --group /Order/Items --name Count --kind NUMBER >/dev/null 2>&1
+cat > "$WORK/tokrule.json" <<'JSON'
+{ "field":"/Order/Items/Count", "group":"/Order",
+  "condition":"GroupFilled(Items) And [Count] <= 0", "code":"COUNT_POS",
+  "messages":[ {"locale":"en_US","text":"Row $#/Order/Items$: count $/Order/Items/Count.value$ must be > 0."} ] }
+JSON
+run "error-text token msg: rule add (value + row-index tokens)" -m "$TOK" rule add "$WORK/tokrule.json"
+
 echo "== self-describing surface + rule read-back (catalog + adapter reflection the read/validate sweep misses) =="
 # manifest builds the full picocli command tree AND deserializes the operator catalog (rulekit.catalog POJOs);
 # operators re-reads it. NOTE: the fixture sweep's 'rule read' above runs with NO <rulePathInModel> — picocli
