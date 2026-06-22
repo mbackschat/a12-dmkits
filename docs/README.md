@@ -35,7 +35,7 @@ What each document under `docs/` holds, so you can jump to the right one. This i
 
 ## Testing
 
-- **[TESTING-SPEC.md](TESTING-SPEC.md)** — the testing-approach map: the one principle (the real kernel is the oracle), the kinds of test and where each lives, the **two law tiers** (accept/reject vs runtime fires/does-not-fire) that are easy to conflate, the structural-law guardians (anti-whack-a-mole), the opt-in corpus harnesses, layout conventions, and how to run. The navigation layer; enforced conventions stay in [`../CLAUDE.md`](../CLAUDE.md), per-area detail in its own doc.
+- **[TESTING-SPEC.md](TESTING-SPEC.md)** — the testing-approach map and the **fast path** into the whole harness: the **four tiers** (kernel-oracle JUnit · the showboat doc-drift demos · the two experience instruments — eval & probe — with their opposite intents), the one principle (the real kernel is the oracle), the kinds of test and where each lives, the **two law tiers** (accept/reject vs runtime fires/does-not-fire) that are easy to conflate, the structural-law guardians (anti-whack-a-mole), the opt-in corpus harnesses, layout conventions, and how to run each tier. The navigation layer; enforced conventions stay in [`../CLAUDE.md`](../CLAUDE.md), per-area detail in its own doc.
 
 ## Experience study
 

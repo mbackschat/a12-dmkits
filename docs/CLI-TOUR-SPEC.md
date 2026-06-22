@@ -4,7 +4,7 @@ The stable **method** for the rulekit CLI demos: how to author, verify, and exte
 
 The demos are authored with [showboat](https://github.com/simonw/showboat): each `examples/*.md` interleaves prose, a command, and its **captured output**, and `showboat verify` re-runs every command to prove the output still matches the live CLI. So a demo is documentation *and* a doc-drift regression test.
 
-Three demos so far, split by workflow: [`../examples/cli-tour.md`](../examples/cli-tour.md) — the **read/inspect** surface (`manifest`·`model describe`·`model usage`·`model validate`·`rule read`·`rule explain`·`rule check`), opening with the model it guards; [`../examples/cli-edit-loop.md`](../examples/cli-edit-loop.md) — the **write/edit** surface (`where-used`·`computation explain`·`computation modify`·`rule add`·`model describe -w/--workspace`·`batch`·`operators`/`schema`), the F8 modify-by-re-express loop end to end; and [`../examples/cli-structure-edit.md`](../examples/cli-structure-edit.md) — the **structure-edit** surface (`field add`·`group add`·`field remove` with the safe-delete gate).
+**Six demos** now cover the whole target-first verb surface, split by workflow — read/inspect, rulekit write/edit, modelkit structure, the `apply` session, runtime evaluation, and versions/compatibility. The CI gate re-verifies all six (`.github/workflows/ci.yml`). The per-demo verb inventory is kept current in [`../examples/README.md`](../examples/README.md) (rather than enumerated here, where it drifted); the backlog below records what each covers.
 
 ## Run / verify / regenerate
 

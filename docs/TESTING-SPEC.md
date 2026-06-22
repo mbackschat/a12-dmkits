@@ -2,6 +2,30 @@
 
 The map of *how* a12-dmkits is tested — the kinds of test, what each one is for, where it lives, and which oracle backs it. This is the navigation layer; the enforced conventions stay in [`../CLAUDE.md`](../CLAUDE.md) ("Testing strategy") and the per-area detail stays in its own doc (linked below). Read this when you need to place a new test or recover the big picture without hunting across five files.
 
+## The testing landscape — the four tiers
+
+a12-dmkits is tested at four tiers. The first two are **deterministic gates** (red/green, in CI); the last two are **experience instruments** — they measure how an LLM agent fares with the tool, and the durable guards their findings earn graduate *down* into tier 1.
+
+| tier | the question it answers | form & where it lives | run / spec |
+|---|---|---|---|
+| **1. Kernel-oracle tests** (JUnit) | does the DSL render, the kernel accept, the runtime evaluate, and the CLI describe itself — correctly? | the `:` + `:adapter` + `:cli` suites (**the rest of this doc**) | `./gradlew test :adapter:test :cli:test` |
+| **2. Doc-drift demos** (showboat) | do the published `examples/` CLI demos still match the live CLI? | `examples/*.md` (showboat) + the `CliTourFreshnessTest` local lock | `uvx showboat@0.6.1 verify examples/<demo>.md` — [`CLI-TOUR-SPEC.md`](CLI-TOUR-SPEC.md) |
+| **3. Self-sufficiency eval** (N6) | can a **cold** agent author/read rules from the bare surface (± skill)? — **scored, repeatable** | the Workflow runner over `eval/` | the `run-dmtool-eval` skill — [`EVAL-SPEC.md`](EVAL-SPEC.md) / [`EVAL-PRIMER.md`](EVAL-PRIMER.md) |
+| **4. DX probe** | how does a **real multi-prompt session on the shipped product** actually go? — **deep, n=1** | the probe pipeline over `probe/` | `probe/*.sh` + main loop — [`PROBE-SPEC.md`](PROBE-SPEC.md) |
+
+Tiers 1–2 are machine-enforced (a break fails the build/CI). Tiers 3–4 are **run-and-read**: an agent is in the loop, the deliverable is a measurement/report, and a finding's lasting guard graduates back into tier 1.
+
+### eval vs probe — same agents, opposite questions
+
+Both put an LLM agent in front of the tool, but they ask different things and must not be conflated:
+
+- **The eval asks "*can it succeed?*"** — is the **self-describing surface** teaching enough that a cold agent reaches a correct artifact, *repeatably*? It scores the **final artifact** (kernel-valid AND gold-equivalent), runs **single-shot** tasks on the freshly-built **JVM** CLI, repeats **pass@k**, and yields a **number** that can gate CI. It discards the trajectory.
+- **The probe asks "*how did it go — and is the success real?*"** — when a real agent drives the **shipped product** (the **native** binary + skill) across a **multi-prompt** session, where does it hit a **false success, friction, or get misled**? It reads the **trajectory** (an objective shim log + the produced models), runs **one deep session** (no k, no score), and yields a **diagnostic report**.
+
+The gap that justifies two instruments: a model can **score eval-PASS yet have terrible DX** — the same task the eval marks correct may have leaked a stack trace or burned 50 recovery calls, invisible to a final-artifact score. The eval guards *capability of the surface*; the probe guards *experience of the delivered product*. (PROBE-SPEC's "why a second instrument" lists the three shipped defects the eval was structurally blind to: a native-only crash, the delivery layer, a multi-step silent drop.)
+
+> **Terminology trap:** "probe" is overloaded. In **EVAL-SPEC** a *probe* is **one eval attempt** (the pass@k unit). The **probe harness** (`probe/`, PROBE-SPEC) is the **separate DX instrument** in tier 4. Same word, different things.
+
 ## The one principle: the real kernel is the oracle
 
 There is **no mock kernel**. Every claim about how the A12 kernel parses, validates, or *evaluates* a rule is locked by a test that runs the **real engine** (`30.8.1`, pinned). A feature isn't done when the DSL renders the right string — it's done when the kernel *accepts* that string (F4) and, where behavior matters, *evaluates* it as intended (F-LAW). Tests are example-based and TDD-first (red/green): readable, intent-revealing cases drive each feature.
@@ -130,6 +154,16 @@ This is *not* extract-and-compile of every fence. The README and many study bloc
 | **sync** | `./gradlew syncDocSnippets` (autonomous; rewrites fences from test regions in place) |
 | **completeness** | `everyDocSnippetIsLockedOrTeaserMarked` — every `java` block is locked or `<!-- teaser -->` |
 
+## Doc-drift demos (showboat / `examples/`) — tier 2
+
+The `examples/*.md` files are **runnable CLI demos**: each interleaves prose, a `dmtool` command, and its **captured output**, and `showboat verify` re-runs every command and **exact-matches** the output against the live CLI. So a demo is documentation *and* a doc-drift regression test — a verb rename or output-shape change not carried into the demo fails. Six demos cover the whole target-first verb surface (read/inspect · rulekit edit · modelkit structure · `apply` · runtime eval · versions); the per-demo verb inventory is [`../examples/README.md`](../examples/README.md) and the method is [`CLI-TOUR-SPEC.md`](CLI-TOUR-SPEC.md).
+
+**Two levers, because the showboat gate is CI-only:**
+- **CI** runs `uvx showboat@0.6.1 verify` on all six (`.github/workflows/ci.yml`) — the authoritative drift gate.
+- **A high-churn value a demo *pins* can still drift in a *local* commit with CI red but unnoticed** (it happened — two new `RkCode`s shifted the tour's `diagnostics` count 31→33). So every live-derived value a demo pins also gets a **local `:cli:test` lock**: the verb list in `ManifestVerbTest.EXPECTED_VERBS`, and the `diagnostics` count + `manifest` list + `schema rule add` keys in `CliTourFreshnessTest` (runs the real verb in-process, fails naming the regen command). Add such an inner-loop guard whenever a demo starts pinning a new live value.
+
+Audience note: these are **not** for cold-agent discoverability — the N6 eval agent never sees `examples/` (that's the self-describing surface's job). They serve the **CI drift-guard** and a **repo-equipped reader** learning a verb end to end.
+
 ## Opt-in corpus harnesses (gated, commit nothing)
 
 These read the **real** model corpora to measure coverage; they skip when their volume/clone is absent, print a report, and never commit corpus content (proprietary A12 Tools workspaces; EUPL `a12-kernel-mm`):
@@ -156,6 +190,18 @@ ROOT="$(cd .. && pwd)"; export GRADLE_USER_HOME="$ROOT/.gradle-isolated"; export
 ./gradlew :adapter:test --tests "*.PolarityLawsTest"        # one class
 ./gradlew :adapter:test --tests "*.KernelMmReadCoverageTest" -Da12.kernel.mm.dir=../a12-kernel-mm   # opt-in
 ./gradlew :adapter:test --tests "*.Corpus1ReadCoverageTest" -Da12.corpus1.dir="…/workspaces"        # opt-in
+./gradlew syncDocSnippets                                   # rewrite drifted locked doc snippets (autonomous; never CI)
 ```
 
-The self-sufficiency eval (N6) is **not** run from here — use the `run-dmtool-eval` skill (it loads the protocol guardrails at run time); method in [`EVAL-SPEC.md`](EVAL-SPEC.md), results in [`../eval/RESULTS.md`](../eval/RESULTS.md).
+**Tier 2 — doc-drift demos (showboat).** Exact-match a demo against the live CLI; run from the repo root with `bin/` on PATH so `dmtool` resolves (CI verifies all six):
+
+```sh
+export JAVA_HOME="$(/usr/libexec/java_home -v 21)"; export PATH="$PWD/bin:$PATH"
+./gradlew :cli:installDist                                  # the launcher the demos call
+uvx showboat@0.6.1 verify examples/cli-tour.md              # exit 0 = still matches the live CLI
+```
+
+**Tiers 3–4 — the experience instruments are run-and-read, not a plain command:**
+
+- **eval (N6)** — use the `run-dmtool-eval` skill (it loads the protocol guardrails at run time); method [`EVAL-SPEC.md`](EVAL-SPEC.md), results [`../eval/RESULTS.md`](../eval/RESULTS.md).
+- **probe** — the main-loop pipeline: re-capture metadata + rebuild native + native-gate → `probe/prep-probe.sh` → spawn the subagent → `probe/audit-probe.sh` (STOP if SUSPECT) → `probe/digest-probe.sh` → analyze vs gold → `probe/reports/<date>-<task>.md`. **Never probe a stale native binary** (`prep-probe.sh` enforces it). Method [`PROBE-SPEC.md`](PROBE-SPEC.md), how-to [`../probe/README.md`](../probe/README.md).
