@@ -283,10 +283,13 @@ public final class DocumentModelDraft {
             body.putObject("requirednessConfig").put("mode", mode);
         }
         if (!field.labels().isEmpty()) {
-            // a label, once present, must cover every declared locale (same rule as enum labels)
+            // a label, once present, must cover every declared locale (same rule as enum labels).
+            // This is a SPEC error (the caller supplied incomplete labels), not an internal invariant —
+            // IllegalArgumentException, so every CLI field-write path (add/modify/apply/batch) reports it as
+            // a clean "invalid field spec" rejection instead of letting it escape as RK_INTERNAL_ERROR (02-crash).
             for (String loc : locales) {
                 if (!field.labels().containsKey(loc)) {
-                    throw new IllegalStateException("field '" + field.name()
+                    throw new IllegalArgumentException("field '" + field.name()
                             + "' label is missing declared locale '" + loc + "'");
                 }
             }
@@ -431,7 +434,10 @@ public final class DocumentModelDraft {
                     for (FieldTypeSpec.EnumValue v : e.values()) {
                         for (String loc : locales) {
                             if (!v.labels().containsKey(loc)) {
-                                throw new IllegalStateException("enum value '" + v.value()
+                                // a SPEC error (incomplete enum labels), not an internal invariant — see the
+                                // field-label note above (02-crash): IllegalArgumentException so the CLI
+                                // field-write paths report a clean "invalid field spec", never RK_INTERNAL_ERROR.
+                                throw new IllegalArgumentException("enum value '" + v.value()
                                         + "' is missing a label for declared locale '" + loc
                                         + "' (labels are all-or-nothing per locale)");
                             }

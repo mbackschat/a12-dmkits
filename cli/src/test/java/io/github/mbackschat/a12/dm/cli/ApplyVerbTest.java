@@ -178,6 +178,28 @@ class ApplyVerbTest {
     }
 
     @Test
+    void fieldAddWithIncompleteLocaleRollsBackCleanly(@TempDir Path dir) throws Exception {
+        // 02-crash sibling: the standalone `field add` once let an incomplete-locale label escape as exit 70 /
+        // RK_INTERNAL_ERROR. The apply path is the sibling that must ALSO reject it as a clean rolled-back
+        // rejection (exit 1, committed:false), never an internal error — locking the whole field-write class.
+        Path m = dir.resolve("loc.dm.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "loc", "--locale", "en_US",
+                "--root", "Doc", "-o", m.toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", m.toString(), "config", "modify", "--add-locale", "de_DE").code());
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, """
+                [ {"target":"field","op":"add","group":"/Doc","name":"Title","kind":"STRING","label":{"en_US":"Title"}} ]""");
+
+        var res = CliTestSupport.run("-m", m.toString(), "apply", ops.toString());
+        assertNotEquals(70, res.code(), () -> "apply must not crash on incomplete locale coverage: " + res.out());
+        assertEquals(1, res.code(), () -> "the bad op rolls the sequence back: " + res.out());
+        JsonNode j = M.readTree(res.out());
+        assertFalse(j.path("committed").asBoolean(), "nothing committed");
+        assertFalse(res.out().contains("RK_INTERNAL_ERROR"), () -> "clean rejection, not internal error: " + res.out());
+        assertFalse(Files.readString(m).contains("Title"), "nothing written on the rolled-back sequence");
+    }
+
+    @Test
     void rollsBackOnAFailingOp(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         String before = Files.readString(model);

@@ -98,8 +98,9 @@ class FieldConfigTest {
     @Test
     void incompleteEnumLabelsAreRejected() {
         // the kernel's MVK_COUNT_OF_VALUES_INVALID: labels are all-or-nothing per declared locale —
-        // labeling one value but not another (or missing a declared locale) is caught fail-fast
-        assertThrows(IllegalStateException.class, () -> DocumentModelDraft.named("m").locale("en_US")
+        // labeling one value but not another (or missing a declared locale) is caught fail-fast as a SPEC
+        // error (IllegalArgumentException) — so the CLI reports a clean "invalid field spec", not RK_INTERNAL_ERROR
+        assertThrows(IllegalArgumentException.class, () -> DocumentModelDraft.named("m").locale("en_US")
                 .rootGroup("G", g -> g.enumField("F", e -> e
                         .value("A", l -> l.label("en_US", "Ay"))
                         .value("B")))

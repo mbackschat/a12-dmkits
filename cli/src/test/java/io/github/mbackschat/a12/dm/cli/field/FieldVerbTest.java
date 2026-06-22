@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.cli.CliTestSupport;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
@@ -35,6 +36,29 @@ class FieldVerbTest {
         assertEquals("applied", j.get("outcome").asText());
         assertEquals("/Order/PromoCode", j.path("changed").path("added").asText());
         assertTrue(Files.readString(model).contains("PromoCode"), "the field is persisted");
+    }
+
+    @Test
+    void addRejectsIncompleteLocaleCoverageCleanly(@TempDir Path dir) throws Exception {
+        // 02-crash (probe): a field label that misses a declared locale is a correctable SPEC error, not an
+        // internal tool failure — yet `field add` let the modelkit IllegalStateException escape as exit 70 /
+        // RK_INTERNAL_ERROR while its siblings (apply / field modify / rule add) rejected the same input
+        // cleanly. It must now surface as the standard "invalid field spec" rejection (exit 2), never exit 70.
+        Path m = dir.resolve("loc.dm.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "loc", "--locale", "en_US",
+                "--root", "Doc", "-o", m.toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", m.toString(), "config", "modify", "--add-locale", "de_DE").code(),
+                "declare a second locale so a single-locale label is now incomplete");
+        Path spec = dir.resolve("partial-label.json");
+        Files.writeString(spec, """
+                {"group":"/Doc","name":"Title","kind":"STRING","label":{"en_US":"Title"}}""");
+        var res = CliTestSupport.run("-m", m.toString(), "field", "add", spec.toString());
+        assertNotEquals(70, res.code(), () -> "incomplete locale coverage must NOT be an internal error: " + res.out());
+        assertEquals(2, res.code(), () -> "it is a clean spec rejection: " + res.err());
+        assertFalse(res.out().contains("RK_INTERNAL_ERROR"), () -> "no internal-error envelope: " + res.out());
+        assertTrue(res.err().contains("invalid field spec") && res.err().contains("missing declared locale"),
+                () -> "the corrective names the missing locale: " + res.err());
+        assertFalse(Files.readString(m).contains("Title"), "nothing written on a rejected spec");
     }
 
     @Test
