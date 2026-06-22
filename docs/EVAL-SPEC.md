@@ -109,6 +109,8 @@ The benchmark is the **forcing function**: it tells us, objectively, which verbs
 
 ## 5. Probe protocol (how to run one)
 
+> **Term:** here a *probe* means **a single eval attempt** (one clean agent, one task, one run — the pass@k unit). This is **not** the **probe harness** ([`PROBE-SPEC.md`](PROBE-SPEC.md), `probe/`), which is the separate DX instrument over the shipped product. Same word, different things.
+
 > **Operationally, run via the `run-dmtool-eval` skill** (`.claude/skills/`) — it loads these guardrails at point-of-use so they aren't run from memory. This section is the rationale behind them.
 
 - Spawn a **fresh agent** (clean context; the `Agent` tool does this). For the suite at scale, a **Workflow** fans out tasks × k runs through clean agents, each scored via the CLI, aggregating pass@k (opt-in — it spawns many agents).
