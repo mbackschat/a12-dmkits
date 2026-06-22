@@ -188,7 +188,7 @@ dmtool -m /tmp/struct.dm.json model validate | jq -c "{outcome,valid,diagnostics
 
 ## reading the shape — field read · group read
 
-The two reads tell you what a path *is* before you edit it: `field read <fieldPath>` returns the field's declared `type`, `group read <groupPath>` returns whether the group repeats. Both land their answer under `.data` and write nothing (`written: false`). We work from a fresh copy of the `subscription` fixture — its `/Subscription/Billing/BaseFee` field and repeatable `/Subscription/Addons` group give us something to inspect.
+The two reads tell you what a path *is* before you edit it: `field read <fieldPath>` returns the field's declared kind + config, `group read <groupPath>` returns whether the group repeats + its direct child fields. Both land their answer under `.data` and write nothing (`written: false`). We work from a fresh copy of the `subscription` fixture — its `/Subscription/Billing/BaseFee` field and repeatable `/Subscription/Addons` group give us something to inspect.
 
 ```bash
 cp examples/models/subscription.dm.json /tmp/struct2.dm.json && echo "copied subscription → /tmp/struct2.dm.json"
@@ -227,7 +227,7 @@ dmtool -m /tmp/struct2.dm.json field read /Subscription/Billing/BaseFee
 
 → `data.kind = NUMBER` is the field's value kind — the same vocabulary `field add` and `model describe` use (the kernel discriminator never leaks). The envelope's `outcome: read` / `written: false` mark this as a non-mutating query.
 
-`group read` answers the one structural question a group carries here — does it repeat? `/Subscription/Addons` is a repetition list (it was declared `--repeatable`), so `data.repeatable` is `true`:
+`group read` shows whether the group repeats and lists its direct child fields. `/Subscription/Addons` is a repetition list (it was declared `--repeatable`), so `data.repeatable` is `true` and `data.fields` carries its `Name`/`MonthlyFee` children:
 
 ```bash
 dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons
@@ -244,7 +244,8 @@ dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons
   "data" : {
     "group" : "/Subscription/Addons",
     "repeatable" : true,
-    "maxRepetitions" : 20
+    "maxRepetitions" : 20,
+    "fields" : [ "/Subscription/Addons/Name", "/Subscription/Addons/MonthlyFee" ]
   },
   "diagnostics" : [ ],
   "written" : false
@@ -277,7 +278,7 @@ dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons | jq -c '.data'
   "written" : true,
   "output" : "/tmp/struct2.dm.json"
 }
-{"group":"/Subscription/Addons","repeatable":true,"maxRepetitions":20,"indexField":"Name"}
+{"group":"/Subscription/Addons","repeatable":true,"maxRepetitions":20,"indexField":"Name","fields":["/Subscription/Addons/Name","/Subscription/Addons/MonthlyFee"]}
 ```
 
 → `changed.indexField: Name` and the read's `data.indexField` confirm the row-key landed. `--clear-index-field` removes it; an index field on a single (non-repeating) group is refused.

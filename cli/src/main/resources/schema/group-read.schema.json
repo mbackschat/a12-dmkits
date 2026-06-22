@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/group-read.schema.json",
+  "title": "GroupRead",
+  "description": "Output of `group read`. With a `<groupPathInModel>` argument: one group read back — its `repeatable` flag (plus `maxRepetitions` when repeatable, `indexField` when set) and `fields` (its DIRECT child field paths, so a just-built composite group is confirmable here without `model describe`). With NO argument: a lean name-index — `groups` (every group's full path) + `count`.",
+  "type": "object",
+  "additionalProperties": false,
+  "oneOf": [
+    { "title": "one group (a path argument)", "required": ["group", "repeatable"] },
+    { "title": "name-index (no argument)", "required": ["groups", "count"] }
+  ],
+  "properties": {
+    "group": { "type": "string", "description": "(one group) the group's full name-path" },
+    "repeatable": { "type": "boolean", "description": "(one group) whether the group repeats (rules over it iterate per row)" },
+    "maxRepetitions": { "type": "integer", "description": "(one group) the maximum number of rows; present only for a repeatable group" },
+    "indexField": { "type": "string", "description": "(one group) the repetition row-key field, if one is set" },
+    "fields": { "type": "array", "items": { "type": "string" }, "description": "(one group) the group's DIRECT child field paths (a deeper field belongs to a nested sub-group; see `model describe` for the full tree)" },
+    "groups": { "type": "array", "items": { "type": "string" }, "description": "(name-index) every group's full name-path, in document order — pass one back as `group read <path>`" },
+    "count": { "type": "integer", "description": "(name-index) the number of groups" }
+  }
+}

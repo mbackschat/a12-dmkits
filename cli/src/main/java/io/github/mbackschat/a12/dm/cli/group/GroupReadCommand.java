@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
@@ -17,12 +18,13 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
 
 /**
- * {@code dmtool group read <groupPath>} — read a group's repeatability. A read op: the payload rides {@code
- * data} ({@code group}, {@code repeatable}, {@code maxRepetitions} when repeatable, {@code indexField} when
- * set); a path that names no group fails fast.
+ * {@code dmtool group read <groupPath>} — read a group's repeatability + its direct child fields. A read op:
+ * the payload rides {@code data} ({@code group}, {@code repeatable}, {@code maxRepetitions} when repeatable,
+ * {@code indexField} when set, and {@code fields} = the group's direct child field paths); a path that names
+ * no group fails fast.
  */
 @Command(name = "read", mixinStandardHelpOptions = true,
-        description = "Read a group's repeatability into `data`.")
+        description = "Read a group's repeatability + its direct child fields into `data`.")
 final class GroupReadCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -61,6 +63,14 @@ final class GroupReadCommand extends BaseCommand {
             }
             // echo the index field (repetition row-key) so a `group modify --index-field` edit round-trips
             doc.indexField(group).ifPresent(idx -> data.put("indexField", idx));
+            // echo the group's DIRECT child fields, so a just-built composite group (attachment / multiselect /
+            // bulk add) is confirmable through `group read` alone — without falling back to `model describe`
+            // for "what's in here" (probe 10). Direct children only (a deeper field belongs to a sub-group).
+            String prefix = group + "/";
+            ArrayNode fields = data.putArray("fields");
+            doc.fieldPaths().stream()
+                    .filter(p -> p.startsWith(prefix) && p.indexOf('/', prefix.length()) < 0)
+                    .forEach(fields::add);
             ResultEnvelope env = ResultEnvelope.read("group", "read", "read " + group, true, List.of(), data);
             out().print(env.toJsonString());
             return env.exitCode();

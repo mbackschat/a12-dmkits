@@ -70,6 +70,18 @@ class GroupVerbTest {
     }
 
     @Test
+    void readEchoesTheGroupsDirectChildFields(@TempDir Path dir) throws Exception {
+        // probe 10: `group read` echoes a group's DIRECT child fields, so a composite group is confirmable
+        // through this read alone — no fallback to `model describe` for "what's in here".
+        Path model = CliTestSupport.orderRuled(dir);
+        var res = CliTestSupport.run("-m", model.toString(), "group", "read", "/Order/Items");
+        assertEquals(0, res.code(), res.err());
+        JsonNode fields = M.readTree(res.out()).path("data").path("fields");
+        assertTrue(fields.isArray() && fields.toString().contains("/Order/Items/Count"),
+                () -> "group read echoes the direct child fields: " + res.out());
+    }
+
+    @Test
     void removesAnAddedGroup(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "group", "add",

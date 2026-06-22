@@ -85,6 +85,8 @@ class DataSchemaConformanceTest {
                 new Run("where-used", new String[]{"-m", order.toString(), "where-used", "/Order/Quantity"}),
                 new Run("field-read", new String[]{"-m", order.toString(), "field", "read", "/Order/Quantity"}),
                 new Run("field-read", new String[]{"-m", order.toString(), "field", "read"}),
+                new Run("group-read", new String[]{"-m", order.toString(), "group", "read", "/Order/Items"}),
+                new Run("group-read", new String[]{"-m", order.toString(), "group", "read"}),
                 new Run("typedef-read", new String[]{"-m", td.toString(), "typedef", "read", "Money"}),
                 new Run("typedef-read", new String[]{"-m", td.toString(), "typedef", "read"}),
                 new Run("eval-doc", new String[]{"-m", order.toString(), "model", "eval", "--doc", doc.toString()}),
@@ -185,7 +187,7 @@ class DataSchemaConformanceTest {
     @Test
     void everyDataSchemaIsCoveredOrExempt() {
         Set<String> covered = Set.of("model-info", "describe", "model-usage", "read", "explain",
-                "where-used", "field-read", "typedef-read", "eval-doc", "compute-doc", "workspace-list");
+                "where-used", "field-read", "group-read", "typedef-read", "eval-doc", "compute-doc", "workspace-list");
         List<String> uncovered = new ArrayList<>();
         for (String schema : SchemaCommand.DATA_SCHEMA.values()) {
             if (!covered.contains(schema) && !EXEMPT_SCHEMAS.containsKey(schema)) {

@@ -581,7 +581,7 @@ dmtool -m examples/models/order-ruled.dm.json model usage \
 
 ## field / group / config read — the structural facts
 
-Beyond rules, the same `<target> read` pattern reads the model's **structure**. Each returns just the fact under `data` (projected here with `jq` for brevity): `field read` a field's declared type, `group read` whether a group repeats, `config read` the document's rendering config. These are the facts that decide how a condition must be written.
+Beyond rules, the same `<target> read` pattern reads the model's **structure**. Each returns just the fact under `data` (projected here with `jq` for brevity): `field read` a field's declared kind, `group read` whether a group repeats + its child fields, `config read` the document's rendering config. These are the facts that decide how a condition must be written.
 
 ```bash
 dmtool -m examples/models/order-ruled.dm.json field read /Order/OrderDate | jq '.data'
@@ -607,7 +607,10 @@ dmtool -m examples/models/order-ruled.dm.json group read /Order/BillingAddress |
 ```output
 {
   "group": "/Order/BillingAddress",
-  "repeatable": false
+  "repeatable": false,
+  "fields": [
+    "/Order/BillingAddress/PostalCode"
+  ]
 }
 ```
 
