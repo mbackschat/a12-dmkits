@@ -8550,6 +8550,35 @@
       ]
     },
     {
+      "type": "io.github.mbackschat.a12.dm.cli.typedef.TypedefModifyCommand",
+      "fields": [
+        {
+          "name": "dryRun"
+        },
+        {
+          "name": "id"
+        },
+        {
+          "name": "kind"
+        },
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "specPath"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "io.github.mbackschat.a12.dm.cli.typedef.TypedefReadCommand",
       "fields": [
         {
