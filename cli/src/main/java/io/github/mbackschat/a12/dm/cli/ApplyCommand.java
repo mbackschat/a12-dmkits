@@ -26,6 +26,7 @@ import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.FieldModification;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.modelkit.MountOptions;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
@@ -82,10 +83,12 @@ final class ApplyCommand extends BaseCommand {
         TYPEDEF_ADD("typedef", "add", Set.of("id", "kind", "string", "number", "enum", "custom",
                 "date", "time", "dateTime", "dateRange", "dateFragment")),
         TYPEDEF_REMOVE("typedef", "remove", Set.of("typeDefId")),
-        INCLUDE_ADD("include", "add", Set.of("alias", "reference", "parent", "name")),
+        INCLUDE_ADD("include", "add", Set.of("alias", "reference", "parent", "name",
+                "repeatability", "exclude-rules", "exclude-computations")),
         INCLUDE_REMOVE("include", "remove", Set.of("alias")),
         CONFIG_MODIFY("config", "modify", Set.of("decimal-separator", "time-zone", "condition-language",
-                "label", "annotation", "comment", "add-locale", "remove-locale", "role", "clear-roles")),
+                "label", "annotation", "comment", "add-locale", "remove-locale", "role", "clear-roles",
+                "supported-character")),
         FIELD_RENAME("field", "rename", Set.of("fieldPathInModel", "to")),
         FIELD_MOVE("field", "move", Set.of("fieldPathInModel", "to")),
         GROUP_RENAME("group", "rename", Set.of("groupPathInModel", "to")),
@@ -450,9 +453,31 @@ final class ApplyCommand extends BaseCommand {
             }
             case INCLUDE_ADD -> {
                 String alias = req(op, "alias");
-                session.addInclude(alias, req(op, "reference"), req(op, "parent"), req(op, "name"));
+                String parent = req(op, "parent");
+                String name = req(op, "name");
+                // mirror the standalone verb's mount options — repeatability + rule/computation exclusions —
+                // so an apply session can do what `include add` can (was: option-less 4-arg addInclude dropped
+                // them, and the key-set rejected them as RK_UNKNOWN_ARG)
+                MountOptions options = MountOptions.repeatable(
+                        op.hasNonNull("repeatability") ? op.get("repeatability").asInt() : 1);
+                if (op.path("exclude-rules").asBoolean(false)) {
+                    options = options.excludingRules();
+                }
+                if (op.path("exclude-computations").asBoolean(false)) {
+                    options = options.excludingComputations();
+                }
+                session.addInclude(alias, req(op, "reference")).mount(parent, name, alias, options);
                 changed.put("added", alias);
-                changed.put("mountedAt", op.get("parent").asText() + "/" + op.get("name").asText());
+                changed.put("mountedAt", parent + "/" + name);
+                if (options.repeatability() != 1) {
+                    changed.put("repeatability", options.repeatability());
+                }
+                if (options.excludeRules()) {
+                    changed.put("excludeRules", true);
+                }
+                if (options.excludeComputations()) {
+                    changed.put("excludeComputations", true);
+                }
                 yield staged(which, changed, session);
             }
             case INCLUDE_REMOVE -> {
@@ -490,6 +515,13 @@ final class ApplyCommand extends BaseCommand {
                     session.setModelComment(op.get("comment").asText());
                     changed.put("comment", op.get("comment").asText());
                 }
+                if (op.has("supported-character")) {
+                    // parity with `config modify --supported-character` (a repeatable flag): REPLACES the whole
+                    // allowed-character set; a scalar binds like a 1-element list (Issue A)
+                    List<String> chars = stringValues(op, "supported-character");
+                    session.setSupportedCharacters(chars);
+                    changed.put("supportedCharacters", String.join(" ", chars));
+                }
                 for (String code : stringValues(op, "add-locale")) {
                     session.addLocale(code);           // idempotent; a scalar "de_DE" binds like ["de_DE"] (Issue A)
                     changed.put("addedLocale." + code, true);
@@ -520,7 +552,8 @@ final class ApplyCommand extends BaseCommand {
                 }
                 if (changed.isEmpty()) {
                     throw new IllegalArgumentException("config modify needs one of decimal-separator, time-zone, "
-                            + "condition-language, label, annotation, comment, add-locale, role, clear-roles");
+                            + "condition-language, label, annotation, comment, add-locale, role, clear-roles, "
+                            + "supported-character");
                 }
                 yield staged(which, changed, session);
             }

@@ -8,9 +8,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Set;
+import java.util.TreeSet;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -660,5 +663,131 @@ class ApplyVerbTest {
         assertTrue(refusal.path("data").path("referencedBy").path("rules").toString().contains("/Subscription/BILLING_GUARD"),
                 () -> "the refusal lists the referrer: " + refusal);
         assertEquals(before, Files.readString(model), "rollback — the model file is untouched");
+    }
+
+    // --- apply op-key parity with the standalone verbs' settable flags (05-apply-repeat, generalized) ---
+
+    @Test
+    void includeAddOpHonorsRepeatabilityAndExclusions(@TempDir Path dir) throws Exception {
+        // 05-apply-repeat (generalized): the apply `include add` op must honor the SAME mount options the
+        // standalone verb supports — repeatability + rule/computation exclusions — not silently drop them. The
+        // op called the option-less 4-arg addInclude AND its key-set rejected repeatability/exclude-* as
+        // RK_UNKNOWN_ARG, so neither could ever take effect through apply.
+        Path model = dir.resolve("subscription.dm.json");
+        Files.writeString(model, CliTestSupport.subscriptionJson());
+        Files.writeString(dir.resolve("catalog.dm.json"),
+                DocumentModelDraft.named("catalog").locale("en_US").locale("de_DE")
+                        .rootGroup("Catalog", g -> g.field("Sku", FieldKind.STRING)).build().toJson());
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, """
+                [ {"target":"include","op":"add","alias":"catalog","reference":"catalog",
+                   "parent":"/Subscription","name":"Catalog","repeatability":5,
+                   "exclude-rules":true,"exclude-computations":true} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString(), "-w", dir.toString());
+        assertEquals(0, res.code(), res.err());
+        JsonNode changed = M.readTree(res.out()).path("results").get(0).path("changed");
+        assertEquals(5, changed.path("repeatability").asInt(), () -> "repeatability honored: " + res.out());
+        assertTrue(changed.path("excludeRules").asBoolean(), "exclude-rules honored");
+        assertTrue(changed.path("excludeComputations").asBoolean(), "exclude-computations honored");
+        // the options actually took effect in the committed model (kernel-validated by the terminal gate)
+        String written = Files.readString(model);
+        assertTrue(written.contains("\"repeatability\" : 5"), "the mount is emitted as a repeatable group");
+        assertTrue(written.contains("\"excludeRules\" : true") && written.contains("\"excludeComputations\" : true"),
+                "the mount carries the exclusions");
+    }
+
+    @Test
+    void configModifyOpHonorsSupportedCharacter(@TempDir Path dir) throws Exception {
+        // the swept sibling of 05-apply-repeat: `config modify --supported-character A-Z` is a standalone
+        // capability that apply's CONFIG_MODIFY op rejected (no key, no handler branch) — so an agent could not
+        // restrict the allowed-character set inside a session.
+        Path model = dir.resolve("m.dm.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "m", "--locale", "en_US",
+                "--root", "M", "-o", model.toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "field", "add",
+                "--group", "/M", "--name", "X", "--kind", "STRING").code());
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, """
+                [ {"target":"config","op":"modify","supported-character":["A-Z","0-9"]} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(0, res.code(), res.err());
+        assertTrue(M.readTree(res.out()).path("committed").asBoolean(), () -> "committed: " + res.out());
+        JsonNode supported = M.readTree(CliTestSupport.run("-m", model.toString(), "config", "read").out())
+                .path("data").path("supportedCharacters");
+        assertTrue(supported.toString().contains("A-Z") && supported.toString().contains("0-9"),
+                () -> "the supported-character set was applied: " + supported);
+    }
+
+    @Test
+    void everyFlagDrivenApplyOpAcceptsTheSettableFlagsItsStandaloneVerbAdvertises(@TempDir Path dir) throws Exception {
+        // Class-guard (05-apply-repeat, generalized — the anti-whack-a-mole lock): for a FLAG-driven verb,
+        // every settable `--flag` the manifest advertises must be a valid apply op-record key — otherwise the
+        // op silently can't do what the standalone verb can. This bit `include add` (repeatability/exclude-*)
+        // and `config modify` (supported-character). The RICH-SPEC verbs (field/rule/computation/typedef
+        // add·modify) are EXCLUDED: they carry a JSON spec body whose keys deliberately diverge from the CLI
+        // flags (--message/--locale → messages) and are guarded by SpecKeys + the executable schema examples.
+        JsonNode manifest = M.readTree(CliTestSupport.run("manifest").out());
+        Path model = dir.resolve("subscription.dm.json");
+        Files.writeString(model, CliTestSupport.subscriptionJson());
+        Files.writeString(dir.resolve("catalog.dm.json"),
+                DocumentModelDraft.named("catalog").locale("en_US").locale("de_DE")
+                        .rootGroup("Catalog", g -> g.field("Sku", FieldKind.STRING)).build().toJson());
+        Path ops = dir.resolve("ops.json");
+        // the flag-driven mutating verbs (those whose settings arrive as --flags, not a JSON spec body or a
+        // bare positional locator). include/rule/typedef remove and the rename/move ops carry only a positional
+        // locator (no settable flags) — their parity is on the locator axis, guarded by the locator-parity test.
+        String[][] flagVerbs = {
+                {"include", "add"},
+                {"group", "add"}, {"group", "modify"}, {"group", "remove"},
+                {"config", "modify"} };
+        for (String[] tv : flagVerbs) {
+            String target = tv[0];
+            String op = tv[1];
+            Set<String> settable = manifestSettableKeys(manifest, target, op);
+            assertFalse(settable.isEmpty(), () -> "manifest advertises settable flags for " + target + " " + op);
+            ObjectNode rec = M.createObjectNode();
+            rec.put("target", target);
+            rec.put("op", op);
+            settable.forEach(k -> rec.put(k, "x"));   // values are irrelevant — validateArgs only checks KEYS
+            Files.writeString(ops, "[" + rec + "]");
+            var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString(), "-w", dir.toString());
+            // the op may fail for OTHER reasons (a bad value, a missing element) — but NEVER because a
+            // manifest-advertised settable flag is unknown to apply.
+            for (JsonNode r : M.readTree(res.out()).path("results")) {
+                for (JsonNode d : r.path("diagnostics")) {
+                    if ("RK_UNKNOWN_ARG".equals(d.path("code").asText())) {
+                        String arg = d.path("where").path("arg").asText();
+                        assertFalse(settable.contains(arg),
+                                () -> "apply " + target + " " + op + " rejects the manifest-advertised settable flag '"
+                                        + arg + "' (apply/standalone drift): " + res.out());
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * The op-record keys an agent would copy from the manifest for {@code <target> <op>}'s settable
+     * {@code --flags} — the {@code --}-stripped param keys, minus the CLI I/O mechanics that are not op-record
+     * args ({@code -o/--output}, {@code --dry-run}, {@code -w/--workspace}, {@code --help}, {@code --version}).
+     */
+    private static Set<String> manifestSettableKeys(JsonNode manifest, String target, String op) {
+        Set<String> mechanics = Set.of("output", "dry-run", "workspace", "help", "version");
+        Set<String> keys = new TreeSet<>();
+        for (JsonNode v : manifest.path("verbs")) {
+            if (target.equals(v.path("target").asText()) && op.equals(v.path("op").asText())) {
+                for (JsonNode p : v.path("params")) {
+                    if (p.path("flag").asText().startsWith("--") && !p.path("positional").asBoolean()) {
+                        String key = p.path("key").asText();
+                        if (!mechanics.contains(key)) {
+                            keys.add(key);
+                        }
+                    }
+                }
+            }
+        }
+        return keys;
     }
 }
