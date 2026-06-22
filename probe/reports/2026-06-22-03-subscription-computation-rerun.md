@@ -15,20 +15,19 @@
 
 | # | finding | target | class | resolution |
 |---|---|---|---|---|
-| 03-newoutput | `model new … -o <file>` writes the file but emits **0 bytes / exit 0** — the only write verb with no result envelope (`field add -o`, `apply`, `computation add/modify` all emit one); a machine consumer can't confirm the create from the tool's own signal | CLI (output contract) | **minor DX (confirmed)** | reproduced (0 bytes stdout+stderr, file written); fix candidate — emit the standard envelope on the `-o` branch |
+| 03-newoutput | `model new … -o <file>` writes the file but emits **0 bytes / exit 0** — vs `field add -o`/`apply`/`computation add` which emit a result envelope | CLI (output contract) | **NOT A DEFECT — by design** | the agent compared to the wrong class: `model new` is an **artifact** verb (`CONTRACT_EXEMPT`, like `export`) — its stdout IS the model JSON, and `-o` redirects that artifact to disk. Its true peer `export --out-dir` is **also** silent on a disk-write (verified). Emitting an envelope on `model new -o` would make it **inconsistent with `export`** — so no change; the artifact-verb contract holds (confirm via the file / exit 0, or run without `-o`) |
 | 03-scale | `--kind NUMBER` (flags mode) defaults to `maxFractionalDigits: 0` (integer); decimals only via the rich `<spec>` `number` block — surprising for a monetary fee | CLI/material | minor (confirmed) | recorded — a `--help` nudge candidate; not a defect (decimals are reachable) |
 | 03-pathnorm | a computation operation written with absolute cross-branch paths (`Sum(/Subscription/Addons*/…)`) reads back rebased (`Sum(../Addons*/…)`) — correct kernel normalization, not byte-identical to the input | material | not a defect | recorded — a one-line read-back doc note candidate |
 | — | the `kind`-vocabulary unification (this session) — `field add` echo + `field read` + `model describe` all spoke one `kind` vocabulary; no `type`/`NumberType` leak | — | **prior fix confirmed in the wild** | — |
 
-## 03-newoutput — minimal repro (verified)
+## 03-newoutput — reconciled as by-design (verified)
 
 ```
-dmtool model new --id Probe_DM --locale en_US --root Probe -o Probe_DM.json
-#  -> exit 0, stdout 0 bytes, stderr 0 bytes; Probe_DM.json IS written + kernel-valid
-dmtool -m Probe_DM.json field add --group /Probe --name X --kind STRING -o out.json
-#  -> exit 0, the standard {"outcome":"applied","ok":true,"written":…,"output":…} envelope
+dmtool model new --id Probe_DM … -o Probe_DM.json   #  exit 0, 0 bytes stdout/stderr; file written + valid
+dmtool -m m.json export --out-dir d/                #  exit 0, also writes files SILENTLY (the artifact-verb peer)
+dmtool -m m.json field add … -o out.json            #  emits the {outcome,ok,written,output} envelope (an EDIT verb)
 ```
-The inconsistency is isolated to `model new`'s `-o` path (every other write verb emits the envelope with or without `-o`).
+`model new` and `export` are the two **artifact** verbs (`SchemaCommand.CONTRACT_EXEMPT`): their stdout is the artifact itself, and a disk-write flag (`-o`/`--out-dir`) sends the artifact to a file, leaving stdout empty. Both behave identically — so `model new -o` is *consistent with its class*, and the apparent "outlier" only looks so when compared to the edit verbs. No change (a confirmation would have to be added to BOTH artifact verbs to stay consistent, and the contract deliberately treats them as artifact producers).
 
 ## Replay log (verbatim, in order)
 1. Create a document model for a software subscription … effective monthly fee is calculated as twice the base fee.
@@ -39,4 +38,4 @@ CLEAN: every model mutation via dmtool (`model new`, `apply`, `computation add`/
 
 ## Resolution (2026-06-22)
 - **CLEAN re-run on the release binary** — no defect, no crash; the computation surface is solid and the `kind`-vocabulary unification holds in the wild.
-- **03-newoutput — confirmed, fix candidate** (emit the result envelope on `model new -o`); **03-scale / 03-pathnorm — recorded, below the defect bar** (a `--help` nudge / a read-back doc note).
+- **03-newoutput — reconciled to NOT A DEFECT (by design).** `model new` is an artifact verb like `export`; `export --out-dir` is equally silent on a disk-write, so `model new -o` is consistent with its class — changing it would break that. **03-scale / 03-pathnorm — recorded, below the defect bar** (a `--help` nudge / a read-back doc note).
