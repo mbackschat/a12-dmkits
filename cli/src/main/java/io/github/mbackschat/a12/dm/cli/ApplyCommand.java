@@ -29,6 +29,7 @@ import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Comments;
 import io.github.mbackschat.a12.dm.rulekit.dsl.LocalizedText;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
+import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 import io.github.mbackschat.a12.dm.rulekit.validate.Diagnostic;
 import io.github.mbackschat.a12.dm.rulekit.validate.KernelDiagnostics;
 import picocli.CommandLine.Command;
@@ -392,7 +393,7 @@ final class ApplyCommand extends BaseCommand {
                     if (provided.isEmpty()) {
                         throw new IllegalArgumentException("rule modify 'messages' must be [{locale,text}, …]");
                     }
-                    session.modifyRuleMessages(rule, mergeRuleMessages(session, resolver, rule, provided));
+                    session.modifyRuleMessages(rule, mergeRuleMessages(session, rule, provided));
                     ArrayNode m = changed.putArray("messages");
                     provided.forEach(t -> m.addObject().put("locale", t.locale()).put("text", t.text()));
                     any = true;
@@ -487,13 +488,13 @@ final class ApplyCommand extends BaseCommand {
                     session.setModelComment(op.get("comment").asText());
                     changed.put("comment", op.get("comment").asText());
                 }
-                for (JsonNode code : op.path("add-locale")) {
-                    session.addLocale(code.asText());           // idempotent
-                    changed.put("addedLocale." + code.asText(), true);
+                for (String code : stringValues(op, "add-locale")) {
+                    session.addLocale(code);           // idempotent; a scalar "de_DE" binds like ["de_DE"] (Issue A)
+                    changed.put("addedLocale." + code, true);
                 }
-                for (JsonNode code : op.path("remove-locale")) {
-                    session.removeLocale(code.asText());
-                    changed.put("removedLocale." + code.asText(), true);
+                for (String code : stringValues(op, "remove-locale")) {
+                    session.removeLocale(code);
+                    changed.put("removedLocale." + code, true);
                 }
                 if (op.has("role")) {
                     // MERGE into the comma-separated `roles` annotation (G26 semantics)
@@ -506,7 +507,7 @@ final class ApplyCommand extends BaseCommand {
                             }
                         }
                     }
-                    op.get("role").forEach(r -> merged.add(r.asText()));
+                    merged.addAll(stringValues(op, "role"));    // scalar "admin" binds like ["admin"] (Issue A)
                     String joined = String.join(",", merged);
                     session.setModelAnnotation("roles", joined);
                     changed.put("roles", joined);
@@ -735,6 +736,24 @@ final class ApplyCommand extends BaseCommand {
         return messages;
     }
 
+    /**
+     * The values of a repeatable op-record key — a JSON array's elements OR a single scalar. So
+     * {@code "add-locale":"de_DE"} binds the same as {@code ["de_DE"]} (and {@code "role":"admin"} like
+     * {@code ["admin"]}), reconciling the op-record with the manifest's {@code SCALAR} kind for these
+     * repeatable params — probe Issue A, where a scalar was silently dropped + drew a self-contradictory
+     * "needs one of … add-locale …".
+     */
+    private static List<String> stringValues(JsonNode op, String key) {
+        List<String> out = new ArrayList<>();
+        JsonNode n = op.path(key);
+        if (n.isArray()) {
+            n.forEach(e -> { if (!e.isNull()) out.add(e.asText()); });
+        } else if (n.isValueNode() && !n.isNull()) {
+            out.add(n.asText());
+        }
+        return out;
+    }
+
     /** Parse a severity arg, with a clean corrective for a bad value (not the raw enum-{@code valueOf} message). */
     private static Severity severity(String raw) {
         try {
@@ -747,13 +766,15 @@ final class ApplyCommand extends BaseCommand {
     /**
      * Merge the provided per-locale messages into the rule's existing ones (G17 upsert): keep every existing
      * locale, overwrite only the ones provided — so a one-locale edit via {@code apply} can't silently drop the
-     * rest, exactly as the standalone {@code rule modify --message} does. Reads the existing set from the live
-     * (staged) session, so it sees earlier ops' effects.
+     * rest, exactly as the standalone {@code rule modify --message} does. Reads the existing set with a <b>raw</b>
+     * (non-binding) read ({@link ModelWriter#readMessages}) from the live (staged) session — NOT a validating
+     * bind: mid-sequence the model can be transiently invalid (e.g. a locale just added, this message not yet
+     * merged), and apply defers consistency to the terminal gate (probe Issue B — a validating read here threw
+     * MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING in the very op that supplies the message).
      */
-    private static List<LocalizedText> mergeRuleMessages(EditSession session,
-            IDocumentModelReferenceResolver resolver, String rule, List<LocalizedText> provided) {
+    private static List<LocalizedText> mergeRuleMessages(EditSession session, String rule, List<LocalizedText> provided) {
         java.util.LinkedHashMap<String, String> merged = new java.util.LinkedHashMap<>();
-        for (LocalizedText existing : KernelAdapter.ofJson(session.toJson(), resolver).ruleMessages(rule)) {
+        for (LocalizedText existing : ModelWriter.readMessages(session.toJson(), rule)) {
             merged.put(existing.locale(), existing.text());
         }
         for (LocalizedText p : provided) {

@@ -88,7 +88,8 @@ final class ConfigModifyCommand extends BaseCommand {
     @Option(names = "--add-locale", paramLabel = "<code>",
             description = "register a display locale on the model (repeatable), e.g. --add-locale de_DE — "
                     + "appends to the header.locales registry. The kernel then requires every rule/computation "
-                    + "to carry a message for it, so provision those first (or in the same `apply`)")
+                    + "to carry a message for it, so provision those first (or anywhere in the same `apply` — op "
+                    + "order within the sequence doesn't matter; consistency is gated only at the terminal commit)")
     java.util.List<String> addLocales = new java.util.ArrayList<>();
 
     @ParamKind(ParamKind.Kind.SCALAR)

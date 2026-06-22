@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.rulekit.write;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -112,6 +113,30 @@ public final class ModelWriter {
             return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root);
         } catch (IOException e) {
             throw new UncheckedIOException("failed to read/write the model DM-JSON", e);
+        }
+    }
+
+    /**
+     * Read the rule's current per-locale messages straight from the DM-JSON — a <b>raw</b> read with NO kernel
+     * bind, so it tolerates a <em>transiently-invalid</em> model. The {@code apply} message-merge calls this
+     * mid-sequence (e.g. right after an {@code add-locale} op, before the rule's new-locale message is merged in),
+     * where a validating read ({@code KernelAdapter.ofJson(...).ruleMessages}) would wrongly throw
+     * MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING — apply defers consistency to the terminal gate (probe Issue B).
+     * Empty when the rule (or its {@code errorMessage}) is absent.
+     */
+    public static List<LocalizedText> readMessages(String modelJson, String ruleFullName) {
+        try {
+            ObjectNode root = (ObjectNode) MAPPER.readTree(modelJson);
+            ObjectNode rule = DmJson.findElement(root, "Rule", ruleFullName);
+            List<LocalizedText> out = new ArrayList<>();
+            if (rule != null) {
+                for (JsonNode m : rule.path("Rule").path("errorMessage")) {
+                    out.add(new LocalizedText(m.path("locale").asText(), m.path("text").asText()));
+                }
+            }
+            return out;
+        } catch (IOException e) {
+            throw new UncheckedIOException("failed to read the model DM-JSON", e);
         }
     }
 

@@ -427,6 +427,51 @@ class ApplyVerbTest {
     }
 
     @Test
+    void configModifyAcceptsAScalarRepeatableKey(@TempDir Path dir) throws Exception {
+        // Issue A: a scalar value for a repeatable op-record key (add-locale / role) must bind like a 1-element
+        // array — not be silently dropped with a self-contradictory "needs one of … add-locale …" (the manifest
+        // advertises these params as SCALAR, so a scalar is the natural first try).
+        Path model = dir.resolve("m.dm.json");
+        CliTestSupport.run("model", "new", "--id", "m", "--locale", "en_US", "--root", "M", "-o", model.toString());
+        CliTestSupport.run("-m", model.toString(), "field", "add", "--group", "/M", "--name", "X", "--kind", "STRING");
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, """
+                [ {"target":"config","op":"modify","add-locale":"de_DE","role":"admin"} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(0, res.code(), res.err());
+        assertTrue(M.readTree(res.out()).path("committed").asBoolean(), () -> "scalar add-locale/role bind: " + res.out());
+        String written = Files.readString(model);
+        assertTrue(written.contains("de_DE"), "the scalar add-locale was applied, not dropped");
+        assertTrue(written.contains("admin"), "the scalar role was applied");
+    }
+
+    @Test
+    void applyMergesANewLocaleMessageRegardlessOfOpOrder(@TempDir Path dir) throws Exception {
+        // Issue B: add-locale THEN a rule-modify supplying that locale's message in the SAME apply used to fail
+        // (the merge bound the transiently-invalid mid-sequence model and threw "message missing" in the very op
+        // that supplies it). The merge now reads existing messages RAW, so this order commits like the reverse.
+        Path model = dir.resolve("m.dm.json");
+        CliTestSupport.run("model", "new", "--id", "m", "--locale", "en_US", "--root", "M", "-o", model.toString());
+        CliTestSupport.run("-m", model.toString(), "field", "add", "--group", "/M", "--name", "Amount", "--kind", "NUMBER");
+        Path r = dir.resolve("r.json");
+        Files.writeString(r, """
+                {"field":"/M/Amount","condition":"FieldFilled(Amount) And [Amount] < 0","code":"NEG","messages":[{"locale":"en_US","text":"neg"}]}""");
+        CliTestSupport.run("-m", model.toString(), "rule", "add", r.toString());
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, """
+                [ {"target":"config","op":"modify","add-locale":["de_DE"]},
+                  {"target":"rule","op":"modify","rulePathInModel":"/M/NEG","messages":[{"locale":"de_DE","text":"negativ"}]} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(0, res.code(), () -> "locale-then-message commits (Issue B): " + res.out());
+        assertTrue(M.readTree(res.out()).path("committed").asBoolean(), () -> "committed: " + res.out());
+        String written = Files.readString(model);
+        assertTrue(written.contains("negativ") && written.contains("neg"),
+                "both the kept en_US and the merged de_DE message are present");
+    }
+
+    @Test
     void appliesAComputationModifyOpWithComputationPathInModel(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.subscriptionComputed(dir);
         Path ops = dir.resolve("ops.json");
