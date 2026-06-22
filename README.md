@@ -113,6 +113,7 @@ dmtool -m orders.dm.json field modify postal.spec.json   # re-type a field in pl
 dmtool -m order.dm.json model info              # the header dashboard: identity, super/subtypes, includes/imports (resolved to files), counts
 dmtool -m order.dm.json model describe          # the model card: fields, kinds, enum domains, groups
 dmtool -m order.dm.json model validate          # run it through the real kernel → {valid, diagnostics[]}
+dmtool -m order.dm.json field read /Order/Quantity                 # one field in full: kind, required, AND its per-kind config (min/max/unit/pattern/format) — verify a constraint, never read raw JSON
 dmtool -m order.dm.json rule read  /Order/DeliveryNotBeforeOrder    # a rule's condition, as typed JSON
 dmtool -m order.dm.json rule explain /Order/DeliveryNotBeforeOrder  # what it checks + WHEN it fires
 dmtool -m order.dm.json rule deps  /Order/DeliveryNotBeforeOrder    # its forward deps: the fields it references (+ iteration)
