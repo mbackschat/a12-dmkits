@@ -1,5 +1,9 @@
-// SPIKE (docs/INTERPRETER-PROPOSAL.md §10) — a Kotlin Multiplatform module proving the interpreter
-// compiles and runs on BOTH the JVM and JS (Node). Throwaway prototype; not part of the shipped build.
+// The dm-interpreter (docs/INTERPRETER-PROPOSAL.md) — a Kotlin Multiplatform, native-safe runtime
+// evaluator for conditions + computations. ONE common engine, two targets (JVM + JS/Node), so it runs
+// in a GraalVM native image (no Groovy) AND in the browser. It is the publishable standalone artifact:
+// it carries NO kernel/dmtool dependency — the kernel DIFFERENTIAL tests live in :adapter, not here, so
+// this module stays kernel-free even in test scope. That separation is enforced by `verifyInterpreterPurity`
+// below (proposal §8 — "separation by convention + linting, not a repo wall").
 plugins {
     id 'org.jetbrains.kotlin.multiplatform' version '2.2.0'
 }
@@ -19,8 +23,8 @@ kotlin {
     sourceSets {
         jsMain {
             dependencies {
-                // SPIKE gap-close: arbitrary-precision decimal on JS (proposal §5's named choice),
-                // so JS matches the JVM's BigDecimal instead of the POC's lossy Double.
+                // Arbitrary-precision decimal on JS (proposal §5's named choice), so JS matches the JVM's
+                // BigDecimal exactly (0.1 + 0.2 == 0.3). The ONE JS-platform dependency (an expect/actual shim).
                 implementation npm('big.js', '6.2.2')
             }
         }
@@ -31,3 +35,51 @@ kotlin {
         }
     }
 }
+
+// --- Separation by linting (proposal §8) ------------------------------------------------------------
+// The engine must never couple to the kernel or dmtool. A forbidden import fails the build, so the
+// kernel-free / native-safe / publishable-standalone property can't silently erode as the engine grows.
+def verifyInterpreterPurity = tasks.register('verifyInterpreterPurity') {
+    group = 'verification'
+    description = 'Fail on a forbidden import so the kernel-free engine cannot couple to the kernel/dmtool/JVM.'
+    def srcRoot = file('src')
+    inputs.dir(srcRoot)
+    doLast {
+        // sourceSet -> forbidden import prefixes (+ why). commonMain must be pure common Kotlin (it compiles
+        // to JS); the JVM shim may touch java.* but never the kernel; the JS shim is pure Kotlin/JS + externals.
+        def rules = [
+            commonMain: [forbidden: ['java.', 'javax.', 'com.mgmtp.', 'groovy.'],
+                         why: 'must be pure common Kotlin (compiles to JS) — no JVM/kernel/groovy types'],
+            jvmMain   : [forbidden: ['com.mgmtp.', 'groovy.'],
+                         why: 'the JVM shim may use java.* but never the kernel/groovy (no runtime kernel dep)'],
+            jsMain    : [forbidden: ['java.', 'javax.', 'com.mgmtp.', 'groovy.'],
+                         why: 'the JS shim is pure Kotlin/JS + JS externals'],
+            commonTest: [forbidden: ['com.mgmtp.', 'groovy.'],
+                         why: 'the kernel differential tests live in :adapter, not here — keep this module kernel-free'],
+        ]
+        def violations = []
+        rules.each { sourceSet, rule ->
+            def dir = new File(srcRoot, sourceSet)
+            if (!dir.exists()) return
+            dir.eachFileRecurse { f ->
+                if (!f.name.endsWith('.kt')) return
+                f.eachLine { line, n ->
+                    def m = (line =~ /^\s*import\s+([\w.]+)/)
+                    if (m) {
+                        def imp = m.group(1)
+                        rule.forbidden.each { bad ->
+                            if (imp.startsWith(bad)) {
+                                violations << "${sourceSet}/${f.name}:${n}: import ${imp}  (${rule.why})".toString()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (violations) {
+            throw new GradleException(
+                "interpreter purity violated — separation by linting (proposal §8):\n  " + violations.join('\n  '))
+        }
+    }
+}
+tasks.named('check') { dependsOn verifyInterpreterPurity }
