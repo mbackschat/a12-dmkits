@@ -10,6 +10,17 @@ English is the project default: code, identifiers, comments, docs, and the **def
 
 **Favor a self-explaining, explorable CLI over relying on the N1 skill.** A cold LLM agent — given only the binary — must be able to discover the verbs, their parameters, and what they mean, and to learn each output's shape, *without* the skill. The skill (`skill/SKILL.md`) is the material-under-test for the N6 eval and **must stay as simple as possible**; it teaches judgment (polarity, the traps), not the verb/parameter catalog the tool should describe about itself. So when adding or changing a verb: make it discoverable (help/usage + a machine-readable manifest) and schema-describe its I/O. Discoverability lives in the *tool*, not the skill. Detail + rationale: [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md).
 
+**Which surface does a learned fact go in? (the placement rule.)** A document-model fact lands in exactly **one** home, chosen by *what kind of fact it is* — always the most self-describing surface that can carry it; the skill is the **last** resort. Four lanes:
+
+| The fact is about… | It goes in | Carried as |
+|---|---|---|
+| **one operator** (a semantic surprise, a constraint, a relation, an example) | the operator catalog `src/main/resources/catalog/operators.json` (served by `dmtool operators <id>`, N7-validated) | a `gotcha` with its `kind` (`SURPRISE`/`AUTHORING`/`RENDERING` — `GotchaKind`), `seeAlso`, `validExample`/`invalidExample{fix}` |
+| **one spec/field shape** (a key, its requiredness, allowed values, a co-requirement) | the published JSON schema (`schema <target> <op>`), CI-executed examples | a property `description` / `enum` / required-together prose |
+| **one kernel rejection's** meaning + corrective | the diagnostic enricher (`StructuralKernelFix.forCode`/`forMessage`, `RkCode`, the catalog-join) | a `fix`+`explain` that rides the `MVK_*`/`RK_*` itself |
+| **cross-cutting judgment**, or a **trap that spans constructs / is no single operator** | the skill `skill/SKILL.md` (the #1-rule discipline applies) | a concise judgment note (polarity, iteration scope, the bilingual `--add-locale` cascade, "is this even a rule?") |
+
+Decision test: *one operator → catalog; one spec field → schema; one error code → enricher; none of those (judgment / a multi-construct trap) → skill.* The skill is the **N6 material-under-test and is measured**, so a fact any of the first three surfaces can carry must **not** go in the skill (it would be cost without reach — and stale-prone). A trap can legitimately appear in **two** lanes when it is hit *before* the diagnostic fires (e.g. the enum locale cascade gets both an enricher hint *and* a skill note — the diagnostic corrects after the failure, the skill prevents it).
+
 ### Editing `skill/SKILL.md` — the #1 rule: re-read the whole file, and verify every claim against the live tool (standing requirement, 2026-06-22)
 
 The skill is the **material under test for the N6 eval** — a wrong or stale claim in it is the *worst* class of defect, because it actively misleads every agent that reads it and **only an expensive probe run catches it** (a JUnit guard does not). So **before any edit to `skill/SKILL.md`, two things are mandatory, in order, no exceptions:**
