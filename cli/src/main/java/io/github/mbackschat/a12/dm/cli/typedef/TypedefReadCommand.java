@@ -22,10 +22,14 @@ import picocli.CommandLine.Parameters;
  * contract: no argument lists every LOCAL id ({@code data.typedefs}, this model's {@code content.typeDefinitions})
  * plus the model ids it IMPORTS type-defs from ({@code data.importedFrom} — the source-provenance dimension,
  * resolvable to files via {@code model info}); a {@code <typeDefId>} reads just that one local def
- * ({@code data.typedef}+{@code type}). Typedefs are a flat model-level list (addressed by id, not a path).
+ * ({@code data.typedef}+{@code type}) <b>plus its per-kind CONFIG in the same block shape {@code add} accepts</b>
+ * ({@code number} min/max/unit/scale, {@code string} pattern/length, {@code enum} values, date/time formats —
+ * read-gap fix), so a constraint on a reusable type is verifiable through {@code read} alone. Typedefs are a
+ * flat model-level list (addressed by id, not a path).
  */
 @Command(name = "read", mixinStandardHelpOptions = true,
-        description = "Read the declared type definitions into `data` — all ids, or one by <typeDefId>.")
+        description = "Read the declared type definitions into `data` — all ids, or one by <typeDefId> "
+                + "(with its per-kind config: number/string/enum/date config in the `add` block shape).")
 final class TypedefReadCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -57,6 +61,11 @@ final class TypedefReadCommand extends BaseCommand {
                 ObjectNode data = MAPPER.createObjectNode();
                 data.put("typedef", id);
                 data.put("type", type.get());
+                // mirror `field read`: echo the per-kind CONFIG (number min/max/unit/scale, string
+                // pattern/length, enum values, date/time formats) in the same block shape `typedef add`
+                // accepts — so a constraint on a reusable type is verifiable through `read` alone (read-gap
+                // fix B, the typedef sibling), never the raw model JSON
+                doc.typeDefinitionConfig(id).ifPresent(data::setAll);
                 ResultEnvelope env = ResultEnvelope.read("typedef", "read",
                         "read type definition " + id, true, List.of(), data);
                 out().print(env.toJsonString());

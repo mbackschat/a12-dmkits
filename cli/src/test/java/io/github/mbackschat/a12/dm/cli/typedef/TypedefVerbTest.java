@@ -73,6 +73,24 @@ class TypedefVerbTest {
     }
 
     @Test
+    void readWithAnIdSurfacesThePerKindConfig(@TempDir Path dir) throws Exception {
+        // read-gap fix (B) sibling for typedefs: `typedef read <id>` must echo the per-kind CONFIG (the same
+        // schema-shape block `typedef add` accepts), not just the bare `type` — so a constraint an agent put on
+        // a reusable type is verifiable through `typedef read` alone, never the raw model JSON.
+        Path model = CliTestSupport.orderRuled(dir);
+        Path spec = dir.resolve("money.json");
+        Files.writeString(spec, """
+                { "kind": "NUMBER", "number": { "min": "0", "unit": "AMOUNT" } }""");
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "typedef", "add",
+                "--id", "MoneyAmount", spec.toString()).code());
+        var res = CliTestSupport.run("-m", model.toString(), "typedef", "read", "MoneyAmount");
+        assertEquals(0, res.code(), res.err());
+        JsonNode cfg = M.readTree(res.out()).path("data").path("number");
+        assertEquals("0", cfg.path("min").asText(), () -> "typedef read surfaces the per-kind config: " + res.out());
+        assertEquals("AMOUNT", cfg.path("unit").asText());
+    }
+
+    @Test
     void removesAnAddedTypedef(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "typedef", "add",

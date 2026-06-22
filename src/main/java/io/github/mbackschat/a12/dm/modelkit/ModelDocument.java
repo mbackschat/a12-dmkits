@@ -257,6 +257,22 @@ public final class ModelDocument {
         return Optional.empty();
     }
 
+    /**
+     * The per-kind CONFIG of the type definition {@code id}, projected into the same schema-shape block a
+     * {@code typedef add} spec carries ({@code number} min/max/unit/scale, {@code string} pattern/length,
+     * {@code enum} values, date/time formats). The sibling of {@link #fieldConfig} for typedefs — so a
+     * constraint an agent put on a reusable type is verifiable through {@code typedef read} alone. Empty when
+     * the def carries no surfaceable config (a bare NUMBER) or there is no such def.
+     */
+    public Optional<ObjectNode> typeDefinitionConfig(String id) {
+        JsonNode fieldType = typeDefinitionFieldType(id);
+        if (fieldType == null || fieldType.isMissingNode()) {
+            return Optional.empty();
+        }
+        ObjectNode cfg = DocumentModelDraft.readTypeConfig(fieldType);
+        return cfg.isEmpty() ? Optional.empty() : Optional.of(cfg);
+    }
+
     // --- the element tree (name-path addressed) -------------------------------------------------
 
     /** Every group's name-path (root groups + nested), in document order. */
