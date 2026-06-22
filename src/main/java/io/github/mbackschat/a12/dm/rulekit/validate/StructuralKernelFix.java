@@ -81,4 +81,29 @@ public final class StructuralKernelFix {
     public static Optional<Hint> forCode(String code) {
         return Optional.ofNullable(HINTS.get(code));
     }
+
+    /**
+     * A hint matched by a kernel MESSAGE substring — for content-free rejections the kernel raises with a
+     * message but <b>no MVK_ code</b> (so {@link #forCode} can't reach them). Today: the date/time field
+     * <em>format</em> rejection (probe 08 — "The date range format is invalid" / "The date format is
+     * invalid"), which named what's wrong but not the valid forms. Best-effort English-message match (the
+     * kernel localizes the message to the model's display locale; a non-English message simply gets no hint).
+     */
+    public static Optional<Hint> forMessage(String message) {
+        if (message == null) {
+            return Optional.empty();
+        }
+        String m = message.toLowerCase(java.util.Locale.ROOT);
+        if (m.contains("date range format is invalid") || m.contains("date format is invalid")) {
+            return Optional.of(new Hint(
+                    "A date/time field FORMAT must be a LOWERCASE Java pattern from the kernel's fixed allowed set "
+                            + "(the editor's UPPERCASE labels like YYYY-MM-DD are display labels, NOT format values). "
+                            + "Verified: DATE `yyyy-MM-dd` or `dd.MM.yyyy`; DATERANGE the pair `dd.MM.yyyy`+separator `-` "
+                            + "or `yyyy-MM-dd`+separator `/`; TIME the full `HH:mm:ss` (not `HH:mm`); DATEFRAGMENT "
+                            + "`MM`/`yyyy`/`yyyy-MM`/`MM-dd`. See `schema field add`.",
+                    "The kernel validates a date/time field's declared format against a fixed allowed set (the same "
+                            + "regardless of locale) and rejects anything else with a message but no MVK_ code."));
+        }
+        return Optional.empty();
+    }
 }

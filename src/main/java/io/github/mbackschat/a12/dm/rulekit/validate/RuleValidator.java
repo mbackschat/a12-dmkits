@@ -104,14 +104,30 @@ public final class RuleValidator {
      */
     private Optional<Diagnostic> addPrecheck(String modelJson, String groupPath, String name, String kind) {
         ArrayNode elements;
+        JsonNode rootGroups;
         try {
-            JsonNode rootGroups = mapper.readTree(modelJson)
+            rootGroups = mapper.readTree(modelJson)
                     .path("content").path("modelRoot").path("rootGroups");
             elements = elementsOf(rootGroups, groupPath);
         } catch (IOException e) {
             return Optional.empty();   // unreadable model — let the kernel path be the one to report it
         }
         if (elements == null) {
+            // the path may name an include MOUNT (a Group with a modelAlias, whose children come from the
+            // include, not stored `elements`) — elementsOf can't see those, so distinguish it from a genuinely
+            // absent group: a mount IS there, you just can't anchor a rule/computation's error field inside an
+            // included sub-model (probe 04 — the misleading "no group at path" when the group is a mount).
+            JsonNode group = groupNodeAt(rootGroups, groupPath);
+            String alias = group == null ? null : group.path("Group").path("modelAlias").asText(null);
+            if (alias != null && !alias.isBlank()) {
+                return Optional.of(Diagnostic.precheck(Optional.of("RK_MOUNT_NOT_EDITABLE"),
+                        "'" + groupPath + "' is an include mount (alias '" + alias + "'), not an editable group — a "
+                                + kind + "'s error field cannot live inside an included sub-model",
+                        Diagnostic.Where.path(groupPath),
+                        Optional.of("anchor the " + kind + " on a NATIVE field/group of THIS model, and reference the "
+                                + "included field by its absolute path inside the condition (e.g. " + groupPath + "/<field>)"),
+                        Optional.empty()));
+            }
             return Optional.of(Diagnostic.precheck(Optional.of(RkCode.NO_SUCH_GROUP.code()),
                     "no group at path '" + groupPath + "' to add the " + kind + " to",
                     Diagnostic.Where.path(groupPath),
@@ -193,6 +209,30 @@ public final class RuleValidator {
             }
         }
         return codes.isEmpty() ? List.of("en_US") : codes;
+    }
+
+    /**
+     * DFS for a group NODE by its id (absolute path) — unlike {@link #elementsOf}, returns the node itself and
+     * does NOT require it to carry an {@code elements} array, so an include-mount group (whose children come
+     * from the include, not stored elements) is found too. Used to tell a mount apart from an absent group.
+     */
+    private JsonNode groupNodeAt(JsonNode groups, String groupPath) {
+        if (!groups.isArray()) {
+            return null;
+        }
+        for (JsonNode node : groups) {
+            if (!"Group".equals(node.path("type").asText())) {
+                continue;
+            }
+            if (groupPath.equals(node.path("id").asText())) {
+                return node;
+            }
+            JsonNode found = groupNodeAt(node.path("Group").path("elements"), groupPath);
+            if (found != null) {
+                return found;
+            }
+        }
+        return null;
     }
 
     /** Depth-first search for a group node by its id (absolute path), returning its elements array. */

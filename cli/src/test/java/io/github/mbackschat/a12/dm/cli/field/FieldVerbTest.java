@@ -183,6 +183,26 @@ class FieldVerbTest {
                 "a de_DE conditionLanguage accepts the German pair too");
     }
 
+    @Test
+    void anInvalidDateFormatRejectCarriesTheValidForms(@TempDir Path dir) throws Exception {
+        // 08-diag: the kernel's "date range format is invalid" reject had a message but no code/fix — nothing
+        // to act on. The diagnostic must now carry a message-matched hint naming the valid lowercase forms.
+        Path m = dir.resolve("d.dm.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "d", "--locale", "en_US",
+                "--root", "D", "-o", m.toString()).code());
+        Path spec = dir.resolve("bad.json");
+        Files.writeString(spec, """
+                {"group":"/D","name":"Win","kind":"DATERANGE","dateRange":{"format":"YYYY-MM-DD","separator":" - "}}""");
+        var res = CliTestSupport.run("-m", m.toString(), "field", "add", spec.toString());
+        assertNotEquals(0, res.code(), "the uppercase format + spaced separator is rejected");
+        boolean hasFormFix = false;
+        for (JsonNode d : M.readTree(res.out()).path("diagnostics")) {
+            String fix = d.path("fix").asText("");
+            hasFormFix |= fix.contains("yyyy-MM-dd") && fix.toLowerCase().contains("lowercase");
+        }
+        assertTrue(hasFormFix, () -> "the date-format reject names the valid lowercase forms: " + res.out());
+    }
+
     /** Write {@code spec} to a temp file and run {@code field add}; return the exit code. */
     private static int addFieldRc(Path model, Path dir, String spec) throws Exception {
         Path f = Files.createTempFile(dir, "fa", ".json");

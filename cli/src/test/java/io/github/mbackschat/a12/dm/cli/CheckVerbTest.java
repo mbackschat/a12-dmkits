@@ -31,6 +31,34 @@ class CheckVerbTest {
     }
 
     @Test
+    void ruleErrorFieldInsideAnIncludeMountIsNamedAsAMount(@TempDir Path dir) throws Exception {
+        // probe 04: anchoring a rule's error field inside an include MOUNT got the misleading "no group at
+        // path" (RK_NO_SUCH_GROUP) — but the group DOES exist, as a mount. It must now say so
+        // (RK_MOUNT_NOT_EDITABLE) and point at anchoring on a native field.
+        Path base = model(dir);   // subscription (has /Subscription)
+        Path catalog = dir.resolve("catalog.dm.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "catalog", "--locale", "en_US",
+                "--root", "Catalog", "-o", catalog.toString()).code());
+        // match the subscription's locales (en_US + de_DE) so the mount composes cleanly
+        assertEquals(0, CliTestSupport.run("-m", catalog.toString(), "config", "modify", "--add-locale", "de_DE").code());
+        assertEquals(0, CliTestSupport.run("-m", catalog.toString(), "field", "add",
+                "--group", "/Catalog", "--name", "Sku", "--kind", "STRING").code());
+        assertEquals(0, CliTestSupport.run("-m", base.toString(), "include", "add",
+                "--alias", "catalog", "--reference", "catalog", "--parent", "/Subscription", "--name", "Catalog",
+                "-w", dir.toString()).code(), "mount the catalog under /Subscription");
+        var res = CliTestSupport.run("-m", base.toString(), "rule", "check",
+                "--field", "/Subscription/Catalog/Sku", "--condition", "FieldFilled(/Subscription/Catalog/Sku)",
+                "--code", "X", "-w", dir.toString());
+        JsonNode j = MAPPER.readTree(res.out());
+        boolean mountNamed = false;
+        for (JsonNode d : j.path("diagnostics")) {
+            mountNamed |= "RK_MOUNT_NOT_EDITABLE".equals(d.path("code").asText());
+        }
+        assertTrue(mountNamed, () -> "names the include mount (not a missing group): " + res.out());
+        assertFalse(res.out().contains("no group at path"), () -> "must not claim the mount group is absent: " + res.out());
+    }
+
+    @Test
     void aLowercaseBooleanLiteralGetsTheCasingFix(@TempDir Path dir) throws Exception {
         // 05/06 probe: `== true` (JSON casing) fails MVK_UNEXPECTED_TOKEN, which the kernel raises with no
         // message; the rule check diagnostic must now carry the syntax fix naming the capitalized True/False

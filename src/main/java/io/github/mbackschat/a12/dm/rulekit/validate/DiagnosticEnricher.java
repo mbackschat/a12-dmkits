@@ -43,6 +43,15 @@ final class DiagnosticEnricher {
                     .filter(s -> s != null && !s.isBlank());
             return diagnostic.withFix(fix, explain);
         }
+        // last resort — a content-free KERNEL rejection with a message but no MVK_ code (e.g. the date/time
+        // field-format reject); attach a message-matched hint so it isn't left fix-less (probe 08).
+        if (diagnostic.fix().isEmpty()) {
+            Optional<StructuralKernelFix.Hint> byMessage = StructuralKernelFix.forMessage(diagnostic.summary());
+            if (byMessage.isPresent()) {
+                return diagnostic.withFix(byMessage.map(StructuralKernelFix.Hint::fix),
+                        byMessage.map(StructuralKernelFix.Hint::explain));
+            }
+        }
         return diagnostic;
     }
 }
