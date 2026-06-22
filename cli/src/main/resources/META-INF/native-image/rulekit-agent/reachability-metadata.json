@@ -15335,6 +15335,9 @@
       "glob": "schema/field-read.schema.json"
     },
     {
+      "glob": "schema/group-read.schema.json"
+    },
+    {
       "glob": "schema/model-info.schema.json"
     },
     {
