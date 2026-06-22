@@ -15332,6 +15332,9 @@
       "glob": "schema/field-add.schema.json"
     },
     {
+      "glob": "schema/field-read.schema.json"
+    },
+    {
       "glob": "schema/model-info.schema.json"
     },
     {
@@ -15345,6 +15348,9 @@
     },
     {
       "glob": "schema/typedef-add.schema.json"
+    },
+    {
+      "glob": "schema/typedef-read.schema.json"
     },
     {
       "glob": "schema/where-used.schema.json"
