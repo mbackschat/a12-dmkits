@@ -143,21 +143,40 @@ public abstract class BaseCommand implements Callable<Integer> {
 
     /**
      * Strict input gate: if {@code spec} carries a key the {@code schema/<schemaName>.schema.json} does not
-     * declare (top-level or nested), emit a {@code rejected} envelope of {@code RK_UNKNOWN_ARG} diagnostics
-     * (with a did-you-mean) and return its exit code; otherwise {@link Optional#empty()} so the caller proceeds.
-     * The single defense against a typo'd/out-of-scope key being silently dropped into a false {@code applied}.
+     * declare, or a declared key with a wrong-typed/shaped value (top-level or nested), emit a {@code rejected}
+     * envelope of {@code RK_UNKNOWN_ARG} / {@code RK_INVALID_VALUE} diagnostics (with a did-you-mean) and return
+     * its exit code; otherwise {@link Optional#empty()} so the caller proceeds. The single defense against a
+     * typo'd/out-of-scope key — or a mis-shaped value — being silently dropped into a false {@code applied}.
      */
     protected Optional<Integer> rejectUnknownKeys(String target, String op, String schemaName, JsonNode spec) {
-        List<Diagnostic> unknown = SpecKeys.forSchema(schemaName).validate(spec);
-        if (unknown.isEmpty()) {
+        List<Diagnostic> problems = SpecKeys.forSchema(schemaName).validate(spec);
+        if (problems.isEmpty()) {
             return Optional.empty();
         }
-        String summary = unknown.size() == 1
-                ? "1 unrecognized key in the spec"
-                : unknown.size() + " unrecognized keys in the spec";
-        ResultEnvelope env = ResultEnvelope.rejected(target, op, summary, unknown);
+        ResultEnvelope env = ResultEnvelope.rejected(target, op, specProblemSummary(problems), problems);
         out().print(env.toJsonString());
         return Optional.of(env.exitCode());
+    }
+
+    /**
+     * Summarize a spec-validation rejection by the KIND of problem, so the {@code summary} tracks the actual
+     * diagnostics — an unrecognized key vs a wrong-typed/shaped value — instead of always claiming "unrecognized
+     * key" (probe 07: a JSON array handed to a single-object spec verb is an {@code RK_INVALID_VALUE}, not an
+     * unknown key, yet the summary mislabeled it).
+     */
+    private static String specProblemSummary(List<Diagnostic> problems) {
+        long invalidValues = problems.stream()
+                .filter(d -> d.code().map(RkCode.INVALID_VALUE.code()::equals).orElse(false))
+                .count();
+        long unknownKeys = problems.size() - invalidValues;
+        List<String> parts = new ArrayList<>();
+        if (unknownKeys > 0) {
+            parts.add(unknownKeys + (unknownKeys == 1 ? " unrecognized key" : " unrecognized keys"));
+        }
+        if (invalidValues > 0) {
+            parts.add(invalidValues + (invalidValues == 1 ? " invalid value" : " invalid values"));
+        }
+        return "the spec has " + String.join(" and ", parts);
     }
 
     /**

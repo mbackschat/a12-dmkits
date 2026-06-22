@@ -186,6 +186,24 @@ class FieldModifyCommandTest {
     }
 
     @Test
+    void rejectsAJsonArrayAsAWrongTypeNotAnUnknownKey(@TempDir Path dir) throws Exception {
+        // probe 07: a single-object spec verb handed a JSON ARRAY is an RK_INVALID_VALUE (wrong shape); the
+        // envelope summary must track that — not mislabel it "unrecognized key" the way the old hardcoded summary did.
+        Path m = freshModel(dir);
+        Path spec = dir.resolve("arr.json");
+        Files.writeString(spec, """
+                [{"group":"/Adresse","name":"PLZ","kind":"STRING"}]""");
+        CliTestSupport.Result res = CliTestSupport.run("-m", m.toString(), "field", "modify", spec.toString());
+        assertNotEquals(0, res.code());
+        JsonNode env = MAPPER.readTree(res.out());
+        assertEquals("rejected", env.path("outcome").asText());
+        assertTrue(hasCode(env, "RK_INVALID_VALUE"), () -> "an array is RK_INVALID_VALUE: " + res.out());
+        String summary = env.path("summary").asText();
+        assertTrue(summary.contains("invalid value") && !summary.contains("unrecognized key"),
+                () -> "the summary names the wrong-type problem, not 'unrecognized key': " + summary);
+    }
+
+    @Test
     void rejectsAnUnknownNestedConfigKey(@TempDir Path dir) throws Exception {
         Path m = freshModel(dir);
         Path spec = dir.resolve("nested.json");
