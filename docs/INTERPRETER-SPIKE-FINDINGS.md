@@ -1,6 +1,6 @@
 # Interpreter spike — findings
 
-Result of the [INTERPRETER-SPIKE-PLAN.md](INTERPRETER-SPIKE-PLAN.md) spike for [INTERPRETER-PROPOSAL.md](INTERPRETER-PROPOSAL.md) §10. Prototype, merged into `main`; the extract-to-sibling-repo plan is in the proposal §8.
+Result of the [INTERPRETER-SPIKE-PLAN.md](INTERPRETER-SPIKE-PLAN.md) spike for [INTERPRETER-PROPOSAL.md](INTERPRETER-PROPOSAL.md) §10. The spike validated the thesis and is merged into `main`; the **decision (2026-06-23) is to grow it into the full evaluator in-repo** (not extract to a sibling repo) — see the proposal §8 and "Open decisions / residue" below.
 
 ## Verdict
 
@@ -122,10 +122,10 @@ After the follow-ups above (big.js, polarity, parser, throughput, omitted-tail p
 - JS only: `./build.sh :interpreter:jsNodeTest` · JVM engine tests: `./build.sh :interpreter:jvmTest`
 
 **Open decisions / residue:**
-1. **Test placement** — the differential tests + a Kotlin test toolchain currently live in `:adapter` (otherwise Java-only). Options: leave it (spike pragmatism) · rewrite them in Java to keep adapter Java-only · or move them to `:interpreter`'s `jvmTest` with a *test-only* kernel dep (the proposal §8 Phase-2 shape, which also needs the `RuntimeLaws` oracle ported/shared since adapter's own law tests still need it).
+1. **Test placement — RESOLVED (2026-06-23): the differential tests + Kotlin toolchain stay in `:adapter`.** This keeps `:interpreter` kernel-free *even in test scope* — exactly what makes it cleanly publishable — so it is the permanent architecture, not spike debt. Mechanically enforced by the `verifyInterpreterPurity` lint (proposal §8).
 2. `$field$` display-name + formal-error message tiers (localized-text residue).
 3. Full parser grammar + the kernel-parse-tree-api-vs-ANTLR choice (§11).
 4. A real perf-regression harness (JMH / tracked baselines) vs. the in-test bound.
-5. **Phase-2 extraction** (proposal §8): lift `:interpreter` into a sibling repo `a12-dm-interpreter` (its own conformance suite, test-only kernel dep) — removes the KMP toolchain from this repo's build.
+5. **Sibling-repo extraction — now a future *option*, not the plan (2026-06-23).** The interpreter is built out in-repo (proposal §8); extract only if it earns an independent OSS life/release cadence. The purity lint keeps that a lift, not a rewrite.
 
 **Design record:** [INTERPRETER-PROPOSAL.md](INTERPRETER-PROPOSAL.md) (intent + §10 spike result; extraction plan in §8) · this file.

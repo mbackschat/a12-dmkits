@@ -1,8 +1,15 @@
 # Interpreter proposal — a native-safe, cross-platform runtime evaluator
 
-**Status:** proposal (intent + rationale). The §10 spike has been **built and validated** (2026-06-21, branch `spike-interpreter`) — see §10 "Spike result"; the full evaluator remains unbuilt. Graduates to a spec / folds into [`ARCHITECTURE.md`](ARCHITECTURE.md) once it ships.
+**Status:** in build-out. The §10 spike is **built, validated, and merged** (2026-06-21); the decision is now taken to **grow it into the full evaluator, in-repo** (the `:interpreter` module — *not* extracted to a sibling repo; see §8). Graduates to a spec / folds into [`ARCHITECTURE.md`](ARCHITECTURE.md) once the operator/validation coverage is broad enough to ship.
 
 **One line:** an isolated runtime evaluator for conditions + computations that **interprets** the rule AST directly — instead of generating and executing code on the fly — so it runs cleanly in a GraalVM native image *and* in the browser, from one source.
+
+**The committed goal — a full-blown interpreter serving two consumers:**
+
+1. **dmtool's native image** — drive the runtime verbs (`model eval`, `model compute`, `rule test`) that the Groovy ceiling currently bars in a native image (§1). **Acceptance:** the [`examples/cli-runtime.md`](../examples/cli-runtime.md) showboat demo — which exercises exactly those verbs — runs **end-to-end on the native image** (today they are the `JVM_ONLY_VERBS`). That demo concretely bounds the minimum operator/feature coverage use-case 1 needs.
+2. **A standalone Kotlin/JVM + Kotlin/JS library** — for any consumer running **computations and validations — both full *and* partial** — over a document model, with no kernel runtime dependency (§7). The API must also evaluate a **single rule or a single computation** against a document (the `rule test` shape — FIRED / PASSED / SUPPRESSED, and "what does this one computation yield"), not only whole-document validation — this is what dmtool's native-image `rule test` verb consumes (§1).
+
+Correctness is the user's criterion throughout: **the interpreter is correct iff it agrees with the real kernel**, proven by the differential oracle (§9).
 
 ## 1. The problem
 
@@ -93,21 +100,28 @@ The interpreter has its **own multiplatform AST** and does **not** import `dm.co
 
 Hold these from day one and extraction (§8) stays cheap.
 
-## 8. Placement — spike in-repo, extract later
+## 8. Placement — built out in-repo; separation by convention + linting, not by a repo wall
 
-**Phase 1 — spike in a12-dmkits.** A prototype `:interpreter` KMP module inside the repo, where the differential oracle (§9) and the mined spec are already at hand — the tightest feedback loop. Accept that a KMP+Node toolchain temporarily mixes into the otherwise-Java build; that's a spike cost, not a permanent state.
+**Decision (2026-06-23): the interpreter is built out *in this repo*, and dmtool's consumption of it evolves alongside it here.** The earlier plan ("spike in-repo, extract to a sibling `a12-dm-interpreter` before promoting") is **retired** — it solved a problem §7 already dissolves: *standalone is a property of the module's dependencies and API, not of where the source sits.* Co-locating dmtool + interpreter is the tighter loop for use-case 1 (the native-image verbs), and the differential oracle (§9) lives here too. The cross-repo tax bought only an independent release cadence we don't need yet.
 
-**Phase 2 — extract to a sibling repo `a12-dm-interpreter`.** Once the API/operator coverage stabilizes, lift it out (matching the ecosystem's sibling-repo norm) so each build is single-toolchain (a12-dmkits stays Java, the interpreter stays KMP); a12-dmkits/dmtool then consumes it as a published dependency.
+```
+   a12-dmkits (this repo, one build)
+   ├── :interpreter  (KMP — commonMain engine, jvm/js shims)   ← the publishable standalone artifact
+   │      ▲ no kernel, no dmtool — enforced by the purity lint below
+   ├── :adapter (Java) ── testImplementation :interpreter       ← the kernel DIFFERENTIAL oracle lives here,
+   │                                                              keeping :interpreter kernel-free even in test
+   └── :cli / dmtool ──── (consumes :interpreter for the native-image runtime verbs)
+```
 
-**The extraction procedure — recorded so it isn't forgotten:**
-1. Create `a12-dm-interpreter`; move the `:interpreter` module (`commonMain` + `jvmMain`/`jsMain` + `commonTest`) in as its root KMP project.
-2. Move the kernel-**differential** suite too — `…/adapter/laws/*DiffTest.kt` go into the interpreter repo's `jvmTest` with a **test-only** kernel dep, and the slice of `RuntimeLaws` they use is **ported** (a12-dmkits keeps its own copy — its ~20 behavioral law tests still need it; this is the anticipated one-time port).
-3. In a12-dmkits: drop `:interpreter` from `settings.gradle` and **revert `:adapter` to Java-only** (remove the `kotlin.jvm` plugin + `testImplementation project(':interpreter')`) — removing the KMP+Node toolchain from this repo's build entirely.
-4. Publish `:interpreter` (Maven + npm); dmtool consumes it and wires it into the native-image eval path.
+**Strong separation is kept by *convention + linting*, not a repo boundary** — the four hygiene rules of §7 are enforced mechanically, so the coupling can't silently erode:
 
-**Trigger — when to do this:** **before** the interpreter is promoted from spike to a real component (before building it out beyond the prototype, wiring it into dmtool's native-image eval, or shipping it). The forcing cost is the KMP+Node toolchain sitting in this otherwise-Java repo (CI weight, native-build complications). A standing reminder lives in [`../CLAUDE.md`](../CLAUDE.md) so it doesn't calcify.
+- A **purity lint** (`:interpreter`'s `verifyInterpreterPurity`, wired into `check`) fails the build if `commonMain` imports `java.*` / `com.mgmtp.*` / `groovy.*`, or if `jvmMain`/`jsMain` import `com.mgmtp.*`/`groovy.*` (the JVM shim may use `java.*`; the JS shim may use its externals). No kernel/dmtool type can reach the engine.
+- The kernel **differential tests stay in `:adapter`** (not `:interpreter`'s test source) — so `:interpreter` carries **zero** kernel dependency even in test scope, which is exactly what keeps it cleanly publishable.
+- `:interpreter` never depends on `:` (rulekit core), `:adapter`, or `:cli` — they consume it, never the reverse.
 
-**Status (2026-06-21):** the spike is **merged in-repo** (Phase 1). On the test-placement question, **option C** holds for now — the differential tests + the Kotlin test toolchain stay in `:adapter` (reusing the kernel oracle in place), to be relocated by steps 2–3 above. The four hygiene rules (§7) make this a lift, not a rewrite; don't let rulekit coupling accrete during Phase 1.
+**Standalone publishing (use-case 2) is a module property, satisfied here:** `:interpreter` publishes to Maven (JVM) + npm (JS) under its own coordinates (package `io.github.mbackschat.a12.dm.interpreter`) regardless of living in this repo.
+
+**Extraction to a sibling repo remains a *future option*, no longer a prerequisite.** Do it **only if** the interpreter earns an independent life — a non-dmtool consumer needs its own release cadence, or it ships as standalone OSS with its own issue tracker. Because §7's hygiene is lint-enforced from day one, that extraction stays a *lift* (move the module + its tests, point dmtool at the published dep), not a rewrite — so deferring it costs nothing.
 
 ## 9. Verification — the differential oracle we already have
 
@@ -145,7 +159,7 @@ Narrow, and each is measurable from the spike:
 
 - **Not** a replacement for structural validation — `checkConsistency` stays with the kernel (native-safe).
 - **Not** a code generator, and **not** a kernel replacement — it reproduces *runtime evaluation* behavior, verified against the kernel.
-- **Not** the `validatePart` path initially — unused by dmtool today (its three-value-logic suppression contract is full-kernel-parity work, deferred until a consumer needs it).
+- **In scope: both full *and* partial validation** (`validateFull` *and* `validatePart`) plus `compute()` — the standalone-consumer goal asks for partial, so its three-value-logic suppression contract is full-kernel-parity work we take on (verified against the kernel like everything else), not deferred.
 
 ## 13. Licensing
 
