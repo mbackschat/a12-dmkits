@@ -75,7 +75,9 @@ run "date op: [D] > AddYears(Today, 2)"          -m "$DM" rule check --field /R/
 run "date op: YearFromDate(D) < 2000"            -m "$DM" rule check --field /R/D --condition 'FieldFilled(D) And YearFromDate(D) < 2000' --code C
 
 echo "== parser-error i18n bundle, per locale (the de_DE/en_US bug) =="
-for loc in en_US de_DE; do
+# en_US/de_DE were the original bug pair; de (short, no country), it + it_IT (a third language, both forms)
+# confirm the base-LexerTerminals fallback covers ANY locale, not just the two the capture happened to record.
+for loc in en_US de_DE de it it_IT; do
   lm="$WORK/$loc.json"
   "$NATIVE" model new --id "b$loc" --locale "$loc" --root R -o "$lm" >/dev/null 2>&1
   "$NATIVE" -m "$lm" field add --group /R --name F --kind STRING >/dev/null 2>&1
