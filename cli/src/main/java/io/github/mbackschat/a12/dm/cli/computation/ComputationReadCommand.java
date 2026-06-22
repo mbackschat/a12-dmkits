@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.adapter.ReadComputation;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Parameters;
@@ -55,8 +56,10 @@ final class ComputationReadCommand extends BaseCommand {
                 return readNameIndex("computation", "computations", adapter.computationFullNames());
             }
             if (!adapter.computationFullNames().contains(computation)) {
-                return fail("'" + computation + "' is not a computation in this model — computations: "
-                        + adapter.computationFullNames());
+                return refuseNotFound("computation", "read", RkCode.NO_SUCH_COMPUTATION,
+                        "no computation at '" + computation + "'", computation,
+                        "pass an existing computation's full name (list them with `computation read` — no arg); "
+                                + "computations: " + adapter.computationFullNames());
             }
             ReadComputation read = adapter.readComputation(computation);
             ObjectNode data = MAPPER.createObjectNode();

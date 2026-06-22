@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
@@ -71,7 +72,8 @@ final class FieldReadCommand extends BaseCommand {
             }
             Optional<String> type = doc.fieldType(fieldPath);
             if (type.isEmpty()) {
-                return fail("no field '" + fieldPath + "' in the model");
+                return refuseNotFound("field", "read", RkCode.NO_SUCH_FIELD, "no field at '" + fieldPath + "'",
+                        fieldPath, "pass an existing field's full name-path (list them with `field read` — no arg)");
             }
             ObjectNode data = MAPPER.createObjectNode();
             data.put("field", fieldPath);

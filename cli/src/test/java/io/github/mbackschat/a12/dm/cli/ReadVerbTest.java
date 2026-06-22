@@ -87,8 +87,13 @@ class ReadVerbTest {
         Files.writeString(f, CliTestSupport.modelWithRuleAndComputationJson());
         var res = CliTestSupport.run("-m", f.toString(), "rule", "read", CliTestSupport.COMPUTATION_FULL_NAME);
         assertNotEquals(0, res.code(), "a computation is not a validation rule");
-        assertTrue(res.err().contains("computation read") && res.err().contains("model read"),
-                () -> "redirects to the real computation-aware verbs (no phantom flag): " + res.err());
+        // a missing read target is now a STRUCTURED refusal (not a plain-text stderr line); the redirect to
+        // the computation-aware verbs rides the diagnostic's `fix`
+        JsonNode diag = MAPPER.readTree(res.out()).path("diagnostics").path(0);
+        assertEquals("RK_NO_SUCH_RULE", diag.path("code").asText(), () -> "structured refusal: " + res.out());
+        assertTrue(diag.path("fix").asText().contains("computation read")
+                        && diag.path("fix").asText().contains("model read"),
+                () -> "redirects to the real computation-aware verbs (no phantom flag): " + res.out());
     }
 
     private static String computationKey(JsonNode data) {

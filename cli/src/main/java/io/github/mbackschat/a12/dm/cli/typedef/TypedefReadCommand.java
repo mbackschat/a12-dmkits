@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
 
@@ -56,7 +57,9 @@ final class TypedefReadCommand extends BaseCommand {
             if (id != null) {
                 Optional<String> type = doc.typeDefinitionType(id);
                 if (type.isEmpty()) {
-                    return fail("no type definition '" + id + "' — typedefs: " + ids);
+                    return refuseNotFound("typedef", "read", RkCode.NO_SUCH_TYPEDEF,
+                            "no type definition '" + id + "'", id,
+                            "pass a declared type-def id (list them with `typedef read` — no arg); declared: " + ids);
                 }
                 ObjectNode data = MAPPER.createObjectNode();
                 data.put("typedef", id);

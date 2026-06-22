@@ -102,6 +102,18 @@ public abstract class BaseCommand implements Callable<Integer> {
     }
 
     /**
+     * Emit a {@code refused} envelope for a READ whose target element does not exist — the structured,
+     * corrective form a missing read target must take (an {@code RK_NO_SUCH_*} code, a {@code where.path}, a
+     * {@code fix}), so it is machine-readable like the rest of the surface and never a plain-text {@code fail}.
+     * The read verb has already detected non-existence; this only emits (exit 2, nothing written).
+     */
+    protected int refuseNotFound(String target, String op, RkCode code, String summary, String path, String fix) {
+        Diagnostic diagnostic = Diagnostic.precheck(Optional.of(code.code()), summary,
+                Diagnostic.Where.path(path), Optional.of(fix), Optional.empty());
+        return refuse(target, op, new Refusal(summary, null, diagnostic));
+    }
+
+    /**
      * The {@code -m/--model} context option, read from the root command. It is an inherited option, so it
      * binds to {@link RootCommand} wherever it appears — before or after the verb. {@code null} if absent.
      */

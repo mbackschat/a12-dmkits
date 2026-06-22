@@ -18,6 +18,7 @@ import io.github.mbackschat.a12.dm.adapter.ReadResult;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Parameters;
@@ -63,7 +64,10 @@ final class RuleReadCommand extends BaseCommand {
             }
             String problem = ModelPaths.ruleProblem(adapter.ruleFullNames(), adapter.computationFullNames(), rule);
             if (problem != null) {
-                return fail(problem);
+                // structured refusal (RK_NO_SUCH_RULE), carrying the rich `problem` corrective (which detects
+                // a computation mistaken for a rule, a short-name/file-path slip, and lists the rules) as the
+                // fix — so a missing read target is machine-readable, not a plain-text stderr line
+                return refuseNotFound("rule", "read", RkCode.NO_SUCH_RULE, "no rule at '" + rule + "'", rule, problem);
             }
             ReadResult read = adapter.read(rule);
             ObjectNode data = MAPPER.createObjectNode();

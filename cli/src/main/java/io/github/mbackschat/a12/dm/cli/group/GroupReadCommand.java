@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
 
@@ -48,7 +49,8 @@ final class GroupReadCommand extends BaseCommand {
                 return readNameIndex("group", "groups", doc.groupPaths());
             }
             if (!doc.groupPaths().contains(group)) {
-                return fail("no group '" + group + "' in the model");
+                return refuseNotFound("group", "read", RkCode.NO_SUCH_GROUP, "no group at '" + group + "'",
+                        group, "pass an existing group's full name-path (see `model describe` or `group read` — no arg)");
             }
             ObjectNode data = MAPPER.createObjectNode();
             data.put("group", group);
