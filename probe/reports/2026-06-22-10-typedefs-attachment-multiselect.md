@@ -1,54 +1,35 @@
-# Probe report — task 10 (typedefs + attachment/multiselect groups), 2026-06-22
+# Probe report — task 10 (typedefs + attachment/multiselect), re-run 2026-06-22 (release binary)
 
-**Headline: CLEAN — 6 turns, 0 internal errors, audit CLEAN 6/6, 0 RED FLAGS.** The un-probed structure surface — authoring a shared type definition and typing two fields with it, an `attachment` group, a `multiselect` group, plus structured read-back — all worked; the model is kernel-valid throughout. The headline is a real **capability gap: there is no `typedef modify`**, so "change the shared type in one place" forced an `inline → field modify (each using field) → extract` round-trip. Two smaller DX notes.
+**Headline: CLEAN — 6 turns, 0 internal errors, audit CLEAN 6/6, 0 RED FLAGS, 0 nonzero exits.** The structure surface — a shared `MoneyAmount` typedef used by two fields, `typedef modify` widening it (both fields inherited via `resolvedType`), `group attachment`, `group multiselect`, a cross-field rule, and a confirm read — built kernel-valid throughout. **This session's typedef/`kind` work confirmed in the wild:** `typedef modify` propagated to both cost fields, visible via `field read`'s `resolvedType`. Two minor DX findings.
 
-## Provenance & integrity (the objective backstop)
+## Provenance & integrity
 
 | | |
 |---|---|
-| native binary | `a12-dmkits 0.6.0` (kernel 30.8.1; A12 Tools 2025.06-ext5) |
-| start mode | **clean** (from-scratch support-case model) |
-| anti-cheat audit | **CLEAN 6/6** — `SupportCase_DM.json` mutated only by dmtool; hand-authored files were input specs; no raw `.dm.json` read (inspection via `model describe`/`typedef read`/`group read`/`field read`) |
-| digest | **CLEAN · 0 RED FLAGS** — 5 nonzero exits, all legitimate (a `field read --field` locator slip, the typedef-modify workaround probes, the `typedef modify` non-verb) |
+| native binary | `a12-dmkits 0.6.0` (kernel 30.8.1) — release candidate, gate GREEN |
+| start | **clean** (from-scratch support-case model) |
+| audit | **CLEAN 6/6** — `SupportCase_DM.json` mutated only by dmtool; no raw read |
+| digest | **CLEAN · 0 RED FLAGS · 0 nonzero exits** — every edit accepted first try |
 
-## Findings (classified)
+## Findings
 
 | # | finding | target | class | resolution |
 |---|---|---|---|---|
-| 10-typedef-modify | **no `typedef modify`** (standalone or as an `apply` op) — every other element family has a `modify`. Changing a shared type's config in one place required `typedef inline → field modify each using field → typedef extract` | CLI (capability) | **GAP (verb candidate)** | **FIXED** — `typedef modify` shipped (standalone verb + `apply` op); a typedef is shared by reference, so typed fields inherit the change with no per-field edit |
-| 10-modify-help | `typedef modify --help` printed the **parent `typedef` help with exit 0**, hiding that `modify` isn't a subcommand | CLI | minor (picocli help) | **FIXED (subsumed)** — `typedef modify` is now a real subcommand, so `typedef modify --help` shows its own help |
-| 10-field-read-typedef | `field read` on a typedef-typed field returns only `{type:TypeDefType, typedef:"Money_amount"}` — not the resolved scale/unit — whereas `model describe` resolves it; the skill's "`field read` echoes per-kind config" doesn't hold for typedef-typed fields | material | minor (read-gap) | recorded — a candidate (`field read` inline the resolved typedef config / a `resolvedType` block), or soften the skill wording |
-| — | the dedicated `group attachment` / `group multiselect` templates made T3/T4 one call each; `schema typedef add`/`schema apply` were accurate; `rule check` confirmed polarity before `rule add`; the `field read --field` slip got the exact positional correction | — | **positive** | — |
-
-## 10-typedef-modify — the gap + the working round-trip (agent-verified)
-
-| element family | has an in-place `modify`? |
-|---|---|
-| field / config / rule / computation / group | **yes** |
-| **typedef** | **no** — add / read / remove / rename / extract / inline / import / unimport |
-
-```
-# no standalone verb:   dmtool typedef modify         -> "Unmatched argument 'modify'  / Did you mean: typedef remove?"
-# no apply op:          apply [{target:typedef,op:modify,…}] -> RK_UNKNOWN_OP "apply does not support op 'typedef modify'"
-# the working route (3 calls, momentarily inlines the type into its using fields):
-dmtool -m m.json typedef inline Money
-dmtool -m m.json apply [ field modify A→3dp, field modify B→3dp ]
-dmtool -m m.json typedef extract --id Money --from /R/A,/R/B
-```
+| 10-groupread | `group read <path>` returns only the group's repeatability, not its child fields — so it can't on its own confirm a just-built composite group; the agent fell back to `model describe` (in-surface) | CLI/material | minor (read-gap) | candidate — `group read` could echo child fields (symmetry with `field read`'s config echo), or a help pointer to `model describe` |
+| 10-euro | "euro" has no representation; the kernel's only money marker is the generic `unit:AMOUNT` (no currency) | material | minor (doc) | candidate — a one-line schema note that `AMOUNT` doesn't encode a currency |
+| — | `typedef modify` to 3 decimals propagated to **both** typed fields (`resolvedType…maxFractionalDigits:3`) — the single-source-of-truth payoff; `typedef read`/`model describe` spoke the clean `kind` vocabulary | — | **this session's work confirmed in the wild** | — |
 
 ## Replay log (verbatim, in order)
-1. create a support-case model: a case with a customer name and a priority. Define one shared "Money amount" type (a euro amount, 2 decimals) and use it for both an estimated cost and an approved cost.
+1. create a support-case model … one shared "Money amount" type … for both an estimated cost and an approved cost.
 2. the money amounts should allow 3 decimals now — change it in one place.
-3. let the customer attach supporting documents to the case.
+3. let the customer attach supporting documents …
 4. add a place to pick one or more affected products (a multi-select).
 5. the approved cost must not exceed the estimated cost.
-6. show me the money type and the two new groups, so I can confirm they're right.
+6. show me the money type and the two new groups …
 
 ## Self-audit
-CLEAN: every mutation via dmtool verbs (`model new`, `apply`, `typedef inline`/`extract`, `group attachment`/`multiselect`, `rule add`); hand-authored files were input specs; no raw `.dm.json` read (the structured-read shortfall, 10-field-read-typedef, was filed as a finding, not papered over). Confirmed by the audit (6/6) and digest (0 RED FLAGS).
+CLEAN: every mutation via dmtool verbs; the `*.json` were tool inputs; no raw `.dm.json` read. Audit 6/6, digest 0 RED FLAGS.
 
 ## Resolution (2026-06-22)
-- **10-typedef-modify — FIXED (`typedef modify` shipped).** Applying the earns-a-verb bar (CLI-SPEC §6) confirmed it earns a verb (reference fan-out across N typed fields + the round-trip's atomicity cost). The safety classification mattered: a typedef is shared **by reference** (typed fields point at its id, they don't copy its config), so a modify needs **no reference rewriting** — it is a **Local config edit** (like `field modify`), not a rewriting Refactor. The gate is therefore: an **existence precheck** (`RK_NO_SUCH_TYPEDEF`, before any other arg check, nothing written) + the **atomic kernel re-validation** (if the propagated change breaks a typed field or dependent rule/computation → `rejected`, nothing written). Runs standalone and as an `apply` op (parity). Confirmed end-to-end: a scale change propagates to the typed field (visible via `field read`'s `resolvedType` — finding 10-field-read-typedef). Locked by `TypedefVerbTest` (propagation + the refusal) + `ApplyVerbTest` (the apply op); CLI-SPEC §6 documents the gate.
-- **10-modify-help — FIXED (subsumed).** `typedef modify` is now a real subcommand, so `typedef modify --help` shows its own help.
-- **10-field-read-typedef — FIXED.** `field read` on a typedef-typed field now resolves the type definition's config into a `resolvedType` block (so a constraint on the reusable type is confirmable through that read alone) — which is also what lets `typedef modify`'s propagation be verified. (Later, the `07-vocab` sweep also unified the value-type vocabulary: the read no longer reports the raw `type: "TypeDefType"` — it reports `kind: <resolved underlying>` (e.g. `NUMBER`) + the `typedef` pointer + `resolvedType`, the same `kind` vocabulary as `model describe`/`field add`.)
-- **(positive)** the attachment/multiselect template surface and the self-describing schema were sufficient everywhere else.
+- **CLEAN re-run** — typedef define/reuse/propagate, attachment, and multiselect all behaved as specified; the `typedef modify` + `resolvedType` propagation (this session's kind/typedef work) is confirmed end-to-end.
+- **10-groupread / 10-euro — recorded, minor candidates** (a `group read` child-field echo; an `AMOUNT`-has-no-currency schema note).

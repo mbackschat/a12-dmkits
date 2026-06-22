@@ -1,49 +1,35 @@
-# Probe report — task 11 (rule messages, severities, token interpolation), 2026-06-22
+# Probe report — task 11 (rule messages, severities, token interpolation), re-run 2026-06-22 (release binary)
 
-**Headline: a NATIVE-ONLY CRASH (exit 70 / `RK_INTERNAL_ERROR`) — the probe's highest-value catch.** Authoring messages with interpolation tokens (`$Field.value$`, `$Field$`, `$#Group$`) crashes the native binary: the kernel's error-text **parameter** parser can't load its `LexerTerminals` resource bundle in the native image (`MissingResourceException` → `ExceptionInInitializerError`). It fires on `rule add`, `rule modify`, and even `--dry-run`, and the schema *advertises* these tokens — so an agent following the tool's own self-description hits the crash on the documented happy path. Plain text and the literal `$$` escape are unaffected. Severities (`WARNING`/`INFO`) and the bilingual turn worked. This is exactly the native-only class the probe exists to catch (invisible to the JVM eval).
+**Headline: CLEAN — 6 turns, 0 internal errors, audit CLEAN 6/6, 0 RED FLAGS — the prior native message-token CRASH stays fixed.** Authoring messages with interpolation tokens (`$#/Order/Items$` row index, `$/Order/Items/Count.value$`, the literal `$$1000`), `WARNING`/`INFO` severities, and a one-apply bilingual top-up all worked — **no exit 70**, confirming the v0.6.0/prior-probe native message-token crash is resolved on the release binary. Two skill notes, one of which refines this session's own cascade edit.
 
-## Provenance & integrity (the objective backstop)
+## Provenance & integrity
 
 | | |
 |---|---|
-| native binary | `a12-dmkits 0.6.0` (kernel 30.8.1; A12 Tools 2025.06-ext5) — the pre-fix binary that carried the gap |
-| start mode | **fixture** — seeded from `cli/src/test/resources/models/order-ruled.dm.json` |
-| anti-cheat audit | **CLEAN 6/6** — `order-ruled.dm.json` mutated only by dmtool; no hand-edit; no raw `.dm.json` read |
-| digest | **8 RED FLAGS** — exit 70 `ExceptionInInitializerError` on every `$…$`-token `rule add`/`rule modify` (incl. `--dry-run`); the non-token turns clean |
+| native binary | `a12-dmkits 0.6.0` (kernel 30.8.1) — release candidate, gate GREEN |
+| start | **fixture** — seeded from `cli/src/test/resources/models/order-ruled.dm.json` |
+| audit | **CLEAN 6/6** — model mutated only by dmtool; no raw read |
+| digest | **CLEAN · 0 RED FLAGS** — 2 nonzero exits, both legitimate (`MVK_NEG_CONDITION_IN_ITERATION` reject recovered with `GroupFilled`; `--add-locale --dry-run` enumerating the bilingual cascade gaps) |
 
-## Findings (classified)
+## Findings
 
 | # | finding | target | class | resolution |
 |---|---|---|---|---|
-| 11-crash | any error-text PARAMETER token (`$Field.value$`/`$Field$`/`$#Group$`) crashes the native binary — `ErrortextParameterMultiLanguageHandler.<clinit>` can't load the `LexerTerminals` ResourceBundle (native resource-registration gap); fires on add/modify/`--dry-run` | native build | **DEFECT (native crash, exit 70)** | **FIXED** — a `:cli` test now exercises a token message so the test-suite-driven capture registers the bundle; a native-battery trip-wire guards the class; re-captured + rebuilt (gate GREEN) |
-| 11-rule-read-severity | `rule read <path>` returns `condition` + `messages` but **not** `severity` (nor the rule group) — after `rule add --severity WARNING`/`INFO` the setting can't be confirmed through the sanctioned structured surface | CLI (read-gap) | **DEFECT (observability)** | **FIXED** — a slot-parity sweep vs `IRule` added `severity` + `errorCode` + `errorField` to `rule read` (read.schema updated); a severity you set is now confirmable |
-| 11-skill-bilingual | adding a locale (`--add-locale`) requires a message in the new locale for **every** existing rule/computation (not just edited ones) — surfaced only as a terminal `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING`; the skill's bilingual note covers the enum-label asymmetry but not this rule-message scope | skill | DX gap | **FIXED** — the skill's "going bilingual" note now states the new locale needs a message on every existing rule/computation (and that `--add-locale` is rejected until all coverage is present), verified against the binary |
-| — | `WARNING`/`INFO` severities authored fine; the `$$` literal-dollar escape works (not a parameter, so the param parser is never entered); the `RK_UNGUARDED_NUMBER_COMPARISON` lint + `MVK_NEG_CONDITION_IN_ITERATION` guidance were exactly right | — | **positive / prior fix confirmed** | — |
-
-## 11-crash — root cause + the fix (this session)
-
-```
-Caused by: java.util.MissingResourceException: Can't find bundle for base name
-  com.mgmtp.a12.kernel.core.service.internal.errortext.grammar.languages.LexerTerminals, locale en_US
-  at …ErrortextParameterMultiLanguageHandler.<clinit>(…:55)
-  at …MissingRegistrationUtils.runIgnoringMissingRegistrations(…)
-```
-The error-text **parameter** parser (distinct from the condition parser-error bundle, which the gate battery already covered) runs only when a message has a `$…$` token. **No `:cli` test exercised that path**, so the test-suite-driven native capture never recorded the `LexerTerminals` bundle access — and the native image shipped without it. (The `:`/`:adapter` `MessageInterpolationTest`s exist but the capture runs only the `:cli` suite.)
-
-**Root fix — at the mechanism, not the symptom:** rather than hand-registering one bundle, add the missing *shape* to the test suite that drives the capture — `RuleVerbTest.addPersistsARuleWhoseMessageInterpolatesValueAndRowIndexTokens` validates a token-bearing message through `rule add`, so the capture records the bundle automatically (and any sibling resource the param parser reaches). The class is then guarded two ways: that `:cli` test (so the capture keeps covering it) **and** a native-battery check (`error-text PARAMETER tokens`, `scripts/native-battery.sh`) that drives a token message through the native binary — the trip-wire if the gap ever returns.
+| 11-lint-direction | the `RK_UNGUARDED_NUMBER_COMPARISON` lint is **direction-aware** — it fired on `[Count] <= 0` but correctly stayed silent on `[BackorderQuantity] > 1000` (empty-as-0 can't trip the latter); the skill implies it always fires | skill | minor (clarity) | candidate — note in the skill that the lint flags only where `0` satisfies the comparison |
+| 11-cascade-overstate | the bilingual cascade's enum-label / pattern-message top-ups are **conditional** (neither applied here — no enum labels, the postal-code pattern is a *rule condition* not a field `patternMessage`); the skill's checklist can read as always-required. The reliable scoping move is **`config modify --add-locale --dry-run`**, which enumerates the exact per-rule gaps (verified) | skill | minor (refines this session's cascade edit) | candidate — add the `--add-locale --dry-run` scoping tip; frame the enum/pattern items as "for each you have" |
+| — | the message tokens (`$#…$` / `$….value$` / `$$`) authored without an exit-70 crash; `WARNING`/`INFO` severities + the bilingual one-apply all worked | — | **prior native-crash fix confirmed in the wild** | — |
 
 ## Replay log (verbatim, in order)
-1. each line item's count must be greater than zero — and the error must show the entered count in its text.
+1. each line item's count must be greater than zero — and the error must show the entered count …
 2. when there are several items, the message should say which line number is wrong.
-3. add a rule: the backorder quantity shouldn't exceed 1000 — but make it a warning, not a hard error.
-4. add an informational note when express priority is chosen (just info, no blocking).
+3. … backorder quantity shouldn't exceed 1000 — but make it a warning …
+4. add an informational note when express priority is chosen (just info) …
 5. the count message should also mention that orders over $1000 need approval — with a literal dollar sign.
 6. all of these messages should also read correctly in German.
 
 ## Self-audit
-CLEAN: every mutation via dmtool verbs (`rule add`/`rule modify`/`apply`); hand-authored files were rule-spec/apply-op inputs + the from-scratch repro (created via `model new`, edited only via dmtool); no raw `.dm.json` read (the `rule read` severity shortfall was filed as 11-rule-read-severity, not papered over). Confirmed by the audit (6/6); the digest's 8 RED FLAGS are the crash itself.
+CLEAN: every mutation via dmtool verbs; the `*.json` were rule/apply inputs; no raw `.dm.json` read. Audit 6/6, digest 0 RED FLAGS.
 
 ## Resolution (2026-06-22)
-- **11-crash — FIXED.** The native capture now covers the message-token path (the new `:cli` token-message test), so the `LexerTerminals` bundle is registered; re-captured + rebuilt, and the native gate (with the new `error-text PARAMETER tokens` battery check) is GREEN — the minimal repro that crashed (a `$/…/.value$` / `$#…$` message via `rule add`/`--dry-run`) now validates cleanly. This is the same class as the v0.1.0 date-operator and v0.6.0 annotation native crashes: an un-exercised kernel shape → a capture gap. NATIVE-IMAGE/KERNEL notes updated with the new re-capture-trigger shape.
-- **11-rule-read-severity — FIXED.** A slot-parity sweep of `rule read` vs `IRule` (not just severity) added `severity` + `errorCode` + `errorField` to the read envelope (`read.schema` declares them; `field read`/`computation read` got the same treatment — `resolvedType` / the formula); the observability gap is closed. Locked by `RuleVerbTest`.
-- **11-skill-bilingual — FIXED.** The skill's "going bilingual" note now adds that a new locale requires a message on **every existing rule/computation** (not just edited ones, else `MVK_ERROR_MESSAGE_FOR_LANGUAGE_MISSING`), and that `--add-locale` is rejected until all the coverage (enum labels + new-field labels + every rule's message) is present — so do it in one `apply`. Done under the skill-edit #1 rule (whole-file re-read + the claim reproduced against the binary); plugin copies re-synced.
+- **CLEAN re-run** — the message-token native path (the prior crash surface) is confirmed fixed; severities + bilingual authoring work.
+- **11-lint-direction / 11-cascade-overstate — confirmed skill candidates** (the lint is direction-aware; recommend `--add-locale --dry-run` for scoping and frame the cascade's enum/pattern items as conditional — refining this session's cascade edit).
