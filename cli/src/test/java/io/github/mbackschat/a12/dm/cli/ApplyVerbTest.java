@@ -383,6 +383,24 @@ class ApplyVerbTest {
     // --- F2: apply op-record locator keys match the standalone verb positionals ---
 
     @Test
+    void appliesARuleAddWithAGroupOverrideForRepetitionNotUnique(@TempDir Path dir) throws Exception {
+        // F06-3: the apply rule-add op takes the same `group` override as the standalone verb + `rule check
+        // --group`, so a RepetitionNotUnique rule (rule at the repeated group's PARENT) is persistable in a session.
+        Path model = CliTestSupport.orderRuled(dir);   // repeatable /Order/Items with Sku
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, """
+                [ {"target":"rule","op":"add","field":"/Order/Items/Sku","group":"/Order",
+                   "condition":"RepetitionNotUnique(Items/Sku)","code":"DUPLICATE_SKU",
+                   "messages":[{"locale":"en_US","text":"Duplicate SKU."}]} ]""");
+
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = M.readTree(res.out());
+        assertTrue(j.path("committed").asBoolean(), () -> "committed: " + res.out());
+        assertTrue(Files.readString(model).contains("DUPLICATE_SKU"), "the rule persisted with the group override");
+    }
+
+    @Test
     void appliesARuleModifyOpEditingSeverityAndMergingMessages(@TempDir Path dir) throws Exception {
         Path model = dir.resolve("subscription.dm.json");
         Files.writeString(model, CliTestSupport.subscriptionJson());

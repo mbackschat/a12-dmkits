@@ -72,7 +72,7 @@ final class ApplyCommand extends BaseCommand {
         GROUP_MODIFY("group", "modify", Set.of("groupPathInModel", "repeatable", "non-repeatable",
                 "index-field", "clear-index-field")),
         GROUP_REMOVE("group", "remove", Set.of("groupPathInModel", "cascade")),
-        RULE_ADD("rule", "add", Set.of("field", "condition", "comment", "code", "severity", "name", "messages",
+        RULE_ADD("rule", "add", Set.of("field", "group", "condition", "comment", "code", "severity", "name", "messages",
                 "allowDifferingDecimals")),
         RULE_MODIFY("rule", "modify", Set.of("rulePathInModel", "condition", "comment", "severity", "messages")),
         RULE_REMOVE("rule", "remove", Set.of("rulePathInModel")),
@@ -350,7 +350,12 @@ final class ApplyCommand extends BaseCommand {
                 if (s <= 0) {
                     throw new IllegalArgumentException("rule add 'field' must be an absolute path (e.g. /Group/Field)");
                 }
-                String group = field.substring(0, s);
+                // the rule group defaults to the error field's parent; `group` overrides it (mirrors the standalone
+                // verb + `rule check --group`) for RepetitionNotUnique-style rules that sit at the repeated group's parent.
+                String group = op.hasNonNull("group") ? op.get("group").asText() : field.substring(0, s);
+                if (!field.startsWith(group + "/")) {
+                    throw new IllegalArgumentException("rule add 'field' " + field + " must be inside the rule group " + group);
+                }
                 String errorEntityRelPath = "../" + field.substring(group.length() + 1);
                 String code = req(op, "code");
                 String ruleName = op.hasNonNull("name") ? op.get("name").asText() : code;

@@ -100,7 +100,12 @@ final class RuleAddCommand extends BaseCommand {
         if (slash <= 0) {
             return fail("field must be an absolute path (e.g. /Group/Field)");
         }
-        String group = field.substring(0, slash);
+        // the rule group (iteration scope) defaults to the error field's parent; `group` overrides it (mirrors
+        // `rule check --group`) for an operator that must sit at the PARENT of a repeated group — RepetitionNotUnique.
+        String group = spec.hasNonNull("group") ? spec.get("group").asText() : field.substring(0, slash);
+        if (!field.startsWith(group + "/")) {
+            return fail("field " + field + " must be inside the rule group " + group);
+        }
         String errorEntityRelPath = "../" + field.substring(group.length() + 1);
         IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
 

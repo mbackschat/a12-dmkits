@@ -129,6 +129,38 @@ class RuleVerbTest {
     }
 
     @Test
+    void addPersistsARepetitionNotUniqueRuleViaTheGroupKey(@TempDir Path dir) throws Exception {
+        // F06-3: RepetitionNotUnique needs the rule at the PARENT of the repeated group with the error field
+        // INSIDE it. `rule check` has --group; `rule add` must take the same `group` key, else a checked rule
+        // can't be persisted (the default grouping puts the rule at the repeated group itself → rejected).
+        Path model = CliTestSupport.orderRuled(dir);   // has a repeatable /Order/Items with Sku
+        Path spec = dir.resolve("dup.json");
+        Files.writeString(spec, """
+                { "field": "/Order/Items/Sku", "group": "/Order",
+                  "condition": "RepetitionNotUnique(Items/Sku)", "code": "DUPLICATE_SKU",
+                  "messages": [ {"locale":"en_US","text":"Duplicate SKU."} ] }""");
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "add", spec.toString());
+        assertEquals(0, res.code(), res.err());
+        assertEquals("applied", M.readTree(res.out()).get("outcome").asText());
+        assertTrue(Files.readString(model).contains("DUPLICATE_SKU"),
+                "the RepetitionNotUnique rule persisted via the group override (check→add round-trip)");
+    }
+
+    @Test
+    void addRejectsAFieldOutsideTheGivenGroup(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path spec = dir.resolve("bad.json");
+        Files.writeString(spec, """
+                { "field": "/Order/Items/Sku", "group": "/Order/Nope",
+                  "condition": "FieldNotFilled(Sku)", "code": "X",
+                  "messages": [ {"locale":"en_US","text":"x"} ] }""");
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "add", spec.toString());
+        assertTrue(res.code() != 0, "a field outside the given group must be rejected");
+        assertTrue((res.out() + res.err()).contains("must be inside the rule group"),
+                () -> "names the group mismatch: " + res.out() + res.err());
+    }
+
+    @Test
     void addPersistsAnInfoSeverityRule(@TempDir Path dir) throws Exception {
         // The self-describing surface (add.schema severity description, rule check --severity paramLabel,
         // DraftRule javadoc) advertises INFO alongside ERROR|WARNING; this locks that INFO is real —
