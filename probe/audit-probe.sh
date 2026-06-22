@@ -153,6 +153,34 @@ else
   note "clean — no main-loop task reference in the subagent's context"
 fi
 
+# --- Check 6: no RAW model-JSON inspection — a model is read ONLY through dmtool (describe/read/export) ---
+# A real dmtool user never opens the kernel's DM-JSON by hand — the tool's read surface is the whole point; an
+# agent that `cat`/`Read`s a model file is going AROUND the surface (and usually doing so because a read verb
+# was insufficient — itself a finding). So reading a MODEL file by any non-dmtool means is a boundary breach.
+# (Spec inputs the agent authored — rule.json etc. — are NOT models, so reading those is fine.)
+echo "[6] tool-only reads — agent never inspected a MODEL file's raw JSON (must use describe/read/export)"
+is_model() { local b; b="$(basename -- "$1")"; printf '%s\n' "$modelfiles" | grep -qxF "$b" || [[ "$b" == *.dm.json || "$b" == *_DM.json ]]; }
+rawread=""
+# (a) file-tool reads (Read/Glob/Grep) targeting a model file
+while read -r p; do [[ -n "$p" ]] && is_model "$p" && rawread+="file-op  $p"$'\n'; done < <(file_paths)
+# (b) Bash reads of a model file (cat/jq/grep/head/tail/less/awk/sed/python/node) that do NOT invoke dmtool
+while IFS= read -r cmd; do
+  [[ -z "$cmd" || "$cmd" == '""' ]] && continue
+  printf '%s' "$cmd" | grep -q 'dmtool' && continue   # `dmtool export | jq` etc. is the legitimate read path
+  while IFS= read -r m; do
+    [[ -z "$m" ]] && continue
+    if printf '%s' "$cmd" | grep -qE "(cat|jq|head|tail|less|more|grep|rg|awk|sed|python3?|node)[^|;&]*${m}"; then
+      rawread+="bash     ${m} :: ${cmd:0:130}"$'\n'; break
+    fi
+  done <<< "$modelfiles"
+done < <(bash_cmds)
+if [[ -n "${rawread// /}" ]]; then
+  fail=1; note "SUSPECT — the agent read a MODEL file's raw JSON instead of using dmtool (describe/read/export):"
+  printf '%s\n' "$rawread" | sed '/^$/d;s/^/      /'
+else
+  note "clean — models were inspected only through dmtool (no raw-JSON read)"
+fi
+
 echo
 if [[ "$fail" -ne 0 ]]; then
   echo "VERDICT: SUSPECT — material boundary crossed; this run's findings are NOT trustworthy."
