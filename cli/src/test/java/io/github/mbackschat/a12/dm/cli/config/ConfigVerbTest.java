@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.cli.CliTestSupport;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -93,6 +94,35 @@ class ConfigVerbTest {
         var read = CliTestSupport.run("-m", model.toString(), "config", "read");
         assertTrue(M.readTree(read.out()).path("data").path("annotations").path("roles").isMissingNode(),
                 () -> "the roles annotation is gone: " + read.out());
+    }
+
+    @Test
+    void addingALocaleRejectsAnEnumWithSingleLocaleLabelsAndNamesTheCause(@TempDir Path dir) throws Exception {
+        // probe 02: registering a 2nd locale on a model whose enum value-labels only cover the 1st fails the
+        // terminal kernel gate with the OPAQUE MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES ("the display value and
+        // the XML value were not specified together"). Verify the real kernel emits it AND the enricher now
+        // names the per-locale enum-label cause + the add-locale trigger (was fix-less — probe Finding 3b).
+        Path model = dir.resolve("m.dm.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "m", "--locale", "en_US",
+                "--root", "M", "-o", model.toString()).code());
+        Path spec = dir.resolve("tier.json");
+        Files.writeString(spec, """
+                { "group":"/M", "name":"Tier", "kind":"ENUM",
+                  "enum": { "values": [ {"value":"GOLD","labels":{"en_US":"Gold"}},
+                                        {"value":"SILVER","labels":{"en_US":"Silver"}} ] } }""");
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "field", "add", spec.toString()).code(),
+                "the enum is valid in the single-locale model");
+        var res = CliTestSupport.run("-m", model.toString(), "config", "modify", "--add-locale", "de_DE");
+        assertTrue(res.code() != 0, () -> "adding de_DE without de_DE enum labels is rejected: " + res.out());
+        boolean found = false;
+        for (JsonNode d : M.readTree(res.out()).path("diagnostics")) {
+            if ("MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES".equals(d.path("code").asText())) {
+                found = true;
+                assertTrue(d.path("fix").asText().contains("labels") && d.path("fix").asText().contains("locale"),
+                        () -> "the enriched fix names the per-locale enum-label gap: " + d);
+            }
+        }
+        assertTrue(found, () -> "the rejection carries MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES: " + res.out());
     }
 
     @Test

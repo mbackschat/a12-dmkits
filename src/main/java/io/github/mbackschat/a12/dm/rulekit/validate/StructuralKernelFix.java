@@ -5,11 +5,15 @@ import java.util.Optional;
 
 /**
  * Curated {@code fix}/{@code explain} for kernel codes the operator catalog does <em>not</em> document —
- * the <b>structural</b> placement / iteration-scope / wildcard family, plus a bare <b>syntax</b> code the
+ * the <b>structural</b> placement / iteration-scope / wildcard family, a bare <b>syntax</b> code the
  * parser raises with no message of its own ({@code MVK_UNEXPECTED_TOKEN}, where the likely cause — a
- * lowercase boolean, an unquoted string — must be inferred from the DSL's literal conventions). Two kinds
- * live here: codes <em>no</em> operator's {@code invalidExample} documents (placement / iteration-scope /
- * syntax), and <b>shared</b> codes that
+ * lowercase boolean, an unquoted string — must be inferred from the DSL's literal conventions), an
+ * <b>entity-resolution</b> code ({@code MVK_INVALID_ENTITY} — a bare/relative name that doesn't bind, where
+ * the fix is the absolute path), and an <b>enum locale-coverage</b> code
+ * ({@code MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES} — an enum value labeled in some declared locales but not
+ * all, whose opaque "display value and XML value not specified together" message hides the per-locale gap).
+ * Two kinds live here: codes <em>no</em> operator's {@code invalidExample} documents (placement /
+ * iteration-scope / syntax / entity-resolution / enum-coverage), and <b>shared</b> codes that
  * <em>several</em> operators trigger ({@code MVK_NO_WILDCARD} — CurrentRepetition, RepetitionNotUnique,
  * aggregates, a model-scope group reference) where keying the fix off a single operator's
  * {@code invalidExample} mis-stamps every occurrence (probe finding F06-2: every {@code MVK_NO_WILDCARD}
@@ -72,7 +76,28 @@ public final class StructuralKernelFix {
                     "MVK_UNEXPECTED_TOKEN is the kernel's generic parse error — a token appeared where the grammar "
                             + "did not allow it — and it is raised WITHOUT a message, so the likely cause has to be "
                             + "inferred from the DSL's literal/keyword conventions (capitalized booleans True/False, "
-                            + "double-quoted strings, case-sensitive PascalCase operators)."));
+                            + "double-quoted strings, case-sensitive PascalCase operators)."),
+            "MVK_INVALID_ENTITY", new Hint(
+                    "The group or field name in the condition could not be resolved in the rule's scope. Use its "
+                            + "ABSOLUTE path (a leading `/`, e.g. `/Order/Items/Sku`) rather than a bare or relative "
+                            + "name — a short name is unreliable across sibling groups under a wrapper and binds only "
+                            + "when the model sets `fieldRefByShortNameAllowed`. If the name is already correct, check "
+                            + "the rule's iteration scope contains it: a per-row field needs the rule to iterate over "
+                            + "its repeatable group (set the rule group to that group's PARENT, error field inside).",
+                    "MVK_INVALID_ENTITY (\"the group or field 'X' is not valid\") means the kernel could not resolve "
+                            + "that name — almost always a bare/relative reference that does not bind across sibling "
+                            + "groups, or a field outside the rule's iteration scope."),
+            "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES", new Hint(
+                    "An enum value's display label (`labels`) covers some of the model's declared locales but not "
+                            + "all — the kernel requires every enum value to carry a display label for EVERY declared "
+                            + "locale (or none at all). This most often surfaces right after adding a locale "
+                            + "(`config modify --add-locale`): top up each enum value's `labels` to cover the new "
+                            + "locale, and do the `--add-locale` plus the per-value label top-ups in ONE `apply` so the "
+                            + "single terminal gate sees a consistent model.",
+                    "MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES (\"the display value and the XML value were not specified "
+                            + "together\") fires when an enum value's internal (XML) value and its per-locale display "
+                            + "labels are not specified together across the declared locales — a label-coverage gap on "
+                            + "the enum, not a condition error."));
 
     private StructuralKernelFix() {
     }

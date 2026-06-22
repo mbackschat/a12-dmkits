@@ -49,6 +49,27 @@ class DiagnosticEnricherTest {
     }
 
     @Test
+    void invalidEntityGetsTheAbsolutePathHint() {
+        // probe 08: a same-group/relative reference that doesn't bind fails MVK_INVALID_ENTITY ("the group or
+        // field 'X' is not valid") with no hint to use an absolute path — the enricher must supply one.
+        Diagnostic enriched = ENRICHER.enrich(raw("MVK_INVALID_ENTITY"));
+        String fix = enriched.fix().orElse("");
+        assertTrue(fix.contains("ABSOLUTE path") || fix.contains("/Order/Items/Sku"),
+                () -> "the hint points at the absolute path, got: " + fix);
+    }
+
+    @Test
+    void enumLocaleCoverageGapGetsThePerLocaleLabelHint() {
+        // probe 02: an enum value labeled in some declared locales but not all fails the opaque
+        // MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES ("the display value and the XML value were not specified
+        // together") — the enricher must name the per-locale label-coverage cause + the add-locale trigger.
+        Diagnostic enriched = ENRICHER.enrich(raw("MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES"));
+        String fix = enriched.fix().orElse("");
+        assertTrue(fix.contains("labels") && fix.contains("locale") && fix.contains("add-locale"),
+                () -> "the hint names the per-locale enum-label gap + the add-locale trigger, got: " + fix);
+    }
+
+    @Test
     void anOperatorSpecificCodeStillGetsItsCatalogFix() {
         // the catalog-join still works for codes a single operator owns — RepetitionNotUnique documents
         // MVK_REPEATABLE_GROUP_MISSING in its invalidExample, so its curated fix must still attach.
