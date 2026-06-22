@@ -487,6 +487,7 @@ dmtool schema rule add | jq '{op, returns, inputKeys: (.input.properties|keys)}'
     "computedField",
     "condition",
     "field",
+    "group",
     "messages",
     "name",
     "severity"
