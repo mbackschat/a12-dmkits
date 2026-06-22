@@ -17,7 +17,7 @@
 |---|---|---|---|---|
 | 07-1 | a rejection at the **apply terminal gate** flattens to a cause-less `"the edited model is not kernel-valid"` (`code:null`, `where:{}`, `fix:null`) and doesn't attribute the failing op — unlike standalone `field add`, whose per-edit gate names the cause (probe-04 fix) | CLI (diagnostics) | **DEFECT (cause-less)** | **FIXED** — root-cause sweep of the probe-04 class: the cause-append now lives in one shared factory (`ModelConsistencyException.notKernelValid`) both gates call |
 | 07-dryrun | `apply --dry-run` prints `committed:true` alongside `written:false` — only `written` is authoritative; `committed` reads as "persisted" when it means "the gate would accept" | CLI | minor DX (wording) | recorded — below the bar (semantics correct, naming momentarily confusing) |
-| 07-comp-read | `computation read` echoes `{computation, converted, calculatedField}` but **no formula** — had to use `computation format` to confirm what persisted (unlike `field read`, which echoes config) | material | minor (read-gap) | recorded — a candidate (echo the formula in `computation read`), below the immediate bar |
+| 07-comp-read | `computation read` echoes `{computation, converted, calculatedField}` but **no formula** — had to use `computation format` to confirm what persisted (unlike `field read`, which echoes config) | material | minor (read-gap) | **FIXED** — `computation read` now echoes the formula (commonPrecondition + each alternative's rendered operation) + messages (slot-parity sweep) |
 | 07-vocab | `model describe` says `"kind":"NUMBER"`; `field read` says `"type":"NumberType"` for the same field | material | minor (vocab) | recorded |
 | — | the `Sum` dec-scale gotcha (#81) steered past `MVK_INVALID_COMPARE_DEC_PLACES`; `apply` atomic rollback + per-op staging + `--dry-run` scale-probing all worked | — | **positive / prior fix confirmed** | — |
 
@@ -46,5 +46,6 @@ CLEAN: every model change via dmtool verbs; hand-authored files were input spec 
 
 ## Resolution (2026-06-22)
 - **07-1 — FIXED.** The apply/batch terminal gate now surfaces the kernel cause via the shared `ModelConsistencyException.notKernelValid` factory (root-cause sweep of the probe-04 cause-surfacing class — the un-swept sibling). Locked by `ApplyVerbTest`. KERNEL-INTEGRATION-NOTES updated.
-- **07-dryrun / 07-comp-read / 07-vocab — recorded, below the immediate fix bar.** Minor DX/vocab; the agent itself rated them non-blocking. `computation read` echoing the formula is the most actionable (a read-gap sibling) if it recurs.
+- **07-comp-read — FIXED.** `computation read` now echoes the formula (the `commonPrecondition` + each alternative's rendered `operation`) + its messages — a slot-parity sweep of the read verbs, so the computed value is confirmable through `computation read` alone (no `computation format` needed). Locked by `ComputationVerbTest`.
+- **07-dryrun / 07-vocab — recorded, below the immediate fix bar.** Minor DX/vocab; the agent itself rated them non-blocking.
 - **(prior fixes confirmed in the wild)** the `Sum` dec-scale gotcha (#81) steered the agent past the scale-coupling trap; the dec-places coupling is `==`/`!=`/assignment-only (subtraction across scales accepted) — matching this session's enricher hint.
