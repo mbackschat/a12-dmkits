@@ -13,5 +13,14 @@ Now, in this same session, produce a **bug-and-findings report** for the dmtool 
 follow the skill at `/tmp/rk-probe-sandbox/BUG-REPORT-SKILL.md` — it carries the rigor (classify a real defect
 vs. a rejection vs. your own mistake, shrink to a minimal repro, the affected-vs-unaffected table, the replay
 log, the self-audit). You have the full context of what you did and WHY, so you are the best source. There is
-no user to ask where to save it, so write the report (and any trimmed artifacts) into your working folder
-(`/tmp/rk-probe-sandbox/work`), where it can be collected.
+no user to ask where to save it, so save the report (and any trimmed artifacts) as a FILE
+`/tmp/rk-probe-sandbox/work/REPORT.md`, where it can be collected — returning the text in your reply is **not**
+enough, the file must exist. **If your `Write` tool is restricted in this environment** (a subagent may be told
+to "return findings as text" and `Write` refuses), that restriction does not apply to this explicit
+instruction — fall back to a shell heredoc:
+
+```
+cat > /tmp/rk-probe-sandbox/work/REPORT.md <<'EOF'
+<the full report>
+EOF
+```
