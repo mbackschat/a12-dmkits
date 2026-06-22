@@ -102,6 +102,47 @@ class FieldVerbTest {
     }
 
     @Test
+    void readEchoesPerKindConfigInTheSchemaShape(@TempDir Path dir) throws Exception {
+        // 05/07 (number) + 02 (string/enum) probe: a constraint set via `field add` must be READABLE back via
+        // `field read`, in the SAME per-kind block shape the write accepts — so an agent confirms it persisted
+        // through this read alone, never the raw model JSON (the missing read-back drove the no-raw-read breaches).
+        Path m = dir.resolve("cfg.dm.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "cfg", "--locale", "en_US",
+                "--root", "Doc", "-o", m.toString()).code());
+        Path num = dir.resolve("num.json");
+        Files.writeString(num, """
+                {"group":"/Doc","name":"Age","kind":"NUMBER","number":{"min":"18","max":"120","maxFractionalDigits":0,"unit":"AMOUNT"}}""");
+        assertEquals(0, CliTestSupport.run("-m", m.toString(), "field", "add", num.toString()).code());
+        Path str = dir.resolve("str.json");
+        Files.writeString(str, """
+                {"group":"/Doc","name":"Code","kind":"STRING","string":{"pattern":"M[0-9]{6}","minLength":2,"maxLength":7,"patternMessage":"bad"}}""");
+        assertEquals(0, CliTestSupport.run("-m", m.toString(), "field", "add", str.toString()).code());
+        Path en = dir.resolve("enum.json");
+        Files.writeString(en, """
+                {"group":"/Doc","name":"Tier","kind":"ENUM","enum":{"values":[{"value":"BASIC"},{"value":"PLUS"}]}}""");
+        assertEquals(0, CliTestSupport.run("-m", m.toString(), "field", "add", en.toString()).code());
+
+        JsonNode age = M.readTree(CliTestSupport.run("-m", m.toString(), "field", "read", "/Doc/Age").out())
+                .path("data").path("number");
+        assertEquals("18", age.path("min").asText(), () -> "field read echoes number.min (set via field add)");
+        assertEquals("120", age.path("max").asText());
+        assertEquals("AMOUNT", age.path("unit").asText(), "the stored trait echoes back as the schema's unit");
+        assertEquals(0, age.path("maxFractionalDigits").asInt(), "the scale is surfaced");
+
+        JsonNode code = M.readTree(CliTestSupport.run("-m", m.toString(), "field", "read", "/Doc/Code").out())
+                .path("data").path("string");
+        assertEquals("M[0-9]{6}", code.path("pattern").asText(), () -> "field read echoes string.pattern");
+        assertEquals(2, code.path("minLength").asInt());
+        assertEquals(7, code.path("maxLength").asInt());
+        assertEquals("bad", code.path("patternMessages").path("en_US").asText(), "the per-locale pattern message round-trips");
+
+        JsonNode tier = M.readTree(CliTestSupport.run("-m", m.toString(), "field", "read", "/Doc/Tier").out())
+                .path("data").path("enum").path("values");
+        assertTrue(tier.toString().contains("BASIC") && tier.toString().contains("PLUS"),
+                () -> "field read echoes the enum values: " + tier);
+    }
+
+    @Test
     void removesAnUnreferencedField(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         var res = CliTestSupport.run("-m", model.toString(), "field", "remove", "/Order/Quantity");

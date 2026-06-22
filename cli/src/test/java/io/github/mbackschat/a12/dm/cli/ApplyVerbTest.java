@@ -200,6 +200,24 @@ class ApplyVerbTest {
     }
 
     @Test
+    void fieldReadOpSurfacesPerKindConfig(@TempDir Path dir) throws Exception {
+        // read-gap fix (B) consistency: a `field read` op INSIDE a session surfaces the per-kind config too,
+        // the same projection as the standalone verb — so a staged constraint is verifiable mid-session.
+        Path m = dir.resolve("cfg.dm.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "cfg", "--locale", "en_US",
+                "--root", "Doc", "-o", m.toString()).code());
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, """
+                [ {"target":"field","op":"add","group":"/Doc","name":"Fee","kind":"NUMBER","number":{"min":"0","unit":"AMOUNT"}},
+                  {"target":"field","op":"read","fieldPathInModel":"/Doc/Fee"} ]""");
+        var res = CliTestSupport.run("-m", m.toString(), "apply", ops.toString());
+        assertEquals(0, res.code(), res.err());
+        JsonNode readData = M.readTree(res.out()).path("results").get(1).path("data");
+        assertEquals("0", readData.path("number").path("min").asText(), () -> "in-session read surfaces config: " + res.out());
+        assertEquals("AMOUNT", readData.path("number").path("unit").asText());
+    }
+
+    @Test
     void rollsBackOnAFailingOp(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         String before = Files.readString(model);

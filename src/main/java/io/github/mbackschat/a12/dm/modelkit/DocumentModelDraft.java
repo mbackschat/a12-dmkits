@@ -7,10 +7,12 @@ import java.util.LinkedHashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -491,6 +493,131 @@ public final class DocumentModelDraft {
                 }
             }
         }
+    }
+
+    /**
+     * The inverse of {@link #writeTypeConfig}: project a stored kernel {@code fieldType} node back into the
+     * SAME per-kind block that {@code field add}/{@code field modify} accept (the {@code number}/{@code
+     * string}/{@code enum}/{@code date}/{@code time}/{@code dateRange}/{@code dateFragment}/{@code custom}
+     * blocks, or a {@code typedef} ref — see {@code schema field add}). So a config an agent SET round-trips
+     * on read: it confirms a constraint persisted through {@code field read} alone, never the raw model JSON
+     * (probe 05/07 number, 02 string). Returns a merge-ready object; empty for a bare BOOLEAN/CONFIRM.
+     */
+    static ObjectNode readTypeConfig(JsonNode fieldType) {
+        ObjectNode out = MAPPER.createObjectNode();
+        String type = fieldType.path("type").asText("");
+        JsonNode c = fieldType.path(type);   // the config lives under the discriminator key
+        switch (type) {
+            case "StringType" -> {
+                ObjectNode b = MAPPER.createObjectNode();
+                copyText(c, "pattern", b, "pattern");
+                copyInt(c, "minLength", b, "minLength");
+                copyInt(c, "maxLength", b, "maxLength");
+                if (c.path("lineBreaksPermitted").asBoolean(false)) b.put("lineBreaks", true);
+                if (c.path("alphabeticalSorting").asBoolean(false)) b.put("alphabeticalSorting", true);
+                localizedMap(c.path("errorMessage")).ifPresent(m -> b.set("patternMessages", m));
+                suggestionsMap(c.path("hintList")).ifPresent(m -> b.set("suggestions", m));
+                if (!b.isEmpty()) out.set("string", b);
+            }
+            case "NumberType" -> {
+                ObjectNode b = MAPPER.createObjectNode();
+                if (c.hasNonNull("minValue")) b.put("min", c.get("minValue").asText());   // string, as the write schema
+                if (c.hasNonNull("maxValue")) b.put("max", c.get("maxValue").asText());
+                if (c.hasNonNull("trait")) b.put("unit", c.get("trait").asText().toUpperCase(java.util.Locale.ROOT));
+                copyInt(c, "minFractionalDigits", b, "minFractionalDigits");
+                copyInt(c, "maxFractionalDigits", b, "maxFractionalDigits");
+                if (c.path("zeroNotAllowed").asBoolean(false)) b.put("zeroNotAllowed", true);
+                if (c.path("leadingZerosAllowed").asBoolean(false)) b.put("leadingZerosAllowed", true);
+                if (!b.isEmpty()) out.set("number", b);
+            }
+            case "EnumerationType" -> {
+                ObjectNode b = MAPPER.createObjectNode();
+                ArrayNode values = b.putArray("values");
+                for (JsonNode v : c.path("values")) {
+                    ObjectNode valueNode = values.addObject();
+                    valueNode.put("value", v.path("value").asText());
+                    localizedMap(v.path("label")).ifPresent(m -> valueNode.set("labels", m));
+                }
+                if (c.path("alphabeticalSorting").asBoolean(false)) b.put("alphabeticalSorting", true);
+                out.set("enum", b);
+            }
+            case "DateType" -> {
+                ObjectNode b = MAPPER.createObjectNode();
+                copyText(c, "format", b, "format");
+                copyText(c, "datePrecision", b, "precision");
+                if (!b.isEmpty()) out.set("date", b);
+            }
+            case "TimeType" -> {
+                ObjectNode b = MAPPER.createObjectNode();
+                copyText(c, "format", b, "format");
+                if (!b.isEmpty()) out.set("time", b);
+            }
+            case "DateTimeType" -> {
+                ObjectNode b = MAPPER.createObjectNode();
+                copyText(c, "format", b, "format");
+                if (!b.isEmpty()) out.set("dateTime", b);
+            }
+            case "DateRangeType" -> {
+                ObjectNode b = MAPPER.createObjectNode();
+                copyText(c, "format", b, "format");
+                copyText(c, "rangeSeparator", b, "separator");
+                if (!b.isEmpty()) out.set("dateRange", b);
+            }
+            case "DateFragmentType" -> {
+                ObjectNode b = MAPPER.createObjectNode();
+                copyText(c, "formatOfFragment", b, "format");
+                if (!b.isEmpty()) out.set("dateFragment", b);
+            }
+            case "CustomFieldType" -> {
+                ObjectNode b = MAPPER.createObjectNode();
+                copyText(c, "name", b, "typeName");
+                copyInt(c, "minLength", b, "minLength");
+                copyInt(c, "maxLength", b, "maxLength");
+                if (!b.isEmpty()) out.set("custom", b);
+            }
+            case "TypeDefType" -> out.put("typedef", c.path("typeDefinitionId").asText());
+            default -> { /* a bare type (BOOLEAN/CONFIRM) carries no surfaceable config */ }
+        }
+        return out;
+    }
+
+    /** Copy a text slot under a (possibly renamed) key, only when present. */
+    private static void copyText(JsonNode from, String fromKey, ObjectNode to, String toKey) {
+        if (from.hasNonNull(fromKey)) {
+            to.put(toKey, from.get(fromKey).asText());
+        }
+    }
+
+    /** Copy an integer slot under a (possibly renamed) key, only when present. */
+    private static void copyInt(JsonNode from, String fromKey, ObjectNode to, String toKey) {
+        if (from.hasNonNull(fromKey)) {
+            to.put(toKey, from.get(fromKey).asInt());
+        }
+    }
+
+    /** A kernel {@code [{locale, text}]} array back into a {@code {locale: text}} map (empty → none). */
+    private static Optional<ObjectNode> localizedMap(JsonNode array) {
+        if (!array.isArray() || array.isEmpty()) {
+            return Optional.empty();
+        }
+        ObjectNode map = MAPPER.createObjectNode();
+        for (JsonNode entry : array) {
+            map.put(entry.path("locale").asText(), entry.path("text").asText());
+        }
+        return Optional.of(map);
+    }
+
+    /** A kernel {@code [{locale, values:[…]}]} hint list back into a {@code {locale: [values]}} map. */
+    private static Optional<ObjectNode> suggestionsMap(JsonNode array) {
+        if (!array.isArray() || array.isEmpty()) {
+            return Optional.empty();
+        }
+        ObjectNode map = MAPPER.createObjectNode();
+        for (JsonNode entry : array) {
+            ArrayNode values = map.putArray(entry.path("locale").asText());
+            entry.path("values").forEach(v -> values.add(v.asText()));
+        }
+        return Optional.of(map);
     }
 
     /** Fluent builder for a {@link DocumentModelDraft}. */

@@ -291,6 +291,27 @@ public final class ModelDocument {
     }
 
     /**
+     * The field's per-kind CONFIG at {@code fieldPath} in the SAME schema-block shape {@code field add}/
+     * {@code field modify} accept ({@code number}/{@code string}/{@code enum}/{@code date}/…, or a
+     * {@code typedef} ref). The read-back of what was written, so a constraint (a NUMBER {@code min}/{@code
+     * max}/{@code unit}, a STRING {@code pattern}/length, enum {@code values}, a date {@code format}) is
+     * verifiable through {@code field read} alone. Empty when the field carries no surfaceable config
+     * (a bare BOOLEAN/CONFIRM) or there is no such field.
+     */
+    public Optional<ObjectNode> fieldConfig(String fieldPath) {
+        JsonNode field = locate(fieldPath, false);
+        if (field == null) {
+            return Optional.empty();
+        }
+        JsonNode fieldType = field.path("Field").path("fieldType");
+        if (fieldType.isMissingNode()) {
+            return Optional.empty();
+        }
+        ObjectNode cfg = DocumentModelDraft.readTypeConfig(fieldType);
+        return cfg.isEmpty() ? Optional.empty() : Optional.of(cfg);
+    }
+
+    /**
      * The field's requiredness at {@code fieldPath} — the friendly form of the stored
      * {@code Field.requirednessConfig.mode} (absent = {@link Requiredness#OPTIONAL}). Empty if no such field.
      */

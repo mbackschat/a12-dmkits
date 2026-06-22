@@ -536,11 +536,15 @@ final class ApplyCommand extends BaseCommand {
                     StructureRefactor.typedefRename(req(op, "typeDefId"), req(op, "to")));
             case FIELD_READ -> {
                 String path = req(op, "fieldPathInModel");
-                String type = ModelDocument.read(session.toJson()).fieldType(path)
+                ModelDocument doc = ModelDocument.read(session.toJson());
+                String type = doc.fieldType(path)
                         .orElseThrow(() -> new IllegalArgumentException("no field '" + path + "' in the model"));
                 ObjectNode data = MAPPER.createObjectNode();
                 data.put("field", path);
                 data.put("type", type);
+                // mirror the standalone `field read`: surface the per-kind config so a read INSIDE a session
+                // verifies a staged constraint the same way (the read-gap fix is consistent across both paths)
+                doc.fieldConfig(path).ifPresent(data::setAll);
                 yield readEnv(which, data, session);
             }
             case GROUP_READ -> {

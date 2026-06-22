@@ -18,12 +18,17 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
- * {@code dmtool field read <fieldPath>} — read a field's declared type. A read op: the type rides {@code
- * data} ({@code field}, {@code type}); a path that names no field fails fast. The field is addressed by a
- * positional path OR a {@code --group}/{@code --name} pair (G19); omit both to list every field's path.
+ * {@code dmtool field read <fieldPath>} — read a field back in full. A read op: {@code data} carries the
+ * {@code field} path, its {@code type}, the friendly {@code required} state, its metadata ({@code label} /
+ * descriptions / annotations), AND its per-kind CONFIG in the same block shape {@code field add} accepts
+ * ({@code number} min/max/unit/scale, {@code string} pattern/length/patternMessage(s), {@code enum} values,
+ * date/time formats — see {@code schema field add}). So a constraint an agent set is verifiable here without
+ * touching the raw model JSON. A path that names no field fails fast. The field is addressed by a positional
+ * path OR a {@code --group}/{@code --name} pair (G19); omit both to list every field's path.
  */
 @Command(name = "read", mixinStandardHelpOptions = true,
-        description = "Read a field's declared type into `data` (by path or --group/--name).")
+        description = "Read a field back in full into `data` — type, required state, metadata, and its per-kind "
+                + "config (number/string/enum/date config, same shape `field add` takes); by path or --group/--name.")
 final class FieldReadCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -87,6 +92,11 @@ final class FieldReadCommand extends BaseCommand {
             putLocalized(data, "internalDescription", doc.internalDescription(fieldPath));
             putLocalized(data, "externalDescription", doc.externalDescription(fieldPath));
             putLocalized(data, "annotations", doc.annotations(fieldPath));
+            // echo the per-kind CONFIG (NUMBER min/max/unit/scale, STRING pattern/length/patternMessage(s),
+            // enum values, date/time formats) in the SAME block shape `field add` accepts — so an agent
+            // confirms a constraint it set actually persisted, through this read alone, never the raw model
+            // JSON (probe 05/07 number, 02 string: the missing read-back drove agents to inspect the file).
+            doc.fieldConfig(fieldPath).ifPresent(data::setAll);
             ResultEnvelope env = ResultEnvelope.read("field", "read", "read " + fieldPath, true, List.of(), data);
             out().print(env.toJsonString());
             return env.exitCode();
