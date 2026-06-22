@@ -240,6 +240,17 @@ rulekit's treatment of this kernel fact (detail: KERNEL-INTEGRATION-NOTES "Condi
 
 *(Locked: N7 examples of Today + all three Difference*/Add* operators + the `Today` number-vs-date invalid; `dsl.operators.DateConditionTest` for rendering + the non-date-field handle rejection. The order fixture gained `OrderDate`/`DeliveryDate` DateType fields.)*
 
+### §6 supplement — DATE/DATERANGE/TIME field *format strings* are a fixed lowercase allowlist, locale-independent (probe 08, 2026-06-22)
+
+A field's declared date **format** must be a **lowercase Java date pattern** from a **fixed allowed set** — and that set is **independent of the model's display locale AND its `conditionLanguage`** (verified: `en_US` and `de_DE` conditionLanguage accept the identical set). The A12 editor's UPPERCASE preset labels (`YYYY-MM-DD`, `MM/MM`, …) are display labels, **rejected** as `format` values (`The date range format is invalid` / `The date format is invalid` — a kernel rejection carrying **no code and empty `where`**). Verified by `field add` against fresh `en_US`- and `de_DE`-conditionLanguage models:
+
+- **DATE** — both `yyyy-MM-dd` and `dd.MM.yyyy` validate; `YYYY-MM-DD` rejected.
+- **DATERANGE** (`format` + `separator`) — the **(format, separator) pair** is allowlisted, not free: verified-accepted **`dd.MM.yyyy`+`-`** and **`yyyy-MM-dd`+`/`** (identical under en_US and de_DE). Rejected: a spaced `" - "`; a mismatched separator (`yyyy-MM-dd`+`-`, `dd.MM.yyyy`+`/`); a non-standard format (`MM/dd/yyyy`). The separator is a single char that goes with the format.
+- **DATEFRAGMENT** — lowercase `MM`/`yyyy`/`yyyy-MM`/`MM-dd` accepted; uppercase rejected. (Partial dates are DATEFRAGMENT, not DATERANGE.)
+- **TIME** — the **full `HH:mm:ss` is required**; `HH:mm` (no seconds) is rejected.
+
+**Caveat (don't conflate two validators):** the kernel-rt **runtime value** validator `…rt._30_8.internal.formatdef.FormatDefinitionDatum#validiereFormat` *does* key off the language (`convertPruefFormat2FehlermeldungFormat(pruefFormat, param.getSprache())`, German `'d'→'T'`/`'y'→'J'`) — but that validates a date **value** entered against a format at form-fill time, NOT the field-format **declaration** at model-consistency time (the `field add` check here), which is locale-independent. An earlier "language-keyed" reading of this was a measurement artifact (a reused field name made later iterations fail on `RK_NAME_EXISTS`, misread as a format rejection). Found by probe `08-booking-date-ranges`, where an agent burned 23 `field add` attempts brute-forcing the format because the `field-add` schema mislabeled the editor presets as usable `format` values (now corrected: the schema states the lowercase fixed-set rule and ships a CI-executed working example). *(Locked: the `field-add.schema` dateRange example `dd.MM.yyyy`+`-` is CI-executed by `SchemaExamplesGuardTest`; the reject + locale-independence facts by `FieldVerbTest.dateAndTimeFieldFormatsAreFixedAndLocaleIndependent`.)*
+
 ### §6 supplement — `AddYears`/`AddMonths` calendar corrections (runtime, 2026-06-10, RT-semantics drain)
 
 KERNEL-SEMANTICS §6 notes the shifts "disagree across leap years"; the drained source (`BedingungsOperatorHelper.addiereJahre/addiereMonate`) pins the exact corrections, both probe-confirmed:

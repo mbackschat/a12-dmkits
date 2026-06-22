@@ -143,6 +143,54 @@ class FieldVerbTest {
     }
 
     @Test
+    void dateAndTimeFieldFormatsAreFixedAndLocaleIndependent(@TempDir Path dir) throws Exception {
+        // probe 08: date/time field FORMATS are lowercase Java patterns from a FIXED allowed set, independent
+        // of the model's locale AND conditionLanguage. The editor's uppercase presets are rejected, TIME needs
+        // full seconds, and the accepted DATERANGE (format, separator) pairs are the same under en/de. KERNEL-FINDINGS §6.
+        Path m = dir.resolve("d.dm.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "d", "--locale", "en_US",
+                "--root", "D", "-o", m.toString()).code());
+        // TIME: full seconds required
+        assertNotEquals(0, addFieldRc(m, dir, """
+                {"group":"/D","name":"T1","kind":"TIME","time":{"format":"HH:mm"}}"""), "TIME HH:mm (no seconds) is rejected");
+        assertEquals(0, addFieldRc(m, dir, """
+                {"group":"/D","name":"T2","kind":"TIME","time":{"format":"HH:mm:ss"}}"""), "TIME HH:mm:ss is accepted");
+        // DATE: the editor's uppercase label is not a valid format value; the lowercase pattern is
+        assertNotEquals(0, addFieldRc(m, dir, """
+                {"group":"/D","name":"D1","kind":"DATE","date":{"format":"YYYY-MM-DD"}}"""), "the uppercase editor label is rejected");
+        assertEquals(0, addFieldRc(m, dir, """
+                {"group":"/D","name":"D2","kind":"DATE","date":{"format":"yyyy-MM-dd"}}"""), "the lowercase pattern is accepted");
+        // DATERANGE: both verified pairs accepted; a mismatched separator rejected
+        assertEquals(0, addFieldRc(m, dir, """
+                {"group":"/D","name":"R1","kind":"DATERANGE","dateRange":{"format":"yyyy-MM-dd","separator":"/"}}"""),
+                "the ISO pair yyyy-MM-dd + / is accepted");
+        assertEquals(0, addFieldRc(m, dir, """
+                {"group":"/D","name":"R2","kind":"DATERANGE","dateRange":{"format":"dd.MM.yyyy","separator":"-"}}"""),
+                "the German pair dd.MM.yyyy + - is accepted");
+        assertNotEquals(0, addFieldRc(m, dir, """
+                {"group":"/D","name":"R3","kind":"DATERANGE","dateRange":{"format":"yyyy-MM-dd","separator":"-"}}"""),
+                "a mismatched separator (yyyy-MM-dd + -) is rejected");
+        // LOCALE-INDEPENDENCE: a de_DE conditionLanguage accepts the IDENTICAL set (not a different one)
+        Path de = dir.resolve("de.dm.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "de", "--locale", "en_US",
+                "--root", "D", "-o", de.toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", de.toString(), "config", "modify", "--condition-language", "de_DE").code());
+        assertEquals(0, addFieldRc(de, dir, """
+                {"group":"/D","name":"R4","kind":"DATERANGE","dateRange":{"format":"yyyy-MM-dd","separator":"/"}}"""),
+                "a de_DE conditionLanguage STILL accepts the ISO pair (the allowed set is locale-independent)");
+        assertEquals(0, addFieldRc(de, dir, """
+                {"group":"/D","name":"R5","kind":"DATERANGE","dateRange":{"format":"dd.MM.yyyy","separator":"-"}}"""),
+                "a de_DE conditionLanguage accepts the German pair too");
+    }
+
+    /** Write {@code spec} to a temp file and run {@code field add}; return the exit code. */
+    private static int addFieldRc(Path model, Path dir, String spec) throws Exception {
+        Path f = Files.createTempFile(dir, "fa", ".json");
+        Files.writeString(f, spec);
+        return CliTestSupport.run("-m", model.toString(), "field", "add", f.toString()).code();
+    }
+
+    @Test
     void removesAnUnreferencedField(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         var res = CliTestSupport.run("-m", model.toString(), "field", "remove", "/Order/Quantity");
