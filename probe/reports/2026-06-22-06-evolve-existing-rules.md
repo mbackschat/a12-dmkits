@@ -60,3 +60,11 @@ Root-causing F06-1 corrected the diagnosis: **`RepetitionNotUnique`'s `validExam
 - **Discoverability** (F06-1): `RepetitionNotUnique`'s catalog gotcha now teaches the `--group` authoring; `FieldValuesNotUnique(Items*/Sku)` remains the no-`--group` alternative for plain cross-row uniqueness.
 
 Locked by `DiagnosticEnricherTest` + `DiagnosticsVerbTest`; kernel fact recorded in KERNEL-FINDINGS §9 supplement + the treatment in KERNEL-INTEGRATION-NOTES.
+
+## Re-run (2026-06-22, on the rebuilt binary after the F06 fix) — new finding, fixed
+
+Re-running 06 on the fixed binary (73 calls, 0 RED FLAGS, audit CLEAN) confirmed the F06 hint now guides the agent to `--group` — and that exposed the next layer:
+
+- **F06-3 — FIXED.** `rule check` had `--group` but `rule add`/`apply rule add` did not, so a `RepetitionNotUnique` rule was *checkable but not persistable*. The persist verbs now take the same `group` key (default = field's parent); the catalog gotcha teaches it. Locked by `RuleVerbTest.addPersistsARepetitionNotUniqueRuleViaTheGroupKey` + `ApplyVerbTest`.
+- **06-6 — FIXED.** `--suggest-error-field` now notes that `fieldIsCandidate:false` (it lists only iteration-scope refs) is not a verdict for a model-level error field the kernel accepts.
+- **06-4 — FIXED (skill).** The skill now names the uniqueness operator (`FieldValuesNotUnique` vs `RepetitionNotUnique --group`).
