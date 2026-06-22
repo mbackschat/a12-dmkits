@@ -176,6 +176,15 @@ final class RuleCheckCommand extends BaseCommand {
             if (candidates.isEmpty()) {
                 data.put("note", "the condition references no field inside its iteration scope — reference one "
                         + "there to use as the error field");
+            } else if (!candidates.contains(field)) {
+                // probe 06-6: `candidates` are the ITERATION-scope refs (a per-row error field). A model-level
+                // rule can legitimately point at a non-repeating field the condition references elsewhere (e.g.
+                // FieldFilled(ThatField)), which the kernel accepts though it isn't in this list — so
+                // fieldIsCandidate:false is not a verdict. The `valid` flag from the check is authoritative.
+                data.put("note", "`candidates` lists the iteration-scope references (a per-row error field). "
+                        + "Your --field may still be valid as a MODEL-LEVEL error field if the condition "
+                        + "references it elsewhere (e.g. FieldFilled(" + (field == null ? "ThatField"
+                        : field.substring(field.lastIndexOf('/') + 1)) + ")); the `valid` verdict is authoritative.");
             }
         } catch (RuntimeException e) {
             data.putArray("candidates");

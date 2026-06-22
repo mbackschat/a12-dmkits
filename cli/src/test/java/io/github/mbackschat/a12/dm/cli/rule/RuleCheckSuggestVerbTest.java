@@ -60,6 +60,24 @@ class RuleCheckSuggestVerbTest {
     }
 
     @Test
+    void aModelLevelErrorFieldGetsAClarifyingNoteNotAFalseVerdict(@TempDir Path dir) throws Exception {
+        // probe 06-6: `candidates` lists only iteration-scope refs, so fieldIsCandidate is false for a
+        // MODEL-LEVEL error field the condition references via FieldFilled — but the kernel ACCEPTS it. The
+        // output must clarify (a note) and stay valid:true; fieldIsCandidate:false is not a verdict.
+        Path m = CliTestSupport.orderRuled(dir);   // /Order/CustomerName (non-repeating) + repeatable /Order/Items/Sku
+        var res = CliTestSupport.run("-m", m.toString(), "rule", "check",
+                "--field", "/Order/CustomerName",
+                "--condition", "FieldFilled(CustomerName) And FieldValuesNotUnique(/Order/Items*/Sku)",
+                "--code", "DUP", "--suggest-error-field");
+        assertEquals(0, res.code(), res.err());
+        JsonNode j = MAPPER.readTree(res.out());
+        assertTrue(j.path("valid").asBoolean(), () -> "the kernel accepts the model-level error field: " + res.out());
+        assertFalse(j.path("data").path("fieldIsCandidate").asBoolean(), "CustomerName isn't an iteration-scope ref");
+        assertTrue(j.path("data").path("note").asText().contains("authoritative"),
+                () -> "the note clarifies fieldIsCandidate:false is not a verdict: " + res.out());
+    }
+
+    @Test
     void withoutTheFlagThereIsNoCandidateData(@TempDir Path dir) throws Exception {
         // the flag is opt-in — a plain check must keep its existing shape (no data payload), no drift.
         var res = CliTestSupport.run("-m", model(dir).toString(), "rule", "check",
