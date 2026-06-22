@@ -70,6 +70,13 @@ class CliHelpTest {
         assertEquals(2, ruleRead.code());
         assertTrue(ruleRead.err().contains("rulePathInModel"),
                 () -> "rule read corrects --path → the positional: " + ruleRead.err());
+        // probe 04-whereused-locator: `where-used` locates by a POSITIONAL <entityPath> (the sibling the
+        // narrower "PathInModel" match missed); a wrong locator flag must self-correct here too.
+        CliTestSupport.Result whereUsed = CliTestSupport.run("-m", "x.json", "where-used", "--field", "/Order/Buyer");
+        assertEquals(2, whereUsed.code());
+        assertTrue(whereUsed.err().contains("POSITIONAL") && whereUsed.err().contains("entityPath")
+                        && whereUsed.err().contains("--field"),
+                () -> "where-used corrects --field → the positional <entityPath>: " + whereUsed.err());
     }
 
     @Test

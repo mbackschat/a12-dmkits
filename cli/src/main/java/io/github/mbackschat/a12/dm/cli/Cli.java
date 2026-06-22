@@ -192,8 +192,12 @@ public final class Cli {
         }
         CommandLine.Model.CommandSpec spec = ex.getCommandLine().getCommandSpec();
         for (CommandLine.Model.PositionalParamSpec p : spec.positionalParameters()) {
-            String label = p.paramLabel();   // e.g. <fieldPathInModel>, <rulePathInModel>, <typeDefId>
-            if (label.contains("PathInModel") || label.endsWith("Id>") || label.endsWith("Id")) {
+            String label = p.paramLabel();   // e.g. <fieldPathInModel>, <rulePathInModel>, <entityPath>, <typeDefId>
+            // a locator positional is a "…Path…" (the *PathInModel family AND where-used's <entityPath>) or
+            // an "…Id" — never a spec-input positional (<spec.json>/<ops.json> carry no "Path"/"Id"), so a
+            // spec verb handed a bad flag still can't misfire here. (where-used was the missed sibling: its
+            // <entityPath> didn't match the narrower "PathInModel" — probe 04-whereused-locator.)
+            if (label.contains("Path") || label.endsWith("Id>") || label.endsWith("Id")) {
                 return "→ " + spec.qualifiedName() + " locates its target by a POSITIONAL " + label
                         + ", not a flag — pass it directly: `" + spec.qualifiedName() + " " + label
                         + "` (you passed " + flag + ").";
