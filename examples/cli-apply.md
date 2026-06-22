@@ -157,7 +157,10 @@ dmtool -m /tmp/apply-midread.dm.json apply /tmp/apply-midread-ops.json
     "summary" : "read field read",
     "data" : {
       "field" : "/Order/Discount",
-      "type" : "NumberType"
+      "type" : "NumberType",
+      "number" : {
+        "maxFractionalDigits" : 0
+      }
     },
     "diagnostics" : [ ],
     "written" : false
@@ -402,4 +405,3 @@ fields named Discount/Rebate now: ["/Order/Rebate"]
 ```
 
 → The committed model re-validates (`valid: true`) and the field is now `/Order/Rebate` — renamed, with its just-added referrer rewritten, all in one transaction. The same `StructureRefactor` definition backs both this in-session op and the standalone `field rename` verb, so the §6 safety gate is identical either way. (The lone "Discount" still in the file is the rule's *message prose* — text, not a reference, so it is correctly left untouched.)
-

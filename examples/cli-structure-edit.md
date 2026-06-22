@@ -215,7 +215,10 @@ dmtool -m /tmp/struct2.dm.json field read /Subscription/Billing/BaseFee
   "data" : {
     "field" : "/Subscription/Billing/BaseFee",
     "type" : "NumberType",
-    "required" : false
+    "required" : false,
+    "number" : {
+      "maxFractionalDigits" : 2
+    }
   },
   "diagnostics" : [ ],
   "written" : false
@@ -424,7 +427,7 @@ dmtool -m /tmp/struct2-td.json typedef remove Currency >/tmp/struct2-td-rej.json
   "diagnostics" : [ {
     "severity" : "ERROR",
     "source" : "PRECHECK",
-    "summary" : "the edited model is not kernel-valid",
+    "summary" : "the edited model is not kernel-valid: Typedefinition with id 'Currency' could not be found.",
     "where" : { }
   } ],
   "written" : false
