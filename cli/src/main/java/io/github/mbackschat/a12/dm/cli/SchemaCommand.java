@@ -52,7 +52,8 @@ final class SchemaCommand extends BaseCommand {
             "computation modify", "add",
             "field add", "field-add",
             "field modify", "field-add",
-            "typedef add", "typedef-add");
+            "typedef add", "typedef-add",
+            "typedef modify", "typedef-add");
 
     /** Ops that consume a {@code --doc} document INSTANCE → the schema describing that instance tree. */
     static final Map<String, String> DOC_INPUT = Map.of(

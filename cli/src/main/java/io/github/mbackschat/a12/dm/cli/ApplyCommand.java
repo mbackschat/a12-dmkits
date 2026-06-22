@@ -82,6 +82,8 @@ final class ApplyCommand extends BaseCommand {
         COMPUTATION_MODIFY("computation", "modify", Set.of("computationPathInModel", "computedField", "alternatives", "commonPrecondition", "comment", "name", "messages")),
         TYPEDEF_ADD("typedef", "add", Set.of("id", "kind", "string", "number", "enum", "custom",
                 "date", "time", "dateTime", "dateRange", "dateFragment")),
+        TYPEDEF_MODIFY("typedef", "modify", Set.of("id", "kind", "string", "number", "enum", "custom",
+                "date", "time", "dateTime", "dateRange", "dateFragment")),
         TYPEDEF_REMOVE("typedef", "remove", Set.of("typeDefId")),
         INCLUDE_ADD("include", "add", Set.of("alias", "reference", "parent", "name",
                 "repeatability", "exclude-rules", "exclude-computations")),
@@ -445,6 +447,16 @@ final class ApplyCommand extends BaseCommand {
                 changed.put("kind", op.path("kind").asText());
                 yield staged(which, changed, session);
             }
+            case TYPEDEF_MODIFY -> {
+                // change a shared type's config in one place — typed fields inherit it (by reference, no
+                // rewrite). Same rich spec as TYPEDEF_ADD via FieldSpec.parseType; the standalone `typedef
+                // modify` verb shares this path. A missing id throws → the op fails and the sequence rolls back.
+                String id = req(op, "id");
+                session.setTypeDefinitionType(id, FieldSpec.parseType(op, id));
+                changed.put("modified", id);
+                changed.put("kind", op.path("kind").asText());
+                yield staged(which, changed, session);
+            }
             case TYPEDEF_REMOVE -> {
                 String id = req(op, "typeDefId");
                 session.removeTypeDefinition(id);
@@ -746,7 +758,7 @@ final class ApplyCommand extends BaseCommand {
     private static final java.util.Map<Op, String> NESTED_SCHEMA = java.util.Map.of(
             Op.FIELD_ADD, "field-add", Op.FIELD_MODIFY, "field-add",
             Op.RULE_ADD, "add", Op.RULE_MODIFY, "add", Op.COMPUTATION_ADD, "add", Op.COMPUTATION_MODIFY, "add",
-            Op.TYPEDEF_ADD, "typedef-add");
+            Op.TYPEDEF_ADD, "typedef-add", Op.TYPEDEF_MODIFY, "typedef-add");
 
     /** The supported {@code target op} labels, sorted — for the unknown-op diagnostic. */
     private static String supportedOps() {

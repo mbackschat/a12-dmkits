@@ -987,6 +987,11 @@ public final class ModelDocument {
         return this;
     }
 
+    /** Re-configure the type definition {@code id} to a bare easy kind (config-free); fails fast if absent. */
+    public ModelDocument setTypeDefinitionType(String id, FieldKind underlying) {
+        return setTypeDefinitionType(id, DocumentModelDraft.bareSpec(underlying));
+    }
+
     /** Re-configure the underlying type of the type definition {@code id}; fails fast if absent. */
     public ModelDocument setTypeDefinitionType(String id, FieldTypeSpec type) {
         JsonNode tds = root.path("content").path("typeDefinitions");

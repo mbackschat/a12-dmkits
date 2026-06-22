@@ -99,6 +99,23 @@ class ApplyVerbTest {
     }
 
     @Test
+    void appliesATypedefModifyInOneSession(@TempDir Path dir) throws Exception {
+        // apply/batch parity (probe 10): `typedef modify` rides apply too — add a shared type then modify its
+        // scale in one atomic session; the modify op shares the standalone verb's path.
+        Path model = CliTestSupport.orderRuled(dir);
+        Path ops = dir.resolve("ops.json");
+        Files.writeString(ops, """
+                [ {"target":"typedef","op":"add","id":"Money","kind":"NUMBER","number":{"maxFractionalDigits":2,"unit":"AMOUNT"}},
+                  {"target":"typedef","op":"modify","id":"Money","kind":"NUMBER","number":{"maxFractionalDigits":3,"unit":"AMOUNT"}} ]""");
+        var res = CliTestSupport.run("-m", model.toString(), "apply", ops.toString());
+        assertEquals(0, res.code(), res.err());
+        assertTrue(M.readTree(res.out()).path("committed").asBoolean(), () -> "committed: " + res.out());
+        JsonNode cfg = M.readTree(CliTestSupport.run("-m", model.toString(), "typedef", "read", "Money").out())
+                .path("data").path("number");
+        assertEquals(3, cfg.path("maxFractionalDigits").asInt(), "the typedef modify op landed in-session");
+    }
+
+    @Test
     void appliesAFieldRetypeInOneSession(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         Path ops = dir.resolve("ops.json");

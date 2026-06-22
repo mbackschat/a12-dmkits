@@ -236,6 +236,7 @@ dmtool -m order.dm.json group modify /Order/Items --index-field Sku
 # a reusable type — simple via --kind, or a rich ENUM/restricted type via a spec
 dmtool -m order.dm.json typedef add --id Money --kind NUMBER
 dmtool -m order.dm.json typedef add --id Tier tier-enum.json   # { "kind":"ENUM", "enum":{"values":[…]} }
+dmtool -m order.dm.json typedef modify --id Money money-3dp.json   # change it in ONE place — typed fields inherit it
 
 dmtool -m order.dm.json config modify \
   --decimal-separator "," --label en_US="Customer Order"

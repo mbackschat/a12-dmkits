@@ -55,6 +55,7 @@ group rename
 group move
 group extract
 typedef add
+typedef modify
 typedef read
 typedef remove
 typedef rename

@@ -42,6 +42,7 @@
   "group extract":     { "intent": "preview extracting fields into a sub-model typedef", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "group", "extract", "/Order/ShippingAddress", "--reference", "addressLib", "--dry-run"], "expect": "preview" },
 
   "typedef add":       { "intent": "preview declaring a field type-definition", "model": "order-ruled.dm.json", "command": ["-m", "<model.json>", "typedef", "add", "--id", "PostalCodeType", "--kind", "STRING", "--dry-run"], "expect": "preview" },
+  "typedef modify":    { "intent": "preview changing a type definition's config in one place (typed fields inherit it)", "model": "typedefs.dm.json", "command": ["-m", "<model.json>", "typedef", "modify", "--id", "PostalCodeType", "--kind", "STRING", "--dry-run"], "expect": "preview" },
   "typedef read":      { "intent": "list the declared type-definition ids into data", "model": "typedefs.dm.json", "command": ["-m", "<model.json>", "typedef", "read"], "expect": "read" },
   "typedef remove":    { "intent": "preview removing a type definition", "model": "typedefs.dm.json", "command": ["-m", "<model.json>", "typedef", "remove", "PostalCodeType", "--dry-run"], "expect": "preview" },
   "typedef rename":    { "intent": "preview renaming a type definition (using fields repointed)", "model": "typedefs.dm.json", "command": ["-m", "<model.json>", "typedef", "rename", "PostalCodeType", "--to", "ZipCodeType", "--dry-run"], "expect": "preview" },

@@ -91,6 +91,46 @@ class TypedefVerbTest {
     }
 
     @Test
+    void modifyChangesASharedTypesConfigInOnePlaceAndTypedFieldsInheritIt(@TempDir Path dir) throws Exception {
+        // probe 10: changing a shared type's config used to need an inline → field-modify-each → extract
+        // round-trip (no `typedef modify`). `typedef modify` does it in one place; a typedef is shared by
+        // reference, so every typed field inherits the change (confirmed via field read's resolvedType).
+        Path model = CliTestSupport.orderRuled(dir);
+        Path add = dir.resolve("money2.json");
+        Files.writeString(add, """
+                { "kind": "NUMBER", "number": { "maxFractionalDigits": 2, "unit": "AMOUNT" } }""");
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "typedef", "add",
+                "--id", "Money", add.toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "field", "add",
+                "--group", "/Order", "--name", "Cost", "--typedef", "Money").code());
+
+        Path mod = dir.resolve("money3.json");
+        Files.writeString(mod, """
+                { "kind": "NUMBER", "number": { "maxFractionalDigits": 3, "unit": "AMOUNT" } }""");
+        var res = CliTestSupport.run("-m", model.toString(), "typedef", "modify", "--id", "Money", mod.toString());
+        assertEquals(0, res.code(), res.err());
+        assertEquals("applied", M.readTree(res.out()).get("outcome").asText());
+        // the change propagated to the typed field, in ONE place — no per-field edit
+        JsonNode resolved = M.readTree(CliTestSupport.run("-m", model.toString(), "field", "read", "/Order/Cost").out())
+                .path("data").path("resolvedType").path("number");
+        assertEquals(3, resolved.path("maxFractionalDigits").asInt(),
+                () -> "the typed field inherits the modified typedef config: " + res.out());
+    }
+
+    @Test
+    void modifyRefusesAMissingTypedefAndWritesNothing(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        String before = Files.readString(model);
+        var res = CliTestSupport.run("-m", model.toString(), "typedef", "modify", "--id", "Nope", "--kind", "STRING");
+        assertEquals(2, res.code());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("refused", j.get("outcome").asText());
+        assertTrue(j.path("diagnostics").toString().contains("RK_NO_SUCH_TYPEDEF"),
+                () -> "a modify of a missing typedef refuses with RK_NO_SUCH_TYPEDEF: " + res.out());
+        assertEquals(before, Files.readString(model), "a refused modify mutates nothing");
+    }
+
+    @Test
     void removesAnAddedTypedef(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         assertEquals(0, CliTestSupport.run("-m", model.toString(), "typedef", "add",
