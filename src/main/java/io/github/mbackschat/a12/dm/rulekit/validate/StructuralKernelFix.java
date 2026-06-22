@@ -4,9 +4,12 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Curated {@code fix}/{@code explain} for <b>structural</b> kernel codes — the placement /
- * iteration-scope / wildcard family. Two kinds live here: codes <em>no</em> operator's
- * {@code invalidExample} documents (placement / iteration-scope), and <b>shared</b> codes that
+ * Curated {@code fix}/{@code explain} for kernel codes the operator catalog does <em>not</em> document —
+ * the <b>structural</b> placement / iteration-scope / wildcard family, plus a bare <b>syntax</b> code the
+ * parser raises with no message of its own ({@code MVK_UNEXPECTED_TOKEN}, where the likely cause — a
+ * lowercase boolean, an unquoted string — must be inferred from the DSL's literal conventions). Two kinds
+ * live here: codes <em>no</em> operator's {@code invalidExample} documents (placement / iteration-scope /
+ * syntax), and <b>shared</b> codes that
  * <em>several</em> operators trigger ({@code MVK_NO_WILDCARD} — CurrentRepetition, RepetitionNotUnique,
  * aggregates, a model-scope group reference) where keying the fix off a single operator's
  * {@code invalidExample} mis-stamps every occurrence (probe finding F06-2: every {@code MVK_NO_WILDCARD}
@@ -58,7 +61,18 @@ public final class StructuralKernelFix {
                             + "only for rows that actually exist, not for the empty/absent repetitions.",
                     "A bare negative (FieldNotFilled/NoFieldFilled) inside an iterating rule would also fire on the "
                             + "empty/non-existent repetitions of the iterated group; the kernel requires a positive "
-                            + "guard to scope it to real rows."));
+                            + "guard to scope it to real rows."),
+            "MVK_UNEXPECTED_TOKEN", new Hint(
+                    "The condition has a token the DSL parser did not expect (a syntax slip the kernel reports "
+                            + "with no message of its own). The most common causes, in order: (1) a BOOLEAN literal "
+                            + "must be CAPITALIZED — write `True` / `False`, not the JSON `true` / `false` "
+                            + "(e.g. `[Flag] == True`); (2) a string value must be DOUBLE-QUOTED — `[Status] == \"OPEN\"`; "
+                            + "(3) operator/keyword names are case-sensitive PascalCase — `FieldFilled`, `And`, `Or`, "
+                            + "`Not`. Re-check the token at the reported position against these.",
+                    "MVK_UNEXPECTED_TOKEN is the kernel's generic parse error — a token appeared where the grammar "
+                            + "did not allow it — and it is raised WITHOUT a message, so the likely cause has to be "
+                            + "inferred from the DSL's literal/keyword conventions (capitalized booleans True/False, "
+                            + "double-quoted strings, case-sensitive PascalCase operators)."));
 
     private StructuralKernelFix() {
     }

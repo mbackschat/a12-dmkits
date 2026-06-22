@@ -38,6 +38,17 @@ class DiagnosticEnricherTest {
     }
 
     @Test
+    void unexpectedTokenGetsTheBooleanCasingSyntaxHint() {
+        // 05/06 probe: `[X] == true` fails MVK_UNEXPECTED_TOKEN, which the kernel raises with NO message of
+        // its own — so the enricher must attach the syntax hint that leads with the capitalized boolean
+        // literals (True/False), the most common cause.
+        Diagnostic enriched = ENRICHER.enrich(raw("MVK_UNEXPECTED_TOKEN"));
+        String fix = enriched.fix().orElse("");
+        assertTrue(fix.contains("True") && fix.contains("False"),
+                () -> "the syntax hint names the capitalized boolean literals True/False, got: " + fix);
+    }
+
+    @Test
     void anOperatorSpecificCodeStillGetsItsCatalogFix() {
         // the catalog-join still works for codes a single operator owns — RepetitionNotUnique documents
         // MVK_REPEATABLE_GROUP_MISSING in its invalidExample, so its curated fix must still attach.

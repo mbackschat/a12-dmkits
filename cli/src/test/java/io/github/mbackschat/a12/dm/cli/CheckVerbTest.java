@@ -31,6 +31,27 @@ class CheckVerbTest {
     }
 
     @Test
+    void aLowercaseBooleanLiteralGetsTheCasingFix(@TempDir Path dir) throws Exception {
+        // 05/06 probe: `== true` (JSON casing) fails MVK_UNEXPECTED_TOKEN, which the kernel raises with no
+        // message; the rule check diagnostic must now carry the syntax fix naming the capitalized True/False
+        // (the DSL boolean literal), so the agent isn't left guessing at a message-less reject.
+        Path m = CliTestSupport.orderRuled(dir);
+        var res = CliTestSupport.run("-m", m.toString(), "rule", "check",
+                "--field", "/Order/BackorderQuantity",
+                "--condition", "[/Order/ExpressShipping] == true And FieldNotFilled(/Order/BackorderQuantity)",
+                "--code", "X");
+        JsonNode j = MAPPER.readTree(res.out());
+        boolean casingFix = false;
+        for (JsonNode d : j.path("diagnostics")) {
+            if ("MVK_UNEXPECTED_TOKEN".equals(d.path("code").asText())) {
+                String fix = d.path("fix").asText("");
+                casingFix = fix.contains("True") && fix.contains("False");
+            }
+        }
+        assertTrue(casingFix, () -> "the MVK_UNEXPECTED_TOKEN reject carries the boolean-casing fix: " + res.out());
+    }
+
+    @Test
     void fieldThatIsAFilePathGetsATailoredError(@TempDir Path dir) throws Exception {
         // the recurring N6 slip: the <model.json> file path pasted into --field. The ModelPaths guard
         // now names the exact confusion instead of a generic "not a field".
