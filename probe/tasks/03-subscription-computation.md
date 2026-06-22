@@ -10,6 +10,8 @@ Run as ONE session, prompts arriving in order — the agent must NOT look ahead 
 **Turn 1**
 > Create a document model for a software subscription. It has a tier, a billing section with a base monthly fee and an effective monthly fee, and a repeatable list of add-ons, each with a name and a monthly fee. The effective monthly fee is calculated as twice the base fee.
 
+STOP — do not read below until this turn is complete and verified.
+
 **Turn 2**
 > Change the effective-fee calculation so it is twice the base fee plus the total of all the add-ons' monthly fees.
 
