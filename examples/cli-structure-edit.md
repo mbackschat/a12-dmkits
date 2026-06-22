@@ -198,7 +198,7 @@ cp examples/models/subscription.dm.json /tmp/struct2.dm.json && echo "copied sub
 copied subscription → /tmp/struct2.dm.json
 ```
 
-`field read` resolves the field's full name-path and reports its kernel `type` (here `NumberType`):
+`field read` resolves the field's full name-path and reports its value `kind` (here `NUMBER`):
 
 ```bash
 dmtool -m /tmp/struct2.dm.json field read /Subscription/Billing/BaseFee
@@ -214,7 +214,7 @@ dmtool -m /tmp/struct2.dm.json field read /Subscription/Billing/BaseFee
   "summary" : "read /Subscription/Billing/BaseFee",
   "data" : {
     "field" : "/Subscription/Billing/BaseFee",
-    "type" : "NumberType",
+    "kind" : "NUMBER",
     "required" : false,
     "number" : {
       "maxFractionalDigits" : 2
@@ -225,7 +225,7 @@ dmtool -m /tmp/struct2.dm.json field read /Subscription/Billing/BaseFee
 }
 ```
 
-→ `data.type = NumberType` is the field's declared type. The envelope's `outcome: read` / `written: false` mark this as a non-mutating query.
+→ `data.kind = NUMBER` is the field's value kind — the same vocabulary `field add` and `model describe` use (the kernel discriminator never leaks). The envelope's `outcome: read` / `written: false` mark this as a non-mutating query.
 
 `group read` answers the one structural question a group carries here — does it repeat? `/Subscription/Addons` is a repetition list (it was declared `--repeatable`), so `data.repeatable` is `true`:
 
@@ -355,7 +355,7 @@ dmtool -m /tmp/struct2-td.json typedef add --id BillingCycle /tmp/cycle.json \
 ```
 
 ```output
-{"outcome":"applied","added":"BillingCycle","kind":"ENUM"}
+{"outcome":"applied","added":"BillingCycle","kind":"ENUMERATION"}
 ```
 
 → The enum type-def is reusable across fields — every `BillingCycle` field shares the one value set. (`typedef add` carries only a type; set a type-def's descriptions/annotations with `meta <id>`.)
@@ -384,7 +384,7 @@ dmtool -m /tmp/struct2-td.json typedef read
 
 → `data.typedefs = [ "Currency" ]` is the inventory of reusable types you can point a field at.
 
-Now type a field by that definition with `field add --typedef Currency` (instead of `--kind`). The field's kind comes back as `TypeDefType` — it carries the typedef, not a primitive kind:
+Now type a field by that definition with `field add --typedef Currency` (instead of `--kind`). The echo reports both the `typedef` pointer and the resolved value `kind` — so you see it's typed *by reference* and what it effectively holds:
 
 ```bash
 dmtool -m /tmp/struct2-td.json \
@@ -400,7 +400,8 @@ dmtool -m /tmp/struct2-td.json \
   "summary" : "added field /Subscription/Billing/SetupFee",
   "changed" : {
     "added" : "/Subscription/Billing/SetupFee",
-    "kind" : "TypeDefType"
+    "typedef" : "Currency",
+    "kind" : "NUMBER"
   },
   "diagnostics" : [ ],
   "written" : true,
@@ -408,7 +409,7 @@ dmtool -m /tmp/struct2-td.json \
 }
 ```
 
-→ `changed.kind = TypeDefType`: `SetupFee` is typed *by* the `Currency` definition, not by a bare `NUMBER`.
+→ `changed.typedef = Currency` with `changed.kind = NUMBER`: `SetupFee` is typed *by* the `Currency` definition (a reference, so a change to `Currency` propagates), and its resolved value kind is `NUMBER`.
 
 `typedef remove` deletes a definition — but the kernel rejects (exit 1) removing one a field still uses, because that would leave the field's type dangling. With `SetupFee` still referencing `Currency`, the removal is refused:
 

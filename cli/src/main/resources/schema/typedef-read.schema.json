@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/typedef-read.schema.json",
+  "title": "TypedefRead",
+  "description": "Output of `typedef read`. With an `<id>` argument: one type definition read back — its value `kind` and the per-kind CONFIG block in the SAME shape `typedef add` accepts (`number`/`string`/`enum`/…). With NO argument: the declared local ids under `typedefs`, plus any `importedFrom` sources (type-defs merged in from other models). The handle to then read one.",
+  "type": "object",
+  "additionalProperties": false,
+  "oneOf": [
+    { "title": "one type definition (an id argument)", "required": ["typedef", "kind"] },
+    { "title": "name-index (no argument)", "required": ["typedefs"] }
+  ],
+  "properties": {
+    "typedef": { "type": "string", "description": "(one) the type definition's id" },
+    "kind": { "type": "string", "description": "(one) the value kind — the SAME vocabulary the `typedef add` `kind` key / `field read` / `model describe` use (STRING | NUMBER | BOOLEAN | CONFIRM | DATE | DATE_TIME | TIME | DATE_FRAGMENT | DATE_RANGE | ENUMERATION | CUSTOM | UNKNOWN), never the raw kernel discriminator" },
+    "number": { "type": "object", "description": "(one, NUMBER) min/max/unit/scale config, the shape `typedef add` accepts" },
+    "string": { "type": "object", "description": "(one, STRING) pattern/length/patternMessages/suggestions config" },
+    "enum": { "type": "object", "description": "(one, ENUMERATION) the allowed values + labels" },
+    "date": { "type": "object", "description": "(one, DATE) format/precision config" },
+    "time": { "type": "object", "description": "(one, TIME) format config" },
+    "dateTime": { "type": "object", "description": "(one, DATE_TIME) format config" },
+    "dateRange": { "type": "object", "description": "(one, DATE_RANGE) format/separator config" },
+    "dateFragment": { "type": "object", "description": "(one, DATE_FRAGMENT) format config" },
+    "custom": { "type": "object", "description": "(one, CUSTOM) typeName/length config" },
+    "typedefs": { "type": "array", "items": { "type": "string" }, "description": "(name-index) every declared local type-def id, in document order — pass one back as `typedef read <id>`" },
+    "importedFrom": { "type": "array", "items": { "type": "string" }, "description": "(name-index) other models whose type-defs this model imports (resolve to files via `model info`); present only when imports exist" }
+  }
+}

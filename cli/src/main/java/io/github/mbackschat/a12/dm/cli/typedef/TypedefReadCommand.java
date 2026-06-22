@@ -55,15 +55,17 @@ final class TypedefReadCommand extends BaseCommand {
             ModelDocument doc = ModelDocument.read(json);
             List<String> ids = doc.typeDefinitionIds();
             if (id != null) {
-                Optional<String> type = doc.typeDefinitionType(id);
-                if (type.isEmpty()) {
+                Optional<String> kind = doc.typeDefinitionKind(id);
+                if (kind.isEmpty()) {
                     return refuseNotFound("typedef", "read", RkCode.NO_SUCH_TYPEDEF,
                             "no type definition '" + id + "'", id,
                             "pass a declared type-def id (list them with `typedef read` — no arg); declared: " + ids);
                 }
                 ObjectNode data = MAPPER.createObjectNode();
                 data.put("typedef", id);
-                data.put("type", type.get());
+                // the clean ValueKind name — same vocabulary `typedef add --kind`/`field read`/`model
+                // describe` use, so the reusable type's kind round-trips and never leaks the kernel string
+                data.put("kind", kind.get());
                 // mirror `field read`: echo the per-kind CONFIG (number min/max/unit/scale, string
                 // pattern/length, enum values, date/time formats) in the same block shape `typedef add`
                 // accepts — so a constraint on a reusable type is verifiable through `read` alone (read-gap

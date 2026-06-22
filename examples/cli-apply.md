@@ -157,7 +157,7 @@ dmtool -m /tmp/apply-midread.dm.json apply /tmp/apply-midread-ops.json
     "summary" : "read field read",
     "data" : {
       "field" : "/Order/Discount",
-      "type" : "NumberType",
+      "kind" : "NUMBER",
       "number" : {
         "maxFractionalDigits" : 0
       }
@@ -168,7 +168,7 @@ dmtool -m /tmp/apply-midread.dm.json apply /tmp/apply-midread-ops.json
 }
 ```
 
-→ Op 1 (`field read`) returns `outcome: "read"` with the field's state under `.data` — `{field: /Order/Discount, type: NumberType}` — the field op 0 just staged. The read **sees the staged surgery**, not the on-disk model. A read op also carries `valid` (the read/edit envelopes differ: edits expose `changed`, reads expose `valid` + `data`). The sequence had no failing op, so it still committed and wrote.
+→ Op 1 (`field read`) returns `outcome: "read"` with the field's state under `.data` — `{field: /Order/Discount, kind: NUMBER}` — the field op 0 just staged. The read **sees the staged surgery**, not the on-disk model. A read op also carries `valid` (the read/edit envelopes differ: edits expose `changed`, reads expose `valid` + `data`). The sequence had no failing op, so it still committed and wrote.
 
 ## Rollback on a failing op — atomic, nothing written
 

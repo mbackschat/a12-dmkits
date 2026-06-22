@@ -255,6 +255,8 @@ class ApplyVerbTest {
         var res = CliTestSupport.run("-m", m.toString(), "apply", ops.toString());
         assertEquals(0, res.code(), res.err());
         JsonNode readData = M.readTree(res.out()).path("results").get(1).path("data");
+        // the in-session read reports the clean ValueKind name too — one vocabulary across standalone + apply
+        assertEquals("NUMBER", readData.path("kind").asText(), () -> "in-session read reports kind: " + res.out());
         assertEquals("0", readData.path("number").path("min").asText(), () -> "in-session read surfaces config: " + res.out());
         assertEquals("AMOUNT", readData.path("number").path("unit").asText());
     }

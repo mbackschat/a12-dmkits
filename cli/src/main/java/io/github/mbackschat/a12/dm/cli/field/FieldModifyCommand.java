@@ -121,7 +121,11 @@ final class FieldModifyCommand extends BaseCommand {
             doc.applyModification(fieldPath, mod);
             changed.put("modified", fieldPath);
             if (mod.type().isPresent()) {
-                changed.put("kind", spec.hasNonNull("typedef") ? "TypeDefType" : spec.path("kind").asText());
+                if (spec.hasNonNull("typedef")) {
+                    changed.put("typedef", spec.get("typedef").asText());
+                }
+                // echo the new persisted kind through the resolver (clean ValueKind name, typedef → underlying)
+                changed.put("kind", doc.fieldKind(fieldPath).orElseThrow());
             }
             ArrayNode aspects = changed.putArray("aspects");
             mod.changedAspects().forEach(aspects::add);

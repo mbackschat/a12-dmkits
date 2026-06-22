@@ -85,6 +85,12 @@ class ModelDocumentTest {
         assertEquals("EnumerationType", doc.fieldType("/Subscription/Tier").orElseThrow());
         assertEquals("NumberType", doc.fieldType("/Subscription/Addons/MonthlyFee").orElseThrow());
 
+        // fieldKind reports the clean ValueKind name (the user-facing vocabulary), not the kernel discriminator
+        assertEquals("ENUMERATION", doc.fieldKind("/Subscription/Tier").orElseThrow());
+        assertEquals("NUMBER", doc.fieldKind("/Subscription/Addons/MonthlyFee").orElseThrow());
+        assertEquals("STRING", doc.fieldKind("/Subscription/Addons/Name").orElseThrow());
+        assertTrue(doc.fieldKind("/Subscription/NoSuchField").isEmpty());
+
         // repeatability off the Group node
         assertTrue(doc.isRepeating("/Subscription/Addons"));
         assertFalse(doc.isRepeating("/Subscription"));
@@ -115,5 +121,10 @@ class ModelDocumentTest {
         ModelDocument doc = ModelDocument.read(json);
         assertEquals(List.of("ShortText"), doc.typeDefinitionIds());
         assertEquals("TypeDefType", doc.fieldType("/Widget/Code").orElseThrow());
+
+        // a typedef-typed field resolves to its underlying kind (STRING), matching what `model describe`
+        // reports — the kernel `TypeDefType` discriminator never surfaces; the typedef itself reads STRING too
+        assertEquals("STRING", doc.fieldKind("/Widget/Code").orElseThrow());
+        assertEquals("STRING", doc.typeDefinitionKind("ShortText").orElseThrow());
     }
 }

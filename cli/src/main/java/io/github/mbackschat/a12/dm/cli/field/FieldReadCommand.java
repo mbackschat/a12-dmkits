@@ -70,14 +70,17 @@ final class FieldReadCommand extends BaseCommand {
             if (fieldPath == null) {
                 return readNameIndex("field", "fields", doc.fieldPaths());
             }
-            Optional<String> type = doc.fieldType(fieldPath);
-            if (type.isEmpty()) {
+            Optional<String> kind = doc.fieldKind(fieldPath);
+            if (kind.isEmpty()) {
                 return refuseNotFound("field", "read", RkCode.NO_SUCH_FIELD, "no field at '" + fieldPath + "'",
                         fieldPath, "pass an existing field's full name-path (list them with `field read` — no arg)");
             }
             ObjectNode data = MAPPER.createObjectNode();
             data.put("field", fieldPath);
-            data.put("type", type.get());
+            // the clean ValueKind name (NUMBER/STRING/DATE/…) — the SAME vocabulary `field add --kind` takes
+            // and `model describe` reports, so a read round-trips back into a write; a typedef-typed field
+            // resolves to its underlying kind (the `typedef` pointer below carries the reference signal)
+            data.put("kind", kind.get());
             // echo the friendly requiredness (G20) — same vocabulary `required` takes on write, so an agent
             // can verify a requiredness edit without decoding the stored requirednessConfig.mode
             doc.requiredness(fieldPath).ifPresent(req -> {

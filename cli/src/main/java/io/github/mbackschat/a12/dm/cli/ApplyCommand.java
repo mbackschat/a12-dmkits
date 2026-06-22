@@ -251,7 +251,10 @@ final class ApplyCommand extends BaseCommand {
                     session.modifyField(path, FieldModification.builder().requiredMessages(requiredMessages).build());
                 }
                 changed.put("added", path);
-                changed.put("kind", op.hasNonNull("typedef") ? "TypeDefType" : op.path("kind").asText());
+                if (op.hasNonNull("typedef")) {
+                    changed.put("typedef", op.get("typedef").asText());
+                }
+                changed.put("kind", stagedFieldKind(session, path));
                 yield staged(which, changed, session);
             }
             case FIELD_MODIFY -> {
@@ -269,7 +272,10 @@ final class ApplyCommand extends BaseCommand {
                 session.modifyField(path, mod);
                 changed.put("modified", path);
                 if (mod.type().isPresent()) {
-                    changed.put("kind", op.hasNonNull("typedef") ? "TypeDefType" : op.path("kind").asText());
+                    if (op.hasNonNull("typedef")) {
+                        changed.put("typedef", op.get("typedef").asText());
+                    }
+                    changed.put("kind", stagedFieldKind(session, path));
                 }
                 ArrayNode aspects = changed.putArray("aspects");
                 mod.changedAspects().forEach(aspects::add);
@@ -444,7 +450,7 @@ final class ApplyCommand extends BaseCommand {
                 String id = req(op, "id");
                 session.addTypeDefinition(id, FieldSpec.parseType(op, id));
                 changed.put("added", id);
-                changed.put("kind", op.path("kind").asText());
+                changed.put("kind", stagedTypedefKind(session, id));
                 yield staged(which, changed, session);
             }
             case TYPEDEF_MODIFY -> {
@@ -454,7 +460,7 @@ final class ApplyCommand extends BaseCommand {
                 String id = req(op, "id");
                 session.setTypeDefinitionType(id, FieldSpec.parseType(op, id));
                 changed.put("modified", id);
-                changed.put("kind", op.path("kind").asText());
+                changed.put("kind", stagedTypedefKind(session, id));
                 yield staged(which, changed, session);
             }
             case TYPEDEF_REMOVE -> {
@@ -584,13 +590,14 @@ final class ApplyCommand extends BaseCommand {
             case FIELD_READ -> {
                 String path = req(op, "fieldPathInModel");
                 ModelDocument doc = ModelDocument.read(session.toJson());
-                String type = doc.fieldType(path)
+                String kind = doc.fieldKind(path)
                         .orElseThrow(() -> new IllegalArgumentException("no field '" + path + "' in the model"));
                 ObjectNode data = MAPPER.createObjectNode();
                 data.put("field", path);
-                data.put("type", type);
-                // mirror the standalone `field read`: surface the per-kind config so a read INSIDE a session
-                // verifies a staged constraint the same way (the read-gap fix is consistent across both paths)
+                // mirror the standalone `field read`: the clean ValueKind name (not the kernel discriminator)
+                data.put("kind", kind);
+                // surface the per-kind config so a read INSIDE a session verifies a staged constraint the
+                // same way (the read-gap fix is consistent across both paths)
                 doc.fieldConfig(path).ifPresent(data::setAll);
                 yield readEnv(which, data, session);
             }
@@ -638,6 +645,18 @@ final class ApplyCommand extends BaseCommand {
     private static Applied staged(Op which, ObjectNode changed, EditSession session) {
         return new Applied(new ResultEnvelope(which.target, which.op, ResultEnvelope.Outcome.STAGED,
                 "staged " + which.label(), changed, null, List.of(), null, false, null), session);
+    }
+
+    /** The clean ValueKind name of a just-staged field, read back from the session — the SAME resolver
+     *  the standalone {@code field add}/{@code field read} use, so apply echoes one vocabulary (mirrors the
+     *  FIELD_READ op's read-back; the per-op serialize is the price of staged read-back, paid by reads too). */
+    private static String stagedFieldKind(EditSession session, String path) {
+        return ModelDocument.read(session.toJson()).fieldKind(path).orElseThrow();
+    }
+
+    /** The clean ValueKind name of a just-staged type definition, read back from the session. */
+    private static String stagedTypedefKind(EditSession session, String id) {
+        return ModelDocument.read(session.toJson()).typeDefinitionKind(id).orElseThrow();
     }
 
     /** A read op's per-op envelope — its payload (the current session state) rides {@code data}. */

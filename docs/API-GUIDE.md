@@ -693,7 +693,8 @@ doc.config().decimalSeparator();       // "."   (+ timeZone / conditionLanguage 
 doc.includes();                        // [Include[alias=catalog, reference=catalog]]
 doc.typeDefinitionIds();               // [ShortText, …]
 doc.groupPaths();                      // [/Subscription, /Subscription/Addons, /Subscription/Billing]
-doc.fieldType("/Subscription/Tier");   // Optional["EnumerationType"]
+doc.fieldType("/Subscription/Tier");   // Optional["EnumerationType"]  (raw kernel discriminator)
+doc.fieldKind("/Subscription/Tier");   // Optional["ENUMERATION"]  (clean ValueKind name; typedef → resolved underlying)
 doc.isRepeating("/Subscription/Addons"); // true
 doc.toJson();                          // content-equal to the source, idempotent, still kernel-valid
 ```

@@ -590,7 +590,7 @@ dmtool -m examples/models/order-ruled.dm.json field read /Order/OrderDate | jq '
 ```output
 {
   "field": "/Order/OrderDate",
-  "type": "DateType",
+  "kind": "DATE",
   "required": false,
   "date": {
     "format": "yyyy-MM-dd"
@@ -598,7 +598,7 @@ dmtool -m examples/models/order-ruled.dm.json field read /Order/OrderDate | jq '
 }
 ```
 
-→ `/Order/OrderDate` is a `DateType` — the kernel's type name (vs the coarser `kind: DATE` from `model describe`). The type is what lets `DifferenceInDays` take this field as an operand. `required` echoes the field's requiredness in the same vocabulary you set it with (`true`/`false`/`"ifParentPresent"`), and the per-kind `date` config (its `format`) rides the same read — so a constraint is verifiable here, never from the raw model JSON.
+→ `/Order/OrderDate` reports `kind: DATE` — the same value-kind vocabulary `model describe` and `field add` use (the kernel's internal `DateType` discriminator never leaks). The kind is what lets `DifferenceInDays` take this field as an operand. `required` echoes the field's requiredness in the same vocabulary you set it with (`true`/`false`/`"ifParentPresent"`), and the per-kind `date` config (its `format`) rides the same read — so a constraint is verifiable here, never from the raw model JSON.
 
 ```bash
 dmtool -m examples/models/order-ruled.dm.json group read /Order/BillingAddress | jq '.data'

@@ -94,7 +94,6 @@ final class TypedefModifyCommand extends BaseCommand {
             return fail("pass EITHER --kind <K> (a bare easy kind) OR a <spec.json> (rich config), not both");
         }
 
-        String kindLabel;
         try {
             if (specPath != null) {
                 JsonNode spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
@@ -104,10 +103,8 @@ final class TypedefModifyCommand extends BaseCommand {
                 }
                 FieldTypeSpec type = FieldSpec.parseType(spec, id);
                 doc.setTypeDefinitionType(id, type);
-                kindLabel = spec.path("kind").asText();
             } else {
                 doc.setTypeDefinitionType(id, kind);
-                kindLabel = kind.name();
             }
         } catch (IllegalArgumentException badSpec) {
             return fail("invalid typedef spec: " + badSpec.getMessage());
@@ -125,7 +122,8 @@ final class TypedefModifyCommand extends BaseCommand {
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("modified", id);
-        changed.put("kind", kindLabel);
+        // echo the persisted kind through the resolver — the clean ValueKind name, same as `typedef read`
+        changed.put("kind", doc.typeDefinitionKind(id).orElseThrow());
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("typedef", "modify", "would modify typedef " + id, changed);
             out().print(env.toJsonString());

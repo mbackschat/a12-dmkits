@@ -62,7 +62,8 @@ class TypedefVerbTest {
         JsonNode j = M.readTree(res.out());
         assertEquals("read", j.get("outcome").asText());
         assertEquals("MoneyAmount", j.path("data").path("typedef").asText());
-        assertTrue(j.path("data").has("type"), () -> "the typedef's type is reported: " + res.out());
+        // the clean ValueKind name (same vocabulary as `typedef add --kind`/`field read`), not the kernel string
+        assertEquals("NUMBER", j.path("data").path("kind").asText(), () -> "the typedef's kind is reported: " + res.out());
     }
 
     @Test

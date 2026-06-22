@@ -21,6 +21,7 @@ import io.github.mbackschat.a12.dm.core.DmJson;
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.core.ReferenceResolvers;
+import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
  * An existing document model, read from DM-JSON into its <em>authored source tree</em> (M7) — the read
@@ -258,6 +259,15 @@ public final class ModelDocument {
     }
 
     /**
+     * The type definition {@code id}'s value kind as a clean {@link ValueKind} name (e.g. {@code "NUMBER"})
+     * — the user-facing vocabulary every type-reporting surface uses, never the raw kernel discriminator.
+     * Empty when there is no such def.
+     */
+    public Optional<String> typeDefinitionKind(String id) {
+        return typeDefinitionType(id).map(d -> ValueKind.fromKernelType(d).name());
+    }
+
+    /**
      * The per-kind CONFIG of the type definition {@code id}, projected into the same schema-shape block a
      * {@code typedef add} spec carries ({@code number} min/max/unit/scale, {@code string} pattern/length,
      * {@code enum} values, date/time formats). The sibling of {@link #fieldConfig} for typedefs — so a
@@ -304,6 +314,36 @@ public final class ModelDocument {
             return Optional.empty();
         }
         return Optional.ofNullable(field.path("Field").path("fieldType").path("type").asText(null));
+    }
+
+    /**
+     * The field's value kind at {@code fieldPath} as a clean {@link ValueKind} name (e.g. {@code "NUMBER"})
+     * — the single user-facing vocabulary every type-reporting surface uses, so the raw kernel discriminator
+     * ({@code NumberType}, {@code TypeDefType}) never leaks. A typedef-typed field resolves to its underlying
+     * kind, matching what {@code model describe} reports (which classifies the {@code getEffectiveType()}).
+     * Empty when there is no such field.
+     */
+    public Optional<String> fieldKind(String fieldPath) {
+        JsonNode field = locate(fieldPath, false);
+        if (field == null) {
+            return Optional.empty();
+        }
+        JsonNode fieldType = field.path("Field").path("fieldType");
+        if (!fieldType.hasNonNull("type")) {
+            return Optional.empty();
+        }
+        return Optional.of(kindOf(fieldType));
+    }
+
+    /** Map a stored {@code fieldType} node to its clean {@link ValueKind} name, following a typedef reference
+     *  to its underlying discriminator first (a dangling/empty reference is honestly {@code UNKNOWN}). */
+    private String kindOf(JsonNode fieldType) {
+        String discriminator = fieldType.path("type").asText(null);
+        if ("TypeDefType".equals(discriminator)) {
+            String typeDefId = fieldType.path("TypeDefType").path("typeDefinitionId").asText(null);
+            discriminator = typeDefId == null ? null : typeDefinitionType(typeDefId).orElse(null);
+        }
+        return ValueKind.fromKernelType(discriminator).name();
     }
 
     /**

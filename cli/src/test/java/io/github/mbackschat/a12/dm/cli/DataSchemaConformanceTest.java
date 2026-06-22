@@ -65,6 +65,11 @@ class DataSchemaConformanceTest {
                 { "fields": { "Order": { "CustomerName": "Acme", "Quantity": "5",
                                           "OrderDate": "2026-01-01", "DeliveryDate": "2026-01-10" } } }""");
 
+        // a model carrying a type definition, so `typedef read <id>` / `typedef read` produce both branches
+        Path td = dir.resolve("td.dm.json");
+        CliTestSupport.run("model", "new", "--id", "td", "--locale", "en_US", "--root", "R", "-o", td.toString());
+        CliTestSupport.run("-m", td.toString(), "typedef", "add", "--id", "Money", "--kind", "NUMBER");
+
         // schemaName -> the data payloads real runs produced (one per documented mode)
         Map<String, List<JsonNode>> emitted = new LinkedHashMap<>();
         List<String> violations = new ArrayList<>();
@@ -78,6 +83,10 @@ class DataSchemaConformanceTest {
                 new Run("read", new String[]{"-m", sub.toString(), "rule", "read"}),
                 new Run("explain", new String[]{"-m", sub.toString(), "rule", "explain", CliTestSupport.RULE_FULL_NAME}),
                 new Run("where-used", new String[]{"-m", order.toString(), "where-used", "/Order/Quantity"}),
+                new Run("field-read", new String[]{"-m", order.toString(), "field", "read", "/Order/Quantity"}),
+                new Run("field-read", new String[]{"-m", order.toString(), "field", "read"}),
+                new Run("typedef-read", new String[]{"-m", td.toString(), "typedef", "read", "Money"}),
+                new Run("typedef-read", new String[]{"-m", td.toString(), "typedef", "read"}),
                 new Run("eval-doc", new String[]{"-m", order.toString(), "model", "eval", "--doc", doc.toString()}),
                 new Run("compute-doc", new String[]{"-m", order.toString(), "model", "compute", "--doc", doc.toString()}),
                 new Run("workspace-list", new String[]{"workspace", "list", dir.toString()}));
@@ -176,7 +185,7 @@ class DataSchemaConformanceTest {
     @Test
     void everyDataSchemaIsCoveredOrExempt() {
         Set<String> covered = Set.of("model-info", "describe", "model-usage", "read", "explain",
-                "where-used", "eval-doc", "compute-doc", "workspace-list");
+                "where-used", "field-read", "typedef-read", "eval-doc", "compute-doc", "workspace-list");
         List<String> uncovered = new ArrayList<>();
         for (String schema : SchemaCommand.DATA_SCHEMA.values()) {
             if (!covered.contains(schema) && !EXEMPT_SCHEMAS.containsKey(schema)) {

@@ -129,7 +129,12 @@ final class FieldAddCommand extends BaseCommand {
                     doc.setRequiredErrorMessages(target, requiredMessages);
                 }
                 changed.put("added", target);
-                changed.put("kind", spec.hasNonNull("typedef") ? "TypeDefType" : spec.path("kind").asText());
+                if (spec.hasNonNull("typedef")) {
+                    changed.put("typedef", spec.get("typedef").asText());
+                }
+                // echo the persisted kind through the same resolver `field read` uses — the clean ValueKind
+                // name (a typedef-typed field → its underlying kind), so add and read speak one vocabulary
+                changed.put("kind", doc.fieldKind(target).orElseThrow());
             } else {
                 if (group == null || name == null || type == null) {
                     return fail("flags mode needs --group + --name + (--kind | --typedef)");
@@ -142,11 +147,11 @@ final class FieldAddCommand extends BaseCommand {
                 changed.put("added", target);   // key order matches the established field-add envelope
                 if (type.typedef != null) {
                     doc.addTypedefField(group, name, type.typedef);
-                    changed.put("kind", "TypeDefType");
+                    changed.put("typedef", type.typedef);
                 } else {
                     doc.addField(group, name, type.kind);
-                    changed.put("kind", type.kind.name());
                 }
+                changed.put("kind", doc.fieldKind(target).orElseThrow());
             }
         } catch (IllegalArgumentException badSpec) {
             return fail("invalid field spec: " + badSpec.getMessage());

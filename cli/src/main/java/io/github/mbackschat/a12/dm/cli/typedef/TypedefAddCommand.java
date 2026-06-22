@@ -84,7 +84,6 @@ final class TypedefAddCommand extends BaseCommand {
         IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
         ModelDocument doc = ModelDocument.read(modelJson);
 
-        String kindLabel;
         try {
             if (specPath != null) {
                 JsonNode spec = MAPPER.readTree(Files.readString(Path.of(specPath)));
@@ -94,10 +93,8 @@ final class TypedefAddCommand extends BaseCommand {
                 }
                 FieldTypeSpec type = FieldSpec.parseType(spec, id);
                 doc.addTypeDefinition(id, type);
-                kindLabel = spec.path("kind").asText();
             } else {
                 doc.addTypeDefinition(id, kind);
-                kindLabel = kind.name();
             }
         } catch (IllegalArgumentException badSpec) {
             return fail("invalid typedef spec: " + badSpec.getMessage());
@@ -115,7 +112,8 @@ final class TypedefAddCommand extends BaseCommand {
         }
         ObjectNode changed = MAPPER.createObjectNode();
         changed.put("added", id);
-        changed.put("kind", kindLabel);
+        // echo the persisted kind through the resolver — the clean ValueKind name, same as `typedef read`
+        changed.put("kind", doc.typeDefinitionKind(id).orElseThrow());
         if (dryRun) {
             ResultEnvelope env = ResultEnvelope.preview("typedef", "add", "would add typedef " + id, changed);
             out().print(env.toJsonString());

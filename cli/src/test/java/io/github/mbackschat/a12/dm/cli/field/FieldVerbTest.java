@@ -75,14 +75,48 @@ class FieldVerbTest {
     }
 
     @Test
-    void readReturnsTheFieldTypeInData(@TempDir Path dir) throws Exception {
+    void readReturnsTheFieldKindInData(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         var res = CliTestSupport.run("-m", model.toString(), "field", "read", "/Order/Quantity");
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
         assertEquals("read", j.get("outcome").asText());
         assertEquals("/Order/Quantity", j.path("data").path("field").asText());
-        assertTrue(j.path("data").has("type"));
+        // the clean ValueKind name — the same vocabulary `field add --kind` takes and `model describe`
+        // reports, never the raw kernel discriminator (`NumberType`)
+        assertEquals("NUMBER", j.path("data").path("kind").asText());
+    }
+
+    @Test
+    void fieldReadKindAgreesWithModelDescribe(@TempDir Path dir) throws Exception {
+        // the consistency lock for the unified vocabulary: a field's `kind` is reported identically by
+        // `field read` and `model describe` — one concept, one name, one value (07-vocab).
+        Path model = CliTestSupport.orderRuled(dir);
+        String readKind = M.readTree(CliTestSupport.run("-m", model.toString(), "field", "read", "/Order/Quantity").out())
+                .path("data").path("kind").asText();
+        JsonNode card = M.readTree(CliTestSupport.run("-m", model.toString(), "model", "describe").out());
+        String describeKind = null;
+        for (JsonNode f : card.path("data").path("fields")) {
+            if ("/Order/Quantity".equals(f.path("path").asText())) {
+                describeKind = f.path("kind").asText();
+            }
+        }
+        assertEquals(describeKind, readKind, "field read and model describe must report the same kind");
+        assertEquals("NUMBER", readKind);
+    }
+
+    @Test
+    void addEchoesTheCanonicalKindNotTheInputSpelling(@TempDir Path dir) throws Exception {
+        // the write echo reports the PERSISTED kind through the same resolver `field read` uses, so a
+        // non-canonical input spelling (`ENUM`) comes back as the canonical ValueKind name (`ENUMERATION`)
+        Path model = CliTestSupport.orderRuled(dir);
+        Path spec = dir.resolve("tier.json");
+        Files.writeString(spec, """
+                {"group":"/Order","name":"Tier","kind":"ENUM","enum":{"values":[{"value":"BASIC"},{"value":"PLUS"}]}}""");
+        var res = CliTestSupport.run("-m", model.toString(), "field", "add", spec.toString());
+        assertEquals(0, res.code(), res.err());
+        assertEquals("ENUMERATION", M.readTree(res.out()).path("changed").path("kind").asText(),
+                () -> "add echoes the canonical ValueKind name, not the input 'ENUM': " + res.out());
     }
 
     @Test
@@ -155,11 +189,18 @@ class FieldVerbTest {
         Files.writeString(td, """
                 {"kind":"NUMBER","number":{"maxFractionalDigits":2,"minFractionalDigits":2,"unit":"AMOUNT"}}""");
         assertEquals(0, CliTestSupport.run("-m", m.toString(), "typedef", "add", "--id", "Money", td.toString()).code());
-        assertEquals(0, CliTestSupport.run("-m", m.toString(), "field", "add",
-                "--group", "/R", "--name", "Cost", "--typedef", "Money").code());
+        var added = CliTestSupport.run("-m", m.toString(), "field", "add",
+                "--group", "/R", "--name", "Cost", "--typedef", "Money");
+        assertEquals(0, added.code(), added.err());
+        // the add echo speaks the SAME vocabulary as the read below: resolved kind + the typedef pointer
+        JsonNode addChanged = M.readTree(added.out()).path("changed");
+        assertEquals("NUMBER", addChanged.path("kind").asText(), () -> "add echoes the resolved kind: " + added.out());
+        assertEquals("Money", addChanged.path("typedef").asText(), "add echoes the typedef pointer");
 
         JsonNode data = M.readTree(CliTestSupport.run("-m", m.toString(), "field", "read", "/R/Cost").out()).path("data");
-        assertEquals("TypeDefType", data.path("type").asText());
+        // a typedef-typed field reports its RESOLVED underlying kind (NUMBER), matching `model describe` —
+        // the kernel `TypeDefType` discriminator never surfaces; the `typedef` pointer carries the reference
+        assertEquals("NUMBER", data.path("kind").asText());
         assertEquals("Money", data.path("typedef").asText(), "the typedef pointer is still there");
         JsonNode resolved = data.path("resolvedType").path("number");
         assertEquals(2, resolved.path("maxFractionalDigits").asInt(),

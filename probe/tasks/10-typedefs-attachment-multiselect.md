@@ -48,7 +48,7 @@ STOP — do not read below until this turn is complete and verified.
 
 ## Gold (matched SEMANTICALLY — the SHAPE, not exact text/flags)
 
-- **T1** a **type definition** (NUMBER, scale 2, euro/AMOUNT) authored once (`typedef add`), and **two fields** (`EstimatedCost`, `ApprovedCost`) typed by it (`field add --typedef`, kind `TypeDefType`) — not two independently-configured NUMBER fields. The agent should reach for a typedef for the "one shared type" intent.
+- **T1** a **type definition** (NUMBER, scale 2, euro/AMOUNT) authored once (`typedef add`), and **two fields** (`EstimatedCost`, `ApprovedCost`) typed by it (`field add --typedef`, typed by reference — `field read` reports the resolved kind `NUMBER` + the `typedef` pointer) — not two independently-configured NUMBER fields. The agent should reach for a typedef for the "one shared type" intent.
 - **T2** the typedef's scale changed to 3 (`typedef modify`) **in one place**; both fields inherit it (the propagation is the signal — did the agent change the def, or wrongly re-type each field?).
 - **T3** an **attachment** group (`group attachment`) on the case — the kernel's file-upload group + its generated housekeeping rules; the model still validates.
 - **T4** a **multiselect** group (`group multiselect`) for the affected products.
