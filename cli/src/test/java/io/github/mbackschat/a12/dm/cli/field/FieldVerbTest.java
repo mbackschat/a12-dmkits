@@ -75,6 +75,32 @@ class FieldVerbTest {
     }
 
     @Test
+    void readOfAnIncludedPathRefusesWithAnIncludeAwareFix(@TempDir Path dir) throws Exception {
+        // probe 04-readinclude: `model describe` expands includes and lists an included field, but `field read`
+        // is tree-only (no expansion) and refuses it — the not-found fix must name the include caveat so the
+        // agent isn't bounced between two surfaces that disagree.
+        Path product = dir.resolve("Product_DM.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "Product_DM", "--locale", "en_US",
+                "--root", "Product", "-o", product.toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", product.toString(), "field", "add",
+                "--group", "/Product", "--name", "Price", "--kind", "NUMBER").code());
+        Path order = dir.resolve("Order_DM.json");
+        assertEquals(0, CliTestSupport.run("model", "new", "--id", "Order_DM", "--locale", "en_US",
+                "--root", "Order", "-o", order.toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", order.toString(), "-w", dir.toString(), "include", "add",
+                "--alias", "Product_DM", "--reference", "Product_DM", "--parent", "/Order", "--name", "Product").code());
+
+        var res = CliTestSupport.run("-m", order.toString(), "-w", dir.toString(),
+                "field", "read", "/Order/Product/Price");
+        assertEquals(2, res.code(), res.out());
+        JsonNode j = M.readTree(res.out());
+        assertEquals("refused", j.path("outcome").asText());
+        String fix = j.path("diagnostics").get(0).path("fix").asText();
+        assertTrue(fix.contains("INCLUDED") && fix.toLowerCase().contains("own model"),
+                () -> "the not-found fix names the include caveat: " + fix);
+    }
+
+    @Test
     void readReturnsTheFieldKindInData(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         var res = CliTestSupport.run("-m", model.toString(), "field", "read", "/Order/Quantity");

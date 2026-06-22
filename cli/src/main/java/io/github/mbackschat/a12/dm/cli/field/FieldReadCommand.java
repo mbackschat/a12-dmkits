@@ -72,8 +72,17 @@ final class FieldReadCommand extends BaseCommand {
             }
             Optional<String> kind = doc.fieldKind(fieldPath);
             if (kind.isEmpty()) {
+                // `field read` is tree-only (no include expansion), so it sees this model's OWN fields, not the
+                // fields an include mounts. `model describe` DOES expand includes and lists them — so an agent
+                // can learn an included path from `describe` and then be refused here. When the model has
+                // includes, say so, so the agent isn't bounced between two surfaces that disagree (probe 04).
+                String fix = "pass an existing field's full name-path (list them with `field read` — no arg)";
+                if (!doc.includes().isEmpty()) {
+                    fix += "; an INCLUDED field (one `model describe` lists under an include mount) is read on its"
+                            + " OWN model — this listing has only this model's own fields";
+                }
                 return refuseNotFound("field", "read", RkCode.NO_SUCH_FIELD, "no field at '" + fieldPath + "'",
-                        fieldPath, "pass an existing field's full name-path (list them with `field read` — no arg)");
+                        fieldPath, fix);
             }
             ObjectNode data = MAPPER.createObjectNode();
             data.put("field", fieldPath);
