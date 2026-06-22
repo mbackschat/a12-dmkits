@@ -112,6 +112,24 @@ public final class Cli {
                         ex.printStackTrace(commandLine.getErr()); // a real failure: keep the trace on stderr (stdout is the envelope)
                     }
                     return env.exitCode();
+                })
+                // Default picocli parse-error handling (message + suggestions/usage, exit 2) PLUS a locator
+                // corrective: a verb that locates its target by a POSITIONAL <…PathInModel>/<…Id>, handed a
+                // wrong locator FLAG instead (the agent reuses the error-field flag of `rule check` on a read
+                // verb, or guesses a flag for `rule read`), gets told the positional form, not a bare
+                // "Unknown option" (probe 06-rr — the cross-verb locator inconsistency).
+                .setParameterExceptionHandler((ex, parsedArgs) -> {
+                    CommandLine offending = ex.getCommandLine();
+                    PrintWriter w = offending.getErr();
+                    w.println(ex.getMessage());
+                    String hint = locatorPositionalHint(ex);
+                    if (hint != null) {
+                        w.println(hint);
+                    }
+                    if (!CommandLine.UnmatchedArgumentException.printSuggestions(ex, w)) {
+                        offending.usage(w);
+                    }
+                    return offending.getCommandSpec().exitCodeOnInvalidInput();
                 });
         if (nativeProfile) {
             hideJvmOnlyVerbs(cli);
@@ -154,6 +172,34 @@ public final class Cli {
             names.add(cur.commandSpec().name());
         }
         return new String[]{names.isEmpty() ? "model" : names.get(0), names.size() > 1 ? names.get(1) : ""};
+    }
+
+    /**
+     * The locator corrective for a parse error: when a verb that takes its target as a POSITIONAL
+     * {@code <…PathInModel>}/{@code <…Id>} was handed a wrong locator FLAG (an unmatched {@code --option}),
+     * name the positional form instead of leaving a bare "Unknown option". Returns {@code null} when it
+     * doesn't apply — no unmatched {@code --flag}, or the verb has no locator positional (so a spec-input
+     * verb whose positional is {@code <spec.json>} never misfires). Probe 06-rr: an agent carries
+     * {@code rule check --field} over to {@code field read}/{@code rule read}, which locate by a positional.
+     */
+    private static String locatorPositionalHint(CommandLine.ParameterException ex) {
+        if (!(ex instanceof CommandLine.UnmatchedArgumentException uae)) {
+            return null;
+        }
+        String flag = uae.getUnmatched().stream().filter(a -> a.startsWith("--")).findFirst().orElse(null);
+        if (flag == null) {
+            return null;
+        }
+        CommandLine.Model.CommandSpec spec = ex.getCommandLine().getCommandSpec();
+        for (CommandLine.Model.PositionalParamSpec p : spec.positionalParameters()) {
+            String label = p.paramLabel();   // e.g. <fieldPathInModel>, <rulePathInModel>, <typeDefId>
+            if (label.contains("PathInModel") || label.endsWith("Id>") || label.endsWith("Id")) {
+                return "→ " + spec.qualifiedName() + " locates its target by a POSITIONAL " + label
+                        + ", not a flag — pass it directly: `" + spec.qualifiedName() + " " + label
+                        + "` (you passed " + flag + ").";
+            }
+        }
+        return null;
     }
 
     static void hideJvmOnlyVerbs(CommandLine cli) {

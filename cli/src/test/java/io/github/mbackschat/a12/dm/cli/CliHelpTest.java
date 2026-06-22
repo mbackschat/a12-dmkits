@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -54,6 +55,31 @@ class CliHelpTest {
                 () -> "field add --help names the config-bearing kinds: " + out);
         assertTrue(out.contains("schema field add") || out.contains("spec.json"),
                 () -> "field add --help points to the spec for the config-bearing kinds: " + out);
+    }
+
+    @Test
+    void aWrongLocatorFlagOnALocatorVerbSelfCorrectsToThePositional() {
+        // probe 06-rr: an agent carries `rule check --field` over to `field read` / `rule read`, which locate
+        // by a POSITIONAL. The parse error must NAME the positional form, not leave a bare "Unknown option".
+        CliTestSupport.Result fieldRead = CliTestSupport.run("-m", "x.json", "field", "read", "--field", "/Doc/Age");
+        assertEquals(2, fieldRead.code());
+        assertTrue(fieldRead.err().contains("POSITIONAL") && fieldRead.err().contains("fieldPathInModel")
+                        && fieldRead.err().contains("--field"),
+                () -> "field read corrects --field → the positional: " + fieldRead.err());
+        CliTestSupport.Result ruleRead = CliTestSupport.run("-m", "x.json", "rule", "read", "--path", "/Doc/X");
+        assertEquals(2, ruleRead.code());
+        assertTrue(ruleRead.err().contains("rulePathInModel"),
+                () -> "rule read corrects --path → the positional: " + ruleRead.err());
+    }
+
+    @Test
+    void aWrongFlagOnASpecInputVerbDoesNotGetTheLocatorHint() {
+        // does-not-misfire: `field add` takes a <spec.json> positional (NOT a locator path/id), so an unknown
+        // flag must NOT be told to "pass it as the positional" — only the default unknown-option + usage.
+        CliTestSupport.Result res = CliTestSupport.run("-m", "x.json", "field", "add", "--bogus", "v");
+        assertEquals(2, res.code());
+        assertFalse(res.err().contains("locates its target by a POSITIONAL"),
+                () -> "no locator hint on a spec-input verb: " + res.err());
     }
 
     @Test
