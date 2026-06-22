@@ -1,48 +1,35 @@
-# Probe report — task 02 (registration field constraints), 2026-06-22
+# Probe report — task 02 (registration field constraints), 2026-06-22 (release binary)
 
-**Headline: the run on the F1/F4/A–E-fixed binary is CLEAN — 6/6 turns, 0 RED FLAGS, audit CLEAN — no internal errors.** Authoring a member-registration model (six fields, one enum, one conditional-requiredness rule) and making it bilingual produced a kernel-valid model end to end; every rejection was a legitimate verdict. It surfaced **three DX findings, all in the "going bilingual" area**, each now fixed: a schema-vs-validator inconsistency on `patternMessages`, the asymmetric locale-coverage cascade, and the opaque `MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES` summary.
+**Headline: CLEAN — 5 turns, 0 internal errors, audit CLEAN 6/6, 0 RED FLAGS.** A re-run on the release binary (post kind-vocab + the locator/field-read/group-read/summary fixes). The field-property surface — required fields, an enum tier (bilingual labels), a `M[0-9]{6}` pattern with a bilingual `patternMessage`, a 2–50 length, and a *conditional* requiredness rule (referral required when tier=PREMIUM) — authored kernel-valid. **This session's bilingual-cascade skill edit confirmed in the wild:** the agent used `config modify --add-locale de_DE --dry-run` to scope the gaps (the exact move the skill now recommends), and the per-locale `patternMessages` coverage worked. Three minor findings, all by-design / kernel-naming.
 
 ## Provenance & integrity (the objective backstop)
 
 | | |
 |---|---|
-| native binary | `a12-dmkits 0.6.0` (kernel 30.8.1; A12 Tools 2025.06-ext5) |
-| start mode | **clean** (from-scratch authoring) |
-| anti-cheat audit | **CLEAN** — `MemberRegistration_DM.json` mutated only by dmtool; hand-authored files were input spec JSONs the tool consumes; no raw `.dm.json` read |
-| digest | **CLEAN 6/6 · 0 RED FLAGS** (was 4 RED FLAGS + a SUSPECT raw-read on the pre-fix binary — the read-gap that drove the python read is closed) |
-| vs. the pre-fix run | the original run hit the field-add **exit-70 crash** (fix A) and a **SUSPECT raw read** (no per-kind read-back, fix B); both are gone — the crash rejects cleanly, the constraint is confirmable via `field read` |
+| native binary | `a12-dmkits 0.6.0` (kernel 30.8.1) — release candidate, gate GREEN |
+| start | **clean** (from-scratch member-registration model) |
+| audit | **CLEAN 6/6** — `MemberRegistration_DM.json`/`Repro_DM.json` mutated only by dmtool; no raw read |
+| digest | **0 RED FLAGS** — 5 nonzero exits, all legitimate (a `field read --field` locator slip, the `--add-locale --dry-run` + bilingual `apply --dry-run` cascade probes, the `field modify` re-type corrective ×2) |
 
 ## Findings (classified)
 
 | # | finding | target | class | resolution |
 |---|---|---|---|---|
-| 02-patmsg | `pattern` + `patternMessages` (no singular `patternMessage`) is rejected (*"a pattern and its error message must be set together"*), but the schema sold `patternMessages` as a standalone override | material (schema) | **DEFECT (misleading contract)** | **FIXED** — `9b34eea` |
-| 02-enum-locale | the opaque `MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES` (*"display value and XML value were not specified together"*) hides a per-locale enum-label gap after `--add-locale` | CLI (diagnostics) | **DEFECT (opaque message)** | **FIXED** — `1ff5197` |
-| 02-cascade | the locale-coverage cascade is asymmetric + undocumented: a 2nd locale forces every enum value's labels + every NEW field's label to cover it, while pre-existing single-locale field labels are tolerated | skill | DX gap | **FIXED** — skill "going bilingual" note `fffc1f7` |
-| — | `field modify`'s type-replacement diagnostic (*"a string block alone can't re-type — add kind"*) and apply's atomic rollback worked correctly | — | **expected / positive** | — |
-
-## The bisect (the locale cascade) — the agent's affected/unaffected table
-
-| Per-locale text set on… | only `en_US` | after a 2nd locale is declared |
-|---|---|---|
-| **enum value labels** | yes | **REJECTED** at the terminal gate — `MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES` |
-| **a NEW field's label** | yes | **REJECTED** by the field-add precheck — "label is missing declared locale 'de_DE'" |
-| **an EXISTING field's label** | yes | **TOLERATED** — model still validates |
-
-And for the `patternMessages` finding (toggling only the message keys): `pattern`+`patternMessage` → accepted; `pattern`+`patternMessage`+`patternMessages` → accepted; `pattern`+`patternMessages` (no singular) → **rejected**; `pattern` only → rejected.
+| 02-modify-retype | `field modify` frames adding a same-kind constraint as a destructive "re-type" (needs `kind` repeated + the full config block) | CLI/material | **by-design** | modify **replaces** the type; the explicit `kind` + full block prevents the silent partial-config drop (probe 05-modify-drop). The diagnostic gives the precise corrective; softening it reintroduces the drop ambiguity |
+| 02-enum-code-naming | the enum locale-coverage reject `MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES` *reads* like an internal fault | material | by-design (kernel name) | the code is the kernel's own; the enricher already attaches a clear per-locale-label fix (the enum-locale cascade hint). No rename possible; the fix is the corrective, which is present |
+| 02-apply-written | `apply`'s persistence truth is the wrapper's top-level `written:true`; inner per-ops stay `written:false` | CLI | by-design (cosmetic) | the documented staging contract (per-op staged → one terminal commit); a tail-read should key off the wrapper's `committed`/`written` |
+| — | the bilingual cascade via `--add-locale --dry-run` scoping (this session's skill edit), the per-locale `patternMessages`, the enum bilingual labels, and the conditional-requiredness rule all worked first-try | — | **this session's work confirmed in the wild** | — |
 
 ## Replay log (verbatim, in order)
-1. create a member registration model: a member with a name, an email, a country, and a membership tier (basic, plus, premium). Make the obviously-required ones required.
+1. create a member registration model … name, email, country, membership tier (basic, plus, premium). Make the obviously-required ones required.
 2. the member id must look like M followed by six digits.
 3. when the member id format is wrong, show the message in both English and German.
 4. the display name must be between 2 and 50 characters.
 5. a referral code is optional in general, but required when the tier is premium.
 
 ## Self-audit
-CLEAN: the model was mutated only through dmtool verbs; hand-authored files were input spec JSONs the tool consumes; no `cat`/`jq`/raw `.dm.json` read (all inspection via `model describe`/`field read`/`rule read`/`config read`/`model validate`) — so no `[material]` read-gap is owed (the read-gap that the pre-fix run papered over with a python read is closed).
+CLEAN: every model mutation via dmtool verbs; spec inputs were files; no raw `.dm.json` read (inspection via `model describe`/`field read`/`rule read`/`model validate`). Audit 6/6, digest 0 RED FLAGS.
 
 ## Resolution (2026-06-22)
-- **02-patmsg — FIXED (`9b34eea`).** The `field-add`/`typedef-add` schemas now state plainly that a `pattern` REQUIRES the singular `patternMessage` (the base), and `patternMessages` is an OPTIONAL additive per-locale override that does NOT stand alone. Verified against the binary (`pattern`+`patternMessages` alone → rejected; with `patternMessage` → applied).
-- **02-enum-locale — FIXED (`1ff5197`).** `MVK_INTERNAL_VALUES_AND_DISPLAY_VALUES` is enriched (`StructuralKernelFix`) to name the per-locale enum-label gap + the `--add-locale`-in-one-`apply` remedy. Locked by `DiagnosticEnricherTest` + the real-kernel `ConfigVerbTest.addingALocaleRejectsAnEnumWithSingleLocaleLabelsAndNamesTheCause`; the kernel fact is recorded in KERNEL-FINDINGS.
-- **02-cascade — FIXED (`fffc1f7`).** The skill gains a concise "going bilingual" note (the asymmetric cascade + do it in one `apply`), verified against the binary.
-- **(prior fixes confirmed in the wild)** the field-add exit-70 crash on incomplete locale coverage (fix A) now rejects cleanly; the per-kind config read-back (fix B) lets a constraint be confirmed via `field read` — the two breaches the pre-fix run showed are gone.
+- **CLEAN re-run on the release binary** — the field-property + bilingual + conditional-requiredness surfaces behaved as specified; the prior `field-add` locale crash + read-gap stay gone.
+- **02-modify-retype / 02-enum-code-naming / 02-apply-written — recorded, by-design / kernel-naming / cosmetic** (no change). The bilingual-cascade `--add-locale --dry-run` scoping (this session's skill edit) is confirmed working in the wild.
