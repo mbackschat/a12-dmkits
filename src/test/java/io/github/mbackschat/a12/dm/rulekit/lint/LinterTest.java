@@ -183,8 +183,13 @@ class LinterTest {
         assertEquals(DiagnosticSource.LINT, d.source());
         assertEquals(Severity.WARNING, d.severity());
         assertTrue(d.summary().contains(FEE), () -> "summary should name the field: " + d.summary());
+        // the fix is TWO-SIDED (probe 06): it offers the FieldFilled guard AND acknowledges that leaving it
+        // unguarded is intentional when empty-as-violation is meant — so an agent doesn't reflexively add
+        // FieldFilled and weaken a deliberate empty-is-a-violation rule.
         assertTrue(d.fix().orElse("").contains("FieldFilled(" + FEE + ")"),
-                () -> "fix should suggest the FieldFilled guard: " + d.fix());
+                () -> "fix should still offer the FieldFilled guard: " + d.fix());
+        assertTrue(d.fix().orElse("").contains("intentional"),
+                () -> "fix should acknowledge the empty-as-violation reading is valid (two-sided): " + d.fix());
     }
 
     @Test

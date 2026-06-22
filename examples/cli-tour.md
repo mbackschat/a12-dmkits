@@ -301,14 +301,14 @@ dmtool -m examples/models/order-ruled.dm.json rule check --field /Order/Quantity
       "rule" : "",
       "operator" : "LessThan"
     },
-    "fix" : "FieldFilled(/Order/Quantity) And <the comparison>",
-    "explain" : "an unspecified number defaults to 0 in a comparison (KERNEL-SEMANTICS §2) — unlike an empty string/date/enum, which is not evaluated — so guard the number with FieldFilled if an empty value should not trip the rule"
+    "fix" : "decide by intent: if an empty/missing '/Order/Quantity' should NOT trip the rule, guard it — FieldFilled(/Order/Quantity) And <the comparison>; if a missing number IS a violation (empty-as-0 should fire), the unguarded form is intentional — keep it",
+    "explain" : "an unspecified number defaults to 0 in a comparison (KERNEL-SEMANTICS §2) — unlike an empty string/date/enum, which is not evaluated — so this is only a trap when empty should be NEUTRAL; an empty-as-violation rule is legitimately unguarded"
   } ],
   "written" : false
 }
 ```
 
-→ The kernel says `valid: true`, but the lint backstop attached a `WARNING` — `RK_UNGUARDED_NUMBER_COMPARISON`. Because an empty number reads as **0** (KERNEL-SEMANTICS §2), the rule would also fire on an empty `Quantity`; the `fix` field spells out the guard. The trap is caught at authoring time, before the rule is ever persisted.
+→ The kernel says `valid: true`, but the lint backstop attached a `WARNING` — `RK_UNGUARDED_NUMBER_COMPARISON`. Because an empty number reads as **0** (KERNEL-SEMANTICS §2), the rule would also fire on an empty `Quantity`; the `fix` field is **two-sided** — guard it if an empty value should be neutral, or keep it unguarded if a missing number is itself a violation. The trap is caught at authoring time, before the rule is ever persisted.
 
 `--suggest-error-field` adds the legal error-field picks to `data` — the condition's referenced fields inside its iteration scope. The error field must be one of these (the `MVK_ERROR_FIELD_NOT_REFERENCED` law), so you choose it up front instead of after a reject.
 
@@ -587,11 +587,14 @@ dmtool -m examples/models/order-ruled.dm.json field read /Order/OrderDate | jq '
 {
   "field": "/Order/OrderDate",
   "type": "DateType",
-  "required": false
+  "required": false,
+  "date": {
+    "format": "yyyy-MM-dd"
+  }
 }
 ```
 
-→ `/Order/OrderDate` is a `DateType` — the kernel's type name (vs the coarser `kind: DATE` from `model describe`). The type is what lets `DifferenceInDays` take this field as an operand. `required` echoes the field's requiredness in the same vocabulary you set it with (`true`/`false`/`"ifParentPresent"`).
+→ `/Order/OrderDate` is a `DateType` — the kernel's type name (vs the coarser `kind: DATE` from `model describe`). The type is what lets `DifferenceInDays` take this field as an operand. `required` echoes the field's requiredness in the same vocabulary you set it with (`true`/`false`/`"ifParentPresent"`), and the per-kind `date` config (its `format`) rides the same read — so a constraint is verifiable here, never from the raw model JSON.
 
 ```bash
 dmtool -m examples/models/order-ruled.dm.json group read /Order/BillingAddress | jq '.data'

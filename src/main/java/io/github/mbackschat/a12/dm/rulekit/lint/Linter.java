@@ -349,10 +349,12 @@ public final class Linter {
                 "'" + field + "' is a number compared with an ordering operator but its presence isn't"
                         + " guarded — an empty number reads as 0, so the rule also fires on an empty '" + field + "'",
                 new Diagnostic.Where(rulePath, Optional.of(cmp.operatorId())),
-                Optional.of("FieldFilled(" + field + ") And <the comparison>"),
+                Optional.of("decide by intent: if an empty/missing '" + field + "' should NOT trip the rule, guard"
+                        + " it — FieldFilled(" + field + ") And <the comparison>; if a missing number IS a violation"
+                        + " (empty-as-0 should fire), the unguarded form is intentional — keep it"),
                 Optional.of("an unspecified number defaults to 0 in a comparison (KERNEL-SEMANTICS §2) — unlike an"
-                        + " empty string/date/enum, which is not evaluated — so guard the number with FieldFilled"
-                        + " if an empty value should not trip the rule")));
+                        + " empty string/date/enum, which is not evaluated — so this is only a trap when empty should"
+                        + " be NEUTRAL; an empty-as-violation rule is legitimately unguarded")));
     }
 
     /** A numeric operand that is neither a plain field nor a literal — an aggregate/function (Sum, Count, Length, …). */

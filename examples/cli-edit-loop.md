@@ -365,7 +365,8 @@ rm -f /tmp/edit2-rm-comp.json
 cp examples/models/subscription-computed.dm.json /tmp/edit2-rm-comp.json
 echo "--- computation present before? $(dmtool -m /tmp/edit2-rm-comp.json computation read /Subscription/Billing/EffectiveFeeComp | jq -c ".ok")"
 dmtool -m /tmp/edit2-rm-comp.json computation remove /Subscription/Billing/EffectiveFeeComp
-echo "--- read it again (exit code signals absence): $(dmtool -m /tmp/edit2-rm-comp.json computation read /Subscription/Billing/EffectiveFeeComp 2>&1 >/dev/null; echo "exit=$?")"
+echo "--- read it again (a structured refusal signals absence):"
+dmtool -m /tmp/edit2-rm-comp.json computation read /Subscription/Billing/EffectiveFeeComp 2>&1 | jq -c '{outcome, code: .diagnostics[0].code}'
 echo "--- the written model still validates: $(dmtool -m /tmp/edit2-rm-comp.json model validate | jq -c ".valid")"
 ```
 
@@ -384,12 +385,12 @@ echo "--- the written model still validates: $(dmtool -m /tmp/edit2-rm-comp.json
   "written" : true,
   "output" : "/tmp/edit2-rm-comp.json"
 }
---- read it again (exit code signals absence): '/Subscription/Billing/EffectiveFeeComp' is not a computation in this model — computations: []
-exit=2
+--- read it again (a structured refusal signals absence):
+{"outcome":"refused","code":"RK_NO_SUCH_COMPUTATION"}
 --- the written model still validates: true
 ```
 
-→ `outcome: "applied"`, `written: true`, `.changed.removed` names the gone computation. Reading it back now exits non-zero (`exit=2`) — the computation is gone — and the model still validates clean. With this verb the rule + computation CRUD is complete: add · read · explain · modify · remove on both targets, every mutation kernel-validated and written in place.
+→ `outcome: "applied"`, `written: true`, `.changed.removed` names the gone computation. Reading it back now returns a structured `refused` envelope (`RK_NO_SUCH_COMPUTATION`, exit 2) — the computation is gone, in a machine-readable form an agent can branch on — and the model still validates clean. With this verb the rule + computation CRUD is complete: add · read · explain · modify · remove on both targets, every mutation kernel-validated and written in place.
 
 ## Comments — author once, preserved across the loop
 
