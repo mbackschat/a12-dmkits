@@ -62,6 +62,22 @@ class FieldVerbTest {
     }
 
     @Test
+    void readEchoesTheFieldLabel(@TempDir Path dir) throws Exception {
+        // 05-fr: a targeted `field read` must surface metadata (the label) so an agent confirms a label edit
+        // without exporting the whole model — and never reading the raw model JSON.
+        Path model = CliTestSupport.orderRuled(dir);   // en_US-only
+        Path spec = dir.resolve("label.json");
+        Files.writeString(spec, """
+                {"group":"/Order","name":"Quantity","label":{"en_US":"Quantity ordered"}}""");
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "field", "modify", spec.toString()).code(),
+                "set a label to read back");
+        var res = CliTestSupport.run("-m", model.toString(), "field", "read", "/Order/Quantity");
+        assertEquals(0, res.code(), res.err());
+        assertEquals("Quantity ordered", M.readTree(res.out()).path("data").path("label").path("en_US").asText(),
+                () -> "field read echoes the label (no export needed): " + res.out());
+    }
+
+    @Test
     void removesAnUnreferencedField(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         var res = CliTestSupport.run("-m", model.toString(), "field", "remove", "/Order/Quantity");

@@ -80,11 +80,32 @@ final class FieldReadCommand extends BaseCommand {
                     case REQUIRED_IF_PARENT_PRESENT -> data.put("required", "ifParentPresent");
                 }
             });
+            // echo the field's METADATA (label / descriptions / annotations) so a targeted read confirms a
+            // metadata edit — an agent shouldn't fall back to `export` (the whole model) just to check a label
+            // (probe 05-fr), let alone read the raw model JSON.
+            doc.labels(fieldPath).filter(m -> !m.isEmpty()).ifPresent(m -> data.set("label", mapNode(m)));
+            putLocalized(data, "internalDescription", doc.internalDescription(fieldPath));
+            putLocalized(data, "externalDescription", doc.externalDescription(fieldPath));
+            putLocalized(data, "annotations", doc.annotations(fieldPath));
             ResultEnvelope env = ResultEnvelope.read("field", "read", "read " + fieldPath, true, List.of(), data);
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {
             return fail("read failed: " + e.getMessage());
+        }
+    }
+
+    /** A {@code name → text} map as a JSON object. */
+    private static ObjectNode mapNode(java.util.Map<String, String> m) {
+        ObjectNode n = MAPPER.createObjectNode();
+        m.forEach(n::put);
+        return n;
+    }
+
+    /** Attach {@code key: {…}} only when the map is non-empty (omit it otherwise, keeping the read terse). */
+    private static void putLocalized(ObjectNode data, String key, java.util.Map<String, String> m) {
+        if (m != null && !m.isEmpty()) {
+            data.set(key, mapNode(m));
         }
     }
 }
