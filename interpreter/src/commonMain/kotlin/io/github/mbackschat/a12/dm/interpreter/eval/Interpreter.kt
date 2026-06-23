@@ -428,6 +428,10 @@ class Interpreter(
         FunctionOp.ROUND_DOWN_VALUE -> roundValue(f.args, RoundMode.FLOOR)
         FunctionOp.ROUND_UP_VALUE -> roundValue(f.args, RoundMode.CEILING)
         FunctionOp.ROUND_ACCOUNTING_VALUE -> roundValue(f.args, RoundMode.HALF_UP)
+        // FirstFilledValue: the first FILLED value in row order (empties already dropped by `star`). NOT
+        // `combine` — a later malformed element is invisible; but if the first filled one is malformed it
+        // arrives as Unknown, so the comparison is Unknown and the rule is suppressed. No filled row → Unknown.
+        FunctionOp.FIRST_FILLED_VALUE -> starVals(f).firstOrNull() ?: Val.Unknown
         null -> throw UnsupportedConstructException("unsupported function ${f.name}")
     }
 

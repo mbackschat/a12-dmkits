@@ -148,8 +148,9 @@ object PerfCatalog {
      * generated document. The rules use only supported operators with valid (referenced) error fields; the
      * random fill/empty + diverse kinds exercise requiredness (empty index fields → `mandatoryField`), a
      * per-row comparison, **date extractors over an ISO AND a non-ISO date field**, an aggregate over varying
-     * rows, **rounding (FLOOR/CEILING/HALF_UP, expr + `*Value` forms)**, a nested per-part rule, and a
-     * cross-level reference — combinations no hand-written `*DiffTest` covers.
+     * rows, **`FirstFilledValue`** (first-specified-row, skip-empties), **rounding (FLOOR/CEILING/HALF_UP, expr
+     * + `*Value` forms)**, a nested per-part rule, and a cross-level reference — combinations no hand-written
+     * `*DiffTest` covers.
      */
     fun fuzz(): PerfScenario {
         val rules = listOf(
@@ -157,6 +158,7 @@ object PerfCatalog {
             FuzzRule(FZ_LINES, "YO", "../OrderedOn", "FieldFilled(OrderedOn) And YearFromDate(OrderedOn) > 2020"),
             FuzzRule(FZ_LINES, "YD", "../DueBy", "FieldFilled(DueBy) And YearFromDate(DueBy) > 2020"),
             FuzzRule("/Cart", "TP", "../Lines/Price", "Sum(Lines*/Price) > 1000"),
+            FuzzRule("/Cart", "FF", "../Lines/Qty", "FirstFilledValue(Lines*/Qty) > 50"),   // first specified row, skip empties
             FuzzRule(FZ_LINES, "DV", "../Price", "FieldFilled(Qty) And { [Price] / [Qty] } > 5"),   // division (+ div-by-zero quiet)
             FuzzRule(FZ_LINES, "PW", "../Qty", "{ [Qty] ^ 2 } > 100"),                                // power
             FuzzRule(FZ_LINES, "AB", "../Price", "Abs([Price]) > 500"),                               // |x|

@@ -562,6 +562,8 @@ The aggregate combiners track whether their result *could still change if more f
 
 *(Locked: `adapter.laws.AggregateUncertaintyLawsTest` + `adapter.laws.FirstFilledValueLawsTest`.)*
 
+**Interpreter status: `FirstFilledValue` is reproduced** — `star(path).firstOrNull()` (the general `Document`'s `star` already drops empties in row order and keeps a filled-but-malformed value as `Val.Unknown`), so the first-filled element decides, a malformed element *after* it is never read, and a malformed element *at* the first-filled position arrives as `Unknown` and suppresses the rule. The omission-vs-value polarity rides the existing symmetric default (not separately differential-gated — firing is). *(Interpreter-locked: `adapter.laws.FirstFilledValueDiffTest` — skip-empty, first-filled-decides, malformed-after-invisible, malformed-at-first-suppresses, against the live kernel; the fuzz net adds a `FirstFilledValue` rule — `PerfCatalog.fuzz()`.)*
+
 ## §9 supplement — SumOfProducts same-group requirement (source + probe, 2026-06-17)
 
 `SumOfProducts(A*, B*)` requires its two repeatable number fields to live in the **same group** — fields from two different repeatable groups draw **`MVK_DIFFERENT_GROUPS`** (source `CheckEntityListenUtils.checkAllEntitiesInSameGroup`; probed: `SumOfProducts(Items*/Count, Items*/UnitWeight)` accepts, `SumOfProducts(Lines*/OrderedQty, Picks*/PickedQty)` across logistics' two repeatable groups rejects). BA adds (source-read, not separately probed): both operands must be Number with at least one repeatable layer, and the asterisk may notate only the lowest repeatable layer. *(Locked: `validate.laws.SumOfProductsLawsTest`.)*

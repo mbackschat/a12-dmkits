@@ -104,6 +104,10 @@ enum class FunctionOp(val kernelName: String) {
     ROUND_DOWN_VALUE("RoundDownValue"),
     ROUND_UP_VALUE("RoundUpValue"),
     ROUND_ACCOUNTING_VALUE("RoundAccountingValue"),
+    // The FIRST specified value over a repetition list, in row order — empties are skipped, and operands after
+    // the first filled one are never read (a formal error there is invisible; a formal error BEFORE/AT the
+    // first filled one suppresses the rule). A `Sum` sibling; returns the scope's element type (number or date).
+    FIRST_FILLED_VALUE("FirstFilledValue"),
     ;
 
     companion object {
