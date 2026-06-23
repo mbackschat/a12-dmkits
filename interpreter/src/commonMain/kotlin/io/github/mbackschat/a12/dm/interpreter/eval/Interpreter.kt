@@ -241,6 +241,10 @@ class Interpreter(private val ctx: EvalContext) {
         FunctionOp.MONTH_FROM_DATE -> dateComponent(f.args[0]) { _, m, _ -> m }
         FunctionOp.DAY_FROM_DATE -> dateComponent(f.args[0]) { _, _, d -> d }
         FunctionOp.QUARTER_FROM_DATE -> dateComponent(f.args[0]) { _, m, _ -> (m - 1) / 3 + 1 }
+        // Date arithmetic — date + n days / months / years → a date (ISO text). Empty/absent date → Unknown.
+        FunctionOp.ADD_DAYS -> dateShift(f.args, ::addDays)
+        FunctionOp.ADD_MONTHS -> dateShift(f.args, ::addMonths)
+        FunctionOp.ADD_YEARS -> dateShift(f.args, ::addYears)
         null -> throw UnsupportedConstructException("unsupported function ${f.name}")
     }
 
@@ -248,6 +252,13 @@ class Interpreter(private val ctx: EvalContext) {
     private fun dateComponent(e: Expr, pick: (Int, Int, Int) -> Int): Val {
         val parts = (evalExpr(e) as? Val.Txt)?.let { dateParts(it.v) } ?: return Val.Unknown
         return Val.Num(dec(pick(parts.first, parts.second, parts.third)))
+    }
+
+    /** `Add{Days,Months,Years}(date, n)` → the [shift]ed date as ISO text; Unknown if the date or count is absent. */
+    private fun dateShift(args: List<Expr>, shift: (String, Int) -> String?): Val {
+        val date = (evalExpr(args[0]) as? Val.Txt)?.v ?: return Val.Unknown
+        val n = (evalExpr(args[1]) as? Val.Num)?.v?.display()?.toIntOrNull() ?: return Val.Unknown
+        return shift(date, n)?.let { Val.Txt(it) } ?: Val.Unknown
     }
 
     /** Epoch day of a date-valued expression (ISO text), or null if empty/malformed. */

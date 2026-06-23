@@ -65,6 +65,9 @@ enum class FunctionOp(val kernelName: String) {
     MONTH_FROM_DATE("MonthFromDate"),
     DAY_FROM_DATE("DayFromDate"),
     QUARTER_FROM_DATE("QuarterFromDate"),
+    ADD_DAYS("AddDays"),
+    ADD_MONTHS("AddMonths"),
+    ADD_YEARS("AddYears"),
     ;
 
     companion object {

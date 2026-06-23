@@ -32,3 +32,42 @@ fun epochDay(iso: String): Long? {
     val doe = yoe * 365 + yoe / 4 - yoe / 100 + doy              // [0, 146096]
     return era * 146097 + doe - 719468
 }
+
+/** Inverse of [epochDay] — the ISO `yyyy-MM-dd` for a day number (Hinnant civil_from_days). */
+fun isoFromEpochDay(z: Long): String {
+    val zz = z + 719468
+    val era = (if (zz >= 0) zz else zz - 146096) / 146097
+    val doe = zz - era * 146097                                  // [0, 146096]
+    val yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365   // [0, 399]
+    val y = yoe + era * 400
+    val doy = doe - (365 * yoe + yoe / 4 - yoe / 100)            // [0, 365]
+    val mp = (5 * doy + 2) / 153                                 // [0, 11]
+    val d = doy - (153 * mp + 2) / 5 + 1                         // [1, 31]
+    val mo = if (mp < 10) mp + 3 else mp - 9                     // [1, 12]
+    val yy = if (mo <= 2) y + 1 else y
+    return iso(yy.toInt(), mo.toInt(), d.toInt())
+}
+
+/** ISO date [n] days after [iso] (proleptic Gregorian), or null if [iso] is malformed. */
+fun addDays(iso: String, n: Int): String? = epochDay(iso)?.let { isoFromEpochDay(it + n) }
+
+/** ISO date [n] months after [iso], clamping the day to the target month's length (e.g. Jan 31 +1mo → Feb 28/29). */
+fun addMonths(iso: String, n: Int): String? {
+    val (y, m, d) = dateParts(iso) ?: return null
+    val total = y * 12 + (m - 1) + n
+    val ny = total.floorDiv(12)
+    val nm = total.mod(12) + 1
+    return iso(ny, nm, minOf(d, daysInMonth(ny, nm)))
+}
+
+/** ISO date [n] years after [iso] (= +[n]·12 months, so Feb-29 clamps in a non-leap year). */
+fun addYears(iso: String, n: Int): String? = addMonths(iso, n * 12)
+
+private fun daysInMonth(year: Int, month: Int): Int = when (month) {
+    1, 3, 5, 7, 8, 10, 12 -> 31
+    4, 6, 9, 11 -> 30
+    else -> if (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)) 29 else 28
+}
+
+private fun iso(y: Int, m: Int, d: Int): String =
+    y.toString().padStart(4, '0') + "-" + m.toString().padStart(2, '0') + "-" + d.toString().padStart(2, '0')
