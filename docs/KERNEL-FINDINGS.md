@@ -383,6 +383,8 @@ rulekit models the numeric ones as `DateExtraction` (kind NUMBER), the part-extr
 
 *(Locked: `adapter.laws.FilledCountLawsTest`.)*
 
+**Generalizes to every NUMERIC COMBINER (2026-06-23, fuzz-found):** a malformed element makes the **whole combiner non-evaluable → rule suppressed**, not just counts. Probed: `Sum(Lines* / Price) > 100` with one `"abc"` element fires **only** `zahlHatUngueltigeZeichen`, never the rule. Holds for the starred aggregates (`Sum`/`MaxValue`/`MinValue`/`NumberOfDifferentValues`) and the operand-list `Min`/`Max` alike — a formal-error operand is "unknown", and an aggregate over an unknown is unknown. (Empties are different: the star drops absent/empty cells, so an empty row is *skipped*, not a suppressor; only a FILLED-but-malformed value suppresses.) *(Locked: `adapter.laws.AggMalformedDiffTest`.)*
+
 ## §8 supplement — the value-list membership family (2026-06-04 experiments)
 
 Five operators in two grammar shapes, not covered by KERNEL-SEMANTICS. **Shape A** `FieldValueIncludedInValueList(field, v1, …)` / `FieldValueNotIncludedInValueList(…)` (DE: `FeldWertInWerteListe`/`FeldWertNichtInWerteListe`); **shape B** `AtLeastOne|No|NotAllFieldValue(s)IncludedInValueList(f1, f2 In v1, …)` (DE: `MindestensEin…`/`Kein…`/`NichtAlle…`; `In` is a language-independent grammar literal like the symbols). Slot rules:

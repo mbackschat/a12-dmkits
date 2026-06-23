@@ -110,6 +110,19 @@ object PerfCatalog {
 
     private data class FuzzRule(val group: String, val code: String, val errorRel: String, val cond: String)
 
+    // Unambiguously-malformed values (scale-independent) for the kinds the interpreter formal-checks. NUMBER:
+    // invalid chars / signed-zero / leading-plus / leading-blank. DATE: garbage / a value in the WRONG format
+    // for the field (ISO on a de field, de on an ISO field) — each must produce the kernel's formal code and
+    // suppress the referencing rule, identically in both engines. Other kinds stay valid (not yet formal-checked).
+    private fun malformed(field: io.github.mbackschat.a12.dm.interpreter.model.FieldDef, rnd: Random): String? = when (field.kind) {
+        Kind.NUMBER -> listOf("abc", "-0", "+5", " 5 ").let { it[rnd.nextInt(it.size)] }
+        Kind.DATE -> {
+            val wrongFormat = if (field.format == "dd.MM.yyyy") "2024-06-15" else "15.06.2024"
+            listOf("not-a-date", wrongFormat).let { it[rnd.nextInt(it.size)] }
+        }
+        else -> null
+    }
+
     // The fuzz uses its OWN model (`fuzz.dm.json`, own e-commerce domain) — a deliberately DIVERSE shape the
     // gate's perf model lacks: STRING + NUMBER (scale 0 and 2) + an ISO date + a NON-ISO (`dd.MM.yyyy`) date +
     // BOOLEAN, nested two levels. The non-ISO date is the high-value bit: it exercises locale-variant date
@@ -155,7 +168,16 @@ object PerfCatalog {
         )
         val gen = SeedGenerator(interpModel)
         val fuzzRows: RowsFn = { g, _, rnd -> when (g) { FZ_LINES -> rnd.nextInt(0, 7); FZ_PARTS -> rnd.nextInt(0, 5); else -> 0 } }
-        val fuzzValues = ValueStrategy { f, reps, rnd -> if (rnd.nextDouble() < 0.3) null else ValidValues.value(f, reps, rnd) }
+        // Fill 70%, leave 30% empty (→ requiredness); of the filled, ~15% are deliberately MALFORMED for the
+        // kinds the interpreter formal-checks (NUMBER/DATE) — so the fuzz also exercises the formal-error +
+        // rule-suppression machinery under random combinations, not just valid values.
+        val fuzzValues = ValueStrategy { f, reps, rnd ->
+            when {
+                rnd.nextDouble() < 0.3 -> null
+                rnd.nextDouble() < 0.15 -> malformed(f, rnd) ?: ValidValues.value(f, reps, rnd)
+                else -> ValidValues.value(f, reps, rnd)
+            }
+        }
         return PerfScenario("fuzz", kernelModel, interpModel) { sink, _, variant ->
             gen.populate(sink, seed = variant.toLong(), rowsOf = fuzzRows, value = fuzzValues)
         }

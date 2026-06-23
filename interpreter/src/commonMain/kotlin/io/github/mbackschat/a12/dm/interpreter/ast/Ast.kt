@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.interpreter.ast
 
 import io.github.mbackschat.a12.dm.interpreter.Dec
 import io.github.mbackschat.a12.dm.interpreter.dec
+import io.github.mbackschat.a12.dm.interpreter.decOrNull
 import io.github.mbackschat.a12.dm.interpreter.DEC_ZERO
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 
@@ -77,9 +78,11 @@ sealed interface Expr {
     data class Arith(val op: ArithOp, val left: Expr, val right: Expr) : Expr
 }
 
-/** Parse a raw field value into a typed [Val] by kind. */
+/** Parse a raw field value into a typed [Val] by kind. A malformed NUMBER resolves to [Val.Unknown] (NOT a
+ *  crash) — its formal error is detected separately, but a value reached via an aggregate/computation is
+ *  parsed without the up-front malformed-operand guard, so the parse itself must be total. */
 fun typedValue(kind: Kind, raw: String): Val = when (kind) {
-    Kind.NUMBER -> Val.Num(dec(raw))
+    Kind.NUMBER -> decOrNull(raw)?.let { Val.Num(it) } ?: Val.Unknown
     Kind.STRING, Kind.DATE, Kind.TIME -> Val.Txt(raw)   // ISO dates/times as text compare chronologically
     Kind.BOOLEAN, Kind.CONFIRM -> Val.Bool(raw.equals("true", ignoreCase = true))
     // A DATE_RANGE needs its field's format + separator to parse — the general Document resolves it

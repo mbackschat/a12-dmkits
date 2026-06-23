@@ -26,5 +26,6 @@ actual class Dec(val v: Big) : Comparable<Dec> {
 }
 
 actual fun dec(value: String): Dec = Dec(Big(value))
+actual fun decOrNull(value: String): Dec? = try { Dec(Big(value)) } catch (e: Throwable) { null }   // big.js throws on a non-numeric string
 actual fun dec(value: Int): Dec = Dec(Big(value.toString()))
 actual val DEC_ZERO: Dec = Dec(Big("0"))

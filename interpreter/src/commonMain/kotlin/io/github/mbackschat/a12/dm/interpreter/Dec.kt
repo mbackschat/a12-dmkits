@@ -26,5 +26,14 @@ expect class Dec : Comparable<Dec> {
 }
 
 expect fun dec(value: String): Dec
+
+/**
+ * Parse [value] to a [Dec], or **null** when it is not a well-formed number — so a malformed value resolves to
+ * `Val.Unknown` instead of throwing. The direct-operand path guards malformed fields up front (the rule is
+ * suppressed), but a malformed value reached through an aggregate (`Sum(x*)`) or a computation is parsed
+ * without that guard, so the parse itself must never crash. (Formal-error *detection* stays `FormalError`'s job.)
+ */
+expect fun decOrNull(value: String): Dec?
+
 expect fun dec(value: Int): Dec
 expect val DEC_ZERO: Dec

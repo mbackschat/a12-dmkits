@@ -19,5 +19,6 @@ actual class Dec(val v: BigDecimal) : Comparable<Dec> {
 }
 
 actual fun dec(value: String): Dec = Dec(BigDecimal(value))
+actual fun decOrNull(value: String): Dec? = try { Dec(BigDecimal(value)) } catch (e: NumberFormatException) { null }
 actual fun dec(value: Int): Dec = Dec(BigDecimal(value))
 actual val DEC_ZERO: Dec = Dec(BigDecimal.ZERO)

@@ -360,15 +360,15 @@ class Interpreter(
 
     private fun evalFunc(f: Expr.Func): Val = when (FunctionOp.byName(f.name)) {
         // operand-list forms: every operand counts (an empty number arrives as the substituted 0)
-        FunctionOp.MIN -> f.args.map { evalExpr(it) }.minWithOrNull(ORDER) ?: Val.Unknown
-        FunctionOp.MAX -> f.args.map { evalExpr(it) }.maxWithOrNull(ORDER) ?: Val.Unknown
+        FunctionOp.MIN -> combine(f.args.map { evalExpr(it) }) { it.minWithOrNull(ORDER) ?: Val.Unknown }
+        FunctionOp.MAX -> combine(f.args.map { evalExpr(it) }) { it.maxWithOrNull(ORDER) ?: Val.Unknown }
         // starred aggregates: empties are SKIPPED (Sum substitutes 0 = same result; Max/distinct ignore)
-        FunctionOp.SUM -> Val.Num(starNums(f).fold(DEC_ZERO) { a, b -> a + b })
-        FunctionOp.MAX_VALUE -> starVals(f).maxWithOrNull(ORDER) ?: Val.Unknown
-        FunctionOp.MIN_VALUE -> starVals(f).minWithOrNull(ORDER) ?: Val.Unknown
-        FunctionOp.NUMBER_OF_DIFFERENT_VALUES -> {
+        FunctionOp.SUM -> combine(starVals(f)) { vs -> Val.Num(vs.fold(DEC_ZERO) { a, b -> a + num(b) }) }
+        FunctionOp.MAX_VALUE -> combine(starVals(f)) { it.maxWithOrNull(ORDER) ?: Val.Unknown }
+        FunctionOp.MIN_VALUE -> combine(starVals(f)) { it.minWithOrNull(ORDER) ?: Val.Unknown }
+        FunctionOp.NUMBER_OF_DIFFERENT_VALUES -> combine(starVals(f)) { vs ->
             val distinct = mutableListOf<Dec>()
-            for (x in starNums(f)) if (distinct.none { it.compareTo(x) == 0 }) distinct.add(x)
+            for (v in vs) { val x = num(v); if (distinct.none { it.compareTo(x) == 0 }) distinct.add(x) }
             Val.Num(dec(distinct.size))
         }
         // DifferenceInDays(a, b) = b − a in whole days (sign = second − first), as a number. An empty or
@@ -433,7 +433,17 @@ class Interpreter(
     private fun epochOf(e: Expr): Long? = (evalExpr(e) as? Val.Txt)?.let { epochDay(it.v) }
 
     private fun starVals(f: Expr.Func): List<Val> = ctx.star((f.args.single() as Expr.Star).path)
-    private fun starNums(f: Expr.Func): List<Dec> = starVals(f).map { num(it) }
+
+    /**
+     * Apply a numeric combiner ([Min]/[Max]/[Sum]/[MaxValue]/[MinValue]/[NumberOfDifferentValues]) to its
+     * value list — but if ANY element is malformed (resolved to [Val.Unknown]), the WHOLE combiner is
+     * non-evaluable and yields [Val.Unknown], so the referencing rule is **suppressed**. This matches the
+     * kernel exactly (a formal-error operand makes the aggregate/combiner non-evaluable — verified for `Sum`
+     * via the differential; KERNEL-FINDINGS §3/§1, `AggMalformedDiffTest`). Empties never reach a starred
+     * aggregate (the star drops absent/empty cells); only a FILLED-but-malformed value is [Val.Unknown].
+     */
+    private inline fun combine(vals: List<Val>, op: (List<Val>) -> Val): Val =
+        if (vals.any { it is Val.Unknown }) Val.Unknown else op(vals)
 
     private fun pathOf(e: Expr): String = (e as Expr.Field).path
     private fun num(v: Val): Dec = (v as? Val.Num)?.v ?: error("expected a number, got $v")
