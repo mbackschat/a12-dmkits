@@ -102,6 +102,14 @@ The interpreter must be **performant on the hard cases**, and performance is **g
 
 Method, harness design, benchmark catalog, and the regression-gate mechanics live in [`docs/INTERPRETER-PERFORMANCE.md`](docs/INTERPRETER-PERFORMANCE.md).
 
+### Structure for a future GENERATOR — separate runtime semantics from evaluation strategy (standing requirement, decided 2026-06-23)
+
+We build the **interpreter** now, but must stay flexible to later add a **generator** (the kernel's approach: emit code per model instead of tree-walking). **Both an interpreter and a generator are evaluation *strategies* that delegate to the SAME runtime** — the operator implementations. So **don't implement the generator, but keep the layering ready for it**:
+
+- **Layer the engine as: data-access → runtime operator semantics → strategy.** (1) **Data access** = `EvalContext`/`Document` (`field`/`filled`/`signed`/`star`/`reps`). (2) **Runtime operator semantics** = pure, AST-walk-agnostic functions over *resolved* values (`Val`/`Tri`/`Fill`): 3VL `and`/`or`, directional number compare, `quantifierFires`, the date/time math (`DateMath`), aggregates, value-list, pattern. (3) **Strategy** = the interpreter's tree-walk *today*; a generator that emits code *later* — both consume (1)+(2). This mirrors the kernel exactly: its codegen emits Groovy that calls `BedingungsOperatorHelper`/`ValidierungsErgebnis`/`Combiner` (the runtime).
+- **The rule that keeps it ready:** operator semantics must **not** be inlined into the tree-walk or depend on "I am walking an AST" — they live in the shared runtime layer as pure functions a generated program could call just as the interpreter does. `DateMath` and the `PredicateOp`/`FunctionOp` registries already are; the comparison/3VL/aggregate logic in `Interpreter` should migrate there as it's touched. When adding an operator, put its *semantics* in the runtime layer, and let the strategy only **dispatch + resolve operands**.
+- Detail + the target layer diagram: [`docs/INTERPRETER-FINDINGS.md`](docs/INTERPRETER-FINDINGS.md) IF10. The extraction of today's inlined semantics is a tracked refactor, not a prerequisite for more operators.
+
 ## Test & sample document models
 
 - **Research freely; commit only own-domain re-expressions.** All three sources — **`a12-kernel-demo`**, the **A12 Tools workspaces** (`/Volumes/Buffer/Apps/A12 Tools/A12 Tools - 2025.06-ext5/workspaces`, the 2025.06-ext5 distribution = kernel `30.8.1`, our pin), and **`a12-kernel-mm`** — may be read and studied without limit. What gets **committed** must be our own original fixtures.

@@ -61,6 +61,34 @@ The kernel types a fired comparison OMISSION (`TRUE_AF`) only when filling an op
 
 My earlier `leafOmission` was non-directional + sign-unaware (OMISSION if *any* operand empty/growable), which diverged for unsigned fields: `[UnsignedEmpty] >= 0` is **VALUE** in the kernel (an unsigned 0 can't shrink, so filling can't break it) but I typed it OMISSION. Now `Interpreter.leafType(op, …)` computes a directional `Fill(canGrow, canShrink)` per operand and applies the kernel's per-operator rule; the sign is read via `EvalContext.signed(path)` (the general `Document` answers it from an `unsignedFields` set — sign rides with the instance context, like `kinds`, because the evaluator resolves operands through `ctx`). **Key design choice for zero regression:** only a **field** operand gets the directional+signed `Fill`; every non-field operand (star aggregate, function, arithmetic) keeps the prior *symmetric* `leafOmission` value, and with `canGrow == canShrink` every operator's rule reduces algebraically to the old `leafOmission(left) || leafOmission(right)` — so aggregates/arith are provably unchanged, and only unsigned-empty *number fields* move. **Open:** aggregate directional sign-awareness (a `Sum`/`Min`/`Max` over an unsigned field still uses the symmetric notion) and the CLI loader populating `unsignedFields` from `positivesOnly`. *(Locked: `adapter.laws.DirectionalPolarityDiffTest`; the signed cases stay green in `PolarityDiffTest`/`AggPolarityDiffTest`.)*
 
+### IF10 — Layer the engine for a future generator: data-access → runtime semantics → strategy (decided 2026-06-23)
+
+We implement the **interpreter** (tree-walk) now, but the owner wants the door open to a **generator** later — the kernel's approach, which emits per-model code instead of walking an AST. The key realization: **an interpreter and a generator are two evaluation *strategies* over one shared runtime.** The kernel proves it — its codegen (`kernel-core-codegen-rules`) emits Groovy that *calls* `BedingungsOperatorHelper` / `ValidierungsErgebnis` / `Combiner` (the runtime operator helpers); the generated code is just a different *driver* of the same semantics. So the engine is layered, and the operator semantics never know which strategy is on top:
+
+```
+   AST  (model / ast / parse)
+    │  fed to
+    ▼
+ ┌──────────────────────────────────────────────────────────┐
+ │ Strategy            interpreter (tree-walk)  ← TODAY        │
+ │                     generator (emit code)    ← FUTURE      │
+ └───────────────────────────┬──────────────────────────────┘
+            delegates to      │      (both strategies, same calls)
+ ┌───────────────────────────▼──────────────────────────────┐
+ │ Runtime operator semantics  — PURE, AST-walk-agnostic      │
+ │   3VL and/or · directional number compare · quantifier     │
+ │   count-laws + polarity · DateMath · aggregates · value-   │
+ │   list · pattern   (over resolved Val / Tri / Fill)        │
+ └───────────────────────────┬──────────────────────────────┘
+            over resolved     │      values
+ ┌───────────────────────────▼──────────────────────────────┐
+ │ Data access   EvalContext / Document                       │
+ │   field · filled · signed · star · reps                    │
+ └──────────────────────────────────────────────────────────┘
+```
+
+**The discipline that keeps it generator-ready:** operator semantics must be **pure functions over resolved values**, not inlined into the tree-walk — so a generated program could call them exactly as the interpreter does. Some layers already obey this (`DateMath`, the `PredicateOp`/`FunctionOp` registries, `quantifierFires`); the comparison / 3VL / aggregate / directional-polarity logic currently sits *inside* `Interpreter` and should migrate into the runtime layer as it's touched (a tracked refactor, not a prerequisite for more operators). When adding an operator: put its **semantics** in the runtime layer; let the strategy only **dispatch + resolve operands**. **We do NOT build the generator now** — this is purely preparing the structure so adding one later is a new top layer, not a rewrite. (Rhymes with the IF0 clean-room separation: the runtime stays kernel-free and strategy-agnostic.)
+
 ### IF4 — `GroupFilled` is an `EvalContext` seam resolved only by the general `Document`
 
 "Is this group filled?" needs the document's instance structure, which only the general `Document` models; the single-row / repetition spike contexts (`SingleRowDoc`/`RepDoc`, slated for consolidation) don't, and throw the same way `star` does on a flat doc. So `groupFilled` is an `EvalContext` method the general `Document` overrides (any valued field beneath the group, in the row's scope). The **repeatable**-group form is out of scope here: the kernel requires the `*` aggregate (`GroupFilled(Items*)`, KERNEL-FINDINGS §8), which parses to a `Star` operand and belongs to the `*`/aggregate family. *(Locked: `adapter.laws.GroupFilledDiffTest`.)*
