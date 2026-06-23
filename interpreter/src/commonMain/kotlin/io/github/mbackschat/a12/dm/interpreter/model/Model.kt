@@ -10,6 +10,17 @@ package io.github.mbackschat.a12.dm.interpreter.model
 /** Field kinds the empty-value asymmetry depends on — the miniature "metadata bridge" (proposal §10). */
 enum class Kind { NUMBER, STRING, BOOLEAN, CONFIRM, DATE }
 
+/**
+ * The evaluation reference clock — the "current point in time" the kernel reads for the clock constants
+ * (`Today`, later `Now`). It is **injected**, not read from the platform: `commonMain` stays pure (no
+ * `java.time`/`Date.now()`), and a deterministic value makes evaluation testable. The consumer supplies it
+ * (dmtool from the JVM clock; a JS consumer from `Date`). A model that uses `Today` with no clock cannot be
+ * evaluated — the rule is reported as unsupported, not crashed.
+ *
+ * @property today the current date as an ISO `yyyy-MM-dd` string (the value of `Today`).
+ */
+data class EvalClock(val today: String)
+
 /** Value-vs-omission polarity of a fired message (kernel `IMessage.MessageType`). */
 enum class MsgType { VALUE, OMISSION }
 

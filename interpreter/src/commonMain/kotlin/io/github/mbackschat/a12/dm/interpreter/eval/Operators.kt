@@ -50,6 +50,19 @@ enum class PredicateOp(val kernelName: String, val polarity: MsgType?, val count
     }
 }
 
+/**
+ * A no-operand constant construct (an `Expr.Const`), resolved against the evaluation clock/model config to
+ * a [Val]. `Today` is the current date; `Now` / `BaseYear` join as the date-time and base-year families land.
+ */
+enum class ConstantOp(val kernelName: String) {
+    TODAY("Today"),
+    ;
+
+    companion object {
+        fun byName(name: String): ConstantOp? = entries.firstOrNull { it.kernelName == name }
+    }
+}
+
 /** A value-producing function/aggregate construct (an `Expr.Func`), evaluated to a [Val]. */
 enum class FunctionOp(val kernelName: String) {
     MIN("Min"),

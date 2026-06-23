@@ -7,6 +7,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.RepDoc
 import io.github.mbackschat.a12.dm.interpreter.eval.SingleRowDoc
 import io.github.mbackschat.a12.dm.interpreter.eval.renderMessage
+import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
@@ -160,6 +161,22 @@ class InterpreterMultiplatformTest {
         // Generous headroom so JS (Node, interpreted) and CI variance don't flake. A real perf-regression
         // harness (JMH / tracked baselines) is Phase-1 work — this just trips on catastrophic slowdowns.
         assertTrue(elapsed < 5.seconds, "throughput regression: $n rows took $elapsed (expected well under 5s)")
+    }
+
+    @Test
+    fun todayConstantResolvesToInjectedClock() {
+        // The exact-value boundary the (wall-clock-independent) :adapter differential can't pin: `Today`
+        // resolves to the INJECTED clock date and compares chronologically. Deterministic — no kernel.
+        val od = "/Order/OrderDate"
+        val dateKinds = mapOf(od to Kind.DATE)
+        val clock = EvalClock(today = "2025-06-23")
+        fun fires(date: String, cond: String) =
+            Interpreter(SingleRowDoc("/Order", mapOf(od to date), dateKinds), clock)
+                .fires(parseCondition(cond, "/Order"))
+        assertTrue(fires("2025-06-23", "[OrderDate] == Today"), "an order dated today equals Today")
+        assertFalse(fires("2025-06-22", "[OrderDate] == Today"), "the day before does not equal Today")
+        assertTrue(fires("2025-06-22", "[OrderDate] < Today"), "the day before is before Today")
+        assertFalse(fires("2025-06-24", "[OrderDate] < Today"), "the day after is not before Today")
     }
 
     @Test

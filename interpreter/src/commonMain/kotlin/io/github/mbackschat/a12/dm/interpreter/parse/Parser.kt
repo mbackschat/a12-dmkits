@@ -121,6 +121,7 @@ private class ConditionParser(private val src: String, private val base: String)
                     when (name) {
                         "True" -> Expr.BoolLit(true)
                         "False" -> Expr.BoolLit(false)
+                        in CONSTANTS -> Expr.Const(name)
                         else -> {
                             skipWs()
                             if (peek() == '(') Expr.Func(name, readArgs()) else pathFrom(name)
@@ -231,5 +232,8 @@ private class ConditionParser(private val src: String, private val base: String)
             "NotAllGroupsFilled", "GroupsNotCollectivelyFilled",
         )
         val PATTERN_OPS = setOf("PatternMatched", "PatternViolated")
+
+        /** No-operand constant keywords — emitted as `Expr.Const` (a bare ident, not a field path). */
+        val CONSTANTS = setOf("Today")
     }
 }

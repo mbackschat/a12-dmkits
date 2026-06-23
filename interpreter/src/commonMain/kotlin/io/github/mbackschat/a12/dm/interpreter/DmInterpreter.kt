@@ -13,6 +13,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.eval.renderMessage
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.Computed
+import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
 import io.github.mbackschat.a12.dm.interpreter.model.Message
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
@@ -25,6 +26,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.Verdict
 import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import io.github.mbackschat.a12.dm.interpreter.parse.parseExpression
+import kotlin.jvm.JvmOverloads
 
 /**
  * The public entry point — evaluates a [ModelDef]'s rules over a [Document] instance, kernel-free, on
@@ -35,7 +37,7 @@ import io.github.mbackschat.a12.dm.interpreter.parse.parseExpression
  * Today: full validation ([validateFull]) and single-rule eval ([testRule]/[evalCandidate]). Partial
  * validation, computations, and formal-error suppression are the next increments (INTERPRETER-BUILDOUT.md).
  */
-class DmInterpreter(private val model: ModelDef) {
+class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, private val clock: EvalClock? = null) {
 
     /**
      * Run every rule over each row of its iteration scope and return one [Message] per firing — the
@@ -110,7 +112,7 @@ class DmInterpreter(private val model: ModelDef) {
             val expr = parseExpression(comp.expressionText, comp.group)
             val scope = scopeFromRefs(exprRefs(expr) + comp.targetPath, comp.group)
             for (ctx in doc.contextsFor(scope)) {
-                out += when (val v = Interpreter(ctx).evalExpression(expr)) {
+                out += when (val v = Interpreter(ctx, clock).evalExpression(expr)) {
                     is Val.Num -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v.display())
                     is Val.Txt -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v)
                     is Val.Bool -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v.toString())
@@ -150,7 +152,7 @@ class DmInterpreter(private val model: ModelDef) {
         return doc.contextsFor(iterationScope(rule, ast)).map { ctx ->
             // Formal-error gate first: a referenced field that is present-but-malformed suppresses the row.
             firstFormalError(refs, ctx)?.let { return@map RowOutcome.Suppressed(it) }
-            val interp = Interpreter(ctx)
+            val interp = Interpreter(ctx, clock)
             if (!interp.fires(ast)) return@map RowOutcome.Passed
             val type = interp.firedType(ast) ?: MsgType.VALUE
             val text = rule.messages[locale]?.let { renderMessage(it, rule.group, ctx) { p -> model.labelOf(p, locale) } } ?: ""

@@ -65,6 +65,9 @@ sealed interface Expr {
     /** A value-valued function, e.g. Min(a, b) (operand-list) or Sum(Star) (aggregate). */
     data class Func(val name: String, val args: List<Expr>) : Expr
 
+    /** A no-operand constant resolved at evaluation time, e.g. `Today` (the current date from the clock). */
+    data class Const(val name: String) : Expr
+
     /** A binary arithmetic expression, e.g. `[BackorderQuantity] + 2`. Grouped with curly braces `{ }`. */
     data class Arith(val op: ArithOp, val left: Expr, val right: Expr) : Expr
 }

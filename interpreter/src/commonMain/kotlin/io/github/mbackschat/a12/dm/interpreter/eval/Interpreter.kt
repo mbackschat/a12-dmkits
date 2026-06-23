@@ -10,6 +10,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
+import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 
 /**
@@ -21,7 +22,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
  *
  * A rule FIRES when its error condition evaluates to TRUE.
  */
-class Interpreter(private val ctx: EvalContext) {
+class Interpreter(private val ctx: EvalContext, private val clock: EvalClock? = null) {
 
     fun fires(cond: Cond): Boolean = eval(cond) == Tri.TRUE
 
@@ -225,6 +226,18 @@ class Interpreter(private val ctx: EvalContext) {
         is Expr.Star -> error("a starred path must sit inside an aggregate (Sum/MaxValue/…)")
         is Expr.Func -> evalFunc(e)
         is Expr.Arith -> evalArith(e)
+        is Expr.Const -> evalConst(e.name)
+    }
+
+    /**
+     * A no-operand constant. `Today` resolves to the injected clock's current date (ISO text — a date
+     * value comparing chronologically, like any date field). Without a clock the constant cannot be
+     * resolved → reported as unsupported (tolerated by `validate`), not crashed.
+     */
+    private fun evalConst(name: String): Val = when (ConstantOp.byName(name)) {
+        ConstantOp.TODAY -> Val.Txt(clock?.today
+            ?: throw UnsupportedConstructException("Today needs an evaluation clock — construct DmInterpreter with an EvalClock"))
+        null -> throw UnsupportedConstructException("unsupported constant $name")
     }
 
     /** Binary arithmetic on numbers; an empty numeric operand already arrives as 0. Unknown propagates. */
