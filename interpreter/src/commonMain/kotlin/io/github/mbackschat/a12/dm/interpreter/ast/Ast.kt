@@ -75,7 +75,7 @@ sealed interface Expr {
 /** Parse a raw field value into a typed [Val] by kind. */
 fun typedValue(kind: Kind, raw: String): Val = when (kind) {
     Kind.NUMBER -> Val.Num(dec(raw))
-    Kind.STRING, Kind.DATE -> Val.Txt(raw)   // ISO dates as text compare chronologically
+    Kind.STRING, Kind.DATE, Kind.TIME -> Val.Txt(raw)   // ISO dates/times as text compare chronologically
     Kind.BOOLEAN, Kind.CONFIRM -> Val.Bool(raw.equals("true", ignoreCase = true))
 }
 
@@ -83,5 +83,5 @@ fun typedValue(kind: Kind, raw: String): Val = when (kind) {
 fun emptyValue(kind: Kind): Val = when (kind) {
     Kind.NUMBER -> Val.Num(DEC_ZERO)   // empty number → 0
     Kind.CONFIRM -> Val.Bool(false)     // empty confirm → False
-    Kind.BOOLEAN, Kind.STRING, Kind.DATE -> Val.Unknown  // not evaluated
+    Kind.BOOLEAN, Kind.STRING, Kind.DATE, Kind.TIME -> Val.Unknown  // not evaluated
 }

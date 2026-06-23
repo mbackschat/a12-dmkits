@@ -8,7 +8,7 @@ package io.github.mbackschat.a12.dm.interpreter.model
  */
 
 /** Field kinds the empty-value asymmetry depends on — the miniature "metadata bridge" (proposal §10). */
-enum class Kind { NUMBER, STRING, BOOLEAN, CONFIRM, DATE }
+enum class Kind { NUMBER, STRING, BOOLEAN, CONFIRM, DATE, TIME }
 
 /**
  * The evaluation reference clock — the "current point in time" the kernel reads for the clock constants

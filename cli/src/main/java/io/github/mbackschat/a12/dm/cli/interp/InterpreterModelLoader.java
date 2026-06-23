@@ -128,9 +128,10 @@ public final class InterpreterModelLoader {
         return switch (fieldNode.path("Field").path("fieldType").path("type").asText("")) {
             case "NumberType" -> Kind.NUMBER;
             case "DateType" -> Kind.DATE;
+            case "TimeType" -> Kind.TIME;
             case "BooleanType" -> Kind.BOOLEAN;
             case "ConfirmType" -> Kind.CONFIRM;
-            default -> Kind.STRING;   // String / Enumeration / DateTime / Time — STRING-shaped for the operators modeled so far
+            default -> Kind.STRING;   // String / Enumeration / DateTime — STRING-shaped for the operators modeled so far
         };
     }
 

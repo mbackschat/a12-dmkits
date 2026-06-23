@@ -40,7 +40,9 @@ fun formalError(kind: Kind, raw: String, scale: Int? = null): FormalErrorCode? {
     return when (kind) {
         Kind.DATE -> if (ISO_DATE.matches(raw)) null else FormalErrorCode.DATE_FORMAT
         Kind.NUMBER -> numberFormalError(raw, scale)
-        Kind.STRING, Kind.BOOLEAN, Kind.CONFIRM -> null
+        // TIME's HH:mm:ss format check is a separate increment (needs the kernel's time formal-error code +
+        // a suppression differential); for now a TIME value is not format-checked.
+        Kind.STRING, Kind.BOOLEAN, Kind.CONFIRM, Kind.TIME -> null
     }
 }
 

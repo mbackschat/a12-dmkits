@@ -282,6 +282,10 @@ class Interpreter(private val ctx: EvalContext, private val clock: EvalClock? = 
         FunctionOp.MONTH_FROM_DATE -> dateComponent(f.args[0]) { _, m, _ -> m }
         FunctionOp.DAY_FROM_DATE -> dateComponent(f.args[0]) { _, _, d -> d }
         FunctionOp.QUARTER_FROM_DATE -> dateComponent(f.args[0]) { _, m, _ -> (m - 1) / 3 + 1 }
+        // Time-of-day extractors — a number from a TIME value's `HH:mm:ss` parts; empty/absent → Unknown.
+        FunctionOp.HOURS_FROM_TIME -> timeComponent(f.args[0]) { h, _, _ -> h }
+        FunctionOp.MINUTES_FROM_TIME -> timeComponent(f.args[0]) { _, m, _ -> m }
+        FunctionOp.SECONDS_FROM_TIME -> timeComponent(f.args[0]) { _, _, s -> s }
         // Date arithmetic — date + n days / months / years → a date (ISO text). Empty/absent date → Unknown.
         FunctionOp.ADD_DAYS -> dateShift(f.args, ::addDays)
         FunctionOp.ADD_MONTHS -> dateShift(f.args, ::addMonths)
@@ -302,6 +306,12 @@ class Interpreter(private val ctx: EvalContext, private val clock: EvalClock? = 
     private fun dateComponent(e: Expr, pick: (Int, Int, Int) -> Int): Val {
         val parts = (evalExpr(e) as? Val.Txt)?.let { dateParts(it.v) } ?: return Val.Unknown
         return Val.Num(dec(pick(parts.first, parts.second, parts.third)))
+    }
+
+    /** A number picked from a TIME operand's (hours, minutes, seconds) `HH:mm:ss`; Unknown when empty/malformed. */
+    private fun timeComponent(e: Expr, pick: (Int, Int, Int) -> Int): Val {
+        val m = (evalExpr(e) as? Val.Txt)?.let { TIME.matchEntire(it.v) } ?: return Val.Unknown
+        return Val.Num(dec(pick(m.groupValues[1].toInt(), m.groupValues[2].toInt(), m.groupValues[3].toInt())))
     }
 
     /** `Add{Days,Months,Years}(date, n)` → the [shift]ed date as ISO text; Unknown if the date or count is absent. */
@@ -346,6 +356,9 @@ class Interpreter(private val ctx: EvalContext, private val clock: EvalClock? = 
     }
 
     private companion object {
+        /** A TIME value `HH:mm:ss` — captures hours, minutes, seconds for the time-of-day extractors. */
+        val TIME = Regex("""(\d{2}):(\d{2}):(\d{2})""")
+
         /** Orders comparable values: numbers numerically, text lexicographically (ISO dates → chronological). */
         val ORDER = Comparator<Val> { a, b ->
             when {
