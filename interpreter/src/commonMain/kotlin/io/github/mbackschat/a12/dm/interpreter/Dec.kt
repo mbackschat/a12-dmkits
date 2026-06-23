@@ -29,6 +29,9 @@ expect class Dec : Comparable<Dec> {
      */
     fun scale19(): Dec
 
+    /** Absolute value (`|this|`) — for the `Abs`/`AbsValue` operators. */
+    fun abs(): Dec
+
     /** Canonical numeric rendering, trailing zeros stripped (`49.90` → `49.9`, `0` → `0`) — for computed values. */
     fun display(): String
 }

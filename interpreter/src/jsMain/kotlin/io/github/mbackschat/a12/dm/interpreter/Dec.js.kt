@@ -14,6 +14,7 @@ external class Big(value: String) {
     fun div(other: Big): Big       // rounds to Big.DP decimal places (default 20)
     fun pow(exp: Int): Big         // integer exponent; negative uses Big.DP
     fun cmp(other: Big): Int
+    fun abs(): Big
     fun round(dp: Int, rm: Int): Big   // dp = decimal places; rm = rounding mode (1 = roundHalfUp)
     override fun toString(): String   // big.js renders trailing-zero-stripped plain notation
 }
@@ -27,6 +28,7 @@ actual class Dec(val v: Big) : Comparable<Dec> {
     actual fun div(other: Dec): Dec = Dec(v.div(other.v))
     actual fun pow(exponent: Int): Dec = Dec(v.pow(exponent))
     actual override fun compareTo(other: Dec): Int = v.cmp(other.v)
+    actual fun abs(): Dec = Dec(v.abs())
     actual fun scale19(): Dec = Dec(v.round(19, 1))   // 1 = big.js roundHalfUp ≡ JVM RoundingMode.HALF_UP
     actual fun display(): String = v.toString()
 }

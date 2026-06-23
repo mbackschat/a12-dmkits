@@ -416,6 +416,10 @@ class Interpreter(
         // *FromDate extractors and date comparisons read it like any date). Empty/absent range → Unknown.
         FunctionOp.START_OF_DATE_RANGE -> (evalExpr(f.args[0]) as? Val.Range)?.let { Val.Txt(it.start) } ?: Val.Unknown
         FunctionOp.END_OF_DATE_RANGE -> (evalExpr(f.args[0]) as? Val.Range)?.let { Val.Txt(it.end) } ?: Val.Unknown
+        // |x| — Abs over an expression, AbsValue over a field; a non-numeric/Unknown operand → Unknown.
+        FunctionOp.ABS, FunctionOp.ABS_VALUE -> (evalExpr(f.args[0]) as? Val.Num)?.let { Val.Num(it.v.abs()) } ?: Val.Unknown
+        // The character count of a string field's value; an empty/absent (Unknown) operand → Unknown.
+        FunctionOp.LENGTH -> (evalExpr(f.args[0]) as? Val.Txt)?.let { Val.Num(dec(it.v.length)) } ?: Val.Unknown
         null -> throw UnsupportedConstructException("unsupported function ${f.name}")
     }
 

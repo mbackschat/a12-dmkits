@@ -19,6 +19,7 @@ actual class Dec(val v: BigDecimal) : Comparable<Dec> {
         if (exponent >= 0) Dec(v.pow(exponent, INTERNAL))
         else Dec(BigDecimal.ONE.divide(v.pow(-exponent, INTERNAL), INTERNAL))
     actual override fun compareTo(other: Dec): Int = v.compareTo(other.v)
+    actual fun abs(): Dec = Dec(v.abs())
     actual fun scale19(): Dec = Dec(v.setScale(19, RoundingMode.HALF_UP))
     actual fun display(): String = v.stripTrailingZeros().toPlainString()
 }

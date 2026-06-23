@@ -158,6 +158,7 @@ object PerfCatalog {
             FuzzRule("/Cart", "TP", "../Lines/Price", "Sum(Lines*/Price) > 1000"),
             FuzzRule(FZ_LINES, "DV", "../Price", "FieldFilled(Qty) And { [Price] / [Qty] } > 5"),   // division (+ div-by-zero quiet)
             FuzzRule(FZ_LINES, "PW", "../Qty", "{ [Qty] ^ 2 } > 100"),                                // power
+            FuzzRule(FZ_LINES, "AB", "../Price", "Abs([Price]) > 500"),                               // |x|
             FuzzRule(FZ_PARTS, "HW", "../Weight", "FieldFilled(Weight) And [Weight] > 50"),
             FuzzRule(FZ_PARTS, "XL", "../Weight", "FieldFilled(Weight) And [Weight] > [/Cart/Lines/Qty]"),
         )

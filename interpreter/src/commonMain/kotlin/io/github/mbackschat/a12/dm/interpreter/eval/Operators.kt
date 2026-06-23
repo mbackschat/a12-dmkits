@@ -90,6 +90,11 @@ enum class FunctionOp(val kernelName: String) {
     DIFFERENCE_IN_YEARS("DifferenceInYears"),
     START_OF_DATE_RANGE("StartOfDateRange"),
     END_OF_DATE_RANGE("EndOfDateRange"),
+    // |x| — the bracketed-expression form `Abs([a]-[b])` and the bare-field form `AbsValue(field)`; same value.
+    ABS("Abs"),
+    ABS_VALUE("AbsValue"),
+    // character length of a string field's value (a bare-field form): `Length(field)`.
+    LENGTH("Length"),
     ;
 
     companion object {
