@@ -20,23 +20,29 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
  * quantifiers**, whose polarity is *data-dependent* (e.g. `NotExactlyOneFieldFilled` is OMISSION at k=0 but
  * VALUE at k=2) and is computed dynamically by `Interpreter.predType` from the filled-count.
  */
-enum class PredicateOp(val kernelName: String, val polarity: MsgType?) {
+enum class PredicateOp(val kernelName: String, val polarity: MsgType?, val countsGroups: Boolean = false) {
     FIELD_FILLED("FieldFilled", MsgType.VALUE),
     FIELD_NOT_FILLED("FieldNotFilled", MsgType.OMISSION),
-    ALL_FIELDS_FILLED("AllFieldsFilled", MsgType.VALUE),
     GROUP_FILLED("GroupFilled", MsgType.VALUE),
     GROUP_NOT_FILLED("GroupNotFilled", MsgType.OMISSION),
     FIELD_VALUE_IN_LIST("FieldValueIncludedInValueList", MsgType.VALUE),
     FIELD_VALUE_NOT_IN_LIST("FieldValueNotIncludedInValueList", MsgType.VALUE),
 
-    // Field-list quantifiers — fire by the count k of filled fields among the N operands (KERNEL-FINDINGS §1).
-    // polarity = null → computed dynamically (fixable-by-filling → OMISSION, else VALUE).
+    // List quantifiers — fire by the count k of filled OPERANDS among the N (fields, or groups when
+    // [countsGroups]); KERNEL-FINDINGS §1. polarity = null → computed dynamically (fixable-by-filling →
+    // OMISSION, else VALUE). The firing law per op is `Interpreter.quantifierFires`.
+    ALL_FIELDS_FILLED("AllFieldsFilled", null),                          // k == N
     NO_FIELD_FILLED("NoFieldFilled", null),                              // k == 0
     AT_LEAST_ONE_FIELD_FILLED("AtLeastOneFieldFilled", null),            // k >= 1
     MORE_THAN_ONE_FIELD_FILLED("MoreThanOneFieldFilled", null),          // k >= 2
     NOT_ALL_FIELDS_FILLED("NotAllFieldsFilled", null),                   // k <  N
     NOT_EXACTLY_ONE_FIELD_FILLED("NotExactlyOneFieldFilled", null),      // k != 1
     FIELDS_NOT_COLLECTIVELY_FILLED("FieldsNotCollectivelyFilled", null), // 0 < k < N
+    ALL_GROUPS_FILLED("AllGroupsFilled", null, countsGroups = true),                          // k == N
+    NO_GROUP_FILLED("NoGroupFilled", null, countsGroups = true),                              // k == 0
+    AT_LEAST_ONE_GROUP_FILLED("AtLeastOneGroupFilled", null, countsGroups = true),            // k >= 1
+    NOT_ALL_GROUPS_FILLED("NotAllGroupsFilled", null, countsGroups = true),                   // k <  N
+    GROUPS_NOT_COLLECTIVELY_FILLED("GroupsNotCollectivelyFilled", null, countsGroups = true), // 0 < k < N
     ;
 
     companion object {

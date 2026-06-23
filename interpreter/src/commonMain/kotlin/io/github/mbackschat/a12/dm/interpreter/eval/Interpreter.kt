@@ -97,7 +97,7 @@ class Interpreter(private val ctx: EvalContext) {
         val op = PredicateOp.byName(p.name) ?: return MsgType.VALUE
         op.polarity?.let { return it }
         val n = p.args.size
-        val k = filledCount(p.args)
+        val k = quantCount(op, p.args)
         val fillable = ((k + 1)..n).any { kp -> !quantifierFires(op, kp, n) }
         return if (fillable) MsgType.OMISSION else MsgType.VALUE
     }
@@ -123,30 +123,34 @@ class Interpreter(private val ctx: EvalContext) {
         return when (op) {
             PredicateOp.FIELD_FILLED -> Tri.of(ctx.filled(pathOf(p.args.single())))
             PredicateOp.FIELD_NOT_FILLED -> Tri.of(!ctx.filled(pathOf(p.args.single())))
-            PredicateOp.ALL_FIELDS_FILLED -> Tri.of(p.args.all { ctx.filled(pathOf(it)) })
             PredicateOp.GROUP_FILLED -> Tri.of(ctx.groupFilled(pathOf(p.args.single())))
             PredicateOp.GROUP_NOT_FILLED -> Tri.of(!ctx.groupFilled(pathOf(p.args.single())))
             PredicateOp.FIELD_VALUE_IN_LIST -> valueInList(p.args)
             PredicateOp.FIELD_VALUE_NOT_IN_LIST -> not(valueInList(p.args))
-            // Field-list quantifiers over the count k of filled operands (row-evaluated gate is upstream in eval).
-            PredicateOp.NO_FIELD_FILLED, PredicateOp.AT_LEAST_ONE_FIELD_FILLED, PredicateOp.MORE_THAN_ONE_FIELD_FILLED,
-            PredicateOp.NOT_ALL_FIELDS_FILLED, PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED, PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED ->
-                Tri.of(quantifierFires(op, filledCount(p.args), p.args.size))
+            // List quantifiers over the count k of filled operands (row-evaluated gate is upstream in eval).
+            PredicateOp.ALL_FIELDS_FILLED, PredicateOp.NO_FIELD_FILLED, PredicateOp.AT_LEAST_ONE_FIELD_FILLED,
+            PredicateOp.MORE_THAN_ONE_FIELD_FILLED, PredicateOp.NOT_ALL_FIELDS_FILLED,
+            PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED, PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED,
+            PredicateOp.ALL_GROUPS_FILLED, PredicateOp.NO_GROUP_FILLED, PredicateOp.AT_LEAST_ONE_GROUP_FILLED,
+            PredicateOp.NOT_ALL_GROUPS_FILLED, PredicateOp.GROUPS_NOT_COLLECTIVELY_FILLED ->
+                Tri.of(quantifierFires(op, quantCount(op, p.args), p.args.size))
         }
     }
 
-    /** How many of the field operands carry a value — the basis of the field-list quantifiers. */
-    private fun filledCount(args: List<Expr>): Int = args.count { ctx.filled(pathOf(it)) }
+    /** The filled-operand count behind a list quantifier — filled GROUPS when [PredicateOp.countsGroups], else filled fields. */
+    private fun quantCount(op: PredicateOp, args: List<Expr>): Int =
+        if (op.countsGroups) args.count { ctx.groupFilled(pathOf(it)) } else args.count { ctx.filled(pathOf(it)) }
 
-    /** Whether a field-list quantifier [op] fires for [k] filled fields among [n] operands (the count law). */
+    /** Whether a list quantifier [op] fires for [k] filled operands among [n] (the count law; field/group share it). */
     private fun quantifierFires(op: PredicateOp, k: Int, n: Int): Boolean = when (op) {
-        PredicateOp.NO_FIELD_FILLED -> k == 0
-        PredicateOp.AT_LEAST_ONE_FIELD_FILLED -> k >= 1
+        PredicateOp.ALL_FIELDS_FILLED, PredicateOp.ALL_GROUPS_FILLED -> k == n
+        PredicateOp.NO_FIELD_FILLED, PredicateOp.NO_GROUP_FILLED -> k == 0
+        PredicateOp.AT_LEAST_ONE_FIELD_FILLED, PredicateOp.AT_LEAST_ONE_GROUP_FILLED -> k >= 1
         PredicateOp.MORE_THAN_ONE_FIELD_FILLED -> k >= 2
-        PredicateOp.NOT_ALL_FIELDS_FILLED -> k < n
+        PredicateOp.NOT_ALL_FIELDS_FILLED, PredicateOp.NOT_ALL_GROUPS_FILLED -> k < n
         PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED -> k != 1
-        PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED -> k in 1 until n
-        else -> error("not a field-list quantifier: $op")
+        PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED, PredicateOp.GROUPS_NOT_COLLECTIVELY_FILLED -> k in 1 until n
+        else -> error("not a list quantifier: $op")
     }
 
     /**
