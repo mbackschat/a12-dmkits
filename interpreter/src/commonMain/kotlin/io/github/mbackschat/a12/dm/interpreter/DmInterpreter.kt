@@ -20,8 +20,9 @@ class DmInterpreter(private val model: ModelDef) {
 
     /**
      * Evaluate a SINGLE stored rule against the instance — the `rule test` shape. [Verdict.FIRED] (a
-     * violation, with the rendered [RuleResult.message]) / [Verdict.PASSED] (evaluated, did not fire).
-     * [Verdict.SUPPRESSED] (a referenced field is formally invalid) awaits the formal-error increment.
+     * violation, with the rendered [RuleResult.message]) / [Verdict.PASSED] (evaluated, clean) /
+     * [Verdict.SUPPRESSED] (never evaluated — a referenced field is formally invalid, named in
+     * [RuleResult.suppressedBy]).
      */
     fun testRule(rulePath: String, doc: Document, locale: String = "en_US"): RuleResult {
         val rule = model.rules.firstOrNull { it.path == rulePath }
@@ -57,22 +58,49 @@ class DmInterpreter(private val model: ModelDef) {
     }
 
     private fun evalRule(rule: RuleDef, doc: Document, locale: String): RuleResult {
-        val hit = messagesFor(rule, doc, locale).firstOrNull()
-        return if (hit != null) RuleResult(rule.path, Verdict.FIRED, hit.text, hit.type)
+        val rows = rowOutcomes(rule, doc, locale)
+        rows.firstNotNullOfOrNull { it as? RowOutcome.Fired }?.let {
+            return RuleResult(rule.path, Verdict.FIRED, it.message.text, it.message.type)
+        }
+        // No firing: a referenced field being formally invalid means the rule was NOT evaluated (the
+        // kernel skips it) → SUPPRESSED, not PASSED. PASSED only when every row was cleanly evaluated.
+        val suppressed = rows.filterIsInstance<RowOutcome.Suppressed>().map { it.suppression }
+        return if (suppressed.isNotEmpty()) RuleResult(rule.path, Verdict.SUPPRESSED, suppressedBy = suppressed)
         else RuleResult(rule.path, Verdict.PASSED)
     }
 
-    /** Every firing of one rule across its iteration-scope rows, as [Message]s (empty = did not fire). */
-    private fun messagesFor(rule: RuleDef, doc: Document, locale: String): List<Message> {
+    /** Every firing of one rule across its iteration-scope rows, as [Message]s (suppressed rows produce none). */
+    private fun messagesFor(rule: RuleDef, doc: Document, locale: String): List<Message> =
+        rowOutcomes(rule, doc, locale).filterIsInstance<RowOutcome.Fired>().map { it.message }
+
+    /** The per-row outcome of one rule: fired (with its message), passed, or suppressed (which field/code). */
+    private sealed interface RowOutcome {
+        data class Fired(val message: Message) : RowOutcome
+        data object Passed : RowOutcome
+        data class Suppressed(val suppression: Suppression) : RowOutcome
+    }
+
+    private fun rowOutcomes(rule: RuleDef, doc: Document, locale: String): List<RowOutcome> {
         val ast = parseCondition(rule.conditionText, rule.group)
-        return doc.contextsFor(iterationScope(rule, ast)).mapNotNull { ctx ->
+        val refs = nonStarredRefs(ast).distinct()
+        return doc.contextsFor(iterationScope(rule, ast)).map { ctx ->
+            // Formal-error gate first: a referenced field that is present-but-malformed suppresses the row.
+            firstFormalError(refs, ctx)?.let { return@map RowOutcome.Suppressed(it) }
             val interp = Interpreter(ctx)
-            if (!interp.fires(ast)) return@mapNotNull null
+            if (!interp.fires(ast)) return@map RowOutcome.Passed
             val type = interp.firedType(ast) ?: MsgType.VALUE
             val text = rule.messages[locale]?.let { renderMessage(it, rule.group, ctx) } ?: ""
-            Message(rule.errorCode, rule.path, errorPath(rule, ctx), rule.severity, type, text)
+            RowOutcome.Fired(Message(rule.errorCode, rule.path, errorPath(rule, ctx), rule.severity, type, text))
         }
     }
+
+    /** The first referenced field whose present value is formally invalid for its kind, else null. */
+    private fun firstFormalError(refs: List<String>, ctx: EvalContext): Suppression? =
+        refs.firstNotNullOfOrNull { path ->
+            val raw = ctx.displayValue(path) ?: return@firstNotNullOfOrNull null
+            val kind = model.kinds[path] ?: return@firstNotNullOfOrNull null
+            formalError(kind, raw)?.let { Suppression(path, it) }
+        }
 
     /**
      * A rule is evaluated per row of its iteration scope — the **deepest repeatable group** that is an

@@ -79,12 +79,16 @@ data class Message(
  */
 enum class Verdict { FIRED, PASSED, SUPPRESSED }
 
+/** A field whose formally-invalid value suppressed a rule — the `rule test` `suppressedBy` entry. */
+data class Suppression(val field: String, val formalErrorCode: String)
+
 /** The result of [DmInterpreter.testRule] / [DmInterpreter.evalCandidate]. */
 data class RuleResult(
     val rulePath: String,
     val verdict: Verdict,
     val message: String = "",
     val type: MsgType? = null,
+    val suppressedBy: List<Suppression> = emptyList(),
 )
 
 /**
