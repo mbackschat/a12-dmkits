@@ -110,30 +110,51 @@ object PerfCatalog {
 
     private data class FuzzRule(val group: String, val code: String, val errorRel: String, val cond: String)
 
+    // The fuzz uses its OWN model (`fuzz.dm.json`, own e-commerce domain) — a deliberately DIVERSE shape the
+    // gate's perf model lacks: STRING + NUMBER (scale 0 and 2) + an ISO date + a NON-ISO (`dd.MM.yyyy`) date +
+    // BOOLEAN, nested two levels. The non-ISO date is the high-value bit: it exercises locale-variant date
+    // canonicalization under fuzz. Only supported operators, valid (referenced) error fields.
+    private val fuzzJson = RuntimeLaws.model("models/fuzz.dm.json")
+    private const val FZ_LINES = "/Cart/Lines"
+    private const val FZ_PARTS = "/Cart/Lines/Parts"
+    private val fuzzFields = listOf(
+        FieldDef("/Cart/Lines/ItemId", Kind.STRING),
+        FieldDef("/Cart/Lines/Qty", Kind.NUMBER, scale = 0),
+        FieldDef("/Cart/Lines/Price", Kind.NUMBER, scale = 2),
+        FieldDef("/Cart/Lines/OrderedOn", Kind.DATE, format = "yyyy-MM-dd"),
+        FieldDef("/Cart/Lines/DueBy", Kind.DATE, format = "dd.MM.yyyy"),
+        FieldDef("/Cart/Lines/Active", Kind.BOOLEAN),
+        FieldDef("/Cart/Lines/Parts/PartId", Kind.STRING),
+        FieldDef("/Cart/Lines/Parts/Weight", Kind.NUMBER, scale = 2),
+    )
+
     /**
-     * A MULTI-rule scenario over the perf model whose instance is **random** — random row counts per group
-     * AND random fill-or-empty (in-format) values, keyed off the `variant` as the RNG seed. The differential
-     * fuzz net (`InterpreterKernelFuzzTest`) sweeps seeds and asserts interp == kernel on each generated
-     * document. The rules use only supported operators with valid (referenced) error fields; the random
-     * fill/empty exercises requiredness (empty index fields → `mandatoryField`), aggregate over varying rows,
-     * and a cross-level reference — combinations the hand-written single-case `*DiffTest`s don't cover.
+     * A MULTI-rule scenario over the diverse [fuzzJson] model whose instance is **random** — random row counts
+     * per group AND random fill-or-empty (in-format) values, keyed off the `variant` as the RNG seed. The
+     * differential fuzz net (`InterpreterKernelFuzzTest`) sweeps seeds and asserts interp == kernel on each
+     * generated document. The rules use only supported operators with valid (referenced) error fields; the
+     * random fill/empty + diverse kinds exercise requiredness (empty index fields → `mandatoryField`), a
+     * per-row comparison, **date extractors over an ISO AND a non-ISO date field**, an aggregate over varying
+     * rows, a nested per-part rule, and a cross-level reference — combinations no hand-written `*DiffTest` covers.
      */
     fun fuzz(): PerfScenario {
         val rules = listOf(
-            FuzzRule(LINES, "HQ", "../Qty", "FieldFilled(Qty) And [Qty] > 50"),
-            FuzzRule("/Perf", "TP", "../Lines/Amount", "Sum(Lines*/Amount) > 1000"),
-            FuzzRule(SUBS, "HC", "../Cost", "FieldFilled(Cost) And [Cost] > 50"),
-            FuzzRule(SUBS, "XL", "../Cost", "FieldFilled(Cost) And [Cost] > [/Perf/Lines/Qty]"),
+            FuzzRule(FZ_LINES, "HQ", "../Qty", "FieldFilled(Qty) And [Qty] > 50"),
+            FuzzRule(FZ_LINES, "YO", "../OrderedOn", "FieldFilled(OrderedOn) And YearFromDate(OrderedOn) > 2020"),
+            FuzzRule(FZ_LINES, "YD", "../DueBy", "FieldFilled(DueBy) And YearFromDate(DueBy) > 2020"),
+            FuzzRule("/Cart", "TP", "../Lines/Price", "Sum(Lines*/Price) > 1000"),
+            FuzzRule(FZ_PARTS, "HW", "../Weight", "FieldFilled(Weight) And [Weight] > 50"),
+            FuzzRule(FZ_PARTS, "XL", "../Weight", "FieldFilled(Weight) And [Weight] > [/Cart/Lines/Qty]"),
         )
-        val kernelModel = rules.fold(perfJson) { m, r -> RuntimeLaws.withRule(m, r.group, "R_${r.code}", r.errorRel, r.code, r.cond) }
+        val kernelModel = rules.fold(fuzzJson) { m, r -> RuntimeLaws.withRule(m, r.group, "R_${r.code}", r.errorRel, r.code, r.cond) }
         val interpModel = ModelDef(
-            fields, rules.map { RuleDef("${it.group}/R_${it.code}", it.group, it.cond, it.code, it.errorRel) },
-            repeatableGroups = setOf(LINES, SUBS),
-            declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX),
-            indexFields = setOf(LINE_KEY, SUB_KEY),
+            fuzzFields, rules.map { RuleDef("${it.group}/R_${it.code}", it.group, it.cond, it.code, it.errorRel) },
+            repeatableGroups = setOf(FZ_LINES, FZ_PARTS),
+            declaredReps = mapOf(FZ_LINES to 1000, FZ_PARTS to 1000),
+            indexFields = setOf("/Cart/Lines/ItemId", "/Cart/Lines/Parts/PartId"),
         )
         val gen = SeedGenerator(interpModel)
-        val fuzzRows: RowsFn = { g, _, rnd -> when (g) { LINES -> rnd.nextInt(0, 7); SUBS -> rnd.nextInt(0, 5); else -> 0 } }
+        val fuzzRows: RowsFn = { g, _, rnd -> when (g) { FZ_LINES -> rnd.nextInt(0, 7); FZ_PARTS -> rnd.nextInt(0, 5); else -> 0 } }
         val fuzzValues = ValueStrategy { f, reps, rnd -> if (rnd.nextDouble() < 0.3) null else ValidValues.value(f, reps, rnd) }
         return PerfScenario("fuzz", kernelModel, interpModel) { sink, _, variant ->
             gen.populate(sink, seed = variant.toLong(), rowsOf = fuzzRows, value = fuzzValues)

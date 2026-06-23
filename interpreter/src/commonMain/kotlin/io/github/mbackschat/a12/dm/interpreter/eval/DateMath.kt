@@ -127,6 +127,19 @@ fun parseRangeToIso(raw: String, format: String, sep: String): Pair<String, Stri
     return start to end
 }
 
+/**
+ * Parse a single date value rendered in [format] (the kernel's `DateType.format`, e.g. `dd.MM.yyyy`,
+ * `MM/dd/yyyy`, or ISO `yyyy-MM-dd`) into the canonical ISO `yyyy-MM-dd`, or null when it doesn't match the
+ * format (a malformed date — the kernel's `datumFormatFalsch`). The interpreter stores every date as ISO so
+ * comparison stays lexicographic-chronological and the extractors parse directly; this is how a non-ISO
+ * field's rendered value is brought to that canonical form (locale-variant by reading the declared format).
+ */
+fun parseDateToIso(raw: String, format: String): String? {
+    val (frag, comps) = dateFragment(format) ?: return null
+    val m = Regex("^$frag$").matchEntire(raw) ?: return null
+    return buildIso(m.groupValues.drop(1), comps)
+}
+
 /** A regex fragment with one capture group per `y`/`M`/`d` run (exact width = run length) plus the component
  *  order; literals are escaped. Null if [format] carries no date component. */
 private fun dateFragment(format: String): Pair<String, List<Char>>? {

@@ -111,6 +111,10 @@ Surfaced by the **differential fuzz net** (`adapter.perf.InterpreterKernelFuzzTe
 
 Both ride `formalePruefung` (the sentinel rule path) like the other formal errors, and suppress a referencing author rule (branch-scoped). *(Locked: `adapter.laws.NumberSignFormalDiffTest` — interp vs kernel over a scale-2 and a scale-0 field; the precedence is part of the lock.)*
 
+## §3 supplement — a DATE value is stored and formal-checked in the field's DECLARED format, not ISO (runtime, 2026-06-23)
+
+Also surfaced by the **fuzz net**. A `DateType` field's value is the date **rendered in that field's `format`** — `OrderDate` (`yyyy-MM-dd`) holds `2024-06-15`, but `ApproxDate` (`dd.MM.yyyy`) holds `15.06.2024`. The formal check is **against the declared format**: a value in the field's own format is well-formed; a value in a *different* format is `datumFormatFalsch` (verified both ways — `ApproxDate = "2024-06-15"` → `datumFormatFalsch`; `OrderDate = "15.06.2024"` → `datumFormatFalsch`). So there is **no single canonical wire format** — a consumer must read each field's `format` to parse/validate its dates (the same is already known for `DateRangeType`, IF12). The interpreter canonicalizes every date to ISO internally via the declared format. *(Locked: `adapter.laws.PlainDateDiffTest`.)*
+
 ## §4 supplement — the "required" property and its two modes (runtime, 2026-06-06)
 
 The field-editor "required" checkbox is encoded in DM-JSON as `Field.requirednessConfig: {mode: …}` (kernel enum `IRequirednessConfig.Mode`). An unfilled required field raises the `mandatoryField` **formal error**, so the field is **"unknown"** (§3). The two modes — and the gotcha the BA docs flag — verified at runtime:

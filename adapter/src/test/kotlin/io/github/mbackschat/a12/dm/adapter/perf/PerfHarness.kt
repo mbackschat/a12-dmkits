@@ -94,7 +94,7 @@ object InterpreterPerfEngine : PerfEngine {
         return object : ReusableEngine {
             override val label = "interp"
             override fun instance(n: Int, variant: Int): RunInstance {
-                val doc = Document(model.kinds, model.declaredReps, model.unsignedFields, model.rangeConfig)
+                val doc = Document(model.kinds, model.declaredReps, model.unsignedFields, model.rangeConfig, model.dateFormats)
                 scenario.instance(doc.asSink(), n, variant)
                 return RunInstance { interp.validateFull(doc).map { it.code }.sorted() }
             }

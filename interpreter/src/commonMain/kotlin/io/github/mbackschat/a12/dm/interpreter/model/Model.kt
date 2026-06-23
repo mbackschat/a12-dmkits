@@ -127,6 +127,16 @@ data class ModelDef(
     val rangeConfig: Map<String, Pair<String, String>> = fields
         .filter { it.kind == Kind.DATE_RANGE && it.format != null && it.rangeSeparator != null }
         .associate { it.path to (it.format!! to it.rangeSeparator!!) }
+
+    /** Each [Kind.DATE] field's rendering format (its [FieldDef.format] or the ISO default) — the
+     *  [io.github.mbackschat.a12.dm.interpreter.eval.Document]'s format-aware date-canonicalization input, and
+     *  the formal-check's "valid for this format?" input ([dateFormatOf]). Locale-variant by reading the format. */
+    val dateFormats: Map<String, String> = fields
+        .filter { it.kind == Kind.DATE }
+        .associate { it.path to (it.format ?: "yyyy-MM-dd") }
+
+    /** The DATE field's declared format (ISO default), or null for a non-date field. */
+    fun dateFormatOf(path: String): String? = dateFormats[path]
     private val labelsByPath: Map<String, Map<String, String>> = fields.associate { it.path to it.labels }
     private val scalesByPath: Map<String, Int?> = fields.associate { it.path to it.scale }
     private val requiredByPath: Map<String, Requiredness> = fields.associate { it.path to it.required }

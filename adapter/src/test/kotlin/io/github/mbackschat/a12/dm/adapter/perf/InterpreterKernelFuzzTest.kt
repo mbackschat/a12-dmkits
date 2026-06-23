@@ -1,6 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
-import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
@@ -24,10 +24,20 @@ class InterpreterKernelFuzzTest {
         val scenario = PerfCatalog.fuzz()
         val interp = InterpreterPerfEngine.build(scenario)
         val kernel = KernelPerfEngine.build(scenario)
+        // Collect ALL divergences (not fail-fast) so one run shows every distinct mismatch to triage.
+        val mismatches = mutableListOf<String>()
         for (seed in 0 until SEEDS) {
             val i = interp.instance(n = 0, variant = seed).run()   // variant carries the RNG seed
             val k = kernel.instance(n = 0, variant = seed).run()
-            assertEquals(k, i, "interpreter diverged from the kernel on fuzz seed=$seed (reproducible)")
+            if (i != k) {
+                val kOnly = k.toSet() - i.toSet()
+                val iOnly = i.toSet() - k.toSet()
+                mismatches += "seed=$seed  kernel-only=$kOnly  interp-only=$iOnly"
+            }
+        }
+        assertTrue(mismatches.isEmpty()) {
+            "interpreter diverged from the kernel on ${mismatches.size}/$SEEDS fuzz seeds:\n" +
+                mismatches.take(15).joinToString("\n")
         }
     }
 

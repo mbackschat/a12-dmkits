@@ -38,6 +38,10 @@ class Document @JvmOverloads constructor(
     /** Each [Kind.DATE_RANGE] field's `(format, rangeSeparator)` — lets [resolveValue] canonicalize a rendered
      *  range value (`01.06.2021-30.06.2021`) to a [Val.Range] of ISO dates, format-aware (locale variants). */
     private val rangeConfig: Map<String, Pair<String, String>> = emptyMap(),
+    /** Each [Kind.DATE] field's rendering format (the kernel's `DateType.format`) — lets [resolveValue]
+     *  canonicalize a rendered date (`15.06.2024` for `dd.MM.yyyy`) to its ISO form, format-aware. Missing/ISO
+     *  fields stay ISO. */
+    private val dateFormats: Map<String, String> = emptyMap(),
 ) {
     private data class Placement(val path: String, val reps: List<Int>, val value: String?, val isGroup: Boolean)
 
@@ -219,17 +223,21 @@ class Document @JvmOverloads constructor(
 
     /**
      * A present raw value → typed [Val], format-aware. A [Kind.DATE_RANGE] value is parsed to a [Val.Range] of
-     * ISO dates via its field's `(format, separator)` ([rangeConfig]) — locale-variant by construction (the
-     * format is read, not hardcoded); a malformed range (or missing config) → [Val.Unknown]. Other kinds go
-     * through the plain [typedValue].
+     * ISO dates via its field's `(format, separator)` ([rangeConfig]); a [Kind.DATE] value is canonicalized to
+     * ISO via its field's `format` ([dateFormats], ISO default) — so a non-ISO `dd.MM.yyyy` field's `15.06.2024`
+     * becomes `2024-06-15` and the extractors/comparisons read it like any date. Both are locale-variant by
+     * construction (the format is read, not hardcoded); a malformed value → [Val.Unknown] (the referencing rule
+     * is suppressed, and the document-wide formal check reports it). Other kinds go through the plain [typedValue].
      */
     private fun resolveValue(path: String, raw: String): Val {
         val kind = kindOf(path)
-        if (kind == Kind.DATE_RANGE) {
-            val (format, sep) = rangeConfig[path] ?: return Val.Unknown
-            return parseRangeToIso(raw, format, sep)?.let { Val.Range(it.first, it.second) } ?: Val.Unknown
+        return when (kind) {
+            Kind.DATE_RANGE -> rangeConfig[path]?.let { (format, sep) ->
+                parseRangeToIso(raw, format, sep)?.let { Val.Range(it.first, it.second) }
+            } ?: Val.Unknown
+            Kind.DATE -> parseDateToIso(raw, dateFormats[path] ?: "yyyy-MM-dd")?.let { Val.Txt(it) } ?: Val.Unknown
+            else -> typedValue(kind, raw)
         }
-        return typedValue(kind, raw)
     }
 
     private companion object {
