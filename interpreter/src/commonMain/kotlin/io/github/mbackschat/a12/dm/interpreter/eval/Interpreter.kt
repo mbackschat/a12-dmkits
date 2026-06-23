@@ -79,7 +79,7 @@ class Interpreter(private val ctx: EvalContext, private val clock: EvalClock? = 
     //   And — omission wins (a fillable branch makes the whole error fillable);
     //   Or  — value wins  (a satisfied value branch convicts regardless of filling).
     private fun evalTyped(c: Cond): Res = when (c) {
-        is Cond.Cmp -> Res(evalCmp(c), leafType(c.left, c.right))
+        is Cond.Cmp -> Res(evalCmp(c), leafType(c.op, c.left, c.right))
         is Cond.Pred -> Res(evalPred(c), predType(c))
         // A pattern fires only on a PRESENT value (empty → not evaluated), so a fired pattern is always a
         // present-value error → VALUE (there is no "fill more to fix it" omission — the field is filled).
@@ -110,10 +110,46 @@ class Interpreter(private val ctx: EvalContext, private val clock: EvalClock? = 
         return if (trueBranchTypes.contains(MsgType.VALUE)) MsgType.VALUE else MsgType.OMISSION
     }
 
-    /** A comparison that fired on a substituted-empty field — or on a still-fillable starred aggregate
-     *  — is fillable → OMISSION; else VALUE. */
-    private fun leafType(left: Expr, right: Expr): MsgType =
-        if (leafOmission(left) || leafOmission(right)) MsgType.OMISSION else MsgType.VALUE
+    /** The directional fillability of a comparison operand — whether continuing to fill could grow / shrink
+     *  its value. An empty NUMBER field can always grow but shrinks only if SIGNED (kernel's
+     *  `kannGroesserWerden`/`kannKleinerWerden = hatVorzeichen`); a filled field or literal can't move. Every
+     *  other operand (star aggregate, function, arithmetic) keeps the prior *symmetric* omission notion — so
+     *  for those, `leafType` below reduces exactly to the old `leafOmission(left) || leafOmission(right)`. */
+    private fun fill(e: Expr): Fill = when (e) {
+        is Expr.Field -> if (ctx.filled(e.path)) Fill(false, false) else Fill(true, ctx.signed(e.path))
+        else -> leafOmission(e).let { Fill(it, it) }
+    }
+
+    private data class Fill(val canGrow: Boolean, val canShrink: Boolean)
+
+    /**
+     * VALUE vs OMISSION of a fired comparison: OMISSION (fillable) iff filling an operand *in the breaking
+     * direction* could clear it — the kernel's `BedingungsOperatorHelper.vergleiche` rule. GT/GE break when
+     * the left shrinks or the right grows; LT/LE the mirror; EQ when either can move at all; NE depends on
+     * which side is larger. So `[UnsignedEmpty] >= 0` is VALUE (an unsigned 0 can't shrink), while the same
+     * over a signed field is OMISSION (KERNEL-FINDINGS; `DirectionalPolarityDiffTest`).
+     */
+    private fun leafType(op: CmpOp, left: Expr, right: Expr): MsgType {
+        val l = fill(left)
+        val r = fill(right)
+        val fillable = when (op) {
+            CmpOp.GT, CmpOp.GE -> l.canShrink || r.canGrow
+            CmpOp.LT, CmpOp.LE -> l.canGrow || r.canShrink
+            CmpOp.EQ -> l.canGrow || l.canShrink || r.canGrow || r.canShrink
+            CmpOp.NE -> neFillable(left, right, l, r)
+        }
+        return if (fillable) MsgType.OMISSION else MsgType.VALUE
+    }
+
+    /** `!=` is directional on which operand is larger: if left < right it breaks when left grows or right
+     *  shrinks; if left > right, the mirror (kernel `getFehlerFuerNE`). The ordering is only meaningful when
+     *  the rule fires (both operands known); otherwise the type is discarded, so any answer is safe. */
+    private fun neFillable(left: Expr, right: Expr, l: Fill, r: Fill): Boolean {
+        val lv = evalExpr(left)
+        val rv = evalExpr(right)
+        if (lv is Val.Unknown || rv is Val.Unknown) return l.canGrow || l.canShrink || r.canGrow || r.canShrink
+        return if (ORDER.compare(lv, rv) < 0) l.canGrow || r.canShrink else l.canShrink || r.canGrow
+    }
 
     /**
      * The value-vs-omission polarity of a fired predicate. Non-quantifier predicates carry a static

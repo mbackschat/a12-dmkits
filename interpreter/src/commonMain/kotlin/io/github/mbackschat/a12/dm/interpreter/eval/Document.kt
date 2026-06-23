@@ -24,6 +24,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.ValuedField
 class Document(
     private val kinds: Map<String, Kind>,
     private val declaredReps: Map<String, Int> = emptyMap(),
+    /** NUMBER fields that are *unsigned* (the kernel's `hatVorzeichen == false` — a non-negative `minValue`);
+     *  drives the directional empty-operand polarity ([EvalContext.signed]). Default: all fields signed. */
+    private val unsignedFields: Set<String> = emptySet(),
 ) {
     private data class Placement(val path: String, val reps: List<Int>, val value: String?, val isGroup: Boolean)
 
@@ -96,6 +99,8 @@ class Document(
 
         override fun filled(path: String): Boolean =
             valueAt(path, repsFor(path, group, rowReps))?.value != null
+
+        override fun signed(path: String): Boolean = path !in unsignedFields
 
         /** A group is filled if any valued field beneath it is in this row's scope (shared-prefix indices match). */
         override fun groupFilled(groupPath: String): Boolean =

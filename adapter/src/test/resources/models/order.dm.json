@@ -72,6 +72,20 @@
               },
               {
                 "type": "Field",
+                "id": "/Order/StockOnHand",
+                "name": "StockOnHand",
+                "Field": {
+                  "fieldType": {
+                    "type": "NumberType",
+                    "NumberType": {
+                      "maxFractionalDigits": 0,
+                      "positivesOnly": true
+                    }
+                  }
+                }
+              },
+              {
+                "type": "Field",
                 "id": "/Order/UnitPrice",
                 "name": "UnitPrice",
                 "Field": {

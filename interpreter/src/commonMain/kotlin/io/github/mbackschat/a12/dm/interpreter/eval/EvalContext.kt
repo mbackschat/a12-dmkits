@@ -19,6 +19,15 @@ interface EvalContext {
     fun filled(path: String): Boolean
 
     /**
+     * Whether a NUMBER field is *signed* (the kernel's `hatVorzeichen` — it permits negative values). This
+     * drives the **directional** value-vs-omission typing: an empty number can always be filled bigger
+     * (`kannGroesserWerden`), but can be filled smaller only if signed (`kannKleinerWerden = hatVorzeichen`,
+     * kernel `RuntimeController.feldWertAlsZahl`). Defaults to signed — the common case (a number field with
+     * no non-negative `minValue`); the general [Document] answers it from the model's unsigned-field set.
+     */
+    fun signed(path: String): Boolean = true
+
+    /**
      * Whether a GROUP is filled in this row — i.e. at least one field under [groupPath] carries a value
      * (for GroupFilled / GroupNotFilled). The general [Document] resolves this against the row's instance;
      * the single-row / repetition spike contexts don't model group structure and don't support it (they
