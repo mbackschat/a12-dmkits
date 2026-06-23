@@ -142,6 +142,13 @@ class Document @JvmOverloads constructor(
 
     private fun valueAt(path: String, reps: List<Int>): Placement? = index().valueByKey[path to reps]
 
+    /**
+     * Whether the field instance at [path]/[reps] carries a value — the requiredness check for an
+     * **unconditionally** required field ([DmInterpreter]), which the kernel flags at the canonical all-1s
+     * instance even on an otherwise un-instantiated document (so it can't go through [contextsFor]).
+     */
+    fun filledAt(path: String, reps: List<Int>): Boolean = valueAt(path, reps)?.value != null
+
     private inner class RowContext(
         private val group: String,
         private val rowReps: List<Int>,
@@ -164,9 +171,21 @@ class Document @JvmOverloads constructor(
 
         override fun signed(path: String): Boolean = path !in unsignedFields
 
-        /** A group is filled if any valued field beneath it is in this row's scope (shared-prefix indices match). */
+        /**
+         * Whether [groupPath] is filled in this row — matching the kernel's `GroupFillCache` exactly, which
+         * splits on repeatability:
+         * - a **repeatable** group is filled once its row is **instantiated** (creating the row is itself
+         *   content — the row index is meaningful); a created-but-empty repeat row counts. A filled descendant
+         *   also instantiates the row (via `autoGroup`), so "the row exists" subsumes "a descendant is filled".
+         * - a **non-repeatable** group is filled only when **at least one descendant field is filled** — its
+         *   mere structural presence is not content.
+         *
+         * (KERNEL-FINDINGS §4/§9; this is the resolution of the "GroupFilled on an empty created repeat row"
+         * edge. Requiredness rides on the same notion: `GroupFilled(relativeTo)`.)
+         */
         override fun groupFilled(groupPath: String): Boolean =
-            index().valued.any { p -> p.path.startsWith("$groupPath/") && inScope(p) }
+            if (groupPath in declaredReps) repsFor(groupPath, group, rowReps) in rowsOf(groupPath)
+            else index().valued.any { p -> p.path.startsWith("$groupPath/") && inScope(p) }
 
         override fun star(path: String): List<Val> =
             starRows(path).mapNotNull { reps -> valueAt(path, reps)?.value?.let { typedValue(kindOf(path), it) } }

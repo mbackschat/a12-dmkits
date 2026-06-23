@@ -19,13 +19,13 @@ import org.junit.jupiter.api.Test
  * interp/kernel ratio. Group-heavy by design: a per-row rule over N Lines (B1) and a per-sub rule over N·M
  * nested Sub rows (B3).
  *
- * **Fairness caveat — read the ratio with care.** This is NOT apples-to-apples: the kernel's `validateFull`
- * does strictly MORE per call than the interpreter currently does — requiredness (`mandatoryField`),
- * formal-checking *every* field, building richer `IMessage` pointers — and a 1-rule model overweights that
- * fixed pipeline overhead. So "interp faster" partly means "interp does less (for now)". The honest read:
- * the interpreter is **competitive-to-faster on these scenarios**, not "Nx faster" as a speed verdict; a true
- * comparison needs feature parity (requiredness etc.). The bounds are **generous gates** (catch an O(N²)
- * regression, tolerate CI variance), not SLAs. Pure engine, no CLI.
+ * **Fairness caveat — read the ratio with care.** This is still NOT fully apples-to-apples: the interpreter
+ * now matches the kernel on requiredness, formal-checking, and rich messages (the harness enables index-field
+ * requiredness for parity), but the kernel's `validateFull` still validates dimensions the interpreter does
+ * not yet model (uniqueness/`RepetitionNotUnique`, enum/date-range value checks) and runs a codegen-then-Groovy
+ * pipeline a 1-rule model overweights. So "interp faster" still partly means "interp does less". The honest
+ * read: the interpreter is **competitive-to-faster on these scenarios**, not "Nx faster" as a speed verdict.
+ * The bounds are **generous gates** (catch an O(N²) regression, tolerate CI variance), not SLAs. Pure engine, no CLI.
  */
 class AgainstKernelPerfTest {
 
@@ -44,8 +44,11 @@ class AgainstKernelPerfTest {
     private val fields = kinds.map { (p, k) -> FieldDef(p, k) }
     private val repeatable = setOf("/Perf/Lines", "/Perf/Lines/Subs")
 
+    // indexFields mirrors perf.dm.json (LineKey/SubKey) so the interpreter does the SAME requiredness scan as
+    // the kernel — a fairer comparison. The benchmarks fill the keys, so no `mandatoryField` actually fires.
     private fun interp(cond: String, group: String, code: String, errorRel: String) =
-        DmInterpreter(ModelDef(fields, listOf(RuleDef("$group/R", group, cond, code, errorRel)), repeatableGroups = repeatable))
+        DmInterpreter(ModelDef(fields, listOf(RuleDef("$group/R", group, cond, code, errorRel)),
+            repeatableGroups = repeatable, indexFields = setOf(lineKey, subKey)))
 
     /** Median wall-clock (ms) of [block] over [iters] timed runs after [warmup] discarded runs. The warmup
      *  must be generous: the kernel's per-call time DECREASES monotonically over the first ~dozen calls (JVM
@@ -60,10 +63,10 @@ class AgainstKernelPerfTest {
     private companion object {
         const val WARMUP = 15
         const val ITERS = 10
-        // The ratio is NOT a fair apples-to-apples speed comparison: the kernel's validateFull does strictly
-        // MORE per call (requiredness/`mandatoryField`, formal-checking every field, richer IMessage pointers)
-        // that the interpreter does not yet do, and a 1-rule model overweights that fixed pipeline overhead.
-        const val CAVEAT = "(NOT apples-to-apples: kernel does more — requiredness/full-formal/richer messages)"
+        // Still not a fair apples-to-apples speed comparison: the kernel's validateFull validates dimensions the
+        // interpreter does not yet model (uniqueness/RepetitionNotUnique, enum/date-range checks) and runs a
+        // codegen-then-Groovy pipeline a 1-rule model overweights. (Requiredness/formal/messages are now matched.)
+        const val CAVEAT = "(NOT apples-to-apples: kernel still validates more — uniqueness/enum/date-range + codegen pipeline)"
     }
 
     @Test
@@ -103,8 +106,8 @@ class AgainstKernelPerfTest {
         val kDoc = RuntimeLaws.doc().group("/Perf", 1)
         val iDoc = Document(kinds, mapOf("/Perf/Lines" to lines, "/Perf/Lines/Subs" to subsPer))
         // Fill every field (incl. the index fields LineKey/SubKey, and Qty/Amount) so only the injected rule
-        // can fire — an unfilled mandatory/index field would make the kernel emit `mandatoryField`, a
-        // requiredness-validation dimension the interpreter does not yet model (recorded as a known gap).
+        // can fire — an unfilled index field would make BOTH the kernel and the interpreter emit `mandatoryField`
+        // (the index field is auto-required); filling them keeps the benchmark to the one injected rule.
         for (i in 1..lines) {
             kDoc.group("/Perf/Lines", 1, i).field(lineKey, "L$i", 1, i, 1)
                 .field(qty, "1", 1, i, 1).field(amount, "1", 1, i, 1)

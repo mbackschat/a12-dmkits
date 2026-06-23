@@ -24,6 +24,19 @@ data class EvalClock(val today: String)
 /** Value-vs-omission polarity of a fired message (kernel `IMessage.MessageType`). */
 enum class MsgType { VALUE, OMISSION }
 
+/**
+ * A field's requiredness — the kernel's `IRequirednessConfig.Mode`. A required-but-empty field raises
+ * the `mandatoryField` error and becomes **"unknown"** (KERNEL-FINDINGS §4): rules referencing it see
+ * `Val.Unknown`, so the 3VL propagates it (a comparison goes unknown, but `… Or <true>` still fires). The
+ * two modes differ on *when* the requirement applies (verified — the gotcha):
+ * - [ABSOLUTE] (`absoluteOrRelativeToNextRepAncestor`): a field with **no** repeatable ancestor is
+ *   **always** required (even on an empty document); under a repeatable ancestor it is required once that
+ *   ancestor's row is instantiated (`GroupFilled(<lowestRepeatableAncestor>)`).
+ * - [RELATIVE_TO_PARENT]: required only when the **immediate parent group is filled** — for a
+ *   non-repeatable parent that means a descendant is filled; for a repeatable parent, the row exists.
+ */
+enum class Requiredness { NOT_REQUIRED, ABSOLUTE, RELATIVE_TO_PARENT }
+
 /** Rule/finding severity — mirrors the kernel's ERROR / WARNING. */
 enum class Severity { ERROR, WARNING }
 
@@ -48,6 +61,9 @@ data class FieldDef(
      *  is the unsigned trigger). Drives the directional empty-operand polarity ([ModelDef.unsignedFields] →
      *  the [io.github.mbackschat.a12.dm.interpreter.eval.Document]'s `unsignedFields` → `EvalContext.signed`). */
     val signed: Boolean = true,
+    /** The field's explicit requiredness (the kernel's `requirednessConfig.mode`). Index fields are
+     *  *additionally* auto-required ([ModelDef.indexFields]); see [ModelDef.requirednessOf]. */
+    val required: Requiredness = Requiredness.NOT_REQUIRED,
 )
 
 /**
@@ -89,6 +105,10 @@ data class ModelDef(
     val computations: List<ComputationDef> = emptyList(),
     val repeatableGroups: Set<String> = emptySet(),
     val declaredReps: Map<String, Int> = emptyMap(),
+    /** A repeatable group's index-field paths (the kernel's `indexFieldName`). The kernel auto-requires an
+     *  index field (`relativeToParent` semantics) on top of its explicit [FieldDef.required]; [requirednessOf]
+     *  folds that in. */
+    val indexFields: Set<String> = emptySet(),
 ) {
     val kinds: Map<String, Kind> = fields.associate { it.path to it.kind }
     val repeatable: Set<String> = repeatableGroups + declaredReps.keys
@@ -98,6 +118,23 @@ data class ModelDef(
     val unsignedFields: Set<String> = fields.filter { !it.signed }.map { it.path }.toSet()
     private val labelsByPath: Map<String, Map<String, String>> = fields.associate { it.path to it.labels }
     private val scalesByPath: Map<String, Int?> = fields.associate { it.path to it.scale }
+    private val requiredByPath: Map<String, Requiredness> = fields.associate { it.path to it.required }
+
+    /**
+     * The **effective** requiredness of the field at [path] — its explicit [FieldDef.required] if set, else
+     * [Requiredness.RELATIVE_TO_PARENT] for an [indexFields] member (the kernel auto-generates the index
+     * field's mandatory rule with `relativeTo = parent`), else [Requiredness.NOT_REQUIRED].
+     */
+    fun requirednessOf(path: String): Requiredness {
+        val explicit = requiredByPath[path] ?: Requiredness.NOT_REQUIRED
+        return if (explicit != Requiredness.NOT_REQUIRED) explicit
+        else if (path in indexFields) Requiredness.RELATIVE_TO_PARENT
+        else Requiredness.NOT_REQUIRED
+    }
+
+    /** Every field path that is required (explicitly or as an index field) — the `mandatoryField` candidates. */
+    val requiredFieldPaths: List<String> =
+        fields.map { it.path }.filter { requirednessOf(it) != Requiredness.NOT_REQUIRED }
 
     /** The NUMBER field's declared scale (max fractional digits), or null when unknown / not a number. */
     fun scaleOf(path: String): Int? = scalesByPath[path]

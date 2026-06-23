@@ -15,6 +15,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Document;
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef;
 import io.github.mbackschat.a12.dm.interpreter.model.Kind;
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef;
+import io.github.mbackschat.a12.dm.interpreter.model.Requiredness;
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef;
 import io.github.mbackschat.a12.dm.interpreter.model.Severity;
 
@@ -48,23 +49,31 @@ public final class InterpreterModelLoader {
         List<ComputationDef> comps = new ArrayList<>();
         Set<String> repeatable = new LinkedHashSet<>();
         Map<String, Integer> declaredReps = new LinkedHashMap<>();
-        walk(root, fields, rules, comps, repeatable, declaredReps);
-        return new ModelDef(fields, rules, comps, repeatable, declaredReps);
+        Set<String> indexFields = new LinkedHashSet<>();
+        walk(root, fields, rules, comps, repeatable, declaredReps, indexFields);
+        return new ModelDef(fields, rules, comps, repeatable, declaredReps, indexFields);
     }
 
     private static void walk(JsonNode node, List<FieldDef> fields, List<RuleDef> rules,
-            List<ComputationDef> comps, Set<String> repeatable, Map<String, Integer> declaredReps) {
+            List<ComputationDef> comps, Set<String> repeatable, Map<String, Integer> declaredReps,
+            Set<String> indexFields) {
         if (node.isObject()) {
             String type = node.path("type").asText(null);
             String id = node.path("id").asText(null);
             if (type != null && id != null) {
                 switch (type) {
-                    case "Field" -> fields.add(new FieldDef(id, kindOf(node), localizedTexts(node.path("labels")), scaleOf(node), signed(node)));
+                    case "Field" -> fields.add(new FieldDef(id, kindOf(node), localizedTexts(node.path("labels")),
+                            scaleOf(node), signed(node), requirednessOf(node)));
                     case "Group" -> {
                         JsonNode g = node.path("Group");
                         if (g.path("repeatability").asInt(0) > 1) {
                             repeatable.add(id);
                             declaredReps.put(id, g.get("repeatability").asInt());
+                        }
+                        // The group's index field (the kernel auto-requires it) — resolve its full path.
+                        String indexField = g.path("indexFieldName").asText(null);
+                        if (indexField != null && !indexField.isEmpty()) {
+                            indexFields.add(id + "/" + indexField);
                         }
                     }
                     case "Rule" -> {
@@ -82,10 +91,19 @@ public final class InterpreterModelLoader {
                     default -> { /* header / other nodes carry no rule surface */ }
                 }
             }
-            node.properties().forEach(e -> walk(e.getValue(), fields, rules, comps, repeatable, declaredReps));
+            node.properties().forEach(e -> walk(e.getValue(), fields, rules, comps, repeatable, declaredReps, indexFields));
         } else if (node.isArray()) {
-            node.forEach(c -> walk(c, fields, rules, comps, repeatable, declaredReps));
+            node.forEach(c -> walk(c, fields, rules, comps, repeatable, declaredReps, indexFields));
         }
+    }
+
+    /** A field's requiredness ({@code Field.requirednessConfig.mode}); absent / {@code notRequired} → not required. */
+    private static Requiredness requirednessOf(JsonNode fieldNode) {
+        return switch (fieldNode.path("Field").path("requirednessConfig").path("mode").asText("")) {
+            case "absoluteOrRelativeToNextRepAncestor" -> Requiredness.ABSOLUTE;
+            case "relativeToParent" -> Requiredness.RELATIVE_TO_PARENT;
+            default -> Requiredness.NOT_REQUIRED;
+        };
     }
 
     /** Build a {@link Document} from a nested fields map (the {@code DocInstance.readFields} output). */

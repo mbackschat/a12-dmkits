@@ -22,7 +22,19 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
  *
  * A rule FIRES when its error condition evaluates to TRUE.
  */
-class Interpreter(private val ctx: EvalContext, private val clock: EvalClock? = null) {
+class Interpreter(
+    private val ctx: EvalContext,
+    private val clock: EvalClock? = null,
+    /**
+     * Whether a referenced field is **formally invalid** in this context — a present malformed value (a
+     * format error) OR a required-but-empty field (a `mandatoryField` error). Such a field resolves to
+     * [Val.Unknown], so the kernel's three-valued logic propagates it: a comparison goes UNKNOWN (does not
+     * fire), but `… Or <true>` still fires and `… And <true>` stays UNKNOWN — the kernel's operand-level
+     * "not check-relevant" behavior, NOT a whole-rule skip. Defaults to "always valid" (the `compute` path,
+     * which has no formal-error increment yet). [DmInterpreter] supplies it from the model + context.
+     */
+    private val invalid: (String) -> Boolean = { false },
+) {
 
     fun fires(cond: Cond): Boolean = eval(cond) == Tri.TRUE
 
@@ -282,7 +294,7 @@ class Interpreter(private val ctx: EvalContext, private val clock: EvalClock? = 
         is Expr.NumLit -> Val.Num(e.v)
         is Expr.StrLit -> Val.Txt(e.v)
         is Expr.BoolLit -> Val.Bool(e.v)
-        is Expr.Field -> ctx.field(e.path)
+        is Expr.Field -> if (invalid(e.path)) Val.Unknown else ctx.field(e.path)
         is Expr.Star -> error("a starred path must sit inside an aggregate (Sum/MaxValue/…)")
         is Expr.Func -> evalFunc(e)
         is Expr.Arith -> evalArith(e)

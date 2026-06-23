@@ -93,9 +93,9 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 **Is it fair? No — read the ratio with care (this corrects an earlier overstated "≈14× faster").** Two findings from scrutinizing it:
 1. **Warmup mattered:** the kernel's per-call time *decreases monotonically* over the first ~dozen calls (JVM JIT warming the Groovy-compiled rules — **not** per-call codegen, which is cached). 2 warmups overstated the kernel (188→111 ms warm). Fixed: 15 warmups. The ratio held (~0.08) once warm.
-2. **Not apples-to-apples (the real caveat):** the kernel's `validateFull` does strictly **more** per call than the interpreter currently does — **requiredness** (`mandatoryField`), formal-checking *every* field, richer `IMessage` pointers — and a **1-rule model overweights** that fixed pipeline overhead. So "interp faster" partly means "interp does less (for now)".
+2. **Not apples-to-apples (the real caveat):** the interpreter now matches the kernel on **requiredness** (`mandatoryField` — the harness enables index-field requiredness for parity), formal-checking, and rich messages, but the kernel's `validateFull` still validates dimensions the interpreter does not yet model (**uniqueness**/`RepetitionNotUnique`, **enum/date-range** value checks) and runs a **codegen-then-Groovy pipeline** a **1-rule model overweights**. So "interp faster" still partly means "interp does less".
 
-**Honest read:** the interpreter is **competitive-to-faster** on these scenarios (plausible — direct Kotlin vs Groovy reflection), **not** "Nx faster" as a speed verdict. A true comparison needs feature parity (requiredness etc.). Larger N (100k) and more group shapes (B4/B5) still to add.
+**Honest read:** the interpreter is **competitive-to-faster** on these scenarios (plausible — direct Kotlin vs Groovy reflection), **not** "Nx faster" as a speed verdict. A true comparison needs full feature parity. Larger N (100k) and more group shapes (B4/B5) still to add.
 
 **2026-06-23 — first slice: pure-engine real-`Document` scaling** (`interpreter/commonTest/DocumentScaleTest`, the honest counterpart of the RepDoc benchmark; kernel-free, JVM+JS). 3000 `/Perf/Lines` rows:
 

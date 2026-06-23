@@ -67,6 +67,25 @@ class SuppressionDiffTest {
             "a suppressed rule must not fire in validateFull")
     }
 
+    @Test
+    fun formalErrorIsOperandUnknownNotWholeRuleSkip() {
+        // A formally-invalid operand resolves to Val.Unknown and PROPAGATES through the 3VL — it does NOT
+        // skip the whole rule. So `<malformed-comparison> Or <true>` STILL fires (unknown Or true = true),
+        // alongside the format error. (The mirror of the requiredness Or case; verified against the kernel.)
+        val q = "/Order/Quantity"
+        val cond = "[Quantity] < 100 Or FieldFilled(CustomerName)"
+        val kModel = RuntimeLaws.withRule(order, "/Order", "Cap", "../Quantity", "QTY_LOW", cond)
+        val numDef = ModelDef(listOf(FieldDef(q, Kind.NUMBER), FieldDef("/Order/CustomerName", Kind.STRING)),
+            listOf(RuleDef("/Order/Cap", "/Order", cond, "QTY_LOW", "../Quantity")))
+
+        val kDoc = RuntimeLaws.doc().group("/Order", 1).field("/Order/CustomerName", "Acme", 1, 1).field(q, "abc", 1, 1)
+        val iDoc = Document(numDef.kinds).field("/Order/CustomerName", "Acme", 1, 1).field(q, "abc", 1, 1)
+        val kernel = RuntimeLaws.messages(kModel, kDoc).map { it.code() }.filter { !it.startsWith("MVK_") }.toSortedSet()
+        val interp = DmInterpreter(numDef).validateFull(iDoc).map { it.code }.toSortedSet()
+        assertEquals(kernel, interp, "format-invalid operand in an Or with a true branch → rule still fires")
+        assertTrue(interp.contains("QTY_LOW") && interp.contains("zahlHatUngueltigeZeichen"), "both fire: $interp")
+    }
+
     private companion object {
         const val OD = "/Order/OrderDate"
         const val DD = "/Order/DeliveryDate"
