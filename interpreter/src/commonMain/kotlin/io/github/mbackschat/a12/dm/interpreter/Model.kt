@@ -10,8 +10,14 @@ package io.github.mbackschat.a12.dm.interpreter
 /** Rule/finding severity — mirrors the kernel's ERROR / WARNING. */
 enum class Severity { ERROR, WARNING }
 
-/** A field and its [Kind] — the metadata bridge that drives the empty-value asymmetry + (later) formal errors. */
-data class FieldDef(val path: String, val kind: Kind)
+/**
+ * A field, its [Kind] (the metadata bridge that drives the empty-value asymmetry + formal errors), and its
+ * localized display [labels] (locale → label) — the source for the `$field$` display-name placeholder. The
+ * kernel resolves `$field$` to the field's label for the locale, falling back to the field NAME when no
+ * label is defined (a runtime `ILabelProvider` concern — see [ModelDef.labelOf] / KERNEL-FINDINGS §3). Our
+ * corpus (and every shipped A12 model surveyed) carries no field labels, so `$field$` resolves to the name.
+ */
+data class FieldDef(val path: String, val kind: Kind, val labels: Map<String, String> = emptyMap())
 
 /**
  * One rule: an *error* condition (it FIRES when the condition holds — the polarity law) evaluated once
@@ -55,6 +61,17 @@ data class ModelDef(
 ) {
     val kinds: Map<String, Kind> = fields.associate { it.path to it.kind }
     val repeatable: Set<String> = repeatableGroups + declaredReps.keys
+    private val labelsByPath: Map<String, Map<String, String>> = fields.associate { it.path to it.labels }
+
+    /**
+     * The display string for the `$field$` placeholder: the field's [FieldDef.labels] entry for [locale]
+     * when defined (and non-blank), else the field NAME — the last path segment. This mirrors the kernel's
+     * `identifierToString` under an `ILabelProvider` that returns the model label or the field name (the
+     * dmtool/`RuntimeLaws` provider does exactly this); with no label the kernel and the interpreter both
+     * yield the name. (A blank label falls through to the name, matching the kernel's empty-text handling.)
+     */
+    fun labelOf(path: String, locale: String): String =
+        labelsByPath[path]?.get(locale)?.takeIf { it.isNotBlank() } ?: path.trimEnd('/').substringAfterLast('/')
 }
 
 /**

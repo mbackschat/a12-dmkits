@@ -109,7 +109,7 @@ class DmInterpreter(private val model: ModelDef) {
             val interp = Interpreter(ctx)
             if (!interp.fires(ast)) return@map RowOutcome.Passed
             val type = interp.firedType(ast) ?: MsgType.VALUE
-            val text = rule.messages[locale]?.let { renderMessage(it, rule.group, ctx) } ?: ""
+            val text = rule.messages[locale]?.let { renderMessage(it, rule.group, ctx) { p -> model.labelOf(p, locale) } } ?: ""
             val errorPath = resolveErrorPath(rule)
             val referenced = refs.map { formatPointer(it, ctx.repsOf(it)) }
             // refOmissionErrorResponsible: for an OMISSION error the kernel attaches ALL the operands the

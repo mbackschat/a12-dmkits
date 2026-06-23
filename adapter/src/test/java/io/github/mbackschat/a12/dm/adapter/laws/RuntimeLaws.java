@@ -363,7 +363,15 @@ final class RuntimeLaws {
         return new IDocumentDynamicServiceConfig() {
             public IModelCodeCache getCache() { return cache; }
             public Optional<String> getVariant() { return Optional.empty(); }
-            public Optional<ILabelProvider> getLabelProvider() { return Optional.empty(); }
+            // The $field$ display-name resolver — label-for-locale (non-blank) else the field name. Mirrors
+            // KernelAdapter's provider, so a differential compares the interpreter's render to the kernel's
+            // label-aware render (not the path+index fallback the kernel emits with no provider).
+            public Optional<ILabelProvider> getLabelProvider() {
+                return Optional.of((field, locale) -> {
+                    String label = field.getLabel().get(locale);
+                    return Optional.of(label != null && !label.isBlank() ? label : field.getName());
+                });
+            }
             public Optional<IDocumentModelIdProvider> getModelIdProvider() { return Optional.empty(); }
         };
     }

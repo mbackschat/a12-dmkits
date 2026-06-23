@@ -780,10 +780,23 @@ public final class KernelAdapter {
         return new IDocumentDynamicServiceConfig() {
             public IModelCodeCache getCache() { return cache; }
             public Optional<String> getVariant() { return Optional.empty(); }
-            public Optional<ILabelProvider> getLabelProvider() { return Optional.empty(); }
+            public Optional<ILabelProvider> getLabelProvider() { return Optional.of(LABEL_OR_NAME); }
             public Optional<IDocumentModelIdProvider> getModelIdProvider() { return Optional.empty(); }
         };
     }
+
+    /**
+     * The {@code $field$} display-name resolver: a field's model label for the locale when defined (and
+     * non-blank), else the field NAME. The kernel REQUIRES the caller to supply this (the javadoc on
+     * {@link ILabelProvider} is explicit); with none configured the kernel falls back to a path+index
+     * debug string ({@code /Order/Quantity/1.1}) — a leak in the same class as the pointer {@code toString}
+     * we already render cleanly. Wiring it makes {@code --kernel} match the interpreter's
+     * {@code ModelDef.labelOf} (both yield the name for our label-free corpus). KERNEL-FINDINGS §3.
+     */
+    private static final ILabelProvider LABEL_OR_NAME = (field, locale) -> {
+        String label = field.getLabel().get(locale);
+        return Optional.of(label != null && !label.isBlank() ? label : field.getName());
+    };
 
     private static String modelId(String modelJson) {
         Matcher m = HEADER_ID.matcher(modelJson);

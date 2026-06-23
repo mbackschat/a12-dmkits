@@ -59,7 +59,7 @@ public final class InterpreterModelLoader {
             String id = node.path("id").asText(null);
             if (type != null && id != null) {
                 switch (type) {
-                    case "Field" -> fields.add(new FieldDef(id, kindOf(node)));
+                    case "Field" -> fields.add(new FieldDef(id, kindOf(node), localizedTexts(node.path("labels"))));
                     case "Group" -> {
                         JsonNode g = node.path("Group");
                         if (g.path("repeatability").asInt(0) > 1) {
@@ -71,7 +71,7 @@ public final class InterpreterModelLoader {
                         JsonNode r = node.path("Rule");
                         rules.add(new RuleDef(id, parent(id), r.path("errorCondition").asText(),
                                 r.path("errorCode").asText(), r.path("errorEntityRelPath").asText(),
-                                Severity.valueOf(r.path("severity").asText("ERROR")), messages(r.path("errorMessage"))));
+                                Severity.valueOf(r.path("severity").asText("ERROR")), localizedTexts(r.path("errorMessage"))));
                     }
                     case "Computation" -> {
                         JsonNode c = node.path("Computation");
@@ -134,7 +134,9 @@ public final class InterpreterModelLoader {
         };
     }
 
-    private static Map<String, String> messages(JsonNode arr) {
+    /** Read a {@code [{locale, text}]} array into a locale→text map — the shape shared by a rule's
+     *  {@code errorMessage} and a field's {@code labels} (the {@code $field$} display-name source). */
+    private static Map<String, String> localizedTexts(JsonNode arr) {
         Map<String, String> m = new LinkedHashMap<>();
         if (arr.isArray()) {
             arr.forEach(e -> m.put(e.path("locale").asText(), e.path("text").asText()));
