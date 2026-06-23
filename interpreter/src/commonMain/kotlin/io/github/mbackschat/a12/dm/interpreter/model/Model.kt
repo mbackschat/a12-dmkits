@@ -137,8 +137,11 @@ data class ModelDef(
 
     /** The DATE field's declared format (ISO default), or null for a non-date field. */
     fun dateFormatOf(path: String): String? = dateFormats[path]
+
+    /** Each NUMBER field's scale (`maxFractionalDigits`) — the formal-check input (decimal-places errors); the
+     *  [io.github.mbackschat.a12.dm.interpreter.eval.Document] needs it to gate a formally-invalid value to Unknown. */
+    val scales: Map<String, Int?> = fields.associate { it.path to it.scale }
     private val labelsByPath: Map<String, Map<String, String>> = fields.associate { it.path to it.labels }
-    private val scalesByPath: Map<String, Int?> = fields.associate { it.path to it.scale }
     private val requiredByPath: Map<String, Requiredness> = fields.associate { it.path to it.required }
 
     /**
@@ -158,7 +161,7 @@ data class ModelDef(
         fields.map { it.path }.filter { requirednessOf(it) != Requiredness.NOT_REQUIRED }
 
     /** The NUMBER field's declared scale (max fractional digits), or null when unknown / not a number. */
-    fun scaleOf(path: String): Int? = scalesByPath[path]
+    fun scaleOf(path: String): Int? = scales[path]
 
     /**
      * The display string for the `$field$` placeholder: the field's [FieldDef.labels] entry for [locale]

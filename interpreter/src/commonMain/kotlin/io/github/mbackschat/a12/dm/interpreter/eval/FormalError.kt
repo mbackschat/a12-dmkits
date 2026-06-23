@@ -30,6 +30,18 @@ const val MANDATORY_FIELD = "mandatoryField"
 fun mandatoryFieldText(locale: String): String =
     if (locale.startsWith("de")) "Pflichtfeld ist nicht ausgefüllt." else "A required field is not filled."
 
+/**
+ * The kernel's error code for a **duplicate index-field value** across repeatable rows (KERNEL-FINDINGS —
+ * index-field uniqueness). The kernel auto-checks a repeatable group's `indexFieldName`: every row whose
+ * (non-empty) index value duplicates another row's in the same parent scope is flagged. A VALUE error — you
+ * fix it by changing a value, not by filling (an empty index is a requiredness concern → [MANDATORY_FIELD]).
+ */
+const val UNIQUE_INDEX = "uniqueIndex"
+
+/** Our OWN end-user text for the duplicate-index error (Option-A, like [mandatoryFieldText]). */
+fun uniqueIndexText(locale: String): String =
+    if (locale.startsWith("de")) "Der Indexwert ist nicht eindeutig." else "The index value is not unique."
+
 /** The formal-error checks the interpreter performs, each with the kernel's verbatim [id]. */
 enum class FormalErrorCode(val id: String) {
     /** A DATE value that is not `YYYY-MM-DD`. */

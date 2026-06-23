@@ -61,7 +61,7 @@ class AggMalformedDiffTest {
         declaredReps = mapOf("/Cart/Lines" to 1000), indexFields = setOf(ITEM),
     )
 
-    private fun doc(def: ModelDef) = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats)
+    private fun doc(def: ModelDef) = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
 
     @Test fun sumSuppressedByMalformedElement() = starred("Sum(Lines*/Price) > 100", "SM", "200", "abc")
     @Test fun sumComputesWhenAllValid() = starred("Sum(Lines*/Price) > 100", "SM", "200", "50")

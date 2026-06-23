@@ -109,7 +109,7 @@ public final class InterpreterModelLoader {
     /** Build a {@link Document} from a nested fields map (the {@code DocInstance.readFields} output). */
     public static Document document(Map<String, Object> fields, ModelDef model) {
         Document doc = new Document(model.getKinds(), model.getDeclaredReps(), model.getUnsignedFields(),
-                model.getRangeConfig(), model.getDateFormats());
+                model.getRangeConfig(), model.getDateFormats(), model.getScales());
         walkInstance(doc, fields, new ArrayList<>(), new ArrayList<>());
         return doc;
     }

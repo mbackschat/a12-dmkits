@@ -170,10 +170,13 @@ object PerfCatalog {
         val fuzzRows: RowsFn = { g, _, rnd -> when (g) { FZ_LINES -> rnd.nextInt(0, 7); FZ_PARTS -> rnd.nextInt(0, 5); else -> 0 } }
         // Fill 70%, leave 30% empty (→ requiredness); of the filled, ~15% are deliberately MALFORMED for the
         // kinds the interpreter formal-checks (NUMBER/DATE) — so the fuzz also exercises the formal-error +
-        // rule-suppression machinery under random combinations, not just valid values.
+        // rule-suppression machinery. Index fields draw from a SMALL pool so values collide → the auto
+        // `uniqueIndex` check is exercised too (and empties still hit requiredness).
+        val indexFields = setOf("/Cart/Lines/ItemId", "/Cart/Lines/Parts/PartId")
         val fuzzValues = ValueStrategy { f, reps, rnd ->
             when {
                 rnd.nextDouble() < 0.3 -> null
+                f.path in indexFields -> "K" + rnd.nextInt(3)
                 rnd.nextDouble() < 0.15 -> malformed(f, rnd) ?: ValidValues.value(f, reps, rnd)
                 else -> ValidValues.value(f, reps, rnd)
             }

@@ -14,11 +14,11 @@ import org.junit.jupiter.api.Test
  * cached; warmup primes it out, so the timed region is steady-state validation against already-generated code).
  *
  * **Fairness caveat — read the ratio with care.** Still NOT fully apples-to-apples: the interpreter matches
- * the kernel on requiredness, formal-checking, and rich messages (the catalog fills the index fields for
- * parity), but the kernel's `validateFull` still validates dimensions the interpreter does not yet model
- * (uniqueness/`RepetitionNotUnique`, enum/date-range value checks). So "interp faster" partly means "interp
- * does less" — the honest read is **competitive-to-faster on these scenarios**, not "Nx faster" as a speed
- * verdict. The bounds are GATES (catch a regression, tolerate CI variance), not SLAs. Pure engine, no CLI.
+ * the kernel on requiredness, formal-checking, rich messages, AND index-field uniqueness (the fuzz net forced
+ * parity there), but the kernel's `validateFull` still validates dimensions the interpreter does not yet model
+ * (enum/value-list checks, the explicit `FieldValuesNotUnique` constraint). So "interp faster" partly means
+ * "interp does less" — the honest read is **competitive-to-faster on these scenarios**, not "Nx faster" as a
+ * speed verdict. The bounds are GATES (catch a regression, tolerate CI variance), not SLAs. Pure engine, no CLI.
  */
 class PerfGateTest {
 
@@ -92,6 +92,6 @@ class PerfGateTest {
         const val SUB_QUADRATIC_MAX = 9.0   // linear ≈ 4; a quadratic 4×-rows blowup is ≈ 16 — 9 is the trip line
         // Codegen is NOT in the timed region (primed out by warmup — the kernel generates ahead). The residual
         // unfairness is only that the kernel validates MORE dimensions than the interpreter models yet.
-        const val CAVEAT = "(NOT apples-to-apples: kernel also validates uniqueness/enum/date-range; codegen excluded)"
+        const val CAVEAT = "(NOT apples-to-apples: kernel also validates enum/value-list + FieldValuesNotUnique; codegen excluded)"
     }
 }

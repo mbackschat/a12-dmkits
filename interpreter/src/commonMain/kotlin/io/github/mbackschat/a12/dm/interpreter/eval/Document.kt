@@ -42,6 +42,9 @@ class Document @JvmOverloads constructor(
      *  canonicalize a rendered date (`15.06.2024` for `dd.MM.yyyy`) to its ISO form, format-aware. Missing/ISO
      *  fields stay ISO. */
     private val dateFormats: Map<String, String> = emptyMap(),
+    /** Each NUMBER field's scale (`maxFractionalDigits`) — lets [resolveValue] formal-check a value so a
+     *  formally-invalid one (signed-zero, too-many-decimals, …) resolves to [Val.Unknown] even when it parses. */
+    private val scales: Map<String, Int?> = emptyMap(),
 ) {
     private data class Placement(val path: String, val reps: List<Int>, val value: String?, val isGroup: Boolean)
 
@@ -231,6 +234,11 @@ class Document @JvmOverloads constructor(
      */
     private fun resolveValue(path: String, raw: String): Val {
         val kind = kindOf(path)
+        // A formally-invalid value is "unknown" EVERYWHERE — a direct ref, an aggregate element, a computation
+        // operand — matching the kernel (a formal error makes the value non-evaluable). This catches values
+        // that parse but are still invalid: signed-zero `-0`, leading-plus `+5`, too-many-decimals. Without
+        // this, an aggregate would silently fold a `-0` as 0 and fire where the kernel suppresses.
+        if (formalError(kind, raw, scales[path], dateFormats[path]) != null) return Val.Unknown
         return when (kind) {
             Kind.DATE_RANGE -> rangeConfig[path]?.let { (format, sep) ->
                 parseRangeToIso(raw, format, sep)?.let { Val.Range(it.first, it.second) }
