@@ -27,6 +27,11 @@ sealed interface Val {
     data class Num(val v: Dec) : Val
     data class Txt(val v: String) : Val
     data class Bool(val v: Boolean) : Val
+
+    /** A date range — its [start]/[end] as canonical ISO `yyyy-MM-dd` dates. Produced by a [Kind.DATE_RANGE]
+     *  field (format-parsed in the general `Document`); consumed by the date-range operators (`StartOfDateRange`
+     *  /`EndOfDateRange`/…). Not directly comparable as a scalar. */
+    data class Range(val start: String, val end: String) : Val
 }
 
 enum class CmpOp { LT, LE, GT, GE, EQ, NE }
@@ -77,11 +82,14 @@ fun typedValue(kind: Kind, raw: String): Val = when (kind) {
     Kind.NUMBER -> Val.Num(dec(raw))
     Kind.STRING, Kind.DATE, Kind.TIME -> Val.Txt(raw)   // ISO dates/times as text compare chronologically
     Kind.BOOLEAN, Kind.CONFIRM -> Val.Bool(raw.equals("true", ignoreCase = true))
+    // A DATE_RANGE needs its field's format + separator to parse — the general Document resolves it
+    // format-aware; this meta-less path (the flat spike contexts) does not model ranges.
+    Kind.DATE_RANGE -> Val.Unknown
 }
 
 /** The value of an EMPTY field, by kind — the TYPE-DRIVEN asymmetry (within a filled row). */
 fun emptyValue(kind: Kind): Val = when (kind) {
     Kind.NUMBER -> Val.Num(DEC_ZERO)   // empty number → 0
     Kind.CONFIRM -> Val.Bool(false)     // empty confirm → False
-    Kind.BOOLEAN, Kind.STRING, Kind.DATE, Kind.TIME -> Val.Unknown  // not evaluated
+    Kind.BOOLEAN, Kind.STRING, Kind.DATE, Kind.TIME, Kind.DATE_RANGE -> Val.Unknown  // not evaluated
 }

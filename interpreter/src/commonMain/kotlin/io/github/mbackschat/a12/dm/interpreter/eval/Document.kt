@@ -35,6 +35,9 @@ class Document @JvmOverloads constructor(
     /** NUMBER fields that are *unsigned* (the kernel's `hatVorzeichen == false` — a non-negative `minValue`);
      *  drives the directional empty-operand polarity ([EvalContext.signed]). Default: all fields signed. */
     private val unsignedFields: Set<String> = emptySet(),
+    /** Each [Kind.DATE_RANGE] field's `(format, rangeSeparator)` — lets [resolveValue] canonicalize a rendered
+     *  range value (`01.06.2021-30.06.2021`) to a [Val.Range] of ISO dates, format-aware (locale variants). */
+    private val rangeConfig: Map<String, Pair<String, String>> = emptyMap(),
 ) {
     private data class Placement(val path: String, val reps: List<Int>, val value: String?, val isGroup: Boolean)
 
@@ -163,7 +166,7 @@ class Document @JvmOverloads constructor(
 
         override fun field(path: String): Val {
             val v = valueAt(path, repsFor(path, group, rowReps))?.value
-            return if (v != null) typedValue(kindOf(path), v) else emptyValue(kindOf(path))
+            return if (v != null) resolveValue(path, v) else emptyValue(kindOf(path))
         }
 
         override fun filled(path: String): Boolean =
@@ -188,7 +191,7 @@ class Document @JvmOverloads constructor(
             else index().valued.any { p -> p.path.startsWith("$groupPath/") && inScope(p) }
 
         override fun star(path: String): List<Val> =
-            starRows(path).mapNotNull { reps -> valueAt(path, reps)?.value?.let { typedValue(kindOf(path), it) } }
+            starRows(path).mapNotNull { reps -> valueAt(path, reps)?.value?.let { resolveValue(path, it) } }
 
         override fun starOmission(path: String): Boolean {
             val repGroup = parentGroup(path)
@@ -213,6 +216,21 @@ class Document @JvmOverloads constructor(
     }
 
     private fun kindOf(path: String): Kind = kinds[path] ?: error("no kind declared for $path")
+
+    /**
+     * A present raw value → typed [Val], format-aware. A [Kind.DATE_RANGE] value is parsed to a [Val.Range] of
+     * ISO dates via its field's `(format, separator)` ([rangeConfig]) — locale-variant by construction (the
+     * format is read, not hardcoded); a malformed range (or missing config) → [Val.Unknown]. Other kinds go
+     * through the plain [typedValue].
+     */
+    private fun resolveValue(path: String, raw: String): Val {
+        val kind = kindOf(path)
+        if (kind == Kind.DATE_RANGE) {
+            val (format, sep) = rangeConfig[path] ?: return Val.Unknown
+            return parseRangeToIso(raw, format, sep)?.let { Val.Range(it.first, it.second) } ?: Val.Unknown
+        }
+        return typedValue(kind, raw)
+    }
 
     private companion object {
         fun parts(path: String): List<String> = path.trim('/').split('/')

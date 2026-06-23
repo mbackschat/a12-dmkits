@@ -8,7 +8,7 @@ package io.github.mbackschat.a12.dm.interpreter.model
  */
 
 /** Field kinds the empty-value asymmetry depends on — the miniature "metadata bridge" (proposal §10). */
-enum class Kind { NUMBER, STRING, BOOLEAN, CONFIRM, DATE, TIME }
+enum class Kind { NUMBER, STRING, BOOLEAN, CONFIRM, DATE, TIME, DATE_RANGE }
 
 /**
  * The evaluation reference clock — the "current point in time" the kernel reads for the clock constants
@@ -64,6 +64,11 @@ data class FieldDef(
     /** The field's explicit requiredness (the kernel's `requirednessConfig.mode`). Index fields are
      *  *additionally* auto-required ([ModelDef.indexFields]); see [ModelDef.requirednessOf]. */
     val required: Requiredness = Requiredness.NOT_REQUIRED,
+    /** The date/datetime/range rendering format (the kernel's `DateType.format` etc., e.g. `dd.MM.yyyy`) —
+     *  used to canonicalize a non-ISO date value to ISO. Null for non-date fields. */
+    val format: String? = null,
+    /** A [Kind.DATE_RANGE] field's two-date separator (the kernel's `DateRangeType.rangeSeparator`, e.g. `-`). */
+    val rangeSeparator: String? = null,
 )
 
 /**
@@ -116,6 +121,12 @@ data class ModelDef(
     /** Unsigned NUMBER fields (the kernel's `hatVorzeichen == false`) — the [io.github.mbackschat.a12.dm.interpreter.eval.Document]'s
      *  directional-polarity input ([FieldDef.signed]). */
     val unsignedFields: Set<String> = fields.filter { !it.signed }.map { it.path }.toSet()
+
+    /** Each [Kind.DATE_RANGE] field's `(format, rangeSeparator)` — the [io.github.mbackschat.a12.dm.interpreter.eval.Document]'s
+     *  format-aware range parsing input. */
+    val rangeConfig: Map<String, Pair<String, String>> = fields
+        .filter { it.kind == Kind.DATE_RANGE && it.format != null && it.rangeSeparator != null }
+        .associate { it.path to (it.format!! to it.rangeSeparator!!) }
     private val labelsByPath: Map<String, Map<String, String>> = fields.associate { it.path to it.labels }
     private val scalesByPath: Map<String, Int?> = fields.associate { it.path to it.scale }
     private val requiredByPath: Map<String, Requiredness> = fields.associate { it.path to it.required }

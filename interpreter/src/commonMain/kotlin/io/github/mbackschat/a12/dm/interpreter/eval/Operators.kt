@@ -86,6 +86,8 @@ enum class FunctionOp(val kernelName: String) {
     ADD_YEARS("AddYears"),
     DIFFERENCE_IN_MONTHS("DifferenceInMonths"),
     DIFFERENCE_IN_YEARS("DifferenceInYears"),
+    START_OF_DATE_RANGE("StartOfDateRange"),
+    END_OF_DATE_RANGE("EndOfDateRange"),
     ;
 
     companion object {

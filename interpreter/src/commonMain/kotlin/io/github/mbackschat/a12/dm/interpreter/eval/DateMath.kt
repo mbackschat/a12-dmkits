@@ -104,3 +104,55 @@ private fun daysInMonth(year: Int, month: Int): Int = when (month) {
 
 private fun iso(y: Int, m: Int, d: Int): String =
     y.toString().padStart(4, '0') + "-" + m.toString().padStart(2, '0') + "-" + d.toString().padStart(2, '0')
+
+// ---- format-aware parsing (non-ISO date fields + date ranges) ------------------------------------------
+//
+// The interpreter canonicalizes every date to ISO `yyyy-MM-dd` so the extractors/arithmetic/comparison above
+// stay ISO-based. A field declares its rendering format (the kernel's `DateType.format` etc.); these helpers
+// turn a format-rendered value back into ISO. The format is parsed structurally (runs of y/M/d as digit
+// groups, other chars literal), so it generalizes beyond the fixtures' `dd.MM.yyyy` without a per-format table.
+
+/**
+ * Parse a date-RANGE value `<date><sep><date>` — each endpoint rendered in [format], joined by [sep] with no
+ * padding (the kernel's canonical, e.g. `01.06.2021-30.06.2021`) — into a pair of ISO `yyyy-MM-dd` dates, or
+ * null when it doesn't match (a malformed range, the kernel's `datumBereichFormatFalsch`). The two halves are
+ * matched as one anchored regex, so a [sep] that also appears inside [format] stays unambiguous.
+ */
+fun parseRangeToIso(raw: String, format: String, sep: String): Pair<String, String>? {
+    val (frag, comps) = dateFragment(format) ?: return null
+    val m = Regex("^$frag${Regex.escape(sep)}$frag$").matchEntire(raw) ?: return null
+    val g = m.groupValues.drop(1)
+    val start = buildIso(g.take(comps.size), comps) ?: return null
+    val end = buildIso(g.drop(comps.size), comps) ?: return null
+    return start to end
+}
+
+/** A regex fragment with one capture group per `y`/`M`/`d` run (exact width = run length) plus the component
+ *  order; literals are escaped. Null if [format] carries no date component. */
+private fun dateFragment(format: String): Pair<String, List<Char>>? {
+    val sb = StringBuilder()
+    val comps = mutableListOf<Char>()
+    var i = 0
+    while (i < format.length) {
+        val c = format[i]
+        if (c == 'y' || c == 'M' || c == 'd') {
+            var j = i
+            while (j < format.length && format[j] == c) j++
+            sb.append("(\\d{").append(j - i).append("})")
+            comps.add(c)
+            i = j
+        } else {
+            sb.append(Regex.escape(c.toString()))
+            i++
+        }
+    }
+    return if (comps.isEmpty()) null else sb.toString() to comps
+}
+
+/** Assemble ISO `yyyy-MM-dd` from a date fragment's captured component [values] in [comps] order; null if out of range. */
+private fun buildIso(values: List<String>, comps: List<Char>): String? {
+    var y = -1; var mo = -1; var d = -1
+    comps.forEachIndexed { idx, c -> when (c) { 'y' -> y = values[idx].toInt(); 'M' -> mo = values[idx].toInt(); 'd' -> d = values[idx].toInt() } }
+    if (y < 0 || mo < 1 || mo > 12 || d < 1 || d > 31) return null
+    return iso(y, mo, d)
+}

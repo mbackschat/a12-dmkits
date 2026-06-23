@@ -376,6 +376,10 @@ class Interpreter(
         FunctionOp.ADD_YEARS -> dateShift(f.args, ::addYears)
         FunctionOp.DIFFERENCE_IN_MONTHS -> dateDiff(f.args, ::differenceInMonths)
         FunctionOp.DIFFERENCE_IN_YEARS -> dateDiff(f.args, ::differenceInYears)
+        // Date-range endpoint extractors — a DATE_RANGE operand → its start / end as an ISO date (so the
+        // *FromDate extractors and date comparisons read it like any date). Empty/absent range → Unknown.
+        FunctionOp.START_OF_DATE_RANGE -> (evalExpr(f.args[0]) as? Val.Range)?.let { Val.Txt(it.start) } ?: Val.Unknown
+        FunctionOp.END_OF_DATE_RANGE -> (evalExpr(f.args[0]) as? Val.Range)?.let { Val.Txt(it.end) } ?: Val.Unknown
         null -> throw UnsupportedConstructException("unsupported function ${f.name}")
     }
 

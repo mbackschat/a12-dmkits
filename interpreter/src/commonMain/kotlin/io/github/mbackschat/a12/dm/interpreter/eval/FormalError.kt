@@ -53,9 +53,10 @@ fun formalError(kind: Kind, raw: String, scale: Int? = null): FormalErrorCode? {
     return when (kind) {
         Kind.DATE -> if (ISO_DATE.matches(raw)) null else FormalErrorCode.DATE_FORMAT
         Kind.NUMBER -> numberFormalError(raw, scale)
-        // TIME's HH:mm:ss format check is a separate increment (needs the kernel's time formal-error code +
-        // a suppression differential); for now a TIME value is not format-checked.
-        Kind.STRING, Kind.BOOLEAN, Kind.CONFIRM, Kind.TIME -> null
+        // TIME's HH:mm:ss check and DATE_RANGE's `datumBereichFormatFalsch` are deferred (a malformed range
+        // already resolves to Val.Unknown via the format-aware parse, so a referencing rule is suppressed
+        // correctly; the missing piece is only the formal-error MESSAGE — same deferral as TIME, IF8).
+        Kind.STRING, Kind.BOOLEAN, Kind.CONFIRM, Kind.TIME, Kind.DATE_RANGE -> null
     }
 }
 

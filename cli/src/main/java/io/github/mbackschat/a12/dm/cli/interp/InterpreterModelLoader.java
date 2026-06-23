@@ -63,7 +63,7 @@ public final class InterpreterModelLoader {
             if (type != null && id != null) {
                 switch (type) {
                     case "Field" -> fields.add(new FieldDef(id, kindOf(node), localizedTexts(node.path("labels")),
-                            scaleOf(node), signed(node), requirednessOf(node)));
+                            scaleOf(node), signed(node), requirednessOf(node), formatOf(node), rangeSeparatorOf(node)));
                     case "Group" -> {
                         JsonNode g = node.path("Group");
                         if (g.path("repeatability").asInt(0) > 1) {
@@ -108,7 +108,8 @@ public final class InterpreterModelLoader {
 
     /** Build a {@link Document} from a nested fields map (the {@code DocInstance.readFields} output). */
     public static Document document(Map<String, Object> fields, ModelDef model) {
-        Document doc = new Document(model.getKinds(), model.getDeclaredReps(), model.getUnsignedFields());
+        Document doc = new Document(model.getKinds(), model.getDeclaredReps(), model.getUnsignedFields(),
+                model.getRangeConfig());
         walkInstance(doc, fields, new ArrayList<>(), new ArrayList<>());
         return doc;
     }
@@ -147,10 +148,31 @@ public final class InterpreterModelLoader {
             case "NumberType" -> Kind.NUMBER;
             case "DateType" -> Kind.DATE;
             case "TimeType" -> Kind.TIME;
+            case "DateRangeType" -> Kind.DATE_RANGE;
             case "BooleanType" -> Kind.BOOLEAN;
             case "ConfirmType" -> Kind.CONFIRM;
             default -> Kind.STRING;   // String / Enumeration / DateTime — STRING-shaped for the operators modeled so far
         };
+    }
+
+    /** A DATE_RANGE field's date-rendering format ({@code DateRangeType.format}, e.g. {@code dd.MM.yyyy}), else null. */
+    private static String formatOf(JsonNode fieldNode) {
+        JsonNode type = fieldNode.path("Field").path("fieldType");
+        if (!"DateRangeType".equals(type.path("type").asText(""))) {
+            return null;
+        }
+        String fmt = type.path("DateRangeType").path("format").asText("");
+        return fmt.isEmpty() ? null : fmt;
+    }
+
+    /** A DATE_RANGE field's two-date separator ({@code DateRangeType.rangeSeparator}, e.g. {@code -}), else null. */
+    private static String rangeSeparatorOf(JsonNode fieldNode) {
+        JsonNode type = fieldNode.path("Field").path("fieldType");
+        if (!"DateRangeType".equals(type.path("type").asText(""))) {
+            return null;
+        }
+        String sep = type.path("DateRangeType").path("rangeSeparator").asText("");
+        return sep.isEmpty() ? null : sep;
     }
 
     /** A NUMBER field's scale ({@code NumberType.maxFractionalDigits}), or null for non-number fields. */

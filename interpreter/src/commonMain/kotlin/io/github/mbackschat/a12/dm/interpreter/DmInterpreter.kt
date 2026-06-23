@@ -171,6 +171,9 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
                     is Val.Txt -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v)
                     is Val.Bool -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v.toString())
                     is Val.Unknown -> Computed(comp.targetPath, ComputeOutcome.CLEARED)
+                    // A computed date-RANGE — provisional ISO `start/end` rendering; format-faithful range
+                    // rendering arrives with the DateRange constructor (no consumer exercises it yet).
+                    is Val.Range -> Computed(comp.targetPath, ComputeOutcome.VALUE, "${v.start}/${v.end}")
                 }
             }
         }
