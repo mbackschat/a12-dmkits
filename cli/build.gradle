@@ -46,6 +46,12 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
+    // the native-safe runtime evaluator — used by the real-model differential test that proves dmtool can
+    // load a DM-JSON model into the kernel-free interpreter and evaluate it identically to the kernel.
+    // TEST scope for now (no native-image impact); promoted to `implementation` when the runtime verbs are
+    // wired to evaluate without the kernel's on-the-fly Groovy (INTERPRETER-PROPOSAL / INTERPRETER-BUILDOUT).
+    testImplementation project(':interpreter')
+
     // modelkit (the modeller's authoring kit, used to build multi-file include/typedef workspaces in
     // tests) folded into the root project (2026-06-09) — its classes arrive via `implementation project(':')`.
 }

@@ -162,9 +162,13 @@ class DmInterpreter(private val model: ModelDef) {
         return (1 until parts.size).map { "/" + parts.take(it).joinToString("/") }
     }
 
-    /** Resolve the rule's error-entity relative path (`../Field`) against its group to an absolute path. */
+    /**
+     * Resolve the rule's error-entity relative path to an absolute path. The relpath is relative to the
+     * rule **node** (`rule.path`), so `../DeliveryDate` on `/Order/DeliveryNotBeforeOrder` pops the node
+     * name → `/Order`, then appends → `/Order/DeliveryDate` (a sibling field in the rule's own group).
+     */
     private fun errorPath(rule: RuleDef, ctx: EvalContext): String {
-        var base = rule.group
+        var base = rule.path
         var rel = rule.errorEntityRelPath
         while (rel.startsWith("../")) {
             base = base.substringBeforeLast('/', "")
