@@ -6,8 +6,8 @@ package io.github.mbackschat.a12.dm.interpreter
  * image consumes for the runtime verbs (goal 1). Correctness = agrees with the real kernel (verified by
  * the `:adapter` differential tests).
  *
- * Today: full validation ([validateFull]). Partial validation, computations, and single-rule eval are
- * the next build-out increments (INTERPRETER-BUILDOUT.md).
+ * Today: full validation ([validateFull]) and single-rule eval ([testRule]/[evalCandidate]). Partial
+ * validation, computations, and formal-error suppression are the next increments (INTERPRETER-BUILDOUT.md).
  */
 class DmInterpreter(private val model: ModelDef) {
 
@@ -15,19 +15,40 @@ class DmInterpreter(private val model: ModelDef) {
      * Run every rule over each row of its iteration scope and return one [Message] per firing — the
      * runtime twin of the kernel's `validateFull`. A rule fires when its error condition is TRUE on a row.
      */
-    fun validateFull(doc: Document, locale: String = "en_US"): List<Message> {
-        val out = mutableListOf<Message>()
-        for (rule in model.rules) {
-            val ast = parseCondition(rule.conditionText, rule.group)
-            for (ctx in doc.contextsFor(iterationScope(rule, ast))) {
-                val interp = Interpreter(ctx)
-                if (!interp.fires(ast)) continue
-                val type = interp.firedType(ast) ?: MsgType.VALUE
-                val text = rule.messages[locale]?.let { renderMessage(it, rule.group, ctx) } ?: ""
-                out += Message(rule.errorCode, rule.path, errorPath(rule, ctx), rule.severity, type, text)
-            }
+    fun validateFull(doc: Document, locale: String = "en_US"): List<Message> =
+        model.rules.flatMap { messagesFor(it, doc, locale) }
+
+    /**
+     * Evaluate a SINGLE stored rule against the instance — the `rule test` shape. [Verdict.FIRED] (a
+     * violation, with the rendered [RuleResult.message]) / [Verdict.PASSED] (evaluated, did not fire).
+     * [Verdict.SUPPRESSED] (a referenced field is formally invalid) awaits the formal-error increment.
+     */
+    fun testRule(rulePath: String, doc: Document, locale: String = "en_US"): RuleResult {
+        val rule = model.rules.firstOrNull { it.path == rulePath }
+            ?: throw IllegalArgumentException("no such rule: $rulePath")
+        return evalRule(rule, doc, locale)
+    }
+
+    /** Evaluate an injected, NON-stored candidate rule (the `model eval --condition/--field` shape). */
+    fun evalCandidate(rule: RuleDef, doc: Document, locale: String = "en_US"): RuleResult =
+        evalRule(rule, doc, locale)
+
+    private fun evalRule(rule: RuleDef, doc: Document, locale: String): RuleResult {
+        val hit = messagesFor(rule, doc, locale).firstOrNull()
+        return if (hit != null) RuleResult(rule.path, Verdict.FIRED, hit.text, hit.type)
+        else RuleResult(rule.path, Verdict.PASSED)
+    }
+
+    /** Every firing of one rule across its iteration-scope rows, as [Message]s (empty = did not fire). */
+    private fun messagesFor(rule: RuleDef, doc: Document, locale: String): List<Message> {
+        val ast = parseCondition(rule.conditionText, rule.group)
+        return doc.contextsFor(iterationScope(rule, ast)).mapNotNull { ctx ->
+            val interp = Interpreter(ctx)
+            if (!interp.fires(ast)) return@mapNotNull null
+            val type = interp.firedType(ast) ?: MsgType.VALUE
+            val text = rule.messages[locale]?.let { renderMessage(it, rule.group, ctx) } ?: ""
+            Message(rule.errorCode, rule.path, errorPath(rule, ctx), rule.severity, type, text)
         }
-        return out
     }
 
     /**

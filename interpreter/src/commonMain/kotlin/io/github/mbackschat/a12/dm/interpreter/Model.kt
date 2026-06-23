@@ -58,3 +58,18 @@ data class Message(
     val type: MsgType,
     val text: String = "",
 )
+
+/**
+ * The three-way verdict of a single-rule eval ([DmInterpreter.testRule]) — the `rule test` contract.
+ * FIRED = a violation; PASSED = evaluated and clean; SUPPRESSED = never evaluated because a referenced
+ * field is formally invalid (the kernel skips a rule whose operand is *unknown*).
+ */
+enum class Verdict { FIRED, PASSED, SUPPRESSED }
+
+/** The result of [DmInterpreter.testRule] / [DmInterpreter.evalCandidate]. */
+data class RuleResult(
+    val rulePath: String,
+    val verdict: Verdict,
+    val message: String = "",
+    val type: MsgType? = null,
+)
