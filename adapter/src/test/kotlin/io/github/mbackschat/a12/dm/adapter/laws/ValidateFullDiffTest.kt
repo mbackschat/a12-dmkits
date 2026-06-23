@@ -1,0 +1,93 @@
+package io.github.mbackschat.a12.dm.adapter.laws
+
+import io.github.mbackschat.a12.dm.interpreter.Document
+import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.FieldDef
+import io.github.mbackschat.a12.dm.interpreter.Kind
+import io.github.mbackschat.a12.dm.interpreter.ModelDef
+import io.github.mbackschat.a12.dm.interpreter.MsgType
+import io.github.mbackschat.a12.dm.interpreter.RuleDef
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
+
+/**
+ * Differential for the public API: a [ModelDef] + [Document] run through [DmInterpreter.validateFull]
+ * must fire exactly the codes the REAL kernel fires over the same instance (the `RuntimeLaws` oracle).
+ * Exercises the whole-document path end to end — multiple rules, a flat single-row rule, and a per-row
+ * rule over a repeatable subgroup — driven from condition TEXT (not a hand-built AST).
+ */
+class ValidateFullDiffTest {
+
+    private val order = RuntimeLaws.model("models/order.dm.json")
+    private val fields = listOf(
+        FieldDef(Q, Kind.NUMBER), FieldDef(BQ, Kind.NUMBER), FieldDef(CN, Kind.STRING),
+        FieldDef(IC, Kind.NUMBER), FieldDef(IS, Kind.STRING),
+    )
+
+    @Test
+    fun flatSingleRuleAgreesWithKernel() {
+        val rule = RuleDef("/Order/QtyCap", "/Order", "[Quantity] < 100", "QTY_LOW", "../Quantity")
+        val model = RuntimeLaws.withRule(order, "/Order", "QtyCap", "../Quantity", "QTY_LOW", rule.conditionText)
+        val def = ModelDef(fields, listOf(rule))
+
+        // empty Quantity → 0 < 100 fires (empty-as-0); filled 200 does not
+        assertEquals(
+            RuntimeLaws.fires(model, "QTY_LOW", setOf("/Order"), setOf(), mapOf(CN to "Acme")),
+            DmInterpreter(def).validateFull(Document(def.kinds).field(CN, "Acme", 1, 1)).any { it.code == "QTY_LOW" },
+            "empty Quantity → fires",
+        )
+        assertEquals(
+            RuntimeLaws.fires(model, "QTY_LOW", setOf("/Order"), setOf(), mapOf(Q to "200")),
+            DmInterpreter(def).validateFull(Document(def.kinds).field(Q, "200", 1, 1)).any { it.code == "QTY_LOW" },
+            "Quantity 200 → no fire",
+        )
+    }
+
+    @Test
+    fun multipleRulesOverFlatAndRepetitionAgreeWithKernel() {
+        val qtyRule = RuleDef("/Order/QtyCap", "/Order", "FieldFilled(Quantity) And [Quantity] < 100", "QTY_LOW", "../Quantity")
+        val rowRule = RuleDef("/Order/CountCap", "/Order", "FieldFilled(Items/Count) And [Items/Count] > 50", "COUNT_HIGH", "../Items/Count")
+
+        var model = RuntimeLaws.withRule(order, "/Order", "QtyCap", "../Quantity", "QTY_LOW", qtyRule.conditionText)
+        model = RuntimeLaws.withRule(model, "/Order", "CountCap", "../Items/Count", "COUNT_HIGH", rowRule.conditionText)
+        val def = ModelDef(fields, listOf(qtyRule, rowRule), repeatableGroups = setOf("/Order/Items"))
+
+        // Quantity 200 (no QTY_LOW); Items counts 10/80/90 (COUNT_HIGH on rows 2 & 3)
+        val kernelDoc = RuntimeLaws.doc().group("/Order", 1).field(Q, "200", 1, 1).field(CN, "Acme", 1, 1)
+        val interpDoc = Document(def.kinds).field(Q, "200", 1, 1).field(CN, "Acme", 1, 1)
+        listOf("10", "80", "90").forEachIndexed { i, c ->
+            val r = i + 1
+            kernelDoc.group("/Order/Items", 1, r).field(IC, c, 1, r, 1)
+            interpDoc.field(IC, c, 1, r, 1)
+        }
+
+        val kernelCodes = RuntimeLaws.firedCodes(model, kernelDoc).filter { it == "QTY_LOW" || it == "COUNT_HIGH" }.toSet()
+        val interpMsgs = DmInterpreter(def).validateFull(interpDoc)
+        assertEquals(kernelCodes, interpMsgs.map { it.code }.toSet(), "fired code set matches the kernel")
+        // the per-row rule fires once per offending row (rows 2 & 3)
+        assertEquals(2, interpMsgs.count { it.code == "COUNT_HIGH" }, "COUNT_HIGH fires on two rows")
+    }
+
+    @Test
+    fun firedPolarityMatchesKernel() {
+        // And: filled VALUE branch + empty-substituted OMISSION branch → OMISSION (omission wins)
+        val rule = RuleDef("/Order/Pol", "/Order", "[Quantity] > 5 And [BackorderQuantity] >= 0", "POL", "../Quantity")
+        val model = RuntimeLaws.withRule(order, "/Order", "Pol", "../Quantity", "POL", rule.conditionText)
+        val def = ModelDef(fields, listOf(rule))
+
+        val kernelType = RuntimeLaws.typeOf(model, "POL", setOf("/Order"), setOf(BQ), mapOf(Q to "10")).orElse(null)
+        val msg = DmInterpreter(def).validateFull(
+            Document(def.kinds).field(Q, "10", 1, 1).emptyField(BQ, 1, 1),
+        ).single { it.code == "POL" }
+        assertEquals(MsgType.OMISSION, msg.type)
+        assertEquals("OMISSION_ERROR", kernelType.toString())
+    }
+
+    private companion object {
+        const val Q = "/Order/Quantity"
+        const val BQ = "/Order/BackorderQuantity"
+        const val CN = "/Order/CustomerName"
+        const val IC = "/Order/Items/Count"
+        const val IS = "/Order/Items/Sku"
+    }
+}

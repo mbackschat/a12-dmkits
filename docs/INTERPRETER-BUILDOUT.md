@@ -13,14 +13,14 @@ Correctness throughout = **agrees with the real kernel** (the `RuntimeLaws` diff
 | area | today | gap to full-blown |
 |---|---|---|
 | **Conditions** | tree-walk over `Cond`/`Expr`; 3-valued logic; type-driven empty asymmetry; polarity (VALUE/OMISSION incl. omitted-tail) | — (solid foundation) |
-| **Operators** | ~18 of 109 constructs (see below) | ~90 constructs across ~8 families |
+| **Operators** | ~20 of 109 constructs (see below) | ~89 constructs across ~8 families |
 | **Computations** | **none** | `compute()` (value / cleared / errored), incl. pre-conditions |
 | **Formal errors / suppression** | none — `typedValue` assumes well-typed input | a malformed value → formal error → operand UNKNOWN → rule **suppressed** (the `rule test` `suppressed` verdict) |
-| **Document model** | `SingleRowDoc` (flat) + `RepDoc` (one repeatable subgroup) | arbitrary nesting / multi-level repetition |
-| **Model / instance loading** | none — tests hand-build the `Cond` AST + `path→Kind` map | DM-JSON model → kinds + rules + computations; `{"fields":{…}}` instance → doc |
-| **Public API** | test-shaped (`Interpreter(ctx).fires(cond)`) | `validateFull` / `validatePart` / `compute` / `testRule` / candidate-eval entry points |
-| **Messages** | `$field.value$` value-interpolation, en/de | `$field$` display-name tier; formal-error (German-keyed) bundles |
-| **Parser** | recursive-descent subset (comparisons, And/Or, predicates, aggregates, paths/`*`) | full grammar (or kernel parse-tree-api) — §11 |
+| **Document model** | general `Document` (indexed placements, common-prefix resolution, star aggregation) — flat + nested-non-repeatable + one-level repetition, kernel-verified; spike's `SingleRowDoc`/`RepDoc` still present (consolidation pending) | multi-level repetition (resolution is general; only one level is kernel-tested) |
+| **Model / instance loading** | structured `ModelDef`/`RuleDef`/`FieldDef` (interpreter owns its types); the consumer builds them | DM-JSON model → `ModelDef`; `{"fields":{…}}` instance → `Document` (dmtool via Jackson; a multiplatform JSON loader later) |
+| **Public API** | `DmInterpreter.validateFull(doc)` — whole-document, kernel-verified | `validatePart` / `compute` / `testRule` / candidate-eval entry points |
+| **Messages** | `$field.value$` value-interpolation, en/de (wired into `validateFull`) | `$field$` display-name tier; formal-error (German-keyed) bundles |
+| **Parser** | recursive-descent subset (comparisons, And/Or, predicates, aggregates, patterns, paths/`*`) | full grammar (or kernel parse-tree-api) — §11 |
 
 ## Two tracks
 
