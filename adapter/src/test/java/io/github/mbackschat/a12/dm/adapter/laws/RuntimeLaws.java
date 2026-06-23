@@ -58,8 +58,14 @@ import com.mgmtp.a12.kernel.md.rt.api.IModelCodeCache;
  * default to 1); for <b>multi-row</b> iteration (§9) use the explicit {@link Doc} builder (one index
  * per path part). {@link #messages(String, Doc)} also returns each message's row pointer, so a law can
  * assert <em>which</em> row a per-row rule fired on.
+ *
+ * <p><b>Shared oracle infrastructure.</b> This is the kernel oracle for BOTH the behavioral laws
+ * ({@code …adapter.laws}) and the performance harness ({@code …adapter.perf}, INTERPRETER-PERFORMANCE.md),
+ * so the surface those consume — {@link #model}, {@link #withRule}, {@link #doc}, {@link Doc},
+ * {@link #kernelEngine}, {@link KernelEngine} — is {@code public} across the test source set; the rest stays
+ * package-private to {@code laws}.
  */
-final class RuntimeLaws {
+public final class RuntimeLaws {
 
     private static final Pattern HEADER_ID = Pattern.compile("\"id\"\\s*:\\s*\"([^\"]+)\"");
 
@@ -67,7 +73,7 @@ final class RuntimeLaws {
     }
 
     /** Load a model JSON fixture from the adapter test resources (e.g. {@code "models/order.dm.json"}). */
-    static String model(String resourcePath) {
+    public static String model(String resourcePath) {
         try (InputStream in = RuntimeLaws.class.getClassLoader().getResourceAsStream(resourcePath)) {
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         } catch (Exception e) {
@@ -79,7 +85,7 @@ final class RuntimeLaws {
      * Inject one rule into {@code groupId}'s {@code elements} and return the new model JSON. The
      * condition is the rule's <em>error</em> condition (it fires when this holds — the polarity law).
      */
-    static String withRule(String modelJson, String groupId, String ruleName, String errorEntityRelPath,
+    public static String withRule(String modelJson, String groupId, String ruleName, String errorEntityRelPath,
             String errorCode, String condition) {
         return withRuleMessages(modelJson, groupId, ruleName, errorEntityRelPath, errorCode, condition, "x", "x");
     }
@@ -172,29 +178,29 @@ final class RuntimeLaws {
      * {@code /Order/Items} row 2 is {@code group("/Order/Items", 1, 2)} and its Count is
      * {@code field("/Order/Items/Count", "80", 1, 2, 1)}).
      */
-    static final class Doc {
+    public static final class Doc {
         private final List<Inst> insts = new ArrayList<>();
 
         /** A group row at the given 1-based repetition indices (one per path part). */
-        Doc group(String path, int... reps) {
+        public Doc group(String path, int... reps) {
             insts.add(new Inst(path, reps, true, false, null));
             return this;
         }
 
         /** A field with a value at the given indices (one per path part, the field included). */
-        Doc field(String path, String value, int... reps) {
+        public Doc field(String path, String value, int... reps) {
             insts.add(new Inst(path, reps, false, true, value));
             return this;
         }
 
         /** A present-but-valueless (unfilled) field. */
-        Doc emptyField(String path, int... reps) {
+        public Doc emptyField(String path, int... reps) {
             insts.add(new Inst(path, reps, false, false, null));
             return this;
         }
     }
 
-    static Doc doc() {
+    public static Doc doc() {
         return new Doc();
     }
 
@@ -343,7 +349,7 @@ final class RuntimeLaws {
      * can build an instance once and time only {@code validateFull} — a fair against-kernel comparison, not
      * polluted by per-call model rebuild (which the convenience {@link #firedCodes(String, Doc)} incurs).
      */
-    static final class KernelEngine {
+    public static final class KernelEngine {
         private final String modelJson;
         private final IDocumentRtService rt;
         private final IDocumentFactory df;
@@ -357,18 +363,23 @@ final class RuntimeLaws {
         }
 
         /** Build the kernel {@link IDocument} for {@code doc} once — do this OUTSIDE the timed region. */
-        IDocument instance(Doc doc) {
+        public IDocument instance(Doc doc) {
             return buildInstance(modelJson, df, doc);
         }
 
-        /** The error codes that fire for an already-built instance — the timed call. */
-        Set<String> firedCodes(IDocument instance) {
+        /**
+         * Every fired error code for an already-built instance, <b>sorted</b> — the timed call AND the
+         * perf-harness correctness payload. A {@code List} (not a {@code Set}) so the comparison is a
+         * <em>multiset</em>: a per-row rule firing on K rows yields K copies, and the interpreter must
+         * produce the same K — catching a per-row firing mismatch a code-set would hide.
+         */
+        public List<String> firedCodesSorted(IDocument instance) {
             return rt.validateFull(instance, Locale.US).getMessages().stream()
-                    .map(IMessage::getErrorCode).collect(Collectors.toCollection(HashSet::new));
+                    .map(IMessage::getErrorCode).sorted().toList();
         }
     }
 
-    static KernelEngine kernelEngine(String modelJson) {
+    public static KernelEngine kernelEngine(String modelJson) {
         return new KernelEngine(modelJson);
     }
 

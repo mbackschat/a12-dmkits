@@ -6,6 +6,7 @@ The `:interpreter` must be **fast on the hard cases**, and that is **measured an
 
 1. **REAL documents only — benchmarking a shortcut is cheating.** Measure the production evaluation path: the general `Document` (interpreter) and the kernel's `IDocument`, both built from **real DM-JSON models**. The spike's `Map<String,String>`-backed `RepDoc` (O(1) lookups, one-pass `star`) must **never** be the benchmarked object — it sidesteps the exact machinery (parallel index, common-prefix resolution, star aggregation) that is hard to make fast, so its numbers are a fiction. If a benchmark doesn't exercise real group resolution, it isn't a benchmark.
 2. **Measure AGAINST the kernel, as a regression gate.** The perf benchmark is the **twin of the correctness differential** and lives in `:adapter` (the only module with the kernel). For each scenario: build one instance, run BOTH `kernel.validateFull`/`compute` and `DmInterpreter.validateFull`/`compute` over it, record both wall-clocks + the ratio, and assert (a) **correctness** (interp == kernel) and (b) a **time/ratio bound** that trips on an O(N²)-class regression. The interpreter should be within a sane constant factor of the kernel — ideally faster (no Groovy, no codegen).
+   - **⭐ Code generation is NEVER inside the timed region.** The kernel's real architecture is *generate code ONCE ahead of validation, then validate/compute many documents against it* (model-load → codegen → cached in `IModelCodeCache`; the steady state is per-document validation, codegen amortized to zero). Timing codegen would measure a cost the kernel never pays per-document — a fiction. So the harness **primes it out**: the kernel generates code on its FIRST `validateFull` (cached for the engine's whole life), and every timed region is preceded by a correctness `run()` + warmup, so the codegen call is always discarded. The kernel's measured cost is **steady-state validation against already-generated code** — the realistic production path. (This is also why the kernel's per-call time only JIT-warms downward over the first ~dozen calls: the Groovy validator warming, not recodegen.)
 3. **Target the non-obvious group machinery, at scale.** Not flat single-row rules — the cases that bite: **deeply nested repeatable groups**, **parallel iteration** / cross-level references, **starred aggregates** over large lists, and **many rows (up to 100 000)**. *Invest heavily in all things groups.*
 4. **Run on the PURE engine, decoupled from the CLI — it must be CHEAP to run, very often.** Both the correctness differentials and the perf harness call the **`DmInterpreter` + `Document` API directly** (kernel via `RuntimeLaws`), NOT through `dmtool`/`InterpreterEngine`/`InterpreterModelLoader`. No process spawn, no `installDist`, no JSON envelope, no native build — just in-process JUnit (and `jsTest`). "Real document" means the real `Document` *data structure* with real nested-group shape, built **programmatically in-test**, not loaded through the CLI. The CLI's loader is a separate, thinner concern with its own small test; the engine's semantics + performance are measured at the engine, so the loop stays fast enough to run on every change.
 
@@ -20,11 +21,13 @@ Not ad-hoc `measureTime` calls sprinkled in tests — a **proper, reusable harne
 - **`PerfScenario`** — the unit: a real DM-JSON model + an **instance generator parameterized by scale `N`** (build 1k/10k/100k rows *programmatically*, never commit giant fixtures) + the operation (`validateFull` / `compute`) + the correctness oracle. One scenario, run by both engines.
 - **Two engine adapters behind one interface** — `KernelEngine` (via `RuntimeLaws` → `IDocumentRtService`) and `InterpreterEngine` (`DmInterpreter`). The harness lives in `:adapter` (the only module with the kernel), mirroring the `laws/` differential layout, under `…/perf/`.
 - **Measurement discipline** — per (scenario, N): **warm up** (discard JIT-warming iterations), then time `K` iterations; report **median** (robust) + min + p90, and the **ratio** `interp_median / kernel_median`. Never time a cold run.
-- **Correctness first** — assert `interp == kernel` on the scenario *before* trusting any timing (a fast-but-wrong path is not a win; reuse the differential comparison).
-- **Two run modes** — (1) **gate mode**: loose bounds, CI-friendly, fails on a catastrophic/relative regression; (2) **profile mode**: one scenario at high `N`, verbose per-phase stats, no assert — for hunting the hotspot (JFR/async-profiler-friendly loop on JVM).
+- **Correctness first** — assert `interp == kernel` on the scenario *before* trusting any timing (a fast-but-wrong path is not a win; reuse the differential comparison). The comparison is the fired-code **multiset** (a sorted `List`, not a `Set`), so a per-row firing-count mismatch is caught, not just a missing code.
+- **Three run modes** — (1) **gate mode**: single document, loose bounds, CI-friendly, fails on a catastrophic/relative regression; (2) **repeated-eval mode**: the engine built once, M slightly-different documents looped (form-input / batch) — the reuse pattern the kernel's codegen + per-run caches are tuned for, reported per-eval; (3) **profile mode**: one scenario at high `N`, interpreter-only, verbose per-iteration stats, no assert — for hunting the hotspot (JFR/async-profiler-friendly loop on JVM).
 - **JVM tool choice** — start with this **custom integration harness** (whole-document evaluation is the real unit; warmup+repeats+median+ratio is the right rigor for it). Reserve **JMH** for a *specific hot inner loop* (e.g. `repsFor`/`starRows`) that needs sub-method attribution — add it only when a profile points there, not upfront.
 - **JS throughput** — a Node-runnable large-`N` check on `jsTest` (the same `Document`, `measureTime`, no kernel) so the native/JS reason-to-exist is perf-gated too.
 - **Output + baselines** — print a `scenario × N × interp_ms × kernel_ms × ratio` table and append machine-tagged baselines to the results log (below). The spec holds the method; the log holds the numbers.
+
+**Built (2026-06-23):** `adapter/src/test/.../perf/` — `PerfHarness` (the `PlacementSink`-driven scenario + `PerfEngine`/`ReusableEngine` adapters + `measure`/`runScenario`/`runRepeated`/`timeInterpreter`), `PerfCatalog` (single-sourced `perf.dm.json` model + B1–B4), `PerfGateTest` (the in-suite gate + repeated-eval + sub-quadratic check), `PerfProfileTest` (opt-in, `-Dperf.profile=true`). `RuntimeLaws` is the shared kernel oracle for both `laws/` and `perf/`. Codegen is primed out of every timed region (non-negotiable #2). The instance generators are bespoke per scenario today — a **model-driven seed generator** (fill a valid instance from a `ModelDef` + per-field value strategies) is the natural next reuse step, and would also enable a differential **fuzz** net (generate many valid docs, assert interp == kernel).
 
 ## Architecture direction (owner hint, 2026-06-23 — keep in mind)
 
@@ -75,27 +78,41 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 ## Staging
 
 1. ✅ Index the `Document` (task #28) + re-green the diff tests — DONE (`434cdcdc`).
-2. **(in progress)** B1/B2 (flat + single-aggregate): the **pure-engine** real-`Document` scaling is landed (`DocumentScaleTest`, JVM+JS, baselines above); the **against-kernel** comparison (build-once kernel pipeline in `:adapter`, larger N) is the next step.
-3. B3 (nested per-sub) landed against the kernel; B4 (cross-level ref), B5 (deep nested-star), and larger N (100k) remain — the rest of "invest in groups."
-4. B6/B7 (whole-model + compute at scale), then the JS throughput checks.
+2. ✅ **The reusable harness is built** (`adapter.perf` — `PerfHarness`/`PerfCatalog`/`PerfGateTest`/`PerfProfileTest`): the `PerfScenario` + two engine adapters behind `PerfEngine`/`ReusableEngine` + the three run modes (gate / repeated-eval / profile), with codegen primed out of every timed region. **B1** (per-row), **B2** (star aggregate), **B3** (nested per-sub), **B4** (cross-level ref) land against the kernel; the **repeated-eval** (form-input/batch) and **sub-quadratic scaling** guards land too. The ad-hoc `AgainstKernelPerfTest` was superseded and removed.
+3. **B5** (deep nested-star `Sum(A* / B* / C)`), **100k rows** (profile mode, opt-in), and **B6** (many rules — where the per-call re-parse / prepare-once #31 actually bites) remain — the rest of "invest in groups."
+4. **B7** (`compute` at scale) — needs a build-once kernel `compute` on `KernelEngine`; the JS throughput checks beyond `DocumentScaleTest` (which already covers B1/B2 JVM+JS).
 5. Wire the gate into CI once baselines are stable.
 
 ## Results log
 
 *(dated baselines, newest first — populated as benchmarks land)*
 
-**2026-06-23 — against-kernel** (`adapter.laws.AgainstKernelPerfTest`, `KernelEngine` build-once vs `DmInterpreter`, same instance, median of 10 after **15 warmups**; JVM). Correctness (interp == kernel fired codes) asserted first.
+**2026-06-23 — the serious against-kernel harness** (`adapter.perf.*`; build-once `KernelEngine` vs `DmInterpreter`, median of 8 after 12 warmups; JVM). Correctness (interp == kernel fired-code **multiset**) asserted first. **Codegen excluded** — the kernel generates code once ahead of validation (cached in `IModelCodeCache`); warmup primes it out, so the kernel cost is *steady-state validation against already-generated code*.
 
-| scenario | interp | kernel | ratio (interp/kernel) |
+Single document:
+
+| scenario | interp | kernel | ratio |
 |---|---|---|---|
-| B1 per-row, 3000 Lines | ~9 ms | ~111 ms | ~0.08 |
-| B3 nested per-sub, 400×5 = 2000 Sub rows | ~3 ms | ~39 ms | ~0.08 |
+| B1 per-row, 3000 Lines | ~7.7 ms | ~122 ms | ~0.06 |
+| B2 star-aggregate `Sum(Amount)`, 3000 Lines | ~5.3 ms | ~101 ms | ~0.05 |
+| B3 nested per-sub, 600×5 = 3000 Sub rows | ~8.7 ms | ~61 ms | ~0.14 |
+| B4 cross-level (Sub refs parent Line's Qty), 600×5 | ~8.8 ms | ~61 ms | ~0.15 |
 
-**Is it fair? No — read the ratio with care (this corrects an earlier overstated "≈14× faster").** Two findings from scrutinizing it:
-1. **Warmup mattered:** the kernel's per-call time *decreases monotonically* over the first ~dozen calls (JVM JIT warming the Groovy-compiled rules — **not** per-call codegen, which is cached). 2 warmups overstated the kernel (188→111 ms warm). Fixed: 15 warmups. The ratio held (~0.08) once warm.
-2. **Not apples-to-apples (the real caveat):** the interpreter now matches the kernel on **requiredness** (`mandatoryField` — the harness enables index-field requiredness for parity), formal-checking, and rich messages, but the kernel's `validateFull` still validates dimensions the interpreter does not yet model (**uniqueness**/`RepetitionNotUnique`, **enum/date-range** value checks) and runs a **codegen-then-Groovy pipeline** a **1-rule model overweights**. So "interp faster" still partly means "interp does less".
+Repeated-eval — engine built ONCE, 20 slightly-different documents looped (form-input / batch; **per-eval**, median of 5 loops after 3 warmup loops):
 
-**Honest read:** the interpreter is **competitive-to-faster** on these scenarios (plausible — direct Kotlin vs Groovy reflection), **not** "Nx faster" as a speed verdict. A true comparison needs full feature parity. Larger N (100k) and more group shapes (B4/B5) still to add.
+| scenario | interp/eval | kernel/eval | ratio |
+|---|---|---|---|
+| B1 per-row, 1500 Lines × 20 docs | ~2.3 ms | ~35 ms | ~0.06 |
+| B3 nested per-sub, 300×5 × 20 docs | ~2.8 ms | ~23 ms | ~0.12 |
+
+Sub-quadratic scaling (B1 interp-only, N vs 4N): 9.7 ms@5000 → 41 ms@20000 = **4.24×** (linear ≈ 4, quadratic ≈ 16) — the #28 indexing holds.
+
+**Findings:**
+1. **Codegen is one-and-done, never timed.** Confirmed via the stack trace (`generateCode` fires inside the FIRST `validateFull`, then cached) + the monotonic warmup decrease (JIT warming the Groovy *validator*, not re-codegen). The correctness `run()` + warmup discard it, so the kernel's measured cost is its realistic per-document steady state.
+2. **Repeated eval — the kernel's tuned pattern.** Both engines speed up per-eval under engine-reuse + JIT warmth; the **ratio is preserved** (~0.06), so the interpreter stays competitive-to-faster even in the reuse pattern the kernel's codegen+caches are built for. With ONE simple rule the interpreter's per-call rule re-parse is negligible — the prepare-once optimization (#31) only bites at **many-rules** scale (a B6 scenario, next).
+3. **Not apples-to-apples (the residual caveat):** the interpreter matches the kernel on requiredness (`mandatoryField` — the catalog fills index fields for parity), formal-checking, and rich messages, but the kernel still validates dimensions the interpreter does not model yet (**uniqueness**/`RepetitionNotUnique`, **enum/date-range**). So "interp faster" partly means "interp does less".
+
+**Honest read:** **competitive-to-faster** on these scenarios (plausible — direct Kotlin vs Groovy validator execution), **not** "Nx faster" as a speed verdict; a true verdict needs full feature parity. 100k rows (profile mode), deep nested-star (B5), and many-rules (B6) still to add.
 
 **2026-06-23 — first slice: pure-engine real-`Document` scaling** (`interpreter/commonTest/DocumentScaleTest`, the honest counterpart of the RepDoc benchmark; kernel-free, JVM+JS). 3000 `/Perf/Lines` rows:
 
