@@ -92,4 +92,17 @@ DmInterpreter(model)
   evalCandidate(rule, doc): Verdict         // an injected, non-stored rule
 ```
 
-This keeps the engine kernel-free (the purity lint holds) and lets dmtool adapt *to* it.
+This keeps the engine kernel-free (the purity lint holds) and lets dmtool adapt *to* it. The *implemented* API matches this closely (see `DmInterpreter`/`Model.kt`): `validate`/`validateFull`, `testRule`/`evalCandidate`, `compute`; `validatePart` is the remaining method.
+
+### DM-JSON → ModelDef loader — where each field comes from (verified 2026-06-23)
+
+The loader is the next concrete deliverable; the source mapping is mechanical (a **self-contained** model — no `include`/`modelAlias`/`typeDefImport` — parses directly with Jackson; a model with imports needs the kernel's expansion first, native-safe via the read tier):
+
+| ModelDef piece | DM-JSON source |
+|---|---|
+| `FieldDef(path, kind)` | a `Field` node: `id` → path; `Field.fieldType.type` → kind (`StringType`→STRING, `NumberType`→NUMBER, `DateType`→DATE, `BooleanType`→BOOLEAN, `ConfirmType`→CONFIRM; `DateTime`/`Time`/`Enumeration` map as the date/time/enum families land) |
+| `RuleDef` | a `Rule` node: `id` → path; path-minus-last-segment → `group`; `Rule.errorCondition` → `conditionText`; `Rule.errorCode`, `Rule.errorEntityRelPath`, `Rule.severity`; `Rule.errorMessage[]` (`locale`→`text`) → `messages` |
+| `ComputationDef` | a `Computation` node: `id`-parent → `group`; `Computation.computedFieldRelPath` (resolved vs group) → `targetPath`; `Computation.computationAlternatives[0].operation` → `expressionText` |
+| `repeatableGroups` / `declaredReps` | a `Group` node with `Group.repeatability` (the declared max rows, e.g. `50`) → the group is repeatable; `repeatability` → `declaredReps[path]` |
+
+The loader belongs in the **consumer** (`:cli`, for the native verbs — adding `:cli → :interpreter` is a native-build change → triggers reflection re-capture per `NATIVE-IMAGE-GRAALVM.md` §5.1). It is *not* built yet to avoid speculative, unconsumed code.
