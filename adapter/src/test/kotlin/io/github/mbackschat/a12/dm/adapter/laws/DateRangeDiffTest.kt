@@ -45,8 +45,37 @@ class DateRangeDiffTest {
     @Test fun endDayFires() = agree("FieldFilled(OrderDate) And DayFromDate(EndOfDateRange(CoverageWindow)) > 28", cov, "end day 30 > 28")
     @Test fun endDayDoesNotFire() = agree("FieldFilled(OrderDate) And DayFromDate(EndOfDateRange(CoverageWindow)) > 30", cov, "end day 30 not > 30")
 
+    // ---- DateRangesOverlap(scalar, starred) — closed intervals, any-row overlap (KERNEL-FINDINGS §6) -----
+
+    private val overlapFields = fields + FieldDef(IC, Kind.DATE_RANGE, format = "dd.MM.yyyy", rangeSeparator = "-")
+    private val overlapCond = "FieldFilled(OrderDate) And DateRangesOverlap(CoverageWindow, Items*/ItemCoverage)"
+
+    /** CoverageWindow vs N ItemCoverage rows — kernel and interpreter must agree on the overlap firing. */
+    private fun overlapAgree(window: String, itemCoverages: List<String>, msg: String) {
+        val kModel = RuntimeLaws.withRule(order, "/Order", "CC", "../OrderDate", "CC", overlapCond)
+        val def = ModelDef(overlapFields, listOf(RuleDef("/Order/CC", "/Order", overlapCond, "CC", "../OrderDate")),
+            repeatableGroups = setOf("/Order/Items"), declaredReps = mapOf("/Order/Items" to 50))
+        val kDoc = RuntimeLaws.doc().group("/Order", 1).field(OD, "2024-06-01", 1, 1).field(CW, window, 1, 1)
+        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig)
+            .field(OD, "2024-06-01", 1, 1).field(CW, window, 1, 1)
+        itemCoverages.forEachIndexed { i, ic ->
+            kDoc.group("/Order/Items", 1, i + 1).field(IC, ic, 1, i + 1, 1)
+            iDoc.group("/Order/Items", 1, i + 1).field(IC, ic, 1, i + 1, 1)
+        }
+        val kernel = RuntimeLaws.fires(kModel, "CC", kDoc)
+        val interp = DmInterpreter(def).validateFull(iDoc).any { it.code == "CC" }
+        assertEquals(kernel, interp, "$msg  (kernel=$kernel interp=$interp)")
+    }
+
+    @Test fun touchingRangesOverlap() = overlapAgree("01.01.2024-31.01.2024", listOf("31.01.2024-28.02.2024"), "touching ranges overlap (closed)")
+    @Test fun backToBackDoNot() = overlapAgree("01.01.2024-31.01.2024", listOf("01.02.2024-28.02.2024"), "adjacent-day ranges do not overlap")
+    @Test fun containedOverlaps() = overlapAgree("01.01.2024-31.12.2024", listOf("01.06.2024-30.06.2024"), "a contained range overlaps")
+    @Test fun anyRowOverlaps() = overlapAgree("01.06.2024-30.06.2024", listOf("01.01.2025-31.01.2025", "15.06.2024-15.07.2024"), "overlaps any row (2nd)")
+    @Test fun noRowOverlaps() = overlapAgree("01.06.2024-30.06.2024", listOf("01.01.2025-31.01.2025", "01.02.2025-28.02.2025"), "no row overlaps")
+
     private companion object {
         const val OD = "/Order/OrderDate"
         const val CW = "/Order/CoverageWindow"
+        const val IC = "/Order/Items/ItemCoverage"
     }
 }

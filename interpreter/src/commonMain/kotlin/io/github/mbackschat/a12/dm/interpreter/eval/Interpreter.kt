@@ -80,7 +80,8 @@ class Interpreter(
     /** Whether a presence predicate is TRUE when all its operands are empty (k = 0 filled). */
     private fun predFiresOnEmpty(p: Cond.Pred): Boolean = when (val op = PredicateOp.byName(p.name)) {
         null, PredicateOp.FIELD_FILLED, PredicateOp.GROUP_FILLED,
-        PredicateOp.FIELD_VALUE_IN_LIST, PredicateOp.FIELD_VALUE_NOT_IN_LIST -> false
+        PredicateOp.FIELD_VALUE_IN_LIST, PredicateOp.FIELD_VALUE_NOT_IN_LIST,
+        PredicateOp.DATE_RANGES_OVERLAP -> false   // needs present ranges; an empty row is not evaluated
         PredicateOp.FIELD_NOT_FILLED, PredicateOp.GROUP_NOT_FILLED -> true
         else -> quantifierFires(op, 0, p.args.size)
     }
@@ -228,6 +229,7 @@ class Interpreter(
             PredicateOp.GROUP_NOT_FILLED -> Tri.of(!ctx.groupFilled(pathOf(p.args.single())))
             PredicateOp.FIELD_VALUE_IN_LIST -> valueInList(p.args)
             PredicateOp.FIELD_VALUE_NOT_IN_LIST -> not(valueInList(p.args))
+            PredicateOp.DATE_RANGES_OVERLAP -> dateRangesOverlap(p.args)
             // List quantifiers over the count k of filled operands (row-evaluated gate is upstream in eval).
             PredicateOp.ALL_FIELDS_FILLED, PredicateOp.NO_FIELD_FILLED, PredicateOp.AT_LEAST_ONE_FIELD_FILLED,
             PredicateOp.MORE_THAN_ONE_FIELD_FILLED, PredicateOp.NOT_ALL_FIELDS_FILLED,
@@ -266,6 +268,24 @@ class Interpreter(
         if (v is Val.Unknown) return Tri.UNKNOWN
         return Tri.of(args.drop(1).any { eq(v, evalExpr(it)) })
     }
+
+    /**
+     * `DateRangesOverlap(range, ranges)` — TRUE when the scalar [args]`[0]` range overlaps **any** of the
+     * second operand's ranges (a starred `Items* / ItemCoverage` → the rows' ranges; else a single range). An
+     * empty/absent first range → UNKNOWN (not evaluated); empty rows are skipped. Ranges are **closed
+     * intervals** — overlap ⇔ `end1 ≥ start2 ∧ end2 ≥ start1` (so touching ranges overlap; KERNEL-FINDINGS §6).
+     */
+    private fun dateRangesOverlap(args: List<Expr>): Tri {
+        val a = evalExpr(args[0]) as? Val.Range ?: return Tri.UNKNOWN
+        val others = when (val b = args[1]) {
+            is Expr.Star -> ctx.star(b.path)
+            else -> listOf(evalExpr(b))
+        }.filterIsInstance<Val.Range>()
+        return Tri.of(others.any { rangesOverlap(a, it) })
+    }
+
+    /** Closed-interval overlap of two ISO date ranges (lexicographic compare = chronological on ISO). */
+    private fun rangesOverlap(x: Val.Range, y: Val.Range): Boolean = x.end >= y.start && y.end >= x.start
 
     /** `value PatternMatched/PatternViolated "regex"` — anchored full-value match; empty → not evaluated. */
     private fun evalPattern(p: Cond.Pattern): Tri {
