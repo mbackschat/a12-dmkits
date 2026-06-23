@@ -39,6 +39,7 @@ class DateDifferenceDiffTest {
         pin("DifferenceInMonths", "2020-01-15", "2020-04-15", 3)
         pin("DifferenceInMonths", "2020-12-15", "2021-02-15", 2)   // crosses the year
         pin("DifferenceInMonths", "2020-06-15", "2020-06-10", 0)   // backward, < 1 month → 0
+        pin("DifferenceInMonths", "2020-02-29", "2020-01-30", -1)  // backward, a full month → signed −1
     }
 
     @Test fun differenceInYears() {
@@ -46,6 +47,7 @@ class DateDifferenceDiffTest {
         pin("DifferenceInYears", "2020-06-15", "2021-06-14", 0)    // not yet a full year
         pin("DifferenceInYears", "2020-06-15", "2023-06-15", 3)
         pin("DifferenceInYears", "2020-02-29", "2024-02-28", 3)    // not quite 4 years
+        pin("DifferenceInYears", "1999-02-28", "2000-02-28", 0)    // end-of-Feb maps to Feb 29 > Feb 28 → not a full year
     }
 
     private val kinds = mapOf(OD to Kind.DATE, DD to Kind.DATE)

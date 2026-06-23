@@ -60,25 +60,41 @@ fun addMonths(iso: String, n: Int): String? {
     return iso(ny, nm, minOf(d, daysInMonth(ny, nm)))
 }
 
-/** ISO date [n] years after [iso] (= +[n]·12 months, so Feb-29 clamps in a non-leap year). */
-fun addYears(iso: String, n: Int): String? = addMonths(iso, n * 12)
-
 /**
- * Whole elapsed months from [a] to [b] (signed, truncated toward zero) — the kernel's `DifferenceInMonths`.
- * The start day is clamped to the end month's length before the day comparison, so a month-end step counts as
- * a full month (verified: `2020-01-31`→`2020-02-29` = 1, but `2020-01-15`→`2020-02-14` = 0). Null if malformed.
+ * ISO date [n] years after [iso]. End-of-February is preserved: the LAST day of February maps to the
+ * target year's last day of February (Feb 28 of a non-leap year → Feb 29 of a leap year, and vice versa) —
+ * matching the kernel's runtime behavior (NOT the same as `+12·n` months, which only clamps downward). Any
+ * other day clamps to the target month's length (a no-op outside February, since only February's length
+ * varies by year).
  */
-fun differenceInMonths(a: String, b: String): Int? {
-    val (ay, am, ad) = dateParts(a) ?: return null
-    val (by, bm, bd) = dateParts(b) ?: return null
-    var months = (by * 12 + bm) - (ay * 12 + am)
-    val days = bd - minOf(ad, daysInMonth(by, bm))
-    if (months > 0 && days < 0) months-- else if (months < 0 && days > 0) months++
-    return months
+fun addYears(iso: String, n: Int): String? {
+    val (y, m, d) = dateParts(iso) ?: return null
+    val ty = y + n
+    val day = if (m == 2 && d == daysInMonth(y, 2)) daysInMonth(ty, 2) else minOf(d, daysInMonth(ty, m))
+    return iso(ty, m, day)
 }
 
-/** Whole elapsed years from [a] to [b] — the kernel's `DifferenceInYears` (= whole months / 12, toward zero). */
-fun differenceInYears(a: String, b: String): Int? = differenceInMonths(a, b)?.div(12)
+/**
+ * Whole elapsed months from [a] to [b] — signed (negative when [b] precedes [a]), the count of complete
+ * months between them. Defined behaviorally as the largest `n` such that [addMonths] of the earlier date by
+ * `n` does not pass the later date — so a month-end step counts as full (`2020-01-31`→`2020-02-29` = 1) and a
+ * partial month does not (`2020-01-15`→`2020-02-14` = 0). Matches the kernel's runtime; null if malformed.
+ */
+fun differenceInMonths(a: String, b: String): Int? = wholePeriods(a, b, ::addMonths)
+
+/** Whole elapsed years from [a] to [b] — signed; the [addYears] (end-of-February-preserving) analogue of [differenceInMonths]. */
+fun differenceInYears(a: String, b: String): Int? = wholePeriods(a, b, ::addYears)
+
+/** Signed count of complete periods between [a] and [b]: the largest n with [add](earlier, n) not past the later date. */
+private fun wholePeriods(a: String, b: String, add: (String, Int) -> String?): Int? {
+    val ea = epochDay(a) ?: return null
+    val eb = epochDay(b) ?: return null
+    val lo = if (ea <= eb) a else b
+    val hi = maxOf(ea, eb)
+    var n = 0
+    while ((epochDay(add(lo, n + 1) ?: return null) ?: return null) <= hi) n++
+    return if (ea <= eb) n else -n
+}
 
 private fun daysInMonth(year: Int, month: Int): Int = when (month) {
     1, 3, 5, 7, 8, 10, 12 -> 31
