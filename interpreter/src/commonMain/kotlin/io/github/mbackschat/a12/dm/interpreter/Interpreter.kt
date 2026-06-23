@@ -97,7 +97,7 @@ class Interpreter(private val ctx: EvalContext) {
         "FieldFilled" -> Tri.of(ctx.filled(pathOf(p.args.single())))
         "FieldNotFilled" -> Tri.of(!ctx.filled(pathOf(p.args.single())))
         "AllFieldsFilled" -> Tri.of(p.args.all { ctx.filled(pathOf(it)) })
-        else -> error("unsupported predicate ${p.name}")
+        else -> throw UnsupportedConstructException("unsupported predicate ${p.name}")
     }
 
     /** `value PatternMatched/PatternViolated "regex"` — anchored full-value match; empty → not evaluated. */
@@ -160,8 +160,18 @@ class Interpreter(private val ctx: EvalContext) {
             for (x in starNums(f)) if (distinct.none { it.compareTo(x) == 0 }) distinct.add(x)
             Val.Num(dec(distinct.size))
         }
-        else -> error("unsupported function ${f.name}")
+        // DifferenceInDays(a, b) = b − a in whole days (sign = second − first), as a number. An empty or
+        // malformed date operand → Unknown (the rule typically guards it with AllFieldsFilled).
+        "DifferenceInDays" -> {
+            val a = epochOf(f.args[0])
+            val b = epochOf(f.args[1])
+            if (a == null || b == null) Val.Unknown else Val.Num(dec((b - a).toString()))
+        }
+        else -> throw UnsupportedConstructException("unsupported function ${f.name}")
     }
+
+    /** Epoch day of a date-valued expression (ISO text), or null if empty/malformed. */
+    private fun epochOf(e: Expr): Long? = (evalExpr(e) as? Val.Txt)?.let { epochDay(it.v) }
 
     private fun starVals(f: Expr.Func): List<Val> = ctx.star((f.args.single() as Expr.Star).path)
     private fun starNums(f: Expr.Func): List<Dec> = starVals(f).map { num(it) }

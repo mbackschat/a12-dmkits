@@ -82,6 +82,15 @@ enum class Verdict { FIRED, PASSED, SUPPRESSED }
 /** A field whose formally-invalid value suppressed a rule — the `rule test` `suppressedBy` entry. */
 data class Suppression(val field: String, val formalErrorCode: String)
 
+/** A rule the interpreter could not evaluate because it uses an unmodeled/external construct. */
+data class UnsupportedRule(val rulePath: String, val reason: String)
+
+/** The result of [DmInterpreter.validate]: the firings plus the rules reported [unsupported]. */
+data class ValidationOutcome(
+    val messages: List<Message>,
+    val unsupported: List<UnsupportedRule>,
+)
+
 /** The result of [DmInterpreter.testRule] / [DmInterpreter.evalCandidate]. */
 data class RuleResult(
     val rulePath: String,

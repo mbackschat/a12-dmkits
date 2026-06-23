@@ -14,9 +14,29 @@ class DmInterpreter(private val model: ModelDef) {
     /**
      * Run every rule over each row of its iteration scope and return one [Message] per firing — the
      * runtime twin of the kernel's `validateFull`. A rule fires when its error condition is TRUE on a row.
+     * Convenience over [validate] returning just the messages (drops the unsupported-rule report).
      */
     fun validateFull(doc: Document, locale: String = "en_US"): List<Message> =
-        model.rules.flatMap { messagesFor(it, doc, locale) }
+        validate(doc, locale).messages
+
+    /**
+     * The tolerant whole-document validation: each rule's firings as [Message]s, plus the rules that use
+     * a construct the interpreter does not model (an unknown operator, or a deliberately external one
+     * like `CustomCondition`) reported as [ValidationOutcome.unsupported] instead of crashing the run —
+     * mirroring the kernel-adapter's `Opaque` read. Genuine bugs still throw.
+     */
+    fun validate(doc: Document, locale: String = "en_US"): ValidationOutcome {
+        val messages = mutableListOf<Message>()
+        val unsupported = mutableListOf<UnsupportedRule>()
+        for (rule in model.rules) {
+            try {
+                messages += messagesFor(rule, doc, locale)
+            } catch (e: UnsupportedConstructException) {
+                unsupported += UnsupportedRule(rule.path, e.message ?: "unsupported construct")
+            }
+        }
+        return ValidationOutcome(messages, unsupported)
+    }
 
     /**
      * Evaluate a SINGLE stored rule against the instance — the `rule test` shape. [Verdict.FIRED] (a

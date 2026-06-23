@@ -69,6 +69,19 @@ class ValidateFullDiffTest {
     }
 
     @Test
+    fun unsupportedRuleIsToleratedNotCrashed() {
+        // A model mixing a supported rule with an external CustomCondition rule (cli-runtime's
+        // EligibilityCheck shape): validate() reports the latter as unsupported and still fires the former.
+        val ok = RuleDef("/Order/QtyCap", "/Order", "FieldFilled(Quantity) And [Quantity] > 100", "QTY_HIGH", "../Quantity")
+        val external = RuleDef("/Order/Eligibility", "/Order", "FieldFilled(CustomerName) And CustomCondition ExternalEligibility", "INELIGIBLE", "../CustomerName")
+        val def = ModelDef(fields, listOf(ok, external))
+
+        val outcome = DmInterpreter(def).validate(Document(def.kinds).field(Q, "150", 1, 1).field(CN, "Acme", 1, 1))
+        assertEquals(listOf("QTY_HIGH"), outcome.messages.map { it.code }, "the supported rule still fires")
+        assertEquals(listOf("/Order/Eligibility"), outcome.unsupported.map { it.rulePath }, "the external rule is reported, not crashed")
+    }
+
+    @Test
     fun firedPolarityMatchesKernel() {
         // And: filled VALUE branch + empty-substituted OMISSION branch → OMISSION (omission wins)
         val rule = RuleDef("/Order/Pol", "/Order", "[Quantity] > 5 And [BackorderQuantity] >= 0", "POL", "../Quantity")

@@ -31,7 +31,7 @@ The build-out splits cleanly, and the two are **largely independent**:
 
 ## Operator coverage snapshot
 
-*Snapshot only — the diff tests are the truth.* Handled (~23): `And` `Or` `Not` · `LessThan` `LessThanOrEqual` `GreaterThan` `GreaterThanOrEqual` `Equal` `NotEqual` · `FieldFilled` `FieldNotFilled` `AllFieldsFilled` · `Min` `Max` `Sum` `MaxValue` `MinValue` `NumberOfDifferentValues` · `PatternMatched` `PatternViolated` · arithmetic `+ - *` (`{ }` grouping; `/` `^` deferred).
+*Snapshot only — the diff tests are the truth.* Handled (~24): `And` `Or` `Not` · `LessThan` `LessThanOrEqual` `GreaterThan` `GreaterThanOrEqual` `Equal` `NotEqual` · `FieldFilled` `FieldNotFilled` `AllFieldsFilled` · `Min` `Max` `Sum` `MaxValue` `MinValue` `NumberOfDifferentValues` · `PatternMatched` `PatternViolated` · `DifferenceInDays` · arithmetic `+ - *` (`{ }` grouping; `/` `^` deferred). An unmodeled/external construct (e.g. `CustomCondition`) is *tolerated* by `validate` (reported `unsupported`), not a crash.
 
 Missing families (~90), by group:
 
@@ -48,14 +48,18 @@ Missing families (~90), by group:
 
 ## cli-runtime.md critical path (the minimal end-to-end slice)
 
-The demo's four scenarios pin Track A's first deliverables:
+The demo's scenarios pin Track A's deliverables. **The actual `order-ruled.dm.json` rules were inspected (2026-06-23)** — they need more than the demo prose implies:
 
-| scenario | needs |
-|---|---|
-| `model eval --rule` (date `<`) | model loader (rule + kinds) · instance loader · validateFull · rule-narrowing |
-| `model eval --condition` (candidate) | parse a condition + eval it as an injected candidate rule |
-| `rule test` → fired/passed/**suppressed** | **formal-error detection** (e.g. `not-a-date` → `datumFormatFalsch`) → suppression |
-| `model compute` (`[BaseFee]`, empty-as-0) | **computation** extraction + `compute()` |
+| scenario | rule / op it actually uses | interpreter status |
+|---|---|---|
+| `model eval --rule /Order/DeliveryNotBeforeOrder` | `AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, DeliveryDate) < 0` | ✓ — `DifferenceInDays`, `AllFieldsFilled`, `<` all kernel-verified (`DifferenceInDaysDiffTest`) |
+| `rule test` (same rule) → fired/passed/**suppressed** | same + the formal-error gate (`not-a-date` → `datumFormatFalsch`) | ✓ — suppression + the date rule both verified |
+| `model eval --condition "[/Order/Quantity] > 100"` | a candidate comparison | ✓ (`evalCandidate`) |
+| `model compute` (`[BaseFee]`, empty-as-0) | `[BaseFee]` | ✓ (`compute`) |
+| (model also contains) `EligibilityCheck` | `CustomCondition ExternalEligibility` | **uninterpretable by design** (external) — `validate` *tolerates* it (reports `unsupported`, fires the rest), like the kernel-adapter's `Opaque` ✓ |
+| (model also contains) `PostalCodeFormat` | `… PatternViolated "[0-9]{5}"` | ✓ |
+
+**Every interpretable rule in cli-runtime's models is now kernel-verified.** The remaining cli-runtime work is purely integration + toolchain: a **DM-JSON → `ModelDef` loader** (consumer-side, native-safe via the kernel read tier) and the **dmtool wiring + native build**.
 
 ## Prioritized order
 
