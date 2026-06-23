@@ -69,13 +69,16 @@ dmkits is **one library with a shared core and two sibling kits**, an **opt-in k
 
 ## 2. Modules & dependencies
 
-Three Gradle units. modelkit and `dm.edit` are **packages inside the root project**, not separate modules (modelkit was folded in 2026-06-09 when the kernel-free module wall was dropped — history in PROJECT-DESIGN §21H).
+Four Gradle units. modelkit and `dm.edit` are **packages inside the root project**, not separate modules (modelkit was folded in 2026-06-09 when the kernel-free module wall was dropped — history in PROJECT-DESIGN §21H).
 
 | Unit | Gradle id | Depends on | Kernel coupling | Ships as |
 |---|---|---|---|---|
 | **library** | root `:` | `api kernel-md-facade`; `implementation` Jackson (databind + yaml) | **public kernel only** | the engine: `dm.core` + `dm.rulekit` + `dm.modelkit` + `dm.edit` |
-| **adapter** | `:adapter` | `api project(':')` + the kernel **internal-read** jars + the **runtime-eval** jars | the `a12internal` read tier + runtime evaluation, **confined to this module** | an opt-in read/convert/rewrite/evaluate surface (`KernelAdapter`) |
+| **adapter** | `:adapter` | `api project(':')` + the kernel **internal-read** jars + the **runtime-eval** jars; `testImplementation project(':interpreter')` | the `a12internal` read tier + runtime evaluation, **confined to this module** | an opt-in read/convert/rewrite/evaluate surface (`KernelAdapter`) |
+| **interpreter** | `:interpreter` (Kotlin Multiplatform: jvm + js) | **nothing** (no kernel, no dmtool — purity-lint-enforced) | **none** — kernel-free by construction | a native-safe, cross-platform runtime evaluator (`DmInterpreter`: `validateFull`/`testRule`/`compute`); the publishable standalone artifact (in build-out — [INTERPRETER-PROPOSAL.md](INTERPRETER-PROPOSAL.md) / [INTERPRETER-BUILDOUT.md](INTERPRETER-BUILDOUT.md)) |
 | **cli** | `:cli` (`application` + GraalVM `native` plugins) | `implementation project(':')` + `project(':adapter')` + picocli + Jackson | inherits the adapter's (bundled *inside* the binary, never a library surface) | the standalone `dmtool` front-end (JVM `installDist`; opt-in native image) |
+
+The **`:interpreter`** is deliberately a leaf with **zero** dependencies: it interprets the rule AST directly (no Groovy codegen), so it runs in a GraalVM native image *and* in the browser from one Kotlin source. Its correctness is pinned by **kernel-differential tests that live in `:adapter`** (`…/adapter/laws/*DiffTest.kt`, consuming `:interpreter` in test scope) — keeping the module kernel-free even in test scope, which is what makes it cleanly publishable. The `verifyInterpreterPurity` lint fails the build on a forbidden import (`java.*`/`com.mgmtp.*`/`groovy.*` in `commonMain`). dmtool will consume it for the native-image runtime verbs (the Groovy ceiling, §5d).
 
 ```
             ┌──────────────────────────────────────────────────────────────┐
@@ -89,15 +92,20 @@ Three Gradle units. modelkit and `dm.edit` are **packages inside the root projec
             │  a12internal read +  │                    │  dm.core/rulekit/  │
             │  runtime eval        │                    │  modelkit/edit     │
             └──────────┬───────────┘                    └─────────┬──────────┘
-                       │ internal jars                   public   │ kernel-md-facade
-                       ▼                                          ▼
-            ┌──────────────────────────────────────────────────────────────┐
-            │  A12 kernel @ mavenLocal  (published via a12-kernel-bootstrap) │
-            └──────────────────────────────────────────────────────────────┘
+                       │ internal jars         testImpl   │       │ kernel-md-facade
+                       │                ┌─ ─ ─ ─ ─ ─ ─ ─ ─ ┘ public│
+                       ▼                ▼ (differential tests)     ▼
+            ┌──────────────────────┐  ┌────────────────────────────────────┐
+            │  A12 kernel          │  │  :interpreter  (KMP jvm+js)          │
+            │  @ mavenLocal        │  │  kernel-free runtime evaluator       │
+            │  (a12-kernel-        │  │  DmInterpreter · purity-lint-guarded │
+            │   bootstrap)         │  └────────────────────────────────────┘
+            └──────────────────────┘
 ```
 
 - `./gradlew :test` — the library (core + rulekit + modelkit + edit). No internal kernel jar on the classpath, so the D15 boundary is build-checked by construction; also runs `SiblingBoundaryTest`.
-- `./gradlew :adapter:test` — the adapter (the only suite with the internal tier).
+- `./gradlew :interpreter:check` — the kernel-free evaluator on **both** targets (`jvmTest` + `jsNodeTest`) + the `verifyInterpreterPurity` lint.
+- `./gradlew :adapter:test` — the adapter (the only suite with the internal tier) + the interpreter↔kernel differential tests.
 - `./gradlew :cli:test` — the CLI (incl. the conformance matrix and the N6 gold oracle over `eval/tasks/`).
 - `./gradlew test` — everything. Always build through [`./build.sh`](../build.sh) (isolated `GRADLE_USER_HOME` + JDK 21) so the machine's global Gradle config can't contaminate the build.
 

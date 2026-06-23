@@ -59,12 +59,14 @@ The demo's four scenarios pin Track A's first deliverables:
 
 ## Prioritized order
 
-1. **Public API + model/instance loaders + general doc model** — the foundation both use-cases need; drive the existing diff cases end-to-end from a `ModelDef` + instance instead of hand-built AST.
-2. **Computations** (`compute()`) — unlocks `model compute`.
-3. **Formal-error / suppression** — unlocks the `rule test` three-way verdict.
-4. **dmtool wiring + native image** → the cli-runtime acceptance (use-case 1 done).
-5. **Operator breadth** (Track B) — family by family, each `*DiffTest`-locked, toward full parity (use-case 2). Add a **catalog-parity test** so an unhandled operator fails the build rather than silently lurking.
-6. **Partial validation** (`validatePart`) + the **message tiers** (display-name, formal-error bundles).
+1. ✅ **Public API + general doc model** — `ModelDef`/`RuleDef`/`FieldDef` + `DmInterpreter.validateFull` over a general `Document` (`ValidateFullDiffTest`).
+2. ✅ **Single-rule eval** — `testRule` (FIRED/PASSED) + `evalCandidate` (`TestRuleDiffTest`).
+3. ✅ **Computations** (`compute()` → value/cleared, empty-as-0) — `ComputeDiffTest`.
+4. ✅ **Formal-error / suppression** — the `rule test` SUPPRESSED verdict + `suppressedBy` (`SuppressionDiffTest`); DATE + NUMBER formal codes so far.
+5. **dmtool wiring + native image** → the cli-runtime acceptance (use-case 1). The remaining headline step: a **DM-JSON → `ModelDef` loader** (consumer-side, native-safe via the kernel read tier in `:adapter`/`:cli`, NOT the Groovy runtime), route the CLI's `JVM_ONLY_VERBS` (`model eval`/`compute`, `rule test`) through `DmInterpreter`, re-capture native reflection metadata, native build + `examples/cli-runtime.md` showboat on the native image. *The full semantic content of those verbs is already kernel-verified (1–4); this step is integration + the native toolchain.*
+6. **Operator breadth** (Track B) — family by family, each `*DiffTest`-locked, toward full catalog parity (use-case 2). In progress: `PatternMatched`/`PatternViolated`, arithmetic `+ - *` shipped. Add a **catalog-parity test** so an unhandled operator fails the build rather than silently lurking; add division/power with their scale/div-by-zero semantics.
+7. **Partial validation** (`validatePart`) + the **message tiers** (display-name, formal-error bundles).
+8. **Doc-model consolidation** — fold the spike's `SingleRowDoc`/`RepDoc` onto the general `Document`.
 
 ## Input contract / API (design)
 
