@@ -36,15 +36,17 @@ A structural optimization to design toward (not yet committed work):
 - **Open question (deferred):** between runs, do only *values* change, or also the set of repetition *rows* (add/remove)? If values-only, the structure index is reusable too; if rows change, rebuild the value store per run and reuse only the prepared model (the safe default). Decide when this is picked up — profile first.
 - **Study the kernel's data representation + caches for INSPIRATION (not a copy — the license boundary holds: read for comprehension, write original).** The kernel devs spent *years* optimizing; its instance representation and its caches — `IndexFieldCache`, `ValidationCache`, `CalculationCache`, `GroupFillCache`, `RepetitionNotUniqueErrorCache` — encode hard-won structure (index-by-field, memoized group-fill, cached calculation results within a run). **Do not assume a naive fresh impl will be anywhere near kernel performance.** Get informed by what they cache and how they index, reproduce the *idea* in original Kotlin, and let the against-kernel benchmark (#29) tell the truth. Humility + measurement, not confidence.
 
-## Prerequisite — make the real `Document` non-quadratic (task #28)
+## Prerequisite — make the real `Document` non-quadratic (task #28 — DONE 2026-06-23, `434cdcdc`)
 
-A naive O(N²) `Document` cannot even run 100k rows, so the first step is structural:
+A naive O(N²) `Document` cannot even run 100k rows, so the first step was structural. **Done:**
 
-- **Index placements** by `(path, repetition-indices)` into a `Map` (and rep-group rows into a per-group index) so `field`/`filled`/`displayValue`/`valueAt`/`groupFilled`/`starRows` are O(1)/O(log), not O(P).
-- Keep the indices **immutable after build** (the `Document` is a snapshot) so lookups are pure.
-- Re-verify every existing `*DiffTest` stays green (indexing is a perf change, not a semantics change — correctness is already locked).
+- **`valueAt`/`rowsOf` indexed** — a lazily-built, mutation-invalidated `Index` maps `(path, reps) → placement` and `groupPath → rows`, so `field`/`filled`/`displayValue`/`star` are O(1)/O(rows), not O(P).
+- **`evaluated` amortized** — `contextsFor(G)` computes each row's `evaluated` in ONE pass over the valued fields (recording each field's index-prefix at its attach-depth), instead of an O(P) scan per row.
+- **`autoGroup` deduped via a set** — group auto-instantiation was an O(P²) `placements.none{…}` build scan; now O(1) per add.
+- All `*DiffTest` stay green (behavior unchanged — a perf change, correctness already locked).
+- **Residual (noted):** `groupFilled` still scans the valued list per call (O(valued)); only group-predicate-heavy models hit it — the #29 benchmark will say whether it needs indexing.
 
-Only then do the large-N benchmarks below become runnable.
+The large-N benchmarks below are now runnable (task #29).
 
 ## Benchmark catalog (the hard cases — grow this list)
 
@@ -72,7 +74,7 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ## Staging
 
-1. Index the `Document` (task #28) + re-green the diff tests.
+1. ✅ Index the `Document` (task #28) + re-green the diff tests — DONE (`434cdcdc`).
 2. Land B1/B2 (flat + single-aggregate) against the kernel — establishes the harness + the first baselines.
 3. Add B3/B4/B5 (the nested/cross-level/deep-star group cases) — the heart of "invest in groups."
 4. B6/B7 (whole-model + compute at scale), then the JS throughput checks.
@@ -82,4 +84,4 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 *(dated baselines, newest first — populated as benchmarks land)*
 
-_None yet — harness pending task #28._
+_None yet — `Document` indexing done (#28); harness pending (#29)._
