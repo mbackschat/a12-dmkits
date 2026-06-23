@@ -76,13 +76,22 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 1. ✅ Index the `Document` (task #28) + re-green the diff tests — DONE (`434cdcdc`).
 2. **(in progress)** B1/B2 (flat + single-aggregate): the **pure-engine** real-`Document` scaling is landed (`DocumentScaleTest`, JVM+JS, baselines above); the **against-kernel** comparison (build-once kernel pipeline in `:adapter`, larger N) is the next step.
-3. Add B3/B4/B5 (the nested/cross-level/deep-star group cases) — the heart of "invest in groups."
+3. B3 (nested per-sub) landed against the kernel; B4 (cross-level ref), B5 (deep nested-star), and larger N (100k) remain — the rest of "invest in groups."
 4. B6/B7 (whole-model + compute at scale), then the JS throughput checks.
 5. Wire the gate into CI once baselines are stable.
 
 ## Results log
 
 *(dated baselines, newest first — populated as benchmarks land)*
+
+**2026-06-23 — against-kernel** (`adapter.laws.AgainstKernelPerfTest`, `KernelEngine` build-once vs `DmInterpreter`, same instance, median of 3 after 2 warmups; JVM). Correctness (interp == kernel fired codes) asserted first.
+
+| scenario | interp | kernel | ratio (interp/kernel) |
+|---|---|---|---|
+| B1 per-row, 3000 Lines | ~13 ms | ~188 ms | **~0.07 (≈14× faster)** |
+| B3 nested per-sub, 400×5 = 2000 Sub rows | ~5 ms | ~63 ms | **~0.09 (≈11× faster)** |
+
+The interpreter is well ahead on these (no per-`validateFull` Groovy codegen/machinery). **Honest caveat (per the humility note):** the interpreter currently does *less* than the kernel — no requiredness validation (`mandatoryField`), partial formal validation — so the gap will narrow as those land; this is a steady-state post-warmup comparison at modest N, not a final verdict. Larger N (100k) and more group shapes (B4/B5) are still to add.
 
 **2026-06-23 — first slice: pure-engine real-`Document` scaling** (`interpreter/commonTest/DocumentScaleTest`, the honest counterpart of the RepDoc benchmark; kernel-free, JVM+JS). 3000 `/Perf/Lines` rows:
 
