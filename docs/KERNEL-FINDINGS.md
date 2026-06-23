@@ -101,6 +101,16 @@ A formal error is **attributed to a sentinel rule path** — the runtime message
 
 **Refinement (2026-06-10, RT-semantics drain — probe-corrected): the suppression is *branch-scoped*, not rule-scoped.** The unknown state makes the affected *comparison* evaluate to false-or-unknown; the ordinary `And`/`Or` three-state algebra then decides the rule. So `healthyTrue Or [broken] > 0` **still fires** via its healthy branch — a formal error does not take the whole rule out — while `healthyTrue And [broken] > 0` is absorbed (the single-branch case above, where branch- and rule-scoped look identical). KERNEL-SEMANTICS §1's "removes the rules over it from evaluation" reads stricter than the engine behaves. *(Locked: `adapter.laws.FormalErrorScopeLawsTest`.)*
 
+## §3 supplement — two more NUMBER sign formal errors: signed-zero and leading-plus (runtime, 2026-06-23)
+
+Surfaced by the **differential fuzz net** (`adapter.perf.InterpreterKernelFuzzTest` — random valid documents, assert interp == kernel), which fed a `-0`:
+
+- **A signed zero is a formal error** — `-0`, `-0.0`, `-0.00` (any minus sign on a zero magnitude) → **`zahlNullEnthaeltVorzeichen`**. A non-zero negative (`-5`, `-0.01`) and a plain zero (`0`, `0.00`) are clean.
+- **A leading plus is a formal error** — `+5`, `+0`, `+0.5` → **`zahlMitPlus`** (distinct from `zahlHatUngueltigeZeichen`; the explicit `+` is its own error, not "invalid characters").
+- **Ordering: signed-zero is checked BEFORE the decimal-separator/scale checks.** `-0.0` on a **scale-0** field is `zahlNullEnthaeltVorzeichen`, *not* `zahlHatDezimalTrenner` — so a malformed value can match several checks and the kernel's precedence matters. (Leading-plus likewise wins over signed-zero: `+0` → `zahlMitPlus`.)
+
+Both ride `formalePruefung` (the sentinel rule path) like the other formal errors, and suppress a referencing author rule (branch-scoped). *(Locked: `adapter.laws.NumberSignFormalDiffTest` — interp vs kernel over a scale-2 and a scale-0 field; the precedence is part of the lock.)*
+
 ## §4 supplement — the "required" property and its two modes (runtime, 2026-06-06)
 
 The field-editor "required" checkbox is encoded in DM-JSON as `Field.requirednessConfig: {mode: …}` (kernel enum `IRequirednessConfig.Mode`). An unfilled required field raises the `mandatoryField` **formal error**, so the field is **"unknown"** (§3). The two modes — and the gotcha the BA docs flag — verified at runtime:

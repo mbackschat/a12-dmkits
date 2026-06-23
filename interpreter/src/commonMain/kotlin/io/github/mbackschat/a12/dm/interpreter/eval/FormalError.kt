@@ -46,6 +46,12 @@ enum class FormalErrorCode(val id: String) {
 
     /** More fractional digits than the NUMBER field's scale allows. */
     TOO_MANY_DECIMALS("zahlFalscheAnzahlNachkommastellen"),
+
+    /** A NUMBER zero carrying a minus sign (`-0`, `-0.00`) — the kernel forbids a signed zero. */
+    SIGNED_ZERO("zahlNullEnthaeltVorzeichen"),
+
+    /** A NUMBER with a leading plus sign (`+5`, `+0`) — the kernel forbids an explicit plus. */
+    PLUS_SIGN("zahlMitPlus"),
 }
 
 fun formalError(kind: Kind, raw: String, scale: Int? = null): FormalErrorCode? {
@@ -62,13 +68,22 @@ fun formalError(kind: Kind, raw: String, scale: Int? = null): FormalErrorCode? {
 
 private fun numberFormalError(raw: String, scale: Int?): FormalErrorCode? = when {
     raw != raw.trim() -> FormalErrorCode.LEADING_BLANK
+    // A leading `+` on an otherwise-valid number is its own error (the kernel reports it, not "invalid chars").
+    raw.startsWith("+") && DECIMAL.matches(raw.drop(1)) -> FormalErrorCode.PLUS_SIGN
     !DECIMAL.matches(raw) -> FormalErrorCode.INVALID_NUMBER
+    // Signed-zero is checked BEFORE the scale/separator checks (verified: `-0.0` on a scale-0 field is the
+    // signed-zero error, NOT the decimal-separator one — kernel order, NumberSignFormalDiffTest).
+    isNegativeZero(raw) -> FormalErrorCode.SIGNED_ZERO
     scale == 0 && raw.contains('.') -> FormalErrorCode.DECIMAL_SEPARATOR
     scale != null && fractionalDigits(raw) > scale -> FormalErrorCode.TOO_MANY_DECIMALS
     else -> null
 }
 
 private fun fractionalDigits(raw: String): Int = raw.substringAfter('.', "").length
+
+/** A minus-signed value whose magnitude is zero (`-0`, `-0.0`, `-0.00`) — the kernel's signed-zero error. */
+private fun isNegativeZero(raw: String): Boolean =
+    raw.startsWith("-") && raw.drop(1).all { it == '0' || it == '.' }
 
 /**
  * The interpreter's OWN end-user text for a formal-error [code], in [locale] (`de*` → German, else English).
@@ -90,6 +105,10 @@ fun formalErrorText(code: FormalErrorCode, locale: String, scale: Int? = null): 
             if (de) "Wert muss eine ganze Zahl ohne Dezimaltrennzeichen sein." else "Value must be a whole number (no decimal separator)."
         FormalErrorCode.TOO_MANY_DECIMALS ->
             if (de) "Wert hat zu viele Nachkommastellen (max. $scale)." else "Value has too many decimal places (max $scale)."
+        FormalErrorCode.SIGNED_ZERO ->
+            if (de) "Null darf kein Vorzeichen haben." else "Zero must not carry a sign."
+        FormalErrorCode.PLUS_SIGN ->
+            if (de) "Zahl darf kein führendes Pluszeichen haben." else "Number must not have a leading plus sign."
     }
 }
 

@@ -3,6 +3,8 @@ package io.github.mbackschat.a12.dm.adapter.perf
 import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
+import io.github.mbackschat.a12.dm.interpreter.gen.asSink
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 
 /**
@@ -44,16 +46,6 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
  * Lives in `:adapter` (the only module with the kernel); pure engine — NO dmtool / CLI / process / native, just
  * the `DmInterpreter` + `Document` API and `RuntimeLaws`.
  */
-
-/** A placement sink — a scenario describes its instance once; each engine materializes it its own way. */
-interface PlacementSink {
-    /** A group row at the given 1-based repetition indices (one per path part). */
-    fun group(path: String, vararg reps: Int)
-    /** A field with a value at the given indices (one per path part, the field included). */
-    fun field(path: String, value: String, vararg reps: Int)
-    /** A present-but-valueless (unfilled) field. */
-    fun emptyField(path: String, vararg reps: Int)
-}
 
 /**
  * One performance scenario: the SAME logical model expressed for BOTH engines + a scale-parameterized,
@@ -103,16 +95,10 @@ object InterpreterPerfEngine : PerfEngine {
             override val label = "interp"
             override fun instance(n: Int, variant: Int): RunInstance {
                 val doc = Document(model.kinds, model.declaredReps, model.unsignedFields, model.rangeConfig)
-                scenario.instance(InterpSink(doc), n, variant)
+                scenario.instance(doc.asSink(), n, variant)
                 return RunInstance { interp.validateFull(doc).map { it.code }.sorted() }
             }
         }
-    }
-
-    private class InterpSink(private val doc: Document) : PlacementSink {
-        override fun group(path: String, vararg reps: Int) { doc.group(path, *reps) }
-        override fun field(path: String, value: String, vararg reps: Int) { doc.field(path, value, *reps) }
-        override fun emptyField(path: String, vararg reps: Int) { doc.emptyField(path, *reps) }
     }
 }
 
