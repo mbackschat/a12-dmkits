@@ -75,7 +75,7 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 ## Staging
 
 1. ✅ Index the `Document` (task #28) + re-green the diff tests — DONE (`434cdcdc`).
-2. Land B1/B2 (flat + single-aggregate) against the kernel — establishes the harness + the first baselines.
+2. **(in progress)** B1/B2 (flat + single-aggregate): the **pure-engine** real-`Document` scaling is landed (`DocumentScaleTest`, JVM+JS, baselines above); the **against-kernel** comparison (build-once kernel pipeline in `:adapter`, larger N) is the next step.
 3. Add B3/B4/B5 (the nested/cross-level/deep-star group cases) — the heart of "invest in groups."
 4. B6/B7 (whole-model + compute at scale), then the JS throughput checks.
 5. Wire the gate into CI once baselines are stable.
@@ -84,4 +84,11 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 *(dated baselines, newest first — populated as benchmarks land)*
 
-_None yet — `Document` indexing done (#28); harness pending (#29)._
+**2026-06-23 — first slice: pure-engine real-`Document` scaling** (`interpreter/commonTest/DocumentScaleTest`, the honest counterpart of the RepDoc benchmark; kernel-free, JVM+JS). 3000 `/Perf/Lines` rows:
+
+| scenario | JVM | JS (Node) |
+|---|---|---|
+| B1 per-row rule (`[Qty] > 50` iterating Lines) | ~65 ms | ~210 ms |
+| B2 star aggregate (`Sum(Lines*/Amount) > 0`) | ~82 ms | ~210 ms |
+
+Linear, both well under the JS 2s test-timeout — the regression guard for the #28 indexing (a quadratic `Document` blows the JS timeout at this N; that's exactly why N=20k JS failed and was dropped to 3k for the cross-platform test). **Not yet measured: against the kernel, and group-heavy/nested at 100k** — that's the JVM `:adapter` harness (next #29 increment), which has no 2s test cap.
