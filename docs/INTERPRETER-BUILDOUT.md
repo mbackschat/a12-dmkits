@@ -31,6 +31,46 @@ A long build-out session is paused here with a **clean tree** at the rich-messag
 - **Locale selection is correct as exact-key match given the API contract** (the locale is an explicit API input; pass a declared code → that text). The kernel's resolution/fallback (e.g. `de_DE`→`de`) is only a leniency for mismatched-form requests — not a fidelity gap under "pass the declared code."
 - Two loader bugs the demo regeneration caught + fixed: an empty group object `{}` now instantiates a group row (empty-operand compute), and an absolute path `[/Group/Field]` in a condition is used as-is.
 
+### How to warm up and continue (post-compaction playbook)
+
+A cold agent picking this up should do these **in order**.
+
+**1 — Read, to rebuild the mental model (≈15 min):**
+1. **This doc**, top to bottom — the plan, the session-state list above, the API design (below), the loader field-mapping (below).
+2. [INTERPRETER-PROPOSAL.md](INTERPRETER-PROPOSAL.md) — §2 (interpret-not-codegen), §6/§7 (owned-vs-delegated + the four standalone hygiene rules), §8 (built in-repo; separation by purity lint), §10 (spike result + build-out progress), §11 (open decisions), §12 (full+partial in scope).
+3. The **engine** (all `interpreter/src/commonMain/kotlin/io/github/mbackschat/a12/dm/interpreter/`): `Ast.kt`, `Interpreter.kt`, `DmInterpreter.kt` (the public API + per-row evaluation + iteration scope + the rich-message build), `Document.kt`, `Model.kt` (the data types), `Parser.kt`, `Pointer.kt`, `EvalContext.kt`, `FormalError.kt`, `DateMath.kt`, `Message.kt` (the `$…$` renderer — the next edit lands here).
+4. The **CLI wiring**: `cli/.../interp/InterpreterModelLoader.java` (DM-JSON→`ModelDef`, instance→`Document`) + `InterpreterEngine.java` (renders the verbs' `data`); `cli/.../model/ModelEvalCommand.java` + `ModelComputeCommand.java`, `cli/.../rule/RuleTestCommand.java` (the `--kernel` branch + the engine default); `cli/.../Cli.java` (`JVM_ONLY_VERBS`, `isNativeImage`).
+5. The **differential tests = the live coverage truth**: `adapter/src/test/kotlin/io/github/mbackschat/a12/dm/adapter/laws/*DiffTest.kt` (`InterpreterDiffTest`, `ParserDiffTest`, `PolarityDiffTest`, `AggPolarityDiffTest`, `RepetitionDiffTest`, `LocalizedMessageDiffTest`, `PatternDiffTest`, `ArithmeticDiffTest`, `DifferenceInDaysDiffTest`, `SuppressionDiffTest`, `ValidateFullDiffTest`, `TestRuleDiffTest`, `ComputeDiffTest`, `RichMessageDiffTest`) + the oracle `adapter/.../laws/RuntimeLaws.java`; and `cli/.../interp/InterpreterRealModelDiffTest.java` (loader vs live kernel over real models).
+6. **Kernel truth (consult-only, never edit):** `../a12-kernel-demo/KERNEL-SEMANTICS.md`, the merged BA doc `../a12-kernel/documentation/_merged/kernel-ba.md`, and our own [KERNEL-FINDINGS.md](KERNEL-FINDINGS.md). For message/pointer mechanics: kernel source `../a12-kernel/kernel-md/kernel-md-runtime-service/.../MessageImpl.java` + `DocumentValidationResultImpl.java`, and `…/document-v2/.../apiV2/PartiallyKnownDocumentMultiPointer*.java`.
+7. `../CLAUDE.md` — the standing conventions (esp. the **"Interpreter: built out in-repo; separation by convention + linting"** section, the build-env isolation, the differential-law discipline).
+
+**2 — Verify the baseline is green before touching anything:**
+```
+git status                     # clean; HEAD at the session-state commit or later
+./build.sh :interpreter:check :adapter:test :cli:test
+./scripts/verify-demos.sh      # all 6 demos OK (slower; optional unless touching CLI/demos)
+```
+If any is red on a clean tree, stop and investigate — don't build on a broken baseline.
+
+**3 — Re-internalize the traps (cheap mistakes this project punishes):**
+- **Build ONLY via `./build.sh <args>`** (isolated `GRADLE_USER_HOME` + JDK 21). A bare `./gradlew` gets contaminated by the machine's private registry and fails confusingly.
+- **`:interpreter` is kernel-free AND dependency-free** — the `verifyInterpreterPurity` lint fails the build on a forbidden import. Kernel-differential tests live in **`:adapter`** (`testImplementation project(':interpreter')`), never in `:interpreter`. The decimal/date shims are `expect/actual` (`Dec`); the rest is `commonMain`.
+- **Every new operator / behavior gets a `*DiffTest` vs the real kernel** (`RuntimeLaws`) — the differential is the spec, not hand-asserted expectations.
+- Kotlin **`*/` in KDoc** breaks compilation (write `Items* / Count`). The `expect/actual class` beta warning is harmless.
+- Shell: `rm` is aliased to `rm -i` → use **`/bin/rm`**; zsh doesn't word-split unquoted vars.
+- **Commit per feature** (Conventional Commits, subject-only), **auto-commit without asking**, **commit on `main` (never branch)**, **never offer to push**.
+
+**4 — Do the next task (`$field$`, #26) — concrete steps:**
+1. `FieldDef` (Model.kt): add `labels: Map<String, String> = emptyMap()` (locale→label); add a `ModelDef.labelOf(path, locale)` helper.
+2. `InterpreterModelLoader.load` (cli): read each `Field` node's `label` array → `labels` (mirror the rule `messages` reader).
+3. `renderMessage` (Message.kt): add a **name pass** after the value pass — `$relpath$` → the field's label for the locale, **falling back to the field name** (last path segment) when no label. Signature gains a label resolver; `DmInterpreter` passes `{ path -> model.labelOf(path, locale) }`. Update the one direct call in `InterpreterMultiplatformTest`.
+4. Lock it: a differential — inject a rule whose message is `"$Quantity$ is $Quantity.value$ …"`, render via the kernel (`RuntimeLaws.errorTextOf`/the message text) and via the interpreter, assert equal. Cover **unlabeled** (order-ruled → kernel returns the name; verify) and, if a labeled fixture is available, **labeled**.
+5. `./build.sh :interpreter:check :adapter:test`; update the build-out doc's Messages row; **commit** `feat(interpreter): $field$ display-name placeholder`.
+
+Then **#27 (formal-error messages)** and **#19 (operator coverage)** per the prioritized order, each its own `*DiffTest` + commit. Finally **#23 (native build)** per step 4 of the session-state list — re-capture, `:cli:nativeCompile`, `native-gate.sh` with `cli-runtime.md` un-skipped.
+
+**Differential-test recipe (the pattern every increment follows):** add a `…DiffTest.kt` in `adapter/.../laws/`; load a fixture model (`RuntimeLaws.model("models/order.dm.json")`); inject the rule (`RuntimeLaws.withRule(...)` / `.withComputation(...)`); build the instance two ways from one spec — `RuntimeLaws.doc()…` for the kernel and `Document(kinds)…` / `SingleRowDoc`/`RepDoc` for the interpreter; assert `interpreter == kernel` (fired codes, verdict, type, the rich-message channels). Drive the interpreter from **parsed condition text** (`parseCondition`) where possible, not a hand-built AST.
+
 ## Current state (what the engine does today)
 
 | area | today | gap to full-blown |
