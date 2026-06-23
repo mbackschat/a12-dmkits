@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import java.math.BigDecimal
+import java.math.MathContext
 import java.math.RoundingMode
 
 /**
@@ -13,10 +14,17 @@ actual class Dec(val v: BigDecimal) : Comparable<Dec> {
     actual operator fun plus(other: Dec): Dec = Dec(v + other.v)
     actual operator fun minus(other: Dec): Dec = Dec(v - other.v)
     actual operator fun times(other: Dec): Dec = Dec(v * other.v)
+    actual fun div(other: Dec): Dec = Dec(v.divide(other.v, INTERNAL))
+    actual fun pow(exponent: Int): Dec =
+        if (exponent >= 0) Dec(v.pow(exponent, INTERNAL))
+        else Dec(BigDecimal.ONE.divide(v.pow(-exponent, INTERNAL), INTERNAL))
     actual override fun compareTo(other: Dec): Int = v.compareTo(other.v)
     actual fun scale19(): Dec = Dec(v.setScale(19, RoundingMode.HALF_UP))
     actual fun display(): String = v.stripTrailingZeros().toPlainString()
 }
+
+/** The kernel's `VkBigDecimal.INTERNAL_PRECISION` — 50 significant digits, HALF_UP — for ÷ and ^. */
+private val INTERNAL = MathContext(50, RoundingMode.HALF_UP)
 
 actual fun dec(value: String): Dec = Dec(BigDecimal(value))
 actual fun decOrNull(value: String): Dec? = try { Dec(BigDecimal(value)) } catch (e: NumberFormatException) { null }

@@ -56,7 +56,7 @@ sealed interface Cond {
 }
 
 /** Binary arithmetic operators (language-independent symbols). Division/power are not yet modeled. */
-enum class ArithOp { ADD, SUB, MUL }
+enum class ArithOp { ADD, SUB, MUL, DIV, POW }
 
 /** Expression AST. */
 sealed interface Expr {

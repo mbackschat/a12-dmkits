@@ -351,11 +351,27 @@ class Interpreter(
         if (l is Val.Unknown || r is Val.Unknown) return Val.Unknown
         val x = num(l)
         val y = num(r)
-        return Val.Num(when (a.op) {
-            ArithOp.ADD -> x + y
-            ArithOp.SUB -> x - y
-            ArithOp.MUL -> x * y
-        })
+        return when (a.op) {
+            ArithOp.ADD -> Val.Num(x + y)
+            ArithOp.SUB -> Val.Num(x - y)
+            ArithOp.MUL -> Val.Num(x * y)
+            // Division by zero is QUIET — the expression is non-evaluable → Unknown, so a referencing rule
+            // simply does not fire / a computation clears (KERNEL-FINDINGS / operators.json Arithmetic).
+            ArithOp.DIV -> if (y.compareTo(DEC_ZERO) == 0) Val.Unknown else Val.Num(x.div(y))
+            ArithOp.POW -> power(x, y)
+        }
+    }
+
+    /**
+     * `base ^ exp` — the kernel evaluates it QUIETLY (→ Unknown, the rule does not fire) for the edge cases:
+     * a non-whole exponent (model-rejected, so a defensive Unknown), an exponent outside `[-1000, 1000]`, or
+     * `0` to a negative power. Otherwise `MathContext(50)` arithmetic via [Dec.pow]. (operators.json Arithmetic.)
+     */
+    private fun power(base: Dec, exp: Dec): Val {
+        val e = exp.display().toIntOrNull() ?: return Val.Unknown
+        if (e !in -1000..1000) return Val.Unknown
+        if (base.compareTo(DEC_ZERO) == 0 && e < 0) return Val.Unknown
+        return Val.Num(base.pow(e))
     }
 
     private fun evalFunc(f: Expr.Func): Val = when (FunctionOp.byName(f.name)) {

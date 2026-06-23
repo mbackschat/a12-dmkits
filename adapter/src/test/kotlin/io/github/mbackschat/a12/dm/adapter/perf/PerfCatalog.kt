@@ -156,6 +156,8 @@ object PerfCatalog {
             FuzzRule(FZ_LINES, "YO", "../OrderedOn", "FieldFilled(OrderedOn) And YearFromDate(OrderedOn) > 2020"),
             FuzzRule(FZ_LINES, "YD", "../DueBy", "FieldFilled(DueBy) And YearFromDate(DueBy) > 2020"),
             FuzzRule("/Cart", "TP", "../Lines/Price", "Sum(Lines*/Price) > 1000"),
+            FuzzRule(FZ_LINES, "DV", "../Price", "FieldFilled(Qty) And { [Price] / [Qty] } > 5"),   // division (+ div-by-zero quiet)
+            FuzzRule(FZ_LINES, "PW", "../Qty", "{ [Qty] ^ 2 } > 100"),                                // power
             FuzzRule(FZ_PARTS, "HW", "../Weight", "FieldFilled(Weight) And [Weight] > 50"),
             FuzzRule(FZ_PARTS, "XL", "../Weight", "FieldFilled(Weight) And [Weight] > [/Cart/Lines/Qty]"),
         )

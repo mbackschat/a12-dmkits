@@ -10,6 +10,14 @@ expect class Dec : Comparable<Dec> {
     operator fun plus(other: Dec): Dec
     operator fun minus(other: Dec): Dec
     operator fun times(other: Dec): Dec
+
+    /** This ÷ [other], capped at the kernel's `MathContext(50)` HALF_UP (`VkBigDecimal.INTERNAL_PRECISION`) — a
+     *  non-terminating quotient is rounded to 50 significant digits. The caller guards division by zero (→ Unknown). */
+    fun div(other: Dec): Dec
+
+    /** This raised to a whole-number [exponent], at `MathContext(50)` HALF_UP. The caller guards the kernel's quiet
+     *  cases (0 to a negative power, |exponent| > 1000 → Unknown) and that the exponent is whole. */
+    fun pow(exponent: Int): Dec
     override fun compareTo(other: Dec): Int
 
     /**

@@ -75,8 +75,9 @@ private class ConditionParser(private val src: String, private val base: String)
         return Cond.Pred(left.name, left.args)
     }
 
-    // Arithmetic precedence (low→high): additive (+ -) over multiplicative (*) over the atom. Sub-
-    // expressions group with CURLY braces { } (kernel: not round/square brackets). Division/power deferred.
+    // Arithmetic precedence (low→high): additive (+ -) over multiplicative (* /) over power (^) over the atom.
+    // Sub-expressions group with CURLY braces { } (kernel: not round/square brackets); `^` is NOT nestable
+    // without braces (the kernel rejects `a ^ b ^ c`, MVK_TOO_MANY_POW_FOR_CALC).
     private fun parseExpr(): Expr = parseAdditive()
 
     private fun parseAdditive(): Expr {
@@ -91,14 +92,23 @@ private class ConditionParser(private val src: String, private val base: String)
     }
 
     private fun parseMultiplicative(): Expr {
-        var left = parseAtom()
+        var left = parsePower()
         while (true) {
             skipWs()
-            if (peek() != '*') break
+            val op = when (peek()) { '*' -> ArithOp.MUL; '/' -> ArithOp.DIV; else -> break }
             next()
-            left = Expr.Arith(ArithOp.MUL, left, parseAtom())
+            left = Expr.Arith(op, left, parsePower())
         }
         return left
+    }
+
+    /** A single optional `^` after an atom (power binds tightest; not nestable without braces — see [parseExpr]). */
+    private fun parsePower(): Expr {
+        val base = parseAtom()
+        skipWs()
+        if (peek() != '^') return base
+        next()
+        return Expr.Arith(ArithOp.POW, base, parseAtom())
     }
 
     private fun parseAtom(): Expr {
