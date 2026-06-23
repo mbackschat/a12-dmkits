@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
 import io.github.mbackschat.a12.dm.interpreter.ast.typedValue
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ValuedField
+import kotlin.jvm.JvmOverloads
 
 /**
  * A general document instance the interpreter walks — NO kernel types. Addressed exactly like the
@@ -20,8 +21,15 @@ import io.github.mbackschat.a12.dm.interpreter.model.ValuedField
  * repeatable group ancestor.
  *
  * Building a field auto-instantiates its ancestor groups (mirrors the kernel's instance model).
+ *
+ * **Performance (INTERPRETER-PERFORMANCE.md).** Placement lookups are **indexed**, not linear scans: an
+ * immutable [Index] — built once on first query, invalidated on mutation — maps `(path, reps) → value` and
+ * `groupPath → rows` so `valueAt`/`rowsOf`/`star` are O(1)/O(rows), not O(P). `contextsFor` computes each
+ * row's `evaluated` flag in ONE amortized pass over the valued fields (not an O(P) scan per row), and group
+ * auto-instantiation dedupes via a set (not an O(P²) build scan). Net: per-row evaluation is ~O(rows · refs),
+ * not O(rows · placements).
  */
-class Document(
+class Document @JvmOverloads constructor(
     private val kinds: Map<String, Kind>,
     private val declaredReps: Map<String, Int> = emptyMap(),
     /** NUMBER fields that are *unsigned* (the kernel's `hatVorzeichen == false` — a non-negative `minValue`);
@@ -31,6 +39,8 @@ class Document(
     private data class Placement(val path: String, val reps: List<Int>, val value: String?, val isGroup: Boolean)
 
     private val placements = mutableListOf<Placement>()
+    /** Group `(path, reps)` already instantiated — O(1) dedup for [autoGroup] (avoids an O(P²) build scan). */
+    private val instantiatedGroups = HashSet<Pair<String, List<Int>>>()
 
     /** A field with a value at the given 1-based indices (one per path part, the field included). */
     fun field(path: String, value: String, vararg reps: Int): Document = add(path, reps, value, false)
@@ -43,16 +53,51 @@ class Document(
 
     private fun add(path: String, reps: IntArray, value: String?, isGroup: Boolean): Document {
         val r = reps.toList()
-        if (!isGroup) ancestorGroups(path).forEach { g -> autoGroup(g, r.take(parts(g).size)) }
-        placements += Placement(path, r, value, isGroup)
+        if (isGroup) {
+            if (instantiatedGroups.add(path to r)) placements += Placement(path, r, value, true)
+        } else {
+            ancestorGroups(path).forEachIndexed { i, g -> autoGroup(g, r.take(i + 1)) }
+            placements += Placement(path, r, value, false)
+        }
+        cachedIndex = null   // invalidate the lazily-built lookup index
         return this
     }
 
     private fun autoGroup(path: String, reps: List<Int>) {
-        if (placements.none { it.isGroup && it.path == path && it.reps == reps }) {
-            placements += Placement(path, reps, null, true)
-        }
+        if (instantiatedGroups.add(path to reps)) placements += Placement(path, reps, null, true)
     }
+
+    // ---- lookup index (built once on first query, invalidated on mutation) ----------------------------
+
+    private class Index(
+        val valueByKey: Map<Pair<String, List<Int>>, Placement>,   // non-group placements, FIRST per key wins
+        val rowsByGroup: Map<String, List<List<Int>>>,             // group path → distinct reps, document order
+        val valued: List<Placement>,                               // valued (value != null) non-group placements
+        val partsByPath: Map<String, List<String>>,                // memoized path split
+    )
+
+    private var cachedIndex: Index? = null
+
+    private fun index(): Index = cachedIndex ?: build().also { cachedIndex = it }
+
+    private fun build(): Index {
+        val byKey = HashMap<Pair<String, List<Int>>, Placement>()
+        val rows = LinkedHashMap<String, MutableList<List<Int>>>()
+        val valued = ArrayList<Placement>()
+        val partsMemo = HashMap<String, List<String>>()
+        for (p in placements) {
+            partsMemo.getOrPut(p.path) { parts(p.path) }
+            if (p.isGroup) {
+                rows.getOrPut(p.path) { ArrayList() }.let { if (p.reps !in it) it.add(p.reps) }
+            } else {
+                byKey.getOrPut(p.path to p.reps) { p }   // FIRST placement per key wins (matches firstOrNull)
+                if (p.value != null) valued.add(p)
+            }
+        }
+        return Index(byKey, rows, valued, partsMemo)
+    }
+
+    private fun partsOf(path: String): List<String> = index().partsByPath[path] ?: parts(path)
 
     /**
      * Every present (valued) field instance — its path, 1-based repetition indices, and raw value — in
@@ -61,34 +106,51 @@ class Document(
      * and groups are excluded — emptiness is a requiredness concern, not a format one.
      */
     fun valuedFields(): List<ValuedField> =
-        placements.filter { !it.isGroup && it.value != null }.map { ValuedField(it.path, it.reps, it.value!!) }
+        index().valued.map { ValuedField(it.path, it.reps, it.value!!) }
 
-    /** One [EvalContext] per instantiated row of [groupPath]; empty if the group has no rows. */
-    fun contextsFor(groupPath: String): List<EvalContext> =
-        rowsOf(groupPath).map { reps -> RowContext(groupPath, reps) }
+    /**
+     * One [EvalContext] per instantiated row of [groupPath]; empty if the group has no rows. Each row's
+     * `evaluated` flag is computed here in a single amortized pass over the valued fields: a row is
+     * evaluated iff some valued field is in its scope, i.e. its index-prefix matches the field at the depth
+     * where the field's path diverges from the group (`common`). Recording each valued field's prefix at its
+     * attach-depth turns the per-row "is anything in scope?" check into a set lookup.
+     */
+    fun contextsFor(groupPath: String): List<EvalContext> {
+        val rows = rowsOf(groupPath)
+        if (rows.isEmpty()) return emptyList()
+        val gParts = partsOf(groupPath)
+        val attachByDepth = HashMap<Int, HashSet<List<Int>>>()
+        for (p in index().valued) {
+            val common = commonPrefixLen(partsOf(p.path), gParts)
+            attachByDepth.getOrPut(common) { HashSet() }.add(p.reps.take(common))
+        }
+        return rows.map { reps ->
+            val evaluated = attachByDepth.any { (depth, prefixes) -> reps.take(depth) in prefixes }
+            RowContext(groupPath, reps, evaluated)
+        }
+    }
 
     /** The distinct 1-based index tuples at which [groupPath] is instantiated, in document order. */
-    private fun rowsOf(groupPath: String): List<List<Int>> =
-        placements.filter { it.isGroup && it.path == groupPath }.map { it.reps }.distinct()
+    private fun rowsOf(groupPath: String): List<List<Int>> = index().rowsByGroup[groupPath] ?: emptyList()
 
     /** Indices for a referenced path P under a row of group G: shared-prefix indices from the row, else 1. */
     private fun repsFor(refPath: String, group: String, rowReps: List<Int>): List<Int> {
-        val refParts = parts(refPath)
-        val common = commonPrefixLen(refParts, parts(group))
+        val refParts = partsOf(refPath)
+        val common = commonPrefixLen(refParts, partsOf(group))
         return refParts.indices.map { i -> if (i < common) rowReps[i] else 1 }
     }
 
-    private fun valueAt(path: String, reps: List<Int>): Placement? =
-        placements.firstOrNull { !it.isGroup && it.path == path && it.reps == reps }
+    private fun valueAt(path: String, reps: List<Int>): Placement? = index().valueByKey[path to reps]
 
-    private inner class RowContext(private val group: String, private val rowReps: List<Int>) : EvalContext {
-
-        override val evaluated: Boolean
-            get() = placements.any { p -> !p.isGroup && p.value != null && inScope(p) }
+    private inner class RowContext(
+        private val group: String,
+        private val rowReps: List<Int>,
+        override val evaluated: Boolean,
+    ) : EvalContext {
 
         /** A value placement is in this row's scope if its shared-prefix indices match the row. */
         private fun inScope(p: Placement): Boolean {
-            val common = commonPrefixLen(parts(p.path), parts(group))
+            val common = commonPrefixLen(partsOf(p.path), partsOf(group))
             return (0 until common).all { i -> p.reps[i] == rowReps[i] }
         }
 
@@ -104,7 +166,7 @@ class Document(
 
         /** A group is filled if any valued field beneath it is in this row's scope (shared-prefix indices match). */
         override fun groupFilled(groupPath: String): Boolean =
-            placements.any { p -> !p.isGroup && p.value != null && p.path.startsWith("$groupPath/") && inScope(p) }
+            index().valued.any { p -> p.path.startsWith("$groupPath/") && inScope(p) }
 
         override fun star(path: String): List<Val> =
             starRows(path).mapNotNull { reps -> valueAt(path, reps)?.value?.let { typedValue(kindOf(path), it) } }
@@ -124,11 +186,10 @@ class Document(
         /** Index tuples of [starPath] across every row of its deepest repeatable group ancestor in scope. */
         private fun starRows(starPath: String): List<List<Int>> {
             val repGroup = parentGroup(starPath)
-            val common = commonPrefixLen(parts(repGroup), parts(group))
-            return placements
-                .filter { it.isGroup && it.path == repGroup && (0 until common).all { i -> it.reps[i] == rowReps[i] } }
-                .map { it.reps + 1 }   // append the field's own index (1) to address the leaf
-                .distinct()
+            val common = commonPrefixLen(partsOf(repGroup), partsOf(group))
+            return rowsOf(repGroup)
+                .filter { reps -> (0 until common).all { i -> reps[i] == rowReps[i] } }
+                .map { it + 1 }   // append the field's own index (1) to address the leaf
         }
     }
 
