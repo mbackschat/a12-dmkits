@@ -81,7 +81,7 @@ Same engine, no Java required. Every command is `dmtool -m <model> <target> <op>
 
 `dmtool` is distributed from the public release repo — **[`a12-dmtool-releases`](https://github.com/mbackschat/a12-dmtool-releases)**, which holds the **single source of install truth**. Both paths are documented there in full: the **agent plugin** (Claude Code / Codex — bundles the binary + the canonical skill, *including the post-install activation step*) and the **raw per-OS binary** (+ `SHA256SUMS`) for plain terminal use. (This source repo holds the plugin *source* under [`plugin/`](plugin/) (Claude Code) and [`plugin-codex/`](plugin-codex/) (Codex); they ship to the mirror at release.)
 
-The binary is **EUPL-1.2** (it embeds the A12 Kernel — see the mirror's `LICENSE`/`NOTICE`); Linux/Windows binaries and Homebrew/Scoop come later. The runtime-evaluation verbs (`model eval`, `rule test`, `model compute`) need a JVM and are **not** in the native binary.
+The binary is **EUPL-1.2** (it embeds the A12 Kernel — see the mirror's `LICENSE`/`NOTICE`); Linux/Windows binaries and Homebrew/Scoop come later. The runtime-evaluation verbs (`model eval`, `rule test`, `model compute`) run on a **native-safe interpreter** by default — `--kernel` selects the A12 kernel instead (JVM only). They are not yet exposed in the native binary.
 
 ### Discover the tool itself
 
@@ -208,9 +208,10 @@ Diagnostics are **corrective**: each carries a stable `code`, a `where`, and a `
 dmtool -m order.dm.json model eval    --doc order-instance.json   # which rules actually FIRE on this document
 dmtool -m order.dm.json rule test /Order/DeliveryNotBeforeOrder --doc order-instance.json  # one rule: fired / passed / suppressed
 dmtool -m sub.dm.json   model compute --doc sub-instance.json     # what each computed field evaluates to
+dmtool -m order.dm.json model eval    --doc order-instance.json --kernel   # same, but via the A12 kernel (JVM only)
 ```
 
-This is the empirical check a static "is it valid?" can't give — it's how you confirm a rule's *polarity* on concrete data. `rule test` scopes it to one rule with a three-way verdict, distinguishing a genuine **pass** from a rule the kernel **suppressed** because a field it references is formally invalid.
+This is the empirical check a static "is it valid?" can't give — it's how you confirm a rule's *polarity* on concrete data. `rule test` scopes it to one rule with a three-way verdict, distinguishing a genuine **pass** from a rule the engine **suppressed** because a field it references is formally invalid. These verbs run on a **native-safe interpreter** by default (it reproduces the kernel's runtime semantics, verified rule-for-rule); `--kernel` switches to the A12 kernel on the JVM.
 
 ### Edit, with a preview diff
 
