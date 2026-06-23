@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 import com.mgmtp.a12.kernel.md.document.api.IDocument;
 import com.mgmtp.a12.kernel.md.document.api.services.IDocumentFactory;
 import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer;
-import io.github.mbackschat.a12.dm.interpreter.PointerKt;
+import io.github.mbackschat.a12.dm.interpreter.eval.PointerKt;
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.facade.DocumentRtServiceFactory;
 import com.mgmtp.a12.kernel.md.facade.DocumentServiceFactory;

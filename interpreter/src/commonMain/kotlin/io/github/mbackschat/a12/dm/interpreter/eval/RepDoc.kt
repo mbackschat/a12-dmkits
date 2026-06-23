@@ -1,4 +1,9 @@
-package io.github.mbackschat.a12.dm.interpreter
+package io.github.mbackschat.a12.dm.interpreter.eval
+
+import io.github.mbackschat.a12.dm.interpreter.ast.Val
+import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
+import io.github.mbackschat.a12.dm.interpreter.ast.typedValue
+import io.github.mbackschat.a12.dm.interpreter.model.Kind
 
 /**
  * A document with ONE repeatable subgroup — NO kernel types. Outer fields plus a list of

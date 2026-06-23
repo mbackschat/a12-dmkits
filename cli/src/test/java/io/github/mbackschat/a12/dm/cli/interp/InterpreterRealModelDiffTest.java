@@ -19,13 +19,13 @@ import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.adapter.ComputedField;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
-import io.github.mbackschat.a12.dm.interpreter.Computed;
+import io.github.mbackschat.a12.dm.interpreter.model.Computed;
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter;
-import io.github.mbackschat.a12.dm.interpreter.Document;
-import io.github.mbackschat.a12.dm.interpreter.Message;
-import io.github.mbackschat.a12.dm.interpreter.ModelDef;
-import io.github.mbackschat.a12.dm.interpreter.RuleDef;
-import io.github.mbackschat.a12.dm.interpreter.ValidationOutcome;
+import io.github.mbackschat.a12.dm.interpreter.eval.Document;
+import io.github.mbackschat.a12.dm.interpreter.model.Message;
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef;
+import io.github.mbackschat.a12.dm.interpreter.model.RuleDef;
+import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome;
 
 /**
  * The strongest differential: load a REAL DM-JSON model into the kernel-free interpreter (via

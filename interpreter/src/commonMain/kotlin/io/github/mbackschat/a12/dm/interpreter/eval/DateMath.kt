@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.interpreter
+package io.github.mbackschat.a12.dm.interpreter.eval
 
 /**
  * Pure date arithmetic on ISO `yyyy-MM-dd` strings — no `java.time`/luxon, so it stays in commonMain and

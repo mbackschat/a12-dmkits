@@ -1,4 +1,6 @@
-package io.github.mbackschat.a12.dm.interpreter
+package io.github.mbackschat.a12.dm.interpreter.eval
+
+import io.github.mbackschat.a12.dm.interpreter.model.Kind
 
 /**
  * Formal-error detection — whether a raw field value is *well-formed for its kind*. The kernel runs this

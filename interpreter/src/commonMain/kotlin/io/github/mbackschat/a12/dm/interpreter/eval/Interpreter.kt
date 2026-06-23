@@ -1,4 +1,16 @@
-package io.github.mbackschat.a12.dm.interpreter
+package io.github.mbackschat.a12.dm.interpreter.eval
+
+import io.github.mbackschat.a12.dm.interpreter.Dec
+import io.github.mbackschat.a12.dm.interpreter.DEC_ZERO
+import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
+import io.github.mbackschat.a12.dm.interpreter.dec
+import io.github.mbackschat.a12.dm.interpreter.ast.ArithOp
+import io.github.mbackschat.a12.dm.interpreter.ast.CmpOp
+import io.github.mbackschat.a12.dm.interpreter.ast.Cond
+import io.github.mbackschat.a12.dm.interpreter.ast.Expr
+import io.github.mbackschat.a12.dm.interpreter.ast.Tri
+import io.github.mbackschat.a12.dm.interpreter.ast.Val
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 
 /**
  * A tree-walking interpreter for the condition AST over an [EvalContext] — pure static common code

@@ -82,6 +82,8 @@ The runtime verbs (`model eval`/`compute`, `rule test`) **default to the `:inter
 
 The **`:interpreter`** is deliberately a leaf with **zero** dependencies: it interprets the rule AST directly (no Groovy codegen), so it runs in a GraalVM native image *and* in the browser from one Kotlin source. Its correctness is pinned by **kernel-differential tests that live in `:adapter`** (`…/adapter/laws/*DiffTest.kt`, consuming `:interpreter` in test scope) — keeping the module kernel-free even in test scope, which is what makes it cleanly publishable. The `verifyInterpreterPurity` lint fails the build on a forbidden import (`java.*`/`com.mgmtp.*`/`groovy.*` in `commonMain`). dmtool will consume it for the native-image runtime verbs (the Groovy ceiling, §5d).
 
+Internally `commonMain` is **layered into subpackages** under `dm.interpreter`: `.model` (the data contract consumers build/read — `ModelDef`/`FieldDef`/`RuleDef`/`Message`/`Kind`/`MsgType`/…), `.ast` (`Cond`/`Expr`/`Val`/`Tri` + `typedValue`/`emptyValue`), `.parse` (the recursive-descent `parseCondition`/`parseExpression`), and `.eval` (the engine: `Interpreter`/`EvalContext`/`Document`, the `PredicateOp`/`FunctionOp` operator registry, `FormalError`, `Pointer`, the message renderer). The root holds the façade (`DmInterpreter`), the `Dec` decimal `expect`/`actual`, and `UnsupportedConstructException`. Dependency direction: `model ← ast ← parse`, `model,ast ← eval`, all ← root.
+
 ```
             ┌──────────────────────────────────────────────────────────────┐
             │  :cli   application + native-image   (mainClass = CliMain)     │

@@ -1,4 +1,9 @@
-package io.github.mbackschat.a12.dm.interpreter
+package io.github.mbackschat.a12.dm.interpreter.ast
+
+import io.github.mbackschat.a12.dm.interpreter.Dec
+import io.github.mbackschat.a12.dm.interpreter.dec
+import io.github.mbackschat.a12.dm.interpreter.DEC_ZERO
+import io.github.mbackschat.a12.dm.interpreter.model.Kind
 
 /**
  * The interpreter's condition/value AST, in commonMain so it compiles to BOTH JVM and JS.
@@ -6,9 +11,6 @@ package io.github.mbackschat.a12.dm.interpreter
  * by the `verifyInterpreterPurity` lint), and the only platform-specific primitive is [Dec]. Only the
  * differential TESTS (in `:adapter`, JVM) touch the kernel.
  */
-
-/** Field kinds the empty-value asymmetry depends on — the miniature "metadata bridge" (proposal §10). */
-enum class Kind { NUMBER, STRING, BOOLEAN, CONFIRM, DATE }
 
 /** Three-valued logic. UNKNOWN models the kernel's "not evaluated" — a rule does NOT fire on it. */
 enum class Tri {
@@ -28,9 +30,6 @@ sealed interface Val {
 }
 
 enum class CmpOp { LT, LE, GT, GE, EQ, NE }
-
-/** Value-vs-omission polarity of a fired message (kernel `IMessage.MessageType`). */
-enum class MsgType { VALUE, OMISSION }
 
 /** Condition AST — built from condition text by [parseCondition]. */
 sealed interface Cond {

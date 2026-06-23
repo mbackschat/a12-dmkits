@@ -10,13 +10,13 @@ import java.util.Set;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.github.mbackschat.a12.dm.interpreter.ComputationDef;
-import io.github.mbackschat.a12.dm.interpreter.Document;
-import io.github.mbackschat.a12.dm.interpreter.FieldDef;
-import io.github.mbackschat.a12.dm.interpreter.Kind;
-import io.github.mbackschat.a12.dm.interpreter.ModelDef;
-import io.github.mbackschat.a12.dm.interpreter.RuleDef;
-import io.github.mbackschat.a12.dm.interpreter.Severity;
+import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef;
+import io.github.mbackschat.a12.dm.interpreter.eval.Document;
+import io.github.mbackschat.a12.dm.interpreter.model.FieldDef;
+import io.github.mbackschat.a12.dm.interpreter.model.Kind;
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef;
+import io.github.mbackschat.a12.dm.interpreter.model.RuleDef;
+import io.github.mbackschat.a12.dm.interpreter.model.Severity;
 
 /**
  * Loads a DM-JSON model into the kernel-free {@link ModelDef}, and a {@code {"fields":{…}}} instance tree

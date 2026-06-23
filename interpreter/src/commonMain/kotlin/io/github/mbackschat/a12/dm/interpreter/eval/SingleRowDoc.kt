@@ -1,4 +1,9 @@
-package io.github.mbackschat.a12.dm.interpreter
+package io.github.mbackschat.a12.dm.interpreter.eval
+
+import io.github.mbackschat.a12.dm.interpreter.ast.Val
+import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
+import io.github.mbackschat.a12.dm.interpreter.ast.typedValue
+import io.github.mbackschat.a12.dm.interpreter.model.Kind
 
 /**
  * The plain-data document the interpreter walks for SINGLE-ROW shapes (1-3) — NO kernel types. A field

@@ -1,5 +1,31 @@
 package io.github.mbackschat.a12.dm.interpreter
 
+import io.github.mbackschat.a12.dm.interpreter.ast.Cond
+import io.github.mbackschat.a12.dm.interpreter.ast.Expr
+import io.github.mbackschat.a12.dm.interpreter.ast.Val
+import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
+import io.github.mbackschat.a12.dm.interpreter.eval.FORMAL_RULE_PATH
+import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
+import io.github.mbackschat.a12.dm.interpreter.eval.formalError
+import io.github.mbackschat.a12.dm.interpreter.eval.formalErrorText
+import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
+import io.github.mbackschat.a12.dm.interpreter.eval.renderMessage
+import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
+import io.github.mbackschat.a12.dm.interpreter.model.Computed
+import io.github.mbackschat.a12.dm.interpreter.model.Message
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
+import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.interpreter.model.RuleResult
+import io.github.mbackschat.a12.dm.interpreter.model.Severity
+import io.github.mbackschat.a12.dm.interpreter.model.Suppression
+import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule
+import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome
+import io.github.mbackschat.a12.dm.interpreter.model.Verdict
+import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
+import io.github.mbackschat.a12.dm.interpreter.parse.parseExpression
+
 /**
  * The public entry point — evaluates a [ModelDef]'s rules over a [Document] instance, kernel-free, on
  * JVM and JS alike. The standalone-library façade (proposal goal 2) and the engine dmtool's native

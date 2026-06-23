@@ -1,16 +1,16 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.interpreter.Document
+import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
-import io.github.mbackschat.a12.dm.interpreter.FORMAL_RULE_PATH
-import io.github.mbackschat.a12.dm.interpreter.FieldDef
-import io.github.mbackschat.a12.dm.interpreter.Kind
-import io.github.mbackschat.a12.dm.interpreter.Message
-import io.github.mbackschat.a12.dm.interpreter.ModelDef
-import io.github.mbackschat.a12.dm.interpreter.MsgType
-import io.github.mbackschat.a12.dm.interpreter.Severity
-import io.github.mbackschat.a12.dm.interpreter.FormalErrorCode
-import io.github.mbackschat.a12.dm.interpreter.formalErrorText
+import io.github.mbackschat.a12.dm.interpreter.eval.FORMAL_RULE_PATH
+import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
+import io.github.mbackschat.a12.dm.interpreter.model.Kind
+import io.github.mbackschat.a12.dm.interpreter.model.Message
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
+import io.github.mbackschat.a12.dm.interpreter.model.Severity
+import io.github.mbackschat.a12.dm.interpreter.eval.FormalErrorCode
+import io.github.mbackschat.a12.dm.interpreter.eval.formalErrorText
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 

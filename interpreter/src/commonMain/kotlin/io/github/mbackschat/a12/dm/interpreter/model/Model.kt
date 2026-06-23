@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.interpreter
+package io.github.mbackschat.a12.dm.interpreter.model
 
 /**
  * The structured model the interpreter evaluates — the interpreter owns its types and does NOT parse
@@ -6,6 +6,12 @@ package io.github.mbackschat.a12.dm.interpreter
  * [ModelDef] from its own source (dmtool from DM-JSON via Jackson; a multiplatform JSON loader is a
  * later, additive increment). Kernel-free, so the purity lint holds.
  */
+
+/** Field kinds the empty-value asymmetry depends on — the miniature "metadata bridge" (proposal §10). */
+enum class Kind { NUMBER, STRING, BOOLEAN, CONFIRM, DATE }
+
+/** Value-vs-omission polarity of a fired message (kernel `IMessage.MessageType`). */
+enum class MsgType { VALUE, OMISSION }
 
 /** Rule/finding severity — mirrors the kernel's ERROR / WARNING. */
 enum class Severity { ERROR, WARNING }

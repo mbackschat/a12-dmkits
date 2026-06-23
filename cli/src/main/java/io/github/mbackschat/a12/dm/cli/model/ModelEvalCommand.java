@@ -24,7 +24,7 @@ import io.github.mbackschat.a12.dm.adapter.EvalMessage;
 import io.github.mbackschat.a12.dm.adapter.EvalResult;
 import io.github.mbackschat.a12.dm.adapter.FieldPointer;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
-import io.github.mbackschat.a12.dm.interpreter.PointerKt;
+import io.github.mbackschat.a12.dm.interpreter.eval.PointerKt;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;

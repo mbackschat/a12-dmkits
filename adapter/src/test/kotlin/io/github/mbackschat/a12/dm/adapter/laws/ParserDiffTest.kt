@@ -1,10 +1,10 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.interpreter.Interpreter
-import io.github.mbackschat.a12.dm.interpreter.Kind
-import io.github.mbackschat.a12.dm.interpreter.RepDoc
-import io.github.mbackschat.a12.dm.interpreter.SingleRowDoc
-import io.github.mbackschat.a12.dm.interpreter.parseCondition
+import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
+import io.github.mbackschat.a12.dm.interpreter.model.Kind
+import io.github.mbackschat.a12.dm.interpreter.eval.RepDoc
+import io.github.mbackschat.a12.dm.interpreter.eval.SingleRowDoc
+import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test

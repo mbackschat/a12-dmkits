@@ -7,18 +7,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-import io.github.mbackschat.a12.dm.interpreter.Computed;
-import io.github.mbackschat.a12.dm.interpreter.ComputeOutcome;
+import io.github.mbackschat.a12.dm.interpreter.model.Computed;
+import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome;
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter;
-import io.github.mbackschat.a12.dm.interpreter.Document;
-import io.github.mbackschat.a12.dm.interpreter.Message;
-import io.github.mbackschat.a12.dm.interpreter.ModelDef;
-import io.github.mbackschat.a12.dm.interpreter.MsgType;
-import io.github.mbackschat.a12.dm.interpreter.RuleDef;
-import io.github.mbackschat.a12.dm.interpreter.RuleResult;
-import io.github.mbackschat.a12.dm.interpreter.Severity;
-import io.github.mbackschat.a12.dm.interpreter.ValidationOutcome;
-import io.github.mbackschat.a12.dm.interpreter.Verdict;
+import io.github.mbackschat.a12.dm.interpreter.eval.Document;
+import io.github.mbackschat.a12.dm.interpreter.model.Message;
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef;
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType;
+import io.github.mbackschat.a12.dm.interpreter.model.RuleDef;
+import io.github.mbackschat.a12.dm.interpreter.model.RuleResult;
+import io.github.mbackschat.a12.dm.interpreter.model.Severity;
+import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome;
+import io.github.mbackschat.a12.dm.interpreter.model.Verdict;
 
 /**
  * The interpreter-backed engine behind the runtime verbs' DEFAULT path ({@code model eval} / {@code model

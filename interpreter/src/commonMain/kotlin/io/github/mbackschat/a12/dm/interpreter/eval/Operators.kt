@@ -1,4 +1,6 @@
-package io.github.mbackschat.a12.dm.interpreter
+package io.github.mbackschat.a12.dm.interpreter.eval
+
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 
 /**
  * The operator vocabulary the interpreter HANDLES — the closed registry behind the evaluator's dispatch

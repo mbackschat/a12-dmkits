@@ -1,8 +1,8 @@
 package io.github.mbackschat.a12.dm.adapter.laws
 
-import io.github.mbackschat.a12.dm.interpreter.Kind
-import io.github.mbackschat.a12.dm.interpreter.SingleRowDoc
-import io.github.mbackschat.a12.dm.interpreter.renderMessage
+import io.github.mbackschat.a12.dm.interpreter.model.Kind
+import io.github.mbackschat.a12.dm.interpreter.eval.SingleRowDoc
+import io.github.mbackschat.a12.dm.interpreter.eval.renderMessage
 import java.util.Locale
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue

@@ -1,4 +1,10 @@
-package io.github.mbackschat.a12.dm.interpreter
+package io.github.mbackschat.a12.dm.interpreter.eval
+
+import io.github.mbackschat.a12.dm.interpreter.ast.Val
+import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
+import io.github.mbackschat.a12.dm.interpreter.ast.typedValue
+import io.github.mbackschat.a12.dm.interpreter.model.Kind
+import io.github.mbackschat.a12.dm.interpreter.model.ValuedField
 
 /**
  * A general document instance the interpreter walks — NO kernel types. Addressed exactly like the
