@@ -233,6 +233,9 @@ class Interpreter(private val ctx: EvalContext) {
             val b = epochOf(f.args[1])
             if (a == null || b == null) Val.Unknown else Val.Num(dec((b - a).toString()))
         }
+        // Count-of-filled functions (used in a comparison, e.g. NumberOfFilledFields(a, b, c) < 2).
+        FunctionOp.NUMBER_OF_FILLED_FIELDS -> Val.Num(dec(f.args.count { ctx.filled(pathOf(it)) }))
+        FunctionOp.NUMBER_OF_FILLED_GROUPS -> Val.Num(dec(f.args.count { ctx.groupFilled(pathOf(it)) }))
         null -> throw UnsupportedConstructException("unsupported function ${f.name}")
     }
 

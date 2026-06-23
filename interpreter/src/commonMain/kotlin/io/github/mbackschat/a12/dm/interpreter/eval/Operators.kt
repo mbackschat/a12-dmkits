@@ -59,6 +59,8 @@ enum class FunctionOp(val kernelName: String) {
     MIN_VALUE("MinValue"),
     NUMBER_OF_DIFFERENT_VALUES("NumberOfDifferentValues"),
     DIFFERENCE_IN_DAYS("DifferenceInDays"),
+    NUMBER_OF_FILLED_FIELDS("NumberOfFilledFields"),
+    NUMBER_OF_FILLED_GROUPS("NumberOfFilledGroups"),
     ;
 
     companion object {
