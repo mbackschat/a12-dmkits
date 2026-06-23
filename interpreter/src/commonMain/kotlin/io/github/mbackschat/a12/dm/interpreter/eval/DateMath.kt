@@ -63,6 +63,23 @@ fun addMonths(iso: String, n: Int): String? {
 /** ISO date [n] years after [iso] (= +[n]·12 months, so Feb-29 clamps in a non-leap year). */
 fun addYears(iso: String, n: Int): String? = addMonths(iso, n * 12)
 
+/**
+ * Whole elapsed months from [a] to [b] (signed, truncated toward zero) — the kernel's `DifferenceInMonths`.
+ * The start day is clamped to the end month's length before the day comparison, so a month-end step counts as
+ * a full month (verified: `2020-01-31`→`2020-02-29` = 1, but `2020-01-15`→`2020-02-14` = 0). Null if malformed.
+ */
+fun differenceInMonths(a: String, b: String): Int? {
+    val (ay, am, ad) = dateParts(a) ?: return null
+    val (by, bm, bd) = dateParts(b) ?: return null
+    var months = (by * 12 + bm) - (ay * 12 + am)
+    val days = bd - minOf(ad, daysInMonth(by, bm))
+    if (months > 0 && days < 0) months-- else if (months < 0 && days > 0) months++
+    return months
+}
+
+/** Whole elapsed years from [a] to [b] — the kernel's `DifferenceInYears` (= whole months / 12, toward zero). */
+fun differenceInYears(a: String, b: String): Int? = differenceInMonths(a, b)?.div(12)
+
 private fun daysInMonth(year: Int, month: Int): Int = when (month) {
     1, 3, 5, 7, 8, 10, 12 -> 31
     4, 6, 9, 11 -> 30

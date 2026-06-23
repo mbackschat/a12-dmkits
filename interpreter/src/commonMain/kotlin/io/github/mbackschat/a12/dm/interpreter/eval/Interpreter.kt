@@ -245,7 +245,16 @@ class Interpreter(private val ctx: EvalContext) {
         FunctionOp.ADD_DAYS -> dateShift(f.args, ::addDays)
         FunctionOp.ADD_MONTHS -> dateShift(f.args, ::addMonths)
         FunctionOp.ADD_YEARS -> dateShift(f.args, ::addYears)
+        FunctionOp.DIFFERENCE_IN_MONTHS -> dateDiff(f.args, ::differenceInMonths)
+        FunctionOp.DIFFERENCE_IN_YEARS -> dateDiff(f.args, ::differenceInYears)
         null -> throw UnsupportedConstructException("unsupported function ${f.name}")
+    }
+
+    /** `DifferenceIn{Months,Years}(a, b)` → a signed whole-period count; Unknown if either date is empty. */
+    private fun dateDiff(args: List<Expr>, diff: (String, String) -> Int?): Val {
+        val a = (evalExpr(args[0]) as? Val.Txt)?.v ?: return Val.Unknown
+        val b = (evalExpr(args[1]) as? Val.Txt)?.v ?: return Val.Unknown
+        return diff(a, b)?.let { Val.Num(dec(it)) } ?: Val.Unknown
     }
 
     /** A number picked from a date operand's (year, month, day); Unknown when the date is empty/malformed. */

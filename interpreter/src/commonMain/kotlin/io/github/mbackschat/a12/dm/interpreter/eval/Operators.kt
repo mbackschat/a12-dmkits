@@ -68,6 +68,8 @@ enum class FunctionOp(val kernelName: String) {
     ADD_DAYS("AddDays"),
     ADD_MONTHS("AddMonths"),
     ADD_YEARS("AddYears"),
+    DIFFERENCE_IN_MONTHS("DifferenceInMonths"),
+    DIFFERENCE_IN_YEARS("DifferenceInYears"),
     ;
 
     companion object {
