@@ -62,9 +62,9 @@ class EvalDocSeamLawsTest {
                 .filter(m -> m.errorCode().equals("COUNT_HIGH")).toList();
 
         assertEquals(2, countHigh.size(), () -> "fires once per offending row, got: " + countHigh);
-        assertTrue(countHigh.stream().anyMatch(m -> m.fieldPointer().contains("[1, 2, 1]")),
+        assertTrue(countHigh.stream().anyMatch(m -> m.field().reps().equals(List.of(1, 2, 1))),
                 () -> "a message attaches to row 2 ([1, 2, 1]): " + countHigh);
-        assertTrue(countHigh.stream().anyMatch(m -> m.fieldPointer().contains("[1, 3, 1]")),
+        assertTrue(countHigh.stream().anyMatch(m -> m.field().reps().equals(List.of(1, 3, 1))),
                 () -> "a message attaches to row 3 ([1, 3, 1]): " + countHigh);
     }
 

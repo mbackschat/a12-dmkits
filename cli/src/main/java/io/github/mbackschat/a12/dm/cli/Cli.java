@@ -37,16 +37,18 @@ public final class Cli {
     public static final String TOOL_NAME = "dmtool";
 
     /**
-     * Verbs that execute the kernel's <b>runtime validation</b> (Groovy code generation), which is not
-     * native-compilable — the hard ceiling in {@code docs/NATIVE-IMAGE-GRAALVM.md} §4. Registered on the
-     * JVM build; <b>hidden in the native image</b>. Because {@code manifest}/{@code schema}/{@code --help}
-     * all DERIVE from the live command tree, removing them here makes them vanish from <i>every</i>
-     * self-describing surface — a cold native agent cannot discover them. {@code {target, op}} pairs.
+     * Verbs hidden from the native command tree (and thus from every derived self-describing surface —
+     * {@code manifest}/{@code schema}/{@code --help} all derive from the live tree). The native seam for a
+     * verb that genuinely cannot run without the JVM.
+     *
+     * <p><b>Currently empty.</b> The runtime-eval verbs ({@code model eval}/{@code compute}, {@code rule
+     * test}) used to live here because they ran the kernel's Groovy codegen, which a native image forbids
+     * — but they now default to the native-safe <b>interpreter</b> ({@code dm.interpreter}, no Groovy), so
+     * they are native-capable and stay in the tree. Their {@code --kernel} option is the JVM-only part and
+     * is refused at runtime under the native profile (see each verb + {@link #isNativeImage}), not hidden
+     * here. {@code {target, op}} pairs.
      */
-    static final List<String[]> JVM_ONLY_VERBS = List.of(
-            new String[] {"model", "eval"},
-            new String[] {"model", "compute"},
-            new String[] {"rule", "test"});
+    static final List<String[]> JVM_ONLY_VERBS = List.of();
 
     /**
      * Native-image detection — overridable in tests (the guard test forces the native profile on the JVM).

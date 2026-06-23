@@ -59,9 +59,11 @@ data class ModelDef(
 
 /**
  * One validation finding produced by [DmInterpreter.validateFull] — the interpreter's kernel-free twin
- * of the kernel's `IMessage`: the fired rule's [code], its [rulePath], the resolved [errorPath] (the
- * indexed offending field), [severity], the VALUE/OMISSION [type] polarity, and the rendered [text]
- * (empty when the rule carries no template for the locale).
+ * of the kernel's `IMessage`, carrying the same channels: the fired rule's [code], its [rulePath], the
+ * offending-field pointer [errorPath] (path + repetition indices, [formatPointer] form), [severity], the
+ * VALUE/OMISSION [type] polarity, the rendered [text], the [referenced] operand pointers, and (for an
+ * OMISSION) [fillToFix] — the referenced fields that, if filled, would clear the error (the kernel's
+ * `refOmissionErrorResponsible`).
  */
 data class Message(
     val code: String,
@@ -70,6 +72,8 @@ data class Message(
     val severity: Severity,
     val type: MsgType,
     val text: String = "",
+    val referenced: List<String> = emptyList(),
+    val fillToFix: List<String> = emptyList(),
 )
 
 /**

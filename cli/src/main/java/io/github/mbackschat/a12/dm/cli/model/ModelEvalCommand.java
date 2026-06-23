@@ -22,7 +22,9 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolve
 
 import io.github.mbackschat.a12.dm.adapter.EvalMessage;
 import io.github.mbackschat.a12.dm.adapter.EvalResult;
+import io.github.mbackschat.a12.dm.adapter.FieldPointer;
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.interpreter.PointerKt;
 import io.github.mbackschat.a12.dm.rulekit.validate.DraftRule;
 import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
@@ -90,6 +92,9 @@ final class ModelEvalCommand extends BaseCommand {
 
     @Override
     public Integer call() {
+        if (useKernel && Cli.isNativeImage()) {
+            return fail("--kernel is not available in the native image — the interpreter is the only engine here; drop --kernel");
+        }
         String model = model();
         if (model == null) {
             return fail("pass -m <model.json> (before or after the verb)");
@@ -139,9 +144,6 @@ final class ModelEvalCommand extends BaseCommand {
         ObjectNode data;
         try {
             if (useKernel) {
-                if (Cli.isNativeImage()) {
-                    return fail("--kernel is not available in the native image — the interpreter is the only engine here; drop --kernel");
-                }
                 Locale locale = Locale.forLanguageTag(localeTag.replace('_', '-'));
                 String evalJson = modelJson;
                 if (candidate) {
@@ -190,10 +192,16 @@ final class ModelEvalCommand extends BaseCommand {
             ObjectNode mn = messages.addObject();
             mn.put("code", m.errorCode());
             m.rulePath().ifPresent(r -> mn.put("rule", r));
-            mn.put("field", m.fieldPointer());
+            mn.put("field", pointer(m.field()));   // path + indices via the shared formatter (no Impl toString)
             mn.put("severity", m.severity());
             mn.put("type", m.messageType());
             mn.put("message", m.message());
+            ArrayNode referenced = mn.putArray("referenced");
+            m.referenced().forEach(p -> referenced.add(pointer(p)));
+            if (!m.fillToFix().isEmpty()) {
+                ArrayNode fillToFix = mn.putArray("fillToFix");
+                m.fillToFix().forEach(p -> fillToFix.add(pointer(p)));
+            }
         }
         if (targetRule != null) {
             boolean ruleFired = result.messages().stream()
@@ -203,5 +211,10 @@ final class ModelEvalCommand extends BaseCommand {
             rule.put("fired", ruleFired);
         }
         return data;
+    }
+
+    /** Render a kernel field pointer the same readable way the interpreter does (the ONE shared formatter). */
+    private static String pointer(FieldPointer p) {
+        return PointerKt.formatPointer(p.path(), p.reps());
     }
 }

@@ -24,4 +24,11 @@ interface EvalContext {
 
     /** The raw display value of a field (for message interpolation), or null if empty. */
     fun displayValue(path: String): String?
+
+    /**
+     * The 1-based repetition indices of a field path **in this row** — one per path part (the kernel's
+     * `repetitionIndexes()`), for building a field-instance pointer. Defaults to all-1s (correct for a flat
+     * single-row context); a repeatable context overrides it with the row's real indices.
+     */
+    fun repsOf(path: String): List<Int> = List(path.trim('/').split('/').size) { 1 }
 }

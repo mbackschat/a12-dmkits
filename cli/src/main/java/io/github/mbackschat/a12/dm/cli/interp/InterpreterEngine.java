@@ -137,10 +137,18 @@ public final class InterpreterEngine {
     private static void addMessage(ObjectNode mn, Message m) {
         mn.put("code", m.getCode());
         mn.put("rule", m.getRulePath());
-        mn.put("field", m.getErrorPath());
+        mn.put("field", m.getErrorPath());   // path + repetition indices (formatPointer form)
         mn.put("severity", m.getSeverity().name());
         mn.put("type", typeError(m.getType()));
         mn.put("message", m.getText());
+        putPointers(mn.putArray("referenced"), m.getReferenced());
+        if (!m.getFillToFix().isEmpty()) {
+            putPointers(mn.putArray("fillToFix"), m.getFillToFix());
+        }
+    }
+
+    private static void putPointers(ArrayNode arr, java.util.List<String> pointers) {
+        pointers.forEach(arr::add);
     }
 
     /** Map the interpreter's polarity to the kernel's message-type vocabulary. */

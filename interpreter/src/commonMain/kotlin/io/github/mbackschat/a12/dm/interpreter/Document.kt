@@ -95,6 +95,8 @@ class Document(
         override fun displayValue(path: String): String? =
             valueAt(path, repsFor(path, group, rowReps))?.value
 
+        override fun repsOf(path: String): List<Int> = repsFor(path, group, rowReps)
+
         /** Index tuples of [starPath] across every row of its deepest repeatable group ancestor in scope. */
         private fun starRows(starPath: String): List<List<Int>> {
             val repGroup = parentGroup(starPath)

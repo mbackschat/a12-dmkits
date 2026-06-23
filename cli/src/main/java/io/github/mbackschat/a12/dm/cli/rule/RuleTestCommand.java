@@ -60,6 +60,9 @@ final class RuleTestCommand extends BaseCommand {
 
     @Override
     public Integer call() {
+        if (useKernel && Cli.isNativeImage()) {
+            return fail("--kernel is not available in the native image — the interpreter is the only engine here; drop --kernel");
+        }
         String modelPath = model();
         String json = readModelJson(modelPath);   // null (after printing the failure) if no -m / unreadable
         if (json == null) {
@@ -76,9 +79,6 @@ final class RuleTestCommand extends BaseCommand {
         try {
             ObjectNode data;
             if (useKernel) {
-                if (Cli.isNativeImage()) {
-                    return fail("--kernel is not available in the native image — the interpreter is the only engine here; drop --kernel");
-                }
                 Locale locale = Locale.forLanguageTag(localeTag.replace('_', '-'));
                 BoundModel bound = BoundModel.ofJson(json, workspace.resolverFor(modelPath));
                 KernelAdapter adapter = KernelAdapter.of(bound);

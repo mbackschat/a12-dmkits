@@ -123,15 +123,15 @@ class EvalDocVerbTest {
                 "--field", "/Order/Items/Count", "--group", "/Order",
                 "--condition", "FieldFilled(Items/Count) And [Items/Count] > 50", "--code", "COUNT_CAP");
         assertEquals(0, res.code(), res::err);
-        // look only at the candidate's own messages — it fires on row 2 ([1, 2, 1]), not row 1 ([1, 1, 1])
+        // look only at the candidate's own messages — it fires on row 2 (Items[2]), not row 1 (Items[1])
         StringBuilder countCap = new StringBuilder();
         for (JsonNode m : MAPPER.readTree(res.out()).get("data").get("messages")) {
             if (m.get("code").asText().equals("COUNT_CAP")) {
                 countCap.append(m.get("field").asText()).append('\n');
             }
         }
-        assertTrue(countCap.toString().contains("[1, 2, 1]"), () -> "the candidate fires on row 2: " + res.out());
-        assertFalse(countCap.toString().contains("[1, 1, 1]"), () -> "the candidate does not fire on row 1: " + res.out());
+        assertTrue(countCap.toString().contains("/Order[1]/Items[2]/Count"), () -> "the candidate fires on row 2: " + res.out());
+        assertFalse(countCap.toString().contains("/Order[1]/Items[1]/Count"), () -> "the candidate does not fire on row 1: " + res.out());
     }
 
     @Test

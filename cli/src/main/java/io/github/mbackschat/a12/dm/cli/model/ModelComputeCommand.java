@@ -55,6 +55,9 @@ final class ModelComputeCommand extends BaseCommand {
 
     @Override
     public Integer call() {
+        if (useKernel && Cli.isNativeImage()) {
+            return fail("--kernel is not available in the native image — the interpreter is the only engine here; drop --kernel");
+        }
         String model = model();
         if (model == null) {
             return fail("pass -m <model.json> (before or after the verb)");
@@ -78,9 +81,6 @@ final class ModelComputeCommand extends BaseCommand {
         ObjectNode data;
         try {
             if (useKernel) {
-                if (Cli.isNativeImage()) {
-                    return fail("--kernel is not available in the native image — the interpreter is the only engine here; drop --kernel");
-                }
                 Locale locale = Locale.forLanguageTag(localeTag.replace('_', '-'));
                 ComputeResult result = KernelAdapter.ofJson(modelJson, resolver).compute(fields, locale);
                 data = MAPPER.createObjectNode();

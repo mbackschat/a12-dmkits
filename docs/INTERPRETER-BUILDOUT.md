@@ -19,7 +19,7 @@ Correctness throughout = **agrees with the real kernel** (the `RuntimeLaws` diff
 | **Document model** | general `Document` (indexed placements, common-prefix resolution, star aggregation) — flat + nested-non-repeatable + one-level repetition, kernel-verified; spike's `SingleRowDoc`/`RepDoc` still present (consolidation pending) | multi-level repetition (resolution is general; only one level is kernel-tested) |
 | **Model / instance loading** | structured `ModelDef`/`RuleDef`/`FieldDef` (interpreter owns its types); the consumer builds them | DM-JSON model → `ModelDef`; `{"fields":{…}}` instance → `Document` (dmtool via Jackson; a multiplatform JSON loader later) |
 | **Public API** | `DmInterpreter.validateFull(doc)` — whole-document, kernel-verified | `validatePart` / `compute` / `testRule` / candidate-eval entry points |
-| **Messages** | `$field.value$` value-interpolation, en/de (wired into `validateFull`) | `$field$` display-name tier; formal-error (German-keyed) bundles |
+| **Messages** | `$field.value$` value-interpolation, en/de (wired into `validateFull`); **rich message model** — structured field pointer (path + repetition indices), `referenced` operands, `fillToFix` (refOmissionErrorResponsible), matching the kernel's `IMessage` channels on both engines | `$field$` display-name tier; formal-error (German-keyed) bundles |
 | **Parser** | recursive-descent subset (comparisons, And/Or, predicates, aggregates, patterns, paths/`*`) | full grammar (or kernel parse-tree-api) — §11 |
 
 ## Two tracks

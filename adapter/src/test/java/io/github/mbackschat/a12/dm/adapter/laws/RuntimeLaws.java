@@ -18,6 +18,8 @@ import java.util.stream.Collectors;
 
 import com.mgmtp.a12.kernel.md.document.api.IDocument;
 import com.mgmtp.a12.kernel.md.document.api.services.IDocumentFactory;
+import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer;
+import io.github.mbackschat.a12.dm.interpreter.PointerKt;
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.facade.DocumentRtServiceFactory;
 import com.mgmtp.a12.kernel.md.facade.DocumentServiceFactory;
@@ -204,8 +206,20 @@ final class RuntimeLaws {
      * checks), and its {@link IMessage.MessageType} — the kernel's value-vs-omission typing
      * (OMISSION_ERROR = the rule could be satisfied by <em>filling</em> more fields; VALUE_ERROR
      * otherwise). The typing channel is what the error-type laws lock.
+     *
+     * <p>{@code errorField} is the kernel's raw pointer {@code toString} (the {@code [1, 2, 1]} form the
+     * runtime-law tests assert row attribution on). The rich-message channels — {@code field},
+     * {@code referenced}, {@code omissionResponsible} — are the same pointers rendered the clean
+     * {@link io.github.mbackschat.a12.dm.interpreter.PointerKt#formatPointer way} the interpreter uses, so
+     * a differential can compare the interpreter's {@code Message} to the kernel's {@code IMessage}.
      */
-    record Msg(String code, String errorField, IMessage.MessageType type) {
+    record Msg(String code, String errorField, IMessage.MessageType type,
+            String field, List<String> referenced, List<String> omissionResponsible) {
+    }
+
+    /** A kernel field pointer rendered the interpreter's clean way (path + indices), for the differential. */
+    private static String fmtPointer(PartiallyKnownDocumentMultiPointer p) {
+        return PointerKt.formatPointer(p.fullName(), p.repetitionIndexes());
     }
 
     /** The {@link IMessage.MessageType} of the fired {@code errorCode} (empty when it did not fire). */
@@ -254,7 +268,10 @@ final class RuntimeLaws {
     /** Evaluate an explicit document instance; return every message (code + pointer) the kernel raised. */
     static List<Msg> messages(String modelJson, Doc doc) {
         return validate(modelJson, doc, Locale.US).getMessages().stream()
-                .map(m -> new Msg(m.getErrorCode(), String.valueOf(m.getErrorFieldPointer()), m.getMessageType()))
+                .map(m -> new Msg(m.getErrorCode(), String.valueOf(m.getErrorFieldPointer()), m.getMessageType(),
+                        fmtPointer(m.getErrorFieldPointer()),
+                        m.getReferencedFieldsPointers().stream().map(RuntimeLaws::fmtPointer).toList(),
+                        m.getRefOmissionErrorResponsiblePointers().stream().map(RuntimeLaws::fmtPointer).toList()))
                 .toList();
     }
 

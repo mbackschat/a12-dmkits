@@ -57,6 +57,7 @@ import java.util.stream.Collectors;
 
 import com.mgmtp.a12.kernel.md.document.api.IDocument;
 import com.mgmtp.a12.kernel.md.document.api.services.IDocumentFactory;
+import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer;
 import com.mgmtp.a12.kernel.md.facade.DocumentRtServiceFactory;
 import com.mgmtp.a12.kernel.md.facade.DocumentServiceFactory;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelResolver;
@@ -604,10 +605,17 @@ public final class KernelAdapter {
         List<EvalMessage> messages = new ArrayList<>();
         for (IMessage m : result.getMessages()) {
             messages.add(new EvalMessage(m.getErrorCode(), m.getRulePath(),
-                    String.valueOf(m.getErrorFieldPointer()), m.getSeverity().name(),
-                    m.getMessageType().name(), m.getErrorText()));
+                    fieldPointer(m.getErrorFieldPointer()), m.getSeverity().name(),
+                    m.getMessageType().name(), m.getErrorText(),
+                    m.getReferencedFieldsPointers().stream().map(KernelAdapter::fieldPointer).toList(),
+                    m.getRefOmissionErrorResponsiblePointers().stream().map(KernelAdapter::fieldPointer).toList()));
         }
         return new EvalResult(messages);
+    }
+
+    /** Boundary conversion (N8): a kernel field pointer → JDK-only {@link FieldPointer} (path + indices). */
+    private static FieldPointer fieldPointer(PartiallyKnownDocumentMultiPointer p) {
+        return new FieldPointer(p.fullName(), p.repetitionIndexes());
     }
 
     /** The kernel's sentinel {@code rulePath} for a formal check (vs. an author rule, whose path starts with {@code /}). */
@@ -635,7 +643,7 @@ public final class KernelAdapter {
         for (EvalMessage m : messages) {
             if (isFormalCheck(m)) {
                 for (String field : referenced) {
-                    if (pointerHitsField(m.fieldPointer(), field)) {
+                    if (field.equals(m.field().path())) {
                         suppressions.add(new RuleTestOutcome.Suppression(field, m.errorCode()));
                     }
                 }
@@ -650,24 +658,6 @@ public final class KernelAdapter {
     /** A formal/structural check (not an author rule): no {@code rulePath}, or one that isn't an absolute slash-path. */
     private static boolean isFormalCheck(EvalMessage m) {
         return m.rulePath().map(p -> !p.startsWith("/")).orElse(true);
-    }
-
-    /**
-     * Whether a kernel field-instance pointer (e.g. {@code [/Order/UnitPrice, [1]]}) targets {@code fieldPath} —
-     * a containment match bounded so a field is not mistaken for a longer sibling that shares its prefix
-     * ({@code /Order/Unit} must not hit {@code /Order/UnitPrice}).
-     */
-    private static boolean pointerHitsField(String pointer, String fieldPath) {
-        int at = pointer.indexOf(fieldPath);
-        if (at < 0) {
-            return false;
-        }
-        int after = at + fieldPath.length();
-        return after >= pointer.length() || !isPathChar(pointer.charAt(after));
-    }
-
-    private static boolean isPathChar(char c) {
-        return Character.isLetterOrDigit(c) || c == '/' || c == '_';
     }
 
     /**

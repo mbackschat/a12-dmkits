@@ -110,7 +110,14 @@ class DmInterpreter(private val model: ModelDef) {
             if (!interp.fires(ast)) return@map RowOutcome.Passed
             val type = interp.firedType(ast) ?: MsgType.VALUE
             val text = rule.messages[locale]?.let { renderMessage(it, rule.group, ctx) } ?: ""
-            RowOutcome.Fired(Message(rule.errorCode, rule.path, errorPath(rule, ctx), rule.severity, type, text))
+            val errorPath = resolveErrorPath(rule)
+            val referenced = refs.map { formatPointer(it, ctx.repsOf(it)) }
+            // refOmissionErrorResponsible: for an OMISSION error the kernel attaches ALL the operands the
+            // omission depends on (verified — both the filled and the empty operand of an And), so filling/
+            // changing any could resolve it. Empty for a VALUE error (no fill fixes a value).
+            val fillToFix = if (type == MsgType.OMISSION) referenced else emptyList()
+            RowOutcome.Fired(Message(rule.errorCode, rule.path, formatPointer(errorPath, ctx.repsOf(errorPath)),
+                rule.severity, type, text, referenced, fillToFix))
         }
     }
 
@@ -167,7 +174,7 @@ class DmInterpreter(private val model: ModelDef) {
      * rule **node** (`rule.path`), so `../DeliveryDate` on `/Order/DeliveryNotBeforeOrder` pops the node
      * name → `/Order`, then appends → `/Order/DeliveryDate` (a sibling field in the rule's own group).
      */
-    private fun errorPath(rule: RuleDef, ctx: EvalContext): String {
+    private fun resolveErrorPath(rule: RuleDef): String {
         var base = rule.path
         var rel = rule.errorEntityRelPath
         while (rel.startsWith("../")) {

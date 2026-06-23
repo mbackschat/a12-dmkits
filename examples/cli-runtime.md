@@ -103,10 +103,11 @@ dmtool -m examples/models/order-ruled.dm.json \
     "messages" : [ {
       "code" : "DELIVERY_BEFORE_ORDER",
       "rule" : "/Order/DeliveryNotBeforeOrder",
-      "field" : "/Order/DeliveryDate",
+      "field" : "/Order[1]/DeliveryDate",
       "severity" : "ERROR",
       "type" : "VALUE_ERROR",
-      "message" : "The delivery date must not be earlier than the order date."
+      "message" : "The delivery date must not be earlier than the order date.",
+      "referenced" : [ "/Order[1]/OrderDate", "/Order[1]/DeliveryDate" ]
     } ],
     "rule" : {
       "name" : "/Order/DeliveryNotBeforeOrder",
@@ -118,7 +119,7 @@ dmtool -m examples/models/order-ruled.dm.json \
 }
 ```
 
-→ `data.rule.fired: true` and `DELIVERY_BEFORE_ORDER` in `data.fired` — the rule fired on this data. The `messages[]` entry attributes it to its `rule` (`/Order/DeliveryNotBeforeOrder`) and points at the offending `field`. Remember the **polarity**: the condition describes the *violation* (delivery strictly before order), so "fired" means "this order is bad", not "this order is fine".
+→ `data.rule.fired: true` and `DELIVERY_BEFORE_ORDER` in `data.fired` — the rule fired on this data. The `messages[]` entry attributes it to its `rule` (`/Order/DeliveryNotBeforeOrder`), points at the offending `field` (path + repetition index, e.g. `/Order[1]/DeliveryDate`), and lists `referenced` — the operand fields the rule read. (An **OMISSION** error also carries `fillToFix`: the operands that, filled or changed, would clear it — the kernel's `refOmissionErrorResponsible`.) Remember the **polarity**: the condition describes the *violation* (delivery strictly before order), so "fired" means "this order is bad", not "this order is fine".
 
 Now the **empirical polarity check** — the same rule, the same model, a *compliant* instance. Only the delivery date changes: `2024-06-15` now lands **after** the order. Nothing should fire.
 
