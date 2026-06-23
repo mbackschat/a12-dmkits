@@ -84,14 +84,18 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 *(dated baselines, newest first — populated as benchmarks land)*
 
-**2026-06-23 — against-kernel** (`adapter.laws.AgainstKernelPerfTest`, `KernelEngine` build-once vs `DmInterpreter`, same instance, median of 3 after 2 warmups; JVM). Correctness (interp == kernel fired codes) asserted first.
+**2026-06-23 — against-kernel** (`adapter.laws.AgainstKernelPerfTest`, `KernelEngine` build-once vs `DmInterpreter`, same instance, median of 10 after **15 warmups**; JVM). Correctness (interp == kernel fired codes) asserted first.
 
 | scenario | interp | kernel | ratio (interp/kernel) |
 |---|---|---|---|
-| B1 per-row, 3000 Lines | ~13 ms | ~188 ms | **~0.07 (≈14× faster)** |
-| B3 nested per-sub, 400×5 = 2000 Sub rows | ~5 ms | ~63 ms | **~0.09 (≈11× faster)** |
+| B1 per-row, 3000 Lines | ~9 ms | ~111 ms | ~0.08 |
+| B3 nested per-sub, 400×5 = 2000 Sub rows | ~3 ms | ~39 ms | ~0.08 |
 
-The interpreter is well ahead on these (no per-`validateFull` Groovy codegen/machinery). **Honest caveat (per the humility note):** the interpreter currently does *less* than the kernel — no requiredness validation (`mandatoryField`), partial formal validation — so the gap will narrow as those land; this is a steady-state post-warmup comparison at modest N, not a final verdict. Larger N (100k) and more group shapes (B4/B5) are still to add.
+**Is it fair? No — read the ratio with care (this corrects an earlier overstated "≈14× faster").** Two findings from scrutinizing it:
+1. **Warmup mattered:** the kernel's per-call time *decreases monotonically* over the first ~dozen calls (JVM JIT warming the Groovy-compiled rules — **not** per-call codegen, which is cached). 2 warmups overstated the kernel (188→111 ms warm). Fixed: 15 warmups. The ratio held (~0.08) once warm.
+2. **Not apples-to-apples (the real caveat):** the kernel's `validateFull` does strictly **more** per call than the interpreter currently does — **requiredness** (`mandatoryField`), formal-checking *every* field, richer `IMessage` pointers — and a **1-rule model overweights** that fixed pipeline overhead. So "interp faster" partly means "interp does less (for now)".
+
+**Honest read:** the interpreter is **competitive-to-faster** on these scenarios (plausible — direct Kotlin vs Groovy reflection), **not** "Nx faster" as a speed verdict. A true comparison needs feature parity (requiredness etc.). Larger N (100k) and more group shapes (B4/B5) still to add.
 
 **2026-06-23 — first slice: pure-engine real-`Document` scaling** (`interpreter/commonTest/DocumentScaleTest`, the honest counterpart of the RepDoc benchmark; kernel-free, JVM+JS). 3000 `/Perf/Lines` rows:
 

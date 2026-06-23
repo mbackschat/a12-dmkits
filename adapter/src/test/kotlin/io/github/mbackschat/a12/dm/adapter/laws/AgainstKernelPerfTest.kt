@@ -15,11 +15,17 @@ import org.junit.jupiter.api.Test
  * evaluated by both the pure interpreter (`DmInterpreter` + the general `Document`) and the real kernel
  * (`RuntimeLaws.KernelEngine`, built once), over a high-repeatability **nested** group model (`perf.dm.json`).
  * Each scenario asserts **correctness first** (interp fired-codes == kernel) then times only `validateFull`
- * (warmup discards the kernel's one-time Groovy codegen) and prints the interp/kernel ratio. Group-heavy by
- * design: a per-row rule over N Lines (B1) and a per-sub rule over N·M nested Sub rows (B3).
+ * (generous warmup, since the kernel's per-call time JIT-warms downward over ~a dozen calls) and prints the
+ * interp/kernel ratio. Group-heavy by design: a per-row rule over N Lines (B1) and a per-sub rule over N·M
+ * nested Sub rows (B3).
  *
- * The bounds here are **generous gates** (catch a catastrophic/O(N²) regression, tolerate CI variance), not
- * tight SLAs — the printed ratio is the signal a human reads. Pure engine, no CLI.
+ * **Fairness caveat — read the ratio with care.** This is NOT apples-to-apples: the kernel's `validateFull`
+ * does strictly MORE per call than the interpreter currently does — requiredness (`mandatoryField`),
+ * formal-checking *every* field, building richer `IMessage` pointers — and a 1-rule model overweights that
+ * fixed pipeline overhead. So "interp faster" partly means "interp does less (for now)". The honest read:
+ * the interpreter is **competitive-to-faster on these scenarios**, not "Nx faster" as a speed verdict; a true
+ * comparison needs feature parity (requiredness etc.). The bounds are **generous gates** (catch an O(N²)
+ * regression, tolerate CI variance), not SLAs. Pure engine, no CLI.
  */
 class AgainstKernelPerfTest {
 
@@ -41,11 +47,23 @@ class AgainstKernelPerfTest {
     private fun interp(cond: String, group: String, code: String, errorRel: String) =
         DmInterpreter(ModelDef(fields, listOf(RuleDef("$group/R", group, cond, code, errorRel)), repeatableGroups = repeatable))
 
-    /** Median wall-clock (ms) of [block] over [iters] timed runs after [warmup] discarded runs. */
+    /** Median wall-clock (ms) of [block] over [iters] timed runs after [warmup] discarded runs. The warmup
+     *  must be generous: the kernel's per-call time DECREASES monotonically over the first ~dozen calls (JVM
+     *  JIT warming the Groovy-compiled rules — NOT per-call codegen, which is cached), so too few warmups
+     *  *overstates* the kernel's cost. */
     private fun medianMs(warmup: Int, iters: Int, block: () -> Unit): Double {
         repeat(warmup) { block() }
         val times = DoubleArray(iters) { val t = System.nanoTime(); block(); (System.nanoTime() - t) / 1e6 }
         return times.sorted()[iters / 2]
+    }
+
+    private companion object {
+        const val WARMUP = 15
+        const val ITERS = 10
+        // The ratio is NOT a fair apples-to-apples speed comparison: the kernel's validateFull does strictly
+        // MORE per call (requiredness/`mandatoryField`, formal-checking every field, richer IMessage pointers)
+        // that the interpreter does not yet do, and a 1-rule model overweights that fixed pipeline overhead.
+        const val CAVEAT = "(NOT apples-to-apples: kernel does more — requiredness/full-formal/richer messages)"
     }
 
     @Test
@@ -68,9 +86,9 @@ class AgainstKernelPerfTest {
         assertEquals(kEngine.firedCodes(kInstance), interp.validate(iDoc).messages.map { it.code }.toSet(),
             "interpreter and kernel must agree on which rules fire")
 
-        val kMs = medianMs(2, 3) { kEngine.firedCodes(kInstance) }
-        val iMs = medianMs(2, 3) { interp.validateFull(iDoc) }
-        println("[perf] B1 per-row N=$n  interp=${"%.1f".format(iMs)}ms kernel=${"%.1f".format(kMs)}ms ratio=${"%.2f".format(iMs / kMs)}")
+        val kMs = medianMs(WARMUP, ITERS) { kEngine.firedCodes(kInstance) }
+        val iMs = medianMs(WARMUP, ITERS) { interp.validateFull(iDoc) }
+        println("[perf] B1 per-row N=$n  interp=${"%.1f".format(iMs)}ms kernel=${"%.1f".format(kMs)}ms ratio=${"%.2f".format(iMs / kMs)} $CAVEAT")
         assertTrue(iMs < 30_000, "B1 interpreter scaling regression: ${iMs}ms for $n rows")
     }
 
@@ -103,9 +121,9 @@ class AgainstKernelPerfTest {
         assertEquals(kEngine.firedCodes(kInstance), interp.validate(iDoc).messages.map { it.code }.toSet(),
             "interpreter and kernel must agree on the nested per-sub rule")
 
-        val kMs = medianMs(2, 3) { kEngine.firedCodes(kInstance) }
-        val iMs = medianMs(2, 3) { interp.validateFull(iDoc) }
-        println("[perf] B3 nested per-sub lines=$lines×subs=$subsPer  interp=${"%.1f".format(iMs)}ms kernel=${"%.1f".format(kMs)}ms ratio=${"%.2f".format(iMs / kMs)}")
+        val kMs = medianMs(WARMUP, ITERS) { kEngine.firedCodes(kInstance) }
+        val iMs = medianMs(WARMUP, ITERS) { interp.validateFull(iDoc) }
+        println("[perf] B3 nested per-sub lines=$lines×subs=$subsPer  interp=${"%.1f".format(iMs)}ms kernel=${"%.1f".format(kMs)}ms ratio=${"%.2f".format(iMs / kMs)} $CAVEAT")
         assertTrue(iMs < 30_000, "B3 interpreter scaling regression: ${iMs}ms")
     }
 }
