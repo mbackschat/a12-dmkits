@@ -8,6 +8,15 @@ package io.github.mbackschat.a12.dm.interpreter.eval
  */
 private val ISO = Regex("""(\d{4})-(\d{2})-(\d{2})""")
 
+/** The (year, month, day) of an ISO `yyyy-MM-dd` date, or null if malformed — for the *FromDate extractors. */
+fun dateParts(iso: String): Triple<Int, Int, Int>? {
+    val m = ISO.matchEntire(iso) ?: return null
+    val mo = m.groupValues[2].toInt()
+    val d = m.groupValues[3].toInt()
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) return null
+    return Triple(m.groupValues[1].toInt(), mo, d)
+}
+
 /** Days since 1970-01-01 for an ISO date, or null if it is not a well-formed `yyyy-MM-dd`. */
 fun epochDay(iso: String): Long? {
     val m = ISO.matchEntire(iso) ?: return null

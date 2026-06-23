@@ -236,7 +236,18 @@ class Interpreter(private val ctx: EvalContext) {
         // Count-of-filled functions (used in a comparison, e.g. NumberOfFilledFields(a, b, c) < 2).
         FunctionOp.NUMBER_OF_FILLED_FIELDS -> Val.Num(dec(f.args.count { ctx.filled(pathOf(it)) }))
         FunctionOp.NUMBER_OF_FILLED_GROUPS -> Val.Num(dec(f.args.count { ctx.groupFilled(pathOf(it)) }))
+        // Date-component extractors — a number from the date's parts; an empty/absent date is Unknown.
+        FunctionOp.YEAR_FROM_DATE -> dateComponent(f.args[0]) { y, _, _ -> y }
+        FunctionOp.MONTH_FROM_DATE -> dateComponent(f.args[0]) { _, m, _ -> m }
+        FunctionOp.DAY_FROM_DATE -> dateComponent(f.args[0]) { _, _, d -> d }
+        FunctionOp.QUARTER_FROM_DATE -> dateComponent(f.args[0]) { _, m, _ -> (m - 1) / 3 + 1 }
         null -> throw UnsupportedConstructException("unsupported function ${f.name}")
+    }
+
+    /** A number picked from a date operand's (year, month, day); Unknown when the date is empty/malformed. */
+    private fun dateComponent(e: Expr, pick: (Int, Int, Int) -> Int): Val {
+        val parts = (evalExpr(e) as? Val.Txt)?.let { dateParts(it.v) } ?: return Val.Unknown
+        return Val.Num(dec(pick(parts.first, parts.second, parts.third)))
     }
 
     /** Epoch day of a date-valued expression (ISO text), or null if empty/malformed. */

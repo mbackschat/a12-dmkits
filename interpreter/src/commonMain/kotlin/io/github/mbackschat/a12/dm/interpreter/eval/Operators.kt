@@ -61,6 +61,10 @@ enum class FunctionOp(val kernelName: String) {
     DIFFERENCE_IN_DAYS("DifferenceInDays"),
     NUMBER_OF_FILLED_FIELDS("NumberOfFilledFields"),
     NUMBER_OF_FILLED_GROUPS("NumberOfFilledGroups"),
+    YEAR_FROM_DATE("YearFromDate"),
+    MONTH_FROM_DATE("MonthFromDate"),
+    DAY_FROM_DATE("DayFromDate"),
+    QUARTER_FROM_DATE("QuarterFromDate"),
     ;
 
     companion object {
