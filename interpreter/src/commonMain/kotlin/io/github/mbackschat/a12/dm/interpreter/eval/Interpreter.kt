@@ -117,7 +117,31 @@ class Interpreter(private val ctx: EvalContext, private val clock: EvalClock? = 
      *  for those, `leafType` below reduces exactly to the old `leafOmission(left) || leafOmission(right)`. */
     private fun fill(e: Expr): Fill = when (e) {
         is Expr.Field -> if (ctx.filled(e.path)) Fill(false, false) else Fill(true, ctx.signed(e.path))
+        is Expr.Func -> funcFill(e)
         else -> leafOmission(e).let { Fill(it, it) }
+    }
+
+    /**
+     * Directional fillability of a value FUNCTION. The starred aggregates carry the kernel's `NumberCombiner`
+     * directions while their tail can still grow (an empty operand or an un-instantiated tail): a `Sum` can
+     * grow, and shrink only if the summed field is SIGNED; `MaxValue` can only grow; `MinValue` can only
+     * shrink. For a SIGNED field a `Sum`'s fill is `(true, true)` — identical to the old symmetric notion, so
+     * signed aggregates are unchanged; only unsigned ones gain the directional VALUE typing. Every other
+     * function (the count aggregates — a fillable operand is unconditionally OMISSION; operand-list `Min`/`Max`;
+     * date functions) keeps the symmetric notion.
+     */
+    private fun funcFill(f: Expr.Func): Fill = when (FunctionOp.byName(f.name)) {
+        FunctionOp.SUM -> starFill(f) { signed -> Fill(canGrow = true, canShrink = signed) }
+        FunctionOp.MAX_VALUE -> starFill(f) { Fill(canGrow = true, canShrink = false) }
+        FunctionOp.MIN_VALUE -> starFill(f) { Fill(canGrow = false, canShrink = true) }
+        else -> leafOmission(f).let { Fill(it, it) }
+    }
+
+    /** A starred aggregate's fill: [build] (with the starred field's sign) while its tail can still grow,
+     *  else fixed; falls back to the symmetric notion if the operand is not a single star. */
+    private fun starFill(f: Expr.Func, build: (signed: Boolean) -> Fill): Fill {
+        val star = f.args.singleOrNull() as? Expr.Star ?: return leafOmission(f).let { Fill(it, it) }
+        return if (ctx.starOmission(star.path)) build(ctx.signed(star.path)) else Fill(false, false)
     }
 
     private data class Fill(val canGrow: Boolean, val canShrink: Boolean)
