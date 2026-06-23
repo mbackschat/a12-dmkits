@@ -21,6 +21,16 @@ actual class Dec(val v: BigDecimal) : Comparable<Dec> {
     actual override fun compareTo(other: Dec): Int = v.compareTo(other.v)
     actual fun abs(): Dec = Dec(v.abs())
     actual fun scale19(): Dec = Dec(v.setScale(19, RoundingMode.HALF_UP))
+    actual fun roundTo(places: Int, mode: RoundMode): Dec {
+        // The kernel's two-step BigDecimalUtils.runden: pre-round to DEFAULT_SCALE (19) HALF_UP, then to places.
+        val pre = v.setScale(19, RoundingMode.HALF_UP)
+        val jmode = when (mode) {
+            RoundMode.FLOOR -> RoundingMode.FLOOR
+            RoundMode.CEILING -> RoundingMode.CEILING
+            RoundMode.HALF_UP -> RoundingMode.HALF_UP
+        }
+        return Dec(pre.setScale(places, jmode))
+    }
     actual fun display(): String = v.stripTrailingZeros().toPlainString()
 }
 

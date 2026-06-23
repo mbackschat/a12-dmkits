@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.interpreter.eval
 
 import io.github.mbackschat.a12.dm.interpreter.Dec
 import io.github.mbackschat.a12.dm.interpreter.DEC_ZERO
+import io.github.mbackschat.a12.dm.interpreter.RoundMode
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.dec
 import io.github.mbackschat.a12.dm.interpreter.ast.ArithOp
@@ -420,8 +421,28 @@ class Interpreter(
         FunctionOp.ABS, FunctionOp.ABS_VALUE -> (evalExpr(f.args[0]) as? Val.Num)?.let { Val.Num(it.v.abs()) } ?: Val.Unknown
         // The character count of a string field's value; an empty/absent (Unknown) operand → Unknown.
         FunctionOp.LENGTH -> (evalExpr(f.args[0]) as? Val.Txt)?.let { Val.Num(dec(it.v.length)) } ?: Val.Unknown
+        // Rounding — `Round*([expr], n)` to n decimal places; the `*Value(field)` siblings to an integer (0).
+        FunctionOp.ROUND_DOWN -> roundExpr(f.args, RoundMode.FLOOR)
+        FunctionOp.ROUND_UP -> roundExpr(f.args, RoundMode.CEILING)
+        FunctionOp.ROUND_ACCOUNTING -> roundExpr(f.args, RoundMode.HALF_UP)
+        FunctionOp.ROUND_DOWN_VALUE -> roundValue(f.args, RoundMode.FLOOR)
+        FunctionOp.ROUND_UP_VALUE -> roundValue(f.args, RoundMode.CEILING)
+        FunctionOp.ROUND_ACCOUNTING_VALUE -> roundValue(f.args, RoundMode.HALF_UP)
         null -> throw UnsupportedConstructException("unsupported function ${f.name}")
     }
+
+    /** `Round*([expr], n)` — round the numeric first operand to the n-decimal-places literal with [mode];
+     *  a non-numeric/Unknown value or a non-whole places operand → Unknown. */
+    private fun roundExpr(args: List<Expr>, mode: RoundMode): Val {
+        val v = (evalExpr(args[0]) as? Val.Num)?.v ?: return Val.Unknown
+        val places = (evalExpr(args[1]) as? Val.Num)?.v?.display()?.toIntOrNull() ?: return Val.Unknown
+        return Val.Num(v.roundTo(places, mode))
+    }
+
+    /** `Round*Value(field)` — round the bare field to an integer (0 places) with [mode]; the kernel's
+     *  `Math.max(0, decimalPlaces)` field form. A non-numeric/Unknown value → Unknown. */
+    private fun roundValue(args: List<Expr>, mode: RoundMode): Val =
+        (evalExpr(args[0]) as? Val.Num)?.let { Val.Num(it.v.roundTo(0, mode)) } ?: Val.Unknown
 
     /** `DifferenceIn{Months,Years}(a, b)` → a signed whole-period count; Unknown if either date is empty. */
     private fun dateDiff(args: List<Expr>, diff: (String, String) -> Int?): Val {

@@ -1,6 +1,14 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 /**
+ * The rounding direction for [Dec.roundTo] — the kernel's three round functions. `RoundDown` rounds toward
+ * −∞ (FLOOR — `RoundDown(-1.4, 0) = -2`), `RoundUp` toward +∞ (CEILING — `RoundUp(-1.4, 0) = -1`),
+ * `RoundAccounting` HALF_UP / away-from-zero on the `.5` boundary (`RoundAccounting(-2.5, 0) = -3`). Mapped
+ * from `BigDecimalUtils.{abrunden,aufrunden,runden}` in the kernel runtime (`RoundingMode.{FLOOR,CEILING,HALF_UP}`).
+ */
+enum class RoundMode { FLOOR, CEILING, HALF_UP }
+
+/**
  * The interpreter's decimal — the ONE platform-specific primitive (proposal §5's "thin shim"). All the
  * rest of the engine is common code. The JVM actual wraps java.math.BigDecimal and the JS actual wraps
  * **big.js**, so both carry the same arbitrary-precision arithmetic (`0.1 + 0.2 == 0.3` exactly on each).
@@ -31,6 +39,15 @@ expect class Dec : Comparable<Dec> {
 
     /** Absolute value (`|this|`) — for the `Abs`/`AbsValue` operators. */
     fun abs(): Dec
+
+    /**
+     * This value rounded to [places] decimal places with [mode] — the kernel's round functions
+     * (`RoundDown`/`RoundUp`/`RoundAccounting` and their `*Value` field siblings, which round to [places] 0).
+     * Reproduces `BigDecimalUtils.runden`'s **two step**: first setScale(19, HALF_UP) — the
+     * `VkBigDecimal.DEFAULT_SCALE` pre-round that avoids artefacts like `RoundDown(1/3 + 2/3, 0) = 0` — then
+     * setScale([places], [mode]).
+     */
+    fun roundTo(places: Int, mode: RoundMode): Dec
 
     /** Canonical numeric rendering, trailing zeros stripped (`49.90` → `49.9`, `0` → `0`) — for computed values. */
     fun display(): String

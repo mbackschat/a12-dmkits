@@ -30,6 +30,20 @@ actual class Dec(val v: Big) : Comparable<Dec> {
     actual override fun compareTo(other: Dec): Int = v.cmp(other.v)
     actual fun abs(): Dec = Dec(v.abs())
     actual fun scale19(): Dec = Dec(v.round(19, 1))   // 1 = big.js roundHalfUp ≡ JVM RoundingMode.HALF_UP
+    actual fun roundTo(places: Int, mode: RoundMode): Dec {
+        // The kernel's two-step BigDecimalUtils.runden: pre-round to DEFAULT_SCALE (19) HALF_UP, then to places.
+        // big.js has only roundDown(0, toward zero), roundHalfUp(1), roundUp(3, away from zero) — it has NO
+        // FLOOR/CEILING, so emulate them by sign: FLOOR = away-from-zero for negatives else toward-zero (and
+        // CEILING the mirror), which is exactly toward −∞ / +∞.
+        val pre = v.round(19, 1)
+        val negative = pre.cmp(Big("0")) < 0
+        val rm = when (mode) {
+            RoundMode.HALF_UP -> 1
+            RoundMode.FLOOR -> if (negative) 3 else 0
+            RoundMode.CEILING -> if (negative) 0 else 3
+        }
+        return Dec(pre.round(places, rm))
+    }
     actual fun display(): String = v.toString()
 }
 

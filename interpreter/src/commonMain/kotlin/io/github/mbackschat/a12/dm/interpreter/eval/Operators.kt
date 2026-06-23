@@ -95,6 +95,15 @@ enum class FunctionOp(val kernelName: String) {
     ABS_VALUE("AbsValue"),
     // character length of a string field's value (a bare-field form): `Length(field)`.
     LENGTH("Length"),
+    // Rounding: the operand-list `Round*([expr], n)` forms round a numeric expression to n decimal places;
+    // the `*Value(field)` siblings round a bare field to an integer (0 places). RoundDown = FLOOR (toward −∞),
+    // RoundUp = CEILING (toward +∞), RoundAccounting = HALF_UP (away from zero on .5) — KERNEL-FINDINGS §4.
+    ROUND_DOWN("RoundDown"),
+    ROUND_UP("RoundUp"),
+    ROUND_ACCOUNTING("RoundAccounting"),
+    ROUND_DOWN_VALUE("RoundDownValue"),
+    ROUND_UP_VALUE("RoundUpValue"),
+    ROUND_ACCOUNTING_VALUE("RoundAccountingValue"),
     ;
 
     companion object {
