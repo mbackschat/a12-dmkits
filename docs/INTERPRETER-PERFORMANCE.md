@@ -26,6 +26,15 @@ Not ad-hoc `measureTime` calls sprinkled in tests — a **proper, reusable harne
 - **JS throughput** — a Node-runnable large-`N` check on `jsTest` (the same `Document`, `measureTime`, no kernel) so the native/JS reason-to-exist is perf-gated too.
 - **Output + baselines** — print a `scenario × N × interp_ms × kernel_ms × ratio` table and append machine-tagged baselines to the results log (below). The spec holds the method; the log holds the numbers.
 
+## Architecture direction (owner hint, 2026-06-23 — keep in mind)
+
+A structural optimization to design toward (not yet committed work):
+
+- **Decouple eval from a hierarchy — a flat, indexed instance is enough.** The validate/compute API only ever asks "the value for `(path, repetition-indices)`", so the instance backing store can be a **flat `(path, reps) → value` map**, not a tree (this *is* the task-#28 index, promoted to the primary representation). Group membership and iteration scopes come from the **model** (stable), not from walking an instance tree.
+- **Prepare the model once; reuse across runs.** Today `DmInterpreter` **re-parses every rule/computation on every call** (`parseCondition`/`parseExpression` inside `rowOutcomes`/`compute`). The use-case is a form-input loop — *user edits a value → validate/compute → feedback → repeat* — so the **model is stable while values change**. Parse the rules/computations to ASTs, precompute iteration scopes + the field-metadata index **once** (a prepared/compiled model), and run many value-sets through it. Shape: `val engine = DmInterpreter(model)` built once → loop `engine.validate(values)` / `engine.compute(values)` with a fresh flat value store each iteration. This mirrors the kernel's own compile-once + per-run-cache architecture (`ValidationCache`/`CalculationCache`/`IndexFieldCache`/`GroupFillCache`).
+- **The caching boundary (the owner's caveat):** cache only **value-independent** artifacts (parsed ASTs, scopes, field metadata, possibly stable structure). **Never memoize results across runs** — every follow-up run has different values by definition (it's the edit loop).
+- **Open question (deferred):** between runs, do only *values* change, or also the set of repetition *rows* (add/remove)? If values-only, the structure index is reusable too; if rows change, rebuild the value store per run and reuse only the prepared model (the safe default). Decide when this is picked up — profile first.
+
 ## Prerequisite — make the real `Document` non-quadratic (task #28)
 
 A naive O(N²) `Document` cannot even run 100k rows, so the first step is structural:
