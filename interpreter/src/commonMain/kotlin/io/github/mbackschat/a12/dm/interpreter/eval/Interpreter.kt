@@ -86,8 +86,21 @@ class Interpreter(private val ctx: EvalContext) {
     private fun leafType(left: Expr, right: Expr): MsgType =
         if (leafOmission(left) || leafOmission(right)) MsgType.OMISSION else MsgType.VALUE
 
-    private fun predType(p: Cond.Pred): MsgType =
-        PredicateOp.byName(p.name)?.polarity ?: MsgType.VALUE
+    /**
+     * The value-vs-omission polarity of a fired predicate. Non-quantifier predicates carry a static
+     * [PredicateOp.polarity]; a field-list quantifier's polarity is **data-dependent** and computed the way
+     * the kernel does — OMISSION iff filling some currently-empty operand could clear the firing (so the
+     * error is fixable by filling), else VALUE. (E.g. `NotExactlyOneFieldFilled` is OMISSION at k=0 but
+     * VALUE at k=2 — KERNEL-FINDINGS §1.)
+     */
+    private fun predType(p: Cond.Pred): MsgType {
+        val op = PredicateOp.byName(p.name) ?: return MsgType.VALUE
+        op.polarity?.let { return it }
+        val n = p.args.size
+        val k = filledCount(p.args)
+        val fillable = ((k + 1)..n).any { kp -> !quantifierFires(op, kp, n) }
+        return if (fillable) MsgType.OMISSION else MsgType.VALUE
+    }
 
     private fun leafOmission(e: Expr): Boolean = when (e) {
         is Expr.Field -> !ctx.filled(e.path)
@@ -105,15 +118,35 @@ class Interpreter(private val ctx: EvalContext) {
         is Cond.Pattern -> evalPattern(c)
     }
 
-    private fun evalPred(p: Cond.Pred): Tri = when (PredicateOp.byName(p.name)) {
-        PredicateOp.FIELD_FILLED -> Tri.of(ctx.filled(pathOf(p.args.single())))
-        PredicateOp.FIELD_NOT_FILLED -> Tri.of(!ctx.filled(pathOf(p.args.single())))
-        PredicateOp.ALL_FIELDS_FILLED -> Tri.of(p.args.all { ctx.filled(pathOf(it)) })
-        PredicateOp.GROUP_FILLED -> Tri.of(ctx.groupFilled(pathOf(p.args.single())))
-        PredicateOp.GROUP_NOT_FILLED -> Tri.of(!ctx.groupFilled(pathOf(p.args.single())))
-        PredicateOp.FIELD_VALUE_IN_LIST -> valueInList(p.args)
-        PredicateOp.FIELD_VALUE_NOT_IN_LIST -> not(valueInList(p.args))
-        null -> throw UnsupportedConstructException("unsupported predicate ${p.name}")
+    private fun evalPred(p: Cond.Pred): Tri {
+        val op = PredicateOp.byName(p.name) ?: throw UnsupportedConstructException("unsupported predicate ${p.name}")
+        return when (op) {
+            PredicateOp.FIELD_FILLED -> Tri.of(ctx.filled(pathOf(p.args.single())))
+            PredicateOp.FIELD_NOT_FILLED -> Tri.of(!ctx.filled(pathOf(p.args.single())))
+            PredicateOp.ALL_FIELDS_FILLED -> Tri.of(p.args.all { ctx.filled(pathOf(it)) })
+            PredicateOp.GROUP_FILLED -> Tri.of(ctx.groupFilled(pathOf(p.args.single())))
+            PredicateOp.GROUP_NOT_FILLED -> Tri.of(!ctx.groupFilled(pathOf(p.args.single())))
+            PredicateOp.FIELD_VALUE_IN_LIST -> valueInList(p.args)
+            PredicateOp.FIELD_VALUE_NOT_IN_LIST -> not(valueInList(p.args))
+            // Field-list quantifiers over the count k of filled operands (row-evaluated gate is upstream in eval).
+            PredicateOp.NO_FIELD_FILLED, PredicateOp.AT_LEAST_ONE_FIELD_FILLED, PredicateOp.MORE_THAN_ONE_FIELD_FILLED,
+            PredicateOp.NOT_ALL_FIELDS_FILLED, PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED, PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED ->
+                Tri.of(quantifierFires(op, filledCount(p.args), p.args.size))
+        }
+    }
+
+    /** How many of the field operands carry a value — the basis of the field-list quantifiers. */
+    private fun filledCount(args: List<Expr>): Int = args.count { ctx.filled(pathOf(it)) }
+
+    /** Whether a field-list quantifier [op] fires for [k] filled fields among [n] operands (the count law). */
+    private fun quantifierFires(op: PredicateOp, k: Int, n: Int): Boolean = when (op) {
+        PredicateOp.NO_FIELD_FILLED -> k == 0
+        PredicateOp.AT_LEAST_ONE_FIELD_FILLED -> k >= 1
+        PredicateOp.MORE_THAN_ONE_FIELD_FILLED -> k >= 2
+        PredicateOp.NOT_ALL_FIELDS_FILLED -> k < n
+        PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED -> k != 1
+        PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED -> k in 1 until n
+        else -> error("not a field-list quantifier: $op")
     }
 
     /**
