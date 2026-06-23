@@ -1,18 +1,20 @@
 package io.github.mbackschat.a12.dm.interpreter
 
 import java.math.BigDecimal
+import java.math.RoundingMode
 
 /**
- * JVM decimal actual — full-precision BigDecimal. NOTE: this is NOT yet bit-for-bit the kernel's arithmetic:
- * the kernel caps `×`/`÷`/`^` at `MathContext(50)` (HALF_UP) and rounds both operands to scale 19 (HALF_UP)
- * before comparing (`VkBigDecimal.DEFAULT_SCALE`/`INTERNAL_PRECISION`). We match on every practical input and
- * diverge only beyond those precisions — the documented open edge (INTERPRETER-BUILDOUT.md, "Audit findings still OPEN").
+ * JVM decimal actual — full-precision BigDecimal, with the kernel's scale-19 comparison pre-rounding
+ * ([scale19]). Still NOT bit-for-bit on ARITHMETIC: the kernel caps `×`/`÷`/`^` at `MathContext(50)` HALF_UP
+ * (`VkBigDecimal.INTERNAL_PRECISION`); `times` here is full-precision (diverges only beyond 50 significant
+ * digits — deferred to the `÷`/`^` increment, where the MathContext is mandatory). Compare/equality now match.
  */
 actual class Dec(val v: BigDecimal) : Comparable<Dec> {
     actual operator fun plus(other: Dec): Dec = Dec(v + other.v)
     actual operator fun minus(other: Dec): Dec = Dec(v - other.v)
     actual operator fun times(other: Dec): Dec = Dec(v * other.v)
     actual override fun compareTo(other: Dec): Int = v.compareTo(other.v)
+    actual fun scale19(): Dec = Dec(v.setScale(19, RoundingMode.HALF_UP))
     actual fun display(): String = v.stripTrailingZeros().toPlainString()
 }
 

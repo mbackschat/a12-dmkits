@@ -12,6 +12,7 @@ external class Big(value: String) {
     fun minus(other: Big): Big
     fun times(other: Big): Big
     fun cmp(other: Big): Int
+    fun round(dp: Int, rm: Int): Big   // dp = decimal places; rm = rounding mode (1 = roundHalfUp)
     override fun toString(): String   // big.js renders trailing-zero-stripped plain notation
 }
 
@@ -20,6 +21,7 @@ actual class Dec(val v: Big) : Comparable<Dec> {
     actual operator fun minus(other: Dec): Dec = Dec(v.minus(other.v))
     actual operator fun times(other: Dec): Dec = Dec(v.times(other.v))
     actual override fun compareTo(other: Dec): Int = v.cmp(other.v)
+    actual fun scale19(): Dec = Dec(v.round(19, 1))   // 1 = big.js roundHalfUp ≡ JVM RoundingMode.HALF_UP
     actual fun display(): String = v.toString()
 }
 

@@ -184,7 +184,7 @@ class Interpreter(
         val lv = evalExpr(left)
         val rv = evalExpr(right)
         if (lv is Val.Unknown || rv is Val.Unknown) return l.canGrow || l.canShrink || r.canGrow || r.canShrink
-        return if (ORDER.compare(lv, rv) < 0) l.canGrow || r.canShrink else l.canShrink || r.canGrow
+        return if (vglCompare(lv, rv) < 0) l.canGrow || r.canShrink else l.canShrink || r.canGrow
     }
 
     /**
@@ -283,11 +283,23 @@ class Interpreter(
         return when (c.op) {
             CmpOp.EQ -> Tri.of(eq(l, r))
             CmpOp.NE -> Tri.of(!eq(l, r))
-            CmpOp.LT -> Tri.of(ORDER.compare(l, r) < 0)
-            CmpOp.LE -> Tri.of(ORDER.compare(l, r) <= 0)
-            CmpOp.GT -> Tri.of(ORDER.compare(l, r) > 0)
-            CmpOp.GE -> Tri.of(ORDER.compare(l, r) >= 0)
+            CmpOp.LT -> Tri.of(vglCompare(l, r) < 0)
+            CmpOp.LE -> Tri.of(vglCompare(l, r) <= 0)
+            CmpOp.GT -> Tri.of(vglCompare(l, r) > 0)
+            CmpOp.GE -> Tri.of(vglCompare(l, r) >= 0)
         }
+    }
+
+    /**
+     * The kernel's language comparison (`BedingungsOperatorHelper.vergleiche` / `vergleicheSTRING`): a NUMBER
+     * pair is rounded to **scale 19** `HALF_UP` first (`VkBigDecimal.DEFAULT_SCALE`) — observable only beyond
+     * 19 fractional digits (e.g. a scale-10 × scale-10 product); strings/dates compare lexicographically.
+     * Distinct from [ORDER] (`min`/`max` *selection*), which the kernel does at full precision.
+     */
+    private fun vglCompare(l: Val, r: Val): Int = when {
+        l is Val.Num && r is Val.Num -> l.v.scale19().compareTo(r.v.scale19())
+        l is Val.Txt && r is Val.Txt -> l.v.compareTo(r.v)
+        else -> error("incomparable values $l vs $r")
     }
 
     private fun evalExpr(e: Expr): Val = when (e) {
@@ -403,7 +415,8 @@ class Interpreter(
     private fun num(v: Val): Dec = (v as? Val.Num)?.v ?: error("expected a number, got $v")
 
     private fun eq(l: Val, r: Val): Boolean = when {
-        l is Val.Num && r is Val.Num -> l.v.compareTo(r.v) == 0
+        // NUMBER equality rounds both to scale 19 HALF_UP, like the comparison ops (the kernel's `vergleiche`).
+        l is Val.Num && r is Val.Num -> l.v.scale19().compareTo(r.v.scale19()) == 0
         l is Val.Txt && r is Val.Txt -> l.v == r.v
         l is Val.Bool && r is Val.Bool -> l.v == r.v
         else -> false
