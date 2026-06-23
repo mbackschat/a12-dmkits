@@ -337,6 +337,41 @@ final class RuntimeLaws {
         return firedCodes(modelJson, doc).contains(errorCode);
     }
 
+    /**
+     * A build-ONCE kernel evaluator for the performance harness (INTERPRETER-PERFORMANCE.md). The model is
+     * deserialized + expanded and the rt service + document factory are created a SINGLE time, so a benchmark
+     * can build an instance once and time only {@code validateFull} — a fair against-kernel comparison, not
+     * polluted by per-call model rebuild (which the convenience {@link #firedCodes(String, Doc)} incurs).
+     */
+    static final class KernelEngine {
+        private final String modelJson;
+        private final IDocumentRtService rt;
+        private final IDocumentFactory df;
+
+        KernelEngine(String modelJson) {
+            this.modelJson = modelJson;
+            IDocumentModel model = expandedModel(modelJson);
+            IDocumentModelResolver resolver = id -> model;
+            this.rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
+            this.df = new DocumentServiceFactory(resolver).createDocumentFactory();
+        }
+
+        /** Build the kernel {@link IDocument} for {@code doc} once — do this OUTSIDE the timed region. */
+        IDocument instance(Doc doc) {
+            return buildInstance(modelJson, df, doc);
+        }
+
+        /** The error codes that fire for an already-built instance — the timed call. */
+        Set<String> firedCodes(IDocument instance) {
+            return rt.validateFull(instance, Locale.US).getMessages().stream()
+                    .map(IMessage::getErrorCode).collect(Collectors.toCollection(HashSet::new));
+        }
+    }
+
+    static KernelEngine kernelEngine(String modelJson) {
+        return new KernelEngine(modelJson);
+    }
+
     /** Deserialize + expand (self-contained) the model JSON. */
     private static IDocumentModel expandedModel(String modelJson) {
         var factory = new DocumentModelServiceFactory();
