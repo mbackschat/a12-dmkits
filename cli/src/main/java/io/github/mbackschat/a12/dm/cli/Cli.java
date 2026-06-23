@@ -55,6 +55,18 @@ public final class Cli {
     static BooleanSupplier nativeImageDetector =
             () -> System.getProperty("org.graalvm.nativeimage.imagecode") != null;
 
+    /** The effective native profile for the current dispatch (set by {@link #run}); read by verbs. */
+    private static volatile boolean nativeProfileActive;
+
+    /**
+     * Whether the current run is the native-image profile — where the kernel's Groovy runtime engine is
+     * unavailable, so the runtime verbs use the interpreter and JVM-only options like {@code --kernel} are
+     * refused. Honors the test seam ({@link #run(String[], Appendable, Appendable, boolean)}).
+     */
+    public static boolean isNativeImage() {
+        return nativeProfileActive;
+    }
+
     /** Dispatch a verb. Returns a process exit code (0 = success, 1 = invalid, 2 = usage/IO error, 70 = internal tool error). */
     public static int run(String[] args, Appendable out, Appendable err) {
         return run(args, out, err, nativeImageDetector.getAsBoolean());
@@ -66,6 +78,7 @@ public final class Cli {
      * self-describing surface) before dispatch.
      */
     static int run(String[] args, Appendable out, Appendable err, boolean nativeProfile) {
+        nativeProfileActive = nativeProfile;
         PrintWriter errW = new PrintWriter(new AppendableWriter(err), true);
         // R2 (CLI-SPEC §2): with --text, capture stdout so a result envelope can be
         // re-rendered as human-readable text; non-envelope output (catalogs, artifacts, --help, errors)

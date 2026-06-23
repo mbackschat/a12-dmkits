@@ -21,8 +21,8 @@ import io.github.mbackschat.a12.dm.interpreter.Severity;
 /**
  * Loads a DM-JSON model into the kernel-free {@link ModelDef}, and a {@code {"fields":{…}}} instance tree
  * into a {@link Document} — the consumer-side bridge that lets {@code dmtool} drive the interpreter on a
- * REAL model (the keystone for the native runtime verbs; INTERPRETER-BUILDOUT.md). Test-scoped for now —
- * verified by the real-model differential — and promoted to {@code :cli} main when the verbs are wired.
+ * REAL model (the engine behind the runtime verbs' default path; INTERPRETER-BUILDOUT.md). Verified by
+ * {@code InterpreterRealModelDiffTest} (the load→interpret path agrees with the live kernel).
  *
  * <p>The model walk is a flat scan-by-type (every node carries a {@code type} + full-path {@code id}), so
  * it doesn't depend on the exact element nesting. Handles a <b>self-contained</b> model (no includes — a
@@ -102,12 +102,15 @@ public final class InterpreterModelLoader {
         }
         for (Map.Entry<?, ?> e : map.entrySet()) {
             List<String> childSegs = append(segs, (String) e.getKey());
+            String childPath = "/" + String.join("/", childSegs);
             Object child = e.getValue();
             if (child instanceof List<?> rows) {                       // a repeatable group: one row per element
                 for (int i = 0; i < rows.size(); i++) {
+                    doc.group(childPath, toIntArray(append(reps, i + 1)));   // instantiate the row (even if empty)
                     walkInstance(doc, rows.get(i), childSegs, append(reps, i + 1));
                 }
             } else if (child instanceof Map) {                         // a non-repeatable nested group
+                doc.group(childPath, toIntArray(append(reps, 1)));           // instantiate it (even if {} — empty-operand compute)
                 walkInstance(doc, child, childSegs, append(reps, 1));
             } else {                                                   // a field value
                 String path = "/" + String.join("/", childSegs);

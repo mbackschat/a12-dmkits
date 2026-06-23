@@ -66,8 +66,19 @@ class InterpreterRealModelDiffTest {
 
     @Test
     void subscriptionComputeMatchesKernel() {
+        assertComputeMatches("{ \"fields\": { \"Subscription\": { \"Billing\": { \"BaseFee\": \"49.90\" } } } }", "49.9");
+    }
+
+    @Test
+    void subscriptionComputeEmptyOperandMatchesKernel() {
+        // BaseFee absent, Billing present but EMPTY ({}) — the loader must instantiate the empty group so the
+        // computation runs and empty-as-0 yields "0" (the cli-runtime trap; a loader regression guard).
+        assertComputeMatches("{ \"fields\": { \"Subscription\": { \"Billing\": { } } } }", "0");
+    }
+
+    private void assertComputeMatches(String instanceJson, String expectedValue) {
         String model = resource("models/subscription-computed.dm.json");
-        Map<String, Object> fields = innerFields("{ \"fields\": { \"Subscription\": { \"Billing\": { \"BaseFee\": \"49.90\" } } } }");
+        Map<String, Object> fields = innerFields(instanceJson);
 
         String kernelValue = KernelAdapter.ofJson(model).compute(fields, Locale.US).computed().stream()
                 .filter(c -> c.path().equals(EFF)).findFirst().flatMap(ComputedField::value).orElse(null);
@@ -77,7 +88,7 @@ class InterpreterRealModelDiffTest {
         String interpValue = new DmInterpreter(def).compute(doc, "en_US").stream()
                 .filter(c -> c.getPath().equals(EFF)).findFirst().map(Computed::getValue).orElse(null);
 
-        assertEquals("49.9", kernelValue, "kernel computes [BaseFee] → 49.9");
+        assertEquals(expectedValue, kernelValue, "kernel computes the expected value");
         assertEquals(kernelValue, interpValue, "interpreter computes the same value as the kernel over the real model");
     }
 

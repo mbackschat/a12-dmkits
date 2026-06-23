@@ -1,9 +1,11 @@
 package io.github.mbackschat.a12.dm.cli.model;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.Cli;
 import io.github.mbackschat.a12.dm.cli.DocInstance;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
+import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -36,7 +38,8 @@ import picocli.CommandLine.Option;
  * not persisted). Computations are NOT run — use {@code model compute}.
  */
 @Command(name = "eval", mixinStandardHelpOptions = true,
-        description = "Run the kernel over a document INSTANCE; report which rules fire in `data` (runtime).")
+        description = "Run a document INSTANCE through the runtime engine (interpreter by default, `--kernel` "
+                + "for the A12 kernel); report which rules fire in `data` (runtime).")
 final class ModelEvalCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -77,6 +80,11 @@ final class ModelEvalCommand extends BaseCommand {
             description = "the evaluation locale (default: ${DEFAULT-VALUE})")
     String localeTag;
 
+    @Option(names = "--kernel",
+            description = "use the A12 kernel engine instead of the default interpreter (JVM only; "
+                    + "not available in the native image, where the interpreter is the only engine)")
+    boolean useKernel;
+
     @Mixin
     WorkspaceOption workspace = new WorkspaceOption();
 
@@ -108,12 +116,12 @@ final class ModelEvalCommand extends BaseCommand {
             return fail("cannot read document: " + e.getMessage());
         }
         IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
-        Locale locale = Locale.forLanguageTag(localeTag.replace('_', '-'));
 
-        String evalJson = modelJson;
+        // Resolve a candidate's group + error relpath (engine-independent).
+        String effectiveGroup = group;
+        String errorEntityRelPath = null;
         String targetRule = ruleId;
         if (candidate) {
-            String effectiveGroup = group;
             if (effectiveGroup == null) {
                 int slash = field.lastIndexOf('/');
                 if (slash <= 0) {
@@ -124,38 +132,56 @@ final class ModelEvalCommand extends BaseCommand {
             if (!field.startsWith(effectiveGroup + "/")) {
                 return fail("--field " + field + " must be inside --group " + effectiveGroup);
             }
-            String errorEntityRelPath = "../" + field.substring(effectiveGroup.length() + 1);
-            DraftRule draft = new DraftRule(effectiveGroup, name, errorEntityRelPath, condition, code, severity);
-            ValidationResult check = new RuleValidator().check(modelJson, draft, resolver);
-            if (!check.ok()) {
-                ResultEnvelope env = ResultEnvelope.rejected("model", "eval",
-                        "the candidate rule is rejected by the kernel (use `rule check` for diagnostics)",
-                        check.diagnostics());
-                out().print(env.toJsonString());
-                return env.exitCode();
-            }
-            evalJson = new RuleValidator().inject(modelJson, draft);
+            errorEntityRelPath = "../" + field.substring(effectiveGroup.length() + 1);
             targetRule = effectiveGroup + "/" + name;
-        } else if (ruleId != null) {
-            try {
-                Set<String> rules = KernelAdapter.ofJson(modelJson, resolver).ruleFullNames();
-                if (!rules.contains(ruleId)) {
-                    return fail("'" + ruleId + "' is not a rule in this model — rules: " + rules);
-                }
-            } catch (RuntimeException e) {
-                return fail("cannot load the model: " + e.getMessage());
-            }
         }
 
-        EvalResult result;
+        ObjectNode data;
         try {
-            result = KernelAdapter.ofJson(evalJson, resolver).evaluate(fields, locale);
+            if (useKernel) {
+                if (Cli.isNativeImage()) {
+                    return fail("--kernel is not available in the native image — the interpreter is the only engine here; drop --kernel");
+                }
+                Locale locale = Locale.forLanguageTag(localeTag.replace('_', '-'));
+                String evalJson = modelJson;
+                if (candidate) {
+                    DraftRule draft = new DraftRule(effectiveGroup, name, errorEntityRelPath, condition, code, severity);
+                    ValidationResult check = new RuleValidator().check(modelJson, draft, resolver);
+                    if (!check.ok()) {
+                        ResultEnvelope env = ResultEnvelope.rejected("model", "eval",
+                                "the candidate rule is rejected by the kernel (use `rule check` for diagnostics)",
+                                check.diagnostics());
+                        out().print(env.toJsonString());
+                        return env.exitCode();
+                    }
+                    evalJson = new RuleValidator().inject(modelJson, draft);
+                } else if (ruleId != null) {
+                    Set<String> rules = KernelAdapter.ofJson(modelJson, resolver).ruleFullNames();
+                    if (!rules.contains(ruleId)) {
+                        return fail("'" + ruleId + "' is not a rule in this model — rules: " + rules);
+                    }
+                }
+                data = kernelEvalData(KernelAdapter.ofJson(evalJson, resolver).evaluate(fields, locale), targetRule);
+            } else if (candidate) {
+                data = InterpreterEngine.evalCandidateData(modelJson, fields, localeTag,
+                        effectiveGroup, name, errorEntityRelPath, condition, code, severity);
+            } else {
+                data = InterpreterEngine.evalData(modelJson, fields, localeTag, ruleId);
+            }
         } catch (IllegalArgumentException badDoc) {
             return fail(badDoc.getMessage());
         } catch (RuntimeException e) {
             return fail("evaluation failed: " + e.getMessage());
         }
 
+        ResultEnvelope env = ResultEnvelope.read("model", "eval",
+                data.get("fired").size() + " rule(s) fired", true, List.of(), data);
+        out().print(env.toJsonString());
+        return env.exitCode();
+    }
+
+    /** Render a kernel {@link EvalResult} into the shared {@code data} shape (fired / messages / rule). */
+    private static ObjectNode kernelEvalData(EvalResult result, String targetRule) {
         ObjectNode data = MAPPER.createObjectNode();
         ArrayNode fired = data.putArray("fired");
         result.firedCodes().forEach(fired::add);
@@ -170,16 +196,12 @@ final class ModelEvalCommand extends BaseCommand {
             mn.put("message", m.message());
         }
         if (targetRule != null) {
-            String tr = targetRule;
             boolean ruleFired = result.messages().stream()
-                    .anyMatch(m -> m.rulePath().filter(tr::equals).isPresent());
+                    .anyMatch(m -> m.rulePath().filter(targetRule::equals).isPresent());
             ObjectNode rule = data.putObject("rule");
-            rule.put("name", tr);
+            rule.put("name", targetRule);
             rule.put("fired", ruleFired);
         }
-        ResultEnvelope env = ResultEnvelope.read("model", "eval",
-                result.firedCodes().size() + " rule(s) fired", true, List.of(), data);
-        out().print(env.toJsonString());
-        return env.exitCode();
+        return data;
     }
 }

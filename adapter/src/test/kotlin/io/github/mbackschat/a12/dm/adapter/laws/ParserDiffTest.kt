@@ -33,6 +33,8 @@ class ParserDiffTest {
     private val singleRow = listOf(
         Case("[Quantity] < 100", "../Quantity", values = mapOf(Q to "50")),
         Case("[Quantity] < 100", "../Quantity", values = mapOf(Q to "200")),
+        Case("[/Order/Quantity] < 100", "../Quantity", values = mapOf(Q to "50")),   // absolute path, used as-is
+        Case("[/Order/Quantity] < 100", "../Quantity", values = mapOf(Q to "200")),
         Case("[Quantity] < 100", "../Quantity", values = mapOf(CN to "Acme")),                       // empty→0 fires
         Case("[TermsConfirmed] != True", "../TermsConfirmed", empties = setOf(TC), values = mapOf(CN to "Acme")),
         Case("[ProductCode] == \"ABC\"", "../ProductCode", values = mapOf(CN to "Acme", PC to "ABC")),

@@ -1,10 +1,12 @@
 package io.github.mbackschat.a12.dm.cli.rule;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.Cli;
 import io.github.mbackschat.a12.dm.cli.DocInstance;
 import io.github.mbackschat.a12.dm.cli.ModelPaths;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
+import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
 
 import java.io.IOException;
 import java.util.List;
@@ -48,6 +50,11 @@ final class RuleTestCommand extends BaseCommand {
             description = "the evaluation locale (default: ${DEFAULT-VALUE})")
     String localeTag;
 
+    @Option(names = "--kernel",
+            description = "use the A12 kernel engine instead of the default interpreter (JVM only; "
+                    + "not available in the native image, where the interpreter is the only engine)")
+    boolean useKernel;
+
     @Mixin
     WorkspaceOption workspace = new WorkspaceOption();
 
@@ -66,16 +73,24 @@ final class RuleTestCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read document: " + e.getMessage());
         }
-        Locale locale = Locale.forLanguageTag(localeTag.replace('_', '-'));
         try {
-            BoundModel bound = BoundModel.ofJson(json, workspace.resolverFor(modelPath));
-            KernelAdapter adapter = KernelAdapter.of(bound);
-            String problem = ModelPaths.ruleProblem(adapter.ruleFullNames(), adapter.computationFullNames(), rule);
-            if (problem != null) {
-                return fail(problem);
+            ObjectNode data;
+            if (useKernel) {
+                if (Cli.isNativeImage()) {
+                    return fail("--kernel is not available in the native image — the interpreter is the only engine here; drop --kernel");
+                }
+                Locale locale = Locale.forLanguageTag(localeTag.replace('_', '-'));
+                BoundModel bound = BoundModel.ofJson(json, workspace.resolverFor(modelPath));
+                KernelAdapter adapter = KernelAdapter.of(bound);
+                String problem = ModelPaths.ruleProblem(adapter.ruleFullNames(), adapter.computationFullNames(), rule);
+                if (problem != null) {
+                    return fail(problem);
+                }
+                data = data(adapter.testRule(rule, fields, locale));
+            } else {
+                data = InterpreterEngine.ruleTestData(json, fields, localeTag, rule);
             }
-            RuleTestOutcome outcome = adapter.testRule(rule, fields, locale);
-            ResultEnvelope env = ResultEnvelope.read("rule", "test", summary(outcome), true, List.of(), data(outcome));
+            ResultEnvelope env = ResultEnvelope.read("rule", "test", summary(data), true, List.of(), data);
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (IllegalArgumentException badDoc) {
@@ -85,11 +100,14 @@ final class RuleTestCommand extends BaseCommand {
         }
     }
 
-    private static String summary(RuleTestOutcome outcome) {
-        return switch (outcome.verdict()) {
-            case FIRED -> outcome.rule() + " FIRED on this instance (a violation)";
-            case PASSED -> outcome.rule() + " passed (evaluated; condition false)";
-            case SUPPRESSED -> outcome.rule() + " was NOT evaluated — a referenced field is formally invalid";
+    /** The human summary from the verdict + rule in {@code data} — engine-independent (same wording either way). */
+    private static String summary(ObjectNode data) {
+        String r = data.path("rule").asText();
+        return switch (data.path("verdict").asText()) {
+            case "fired" -> r + " FIRED on this instance (a violation)";
+            case "passed" -> r + " passed (evaluated; condition false)";
+            case "suppressed" -> r + " was NOT evaluated — a referenced field is formally invalid";
+            default -> r;
         };
     }
 

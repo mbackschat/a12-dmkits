@@ -3,11 +3,13 @@
 *2026-06-11T23:51:18Z by Showboat 0.6.1*
 <!-- showboat-id: bf4f1a1d-efae-4469-94a0-28e706b4a839 -->
 
-The previous tours operated on the **model** — its rules and computations as text. This one runs the kernel over a document **instance** (actual field data) and asks the *runtime* questions: which rules **fire** on this data, and what does a computed field **evaluate to**? Two read-only verbs, both `JSON-in / JSON-out` over the A12 kernel, both invoked through `dmtool` (the launcher shim) from the repo root; some steps also use `jq`. The document instance is a small JSON file — a nested `{"fields":{…}}` tree, grouped exactly like the model. Output blocks are captured by [showboat](https://github.com/simonw/showboat); re-check them with `uvx showboat@0.6.1 verify examples/cli-runtime.md` (exit 0 = output still matches the live CLI).
+The previous tours operated on the **model** — its rules and computations as text. This one runs a document **instance** (actual field data) through the runtime engine and asks the *runtime* questions: which rules **fire** on this data, and what does a computed field **evaluate to**? Two read-only verbs, both `JSON-in / JSON-out`, both invoked through `dmtool` (the launcher shim) from the repo root; some steps also use `jq`. The document instance is a small JSON file — a nested `{"fields":{…}}` tree, grouped exactly like the model.
+
+**The engine.** These runtime verbs default to the **native-safe interpreter** — a from-scratch evaluator that reproduces the A12 kernel's runtime semantics without the kernel's on-the-fly Groovy, so they run in the GraalVM native image too. Add **`--kernel`** to evaluate with the A12 kernel itself (JVM only; not available in the native image). The interpreter is verified rule-for-rule against the kernel, so the two agree on which rules fire and what computes. Output blocks are captured by [showboat](https://github.com/simonw/showboat); re-check them with `uvx showboat@0.6.1 verify examples/cli-runtime.md` (exit 0 = output still matches the live CLI).
 
 ## The document instance
 
-A model is a *schema*; the runtime needs *data*. The instance below is the smallest order that exercises the date rule — just the two dates the rule turns on, nested under their `Order` group. Dates are written **ISO `yyyy-MM-dd`** (the model is `en_US`-only; that is the format the kernel parses). Here the delivery (`2024-05-15`) lands **before** the order (`2024-06-01`) — the violation the stored rule `/Order/DeliveryNotBeforeOrder` is meant to catch.
+A model is a *schema*; the runtime needs *data*. The instance below is the smallest order that exercises the date rule — just the two dates the rule turns on, nested under their `Order` group. Dates are written **ISO `yyyy-MM-dd`** (the model is `en_US`-only; that is the format the engine parses). Here the delivery (`2024-05-15`) lands **before** the order (`2024-06-01`) — the violation the stored rule `/Order/DeliveryNotBeforeOrder` is meant to catch.
 
 ```bash
 cat > /tmp/rt-order-violation.json <<'JSON'
@@ -22,22 +24,22 @@ cat /tmp/rt-order-violation.json
 
 ## model eval — which rules fire?
 
-`model eval` runs the kernel over the instance and reports, under `data.fired`, the **error codes of every rule that fired** (a rule *fires* when its violation condition evaluates true on this data). `--rule <path>` narrows the report to one stored rule and adds a `data.rule.{name,fired}` verdict for it. The flags come from the CLI itself — no external doc needed.
+`model eval` runs the engine over the instance and reports, under `data.fired`, the **error codes of every rule that fired** (a rule *fires* when its violation condition evaluates true on this data). `--rule <path>` narrows the report to one stored rule and adds a `data.rule.{name,fired}` verdict for it. The flags come from the CLI itself — no external doc needed.
 
 ```bash
 dmtool -m examples/models/order-ruled.dm.json model eval --help
 ```
 
 ```output
-Usage: dmtool model eval [-hV] [--text] [--code=<errorCode>]
+Usage: dmtool model eval [-hV] [--kernel] [--text] [--code=<errorCode>]
                          [--condition=<DSL>] --doc=<document.json>
                          [--field=<fieldPathInModel>]
                          [--group=<groupPathInModel>] [--locale=<locale>]
                          [-m=<model.json>] [--name=<name>]
                          [--rule=<rulePathInModel>] [--severity=ERROR|WARNING]
                          [-w=<dir>]...
-Run the kernel over a document INSTANCE; report which rules fire in `data`
-(runtime).
+Run a document INSTANCE through the runtime engine (interpreter by default,
+`--kernel` for the A12 kernel); report which rules fire in `data` (runtime).
       --code=<errorCode>     the candidate rule's error code (default: EVAL_DOC)
       --condition=<DSL>      evaluate a CANDIDATE rule (with --field): a
                                condition true on a VIOLATION; injected, not
@@ -51,6 +53,10 @@ Run the kernel over a document INSTANCE; report which rules fire in `data`
                              the candidate rule's iteration scope (group path);
                                defaults to the field's parent
   -h, --help                 Show this help message and exit.
+      --kernel               use the A12 kernel engine instead of the default
+                               interpreter (JVM only; not available in the
+                               native image, where the interpreter is the only
+                               engine)
       --locale=<locale>      the evaluation locale (default: en_US)
   -m, --model=<model.json>   the DM-JSON model file to operate on (set once;
                                accepted before or after the verb)
@@ -97,7 +103,7 @@ dmtool -m examples/models/order-ruled.dm.json \
     "messages" : [ {
       "code" : "DELIVERY_BEFORE_ORDER",
       "rule" : "/Order/DeliveryNotBeforeOrder",
-      "field" : "PartiallyKnownDocumentMultiPointerImpl[/Order/DeliveryDate, [1, 1]]",
+      "field" : "/Order/DeliveryDate",
       "severity" : "ERROR",
       "type" : "VALUE_ERROR",
       "message" : "The delivery date must not be earlier than the order date."
@@ -151,7 +157,7 @@ dmtool -m examples/models/order-ruled.dm.json \
 
 ## rule test — one rule, three outcomes (fired / passed / suppressed)
 
-`model eval --rule` answers "did it fire?" — but `fired: false` is **two** different things: the rule was evaluated and *passed*, or it was **never evaluated** because a field it references is formally invalid (the kernel skips a rule whose operand is *unknown*). `rule test` is the rule-first verb that tells them apart, with a three-way `verdict`. First the violation instance from above — the rule fires:
+`model eval --rule` answers "did it fire?" — but `fired: false` is **two** different things: the rule was evaluated and *passed*, or it was **never evaluated** because a field it references is formally invalid (the engine skips a rule whose operand is *unknown*). `rule test` is the rule-first verb that tells them apart, with a three-way `verdict`. First the violation instance from above — the rule fires:
 
 ```bash
 dmtool -m examples/models/order-ruled.dm.json \
@@ -242,7 +248,7 @@ dmtool -m examples/models/order-ruled.dm.json \
     "messages" : [ {
       "code" : "QTY_CAP",
       "rule" : "/Order/EvalDocCandidate",
-      "field" : "PartiallyKnownDocumentMultiPointerImpl[/Order/Quantity, [1, 1]]",
+      "field" : "/Order/Quantity",
       "severity" : "ERROR",
       "type" : "VALUE_ERROR",
       "message" : "EvalDocCandidate"
@@ -268,13 +274,17 @@ dmtool -m examples/models/subscription-computed.dm.json model compute --help
 ```
 
 ```output
-Usage: dmtool model compute [-hV] [--text] --doc=<document.json>
+Usage: dmtool model compute [-hV] [--kernel] [--text] --doc=<document.json>
                             [--locale=<locale>] [-m=<model.json>] [-w=<dir>]...
 Run computations over a document INSTANCE; report each computed field's value
 in `data` (read-only).
       --doc=<document.json>  the document INSTANCE (field data) — a nested JSON
                                tree under "fields". See `schema model compute`.
   -h, --help                 Show this help message and exit.
+      --kernel               use the A12 kernel engine instead of the default
+                               interpreter (JVM only; not available in the
+                               native image, where the interpreter is the only
+                               engine)
       --locale=<locale>      the computation locale (default: en_US)
   -m, --model=<model.json>   the DM-JSON model file to operate on (set once;
                                accepted before or after the verb)
@@ -320,7 +330,7 @@ dmtool -m examples/models/subscription-computed.dm.json \
 }
 ```
 
-→ `data.computed[].value: "49.9"` — the computation evaluated `[BaseFee]` over the instance and returned the value. `outcome: "value"` says the field resolved to a concrete value (as opposed to staying empty or erroring). The trailing zero is dropped; the result is the kernel's own numeric rendering.
+→ `data.computed[].value: "49.9"` — the computation evaluated `[BaseFee]` over the instance and returned the value. `outcome: "value"` says the field resolved to a concrete value (as opposed to staying empty or erroring). The trailing zero is dropped; the result is the engine's canonical numeric rendering (matching the kernel).
 
 Now the **empty-operand** case — the same computation, but `BaseFee` is absent. In the A12 kernel an empty numeric operand reads as **0**, so `[BaseFee]` with no base fee does not stay empty or error: it computes `0`. This is a classic trap worth seeing once.
 

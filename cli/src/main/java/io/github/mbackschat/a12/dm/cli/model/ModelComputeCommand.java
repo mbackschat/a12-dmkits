@@ -1,9 +1,11 @@
 package io.github.mbackschat.a12.dm.cli.model;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.Cli;
 import io.github.mbackschat.a12.dm.cli.DocInstance;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
+import io.github.mbackschat.a12.dm.cli.interp.InterpreterEngine;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -43,6 +45,11 @@ final class ModelComputeCommand extends BaseCommand {
             description = "the computation locale (default: ${DEFAULT-VALUE})")
     String localeTag;
 
+    @Option(names = "--kernel",
+            description = "use the A12 kernel engine instead of the default interpreter (JVM only; "
+                    + "not available in the native image, where the interpreter is the only engine)")
+    boolean useKernel;
+
     @Mixin
     WorkspaceOption workspace = new WorkspaceOption();
 
@@ -67,27 +74,34 @@ final class ModelComputeCommand extends BaseCommand {
             return fail("cannot read document: " + e.getMessage());
         }
         IDocumentModelReferenceResolver resolver = workspace.resolverFor(model);
-        Locale locale = Locale.forLanguageTag(localeTag.replace('_', '-'));
 
-        ComputeResult result;
+        ObjectNode data;
         try {
-            result = KernelAdapter.ofJson(modelJson, resolver).compute(fields, locale);
+            if (useKernel) {
+                if (Cli.isNativeImage()) {
+                    return fail("--kernel is not available in the native image — the interpreter is the only engine here; drop --kernel");
+                }
+                Locale locale = Locale.forLanguageTag(localeTag.replace('_', '-'));
+                ComputeResult result = KernelAdapter.ofJson(modelJson, resolver).compute(fields, locale);
+                data = MAPPER.createObjectNode();
+                ArrayNode computed = data.putArray("computed");
+                for (ComputedField c : result.computed()) {
+                    ObjectNode cn = computed.addObject();
+                    cn.put("field", c.path());
+                    cn.put("outcome", c.outcome());
+                    c.value().ifPresent(v -> cn.put("value", v));
+                }
+            } else {
+                data = InterpreterEngine.computeData(modelJson, fields, localeTag);
+            }
         } catch (IllegalArgumentException badDoc) {
             return fail(badDoc.getMessage());
         } catch (RuntimeException e) {
             return fail("computation failed: " + e.getMessage());
         }
 
-        ObjectNode data = MAPPER.createObjectNode();
-        ArrayNode computed = data.putArray("computed");
-        for (ComputedField c : result.computed()) {
-            ObjectNode cn = computed.addObject();
-            cn.put("field", c.path());
-            cn.put("outcome", c.outcome());
-            c.value().ifPresent(v -> cn.put("value", v));
-        }
         ResultEnvelope env = ResultEnvelope.read("model", "compute",
-                "computed " + result.computed().size() + " field(s)", true, List.of(), data);
+                "computed " + data.get("computed").size() + " field(s)", true, List.of(), data);
         out().print(env.toJsonString());
         return env.exitCode();
     }

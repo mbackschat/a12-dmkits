@@ -40,6 +40,17 @@ public final class CliTestSupport {
         return new Result(code, out.toString(), err.toString());
     }
 
+    /**
+     * Run a runtime verb forcing the <b>kernel</b> engine ({@code --kernel} appended). The {@code model
+     * eval}/{@code compute} and {@code rule test} verbs now default to the interpreter; these helpers keep
+     * the kernel-fidelity verb tests exercising the kernel (the interpreter has its own differential cover).
+     */
+    public static Result runKernel(String... args) {
+        String[] withKernel = java.util.Arrays.copyOf(args, args.length + 1);
+        withKernel[args.length] = "--kernel";
+        return run(withKernel);
+    }
+
     /** The subscription fixture + one valid rule, as DM-JSON. */
     public static String modelWithRuleJson() {
         BoundModel base = BoundModel.ofJson(subscriptionJson());

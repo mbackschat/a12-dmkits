@@ -38,7 +38,7 @@ class ComputeDocVerbTest {
         Path doc = dir.resolve("doc.json");
         Files.writeString(doc, """
                 { "fields": { "Subscription": { "Billing": { "BaseFee": "50" } } } }""");
-        var res = CliTestSupport.run("-m", model.toString(), "model", "compute", "--doc", doc.toString());
+        var res = CliTestSupport.runKernel("-m", model.toString(), "model", "compute", "--doc", doc.toString());
         assertEquals(0, res.code(), res::err);
         JsonNode cw = computedFor(res.out(), "/Subscription/Billing/EffectiveFee");
         assertTrue(cw != null && cw.get("outcome").asText().equals("value") && cw.get("value").asText().equals("50"),
@@ -54,7 +54,7 @@ class ComputeDocVerbTest {
         Path doc = dir.resolve("doc.json");
         Files.writeString(doc, """
                 { "fields": { "Subscription": { "Billing": { } } } }""");
-        var res = CliTestSupport.run("-m", model.toString(), "model", "compute", "--doc", doc.toString());
+        var res = CliTestSupport.runKernel("-m", model.toString(), "model", "compute", "--doc", doc.toString());
         assertEquals(0, res.code(), res::err);
         JsonNode cw = computedFor(res.out(), "/Subscription/Billing/EffectiveFee");
         assertTrue(cw != null && cw.get("outcome").asText().equals("value") && cw.get("value").asText().equals("0"),
@@ -81,7 +81,7 @@ class ComputeDocVerbTest {
         Path doc = dir.resolve("empty.json");
         Files.writeString(doc, """
                 { "fields": { "Subscription": { "Billing": { } } } }""");
-        var res = CliTestSupport.run("-m", guarded.toString(), "model", "compute", "--doc", doc.toString());
+        var res = CliTestSupport.runKernel("-m", guarded.toString(), "model", "compute", "--doc", doc.toString());
         assertEquals(0, res.code(), res::err);
         assertNull(computedFor(res.out(), "/Subscription/Billing/EffectiveFee"),
                 () -> "a guarded number computation computes nothing on an empty operand: " + res.out());
@@ -93,7 +93,7 @@ class ComputeDocVerbTest {
         Path doc = dir.resolve("doc.json");
         Files.writeString(doc, """
                 { "fields": { "Subscription": { "Nope": "x" } } }""");
-        var res = CliTestSupport.run("-m", model.toString(), "model", "compute", "--doc", doc.toString());
+        var res = CliTestSupport.runKernel("-m", model.toString(), "model", "compute", "--doc", doc.toString());
         assertNotEquals(0, res.code(), "an unknown path is an error");
         assertTrue(res.err().contains("Nope"), () -> "names the bad path: " + res.err());
     }
