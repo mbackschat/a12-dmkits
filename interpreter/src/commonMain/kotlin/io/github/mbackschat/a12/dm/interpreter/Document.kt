@@ -91,6 +91,10 @@ class Document(
         override fun filled(path: String): Boolean =
             valueAt(path, repsFor(path, group, rowReps))?.value != null
 
+        /** A group is filled if any valued field beneath it is in this row's scope (shared-prefix indices match). */
+        override fun groupFilled(groupPath: String): Boolean =
+            placements.any { p -> !p.isGroup && p.value != null && p.path.startsWith("$groupPath/") && inScope(p) }
+
         override fun star(path: String): List<Val> =
             starRows(path).mapNotNull { reps -> valueAt(path, reps)?.value?.let { typedValue(kindOf(path), it) } }
 

@@ -75,7 +75,7 @@ class Interpreter(private val ctx: EvalContext) {
         if (leafOmission(left) || leafOmission(right)) MsgType.OMISSION else MsgType.VALUE
 
     private fun predType(p: Cond.Pred): MsgType =
-        if (p.name == "FieldNotFilled" || p.name == "GroupNotFilled") MsgType.OMISSION else MsgType.VALUE
+        PredicateOp.byName(p.name)?.polarity ?: MsgType.VALUE
 
     private fun leafOmission(e: Expr): Boolean = when (e) {
         is Expr.Field -> !ctx.filled(e.path)
@@ -97,6 +97,8 @@ class Interpreter(private val ctx: EvalContext) {
         PredicateOp.FIELD_FILLED -> Tri.of(ctx.filled(pathOf(p.args.single())))
         PredicateOp.FIELD_NOT_FILLED -> Tri.of(!ctx.filled(pathOf(p.args.single())))
         PredicateOp.ALL_FIELDS_FILLED -> Tri.of(p.args.all { ctx.filled(pathOf(it)) })
+        PredicateOp.GROUP_FILLED -> Tri.of(ctx.groupFilled(pathOf(p.args.single())))
+        PredicateOp.GROUP_NOT_FILLED -> Tri.of(!ctx.groupFilled(pathOf(p.args.single())))
         null -> throw UnsupportedConstructException("unsupported predicate ${p.name}")
     }
 

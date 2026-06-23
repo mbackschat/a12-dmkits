@@ -94,13 +94,13 @@ The build-out splits cleanly, and the two are **largely independent**:
 
 ## Operator coverage snapshot
 
-*Snapshot only — the diff tests are the truth.* Handled (~24): `And` `Or` `Not` · `LessThan` `LessThanOrEqual` `GreaterThan` `GreaterThanOrEqual` `Equal` `NotEqual` · `FieldFilled` `FieldNotFilled` `AllFieldsFilled` · `Min` `Max` `Sum` `MaxValue` `MinValue` `NumberOfDifferentValues` · `PatternMatched` `PatternViolated` · `DifferenceInDays` · arithmetic `+ - *` (`{ }` grouping; `/` `^` deferred). An unmodeled/external construct (e.g. `CustomCondition`) is *tolerated* by `validate` (reported `unsupported`), not a crash.
+*Snapshot only — the diff tests are the truth.* Handled (~26): `And` `Or` `Not` · `LessThan` `LessThanOrEqual` `GreaterThan` `GreaterThanOrEqual` `Equal` `NotEqual` · `FieldFilled` `FieldNotFilled` `AllFieldsFilled` · **`GroupFilled` `GroupNotFilled`** (non-repeatable group; the repeatable `Group*` aggregate form needs `*` — `MVK_NO_WILDCARD` — deferred to the `*`/aggregate family) · `Min` `Max` `Sum` `MaxValue` `MinValue` `NumberOfDifferentValues` · `PatternMatched` `PatternViolated` · `DifferenceInDays` · arithmetic `+ - *` (`{ }` grouping; `/` `^` deferred). The handled presence-predicate/aggregate sets are the `PredicateOp`/`FunctionOp` enums. An unmodeled/external construct (e.g. `CustomCondition`) is *tolerated* by `validate` (reported `unsupported`), not a crash.
 
 Missing families (~90), by group:
 
 | family | examples | notes |
 |---|---|---|
-| **filled-predicates** (rest) | `GroupFilled` `GroupNotFilled` `AllGroupsFilled` `AtLeastOneFieldFilled` `NoFieldFilled` `NotAllFieldsFilled` `MoreThanOneFieldFilled` `NotExactlyOneFieldFilled` `FieldsNotCollectivelyFilled` `NumberOfFilledFields` `NumberOfFilledGroups` … (~15) | `GroupFilled`/`GroupNotFilled` are *already parsed* but error in `evalPred` — a partial-support bug to close first |
+| **filled-predicates** (rest) | `AllGroupsFilled` `AtLeastOneFieldFilled` `NoFieldFilled` `NotAllFieldsFilled` `MoreThanOneFieldFilled` `NotExactlyOneFieldFilled` `FieldsNotCollectivelyFilled` `NumberOfFilledFields` `NumberOfFilledGroups` … (~13) | `GroupFilled`/`GroupNotFilled` (non-repeatable) **done** (`GroupFilledDiffTest`); the repeatable `Group*` aggregate forms (and the field-list quantifiers) remain |
 | **value-list / enum** | `FieldValueIncludedInValueList` `FieldValueNotIncludedInValueList` `AtLeastOne…` `No…` `NotAll…` `EnumCategory` (~6) | membership against a declared value list |
 | **pattern** | `PatternMatched` `PatternViolated` (2) | regex on string fields |
 | **arithmetic** | `Arithmetic` `Abs`/`AbsValue` `RoundUp/Down/Accounting`(+`Value`) `SumOfProducts` `Length` `RangeAsNumber/String` `FieldValueAsNumber/AsString` `NumberOfValueInFields` (~15) | numeric expressions/coercions |

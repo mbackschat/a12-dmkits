@@ -11,11 +11,17 @@ package io.github.mbackschat.a12.dm.interpreter
  * As operator coverage grows these enums grow with it (and can feed a catalog-parity guard).
  */
 
-/** A boolean predicate construct (a `Cond.Pred`), evaluated to a three-valued [Tri]. */
-enum class PredicateOp(val kernelName: String) {
-    FIELD_FILLED("FieldFilled"),
-    FIELD_NOT_FILLED("FieldNotFilled"),
-    ALL_FIELDS_FILLED("AllFieldsFilled"),
+/**
+ * A boolean presence predicate (a `Cond.Pred`), evaluated to a three-valued [Tri]. [polarity] is the
+ * message type when the predicate fires: a "not filled" predicate is fixable by FILLING → OMISSION, a
+ * positive presence check → VALUE (KERNEL-FINDINGS §3 — value-vs-omission typing).
+ */
+enum class PredicateOp(val kernelName: String, val polarity: MsgType) {
+    FIELD_FILLED("FieldFilled", MsgType.VALUE),
+    FIELD_NOT_FILLED("FieldNotFilled", MsgType.OMISSION),
+    ALL_FIELDS_FILLED("AllFieldsFilled", MsgType.VALUE),
+    GROUP_FILLED("GroupFilled", MsgType.VALUE),
+    GROUP_NOT_FILLED("GroupNotFilled", MsgType.OMISSION),
     ;
 
     companion object {

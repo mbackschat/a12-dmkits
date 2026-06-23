@@ -15,6 +15,15 @@ interface EvalContext {
     /** Whether a field has a value (for FieldFilled / AllFieldsFilled). */
     fun filled(path: String): Boolean
 
+    /**
+     * Whether a GROUP is filled in this row — i.e. at least one field under [groupPath] carries a value
+     * (for GroupFilled / GroupNotFilled). The general [Document] resolves this against the row's instance;
+     * the single-row / repetition spike contexts don't model group structure and don't support it (they
+     * throw the same way [star] does on a flat doc — they are never used for group predicates).
+     */
+    fun groupFilled(groupPath: String): Boolean =
+        throw UnsupportedConstructException("group-filled needs the general Document context, not $this")
+
     /** The FILLED values of a starred field across the repeatable group's rows (for aggregates). */
     fun star(path: String): List<Val>
 
