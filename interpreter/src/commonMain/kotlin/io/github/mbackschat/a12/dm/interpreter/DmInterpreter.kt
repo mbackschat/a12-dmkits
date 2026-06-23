@@ -33,6 +33,29 @@ class DmInterpreter(private val model: ModelDef) {
     fun evalCandidate(rule: RuleDef, doc: Document, locale: String = "en_US"): RuleResult =
         evalRule(rule, doc, locale)
 
+    /**
+     * Run every computation over each row of its iteration scope and return each computed-field outcome
+     * — the runtime twin of the kernel's `compute()`. VALUE (the expression resolved, empty-as-0 applies)
+     * / CLEARED (the expression computed nothing). ERRORED (an operand/computation error) awaits the
+     * formal-error increment.
+     */
+    fun compute(doc: Document, locale: String = "en_US"): List<Computed> {
+        val out = mutableListOf<Computed>()
+        for (comp in model.computations) {
+            val expr = parseExpression(comp.expressionText, comp.group)
+            val scope = scopeFromRefs(exprRefs(expr) + comp.targetPath, comp.group)
+            for (ctx in doc.contextsFor(scope)) {
+                out += when (val v = Interpreter(ctx).evalExpression(expr)) {
+                    is Val.Num -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v.display())
+                    is Val.Txt -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v)
+                    is Val.Bool -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v.toString())
+                    is Val.Unknown -> Computed(comp.targetPath, ComputeOutcome.CLEARED)
+                }
+            }
+        }
+        return out
+    }
+
     private fun evalRule(rule: RuleDef, doc: Document, locale: String): RuleResult {
         val hit = messagesFor(rule, doc, locale).firstOrNull()
         return if (hit != null) RuleResult(rule.path, Verdict.FIRED, hit.text, hit.type)
@@ -61,10 +84,13 @@ class DmInterpreter(private val model: ModelDef) {
      * Items rows.
      */
     private fun iterationScope(rule: RuleDef, ast: Cond): String =
-        nonStarredRefs(ast)
-            .flatMap { ref -> ancestorGroups(ref).filter { it in model.repeatable } }
+        scopeFromRefs(nonStarredRefs(ast), rule.group)
+
+    /** The deepest repeatable group ancestor of any [refs] path, else [defaultGroup]. */
+    private fun scopeFromRefs(refs: List<String>, defaultGroup: String): String =
+        refs.flatMap { ref -> ancestorGroups(ref).filter { it in model.repeatable } }
             .maxByOrNull { it.count { c -> c == '/' } }
-            ?: rule.group
+            ?: defaultGroup
 
     /** Every non-starred field-reference path in the condition (Star refs are aggregates, excluded). */
     private fun nonStarredRefs(cond: Cond): List<String> = when (cond) {

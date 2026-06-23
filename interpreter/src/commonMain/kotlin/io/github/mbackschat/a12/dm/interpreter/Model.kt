@@ -29,14 +29,27 @@ data class RuleDef(
 )
 
 /**
- * A model: its fields (→ kinds), its rules, the set of **repeatable** group paths (a rule iterates over
- * the repetition of the deepest repeatable group its non-aggregated field refs touch), and the declared
- * max repetition count per repeatable group (drives the omitted-tail aggregate polarity — absent =
- * unbounded). `declaredReps` keys are repeatable by construction, so they fold into [repeatableGroups].
+ * One computation: an expression evaluated over its iteration scope [group], its result assigned to
+ * [targetPath]. The kernel's empty-as-0 applies — `[BaseFee]` over an absent base fee computes 0, not
+ * nothing.
+ */
+data class ComputationDef(
+    val targetPath: String,
+    val group: String,
+    val expressionText: String,
+)
+
+/**
+ * A model: its fields (→ kinds), its rules, its computations, the set of **repeatable** group paths (a
+ * rule/computation iterates over the repetition of the deepest repeatable group its non-aggregated field
+ * refs touch), and the declared max repetition count per repeatable group (drives the omitted-tail
+ * aggregate polarity — absent = unbounded). `declaredReps` keys are repeatable by construction, so they
+ * fold into [repeatableGroups].
  */
 data class ModelDef(
     val fields: List<FieldDef>,
     val rules: List<RuleDef>,
+    val computations: List<ComputationDef> = emptyList(),
     val repeatableGroups: Set<String> = emptySet(),
     val declaredReps: Map<String, Int> = emptyMap(),
 ) {
@@ -72,4 +85,18 @@ data class RuleResult(
     val verdict: Verdict,
     val message: String = "",
     val type: MsgType? = null,
+)
+
+/**
+ * One computed-field outcome of a [DmInterpreter.compute] run — the kernel-free twin of the kernel's
+ * computed-field buckets: VALUE (a concrete value, in [value]) / CLEARED (computed nothing) / ERRORED
+ * (an operand/computation error).
+ */
+enum class ComputeOutcome { VALUE, CLEARED, ERRORED }
+
+/** The [outcome] of computing one field at [path], with its [value] when [ComputeOutcome.VALUE]. */
+data class Computed(
+    val path: String,
+    val outcome: ComputeOutcome,
+    val value: String? = null,
 )

@@ -6,6 +6,7 @@ import java.math.BigDecimal
 actual class Dec(val v: BigDecimal) : Comparable<Dec> {
     actual operator fun plus(other: Dec): Dec = Dec(v + other.v)
     actual override fun compareTo(other: Dec): Int = v.compareTo(other.v)
+    actual fun display(): String = v.stripTrailingZeros().toPlainString()
 }
 
 actual fun dec(value: String): Dec = Dec(BigDecimal(value))

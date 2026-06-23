@@ -13,6 +13,13 @@ class Interpreter(private val ctx: EvalContext) {
 
     fun fires(cond: Cond): Boolean = eval(cond) == Tri.TRUE
 
+    /**
+     * Evaluate a value expression (a computation's RHS) to a typed [Val] — NOT gated by the row's
+     * `evaluated` flag, since a computation computes even on an otherwise-empty row (an empty numeric
+     * operand reads as 0, so `[BaseFee]` over no base fee yields 0, not nothing).
+     */
+    fun evalExpression(expr: Expr): Val = evalExpr(expr)
+
     fun eval(cond: Cond): Tri {
         if (!ctx.evaluated) return Tri.UNKNOWN   // entirely-empty row: not evaluated
         return evalCond(cond)

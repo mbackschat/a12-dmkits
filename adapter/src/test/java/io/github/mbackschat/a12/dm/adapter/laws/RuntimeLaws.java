@@ -104,6 +104,27 @@ final class RuntimeLaws {
     }
 
     /**
+     * Inject one computation into {@code groupId}'s {@code elements} and return the new model JSON. The
+     * computation assigns {@code operation} (a value expression) to the field at {@code computedFieldRelPath}
+     * (relative to the group, e.g. {@code "../EffectiveFee"}). Mirrors {@link #withRule} for the compute path.
+     */
+    static String withComputation(String modelJson, String groupId, String name, String computedFieldRelPath,
+            String operation) {
+        String op = operation.replace("\\", "\\\\").replace("\"", "\\\"");
+        String comp = "{ \"type\": \"Computation\", \"id\": \"" + groupId + "/" + name + "\", \"name\": \"" + name + "\","
+                + " \"Computation\": { \"computedFieldRelPath\": \"" + computedFieldRelPath + "\","
+                + " \"computationAlternatives\": [ { \"operation\": \"" + op + "\" } ],"
+                + " \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n";
+        int g = modelJson.indexOf("\"id\": \"" + groupId + "\"");
+        if (g < 0) {
+            g = modelJson.indexOf("\"id\" : \"" + groupId + "\"");
+        }
+        int br = modelJson.indexOf("\"elements\"", g);
+        br = modelJson.indexOf('[', br);
+        return modelJson.substring(0, br + 1) + "\n" + comp + modelJson.substring(br + 1);
+    }
+
+    /**
      * Evaluate the model (rules included) against a document instance and return the error codes that
      * fired. {@code groupPaths} are the group rows to instantiate (e.g. {@code "/Order"}); each provided
      * field's ancestor groups are added automatically. A field path absent from {@code fieldValues} is

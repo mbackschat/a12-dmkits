@@ -14,7 +14,7 @@ Correctness throughout = **agrees with the real kernel** (the `RuntimeLaws` diff
 |---|---|---|
 | **Conditions** | tree-walk over `Cond`/`Expr`; 3-valued logic; type-driven empty asymmetry; polarity (VALUE/OMISSION incl. omitted-tail) | — (solid foundation) |
 | **Operators** | ~20 of 109 constructs (see below) | ~89 constructs across ~8 families |
-| **Computations** | **none** | `compute()` (value / cleared / errored), incl. pre-conditions |
+| **Computations** | `compute()` → VALUE / CLEARED, kernel-verified (incl. empty-as-0 → `0`) | the ERRORED bucket (operand/computation error) + pre-conditions; awaits the formal-error increment |
 | **Formal errors / suppression** | none — `typedValue` assumes well-typed input | a malformed value → formal error → operand UNKNOWN → rule **suppressed** (the `rule test` `suppressed` verdict) |
 | **Document model** | general `Document` (indexed placements, common-prefix resolution, star aggregation) — flat + nested-non-repeatable + one-level repetition, kernel-verified; spike's `SingleRowDoc`/`RepDoc` still present (consolidation pending) | multi-level repetition (resolution is general; only one level is kernel-tested) |
 | **Model / instance loading** | structured `ModelDef`/`RuleDef`/`FieldDef` (interpreter owns its types); the consumer builds them | DM-JSON model → `ModelDef`; `{"fields":{…}}` instance → `Document` (dmtool via Jackson; a multiplatform JSON loader later) |
