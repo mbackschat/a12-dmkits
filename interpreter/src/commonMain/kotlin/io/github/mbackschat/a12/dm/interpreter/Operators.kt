@@ -22,6 +22,8 @@ enum class PredicateOp(val kernelName: String, val polarity: MsgType) {
     ALL_FIELDS_FILLED("AllFieldsFilled", MsgType.VALUE),
     GROUP_FILLED("GroupFilled", MsgType.VALUE),
     GROUP_NOT_FILLED("GroupNotFilled", MsgType.OMISSION),
+    FIELD_VALUE_IN_LIST("FieldValueIncludedInValueList", MsgType.VALUE),
+    FIELD_VALUE_NOT_IN_LIST("FieldValueNotIncludedInValueList", MsgType.VALUE),
     ;
 
     companion object {

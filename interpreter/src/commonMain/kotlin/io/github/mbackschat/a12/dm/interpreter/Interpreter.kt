@@ -99,7 +99,22 @@ class Interpreter(private val ctx: EvalContext) {
         PredicateOp.ALL_FIELDS_FILLED -> Tri.of(p.args.all { ctx.filled(pathOf(it)) })
         PredicateOp.GROUP_FILLED -> Tri.of(ctx.groupFilled(pathOf(p.args.single())))
         PredicateOp.GROUP_NOT_FILLED -> Tri.of(!ctx.groupFilled(pathOf(p.args.single())))
+        PredicateOp.FIELD_VALUE_IN_LIST -> valueInList(p.args)
+        PredicateOp.FIELD_VALUE_NOT_IN_LIST -> not(valueInList(p.args))
         null -> throw UnsupportedConstructException("unsupported predicate ${p.name}")
+    }
+
+    /**
+     * `FieldValueIncludedInValueList(field, m1, m2, …)` — TRUE when [args]`[0]`'s value equals a member, via
+     * the same typed equality as `==` (string members compare as text, number members numerically; the
+     * kernel rejects mixed types at compile, `MVK_INVALID_TYPES_FOR_COMPARISON`). An UNKNOWN operand (an
+     * empty string/enum field) yields UNKNOWN, so NEITHER the included nor the `Not` form fires on it —
+     * matching the kernel (a value-list check is not evaluated on a value-less field).
+     */
+    private fun valueInList(args: List<Expr>): Tri {
+        val v = evalExpr(args[0])
+        if (v is Val.Unknown) return Tri.UNKNOWN
+        return Tri.of(args.drop(1).any { eq(v, evalExpr(it)) })
     }
 
     /** `value PatternMatched/PatternViolated "regex"` — anchored full-value match; empty → not evaluated. */
