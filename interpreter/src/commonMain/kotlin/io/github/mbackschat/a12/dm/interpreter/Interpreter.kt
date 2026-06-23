@@ -93,11 +93,11 @@ class Interpreter(private val ctx: EvalContext) {
         is Cond.Pattern -> evalPattern(c)
     }
 
-    private fun evalPred(p: Cond.Pred): Tri = when (p.name) {
-        "FieldFilled" -> Tri.of(ctx.filled(pathOf(p.args.single())))
-        "FieldNotFilled" -> Tri.of(!ctx.filled(pathOf(p.args.single())))
-        "AllFieldsFilled" -> Tri.of(p.args.all { ctx.filled(pathOf(it)) })
-        else -> throw UnsupportedConstructException("unsupported predicate ${p.name}")
+    private fun evalPred(p: Cond.Pred): Tri = when (PredicateOp.byName(p.name)) {
+        PredicateOp.FIELD_FILLED -> Tri.of(ctx.filled(pathOf(p.args.single())))
+        PredicateOp.FIELD_NOT_FILLED -> Tri.of(!ctx.filled(pathOf(p.args.single())))
+        PredicateOp.ALL_FIELDS_FILLED -> Tri.of(p.args.all { ctx.filled(pathOf(it)) })
+        null -> throw UnsupportedConstructException("unsupported predicate ${p.name}")
     }
 
     /** `value PatternMatched/PatternViolated "regex"` — anchored full-value match; empty → not evaluated. */
@@ -147,27 +147,27 @@ class Interpreter(private val ctx: EvalContext) {
         })
     }
 
-    private fun evalFunc(f: Expr.Func): Val = when (f.name) {
+    private fun evalFunc(f: Expr.Func): Val = when (FunctionOp.byName(f.name)) {
         // operand-list forms: every operand counts (an empty number arrives as the substituted 0)
-        "Min" -> f.args.map { evalExpr(it) }.minWithOrNull(ORDER) ?: Val.Unknown
-        "Max" -> f.args.map { evalExpr(it) }.maxWithOrNull(ORDER) ?: Val.Unknown
+        FunctionOp.MIN -> f.args.map { evalExpr(it) }.minWithOrNull(ORDER) ?: Val.Unknown
+        FunctionOp.MAX -> f.args.map { evalExpr(it) }.maxWithOrNull(ORDER) ?: Val.Unknown
         // starred aggregates: empties are SKIPPED (Sum substitutes 0 = same result; Max/distinct ignore)
-        "Sum" -> Val.Num(starNums(f).fold(DEC_ZERO) { a, b -> a + b })
-        "MaxValue" -> starVals(f).maxWithOrNull(ORDER) ?: Val.Unknown
-        "MinValue" -> starVals(f).minWithOrNull(ORDER) ?: Val.Unknown
-        "NumberOfDifferentValues" -> {
+        FunctionOp.SUM -> Val.Num(starNums(f).fold(DEC_ZERO) { a, b -> a + b })
+        FunctionOp.MAX_VALUE -> starVals(f).maxWithOrNull(ORDER) ?: Val.Unknown
+        FunctionOp.MIN_VALUE -> starVals(f).minWithOrNull(ORDER) ?: Val.Unknown
+        FunctionOp.NUMBER_OF_DIFFERENT_VALUES -> {
             val distinct = mutableListOf<Dec>()
             for (x in starNums(f)) if (distinct.none { it.compareTo(x) == 0 }) distinct.add(x)
             Val.Num(dec(distinct.size))
         }
         // DifferenceInDays(a, b) = b − a in whole days (sign = second − first), as a number. An empty or
         // malformed date operand → Unknown (the rule typically guards it with AllFieldsFilled).
-        "DifferenceInDays" -> {
+        FunctionOp.DIFFERENCE_IN_DAYS -> {
             val a = epochOf(f.args[0])
             val b = epochOf(f.args[1])
             if (a == null || b == null) Val.Unknown else Val.Num(dec((b - a).toString()))
         }
-        else -> throw UnsupportedConstructException("unsupported function ${f.name}")
+        null -> throw UnsupportedConstructException("unsupported function ${f.name}")
     }
 
     /** Epoch day of a date-valued expression (ISO text), or null if empty/malformed. */
