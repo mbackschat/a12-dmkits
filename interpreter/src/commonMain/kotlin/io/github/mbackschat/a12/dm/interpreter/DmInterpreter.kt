@@ -62,11 +62,12 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
         // Formal errors first — the kernel checks every field before evaluating rules: format errors on every
         // filled-but-malformed field, and `mandatoryField` on every required-but-empty field. Both make the
         // field "unknown", so a rule referencing it sees Val.Unknown (the 3VL propagates it; see below).
-        val messages = (formalErrors(doc, locale) + mandatoryErrors(doc, locale) + uniquenessErrors(doc, locale)).toMutableList()
+        val dup = duplicateIndexCells(doc)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
+        val messages = (formalErrors(doc, locale) + mandatoryErrors(doc, locale) + uniquenessMessages(dup, locale)).toMutableList()
         val unsupported = mutableListOf<UnsupportedRule>()
         for (rule in model.rules) {
             try {
-                messages += messagesFor(rule, doc, locale)
+                messages += messagesFor(rule, doc, locale, dup)
             } catch (e: UnsupportedConstructException) {
                 unsupported += UnsupportedRule(rule.path, e.message ?: "unsupported construct")
             }
@@ -125,8 +126,15 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
      * nested group's uniqueness is within one parent row (Parts within a Line), not across all rows globally —
      * the scope key is the index field's reps minus its own + the group-row index ([List.dropLast] of 2).
      */
-    private fun uniquenessErrors(doc: Document, locale: String): List<Message> {
-        val out = mutableListOf<Message>()
+    /**
+     * The `(indexFieldPath, reps)` cells whose value DUPLICATES another row's in the same parent scope — the
+     * source for both the `uniqueIndex` messages ([uniquenessMessages]) AND the suppression: a duplicate index
+     * is **"unknown"** for any rule referencing it ([formalErrorAt]), branch-scoped exactly like a formal error
+     * (verified: a rule on the dup field is suppressed; a rule on a sibling field still fires). Computed once
+     * per evaluation and threaded, not recomputed per operand.
+     */
+    private fun duplicateIndexCells(doc: Document): Set<Pair<String, List<Int>>> {
+        val out = mutableSetOf<Pair<String, List<Int>>>()
         for (indexField in model.indexFields) {
             val rows = doc.contextsFor(parentGroup(indexField)).mapNotNull { ctx ->
                 val reps = ctx.repsOf(indexField)
@@ -134,14 +142,18 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
             }
             rows.groupBy { it.first.dropLast(2) }.forEach { (_, scope) ->
                 val duplicated = scope.groupingBy { it.second }.eachCount().filterValues { it > 1 }.keys
-                for ((reps, _) in scope.filter { it.second in duplicated }) {
-                    out += Message(UNIQUE_INDEX, uniqueRulePath(indexField), formatPointer(indexField, reps),
-                        Severity.ERROR, MsgType.VALUE, uniqueIndexText(locale))
-                }
+                for ((reps, _) in scope.filter { it.second in duplicated }) out += indexField to reps
             }
         }
         return out
     }
+
+    /** One `uniqueIndex` [Message] per duplicate-index cell (the kernel flags every participant). */
+    private fun uniquenessMessages(dup: Set<Pair<String, List<Int>>>, locale: String): List<Message> =
+        dup.map { (path, reps) ->
+            Message(UNIQUE_INDEX, uniqueRulePath(path), formatPointer(path, reps), Severity.ERROR, MsgType.VALUE,
+                uniqueIndexText(locale))
+        }
 
     private fun mandatoryMessage(path: String, reps: List<Int>, locale: String): Message {
         val ptr = formatPointer(path, reps)
@@ -209,7 +221,7 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
     }
 
     private fun evalRule(rule: RuleDef, doc: Document, locale: String): RuleResult {
-        val rows = rowOutcomes(rule, doc, locale)
+        val rows = rowOutcomes(rule, doc, locale, duplicateIndexCells(doc))
         rows.firstNotNullOfOrNull { it as? RowOutcome.Fired }?.let {
             return RuleResult(rule.path, Verdict.FIRED, it.message.text, it.message.type)
         }
@@ -221,8 +233,8 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
     }
 
     /** Every firing of one rule across its iteration-scope rows, as [Message]s (suppressed rows produce none). */
-    private fun messagesFor(rule: RuleDef, doc: Document, locale: String): List<Message> =
-        rowOutcomes(rule, doc, locale).filterIsInstance<RowOutcome.Fired>().map { it.message }
+    private fun messagesFor(rule: RuleDef, doc: Document, locale: String, dup: Set<Pair<String, List<Int>>>): List<Message> =
+        rowOutcomes(rule, doc, locale, dup).filterIsInstance<RowOutcome.Fired>().map { it.message }
 
     /** The per-row outcome of one rule: fired (with its message), passed, or suppressed (which field/code). */
     private sealed interface RowOutcome {
@@ -231,14 +243,15 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
         data class Suppressed(val suppression: Suppression) : RowOutcome
     }
 
-    private fun rowOutcomes(rule: RuleDef, doc: Document, locale: String): List<RowOutcome> {
+    private fun rowOutcomes(rule: RuleDef, doc: Document, locale: String, dup: Set<Pair<String, List<Int>>>): List<RowOutcome> {
         val ast = parseCondition(rule.conditionText, rule.group)
         val refs = nonStarredRefs(ast).distinct()
         return doc.contextsFor(iterationScope(rule, ast)).map { ctx ->
             // A formally-invalid referenced field resolves to Val.Unknown (NOT a whole-rule skip): the 3VL
             // propagates it, so a bare comparison goes UNKNOWN but `… Or <true>` still FIRES — matching the
-            // kernel's operand-level "not check-relevant" behavior (verified).
-            val interp = Interpreter(ctx, clock) { path -> formalErrorAt(path, ctx) != null }
+            // kernel's operand-level "not check-relevant" behavior (verified). A duplicate-index field is
+            // likewise unknown (branch-scoped, same as a formal error) via [formalErrorAt].
+            val interp = Interpreter(ctx, clock) { path -> formalErrorAt(path, ctx, dup) != null }
             if (interp.fires(ast)) {
                 val type = interp.firedType(ast) ?: MsgType.VALUE
                 val text = rule.messages[locale]?.let { renderMessage(it, rule.group, ctx) { p -> model.labelOf(p, locale) } } ?: ""
@@ -253,26 +266,29 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
             } else {
                 // Not fired: a formally-invalid operand means the rule was NOT cleanly evaluated → SUPPRESSED
                 // (the `rule test` third verdict), naming the offending field/code; else a clean PASSED.
-                firstSuppressor(refs, ctx)?.let { RowOutcome.Suppressed(it) } ?: RowOutcome.Passed
+                firstSuppressor(refs, ctx, dup)?.let { RowOutcome.Suppressed(it) } ?: RowOutcome.Passed
             }
         }
     }
 
-    /** The first referenced field that is formally invalid in [ctx] (a malformed value or required-empty), else null. */
-    private fun firstSuppressor(refs: List<String>, ctx: EvalContext): Suppression? =
-        refs.firstNotNullOfOrNull { path -> formalErrorAt(path, ctx)?.let { Suppression(path, it) } }
+    /** The first referenced field that is "unknown" in [ctx] (malformed value, required-empty, or duplicate index), else null. */
+    private fun firstSuppressor(refs: List<String>, ctx: EvalContext, dup: Set<Pair<String, List<Int>>>): Suppression? =
+        refs.firstNotNullOfOrNull { path -> formalErrorAt(path, ctx, dup)?.let { Suppression(path, it) } }
 
     /**
-     * The formal-error code of the field instance at [path] in [ctx], or null when well-formed. A present
-     * value is checked for its format ([formalError]); an empty value is checked for requiredness
-     * ([requiredEmpty] → [MANDATORY_FIELD]). This is the single source for "is this operand unknown?" — fed
-     * to the [Interpreter] (resolve to Val.Unknown) and to [firstSuppressor] (name the suppressor).
+     * The "unknown-operand" code of the field instance at [path] in [ctx], or null when the field is usable.
+     * The single source for "is this operand unknown?" (fed to the [Interpreter] → Val.Unknown, and to
+     * [firstSuppressor] → the suppressor name), covering all three kernel causes: a present value's **format**
+     * ([formalError]); an empty **required** value ([requiredEmpty] → [MANDATORY_FIELD]); and a **duplicate
+     * index** value ([UNIQUE_INDEX], the [dup] cells) — a duplicate-index field is unknown for any rule
+     * referencing it, branch-scoped exactly like a formal error (verified, KERNEL-FINDINGS §4 supplement).
      */
-    private fun formalErrorAt(path: String, ctx: EvalContext): String? {
+    private fun formalErrorAt(path: String, ctx: EvalContext, dup: Set<Pair<String, List<Int>>>): String? {
         val raw = ctx.displayValue(path)
         if (raw != null) {
             val kind = model.kinds[path] ?: return null
-            return formalError(kind, raw, model.scaleOf(path), model.dateFormatOf(path))?.id
+            formalError(kind, raw, model.scaleOf(path), model.dateFormatOf(path))?.id?.let { return it }
+            return if (path to ctx.repsOf(path) in dup) UNIQUE_INDEX else null
         }
         return if (requiredEmpty(path, ctx)) MANDATORY_FIELD else null
     }
