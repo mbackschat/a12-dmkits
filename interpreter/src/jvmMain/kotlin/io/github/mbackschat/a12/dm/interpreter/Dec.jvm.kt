@@ -5,6 +5,8 @@ import java.math.BigDecimal
 /** JVM decimal actual — full-precision BigDecimal, the same arithmetic the kernel uses. */
 actual class Dec(val v: BigDecimal) : Comparable<Dec> {
     actual operator fun plus(other: Dec): Dec = Dec(v + other.v)
+    actual operator fun minus(other: Dec): Dec = Dec(v - other.v)
+    actual operator fun times(other: Dec): Dec = Dec(v * other.v)
     actual override fun compareTo(other: Dec): Int = v.compareTo(other.v)
     actual fun display(): String = v.stripTrailingZeros().toPlainString()
 }

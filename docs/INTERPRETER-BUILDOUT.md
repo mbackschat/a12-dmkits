@@ -31,7 +31,7 @@ The build-out splits cleanly, and the two are **largely independent**:
 
 ## Operator coverage snapshot
 
-*Snapshot only — the diff tests are the truth.* Handled (~18): `And` `Or` `Not` · `LessThan` `LessThanOrEqual` `GreaterThan` `GreaterThanOrEqual` `Equal` `NotEqual` · `FieldFilled` `FieldNotFilled` `AllFieldsFilled` · `Min` `Max` `Sum` `MaxValue` `MinValue` `NumberOfDifferentValues`.
+*Snapshot only — the diff tests are the truth.* Handled (~23): `And` `Or` `Not` · `LessThan` `LessThanOrEqual` `GreaterThan` `GreaterThanOrEqual` `Equal` `NotEqual` · `FieldFilled` `FieldNotFilled` `AllFieldsFilled` · `Min` `Max` `Sum` `MaxValue` `MinValue` `NumberOfDifferentValues` · `PatternMatched` `PatternViolated` · arithmetic `+ - *` (`{ }` grouping; `/` `^` deferred).
 
 Missing families (~90), by group:
 

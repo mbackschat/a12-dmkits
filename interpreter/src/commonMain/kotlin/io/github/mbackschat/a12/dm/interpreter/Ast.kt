@@ -50,6 +50,9 @@ sealed interface Cond {
     data class Pattern(val value: Expr, val pattern: Expr, val expectMatch: Boolean) : Cond
 }
 
+/** Binary arithmetic operators (language-independent symbols). Division/power are not yet modeled. */
+enum class ArithOp { ADD, SUB, MUL }
+
 /** Expression AST. */
 sealed interface Expr {
     data class Field(val path: String) : Expr
@@ -62,6 +65,9 @@ sealed interface Expr {
 
     /** A value-valued function, e.g. Min(a, b) (operand-list) or Sum(Star) (aggregate). */
     data class Func(val name: String, val args: List<Expr>) : Expr
+
+    /** A binary arithmetic expression, e.g. `[BackorderQuantity] + 2`. Grouped with curly braces `{ }`. */
+    data class Arith(val op: ArithOp, val left: Expr, val right: Expr) : Expr
 }
 
 /** Parse a raw field value into a typed [Val] by kind. */

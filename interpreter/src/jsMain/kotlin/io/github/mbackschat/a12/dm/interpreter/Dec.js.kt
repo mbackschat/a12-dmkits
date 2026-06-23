@@ -9,12 +9,16 @@ package io.github.mbackschat.a12.dm.interpreter
 @JsNonModule
 external class Big(value: String) {
     fun plus(other: Big): Big
+    fun minus(other: Big): Big
+    fun times(other: Big): Big
     fun cmp(other: Big): Int
     override fun toString(): String   // big.js renders trailing-zero-stripped plain notation
 }
 
 actual class Dec(val v: Big) : Comparable<Dec> {
     actual operator fun plus(other: Dec): Dec = Dec(v.plus(other.v))
+    actual operator fun minus(other: Dec): Dec = Dec(v.minus(other.v))
+    actual operator fun times(other: Dec): Dec = Dec(v.times(other.v))
     actual override fun compareTo(other: Dec): Int = v.cmp(other.v)
     actual fun display(): String = v.toString()
 }

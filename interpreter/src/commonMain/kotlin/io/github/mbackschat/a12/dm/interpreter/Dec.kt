@@ -8,6 +8,8 @@ package io.github.mbackschat.a12.dm.interpreter
  */
 expect class Dec : Comparable<Dec> {
     operator fun plus(other: Dec): Dec
+    operator fun minus(other: Dec): Dec
+    operator fun times(other: Dec): Dec
     override fun compareTo(other: Dec): Int
 
     /** Canonical numeric rendering, trailing zeros stripped (`49.90` → `49.9`, `0` → `0`) — for computed values. */

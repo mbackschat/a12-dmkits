@@ -130,6 +130,21 @@ class Interpreter(private val ctx: EvalContext) {
         is Expr.Field -> ctx.field(e.path)
         is Expr.Star -> error("a starred path must sit inside an aggregate (Sum/MaxValue/…)")
         is Expr.Func -> evalFunc(e)
+        is Expr.Arith -> evalArith(e)
+    }
+
+    /** Binary arithmetic on numbers; an empty numeric operand already arrives as 0. Unknown propagates. */
+    private fun evalArith(a: Expr.Arith): Val {
+        val l = evalExpr(a.left)
+        val r = evalExpr(a.right)
+        if (l is Val.Unknown || r is Val.Unknown) return Val.Unknown
+        val x = num(l)
+        val y = num(r)
+        return Val.Num(when (a.op) {
+            ArithOp.ADD -> x + y
+            ArithOp.SUB -> x - y
+            ArithOp.MUL -> x * y
+        })
     }
 
     private fun evalFunc(f: Expr.Func): Val = when (f.name) {

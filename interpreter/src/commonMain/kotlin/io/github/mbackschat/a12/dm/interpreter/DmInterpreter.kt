@@ -133,6 +133,7 @@ class DmInterpreter(private val model: ModelDef) {
     private fun exprRefs(expr: Expr): List<String> = when (expr) {
         is Expr.Field -> listOf(expr.path)
         is Expr.Func -> expr.args.flatMap { exprRefs(it) }   // Star args excluded → drop through
+        is Expr.Arith -> exprRefs(expr.left) + exprRefs(expr.right)
         else -> emptyList()
     }
 
