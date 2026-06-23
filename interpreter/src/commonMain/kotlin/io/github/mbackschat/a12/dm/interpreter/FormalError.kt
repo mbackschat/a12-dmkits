@@ -2,24 +2,77 @@ package io.github.mbackschat.a12.dm.interpreter
 
 /**
  * Formal-error detection — whether a raw field value is *well-formed for its kind*. The kernel runs this
- * BEFORE rule evaluation; a rule that references a formally-invalid field is **not evaluated** (the
- * operand is "unknown"), so the rule neither fires nor passes — it is *suppressed*. Codes are the
- * kernel's German internal identifiers (KERNEL-FINDINGS §finding "runtime formal-error codes"), returned
- * verbatim so a consumer can surface the same `formalErrorCode` the kernel reports.
+ * BEFORE rule evaluation; a rule that references a formally-invalid field is **not evaluated** (the operand
+ * is "unknown"), so the rule neither fires nor passes — it is *suppressed*. On a full validation the kernel
+ * also EMITS a message per malformed field (rule path [FORMAL_RULE_PATH], severity ERROR, VALUE type).
  *
- * Scope today: the format checks the build-out needs + can verify — DATE (`datumFormatFalsch`) and
- * NUMBER (`fuehrendesBlank` / `zahlHatUngueltigeZeichen`). The scale check (`zahlFalscheAnzahl-
- * Nachkommastellen`) needs per-field scale metadata and the German-keyed message bundles are a separate
- * tier — both build-out residue (INTERPRETER-BUILDOUT.md).
+ * The closed set of checks is the [FormalErrorCode] enum; each carries the kernel's German internal
+ * [FormalErrorCode.id] (KERNEL-FINDINGS §3 / "runtime formal-error codes"), surfaced verbatim so a consumer
+ * sees the same `formalErrorCode` the kernel reports. An empty value is not malformed (emptiness is a
+ * requiredness concern, not a format one).
  */
-fun formalError(kind: Kind, raw: String): String? = when (kind) {
-    Kind.DATE -> if (ISO_DATE.matches(raw)) null else "datumFormatFalsch"
-    Kind.NUMBER -> when {
-        raw != raw.trim() -> "fuehrendesBlank"
-        DECIMAL.matches(raw) -> null
-        else -> "zahlHatUngueltigeZeichen"
+
+/** The kernel's sentinel rule path for a formal (format) check — distinct from any author rule's slash-path. */
+const val FORMAL_RULE_PATH = "formalePruefung"
+
+/** The formal-error checks the interpreter performs, each with the kernel's verbatim [id]. */
+enum class FormalErrorCode(val id: String) {
+    /** A DATE value that is not `YYYY-MM-DD`. */
+    DATE_FORMAT("datumFormatFalsch"),
+
+    /** A NUMBER value with a leading/trailing blank (checked before parsing). */
+    LEADING_BLANK("fuehrendesBlank"),
+
+    /** A NUMBER value with non-numeric characters. */
+    INVALID_NUMBER("zahlHatUngueltigeZeichen"),
+
+    /** A decimal separator in a scale-0 (integer) NUMBER field. */
+    DECIMAL_SEPARATOR("zahlHatDezimalTrenner"),
+
+    /** More fractional digits than the NUMBER field's scale allows. */
+    TOO_MANY_DECIMALS("zahlFalscheAnzahlNachkommastellen"),
+}
+
+fun formalError(kind: Kind, raw: String, scale: Int? = null): FormalErrorCode? {
+    if (raw.isEmpty()) return null
+    return when (kind) {
+        Kind.DATE -> if (ISO_DATE.matches(raw)) null else FormalErrorCode.DATE_FORMAT
+        Kind.NUMBER -> numberFormalError(raw, scale)
+        Kind.STRING, Kind.BOOLEAN, Kind.CONFIRM -> null
     }
-    Kind.STRING, Kind.BOOLEAN, Kind.CONFIRM -> null
+}
+
+private fun numberFormalError(raw: String, scale: Int?): FormalErrorCode? = when {
+    raw != raw.trim() -> FormalErrorCode.LEADING_BLANK
+    !DECIMAL.matches(raw) -> FormalErrorCode.INVALID_NUMBER
+    scale == 0 && raw.contains('.') -> FormalErrorCode.DECIMAL_SEPARATOR
+    scale != null && fractionalDigits(raw) > scale -> FormalErrorCode.TOO_MANY_DECIMALS
+    else -> null
+}
+
+private fun fractionalDigits(raw: String): Int = raw.substringAfter('.', "").length
+
+/**
+ * The interpreter's OWN end-user text for a formal-error [code], in [locale] (`de*` → German, else English).
+ * This is **deliberately our wording, NOT the kernel's German message bundle** — see KERNEL-INTEGRATION-NOTES
+ * "Formal-error message text". The structural channels ([FormalErrorCode.id] / [FORMAL_RULE_PATH] / field /
+ * severity / type) match the kernel exactly; only this text is ours, keeping the kernel-free `:interpreter`
+ * artifact clear of the kernel's copyrighted strings. [scale] parametrizes the decimal-places message.
+ */
+fun formalErrorText(code: FormalErrorCode, locale: String, scale: Int? = null): String {
+    val de = locale.startsWith("de")
+    return when (code) {
+        FormalErrorCode.DATE_FORMAT ->
+            if (de) "Wert ist kein gültiges Datum (erwartet JJJJ-MM-TT)." else "Value is not a valid date (expected YYYY-MM-DD)."
+        FormalErrorCode.LEADING_BLANK ->
+            if (de) "Wert hat ein führendes oder nachgestelltes Leerzeichen." else "Value has a leading or trailing blank."
+        FormalErrorCode.INVALID_NUMBER ->
+            if (de) "Wert ist keine gültige Zahl." else "Value is not a valid number."
+        FormalErrorCode.DECIMAL_SEPARATOR ->
+            if (de) "Wert muss eine ganze Zahl ohne Dezimaltrennzeichen sein." else "Value must be a whole number (no decimal separator)."
+        FormalErrorCode.TOO_MANY_DECIMALS ->
+            if (de) "Wert hat zu viele Nachkommastellen (max. $scale)." else "Value has too many decimal places (max $scale)."
+    }
 }
 
 private val ISO_DATE = Regex("""\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])""")

@@ -26,7 +26,9 @@ class DmInterpreter(private val model: ModelDef) {
      * mirroring the kernel-adapter's `Opaque` read. Genuine bugs still throw.
      */
     fun validate(doc: Document, locale: String = "en_US"): ValidationOutcome {
-        val messages = mutableListOf<Message>()
+        // Formal (format) errors first — the kernel formal-checks every filled field before evaluating rules,
+        // emitting one message per malformed field (and suppressing any rule that references it; see below).
+        val messages = formalErrors(doc, locale).toMutableList()
         val unsupported = mutableListOf<UnsupportedRule>()
         for (rule in model.rules) {
             try {
@@ -37,6 +39,22 @@ class DmInterpreter(private val model: ModelDef) {
         }
         return ValidationOutcome(messages, unsupported)
     }
+
+    /**
+     * One formal-error [Message] per malformed filled field, document-wide — the runtime twin of the
+     * kernel's `formalePruefung` checks. Channels match the kernel exactly (code, [FORMAL_RULE_PATH], field
+     * pointer, ERROR, VALUE); the human text is the interpreter's own wording ([formalErrorText]), not the
+     * kernel's German bundle (KERNEL-INTEGRATION-NOTES "Formal-error message text").
+     */
+    private fun formalErrors(doc: Document, locale: String): List<Message> =
+        doc.valuedFields().mapNotNull { vf ->
+            val kind = model.kinds[vf.path] ?: return@mapNotNull null
+            val scale = model.scaleOf(vf.path)
+            formalError(kind, vf.raw, scale)?.let { code ->
+                Message(code.id, FORMAL_RULE_PATH, formatPointer(vf.path, vf.reps), Severity.ERROR, MsgType.VALUE,
+                    formalErrorText(code, locale, scale))
+            }
+        }
 
     /**
      * Evaluate a SINGLE stored rule against the instance — the `rule test` shape. [Verdict.FIRED] (a
@@ -126,7 +144,7 @@ class DmInterpreter(private val model: ModelDef) {
         refs.firstNotNullOfOrNull { path ->
             val raw = ctx.displayValue(path) ?: return@firstNotNullOfOrNull null
             val kind = model.kinds[path] ?: return@firstNotNullOfOrNull null
-            formalError(kind, raw)?.let { Suppression(path, it) }
+            formalError(kind, raw, model.scaleOf(path))?.let { Suppression(path, it.id) }
         }
 
     /**

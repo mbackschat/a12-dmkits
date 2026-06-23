@@ -10,14 +10,24 @@ package io.github.mbackschat.a12.dm.interpreter
 /** Rule/finding severity — mirrors the kernel's ERROR / WARNING. */
 enum class Severity { ERROR, WARNING }
 
+/** A present field instance: its [path], 1-based repetition [reps] (one per path part), and [raw] value. */
+data class ValuedField(val path: String, val reps: List<Int>, val raw: String)
+
 /**
- * A field, its [Kind] (the metadata bridge that drives the empty-value asymmetry + formal errors), and its
- * localized display [labels] (locale → label) — the source for the `$field$` display-name placeholder. The
- * kernel resolves `$field$` to the field's label for the locale, falling back to the field NAME when no
- * label is defined (a runtime `ILabelProvider` concern — see [ModelDef.labelOf] / KERNEL-FINDINGS §3). Our
- * corpus (and every shipped A12 model surveyed) carries no field labels, so `$field$` resolves to the name.
+ * A field, its [Kind] (the metadata bridge that drives the empty-value asymmetry + formal errors), its
+ * localized display [labels] (locale → label) — the source for the `$field$` display-name placeholder — and,
+ * for a NUMBER, its [scale] (max fractional digits, the kernel's `maxFractionalDigits`), which decides the
+ * decimal-places formal errors. The kernel resolves `$field$` to the field's label for the locale, falling
+ * back to the field NAME when no label is defined (a runtime `ILabelProvider` concern — see
+ * [ModelDef.labelOf] / KERNEL-FINDINGS §3). Our corpus (and every shipped A12 model surveyed) carries no
+ * field labels, so `$field$` resolves to the name.
  */
-data class FieldDef(val path: String, val kind: Kind, val labels: Map<String, String> = emptyMap())
+data class FieldDef(
+    val path: String,
+    val kind: Kind,
+    val labels: Map<String, String> = emptyMap(),
+    val scale: Int? = null,
+)
 
 /**
  * One rule: an *error* condition (it FIRES when the condition holds — the polarity law) evaluated once
@@ -62,6 +72,10 @@ data class ModelDef(
     val kinds: Map<String, Kind> = fields.associate { it.path to it.kind }
     val repeatable: Set<String> = repeatableGroups + declaredReps.keys
     private val labelsByPath: Map<String, Map<String, String>> = fields.associate { it.path to it.labels }
+    private val scalesByPath: Map<String, Int?> = fields.associate { it.path to it.scale }
+
+    /** The NUMBER field's declared scale (max fractional digits), or null when unknown / not a number. */
+    fun scaleOf(path: String): Int? = scalesByPath[path]
 
     /**
      * The display string for the `$field$` placeholder: the field's [FieldDef.labels] entry for [locale]

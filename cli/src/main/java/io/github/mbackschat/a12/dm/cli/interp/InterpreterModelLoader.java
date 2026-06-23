@@ -59,7 +59,7 @@ public final class InterpreterModelLoader {
             String id = node.path("id").asText(null);
             if (type != null && id != null) {
                 switch (type) {
-                    case "Field" -> fields.add(new FieldDef(id, kindOf(node), localizedTexts(node.path("labels"))));
+                    case "Field" -> fields.add(new FieldDef(id, kindOf(node), localizedTexts(node.path("labels")), scaleOf(node)));
                     case "Group" -> {
                         JsonNode g = node.path("Group");
                         if (g.path("repeatability").asInt(0) > 1) {
@@ -132,6 +132,16 @@ public final class InterpreterModelLoader {
             case "ConfirmType" -> Kind.CONFIRM;
             default -> Kind.STRING;   // String / Enumeration / DateTime / Time — STRING-shaped for the operators modeled so far
         };
+    }
+
+    /** A NUMBER field's scale ({@code NumberType.maxFractionalDigits}), or null for non-number fields. */
+    private static Integer scaleOf(JsonNode fieldNode) {
+        JsonNode type = fieldNode.path("Field").path("fieldType");
+        if (!"NumberType".equals(type.path("type").asText(""))) {
+            return null;
+        }
+        JsonNode max = type.path("NumberType").path("maxFractionalDigits");
+        return max.isInt() ? max.asInt() : null;
     }
 
     /** Read a {@code [{locale, text}]} array into a locale→text map — the shape shared by a rule's

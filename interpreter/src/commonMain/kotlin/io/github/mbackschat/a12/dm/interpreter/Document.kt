@@ -45,6 +45,15 @@ class Document(
         }
     }
 
+    /**
+     * Every present (valued) field instance — its path, 1-based repetition indices, and raw value — in
+     * document order. The document-wide formal-error check ([DmInterpreter.validate]) walks these: the
+     * kernel formal-checks *all* filled fields, not only the rule-referenced ones. Unfilled (empty) fields
+     * and groups are excluded — emptiness is a requiredness concern, not a format one.
+     */
+    fun valuedFields(): List<ValuedField> =
+        placements.filter { !it.isGroup && it.value != null }.map { ValuedField(it.path, it.reps, it.value!!) }
+
     /** One [EvalContext] per instantiated row of [groupPath]; empty if the group has no rows. */
     fun contextsFor(groupPath: String): List<EvalContext> =
         rowsOf(groupPath).map { reps -> RowContext(groupPath, reps) }
