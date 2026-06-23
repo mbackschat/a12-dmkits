@@ -10,6 +10,15 @@ Correctness throughout = **agrees with the real kernel** (the `RuntimeLaws` diff
 
 ---
 
+### IF0 — Clean-room reimplementation is a LICENSE boundary, not a style choice (decided 2026-06-23)
+
+Why the interpreter reimplements rather than delegates, and why it derives from behavior rather than source: the A12 kernel is **EUPL-1.2 (copyleft) / commercial**. A dmtool runtime that *used* the kernel (linked, shipped, or called it) would be a combined work the EUPL copyleft reaches → it would have to ship as EUPL (or under the commercial license). The interpreter exists to give the **native runtime a kernel-free engine**, so that runtime carries **no kernel code and is free of the EUPL** — and, independently, the kernel's Groovy codegen can't compile into a native image, so delegation fails the native goal regardless. Two consequences that govern every operator:
+
+- **No delegation** — the interpreter never calls the kernel (purity-lint-enforced: no `com.mgmtp.*` in any source set). The `--kernel` flag is the only kernel-touching path, JVM-only, refused in native; that JVM distribution is where EUPL/commercial applies.
+- **Clean-room from behavior, not a source port** — each operator is derived from the **differential oracle** (the kernel as a *black box*) + the public spec, and written as original Kotlin. The kernel source may be *read to audit* a divergence, but a fix is **never a transliteration** of kernel source (a line-by-line port can be a copyright derivative that re-attracts the EUPL). Copy the mechanism/behavior (not protected); never the expression. This is the [[license-safe rule]] applied to the runtime engine. Detail: `CLAUDE.md` "Interpreter … #1 rule".
+
+---
+
 ### IF1 — Operator dispatch is enum-keyed by the kernel construct name; the AST stays string-typed
 
 The evaluator dispatches presence predicates and value functions on the `PredicateOp` / `FunctionOp` enums (each carrying its kernel construct name, e.g. `FieldFilled`, `Sum`), not on raw strings. But the AST node (`Cond.Pred.name` / `Expr.Func.name`) keeps the name as a **string** on purpose: the kernel vocabulary is open and growing (109+ constructs), and an *unmodeled* operator must round-trip far enough to be **reported** (`validate` returns it as `unsupported`), not fail at parse. So the parser emits the string; the evaluator decodes the handled subset via `byName`, and an unknown name → `null` → `UnsupportedConstructException` (caught and reported). The enums double as the handled-operator registry that operator-coverage growth extends. *(Locked: every `*DiffTest`; the registry is `Operators.kt`.)*
