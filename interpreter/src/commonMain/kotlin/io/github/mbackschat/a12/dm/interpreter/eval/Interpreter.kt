@@ -33,15 +33,43 @@ class Interpreter(private val ctx: EvalContext) {
     fun evalExpression(expr: Expr): Val = evalExpr(expr)
 
     fun eval(cond: Cond): Tri {
-        if (!ctx.evaluated) return Tri.UNKNOWN   // entirely-empty row: not evaluated
+        if (!gated(cond)) return Tri.UNKNOWN
         return evalCond(cond)
     }
 
     /** The polarity [MsgType] of a fired rule, or null when it does not fire — VALUE vs OMISSION. */
     fun firedType(cond: Cond): MsgType? {
-        if (!ctx.evaluated) return null
+        if (!gated(cond)) return null
         val r = evalTyped(cond)
         return if (r.truth == Tri.TRUE) r.type else null
+    }
+
+    /**
+     * Whether the row is evaluated at all. A non-empty row always is; an entirely-empty row is evaluated
+     * only when the condition CAN fire empty ([canFireEmpty]) — so the negative presence conditions
+     * (NoFieldFilled, NotAllFieldsFilled, FieldNotFilled, …) fire on a blank instance, while a comparison's
+     * empty-as-0 stays suppressed (the kernel's structural "can fire empty" gate, not a data check).
+     */
+    private fun gated(cond: Cond): Boolean = ctx.evaluated || canFireEmpty(cond)
+
+    /** Structural: would [cond] fire on an all-empty row? A comparison/pattern can't (empty-as-0 is
+     *  suppressed; an empty string/pattern leaf is false); a presence predicate fires iff it is TRUE at a
+     *  filled-count of 0; And/Or recurse. (Not is unreachable from the parser but modelled for totality.) */
+    private fun canFireEmpty(cond: Cond): Boolean = when (cond) {
+        is Cond.Cmp -> false
+        is Cond.Pattern -> false
+        is Cond.And -> canFireEmpty(cond.left) && canFireEmpty(cond.right)
+        is Cond.Or -> canFireEmpty(cond.left) || canFireEmpty(cond.right)
+        is Cond.Not -> !canFireEmpty(cond.c)
+        is Cond.Pred -> predFiresOnEmpty(cond)
+    }
+
+    /** Whether a presence predicate is TRUE when all its operands are empty (k = 0 filled). */
+    private fun predFiresOnEmpty(p: Cond.Pred): Boolean = when (val op = PredicateOp.byName(p.name)) {
+        null, PredicateOp.FIELD_FILLED, PredicateOp.GROUP_FILLED,
+        PredicateOp.FIELD_VALUE_IN_LIST, PredicateOp.FIELD_VALUE_NOT_IN_LIST -> false
+        PredicateOp.FIELD_NOT_FILLED, PredicateOp.GROUP_NOT_FILLED -> true
+        else -> quantifierFires(op, 0, p.args.size)
     }
 
     private data class Res(val truth: Tri, val type: MsgType)

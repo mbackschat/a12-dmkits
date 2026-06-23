@@ -42,6 +42,8 @@ KERNEL-SEMANTICS §2 says an empty **number** field has `0` substituted in a com
 
 Observed for `[Quantity] < 100` on `/Order[1]`: sibling `CustomerName="Acme"` + empty Quantity → **fires** (0 < 100); empty-string Quantity, valueless Quantity, or an otherwise-empty row → **does not fire**; `Quantity="200"` → does not fire (200 ≮ 100). The `FieldFilled(Quantity)` guard suppresses the empty-as-0 case even in a filled row.
 
+**The "entirely empty row is not evaluated" rule is CONDITIONAL on the condition, not absolute (runtime + source-audited, 2026-06-23).** A truly-empty row *is* evaluated when the condition **can fire empty** — a **structural** property of the condition (`canConditionFireEmpty`), not of the data. The **negative presence conditions** fire on a blank instance — `NoFieldFilled`, `NotAllFieldsFilled`, `NotExactlyOneFieldFilled`, `FieldNotFilled` (and the group/`*` analogues) — i.e. a presence predicate fires on empty iff its count-law holds at k=0. A **comparison** does **not** fire empty (so the empty-as-0 above stays suppressed on a blank row), nor do the positive presence checks (`FieldFilled`/`AllFieldsFilled`/…) or `FieldsNotCollectivelyFilled` (needs ≥1 filled). `And` fires empty iff both branches do; `Or` iff either does. So a mandatory-presence rule (`NoFieldFilled(A, B)`) correctly fires on a completely blank form. *(Locked: `adapter.laws.EmptyRowGateDiffTest`.)*
+
 The **type-asymmetry** of the empty case (the trap — the same comparison shape behaves differently by type), all verified in a filled row:
 
 | field type | example | empty behaviour |
