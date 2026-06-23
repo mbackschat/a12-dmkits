@@ -44,6 +44,10 @@ data class FieldDef(
     val kind: Kind,
     val labels: Map<String, String> = emptyMap(),
     val scale: Int? = null,
+    /** Whether a NUMBER field permits negative values (the kernel's `hatVorzeichen`; `NumberType.positivesOnly`
+     *  is the unsigned trigger). Drives the directional empty-operand polarity ([ModelDef.unsignedFields] →
+     *  the [io.github.mbackschat.a12.dm.interpreter.eval.Document]'s `unsignedFields` → `EvalContext.signed`). */
+    val signed: Boolean = true,
 )
 
 /**
@@ -88,6 +92,10 @@ data class ModelDef(
 ) {
     val kinds: Map<String, Kind> = fields.associate { it.path to it.kind }
     val repeatable: Set<String> = repeatableGroups + declaredReps.keys
+
+    /** Unsigned NUMBER fields (the kernel's `hatVorzeichen == false`) — the [io.github.mbackschat.a12.dm.interpreter.eval.Document]'s
+     *  directional-polarity input ([FieldDef.signed]). */
+    val unsignedFields: Set<String> = fields.filter { !it.signed }.map { it.path }.toSet()
     private val labelsByPath: Map<String, Map<String, String>> = fields.associate { it.path to it.labels }
     private val scalesByPath: Map<String, Int?> = fields.associate { it.path to it.scale }
 

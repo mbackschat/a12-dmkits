@@ -59,7 +59,7 @@ public final class InterpreterModelLoader {
             String id = node.path("id").asText(null);
             if (type != null && id != null) {
                 switch (type) {
-                    case "Field" -> fields.add(new FieldDef(id, kindOf(node), localizedTexts(node.path("labels")), scaleOf(node)));
+                    case "Field" -> fields.add(new FieldDef(id, kindOf(node), localizedTexts(node.path("labels")), scaleOf(node), signed(node)));
                     case "Group" -> {
                         JsonNode g = node.path("Group");
                         if (g.path("repeatability").asInt(0) > 1) {
@@ -90,7 +90,7 @@ public final class InterpreterModelLoader {
 
     /** Build a {@link Document} from a nested fields map (the {@code DocInstance.readFields} output). */
     public static Document document(Map<String, Object> fields, ModelDef model) {
-        Document doc = new Document(model.getKinds(), model.getDeclaredReps());
+        Document doc = new Document(model.getKinds(), model.getDeclaredReps(), model.getUnsignedFields());
         walkInstance(doc, fields, new ArrayList<>(), new ArrayList<>());
         return doc;
     }
@@ -143,6 +143,12 @@ public final class InterpreterModelLoader {
         }
         JsonNode max = type.path("NumberType").path("maxFractionalDigits");
         return max.isInt() ? max.asInt() : null;
+    }
+
+    /** Whether a NUMBER field is signed (the kernel's {@code hatVorzeichen}): unsigned iff
+     *  {@code NumberType.positivesOnly} is true. Non-number fields default to signed (the value is unused). */
+    private static boolean signed(JsonNode fieldNode) {
+        return !fieldNode.path("Field").path("fieldType").path("NumberType").path("positivesOnly").asBoolean(false);
     }
 
     /** Read a {@code [{locale, text}]} array into a locale→text map — the shape shared by a rule's
