@@ -26,6 +26,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedTypeRegistry
+import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import io.github.mbackschat.a12.dm.interpreter.model.Requiredness
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleResult
@@ -38,14 +39,22 @@ import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
 import io.github.mbackschat.a12.dm.interpreter.parse.parseExpression
 import kotlin.jvm.JvmOverloads
 
+/** Whether a field/group instance `(path, reps)` is relevant — full validation: always; partial: in the
+ *  relevant set. Gates which rules run and which referenced fields are UNKNOWN. See [DmInterpreter.validatePart]. */
+private typealias Relevance = (String, List<Int>) -> Boolean
+
+/** The full-validation relevance: every instance is relevant. */
+private val ALL_RELEVANT: Relevance = { _, _ -> true }
+
 /**
  * The public entry point — evaluates a [ModelDef]'s rules over a [Document] instance, kernel-free, on
  * JVM and JS alike. The standalone-library façade (proposal goal 2) and the engine dmtool's native
  * image consumes for the runtime verbs (goal 1). Correctness = agrees with the real kernel (verified by
  * the `:adapter` differential tests).
  *
- * Today: full validation ([validateFull]) and single-rule eval ([testRule]/[evalCandidate]). Partial
- * validation, computations, and formal-error suppression are the next increments (INTERPRETER-BUILDOUT.md).
+ * Full validation ([validateFull]/[validate]), partial validation ([validatePart]), single-rule eval
+ * ([testRule]/[evalCandidate]), and computations ([compute]) — the kernel's `validateFull`/`validatePart`/
+ * `compute` twins, kernel-free.
  */
 class DmInterpreter @JvmOverloads constructor(
     private val model: ModelDef,
@@ -75,18 +84,46 @@ class DmInterpreter @JvmOverloads constructor(
      * like `CustomCondition`) reported as [ValidationOutcome.unsupported] instead of crashing the run —
      * mirroring the kernel-adapter's `Opaque` read. Genuine bugs still throw.
      */
-    fun validate(doc: Document, locale: String = "en_US"): ValidationOutcome {
-        // Formal errors first — the kernel checks every field before evaluating rules: format errors on every
-        // filled-but-malformed field, and `mandatoryField` on every required-but-empty field. Both make the
-        // field "unknown", so a rule referencing it sees Val.Unknown (the 3VL propagates it; see below).
+    fun validate(doc: Document, locale: String = "en_US"): ValidationOutcome =
+        validateWith(doc, locale, ALL_RELEVANT)
+
+    /**
+     * Tolerant **partial** validation — the runtime twin of the kernel's `validatePart(DocumentV2,
+     * relevantEntities, config)`. Only the rules whose **error field instance** is in [relevant] are
+     * evaluated; of those, any reference to a field/group instance **not** in [relevant] resolves to
+     * `Val.Unknown`, so the existing 3VL produces the kernel's exact suppression — `true And Unknown`
+     * suppresses, `true Or Unknown` still fires (the "no possible value could prevent the error" clause is
+     * just Kleene logic). The auto-generated checks (formal/mandatory/unique) are likewise gated by their
+     * field's relevance. A relevant group makes all its descendants relevant; [RelevantEntity.ALL] wildcards
+     * a repetition level (the encouraged form). With the whole document relevant this equals [validate].
+     * KERNEL-FINDINGS "Partial validation".
+     *
+     * Boundaries (vs the kernel, documented): wildcard/aggregate references under a *subset* of relevant
+     * repetitions follow the encouraged all-repetitions form exactly but are not yet pinned for arbitrary
+     * subsets; a `CustomCondition` still sees `relevant = null` (full) in partial mode; global-field
+     * auto-relevance is a model-structure concept the interpreter does not model.
+     */
+    fun validatePart(doc: Document, relevant: Set<RelevantEntity>, locale: String = "en_US"): ValidationOutcome =
+        validateWith(doc, locale, relevanceOf(relevant))
+
+    /**
+     * The shared validation pipeline, parameterized by [isRelevant] (`(path, reps) → Boolean`). Full
+     * validation passes [ALL_RELEVANT]; partial passes a relevance predicate. Formal errors first — the
+     * kernel checks every field before evaluating rules: format errors on every filled-but-malformed field,
+     * and `mandatoryField` on every required-but-empty field. Both make the field "unknown", so a rule
+     * referencing it sees Val.Unknown (the 3VL propagates it). Every emitted message is gated by its error
+     * field's relevance.
+     */
+    private fun validateWith(doc: Document, locale: String, isRelevant: Relevance): ValidationOutcome {
         val dup = duplicateIndexCells(doc)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
-        val messages = (formalErrors(doc, locale) + mandatoryErrors(doc, locale) + uniquenessMessages(dup, locale)).toMutableList()
+        val messages = (formalErrors(doc, locale, isRelevant) + mandatoryErrors(doc, locale, isRelevant)
+                + uniquenessMessages(dup, locale, isRelevant)).toMutableList()
         val unsupported = mutableListOf<UnsupportedRule>()
         for (rule in model.rules) {
             try {
                 val rnu = repetitionNotUnique(rule)
-                messages += if (rnu != null) repetitionNotUniqueMessages(rule, rnu, doc, locale)
-                else messagesFor(rule, doc, locale, dup)
+                messages += if (rnu != null) repetitionNotUniqueMessages(rule, rnu, doc, locale, isRelevant)
+                else messagesFor(rule, doc, locale, dup, isRelevant)
             } catch (e: UnsupportedConstructException) {
                 unsupported += UnsupportedRule(rule.path, e.message ?: "unsupported construct")
             }
@@ -100,8 +137,8 @@ class DmInterpreter @JvmOverloads constructor(
      * pointer, ERROR, VALUE); the human text is the interpreter's own wording ([formalErrorText]), not the
      * kernel's German bundle (KERNEL-INTEGRATION-NOTES "Formal-error message text").
      */
-    private fun formalErrors(doc: Document, locale: String): List<Message> =
-        doc.valuedFields().mapNotNull { vf ->
+    private fun formalErrors(doc: Document, locale: String, isRelevant: Relevance): List<Message> =
+        doc.valuedFields().filter { isRelevant(it.path, it.reps) }.mapNotNull { vf ->
             val kind = model.kinds[vf.path] ?: return@mapNotNull null
             val scale = model.scaleOf(vf.path)
             formalError(kind, vf.raw, scale, model.dateFormatOf(vf.path), model.datePrecisionOf(vf.path))?.let { code ->
@@ -122,15 +159,17 @@ class DmInterpreter @JvmOverloads constructor(
      * - otherwise (absolute under a repeatable ancestor, or relative-to-parent): checked per instantiated row
      *   of the field's [emissionScope], gated by [requiredEmpty]'s `GroupFilled(relativeTo)`.
      */
-    private fun mandatoryErrors(doc: Document, locale: String): List<Message> {
+    private fun mandatoryErrors(doc: Document, locale: String, isRelevant: Relevance): List<Message> {
         val out = mutableListOf<Message>()
         for (path in model.requiredFieldPaths) {
             if (model.requirednessOf(path) == Requiredness.ABSOLUTE && lowestRepeatableAncestor(path) == null) {
                 val reps = List(pathParts(path).size) { 1 }
-                if (!doc.filledAt(path, reps)) out += mandatoryMessage(path, reps, locale)
+                if (!doc.filledAt(path, reps) && isRelevant(path, reps)) out += mandatoryMessage(path, reps, locale)
             } else {
                 for (ctx in doc.contextsFor(emissionScope(path))) {
-                    if (requiredEmpty(path, ctx)) out += mandatoryMessage(path, ctx.repsOf(path), locale)
+                    if (requiredEmpty(path, ctx) && isRelevant(path, ctx.repsOf(path))) {
+                        out += mandatoryMessage(path, ctx.repsOf(path), locale)
+                    }
                 }
             }
         }
@@ -168,8 +207,8 @@ class DmInterpreter @JvmOverloads constructor(
     }
 
     /** One `uniqueIndex` [Message] per duplicate-index cell (the kernel flags every participant). */
-    private fun uniquenessMessages(dup: Set<Pair<String, List<Int>>>, locale: String): List<Message> =
-        dup.map { (path, reps) ->
+    private fun uniquenessMessages(dup: Set<Pair<String, List<Int>>>, locale: String, isRelevant: Relevance): List<Message> =
+        dup.filter { (path, reps) -> isRelevant(path, reps) }.map { (path, reps) ->
             Message(UNIQUE_INDEX, uniqueRulePath(path), formatPointer(path, reps), Severity.ERROR, MsgType.VALUE,
                 uniqueIndexText(locale))
         }
@@ -226,7 +265,8 @@ class DmInterpreter @JvmOverloads constructor(
      * **all-empty** key row is skipped, and a duplicate whose key has an empty (fillable) component is
      * **OMISSION** (else VALUE). The rule sits at the parent and iterates the keys' repeatable group.
      */
-    private fun repetitionNotUniqueMessages(rule: RuleDef, rnu: RnuRule, doc: Document, locale: String): List<Message> {
+    private fun repetitionNotUniqueMessages(rule: RuleDef, rnu: RnuRule, doc: Document, locale: String,
+            isRelevant: Relevance = ALL_RELEVANT): List<Message> {
         val keys = rnu.keys
         val repGroup = parentGroup(keys.first())     // the keys' shared repeatable group (kernel: keys on one path)
         val errorPath = resolveErrorPath(rule)
@@ -241,6 +281,7 @@ class DmInterpreter @JvmOverloads constructor(
             .forEach { (_, scope) ->
                 val dups = scope.groupingBy { it.key }.eachCount().filterValues { it > 1 }.keys
                 for (row in scope.filter { it.key in dups }) {
+                    if (!isRelevant(errorPath, row.reps)) continue   // partial: only if the error field is relevant
                     val type = if (row.key.any { it == null }) MsgType.OMISSION else MsgType.VALUE
                     val text = rule.messages[locale]?.let { renderMessage(it, rule.group, row.ctx) { p -> model.labelOf(p, locale) } } ?: ""
                     val referenced = keys.map { formatPointer(it, row.ctx.repsOf(it)) }
@@ -341,8 +382,9 @@ class DmInterpreter @JvmOverloads constructor(
     }
 
     /** Every firing of one rule across its iteration-scope rows, as [Message]s (suppressed rows produce none). */
-    private fun messagesFor(rule: RuleDef, doc: Document, locale: String, dup: Set<Pair<String, List<Int>>>): List<Message> =
-        rowOutcomes(rule, doc, locale, dup).filterIsInstance<RowOutcome.Fired>().map { it.message }
+    private fun messagesFor(rule: RuleDef, doc: Document, locale: String, dup: Set<Pair<String, List<Int>>>,
+            isRelevant: Relevance = ALL_RELEVANT): List<Message> =
+        rowOutcomes(rule, doc, locale, dup, isRelevant).filterIsInstance<RowOutcome.Fired>().map { it.message }
 
     /** The per-row outcome of one rule: fired (with its message), passed, or suppressed (which field/code). */
     private sealed interface RowOutcome {
@@ -351,18 +393,26 @@ class DmInterpreter @JvmOverloads constructor(
         data class Suppressed(val suppression: Suppression) : RowOutcome
     }
 
-    private fun rowOutcomes(rule: RuleDef, doc: Document, locale: String, dup: Set<Pair<String, List<Int>>>): List<RowOutcome> {
+    private fun rowOutcomes(rule: RuleDef, doc: Document, locale: String, dup: Set<Pair<String, List<Int>>>,
+            isRelevant: Relevance = ALL_RELEVANT): List<RowOutcome> {
         val ast = parseCondition(rule.conditionText, rule.group)
         val refs = nonStarredRefs(ast).distinct()
         val errorPath = resolveErrorPath(rule)
         return doc.contextsFor(iterationScope(rule, ast)).map { ctx ->
+            // Partial validation: the kernel runs a rule only if its error-field instance is relevant — else
+            // the rule is NOT executed for this row (no message, not a suppression). Full validation: always.
+            if (!isRelevant(errorPath, ctx.repsOf(errorPath))) return@map RowOutcome.Passed
             // A formally-invalid referenced field resolves to Val.Unknown (NOT a whole-rule skip): the 3VL
             // propagates it, so a bare comparison goes UNKNOWN but `… Or <true>` still FIRES — matching the
             // kernel's operand-level "not check-relevant" behavior (verified). A duplicate-index field is
-            // likewise unknown (branch-scoped, same as a formal error) via [formalErrorAt]. The custom-condition
+            // likewise unknown (branch-scoped, same as a formal error) via [formalErrorAt]. In partial mode a
+            // referenced field instance that is NOT relevant is also unknown — the same 3VL yields the kernel's
+            // suppression (`And` suppresses, `Or` with a relevant-true operand still fires). The custom-condition
             // registry + the row's error-field pointer ride along for a `CustomCondition X` leaf.
             val interp = Interpreter(ctx, clock, model.baseYear, model.indexFields, predefinedTypes,
-                customConditions, FieldPointer(errorPath, ctx.repsOf(errorPath))) { path -> formalErrorAt(path, ctx, dup) != null }
+                customConditions, FieldPointer(errorPath, ctx.repsOf(errorPath))) { path ->
+                    formalErrorAt(path, ctx, dup) != null || !isRelevant(path, ctx.repsOf(path))
+                }
             if (interp.fires(ast)) {
                 val type = interp.firedType(ast) ?: MsgType.VALUE
                 val text = rule.messages[locale]?.let { renderMessage(it, rule.group, ctx) { p -> model.labelOf(p, locale) } } ?: ""
@@ -482,5 +532,24 @@ class DmInterpreter @JvmOverloads constructor(
             rel = rel.removePrefix("../")
         }
         return if (rel.isEmpty()) base else "$base/$rel"
+    }
+
+    /**
+     * Build the [Relevance] predicate from a relevant-entity set: an instance `(path, reps)` is relevant iff
+     * some [RelevantEntity] **is** it or is an **ancestor group** of it, with the shared-prefix repetition
+     * indices matching ([RelevantEntity.ALL] wildcards a level). A relevant group thus makes every descendant
+     * relevant (the kernel rule). An empty set → nothing relevant (no rule runs).
+     */
+    private fun relevanceOf(relevant: Set<RelevantEntity>): Relevance =
+        { path, reps -> relevant.any { matches(it, path, reps) } }
+
+    /** Whether relevant entity [r] covers the instance at [path]/[reps] — [r.path] a prefix of [path] (== or a
+     *  group ancestor) with each of [r]'s indices either [RelevantEntity.ALL] or equal to the instance's. */
+    private fun matches(r: RelevantEntity, path: String, reps: List<Int>): Boolean {
+        val rParts = pathParts(r.path)
+        val pParts = pathParts(path)
+        if (rParts.size > pParts.size || r.indices.size != rParts.size) return false
+        if (rParts != pParts.take(rParts.size)) return false
+        return r.indices.indices.all { i -> r.indices[i] == RelevantEntity.ALL || r.indices[i] == reps[i] }
     }
 }

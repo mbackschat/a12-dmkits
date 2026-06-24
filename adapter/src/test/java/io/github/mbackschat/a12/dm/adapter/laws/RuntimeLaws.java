@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 
 import com.mgmtp.a12.kernel.md.document.api.IDocument;
 import com.mgmtp.a12.kernel.md.document.api.services.IDocumentFactory;
+import com.mgmtp.a12.kernel.md.document.apiV2.DocumentMultiPointer;
 import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer;
 import com.mgmtp.a12.kernel.md.document.apiV2.immutable.DocumentV2;
 import io.github.mbackschat.a12.dm.interpreter.eval.PointerKt;
@@ -327,6 +328,39 @@ public final class RuntimeLaws {
             Map<String, ICustomCondition> customConditions) {
         return messages(modelJson, doc, customConditions).stream()
                 .filter(m -> m.code().equals(errorCode)).map(Msg::type).findFirst();
+    }
+
+    // ---- partial validation (validatePart: only rules whose error field is relevant; non-relevant refs → 3VL) ----
+
+    /**
+     * One relevant entity for {@link #messagesPart}: a {@code path} and its 1-based repetition indices (one
+     * per path part). Use {@code 0} ({@code IEntityInstance.ALL_SEMANTIC}, the wildcard) for "all repetitions"
+     * of that path element — the kernel's encouraged form. A relevant group makes all its descendants relevant.
+     */
+    record Relevant(String path, List<Integer> reps) {
+        static Relevant of(String path, int... reps) {
+            return new Relevant(path, java.util.Arrays.stream(reps).boxed().toList());
+        }
+    }
+
+    /** Partial validation: the kernel's {@code validatePart(DocumentV2, relevantEntities, config)} (codes only). */
+    static Set<String> firedCodesPart(String modelJson, Doc doc, Set<Relevant> relevant) {
+        return messagesPart(modelJson, doc, relevant).stream().map(Msg::code)
+                .collect(Collectors.toCollection(HashSet::new));
+    }
+
+    /** Partial validation — every message the kernel raises for the given {@code relevant} entity set. */
+    static List<Msg> messagesPart(String modelJson, Doc doc, Set<Relevant> relevant) {
+        IDocumentModel model = expandedModel(modelJson);
+        IDocumentModelResolver resolver = id -> model;
+        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
+        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
+        IDocumentFactory df = dsf.createDocumentFactory();
+        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, df, doc));
+        Set<DocumentMultiPointer> relevantPointers = relevant.stream()
+                .map(r -> DocumentMultiPointer.of(r.path(), r.reps())).collect(Collectors.toSet());
+        DocumentProcessingConfig config = DocumentProcessingConfig.builder(Locale.US).build();
+        return rt.validatePart(v2, relevantPointers, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
     }
 
     /** The kernel's fully-rendered (localized, params substituted) error text for {@code errorCode}. */
