@@ -111,6 +111,11 @@ enum class FunctionOp(val kernelName: String) {
     // `NumberOfValueInFields(value In f1, f2, …)` — the count of the listed fields whose FILLED value equals the
     // constant. An empty field is NOT counted (kernel: only `b == TRUE` counts); a formal error → non-evaluable.
     NUMBER_OF_VALUE_IN_FIELDS("NumberOfValueInFields"),
+    // `RangeAsString(field, s, e)` / `RangeAsNumber(field, s, e)` — a substring of a STRING field's value by
+    // 1-based inclusive char range. Out-of-range (e > length) or empty → `""` (RangeAsString) / `0` (RangeAsNumber,
+    // which parses ONLY `\d+`, else 0). KERNEL-FINDINGS — `getSubstring`/`bereichAlsZahl`.
+    RANGE_AS_STRING("RangeAsString"),
+    RANGE_AS_NUMBER("RangeAsNumber"),
     ;
 
     companion object {

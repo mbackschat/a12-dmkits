@@ -301,6 +301,11 @@ class Interpreter(
         val l = evalExpr(c.left)
         val r = evalExpr(c.right)
         if (l is Val.Unknown || r is Val.Unknown) return Tri.UNKNOWN
+        // The kernel's `vergleicheSTRING` returns false when EITHER operand is the empty string — for `==` AND
+        // `!=` alike (an empty operand never matches and never differs). So an empty `RangeAsString` result, or a
+        // literal `""`, suppresses the comparison (it does not fire) rather than comparing as a value. An empty
+        // string *field* already arrives as Unknown (handled above); this covers the non-field empty strings.
+        if ((l is Val.Txt && l.v.isEmpty()) || (r is Val.Txt && r.v.isEmpty())) return Tri.UNKNOWN
         return when (c.op) {
             CmpOp.EQ -> Tri.of(eq(l, r))
             CmpOp.NE -> Tri.of(!eq(l, r))
@@ -434,6 +439,11 @@ class Interpreter(
         FunctionOp.FIRST_FILLED_VALUE -> starVals(f).firstOrNull() ?: Val.Unknown
         // NumberOfValueInFields(value In f1, f2, …): count the FILLED fields equal to the constant.
         FunctionOp.NUMBER_OF_VALUE_IN_FIELDS -> numberOfValueInFields(f.args)
+        // RangeAsString/RangeAsNumber(field, s, e): a substring of a STRING field by 1-based inclusive range.
+        FunctionOp.RANGE_AS_STRING -> rangeSubstring(f.args)?.let { Val.Txt(it) } ?: Val.Unknown
+        FunctionOp.RANGE_AS_NUMBER -> rangeSubstring(f.args)?.let {
+            Val.Num(if (DIGITS.matches(it)) dec(it) else DEC_ZERO)   // kernel: only `\d+` parses, else 0
+        } ?: Val.Unknown
         null -> throw UnsupportedConstructException("unsupported function ${f.name}")
     }
 
@@ -467,6 +477,21 @@ class Interpreter(
             if (eq(v, target)) count++
         }
         return Val.Num(dec(count))
+    }
+
+    /**
+     * The substring of a STRING field's value by the 1-based inclusive `(field, start, end)` [args] — the kernel's
+     * `getSubstring`: an EMPTY value OR `end > length` → `""` (NOT a partial substring); else `value[start-1, end)`.
+     * Returns null only when the field ref is formally invalid (the caller yields Unknown; STRING fields have no
+     * formal error, so this is defensive). The bounds are integer literals, validated `1 <= start <= end` at compile.
+     */
+    private fun rangeSubstring(args: List<Expr>): String? {
+        val path = pathOf(args[0])
+        if (invalid(path)) return null
+        val value = ctx.displayValue(path) ?: ""
+        val s = (evalExpr(args[1]) as Val.Num).v.display().toInt()
+        val e = (evalExpr(args[2]) as Val.Num).v.display().toInt()
+        return if (value.isEmpty() || e > value.length) "" else value.substring(s - 1, e)
     }
 
     /** `DifferenceIn{Months,Years}(a, b)` → a signed whole-period count; Unknown if either date is empty. */
@@ -543,6 +568,9 @@ class Interpreter(
     private companion object {
         /** A TIME value `HH:mm:ss` — captures hours, minutes, seconds for the time-of-day extractors. */
         val TIME = Regex("""(\d{2}):(\d{2}):(\d{2})""")
+
+        /** `RangeAsNumber` parses its substring ONLY when it is a run of digits (kernel `\d+`); else the value is 0. */
+        val DIGITS = Regex("""\d+""")
 
         /** Orders comparable values: numbers numerically, text lexicographically (ISO dates → chronological). */
         val ORDER = Comparator<Val> { a, b ->
