@@ -490,6 +490,12 @@ The author-written **cross-ROW** uniqueness rule (vs `FieldValuesNotUnique`'s va
 
 *(Interpreter: `Expr.SemanticIndex(path, indexValue)` (parsed in the `[...]` atom via a `For "…"` clause); `EvalContext.indexedCell` scans the target's repetition rows in scope for the sibling index match, returning the resolved cell or null (→ the kind's empty value). The group's index field is resolved from the threaded `indexFields`; the polarity rides the standard `fill` (fillable iff the cell is absent/empty). Locked: `adapter.laws.SemanticIndexDiffTest` — matched value, other key, and the empty/missing OMISSION cases.)*
 
+## §9 supplement — `Having`: a per-row filter on a starred aggregate (probe, 2026-06-24)
+
+`Sum(Items* / Count Having <cond>)` (and the other aggregates) consume **only the rows for which `<cond>` holds** — the filter is evaluated per repetition row before the aggregate. Probed: rows (UnitWeight, Count) `(1,3),(2,10),(1,4)` with `Having [Items/UnitWeight] == 1` → the aggregate sees only the W==1 rows → `Sum == 7` (the unfiltered Sum is 17); `> 5` fires, `> 7` does not; `Having [...] == 9` (no matching rows) → `Sum == 0` fires. Polarity is the aggregate's own (Sum over a growable repetition → OMISSION). The filter is a full condition over the row's fields. (Filter on a non-index field — filtering on the index field with repeated values trips `uniqueIndex` + suppresses.)
+
+*(Interpreter: `Expr.Star` gained an optional `having: Cond?` (parsed from a `Having` clause on the starred operand in `readArgs`); `Interpreter.starVals` evaluates the filter in each per-row context (`EvalContext.rowContexts` → the Document's scoped `RowContext`s) and keeps the matching rows' filled values. Locked: `adapter.laws.HavingDiffTest`.)*
+
 ## §8 supplement — the value-list membership family (2026-06-04 experiments)
 
 Five operators in two grammar shapes, not covered by KERNEL-SEMANTICS. **Shape A** `FieldValueIncludedInValueList(field, v1, …)` / `FieldValueNotIncludedInValueList(…)` (DE: `FeldWertInWerteListe`/`FeldWertNichtInWerteListe`); **shape B** `AtLeastOne|No|NotAllFieldValue(s)IncludedInValueList(f1, f2 In v1, …)` (DE: `MindestensEin…`/`Kein…`/`NichtAlle…`; `In` is a language-independent grammar literal like the symbols). Slot rules:

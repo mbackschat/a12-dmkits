@@ -96,8 +96,10 @@ sealed interface Expr {
     data class StrLit(val v: String) : Expr
     data class BoolLit(val v: Boolean) : Expr
 
-    /** A starred path, e.g. `Items* / Count` — the values across repetition rows; only inside an aggregate. */
-    data class Star(val path: String) : Expr
+    /** A starred path, e.g. `Items* / Count` — the values across repetition rows; only inside an aggregate.
+     *  [having] is an optional per-row FILTER (a `… Having <cond>` clause on the starred operand): the
+     *  aggregate consumes only the rows for which the condition holds. */
+    data class Star(val path: String, val having: Cond? = null) : Expr
 
     /** A value-valued function, e.g. Min(a, b) (operand-list) or Sum(Star) (aggregate). */
     data class Func(val name: String, val args: List<Expr>) : Expr

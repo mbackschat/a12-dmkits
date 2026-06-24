@@ -201,6 +201,13 @@ private class ConditionParser(private val src: String, private val base: String)
         expect('(')
         val args = mutableListOf(parseExpr())
         skipWs()
+        // `<star> Having <condition>` — an aggregate's per-row filter (`Sum(Items*/Count Having …)`); attaches
+        // the condition to the starred operand so the aggregate consumes only the matching rows.
+        if (matchKeyword("Having")) {
+            val star = args[0] as? Expr.Star ?: throw UnsupportedConstructException("Having applies to a starred aggregate operand")
+            args[0] = Expr.Star(star.path, parseOr())
+            skipWs()
+        }
         // An infix grammar literal separating arg0 from the rest: `In` for `NumberOfValueInFields(value In f1, …)`,
         // `IN` for `AtLeastOneDateRangeOverlaps(range IN rangeList)` (the kernel grammar has distinct In/IN/in
         // tokens — operator-specific). For every other function the next token is `,`/`)`.

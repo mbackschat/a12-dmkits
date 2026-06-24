@@ -152,6 +152,20 @@ class Document @JvmOverloads constructor(
     /** The distinct 1-based index tuples at which [groupPath] is instantiated, in document order. */
     private fun rowsOf(groupPath: String): List<List<Int>> = index().rowsByGroup[groupPath] ?: emptyList()
 
+    /** [EvalContext]s for the rows of [groupPath] whose reps extend [scopeReps] (the rows under a given parent
+     *  row) — the scoped form of [contextsFor], for a `Having` per-row filter. */
+    private fun rowContextsScoped(groupPath: String, scopeReps: List<Int>): List<EvalContext> {
+        val gParts = partsOf(groupPath)
+        val attachByDepth = HashMap<Int, HashSet<List<Int>>>()
+        for (p in index().valued) {
+            val common = commonPrefixLen(partsOf(p.path), gParts)
+            attachByDepth.getOrPut(common) { HashSet() }.add(p.reps.take(common))
+        }
+        return rowsOf(groupPath)
+            .filter { reps -> reps.take(scopeReps.size) == scopeReps }
+            .map { reps -> RowContext(groupPath, reps, attachByDepth.any { (d, pfx) -> reps.take(d) in pfx }) }
+    }
+
     /** Indices for a referenced path P under a row of group G: shared-prefix indices from the row, else 1. */
     private fun repsFor(refPath: String, group: String, rowReps: List<Int>): List<Int> {
         val refParts = partsOf(refPath)
@@ -238,6 +252,9 @@ class Document @JvmOverloads constructor(
             }
             return null
         }
+
+        // Rows of groupPath scoped UNDER this row (the Having filter's per-row contexts).
+        override fun rowContexts(groupPath: String): List<EvalContext> = rowContextsScoped(groupPath, rowReps)
 
         override fun repsOf(path: String): List<Int> = repsFor(path, group, rowReps)
 

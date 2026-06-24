@@ -913,7 +913,16 @@ class Interpreter(
     /** Epoch day of a date-valued expression (ISO text), or null if empty/malformed. */
     private fun epochOf(e: Expr): Long? = (coerceDate(evalExpr(e)) as? Val.Txt)?.let { epochDay(it.v) }
 
-    private fun starVals(f: Expr.Func): List<Val> = ctx.star((f.args.single() as Expr.Star).path)
+    private fun starVals(f: Expr.Func): List<Val> {
+        val star = f.args.single() as Expr.Star
+        if (star.having == null) return ctx.star(star.path)
+        // Having: evaluate the per-row filter in each row context of the star's group, keep the matching rows'
+        // filled values (empties dropped, like `star`) — the aggregate then consumes only those.
+        val group = star.path.substringBeforeLast('/')
+        return ctx.rowContexts(group)
+            .filter { rc -> Interpreter(rc, clock, baseYear, indexFields, invalid).fires(star.having) }
+            .mapNotNull { rc -> if (rc.filled(star.path)) rc.field(star.path) else null }
+    }
 
     /**
      * Apply a numeric combiner ([Min]/[Max]/[Sum]/[MaxValue]/[MinValue]/[NumberOfDifferentValues]) to its

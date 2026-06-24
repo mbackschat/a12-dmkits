@@ -69,6 +69,10 @@ interface EvalContext {
      *  matched cell is empty (the caller then reads it as the kind's empty value). Default: unsupported. */
     fun indexedCell(targetPath: String, indexField: String, indexValue: String): Val? = null
 
+    /** One [EvalContext] per row of [groupPath] WITHIN this context's scope — for evaluating a `Having`
+     *  per-row filter inside an aggregate. Default empty (the flat spike contexts don't model rows). */
+    fun rowContexts(groupPath: String): List<EvalContext> = emptyList()
+
     /**
      * The 1-based repetition indices of a field path **in this row** — one per path part (the kernel's
      * `repetitionIndexes()`), for building a field-instance pointer. Defaults to all-1s (correct for a flat
