@@ -14,6 +14,19 @@ The `:interpreter` must be **fast on the hard cases**, and that is **measured an
 
 The encouraging spike timing (`InterpreterMultiplatformTest.scalesToManyRepetitionRows`, ~30 ms / 20k rows) runs on `RepDoc`, whose field lookup is a `HashMap.get` and whose `star` is one pass — **O(N) overall**. The **production** path is the general `Document`, which stores placements in a `List` and does a linear `placements.firstOrNull{…}` scan on **every** `field`/`filled`/`displayValue`/`groupFilled` (and `star` is O(rows×P)) → **O(N²)** per-row evaluation. So the green spike number says nothing about the real path. That gap is exactly what this method closes: benchmark the real `Document`, against the kernel, at scale.
 
+## The kernel baseline: Groovy vs Java (the fairness question, 2026-06-24)
+
+The kernel's dynamic `validateFull` runs **Groovy-generated, Groovy-compiled** validators (the codegen architecture is in [`KERNEL-INTEGRATION-NOTES.md`](KERNEL-INTEGRATION-NOTES.md) "Code generation targets"). Compiled Groovy executes as JVM bytecode, but carries a **per-operation dynamic-dispatch / metaclass tax** over equivalent Java. The kernel team themselves treat this as real — they disable Groovy's Parrot parser (`groovy.antlr4=false`) specifically because it *"slows down the groovy compilation"*. So a naive "interp vs kernel" ratio conflates two things: the interpreter's algorithm **and** the fact that the kernel pays a Groovy tax the interpreter doesn't.
+
+Two consequences, and what we do about each:
+
+- **Scaling is tax-immune — trust it.** A constant factor (Groovy-vs-Java per-op overhead) does not bend the complexity curve. So the linearity / O(N²)-detection analysis (the "large docs" story) is unaffected by which language the kernel ran; it is the robust deliverable.
+- **The absolute ratio is tax-inflated — so we also measure a Java baseline.** To get a *Groovy-tax-free* absolute comparison, we run the kernel's **own generated validator compiled as Java**, via the supported **static-model runtime path** (generate Java source through `generateValidationCode(…, JAVA)`, compile in-memory with `javax.tools.JavaCompiler`, run it through `DocumentStaticRtService` — same `validateFull` scaffolding, Java underneath). Each scenario then reports **interp × kernel-Groovy × kernel-Java**, and the honest "how much faster is the interpreter's *algorithm*" question is read against **kernel-Java**, not kernel-Groovy. This is the kernel's own logic, just stripped of the Groovy execution overhead — so it isolates the algorithmic comparison from the language tax.
+
+**Why this matters beyond fairness — the generator signal.** Our tree-walker being *competitive* with compiled Groovy is already encouraging; the kernel-Java number tells us how much of that edge is real algorithm vs Groovy tax. It also informs the **future generator** (the "generator-ready" layering): if a JVM-bytecode/Java target is what beats Groovy, that's the perf opportunity a generator would chase.
+
+**The JS generalization (forward-looking).** TypeScript/JS is the kernel's *other* documented codegen target, so this exact harness — *generate code in language X → compile/load → run through the rt path → diff against the interpreter* — generalizes to a **kernel-JS vs interpreter-JS** comparison later (the interpreter's other reason-to-exist). The baseline engine is therefore built **language-parameterized** (Java now; JS-capable later), not hardwired.
+
 ## The harness (invest here — it pays off)
 
 Not ad-hoc `measureTime` calls sprinkled in tests — a **proper, reusable harness**, because it does double duty: it **gates** regressions *and* it's how we **find** the O(N²) hotspots in the group machinery. Design:
