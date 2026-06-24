@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -37,8 +38,12 @@ class CurrentRepetitionDiffTest {
             iDoc.field(ITEM, "K$r", 1, r, 1)
             if (qty != null) { kDoc.field(QTY, qty, 1, r, 1); iDoc.field(QTY, qty, 1, r, 1) }
         }
-        val kernel = RuntimeLaws.fires(kModel, "CR", kDoc)
-        val interp = DmInterpreter(def).validateFull(iDoc).any { it.code == "CR" }
+        // Compare firing AND polarity (null = no fire): CurrentRepetition is the structural row index, so a
+        // fired comparison against it is always VALUE (no fill can change the index) — the dimension a
+        // firing-only check missed.
+        val kernel = RuntimeLaws.typeOf(kModel, "CR", kDoc).map { it.name }.orElse(null)
+        val interp = DmInterpreter(def).validateFull(iDoc).firstOrNull { it.code == "CR" }
+            ?.type?.let { if (it == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR" }
         assertEquals(kernel, interp, "$msg  (kernel=$kernel interp=$interp)")
     }
 

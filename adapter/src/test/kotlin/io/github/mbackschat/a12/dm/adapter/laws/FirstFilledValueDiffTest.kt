@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -37,8 +38,12 @@ class FirstFilledValueDiffTest {
             iDoc.field(ITEM, "K$row", 1, row, 1)
             if (qty != null) { kDoc.field(QTY, qty, 1, row, 1); iDoc.field(QTY, qty, 1, row, 1) }
         }
-        val kernel = RuntimeLaws.fires(kModel, "FF", kDoc)
-        val interp = DmInterpreter(def).validateFull(iDoc).any { it.code == "FF" }
+        // Compare BOTH firing AND polarity (null = no fire): the value-vs-omission type is the dimension the
+        // earlier firing-only check missed — an empty row BEFORE the first filled one makes it OMISSION
+        // (filling it could displace the first value), else VALUE (the first value is fixed).
+        val kernel = RuntimeLaws.typeOf(kModel, "FF", kDoc).map { it.name }.orElse(null)
+        val interp = DmInterpreter(def).validateFull(iDoc).firstOrNull { it.code == "FF" }
+            ?.type?.let { if (it == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR" }
         assertEquals(kernel, interp, "$msg  (kernel=$kernel interp=$interp)")
     }
 
@@ -51,6 +56,12 @@ class FirstFilledValueDiffTest {
     @Test fun malformedAtFirstFilledSuppresses() = agree(gt10, listOf(null, "-0", "99"), "first filled = -0 (formal error) → suppressed")
     @Test fun noFilledRowDoesNotFire() = agree(gt10, listOf(null, null), "no filled Qty → no first value → not fire")
     @Test fun singleFilledRow() = agree(gt10, listOf("42"), "first filled = 42 > 10")
+
+    // Polarity: an empty row BEFORE the first filled one → OMISSION (filling it could become the new first
+    // value); a first-row-filled (or only-later-empty) case → VALUE (the first value is fixed). KERNEL-FINDINGS.
+    @Test fun emptyBeforeFirstFilledIsOmission() = agree(gt10, listOf(null, "30"), "empty row precedes first filled (30) → OMISSION")
+    @Test fun firstRowFilledIsValue() = agree(gt10, listOf("30", null), "first row filled (30), later empty → VALUE")
+    @Test fun twoEmptyThenFilledIsOmission() = agree(gt10, listOf(null, null, "30"), "two empty rows precede first filled → OMISSION")
 
     private companion object {
         const val ITEM = "/Cart/Lines/ItemId"

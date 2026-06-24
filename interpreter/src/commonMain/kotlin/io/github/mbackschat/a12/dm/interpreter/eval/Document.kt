@@ -242,6 +242,12 @@ class Document @JvmOverloads constructor(
             return rows.size < declared || rows.any { reps -> valueAt(path, reps)?.value == null }
         }
 
+        // `FirstFilledValue` is displaceable iff an instantiated empty row precedes the first filled one
+        // (starRows is in repetition order, so the first filled is at indexOfFirst; > 0 means earlier rows
+        // were empty). A first-row-filled or no-filled-row case is fixed → VALUE.
+        override fun firstStarRowEmpty(path: String): Boolean =
+            starRows(path).indexOfFirst { reps -> valueAt(path, reps)?.value != null } > 0
+
         override fun displayValue(path: String): String? =
             valueAt(path, repsFor(path, group, rowReps))?.value
 

@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
 import io.github.mbackschat.a12.dm.interpreter.gen.asSink
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 
 /**
  * **FuzzDiagnostics** (harness B) — when the differential fuzz net catches a diverging seed, this turns the
@@ -28,8 +29,17 @@ object FuzzDiagnostics {
         enum class Kind { GROUP, FIELD, EMPTY }
     }
 
-    /** A run's outcome: the sorted fired-code multiset (the fuzz's gate) + the (code, pointer) pairs (localization). */
-    private data class Detail(val codes: List<String>, val codePointers: Set<Pair<String, String>>)
+    /**
+     * A run's outcome: the sorted fired-code multiset (the fuzz's gate) + the (code, pointer) pairs
+     * (localization) + the sorted **full-message signatures** `code|type|pointer` (harness D — the
+     * full-message differential: a stronger gate that also catches a wrong polarity or a wrong row, not just a
+     * missing/extra code).
+     */
+    private data class Detail(val codes: List<String>, val codePointers: Set<Pair<String, String>>,
+        val signatures: List<String>)
+
+    /** The normalized polarity token, identical on both engines ([MsgType] ⇄ kernel `IMessage.MessageType.name`). */
+    private fun polarity(type: MsgType): String = if (type == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR"
 
     /** Capture the placements [scenario] generates for [seed] (so we can replay subsets). */
     private fun record(scenario: PerfScenario, seed: Int): List<Place> {
@@ -54,7 +64,8 @@ object FuzzDiagnostics {
         val doc = Document(model.kinds, model.declaredReps, model.unsignedFields, model.rangeConfig, model.dateFormats, model.scales)
         replay(places, doc.asSink())
         val msgs = DmInterpreter(model).validateFull(doc)
-        return Detail(msgs.map { it.code }.sorted(), msgs.map { it.code to it.errorPath }.toSet())
+        return Detail(msgs.map { it.code }.sorted(), msgs.map { it.code to it.errorPath }.toSet(),
+            msgs.map { "${it.code}|${polarity(it.type)}|${it.errorPath}" }.sorted())
     }
 
     private fun kernelDetail(modelJson: String, places: List<Place>): Detail {
@@ -65,7 +76,8 @@ object FuzzDiagnostics {
             override fun emptyField(path: String, vararg reps: Int) { builder.emptyField(path, *reps) }
         })
         val msgs = RuntimeLaws.messages(modelJson, builder)
-        return Detail(msgs.map { it.code() }.sorted(), msgs.map { it.code() to it.field() }.toSet())
+        return Detail(msgs.map { it.code() }.sorted(), msgs.map { it.code() to it.field() }.toSet(),
+            msgs.map { "${it.code()}|${it.type().name}|${it.field()}" }.sorted())
     }
 
     /** Whether [places] still diverge — the SAME predicate as the fuzz (sorted fired-code multiset differs). */
@@ -81,6 +93,34 @@ object FuzzDiagnostics {
         val iOnly = (i - k).map { "${it.first}@${it.second}" }.sorted()
         return if (kOnly.isEmpty() && iOnly.isEmpty()) "seed=$seed: no (code,pointer) divergence"
         else "seed=$seed  kernel-only=$kOnly  interp-only=$iOnly"
+    }
+
+    /**
+     * Whether [seed]'s **full-message signatures** (`code|type|pointer` multiset) agree across both engines —
+     * the harness-D gate. Stronger than the codes-only fuzz: it also trips on a wrong **polarity**
+     * (VALUE↔OMISSION) or a right code on the **wrong row**, which a code multiset hides.
+     */
+    fun signaturesAgree(scenario: PerfScenario, seed: Int): Boolean {
+        val places = record(scenario, seed)
+        return interpDetail(scenario.interpModel, places).signatures ==
+            kernelDetail(scenario.kernelModel, places).signatures
+    }
+
+    /** A localized full-message report for [seed]: the `code|type|pointer` signatures present in only one engine. */
+    fun signatureDivergence(scenario: PerfScenario, seed: Int): String {
+        val places = record(scenario, seed)
+        val k = kernelDetail(scenario.kernelModel, places).signatures
+        val i = interpDetail(scenario.interpModel, places).signatures
+        val kOnly = multisetMinus(k, i)
+        val iOnly = multisetMinus(i, k)
+        return if (kOnly.isEmpty() && iOnly.isEmpty()) "seed=$seed: signatures agree"
+        else "seed=$seed  kernel-only=$kOnly  interp-only=$iOnly"
+    }
+
+    /** Multiset difference `a − b` (each element of [b] cancels at most one of [a]). */
+    private fun multisetMinus(a: List<String>, b: List<String>): List<String> {
+        val rem = b.toMutableList()
+        return a.filter { !rem.remove(it) }
     }
 
     /**

@@ -281,6 +281,13 @@ A fired comparison is an OMISSION error (`TRUE_AF`) only when filling an operand
 
 *(Locked: `adapter.laws.DirectionalPolarityDiffTest` (unsigned `StockOnHand` vs signed `Quantity`); the signed cases also in `adapter.laws.PolarityDiffTest`/`AggPolarityDiffTest`. The interpreter's directional treatment: INTERPRETER-FINDINGS IF9.)*
 
+**Function-operand fillability — `CurrentRepetition` and `FirstFilledValue` (probe + full-message fuzz, 2026-06-24).** The directional fillability above extends to value FUNCTIONS, not just fields/aggregates — and the naive "any empty/short star tail ⇒ fillable" over-reports OMISSION for two:
+
+- **`CurrentRepetition(group)`** is the structural **row index**; no field-fill changes it, so a fired comparison against it is **always VALUE** (probed: `CurrentRepetition(Lines) > 2` on row 3 → VALUE). The generic fallback wrongly reads its group argument as an "unfilled field" and types it OMISSION.
+- **`FirstFilledValue(g*/f)`** is **OMISSION iff an instantiated EMPTY row PRECEDES the first filled one** — filling that earlier row could become the new first value and clear the error — else **VALUE** (the first value is fixed; *later* empties are irrelevant). Probed: `(empty, 60)` → OMISSION; `(60, empty)` and `(60)` → VALUE.
+
+The naive star-omission notion (`starOmission`: any empty cell / short tail) is too broad for `FirstFilledValue` — only an empty row *before* the first filled matters. Both were mis-typed OMISSION until the **harness-D full-message fuzz** caught them (117/200 seeds — invisible to the codes-only gate). *(Locked: `adapter.laws.FullMessageFuzzDiffTest` + `CurrentRepetitionDiffTest`/`FirstFilledValueDiffTest`, now asserting polarity, not just firing; interpreter `EvalContext.firstStarRowEmpty` + `funcFill`.)*
+
 ## §5 supplement — tolerance boundary + comparison rescaling (runtime, 2026-06-10, RT-semantics drain)
 
 - **`DiffersWithToleranceRange{N}` fires strictly beyond the tolerance**: satisfied iff `|a − b| > N` — a difference of *exactly* N is still within tolerance and does **not** fire, in either direction. The boundary is the trap a modeller would guess either way. *(Locked: `adapter.laws.ToleranceComparisonLawsTest`.)*

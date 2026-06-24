@@ -193,6 +193,16 @@ class Interpreter(
         FunctionOp.SUM -> starFill(f) { signed -> Fill(canGrow = true, canShrink = signed) }
         FunctionOp.MAX_VALUE -> starFill(f) { Fill(canGrow = true, canShrink = false) }
         FunctionOp.MIN_VALUE -> starFill(f) { Fill(canGrow = false, canShrink = true) }
+        // CurrentRepetition is the structural ROW INDEX — no field-fill can change it, so a fired comparison
+        // against it is always a VALUE error (kernel-probed). The generic fallback would wrongly read its group
+        // argument as an "unfilled field" and type it OMISSION.
+        FunctionOp.CURRENT_REPETITION -> Fill(false, false)
+        // FirstFilledValue is displaceable by filling only when an instantiated EMPTY row PRECEDES the first
+        // filled one (filling it could become the new first value); else the first value is fixed → VALUE. The
+        // generic fallback (any empty/short star tail → fillable) over-reports OMISSION (kernel-probed).
+        FunctionOp.FIRST_FILLED_VALUE ->
+            ((f.args.singleOrNull() as? Expr.Star)?.path?.let { ctx.firstStarRowEmpty(it) } ?: false)
+                .let { Fill(it, it) }
         else -> leafOmission(f).let { Fill(it, it) }
     }
 

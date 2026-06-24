@@ -54,6 +54,16 @@ interface EvalContext {
      *  un-instantiated tail below the declared repetition) → types a fired comparison OMISSION. */
     fun starOmission(path: String): Boolean
 
+    /**
+     * Whether a `FirstFilledValue` over [path] could be **displaced by filling** — i.e. an instantiated
+     * EMPTY row precedes (lower repetition index than) the first filled row, so filling it could become the
+     * new first value (→ a fired comparison is OMISSION). False when the first row is already filled (the
+     * first value is fixed; filling later rows can't change it → VALUE) or no row is filled. This is NOT the
+     * broad [starOmission] (any empty cell): only an empty row BEFORE the first filled one matters
+     * (kernel-probed, KERNEL-FINDINGS §1 supplement). Default false (the flat spike contexts don't model rows).
+     */
+    fun firstStarRowEmpty(path: String): Boolean = false
+
     /** The raw display value of a field (for message interpolation), or null if empty. */
     fun displayValue(path: String): String?
 
