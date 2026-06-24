@@ -109,6 +109,12 @@ class Document @JvmOverloads constructor(
         // the kernel computes the row structure once and reuses it across rules — this is the direct analog).
         val attachByGroup: MutableMap<String, Map<Int, Set<List<Int>>>> = HashMap()
         val contextsByGroup: MutableMap<String, List<EvalContext>> = HashMap()
+        // Per-group rows indexed by EVERY prefix of their rep tuple (built once on first use): `prefix → rows
+        // whose reps start with it`. This replaces [starRows]'s O(all-rows) `.filter` per call with an O(1)
+        // lookup — the lever that kills the **O(rows²)** in semantic-index lookups (`[F For "v"]`) and
+        // cross-level star aggregates evaluated per row (the kernel's IndexFieldCache / row-index analog).
+        // Space is O(rows × depth) (depth ≤ ~4), built only for the groups actually star-resolved.
+        val prefixRowsByGroup: MutableMap<String, Map<List<Int>, List<List<Int>>>> = HashMap()
     }
 
     private var cachedIndex: Index? = null
@@ -309,14 +315,30 @@ class Document @JvmOverloads constructor(
 
         override fun repsOf(path: String): List<Int> = repsFor(path, group, rowReps)
 
-        /** Index tuples of [starPath] across every row of its deepest repeatable group ancestor in scope. */
+        /** Index tuples of [starPath] across every row of its deepest repeatable group ancestor in scope. The
+         *  in-scope rows are fetched by prefix in O(1) (via the [Index] prefix index), not by an O(all-rows)
+         *  filter — so a semantic-index / cross-level star resolved per row stays linear, not O(rows²). */
         private fun starRows(starPath: String): List<List<Int>> {
             val repGroup = parentGroup(starPath)
             val common = commonPrefixLen(partsOf(repGroup), partsOf(group))
-            return rowsOf(repGroup)
-                .filter { reps -> (0 until common).all { i -> reps[i] == rowReps[i] } }
+            return rowsWithPrefix(repGroup, rowReps.take(common))
                 .map { it + 1 }   // append the field's own index (1) to address the leaf
         }
+    }
+
+    /**
+     * Rows of [repGroup] whose rep tuple starts with [prefix] — O(1) via the per-group all-prefixes index
+     * (built once, dropped on mutation with the [Index]). Replaces the O(all-rows) scan that made per-row
+     * star/semantic-index resolution O(rows²). Document order is preserved (the index is built by iterating
+     * [rowsOf] in order).
+     */
+    private fun rowsWithPrefix(repGroup: String, prefix: List<Int>): List<List<Int>> {
+        val byPrefix = index().prefixRowsByGroup.getOrPut(repGroup) {
+            val m = HashMap<List<Int>, MutableList<List<Int>>>()
+            for (row in rowsOf(repGroup)) for (k in 0..row.size) m.getOrPut(row.take(k)) { ArrayList() }.add(row)
+            m
+        }
+        return byPrefix[prefix] ?: emptyList()
     }
 
     private fun kindOf(path: String): Kind = kinds[path] ?: error("no kind declared for $path")

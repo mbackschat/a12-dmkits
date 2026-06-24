@@ -207,6 +207,19 @@ object PerfCatalog {
         }
     }
 
+    /**
+     * **The semantic-index cliff** — a per-Line rule that resolves a semantic index `[/Perf/Lines/Amount For
+     * "NOMATCH"]`. The interpreter's `indexedCell` does a **linear scan of the repetition list per lookup**
+     * (here a non-matching key → the *full* scan, the worst case), and the rule iterates per row → **O(rows²)**;
+     * the kernel's `IndexFieldCache` makes each lookup O(1) → O(rows). This is the shape where the kernel's
+     * runtime optimization decisively beats a naive interpreter (KernelEdgeTest.semanticIndexCliff verifies it).
+     * (A constant literal key is used because the interpreter's parser only accepts a string-literal index, not
+     * the kernel's field-keyed `For <field>` form — itself a documented capability gap.)
+     */
+    fun semanticIndexPerRow(): PerfScenario =
+        scenario("SI cliff", LINES, "SI", "../Amount",
+            "FieldFilled(Amount) And [/Perf/Lines/Amount For \"NOMATCH\"] > 0", ::flatRows)
+
     /** Every catalog scenario, in order — for the gate to sweep. */
     fun all(): List<PerfScenario> = listOf(b1(), b2(), b3(), b4(), b5(), b6())
 

@@ -116,6 +116,28 @@ class PerfGateTest {
             "B1 scaling looks super-linear: 4× the rows took ${best}× the time (quadratic would be ~16×)")
     }
 
+    /**
+     * Guards the **row-prefix index** (the `IndexFieldCache` analog) against regression: a per-row rule with a
+     * semantic-index lookup was O(rows²) before that index (the `starRows` O(all-rows) scan per call). Time the
+     * interpreter (only — no kernel) at N and 4N; linear ≈ 4×, the old quadratic ≈ 16×. Trip well below.
+     */
+    @Test
+    fun semanticIndexStaysSubQuadratic() {
+        val si = PerfCatalog.semanticIndexPerRow()
+        var best = Double.MAX_VALUE
+        var bSmall = 0.0; var bLarge = 0.0
+        repeat(GROWTH_REPEATS) {
+            val small = PerfHarness.timeInterpreter(si, N_SMALL, warmup = 5, iters = 7)
+            val large = PerfHarness.timeInterpreter(si, N_SMALL * 4, warmup = 5, iters = 7)
+            val g = large.minMs / small.minMs
+            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        }
+        println("[perf] semantic-index sub-quadratic: ${"%.1f".format(bSmall)}ms@$N_SMALL → " +
+            "${"%.1f".format(bLarge)}ms@${N_SMALL * 4}  min-growth=${"%.2f".format(best)}× (linear≈4, old-quadratic≈16)")
+        assertTrue(best < SUB_QUADRATIC_MAX,
+            "semantic-index scaling looks super-linear: 4× rows took ${best}× the time (the row-prefix index regressed?)")
+    }
+
     private companion object {
         const val ABS_CEILING_MS = 5_000.0
         const val RATIO_CEILING = 5.0

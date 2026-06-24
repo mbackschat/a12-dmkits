@@ -37,6 +37,39 @@ class KernelEdgeTest {
     }
 
     /**
+     * **The semantic-index cliff — found, then closed.** A per-row rule resolves `[/Perf/Lines/Amount For
+     * "NOMATCH"]`. WITHOUT a row index, the interpreter scanned the whole repetition list per lookup (O(rows))
+     * × per-row iteration → **O(rows²)** — verified to go quadratic (growth ×3.5/doubling, the interp's lead
+     * collapsing) while the kernel's `IndexFieldCache` kept it ~linear; the kernel decisively won at scale.
+     * That was the proof that the kernel's runtime optimization is well-founded and *not* trivially beaten.
+     *
+     * The fix applied the same idea clean-room — `Document` now indexes rows by prefix (the `IndexFieldCache`
+     * analog) — so the interpreter is **linear again** here (growth ~×2/doubling). This test now GUARDS that:
+     * it prints the growth and asserts the interpreter stays **sub-quadratic** (a regression of the prefix
+     * index would send it back over the cliff). Correctness (interp == kernel) is asserted inside the harness.
+     */
+    @Test
+    fun semanticIndexCliff() {
+        val sc = PerfCatalog.semanticIndexPerRow()
+        println("[edge] semantic-index per-row — guarded sub-quadratic (was O(rows²) before the row-prefix index):")
+        var prevInterp = 0.0
+        var first = 0.0
+        var last = 0.0
+        for (n in listOf(500, 1000, 2000, 4000)) {
+            val row = PerfHarness.runScenario(sc, n, withJava = false)
+            val gi = if (prevInterp > 0) "  interp×%.1f".format(row.interp.medianMs / prevInterp) else ""
+            println("  N=%5d  %s%s".format(n, PerfHarness.format(row), gi))
+            if (first == 0.0) first = row.interp.medianMs
+            last = row.interp.medianMs
+            prevInterp = row.interp.medianMs
+        }
+        // 8× the rows: linear ≈ ×8 (+ fixed overhead), quadratic ≈ ×64. Trip well below quadratic.
+        org.junit.jupiter.api.Assertions.assertTrue(last / first < 20.0,
+            "semantic-index scaling looks super-linear: 8× rows took ${last / first}× the time (the row-prefix index regressed?)")
+        println("  (8× rows ⇒ linear ~×8, quadratic ~×64; measured ×${"%.1f".format(last / first)})")
+    }
+
+    /**
      * **Batch validation** (the user's explicit ask): the engine built ONCE, M slightly-varying documents
      * looped — the form-input / batch pattern the kernel's codegen + per-run caches are tuned for. Per-eval
      * interp vs both kernel baselines, swept over rule count so the kernel's batch advantage is visible.

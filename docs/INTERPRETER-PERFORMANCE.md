@@ -49,6 +49,23 @@ The kernel's documented architecture is **compile-once codegen + per-run caches*
 
 This is **measured, not assumed** — the rule-count sweep (`KernelEdgeTest`, opt-in `-Dperf.edge=true`) finds the crossover where interp/kernel passes 1.0. After the two optimizations above it sits at **~96 rules vs Groovy** (single-doc and per-eval batch), widening to ~1.2× at 192 rules. The residual is the inherent **interpreter-vs-generated-code** per-operation overhead — the honest motivation for a future **generator** (the "structure for a future generator" standing requirement): emit code per model, no tree-walk. Until then the interpreter is the right tool for the common case (a handful of rules, any document size, instant startup) and the kernel for very-rule-dense models in a hot reuse loop.
 
+### The kernel's per-run caches → where the interpreter is naive (the optimization map, 2026-06-24)
+
+The crossover is the *constant-factor* gap. The **steeper** danger is an **O(N²) cliff** where the kernel has a cache and the interpreter does a per-call scan. Each kernel cache (`…core.rt._30_8.internal.core`) names a pattern; the discipline is to check the interpreter's analog and *measure*, not assume. Read the kernel source **for the mechanism, not the expression** (clean-room): the *idea* — index by key, memoize group-fill — is reproduced in original Kotlin.
+
+| kernel cache | pattern it rescues | naive cost | interpreter's analog | verdict |
+|---|---|---|---|---|
+| **RepetitionNotUniqueErrorCache** | index/field uniqueness over a repetition list | O(N²) pairwise | `duplicateIndexCells` uses **hash grouping** (`groupingBy`/`eachCount`) | already O(N) ✓ |
+| **IndexFieldCache** | semantic-index `[F For v]` resolved per row | O(rows²) | `starRows` did an **O(all-rows) `.filter` per call** → **O(rows²)** — **measured quadratic** (growth ×3.5/doubling, the interp lead collapsing 0.17→0.66) | **was the cliff → FIXED**: `Document` now indexes rows by prefix (the clean-room `IndexFieldCache` analog); linear again, 98 ms→6.8 ms @4k rows. Guarded by `PerfGateTest.semanticIndexStaysSubQuadratic` |
+| **GroupFillCache** | `GroupFilled(G)` / requiredness over a big doc | O(rows × valued) | `groupFilled`'s non-repeatable branch scans `index().valued` **O(valued) per call** | **latent cliff** for GroupFilled-heavy / many-empty-required models — same prefix/scan issue; not yet stressed-and-fixed (hint) |
+| **CalculationCache** | a computed field reused by many rules | O(uses × recompute) | the interpreter computes per `compute()` call (no cross-rule reuse within a run) | minor today (compute is a separate pass); revisit if computed-field fan-out grows |
+| **ValidationCache** | repeated field reads / format reconversion | per-op constant | values resolved on demand; the AST + row-context memos cover the repeated-work axis | constant-factor, not a cliff |
+| **USBIndexCache** | HDV/USB code translation | O(lookups) | the interpreter does not model USB/HDV | out of scope |
+
+Plus non-cache kernel optimizations worth noting as hints: **iterator pruning** (skip empty repetitions above a threshold) and **end-index pruning** (iterate to the max *filled* row, not the declared max) — the interpreter sidesteps both because it only materializes *instantiated* rows (no empty-row iteration), so sparsity isn't its problem.
+
+**The honest lesson (the owner's skepticism, confirmed):** it is **not** easy to beat the kernel. Its caches each kill a real O(N²) the interpreter hits the moment a model uses that construct at scale — the semantic-index cliff was real and quadratic until the row-prefix index closed it, and at least one sibling (GroupFilled) is still latent. The interpreter wins the common case and startup, but staying on-par at scale means **systematically mirroring the kernel's runtime indexing** (clean-room), one verified cliff at a time — not assuming a tree-walker is inherently faster. Also found: the interpreter does not yet support the kernel's **field-keyed** semantic index (`[F For <field>]`, only string-literal) — a capability gap, not just a perf one.
+
 ## The harness (invest here — it pays off)
 
 Not ad-hoc `measureTime` calls sprinkled in tests — a **proper, reusable harness**, because it does double duty: it **gates** regressions *and* it's how we **find** the O(N²) hotspots in the group machinery. Design:
