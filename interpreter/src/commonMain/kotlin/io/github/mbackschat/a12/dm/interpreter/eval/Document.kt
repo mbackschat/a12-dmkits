@@ -248,8 +248,17 @@ class Document @JvmOverloads constructor(
          * edge. Requiredness rides on the same notion: `GroupFilled(relativeTo)`.)
          */
         override fun groupFilled(groupPath: String): Boolean =
-            if (groupPath in declaredReps) repsFor(groupPath, group, rowReps) in rowsOf(groupPath)
-            else index().valued.any { p -> p.path.startsWith("$groupPath/") && inScope(p) }
+            if (groupPath in declaredReps)
+                // A repeatable group is "filled" iff its instance at this row's reps is instantiated — an O(1)
+                // membership via the row-prefix index (was an O(rows) `in` on the row List, i.e. O(rows²) when
+                // hit per row by requiredness over a sparse-required document).
+                rowsWithPrefix(groupPath, repsFor(groupPath, group, rowReps)).isNotEmpty()
+            else
+                // A NON-repeatable group: any valued descendant in this row's scope. Still an O(valued) scan
+                // per call (the GroupFillCache analog) — a latent cliff for models with many explicit
+                // GroupFilled(nonRepeatableGroup) checks per row; see INTERPRETER-PERFORMANCE.md (the scoping
+                // depth here varies with the rule group, so it needs a (groupPath, group)-keyed prefix index).
+                index().valued.any { p -> p.path.startsWith("$groupPath/") && inScope(p) }
 
         override fun star(path: String): List<Val> =
             starRows(path).mapNotNull { reps -> valueAt(path, reps)?.value?.let { resolveValue(path, it) } }

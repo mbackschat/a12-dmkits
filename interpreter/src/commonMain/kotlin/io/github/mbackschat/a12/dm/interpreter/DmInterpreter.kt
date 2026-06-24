@@ -438,8 +438,12 @@ class DmInterpreter @JvmOverloads constructor(
                 customConditions, FieldPointer(errorPath, ctx.repsOf(errorPath))) { path ->
                     formalErrorAt(path, ctx, dup) != null || !isRelevant(path, ctx.repsOf(path))
                 }
-            if (interp.fires(ast)) {
-                val type = interp.firedType(ast) ?: MsgType.VALUE
+            // ONE typed walk per row (the fired MsgType, or null if it doesn't fire) — replaces the old
+            // fires()+firedType() pair, which walked the AST TWICE on every firing row. firedType != null ⟺
+            // the rule fires (truth == TRUE), and the value IS the polarity, so a firing row now costs one walk.
+            val firedType = interp.firedType(ast)
+            if (firedType != null) {
+                val type = firedType
                 val text = rule.messages[locale]?.let { renderMessage(it, rule.group, ctx) { p -> model.labelOf(p, locale) } } ?: ""
                 val referenced = refs.map { formatPointer(it, ctx.repsOf(it)) }
                 // refOmissionErrorResponsible: for an OMISSION error the kernel attaches ALL the operands the
