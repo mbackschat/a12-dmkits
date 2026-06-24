@@ -36,6 +36,43 @@ data class EvalClock(val today: String, val now: String? = null)
 enum class MsgType { VALUE, OMISSION }
 
 /**
+ * A **predefined custom field type**'s declarative validation — the kernel's `IPredefinedType` with
+ * `ValidationStrategy.LENGTH_AND_PATTERN_CHECK`: a value is a valid instance iff its length is within
+ * `[minLength, maxLength]` (each bound applies only when set) AND it FULLY matches [pattern] (when set). This
+ * is the validation domain for `Valid(field, "Name")` / `Invalid(field, "Name")` ([PredefinedTypeRegistry]).
+ *
+ * The kernel makes predefined types a **runtime CLIENT SPI** (project-specific; the kernel core ships none —
+ * KERNEL-FINDINGS §8), so the interpreter mirrors that: the consumer SUPPLIES the type definitions (a built-in
+ * set in [PredefinedTypeRegistry.DEFAULT], extensible per consumer). A `Valid`/`Invalid` over an *unregistered*
+ * type is reported **unsupported** (fail-fast), never silently no-op'd. (Checksum types — IBAN's mod-97 etc.,
+ * the kernel's `PROVIDED_VALIDATION_CODE` strategy — are out of this declarative model; they'd need a
+ * function-valued registry entry, a future extension.)
+ */
+data class PredefinedType(val minLength: Int? = null, val maxLength: Int? = null, val pattern: String? = null) {
+    private val regex: Regex? = pattern?.let { Regex(it) }
+
+    /** Whether [value] is a valid instance of this type — within the length bounds AND a full pattern match. */
+    fun accepts(value: String): Boolean =
+        (minLength == null || value.length >= minLength) &&
+            (maxLength == null || value.length <= maxLength) &&
+            (regex == null || regex.matches(value))
+}
+
+/**
+ * The consumer-supplied registry of [PredefinedType]s, keyed by name — the interpreter's twin of the kernel's
+ * `CustomFieldTypeService` client SPI. [DEFAULT] is the built-in common set the interpreter ships (no tax/gov
+ * types per the corpus rule); a consumer (dmtool, a library user) may pass its own map (built-ins + project
+ * types). Unknown name at evaluation → the rule is reported unsupported.
+ */
+object PredefinedTypeRegistry {
+    /** The built-in common predefined types — currently `EMail` (an e-commerce-relevant, public-spec type;
+     *  full-match local@domain.tld, no embedded whitespace). Extend here as common declarative types are added. */
+    val DEFAULT: Map<String, PredefinedType> = mapOf(
+        "EMail" to PredefinedType(minLength = 3, maxLength = 254, pattern = "[^@\\s]+@[^@\\s]+\\.[^@\\s]+"),
+    )
+}
+
+/**
  * A field's requiredness — the kernel's `IRequirednessConfig.Mode`. A required-but-empty field raises
  * the `mandatoryField` error and becomes **"unknown"** (KERNEL-FINDINGS §4): rules referencing it see
  * `Val.Unknown`, so the 3VL propagates it (a comparison goes unknown, but `… Or <true>` still fires). The

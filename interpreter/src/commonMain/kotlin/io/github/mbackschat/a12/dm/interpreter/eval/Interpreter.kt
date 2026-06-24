@@ -15,6 +15,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
+import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 
@@ -37,6 +38,10 @@ class Interpreter(
     /** Repeatable groups' index-field paths (the kernel's `indexFieldName`s) — the `SemanticIndex`
      *  (`[field For "value"]`) lookup resolves a group's index field from this. Supplied by [DmInterpreter]. */
     private val indexFields: Set<String> = emptySet(),
+    /** The consumer-supplied predefined-type registry (the kernel's `IPredefinedType` client SPI) — the
+     *  validation domain for `Valid(field, "Name")` / `Invalid(field, "Name")`. An unregistered type name →
+     *  the rule is reported unsupported (fail-fast). Supplied by [DmInterpreter]; default empty. */
+    private val predefinedTypes: Map<String, PredefinedType> = emptyMap(),
     /**
      * Whether a referenced field is **formally invalid** in this context — a present malformed value (a
      * format error) OR a required-but-empty field (a `mandatoryField` error). Such a field resolves to
@@ -97,9 +102,11 @@ class Interpreter(
         PredicateOp.FIELD_VALUE_IN_LIST, PredicateOp.FIELD_VALUE_NOT_IN_LIST,
         PredicateOp.DATE_RANGES_OVERLAP, PredicateOp.ATLEAST_ONE_DATE_RANGE_OVERLAPS,
         PredicateOp.FIELD_VALUES_NOT_UNIQUE,
-        PredicateOp.VALID -> false   // needs present ranges / ≥2 present equal values / a real present date
-        // Invalid fires on an empty row — every part unspecified IS invalid (kernel-probed, OMISSION).
-        PredicateOp.FIELD_NOT_FILLED, PredicateOp.GROUP_NOT_FILLED, PredicateOp.INVALID -> true
+        PredicateOp.VALID -> false   // needs present ranges / ≥2 present equal values / a real present date / a present value
+        PredicateOp.FIELD_NOT_FILLED, PredicateOp.GROUP_NOT_FILLED -> true
+        // Invalid(Date(...)) (1 arg) fires on an empty row — every part unspecified IS invalid (kernel-probed,
+        // OMISSION); Invalid(field, "Type") (2 args) does NOT — an empty field is "not specified", not evaluated.
+        PredicateOp.INVALID -> p.args.size == 1
         else -> quantifierFires(op, t = 0, f = p.args.size, n = p.args.size)   // all-empty: every operand FALSE
     }
 
@@ -280,8 +287,11 @@ class Interpreter(
         val op = PredicateOp.byName(p.name) ?: return MsgType.VALUE
         // Invalid(Date(...)) is directional: an empty (fillable) part could be filled to make the date real →
         // OMISSION; an all-present-but-unreal date is a value error → VALUE (kernel-probed, KERNEL-FINDINGS §6).
+        // The predefined-type form `Invalid(field, "Name")` (2 args) is a present-value verdict → VALUE; the
+        // date-construct `Invalid(Date(...))` (1 arg) is OMISSION only when an empty (fillable) part remains.
         if (op == PredicateOp.INVALID)
-            return if (dateStatusOf(p.args.single()) == DateStatus.HAS_EMPTY) MsgType.OMISSION else MsgType.VALUE
+            return if (p.args.size == 2 || dateStatusOf(p.args.single()) != DateStatus.HAS_EMPTY) MsgType.VALUE
+                else MsgType.OMISSION
         op.polarity?.let { return it }
         val n = p.args.size
         val (t, f) = quantTally(op, p.args)
@@ -326,16 +336,20 @@ class Interpreter(
             // Valid/Invalid(Date(...)): 3VL over the construction's status. A malformed part makes the whole
             // non-evaluable (UNKNOWN — both go quiet, the formal error fires); else Valid iff real-and-all-present,
             // Invalid its complement (unreal OR an empty part).
-            PredicateOp.VALID -> when (dateStatusOf(p.args.single())) {
-                DateStatus.REAL -> Tri.TRUE
-                DateStatus.UNREAL_PRESENT, DateStatus.HAS_EMPTY -> Tri.FALSE
-                DateStatus.MALFORMED -> Tri.UNKNOWN
-            }
-            PredicateOp.INVALID -> when (dateStatusOf(p.args.single())) {
-                DateStatus.REAL -> Tri.FALSE
-                DateStatus.UNREAL_PRESENT, DateStatus.HAS_EMPTY -> Tri.TRUE
-                DateStatus.MALFORMED -> Tri.UNKNOWN
-            }
+            // Two overloads share the Valid/Invalid keyword, disambiguated by arity: the date-construct form
+            // `Valid(Date(...))` (1 arg) and the predefined-type form `Valid(field, "TypeName")` (2 args).
+            PredicateOp.VALID -> if (p.args.size == 2) predefinedTypeValidity(p.args, expectValid = true)
+                else when (dateStatusOf(p.args.single())) {
+                    DateStatus.REAL -> Tri.TRUE
+                    DateStatus.UNREAL_PRESENT, DateStatus.HAS_EMPTY -> Tri.FALSE
+                    DateStatus.MALFORMED -> Tri.UNKNOWN
+                }
+            PredicateOp.INVALID -> if (p.args.size == 2) predefinedTypeValidity(p.args, expectValid = false)
+                else when (dateStatusOf(p.args.single())) {
+                    DateStatus.REAL -> Tri.FALSE
+                    DateStatus.UNREAL_PRESENT, DateStatus.HAS_EMPTY -> Tri.TRUE
+                    DateStatus.MALFORMED -> Tri.UNKNOWN
+                }
             // List quantifiers over the (TRUE, FALSE) operand tally (row-evaluated gate is upstream in eval).
             PredicateOp.ALL_FIELDS_FILLED, PredicateOp.NO_FIELD_FILLED, PredicateOp.AT_LEAST_ONE_FIELD_FILLED,
             PredicateOp.MORE_THAN_ONE_FIELD_FILLED, PredicateOp.NOT_ALL_FIELDS_FILLED,
@@ -346,6 +360,24 @@ class Interpreter(
                 Tri.of(quantifierFires(op, t, f, p.args.size))
             }
         }
+    }
+
+    /**
+     * `Valid(field, "Name")` / `Invalid(field, "Name")` — predefined-type validity (the kernel's client-SPI
+     * `IPredefinedType`; KERNEL-FINDINGS §8). An EMPTY field is "not specified" → not evaluated (UNKNOWN → no
+     * fire, kernel-probed); a present value is TRUE/FALSE by the registered type's [PredefinedType.accepts]
+     * (`Invalid` is its complement). An UNREGISTERED type name is **unsupported** (fail-fast) — the consumer
+     * must supply the validator, mirroring the kernel's client SPI.
+     */
+    private fun predefinedTypeValidity(args: List<Expr>, expectValid: Boolean): Tri {
+        val path = pathOf(args[0])
+        val typeName = (args[1] as? Expr.StrLit)?.v
+            ?: throw UnsupportedConstructException("predefined-type validity needs a string type name, got ${args[1]}")
+        val type = predefinedTypes[typeName]
+            ?: throw UnsupportedConstructException("unknown predefined type \"$typeName\" — register it in the predefined-type registry")
+        if (!ctx.filled(path)) return Tri.UNKNOWN
+        val value = ctx.displayValue(path) ?: return Tri.UNKNOWN
+        return Tri.of(type.accepts(value) == expectValid)
     }
 
     /**
@@ -921,7 +953,7 @@ class Interpreter(
         // filled values (empties dropped, like `star`) — the aggregate then consumes only those.
         val group = star.path.substringBeforeLast('/')
         return ctx.rowContexts(group)
-            .filter { rc -> Interpreter(rc, clock, baseYear, indexFields, invalid).fires(star.having) }
+            .filter { rc -> Interpreter(rc, clock, baseYear, indexFields, predefinedTypes, invalid).fires(star.having) }
             .mapNotNull { rc -> if (rc.filled(star.path)) rc.field(star.path) else null }
     }
 

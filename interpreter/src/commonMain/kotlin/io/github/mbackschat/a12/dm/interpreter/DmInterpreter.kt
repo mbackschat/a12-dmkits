@@ -22,6 +22,8 @@ import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
 import io.github.mbackschat.a12.dm.interpreter.model.Message
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
+import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
+import io.github.mbackschat.a12.dm.interpreter.model.PredefinedTypeRegistry
 import io.github.mbackschat.a12.dm.interpreter.model.Requiredness
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleResult
@@ -43,7 +45,14 @@ import kotlin.jvm.JvmOverloads
  * Today: full validation ([validateFull]) and single-rule eval ([testRule]/[evalCandidate]). Partial
  * validation, computations, and formal-error suppression are the next increments (INTERPRETER-BUILDOUT.md).
  */
-class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, private val clock: EvalClock? = null) {
+class DmInterpreter @JvmOverloads constructor(
+    private val model: ModelDef,
+    private val clock: EvalClock? = null,
+    /** The consumer-supplied predefined-type registry (`Valid`/`Invalid(field, "Name")`) — the kernel's
+     *  `IPredefinedType` client SPI. Defaults to the built-in common set ([PredefinedTypeRegistry.DEFAULT]);
+     *  a consumer may pass its own (built-ins + project types). An unregistered name → the rule is unsupported. */
+    private val predefinedTypes: Map<String, PredefinedType> = PredefinedTypeRegistry.DEFAULT,
+) {
 
     /**
      * Run every rule over each row of its iteration scope and return one [Message] per firing — the
@@ -287,7 +296,7 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
             val expr = parseExpression(comp.expressionText, comp.group)
             val scope = scopeFromRefs(exprRefs(expr) + comp.targetPath, comp.group)
             for (ctx in doc.contextsFor(scope)) {
-                out += when (val v = Interpreter(ctx, clock, model.baseYear, model.indexFields).evalExpression(expr)) {
+                out += when (val v = Interpreter(ctx, clock, model.baseYear, model.indexFields, predefinedTypes).evalExpression(expr)) {
                     is Val.Num -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v.display())
                     is Val.Txt -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v)
                     is Val.Bool -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v.toString())
@@ -343,7 +352,7 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
             // propagates it, so a bare comparison goes UNKNOWN but `… Or <true>` still FIRES — matching the
             // kernel's operand-level "not check-relevant" behavior (verified). A duplicate-index field is
             // likewise unknown (branch-scoped, same as a formal error) via [formalErrorAt].
-            val interp = Interpreter(ctx, clock, model.baseYear, model.indexFields) { path -> formalErrorAt(path, ctx, dup) != null }
+            val interp = Interpreter(ctx, clock, model.baseYear, model.indexFields, predefinedTypes) { path -> formalErrorAt(path, ctx, dup) != null }
             if (interp.fires(ast)) {
                 val type = interp.firedType(ast) ?: MsgType.VALUE
                 val text = rule.messages[locale]?.let { renderMessage(it, rule.group, ctx) { p -> model.labelOf(p, locale) } } ?: ""

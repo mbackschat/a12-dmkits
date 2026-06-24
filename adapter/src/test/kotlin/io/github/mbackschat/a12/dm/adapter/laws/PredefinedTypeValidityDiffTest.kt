@@ -1,0 +1,91 @@
+package io.github.mbackschat.a12.dm.adapter.laws
+
+import com.mgmtp.a12.kernel.core.customfieldtype.CustomFieldTypeService
+import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeCheckError
+import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeFactory
+import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldTypeValidationParam
+import com.mgmtp.a12.kernel.core.customfieldtype.ICustomFieldValidator
+import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
+import io.github.mbackschat.a12.dm.interpreter.model.Kind
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
+import io.github.mbackschat.a12.dm.interpreter.model.PredefinedTypeRegistry
+import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import java.util.Optional
+
+/**
+ * Differential — `ValidType`/`InvalidType` (`Valid(field, "EMail")` / `Invalid(field, "EMail")`), the
+ * predefined-custom-field-type validity predicates. The kernel makes these a runtime CLIENT SPI
+ * (`IPredefinedType`; KERNEL-FINDINGS §8) — the bare kernel ships no validator and is a degenerate no-op, so
+ * to get a REAL ground truth this test REGISTERS the SAME validator in BOTH engines: the kernel oracle via
+ * `CustomFieldTypeService` (a factory delegating to the interpreter's own [PredefinedTypeRegistry] spec), and
+ * the interpreter via its default registry (the built-in `EMail`). Identical validator on both sides → the
+ * differential verifies the OPERATOR SEMANTICS (firing, polarity, empty/not-specified handling), not the regex.
+ *
+ * Probe-confirmed: `Valid` fires iff the present value is a valid instance (VALUE), `Invalid` its complement
+ * (VALUE); an EMPTY field is "not specified" → neither fires (no `FieldFilled` guard needed).
+ */
+class PredefinedTypeValidityDiffTest {
+
+    private val order = RuntimeLaws.model("models/order.dm.json")
+    private val fields = listOf(FieldDef(NAME, Kind.STRING))
+
+    /** A kernel custom-field-type validator for "EMail" that delegates to the SAME spec the interpreter uses,
+     *  so both engines apply byte-identical validation logic. */
+    private val factory = object : ICustomFieldTypeFactory {
+        private val spec = PredefinedTypeRegistry.DEFAULT.getValue("EMail")
+        override fun createCustomFieldValidator(name: String): Optional<ICustomFieldValidator> =
+            if (name != "EMail") Optional.empty() else Optional.of(object : ICustomFieldValidator {
+                override fun validate(value: String, p: ICustomFieldTypeValidationParam, isDisplay: Boolean): Optional<ICustomFieldTypeCheckError> =
+                    if (spec.accepts(value)) Optional.empty()
+                    else Optional.of(object : ICustomFieldTypeCheckError {
+                        override fun getErrorMessage() = "invalid"
+                        override fun getErrorKey() = "EMAIL_INVALID"
+                    })
+            })
+    }
+
+    @BeforeEach fun register() = CustomFieldTypeService.getInstanceV2().registerV2(factory)
+    @AfterEach fun cleanup() = CustomFieldTypeService.getInstanceV2().cleanRegistry()
+
+    /** [cond] with CustomerName = [name] (null = empty); compare kernel vs interpreter (firing + polarity). */
+    private fun agree(cond: String, name: String?, msg: String) {
+        val kModel = RuntimeLaws.withRule(order, "/Order", "R", "../CustomerName", "VT", cond)
+        val def = ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "VT", "../CustomerName")))
+        val kDoc = RuntimeLaws.doc().group("/Order", 1)
+        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
+            def.scales, def.dateTimeFormats, def.datePrecisions, def.enumValues, def.enumCategories).group("/Order", 1)
+        if (name != null) { kDoc.field(NAME, name, 1, 1); iDoc.field(NAME, name, 1, 1) }
+        val k = RuntimeLaws.typeOf(kModel, "VT", kDoc).map { it.name }.orElse(null)
+        val i = DmInterpreter(def).validate(iDoc).messages.firstOrNull { it.code == "VT" }
+            ?.type?.let { if (it == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR" }
+        assertEquals(k, i, "$msg  (kernel=$k interp=$i)")
+    }
+
+    private val valid = "alice@example.com"
+    private val invalid = "not-an-email"
+
+    // Guarded form (the catalog's idiomatic `FieldFilled(...) And Valid(...)`).
+    @Test fun validEmailValidFires() = agree("FieldFilled(CustomerName) And Valid(CustomerName, \"EMail\")", valid, "valid email → Valid fires VALUE")
+    @Test fun invalidEmailValidNoFire() = agree("FieldFilled(CustomerName) And Valid(CustomerName, \"EMail\")", invalid, "invalid email → Valid no fire")
+    @Test fun invalidEmailInvalidFires() = agree("FieldFilled(CustomerName) And Invalid(CustomerName, \"EMail\")", invalid, "invalid email → Invalid fires VALUE")
+    @Test fun validEmailInvalidNoFire() = agree("FieldFilled(CustomerName) And Invalid(CustomerName, \"EMail\")", valid, "valid email → Invalid no fire")
+
+    // Bare form — empty is "not specified": neither Valid nor Invalid fires (no FieldFilled guard needed).
+    @Test fun bareValidValidFires() = agree("Valid(CustomerName, \"EMail\")", valid, "bare Valid, valid → fires VALUE")
+    @Test fun bareValidInvalidNoFire() = agree("Valid(CustomerName, \"EMail\")", invalid, "bare Valid, invalid → no fire")
+    @Test fun bareValidEmptyNoFire() = agree("Valid(CustomerName, \"EMail\")", null, "bare Valid, empty → no fire (not specified)")
+    @Test fun bareInvalidInvalidFires() = agree("Invalid(CustomerName, \"EMail\")", invalid, "bare Invalid, invalid → fires VALUE")
+    @Test fun bareInvalidValidNoFire() = agree("Invalid(CustomerName, \"EMail\")", valid, "bare Invalid, valid → no fire")
+    @Test fun bareInvalidEmptyNoFire() = agree("Invalid(CustomerName, \"EMail\")", null, "bare Invalid, empty → no fire (not specified)")
+
+    private companion object {
+        const val NAME = "/Order/CustomerName"
+    }
+}
