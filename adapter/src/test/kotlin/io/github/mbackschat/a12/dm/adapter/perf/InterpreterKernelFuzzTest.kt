@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
+import io.github.mbackschat.a12.dm.adapter.laws.FuzzDiagnostics
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -24,20 +25,17 @@ class InterpreterKernelFuzzTest {
         val scenario = PerfCatalog.fuzz()
         val interp = InterpreterPerfEngine.build(scenario)
         val kernel = KernelPerfEngine.build(scenario)
-        // Collect ALL divergences (not fail-fast) so one run shows every distinct mismatch to triage.
-        val mismatches = mutableListOf<String>()
-        for (seed in 0 until SEEDS) {
-            val i = interp.instance(n = 0, variant = seed).run()   // variant carries the RNG seed
-            val k = kernel.instance(n = 0, variant = seed).run()
-            if (i != k) {
-                val kOnly = k.toSet() - i.toSet()
-                val iOnly = i.toSet() - k.toSet()
-                mismatches += "seed=$seed  kernel-only=$kOnly  interp-only=$iOnly"
-            }
+        // Collect ALL diverging seeds (not fail-fast) so one run shows every distinct mismatch to triage.
+        val diverging = (0 until SEEDS).filter { seed ->
+            interp.instance(n = 0, variant = seed).run() != kernel.instance(n = 0, variant = seed).run()
         }
-        assertTrue(mismatches.isEmpty()) {
-            "interpreter diverged from the kernel on ${mismatches.size}/$SEEDS fuzz seeds:\n" +
-                mismatches.take(15).joinToString("\n")
+        assertTrue(diverging.isEmpty()) {
+            // FuzzDiagnostics (harness B) localizes each to the (code @ pointer) pairs that diverge, and shrinks
+            // the first to a minimal failing document — so the failure names the exact row + code, not just codes.
+            val scenario = PerfCatalog.fuzz()
+            "interpreter diverged from the kernel on ${diverging.size}/$SEEDS fuzz seeds:\n" +
+                diverging.take(15).joinToString("\n") { FuzzDiagnostics.localize(scenario, it) } +
+                "\n\n── shrunk first divergence ──\n" + FuzzDiagnostics.shrink(scenario, diverging.first())
         }
     }
 

@@ -147,7 +147,7 @@ The generator + fuzz are **reactive** (catch a divergence *after* you implement)
 | Harness | What it does | Status |
 |---|---|---|
 | **A · Kernel probe battery** (`adapter.laws.KernelProbe`) | Inject a candidate condition + run the REAL kernel over a battery of edge documents; report per-scenario *fires? / message type / all fired codes*. Learn the semantics **before** implementing (the `CurrentRepetition` miss — shipped wrong because I guessed instead of probing). | **Built** |
-| **B · Fuzz divergence localization** | On a failing seed, diff the **(code, pointer)** pairs (not just codes) so the output names the *row* + code that diverged; + a row-count **shrink** to the minimal failing doc. | planned (#35) |
+| **B · Fuzz divergence localization** (`adapter.laws.FuzzDiagnostics`) | On a failing seed, diff the **(code, pointer)** pairs (not just codes) so the output names the *row* + code that diverged; + a delta-debug **shrink** to the minimal failing doc. | **Built** |
 | **C · Catalog-parity meter** | A test that **fails** when an `operators.json` construct is unhandled by the interpreter (or un-fuzzed) — turns "what's left" into a derived checklist + a silent-gap guard. | planned (#36) |
 | **D · Full-message differential** | Deepen the fuzz beyond firing: compare message **TYPE** + **pointer** + code (NOT text — we diverge on text by design, [INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) IF3). | planned (#37) |
 | **E · Model fuzzing** | Generate random **valid models** (the generator already does docs from a model), then docs over them — explore the structural-edge space. | planned (#38) |
@@ -164,3 +164,7 @@ println(KernelProbe.report(model, "/Cart", "FF", "../Lines/Qty", "FirstFilledVal
 ```
 
 prints a table whose columns are *scenario · fires · message-type · all fired codes* — so you read, in one shot, that empties are skipped, a malformed first-filled **suppresses** (the rule goes quiet while a `zahl…` formal appears), and a leading empty types the firing OMISSION while a trailing empty types it VALUE. `KernelProbeTest` exercises the harness on `FirstFilledValue` (CI-green, anti-rot) and is the copyable usage example; **when probing a new operator, clone its shape, read the report, then write the interpreter + its `*DiffTest`.** It is a *tool*, not a gate — the gates stay the `*DiffTest`s + the fuzz.
+
+### B — fuzz divergence localization + shrink
+
+When the fuzz catches a seed, `FuzzDiagnostics` turns the codes-only verdict into the row-level "why". `localize(scenario, seed)` re-runs the seed and diffs the **(code, pointer)** pairs (both engines render the pointer the same `formatPointer` way), so the output reads `kernel-only=[DV@/Cart/Lines[1, 3, 1]] interp-only=[]` — the exact row and code, not a guess. `shrink(scenario, seed)` then **delta-debugs** the generated document — greedily dropping repeatable-group rows that aren't needed to keep the divergence (its predicate is the *same* sorted-code multiset the fuzz uses) — leaving a minimal failing instance to read. Both are wired into `InterpreterKernelFuzzTest`'s failure message, so a future divergence is self-describing. `FuzzDiagnosticsTest` exercises them on a deliberately-divergent scenario (anti-rot). This is what replaces the "reproduce the failing seed by hand to find the row" step that the `CurrentRepetition` divergence cost.
