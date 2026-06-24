@@ -5,6 +5,8 @@ Two coupled pieces that share one engine:
 1. **The model-driven seed generator** (`SeedGenerator`, package `…dm.interpreter.gen`) — given a document model, it produces a **valid-by-construction** document instance. Kernel-free and multiplatform, so the same code serves three consumers.
 2. **The differential fuzz net** (`adapter.perf.InterpreterKernelFuzzTest`) — built on the generator: it generates many random documents and asserts the **interpreter agrees with the real kernel** on every one. This is the strongest gate for the interpreter's #1 rule — *match the kernel exactly* ([INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) IF0).
 
+Around these sit a few **companion harnesses** that make the exact-match loop fast: a **kernel probe battery** (learn the kernel's behavior *before* implementing), **fuzz divergence localization** (pinpoint *which* row/code diverged), and a **catalog-parity meter** (guard against unhandled operators). They're documented in "[Companion harnesses](#companion-harnesses--the-probe-first-loop)" below.
+
 This doc is the **stable method**. The generator's *consumers* (the perf harness, a future `dmtool seed` verb) have their own homes — [INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md) for the perf side, task #33 for the verb. The catalogue of operators the fuzz model exercises is the *coverage map* in [INTERPRETER-BUILDOUT.md](INTERPRETER-BUILDOUT.md), not here.
 
 ## Why a generator at all
@@ -99,6 +101,7 @@ A hand-written `*DiffTest` proves one operator behaves on one input. The fuzz ne
 | 2 | **plain-date locale**: a `dd.MM.yyyy` value parsed as ISO | format-aware `DateMath.parseDateToIso` (`PlainDateDiffTest`) |
 | 3 | a malformed value in a numeric combiner **crashed** the interpreter | total parsing (`decOrNull`) + combiner Unknown-propagation (`AggMalformedDiffTest`) |
 | 4 | **`-0` parses but is a formal error** → an aggregate folded it as 0 and fired where the kernel suppresses | `Document.resolveValue` gates on `formalError`, not parseability (`UniquenessDiffTest`/`74052407`) |
+| 5 | a **presence check** (`FieldFilled`) on a present-but-malformed field returned TRUE and fired, but the kernel's `isWertAngegeben` is UNKNOWN for a not-check-relevant field | the 3-valued `Interpreter.filledTri` + the quantifier `(t,f)` tally (`CurrentRepetitionDiffTest`/`QuantifierMalformedDiffTest`) |
 
 (The colliding-key pool additionally drove index-field `uniqueIndex` + its suppression to parity.)
 
@@ -126,3 +129,38 @@ A failing fuzz seed prints `seed=N kernel-only=… interp-only=…`; reproduce i
 
 - **Perf harness** ([INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md)) — the *same* `SeedGenerator` + `PlacementSink` build the perf scenarios' instances into both engines; the fuzz net is the **correctness twin** of the perf differential (one asserts equality of outputs, the other measures time, both over generated real documents). The deterministic strategies there drive a known firing fraction; the fuzz strategy here is random.
 - **`dmtool seed` verb (#33)** — not yet built. The generator is already placed kernel-free precisely so the verb can wire `loader → SeedGenerator.populate(JsonSink) → serialize` on the native image, producing a valid sample instance for any model. The `PlacementSink` seam is the extension point — a third backing, no generator change.
+
+## Companion harnesses — the probe-first loop
+
+The generator + fuzz are **reactive** (catch a divergence *after* you implement). Around them sit harnesses that make the exact-match loop faster and tighter. The loop, end to end:
+
+```
+   ┌─ A. probe the kernel ──► learn the semantics (empty/malformed/boundary/sparse) BEFORE coding
+   │
+   ├─ implement clean-room  ──► the operator + its *DiffTest (the pinned cases)
+   │
+   ├─ B. fuzz + localize ───► random docs catch what you didn't pin; localize the failing row/code
+   │
+   └─ C. parity meter ──────► a guard that fails when a catalog operator is unhandled / un-fuzzed
+```
+
+| Harness | What it does | Status |
+|---|---|---|
+| **A · Kernel probe battery** (`adapter.laws.KernelProbe`) | Inject a candidate condition + run the REAL kernel over a battery of edge documents; report per-scenario *fires? / message type / all fired codes*. Learn the semantics **before** implementing (the `CurrentRepetition` miss — shipped wrong because I guessed instead of probing). | **Built** |
+| **B · Fuzz divergence localization** | On a failing seed, diff the **(code, pointer)** pairs (not just codes) so the output names the *row* + code that diverged; + a row-count **shrink** to the minimal failing doc. | planned (#35) |
+| **C · Catalog-parity meter** | A test that **fails** when an `operators.json` construct is unhandled by the interpreter (or un-fuzzed) — turns "what's left" into a derived checklist + a silent-gap guard. | planned (#36) |
+| **D · Full-message differential** | Deepen the fuzz beyond firing: compare message **TYPE** + **pointer** + code (NOT text — we diverge on text by design, [INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) IF3). | planned (#37) |
+| **E · Model fuzzing** | Generate random **valid models** (the generator already does docs from a model), then docs over them — explore the structural-edge space. | planned (#38) |
+
+### A — the kernel probe battery
+
+`KernelProbe` (in `:adapter`, kernel-only) answers *"what does the kernel actually do for this condition, across the edge cases?"* in one call — so probe-first is the path of least resistance, not a chore. The recurring shape (a per-row / aggregate / iteration operator over a repeatable field) has a ready battery:
+
+```kotlin
+val scenarios = KernelProbe.rowPatterns(valid = "5", malformed = "abc").map { (name, rows) ->
+    name to KernelProbe.rowsDoc("/Cart", "/Cart/Lines", itemId, qty, rows)   // 0/1/2/3 rows × empty/valid/malformed
+}
+println(KernelProbe.report(model, "/Cart", "FF", "../Lines/Qty", "FirstFilledValue(Lines*/Qty) > 3", scenarios))
+```
+
+prints a table whose columns are *scenario · fires · message-type · all fired codes* — so you read, in one shot, that empties are skipped, a malformed first-filled **suppresses** (the rule goes quiet while a `zahl…` formal appears), and a leading empty types the firing OMISSION while a trailing empty types it VALUE. `KernelProbeTest` exercises the harness on `FirstFilledValue` (CI-green, anti-rot) and is the copyable usage example; **when probing a new operator, clone its shape, read the report, then write the interpreter + its `*DiffTest`.** It is a *tool*, not a gate — the gates stay the `*DiffTest`s + the fuzz.
