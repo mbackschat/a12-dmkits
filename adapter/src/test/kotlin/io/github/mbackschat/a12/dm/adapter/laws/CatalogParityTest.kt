@@ -57,6 +57,7 @@ class CatalogParityTest {
         "Having",                                                          // Sum(star Having cond) — Expr.Star's per-row filter
         "EnumCategory",                                                    // [field -> Category] — Expr.EnumCategory, positional enum-value→category map
         "ValidType", "InvalidType",                                        // Valid/Invalid(field, "Name") — predefined-type validity via the consumer-supplied registry
+        "CustomCondition",                                                 // CustomCondition X — Cond.Custom, dispatched to a consumer-supplied CustomCondition SPI (cross-platform JVM+JS)
     )
 
     private val handled: Set<String> = enumHandled + astHandled
@@ -70,11 +71,11 @@ class CatalogParityTest {
      *  ([excluded], out of scope for a pure engine by nature). */
     private val deferred: Map<String, String> = emptyMap()
 
-    /** Constructs that are NOT pure-engine operators (out of scope by nature), each with its re-open trigger. */
-    private val excluded: Map<String, String> = mapOf(
-        "CustomCondition" to "delegates the fire/don't-fire decision to host code — not deterministically " +
-            "evaluable by a pure engine; revisit only if a host-callback seam is added to the interpreter",
-    )
+    /** Constructs that are NOT pure-engine operators (out of scope by nature), each with its re-open trigger.
+     *  Empty: `CustomCondition` is now handled via the consumer-supplied `CustomCondition` SPI (the interpreter
+     *  dispatches the construct exactly as the kernel delegates to client code) — every catalog construct is
+     *  handled. */
+    private val excluded: Map<String, String> = emptyMap()
 
     /**
      * Handled callables NOT yet in the differential fuzz net, each with a reason. Each is `*DiffTest`-locked

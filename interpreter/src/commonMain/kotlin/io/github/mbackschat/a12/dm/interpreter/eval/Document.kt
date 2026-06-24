@@ -3,7 +3,9 @@ package io.github.mbackschat.a12.dm.interpreter.eval
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
 import io.github.mbackschat.a12.dm.interpreter.ast.typedValue
+import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionData
 import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
+import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ValuedField
 import kotlin.jvm.JvmOverloads
@@ -261,6 +263,14 @@ class Document @JvmOverloads constructor(
 
         // Rows of groupPath scoped UNDER this row (the Having filter's per-row contexts).
         override fun rowContexts(groupPath: String): List<EvalContext> = rowContextsScoped(groupPath, rowReps)
+
+        // The data view a CustomCondition reads (the kernel's IData): document-wide raw-value lookup by
+        // (path, indices) and the set of present field instances — a custom condition's IData spans the whole
+        // document, the current row is carried by the error-field pointer (not row-scoped here).
+        override fun customConditionData(): CustomConditionData = object : CustomConditionData {
+            override fun getValue(field: FieldPointer): String? = valueAt(field.path, field.indices)?.value
+            override fun fields(): List<FieldPointer> = index().valued.map { FieldPointer(it.path, it.reps) }
+        }
 
         // EnumCategory `[field -> Category]`: map the enum field's stored value to its category value by its
         // POSITION in the enum's value list. An empty enum or an out-of-enum value yields no comparison value

@@ -14,7 +14,9 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
+import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
+import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
@@ -42,6 +44,14 @@ class Interpreter(
      *  validation domain for `Valid(field, "Name")` / `Invalid(field, "Name")`. An unregistered type name →
      *  the rule is reported unsupported (fail-fast). Supplied by [DmInterpreter]; default empty. */
     private val predefinedTypes: Map<String, PredefinedType> = emptyMap(),
+    /** Consumer-supplied custom conditions (the kernel's `ICustomCondition` SPI, cross-platform), keyed by name —
+     *  the validation domain for `CustomCondition X`. An unregistered name → the rule is reported unsupported.
+     *  Supplied by [DmInterpreter]; default empty. */
+    private val customConditions: Map<String, CustomCondition> = emptyMap(),
+    /** The current rule's error-field pointer (its `errorEntityRelPath` resolved to the row's reps) — the
+     *  `errorField` a custom condition's `check` receives. Null outside a rule eval (a computation / `Having`
+     *  sub-eval), where `CustomCondition` cannot appear. */
+    private val customErrorField: FieldPointer? = null,
     /**
      * Whether a referenced field is **formally invalid** in this context — a present malformed value (a
      * format error) OR a required-but-empty field (a `mandatoryField` error). Such a field resolves to
@@ -94,6 +104,7 @@ class Interpreter(
         is Cond.Or -> canFireEmpty(cond.left) || canFireEmpty(cond.right)
         is Cond.Not -> !canFireEmpty(cond.c)
         is Cond.Pred -> predFiresOnEmpty(cond)
+        is Cond.Custom -> false   // a custom condition is guarded by a field ref; an all-empty row is not evaluated
     }
 
     /** Whether a presence predicate is TRUE when all its operands are empty (k = 0 filled). */
@@ -123,6 +134,8 @@ class Interpreter(
         // A pattern fires only on a PRESENT value (empty → not evaluated), so a fired pattern is always a
         // present-value error → VALUE (there is no "fill more to fix it" omission — the field is filled).
         is Cond.Pattern -> Res(evalPattern(c), MsgType.VALUE)
+        // A custom condition's verdict is host-decided; a fired one is a present-value error → VALUE (kernel-probed).
+        is Cond.Custom -> Res(evalCustom(c), MsgType.VALUE)
         is Cond.And -> {
             val a = evalTyped(c.left)
             val b = evalTyped(c.right)
@@ -319,6 +332,23 @@ class Interpreter(
         is Cond.Not -> not(evalCond(c.c))
         is Cond.Pred -> evalPred(c)
         is Cond.Pattern -> evalPattern(c)
+        is Cond.Custom -> evalCustom(c)
+    }
+
+    /**
+     * `CustomCondition <name>` — delegate to the consumer-supplied [CustomCondition] (the kernel's
+     * `ICustomCondition` SPI). Fires iff `check` returns true; an **unregistered** name → the rule is reported
+     * unsupported (fail-fast). Passes the row's data view + the rule's error field; `relevant = null` (full
+     * validation) and `formallyIncorrect` = the row's formally-invalid fields, mirroring the kernel's call.
+     */
+    private fun evalCustom(c: Cond.Custom): Tri {
+        val condition = customConditions[c.name]
+            ?: throw UnsupportedConstructException("unregistered custom condition \"${c.name}\" — register it in the custom-condition registry")
+        val errorField = customErrorField
+            ?: throw UnsupportedConstructException("custom condition \"${c.name}\" needs the rule's error field — unavailable in this context")
+        val data = ctx.customConditionData()
+        val formallyIncorrect = data.fields().filter { invalid(it.path) }.toSet()
+        return Tri.of(condition.check(data, relevant = null, formallyIncorrect = formallyIncorrect, errorField = errorField))
     }
 
     private fun evalPred(p: Cond.Pred): Tri {
@@ -953,7 +983,7 @@ class Interpreter(
         // filled values (empties dropped, like `star`) — the aggregate then consumes only those.
         val group = star.path.substringBeforeLast('/')
         return ctx.rowContexts(group)
-            .filter { rc -> Interpreter(rc, clock, baseYear, indexFields, predefinedTypes, invalid).fires(star.having) }
+            .filter { rc -> Interpreter(rc, clock, baseYear, indexFields, predefinedTypes, customConditions, customErrorField, invalid).fires(star.having) }
             .mapNotNull { rc -> if (rc.filled(star.path)) rc.field(star.path) else null }
     }
 

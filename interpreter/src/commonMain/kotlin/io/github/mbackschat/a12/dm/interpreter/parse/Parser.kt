@@ -65,6 +65,8 @@ private class ConditionParser(private val src: String, private val base: String)
             return c
         }
         matchValueListQuant()?.let { return it }
+        // `CustomCondition <name>` — delegates to a consumer-supplied custom condition resolved by name.
+        if (matchKeyword("CustomCondition")) { skipWs(); return Cond.Custom(readIdent()) }
         val left = parseExpr()
         val op = tryCmpOp()
         if (op != null) return Cond.Cmp(op, left, parseExpr())

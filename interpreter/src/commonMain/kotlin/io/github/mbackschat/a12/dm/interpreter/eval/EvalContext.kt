@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.interpreter.eval
 
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
+import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionData
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 
 /**
@@ -72,6 +73,13 @@ interface EvalContext {
     /** One [EvalContext] per row of [groupPath] WITHIN this context's scope — for evaluating a `Having`
      *  per-row filter inside an aggregate. Default empty (the flat spike contexts don't model rows). */
     fun rowContexts(groupPath: String): List<EvalContext> = emptyList()
+
+    /** The row's data view for a `CustomCondition` — the kernel's `IData` surface (read field values by
+     *  path+indices, enumerate present fields). The general [Document] resolves it document-wide (a custom
+     *  condition's `IData` spans the document; the row is carried by the error-field pointer); the flat spike
+     *  contexts don't model it. */
+    fun customConditionData(): CustomConditionData =
+        throw UnsupportedConstructException("custom-condition data needs the general Document context, not $this")
 
     /** The category value of an enumeration field — `[field -> category]` (the `EnumCategory` operator): the
      *  field's stored value mapped POSITIONALLY to the named category's value, as a [Val.Txt]; [Val.Unknown]

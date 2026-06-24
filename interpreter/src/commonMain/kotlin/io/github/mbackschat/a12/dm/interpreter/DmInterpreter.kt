@@ -18,7 +18,9 @@ import io.github.mbackschat.a12.dm.interpreter.eval.renderDateToFormat
 import io.github.mbackschat.a12.dm.interpreter.eval.renderMessage
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.Computed
+import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
+import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.Message
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
@@ -52,6 +54,11 @@ class DmInterpreter @JvmOverloads constructor(
      *  `IPredefinedType` client SPI. Defaults to the built-in common set ([PredefinedTypeRegistry.DEFAULT]);
      *  a consumer may pass its own (built-ins + project types). An unregistered name → the rule is unsupported. */
     private val predefinedTypes: Map<String, PredefinedType> = PredefinedTypeRegistry.DEFAULT,
+    /** Consumer-supplied custom conditions (the kernel's `ICustomCondition` SPI, cross-platform JVM+JS), keyed
+     *  by name — `CustomCondition X`. Default empty: a model using an unregistered custom condition reports it
+     *  unsupported (fail-fast). A JVM consumer adapts existing kernel `ICustomCondition` impls onto the SPI; a
+     *  JS consumer implements the SPI directly. */
+    private val customConditions: Map<String, CustomCondition> = emptyMap(),
 ) {
 
     /**
@@ -347,16 +354,18 @@ class DmInterpreter @JvmOverloads constructor(
     private fun rowOutcomes(rule: RuleDef, doc: Document, locale: String, dup: Set<Pair<String, List<Int>>>): List<RowOutcome> {
         val ast = parseCondition(rule.conditionText, rule.group)
         val refs = nonStarredRefs(ast).distinct()
+        val errorPath = resolveErrorPath(rule)
         return doc.contextsFor(iterationScope(rule, ast)).map { ctx ->
             // A formally-invalid referenced field resolves to Val.Unknown (NOT a whole-rule skip): the 3VL
             // propagates it, so a bare comparison goes UNKNOWN but `… Or <true>` still FIRES — matching the
             // kernel's operand-level "not check-relevant" behavior (verified). A duplicate-index field is
-            // likewise unknown (branch-scoped, same as a formal error) via [formalErrorAt].
-            val interp = Interpreter(ctx, clock, model.baseYear, model.indexFields, predefinedTypes) { path -> formalErrorAt(path, ctx, dup) != null }
+            // likewise unknown (branch-scoped, same as a formal error) via [formalErrorAt]. The custom-condition
+            // registry + the row's error-field pointer ride along for a `CustomCondition X` leaf.
+            val interp = Interpreter(ctx, clock, model.baseYear, model.indexFields, predefinedTypes,
+                customConditions, FieldPointer(errorPath, ctx.repsOf(errorPath))) { path -> formalErrorAt(path, ctx, dup) != null }
             if (interp.fires(ast)) {
                 val type = interp.firedType(ast) ?: MsgType.VALUE
                 val text = rule.messages[locale]?.let { renderMessage(it, rule.group, ctx) { p -> model.labelOf(p, locale) } } ?: ""
-                val errorPath = resolveErrorPath(rule)
                 val referenced = refs.map { formatPointer(it, ctx.repsOf(it)) }
                 // refOmissionErrorResponsible: for an OMISSION error the kernel attaches ALL the operands the
                 // omission depends on (verified — both the filled and the empty operand of an And), so filling/
@@ -422,6 +431,7 @@ class DmInterpreter @JvmOverloads constructor(
         is Cond.Not -> nonStarredRefs(cond.c)
         is Cond.Pred -> cond.args.flatMap { exprRefs(it) }
         is Cond.Pattern -> exprRefs(cond.value) + exprRefs(cond.pattern)
+        is Cond.Custom -> emptyList()   // the name references no field in the text — the rule is guarded by a field ref
     }
 
     private fun exprRefs(expr: Expr): List<String> = when (expr) {

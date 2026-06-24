@@ -84,6 +84,15 @@ sealed interface Cond {
      * [fields] are bare field references; the [values] are the value list (literals and/or field references).
      */
     data class ValueListQuant(val op: ValueListQuantOp, val fields: List<Expr>, val values: List<Expr>) : Cond
+
+    /**
+     * A `CustomCondition <name>` — the rule delegates its fire/don't-fire decision to a consumer-supplied
+     * custom condition resolved by [name] (the kernel's `ICustomCondition` client SPI, cross-platform JVM+JS).
+     * Fires iff the registered condition's `check` returns true on an evaluated, formally-correct row; an
+     * unregistered name makes the rule unsupported. (Always guarded by a field reference — a bare custom
+     * condition is a kernel `MVK_ERROR_FIELD_NOT_REFERENCED`.)
+     */
+    data class Custom(val name: String) : Cond
 }
 
 /** Binary arithmetic operators (language-independent symbols). Division/power are not yet modeled. */
