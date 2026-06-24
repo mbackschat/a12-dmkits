@@ -368,6 +368,10 @@ class Document @JvmOverloads constructor(
         override fun starAll(path: String): List<Val> =
             starRows(path).map { reps -> valueAt(path, reps)?.value?.let { resolveValue(path, it) } ?: emptyValue(kindOf(path)) }
 
+        // Reps-aware (for the cascade overlay): one entry per group row, null = empty cell, malformed = Unknown.
+        override fun starCells(path: String): List<Pair<List<Int>, Val?>> =
+            starRows(path).map { reps -> reps to valueAt(path, reps)?.value?.let { resolveValue(path, it) } }
+
         override fun starOmission(path: String): Boolean {
             val repGroup = parentGroup(path)
             val rows = starRows(path)

@@ -426,9 +426,11 @@ class DmInterpreter @JvmOverloads constructor(
 
     /**
      * Decorates an [EvalContext] so reads of a field that a PRIOR computation produced return its computed
-     * value (the cascade overlay) — keyed by `(path, reps)`, no document mutation. Only the value/fill reads
-     * are overlaid (a direct `[A]` / `FieldFilled(A)` reference to a computed field A); star aggregation over a
-     * computed field is delegated to the real context (an exotic case, unchanged). All other methods delegate.
+     * value (the cascade overlay) — keyed by `(path, reps)`, no document mutation. Direct `[A]` /
+     * `FieldFilled(A)` reads are overlaid, AND a STARRED read (`Sum(Group* then A)`) applies the overlay per row
+     * (via [EvalContext.starCells]) — so an aggregate over a computed field sums the COMPUTED values, not the
+     * stored ones (KERNEL-FINDINGS §11). All other methods delegate. Used only by `compute()`, so the
+     * polarity/omission reads (irrelevant to a computed value) are left to the real context.
      */
     private class OverlayContext(
         private val d: EvalContext,
@@ -442,6 +444,17 @@ class DmInterpreter @JvmOverloads constructor(
             is Val.Txt -> v.v
             is Val.Bool -> v.v.toString()
             else -> d.displayValue(path)
+        }
+
+        // Each row's value is the overlaid (computed) value if present, else the stored cell — so an aggregate
+        // over a computed field reads the cascade results. star = filled values (overlaid counts as filled);
+        // starAll = row-aligned (empty rows fall back to the real context's kind-empty value).
+        override fun starCells(path: String): List<Pair<List<Int>, Val?>> =
+            d.starCells(path).map { (reps, v) -> reps to (overlay[path to reps] ?: v) }
+        override fun star(path: String): List<Val> = starCells(path).mapNotNull { it.second }
+        override fun starAll(path: String): List<Val> {
+            val base = d.starAll(path)
+            return starCells(path).mapIndexed { i, (_, v) -> v ?: base[i] }
         }
     }
 

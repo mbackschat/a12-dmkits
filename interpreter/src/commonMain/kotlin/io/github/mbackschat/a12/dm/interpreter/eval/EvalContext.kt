@@ -59,6 +59,16 @@ interface EvalContext {
     fun starAll(path: String): List<Val> =
         throw UnsupportedConstructException("row-aligned star needs the general Document context, not $this")
 
+    /**
+     * The starred field's value **per row, with its repetition indices** — `(reps, value-or-null)` where null is
+     * an empty cell (a malformed cell is [Val.Unknown]); the reps-aware twin of [starAll]. Lets a decorator that
+     * keys values by `(path, reps)` — the compute **cascade overlay** ([io.github.mbackschat.a12.dm.interpreter.DmInterpreter]'s
+     * `OverlayContext`) — apply itself to a STARRED read (`Sum(Group* then ComputedField)`), so an aggregate over
+     * a computed field sees the COMPUTED values, not the stored ones. The general [Document] resolves it.
+     */
+    fun starCells(path: String): List<Pair<List<Int>, Val?>> =
+        throw UnsupportedConstructException("row-aligned star cells need the general Document context, not $this")
+
     /** Whether a starred aggregate over [path] could still grow (an empty operand, or an
      *  un-instantiated tail below the declared repetition) → types a fired comparison OMISSION. */
     fun starOmission(path: String): Boolean
