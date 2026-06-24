@@ -1374,9 +1374,13 @@
     "kind": "constant",
     "keywords": { "en": "Now", "de": "Jetzt" },
     "returns": "date-time",
-    "meaning": "The current date-time — the date-time sibling of Today. Compares to a date-time field, and (truncated to the day) to a date field.",
-    "constraints": [ "discouraged with == (a moving target); forbidden in computations" ],
+    "meaning": "The current date-time — the date-time sibling of Today. Compares only to a date-time field (a field whose format carries a time component); comparing it to a plain date field is rejected, because the kernel requires the two operands' date formats to be consistent (a date format has no time, a date-time format does).",
+    "constraints": [
+      "the other operand must be a date-time (format with a time component) — comparing Now to a plain date field raises MVK_INVALID_COMPARE_TO_DATE",
+      "discouraged with == (a moving target); forbidden in computations"
+    ],
     "validExample": { "dsl": "FieldFilled(ScheduledAt) And [ScheduledAt] > Now", "note": "fires when the scheduled date-time is in the future" },
+    "invalidExample": { "dsl": "FieldFilled(Quantity) And [Quantity] >= Now", "error": "MVK_INVALID_COMPARE_TO_DATE", "fix": "Now is a date-time — compare it to a date-time field (e.g. ScheduledAt), not a number (and not a plain date field, which the kernel rejects at code generation for format inconsistency)" },
     "sinceKernel": "30.8.x"
   },
   {
