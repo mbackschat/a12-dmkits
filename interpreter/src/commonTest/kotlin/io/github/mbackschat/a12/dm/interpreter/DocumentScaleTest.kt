@@ -15,9 +15,12 @@ import kotlin.time.measureTime
  * Scaling benchmark over the REAL general [Document] (the production path), NOT the spike's map-backed
  * `RepDoc` — the honest counterpart of [InterpreterMultiplatformTest.scalesToManyRepetitionRows]
  * (INTERPRETER-PERFORMANCE.md). It is the regression guard for the #28 indexing: a quadratic `Document`
- * (O(P) per field lookup, O(P²) build) cannot evaluate 20k rows under the bound — it would take many
- * seconds / blow up — so this test trips on a reintroduced O(N²). Pure engine, kernel-free, runs on JVM
- * **and** JS (Node). Correctness here = the row count we computed; kernel parity is the `:adapter` job.
+ * (O(P) per field lookup, O(P²) build) cannot evaluate this under the bound — it would take many seconds /
+ * blow up — so this test trips on a reintroduced O(N²). Pure engine, kernel-free, runs on JVM **and** JS
+ * (Node). **10k real-Document rows is the JS-scaling guard**: it was *impossible* on JS until the index
+ * build's O(N²) `!in` dedup was removed (a single cold JS pass at this N took >2 s — the Mocha framework cap —
+ * and ~14 s at 20k), and is now ~100 ms on JS. (We hold at 10k, not higher, only for CI headroom under that
+ * hard 2000 ms per-test cap.) Correctness here = the row count we computed; kernel parity is the `:adapter` job.
  *
  * NOT the against-kernel perf differential (that lives in `:adapter`, needs the kernel + a build-once
  * pipeline — the next #29 increment). This slice establishes the harness + proves the real `Document` scales.
@@ -41,7 +44,7 @@ class DocumentScaleTest {
 
     @Test
     fun perRowRuleScalesOverManyRows() {
-        val n = 3_000
+        val n = 10_000
         // A per-row rule iterating /Perf/Lines; fires on the rows with Qty in 51..99 (49 per 100).
         val model = ModelDef(
             fields,
@@ -61,7 +64,7 @@ class DocumentScaleTest {
 
     @Test
     fun starAggregateScalesOverManyRows() {
-        val n = 3_000
+        val n = 10_000
         // An aggregate rule at /Perf summing Amount across every Lines row — exercises star collection at scale.
         val model = ModelDef(
             fields,

@@ -129,7 +129,12 @@ class Document @JvmOverloads constructor(
         for (p in placements) {
             partsMemo.getOrPut(p.path) { parts(p.path) }
             if (p.isGroup) {
-                rows.getOrPut(p.path) { ArrayList() }.let { if (p.reps !in it) it.add(p.reps) }
+                // No `!in` dedup needed: every group placement is already unique by (path, reps) — both
+                // group() and autoGroup() gate on the `instantiatedGroups` set before adding. The old
+                // membership check was an O(rows) List scan per group → an O(N²) index build that the WARM
+                // perf harness never saw (build runs once, before timing) but every COLD first validateFull
+                // pays — the startup / CLI-one-shot path, and the reason a single JS pass blew up at scale.
+                rows.getOrPut(p.path) { ArrayList() }.add(p.reps)
             } else {
                 byKey.getOrPut(p.path to p.reps) { p }   // FIRST placement per key wins (matches firstOrNull)
                 if (p.value != null) valued.add(p)
