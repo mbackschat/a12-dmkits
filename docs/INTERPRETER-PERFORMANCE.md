@@ -66,6 +66,54 @@ Plus non-cache kernel optimizations worth noting as hints: **iterator pruning** 
 
 **The honest lesson (the owner's skepticism, confirmed):** it is **not** easy to beat the kernel. Its caches each kill a real O(N²) the interpreter hits the moment a model uses that construct at scale — the semantic-index cliff was real and quadratic until the row-prefix index closed it, and at least one sibling (GroupFilled) is still latent. The interpreter wins the common case and startup, but staying on-par at scale means **systematically mirroring the kernel's runtime indexing** (clean-room), one verified cliff at a time — not assuming a tree-walker is inherently faster. Also found: the interpreter does not yet support the kernel's **field-keyed** semantic index (`[F For <field>]`, only string-literal) — a capability gap, not just a perf one.
 
+## Optimization catalog (rationale · implementation · example · results)
+
+Every optimization here is in **`commonMain`**, so it benefits **JVM and JS identically** (one code path; JS is verified by `DocumentScaleTest`/`InterpreterMultiplatformTest` on Node). The governing constraint is **fast startup**: each is **lazy** (built on first use inside the mutation-invalidated `Index`, or a per-rule `lazy {}`) — never eager work in the constructor. Listed in evaluation-pipeline order.
+
+### 1. Non-quadratic `Document` (the foundation, #28)
+
+- **Rationale.** The general `Document` stored placements in a `List`; every `field`/`filled`/`displayValue`/`star`/`groupFilled` did a linear `firstOrNull{…}` scan, so per-row evaluation was **O(N²)** — 100k rows could not even run (a quadratic JS document blew the 2 s test timeout at 20k).
+- **Implementation.** A lazily-built, **mutation-invalidated `Index`** maps `(path, reps) → placement` and `groupPath → rows`; lookups become O(1)/O(rows). Each row's `evaluated` flag is computed in **one amortized pass** over the valued fields; `autoGroup` dedups via a set (was O(P²)).
+- **Example.** B1 — a per-row `[Qty] > 50` over N `/Perf/Lines`.
+- **Results & discussion.** Linear: **300 000 rows at ~2.5 µs/row**. This is the prerequisite every later optimization builds on — without an O(1) value store, nothing else matters.
+
+### 2. Prepare-once ASTs (lazy parse cache)
+
+- **Rationale.** Every `validateFull` re-parsed each rule's condition — in fact **twice** (`repetitionNotUnique` + `rowOutcomes`). The hypothesis (#31) was that this per-call re-parse caused the many-rules slowdown.
+- **Implementation.** A per-rule `lazy {}` (`SYNCHRONIZED`, so the engine is thread-safe to reuse) AST wrapper, built in the constructor **without parsing** (→ fast startup); the first use parses and caches, every later call/row reuses. A single-rule `testRule` forces only the rule it touches.
+- **Example.** B6 / `manyRules(N)` in repeated-eval (engine reused over many documents).
+- **Results & discussion.** **Honest negative result:** parsing was *not* the bottleneck — the crossover did not move. The value is **startup + hygiene** (it also removed the redundant double-parse). The lesson — *measure before assuming* — is why the next optimization was found by profiling, not guessing.
+
+### 3. Per-group row-context memo
+
+- **Rationale.** `contextsFor`/`attachByDepth` did an **O(valued) attach-depth scan on every rule** (and every nested row). Many rules share a handful of iteration scopes, so this was O(rules × valued) of pure recomputation.
+- **Implementation.** Memoize `contextsFor` and `attachByDepth` **per group** inside the `Index` — computed once per distinct scope, reused across all rules. The clean-room analog of the kernel computing the document's row structure once and reusing it.
+- **Example.** B6 — 12 rules over ~3 distinct scopes (`/Perf`, `/Perf/Lines`, `…/Subs`).
+- **Results & discussion.** **~24 % faster across all rule counts**; crossover vs Groovy moved **~48 → ~96 rules**. This was the first real lever (vs #2's null result).
+
+### 4. Row-prefix index (the semantic-index / star cliff — the steepest)
+
+- **Rationale.** `starRows` did an **O(all-rows) `.filter` per call**; inside per-row iteration (a semantic index `[F For "v"]`, or a cross-level star aggregate) that is **O(rows²)**. Measured genuinely quadratic (growth ×3.5 per doubling, the interpreter's lead collapsing 0.17→0.66 over 500→4000 rows) while the kernel's `IndexFieldCache` stayed linear and **won at scale** — the proof that the kernel's optimization is well-founded.
+- **Implementation.** The `Index` indexes each group's rows by **every prefix of their rep tuple** (built once, dropped on mutation); `starRows` is then an O(1) lookup. The clean-room `IndexFieldCache`/row-index analog — the *idea*, in original Kotlin.
+- **Example.** A per-row rule `FieldFilled(Amount) And [/Perf/Lines/Amount For "NOMATCH"] > 0` (`PerfCatalog.semanticIndexPerRow`).
+- **Results & discussion.** **98 ms → 6.8 ms at 4000 rows**; linear again (growth ~×2/doubling), pulling *ahead* of the kernel (ratioG 0.66→0.04). Guarded against regression by `PerfGateTest.semanticIndexStaysSubQuadratic`. Also fixes any cross-level star aggregate evaluated per row (e.g. a per-Line `Sum(Subs* / Cost)` at scale).
+
+### 5. Single typed walk per row (no double AST walk)
+
+- **Rationale.** `rowOutcomes` called `fires()` (a Tri-only walk via `eval`) **and then** `firedType()` (a typed walk via `evalTyped`) — **two full AST walks on every firing row**. But `evalTyped` already yields the truth value, so the second walk is redundant.
+- **Implementation.** Call `firedType()` **once**: non-null ⟺ the rule fires (`truth == TRUE`), and the value *is* the polarity (VALUE/OMISSION). A firing row now costs one walk, not two.
+- **Example.** B6 / `manyRules(96)` — 45 480 firing rows, each previously walked twice.
+- **Results & discussion.** Crossover vs **kernel-Java reached parity at ~96 rules (ratioJava 0.99)**; the 192-rule gap narrowed **1.30 → 1.19**. The win scales with the firing ratio (no help for all-passing documents — those already walked once).
+
+### 6. O(1) repeatable-group fill
+
+- **Rationale.** `groupFilled`'s repeatable-group branch did `reps in rowsOf(group)` — an **O(rows) `List` membership** — so requiredness over a **sparse-required** document (many empty required fields, each triggering a `GroupFilled` check per row) was **O(rows²)**. The `GroupFillCache` analog (the repeatable half).
+- **Implementation.** O(1) membership via the row-prefix index (`rowsWithPrefix(group, reps).isNotEmpty()`).
+- **Example.** A form with many empty required fields across N rows (every empty field triggers the per-row group-fill check).
+- **Results & discussion.** Removes the latent requiredness O(N²). **Residual (documented hint):** the *non-repeatable* `GroupFilled` branch still scans valued fields O(valued) per call — its scoping depth varies with the rule group, so it needs a `(groupPath, group)`-keyed prefix index, deferred until a model stresses it.
+
+**Net effect (2026-06-24):** the interpreter is faster-and-linear for the common case, **starts ~29× without-codegen-faster**, has **no remaining *known* O(N²) cliff on the common paths**, and now **matches kernel-Java at ~96 rules / beats Groovy through ~150**. The last gap (1.19 at 192 rules) is the irreducible interpreter-vs-generated-code per-node cost — closing it past parity at extreme rule density is the **generator's** job, not more tree-walk tuning.
+
 ## The harness (invest here — it pays off)
 
 Not ad-hoc `measureTime` calls sprinkled in tests — a **proper, reusable harness**, because it does double duty: it **gates** regressions *and* it's how we **find** the O(N²) hotspots in the group machinery. Design:
@@ -159,15 +207,15 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 *The rule-count crossover* — **where the kernel wins** (single document, N=1000 Lines × 5 Subs; the lever for the interpreter's #2 goal):
 
-| rules | interp (before opt) | interp (after opt) | kernel-Java | interp/java after |
+| rules | interp (before any opt) | interp (after all opts) | kernel-Java | interp/java now |
 |---|---|---|---|---|
-| 6 | 41 ms | **28 ms** | ~103 ms | 0.28 |
-| 24 | 124 ms | **81 ms** | ~150 ms | 0.54 |
-| 48 | 199 ms | **143 ms** | ~177 ms | 0.81 |
-| 96 | 350 ms | **279 ms** | ~251 ms | 1.11 ← crossover |
-| 192 | 721 ms | **557 ms** | ~427 ms | 1.30 |
+| 6 | 41 ms | **32 ms** | ~97 ms | 0.32 |
+| 24 | 124 ms | **88 ms** | ~143 ms | 0.62 |
+| 48 | 199 ms | **146 ms** | ~185 ms | 0.79 |
+| 96 | 350 ms | **266 ms** | ~269 ms | **0.99 ← parity with Java** |
+| 192 | 721 ms | **539 ms** | ~452 ms | 1.19 |
 
-The two 2026-06-24 interpreter optimizations (prepare-once ASTs + per-group context memo) made it **~24% faster across all rule counts** and pushed the crossover from **~48 → ~96 rules**. Past it, the kernel's compile-once generated code wins (the residual tree-walk-vs-codegen overhead) — the motivation for a future generator. **Batch** (repeated-eval, engine reused, 20 varying docs, per-eval) crosses at the same point: 12 rules 0.40, 48 rules ~0.82, 96 rules ~1.1 (vs Groovy).
+The four 2026-06-24 interpreter optimizations (see **the Optimization catalog**: prepare-once ASTs, per-group context memo, row-prefix index, single typed walk + O(1) group-fill) cut every rule count and pushed the crossover vs **kernel-Java to parity at ~96 rules** (was ~48) — and the interpreter beats **Groovy** (the routine baseline) through ~150 rules. The 192-rule gap narrowed **1.67 → 1.19**. Past ~96 rules the kernel's compile-once generated code still wins at the limit (the irreducible tree-walk-vs-codegen per-node cost) — the **generator's** territory, not more tree-walk tuning. **Batch** (repeated-eval, engine reused, 20 varying docs, per-eval) crosses similarly.
 
 *Startup* (goal #1 — 48-rule model, interpreter measured **on its own terms**; the kernel's cold codegen is **deliberately NOT shown** — it is ahead-of-use in real projects, so comparing it is the forbidden measurement, non-negotiable #2):
 
