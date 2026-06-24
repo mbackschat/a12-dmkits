@@ -78,9 +78,12 @@ class PerfGateTest {
         val b1 = PerfCatalog.b1()
         val small = PerfHarness.timeInterpreter(b1, N_SMALL, warmup = 5, iters = 7)
         val large = PerfHarness.timeInterpreter(b1, N_SMALL * 4, warmup = 5, iters = 7)
-        val growth = large.medianMs / small.medianMs
-        println("[perf] B1 sub-quadratic check: ${"%.1f".format(small.medianMs)}ms@$N_SMALL → " +
-            "${"%.1f".format(large.medianMs)}ms@${N_SMALL * 4}  growth=${"%.2f".format(growth)}× (linear≈4, quadratic≈16)")
+        // Use the MIN time per N, not the median: min is the least-contended (truest single-thread) run, and a
+        // RATIO of two independently-noisy medians amplifies load spikes — that made this gate flip pass↔fail
+        // under machine load on identical code. Noise only inflates times, so min/min is the robust estimator.
+        val growth = large.minMs / small.minMs
+        println("[perf] B1 sub-quadratic check: ${"%.1f".format(small.minMs)}ms@$N_SMALL → " +
+            "${"%.1f".format(large.minMs)}ms@${N_SMALL * 4}  growth=${"%.2f".format(growth)}× (linear≈4, quadratic≈16)")
         assertTrue(growth < SUB_QUADRATIC_MAX,
             "B1 scaling looks super-linear: 4× the rows took ${growth}× the time (quadratic would be ~16×)")
     }
