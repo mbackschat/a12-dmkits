@@ -8,18 +8,20 @@ package io.github.mbackschat.a12.dm.interpreter.model
  */
 
 /** Field kinds the empty-value asymmetry depends on — the miniature "metadata bridge" (proposal §10). */
-enum class Kind { NUMBER, STRING, BOOLEAN, CONFIRM, DATE, TIME, DATE_RANGE }
+enum class Kind { NUMBER, STRING, BOOLEAN, CONFIRM, DATE, TIME, DATE_RANGE, DATE_TIME }
 
 /**
  * The evaluation reference clock — the "current point in time" the kernel reads for the clock constants
- * (`Today`, later `Now`). It is **injected**, not read from the platform: `commonMain` stays pure (no
+ * (`Today`, `Now`). It is **injected**, not read from the platform: `commonMain` stays pure (no
  * `java.time`/`Date.now()`), and a deterministic value makes evaluation testable. The consumer supplies it
- * (dmtool from the JVM clock; a JS consumer from `Date`). A model that uses `Today` with no clock cannot be
- * evaluated — the rule is reported as unsupported, not crashed.
+ * (dmtool from the JVM clock; a JS consumer from `Date`). A model that uses a clock constant with no clock
+ * (or `Now` with no [now]) cannot be evaluated — the rule is reported as unsupported, not crashed.
  *
  * @property today the current date as an ISO `yyyy-MM-dd` string (the value of `Today`).
+ * @property now the current date-time as an ISO `yyyy-MM-dd'T'HH:mm:ss` string (the value of `Now`), or null
+ *   when the consumer supplies only a date — then a `Now`-using rule is reported unsupported.
  */
-data class EvalClock(val today: String)
+data class EvalClock(val today: String, val now: String? = null)
 
 /** Value-vs-omission polarity of a fired message (kernel `IMessage.MessageType`). */
 enum class MsgType { VALUE, OMISSION }
@@ -137,6 +139,13 @@ data class ModelDef(
 
     /** The DATE field's declared format (ISO default), or null for a non-date field. */
     fun dateFormatOf(path: String): String? = dateFormats[path]
+
+    /** Each [Kind.DATE_TIME] field's rendering format (the kernel's `DateTimeType.format`, e.g.
+     *  `yyyy-MM-dd'T'HH:mm:ss`) — the [io.github.mbackschat.a12.dm.interpreter.eval.Document]'s format-aware
+     *  date-time-canonicalization input (ISO date-time default when unset). Locale-variant by reading the format. */
+    val dateTimeFormats: Map<String, String> = fields
+        .filter { it.kind == Kind.DATE_TIME }
+        .associate { it.path to (it.format ?: "yyyy-MM-dd'T'HH:mm:ss") }
 
     /** Each NUMBER field's scale (`maxFractionalDigits`) — the formal-check input (decimal-places errors); the
      *  [io.github.mbackschat.a12.dm.interpreter.eval.Document] needs it to gate a formally-invalid value to Unknown. */

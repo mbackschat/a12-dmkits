@@ -180,6 +180,23 @@ class InterpreterMultiplatformTest {
     }
 
     @Test
+    fun nowConstantResolvesToInjectedClock() {
+        // The date-time twin of the Today boundary: `Now` resolves to the INJECTED clock date-time and
+        // compares chronologically against a DATE_TIME field. Deterministic — the :adapter differential can
+        // only pin the FAR cases (wall-clock vs injected); this pins the exact instant. No kernel.
+        val sa = "/Order/ScheduledAt"
+        val dtKinds = mapOf(sa to Kind.DATE_TIME)
+        val clock = EvalClock(today = "2025-06-23", now = "2025-06-23T12:00:00")
+        fun fires(instant: String, cond: String) =
+            Interpreter(SingleRowDoc("/Order", mapOf(sa to instant), dtKinds), clock)
+                .fires(parseCondition(cond, "/Order"))
+        assertTrue(fires("2025-06-23T12:00:00", "[ScheduledAt] == Now"), "the same instant equals Now")
+        assertFalse(fires("2025-06-23T11:59:59", "[ScheduledAt] == Now"), "a second earlier does not equal Now")
+        assertTrue(fires("2025-06-23T11:59:59", "[ScheduledAt] < Now"), "a second earlier is before Now")
+        assertFalse(fires("2025-06-23T12:00:01", "[ScheduledAt] < Now"), "a second later is not before Now")
+    }
+
+    @Test
     fun rendersMessagePlaceholderOnBothPlatforms() {
         val ctx = SingleRowDoc("/Order", mapOf(q to "50"), kinds)
         assertEquals("low: 50", renderMessage("low: \$Quantity.value\$", "/Order", ctx))

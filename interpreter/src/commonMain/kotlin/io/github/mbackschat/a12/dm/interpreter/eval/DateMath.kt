@@ -162,6 +162,65 @@ private fun dateFragment(format: String): Pair<String, List<Char>>? {
     return if (comps.isEmpty()) null else sb.toString() to comps
 }
 
+/**
+ * Parse a date-TIME value rendered in [format] (the kernel's `DateTimeType.format`, e.g.
+ * `yyyy-MM-dd'T'HH:mm:ss`) into the canonical ISO `yyyy-MM-dd'T'HH:mm:ss`, or null when it doesn't match
+ * (a malformed date-time). Like [parseDateToIso] the interpreter stores every date-time in this fixed
+ * canonical form so a comparison stays lexicographic-chronological (`2000-…T00:00:00` < `2999-…T23:59:59`)
+ * and the extractors can read it; this brings a locale-variant rendered value to that form by reading the
+ * declared format. The time components default to 0 when the format omits them (a date-only datetime).
+ */
+fun parseDateTimeToIso(raw: String, format: String): String? {
+    val (frag, comps) = dateTimeFragment(format) ?: return null
+    val m = Regex("^$frag$").matchEntire(raw) ?: return null
+    return buildIsoDateTime(m.groupValues.drop(1), comps)
+}
+
+/**
+ * Like [dateFragment] but also recognizes the time runs `H`/`m`/`s`, and treats a single-quoted section
+ * `'…'` as a SimpleDateFormat-style literal (the quotes are delimiters, `''` is a literal quote) — so a
+ * `yyyy-MM-dd'T'HH:mm:ss` format matches a rendered `2024-06-01T12:30:00` (no quotes in the value). Null
+ * if [format] carries no date/time component.
+ */
+private fun dateTimeFragment(format: String): Pair<String, List<Char>>? {
+    val sb = StringBuilder()
+    val comps = mutableListOf<Char>()
+    var i = 0
+    while (i < format.length) {
+        val c = format[i]
+        when {
+            c == 'y' || c == 'M' || c == 'd' || c == 'H' || c == 'm' || c == 's' -> {
+                var j = i
+                while (j < format.length && format[j] == c) j++
+                sb.append("(\\d{").append(j - i).append("})")
+                comps.add(c)
+                i = j
+            }
+            c == '\'' -> {                                   // a quoted literal section: 'T' → literal T, '' → '
+                i++
+                while (i < format.length && format[i] != '\'') { sb.append(Regex.escape(format[i].toString())); i++ }
+                if (i < format.length) i++                   // consume the closing quote
+            }
+            else -> { sb.append(Regex.escape(c.toString())); i++ }
+        }
+    }
+    return if (comps.isEmpty()) null else sb.toString() to comps
+}
+
+/** Assemble ISO `yyyy-MM-dd'T'HH:mm:ss` from a date-time fragment's captured component [values] in [comps]
+ *  order; omitted time components default to 0; null if any component is out of range. */
+private fun buildIsoDateTime(values: List<String>, comps: List<Char>): String? {
+    var y = -1; var mo = -1; var d = -1; var h = 0; var mi = 0; var s = 0
+    comps.forEachIndexed { idx, c ->
+        val v = values[idx].toInt()
+        when (c) { 'y' -> y = v; 'M' -> mo = v; 'd' -> d = v; 'H' -> h = v; 'm' -> mi = v; 's' -> s = v }
+    }
+    if (y < 0 || mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59 || s > 59) return null
+    return iso(y, mo, d) + "T" + two(h) + ":" + two(mi) + ":" + two(s)
+}
+
+private fun two(n: Int): String = n.toString().padStart(2, '0')
+
 /** Assemble ISO `yyyy-MM-dd` from a date fragment's captured component [values] in [comps] order; null if out of range. */
 private fun buildIso(values: List<String>, comps: List<Char>): String? {
     var y = -1; var mo = -1; var d = -1

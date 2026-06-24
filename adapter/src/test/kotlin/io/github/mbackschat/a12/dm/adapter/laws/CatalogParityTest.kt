@@ -61,9 +61,9 @@ class CatalogParityTest {
     /** The operator backlog — constructs not yet handled, each with a reason. This IS "what's left to build". */
     private val deferred: Map<String, String> = buildMap {
         group(
-            "date/time family — needs a DATE_TIME value type + the partial-date precision foundation; the " +
+            "date/time family — needs the date-time/partial-date foundation extended past the Now constant; the " +
                 "Feb-28 leap time-clearing must be replicated when AddYears/AddMonths gain DATE_TIME operands",
-            "Now", "BaseYear", "Date", "Time", "DateTime", "DateFromDateTime", "TimeFromDateTime",
+            "BaseYear", "Date", "Time", "DateTime", "DateFromDateTime", "TimeFromDateTime",
             "AddHours", "AddMinutes", "AddSeconds",
             "DifferenceInHours", "DifferenceInMinutes", "DifferenceInSeconds",
             "DateRange", "ValueAsDate", "FirstDay", "LastDay",

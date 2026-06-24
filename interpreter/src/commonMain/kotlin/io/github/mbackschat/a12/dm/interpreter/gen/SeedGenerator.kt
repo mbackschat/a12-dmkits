@@ -107,6 +107,8 @@ object ValidValues : ValueStrategy {
         Kind.CONFIRM -> "true"   // a confirm has no `false` (that is a formal error) — true or empty only
         Kind.DATE -> renderByFormat(field.format ?: "yyyy-MM-dd", 2024, 1 + rnd.nextInt(12), 1 + rnd.nextInt(28))
         Kind.TIME -> renderByFormat(field.format ?: "HH:mm:ss", h = rnd.nextInt(24), mi = rnd.nextInt(60), s = rnd.nextInt(60))
+        Kind.DATE_TIME -> renderByFormat(field.format ?: "yyyy-MM-dd'T'HH:mm:ss",
+            2024, 1 + rnd.nextInt(12), 1 + rnd.nextInt(28), rnd.nextInt(24), rnd.nextInt(60), rnd.nextInt(60))
         Kind.DATE_RANGE -> {
             val fmt = field.format ?: "yyyy-MM-dd"
             val sep = field.rangeSeparator ?: "-"

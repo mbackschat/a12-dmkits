@@ -109,7 +109,7 @@ public final class InterpreterModelLoader {
     /** Build a {@link Document} from a nested fields map (the {@code DocInstance.readFields} output). */
     public static Document document(Map<String, Object> fields, ModelDef model) {
         Document doc = new Document(model.getKinds(), model.getDeclaredReps(), model.getUnsignedFields(),
-                model.getRangeConfig(), model.getDateFormats(), model.getScales());
+                model.getRangeConfig(), model.getDateFormats(), model.getScales(), model.getDateTimeFormats());
         walkInstance(doc, fields, new ArrayList<>(), new ArrayList<>());
         return doc;
     }
@@ -147,22 +147,28 @@ public final class InterpreterModelLoader {
         return switch (fieldNode.path("Field").path("fieldType").path("type").asText("")) {
             case "NumberType" -> Kind.NUMBER;
             case "DateType" -> Kind.DATE;
+            case "DateTimeType" -> Kind.DATE_TIME;
             case "TimeType" -> Kind.TIME;
             case "DateRangeType" -> Kind.DATE_RANGE;
             case "BooleanType" -> Kind.BOOLEAN;
             case "ConfirmType" -> Kind.CONFIRM;
-            default -> Kind.STRING;   // String / Enumeration / DateTime — STRING-shaped for the operators modeled so far
+            default -> Kind.STRING;   // String / Enumeration — STRING-shaped for the operators modeled so far
         };
     }
 
-    /** A DATE_RANGE field's date-rendering format ({@code DateRangeType.format}, e.g. {@code dd.MM.yyyy}), else null. */
+    /** A date-ish field's rendering format ({@code <Type>.format}, e.g. {@code dd.MM.yyyy} for a date,
+     *  {@code yyyy-MM-dd'T'HH:mm:ss} for a date-time) — read for DATE, DATE_TIME and DATE_RANGE so the
+     *  interpreter can canonicalize the rendered value; else null. */
     private static String formatOf(JsonNode fieldNode) {
         JsonNode type = fieldNode.path("Field").path("fieldType");
-        if (!"DateRangeType".equals(type.path("type").asText(""))) {
-            return null;
-        }
-        String fmt = type.path("DateRangeType").path("format").asText("");
-        return fmt.isEmpty() ? null : fmt;
+        String typeName = type.path("type").asText("");
+        return switch (typeName) {
+            case "DateType", "DateTimeType", "DateRangeType" -> {
+                String fmt = type.path(typeName).path("format").asText("");
+                yield fmt.isEmpty() ? null : fmt;
+            }
+            default -> null;
+        };
     }
 
     /** A DATE_RANGE field's two-date separator ({@code DateRangeType.rangeSeparator}, e.g. {@code -}), else null. */

@@ -74,10 +74,10 @@ fun formalError(kind: Kind, raw: String, scale: Int? = null, dateFormat: String?
         // null format defaults to ISO (KERNEL-FINDINGS plain-date locale handling, PlainDateDiffTest).
         Kind.DATE -> if (parseDateToIso(raw, dateFormat ?: ISO_FORMAT) != null) null else FormalErrorCode.DATE_FORMAT
         Kind.NUMBER -> numberFormalError(raw, scale)
-        // TIME's HH:mm:ss check and DATE_RANGE's `datumBereichFormatFalsch` are deferred (a malformed range
-        // already resolves to Val.Unknown via the format-aware parse, so a referencing rule is suppressed
-        // correctly; the missing piece is only the formal-error MESSAGE — same deferral as TIME, IF8).
-        Kind.STRING, Kind.BOOLEAN, Kind.CONFIRM, Kind.TIME, Kind.DATE_RANGE -> null
+        // TIME's HH:mm:ss check, DATE_TIME's date-time-format check, and DATE_RANGE's `datumBereichFormatFalsch`
+        // are deferred (a malformed value already resolves to Val.Unknown via the format-aware parse, so a
+        // referencing rule is suppressed correctly; the missing piece is only the formal-error MESSAGE — IF8).
+        Kind.STRING, Kind.BOOLEAN, Kind.CONFIRM, Kind.TIME, Kind.DATE_RANGE, Kind.DATE_TIME -> null
     }
 }
 

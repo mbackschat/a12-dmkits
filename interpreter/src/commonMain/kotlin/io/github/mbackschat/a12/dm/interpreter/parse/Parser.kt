@@ -283,6 +283,6 @@ private class ConditionParser(private val src: String, private val base: String)
         )
 
         /** No-operand constant keywords — emitted as `Expr.Const` (a bare ident, not a field path). */
-        val CONSTANTS = setOf("Today")
+        val CONSTANTS = setOf("Today", "Now")
     }
 }

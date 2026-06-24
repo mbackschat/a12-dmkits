@@ -442,13 +442,16 @@ class Interpreter(
     }
 
     /**
-     * A no-operand constant. `Today` resolves to the injected clock's current date (ISO text — a date
-     * value comparing chronologically, like any date field). Without a clock the constant cannot be
-     * resolved → reported as unsupported (tolerated by `validate`), not crashed.
+     * A no-operand constant. `Today` resolves to the injected clock's current date and `Now` to its current
+     * date-time (ISO text — values comparing chronologically, like any date / date-time field). Without the
+     * clock (or, for `Now`, without [EvalClock.now]) the constant cannot be resolved → reported as unsupported
+     * (tolerated by `validate`), not crashed.
      */
     private fun evalConst(name: String): Val = when (ConstantOp.byName(name)) {
         ConstantOp.TODAY -> Val.Txt(clock?.today
             ?: throw UnsupportedConstructException("Today needs an evaluation clock — construct DmInterpreter with an EvalClock"))
+        ConstantOp.NOW -> Val.Txt(clock?.now
+            ?: throw UnsupportedConstructException("Now needs an evaluation clock with a current date-time — construct DmInterpreter with an EvalClock(today, now)"))
         null -> throw UnsupportedConstructException("unsupported constant $name")
     }
 

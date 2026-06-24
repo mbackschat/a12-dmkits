@@ -114,7 +114,7 @@ sealed interface Expr {
  *  parsed without the up-front malformed-operand guard, so the parse itself must be total. */
 fun typedValue(kind: Kind, raw: String): Val = when (kind) {
     Kind.NUMBER -> decOrNull(raw)?.let { Val.Num(it) } ?: Val.Unknown
-    Kind.STRING, Kind.DATE, Kind.TIME -> Val.Txt(raw)   // ISO dates/times as text compare chronologically
+    Kind.STRING, Kind.DATE, Kind.TIME, Kind.DATE_TIME -> Val.Txt(raw)   // ISO dates/times as text compare chronologically
     Kind.BOOLEAN, Kind.CONFIRM -> Val.Bool(raw.equals("true", ignoreCase = true))
     // A DATE_RANGE needs its field's format + separator to parse — the general Document resolves it
     // format-aware; this meta-less path (the flat spike contexts) does not model ranges.
@@ -125,5 +125,5 @@ fun typedValue(kind: Kind, raw: String): Val = when (kind) {
 fun emptyValue(kind: Kind): Val = when (kind) {
     Kind.NUMBER -> Val.Num(DEC_ZERO)   // empty number → 0
     Kind.CONFIRM -> Val.Bool(false)     // empty confirm → False
-    Kind.BOOLEAN, Kind.STRING, Kind.DATE, Kind.TIME, Kind.DATE_RANGE -> Val.Unknown  // not evaluated
+    Kind.BOOLEAN, Kind.STRING, Kind.DATE, Kind.TIME, Kind.DATE_RANGE, Kind.DATE_TIME -> Val.Unknown  // not evaluated
 }

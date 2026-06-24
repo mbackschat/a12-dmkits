@@ -45,6 +45,10 @@ class Document @JvmOverloads constructor(
     /** Each NUMBER field's scale (`maxFractionalDigits`) — lets [resolveValue] formal-check a value so a
      *  formally-invalid one (signed-zero, too-many-decimals, …) resolves to [Val.Unknown] even when it parses. */
     private val scales: Map<String, Int?> = emptyMap(),
+    /** Each [Kind.DATE_TIME] field's rendering format (the kernel's `DateTimeType.format`) — lets [resolveValue]
+     *  canonicalize a rendered date-time to the ISO `yyyy-MM-dd'T'HH:mm:ss` form, format-aware. ISO default when
+     *  unset. (Appended after [scales] to keep the positional constructor compatible with existing callers.) */
+    private val dateTimeFormats: Map<String, String> = emptyMap(),
 ) {
     private data class Placement(val path: String, val reps: List<Int>, val value: String?, val isGroup: Boolean)
 
@@ -232,7 +236,9 @@ class Document @JvmOverloads constructor(
      * A present raw value → typed [Val], format-aware. A [Kind.DATE_RANGE] value is parsed to a [Val.Range] of
      * ISO dates via its field's `(format, separator)` ([rangeConfig]); a [Kind.DATE] value is canonicalized to
      * ISO via its field's `format` ([dateFormats], ISO default) — so a non-ISO `dd.MM.yyyy` field's `15.06.2024`
-     * becomes `2024-06-15` and the extractors/comparisons read it like any date. Both are locale-variant by
+     * becomes `2024-06-15` and the extractors/comparisons read it like any date. A [Kind.DATE_TIME] value is
+     * likewise canonicalized to ISO `yyyy-MM-dd'T'HH:mm:ss` via its field's `format` ([dateTimeFormats]) so it
+     * compares chronologically against `Now`. All are locale-variant by
      * construction (the format is read, not hardcoded); a malformed value → [Val.Unknown] (the referencing rule
      * is suppressed, and the document-wide formal check reports it). Other kinds go through the plain [typedValue].
      */
@@ -248,6 +254,8 @@ class Document @JvmOverloads constructor(
                 parseRangeToIso(raw, format, sep)?.let { Val.Range(it.first, it.second) }
             } ?: Val.Unknown
             Kind.DATE -> parseDateToIso(raw, dateFormats[path] ?: "yyyy-MM-dd")?.let { Val.Txt(it) } ?: Val.Unknown
+            Kind.DATE_TIME -> parseDateTimeToIso(raw, dateTimeFormats[path] ?: "yyyy-MM-dd'T'HH:mm:ss")
+                ?.let { Val.Txt(it) } ?: Val.Unknown
             else -> typedValue(kind, raw)
         }
     }
