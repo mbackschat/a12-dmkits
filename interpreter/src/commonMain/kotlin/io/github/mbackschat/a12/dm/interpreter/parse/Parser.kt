@@ -68,6 +68,8 @@ private class ConditionParser(private val src: String, private val base: String)
         if (op != null) return Cond.Cmp(op, left, parseExpr())
         val pat = matchOneOf(PATTERN_OPS)
         if (pat != null) return Cond.Pattern(left, parseExpr(), expectMatch = pat == "PatternMatched")
+        val tol = matchOneOf(TOLERANCE_OPS.keys)
+        if (tol != null) return Cond.Tolerance(left, parseExpr(), TOLERANCE_OPS.getValue(tol))
         if (left !is Expr.Func || left.name !in PREDICATES) {
             // Not a comparison, a pattern test, or a known boolean predicate — e.g. `CustomCondition X`.
             throw UnsupportedConstructException("not a supported condition shape: $left")
@@ -246,6 +248,13 @@ private class ConditionParser(private val src: String, private val base: String)
             "DateRangesOverlap", "FieldValuesNotUnique",
         )
         val PATTERN_OPS = setOf("PatternMatched", "PatternViolated")
+
+        /** The fixed-band tolerance comparisons (infix keyword → its band): `a DiffersWithToleranceRangeN b`
+         *  fires iff `|a − b| > N`. `readIdent` reads the whole keyword, so `Range10` can't collide with `Range1`. */
+        val TOLERANCE_OPS = mapOf(
+            "DiffersWithToleranceRange1" to dec("1"), "DiffersWithToleranceRange2" to dec("2"),
+            "DiffersWithToleranceRange5" to dec("5"), "DiffersWithToleranceRange10" to dec("10"),
+        )
 
         /** No-operand constant keywords — emitted as `Expr.Const` (a bare ident, not a field path). */
         val CONSTANTS = setOf("Today")

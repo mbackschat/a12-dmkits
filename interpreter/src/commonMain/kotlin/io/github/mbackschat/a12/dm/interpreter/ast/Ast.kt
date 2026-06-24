@@ -53,6 +53,14 @@ sealed interface Cond {
      * value matches); PatternViolated fires when a *present* value does NOT match (empty → not evaluated).
      */
     data class Pattern(val value: Expr, val pattern: Expr, val expectMatch: Boolean) : Cond
+
+    /**
+     * The infix tolerance comparison `left DiffersWithToleranceRangeN right` — fires iff `|left − right| >
+     * [tolerance]` (a fixed band of 1/2/5/10; the bound is STRICT, so a difference exactly equal to the band
+     * does NOT fire). Numbers only; an empty numeric operand reads as 0. Its polarity is EQ-like (filling an
+     * empty operand toward the other can clear it → OMISSION; both present → VALUE).
+     */
+    data class Tolerance(val left: Expr, val right: Expr, val tolerance: Dec) : Cond
 }
 
 /** Binary arithmetic operators (language-independent symbols). Division/power are not yet modeled. */

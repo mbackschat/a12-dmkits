@@ -45,6 +45,8 @@ class CatalogParityTest {
         "Equal", "NotEqual",
         "Arithmetic",                                                       // Expr.Arith / ArithOp (+ - * / ^)
         "PatternMatched", "PatternViolated",                               // Cond.Pattern
+        "DiffersWithToleranceRange1", "DiffersWithToleranceRange2",        // Cond.Tolerance (|a−b| > N)
+        "DiffersWithToleranceRange5", "DiffersWithToleranceRange10",
         "True", "False",                                                   // Expr.BoolLit
     )
 
@@ -73,11 +75,6 @@ class CatalogParityTest {
             "repetition uniqueness — across-row key uniqueness of a repetition (distinct from the handled " +
                 "scalar FieldValuesNotUnique and the index-field uniqueIndex check, IF15)",
             "RepetitionNotUnique", "FromScope",
-        )
-        group(
-            "tolerance comparisons — !=-outside-a-fixed-band; a comparison-operator variant not yet built",
-            "DiffersWithToleranceRange1", "DiffersWithToleranceRange2",
-            "DiffersWithToleranceRange5", "DiffersWithToleranceRange10",
         )
         group(
             "path-ops / scope — operate on the path/repetition selection, not as a standalone predicate/function",

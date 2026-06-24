@@ -73,6 +73,7 @@ class Interpreter(
     private fun canFireEmpty(cond: Cond): Boolean = when (cond) {
         is Cond.Cmp -> false
         is Cond.Pattern -> false
+        is Cond.Tolerance -> false   // |0 − 0| = 0 is never > N (the band is ≥ 1) — an all-empty row can't fire
         is Cond.And -> canFireEmpty(cond.left) && canFireEmpty(cond.right)
         is Cond.Or -> canFireEmpty(cond.left) || canFireEmpty(cond.right)
         is Cond.Not -> !canFireEmpty(cond.c)
@@ -96,6 +97,7 @@ class Interpreter(
     //   Or  — value wins  (a satisfied value branch convicts regardless of filling).
     private fun evalTyped(c: Cond): Res = when (c) {
         is Cond.Cmp -> Res(evalCmp(c), leafType(c.op, c.left, c.right))
+        is Cond.Tolerance -> Res(evalTolerance(c), toleranceType(c))
         is Cond.Pred -> Res(evalPred(c), predType(c))
         // A pattern fires only on a PRESENT value (empty → not evaluated), so a fired pattern is always a
         // present-value error → VALUE (there is no "fill more to fix it" omission — the field is filled).
@@ -192,6 +194,27 @@ class Interpreter(
     }
 
     /**
+     * `left DiffersWithToleranceRangeN right` — fires iff `|left − right| > [Cond.Tolerance.tolerance]` (the
+     * band is STRICT). Numbers only; an empty operand resolves to `Val.Num(0)` (empty-as-0, like any
+     * comparison); a malformed / non-numeric operand → Unknown → the rule is suppressed. The band compare
+     * rescales to scale 19, like the kernel's `vergleiche`.
+     */
+    private fun evalTolerance(c: Cond.Tolerance): Tri {
+        val a = (evalExpr(c.left) as? Val.Num)?.v ?: return Tri.UNKNOWN
+        val b = (evalExpr(c.right) as? Val.Num)?.v ?: return Tri.UNKNOWN
+        return Tri.of((a - b).abs().scale19().compareTo(c.tolerance.scale19()) > 0)
+    }
+
+    /** Tolerance polarity is EQ-like (kernel-probed): OMISSION when filling an empty operand toward the other
+     *  could close the gap and clear the firing, else VALUE — so it is fillable iff either operand can move. */
+    private fun toleranceType(c: Cond.Tolerance): MsgType {
+        val l = fill(c.left)
+        val r = fill(c.right)
+        val fillable = l.canGrow || l.canShrink || r.canGrow || r.canShrink
+        return if (fillable) MsgType.OMISSION else MsgType.VALUE
+    }
+
+    /**
      * The value-vs-omission polarity of a fired predicate. Non-quantifier predicates carry a static
      * [PredicateOp.polarity]; a field-list quantifier's polarity is **data-dependent** and computed the way
      * the kernel does — OMISSION iff filling some currently-empty operand could clear the firing (so the
@@ -219,6 +242,7 @@ class Interpreter(
 
     private fun evalCond(c: Cond): Tri = when (c) {
         is Cond.Cmp -> evalCmp(c)
+        is Cond.Tolerance -> evalTolerance(c)
         is Cond.And -> and(evalCond(c.left), evalCond(c.right))
         is Cond.Or -> or(evalCond(c.left), evalCond(c.right))
         is Cond.Not -> not(evalCond(c.c))

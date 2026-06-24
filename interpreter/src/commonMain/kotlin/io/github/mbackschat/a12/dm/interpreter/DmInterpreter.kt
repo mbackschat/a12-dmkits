@@ -314,6 +314,7 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
     /** Every non-starred field-reference path in the condition (Star refs are aggregates, excluded). */
     private fun nonStarredRefs(cond: Cond): List<String> = when (cond) {
         is Cond.Cmp -> exprRefs(cond.left) + exprRefs(cond.right)
+        is Cond.Tolerance -> exprRefs(cond.left) + exprRefs(cond.right)
         is Cond.And -> nonStarredRefs(cond.left) + nonStarredRefs(cond.right)
         is Cond.Or -> nonStarredRefs(cond.left) + nonStarredRefs(cond.right)
         is Cond.Not -> nonStarredRefs(cond.c)
