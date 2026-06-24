@@ -24,7 +24,9 @@ class RepetitionNotUniqueNestedDiffTest {
     private val cond = "RepetitionNotUnique(Milestones/Tasks/Effort)"
 
     /** Milestones each holding a list of Task Efforts; Phase/TaskId distinct (indexes). Compare kernel vs interp. */
-    private fun agree(efforts: List<List<String>>, msg: String) {
+    private fun agree(efforts: List<List<String>>, msg: String) = agree(cond, efforts, msg)
+
+    private fun agree(cond: String, efforts: List<List<String>>, msg: String) {
         val kModel = RuntimeLaws.withRule(project, "/Project", "RU", "../Milestones/Tasks/Effort", "RU", cond)
         val def = ModelDef(fields, listOf(RuleDef("/Project/RU", "/Project", cond, "RU", "../Milestones/Tasks/Effort")),
             repeatableGroups = setOf("/Project/Milestones", "/Project/Milestones/Tasks"),
@@ -61,6 +63,19 @@ class RepetitionNotUniqueNestedDiffTest {
 
     @Test fun threeWayAcross() =
         agree(listOf(listOf("5", "7"), listOf("5", "5")), "5 appears 3× across M1+M2 → all three flagged")
+
+    // @From overrides the reference group. M1[5,7] M2[5,9]: the 5 dups across milestones, unique within each.
+    @Test fun fromMilestonesIsGlobal() =
+        agree("RepetitionNotUnique(Milestones/Tasks/Effort @From Milestones)",
+            listOf(listOf("5", "7"), listOf("5", "9")), "@From Milestones → reference Milestones → checked across all milestones (fires)")
+
+    @Test fun fromTasksIsPerMilestone() =
+        agree("RepetitionNotUnique(Milestones/Tasks/Effort @From Milestones/Tasks)",
+            listOf(listOf("5", "7"), listOf("5", "9")), "@From Milestones/Tasks → reference Tasks → per-milestone scope (no cross-milestone dup → none)")
+
+    @Test fun fromTasksStillFiresWithinAMilestone() =
+        agree("RepetitionNotUnique(Milestones/Tasks/Effort @From Milestones/Tasks)",
+            listOf(listOf("5", "5"), listOf("7", "9")), "@From Milestones/Tasks → 5,5 within M1 still flagged (per-milestone)")
 
     private companion object {
         const val PHASE = "/Project/Milestones/Phase"

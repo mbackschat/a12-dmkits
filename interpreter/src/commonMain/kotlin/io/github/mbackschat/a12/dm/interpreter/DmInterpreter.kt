@@ -68,8 +68,8 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
         val unsupported = mutableListOf<UnsupportedRule>()
         for (rule in model.rules) {
             try {
-                val keys = repetitionNotUniqueKeys(rule)
-                messages += if (keys != null) repetitionNotUniqueMessages(rule, keys, doc, locale)
+                val rnu = repetitionNotUnique(rule)
+                messages += if (rnu != null) repetitionNotUniqueMessages(rule, rnu, doc, locale)
                 else messagesFor(rule, doc, locale, dup)
             } catch (e: UnsupportedConstructException) {
                 unsupported += UnsupportedRule(rule.path, e.message ?: "unsupported construct")
@@ -158,30 +158,50 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
                 uniqueIndexText(locale))
         }
 
+    /** A recognized `RepetitionNotUnique` rule: its key field paths + the optional `@From` reference-group ref. */
+    private data class RnuRule(val keys: List<String>, val fromScope: String?)
+
     /**
-     * If [rule]'s condition is a standalone `RepetitionNotUnique(key, …)` over plain fields, its key field
-     * paths; else null (a normal rule, handled per-row). The kernel forbids groups/asterisks as keys, so a
-     * non-field arg makes it unsupported (returns null → the per-row flow throws `UnsupportedConstruct`).
+     * If [rule]'s condition is a standalone `RepetitionNotUnique(key, … [@From ref])` over plain fields, its
+     * keys + the optional `@From` ref; else null (a normal rule, handled per-row). The kernel forbids
+     * groups/asterisks as keys, so a non-field key arg makes it unsupported (returns null).
      */
-    private fun repetitionNotUniqueKeys(rule: RuleDef): List<String>? {
+    private fun repetitionNotUnique(rule: RuleDef): RnuRule? {
         val ast = parseCondition(rule.conditionText, rule.group)
         if (ast !is Cond.Pred || ast.name != "RepetitionNotUnique") return null
-        val keys = ast.args.map { (it as? Expr.Field)?.path ?: return null }
-        return keys.ifEmpty { null }
+        // The parser appends an `@From:<ref>` StrLit marker as the last arg when `@From` is present.
+        val fromScope = (ast.args.lastOrNull() as? Expr.StrLit)?.v?.takeIf { it.startsWith("@From:") }?.removePrefix("@From:")
+        val keyArgs = if (fromScope != null) ast.args.dropLast(1) else ast.args
+        val keys = keyArgs.map { (it as? Expr.Field)?.path ?: return null }
+        return keys.ifEmpty { null }?.let { RnuRule(it, fromScope) }
     }
 
     /**
-     * The scope prefix length for the **basic** `RepetitionNotUnique` (no `@From`): the reference group is the
-     * **first repeatable group below the rule group** on the key path, and uniqueness is checked per that
-     * group's PARENT row (the BA "basic version", Situation 2). So a key two repeatable levels deep
-     * (`/Project/Milestones/Tasks/Effort`, rule at `/Project`) is checked across ALL tasks of all milestones
-     * (scope = the `/Project` row), NOT per milestone. Returns the rep-prefix length of that parent.
+     * The scope prefix length: the rep-prefix length of the **reference group's PARENT** row. The reference
+     * group is the `@From` ref when given ([rnu].fromScope), else the **basic version** default — the first
+     * repeatable group below the rule group on the key path (BA "basic version", Situation 2). So a key two
+     * repeatable levels deep (`/Project/Milestones/Tasks/Effort`, rule at `/Project`) is by default checked
+     * across ALL milestones (scope = the `/Project` row); `@From Milestones/Tasks` narrows it to per-milestone.
      */
-    private fun defaultScopePrefixLen(rule: RuleDef, keyPath: String): Int {
-        val parts = keyPath.trim('/').split('/')
+    private fun scopePrefixLen(rule: RuleDef, rnu: RnuRule): Int {
+        if (rnu.fromScope != null) return resolveGroupRef(rnu.fromScope, rule.group).trim('/').split('/').size - 1
+        val parts = rnu.keys.first().trim('/').split('/')
         var d = rule.group.trim('/').split('/').size + 1     // first group strictly below the rule group
         while (d < parts.size && "/" + parts.take(d).joinToString("/") !in model.repeatable) d++
         return d - 1                                          // parent(referenceGroup) depth
+    }
+
+    /** Resolve a `@From` reference-group ref to an absolute group path — the `RuleGroup` keyword (the rule's
+     *  group), an absolute `/…` path, or a path relative to the rule group (handling leading `..` segments). */
+    private fun resolveGroupRef(ref: String, ruleGroup: String): String {
+        if (ref == "RuleGroup") return ruleGroup
+        if (ref.startsWith("/")) return ref
+        val segs = ruleGroup.trim('/').split('/').toMutableList()
+        for (s in ref.split('/')) when {
+            s == ".." -> if (segs.isNotEmpty()) segs.removeAt(segs.size - 1)
+            s.isNotEmpty() -> segs.add(s)
+        }
+        return "/" + segs.joinToString("/")
     }
 
     /**
@@ -190,10 +210,11 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
      * **all-empty** key row is skipped, and a duplicate whose key has an empty (fillable) component is
      * **OMISSION** (else VALUE). The rule sits at the parent and iterates the keys' repeatable group.
      */
-    private fun repetitionNotUniqueMessages(rule: RuleDef, keys: List<String>, doc: Document, locale: String): List<Message> {
+    private fun repetitionNotUniqueMessages(rule: RuleDef, rnu: RnuRule, doc: Document, locale: String): List<Message> {
+        val keys = rnu.keys
         val repGroup = parentGroup(keys.first())     // the keys' shared repeatable group (kernel: keys on one path)
         val errorPath = resolveErrorPath(rule)
-        val scopeLen = defaultScopePrefixLen(rule, keys.first())
+        val scopeLen = scopePrefixLen(rule, rnu)
         data class Row(val ctx: EvalContext, val reps: List<Int>, val key: List<String?>)
         val rows = doc.contextsFor(repGroup).map { ctx ->
             Row(ctx, ctx.repsOf(errorPath), keys.map { ctx.displayValue(it)?.takeIf { v -> v.isNotEmpty() } })

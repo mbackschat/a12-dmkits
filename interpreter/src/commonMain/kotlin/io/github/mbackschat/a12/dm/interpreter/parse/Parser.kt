@@ -197,8 +197,25 @@ private class ConditionParser(private val src: String, private val base: String)
         // tokens — operator-specific). For every other function the next token is `,`/`)`.
         if (matchKeyword("In") || matchKeyword("IN")) { args.add(parseExpr()); skipWs() }
         while (peek() == ',') { next(); args.add(parseExpr()); skipWs() }
+        // `@From <group>` (localized `@Von`) — RepetitionNotUnique's optional reference-group selector. The
+        // group ref (a relative name/path, `RuleGroup`, `..`, or absolute) is captured raw as a trailing
+        // `@From:<ref>` marker arg; the consumer (DmInterpreter) splits it off the key fields and resolves it.
+        if (peek() == '@') {
+            next()                                  // '@'
+            readIdent()                             // From / Von (consumed; not validated)
+            skipWs()
+            args.add(Expr.StrLit("@From:" + readGroupRef()))
+            skipWs()
+        }
         expect(')')
         return args
+    }
+
+    /** Read a `@From` reference-group token raw — up to the closing `)` (a group path/name, possibly with `/`). */
+    private fun readGroupRef(): String {
+        val start = pos
+        while (peek() != ')' && peek() != ' ') next()
+        return src.substring(start, pos).trim()
     }
 
     private fun readNumber(): Expr.NumLit {
