@@ -70,9 +70,9 @@ class CatalogParityTest {
             "NotAllFieldValuesIncludedInValueList",
         )
         group(
-            "explicit-field uniqueness — the index-field uniqueIndex check is handled (IF15); these reference " +
-                "NON-index fields / a named reference scope",
-            "FieldValuesNotUnique", "RepetitionNotUnique", "FromScope",
+            "repetition uniqueness — across-row key uniqueness of a repetition (distinct from the handled " +
+                "scalar FieldValuesNotUnique and the index-field uniqueIndex check, IF15)",
+            "RepetitionNotUnique", "FromScope",
         )
         group(
             "tolerance comparisons — !=-outside-a-fixed-band; a comparison-operator variant not yet built",

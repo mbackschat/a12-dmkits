@@ -163,6 +163,8 @@ object PerfCatalog {
             FuzzRule(FZ_LINES, "RN", "../ItemId", "FieldFilled(ItemId) And RangeAsNumber(ItemId, 2, 2) >= 1"),         // substring-as-number (\\d+ else 0)
             FuzzRule(FZ_LINES, "FS", "../Qty", """FieldFilled(Qty) And FieldValueAsString(Qty) == "0""""),            // number→string raw-value coercion
             FuzzRule(FZ_LINES, "AF", "../Qty", "AllFieldsFilled(Qty, Price)"),   // field-list quantifier (3VL on a malformed operand)
+            FuzzRule(FZ_LINES, "FU", "../Qty", "FieldValuesNotUnique(Qty, Price)"),   // fires when Qty == Price numerically (cross-scale); empties skipped
+
             FuzzRule(FZ_LINES, "RD", "../Price", "FieldFilled(Price) And RoundDown([Price], 0) > 50"), // FLOOR (signed Price → negatives)
             FuzzRule(FZ_LINES, "RA", "../Price", "FieldFilled(Price) And RoundAccounting([Price] * [Qty], 1) > 100"), // HALF_UP over a product
             FuzzRule(FZ_PARTS, "HW", "../Weight", "FieldFilled(Weight) And [Weight] > 50"),

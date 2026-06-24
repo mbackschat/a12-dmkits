@@ -29,6 +29,9 @@ enum class PredicateOp(val kernelName: String, val polarity: MsgType?, val count
     FIELD_VALUE_NOT_IN_LIST("FieldValueNotIncludedInValueList", MsgType.VALUE),
     // Two PRESENT date ranges that clash → a value error (no fill clears an overlap; you change a value).
     DATE_RANGES_OVERLAP("DateRangesOverlap", MsgType.VALUE),
+    // Two of the listed fields hold the same value → a value error (you change a value, you don't fill — both
+    // are already filled). Empties are skipped (two empties are NOT a duplicate); a malformed operand suppresses.
+    FIELD_VALUES_NOT_UNIQUE("FieldValuesNotUnique", MsgType.VALUE),
 
     // List quantifiers — fire by the count k of filled OPERANDS among the N (fields, or groups when
     // [countsGroups]); KERNEL-FINDINGS §1. polarity = null → computed dynamically (fixable-by-filling →

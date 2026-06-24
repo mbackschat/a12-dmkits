@@ -83,7 +83,8 @@ class Interpreter(
     private fun predFiresOnEmpty(p: Cond.Pred): Boolean = when (val op = PredicateOp.byName(p.name)) {
         null, PredicateOp.FIELD_FILLED, PredicateOp.GROUP_FILLED,
         PredicateOp.FIELD_VALUE_IN_LIST, PredicateOp.FIELD_VALUE_NOT_IN_LIST,
-        PredicateOp.DATE_RANGES_OVERLAP -> false   // needs present ranges; an empty row is not evaluated
+        PredicateOp.DATE_RANGES_OVERLAP,
+        PredicateOp.FIELD_VALUES_NOT_UNIQUE -> false   // needs ≥2 present equal values; an empty row is not evaluated
         PredicateOp.FIELD_NOT_FILLED, PredicateOp.GROUP_NOT_FILLED -> true
         else -> quantifierFires(op, t = 0, f = p.args.size, n = p.args.size)   // all-empty: every operand FALSE
     }
@@ -235,6 +236,7 @@ class Interpreter(
             PredicateOp.FIELD_VALUE_IN_LIST -> valueInList(p.args)
             PredicateOp.FIELD_VALUE_NOT_IN_LIST -> not(valueInList(p.args))
             PredicateOp.DATE_RANGES_OVERLAP -> dateRangesOverlap(p.args)
+            PredicateOp.FIELD_VALUES_NOT_UNIQUE -> fieldValuesNotUnique(p.args)
             // List quantifiers over the (TRUE, FALSE) operand tally (row-evaluated gate is upstream in eval).
             PredicateOp.ALL_FIELDS_FILLED, PredicateOp.NO_FIELD_FILLED, PredicateOp.AT_LEAST_ONE_FIELD_FILLED,
             PredicateOp.MORE_THAN_ONE_FIELD_FILLED, PredicateOp.NOT_ALL_FIELDS_FILLED,
@@ -523,6 +525,37 @@ class Interpreter(
             if (eq(v, target)) count++
         }
         return Val.Num(dec(count))
+    }
+
+    /**
+     * `FieldValuesNotUnique(…)` — fires iff two of the operands' values are **equal**, i.e. the present values
+     * are not all distinct (kernel codegen). Two operand shapes, both kernel-probed and identical in semantics:
+     * a **plain field list** `(f1, f2, …)` (distinctness across named sibling fields) and a **starred** operand
+     * `(Items* / Count)` (distinctness across the repetition's rows — the no-`--group` alternative to
+     * `RepetitionNotUnique`). In both, **empties are skipped** (two empties are NOT a duplicate — only present
+     * values compare); a filled-but-malformed operand makes the rule non-evaluable → suppressed (Unknown).
+     * Equality is the typed [eq] (numbers numerically — `5` == `5.00` across scales — strings as strings). The
+     * collected list is short, so an O(k²) pairwise scan is fine.
+     */
+    private fun fieldValuesNotUnique(args: List<Expr>): Tri {
+        val values = mutableListOf<Val>()
+        for (a in args) when (a) {
+            is Expr.Star -> {
+                val rows = ctx.star(a.path)                      // filled row values (empties dropped)
+                if (rows.any { it is Val.Unknown }) return Tri.UNKNOWN  // a malformed row → non-evaluable
+                values.addAll(rows)
+            }
+            else -> {
+                if (!ctx.filled(pathOf(a))) continue             // empty → skipped (no value to compare)
+                val v = evalExpr(a)
+                if (v is Val.Unknown) return Tri.UNKNOWN          // a filled-but-malformed operand → non-evaluable
+                values.add(v)
+            }
+        }
+        for (i in values.indices) {
+            for (j in i + 1 until values.size) if (eq(values[i], values[j])) return Tri.TRUE
+        }
+        return Tri.FALSE
     }
 
     /**
