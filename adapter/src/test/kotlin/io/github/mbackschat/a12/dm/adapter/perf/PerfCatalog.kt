@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws
 import io.github.mbackschat.a12.dm.interpreter.gen.SeedGenerator
 import io.github.mbackschat.a12.dm.interpreter.gen.ValidValues
 import io.github.mbackschat.a12.dm.interpreter.gen.ValueStrategy
+import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
@@ -172,6 +173,37 @@ object PerfCatalog {
         val gen = SeedGenerator(interpModel)
         return PerfScenario("manyRules($count)", kernelModel, interpModel) { sink, n, variant ->
             gen.populate(sink, rowsOf = nestedRows(n), value = perfValues(variant))
+        }
+    }
+
+    // B7's value strategy: like [perfValues] but leaves the COMPUTED field (Amount) EMPTY in the seed — so the
+    // kernel's compute() reports every Line's Amount as a change (empty → Sum), matching the interpreter which
+    // computes every row. Cost is filled (the aggregate operand); index fields filled (required).
+    private fun b7Values(variant: Int): ValueStrategy = ValueStrategy { field, reps, _ ->
+        when (field.path) {
+            AMOUNT -> null                                              // computed field — leave empty
+            COST -> ((reps[1] * reps[2] + variant) % 90 + 1).toString() // 1..90, always > 0
+            QTY -> "1"
+            LINE_KEY, SUB_KEY -> "K" + reps.joinToString("_")
+            else -> "0"
+        }
+    }
+
+    /** B7 — `compute()` at scale: a per-Line nested-aggregate computation `Amount := Sum(Subs* / Cost)`. Exercises
+     *  the compute path (not validate) over nested groups; the computed field is empty in the seed so every Line
+     *  computes a value. The scale knob N is the Line count (× [SUBS_PER_LINE] Sub operands each). */
+    fun b7(): PerfScenario {
+        val kernelModel = RuntimeLaws.withComputation(perfJson, LINES, "AmountComp", "../Amount", "Sum(Subs*/Cost)")
+        val interpModel = ModelDef(
+            fields, emptyList(),
+            computations = listOf(ComputationDef(AMOUNT, LINES, "Sum(Subs*/Cost)")),
+            repeatableGroups = setOf(LINES, SUBS),
+            declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX),
+            indexFields = setOf(LINE_KEY, SUB_KEY),
+        )
+        val gen = SeedGenerator(interpModel)
+        return PerfScenario("B7 compute", kernelModel, interpModel, PerfOp.COMPUTE) { sink, n, variant ->
+            gen.populate(sink, rowsOf = nestedRows(n), value = b7Values(variant))
         }
     }
 

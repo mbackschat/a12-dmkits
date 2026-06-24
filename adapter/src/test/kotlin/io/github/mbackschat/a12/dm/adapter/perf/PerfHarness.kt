@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
 import io.github.mbackschat.a12.dm.interpreter.gen.asSink
+import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 
 /**
@@ -47,10 +48,13 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
  * the `DmInterpreter` + `Document` API and `RuntimeLaws`.
  */
 
+/** Which operation a scenario times: full validation, or computation (`compute()` — the B7 path). */
+enum class PerfOp { VALIDATE, COMPUTE }
+
 /**
  * One performance scenario: the SAME logical model expressed for BOTH engines + a scale-parameterized,
- * variant-parameterized instance generator. The two model representations describe the same rule(s);
- * [PerfCatalog] builds them from one set of params so they cannot drift.
+ * variant-parameterized instance generator. The two model representations describe the same rule(s)/
+ * computation(s); [PerfCatalog] builds them from one set of params so they cannot drift.
  */
 class PerfScenario(
     val name: String,
@@ -58,6 +62,8 @@ class PerfScenario(
     val kernelModel: String,
     /** The same model as a [ModelDef] — the interpreter's model. */
     val interpModel: ModelDef,
+    /** Whether this scenario times `validateFull` or `compute` (default validate). */
+    val op: PerfOp = PerfOp.VALIDATE,
     /**
      * Build the instance at scale [n], perturbed by [variant], into [sink]. `variant = 0` is the canonical
      * instance; a non-zero variant shifts a value so the document differs slightly (mimicking a form edit /
@@ -96,7 +102,14 @@ object InterpreterPerfEngine : PerfEngine {
             override fun instance(n: Int, variant: Int): RunInstance {
                 val doc = Document(model.kinds, model.declaredReps, model.unsignedFields, model.rangeConfig, model.dateFormats, model.scales)
                 scenario.instance(doc.asSink(), n, variant)
-                return RunInstance { interp.validateFull(doc).map { it.code }.sorted() }
+                return RunInstance {
+                    when (scenario.op) {
+                        PerfOp.VALIDATE -> interp.validateFull(doc).map { it.code }.sorted()
+                        PerfOp.COMPUTE -> interp.compute(doc).map {
+                            if (it.outcome == ComputeOutcome.VALUE) "${it.path}|${it.value}" else "${it.path}|${it.outcome}"
+                        }.sorted()
+                    }
+                }
             }
         }
     }
@@ -113,7 +126,12 @@ object KernelPerfEngine : PerfEngine {
                 val builder = RuntimeLaws.doc()
                 scenario.instance(KernelDocSink(builder), n, variant)
                 val instance = engine.instance(builder)   // build the IDocument once, outside timing
-                return RunInstance { engine.firedCodesSorted(instance) }
+                return RunInstance {
+                    when (scenario.op) {
+                        PerfOp.VALIDATE -> engine.firedCodesSorted(instance)
+                        PerfOp.COMPUTE -> engine.computeOutcomesSorted(instance)
+                    }
+                }
             }
         }
     }
@@ -135,7 +153,12 @@ object KernelJavaPerfEngine : PerfEngine {
                 val builder = RuntimeLaws.doc()
                 scenario.instance(KernelDocSink(builder), n, variant)
                 val instance = engine.instance(builder)   // build the IDocument once, outside timing
-                return RunInstance { engine.firedCodesSorted(instance) }
+                return RunInstance {
+                    when (scenario.op) {
+                        PerfOp.VALIDATE -> engine.firedCodesSorted(instance)
+                        PerfOp.COMPUTE -> engine.computeOutcomesSorted(instance)
+                    }
+                }
             }
         }
     }

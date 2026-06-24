@@ -141,7 +141,7 @@ public final class RuntimeLaws {
      * computation assigns {@code operation} (a value expression) to the field at {@code computedFieldRelPath}
      * (relative to the group, e.g. {@code "../EffectiveFee"}). Mirrors {@link #withRule} for the compute path.
      */
-    static String withComputation(String modelJson, String groupId, String name, String computedFieldRelPath,
+    public static String withComputation(String modelJson, String groupId, String name, String computedFieldRelPath,
             String operation) {
         String op = operation.replace("\\", "\\\\").replace("\"", "\\\"");
         String comp = "{ \"type\": \"Computation\", \"id\": \"" + groupId + "/" + name + "\", \"name\": \"" + name + "\","
@@ -479,10 +479,38 @@ public final class RuntimeLaws {
             return rt.validateFull(instance, Locale.US).getMessages().stream()
                     .map(IMessage::getErrorCode).sorted().toList();
         }
+
+        /** Every computed-field outcome for an already-built instance, normalized + <b>sorted</b> (the B7 compute payload). */
+        public List<String> computeOutcomesSorted(IDocument instance) {
+            return computeSorted(rt, instance);
+        }
     }
 
     public static KernelEngine kernelEngine(String modelJson) {
         return new KernelEngine(modelJson);
+    }
+
+    /**
+     * Run the kernel's {@code compute()} over an already-built instance and return each computed-field outcome
+     * as {@code normalizedPath|value} / {@code …|CLEARED} / {@code …|ERR}, <b>sorted</b> — the build-once compute
+     * twin of {@link KernelEngine#firedCodesSorted}. Repetition indices are stripped from the path so a per-row
+     * computed field (the kernel emits one indexed instance per row) compares to the interpreter's bare-path
+     * {@code Computed.targetPath}. The compared instance leaves the computed field empty in the seed, so the
+     * kernel reports every row as a change (its result set is "with changes", not all rows).
+     */
+    @SuppressWarnings("removal")
+    private static List<String> computeSorted(IDocumentRtService rt, IDocument instance) {
+        IDocumentComputationResult r = rt.compute(instance, Locale.US);
+        List<String> out = new ArrayList<>();
+        r.getComputedFieldInstancesWithChanges().forEach(c -> out.add(normComputedPath(c.getPath()) + "|" + c.getStringValue().orElse("")));
+        r.getComputedFieldInstancesWithErrors().forEach(c -> out.add(normComputedPath(c.getPath()) + "|ERR"));
+        r.getClearedFieldInstances().forEach(c -> out.add(normComputedPath(c.getPath()) + "|CLEARED"));
+        out.sort(null);
+        return out;
+    }
+
+    private static String normComputedPath(String path) {
+        return path.replaceAll("\\[\\d+\\]", "");
     }
 
     /**
@@ -525,6 +553,11 @@ public final class RuntimeLaws {
         public List<String> firedCodesSorted(IDocument instance) {
             return rt.validateFull(instance, Locale.US).getMessages().stream()
                     .map(IMessage::getErrorCode).sorted().toList();
+        }
+
+        /** Every computed-field outcome for an already-built instance, normalized + <b>sorted</b> (the B7 compute payload). */
+        public List<String> computeOutcomesSorted(IDocument instance) {
+            return computeSorted(rt, instance);
         }
     }
 

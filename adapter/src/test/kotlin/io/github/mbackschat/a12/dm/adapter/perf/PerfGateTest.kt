@@ -71,6 +71,22 @@ class PerfGateTest {
     }
 
     /**
+     * **Compute at scale (B7)**: the `compute()` path (not validate) — a per-Line nested-aggregate computation
+     * `Amount := Sum(Subs* / Cost)`. Asserts the computed-field outcomes agree (interp == kernel) and the same
+     * generous bounds. Confirms the compute path scales like validate.
+     */
+    @Test
+    fun computeScalesLikeKernel() {
+        val row = PerfHarness.runScenario(PerfCatalog.b7(), n = 600)   // × 5 subs = 3000 Sub operands
+        println(PerfHarness.format(row, CAVEAT))
+        assertTrue(row.interp.medianMs < ABS_CEILING_MS,
+            "${row.scenario}: interpreter ${row.interp.medianMs}ms exceeds ${ABS_CEILING_MS}ms at N=${row.n}")
+        val ratio = row.ratioJava
+        if (ratio != null) assertTrue(ratio < RATIO_CEILING,
+            "${row.scenario}: compute interp/kernel-Java ratio $ratio exceeds $RATIO_CEILING at N=${row.n}")
+    }
+
+    /**
      * The precise O(N²) detector: time the interpreter (only — no kernel, so high N stays cheap) on B1 at N and
      * 4N; a linear engine grows ~4×, a quadratic one ~16×. Assert the growth factor stays well under quadratic.
      * This is what actually guards the #28 indexing from a reintroduced linear-scan regression.
