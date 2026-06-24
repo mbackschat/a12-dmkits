@@ -23,19 +23,15 @@ export PATH="$ROOT/bin:$PATH"
 [[ -x "$NATIVE" ]] || { echo "native binary not found/executable: $NATIVE  (build with :cli:nativeCompile)" >&2; exit 2; }
 
 # Demos NOT byte-verifiable against the native binary, with WHY. Keep the reason here so a skip is never silent.
-# Two distinct causes:
-#   • JVM-ONLY VERBS  — cli-runtime.md is entirely model eval/rule test/model compute, which execute kernel
-#     Groovy codegen (not native-compilable, §4). CONVENTION: isolate JVM-only verbs in their OWN demo —
-#     showboat verify is per-file, so one such block turns its whole demo unverifiable on native. Never
-#     sprinkle a runtime-eval call into a native-applicable demo.
-#   • SUBSET DIVERGENCE — cli-tour.md's `manifest` block enumerates the full verb list, which is legitimately
-#     SHORTER on native (the 3 JVM-only verbs are hidden from the tree). The native-aware manifest assertion
-#     lives in NativeImageVerbHidingTest (JUnit) instead; native JSON-output fidelity for cli-tour's other
-#     (read) verbs is already proven by the 4 passing demos. See docs/NATIVE-IMAGE-GRAALVM.md §8.
-declare -A NATIVE_SKIP=(
-  ["cli-runtime.md"]="JVM-only verbs — model eval/rule test/model compute need Groovy (§4)"
-  ["cli-tour.md"]="manifest block lists the full verb list — a subset on native; asserted by NativeImageVerbHidingTest"
-)
+#
+# As of 2026-06-24 the map is EMPTY — ALL demos are native-applicable. The two former skips are obsolete:
+#   • cli-runtime.md — the runtime verbs (`model eval`/`rule test`/`model compute`) used to run the kernel's
+#     Groovy codegen (JVM-only); they now DEFAULT to the native-safe `dm.interpreter`, so they run on the
+#     native binary. (`--kernel` is the only JVM-only part — refused under the native profile, guarded by
+#     `NativeImageRuntimeVerbsTest`; `model seed` is interpreter-backed too.) Verified: cli-runtime passes native.
+#   • cli-tour.md — the `manifest` verb list is no longer a native subset: `Cli.JVM_ONLY_VERBS` is empty (no
+#     verb is hidden), so the native manifest equals the JVM manifest. Verified: cli-tour passes native.
+declare -A NATIVE_SKIP=()
 
 fails=0
 for d in examples/cli-*.md; do

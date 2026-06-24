@@ -6,7 +6,7 @@ The single durable home for building the `dmtool` CLI as a **GraalVM native imag
 
 > **Why its own doc:** native-image for a kernel-embedding CLI has non-obvious, interacting constraints (closed-world reflection, Groovy's `invokedynamic`, resource bundling, GraalVM-version quirks). It is **release-only** — never in the dev inner loop (that stays JVM/`installDist`), never in CI.
 
-## 1. Status (2026-06-14, GraalVM **25.0.3**)
+## 1. Status (2026-06-24, GraalVM **25.0.3**)
 
 | Aspect | State |
 |---|---|
@@ -14,10 +14,10 @@ The single durable home for building the `dmtool` CLI as a **GraalVM native imag
 | Build | ✅ ~45–60 s |
 | Size | ✅ **19 MB** bare, **~33 MB** with reflection metadata — both via `-Os` (GraalVM 25 only) |
 | Groovy | ✅ compiles on 25 (no analysis failure), but **excluded from the native classpath** (startup-init issue, §3.1) → JVM keeps it |
-| **Showboat gate** | **5 / 6 demos PASS** — only `cli-runtime.md` fails (the runtime-eval verbs, §4) |
+| **Showboat gate** | **6 / 6 demos PASS** — incl. `cli-runtime.md` (the runtime verbs default to the native-safe interpreter, §4) + the no-crash battery (172 checks, 0 signatures) |
 | Reflection coverage | ✅ **rule-based over the two bounded reflective-surface packages** (§3.4) — Jackson POJOs (`md.model.a12internal.*`) + StringTemplate codegen (`core.codegen.internal.generator.*`), registered wholesale so coverage is **shape-independent**, not capture-bound. Supersedes the demo/fixture capture that shipped the v0.1.0/v0.1.1 patterned-field + parser-error bugs (§3.5); the residual out-of-package surface is now captured **test-suite-driven** (`:cli:test` under the agent, §3.3/§5) |
-| Runtime-eval verbs (`model eval`/`rule test`/`model compute`) | ✅ **hidden** from the native command tree and every derived surface (§4) — can't go native (Groovy); JVM keeps them. Guarded by `NativeImageVerbHidingTest` |
-| **Shippable?** | **Yes for the authoring/check/structure/read surface** — now behind the §3.4 rule-based registration **and** the §3.6 no-crash battery (`native-battery.sh`: 172 checks, 0 signatures — incl. the current-date operators that crashed in v0.1.0). The v0.1.0/v0.1.1 binaries shipped native-only defects (§3.5) a demo-only gate missed; that gap is now closed. B1 is measured (§10) — **native-only for v1** re-affirmed on data. Residual: §3.6. |
+| Runtime verbs (`model eval`/`rule test`/`model compute`) | ✅ **run natively** — they DEFAULT to the native-safe `dm.interpreter` (kernel-free), so they stay in the native command tree and on every derived surface (§4). The JVM-only part is the `--kernel` option, refused under the native profile. Guarded by `NativeImageRuntimeVerbsTest`. (`model seed` is interpreter-backed too.) |
+| **Shippable?** | **Yes — the whole verb surface, incl. the interpreter-backed runtime verbs** — behind the §3.4 rule-based registration **and** the §3.6 no-crash battery (`native-battery.sh`: 172 checks, 0 signatures — incl. the current-date operators that crashed in v0.1.0). The v0.1.0/v0.1.1 binaries shipped native-only defects (§3.5) a demo-only gate missed; that gap is now closed. B1 is measured (§10) — **native-only for v1** re-affirmed on data. Residual: §3.6. |
 
 **GraalVM 25 vs 21 — 25 is decisively better and is the toolchain going forward:**
 
@@ -26,7 +26,7 @@ The single durable home for building the `dmtool` CLI as a **GraalVM native imag
 | Groovy `invokedynamic` | ❌ analysis fails (`MutableCallSite`) | ✅ compiles |
 | `-Os` size optimization | ❌ "Invalid value 's'" | ✅ → 19 MB |
 | Reflection metadata format | `reflect-config.json` (multi-file) | unified `reachability-metadata.json` |
-| Demo gate | 0/6 | **5/6** |
+| Demo gate | 0/6 | **6/6** |
 | Build time / size | ~2 min / 52–61 MB | **~45–60 s / 19–31 MB** |
 | `typeReached` warning | yes | cleared |
 
@@ -86,7 +86,7 @@ The bugs raise a fair concern: *is fixing them just whack-a-mole?* Native-image'
 | **Reflection — StringTemplate codegen** | `ObjectModelAdaptor` getters **by name** | `core.codegen.internal.generator.*` = **297** (262 backing-beans), `ObjectModelAdaptor` present | §3.4 **rule** (whole package) ✅ |
 | **Resources** (`getResourceAsStream`) | closed-world drops them | catalog/schema/templates/version | `-H:IncludeResources` globs ✅ |
 | **ResourceBundle (i18n, per-locale)** | locale-parameterized lazy load | 13 loader classes, **12 bundles × {de,en,fr,nl}** | glob over all bundles/locales ✅ (was the de_DE/en_US bug) |
-| **Runtime codegen (Groovy)** | `GroovyClassLoader.parseClass`, invokedynamic | `groovy/lang`=4, `GroovyClassLoader`=1 — the eval verbs only | **excluded + verbs hidden** (§4) ✅ hard ceiling |
+| **Runtime codegen (Groovy)** | `GroovyClassLoader.parseClass`, invokedynamic | `groovy/lang`=4, `GroovyClassLoader`=1 — the **`--kernel`** path only | **excluded; the verbs default to the interpreter (run native), only `--kernel` is refused** (§4) ✅ |
 | **`Class.forName` / `loadClass`** | dynamic class load | 6 / 1 classfiles — all in the Groovy codegen path | covered by the eval exclusion; none on the native surface ✅ |
 | **Serialization** | `readObject`/`writeObject` | `Serializable`=65 but `readObject`=1, `writeObject`=0 | not on our deserialize/validate path — **no serialization config needed** (re-check on bump) |
 | **Dynamic proxies** | `Proxy.newProxyInstance` | **0** | none ✅ |
@@ -106,17 +106,19 @@ The bugs raise a fair concern: *is fixing them just whack-a-mole?* Native-image'
 | Broad **no-crash battery** ([`../scripts/native-battery.sh`](../scripts/native-battery.sh)): drive a derived matrix — every fixture × read/validate verbs + the FieldKind × constraint matrix + invalid conditions per locale + the **current-date operators** (`Today`/`AddYears`/`YearFromDate`/`DifferenceInYears` — the literal v0.1.0 crash) + the **error-text message tokens** (`$Field.value$`/`$#Group$` — the probe-11 `LexerTerminals` crash) + the self-describing surface (manifest/operators) + a real rule read-back — through the native binary; assert no `MissingReflection`/`MissingResource`/`STNoSuchProperty`/"Can't find bundle" signature | ✅ catches *out-of-package* residuals at build time | **DONE** — **172 checks, 0 signatures** on the current binary (the broad sweep finding zero gaps is the evidence the §3.4 fix isn't whack-a-mole). Byte-identity vs JVM is **not** needed (failures are loud → no normalization layer). Wired into `native-gate.sh`. The date-operator row was added 2026-06-19 after probe 01b confirmed the path works on native — the deterministic guard that the v0.1.0 crash can't recur |
 | `-H:+ThrowMissingRegistrationErrors` / strict mode | turns silent gaps loud | **already the GraalVM 25 default — nothing to wire.** `-R:MissingRegistrationReportingMode=Throw` is the default, and the v0.1.0/.1 bugs threw `MissingRegistrationError` from a binary built *without* the flag → the battery already runs against a throwing binary. The `-H:ThrowMissingRegistrationErrors=<paths>` form only *scopes* it; it is not the on/off switch |
 | Exclude `validate`/`check` from native too | ✅ removes the class from native | **rejected** — guts the core value (kernel-confirmed authoring *is* the binary's point) |
-| **Ship JVM (jpackage/jlink B1) instead of native** | ✅✅ removes the **entire** native-image failure surface | **the escape hatch — now measured** (§10): B1 builds + passes **6/6** demos (incl. the runtime-eval verbs native can't do), but **119 MB trimmed / 147 MB** (~4× native's 33 MB) and **~600 ms** start (~7× native's ~90 ms). Native stays the shipped default; B1 is the proven fallback for the day runtime-eval must ship or the residual proves unmanageable |
+| **Ship JVM (jpackage/jlink B1) instead of native** | ✅✅ removes the **entire** native-image failure surface | **the escape hatch — now measured** (§10): B1 builds + passes **6/6** demos, but **119 MB trimmed / 147 MB** (~4× native's 33 MB) and **~600 ms** start (~7× native's ~90 ms). Native now also passes 6/6 (the runtime verbs run on the interpreter), so B1's only edge is the `--kernel` engine. Native stays the shipped default; B1 is the proven fallback for the day the kernel engine must ship or the residual proves unmanageable |
 
 **The irreducible residual (stated honestly):** rule-based registration + the battery shrink the risk to "a reflective path in a class *outside* the two packages that *no battery input* exercises." That cannot be driven to zero while AOT-compiling a reflection-heavy embedded kernel — the only zero is B1 (a real JVM). The chosen posture (all three now in place): **rule-based coverage of the known surfaces (§3.4) makes the common shapes safe; the no-crash battery (`native-battery.sh`, 172 checks) catches out-of-package gaps at build time; B1 (§10, measured) is the escape hatch if the battery ever shows native can't be made robust per shape.** Failures are at least **loud** (thrown/coded), never silently-wrong.
 
-## 4. The hard ceiling — runtime-eval verbs can't go native
+## 4. The Groovy ceiling — now applies only to `--kernel`, not the verbs (interpreter lifted it)
 
-`model eval` / `rule test` / `model compute` execute the kernel's **runtime validation** against a document instance, which **generates and loads Groovy classes at runtime** (`GroovyClassLoader.parseClass`; the agent captured `Com_mgmtp_a12_kernel_generated_*` classes). This is [`CLI-SPEC.md`](CLI-SPEC.md) §11's hard ceiling, breached by verbs that grew past it. Groovy is genuinely required by these 3 verbs (JVM and native), so: the §3.1 exclusion stays native-only (JVM keeps them), and **the native binary cannot run them** (no Groovy → no runtime codegen). `rule check`/`model validate` are *structural* — they drive `checkConsistency`, which renders **StringTemplate** codegen (no Groovy compile/execute), so they **are** native-capable and stay in the native tree.
+**History (the ceiling that was):** `model eval` / `rule test` / `model compute` used to execute the **kernel's** runtime validation against a document instance, which **generates and loads Groovy classes at runtime** (`GroovyClassLoader.parseClass`; the agent captured `Com_mgmtp_a12_kernel_generated_*` classes) — [`CLI-SPEC.md`](CLI-SPEC.md) §11's hard ceiling. Groovy is genuinely required by that *kernel* path (JVM and native), and the §3.1 exclusion keeps it off the native classpath, so the **kernel** engine can't run native.
+
+**What lifted it:** those verbs now **DEFAULT to the kernel-free `dm.interpreter`** — a from-scratch evaluator that reproduces the kernel's runtime semantics with no Groovy codegen (kernel-differential-verified, INTERPRETER-BUILDOUT/FINDINGS). So the verbs **run on the native binary** and stay on every self-describing surface. The Groovy ceiling now applies **only to the opt-in `--kernel` option**, which is **refused under the native profile** (a usage error — the interpreter is the only native engine). `rule check`/`model validate` are *structural* — they drive `checkConsistency`, which renders **StringTemplate** codegen (no Groovy compile/execute), so they too stay native (§3.4).
 
 > **⚠ "StringTemplate, native-OK" is true only with §3.4's registration.** This line once read "native-OK — is unaffected," implying StringTemplate validate is free. It is not: StringTemplate's `ObjectModelAdaptor` resolves `<bean.prop>` by **reflective getter lookup at render time**, invisible to static analysis. Validating a *patterned* field renders a codegen path that reads `CodeGenMetaFields.getMetaFelderCode()` — unregistered → `STNoSuchPropertyException` → the model is reported "not kernel-valid" on native though the JVM accepts it (§3.5, bug 1b). Native validate is sound **only because §3.4 registers the whole codegen package**.
 
-**Implemented — the registration gate (`Cli.JVM_ONLY_VERBS` + `hideJvmOnlyVerbs`).** In the native build these 3 verbs are **removed from the picocli command tree** (`Cli` detects native via `org.graalvm.nativeimage.imagecode`). Because `manifest`/`schema`/`--help` all **derive from the live tree**, that single removal makes them **vanish from every self-describing surface** — a cold native agent can't even *discover* them (no help entry, not in `manifest`, `schema model eval` → unknown, uninvocable). The JVM build keeps them. **Guarded by `NativeImageVerbHidingTest`** (CI, JUnit): it runs the tree in forced-native profile and asserts the 3 are absent from manifest/`--help`/`schema` and uninvocable, while present in the JVM profile — so native isn't built in CI but the contract still can't regress.
+**Implemented — the runtime gate (`Cli.isNativeImage` + the per-verb `--kernel` refusal).** `Cli.JVM_ONLY_VERBS` is now **empty** — no verb is hidden; the verbs stay in the native command tree (interpreter-backed) and on every self-describing surface (`manifest`/`schema`/`--help` all derive from the live tree, so a cold native agent discovers them normally). The JVM-only part is narrowed to the **`--kernel` option**: each runtime verb refuses it under the native profile (`Cli` detects native via `org.graalvm.nativeimage.imagecode`). **Guarded by `NativeImageRuntimeVerbsTest`** (CI, JUnit, forced-native profile on the JVM): it asserts the verbs are *present* on manifest/`--help`/`schema`, the default (interpreter) path runs, and `--kernel` is refused — so native isn't built in CI but the contract can't regress. *(This supersedes the old hiding gate `NativeImageVerbHidingTest`, from when these verbs ran the kernel.)*
 
 ## 5. Generating the reflection metadata (tracing agent)
 
@@ -155,7 +157,7 @@ The **verification gate is the trip-wire**: if any source lags, a fresh reflecti
 1. ~~Reflection coverage~~ — **done** (§3.3, the comprehensive capture).
 2. ~~The 3 runtime-eval verbs~~ — **done** (§4, the registration gate hides them from every surface; guarded by `NativeImageVerbHidingTest`).
 
-**Scope consequence of native-only:** v1's shipped CLI does **not** offer runtime evaluation (`model eval`/`rule test`/`model compute`) — those need Groovy and remain the **JVM dev/eval vehicle only** (`installDist`), not a shipped artifact. No jpackage/B1 full-verb distributable in v1. (B1 — a trimmed JVM + launcher, all verbs, no reflection grind, **measured at 119–147 MB/OS and ~600 ms start** below — stays the documented fallback if a real consumer ever needs the runtime-eval verbs outside the dev loop.) What's left for the release is **release-engineering only** — signing/distribution (RELEASE-SPEC).
+**Scope consequence of native-only:** v1's shipped CLI **does** offer runtime evaluation (`model eval`/`rule test`/`model compute` — they default to the kernel-free interpreter) and `model seed`. The only thing the native CLI cannot do is the opt-in **`--kernel` engine** (Groovy), which stays the **JVM dev/eval vehicle only** (`installDist`), refused under the native profile. No jpackage/B1 full-verb distributable in v1. (B1 — a trimmed JVM + launcher with the `--kernel` engine too, no reflection grind, **measured at 119–147 MB/OS and ~600 ms start** below — stays the documented fallback if a real consumer ever needs the kernel engine outside the dev loop.) What's left for the release is **release-engineering only** — signing/distribution (RELEASE-SPEC).
 
 **jpackage (B1) — measured 2026-06-15** (not estimated). Built from `installDist` via `jpackage --type app-image` (`jdeps`-derived module set `java.{base,compiler,desktop,management,prefs,scripting,sql}`):
 
@@ -163,10 +165,10 @@ The **verification gate is the trip-wire**: if any source lags, a fresh reflecti
 |---|---|---|
 | Size | **33 MB** single binary | **119 MB** trimmed (`--strip-debug --compress=zip-9 --no-man/-header`) / 147 MB untrimmed — runtime 99 MB + libs 20 MB |
 | Cold start | **~90 ms** | ~600 ms warm, ~1.5 s first-call |
-| Demos | 4/6 (cli-runtime + cli-tour skipped) | **6/6** — incl. the runtime-eval verbs native can't do |
+| Demos | **6/6** (incl. cli-runtime — interpreter-backed) | **6/6** |
 | Native-image failure classes | the §3.6 taxonomy — *managed* (rule-based + battery), residual remains | **zero** (it's a JVM) |
 
-**Decision (re-affirmed on measured data): native-only for v1, B1 = proven escape hatch.** Native's 4× smaller single-file artifact and ~7× faster start are exactly aligned to the agent-plugin delivery (download one 33 MB binary), and the whack-a-mole is now *bounded* (§3.4) + *gated* (§3.6 battery). B1's only unique win is the runtime-eval verbs (`model eval`/`rule test`/`model compute`) — which stay JVM-dev-only by design — and zero native-image risk at a 4×-size / 7×-startup cost. Flip to B1 only if shipping runtime-eval becomes a real need, or the battery shows native can't be kept robust per shape. The B1 build is reproducible from the recipe above (no committed artifact — it's the fallback, not the ship).
+**Decision (re-affirmed on measured data): native-only for v1, B1 = proven escape hatch.** Native's 4× smaller single-file artifact and ~7× faster start are exactly aligned to the agent-plugin delivery (download one 33 MB binary), and the whack-a-mole is now *bounded* (§3.4) + *gated* (§3.6 battery). B1's only unique win is now the opt-in **`--kernel` engine** — which stays JVM-dev-only by design (the runtime verbs themselves run native on the interpreter) — and zero native-image risk at a 4×-size / 7×-startup cost. Flip to B1 only if shipping the kernel engine becomes a real need, or the battery shows native can't be kept robust per shape. The B1 build is reproducible from the recipe above (no committed artifact — it's the fallback, not the ship).
 
 ## 8. Verification gate — two gates, two targets
 
@@ -179,18 +181,18 @@ The demos are authored for the **full JVM CLI**, so against the native *subset* 
 $ ./scripts/native-gate.sh
 PASS  cli-apply.md
 PASS  cli-edit-loop.md
-SKIP  cli-runtime.md   — JVM-only verbs — model eval/rule test/model compute need Groovy (§4)
+PASS  cli-runtime.md
 PASS  cli-structure-edit.md
-SKIP  cli-tour.md      — manifest block lists the full verb list — a subset on native; asserted by NativeImageVerbHidingTest
+PASS  cli-tour.md
 PASS  cli-version.md
 native gate: GREEN
 ```
 
-The skip set (`NATIVE_SKIP`) lives in the script with the *why* next to each entry. Two distinct causes:
+**`NATIVE_SKIP` is now EMPTY — all 6 demos are native-applicable (2026-06-24).** The two former skips are obsolete:
 
-- **JVM-only verbs** — `cli-runtime.md` is *entirely* `model eval`/`rule test`/`model compute` (all 9 invocations), so nothing to salvage. **Convention — isolate JVM-only verbs in their own demo file:** showboat verify is per-file, so a *single* runtime-eval block would turn its whole demo unverifiable on native and you'd lose native coverage of its other blocks. Never sprinkle one into a native-applicable demo.
-- **Subset divergence** — `cli-tour.md`'s `manifest` block enumerates the full verb list, which is legitimately shorter on native (the 3 hidden verbs). A per-block "native-aware capture" isn't possible (showboat verifies whole files), so the demo is skipped on native and **the native-aware manifest assertion lives in `NativeImageVerbHidingTest`** (it checks native's manifest omits exactly those 3 and keeps the rest). cli-tour's other (read-verb) blocks aren't lost coverage: native JSON-output fidelity is already proven byte-for-byte by the 4 passing demos.
+- `cli-runtime.md` — its runtime verbs (`model eval`/`rule test`/`model compute`) now default to the kernel-free interpreter, so they run on the native binary (verified above). The only JVM-only part is the `--kernel` *option*, guarded by `NativeImageRuntimeVerbsTest`. **Standing convention if a verb ever becomes genuinely native-incompatible:** isolate it in its own demo file (showboat verify is per-file, so one unverifiable block would forfeit native coverage of the rest) — but no verb is in that state today.
+- `cli-tour.md` — its `manifest` block is no longer a native subset: `Cli.JVM_ONLY_VERBS` is empty (no verb hidden), so the native manifest equals the JVM one and the demo verifies byte-for-byte on native too. (`NativeImageRuntimeVerbsTest` superseded the old hiding test.)
 
-> **Closed (v0.2.0) — `manifest` + a real `rule read` read-back are now in the battery.** `manifest` lives only in `cli-tour.md` (skipped on native), and the fixture sweep's `rule read` runs **without** a `<rulePathInModel>` (picocli rejects it before the read tier) — so for a while the only thing running `manifest` on a native binary was the **Windows CI smoke** (RELEASE-SPEC §4), and the rule read-back was untested locally too. A native-only `manifest` defect (it builds the full picocli tree + operator catalog → a reflection/resource path the read/validate verbs don't hit) would have slipped past the local gate; it surfaced indirectly when the Windows smoke's *own* bugs were fixed and it finally ran `manifest`. **`native-battery.sh` now drives `manifest`, `operators`, and `rule read`/`rule explain /Order/DeliveryNotBeforeOrder`** (catalog + adapter-read-back reflection), so the local gate covers them — not only the Windows-only smoke.
+> **Closed (v0.2.0) — `manifest` + a real `rule read` read-back are now in the battery.** `manifest` lives only in `cli-tour.md` (which was skipped on native back then), and the fixture sweep's `rule read` runs **without** a `<rulePathInModel>` (picocli rejects it before the read tier) — so for a while the only thing running `manifest` on a native binary was the **Windows CI smoke** (RELEASE-SPEC §4), and the rule read-back was untested locally too. A native-only `manifest` defect (it builds the full picocli tree + operator catalog → a reflection/resource path the read/validate verbs don't hit) would have slipped past the local gate; it surfaced indirectly when the Windows smoke's *own* bugs were fixed and it finally ran `manifest`. **`native-battery.sh` now drives `manifest`, `operators`, and `rule read`/`rule explain /Order/DeliveryNotBeforeOrder`** (catalog + adapter-read-back reflection), so the local gate covers them — not only the Windows-only smoke.
 
 This split is what keeps "native ≡ JVM" honest *per verb* (identical behavior for every verb native exposes) while letting native legitimately expose fewer.

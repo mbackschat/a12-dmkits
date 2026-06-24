@@ -1,36 +1,6 @@
 {
   "reflection": [
     {
-      "type": "Com_mgmtp_a12_kernel_generated_order_internal_C_order",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "Com_mgmtp_a12_kernel_generated_order_internal_C_order$getInstance",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "Com_mgmtp_a12_kernel_generated_order_internal_C_orderBeanInfo"
-    },
-    {
-      "type": "Com_mgmtp_a12_kernel_generated_order_internal_C_orderCustomizer"
-    },
-    {
       "type": "Com_mgmtp_a12_kernel_generated_order_internal_ERValidator_order",
       "methods": [
         {
@@ -1276,6 +1246,29 @@
       "type": "Com_mgmtp_a12_kernel_generated_subscription_internal_R_subscriptionCustomizer"
     },
     {
+      "type": "Script_0ef1c1466c7d751a7565e66c3eb21cbe",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getCalculator",
+          "parameterTypes": []
+        },
+        {
+          "name": "getMetaModel",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Script_0ef1c1466c7d751a7565e66c3eb21cbeBeanInfo"
+    },
+    {
+      "type": "Script_0ef1c1466c7d751a7565e66c3eb21cbeCustomizer"
+    },
+    {
       "type": "Script_288c84212de1a3fdfa31b71558bbf835",
       "methods": [
         {
@@ -1326,10 +1319,6 @@
       "methods": [
         {
           "name": "<init>",
-          "parameterTypes": []
-        },
-        {
-          "name": "getCalculator",
           "parameterTypes": []
         },
         {
@@ -1442,6 +1431,9 @@
     },
     {
       "type": "android.app.Activity"
+    },
+    {
+      "type": "android.os.Build$VERSION"
     },
     {
       "type": "byte[]"
@@ -3612,37 +3604,7 @@
       "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.MainValidatorController$PruefErgebnisTypCustomizer"
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.MainValidatorController$addValidatorMessage$1",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.MainValidatorController$addValidatorMessage$2",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.MainValidatorController$applikationsBedingung$0",
+      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.core.MainValidatorController$addValidatorMessage$0",
       "methods": [
         {
           "name": "<init>",
@@ -4639,21 +4601,6 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.util.EbenenIterator$get$1",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
       "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.util.EbenenIterator$getSemanticIndexLevel$0",
       "methods": [
         {
@@ -4875,30 +4822,6 @@
     },
     {
       "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.util.RtIdentifierTemplateCustomizer"
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.util.RtInternalIdentifier"
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.util.RtInternalIdentifier$createFromIterationState",
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": [
-            "org.codehaus.groovy.runtime.callsite.CallSite",
-            "groovy.lang.MetaClassImpl",
-            "groovy.lang.MetaMethod",
-            "java.lang.Class[]",
-            "java.lang.reflect.Constructor"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.util.RtInternalIdentifierBeanInfo"
-    },
-    {
-      "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.util.RtInternalIdentifierCustomizer"
     },
     {
       "type": "com.mgmtp.a12.kernel.core.rt._30_8.internal.util.TrieNode",
@@ -6587,9 +6510,6 @@
       "type": "groovy.lang.groovydoc.Groovydoc"
     },
     {
-      "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_order_internal_C_orderMetaClass"
-    },
-    {
       "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_order_internal_ERValidator_orderMetaClass"
     },
     {
@@ -6737,6 +6657,9 @@
       "type": "groovy.runtime.metaclass.CustomMetaClassCreationHandle"
     },
     {
+      "type": "groovy.runtime.metaclass.Script_0ef1c1466c7d751a7565e66c3eb21cbeMetaClass"
+    },
+    {
       "type": "groovy.runtime.metaclass.Script_288c84212de1a3fdfa31b71558bbf835MetaClass"
     },
     {
@@ -6867,9 +6790,6 @@
     },
     {
       "type": "groovy.runtime.metaclass.com.mgmtp.a12.kernel.core.rt._30_8.internal.util.RtIdentifierTemplateMetaClass"
-    },
-    {
-      "type": "groovy.runtime.metaclass.com.mgmtp.a12.kernel.core.rt._30_8.internal.util.RtInternalIdentifierMetaClass"
     },
     {
       "type": "groovy.runtime.metaclass.com.mgmtp.a12.kernel.core.rt._30_8.internal.util.TrieNodeMetaClass"
@@ -8017,6 +7937,9 @@
           "name": "localeTag"
         },
         {
+          "name": "useKernel"
+        },
+        {
           "name": "workspace"
         }
       ],
@@ -8070,6 +7993,9 @@
         },
         {
           "name": "severity"
+        },
+        {
+          "name": "useKernel"
         },
         {
           "name": "workspace"
@@ -8147,6 +8073,26 @@
         },
         {
           "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.model.ModelSeedCommand",
+      "fields": [
+        {
+          "name": "rows"
+        },
+        {
+          "name": "rowsDefault"
+        },
+        {
+          "name": "seed"
         }
       ],
       "methods": [
@@ -8422,6 +8368,9 @@
         },
         {
           "name": "rule"
+        },
+        {
+          "name": "useKernel"
         },
         {
           "name": "workspace"
@@ -10583,12 +10532,6 @@
       "glob": "Com_mgmtp_a12_kernel_generated_order_internal_C_order$String.class"
     },
     {
-      "glob": "Com_mgmtp_a12_kernel_generated_order_internal_C_orderBeanInfo.groovy"
-    },
-    {
-      "glob": "Com_mgmtp_a12_kernel_generated_order_internal_C_orderCustomizer.groovy"
-    },
-    {
       "glob": "Com_mgmtp_a12_kernel_generated_order_internal_ERValidator_order$CalculationCommand.class"
     },
     {
@@ -12156,6 +12099,30 @@
     },
     {
       "glob": "META-INF/services/org.slf4j.spi.SLF4JServiceProvider"
+    },
+    {
+      "glob": "Script_0ef1c1466c7d751a7565e66c3eb21cbe$Com_mgmtp_a12_kernel_generated_subscription_internal_ERValidator_subscription.class"
+    },
+    {
+      "glob": "Script_0ef1c1466c7d751a7565e66c3eb21cbe$Com_mgmtp_a12_kernel_generated_subscription_internal_Meta_subscription.class"
+    },
+    {
+      "glob": "Script_0ef1c1466c7d751a7565e66c3eb21cbe$com$mgmtp$a12$kernel$core$rt$_30_8$internal$core.class"
+    },
+    {
+      "glob": "Script_0ef1c1466c7d751a7565e66c3eb21cbe$com$mgmtp$a12$kernel$core$rt$_30_8$internal$formatdef.class"
+    },
+    {
+      "glob": "Script_0ef1c1466c7d751a7565e66c3eb21cbe$com$mgmtp$a12$kernel$core$rt$_30_8$internal$meta.class"
+    },
+    {
+      "glob": "Script_0ef1c1466c7d751a7565e66c3eb21cbe$com$mgmtp$a12$kernel$core$rt$_30_8$internal$util.class"
+    },
+    {
+      "glob": "Script_0ef1c1466c7d751a7565e66c3eb21cbeBeanInfo.groovy"
+    },
+    {
+      "glob": "Script_0ef1c1466c7d751a7565e66c3eb21cbeCustomizer.groovy"
     },
     {
       "glob": "Script_288c84212de1a3fdfa31b71558bbf835$Com_mgmtp_a12_kernel_generated_storefront_internal_ERValidator_storefront.class"
