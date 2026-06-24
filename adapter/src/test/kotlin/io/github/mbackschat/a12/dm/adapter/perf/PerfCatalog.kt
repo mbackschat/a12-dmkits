@@ -142,21 +142,12 @@ object PerfCatalog {
     )
 
     /**
-     * A MULTI-rule scenario over the diverse [fuzzJson] model whose instance is **random** — random row counts
-     * per group AND random fill-or-empty (in-format) values, keyed off the `variant` as the RNG seed. The
-     * differential fuzz net (`InterpreterKernelFuzzTest`) sweeps seeds and asserts interp == kernel on each
-     * generated document. The rules use only supported operators with valid (referenced) error fields; the
-     * random fill/empty + diverse kinds exercise requiredness (empty index fields → `mandatoryField`), a
-     * per-row comparison, **date extractors over an ISO AND a non-ISO date field**, an aggregate over varying
-     * rows, **`FirstFilledValue`** (first-specified-row, skip-empties), **`NumberOfValueInFields`** (count-of-
-     * value, `In` syntax), **rounding (FLOOR/CEILING/HALF_UP, expr + `*Value` forms)**, **the substring coercions
-     * `RangeAsString`/`RangeAsNumber` + `FieldValueAsString`**, **`SumOfProducts`** (row-paired),
-     * **`CurrentRepetition`** (per-row index), **`AllFieldsFilled`** (a field-list quantifier — exercises the
-     * 3VL on a malformed operand), a nested per-part rule, and a cross-level reference — combinations no
-     * hand-written `*DiffTest` covers.
+     * The fuzz net's rule specs, single-sourced so the catalog-parity meter (`adapter.laws.CatalogParityTest`)
+     * can read which constructs the fuzz exercises WITHOUT building the kernel model. Keeping this the one source
+     * means a rule added here is automatically seen by both the fuzz net and the parity guard.
      */
-    fun fuzz(): PerfScenario {
-        val rules = listOf(
+    private fun fuzzRuleSpecs(): List<FuzzRule> =
+        listOf(
             FuzzRule(FZ_LINES, "HQ", "../Qty", "FieldFilled(Qty) And [Qty] > 50"),
             FuzzRule(FZ_LINES, "YO", "../OrderedOn", "FieldFilled(OrderedOn) And YearFromDate(OrderedOn) > 2020"),
             FuzzRule(FZ_LINES, "YD", "../DueBy", "FieldFilled(DueBy) And YearFromDate(DueBy) > 2020"),
@@ -179,6 +170,26 @@ object PerfCatalog {
             FuzzRule("/Cart", "CR", "../Lines/Qty", "FieldFilled(Lines/Qty) And CurrentRepetition(Lines) > 2"), // per-row index
             FuzzRule(FZ_PARTS, "XL", "../Weight", "FieldFilled(Weight) And [Weight] > [/Cart/Lines/Qty]"),
         )
+
+    /** The fuzz rules' condition texts — what [CatalogParityTest] scans to know which constructs the net covers. */
+    fun fuzzConditions(): List<String> = fuzzRuleSpecs().map { it.cond }
+
+    /**
+     * A MULTI-rule scenario over the diverse [fuzzJson] model whose instance is **random** — random row counts
+     * per group AND random fill-or-empty (in-format) values, keyed off the `variant` as the RNG seed. The
+     * differential fuzz net (`InterpreterKernelFuzzTest`) sweeps seeds and asserts interp == kernel on each
+     * generated document. The rules use only supported operators with valid (referenced) error fields; the
+     * random fill/empty + diverse kinds exercise requiredness (empty index fields → `mandatoryField`), a
+     * per-row comparison, **date extractors over an ISO AND a non-ISO date field**, an aggregate over varying
+     * rows, **`FirstFilledValue`** (first-specified-row, skip-empties), **`NumberOfValueInFields`** (count-of-
+     * value, `In` syntax), **rounding (FLOOR/CEILING/HALF_UP, expr + `*Value` forms)**, **the substring coercions
+     * `RangeAsString`/`RangeAsNumber` + `FieldValueAsString`**, **`SumOfProducts`** (row-paired),
+     * **`CurrentRepetition`** (per-row index), **`AllFieldsFilled`** (a field-list quantifier — exercises the
+     * 3VL on a malformed operand), a nested per-part rule, and a cross-level reference — combinations no
+     * hand-written `*DiffTest` covers.
+     */
+    fun fuzz(): PerfScenario {
+        val rules = fuzzRuleSpecs()
         val kernelModel = rules.fold(fuzzJson) { m, r -> RuntimeLaws.withRule(m, r.group, "R_${r.code}", r.errorRel, r.code, r.cond) }
         val interpModel = ModelDef(
             fuzzFields, rules.map { RuleDef("${it.group}/R_${it.code}", it.group, it.cond, it.code, it.errorRel) },
