@@ -1,0 +1,128 @@
+# Seed generator & differential fuzz net — spec
+
+Two coupled pieces that share one engine:
+
+1. **The model-driven seed generator** (`SeedGenerator`, package `…dm.interpreter.gen`) — given a document model, it produces a **valid-by-construction** document instance. Kernel-free and multiplatform, so the same code serves three consumers.
+2. **The differential fuzz net** (`adapter.perf.InterpreterKernelFuzzTest`) — built on the generator: it generates many random documents and asserts the **interpreter agrees with the real kernel** on every one. This is the strongest gate for the interpreter's #1 rule — *match the kernel exactly* ([INTERPRETER-FINDINGS](INTERPRETER-FINDINGS.md) IF0).
+
+This doc is the **stable method**. The generator's *consumers* (the perf harness, a future `dmtool seed` verb) have their own homes — [INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md) for the perf side, task #33 for the verb. The catalogue of operators the fuzz model exercises is the *coverage map* in [INTERPRETER-BUILDOUT.md](INTERPRETER-BUILDOUT.md), not here.
+
+## Why a generator at all
+
+Hand-writing document fixtures to test the interpreter is the obvious approach — and it is exactly what the per-operator `*DiffTest`s do (one pinned case each). But hand-picked cases only catch the divergences you *think* to write. The exact-match bar needs the opposite: **random combinations a human would not pick** — odd row counts across nested groups, mixed fill/empty/malformed patterns, colliding index keys, an aggregate over a list that happens to be empty. To generate those *and feed the same document to both engines*, you need one generator that builds a document once and can target either backing — that is the generator's reason to exist.
+
+It is **valid-by-construction** on purpose: the structure comes from the model (so every placement is addressable and every group instantiated correctly), and the default per-field value is in-format for the field's kind. A test that wants invalidity (the fuzz net does) layers it on top via a value strategy — it never has to fight a malformed *structure*.
+
+## The data flow
+
+```
+                       ModelDef (the model: kinds, repeatable groups, scales, formats, index fields)
+                          │
+                          ▼
+   ValueStrategy ───►  SeedGenerator.populate(sink, seed, rowsOf, value)
+   (value per field)      │   walks the group tree; per repeatable group asks rowsOf(group, parentReps, rnd)
+   RowsFn ────────────►   │   how many rows; emits one value per field from the ValueStrategy
+   (rows per group)       │
+                          ▼
+                    PlacementSink                 ← the seam: one build, any backing
+                    ├─ Document.asSink()          → the interpreter's general Document      (:interpreter)
+                    ├─ KernelSink(RuntimeLaws.Doc)→ a kernel IDocument                       (:adapter, has the kernel)
+                    └─ (future) JsonSink          → a DM-JSON sample instance               (dmtool seed verb, #33)
+```
+
+Each placement carries **one 1-based repetition index per path part** (group *and* field) — the exact addressing the interpreter's `Document` and the kernel's `IDocument` both use, so the sink is a thin pass-through on each side.
+
+## The seed generator
+
+`SeedGenerator(model: ModelDef)` precomputes the group tree (child groups, fields-per-group, roots) from the field paths + declared repeatable groups. Then:
+
+```kotlin
+gen.populate(
+    sink,                       // a PlacementSink (interpreter Document / kernel Doc / JSON)
+    seed = 0L,                  // RNG seed → fully deterministic output
+    rowsOf = { group, parentReps, rnd -> … },   // rows to instantiate per repeatable group
+    value  = ValidValues,       // a ValueStrategy: the value for each field (null = leave empty)
+)
+```
+
+| Concept | Contract |
+|---|---|
+| **`PlacementSink`** | `group(path, *reps)` · `field(path, value, *reps)` · `emptyField(path, *reps)`. The only thing the generator emits into. |
+| **`RowsFn`** = `(group, parentReps, rnd) -> Int` | How many rows to instantiate for a repeatable group under a given parent row. A non-repeatable group always gets exactly one row. Counts may vary per parent and per run (the RNG is passed in). |
+| **`ValueStrategy`** = `(field, reps, rnd) -> String?` | The value for one field instance; **`null` leaves it empty** (present-but-unfilled). |
+| **`ValidValues`** (the default strategy) | A **valid** value for each `Kind`: NUMBER respects scale + sign (never a signed zero — that is a formal error), dates/times/ranges render in the field's format, a CONFIRM is `true` or empty only. Never empties a field — compose a wrapper for that. |
+
+**Determinism is the contract that makes the dual-engine differential work.** `populate` builds its own `Random(seed)` and walks in a fixed order, so two calls with the same generator instance and seed produce the **identical** document. The fuzz net relies on this: it materializes seed *s* into the interpreter and into the kernel from the same generator, and any divergence is therefore a real semantic difference, not a generation artefact — and a failing seed is exactly reproducible.
+
+**Kernel-free + multiplatform.** `…interpreter.gen` imports no kernel/Groovy/`java.*` (the `verifyInterpreterPurity` lint enforces it), so the generator rides the native image and the JS artifact. That is what lets the *same* generator back a future `dmtool seed` verb on the native binary — the kernel is touched only by the fuzz net's oracle, which lives in `:adapter`.
+
+## The differential fuzz net
+
+`InterpreterKernelFuzzTest.randomValidDocumentsAgreeWithKernel` is the gate:
+
+```
+for seed in 0 until 100:
+    doc_s = generate(PerfCatalog.fuzz, seed)            # one document, two materializations
+    assert interpreter.firedCodes(doc_s) == kernel.firedCodes(doc_s)   # identical sorted multiset
+```
+
+It collects **all** divergences across the 100 seeds (not fail-fast) and reports them together, each as `seed=… kernel-only=… interp-only=…`, so one run triages every distinct mismatch. The comparison is the **sorted fired-code multiset** (same codes *and* per-row firing counts) from `DmInterpreter.validateFull` vs the kernel's `IDocumentRtService.validateFull` (via `RuntimeLaws.kernelEngine`).
+
+### The fuzz model is deliberately diverse
+
+The fuzz uses its **own** model (`fuzz.dm.json`, an own-domain e-commerce cart) — a shape the perf model lacks, chosen to stress the dimensions a flat model can't:
+
+- **Every value kind**: STRING, NUMBER (scale 0 *and* scale 2), an **ISO date**, a **non-ISO `dd.MM.yyyy` date** (locale-variant canonicalization), BOOLEAN.
+- **Two nesting levels**: `/Cart/Lines` → `/Cart/Lines/Parts`, both repeatable, both with an **index field** (`ItemId`, `PartId`).
+- **A broad rule set** — one rule per construct, so a single generated document exercises many operators at once: a per-row comparison, date extractors over both date fields, an aggregate (`Sum`), `FirstFilledValue`, `NumberOfValueInFields`, division/power, `Abs`/`Length`, the `Round*` family, a nested per-part rule, and a cross-level (common-prefix) reference.
+
+### The value strategy is where the fuzzing happens
+
+`PerfCatalog.fuzz()`'s `ValueStrategy`, keyed off the seed:
+
+| Draw | Outcome | Stresses |
+|---|---|---|
+| 30% | **empty** (null) | requiredness (`mandatoryField` on empty index fields), empty-as-0, skip-empty aggregates |
+| of the filled, 15% | **deliberately malformed** for the formal-checked kinds (NUMBER: `abc` / `-0` / `+5` / ` 5 `; DATE: garbage or the *wrong* locale format) | formal-error detection + rule suppression, in both engines |
+| index fields | drawn from a **small pool** (`K0`..`K2`) | value **collisions** → the auto `uniqueIndex` check + its branch-scoped suppression |
+| otherwise | a valid value (`ValidValues`) | the normal path |
+
+Row counts are random per group (`Lines` 0–6, `Parts` 0–4), so list lengths — and whether an aggregate sees an empty list — vary across seeds.
+
+### Why it is the exactness multiplier
+
+A hand-written `*DiffTest` proves one operator behaves on one input. The fuzz net proves **the operators compose correctly under inputs no one curated** — and it has paid for itself repeatedly. Track record (each found by the net, root-caused, fixed clean-room, and locked with a dedicated `*DiffTest`):
+
+| # | Divergence the fuzz surfaced | Fix |
+|---|---|---|
+| 1 | NUMBER sign formals: **signed-zero `-0`** / **leading-plus `+5`** treated as valid | `FormalError` + check-ordering (`NumberSignFormalDiffTest`) |
+| 2 | **plain-date locale**: a `dd.MM.yyyy` value parsed as ISO | format-aware `DateMath.parseDateToIso` (`PlainDateDiffTest`) |
+| 3 | a malformed value in a numeric combiner **crashed** the interpreter | total parsing (`decOrNull`) + combiner Unknown-propagation (`AggMalformedDiffTest`) |
+| 4 | **`-0` parses but is a formal error** → an aggregate folded it as 0 and fired where the kernel suppresses | `Document.resolveValue` gates on `formalError`, not parseability (`UniquenessDiffTest`/`74052407`) |
+
+(The colliding-key pool additionally drove index-field `uniqueIndex` + its suppression to parity.)
+
+## Extending the net — the per-operator loop
+
+Adding an operator follows one loop (the standing build-out method, [INTERPRETER-BUILDOUT.md](INTERPRETER-BUILDOUT.md)):
+
+> **probe the kernel → implement clean-room → pin a `*DiffTest` → add a rule to the fuzz model → commit**
+
+The fuzz step is one line: add a `FuzzRule(group, code, errorRel, condition)` to the list in `PerfCatalog.fuzz()` using only supported operators and a **referenced** error field, and the 100-seed sweep starts exercising it in combination with every other rule. Guard any rule that would otherwise fire on the empty-as-0 row with `FieldFilled(...)` (the kernel rejects a rule that can fire on a wholly-empty row). Keep the fuzz model's own-domain fixture realistic (the license-safe own-domain rule applies).
+
+## How to run
+
+```
+# the fuzz net (the exactness gate) — fast, ~seconds
+./build.sh :adapter:test --tests "io.github.mbackschat.a12.dm.adapter.perf.InterpreterKernelFuzzTest"
+
+# the seed generator's own multiplatform proof (JVM + JS)
+./build.sh :interpreter:check --tests "io.github.mbackschat.a12.dm.interpreter.SeedGeneratorTest"
+```
+
+A failing fuzz seed prints `seed=N kernel-only=… interp-only=…`; reproduce it in isolation by pinning that seed, then write the minimal `*DiffTest` that captures the divergence before fixing (red/green).
+
+## Relationship to the perf harness and the seed verb
+
+- **Perf harness** ([INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md)) — the *same* `SeedGenerator` + `PlacementSink` build the perf scenarios' instances into both engines; the fuzz net is the **correctness twin** of the perf differential (one asserts equality of outputs, the other measures time, both over generated real documents). The deterministic strategies there drive a known firing fraction; the fuzz strategy here is random.
+- **`dmtool seed` verb (#33)** — not yet built. The generator is already placed kernel-free precisely so the verb can wire `loader → SeedGenerator.populate(JsonSink) → serialize` on the native image, producing a valid sample instance for any model. The `PlacementSink` seam is the extension point — a third backing, no generator change.
