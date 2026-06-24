@@ -146,6 +146,35 @@ object PerfCatalog {
         }
     }
 
+    /**
+     * A parameterized many-rules scenario: [count] kernel-valid rules over the nested model, cycling per-row /
+     * cross-field / nested / aggregate templates with varying thresholds (unique codes). The scale knob is the
+     * **rule count**, used by the kernel-edge sweep to find where the interpreter's per-call re-parse (#31)
+     * loses to the kernel's compile-once codegen — the kernel's documented architectural advantage.
+     */
+    fun manyRules(count: Int): PerfScenario {
+        val rules = (0 until count).map { i ->
+            val code = "R%03d".format(i)
+            when (i % 4) {
+                0 -> FuzzRule(LINES, code, "../Qty", "FieldFilled(Qty) And [Qty] > ${50 + i}")
+                1 -> FuzzRule(LINES, code, "../Amount", "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]")
+                2 -> FuzzRule(SUBS, code, "../Cost", "FieldFilled(Cost) And [Cost] > ${40 + (i % 50)}")
+                else -> FuzzRule("/Perf", code, "../Lines/Amount", "Sum(Lines*/Amount) > ${1000 + i}")
+            }
+        }
+        val kernelModel = rules.fold(perfJson) { m, r -> RuntimeLaws.withRule(m, r.group, "R_${r.code}", r.errorRel, r.code, r.cond) }
+        val interpModel = ModelDef(
+            fields, rules.map { RuleDef("${it.group}/${it.code}", it.group, it.cond, it.code, it.errorRel) },
+            repeatableGroups = setOf(LINES, SUBS),
+            declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX),
+            indexFields = setOf(LINE_KEY, SUB_KEY),
+        )
+        val gen = SeedGenerator(interpModel)
+        return PerfScenario("manyRules($count)", kernelModel, interpModel) { sink, n, variant ->
+            gen.populate(sink, rowsOf = nestedRows(n), value = perfValues(variant))
+        }
+    }
+
     /** Every catalog scenario, in order — for the gate to sweep. */
     fun all(): List<PerfScenario> = listOf(b1(), b2(), b3(), b4(), b5(), b6())
 
