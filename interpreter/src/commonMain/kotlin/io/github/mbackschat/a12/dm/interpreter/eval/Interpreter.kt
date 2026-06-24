@@ -86,8 +86,8 @@ class Interpreter(
     private fun predFiresOnEmpty(p: Cond.Pred): Boolean = when (val op = PredicateOp.byName(p.name)) {
         null, PredicateOp.FIELD_FILLED, PredicateOp.GROUP_FILLED,
         PredicateOp.FIELD_VALUE_IN_LIST, PredicateOp.FIELD_VALUE_NOT_IN_LIST,
-        PredicateOp.DATE_RANGES_OVERLAP,
-        PredicateOp.FIELD_VALUES_NOT_UNIQUE -> false   // needs ≥2 present equal values; an empty row is not evaluated
+        PredicateOp.DATE_RANGES_OVERLAP, PredicateOp.ATLEAST_ONE_DATE_RANGE_OVERLAPS,
+        PredicateOp.FIELD_VALUES_NOT_UNIQUE -> false   // needs present ranges / ≥2 present equal values; an empty row is not evaluated
         PredicateOp.FIELD_NOT_FILLED, PredicateOp.GROUP_NOT_FILLED -> true
         else -> quantifierFires(op, t = 0, f = p.args.size, n = p.args.size)   // all-empty: every operand FALSE
     }
@@ -297,7 +297,8 @@ class Interpreter(
             PredicateOp.GROUP_NOT_FILLED -> Tri.of(!ctx.groupFilled(pathOf(p.args.single())))
             PredicateOp.FIELD_VALUE_IN_LIST -> valueInList(p.args)
             PredicateOp.FIELD_VALUE_NOT_IN_LIST -> not(valueInList(p.args))
-            PredicateOp.DATE_RANGES_OVERLAP -> dateRangesOverlap(p.args)
+            PredicateOp.DATE_RANGES_OVERLAP,
+            PredicateOp.ATLEAST_ONE_DATE_RANGE_OVERLAPS -> dateRangesOverlap(p.args)
             PredicateOp.FIELD_VALUES_NOT_UNIQUE -> fieldValuesNotUnique(p.args)
             // List quantifiers over the (TRUE, FALSE) operand tally (row-evaluated gate is upstream in eval).
             PredicateOp.ALL_FIELDS_FILLED, PredicateOp.NO_FIELD_FILLED, PredicateOp.AT_LEAST_ONE_FIELD_FILLED,

@@ -49,11 +49,14 @@ class DateRangeDiffTest {
 
     private val overlapFields = fields + FieldDef(IC, Kind.DATE_RANGE, format = "dd.MM.yyyy", rangeSeparator = "-")
     private val overlapCond = "FieldFilled(OrderDate) And DateRangesOverlap(CoverageWindow, Items*/ItemCoverage)"
+    // The `IN`-syntax sibling — kernel-probed semantically identical to DateRangesOverlap (KERNEL-FINDINGS §6),
+    // so the SAME scenarios must agree. (The kernel grammar's `IN` token is distinct from the value-list `In`.)
+    private val atLeastOneCond = "FieldFilled(OrderDate) And AtLeastOneDateRangeOverlaps(CoverageWindow IN Items*/ItemCoverage)"
 
-    /** CoverageWindow vs N ItemCoverage rows — kernel and interpreter must agree on the overlap firing. */
-    private fun overlapAgree(window: String, itemCoverages: List<String>, msg: String) {
-        val kModel = RuntimeLaws.withRule(order, "/Order", "CC", "../OrderDate", "CC", overlapCond)
-        val def = ModelDef(overlapFields, listOf(RuleDef("/Order/CC", "/Order", overlapCond, "CC", "../OrderDate")),
+    /** [cond] (rule [code]) over CoverageWindow vs N ItemCoverage rows — kernel and interpreter agree on firing. */
+    private fun agreeOverlap(cond: String, code: String, window: String, itemCoverages: List<String>, msg: String) {
+        val kModel = RuntimeLaws.withRule(order, "/Order", code, "../OrderDate", code, cond)
+        val def = ModelDef(overlapFields, listOf(RuleDef("/Order/$code", "/Order", cond, code, "../OrderDate")),
             repeatableGroups = setOf("/Order/Items"), declaredReps = mapOf("/Order/Items" to 50))
         val kDoc = RuntimeLaws.doc().group("/Order", 1).field(OD, "2024-06-01", 1, 1).field(CW, window, 1, 1)
         val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig)
@@ -62,16 +65,26 @@ class DateRangeDiffTest {
             kDoc.group("/Order/Items", 1, i + 1).field(IC, ic, 1, i + 1, 1)
             iDoc.group("/Order/Items", 1, i + 1).field(IC, ic, 1, i + 1, 1)
         }
-        val kernel = RuntimeLaws.fires(kModel, "CC", kDoc)
-        val interp = DmInterpreter(def).validateFull(iDoc).any { it.code == "CC" }
+        val kernel = RuntimeLaws.fires(kModel, code, kDoc)
+        val interp = DmInterpreter(def).validateFull(iDoc).any { it.code == code }
         assertEquals(kernel, interp, "$msg  (kernel=$kernel interp=$interp)")
     }
+
+    private fun overlapAgree(window: String, items: List<String>, msg: String) = agreeOverlap(overlapCond, "CC", window, items, msg)
+    private fun atLeastOneAgree(window: String, items: List<String>, msg: String) = agreeOverlap(atLeastOneCond, "AO", window, items, msg)
 
     @Test fun touchingRangesOverlap() = overlapAgree("01.01.2024-31.01.2024", listOf("31.01.2024-28.02.2024"), "touching ranges overlap (closed)")
     @Test fun backToBackDoNot() = overlapAgree("01.01.2024-31.01.2024", listOf("01.02.2024-28.02.2024"), "adjacent-day ranges do not overlap")
     @Test fun containedOverlaps() = overlapAgree("01.01.2024-31.12.2024", listOf("01.06.2024-30.06.2024"), "a contained range overlaps")
     @Test fun anyRowOverlaps() = overlapAgree("01.06.2024-30.06.2024", listOf("01.01.2025-31.01.2025", "15.06.2024-15.07.2024"), "overlaps any row (2nd)")
     @Test fun noRowOverlaps() = overlapAgree("01.06.2024-30.06.2024", listOf("01.01.2025-31.01.2025", "01.02.2025-28.02.2025"), "no row overlaps")
+
+    // AtLeastOneDateRangeOverlaps (IN syntax) — must match DateRangesOverlap on the same scenarios.
+    @Test fun inTouchingOverlaps() = atLeastOneAgree("01.01.2024-31.01.2024", listOf("31.01.2024-28.02.2024"), "IN: touching ranges overlap")
+    @Test fun inBackToBackDoNot() = atLeastOneAgree("01.01.2024-31.01.2024", listOf("01.02.2024-28.02.2024"), "IN: adjacent-day ranges do not overlap")
+    @Test fun inContainedOverlaps() = atLeastOneAgree("01.01.2024-31.12.2024", listOf("01.06.2024-30.06.2024"), "IN: a contained range overlaps")
+    @Test fun inAnyRowOverlaps() = atLeastOneAgree("01.06.2024-30.06.2024", listOf("01.01.2025-31.01.2025", "15.06.2024-15.07.2024"), "IN: overlaps any row (2nd)")
+    @Test fun inNoRowOverlaps() = atLeastOneAgree("01.06.2024-30.06.2024", listOf("01.01.2025-31.01.2025", "01.02.2025-28.02.2025"), "IN: no row overlaps")
 
     private companion object {
         const val OD = "/Order/OrderDate"

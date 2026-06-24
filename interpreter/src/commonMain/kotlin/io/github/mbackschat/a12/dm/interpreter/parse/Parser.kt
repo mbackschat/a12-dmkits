@@ -192,9 +192,10 @@ private class ConditionParser(private val src: String, private val base: String)
         expect('(')
         val args = mutableListOf(parseExpr())
         skipWs()
-        // `NumberOfValueInFields(value In f1, f2, …)` — the `In` grammar literal separates the constant from
-        // the bare field refs. Only this construct uses it; for every other function the next token is `,`/`)`.
-        if (matchKeyword("In")) { args.add(parseExpr()); skipWs() }
+        // An infix grammar literal separating arg0 from the rest: `In` for `NumberOfValueInFields(value In f1, …)`,
+        // `IN` for `AtLeastOneDateRangeOverlaps(range IN rangeList)` (the kernel grammar has distinct In/IN/in
+        // tokens — operator-specific). For every other function the next token is `,`/`)`.
+        if (matchKeyword("In") || matchKeyword("IN")) { args.add(parseExpr()); skipWs() }
         while (peek() == ',') { next(); args.add(parseExpr()); skipWs() }
         expect(')')
         return args
@@ -270,7 +271,7 @@ private class ConditionParser(private val src: String, private val base: String)
             "NotAllFieldsFilled", "NotExactlyOneFieldFilled", "FieldsNotCollectivelyFilled",
             "AllGroupsFilled", "NoGroupFilled", "AtLeastOneGroupFilled",
             "NotAllGroupsFilled", "GroupsNotCollectivelyFilled",
-            "DateRangesOverlap", "FieldValuesNotUnique",
+            "DateRangesOverlap", "AtLeastOneDateRangeOverlaps", "FieldValuesNotUnique",
         )
         val PATTERN_OPS = setOf("PatternMatched", "PatternViolated")
 

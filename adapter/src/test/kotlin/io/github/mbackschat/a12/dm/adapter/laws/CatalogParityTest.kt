@@ -66,7 +66,7 @@ class CatalogParityTest {
             "Now", "BaseYear", "Date", "Time", "DateTime", "DateFromDateTime", "TimeFromDateTime",
             "AddHours", "AddMinutes", "AddSeconds",
             "DifferenceInHours", "DifferenceInMinutes", "DifferenceInSeconds",
-            "AtLeastOneDateRangeOverlaps", "DateRange", "ValueAsDate", "FirstDay", "LastDay",
+            "DateRange", "ValueAsDate", "FirstDay", "LastDay",
         )
         group(
             "repetition uniqueness — across-row key uniqueness of a repetition (distinct from the handled " +
@@ -105,7 +105,8 @@ class CatalogParityTest {
             "value-list scalar predicates — FieldValueIncludedInValueList / its negation; ValueListDiffTest-locked",
             "FieldValueIncludedInValueList", "FieldValueNotIncludedInValueList",
         )
-        group("date-range overlap predicate — DateRangeDiffTest-locked; needs date-range fields in the fuzz model", "DateRangesOverlap")
+        group("date-range overlap predicates — DateRangeDiffTest-locked; need date-range fields in the fuzz model",
+            "DateRangesOverlap", "AtLeastOneDateRangeOverlaps")
         group(
             "numeric aggregates not yet in the net — Sum is fuzzed (TP); each is AggregateDiffTest-locked",
             "Min", "Max", "MaxValue", "MinValue", "NumberOfDifferentValues",

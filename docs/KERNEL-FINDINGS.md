@@ -323,6 +323,8 @@ KERNEL-SEMANTICS §6 notes the shifts "disagree across leap years"; the drained 
 - Adjacent-day ranges (end 31.01, start 01.02) do not overlap; a contained range does.
 - Source note: an *inverted* range (start after end) silently never overlaps — defensively handled, though the format tier normally prevents one from existing.
 
+**`AtLeastOneDateRangeOverlaps(A IN B*)` is the `IN`-syntax sibling of `DateRangesOverlap(A, B*)` — semantically identical (probe 2026-06-24): A overlaps ≥1 range of the second operand, same closed-interval rule.** The only difference is the surface syntax — the kernel grammar has three distinct `In`/`in`/`IN` tokens (operator-specific): the value-list family + `NumberOfValueInFields` use **`In`**, this overlap predicate uses **`IN`**. The interpreter parses both (the `readArgs` arg0-separator accepts `In` or `IN`) and routes `AtLeastOneDateRangeOverlaps` to the same `dateRangesOverlap` eval; a fired overlap is a VALUE error either way. *(Interpreter: `PredicateOp.ATLEAST_ONE_DATE_RANGE_OVERLAPS` shares the eval; locked by `adapter.laws.DateRangeDiffTest` — the same five overlap scenarios in the `IN` form.)*
+
 *(Locked: `adapter.laws.DateRangeOverlapLawsTest`.)*
 
 ### §6 supplement — partially-known-date extraction gating + the *FromDate date-time source (source + probe, 2026-06-17)
