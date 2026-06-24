@@ -150,8 +150,9 @@ object PerfCatalog {
      * per-row comparison, **date extractors over an ISO AND a non-ISO date field**, an aggregate over varying
      * rows, **`FirstFilledValue`** (first-specified-row, skip-empties), **`NumberOfValueInFields`** (count-of-
      * value, `In` syntax), **rounding (FLOOR/CEILING/HALF_UP, expr + `*Value` forms)**, **the substring coercions
-     * `RangeAsString`/`RangeAsNumber` + `FieldValueAsString`**, **`SumOfProducts`** (row-paired), a nested
-     * per-part rule, and a cross-level reference — combinations no hand-written `*DiffTest` covers.
+     * `RangeAsString`/`RangeAsNumber` + `FieldValueAsString`**, **`SumOfProducts`** (row-paired),
+     * **`CurrentRepetition`** (per-row index), a nested per-part rule, and a cross-level reference —
+     * combinations no hand-written `*DiffTest` covers.
      */
     fun fuzz(): PerfScenario {
         val rules = listOf(
@@ -173,6 +174,7 @@ object PerfCatalog {
             FuzzRule(FZ_LINES, "RA", "../Price", "FieldFilled(Price) And RoundAccounting([Price] * [Qty], 1) > 100"), // HALF_UP over a product
             FuzzRule(FZ_PARTS, "HW", "../Weight", "FieldFilled(Weight) And [Weight] > 50"),
             FuzzRule(FZ_PARTS, "RW", "../Weight", "FieldFilled(Weight) And RoundUpValue(Weight) > 50"), // CEILING, *Value field form
+            FuzzRule("/Cart", "CR", "../Lines/Qty", "FieldFilled(Lines/Qty) And CurrentRepetition(Lines) > 2"), // per-row index
             FuzzRule(FZ_PARTS, "XL", "../Weight", "FieldFilled(Weight) And [Weight] > [/Cart/Lines/Qty]"),
         )
         val kernelModel = rules.fold(fuzzJson) { m, r -> RuntimeLaws.withRule(m, r.group, "R_${r.code}", r.errorRel, r.code, r.cond) }

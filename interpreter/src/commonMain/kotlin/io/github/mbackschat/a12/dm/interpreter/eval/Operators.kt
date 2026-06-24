@@ -124,6 +124,9 @@ enum class FunctionOp(val kernelName: String) {
     // `SumOfProducts(a*, b*)` — Σ aᵢ·bᵢ over two parallel field lists of the SAME repeatable group, paired
     // row-by-row (empty → 0, kernel `summeVonProdukten`); any malformed element → non-evaluable (suppressed).
     SUM_OF_PRODUCTS("SumOfProducts"),
+    // `CurrentRepetition(group)` — the current iteration row's 1-based index for that group (the rule must
+    // iterate over it, driven by a sibling field ref). A number expression. KERNEL-FINDINGS.
+    CURRENT_REPETITION("CurrentRepetition"),
     ;
 
     companion object {

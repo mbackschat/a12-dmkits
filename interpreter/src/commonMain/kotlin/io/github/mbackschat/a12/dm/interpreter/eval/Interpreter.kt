@@ -225,8 +225,8 @@ class Interpreter(
     private fun evalPred(p: Cond.Pred): Tri {
         val op = PredicateOp.byName(p.name) ?: throw UnsupportedConstructException("unsupported predicate ${p.name}")
         return when (op) {
-            PredicateOp.FIELD_FILLED -> Tri.of(ctx.filled(pathOf(p.args.single())))
-            PredicateOp.FIELD_NOT_FILLED -> Tri.of(!ctx.filled(pathOf(p.args.single())))
+            PredicateOp.FIELD_FILLED -> filledTri(pathOf(p.args.single()))
+            PredicateOp.FIELD_NOT_FILLED -> not(filledTri(pathOf(p.args.single())))
             PredicateOp.GROUP_FILLED -> Tri.of(ctx.groupFilled(pathOf(p.args.single())))
             PredicateOp.GROUP_NOT_FILLED -> Tri.of(!ctx.groupFilled(pathOf(p.args.single())))
             PredicateOp.FIELD_VALUE_IN_LIST -> valueInList(p.args)
@@ -240,6 +240,19 @@ class Interpreter(
             PredicateOp.NOT_ALL_GROUPS_FILLED, PredicateOp.GROUPS_NOT_COLLECTIVELY_FILLED ->
                 Tri.of(quantifierFires(op, quantCount(op, p.args), p.args.size))
         }
+    }
+
+    /**
+     * The three-valued presence of a field — the kernel's `isWertAngegeben`: a field that is **not
+     * check-relevant** (present but formally invalid — a malformed value, or a duplicate index) is **UNKNOWN**,
+     * NOT a plain TRUE; an empty (check-relevant but unfilled) field is FALSE; a valid present value is TRUE. So
+     * `FieldFilled(malformedQty) And …` does NOT fire (the And goes UNKNOWN), matching the kernel — a presence
+     * check on a malformed field is not-check-relevant even though it reads no value. (KERNEL-FINDINGS §3.)
+     */
+    private fun filledTri(path: String): Tri = when {
+        !ctx.filled(path) -> Tri.FALSE
+        invalid(path) -> Tri.UNKNOWN
+        else -> Tri.TRUE
     }
 
     /** The filled-operand count behind a list quantifier — filled GROUPS when [PredicateOp.countsGroups], else filled fields. */
@@ -452,6 +465,8 @@ class Interpreter(
         FunctionOp.FIELD_VALUE_AS_NUMBER -> fieldValueAsNumber(pathOf(f.args[0]))
         // SumOfProducts(a*, b*): Σ aᵢ·bᵢ paired row-by-row (empty → 0); any malformed element → suppressed.
         FunctionOp.SUM_OF_PRODUCTS -> sumOfProducts(f.args)
+        // CurrentRepetition(group): the current row's 1-based index at that group's level (the last reps part).
+        FunctionOp.CURRENT_REPETITION -> Val.Num(dec(ctx.repsOf(pathOf(f.args[0])).last()))
         null -> throw UnsupportedConstructException("unsupported function ${f.name}")
     }
 
