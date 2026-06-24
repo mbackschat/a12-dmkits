@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.interpreter.eval
 
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
+import io.github.mbackschat.a12.dm.interpreter.model.Kind
 
 /**
  * What the interpreter needs from "the document, in the current evaluation context" — the seam that
@@ -54,6 +55,10 @@ interface EvalContext {
 
     /** The raw display value of a field (for message interpolation), or null if empty. */
     fun displayValue(path: String): String?
+
+    /** The declared [Kind] of a field path, or null when unknown (a flat spike context). Lets the evaluator
+     *  type-infer an operand — e.g. to canonicalize a German-format date LITERAL only when compared to a date. */
+    fun declaredKind(path: String): Kind? = null
 
     /**
      * The 1-based repetition indices of a field path **in this row** — one per path part (the kernel's

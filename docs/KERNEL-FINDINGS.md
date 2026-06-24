@@ -345,6 +345,16 @@ VALUE polarity (a constant, not fillable). It is **model config, not the clock**
 
 *(Interpreter: `ModelDef.baseYear` ← `modelInfo.baseYear`; `Interpreter.evalCmpOperand` resolves the date/number form by the other operand's evaluated type, `evalConst` defaults to the date form for non-comparison uses. Locked: `adapter.laws.BaseYearDiffTest`.)*
 
+### §6 supplement — a quoted date LITERAL is typed by its own SYNTAX, not by context (probe, 2026-06-24)
+
+A German-format date literal (`"15.06.2024"`, `dd.MM.yyyy`) is typed a **DATE constant by the kernel from its own syntax** — NOT by the operand it is compared to (clarifies line ~292). Probed decisively: `[CustomerName(string)] == "15.06.2024"` is **rejected** with `MVK_INVALID_COMPARE_TO_DATE` (string vs a date constant) — so there is no valid "string field vs a `dd.MM.yyyy` literal" comparison. Confirmed behaviors the interpreter must match:
+
+- A `dd.MM.yyyy` literal compares chronologically to a DATE field even though the field's stored format differs (`[OrderDate(yyyy-MM-dd)] == "15.06.2024"` fires for `2024-06-15`).
+- The literal also rides in **argument position** — `DifferenceInDays(OrderDate, "01.01.2022")` (the second arg is the date constant).
+- A date-looking value inside a value LIST (`FieldValueIncludedInValueList(field, "15.06.2024")`) is a plain **string** value, not a date — so canonicalization must be **position-scoped** (a comparison operand opposite a date, or a date-function arg), never a blanket literal rewrite.
+
+**Interpreter consequence:** since a date literal in a *valid* comparison always faces a date, the interpreter canonicalizes a `dd.MM.yyyy` `StrLit` to ISO exactly where it is used as a date — opposite a date-producing operand (`Interpreter.evalCmpOperand` + `producesDate`, which reads the new `EvalContext.declaredKind`) and inside the date functions' date-arg reads (`coerceDate` in `epochOf`/`dateComponent`/`dateShift`). An ISO-format literal (`"2022-01-01"`) is a string (kernel `MVK_INVALID_TYPE_FOR_COMPARISON`), so `coerceDate` only rewrites `dd.MM.yyyy`. The **omitted-year** form (`"13.07."`, a partial date) is not yet modeled. *(Locked: `adapter.laws.DateLiteralDiffTest` — ==, ordering, arg-position, and the value-list non-canonicalization guard.)*
+
 ### §6 supplement — `AddYears`/`AddMonths` calendar corrections (runtime, 2026-06-10, RT-semantics drain)
 
 KERNEL-SEMANTICS §6 notes the shifts "disagree across leap years"; the drained source (`BedingungsOperatorHelper.addiereJahre/addiereMonate`) pins the exact corrections, both probe-confirmed:

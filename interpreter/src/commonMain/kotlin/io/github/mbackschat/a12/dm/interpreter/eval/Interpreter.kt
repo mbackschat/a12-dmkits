@@ -14,6 +14,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
+import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 
 /**
@@ -482,13 +483,31 @@ class Interpreter(
         null -> throw UnsupportedConstructException("unsupported constant $name")
     }
 
-    /** Evaluate a comparison operand, resolving a polymorphic `BaseYear` by the OTHER operand's type: the year
-     *  NUMBER when the other side is numeric, else the base-year-START date (Jan 1) — kernel-probed. A
-     *  non-`BaseYear` operand evaluates normally. */
-    private fun evalCmpOperand(self: Expr, other: Expr): Val =
-        if (self is Expr.Const && ConstantOp.byName(self.name) == ConstantOp.BASE_YEAR)
-            (if (evalExpr(other) is Val.Num) baseYearNumber() else baseYearDate())
-        else evalExpr(self)
+    /** Evaluate a comparison operand, applying the two context-typed resolutions: (a) a polymorphic `BaseYear`
+     *  by the OTHER operand's type (year NUMBER vs numeric, else the base-year-START date); (b) a quoted
+     *  German-format date LITERAL canonicalized to ISO when its counterpart yields a date (else it stays a
+     *  plain string — the kernel types a literal by the other operand). A plain operand evaluates normally. */
+    private fun evalCmpOperand(self: Expr, other: Expr): Val = when {
+        self is Expr.Const && ConstantOp.byName(self.name) == ConstantOp.BASE_YEAR ->
+            if (evalExpr(other) is Val.Num) baseYearNumber() else baseYearDate()
+        self is Expr.StrLit && producesDate(other) -> coerceDate(Val.Txt(self.v))
+        else -> evalExpr(self)
+    }
+
+    /** Whether [e] statically yields a DATE value — the signal that a counterpart string LITERAL is a date
+     *  literal (German `dd.MM.yyyy`), not a plain string. A DATE field, the date constants (`Today`/`BaseYear`),
+     *  or a date-producing function. */
+    private fun producesDate(e: Expr): Boolean = when (e) {
+        is Expr.Field -> ctx.declaredKind(e.path) == Kind.DATE
+        is Expr.Const -> ConstantOp.byName(e.name).let { it == ConstantOp.TODAY || it == ConstantOp.BASE_YEAR }
+        is Expr.Func -> FunctionOp.byName(e.name) in DATE_PRODUCING_FUNCS
+        else -> false
+    }
+
+    /** Canonicalize a German `dd.MM.yyyy` date literal to ISO `yyyy-MM-dd`; any other value (already-ISO, a
+     *  non-date string) is unchanged — so it only ever rewrites a literal that genuinely parses as a date. */
+    private fun coerceDate(v: Val): Val =
+        if (v is Val.Txt) parseDateToIso(v.v, "dd.MM.yyyy")?.let { Val.Txt(it) } ?: v else v
 
     /** `BaseYear` as the base-year-START date (ISO `yyyy-01-01`). */
     private fun baseYearDate(): Val = Val.Txt("${baseYearOrThrow().toString().padStart(4, '0')}-01-01")
@@ -752,7 +771,7 @@ class Interpreter(
 
     /** A number picked from a date operand's (year, month, day); Unknown when the date is empty/malformed. */
     private fun dateComponent(e: Expr, pick: (Int, Int, Int) -> Int): Val {
-        val parts = (evalExpr(e) as? Val.Txt)?.let { dateParts(it.v) } ?: return Val.Unknown
+        val parts = (coerceDate(evalExpr(e)) as? Val.Txt)?.let { dateParts(it.v) } ?: return Val.Unknown
         return Val.Num(dec(pick(parts.first, parts.second, parts.third)))
     }
 
@@ -844,13 +863,13 @@ class Interpreter(
 
     /** `Add{Days,Months,Years}(date, n)` → the [shift]ed date as ISO text; Unknown if the date or count is absent. */
     private fun dateShift(args: List<Expr>, shift: (String, Int) -> String?): Val {
-        val date = (evalExpr(args[0]) as? Val.Txt)?.v ?: return Val.Unknown
+        val date = (coerceDate(evalExpr(args[0])) as? Val.Txt)?.v ?: return Val.Unknown
         val n = (evalExpr(args[1]) as? Val.Num)?.v?.display()?.toIntOrNull() ?: return Val.Unknown
         return shift(date, n)?.let { Val.Txt(it) } ?: Val.Unknown
     }
 
     /** Epoch day of a date-valued expression (ISO text), or null if empty/malformed. */
-    private fun epochOf(e: Expr): Long? = (evalExpr(e) as? Val.Txt)?.let { epochDay(it.v) }
+    private fun epochOf(e: Expr): Long? = (coerceDate(evalExpr(e)) as? Val.Txt)?.let { epochDay(it.v) }
 
     private fun starVals(f: Expr.Func): List<Val> = ctx.star((f.args.single() as Expr.Star).path)
 
@@ -897,6 +916,14 @@ class Interpreter(
     private companion object {
         /** A TIME value `HH:mm:ss` — captures hours, minutes, seconds for the time-of-day extractors. */
         val TIME = Regex("""(\d{2}):(\d{2}):(\d{2})""")
+
+        /** Functions that yield a DATE value — so a counterpart string literal beside one is a date literal
+         *  ([producesDate]). The date-time/range constructors return other kinds; the extractors return numbers. */
+        val DATE_PRODUCING_FUNCS = setOf(
+            FunctionOp.DATE, FunctionOp.DATE_FROM_DATE_TIME,
+            FunctionOp.START_OF_DATE_RANGE, FunctionOp.END_OF_DATE_RANGE,
+            FunctionOp.ADD_DAYS, FunctionOp.ADD_MONTHS, FunctionOp.ADD_YEARS,
+        )
 
         /** `RangeAsNumber` parses its substring ONLY when it is a run of digits (kernel `\d+`); else the value is 0. */
         val DIGITS = Regex("""\d+""")
