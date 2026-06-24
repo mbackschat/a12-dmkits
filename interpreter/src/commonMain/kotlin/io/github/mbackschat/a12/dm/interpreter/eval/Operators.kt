@@ -91,6 +91,8 @@ enum class FunctionOp(val kernelName: String) {
     HOURS_FROM_TIME("HoursFromTime"),
     MINUTES_FROM_TIME("MinutesFromTime"),
     SECONDS_FROM_TIME("SecondsFromTime"),
+    DATE_FROM_DATE_TIME("DateFromDateTime"),
+    TIME_FROM_DATE_TIME("TimeFromDateTime"),
     ADD_DAYS("AddDays"),
     ADD_MONTHS("AddMonths"),
     ADD_YEARS("AddYears"),

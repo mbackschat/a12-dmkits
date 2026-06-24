@@ -517,6 +517,12 @@ class Interpreter(
         FunctionOp.HOURS_FROM_TIME -> timeComponent(f.args[0]) { h, _, _ -> h }
         FunctionOp.MINUTES_FROM_TIME -> timeComponent(f.args[0]) { _, m, _ -> m }
         FunctionOp.SECONDS_FROM_TIME -> timeComponent(f.args[0]) { _, _, s -> s }
+
+        // DateFromDateTime/TimeFromDateTime: split the canonical ISO date-time `yyyy-MM-dd'T'HH:mm:ss` at the
+        // `T` into its DATE part (a `yyyy-MM-dd` the date extractors read) and its TIME part (an `HH:mm:ss` the
+        // time extractors read). Empty/malformed operand (no `T`) → Unknown.
+        FunctionOp.DATE_FROM_DATE_TIME -> dateTimePart(f.args[0], time = false)
+        FunctionOp.TIME_FROM_DATE_TIME -> dateTimePart(f.args[0], time = true)
         // Date arithmetic — date + n days / months / years → a date (ISO text). Empty/absent date → Unknown.
         FunctionOp.ADD_DAYS -> dateShift(f.args, ::addDays)
         FunctionOp.ADD_MONTHS -> dateShift(f.args, ::addMonths)
@@ -680,6 +686,15 @@ class Interpreter(
     private fun timeComponent(e: Expr, pick: (Int, Int, Int) -> Int): Val {
         val m = (evalExpr(e) as? Val.Txt)?.let { TIME.matchEntire(it.v) } ?: return Val.Unknown
         return Val.Num(dec(pick(m.groupValues[1].toInt(), m.groupValues[2].toInt(), m.groupValues[3].toInt())))
+    }
+
+    /** The DATE (`time=false`) or TIME (`time=true`) part of a date-time operand — the substring before / after
+     *  the canonical `T`. Unknown when the operand is empty/malformed (no `T`). */
+    private fun dateTimePart(e: Expr, time: Boolean): Val {
+        val v = (evalExpr(e) as? Val.Txt)?.v ?: return Val.Unknown
+        val t = v.indexOf('T')
+        if (t < 0) return Val.Unknown
+        return Val.Txt(if (time) v.substring(t + 1) else v.substring(0, t))
     }
 
     /** `Add{Days,Months,Years}(date, n)` → the [shift]ed date as ISO text; Unknown if the date or count is absent. */
