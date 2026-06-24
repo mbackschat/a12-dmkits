@@ -138,6 +138,29 @@ class PerfGateTest {
             "semantic-index scaling looks super-linear: 4× rows took ${best}× the time (the row-prefix index regressed?)")
     }
 
+    /**
+     * **Cold-path / startup gate — a CO-EQUAL goal.** The warm gates above prime everything out, so they are
+     * blind to startup cost (that is how the index-build O(N²) hid). This guards the COLD first-call: a fresh
+     * engine + fresh document + ONE `validateFull` (no warmup), timed at N and 4N. A reintroduced cold O(N²)
+     * (build dedup, a per-call scan paid on the first pass) trips here — linear ≈ 4×, quadratic ≈ 16×.
+     */
+    @Test
+    fun coldStartStaysSubQuadratic() {
+        val b1 = PerfCatalog.b1()
+        var best = Double.MAX_VALUE
+        var bSmall = 0.0; var bLarge = 0.0
+        repeat(GROWTH_REPEATS) {
+            val small = PerfHarness.coldRunMillis(b1, N_SMALL)
+            val large = PerfHarness.coldRunMillis(b1, N_SMALL * 4)
+            val g = large / small
+            if (g < best) { best = g; bSmall = small; bLarge = large }
+        }
+        println("[perf] COLD first-call (startup): ${"%.1f".format(bSmall)}ms@$N_SMALL → " +
+            "${"%.1f".format(bLarge)}ms@${N_SMALL * 4}  min-growth=${"%.2f".format(best)}× (linear≈4, quadratic≈16)")
+        assertTrue(best < SUB_QUADRATIC_MAX,
+            "cold first-call scaling looks super-linear: 4× rows took ${best}× the time (a cold-path O(N²) regression?)")
+    }
+
     private companion object {
         const val ABS_CEILING_MS = 5_000.0
         const val RATIO_CEILING = 5.0

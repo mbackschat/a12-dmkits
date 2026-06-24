@@ -31,12 +31,14 @@ Two consequences, and what we do about each:
 
 ## The interpreter's two goals: fast startup + on-par at all rule counts (the tradeoff, 2026-06-24)
 
-The interpreter is steered by **two goals that pull against each other** (owner direction):
+The interpreter is steered by **two CO-EQUAL goals that pull against each other** (owner direction — neither is secondary):
 
-1. **Fast startup** — minimal upfront work (index building, parsing) before the first answer.
-2. **On-par with the kernel at *all* rule counts** — not just the few-rule case.
+1. **Low cold / startup cost** — the time from *(model, document)* to the **first** answer must be small: minimal upfront work, no codegen, a fast first `validateFull`. This is the realistic latency for a one-shot CLI invocation, a native-image run, a JS page, or a freshly-built engine — **not** a warm steady state.
+2. **On-par with the kernel at *all* rule counts** — the warm steady state, not just the few-rule case.
 
-The tension: goal 2 wants the per-call rule work eliminated (cache parsed ASTs, precompute scopes), but doing that *eagerly* at construction is exactly the startup cost goal 1 forbids. The resolution is **lazy memoization** — do the work once, **on first use**, then reuse:
+These are **co-equal and gated separately**, because they measure opposite regimes and a win in one can hide a loss in the other — the index-build O(N²) (#7) was invisible to the *warm* gate for exactly this reason. So: the warm path is gated by `PerfGateTest` (against-kernel ratios + the sub-quadratic shape checks), and the **cold path is gated by `PerfGateTest.coldStartStaysSubQuadratic`** — a fresh engine + fresh document + ONE `validateFull`, no warmup, asserting sub-quadratic growth so a reintroduced cold O(N²) trips even though the warm gate can't see it. Measured cold growth is **~4× per 4× rows (linear)**.
+
+The tension: goal 2 wants the per-call rule work eliminated (cache parsed ASTs, precompute scopes), but doing that *eagerly* at construction is exactly the cold cost goal 1 forbids. The resolution is **lazy memoization** — do the work once, **on first use**, then reuse (so the *constructor* is trivial and the first call is O(N), never O(N²)):
 
 - **Prepare-once ASTs** (`DmInterpreter`): each rule's condition / computation's expression is parsed **lazily, exactly once** (a `lazy {}` per rule — SYNCHRONIZED, so the engine is thread-safe to reuse), then reused across every call and every row. The constructor only builds the wrappers (no parsing) → startup stays cheap, and a single-rule `testRule` forces only the one rule it touches. **This is the direct analog of the kernel's compile-once-at-model-load** — but lazy. *Caveat learned by measuring:* parsing turned out **not** to be the high-rule-count bottleneck (it didn't move the crossover), so this change is for startup + hygiene (it also removed a redundant double-parse), not the headline win.
 - **Per-group row-context memo** (`Document`): `contextsFor`/`attachByDepth` did an **O(valued) attach-depth scan on every rule** (and every nested row). Since many rules share a handful of iteration scopes, and the document is immutable during a validation, this is memoized **per group inside the mutation-invalidated `Index`** — computed once per distinct scope, reused across all rules. **This *was* the lever**: ~24% faster across all rule counts, crossover pushed out ~2× (see the log). This mirrors the kernel computing the row structure once and reusing it across rules.
