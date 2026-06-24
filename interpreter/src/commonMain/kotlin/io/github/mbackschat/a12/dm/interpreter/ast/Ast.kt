@@ -113,6 +113,12 @@ sealed interface Expr {
     /** A semantic-index lookup `[<field> For "<indexValue>"]` — the value of [path] in the repetition whose
      *  INDEX field equals [indexValue]; an absent row / empty cell reads as the kind's empty value. */
     data class SemanticIndex(val path: String, val indexValue: String) : Expr
+
+    /** An enum-category access `[<field> -> <category>]` — maps the enumeration [path]'s stored value to its
+     *  value in the named [category] (the model pairs category values positionally with the enum values), then
+     *  compares against the category's value domain. An empty enum or an out-of-enum value yields no comparison
+     *  value (→ the rule does not fire / is suppressed). */
+    data class EnumCategory(val path: String, val category: String) : Expr
 }
 
 /** Parse a raw field value into a typed [Val] by kind. A malformed NUMBER resolves to [Val.Unknown] (NOT a

@@ -125,14 +125,22 @@ private class ConditionParser(private val src: String, private val base: String)
                 if (absolute) next()
                 val p = pathFrom(readIdent(), absolute)
                 skipWs()
-                // `[field For "value"]` — a SemanticIndex lookup by the group's index value.
-                if (matchKeyword("For")) {
-                    skipWs()
-                    val idx = readString().v
-                    skipWs(); expect(']')
-                    Expr.SemanticIndex((p as Expr.Field).path, idx)
-                } else {
-                    expect(']'); p
+                when {
+                    // `[field -> Category]` — an EnumCategory access mapping the enum value to its category value.
+                    matchArrow() -> {
+                        skipWs()
+                        val cat = readIdent()
+                        skipWs(); expect(']')
+                        Expr.EnumCategory((p as Expr.Field).path, cat)
+                    }
+                    // `[field For "value"]` — a SemanticIndex lookup by the group's index value.
+                    matchKeyword("For") -> {
+                        skipWs()
+                        val idx = readString().v
+                        skipWs(); expect(']')
+                        Expr.SemanticIndex((p as Expr.Field).path, idx)
+                    }
+                    else -> { expect(']'); p }
                 }
             }
             '"' -> readString()
@@ -258,6 +266,14 @@ private class ConditionParser(private val src: String, private val base: String)
         val start = pos
         while (peek().isLetterOrDigit() || peek() == '_') next()
         return src.substring(start, pos)
+    }
+
+    /** Consume the `->` arrow (the EnumCategory operator) if it is next; otherwise leave the position untouched.
+     *  The arrow is the same symbol in every condition language (the catalog's RENDERING gotcha). */
+    private fun matchArrow(): Boolean {
+        skipWs()
+        if (peek() == '-' && pos + 1 < src.length && src[pos + 1] == '>') { next(); next(); return true }
+        return false
     }
 
     /** Consume the keyword if it is the next identifier; otherwise leave the position untouched. */

@@ -54,6 +54,12 @@ class Document @JvmOverloads constructor(
      *  value (well-formed, but resolved to [Val.Unknown] directly; `ValueAsDate` resolves it). Default FULL.
      *  (Appended for positional-constructor compatibility.) */
     private val datePrecisions: Map<String, DatePrecision> = emptyMap(),
+    /** Each enumeration field's XML value list (declaration order) — the index domain for `EnumCategory`
+     *  (`[Field -> Category]`) and the membership check. (Appended for positional-constructor compatibility.) */
+    private val enumValues: Map<String, List<String>> = emptyMap(),
+    /** Each enumeration field's category map (name → positional value list) — the `EnumCategory` mapping:
+     *  the stored value's index in [enumValues] selects the category's value. (Appended for positional compat.) */
+    private val enumCategories: Map<String, Map<String, List<String>>> = emptyMap(),
 ) {
     private data class Placement(val path: String, val reps: List<Int>, val value: String?, val isGroup: Boolean)
 
@@ -255,6 +261,18 @@ class Document @JvmOverloads constructor(
 
         // Rows of groupPath scoped UNDER this row (the Having filter's per-row contexts).
         override fun rowContexts(groupPath: String): List<EvalContext> = rowContextsScoped(groupPath, rowReps)
+
+        // EnumCategory `[field -> Category]`: map the enum field's stored value to its category value by its
+        // POSITION in the enum's value list. An empty enum or an out-of-enum value yields no comparison value
+        // (Unknown → the rule does not fire / is suppressed, matching the kernel's empty-string compare /
+        // formal-error-suppression on a value not in the enumeration).
+        override fun enumCategory(path: String, category: String): Val {
+            val raw = valueAt(path, repsFor(path, group, rowReps))?.value
+            if (raw.isNullOrEmpty()) return Val.Unknown
+            val idx = (enumValues[path] ?: return Val.Unknown).indexOf(raw)
+            if (idx < 0) return Val.Unknown
+            return enumCategories[path]?.get(category)?.getOrNull(idx)?.let { Val.Txt(it) } ?: Val.Unknown
+        }
 
         override fun repsOf(path: String): List<Int> = repsFor(path, group, rowReps)
 

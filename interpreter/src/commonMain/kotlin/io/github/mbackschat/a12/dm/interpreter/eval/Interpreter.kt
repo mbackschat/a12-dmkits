@@ -476,6 +476,7 @@ class Interpreter(
         is Expr.Arith -> evalArith(e)
         is Expr.Const -> evalConst(e.name)
         is Expr.SemanticIndex -> evalSemanticIndex(e)
+        is Expr.EnumCategory -> ctx.enumCategory(e.path, e.category)
     }
 
     /** `[field For "value"]` — the field's value in the row whose index field equals the value; an absent row

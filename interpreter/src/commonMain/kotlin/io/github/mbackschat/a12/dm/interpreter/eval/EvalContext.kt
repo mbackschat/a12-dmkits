@@ -73,6 +73,13 @@ interface EvalContext {
      *  per-row filter inside an aggregate. Default empty (the flat spike contexts don't model rows). */
     fun rowContexts(groupPath: String): List<EvalContext> = emptyList()
 
+    /** The category value of an enumeration field — `[field -> category]` (the `EnumCategory` operator): the
+     *  field's stored value mapped POSITIONALLY to the named category's value, as a [Val.Txt]; [Val.Unknown]
+     *  for an empty field or a value not in the enumeration (→ the comparison does not fire). The general
+     *  [Document] resolves it; the flat spike contexts don't model enum categories. */
+    fun enumCategory(path: String, category: String): Val =
+        throw UnsupportedConstructException("enum-category needs the general Document context, not $this")
+
     /**
      * The 1-based repetition indices of a field path **in this row** — one per path part (the kernel's
      * `repetitionIndexes()`), for building a field-instance pointer. Defaults to all-1s (correct for a flat

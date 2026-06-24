@@ -83,6 +83,12 @@ data class FieldDef(
     /** A [Kind.DATE] field's precision (the kernel's `DateType.datePrecision`); [DatePrecision.DAY_OPTIONAL]
      *  permits a day-omitted `00.MM.yyyy` value. Default [DatePrecision.FULL]. */
     val datePrecision: DatePrecision = DatePrecision.FULL,
+    /** For an ENUMERATION field: its XML values in declaration order (the kernel's `getXMLValues`) — the
+     *  positional key for `EnumCategory` and the membership domain. Empty for non-enum fields. */
+    val enumValues: List<String> = emptyList(),
+    /** For an ENUMERATION field: each category's positional value list (the kernel's `getCategoryValues`),
+     *  keyed by category name — index `i` pairs with [enumValues]`[i]`. Drives `[Field -> Category]`. */
+    val enumCategories: Map<String, List<String>> = emptyMap(),
 )
 
 /**
@@ -175,6 +181,18 @@ data class ModelDef(
     /** Each NUMBER field's scale (`maxFractionalDigits`) — the formal-check input (decimal-places errors); the
      *  [io.github.mbackschat.a12.dm.interpreter.eval.Document] needs it to gate a formally-invalid value to Unknown. */
     val scales: Map<String, Int?> = fields.associate { it.path to it.scale }
+
+    /** Each enumeration field's XML value list — the [io.github.mbackschat.a12.dm.interpreter.eval.Document]'s
+     *  `EnumCategory` positional-map input (the index of the stored value). */
+    val enumValues: Map<String, List<String>> = fields
+        .filter { it.enumValues.isNotEmpty() }
+        .associate { it.path to it.enumValues }
+
+    /** Each enumeration field's category map (name → positional value list) — the
+     *  [io.github.mbackschat.a12.dm.interpreter.eval.Document]'s `EnumCategory` mapping input. */
+    val enumCategories: Map<String, Map<String, List<String>>> = fields
+        .filter { it.enumCategories.isNotEmpty() }
+        .associate { it.path to it.enumCategories }
     private val labelsByPath: Map<String, Map<String, String>> = fields.associate { it.path to it.labels }
     private val requiredByPath: Map<String, Requiredness> = fields.associate { it.path to it.required }
 

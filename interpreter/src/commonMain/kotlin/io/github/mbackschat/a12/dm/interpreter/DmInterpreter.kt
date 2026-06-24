@@ -419,6 +419,7 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
         is Expr.Field -> listOf(expr.path)
         is Expr.Func -> expr.args.flatMap { exprRefs(it) }   // Star args excluded → drop through
         is Expr.Arith -> exprRefs(expr.left) + exprRefs(expr.right)
+        is Expr.EnumCategory -> listOf(expr.path)            // `[field -> cat]` references the enum field
         else -> emptyList()
     }
 

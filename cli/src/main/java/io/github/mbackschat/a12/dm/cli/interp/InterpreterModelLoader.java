@@ -76,7 +76,7 @@ public final class InterpreterModelLoader {
                 switch (type) {
                     case "Field" -> fields.add(new FieldDef(id, kindOf(node), localizedTexts(node.path("labels")),
                             scaleOf(node), signed(node), requirednessOf(node), formatOf(node), rangeSeparatorOf(node),
-                            datePrecisionOf(node)));
+                            datePrecisionOf(node), enumValuesOf(node), enumCategoriesOf(node)));
                     case "Group" -> {
                         JsonNode g = node.path("Group");
                         if (g.path("repeatability").asInt(0) > 1) {
@@ -123,7 +123,7 @@ public final class InterpreterModelLoader {
     public static Document document(Map<String, Object> fields, ModelDef model) {
         Document doc = new Document(model.getKinds(), model.getDeclaredReps(), model.getUnsignedFields(),
                 model.getRangeConfig(), model.getDateFormats(), model.getScales(), model.getDateTimeFormats(),
-                model.getDatePrecisions());
+                model.getDatePrecisions(), model.getEnumValues(), model.getEnumCategories());
         walkInstance(doc, fields, new ArrayList<>(), new ArrayList<>());
         return doc;
     }
@@ -183,6 +183,30 @@ public final class InterpreterModelLoader {
             }
             default -> null;
         };
+    }
+
+    /** An ENUMERATION field's XML values in declaration order ({@code EnumerationType.values[].value}) — the
+     *  positional key for {@code EnumCategory} and the membership domain. Empty for a non-enum field (and for
+     *  a table-reference enum, whose values live in a table). */
+    private static List<String> enumValuesOf(JsonNode fieldNode) {
+        JsonNode e = fieldNode.path("Field").path("fieldType").path("EnumerationType");
+        List<String> values = new ArrayList<>();
+        e.path("values").forEach(v -> values.add(v.path("value").asText()));
+        return values;
+    }
+
+    /** An ENUMERATION field's categories ({@code EnumerationType.categories[]}, each {@code {name, values[]}})
+     *  as name → positional value list — the {@code EnumCategory} ({@code [Field -> Category]}) mapping. Empty
+     *  when the field declares no categories. */
+    private static Map<String, List<String>> enumCategoriesOf(JsonNode fieldNode) {
+        JsonNode e = fieldNode.path("Field").path("fieldType").path("EnumerationType");
+        Map<String, List<String>> categories = new LinkedHashMap<>();
+        e.path("categories").forEach(c -> {
+            List<String> values = new ArrayList<>();
+            c.path("values").forEach(v -> values.add(v.asText()));
+            categories.put(c.path("name").asText(), values);
+        });
+        return categories;
     }
 
     /** A DATE_RANGE field's two-date separator ({@code DateRangeType.rangeSeparator}, e.g. {@code -}), else null. */

@@ -55,6 +55,7 @@ class CatalogParityTest {
         "FromScope",                                                       // the @From reference-group selector of RepetitionNotUnique
         "SemanticIndex",                                                   // [field For "value"] — Expr.SemanticIndex, keyed row lookup
         "Having",                                                          // Sum(star Having cond) — Expr.Star's per-row filter
+        "EnumCategory",                                                    // [field -> Category] — Expr.EnumCategory, positional enum-value→category map
     )
 
     private val handled: Set<String> = enumHandled + astHandled
@@ -65,10 +66,6 @@ class CatalogParityTest {
 
     /** The operator backlog — constructs not yet handled, each with a reason. This IS "what's left to build". */
     private val deferred: Map<String, String> = buildMap {
-        group(
-            "enum-category mapping — [Field -> Category] maps an enum value to its category value; needs enum categories in a fixture",
-            "EnumCategory",
-        )
         group("predefined-type validity predicates — need the model's predefined-type registry", "ValidType", "InvalidType")
     }
 
