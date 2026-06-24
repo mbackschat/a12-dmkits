@@ -213,8 +213,9 @@ object PerfCatalog {
      * (here a non-matching key → the *full* scan, the worst case), and the rule iterates per row → **O(rows²)**;
      * the kernel's `IndexFieldCache` makes each lookup O(1) → O(rows). This is the shape where the kernel's
      * runtime optimization decisively beats a naive interpreter (KernelEdgeTest.semanticIndexCliff verifies it).
-     * (A constant literal key is used because the interpreter's parser only accepts a string-literal index, not
-     * the kernel's field-keyed `For <field>` form — itself a documented capability gap.)
+     * (A constant **non-matching** literal key is used deliberately — it forces the FULL row scan every call,
+     * the worst case, which is what stresses the index. Both the literal and the field-keyed `For <field>` form
+     * are supported; see SemanticIndexDiffTest / SemanticIndexFieldKeyedDiffTest.)
      */
     fun semanticIndexPerRow(): PerfScenario =
         scenario("SI cliff", LINES, "SI", "../Amount",

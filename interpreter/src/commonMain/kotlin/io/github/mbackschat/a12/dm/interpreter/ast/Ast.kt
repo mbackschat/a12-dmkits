@@ -119,9 +119,14 @@ sealed interface Expr {
     /** A binary arithmetic expression, e.g. `[BackorderQuantity] + 2`. Grouped with curly braces `{ }`. */
     data class Arith(val op: ArithOp, val left: Expr, val right: Expr) : Expr
 
-    /** A semantic-index lookup `[<field> For "<indexValue>"]` — the value of [path] in the repetition whose
-     *  INDEX field equals [indexValue]; an absent row / empty cell reads as the kind's empty value. */
-    data class SemanticIndex(val path: String, val indexValue: String) : Expr
+    /**
+     * A semantic-index lookup — the value of [path] in the repetition whose INDEX field equals the lookup key;
+     * an absent row / empty cell reads as the kind's empty value. The key is **either** a string literal
+     * ([indexValue], the `[<field> For "<lit>"]` form) **or** another field whose current value is the key
+     * ([indexFieldPath], the `[<field> For <keyField>]` form — the kernel's field-keyed semantic index).
+     * Exactly one of [indexValue]/[indexFieldPath] is non-null.
+     */
+    data class SemanticIndex(val path: String, val indexValue: String? = null, val indexFieldPath: String? = null) : Expr
 
     /** An enum-category access `[<field> -> <category>]` — maps the enumeration [path]'s stored value to its
      *  value in the named [category] (the model pairs category values positionally with the enum values), then

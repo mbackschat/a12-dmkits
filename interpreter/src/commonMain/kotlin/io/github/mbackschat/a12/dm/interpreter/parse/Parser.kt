@@ -135,12 +135,20 @@ private class ConditionParser(private val src: String, private val base: String)
                         skipWs(); expect(']')
                         Expr.EnumCategory((p as Expr.Field).path, cat)
                     }
-                    // `[field For "value"]` — a SemanticIndex lookup by the group's index value.
+                    // `[field For "value"]` (literal key) OR `[field For keyField]` (field-keyed) — a
+                    // SemanticIndex lookup by the target group's index value.
                     matchKeyword("For") -> {
                         skipWs()
-                        val idx = readString().v
+                        val sem = if (peek() == '"') {
+                            Expr.SemanticIndex((p as Expr.Field).path, indexValue = readString().v)
+                        } else {
+                            val absIdx = peek() == '/'
+                            if (absIdx) next()
+                            val keyField = pathFrom(readIdent(), absIdx) as Expr.Field
+                            Expr.SemanticIndex((p as Expr.Field).path, indexFieldPath = keyField.path)
+                        }
                         skipWs(); expect(']')
-                        Expr.SemanticIndex((p as Expr.Field).path, idx)
+                        sem
                     }
                     else -> { expect(']'); p }
                 }

@@ -518,6 +518,10 @@ class DmInterpreter @JvmOverloads constructor(
         is Expr.Func -> expr.args.flatMap { exprRefs(it) }   // Star args excluded → drop through
         is Expr.Arith -> exprRefs(expr.left) + exprRefs(expr.right)
         is Expr.EnumCategory -> listOf(expr.path)            // `[field -> cat]` references the enum field
+        // `[F For keyField]`: the KEY field is a per-row ref (drives iteration + is a referenced field); the
+        // target `F` is an absolute semantic lookup (a specific repetition), not a per-row ref. A literal key
+        // (`[F For "v"]`) references no field.
+        is Expr.SemanticIndex -> expr.indexFieldPath?.let { listOf(it) } ?: emptyList()
         else -> emptyList()
     }
 

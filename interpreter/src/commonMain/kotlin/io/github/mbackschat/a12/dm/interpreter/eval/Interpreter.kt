@@ -176,9 +176,10 @@ class Interpreter(
         else -> leafOmission(e).let { Fill(it, it) }
     }
 
-    /** Whether a SemanticIndex resolves to a present (filled) cell — vs an absent row / empty cell. */
+    /** Whether a SemanticIndex resolves to a present (filled) cell — vs an absent row / empty cell (or an
+     *  empty/absent key field for the field-keyed form, which also yields no match). */
     private fun semanticIndexFilled(e: Expr.SemanticIndex): Boolean =
-        indexFieldOf(e.path)?.let { ctx.indexedCell(e.path, it, e.indexValue) != null } ?: false
+        indexFieldOf(e.path)?.let { idx -> resolveIndexKey(e)?.let { key -> ctx.indexedCell(e.path, idx, key) != null } } ?: false
 
     /**
      * Directional fillability of a value FUNCTION. The starred aggregates carry the kernel's `NumberCombiner`
@@ -541,8 +542,15 @@ class Interpreter(
      *  or empty cell reads as the kind's EMPTY value (a number → 0, fillable), matching a missing field ref. */
     private fun evalSemanticIndex(e: Expr.SemanticIndex): Val {
         val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException("SemanticIndex needs an index field on the group of ${e.path}")
-        return ctx.indexedCell(e.path, idx, e.indexValue) ?: emptyValue(ctx.declaredKind(e.path) ?: return Val.Unknown)
+        val key = resolveIndexKey(e) ?: return emptyValue(ctx.declaredKind(e.path) ?: return Val.Unknown)
+        return ctx.indexedCell(e.path, idx, key) ?: emptyValue(ctx.declaredKind(e.path) ?: return Val.Unknown)
     }
+
+    /** The lookup key of a [Expr.SemanticIndex]: the string literal, or the CURRENT value of the key field
+     *  ([Expr.SemanticIndex.indexFieldPath]) for the field-keyed `[F For keyField]` form — null when that key
+     *  field is empty/absent (→ no row matches → the empty value, same as a non-matching literal). */
+    private fun resolveIndexKey(e: Expr.SemanticIndex): String? =
+        e.indexValue ?: e.indexFieldPath?.let { ctx.displayValue(it)?.takeIf { v -> v.isNotEmpty() } }
 
     /** The index-field path of [fieldPath]'s repeatable group (its sibling index field), or null if none. */
     private fun indexFieldOf(fieldPath: String): String? {
