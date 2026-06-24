@@ -171,6 +171,20 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
     }
 
     /**
+     * The scope prefix length for the **basic** `RepetitionNotUnique` (no `@From`): the reference group is the
+     * **first repeatable group below the rule group** on the key path, and uniqueness is checked per that
+     * group's PARENT row (the BA "basic version", Situation 2). So a key two repeatable levels deep
+     * (`/Project/Milestones/Tasks/Effort`, rule at `/Project`) is checked across ALL tasks of all milestones
+     * (scope = the `/Project` row), NOT per milestone. Returns the rep-prefix length of that parent.
+     */
+    private fun defaultScopePrefixLen(rule: RuleDef, keyPath: String): Int {
+        val parts = keyPath.trim('/').split('/')
+        var d = rule.group.trim('/').split('/').size + 1     // first group strictly below the rule group
+        while (d < parts.size && "/" + parts.take(d).joinToString("/") !in model.repeatable) d++
+        return d - 1                                          // parent(referenceGroup) depth
+    }
+
+    /**
      * `RepetitionNotUnique(keys…)` — one [Message] per repetition row whose (composite) key DUPLICATES another
      * row's within the same parent-row scope (kernel-probed): empties match empties among participants, an
      * **all-empty** key row is skipped, and a duplicate whose key has an empty (fillable) component is
@@ -179,13 +193,14 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
     private fun repetitionNotUniqueMessages(rule: RuleDef, keys: List<String>, doc: Document, locale: String): List<Message> {
         val repGroup = parentGroup(keys.first())     // the keys' shared repeatable group (kernel: keys on one path)
         val errorPath = resolveErrorPath(rule)
+        val scopeLen = defaultScopePrefixLen(rule, keys.first())
         data class Row(val ctx: EvalContext, val reps: List<Int>, val key: List<String?>)
         val rows = doc.contextsFor(repGroup).map { ctx ->
             Row(ctx, ctx.repsOf(errorPath), keys.map { ctx.displayValue(it)?.takeIf { v -> v.isNotEmpty() } })
         }
         val out = mutableListOf<Message>()
         rows.filter { row -> row.key.any { it != null } }      // participant: at least one key field is filled
-            .groupBy { it.reps.dropLast(2) }                   // scope: per parent row (drop the row + field index)
+            .groupBy { it.reps.take(scopeLen) }                // scope: per reference-group parent row (basic version)
             .forEach { (_, scope) ->
                 val dups = scope.groupingBy { it.key }.eachCount().filterValues { it > 1 }.keys
                 for (row in scope.filter { it.key in dups }) {
