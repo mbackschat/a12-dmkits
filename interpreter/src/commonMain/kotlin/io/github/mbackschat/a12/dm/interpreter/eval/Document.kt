@@ -101,7 +101,15 @@ class Document @JvmOverloads constructor(
         val rowsByGroup: Map<String, List<List<Int>>>,             // group path → distinct reps, document order
         val valued: List<Placement>,                               // valued (value != null) non-group placements
         val partsByPath: Map<String, List<String>>,                // memoized path split
-    )
+    ) {
+        // Per-group memos, deterministic for this (immutable) index, rebuilt with it on mutation. They turn the
+        // O(valued) attach-depth scan + row mapping — which [contextsFor]/[rowContextsScoped] otherwise redo on
+        // EVERY rule (and every nested row) — into once-per-distinct-group work. This is the lever that keeps the
+        // interpreter on-par with the kernel at high rule counts (many rules share a handful of iteration scopes;
+        // the kernel computes the row structure once and reuses it across rules — this is the direct analog).
+        val attachByGroup: MutableMap<String, Map<Int, Set<List<Int>>>> = HashMap()
+        val contextsByGroup: MutableMap<String, List<EvalContext>> = HashMap()
+    }
 
     private var cachedIndex: Index? = null
 
@@ -142,20 +150,34 @@ class Document @JvmOverloads constructor(
      * where the field's path diverges from the group (`common`). Recording each valued field's prefix at its
      * attach-depth turns the per-row "is anything in scope?" check into a set lookup.
      */
-    fun contextsFor(groupPath: String): List<EvalContext> {
+    fun contextsFor(groupPath: String): List<EvalContext> =
+        index().contextsByGroup.getOrPut(groupPath) { computeContextsFor(groupPath) }
+
+    private fun computeContextsFor(groupPath: String): List<EvalContext> {
         val rows = rowsOf(groupPath)
         if (rows.isEmpty()) return emptyList()
-        val gParts = partsOf(groupPath)
-        val attachByDepth = HashMap<Int, HashSet<List<Int>>>()
-        for (p in index().valued) {
-            val common = commonPrefixLen(partsOf(p.path), gParts)
-            attachByDepth.getOrPut(common) { HashSet() }.add(p.reps.take(common))
-        }
+        val attach = attachByDepth(groupPath)
         return rows.map { reps ->
-            val evaluated = attachByDepth.any { (depth, prefixes) -> reps.take(depth) in prefixes }
-            RowContext(groupPath, reps, evaluated)
+            RowContext(groupPath, reps, attach.any { (depth, prefixes) -> reps.take(depth) in prefixes })
         }
     }
+
+    /**
+     * The per-group attach-depth index: `attach-depth → the set of row index-prefixes that have a valued field
+     * in scope at that depth`. The O(valued) scan that builds it is **memoized per group** (rebuilt with the
+     * [Index] on mutation), so many rules sharing one iteration scope — and nested per-row [rowContextsScoped]
+     * lookups — pay it once, not per rule/row. A row is `evaluated` iff some prefix matches.
+     */
+    private fun attachByDepth(groupPath: String): Map<Int, Set<List<Int>>> =
+        index().attachByGroup.getOrPut(groupPath) {
+            val gParts = partsOf(groupPath)
+            val m = HashMap<Int, HashSet<List<Int>>>()
+            for (p in index().valued) {
+                val common = commonPrefixLen(partsOf(p.path), gParts)
+                m.getOrPut(common) { HashSet() }.add(p.reps.take(common))
+            }
+            m
+        }
 
     /** The distinct 1-based index tuples at which [groupPath] is instantiated, in document order. */
     private fun rowsOf(groupPath: String): List<List<Int>> = index().rowsByGroup[groupPath] ?: emptyList()
@@ -163,15 +185,10 @@ class Document @JvmOverloads constructor(
     /** [EvalContext]s for the rows of [groupPath] whose reps extend [scopeReps] (the rows under a given parent
      *  row) — the scoped form of [contextsFor], for a `Having` per-row filter. */
     private fun rowContextsScoped(groupPath: String, scopeReps: List<Int>): List<EvalContext> {
-        val gParts = partsOf(groupPath)
-        val attachByDepth = HashMap<Int, HashSet<List<Int>>>()
-        for (p in index().valued) {
-            val common = commonPrefixLen(partsOf(p.path), gParts)
-            attachByDepth.getOrPut(common) { HashSet() }.add(p.reps.take(common))
-        }
+        val attach = attachByDepth(groupPath)   // memoized per group — no O(valued) rescan per nested row
         return rowsOf(groupPath)
             .filter { reps -> reps.take(scopeReps.size) == scopeReps }
-            .map { reps -> RowContext(groupPath, reps, attachByDepth.any { (d, pfx) -> reps.take(d) in pfx }) }
+            .map { reps -> RowContext(groupPath, reps, attach.any { (d, pfx) -> reps.take(d) in pfx }) }
     }
 
     /** Indices for a referenced path P under a row of group G: shared-prefix indices from the row, else 1. */

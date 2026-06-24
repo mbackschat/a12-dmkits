@@ -28,6 +28,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedTypeRegistry
 import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import io.github.mbackschat.a12.dm.interpreter.model.Requiredness
+import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleResult
 import io.github.mbackschat.a12.dm.interpreter.model.Severity
@@ -69,6 +70,30 @@ class DmInterpreter @JvmOverloads constructor(
      *  JS consumer implements the SPI directly. */
     private val customConditions: Map<String, CustomCondition> = emptyMap(),
 ) {
+
+    /**
+     * **Parse once, reuse across calls** — the prepare-once optimization (INTERPRETER-PERFORMANCE.md "the
+     * interpreter's two goals"). Each rule's condition / computation's expression is parsed to an AST exactly
+     * ONCE, on first use, then cached for every subsequent `validateFull`/`compute`/`testRule` call and every
+     * row. This is what makes the interpreter **on-par with the kernel at all rule counts**: the kernel
+     * code-gens once at model-load, and this is the direct analog (the per-call re-parse was the #31 cost that
+     * made interp/kernel cross 1.0 past ~48 rules). It is **lazy** (the constructor only builds the wrappers, no
+     * parsing) so **startup stays fast** and a single-rule [testRule] forces only the one rule it touches — the
+     * two goals, met without trading one for the other. `lazy {}` is SYNCHRONIZED, so the engine is safe to
+     * reuse across threads (the kernel's caches are concurrent too); each AST is parsed exactly once even under
+     * a race. A candidate rule not in the model (an ad-hoc [evalCandidate]) falls back to a one-off parse.
+     */
+    private val ruleCondAst: Map<RuleDef, Lazy<Cond>> =
+        model.rules.associateWith { r -> lazy { parseCondition(r.conditionText, r.group) } }
+    private val compExprAst: Map<ComputationDef, Lazy<Expr>> =
+        model.computations.associateWith { c -> lazy { parseExpression(c.expressionText, c.group) } }
+
+    /** The parsed condition AST for [rule] — cached for a model rule; a one-off parse for an ad-hoc candidate. */
+    private fun condAstOf(rule: RuleDef): Cond =
+        ruleCondAst[rule]?.value ?: parseCondition(rule.conditionText, rule.group)
+
+    /** The parsed expression AST for [comp] (a model computation) — cached. */
+    private fun exprAstOf(comp: ComputationDef): Expr = compExprAst.getValue(comp).value
 
     /**
      * Run every rule over each row of its iteration scope and return one [Message] per firing — the
@@ -222,7 +247,7 @@ class DmInterpreter @JvmOverloads constructor(
      * groups/asterisks as keys, so a non-field key arg makes it unsupported (returns null).
      */
     private fun repetitionNotUnique(rule: RuleDef): RnuRule? {
-        val ast = parseCondition(rule.conditionText, rule.group)
+        val ast = condAstOf(rule)
         if (ast !is Cond.Pred || ast.name != "RepetitionNotUnique") return null
         // The parser appends an `@From:<ref>` StrLit marker as the last arg when `@From` is present.
         val fromScope = (ast.args.lastOrNull() as? Expr.StrLit)?.v?.takeIf { it.startsWith("@From:") }?.removePrefix("@From:")
@@ -341,7 +366,7 @@ class DmInterpreter @JvmOverloads constructor(
     fun compute(doc: Document, locale: String = "en_US"): List<Computed> {
         val out = mutableListOf<Computed>()
         for (comp in model.computations) {
-            val expr = parseExpression(comp.expressionText, comp.group)
+            val expr = exprAstOf(comp)
             val scope = scopeFromRefs(exprRefs(expr) + comp.targetPath, comp.group)
             for (ctx in doc.contextsFor(scope)) {
                 out += when (val v = Interpreter(ctx, clock, model.baseYear, model.indexFields, predefinedTypes).evalExpression(expr)) {
@@ -395,7 +420,7 @@ class DmInterpreter @JvmOverloads constructor(
 
     private fun rowOutcomes(rule: RuleDef, doc: Document, locale: String, dup: Set<Pair<String, List<Int>>>,
             isRelevant: Relevance = ALL_RELEVANT): List<RowOutcome> {
-        val ast = parseCondition(rule.conditionText, rule.group)
+        val ast = condAstOf(rule)
         val refs = nonStarredRefs(ast).distinct()
         val errorPath = resolveErrorPath(rule)
         return doc.contextsFor(iterationScope(rule, ast)).map { ctx ->
