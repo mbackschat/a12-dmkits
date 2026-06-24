@@ -148,9 +148,9 @@ object PerfCatalog {
      * generated document. The rules use only supported operators with valid (referenced) error fields; the
      * random fill/empty + diverse kinds exercise requiredness (empty index fields → `mandatoryField`), a
      * per-row comparison, **date extractors over an ISO AND a non-ISO date field**, an aggregate over varying
-     * rows, **`FirstFilledValue`** (first-specified-row, skip-empties), **rounding (FLOOR/CEILING/HALF_UP, expr
-     * + `*Value` forms)**, a nested per-part rule, and a cross-level reference — combinations no hand-written
-     * `*DiffTest` covers.
+     * rows, **`FirstFilledValue`** (first-specified-row, skip-empties), **`NumberOfValueInFields`** (count-of-
+     * value, `In` syntax), **rounding (FLOOR/CEILING/HALF_UP, expr + `*Value` forms)**, a nested per-part rule,
+     * and a cross-level reference — combinations no hand-written `*DiffTest` covers.
      */
     fun fuzz(): PerfScenario {
         val rules = listOf(
@@ -163,6 +163,7 @@ object PerfCatalog {
             FuzzRule(FZ_LINES, "PW", "../Qty", "{ [Qty] ^ 2 } > 100"),                                // power
             FuzzRule(FZ_LINES, "AB", "../Price", "Abs([Price]) > 500"),                               // |x|
             FuzzRule(FZ_LINES, "LN", "../ItemId", "FieldFilled(ItemId) And Length(ItemId) > 1"),      // string length (+ uniqueIndex suppression on dup keys)
+            FuzzRule(FZ_LINES, "NV", "../Qty", "FieldFilled(Qty) And NumberOfValueInFields(0 In Qty, Price) >= 1"), // count-of-value (In syntax; empty not counted)
             FuzzRule(FZ_LINES, "RD", "../Price", "FieldFilled(Price) And RoundDown([Price], 0) > 50"), // FLOOR (signed Price → negatives)
             FuzzRule(FZ_LINES, "RA", "../Price", "FieldFilled(Price) And RoundAccounting([Price] * [Qty], 1) > 100"), // HALF_UP over a product
             FuzzRule(FZ_PARTS, "HW", "../Weight", "FieldFilled(Weight) And [Weight] > 50"),

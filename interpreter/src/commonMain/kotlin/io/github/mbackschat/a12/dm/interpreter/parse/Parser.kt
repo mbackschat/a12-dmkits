@@ -165,6 +165,9 @@ private class ConditionParser(private val src: String, private val base: String)
         expect('(')
         val args = mutableListOf(parseExpr())
         skipWs()
+        // `NumberOfValueInFields(value In f1, f2, …)` — the `In` grammar literal separates the constant from
+        // the bare field refs. Only this construct uses it; for every other function the next token is `,`/`)`.
+        if (matchKeyword("In")) { args.add(parseExpr()); skipWs() }
         while (peek() == ',') { next(); args.add(parseExpr()); skipWs() }
         expect(')')
         return args

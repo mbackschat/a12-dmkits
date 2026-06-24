@@ -108,6 +108,9 @@ enum class FunctionOp(val kernelName: String) {
     // the first filled one are never read (a formal error there is invisible; a formal error BEFORE/AT the
     // first filled one suppresses the rule). A `Sum` sibling; returns the scope's element type (number or date).
     FIRST_FILLED_VALUE("FirstFilledValue"),
+    // `NumberOfValueInFields(value In f1, f2, …)` — the count of the listed fields whose FILLED value equals the
+    // constant. An empty field is NOT counted (kernel: only `b == TRUE` counts); a formal error → non-evaluable.
+    NUMBER_OF_VALUE_IN_FIELDS("NumberOfValueInFields"),
     ;
 
     companion object {

@@ -432,6 +432,8 @@ class Interpreter(
         // `combine` — a later malformed element is invisible; but if the first filled one is malformed it
         // arrives as Unknown, so the comparison is Unknown and the rule is suppressed. No filled row → Unknown.
         FunctionOp.FIRST_FILLED_VALUE -> starVals(f).firstOrNull() ?: Val.Unknown
+        // NumberOfValueInFields(value In f1, f2, …): count the FILLED fields equal to the constant.
+        FunctionOp.NUMBER_OF_VALUE_IN_FIELDS -> numberOfValueInFields(f.args)
         null -> throw UnsupportedConstructException("unsupported function ${f.name}")
     }
 
@@ -447,6 +449,25 @@ class Interpreter(
      *  `Math.max(0, decimalPlaces)` field form. A non-numeric/Unknown value → Unknown. */
     private fun roundValue(args: List<Expr>, mode: RoundMode): Val =
         (evalExpr(args[0]) as? Val.Num)?.let { Val.Num(it.v.roundTo(0, mode)) } ?: Val.Unknown
+
+    /**
+     * `NumberOfValueInFields(value In f1, f2, …)` — `args[0]` is the constant, `args[1..]` the bare field refs.
+     * The kernel (`RuntimeController.anzahlWertInFeldlisteIntern`) counts only **filled** fields whose value
+     * equals the constant: an EMPTY field is skipped (not counted), and a formally-invalid (Unknown) field
+     * makes the whole count non-evaluable → the rule is suppressed. Equality uses the same typed `==` semantics.
+     */
+    private fun numberOfValueInFields(args: List<Expr>): Val {
+        val target = evalExpr(args[0])
+        var count = 0
+        for (i in 1 until args.size) {
+            val path = pathOf(args[i])
+            if (!ctx.filled(path)) continue          // empty → not counted (kernel: b == FALSE)
+            val v = evalExpr(args[i])
+            if (v is Val.Unknown) return Val.Unknown // a filled-but-malformed operand → non-evaluable
+            if (eq(v, target)) count++
+        }
+        return Val.Num(dec(count))
+    }
 
     /** `DifferenceIn{Months,Years}(a, b)` → a signed whole-period count; Unknown if either date is empty. */
     private fun dateDiff(args: List<Expr>, diff: (String, String) -> Int?): Val {
