@@ -140,16 +140,16 @@ class Interpreter(
             val a = evalTyped(c.left)
             val b = evalTyped(c.right)
             val type = if (a.type == MsgType.OMISSION || b.type == MsgType.OMISSION) MsgType.OMISSION else MsgType.VALUE
-            Res(and(a.truth, b.truth), type)
+            Res(Kleene.and(a.truth, b.truth), type)
         }
         is Cond.Or -> {
             val a = evalTyped(c.left)
             val b = evalTyped(c.right)
-            Res(or(a.truth, b.truth), orType(a, b))
+            Res(Kleene.or(a.truth, b.truth), orType(a, b))
         }
         is Cond.Not -> {
             val a = evalTyped(c.c)
-            Res(not(a.truth), a.type)
+            Res(Kleene.not(a.truth), a.type)
         }
     }
 
@@ -337,9 +337,9 @@ class Interpreter(
         is Cond.Cmp -> evalCmp(c)
         is Cond.Tolerance -> evalTolerance(c)
         is Cond.ValueListQuant -> evalValueListQuant(c)
-        is Cond.And -> and(evalCond(c.left), evalCond(c.right))
-        is Cond.Or -> or(evalCond(c.left), evalCond(c.right))
-        is Cond.Not -> not(evalCond(c.c))
+        is Cond.And -> Kleene.and(evalCond(c.left), evalCond(c.right))
+        is Cond.Or -> Kleene.or(evalCond(c.left), evalCond(c.right))
+        is Cond.Not -> Kleene.not(evalCond(c.c))
         is Cond.Pred -> evalPred(c)
         is Cond.Pattern -> evalPattern(c)
         is Cond.Custom -> evalCustom(c)
@@ -365,11 +365,11 @@ class Interpreter(
         val op = PredicateOp.byName(p.name) ?: throw UnsupportedConstructException("unsupported predicate ${p.name}")
         return when (op) {
             PredicateOp.FIELD_FILLED -> filledTri(pathOf(p.args.single()))
-            PredicateOp.FIELD_NOT_FILLED -> not(filledTri(pathOf(p.args.single())))
+            PredicateOp.FIELD_NOT_FILLED -> Kleene.not(filledTri(pathOf(p.args.single())))
             PredicateOp.GROUP_FILLED -> Tri.of(ctx.groupFilled(pathOf(p.args.single())))
             PredicateOp.GROUP_NOT_FILLED -> Tri.of(!ctx.groupFilled(pathOf(p.args.single())))
             PredicateOp.FIELD_VALUE_IN_LIST -> valueInList(p.args)
-            PredicateOp.FIELD_VALUE_NOT_IN_LIST -> not(valueInList(p.args))
+            PredicateOp.FIELD_VALUE_NOT_IN_LIST -> Kleene.not(valueInList(p.args))
             PredicateOp.DATE_RANGES_OVERLAP,
             PredicateOp.ATLEAST_ONE_DATE_RANGE_OVERLAPS -> dateRangesOverlap(p.args)
             PredicateOp.FIELD_VALUES_NOT_UNIQUE -> fieldValuesNotUnique(p.args)
@@ -451,20 +451,6 @@ class Interpreter(
             else -> t++                            // present + check-relevant → TRUE
         }
         return t to f
-    }
-
-    /** Whether a list quantifier [op] fires for a tally of [t] TRUE + [f] FALSE operands among [n] (the rest
-     *  UNKNOWN). Reduces to the binary count law when there are no UNKNOWN operands (`f = n - t`); field/group
-     *  share it. The kernel's runtime (`alleEntitiesAngegeben`/`keineEntityAngegeben`/… , KERNEL-FINDINGS §1/§3). */
-    private fun quantifierFires(op: PredicateOp, t: Int, f: Int, n: Int): Boolean = when (op) {
-        PredicateOp.ALL_FIELDS_FILLED, PredicateOp.ALL_GROUPS_FILLED -> t == n
-        PredicateOp.NO_FIELD_FILLED, PredicateOp.NO_GROUP_FILLED -> f == n
-        PredicateOp.AT_LEAST_ONE_FIELD_FILLED, PredicateOp.AT_LEAST_ONE_GROUP_FILLED -> t >= 1
-        PredicateOp.MORE_THAN_ONE_FIELD_FILLED -> t >= 2
-        PredicateOp.NOT_ALL_FIELDS_FILLED, PredicateOp.NOT_ALL_GROUPS_FILLED -> f >= 1
-        PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED -> f == n || t >= 2
-        PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED, PredicateOp.GROUPS_NOT_COLLECTIVELY_FILLED -> t >= 1 && f >= 1
-        else -> error("not a list quantifier: $op")
     }
 
     /**
@@ -1017,24 +1003,6 @@ class Interpreter(
         l is Val.Txt && r is Val.Txt -> l.v == r.v
         l is Val.Bool && r is Val.Bool -> l.v == r.v
         else -> false
-    }
-
-    private fun and(a: Tri, b: Tri): Tri = when {
-        a == Tri.FALSE || b == Tri.FALSE -> Tri.FALSE
-        a == Tri.UNKNOWN || b == Tri.UNKNOWN -> Tri.UNKNOWN
-        else -> Tri.TRUE
-    }
-
-    private fun or(a: Tri, b: Tri): Tri = when {
-        a == Tri.TRUE || b == Tri.TRUE -> Tri.TRUE
-        a == Tri.UNKNOWN || b == Tri.UNKNOWN -> Tri.UNKNOWN
-        else -> Tri.FALSE
-    }
-
-    private fun not(a: Tri): Tri = when (a) {
-        Tri.TRUE -> Tri.FALSE
-        Tri.FALSE -> Tri.TRUE
-        Tri.UNKNOWN -> Tri.UNKNOWN
     }
 
     private companion object {

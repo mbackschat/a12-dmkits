@@ -87,7 +87,7 @@ We implement the **interpreter** (tree-walk) now, but the owner wants the door o
  └──────────────────────────────────────────────────────────┘
 ```
 
-**The discipline that keeps it generator-ready:** operator semantics must be **pure functions over resolved values**, not inlined into the tree-walk — so a generated program could call them exactly as the interpreter does. Some layers already obey this (`DateMath`, the `PredicateOp`/`FunctionOp` registries, `quantifierFires`); the comparison / 3VL / aggregate / directional-polarity logic currently sits *inside* `Interpreter` and should migrate into the runtime layer as it's touched (a tracked refactor, not a prerequisite for more operators). When adding an operator: put its **semantics** in the runtime layer; let the strategy only **dispatch + resolve operands**. **We do NOT build the generator now** — this is purely preparing the structure so adding one later is a new top layer, not a rewrite. (Rhymes with the IF0 clean-room separation: the runtime stays kernel-free and strategy-agnostic.)
+**The discipline that keeps it generator-ready:** operator semantics must be **pure functions over resolved values**, not inlined into the tree-walk — so a generated program could call them exactly as the interpreter does. The **value-only** semantics now obey this as pure, strategy-agnostic functions: `DateMath`, the `PredicateOp`/`FunctionOp` registries, the **three-valued Kleene logic** (`Kleene.and`/`or`/`not`, `eval/ThreeValued.kt` — the kernel's `combineUND`/`combineODER`), and **`quantifierFires`** (a top-level fun beside `PredicateOp` in `Operators.kt`) — both extracted from `Interpreter` 2026-06-24. What remains *inside* `Interpreter` is the logic that reads the **data-access layer** (`EvalContext` fill/sign): the directional comparison polarity (`fill`/`leafType`), the aggregates, the value-list/pattern resolution. These migrate **with** the data-access/semantics split (the harder half — separate "resolve an operand" from "apply the operator"), as touched — a tracked refactor, not a prerequisite for more operators. When adding an operator: put its **semantics** in the runtime layer; let the strategy only **dispatch + resolve operands**. **We do NOT build the generator now** — this is purely preparing the structure so adding one later is a new top layer, not a rewrite. (Rhymes with the IF0 clean-room separation: the runtime stays kernel-free and strategy-agnostic.)
 
 ### IF4 — `GroupFilled` is an `EvalContext` seam resolved only by the general `Document`
 
@@ -131,3 +131,46 @@ The kernel auto-checks a repeatable group's `indexFieldName` for uniqueness; the
 `evalArith` now handles `/` and `^` (parser precedence `^` > `*`/`/` > `+`/`-`; `^` not nestable without braces, matching the kernel's `MVK_TOO_MANY_POW_FOR_CALC`). Both use the kernel's **`MathContext(50)` HALF_UP** (`VkBigDecimal.INTERNAL_PRECISION`) via `Dec.div`/`Dec.pow` (JVM `BigDecimal.divide`/`pow` with the `MathContext`; the JVM is the differential-exact target since the kernel is JVM-only). The exact-match subtleties (operators.json `Arithmetic`; KERNEL-SEMANTICS "evaluate quietly"): **division by zero is quiet** — the expression is non-evaluable → `Val.Unknown` → a referencing rule simply does not fire (never an error); a **power's** exponent is whole, and `0` to a negative power or an exponent outside `[-1000, 1000]` is likewise quiet → `Unknown`. `evalArith` already returned `Val` and propagated `Unknown` from a malformed operand, so `[bad] / 2` doesn't crash — it's `Unknown`. *(Locked: `adapter.laws.DivPowDiffTest` — div fire/no-fire, div-by-zero quiet, high-precision boundary, power, zero/negative exponent, `^`-binds-tighter-than-`*`; plus the fuzz net's `DV`/`PW` rules.)*
 
 **JS edge (documented):** `Dec.div`/`Dec.pow` on JS use big.js, which rounds to `Big.DP` decimal places rather than `MathContext(50)` significant digits — so JS division beyond `Big.DP` is approximate. The JVM is kernel-exact (the differential); JS matches to `Big.DP`. (Joins the JS-regex-dialect edge — relevant only to the standalone JS runtime, not the kernel-checked JVM path.)
+
+### IF17 — The truth model is Kleene 3-valued logic, and it is the engine's *single* suppression mechanism (extracted to `Kleene`, 2026-06-24)
+
+The most quietly important design fact about the engine: **its boolean core is [Kleene's strong three-valued logic (K₃)](https://en.wikipedia.org/wiki/Three-valued_logic#Kleene_and_Priest_logics), and almost everything the kernel calls "suppression" is just that one logic doing its job.** Worth a full section because it unifies four features that *look* independent — formal-error suppression, empty-row gating, partial validation, and directional polarity all reduce to "send an operand to UNKNOWN, then evaluate the same tiny truth table." The pure functions live in `eval/ThreeValued.kt` (`Kleene.and`/`or`/`not`) + `quantifierFires` (in `Operators.kt`), extracted from `Interpreter` so they are strategy-agnostic (a future generator emits calls to them; IF10).
+
+**The three values.** A condition evaluates to `Tri.TRUE` (the rule **fires** — an error), `Tri.FALSE` (no error), or **`Tri.UNKNOWN`** — "not enough information to decide." A rule **fires only on `TRUE`**; `UNKNOWN` reads as "cannot convict," so an `UNKNOWN` rule produces no message (and, in `rule test`, a *suppressed* verdict). The kernel's name for this third state is the *nicht prüfungsrelevant* / formally-incorrect operand; we model it as one value and let the algebra carry it.
+
+**The defining law (why K₃ is exactly right here).** A combination is definite (`TRUE`/`FALSE`) **iff it would be that value for every way the `UNKNOWN`s could resolve to T/F**; if the unknowns could swing the outcome, the result is `UNKNOWN`. So `UNKNOWN` means precisely *"the answer depends on a value we don't have."* That is the correct reading of a malformed/absent/irrelevant field: we genuinely don't know what it would be.
+
+**The truth tables** (∧ = `and`, ∨ = `or`, ¬ = `not`):
+
+```
+  A ∧ B │ T   U   F          A ∨ B │ T   U   F            ¬A
+  ──────┼───────────         ──────┼───────────         ──────
+    T   │ T   U   F            T   │ T   T   T           ¬T = F
+    U   │ U   U   F            U   │ T   U   U           ¬U = U
+    F   │ F   F   F            F   │ T   U   F           ¬F = T
+```
+
+The two corners that carry all the weight:
+
+| combination | result | why |
+|---|---|---|
+| `T ∧ U` | **U** (suppressed) | the unknown could be `F`, which would make the AND false — we can't be sure it fires |
+| `F ∧ U` | **F** | `F` is absorbing for ∧ — *no* value of the unknown could rescue it |
+| `T ∨ U` | **T** (fires) | `T` is absorbing for ∨ — *no* value of the unknown could prevent it |
+| `F ∨ U` | **U** | the unknown could be `T`, which would fire it — we can't be sure it doesn't |
+
+Each connective has an **absorbing** value (`F` for ∧, `T` for ∨) that wins even against `UNKNOWN`; otherwise `UNKNOWN` propagates. This is monotonicity: known information that already settles the outcome is never un-settled by an unknown.
+
+**One table, three sources of UNKNOWN.** We never write code that says "suppress this rule." Instead, every suppression path funnels an *operand* to `UNKNOWN` and this table does the rest:
+
+| source of `UNKNOWN` | where | finding |
+|---|---|---|
+| **Formal error** — a referenced field is malformed, required-but-empty, or a duplicate index → un-evaluable | `Interpreter`'s `invalid` predicate → `Val.Unknown` | KERNEL-FINDINGS §1 (branch-scoped), IF11 |
+| **Empty-row gating** — a comparison's empty-as-0 must not fire a fresh blank row | the structural `canFireEmpty` gate | KERNEL-FINDINGS §1 |
+| **Partial validation** — a field outside the *relevant* set is treated as unknown | `DmInterpreter.validatePart` → `Val.Unknown` | KERNEL-FINDINGS "Partial validation" |
+
+**The punchline (partial validation).** The kernel documents partial validation as: *"an error is suppressed if the rule references a non-relevant field — **except where the kernel is sure no possible value of that field could have prevented the error**."* That exception sounds like a hairy special case. It is **not a special case at all** — it is literally `T ∨ U = T` versus `T ∧ U = U`. Resolve non-relevant fields to `UNKNOWN`, run this table, and the "except where sure" behaviour falls out for free. The same identity explains branch-scoped formal-error suppression: `healthyTrue ∨ [broken] > 0` still **fires** (the broken operand is `UNKNOWN`, but `T ∨ U = T`), while `healthyTrue ∧ [broken] > 0` is **suppressed** (`T ∧ U = U`). KERNEL-SEMANTICS §1's prose ("removes the rules over it from evaluation") reads stricter than the engine behaves; the truth is this algebra. *(This is why the partial-validation increment needed almost no new code — the 3VL engine already produced the kernel's exact suppression, including the hard clause; KERNEL-FINDINGS "Partial validation".)*
+
+**Quantifiers share the spirit.** `quantifierFires(op, t, f, n)` decides a list quantifier from a tally of `t` TRUE + `f` FALSE among `n` operands (the rest `UNKNOWN`) — the same "definite only when the unknowns can't change it" idea at the list level (`AllFieldsFilled` is `t == n`, `NoFieldFilled` is `f == n`, etc.), which is why a malformed operand in a quantifier list also yields `UNKNOWN` rather than a wrong count.
+
+**Correspondence + provenance.** This mirrors the kernel's `ValidierungsErgebnis.combineUND`/`combineODER`; we reimplement the *behaviour* clean-room (IF0), not the source. Locked broadly by the full-message fuzz (`FullMessageFuzzDiffTest`) and specifically by `adapter.laws.FormalErrorScopeLawsTest` (branch-scoped) + `PartialValidationDiffTest` (the `∨`-fires / `∧`-suppresses cases) + the quantifier diff tests.

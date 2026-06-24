@@ -160,3 +160,22 @@ enum class FunctionOp(val kernelName: String) {
         fun byName(name: String): FunctionOp? = entries.firstOrNull { it.kernelName == name }
     }
 }
+
+/**
+ * Whether a list quantifier [op] fires for a tally of [t] TRUE + [f] FALSE operands among [n] (the rest
+ * UNKNOWN) — the kernel's runtime quantifier semantics (`alleEntitiesAngegeben`/`keineEntityAngegeben`/…,
+ * KERNEL-FINDINGS §1/§3). Reduces to the binary count law when no operand is UNKNOWN (`f = n − t`); field
+ * and group quantifiers share it. A **pure, strategy-agnostic** function over the resolved tally (no AST-walk,
+ * no `EvalContext`), co-located with [PredicateOp] so the interpreter tree-walk and a future generator share
+ * one definition (INTERPRETER-FINDINGS IF10).
+ */
+fun quantifierFires(op: PredicateOp, t: Int, f: Int, n: Int): Boolean = when (op) {
+    PredicateOp.ALL_FIELDS_FILLED, PredicateOp.ALL_GROUPS_FILLED -> t == n
+    PredicateOp.NO_FIELD_FILLED, PredicateOp.NO_GROUP_FILLED -> f == n
+    PredicateOp.AT_LEAST_ONE_FIELD_FILLED, PredicateOp.AT_LEAST_ONE_GROUP_FILLED -> t >= 1
+    PredicateOp.MORE_THAN_ONE_FIELD_FILLED -> t >= 2
+    PredicateOp.NOT_ALL_FIELDS_FILLED, PredicateOp.NOT_ALL_GROUPS_FILLED -> f >= 1
+    PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED -> f == n || t >= 2
+    PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED, PredicateOp.GROUPS_NOT_COLLECTIVELY_FILLED -> t >= 1 && f >= 1
+    else -> error("not a list quantifier: $op")
+}
