@@ -39,11 +39,11 @@ class PerfGateTest {
             // (a) absolute backstop: a catastrophic O(N²) blows far past this generous ceiling for the gate N.
             assertTrue(row.interp.medianMs < ABS_CEILING_MS,
                 "${row.scenario}: interpreter ${row.interp.medianMs}ms exceeds ${ABS_CEILING_MS}ms ceiling at N=${row.n}")
-            // (b) relative backstop vs the kernel: trips only on a large relative regression (the kernel is the
-            // slow one, so this is loose by design — the scaling-shape test is the precise O(N²) detector).
-            val ratio = row.ratio
+            // (b) relative backstop vs the FAIR (Java) baseline: the kernel's own logic minus the Groovy tax,
+            // so interp/java is the meaningful relative gate (Groovy's tax can't flatter the interpreter here).
+            val ratio = row.ratioJava
             if (ratio != null) assertTrue(ratio < RATIO_CEILING,
-                "${row.scenario}: interp/kernel ratio $ratio exceeds $RATIO_CEILING (relative regression) at N=${row.n}")
+                "${row.scenario}: interp/kernel-Java ratio $ratio exceeds $RATIO_CEILING (relative regression) at N=${row.n}")
         }
     }
 
@@ -102,8 +102,9 @@ class PerfGateTest {
         const val N_SMALL = 5_000
         const val GROWTH_REPEATS = 3        // min growth over a few back-to-back pairings → robust to machine load
         const val SUB_QUADRATIC_MAX = 9.0   // linear ≈ 4; a quadratic 4×-rows blowup is ≈ 16 — 9 is the trip line
-        // Codegen is NOT in the timed region (primed out by warmup — the kernel generates ahead). The residual
-        // unfairness is only that the kernel validates MORE dimensions than the interpreter models yet.
-        const val CAVEAT = "(NOT apples-to-apples: kernel also validates enum/value-list + FieldValuesNotUnique; codegen excluded)"
+        // Codegen is NOT in the timed region (primed out by warmup — the kernel generates ahead). The Java
+        // baseline removes the Groovy execution tax (read ratioJava); the residual unfairness is only that the
+        // kernel validates MORE dimensions than the interpreter models yet.
+        const val CAVEAT = "(NOT apples-to-apples: kernel also validates enum/value-list + FieldValuesNotUnique; codegen excluded; ratioJava is the fair one)"
     }
 }

@@ -102,41 +102,81 @@ object InterpreterPerfEngine : PerfEngine {
     }
 }
 
-/** The kernel engine: the build-once `RuntimeLaws.KernelEngine` (codegen once), each instance an IDocument. */
+/** The Groovy kernel engine: the build-once `RuntimeLaws.KernelEngine` (Groovy codegen once), each instance an IDocument. */
 object KernelPerfEngine : PerfEngine {
-    override val label = "kernel"
+    override val label = "groovy"
     override fun build(scenario: PerfScenario): ReusableEngine {
-        val engine = RuntimeLaws.kernelEngine(scenario.kernelModel)   // model deserialize + expand + codegen, once
+        val engine = RuntimeLaws.kernelEngine(scenario.kernelModel)   // model deserialize + expand + Groovy codegen, once
         return object : ReusableEngine {
-            override val label = "kernel"
+            override val label = "groovy"
             override fun instance(n: Int, variant: Int): RunInstance {
                 val builder = RuntimeLaws.doc()
-                scenario.instance(KernelSink(builder), n, variant)
+                scenario.instance(KernelDocSink(builder), n, variant)
                 val instance = engine.instance(builder)   // build the IDocument once, outside timing
                 return RunInstance { engine.firedCodesSorted(instance) }
             }
         }
     }
+}
 
-    private class KernelSink(private val doc: RuntimeLaws.Doc) : PlacementSink {
-        override fun group(path: String, vararg reps: Int) { doc.group(path, *reps) }
-        override fun field(path: String, value: String, vararg reps: Int) { doc.field(path, value, *reps) }
-        override fun emptyField(path: String, vararg reps: Int) { doc.emptyField(path, *reps) }
+/**
+ * The **Java** kernel engine: the kernel's OWN generated validator compiled as Java (build-once
+ * [RuntimeLaws.kernelJavaEngine] — generate Java source + in-memory compile + static rt-service, once), each
+ * instance an IDocument. This is the *Groovy-tax-free* baseline (INTERPRETER-PERFORMANCE.md "the kernel
+ * baseline: Groovy vs Java"): the SAME validation logic the Groovy path runs, minus the Groovy execution tax.
+ */
+object KernelJavaPerfEngine : PerfEngine {
+    override val label = "java"
+    override fun build(scenario: PerfScenario): ReusableEngine {
+        val engine = RuntimeLaws.kernelJavaEngine(scenario.kernelModel)   // codegen + in-memory compile, once
+        return object : ReusableEngine {
+            override val label = "java"
+            override fun instance(n: Int, variant: Int): RunInstance {
+                val builder = RuntimeLaws.doc()
+                scenario.instance(KernelDocSink(builder), n, variant)
+                val instance = engine.instance(builder)   // build the IDocument once, outside timing
+                return RunInstance { engine.firedCodesSorted(instance) }
+            }
+        }
     }
+}
+
+/** Feeds a [PerfScenario]'s placements into a [RuntimeLaws.Doc] — shared by both kernel engines (Groovy + Java). */
+private class KernelDocSink(private val doc: RuntimeLaws.Doc) : PlacementSink {
+    override fun group(path: String, vararg reps: Int) { doc.group(path, *reps) }
+    override fun field(path: String, value: String, vararg reps: Int) { doc.field(path, value, *reps) }
+    override fun emptyField(path: String, vararg reps: Int) { doc.emptyField(path, *reps) }
 }
 
 /** Wall-clock distribution (ms) of a timed operation — robust stats, not a single cold number. */
 data class Stats(val medianMs: Double, val minMs: Double, val p90Ms: Double)
 
-/** One single-document scenario row: the interpreter's vs the kernel's stats at scale [n], and the ratio. */
-data class PerfRow(val scenario: String, val n: Int, val firings: Int, val interp: Stats, val kernel: Stats?) {
-    /** interp_median / kernel_median — read with the not-apples-to-apples caveat (the kernel validates more). */
-    val ratio: Double? get() = kernel?.let { interp.medianMs / it.medianMs }
+/**
+ * One single-document scenario row: the interpreter's stats at scale [n] vs BOTH kernel baselines — [groovy]
+ * (dynamic, the production path) and [java] (the kernel's own validator compiled as Java, the Groovy-tax-free
+ * baseline). The **[ratioJava]** is the *fair* algorithmic comparison; [ratioGroovy] is tax-inflated; [groovyTax]
+ * is how much slower Groovy execution is than Java for this scenario.
+ */
+data class PerfRow(
+    val scenario: String, val n: Int, val firings: Int,
+    val interp: Stats, val groovy: Stats?, val java: Stats?,
+) {
+    /** interp_median / groovy_median — tax-inflated (Groovy is slower than Java; read with the fairness caveat). */
+    val ratioGroovy: Double? get() = groovy?.let { interp.medianMs / it.medianMs }
+    /** interp_median / java_median — the FAIR algorithmic ratio (kernel logic, Groovy tax removed). */
+    val ratioJava: Double? get() = java?.let { interp.medianMs / it.medianMs }
+    /** groovy_median / java_median — the Groovy execution tax (≥ 1 means Groovy is slower than the same logic in Java). */
+    val groovyTax: Double? get() = if (groovy != null && java != null) groovy.medianMs / java.medianMs else null
 }
 
-/** One repeated-eval row: engine built ONCE, [variants] varying instances looped — PER-EVAL stats + ratio. */
-data class RepeatedRow(val scenario: String, val n: Int, val variants: Int, val interp: Stats, val kernel: Stats?) {
-    val ratio: Double? get() = kernel?.let { interp.medianMs / it.medianMs }
+/** One repeated-eval row: engine built ONCE, [variants] varying instances looped — PER-EVAL stats + the two ratios. */
+data class RepeatedRow(
+    val scenario: String, val n: Int, val variants: Int,
+    val interp: Stats, val groovy: Stats?, val java: Stats?,
+) {
+    val ratioGroovy: Double? get() = groovy?.let { interp.medianMs / it.medianMs }
+    val ratioJava: Double? get() = java?.let { interp.medianMs / it.medianMs }
+    val groovyTax: Double? get() = if (groovy != null && java != null) groovy.medianMs / java.medianMs else null
 }
 
 object PerfHarness {
@@ -154,17 +194,22 @@ object PerfHarness {
     }
 
     /**
-     * Single-document mode: build both engines, materialize the canonical instance (variant 0) for each, assert
-     * the fired-code multisets agree (correctness first), then time each. The O(N²) gate.
+     * Single-document mode: build all three engines (interp, kernel-Groovy, kernel-Java), materialize the
+     * canonical instance (variant 0) for each, assert the fired-code multisets agree THREE-way (correctness
+     * first — interp == groovy == java), then time each. The O(N²) gate + the Groovy-vs-Java fairness measure.
+     * Pass [withJava] = false to skip the (compile-cost) Java baseline when only the interp/Groovy gate is wanted.
      */
-    fun runScenario(scenario: PerfScenario, n: Int, warmup: Int = 12, iters: Int = 8): PerfRow {
+    fun runScenario(scenario: PerfScenario, n: Int, warmup: Int = 12, iters: Int = 8, withJava: Boolean = true): PerfRow {
         val iInst = InterpreterPerfEngine.build(scenario).instance(n)
-        val kInst = KernelPerfEngine.build(scenario).instance(n)
+        val gInst = KernelPerfEngine.build(scenario).instance(n)
+        val jInst = if (withJava) KernelJavaPerfEngine.build(scenario).instance(n) else null
         val iResult = iInst.run()
-        assertAgree(scenario.name, n, iResult, kInst.run())
-        val kStats = measure(warmup, iters) { kInst.run() }
+        assertAgree(scenario.name, n, "interp", iResult, "groovy", gInst.run())
+        if (jInst != null) assertAgree(scenario.name, n, "groovy", gInst.run(), "java", jInst.run())
+        val gStats = measure(warmup, iters) { gInst.run() }
+        val jStats = jInst?.let { measure(warmup, iters) { it.run() } }
         val iStats = measure(warmup, iters) { iInst.run() }
-        return PerfRow(scenario.name, n, iResult.size, iStats, kStats)
+        return PerfRow(scenario.name, n, iResult.size, iStats, gStats, jStats)
     }
 
     /**
@@ -176,17 +221,22 @@ object PerfHarness {
      */
     fun runRepeated(
         scenario: PerfScenario, n: Int, variants: Int = 20, warmupLoops: Int = 3, timedLoops: Int = 5,
+        withJava: Boolean = true,
     ): RepeatedRow {
         val iEng = InterpreterPerfEngine.build(scenario)
-        val kEng = KernelPerfEngine.build(scenario)
+        val gEng = KernelPerfEngine.build(scenario)
+        val jEng = if (withJava) KernelJavaPerfEngine.build(scenario) else null
         val iInsts = (0 until variants).map { iEng.instance(n, it) }
-        val kInsts = (0 until variants).map { kEng.instance(n, it) }
+        val gInsts = (0 until variants).map { gEng.instance(n, it) }
+        val jInsts = jEng?.let { e -> (0 until variants).map { e.instance(n, it) } }
         // Correctness on the extremes — the perturbation shifts firings, so first != last exercises the variety.
-        assertAgree(scenario.name, n, iInsts.first().run(), kInsts.first().run())
-        assertAgree(scenario.name, n, iInsts.last().run(), kInsts.last().run())
-        val kStats = measureLoop(warmupLoops, timedLoops, kInsts)
+        assertAgree(scenario.name, n, "interp", iInsts.first().run(), "groovy", gInsts.first().run())
+        assertAgree(scenario.name, n, "interp", iInsts.last().run(), "groovy", gInsts.last().run())
+        if (jInsts != null) assertAgree(scenario.name, n, "groovy", gInsts.first().run(), "java", jInsts.first().run())
+        val gStats = measureLoop(warmupLoops, timedLoops, gInsts)
+        val jStats = jInsts?.let { measureLoop(warmupLoops, timedLoops, it) }
         val iStats = measureLoop(warmupLoops, timedLoops, iInsts)
-        return RepeatedRow(scenario.name, n, variants, iStats, kStats)
+        return RepeatedRow(scenario.name, n, variants, iStats, gStats, jStats)
     }
 
     /** Time the INTERPRETER only at scale [n] (profile/scaling use — no kernel, so high N stays cheap). */
@@ -213,24 +263,26 @@ object PerfHarness {
         return Stats(samples[samples.size / 2], samples.first(), p90)
     }
 
-    private fun assertAgree(scenario: String, n: Int, interp: List<String>, kernel: List<String>) =
-        check(interp == kernel) {
-            "$scenario (N=$n): interpreter and kernel must agree on fired codes.\n" +
-                "  kernel(${kernel.size})=${kernel.distinct()}\n  interp(${interp.size})=${interp.distinct()}"
+    private fun assertAgree(scenario: String, n: Int, aLabel: String, a: List<String>, bLabel: String, b: List<String>) =
+        check(a == b) {
+            "$scenario (N=$n): $aLabel and $bLabel must agree on fired codes.\n" +
+                "  $bLabel(${b.size})=${b.distinct()}\n  $aLabel(${a.size})=${a.distinct()}"
         }
 
-    /** A one-line single-document log row (printed; baselines go to the results log). */
+    /** A one-line single-document log row: interp vs both kernel baselines + the fair (java) ratio + Groovy tax. */
     fun format(row: PerfRow, caveat: String = ""): String =
-        "[perf] ${row.scenario} N=${row.n} firings=${row.firings}  ${pair(row.interp, row.kernel, row.ratio)}  $caveat"
+        "[perf] ${row.scenario} N=${row.n} firings=${row.firings}  ${triple(row.interp, row.groovy, row.java, row.ratioJava, row.groovyTax)}  $caveat"
 
     /** A one-line repeated-eval log row (per-eval, engine reused). */
     fun formatRepeated(row: RepeatedRow, caveat: String = ""): String =
         "[perf] ${row.scenario} REPEATED N=${row.n} ×${row.variants} variants (per-eval)  " +
-            "${pair(row.interp, row.kernel, row.ratio)}  $caveat"
+            "${triple(row.interp, row.groovy, row.java, row.ratioJava, row.groovyTax)}  $caveat"
 
-    private fun pair(interp: Stats, kernel: Stats?, ratio: Double?): String =
+    private fun triple(interp: Stats, groovy: Stats?, java: Stats?, ratioJava: Double?, groovyTax: Double?): String =
         "interp=${ms(interp.medianMs)} (min ${ms(interp.minMs)})  " +
-            (if (kernel != null) "kernel=${ms(kernel.medianMs)}  ratio=${"%.2f".format(ratio)}" else "")
+            (if (groovy != null) "groovy=${ms(groovy.medianMs)}  " else "") +
+            (if (java != null) "java=${ms(java.medianMs)}  ratioJava=${"%.2f".format(ratioJava)}  " else "") +
+            (if (groovyTax != null) "groovyTax=${"%.2f".format(groovyTax)}×" else "")
 
     private fun ms(v: Double): String = "%.2fms".format(v)
 }

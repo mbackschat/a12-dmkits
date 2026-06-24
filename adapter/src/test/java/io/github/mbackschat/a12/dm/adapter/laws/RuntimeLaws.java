@@ -1,7 +1,11 @@
 package io.github.mbackschat.a12.dm.adapter.laws;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.StringReader;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,10 +15,24 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+
+import javax.tools.Diagnostic;
+import javax.tools.DiagnosticCollector;
+import javax.tools.FileObject;
+import javax.tools.ForwardingJavaFileManager;
+import javax.tools.JavaCompiler;
+import javax.tools.JavaFileManager;
+import javax.tools.JavaFileObject;
+import javax.tools.SimpleJavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.ToolProvider;
 
 import com.mgmtp.a12.kernel.md.document.api.IDocument;
 import com.mgmtp.a12.kernel.md.document.api.services.IDocumentFactory;
@@ -30,6 +48,7 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolve
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelResolver;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
+import com.mgmtp.a12.kernel.md.model.api.services.IValidationCodeGeneratorConfig;
 import com.mgmtp.a12.kernel.md.rt.api.DocumentProcessingConfig;
 import com.mgmtp.a12.kernel.md.rt.api.ICustomCondition;
 import com.mgmtp.a12.kernel.md.rt.api.ICustomConditionFactory;
@@ -37,6 +56,7 @@ import com.mgmtp.a12.kernel.md.rt.api.IDocumentComputationResult;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentDynamicServiceConfig;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentModelIdProvider;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentRtService;
+import com.mgmtp.a12.kernel.md.rt.api.IDocumentStaticServiceConfig;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentValidationResult;
 import com.mgmtp.a12.kernel.md.rt.api.ILabelProvider;
 import com.mgmtp.a12.kernel.md.rt.api.IMessage;
@@ -463,6 +483,132 @@ public final class RuntimeLaws {
 
     public static KernelEngine kernelEngine(String modelJson) {
         return new KernelEngine(modelJson);
+    }
+
+    /**
+     * A build-ONCE kernel evaluator that runs the kernel's OWN generated validator compiled as <b>Java</b>
+     * (not Groovy) — the <em>Groovy-tax-free</em> baseline (INTERPRETER-PERFORMANCE.md "the kernel baseline:
+     * Groovy vs Java"). It generates Java source via {@code generateValidationCode(…, JAVA)}, compiles it
+     * in-memory with {@link javax.tools.JavaCompiler}, and runs it through the kernel's <b>static</b>
+     * rt-service path ({@code DocumentStaticRtService}) — the SAME {@code validateFull} scaffolding the Groovy
+     * path uses, so the fired-code output is identical and only the executed language differs. So the
+     * Groovy-vs-Java comparison isolates the dynamic-dispatch/metaclass execution tax from the algorithm.
+     *
+     * <p>Code generation + in-memory compilation happen ONCE in the constructor (outside any timed region),
+     * mirroring {@link KernelEngine}. The codegen step is language-parameterized ({@link #generateSources}),
+     * so a future <em>kernel-JS vs interpreter-JS</em> comparison reuses the same source-generation seam.
+     */
+    public static final class JavaKernelEngine {
+        private final String modelJson;
+        private final IDocumentRtService rt;
+        private final IDocumentFactory df;
+
+        JavaKernelEngine(String modelJson) {
+            this.modelJson = modelJson;
+            IDocumentModel expanded = expandedModel(modelJson);
+            Properties idToPackage = new Properties();   // OUT: modelId -> generated package (the static path needs it)
+            Map<String, String> sources = generateSources(
+                    expanded, IValidationCodeGeneratorConfig.ProgrammingLanguage.JAVA, idToPackage);
+            ClassLoader codeLoader = compileInMemory(sources);
+            IDocumentModelResolver resolver = id -> expanded;
+            this.rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(staticConfig(idToPackage, codeLoader));
+            this.df = new DocumentServiceFactory(resolver).createDocumentFactory();
+        }
+
+        /** Build the kernel {@link IDocument} for {@code doc} once — do this OUTSIDE the timed region. */
+        public IDocument instance(Doc doc) {
+            return buildInstance(modelJson, df, doc);
+        }
+
+        /** Every fired error code for an already-built instance, <b>sorted</b> — the multiset (see {@link KernelEngine}). */
+        @SuppressWarnings("removal")
+        public List<String> firedCodesSorted(IDocument instance) {
+            return rt.validateFull(instance, Locale.US).getMessages().stream()
+                    .map(IMessage::getErrorCode).sorted().toList();
+        }
+    }
+
+    /** Build a Java-baseline kernel engine (generates + in-memory-compiles the kernel's Java validator for {@code modelJson}). */
+    public static JavaKernelEngine kernelJavaEngine(String modelJson) {
+        return new JavaKernelEngine(modelJson);
+    }
+
+    /**
+     * Generate the kernel's validation source for {@code expanded} in {@code lang}; returns {@code zipPath ->
+     * source} for the {@code .java} entries and fills {@code idToPackageOut} with the {@code modelId ->
+     * generated-package} mapping the static-model path needs. Language-parameterized: Java today, JS later.
+     */
+    private static Map<String, String> generateSources(IDocumentModel expanded,
+            IValidationCodeGeneratorConfig.ProgrammingLanguage lang, Properties idToPackageOut) {
+        IDocumentModelService modelService = new DocumentModelServiceFactory().createDocumentModelService();
+        IValidationCodeGeneratorConfig config = () -> lang;
+        byte[] zip = modelService.generateValidationCode(expanded, config, idToPackageOut, n -> {});
+        Map<String, String> sources = new HashMap<>();
+        try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zip))) {
+            ZipEntry e;
+            while ((e = zis.getNextEntry()) != null) {
+                if (e.getName().endsWith(".java")) {
+                    sources.put(e.getName(), new String(zis.readAllBytes(), StandardCharsets.UTF_8));
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("failed to read generated code zip", e);
+        }
+        return sources;
+    }
+
+    private static IDocumentStaticServiceConfig staticConfig(Properties idToPackage, ClassLoader codeLoader) {
+        return new IDocumentStaticServiceConfig() {
+            public Optional<String> getModelPackage(String id) { return Optional.ofNullable(idToPackage.getProperty(id)); }
+            public Optional<ClassLoader> getModelCodeClassLoader(String id) { return Optional.of(codeLoader); }
+            public Optional<ILabelProvider> getLabelProvider() { return Optional.empty(); }
+            public Optional<String> getVariant() { return Optional.empty(); }
+        };
+    }
+
+    /** Compile {@code sources} ({@code zipPath -> code}) in-memory against this JVM's classpath; return a loader for them. */
+    private static ClassLoader compileInMemory(Map<String, String> sources) {
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        if (compiler == null) {
+            throw new IllegalStateException("a JDK (not a JRE) is required to compile the Java kernel baseline");
+        }
+        Map<String, ByteArrayOutputStream> compiled = new HashMap<>();
+        StandardJavaFileManager std = compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
+        ForwardingJavaFileManager<StandardJavaFileManager> fm = new ForwardingJavaFileManager<>(std) {
+            @Override
+            public JavaFileObject getJavaFileForOutput(JavaFileManager.Location loc, String className,
+                    JavaFileObject.Kind kind, FileObject sibling) {
+                ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+                compiled.put(className, bytes);
+                return new SimpleJavaFileObject(
+                        URI.create("mem:///" + className.replace('.', '/') + ".class"), JavaFileObject.Kind.CLASS) {
+                    @Override public OutputStream openOutputStream() { return bytes; }
+                };
+            }
+        };
+        List<JavaFileObject> units = new ArrayList<>();
+        sources.forEach((path, code) -> units.add(
+                new SimpleJavaFileObject(URI.create("string:///" + path), JavaFileObject.Kind.SOURCE) {
+                    @Override public CharSequence getCharContent(boolean ignoreEncodingErrors) { return code; }
+                }));
+        // Inherit this test JVM's classpath so the generated code's com.mgmtp.* imports resolve.
+        List<String> options = List.of("-classpath", System.getProperty("java.class.path"));
+        DiagnosticCollector<JavaFileObject> diags = new DiagnosticCollector<>();
+        boolean ok = compiler.getTask(null, fm, diags, options, null, units).call();
+        if (!ok) {
+            StringBuilder sb = new StringBuilder("generated Java failed to compile:\n");
+            for (Diagnostic<? extends JavaFileObject> d : diags.getDiagnostics()) sb.append("  ").append(d).append('\n');
+            throw new IllegalStateException(sb.toString());
+        }
+        return new ClassLoader(RuntimeLaws.class.getClassLoader()) {
+            @Override
+            protected Class<?> findClass(String name) throws ClassNotFoundException {
+                ByteArrayOutputStream b = compiled.get(name);
+                if (b == null) throw new ClassNotFoundException(name);
+                byte[] arr = b.toByteArray();
+                return defineClass(name, arr, 0, arr.length);
+            }
+        };
     }
 
     /** Deserialize + expand (self-contained) the model JSON. */
