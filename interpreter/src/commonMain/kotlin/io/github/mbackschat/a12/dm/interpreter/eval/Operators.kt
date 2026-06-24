@@ -116,6 +116,11 @@ enum class FunctionOp(val kernelName: String) {
     // which parses ONLY `\d+`, else 0). KERNEL-FINDINGS — `getSubstring`/`bereichAlsZahl`.
     RANGE_AS_STRING("RangeAsString"),
     RANGE_AS_NUMBER("RangeAsNumber"),
+    // `FieldValueAsString(numberField)` — a NUMBER field's RAW stored value as a string (no re-canonicalization);
+    // empty → `""`. `FieldValueAsNumber(stringOrNumericEnumField)` — the field's value parsed to a number; empty
+    // → `0` (kernel `feldWertAlsZahl`). KERNEL-FINDINGS family 4.
+    FIELD_VALUE_AS_STRING("FieldValueAsString"),
+    FIELD_VALUE_AS_NUMBER("FieldValueAsNumber"),
     ;
 
     companion object {

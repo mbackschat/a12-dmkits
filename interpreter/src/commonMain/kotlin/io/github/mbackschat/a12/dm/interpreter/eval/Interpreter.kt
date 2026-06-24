@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.interpreter.DEC_ZERO
 import io.github.mbackschat.a12.dm.interpreter.RoundMode
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.dec
+import io.github.mbackschat.a12.dm.interpreter.decOrNull
 import io.github.mbackschat.a12.dm.interpreter.ast.ArithOp
 import io.github.mbackschat.a12.dm.interpreter.ast.CmpOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
@@ -444,6 +445,11 @@ class Interpreter(
         FunctionOp.RANGE_AS_NUMBER -> rangeSubstring(f.args)?.let {
             Val.Num(if (DIGITS.matches(it)) dec(it) else DEC_ZERO)   // kernel: only `\d+` parses, else 0
         } ?: Val.Unknown
+        // FieldValueAsString(numberField): the RAW stored value as a string (empty → ""). Coercion to string.
+        FunctionOp.FIELD_VALUE_AS_STRING ->
+            pathOf(f.args[0]).let { if (invalid(it)) Val.Unknown else Val.Txt(ctx.displayValue(it) ?: "") }
+        // FieldValueAsNumber(string/numeric-enum field): the value parsed to a number; empty → 0 (kernel feldWertAlsZahl).
+        FunctionOp.FIELD_VALUE_AS_NUMBER -> fieldValueAsNumber(pathOf(f.args[0]))
         null -> throw UnsupportedConstructException("unsupported function ${f.name}")
     }
 
@@ -477,6 +483,15 @@ class Interpreter(
             if (eq(v, target)) count++
         }
         return Val.Num(dec(count))
+    }
+
+    /** `FieldValueAsNumber(field)` — the field's value parsed to a number; an EMPTY field reads as `0` (kernel
+     *  `feldWertAlsZahl`), a formally-invalid one → Unknown. The field's values are compile-guaranteed numeric
+     *  (a numeric-valued enum or a numeric string), so a filled value always parses. */
+    private fun fieldValueAsNumber(path: String): Val {
+        if (invalid(path)) return Val.Unknown
+        if (!ctx.filled(path)) return Val.Num(DEC_ZERO)
+        return ctx.displayValue(path)?.let { decOrNull(it) }?.let { Val.Num(it) } ?: Val.Unknown
     }
 
     /**
