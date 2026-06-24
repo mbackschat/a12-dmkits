@@ -105,8 +105,49 @@ object PerfCatalog {
         scenario("B4 cross-level", SUBS, "XL", "../Cost",
             "FieldFilled(Cost) And [Cost] > [/Perf/Lines/Qty]", ::nestedRows)
 
+    /** B5 — deep nested-star aggregate `Sum(Lines* / Subs* / Cost) > 0` at /Perf: nested-star collection across
+     *  BOTH repetition levels (every Sub of every Line folded into one sum), the hardest aggregate shape. */
+    fun b5(): PerfScenario =
+        scenario("B5 deep-nested-star", "/Perf", "DN", "../Lines/Subs/Cost",
+            "Sum(Lines*/Subs*/Cost) > 0", ::nestedRows)
+
+    /** The B6 many-rules set (12): per-row, cross-field, threshold, aggregates (incl. deep nested-star),
+     *  nested per-sub, cross-level — a realistic complex model. Codes unique within the model; all forms are
+     *  kernel-valid (CurrentRepetition is covered by the fuzz net + its own diff test, not needed here). */
+    private fun b6Rules(): List<FuzzRule> = listOf(
+        FuzzRule(LINES, "HQ", "../Qty", "FieldFilled(Qty) And [Qty] > 50"),
+        FuzzRule(LINES, "HA", "../Amount", "FieldFilled(Amount) And [Amount] > 50"),
+        FuzzRule(LINES, "VQ", "../Qty", "FieldFilled(Qty) And [Qty] > 90"),
+        FuzzRule(LINES, "AX", "../Amount", "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]"),
+        FuzzRule(LINES, "LQ", "../Qty", "FieldFilled(Qty) And [Qty] < 10"),
+        FuzzRule("/Perf", "TA", "../Lines/Amount", "Sum(Lines*/Amount) > 1000"),
+        FuzzRule("/Perf", "TQ", "../Lines/Qty", "Sum(Lines*/Qty) > 1000"),
+        FuzzRule("/Perf", "DN", "../Lines/Subs/Cost", "Sum(Lines*/Subs*/Cost) > 5000"),
+        FuzzRule(SUBS, "HC", "../Cost", "FieldFilled(Cost) And [Cost] > 50"),
+        FuzzRule(SUBS, "VC", "../Cost", "FieldFilled(Cost) And [Cost] > 90"),
+        FuzzRule(SUBS, "XL", "../Cost", "FieldFilled(Cost) And [Cost] > [/Perf/Lines/Qty]"),
+        FuzzRule(SUBS, "LC", "../Cost", "FieldFilled(Cost) And [Cost] < 10"),
+    )
+
+    /** B6 — MANY rules over the nested model: whole-document throughput where the interpreter's per-call rule
+     *  re-parse (the #31 "prepare once" cost) bites hardest (the kernel codegens all rules once). */
+    fun b6(): PerfScenario {
+        val rules = b6Rules()
+        val kernelModel = rules.fold(perfJson) { m, r -> RuntimeLaws.withRule(m, r.group, "R_${r.code}", r.errorRel, r.code, r.cond) }
+        val interpModel = ModelDef(
+            fields, rules.map { RuleDef("${it.group}/R_${it.code}", it.group, it.cond, it.code, it.errorRel) },
+            repeatableGroups = setOf(LINES, SUBS),
+            declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX),
+            indexFields = setOf(LINE_KEY, SUB_KEY),
+        )
+        val gen = SeedGenerator(interpModel)
+        return PerfScenario("B6 many-rules", kernelModel, interpModel) { sink, n, variant ->
+            gen.populate(sink, rowsOf = nestedRows(n), value = perfValues(variant))
+        }
+    }
+
     /** Every catalog scenario, in order — for the gate to sweep. */
-    fun all(): List<PerfScenario> = listOf(b1(), b2(), b3(), b4())
+    fun all(): List<PerfScenario> = listOf(b1(), b2(), b3(), b4(), b5(), b6())
 
     private data class FuzzRule(val group: String, val code: String, val errorRel: String, val cond: String)
 

@@ -542,7 +542,12 @@ public final class RuntimeLaws {
             IValidationCodeGeneratorConfig.ProgrammingLanguage lang, Properties idToPackageOut) {
         IDocumentModelService modelService = new DocumentModelServiceFactory().createDocumentModelService();
         IValidationCodeGeneratorConfig config = () -> lang;
-        byte[] zip = modelService.generateValidationCode(expanded, config, idToPackageOut, n -> {});
+        List<String> notes = new ArrayList<>();
+        byte[] zip = modelService.generateValidationCode(expanded, config, idToPackageOut,
+                n -> notes.add(n.getSeverity() + ": " + n.getMessage()));
+        if (zip == null) {
+            throw new IllegalStateException("generateValidationCode(" + lang + ") returned null; notifications=" + notes);
+        }
         Map<String, String> sources = new HashMap<>();
         try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zip))) {
             ZipEntry e;

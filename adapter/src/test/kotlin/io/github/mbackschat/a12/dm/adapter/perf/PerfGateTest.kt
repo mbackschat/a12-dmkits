@@ -28,6 +28,8 @@ class PerfGateTest {
         PerfCatalog.b2() to 3_000,
         PerfCatalog.b3() to 600,   // × 5 subs = 3000 Sub rows
         PerfCatalog.b4() to 600,   // × 5 subs = 3000 Sub rows
+        PerfCatalog.b5() to 600,   // × 5 subs = 3000 Sub rows (deep nested-star)
+        PerfCatalog.b6() to 600,   // × 5 subs = 3000 Sub rows, 12 rules (per-call re-parse stress)
     )
 
     @Test
