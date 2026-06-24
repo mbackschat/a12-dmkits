@@ -70,6 +70,10 @@ class Document @JvmOverloads constructor(
     /** Each enumeration field's category map (name → positional value list) — the `EnumCategory` mapping:
      *  the stored value's index in [enumValues] selects the category's value. (Appended for positional compat.) */
     private val enumCategories: Map<String, Map<String, List<String>>> = emptyMap(),
+    /** Each [Kind.TIME] field's rendering format (the kernel's `TimeType.format`, e.g. `HH:mm:ss`) — lets
+     *  [resolveValue] formal-check a TIME so a malformed value resolves to [Val.Unknown] (a malformed time was
+     *  previously unchecked → it escaped suppression; KERNEL-FINDINGS §6). (Appended for positional compat.) */
+    private val timeFormats: Map<String, String> = emptyMap(),
 ) {
     private data class Placement(val path: String, val reps: List<Int>, val value: String?, val isGroup: Boolean)
 
@@ -559,7 +563,15 @@ class Document @JvmOverloads constructor(
         // that parse but are still invalid: signed-zero `-0`, leading-plus `+5`, too-many-decimals. Without
         // this, an aggregate would silently fold a `-0` as 0 and fire where the kernel suppresses.
         val precision = datePrecisions[path] ?: DatePrecision.FULL
-        if (formalError(kind, raw, scales[path], dateFormats[path], precision) != null) return Val.Unknown
+        // The field's date-ish format for the formal check — DATE/TIME/DATE_TIME each from their own map (so a
+        // malformed TIME/DATE_TIME also resolves to Unknown, not just DATE; KERNEL-FINDINGS §6).
+        val dateLikeFormat = when (kind) {
+            Kind.DATE -> dateFormats[path]
+            Kind.TIME -> timeFormats[path]
+            Kind.DATE_TIME -> dateTimeFormats[path]
+            else -> null
+        }
+        if (formalError(kind, raw, scales[path], dateLikeFormat, precision) != null) return Val.Unknown
         return when (kind) {
             Kind.DATE_RANGE -> rangeConfig[path]?.let { (format, sep) ->
                 parseRangeToIso(raw, format, sep)?.let { Val.Range(it.first, it.second) }

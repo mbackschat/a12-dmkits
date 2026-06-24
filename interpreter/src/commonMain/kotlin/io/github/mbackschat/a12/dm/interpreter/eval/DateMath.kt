@@ -260,6 +260,22 @@ fun parseDateTimeToIso(raw: String, format: String): String? {
 }
 
 /**
+ * Validate a TIME value against its [format] (e.g. `HH:mm:ss`) and normalize to `HH:mm:ss`, or null if
+ * malformed — the time-only twin of [parseDateTimeToIso] (no date component). A format carrying any date run
+ * (`y`/`M`/`d`) is not a time format → null. Out-of-range components (`H>23`, `m`/`s`>59) → null. Used by the
+ * formal check (a malformed TIME resolves to `Val.Unknown` and emits the kernel's `datumFormatFalsch`).
+ */
+fun parseTimeToIso(raw: String, format: String): String? {
+    val (frag, comps) = dateTimeFragment(format) ?: return null
+    if (comps.any { it == 'y' || it == 'M' || it == 'd' }) return null
+    val m = Regex("^$frag$").matchEntire(raw) ?: return null
+    var h = 0; var mi = 0; var s = 0
+    comps.forEachIndexed { i, c -> val v = m.groupValues[i + 1].toInt(); when (c) { 'H' -> h = v; 'm' -> mi = v; 's' -> s = v } }
+    if (h > 23 || mi > 59 || s > 59) return null
+    return two(h) + ":" + two(mi) + ":" + two(s)
+}
+
+/**
  * Like [dateFragment] but also recognizes the time runs `H`/`m`/`s`, and treats a single-quoted section
  * `'…'` as a SimpleDateFormat-style literal (the quotes are delimiters, `''` is a literal quote) — so a
  * `yyyy-MM-dd'T'HH:mm:ss` format matches a rendered `2024-06-01T12:30:00` (no quotes in the value). Null

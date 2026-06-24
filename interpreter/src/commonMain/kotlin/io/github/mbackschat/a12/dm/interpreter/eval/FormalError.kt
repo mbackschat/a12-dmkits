@@ -68,7 +68,7 @@ enum class FormalErrorCode(val id: String) {
 }
 
 fun formalError(
-    kind: Kind, raw: String, scale: Int? = null, dateFormat: String? = null,
+    kind: Kind, raw: String, scale: Int? = null, format: String? = null,
     datePrecision: DatePrecision = DatePrecision.FULL,
 ): FormalErrorCode? {
     if (raw.isEmpty()) return null
@@ -78,16 +78,21 @@ fun formalError(
         // null format defaults to ISO (KERNEL-FINDINGS plain-date locale handling, PlainDateDiffTest). A
         // DAY_OPTIONAL field additionally accepts a day-omitted `00.MM.yyyy` value as well-formed.
         Kind.DATE -> {
-            val fmt = dateFormat ?: ISO_FORMAT
+            val fmt = format ?: ISO_FORMAT
             val ok = if (datePrecision == DatePrecision.DAY_OPTIONAL) dayOptionalParts(raw, fmt) != null
             else parseDateToIso(raw, fmt) != null
             if (ok) null else FormalErrorCode.DATE_FORMAT
         }
         Kind.NUMBER -> numberFormalError(raw, scale)
-        // TIME's HH:mm:ss check, DATE_TIME's date-time-format check, and DATE_RANGE's `datumBereichFormatFalsch`
-        // are deferred (a malformed value already resolves to Val.Unknown via the format-aware parse, so a
-        // referencing rule is suppressed correctly; the missing piece is only the formal-error MESSAGE — IF8).
-        Kind.STRING, Kind.BOOLEAN, Kind.CONFIRM, Kind.TIME, Kind.DATE_RANGE, Kind.DATE_TIME -> null
+        // A malformed TIME / DATE_TIME value carries the kernel's `datumFormatFalsch` (probe-verified — the same
+        // code as DATE), and resolving it to Val.Unknown suppresses a referencing rule. (TIME was previously
+        // unchecked entirely, so a malformed time even *escaped* suppression — KERNEL-FINDINGS §6 / IF8.)
+        Kind.TIME -> if (parseTimeToIso(raw, format ?: "HH:mm:ss") != null) null else FormalErrorCode.DATE_FORMAT
+        Kind.DATE_TIME -> if (parseDateTimeToIso(raw, format ?: "yyyy-MM-dd'T'HH:mm:ss") != null) null else FormalErrorCode.DATE_FORMAT
+        // DATE_RANGE's `datumBereich*` formal MESSAGE is still deferred (a malformed range already resolves to
+        // Val.Unknown via parseRangeToIso, so the referencing rule is suppressed correctly; only the standalone
+        // formal-error message is missing — IF12).
+        Kind.STRING, Kind.BOOLEAN, Kind.CONFIRM, Kind.DATE_RANGE -> null
     }
 }
 

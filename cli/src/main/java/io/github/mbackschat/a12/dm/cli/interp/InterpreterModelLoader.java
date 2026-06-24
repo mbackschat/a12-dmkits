@@ -122,7 +122,7 @@ public final class InterpreterModelLoader {
     public static Document document(Map<String, Object> fields, ModelDef model) {
         Document doc = new Document(model.getKinds(), model.getDeclaredReps(), model.getUnsignedFields(),
                 model.getRangeConfig(), model.getDateFormats(), model.getScales(), model.getDateTimeFormats(),
-                model.getDatePrecisions(), model.getEnumValues(), model.getEnumCategories());
+                model.getDatePrecisions(), model.getEnumValues(), model.getEnumCategories(), model.getTimeFormats());
         walkInstance(doc, fields, new ArrayList<>(), new ArrayList<>());
         return doc;
     }

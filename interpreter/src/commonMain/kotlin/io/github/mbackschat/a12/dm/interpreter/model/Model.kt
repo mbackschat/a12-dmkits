@@ -215,6 +215,22 @@ data class ModelDef(
         .filter { it.kind == Kind.DATE_TIME }
         .associate { it.path to (it.format ?: "yyyy-MM-dd'T'HH:mm:ss") }
 
+    /** Each [Kind.TIME] field's rendering format (the kernel's `TimeType.format`, e.g. `HH:mm:ss`) — the
+     *  formal-check's "valid time for this format?" input (a malformed time → `datumFormatFalsch` + Unknown). */
+    val timeFormats: Map<String, String> = fields
+        .filter { it.kind == Kind.TIME }
+        .associate { it.path to (it.format ?: "HH:mm:ss") }
+
+    /** The field's date-ish rendering format for the formal check — DATE/TIME/DATE_TIME/DATE_RANGE, else null.
+     *  (The single accessor the formal pass uses so a malformed value of any temporal kind is format-checked.) */
+    fun dateLikeFormatOf(path: String): String? = when (kinds[path]) {
+        Kind.DATE -> dateFormats[path]
+        Kind.TIME -> timeFormats[path]
+        Kind.DATE_TIME -> dateTimeFormats[path]
+        Kind.DATE_RANGE -> rangeConfig[path]?.first
+        else -> null
+    }
+
     /** Each NUMBER field's scale (`maxFractionalDigits`) — the formal-check input (decimal-places errors); the
      *  [io.github.mbackschat.a12.dm.interpreter.eval.Document] needs it to gate a formally-invalid value to Unknown. */
     val scales: Map<String, Int?> = fields.associate { it.path to it.scale }
