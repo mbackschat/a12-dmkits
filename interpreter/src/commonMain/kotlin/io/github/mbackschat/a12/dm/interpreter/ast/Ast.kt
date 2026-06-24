@@ -37,6 +37,23 @@ sealed interface Val {
 
 enum class CmpOp { LT, LE, GT, GE, EQ, NE }
 
+/**
+ * The field-list value-list quantifiers (shape B: `op(f1, f2 In v1, v2)`) — classify each field as IN (its
+ * present value is in the list), OUT (present, not in the list), or EMPTY, then fire by the count: AtLeastOne
+ * iff some field is IN, No iff none is IN, NotAll iff some field is OUT. (Distinct from the scalar
+ * single-field `FieldValueIncludedInValueList`, which is a [Cond.Pred].)
+ */
+enum class ValueListQuantOp(val kernelName: String) {
+    AT_LEAST_ONE("AtLeastOneFieldValueIncludedInValueList"),
+    NO("NoFieldValueIncludedInValueList"),
+    NOT_ALL("NotAllFieldValuesIncludedInValueList"),
+    ;
+
+    companion object {
+        fun byName(name: String): ValueListQuantOp? = entries.firstOrNull { it.kernelName == name }
+    }
+}
+
 /** Condition AST — built from condition text by [parseCondition]. */
 sealed interface Cond {
     data class Cmp(val op: CmpOp, val left: Expr, val right: Expr) : Cond
@@ -61,6 +78,12 @@ sealed interface Cond {
      * empty operand toward the other can clear it → OMISSION; both present → VALUE).
      */
     data class Tolerance(val left: Expr, val right: Expr, val tolerance: Dec) : Cond
+
+    /**
+     * A field-list value-list quantifier (shape B: `op([fields] In [values])`) — see [ValueListQuantOp]. The
+     * [fields] are bare field references; the [values] are the value list (literals and/or field references).
+     */
+    data class ValueListQuant(val op: ValueListQuantOp, val fields: List<Expr>, val values: List<Expr>) : Cond
 }
 
 /** Binary arithmetic operators (language-independent symbols). Division/power are not yet modeled. */

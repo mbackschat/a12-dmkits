@@ -47,6 +47,8 @@ class CatalogParityTest {
         "PatternMatched", "PatternViolated",                               // Cond.Pattern
         "DiffersWithToleranceRange1", "DiffersWithToleranceRange2",        // Cond.Tolerance (|a−b| > N)
         "DiffersWithToleranceRange5", "DiffersWithToleranceRange10",
+        "AtLeastOneFieldValueIncludedInValueList", "NoFieldValueIncludedInValueList",  // Cond.ValueListQuant (shape B)
+        "NotAllFieldValuesIncludedInValueList",
         "True", "False",                                                   // Expr.BoolLit
     )
 
@@ -65,11 +67,6 @@ class CatalogParityTest {
             "AddHours", "AddMinutes", "AddSeconds",
             "DifferenceInHours", "DifferenceInMinutes", "DifferenceInSeconds",
             "AtLeastOneDateRangeOverlaps", "DateRange", "ValueAsDate", "FirstDay", "LastDay",
-        )
-        group(
-            "value-list quantifiers — the list-of-fields siblings of the handled scalar value-list predicates",
-            "AtLeastOneFieldValueIncludedInValueList", "NoFieldValueIncludedInValueList",
-            "NotAllFieldValuesIncludedInValueList",
         )
         group(
             "repetition uniqueness — across-row key uniqueness of a repetition (distinct from the handled " +

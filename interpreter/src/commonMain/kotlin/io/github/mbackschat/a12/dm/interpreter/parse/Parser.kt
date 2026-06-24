@@ -6,6 +6,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.ArithOp
 import io.github.mbackschat.a12.dm.interpreter.ast.CmpOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
+import io.github.mbackschat.a12.dm.interpreter.ast.ValueListQuantOp
 
 /**
  * A recursive-descent parser turning condition TEXT into the interpreter [Cond] AST. It lives in
@@ -63,6 +64,7 @@ private class ConditionParser(private val src: String, private val base: String)
             skipWs(); expect(')')
             return c
         }
+        matchValueListQuant()?.let { return it }
         val left = parseExpr()
         val op = tryCmpOp()
         if (op != null) return Cond.Cmp(op, left, parseExpr())
@@ -161,6 +163,29 @@ private class ConditionParser(private val src: String, private val base: String)
         val joined = segs.joinToString("/")
         val full = if (absolute) "/$joined" else "$base/$joined"
         return if (starred) Expr.Star(full) else Expr.Field(full)
+    }
+
+    /**
+     * The value-list QUANTIFIERS (shape B: `op(f1, f2 In v1, v2)`) — recognized up front and parsed directly
+     * into [Cond.ValueListQuant], because the generic expr→`Cond.Pred` flow would discard the `In` boundary
+     * between the field list and the value list. Restores the position and returns null if the next token is
+     * not one of these names.
+     */
+    private fun matchValueListQuant(): Cond? {
+        val save = pos
+        val op = ValueListQuantOp.byName(readIdent())
+        skipWs()
+        if (op == null || peek() != '(') { pos = save; return null }
+        next()   // consume '('
+        val fields = mutableListOf(parseExpr())
+        skipWs()
+        while (peek() == ',') { next(); fields.add(parseExpr()); skipWs() }
+        require(matchKeyword("In")) { "parser: $op expects 'In' between its field list and its value list in \"$src\"" }
+        val values = mutableListOf(parseExpr())
+        skipWs()
+        while (peek() == ',') { next(); values.add(parseExpr()); skipWs() }
+        expect(')')
+        return Cond.ValueListQuant(op, fields, values)
     }
 
     private fun readArgs(): List<Expr> {

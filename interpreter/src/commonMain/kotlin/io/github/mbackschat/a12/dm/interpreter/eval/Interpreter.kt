@@ -9,6 +9,7 @@ import io.github.mbackschat.a12.dm.interpreter.decOrNull
 import io.github.mbackschat.a12.dm.interpreter.ast.ArithOp
 import io.github.mbackschat.a12.dm.interpreter.ast.CmpOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
+import io.github.mbackschat.a12.dm.interpreter.ast.ValueListQuantOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
@@ -74,6 +75,7 @@ class Interpreter(
         is Cond.Cmp -> false
         is Cond.Pattern -> false
         is Cond.Tolerance -> false   // |0 − 0| = 0 is never > N (the band is ≥ 1) — an all-empty row can't fire
+        is Cond.ValueListQuant -> cond.op == ValueListQuantOp.NO   // "no field in list" is TRUE when all are empty
         is Cond.And -> canFireEmpty(cond.left) && canFireEmpty(cond.right)
         is Cond.Or -> canFireEmpty(cond.left) || canFireEmpty(cond.right)
         is Cond.Not -> !canFireEmpty(cond.c)
@@ -98,6 +100,7 @@ class Interpreter(
     private fun evalTyped(c: Cond): Res = when (c) {
         is Cond.Cmp -> Res(evalCmp(c), leafType(c.op, c.left, c.right))
         is Cond.Tolerance -> Res(evalTolerance(c), toleranceType(c))
+        is Cond.ValueListQuant -> Res(evalValueListQuant(c), valueListQuantType(c))
         is Cond.Pred -> Res(evalPred(c), predType(c))
         // A pattern fires only on a PRESENT value (empty → not evaluated), so a fired pattern is always a
         // present-value error → VALUE (there is no "fill more to fix it" omission — the field is filled).
@@ -215,6 +218,40 @@ class Interpreter(
     }
 
     /**
+     * The field-list value-list quantifiers (shape B, kernel-probed). Classify each field against the value
+     * list as IN (present value ∈ list), OUT (present value ∉ list), or EMPTY (skipped from both counts); a
+     * malformed field or value-list member makes the rule non-evaluable → Unknown (suppressed). Then:
+     * `AtLeastOne` fires iff some field is IN, `No` iff none is IN, `NotAll` iff some field is OUT. Equality is
+     * the typed [eq], as for the scalar `FieldValueIncludedInValueList`.
+     */
+    private fun evalValueListQuant(c: Cond.ValueListQuant): Tri {
+        val list = c.values.map { evalExpr(it) }
+        if (list.any { it is Val.Unknown }) return Tri.UNKNOWN
+        var nIn = 0
+        var nOut = 0
+        for (f in c.fields) {
+            if (!ctx.filled(pathOf(f))) continue            // EMPTY → counted in neither
+            val v = evalExpr(f)
+            if (v is Val.Unknown) return Tri.UNKNOWN          // a filled-but-malformed field → non-evaluable
+            if (list.any { eq(v, it) }) nIn++ else nOut++
+        }
+        return when (c.op) {
+            ValueListQuantOp.AT_LEAST_ONE -> Tri.of(nIn >= 1)
+            ValueListQuantOp.NO -> Tri.of(nIn == 0)
+            ValueListQuantOp.NOT_ALL -> Tri.of(nOut >= 1)
+        }
+    }
+
+    /** Value-list-quantifier polarity (kernel-probed): `AtLeastOne`/`NotAll` fire on a PRESENT in/out value →
+     *  VALUE; `No` (zero fields in list) is fixable by filling an EMPTY field with a list value → OMISSION when
+     *  some field is still empty, else VALUE. */
+    private fun valueListQuantType(c: Cond.ValueListQuant): MsgType = when (c.op) {
+        ValueListQuantOp.AT_LEAST_ONE, ValueListQuantOp.NOT_ALL -> MsgType.VALUE
+        ValueListQuantOp.NO ->
+            if (c.fields.any { !ctx.filled(pathOf(it)) }) MsgType.OMISSION else MsgType.VALUE
+    }
+
+    /**
      * The value-vs-omission polarity of a fired predicate. Non-quantifier predicates carry a static
      * [PredicateOp.polarity]; a field-list quantifier's polarity is **data-dependent** and computed the way
      * the kernel does — OMISSION iff filling some currently-empty operand could clear the firing (so the
@@ -243,6 +280,7 @@ class Interpreter(
     private fun evalCond(c: Cond): Tri = when (c) {
         is Cond.Cmp -> evalCmp(c)
         is Cond.Tolerance -> evalTolerance(c)
+        is Cond.ValueListQuant -> evalValueListQuant(c)
         is Cond.And -> and(evalCond(c.left), evalCond(c.right))
         is Cond.Or -> or(evalCond(c.left), evalCond(c.right))
         is Cond.Not -> not(evalCond(c.c))

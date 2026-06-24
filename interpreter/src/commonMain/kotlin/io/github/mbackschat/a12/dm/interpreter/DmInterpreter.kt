@@ -315,6 +315,7 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
     private fun nonStarredRefs(cond: Cond): List<String> = when (cond) {
         is Cond.Cmp -> exprRefs(cond.left) + exprRefs(cond.right)
         is Cond.Tolerance -> exprRefs(cond.left) + exprRefs(cond.right)
+        is Cond.ValueListQuant -> (cond.fields + cond.values).flatMap { exprRefs(it) }
         is Cond.And -> nonStarredRefs(cond.left) + nonStarredRefs(cond.right)
         is Cond.Or -> nonStarredRefs(cond.left) + nonStarredRefs(cond.right)
         is Cond.Not -> nonStarredRefs(cond.c)
