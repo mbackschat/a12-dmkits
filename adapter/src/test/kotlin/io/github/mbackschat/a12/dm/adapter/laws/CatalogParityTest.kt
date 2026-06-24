@@ -64,15 +64,26 @@ class CatalogParityTest {
     private val handledCallables: Set<String> =
         (PredicateOp.entries.map { it.kernelName } + FunctionOp.entries.map { it.kernelName }).toSet()
 
-    /** The operator backlog — constructs not yet handled, each with a reason. This IS "what's left to build". */
-    private val deferred: Map<String, String> = buildMap {
-        group("predefined-type validity predicates — need the model's predefined-type registry", "ValidType", "InvalidType")
-    }
+    /** The operator backlog — constructs not yet handled, each with a reason. This IS "what's left to build".
+     *  Empty: every in-scope catalog construct is handled; the only un-handled ones are client-SPI-delegated
+     *  ([excluded], out of scope for a pure engine by nature). */
+    private val deferred: Map<String, String> = emptyMap()
 
     /** Constructs that are NOT pure-engine operators (out of scope by nature), each with its re-open trigger. */
     private val excluded: Map<String, String> = mapOf(
         "CustomCondition" to "delegates the fire/don't-fire decision to host code — not deterministically " +
             "evaluable by a pure engine; revisit only if a host-callback seam is added to the interpreter",
+        // ValidType/InvalidType validate against a PREDEFINED TYPE (e.g. "EMail"/"IBAN") whose validator is a
+        // runtime CLIENT SPI (kernel IPredefinedType, ValidationStrategy.PROVIDED_VALIDATION_CODE) — NOT in the
+        // kernel core. The differential oracle registers none, so the bare kernel is a degenerate no-op (Valid
+        // AND Invalid both fire on ANY filled value — a valid and an invalid e-mail are indistinguishable;
+        // probe-confirmed 2026-06-24, KERNEL-FINDINGS §8 supplement). So there is no kernel-core ground truth to
+        // clean-room against, and reproducing the no-op would be wrong for any real consumer — host-delegated,
+        // exactly like CustomCondition.
+        "ValidType" to "predefined-type validity is a runtime client SPI (IPredefinedType), not kernel-core " +
+            "behavior — no differential ground truth (bare oracle is a degenerate no-op); revisit only if a " +
+            "predefined-type registration seam is added to the interpreter so the consumer supplies the validators",
+        "InvalidType" to "the negation of ValidType — same client-SPI delegation; see ValidType",
     )
 
     /**
