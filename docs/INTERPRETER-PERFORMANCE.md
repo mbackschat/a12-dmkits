@@ -27,6 +27,26 @@ Two consequences, and what we do about each:
 
 **The JS generalization (forward-looking).** TypeScript/JS is the kernel's *other* documented codegen target, so this exact harness — *generate code in language X → compile/load → run through the rt path → diff against the interpreter* — generalizes to a **kernel-JS vs interpreter-JS** comparison later (the interpreter's other reason-to-exist). The baseline engine is therefore built **language-parameterized** (Java now; JS-capable later), not hardwired.
 
+## The interpreter's two goals: fast startup + on-par at all rule counts (the tradeoff, 2026-06-24)
+
+The interpreter is steered by **two goals that pull against each other** (owner direction):
+
+1. **Fast startup** — minimal upfront work (index building, parsing) before the first answer.
+2. **On-par with the kernel at *all* rule counts** — not just the few-rule case.
+
+The tension: goal 2 wants the per-call rule work eliminated (cache parsed ASTs, precompute scopes), but doing that *eagerly* at construction is exactly the startup cost goal 1 forbids. The resolution is **lazy memoization** — do the work once, **on first use**, then reuse:
+
+- **Prepare-once ASTs** (`DmInterpreter`): each rule's condition / computation's expression is parsed **lazily, exactly once** (a `lazy {}` per rule — SYNCHRONIZED, so the engine is thread-safe to reuse), then reused across every call and every row. The constructor only builds the wrappers (no parsing) → startup stays cheap, and a single-rule `testRule` forces only the one rule it touches. **This is the direct analog of the kernel's compile-once-at-model-load** — but lazy. *Caveat learned by measuring:* parsing turned out **not** to be the high-rule-count bottleneck (it didn't move the crossover), so this change is for startup + hygiene (it also removed a redundant double-parse), not the headline win.
+- **Per-group row-context memo** (`Document`): `contextsFor`/`attachByDepth` did an **O(valued) attach-depth scan on every rule** (and every nested row). Since many rules share a handful of iteration scopes, and the document is immutable during a validation, this is memoized **per group inside the mutation-invalidated `Index`** — computed once per distinct scope, reused across all rules. **This *was* the lever**: ~24% faster across all rule counts, crossover pushed out ~2× (see the log). This mirrors the kernel computing the row structure once and reusing it across rules.
+
+**Measured (2026-06-24, the log below):** startup is **~29× cheaper** than the kernel (no codegen — the kernel pays ~1.7 s of Groovy compile on its first call; the interpreter ~58 ms), and a single document stays **linear to 300 000 rows** (~2.5 µs/row). The harness for these two goals is `PerfScalingTest` (opt-in `-Dperf.scaling=true`). The residual at *extreme* rule counts is addressed next.
+
+## Where the kernel wins (the crossover — the kernel team's pride is justified, 2026-06-24)
+
+The kernel's documented architecture is **compile-once codegen + per-run caches** (`IndexFieldCache`, `ValidationCache`, `CalculationCache`, `GroupFillCache`, `RepetitionNotUniqueErrorCache` — `kernel-core-runtime/_30_8/internal/core/`), plus short-circuit optimizations (BA doc: skip comparison rules when the root group is empty; cancel quantifiers early). So its edge is the **many-rules** regime: generated straight-line code beats a tree-walker's per-node dispatch + `Val` allocation, and that per-(rule,row) overhead accumulates with rule count.
+
+This is **measured, not assumed** — the rule-count sweep (`KernelEdgeTest`, opt-in `-Dperf.edge=true`) finds the crossover where interp/kernel passes 1.0. After the two optimizations above it sits at **~96 rules vs Groovy** (single-doc and per-eval batch), widening to ~1.2× at 192 rules. The residual is the inherent **interpreter-vs-generated-code** per-operation overhead — the honest motivation for a future **generator** (the "structure for a future generator" standing requirement): emit code per model, no tree-walk. Until then the interpreter is the right tool for the common case (a handful of rules, any document size, instant startup) and the kernel for very-rule-dense models in a hot reuse loop.
+
 ## The harness (invest here — it pays off)
 
 Not ad-hoc `measureTime` calls sprinkled in tests — a **proper, reusable harness**, because it does double duty: it **gates** regressions *and* it's how we **find** the O(N²) hotspots in the group machinery. Design:
@@ -40,7 +60,7 @@ Not ad-hoc `measureTime` calls sprinkled in tests — a **proper, reusable harne
 - **JS throughput** — a Node-runnable large-`N` check on `jsTest` (the same `Document`, `measureTime`, no kernel) so the native/JS reason-to-exist is perf-gated too.
 - **Output + baselines** — print a `scenario × N × interp_ms × kernel_ms × ratio` table and append machine-tagged baselines to the results log (below). The spec holds the method; the log holds the numbers.
 
-**Built (2026-06-23):** `adapter/src/test/.../perf/` — `PerfHarness` (the `PlacementSink`-driven scenario + `PerfEngine`/`ReusableEngine` adapters + `measure`/`runScenario`/`runRepeated`/`timeInterpreter`), `PerfCatalog` (single-sourced `perf.dm.json` model + B1–B4 + a fuzz scenario), `PerfGateTest` (the in-suite gate + repeated-eval + sub-quadratic check), `PerfProfileTest` (opt-in, `-Dperf.profile=true`). `RuntimeLaws` is the shared kernel oracle for both `laws/` and `perf/`. Codegen is primed out of every timed region (non-negotiable #2).
+**Built (2026-06-23, extended 2026-06-24):** `adapter/src/test/.../perf/` — `PerfHarness` (the `PlacementSink`-driven scenario + a `PerfOp{VALIDATE,COMPUTE}` + the three engine adapters `Interpreter`/`Kernel`(Groovy)/`KernelJava` behind `PerfEngine`/`ReusableEngine` + `measure`/`runScenario`/`runRepeated`/`timeInterpreter`), `PerfCatalog` (single-sourced `perf.dm.json` + **B1–B7** + a parameterized `manyRules(count)` + a fuzz scenario), `PerfGateTest` (the in-suite gate — **Groovy-only for speed** — + repeated-eval + sub-quadratic + compute), `KernelEdgeTest` (opt-in `-Dperf.edge=true` — the rule-count crossover + batch), `PerfScalingTest` (opt-in `-Dperf.scaling=true` — startup cost + row scaling), `PerfProfileTest` (opt-in `-Dperf.profile=true`). `RuntimeLaws` is the shared kernel oracle; its build-once `KernelEngine` (Groovy) **and** `JavaKernelEngine` (the kernel's own validator compiled as Java — the Groovy-tax-free baseline) both expose `firedCodesSorted`/`computeOutcomesSorted`. `KernelJavaBaselineDiffTest` guards that the Java baseline fires identically to Groovy. Codegen is primed out of every timed region (non-negotiable #2).
 
 **Model-driven seed generator + differential fuzz net — built (2026-06-23).** The instances are built by a kernel-free **`SeedGenerator`** (`…interpreter.gen`) through the `PlacementSink` seam, so the perf harness, the **differential fuzz net** (`InterpreterKernelFuzzTest` — the correctness twin of this perf differential), and a future `dmtool seed` verb all share one generator. **Both pieces have their own spec — [SEED-GENERATOR-FUZZ-SPEC.md](SEED-GENERATOR-FUZZ-SPEC.md)** (the generator's contract + the fuzz method, diverse model, value strategy, bug track record, and per-operator extension loop); this doc only consumes the generator for the perf scenarios.
 
@@ -94,13 +114,62 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 1. ✅ Index the `Document` (task #28) + re-green the diff tests — DONE (`434cdcdc`).
 2. ✅ **The reusable harness is built** (`adapter.perf` — `PerfHarness`/`PerfCatalog`/`PerfGateTest`/`PerfProfileTest`): the `PerfScenario` + two engine adapters behind `PerfEngine`/`ReusableEngine` + the three run modes (gate / repeated-eval / profile), with codegen primed out of every timed region. **B1** (per-row), **B2** (star aggregate), **B3** (nested per-sub), **B4** (cross-level ref) land against the kernel; the **repeated-eval** (form-input/batch) and **sub-quadratic scaling** guards land too. The ad-hoc `AgainstKernelPerfTest` was superseded and removed.
-3. **B5** (deep nested-star `Sum(A* / B* / C)`), **100k rows** (profile mode, opt-in), and **B6** (many rules — where the per-call re-parse / prepare-once #31 actually bites) remain — the rest of "invest in groups."
-4. **B7** (`compute` at scale) — needs a build-once kernel `compute` on `KernelEngine`; the JS throughput checks beyond `DocumentScaleTest` (which already covers B1/B2 JVM+JS).
-5. Wire the gate into CI once baselines are stable.
+3. ✅ **B5** (deep nested-star `Sum(Lines* / Subs* / Cost)`), **B6** (many rules) and **100k+ rows** (interp-only, `PerfScalingTest`) — DONE (2026-06-24). B6 surfaced the rule-count crossover; the row-scaling confirms linearity to 300k.
+4. ✅ **B7** (`compute` at scale) — DONE; both kernel engines got a build-once `computeOutcomesSorted`. **Java baseline** (`JavaKernelEngine`, Groovy-tax-free), **rule-count crossover** (`KernelEdgeTest`), and **startup + row-scaling** (`PerfScalingTest`) all landed.
+5. **Next:** the residual many-rules gap → a future **generator** (no tree-walk); JS throughput beyond `DocumentScaleTest`; wire a gate into CI once baselines are stable.
 
 ## Results log
 
 *(dated baselines, newest first — populated as benchmarks land)*
+
+**2026-06-24 — full spectrum + the Java baseline + the rule-count crossover + startup & row scaling** (`adapter.perf.*`; build-once engines, median of 8 after 12 warmups unless noted; JVM, single-threaded; correctness — interp == kernel fired-code/compute **multiset** — asserted before timing; **codegen excluded** from every timed region). Three baselines: **interp** (`DmInterpreter`), **groovy** (the kernel's dynamic path — the routine shortcut), **java** (the kernel's OWN validator compiled as Java — the *Groovy-tax-free* baseline). `ratioJava` is the fair algorithmic comparison.
+
+*The spectrum* (single document, 3000 rows; B3–B5 are 600 Lines × 5 Subs):
+
+| # | shape | interp | groovy | java | interp/java | Groovy tax |
+|---|---|---|---|---|---|---|
+| B1 | per-row `[Qty] > 50` | ~12 ms | ~126 ms | ~97 ms | **0.12** | 1.30× |
+| B2 | star aggregate `Sum(Lines* / Amount)` | ~6 ms | ~113 ms | ~91 ms | **0.07** | 1.25× |
+| B3 | nested per-sub `[Cost] > 50` | ~14 ms | ~59 ms | ~51 ms | **0.28** | 1.16× |
+| B4 | cross-level `[Cost] > [Lines/Qty]` | ~14 ms | ~61 ms | ~53 ms | **0.26** | 1.15× |
+| B5 | deep nested-star `Sum(Lines* / Subs* / Cost)` | ~7 ms | ~53 ms | ~48 ms | **0.14** | 1.11× |
+| B6 | 12 mixed rules | ~41 ms | ~76 ms | ~66 ms | **0.63** | 1.16× |
+| B7 | compute `Amount := Sum(Subs* / Cost)` | ~14 ms | ~91 ms | ~75 ms | **0.18** | 1.22× |
+
+*The Groovy tax* is **small (~1.1–1.3×)** — compiled Groovy is JVM bytecode; the dynamic-dispatch/metaclass overhead over equivalent Java is real but modest. So the interpreter's edge is largely **algorithmic**, not a Groovy artifact: even against kernel-**Java** it is ~4–14× faster on few-rule scenarios. (Residual caveat: the kernel still validates enum/value-list + the explicit `FieldValuesNotUnique` the interpreter doesn't model yet — "interp faster" is partly "interp does less".)
+
+*The rule-count crossover* — **where the kernel wins** (single document, N=1000 Lines × 5 Subs; the lever for the interpreter's #2 goal):
+
+| rules | interp (before opt) | interp (after opt) | kernel-Java | interp/java after |
+|---|---|---|---|---|
+| 6 | 41 ms | **28 ms** | ~103 ms | 0.28 |
+| 24 | 124 ms | **81 ms** | ~150 ms | 0.54 |
+| 48 | 199 ms | **143 ms** | ~177 ms | 0.81 |
+| 96 | 350 ms | **279 ms** | ~251 ms | 1.11 ← crossover |
+| 192 | 721 ms | **557 ms** | ~427 ms | 1.30 |
+
+The two 2026-06-24 interpreter optimizations (prepare-once ASTs + per-group context memo) made it **~24% faster across all rule counts** and pushed the crossover from **~48 → ~96 rules**. Past it, the kernel's compile-once generated code wins (the residual tree-walk-vs-codegen overhead) — the motivation for a future generator. **Batch** (repeated-eval, engine reused, 20 varying docs, per-eval) crosses at the same point: 12 rules 0.40, 48 rules ~0.82, 96 rules ~1.1 (vs Groovy).
+
+*Startup* (goal #1 — 48-rule model, **cold first `validateFull`**, codegen INCLUDED here because it *is* the startup cost):
+
+| | engine build | first call | total |
+|---|---|---|---|
+| kernel | (deserialize+expand) | **1696 ms** (Groovy codegen + compile) | ~1696 ms |
+| interp | 1.5 ms | 57 ms (lazy index + first parse) | **~58 ms** |
+
+→ **interpreter startup ~29× cheaper** — it has no codegen wall; it answers in ~58 ms where the kernel needs ~1.7 s before its first result.
+
+*Row scaling* (goal #2 — B1 per-row, interpreter-only, no kernel):
+
+| rows | interp | µs/row |
+|---|---|---|
+| 30 000 | 75 ms | 2.34 |
+| 100 000 | 250 ms | 2.43 |
+| 300 000 | 881 ms | 2.65 |
+
+**Flat µs/row ⇒ linear to 300k rows** (the #28 indexing + per-group context memo hold). Against Groovy the interpreter pulls *further* ahead as N grows (ratioG 0.10@1k → 0.01@30k) — and the **kernel-Groovy went super-linear past 10k** (755 ms@10k → 14 190 ms@30k) for this shape; flagged as *observed, Groovy-only, unconfirmed against Java* (likely an O(N²) component or a Groovy-at-scale artifact), not asserted.
+
+**Honest read:** the interpreter is **faster and linear for the common case** (a handful of rules, any document size) and **starts ~29× faster** (no codegen); the **kernel wins past ~96 rules** in a hot reuse loop (compile-once + caches). The verdict is not "Nx faster" flatly — it depends on rule density, and the kernel validates more dimensions. Both engines agree bit-for-bit on every benchmarked instance.
 
 **2026-06-23 — the serious against-kernel harness** (`adapter.perf.*`; build-once `KernelEngine` vs `DmInterpreter`, median of 8 after 12 warmups; JVM). Correctness (interp == kernel fired-code **multiset**) asserted first. **Codegen excluded** — the kernel generates code once ahead of validation (cached in `IModelCodeCache`); warmup primes it out, so the kernel cost is *steady-state validation against already-generated code*.
 
