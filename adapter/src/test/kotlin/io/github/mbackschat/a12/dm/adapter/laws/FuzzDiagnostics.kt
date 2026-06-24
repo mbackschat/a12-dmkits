@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink
 import io.github.mbackschat.a12.dm.interpreter.gen.asSink
+import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 
@@ -21,6 +22,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
  * Kernel-only (`:adapter`): the kernel side runs through [RuntimeLaws.messages], the interpreter side through
  * [DmInterpreter.validateFull]. The divergence predicate is the SAME as the fuzz's — the sorted fired-code
  * **multiset** — so a seed [diverges] here iff the fuzz flagged it. A debugging tool, not a gate.
+ *
+ * It is also the **compute** oracle (harness F — [computeOutcomesAgree]/[computeDivergence]): the same
+ * record/replay materializes one generated document into both `compute()` paths and compares the computed-field
+ * outcome multiset, the gate the [io.github.mbackschat.a12.dm.adapter.perf.ComputationFuzz] cascade net rides.
  */
 object FuzzDiagnostics {
 
@@ -60,10 +65,14 @@ object FuzzDiagnostics {
         }
     }
 
-    private fun interpDetail(model: ModelDef, places: List<Place>): Detail {
+    private fun interpDoc(model: ModelDef, places: List<Place>): Document {
         val doc = Document(model.kinds, model.declaredReps, model.unsignedFields, model.rangeConfig, model.dateFormats, model.scales)
         replay(places, doc.asSink())
-        val msgs = DmInterpreter(model).validateFull(doc)
+        return doc
+    }
+
+    private fun interpDetail(model: ModelDef, places: List<Place>): Detail {
+        val msgs = DmInterpreter(model).validateFull(interpDoc(model, places))
         return Detail(msgs.map { it.code }.sorted(), msgs.map { it.code to it.errorPath }.toSet(),
             msgs.map { "${it.code}|${polarity(it.type)}|${it.errorPath}" }.sorted())
     }
@@ -116,6 +125,57 @@ object FuzzDiagnostics {
         return if (kOnly.isEmpty() && iOnly.isEmpty()) "seed=$seed: signatures agree"
         else "seed=$seed  kernel-only=$kOnly  interp-only=$iOnly"
     }
+
+    // ---- compute differential (harness F — computation cascade) ---------------------------------
+
+    /**
+     * Whether [seed]'s **compute outcomes** agree across both engines — the harness-F gate. Each engine's
+     * `compute()` is reduced to a sorted multiset of `path|VALUE|value` / `path|CLEARED` / `path|ERRORED`
+     * signatures (the kernel's per-row repetition indices stripped, so a non-repeatable scope's paths line up
+     * with the interpreter's index-free `targetPath`s). A divergence means a computed field resolved to a
+     * different value/outcome — the class of bug the cascade fix addressed.
+     */
+    fun computeOutcomesAgree(scenario: PerfScenario, seed: Int): Boolean {
+        val places = record(scenario, seed)
+        return interpComputeSignatures(scenario.interpModel, places) == kernelComputeSignatures(scenario.kernelModel, places)
+    }
+
+    /** A localized compute report for [seed]: the outcome signatures present in only one engine (null if agree). */
+    fun computeDivergence(scenario: PerfScenario, seed: Int): String? {
+        val places = record(scenario, seed)
+        val k = kernelComputeSignatures(scenario.kernelModel, places)
+        val i = interpComputeSignatures(scenario.interpModel, places)
+        if (k == i) return null
+        return "seed=$seed  kernel-only=${multisetMinus(k, i)}  interp-only=${multisetMinus(i, k)}"
+    }
+
+    private fun interpComputeSignatures(model: ModelDef, places: List<Place>): List<String> =
+        DmInterpreter(model).compute(interpDoc(model, places)).map {
+            when (it.outcome) {
+                ComputeOutcome.VALUE -> "${it.path}|VALUE|${it.value}"
+                ComputeOutcome.CLEARED -> "${it.path}|CLEARED"
+                ComputeOutcome.ERRORED -> "${it.path}|ERRORED"
+            }
+        }.sorted()
+
+    private fun kernelComputeSignatures(modelJson: String, places: List<Place>): List<String> {
+        val builder = RuntimeLaws.doc()
+        replay(places, object : PlacementSink {
+            override fun group(path: String, vararg reps: Int) { builder.group(path, *reps) }
+            override fun field(path: String, value: String, vararg reps: Int) { builder.field(path, value, *reps) }
+            override fun emptyField(path: String, vararg reps: Int) { builder.emptyField(path, *reps) }
+        })
+        return RuntimeLaws.compute(modelJson, builder).map {
+            val p = it.path().replace(INDEX, "")
+            when {
+                it.cleared() -> "$p|CLEARED"
+                it.errored() -> "$p|ERRORED"
+                else -> "$p|VALUE|${it.value().orElse("")}"
+            }
+        }.sorted()
+    }
+
+    private val INDEX = Regex("\\[\\d+]")
 
     /** Multiset difference `a − b` (each element of [b] cancels at most one of [a]). */
     private fun multisetMinus(a: List<String>, b: List<String>): List<String> {
