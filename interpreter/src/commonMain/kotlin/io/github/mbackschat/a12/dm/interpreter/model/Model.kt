@@ -116,6 +116,10 @@ data class ModelDef(
      *  index field (`relativeToParent` semantics) on top of its explicit [FieldDef.required]; [requirednessOf]
      *  folds that in. */
     val indexFields: Set<String> = emptySet(),
+    /** The model's configured base year (the kernel's `modelInfo.baseYear`), or null when none is declared —
+     *  the value of the `BaseYear` point-in-time constant (a model that uses `BaseYear` without one is a
+     *  kernel `MVK_NO_BASE_YEAR` error, so a valid model always carries it). */
+    val baseYear: Int? = null,
 ) {
     val kinds: Map<String, Kind> = fields.associate { it.path to it.kind }
     val repeatable: Set<String> = repeatableGroups + declaredReps.keys

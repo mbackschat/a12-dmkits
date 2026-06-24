@@ -61,9 +61,8 @@ class CatalogParityTest {
     /** The operator backlog — constructs not yet handled, each with a reason. This IS "what's left to build". */
     private val deferred: Map<String, String> = buildMap {
         group(
-            "date/time family — needs the date-time/partial-date foundation extended past the Now constant; the " +
-                "Feb-28 leap time-clearing must be replicated when AddYears/AddMonths gain DATE_TIME operands",
-            "BaseYear", "ValueAsDate", "FirstDay", "LastDay",
+            "partial-date family — needs partial-date (DAY_OPTIONAL) precision resolved to earliest/latest concrete date",
+            "ValueAsDate", "FirstDay", "LastDay",
         )
         group(
             "repetition uniqueness — across-row key uniqueness of a repetition (distinct from the handled " +

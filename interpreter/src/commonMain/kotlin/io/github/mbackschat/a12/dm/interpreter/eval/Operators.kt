@@ -71,6 +71,7 @@ enum class PredicateOp(val kernelName: String, val polarity: MsgType?, val count
 enum class ConstantOp(val kernelName: String) {
     TODAY("Today"),
     NOW("Now"),
+    BASE_YEAR("BaseYear"),
     ;
 
     companion object {

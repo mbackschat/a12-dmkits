@@ -28,6 +28,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 class Interpreter(
     private val ctx: EvalContext,
     private val clock: EvalClock? = null,
+    /** The model's configured base year (the kernel's `modelInfo.baseYear`), or null when the model declares
+     *  none — the value of the `BaseYear` point-in-time constant. Model config, supplied by [DmInterpreter]
+     *  from the [io.github.mbackschat.a12.dm.interpreter.model.ModelDef] (NOT from the clock). */
+    private val baseYear: Int? = null,
     /**
      * Whether a referenced field is **formally invalid** in this context — a present malformed value (a
      * format error) OR a required-but-empty field (a `mandatoryField` error). Such a field resolves to
@@ -419,8 +423,8 @@ class Interpreter(
     }
 
     private fun evalCmp(c: Cond.Cmp): Tri {
-        val l = evalExpr(c.left)
-        val r = evalExpr(c.right)
+        val l = evalCmpOperand(c.left, c.right)
+        val r = evalCmpOperand(c.right, c.left)
         if (l is Val.Unknown || r is Val.Unknown) return Tri.UNKNOWN
         // The kernel's `vergleicheSTRING` returns false when EITHER operand is the empty string — for `==` AND
         // `!=` alike (an empty operand never matches and never differs). So an empty `RangeAsString` result, or a
@@ -471,8 +475,29 @@ class Interpreter(
             ?: throw UnsupportedConstructException("Today needs an evaluation clock — construct DmInterpreter with an EvalClock"))
         ConstantOp.NOW -> Val.Txt(clock?.now
             ?: throw UnsupportedConstructException("Now needs an evaluation clock with a current date-time — construct DmInterpreter with an EvalClock(today, now)"))
+        // BaseYear is polymorphic by the comparison's OTHER operand (resolved in evalCmp): the year NUMBER vs a
+        // number field, or the base-year-START DATE (Jan 1) vs a date field — kernel-probed. This context-free
+        // path (a non-comparison use) defaults to the date form, the common case.
+        ConstantOp.BASE_YEAR -> baseYearDate()
         null -> throw UnsupportedConstructException("unsupported constant $name")
     }
+
+    /** Evaluate a comparison operand, resolving a polymorphic `BaseYear` by the OTHER operand's type: the year
+     *  NUMBER when the other side is numeric, else the base-year-START date (Jan 1) — kernel-probed. A
+     *  non-`BaseYear` operand evaluates normally. */
+    private fun evalCmpOperand(self: Expr, other: Expr): Val =
+        if (self is Expr.Const && ConstantOp.byName(self.name) == ConstantOp.BASE_YEAR)
+            (if (evalExpr(other) is Val.Num) baseYearNumber() else baseYearDate())
+        else evalExpr(self)
+
+    /** `BaseYear` as the base-year-START date (ISO `yyyy-01-01`). */
+    private fun baseYearDate(): Val = Val.Txt("${baseYearOrThrow().toString().padStart(4, '0')}-01-01")
+
+    /** `BaseYear` as the year NUMBER. */
+    private fun baseYearNumber(): Val = Val.Num(dec(baseYearOrThrow()))
+
+    private fun baseYearOrThrow(): Int = baseYear
+        ?: throw UnsupportedConstructException("BaseYear needs the model's base year (modelInfo.baseYear)")
 
     /** Binary arithmetic on numbers; an empty numeric operand already arrives as 0. Unknown propagates. */
     private fun evalArith(a: Expr.Arith): Val {

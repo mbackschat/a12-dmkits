@@ -334,6 +334,17 @@ So the interpreter classifies a `Date(...)` construction as REAL / UNREAL_PRESEN
 
 *(Interpreter: `Interpreter.analyzeDate`/`dateStatusOf` + `DateMath.isRealDate`/`isoDate`. Locked: `adapter.laws.DateConstructionDiffTest` — value-via-extractor, the Valid/Invalid truth table, the OMISSION-vs-VALUE polarity split, the malformed-suppression, the empty-row firing, and `Time("h","m","s")` compose.)*
 
+### §6 supplement — `BaseYear` is polymorphic by the other operand: base-year-START date vs the year number (probe, 2026-06-24)
+
+`BaseYear` (DE `Referenzjahr`) is the model's configured base year (`content.modelInfo.baseYear`, e.g. `2020`) — the third point-in-time constant alongside `Today`/`Now` (kernel `PointInTimeOperationName`). It is **polymorphic, resolved by the comparison's OTHER operand** (probe-confirmed against the order fixture's `baseYear = 2020`):
+
+- **vs a date field → the base-year-START date `2020-01-01`.** Pinned: `[OrderDate] >= BaseYear` fires at `2020-01-01` (and `< BaseYear` does not), and does not fire at `2019-12-31` — so `BaseYear` as a date equals exactly Jan 1 of the base year.
+- **vs a number field → the year NUMBER `2020`.** Pinned: `[Quantity] == BaseYear` fires at `2020`; `> BaseYear` fires at `2021` but not `5` or `2020`.
+
+VALUE polarity (a constant, not fillable). It is **model config, not the clock** — so the interpreter resolves it from `ModelDef.baseYear` (no `EvalClock` needed, unlike `Today`/`Now`). A model that uses `BaseYear` without a declared base year is a kernel `MVK_NO_BASE_YEAR` error, so a valid model always carries one.
+
+*(Interpreter: `ModelDef.baseYear` ← `modelInfo.baseYear`; `Interpreter.evalCmpOperand` resolves the date/number form by the other operand's evaluated type, `evalConst` defaults to the date form for non-comparison uses. Locked: `adapter.laws.BaseYearDiffTest`.)*
+
 ### §6 supplement — `AddYears`/`AddMonths` calendar corrections (runtime, 2026-06-10, RT-semantics drain)
 
 KERNEL-SEMANTICS §6 notes the shifts "disagree across leap years"; the drained source (`BedingungsOperatorHelper.addiereJahre/addiereMonate`) pins the exact corrections, both probe-confirmed:

@@ -51,7 +51,18 @@ public final class InterpreterModelLoader {
         Map<String, Integer> declaredReps = new LinkedHashMap<>();
         Set<String> indexFields = new LinkedHashSet<>();
         walk(root, fields, rules, comps, repeatable, declaredReps, indexFields);
-        return new ModelDef(fields, rules, comps, repeatable, declaredReps, indexFields);
+        // The model's base year (content.modelInfo.baseYear, a string) — the value of the BaseYear constant.
+        String by = root.path("content").path("modelInfo").path("baseYear").asText("");
+        Integer baseYear = by.isEmpty() ? null : tryParseInt(by);
+        return new ModelDef(fields, rules, comps, repeatable, declaredReps, indexFields, baseYear);
+    }
+
+    private static Integer tryParseInt(String s) {
+        try {
+            return Integer.valueOf(s.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private static void walk(JsonNode node, List<FieldDef> fields, List<RuleDef> rules,
