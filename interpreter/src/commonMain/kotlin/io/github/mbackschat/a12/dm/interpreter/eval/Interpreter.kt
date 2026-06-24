@@ -87,8 +87,10 @@ class Interpreter(
         null, PredicateOp.FIELD_FILLED, PredicateOp.GROUP_FILLED,
         PredicateOp.FIELD_VALUE_IN_LIST, PredicateOp.FIELD_VALUE_NOT_IN_LIST,
         PredicateOp.DATE_RANGES_OVERLAP, PredicateOp.ATLEAST_ONE_DATE_RANGE_OVERLAPS,
-        PredicateOp.FIELD_VALUES_NOT_UNIQUE -> false   // needs present ranges / ≥2 present equal values; an empty row is not evaluated
-        PredicateOp.FIELD_NOT_FILLED, PredicateOp.GROUP_NOT_FILLED -> true
+        PredicateOp.FIELD_VALUES_NOT_UNIQUE,
+        PredicateOp.VALID -> false   // needs present ranges / ≥2 present equal values / a real present date
+        // Invalid fires on an empty row — every part unspecified IS invalid (kernel-probed, OMISSION).
+        PredicateOp.FIELD_NOT_FILLED, PredicateOp.GROUP_NOT_FILLED, PredicateOp.INVALID -> true
         else -> quantifierFires(op, t = 0, f = p.args.size, n = p.args.size)   // all-empty: every operand FALSE
     }
 
@@ -260,6 +262,10 @@ class Interpreter(
      */
     private fun predType(p: Cond.Pred): MsgType {
         val op = PredicateOp.byName(p.name) ?: return MsgType.VALUE
+        // Invalid(Date(...)) is directional: an empty (fillable) part could be filled to make the date real →
+        // OMISSION; an all-present-but-unreal date is a value error → VALUE (kernel-probed, KERNEL-FINDINGS §6).
+        if (op == PredicateOp.INVALID)
+            return if (dateStatusOf(p.args.single()) == DateStatus.HAS_EMPTY) MsgType.OMISSION else MsgType.VALUE
         op.polarity?.let { return it }
         val n = p.args.size
         val (t, f) = quantTally(op, p.args)
@@ -300,6 +306,19 @@ class Interpreter(
             PredicateOp.DATE_RANGES_OVERLAP,
             PredicateOp.ATLEAST_ONE_DATE_RANGE_OVERLAPS -> dateRangesOverlap(p.args)
             PredicateOp.FIELD_VALUES_NOT_UNIQUE -> fieldValuesNotUnique(p.args)
+            // Valid/Invalid(Date(...)): 3VL over the construction's status. A malformed part makes the whole
+            // non-evaluable (UNKNOWN — both go quiet, the formal error fires); else Valid iff real-and-all-present,
+            // Invalid its complement (unreal OR an empty part).
+            PredicateOp.VALID -> when (dateStatusOf(p.args.single())) {
+                DateStatus.REAL -> Tri.TRUE
+                DateStatus.UNREAL_PRESENT, DateStatus.HAS_EMPTY -> Tri.FALSE
+                DateStatus.MALFORMED -> Tri.UNKNOWN
+            }
+            PredicateOp.INVALID -> when (dateStatusOf(p.args.single())) {
+                DateStatus.REAL -> Tri.FALSE
+                DateStatus.UNREAL_PRESENT, DateStatus.HAS_EMPTY -> Tri.TRUE
+                DateStatus.MALFORMED -> Tri.UNKNOWN
+            }
             // List quantifiers over the (TRUE, FALSE) operand tally (row-evaluated gate is upstream in eval).
             PredicateOp.ALL_FIELDS_FILLED, PredicateOp.NO_FIELD_FILLED, PredicateOp.AT_LEAST_ONE_FIELD_FILLED,
             PredicateOp.MORE_THAN_ONE_FIELD_FILLED, PredicateOp.NOT_ALL_FIELDS_FILLED,
@@ -530,6 +549,13 @@ class Interpreter(
             val time = (evalExpr(f.args[1]) as? Val.Txt)?.v
             if (date == null || time == null) Val.Unknown else Val.Txt("${date}T$time")
         }
+        // Date(day, month, year): the constructed calendar date as ISO text — Unknown when the date is not real
+        // or a part is empty/malformed (kernel-probed: the extractors see no value). Valid/Invalid inspect the
+        // construction directly (they distinguish unreal from empty from malformed; this value path does not).
+        FunctionOp.DATE -> analyzeDate(f.args).let { if (it.status == DateStatus.REAL) Val.Txt(it.iso!!) else Val.Unknown }
+        // Time(hours, minutes, seconds): the constructed time as `HH:mm:ss`. Components are in range by model
+        // validity (an out-of-range constant is MVK_WRONG_DATE_FORMAT_FOR_OP at codegen); empty/malformed → Unknown.
+        FunctionOp.TIME -> timeCompose(f.args)
         // Date-time arithmetic — reduces to integer seconds, so a day boundary carries automatically.
         FunctionOp.ADD_HOURS -> dateTimeShift(f.args, 3_600L)
         FunctionOp.ADD_MINUTES -> dateTimeShift(f.args, 60L)
@@ -712,6 +738,61 @@ class Interpreter(
         if (t < 0) return Val.Unknown
         return Val.Txt(if (time) v.substring(t + 1) else v.substring(0, t))
     }
+
+    /** The status of a `Date(day, month, year)` construction — the basis for the constructor's value AND the
+     *  `Valid`/`Invalid` verdicts (kernel-probed, KERNEL-FINDINGS §6). MALFORMED (a part is a non-evaluable
+     *  Unknown) makes the whole non-evaluable; HAS_EMPTY (a part is an empty field) is fillable. */
+    private enum class DateStatus { REAL, UNREAL_PRESENT, HAS_EMPTY, MALFORMED }
+    private data class DateAnalysis(val status: DateStatus, val iso: String?)
+
+    /** Classify a `Date(day, month, year)` construction's three operands. Precedence: any malformed part →
+     *  MALFORMED; else any empty field part → HAS_EMPTY; else REAL/UNREAL_PRESENT by the calendar check. */
+    private fun analyzeDate(parts: List<Expr>): DateAnalysis {
+        if (parts.size != 3) return DateAnalysis(DateStatus.MALFORMED, null)   // 4-arg century form not yet modeled
+        var hasEmpty = false
+        val nums = IntArray(3)
+        for (i in 0..2) {
+            val e = parts[i]
+            if (e is Expr.Field && !ctx.filled(e.path)) { hasEmpty = true; continue }
+            nums[i] = valToInt(evalExpr(e)) ?: return DateAnalysis(DateStatus.MALFORMED, null)
+        }
+        if (hasEmpty) return DateAnalysis(DateStatus.HAS_EMPTY, null)
+        val (d, m, y) = Triple(nums[0], nums[1], nums[2])
+        return if (isRealDate(y, m, d)) DateAnalysis(DateStatus.REAL, isoDate(y, m, d))
+        else DateAnalysis(DateStatus.UNREAL_PRESENT, null)
+    }
+
+    /** The [DateStatus] of a `Valid`/`Invalid` predicate's single operand — its `Date(...)` construction;
+     *  a non-`Date(...)` operand is non-evaluable here → MALFORMED (the predicate goes quiet, not wrong). */
+    private fun dateStatusOf(arg: Expr): DateStatus {
+        val parts = (arg as? Expr.Func)?.takeIf { FunctionOp.byName(it.name) == FunctionOp.DATE }?.args
+            ?: return DateStatus.MALFORMED
+        return analyzeDate(parts).status
+    }
+
+    /** `Time(hours, minutes, seconds)` → `HH:mm:ss`; a non-evaluable (empty field / malformed / out-of-range)
+     *  component → Unknown. Components arrive as number fields or quoted-constant strings. */
+    private fun timeCompose(args: List<Expr>): Val {
+        if (args.size != 3) return Val.Unknown
+        val c = IntArray(3)
+        for (i in 0..2) {
+            val e = args[i]
+            if (e is Expr.Field && !ctx.filled(e.path)) return Val.Unknown
+            c[i] = valToInt(evalExpr(e)) ?: return Val.Unknown
+        }
+        val (h, m, s) = Triple(c[0], c[1], c[2])
+        if (h !in 0..23 || m !in 0..59 || s !in 0..59) return Val.Unknown
+        return Val.Txt("${pad2(h)}:${pad2(m)}:${pad2(s)}")
+    }
+
+    /** An integer from a number value or a digit-string constant (the `Date`/`Time` components); null otherwise. */
+    private fun valToInt(v: Val): Int? = when (v) {
+        is Val.Num -> v.v.display().toIntOrNull()
+        is Val.Txt -> v.v.toIntOrNull()
+        else -> null
+    }
+
+    private fun pad2(n: Int): String = n.toString().padStart(2, '0')
 
     /** `Add{Hours,Minutes,Seconds}(dateTime, n)` → the date-time shifted by `n · [unitSeconds]` (day boundary
      *  carried), as ISO text; Unknown if the date-time or count is absent/malformed. */

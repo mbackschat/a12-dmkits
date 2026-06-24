@@ -119,6 +119,13 @@ private fun wholePeriods(a: String, b: String, add: (String, Int) -> String?): I
     return if (ea <= eb) n else -n
 }
 
+/** Whether (year, month, day) is a real calendar date — month 1..12 and day within that month's length
+ *  (leap-aware). The realness test behind the `Date(...)` constructor and the `Valid`/`Invalid` predicates. */
+fun isRealDate(year: Int, month: Int, day: Int): Boolean = month in 1..12 && day in 1..daysInMonth(year, month)
+
+/** The canonical ISO `yyyy-MM-dd` for (year, month, day) — zero-padded; the `Date(...)` constructor's value. */
+fun isoDate(year: Int, month: Int, day: Int): String = iso(year, month, day)
+
 private fun daysInMonth(year: Int, month: Int): Int = when (month) {
     1, 3, 5, 7, 8, 10, 12 -> 31
     4, 6, 9, 11 -> 30

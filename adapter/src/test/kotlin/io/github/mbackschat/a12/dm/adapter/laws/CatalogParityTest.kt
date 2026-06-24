@@ -63,8 +63,7 @@ class CatalogParityTest {
         group(
             "date/time family — needs the date-time/partial-date foundation extended past the Now constant; the " +
                 "Feb-28 leap time-clearing must be replicated when AddYears/AddMonths gain DATE_TIME operands",
-            "BaseYear", "Date", "Time",
-            "DateRange", "ValueAsDate", "FirstDay", "LastDay",
+            "BaseYear", "DateRange", "ValueAsDate", "FirstDay", "LastDay",
         )
         group(
             "repetition uniqueness — across-row key uniqueness of a repetition (distinct from the handled " +
@@ -75,7 +74,6 @@ class CatalogParityTest {
             "path-ops / scope — operate on the path/repetition selection, not as a standalone predicate/function",
             "EnumCategory", "Having", "SemanticIndex",
         )
-        group("date-construction validity predicates — pair with the Date/Time constructors above", "Valid", "Invalid")
         group("predefined-type validity predicates — need the model's predefined-type registry", "ValidType", "InvalidType")
     }
 
@@ -122,6 +120,8 @@ class CatalogParityTest {
             "DateFromDateTime", "TimeFromDateTime", "DateTime",
             "AddHours", "AddMinutes", "AddSeconds",
             "DifferenceInHours", "DifferenceInMinutes", "DifferenceInSeconds")
+        group("date/time construction + validity — DateConstructionDiffTest-locked; need bounded-int + time fields in the fuzz model",
+            "Date", "Time", "Valid", "Invalid")
         group(
             "round/abs *Value-field + coercion siblings — RoundDown/RoundAccounting/RoundUpValue + Abs are fuzzed; each DiffTest-locked",
             "RoundUp", "RoundDownValue", "RoundAccountingValue", "AbsValue", "FieldValueAsNumber",

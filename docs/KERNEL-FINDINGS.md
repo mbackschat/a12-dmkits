@@ -321,6 +321,19 @@ The date-time arithmetic family over DATE_TIME operands — `AddHours`/`AddMinut
 
 *(Interpreter: `DateMath.epochSecond`/`isoFromEpochSecond`/`addDateTimeSeconds` + `Interpreter.dateTimeShift`/`dateTimeDiff`. Locked: `adapter.laws.DateTimeArithmeticDiffTest` — the add day-carry cases + the forward/reverse difference sign cases.)*
 
+### §6 supplement — `Date(...)` construction value + `Valid`/`Invalid` 3VL & polarity (probe, 2026-06-24)
+
+Runtime semantics of the date construction family (the catalog/DSL modeling is the earlier line ~294 note; this is the *evaluation* behavior, probe-confirmed):
+
+- **`Date(day, month, year)` of an UNREAL date is NON-EVALUABLE** — it does **not** roll over and does **not** keep an out-of-range value. Probed: with all parts present and valid numbers but `(31, 2, 2024)`, every extractor (`YearFromDate`/`MonthFromDate`/`DayFromDate`) over `Date(...)` returns no value (the guarding rule does not fire, no code). So the constructor yields a value only when the date is a **real calendar date**; otherwise Unknown.
+- **`Valid(Date(...))` = all parts present (non-empty) ∧ all well-formed ∧ the date is real.** Fires VALUE.
+- **`Invalid(Date(...))` = present-and-well-formed ∧ (not real ∨ some part empty)** — and its **polarity is directional**: an **empty (fillable) part → OMISSION** (filling it could make the date real), a **present-but-unreal date → VALUE**. It even fires (OMISSION) on an **all-empty row** (every part unspecified is invalid — so `Invalid` "can fire empty", unlike `Valid`).
+- **A MALFORMED part (a formal error, e.g. a non-numeric in a number field) suppresses BOTH** `Valid` and `Invalid` (each goes UNKNOWN → quiet; the `zahl…` formal error fires instead). This is why the catalog calls Invalid "not the pure negation of Valid": they are complementary only when no part is malformed; a malformed part sends both to UNKNOWN.
+
+So the interpreter classifies a `Date(...)` construction as REAL / UNREAL_PRESENT / HAS_EMPTY / MALFORMED, and drives the constructor value, the two predicates, and Invalid's polarity off that one classification.
+
+*(Interpreter: `Interpreter.analyzeDate`/`dateStatusOf` + `DateMath.isRealDate`/`isoDate`. Locked: `adapter.laws.DateConstructionDiffTest` — value-via-extractor, the Valid/Invalid truth table, the OMISSION-vs-VALUE polarity split, the malformed-suppression, the empty-row firing, and `Time("h","m","s")` compose.)*
+
 ### §6 supplement — `AddYears`/`AddMonths` calendar corrections (runtime, 2026-06-10, RT-semantics drain)
 
 KERNEL-SEMANTICS §6 notes the shifts "disagree across leap years"; the drained source (`BedingungsOperatorHelper.addiereJahre/addiereMonate`) pins the exact corrections, both probe-confirmed:

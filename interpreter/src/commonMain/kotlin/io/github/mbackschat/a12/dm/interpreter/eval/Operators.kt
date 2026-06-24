@@ -35,6 +35,11 @@ enum class PredicateOp(val kernelName: String, val polarity: MsgType?, val count
     // Two of the listed fields hold the same value → a value error (you change a value, you don't fill — both
     // are already filled). Empties are skipped (two empties are NOT a duplicate); a malformed operand suppresses.
     FIELD_VALUES_NOT_UNIQUE("FieldValuesNotUnique", MsgType.VALUE),
+    // Valid/Invalid(Date(...)): is the constructed date a real calendar date with all parts present? Valid is a
+    // present-value verdict → VALUE. Invalid's polarity is data-dependent (null): OMISSION when an empty part
+    // could be filled to make the date real, else VALUE — computed in `Interpreter.predType` (KERNEL-FINDINGS §6).
+    VALID("Valid", MsgType.VALUE),
+    INVALID("Invalid", null),
 
     // List quantifiers — fire by the count k of filled OPERANDS among the N (fields, or groups when
     // [countsGroups]); KERNEL-FINDINGS §1. polarity = null → computed dynamically (fixable-by-filling →
@@ -94,6 +99,8 @@ enum class FunctionOp(val kernelName: String) {
     DATE_FROM_DATE_TIME("DateFromDateTime"),
     TIME_FROM_DATE_TIME("TimeFromDateTime"),
     DATE_TIME("DateTime"),
+    DATE("Date"),
+    TIME("Time"),
     ADD_HOURS("AddHours"),
     ADD_MINUTES("AddMinutes"),
     ADD_SECONDS("AddSeconds"),
