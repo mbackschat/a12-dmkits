@@ -481,6 +481,15 @@ The author-written **cross-ROW** uniqueness rule (vs `FieldValuesNotUnique`'s va
 
 *(Interpreter: a dedicated uniqueness pass `DmInterpreter.repetitionNotUniqueMessages` — recognized via `repetitionNotUnique`, routed out of the per-row `evalRule` flow like `uniqueIndex`; `scopePrefixLen` resolves the reference group (the `@From` ref via `resolveGroupRef`, else the basic-version default) → groups rows by `parent(R)` and flags `count > 1`. The parser captures `@From <ref>` as a trailing `@From:<ref>` marker arg. Locked: `adapter.laws.RepetitionNotUniqueDiffTest` (single-level) + `RepetitionNotUniqueNestedDiffTest` (nested default global + `@From` per-milestone vs global) — the FULL per-row message set, pointer + polarity, incl. the empty-component OMISSION.)*
 
+## §9 supplement — `SemanticIndex` (`[field For "value"]`): keyed row lookup, absent → empty value (probe, 2026-06-24)
+
+`[Field For "value"]` is the value of `Field` in the repetition whose **index field** equals `"value"` (the kernel's "semantic index" — by the index field, not the positional row number). Probed:
+
+- A matched, **filled** cell yields its value — `[Items/Count For "SKU-1"]` is the `Count` of the Items row with `Sku == "SKU-1"`; `== 5` / `> 0` fire as VALUE.
+- **No matching row OR a matched-but-empty cell both read as the kind's EMPTY value** (a number → 0) — `[Items/Count For "SKU-1"] == 0` **fires (OMISSION)** when there is no `SKU-1` row or its `Count` is empty (the absent value is fillable); `> 0` / `== 5` do not fire. So a missing key is NOT "unknown" — it is the empty value, exactly like a missing field reference (empty-as-0 for a number, with the field's directional polarity).
+
+*(Interpreter: `Expr.SemanticIndex(path, indexValue)` (parsed in the `[...]` atom via a `For "…"` clause); `EvalContext.indexedCell` scans the target's repetition rows in scope for the sibling index match, returning the resolved cell or null (→ the kind's empty value). The group's index field is resolved from the threaded `indexFields`; the polarity rides the standard `fill` (fillable iff the cell is absent/empty). Locked: `adapter.laws.SemanticIndexDiffTest` — matched value, other key, and the empty/missing OMISSION cases.)*
+
 ## §8 supplement — the value-list membership family (2026-06-04 experiments)
 
 Five operators in two grammar shapes, not covered by KERNEL-SEMANTICS. **Shape A** `FieldValueIncludedInValueList(field, v1, …)` / `FieldValueNotIncludedInValueList(…)` (DE: `FeldWertInWerteListe`/`FeldWertNichtInWerteListe`); **shape B** `AtLeastOne|No|NotAllFieldValue(s)IncludedInValueList(f1, f2 In v1, …)` (DE: `MindestensEin…`/`Kein…`/`NichtAlle…`; `In` is a language-independent grammar literal like the symbols). Slot rules:

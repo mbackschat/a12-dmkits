@@ -287,7 +287,7 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
             val expr = parseExpression(comp.expressionText, comp.group)
             val scope = scopeFromRefs(exprRefs(expr) + comp.targetPath, comp.group)
             for (ctx in doc.contextsFor(scope)) {
-                out += when (val v = Interpreter(ctx, clock, model.baseYear).evalExpression(expr)) {
+                out += when (val v = Interpreter(ctx, clock, model.baseYear, model.indexFields).evalExpression(expr)) {
                     is Val.Num -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v.display())
                     is Val.Txt -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v)
                     is Val.Bool -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v.toString())
@@ -343,7 +343,7 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
             // propagates it, so a bare comparison goes UNKNOWN but `… Or <true>` still FIRES — matching the
             // kernel's operand-level "not check-relevant" behavior (verified). A duplicate-index field is
             // likewise unknown (branch-scoped, same as a formal error) via [formalErrorAt].
-            val interp = Interpreter(ctx, clock, model.baseYear) { path -> formalErrorAt(path, ctx, dup) != null }
+            val interp = Interpreter(ctx, clock, model.baseYear, model.indexFields) { path -> formalErrorAt(path, ctx, dup) != null }
             if (interp.fires(ast)) {
                 val type = interp.firedType(ast) ?: MsgType.VALUE
                 val text = rule.messages[locale]?.let { renderMessage(it, rule.group, ctx) { p -> model.labelOf(p, locale) } } ?: ""

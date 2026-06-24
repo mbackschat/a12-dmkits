@@ -13,6 +13,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.ValueListQuantOp
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
 import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
+import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
@@ -33,6 +34,9 @@ class Interpreter(
      *  none — the value of the `BaseYear` point-in-time constant. Model config, supplied by [DmInterpreter]
      *  from the [io.github.mbackschat.a12.dm.interpreter.model.ModelDef] (NOT from the clock). */
     private val baseYear: Int? = null,
+    /** Repeatable groups' index-field paths (the kernel's `indexFieldName`s) — the `SemanticIndex`
+     *  (`[field For "value"]`) lookup resolves a group's index field from this. Supplied by [DmInterpreter]. */
+    private val indexFields: Set<String> = emptySet(),
     /**
      * Whether a referenced field is **formally invalid** in this context — a present malformed value (a
      * format error) OR a required-but-empty field (a `mandatoryField` error). Such a field resolves to
@@ -146,8 +150,15 @@ class Interpreter(
     private fun fill(e: Expr): Fill = when (e) {
         is Expr.Field -> if (ctx.filled(e.path)) Fill(false, false) else Fill(true, ctx.signed(e.path))
         is Expr.Func -> funcFill(e)
+        // A SemanticIndex resolves to a matched cell or (absent row / empty cell) the empty value — fillable
+        // exactly when empty, with the target field's sign, so its directional polarity matches a field ref.
+        is Expr.SemanticIndex -> if (semanticIndexFilled(e)) Fill(false, false) else Fill(true, ctx.signed(e.path))
         else -> leafOmission(e).let { Fill(it, it) }
     }
+
+    /** Whether a SemanticIndex resolves to a present (filled) cell — vs an absent row / empty cell. */
+    private fun semanticIndexFilled(e: Expr.SemanticIndex): Boolean =
+        indexFieldOf(e.path)?.let { ctx.indexedCell(e.path, it, e.indexValue) != null } ?: false
 
     /**
      * Directional fillability of a value FUNCTION. The starred aggregates carry the kernel's `NumberCombiner`
@@ -285,6 +296,7 @@ class Interpreter(
         is Expr.Field -> !ctx.filled(e.path)
         is Expr.Star -> ctx.starOmission(e.path)
         is Expr.Func -> e.args.any { leafOmission(it) }
+        is Expr.SemanticIndex -> !semanticIndexFilled(e)
         else -> false
     }
 
@@ -463,6 +475,20 @@ class Interpreter(
         is Expr.Func -> evalFunc(e)
         is Expr.Arith -> evalArith(e)
         is Expr.Const -> evalConst(e.name)
+        is Expr.SemanticIndex -> evalSemanticIndex(e)
+    }
+
+    /** `[field For "value"]` — the field's value in the row whose index field equals the value; an absent row
+     *  or empty cell reads as the kind's EMPTY value (a number → 0, fillable), matching a missing field ref. */
+    private fun evalSemanticIndex(e: Expr.SemanticIndex): Val {
+        val idx = indexFieldOf(e.path) ?: throw UnsupportedConstructException("SemanticIndex needs an index field on the group of ${e.path}")
+        return ctx.indexedCell(e.path, idx, e.indexValue) ?: emptyValue(ctx.declaredKind(e.path) ?: return Val.Unknown)
+    }
+
+    /** The index-field path of [fieldPath]'s repeatable group (its sibling index field), or null if none. */
+    private fun indexFieldOf(fieldPath: String): String? {
+        val group = fieldPath.substringBeforeLast('/')
+        return indexFields.firstOrNull { it.substringBeforeLast('/') == group }
     }
 
     /**
@@ -501,6 +527,7 @@ class Interpreter(
         is Expr.Field -> ctx.declaredKind(e.path) == Kind.DATE
         is Expr.Const -> ConstantOp.byName(e.name).let { it == ConstantOp.TODAY || it == ConstantOp.BASE_YEAR }
         is Expr.Func -> FunctionOp.byName(e.name) in DATE_PRODUCING_FUNCS
+        is Expr.SemanticIndex -> ctx.declaredKind(e.path) == Kind.DATE
         else -> false
     }
 

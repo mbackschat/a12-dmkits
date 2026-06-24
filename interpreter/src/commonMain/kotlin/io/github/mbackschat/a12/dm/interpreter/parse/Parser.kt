@@ -124,7 +124,16 @@ private class ConditionParser(private val src: String, private val base: String)
                 val absolute = peek() == '/'      // an absolute reference [/Group/Field], used as-is (no base)
                 if (absolute) next()
                 val p = pathFrom(readIdent(), absolute)
-                skipWs(); expect(']'); p
+                skipWs()
+                // `[field For "value"]` — a SemanticIndex lookup by the group's index value.
+                if (matchKeyword("For")) {
+                    skipWs()
+                    val idx = readString().v
+                    skipWs(); expect(']')
+                    Expr.SemanticIndex((p as Expr.Field).path, idx)
+                } else {
+                    expect(']'); p
+                }
             }
             '"' -> readString()
             else -> when {

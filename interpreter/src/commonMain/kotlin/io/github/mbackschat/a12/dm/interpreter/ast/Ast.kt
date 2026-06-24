@@ -107,6 +107,10 @@ sealed interface Expr {
 
     /** A binary arithmetic expression, e.g. `[BackorderQuantity] + 2`. Grouped with curly braces `{ }`. */
     data class Arith(val op: ArithOp, val left: Expr, val right: Expr) : Expr
+
+    /** A semantic-index lookup `[<field> For "<indexValue>"]` — the value of [path] in the repetition whose
+     *  INDEX field equals [indexValue]; an absent row / empty cell reads as the kind's empty value. */
+    data class SemanticIndex(val path: String, val indexValue: String) : Expr
 }
 
 /** Parse a raw field value into a typed [Val] by kind. A malformed NUMBER resolves to [Val.Unknown] (NOT a

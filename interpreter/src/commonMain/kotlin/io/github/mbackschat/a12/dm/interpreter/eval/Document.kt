@@ -227,6 +227,18 @@ class Document @JvmOverloads constructor(
 
         override fun dateFormatOf(path: String): String? = dateFormats[path]
 
+        // SemanticIndex: scan the target field's repetition rows (in scope) for the one whose sibling index
+        // cell equals indexValue; return its resolved value, or null when no row matches or the cell is empty.
+        override fun indexedCell(targetPath: String, indexField: String, indexValue: String): Val? {
+            for (reps in starRows(targetPath)) {
+                if (valueAt(indexField, reps)?.value == indexValue) {
+                    val raw = valueAt(targetPath, reps)?.value
+                    return if (!raw.isNullOrEmpty()) resolveValue(targetPath, raw) else null
+                }
+            }
+            return null
+        }
+
         override fun repsOf(path: String): List<Int> = repsFor(path, group, rowReps)
 
         /** Index tuples of [starPath] across every row of its deepest repeatable group ancestor in scope. */

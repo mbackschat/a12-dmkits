@@ -53,6 +53,7 @@ class CatalogParityTest {
         "FirstDay", "LastDay",                                             // ValueAsDate day-specification markers (Expr.Const)
         "RepetitionNotUnique",                                             // a whole-rule uniqueness pass (not evalPred-dispatched)
         "FromScope",                                                       // the @From reference-group selector of RepetitionNotUnique
+        "SemanticIndex",                                                   // [field For "value"] — Expr.SemanticIndex, keyed row lookup
     )
 
     private val handled: Set<String> = enumHandled + astHandled
@@ -65,7 +66,7 @@ class CatalogParityTest {
     private val deferred: Map<String, String> = buildMap {
         group(
             "path-ops / scope — operate on the path/repetition selection, not as a standalone predicate/function",
-            "EnumCategory", "Having", "SemanticIndex",
+            "EnumCategory", "Having",
         )
         group("predefined-type validity predicates — need the model's predefined-type registry", "ValidType", "InvalidType")
     }
