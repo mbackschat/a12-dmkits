@@ -15,7 +15,7 @@ import picocli.CommandLine.Spec;
                 + "Running a model against a sample document is a JVM-only capability — absent from the native binary.",
         subcommands = { ModelNewCommand.class, ModelInfoCommand.class, ModelValidateCommand.class, ModelDescribeCommand.class,
                 ModelReadCommand.class, ModelUsageCommand.class, ModelRenameCommand.class,
-                ModelEvalCommand.class, ModelComputeCommand.class })
+                ModelEvalCommand.class, ModelComputeCommand.class, ModelSeedCommand.class })
 public final class ModelCommand implements Callable<Integer> {
 
     @Spec

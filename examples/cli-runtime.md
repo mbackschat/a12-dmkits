@@ -365,14 +365,44 @@ dmtool -m examples/models/subscription-computed.dm.json \
 
 → `value: "0"`, not empty and not an error: the absent `BaseFee` read as `0`, and `[BaseFee]` evaluated to `0`. **Empty-as-0** is the kernel's rule for numeric operands — a computed total over missing inputs silently lands at zero rather than staying blank. The lesson generalizes: trust the *measured* runtime value, never the value you expected from reading the formula.
 
+## model seed — generate a sample instance
+
+Writing instances by hand (as above) is fine for one check, but tedious for exploring a model. `model seed` **generates** a valid sample instance — every field a kind-appropriate value (numbers in scale, dates in their format, an enum a real member), repeatable groups populated — using the same kernel-free interpreter generator. It is **native-safe** (no kernel) and **deterministic** for a fixed `--seed`, and `--rows <group>:<n>` sets how many rows a repeatable group gets. Its output is the very `{"fields":{…}}` shape the runtime verbs consume.
+
+```bash
+dmtool -m examples/models/order-ruled.dm.json \
+  model seed --seed 1 --rows /Order/Items:2 \
+  | jq -c '.fields.Order | {topFields: (keys|length), items: (.Items|length), itemKeys: (.Items[0]|keys)}'
+```
+
+```output
+{"topFields":13,"items":2,"itemKeys":["Count","Sku"]}
+```
+
+→ The model's shape drives the result: every top-level field present, the `Items` group instantiated with the **2** rows requested, each row carrying its declared fields. Values are random-but-valid; the structure is the model's.
+
+Because the output IS a document instance, it round-trips straight into `model eval` — generate, then evaluate, no hand-authoring:
+
+```bash
+dmtool -m examples/models/order-ruled.dm.json model seed --seed 1 > /tmp/rt-seeded.json
+dmtool -m examples/models/order-ruled.dm.json model eval --doc /tmp/rt-seeded.json | jq -c '{outcome}'
+```
+
+```output
+{"outcome":"read"}
+```
+
+→ `outcome: "read"` — the generated instance is a valid document the runtime accepts.
+
 ## Recap
 
-Two read-only runtime verbs, both `--doc <instance.json>` over a nested `{"fields":{…}}` tree:
+Read-only runtime verbs over a nested `{"fields":{…}}` instance — and `model seed` to generate one:
 
 | verb | question | answer rides | proof shown |
 |------|----------|--------------|-------------|
 | `model eval` | which rules fire on this data? | `data.fired` (codes) + `data.rule.{name,fired}` with `--rule` | violation fired, compliant did not (same rule, flipped date) |
 | `model eval --condition/--field` | would *this* candidate fire? | `data.rule.fired` | one-off `QTY_CAP` fired on `Quantity 150`, not persisted |
 | `model compute` | what does a computed field evaluate to? | `data.computed[].{field,value,outcome}` | `[BaseFee]` = `49.9`; empty operand = `0` (empty-as-0) |
+| `model seed` | give me a valid sample instance | the `{"fields":{…}}` document itself | structure matches the model; round-trips into `eval` |
 
 Neither verb writes (`written: false`) — they evaluate the *model* against the *instance*, no mutation. The instance carries only the fields a check needs; everything else is absent (and, for numbers, reads as `0`).

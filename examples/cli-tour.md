@@ -23,6 +23,7 @@ model usage
 model rename
 model eval
 model compute
+model seed
 rule check
 rule read
 rule explain

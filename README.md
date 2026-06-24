@@ -209,6 +209,7 @@ dmtool -m order.dm.json model eval    --doc order-instance.json   # which rules 
 dmtool -m order.dm.json rule test /Order/DeliveryNotBeforeOrder --doc order-instance.json  # one rule: fired / passed / suppressed
 dmtool -m sub.dm.json   model compute --doc sub-instance.json     # what each computed field evaluates to
 dmtool -m order.dm.json model eval    --doc order-instance.json --kernel   # same, but via the A12 kernel (JVM only)
+dmtool -m order.dm.json model seed    --rows /Order/Items:2        # generate a valid sample instance (feeds the verbs above)
 ```
 
 This is the empirical check a static "is it valid?" can't give — it's how you confirm a rule's *polarity* on concrete data. `rule test` scopes it to one rule with a three-way verdict, distinguishing a genuine **pass** from a rule the engine **suppressed** because a field it references is formally invalid. These verbs run on a **native-safe interpreter** by default (it reproduces the kernel's runtime semantics, verified rule-for-rule); `--kernel` switches to the A12 kernel on the JVM.
@@ -332,7 +333,7 @@ The [`examples/`](examples/) directory has **verifiable** walkthroughs of every 
 | [`cli-edit-loop`](examples/cli-edit-loop.md) | author/modify rules & computations, `batch`, the re-express loop |
 | [`cli-structure-edit`](examples/cli-structure-edit.md) | fields/groups/typedefs/includes/config + the safe-delete gate |
 | [`cli-apply`](examples/cli-apply.md) | the atomic multi-op session + rollback + correctives + in-session refactors |
-| [`cli-runtime`](examples/cli-runtime.md) | `model eval` / `model compute` against document instances |
+| [`cli-runtime`](examples/cli-runtime.md) | `model eval` / `model compute` against document instances, `model seed` to generate one |
 | [`cli-version`](examples/cli-version.md) | `--version`, `manifest.version`, the model-version policy |
 
 The full CLI contract: [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md).

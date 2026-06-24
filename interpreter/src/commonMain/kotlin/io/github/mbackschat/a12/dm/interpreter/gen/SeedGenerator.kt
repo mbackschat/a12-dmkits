@@ -58,6 +58,15 @@ class SeedGenerator(private val model: ModelDef) {
         roots.forEach { emit(sink, it, emptyList(), rnd, rowsOf, value) }
     }
 
+    /**
+     * Java-friendly convenience (the shape `dmtool seed` drives): populate with **fixed** per-group row counts
+     * — a repeatable group listed in [rowsByGroup] gets that many rows, any other gets [defaultRows] — and the
+     * default [ValidValues] strategy (every field a valid value). Avoids passing a Kotlin function/`Random`
+     * from Java.
+     */
+    fun populate(sink: PlacementSink, seed: Long, rowsByGroup: Map<String, Int>, defaultRows: Int) =
+        populate(sink, seed, { group, _, _ -> rowsByGroup[group] ?: defaultRows }, ValidValues)
+
     private fun emit(
         sink: PlacementSink, group: String, parentReps: List<Int>, rnd: Random,
         rowsOf: (String, List<Int>, Random) -> Int, value: ValueStrategy,
@@ -100,7 +109,14 @@ fun interface ValueStrategy {
  * (compose with a wrapper that returns null for the empty case — e.g. the fuzz net's fill-or-empty strategy).
  */
 object ValidValues : ValueStrategy {
-    override fun value(field: FieldDef, reps: List<Int>, rnd: Random): String = when (field.kind) {
+    override fun value(field: FieldDef, reps: List<Int>, rnd: Random): String = when {
+        // An enumeration field (stored as a STRING with declared members) MUST draw a real member — a generic
+        // string would be a non-member, an invalid value. Picks one of the declared values at random.
+        field.enumValues.isNotEmpty() -> field.enumValues[rnd.nextInt(field.enumValues.size)]
+        else -> byKind(field, reps, rnd)
+    }
+
+    private fun byKind(field: FieldDef, reps: List<Int>, rnd: Random): String = when (field.kind) {
         Kind.NUMBER -> number(field, rnd)
         Kind.STRING -> "s" + reps.joinToString("_") + "_" + rnd.nextInt(0, 1000)
         Kind.BOOLEAN -> rnd.nextBoolean().toString()
