@@ -115,6 +115,11 @@ class Document @JvmOverloads constructor(
         // cross-level star aggregates evaluated per row (the kernel's IndexFieldCache / row-index analog).
         // Space is O(rows × depth) (depth ≤ ~4), built only for the groups actually star-resolved.
         val prefixRowsByGroup: MutableMap<String, Map<List<Int>, List<List<Int>>>> = HashMap()
+        // `GroupFilled(nonRepeatableGroup)` support: per (groupPath, iteration-group), the attach-depth →
+        // prefix-set of valued DESCENDANTS of groupPath — the GroupFillCache analog for the non-repeatable
+        // branch. Mirrors [attachByGroup] but filtered to groupPath's subtree, so `groupFilled` is O(1) per
+        // call after a once-per-(groupPath,group) O(valued) build, not an O(valued) scan every row.
+        val nonRepFilledByGroup: MutableMap<Pair<String, String>, Map<Int, Set<List<Int>>>> = HashMap()
     }
 
     private var cachedIndex: Index? = null
@@ -190,6 +195,26 @@ class Document @JvmOverloads constructor(
             m
         }
 
+    /**
+     * For `groupFilled(nonRepeatableGroupPath)` evaluated from iteration group [group]: `attach-depth →
+     * prefix-set` over the valued **descendants of [groupPath]** (paths under `groupPath/`). Memoized per
+     * (groupPath, group) in the [Index]. A row's instance of [groupPath] is filled iff `rowReps.take(d)` is in
+     * the set at some depth `d` — which mirrors the per-descendant `commonPrefixLen(p.path, group)` shared-index
+     * scope check exactly, only grouped so it is computed once per (groupPath, group) instead of scanned per row.
+     */
+    private fun nonRepGroupFilledDepths(groupPath: String, group: String): Map<Int, Set<List<Int>>> =
+        index().nonRepFilledByGroup.getOrPut(groupPath to group) {
+            val gParts = partsOf(group)
+            val prefix = "$groupPath/"
+            val m = HashMap<Int, HashSet<List<Int>>>()
+            for (p in index().valued) {
+                if (!p.path.startsWith(prefix)) continue
+                val common = commonPrefixLen(partsOf(p.path), gParts)
+                m.getOrPut(common) { HashSet() }.add(p.reps.take(common))
+            }
+            m
+        }
+
     /** The distinct 1-based index tuples at which [groupPath] is instantiated, in document order. */
     private fun rowsOf(groupPath: String): List<List<Int>> = index().rowsByGroup[groupPath] ?: emptyList()
 
@@ -224,12 +249,6 @@ class Document @JvmOverloads constructor(
         override val evaluated: Boolean,
     ) : EvalContext {
 
-        /** A value placement is in this row's scope if its shared-prefix indices match the row. */
-        private fun inScope(p: Placement): Boolean {
-            val common = commonPrefixLen(partsOf(p.path), partsOf(group))
-            return (0 until common).all { i -> p.reps[i] == rowReps[i] }
-        }
-
         override fun field(path: String): Val {
             val v = valueAt(path, repsFor(path, group, rowReps))?.value
             return if (v != null) resolveValue(path, v) else emptyValue(kindOf(path))
@@ -259,11 +278,11 @@ class Document @JvmOverloads constructor(
                 // hit per row by requiredness over a sparse-required document).
                 rowsWithPrefix(groupPath, repsFor(groupPath, group, rowReps)).isNotEmpty()
             else
-                // A NON-repeatable group: any valued descendant in this row's scope. Still an O(valued) scan
-                // per call (the GroupFillCache analog) — a latent cliff for models with many explicit
-                // GroupFilled(nonRepeatableGroup) checks per row; see INTERPRETER-PERFORMANCE.md (the scoping
-                // depth here varies with the rule group, so it needs a (groupPath, group)-keyed prefix index).
-                index().valued.any { p -> p.path.startsWith("$groupPath/") && inScope(p) }
+                // A NON-repeatable group is "filled" iff some valued DESCENDANT is in this row's scope.
+                // O(1) per call via the per-(groupPath, group) attach-depth index (the GroupFillCache analog) —
+                // exactly mirrors the per-descendant scope check (group descendants by their common-with-`group`
+                // depth, match the row's prefix at that depth), but built once per (groupPath, group), not per row.
+                nonRepGroupFilledDepths(groupPath, group).any { (depth, prefixes) -> rowReps.take(depth) in prefixes }
 
         override fun star(path: String): List<Val> =
             starRows(path).mapNotNull { reps -> valueAt(path, reps)?.value?.let { resolveValue(path, it) } }
