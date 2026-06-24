@@ -1,0 +1,51 @@
+package io.github.mbackschat.a12.dm.adapter.laws
+
+import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
+import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
+import io.github.mbackschat.a12.dm.interpreter.model.Kind
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
+
+/**
+ * Differential for the `DateRange(start, end)` CONSTRUCTOR — a computation-only construct (the kernel rejects
+ * it in a condition). It assigns a DATE_RANGE field, and the kernel renders the value in the TARGET field's
+ * format: `OrderDate`/`DeliveryDate` (`yyyy-MM-dd`) → `CoverageWindow` (`dd.MM.yyyy`-`-`) = `01.06.2024-30.06.2024`.
+ * Compares the computed value to the kernel's `compute()`.
+ */
+class DateRangeComputeDiffTest {
+
+    private val order = RuntimeLaws.model("models/order.dm.json")
+    private val fields = listOf(
+        FieldDef(OD, Kind.DATE), FieldDef(DD, Kind.DATE),
+        FieldDef(CW, Kind.DATE_RANGE, format = "dd.MM.yyyy", rangeSeparator = "-"),
+    )
+    private val comp = ComputationDef(CW, "/Order", "DateRange(OrderDate, DeliveryDate)")
+    private val def = ModelDef(fields, emptyList(), computations = listOf(comp))
+    private val model = RuntimeLaws.withComputation(order, "/Order", "CWComp", "../CoverageWindow", "DateRange(OrderDate, DeliveryDate)")
+
+    private fun agree(orderDate: String, deliveryDate: String, msg: String) {
+        val kernel = RuntimeLaws.compute(model, RuntimeLaws.doc()
+            .group("/Order", 1).field(OD, orderDate, 1, 1).field(DD, deliveryDate, 1, 1))
+        val kernelValue = RuntimeLaws.computedValue(kernel, CW).orElse(null)
+
+        val iDoc = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
+            def.scales, def.dateTimeFormats).field(OD, orderDate, 1, 1).field(DD, deliveryDate, 1, 1)
+        val got = DmInterpreter(def).compute(iDoc).single { it.path == CW }.value
+        assertEquals(kernelValue, got, "$msg (kernel=$kernelValue interp=$got)")
+    }
+
+    @Test fun rendersRangeInTargetFormat() =
+        agree("2024-06-01", "2024-06-30", "DateRange rendered to the CoverageWindow dd.MM.yyyy-separator format")
+
+    @Test fun anotherSpan() =
+        agree("2023-01-15", "2023-12-24", "a second span renders the same way")
+
+    private companion object {
+        const val OD = "/Order/OrderDate"
+        const val DD = "/Order/DeliveryDate"
+        const val CW = "/Order/CoverageWindow"
+    }
+}

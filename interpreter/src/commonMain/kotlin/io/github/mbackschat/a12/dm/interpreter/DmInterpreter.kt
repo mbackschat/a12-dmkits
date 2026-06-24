@@ -14,6 +14,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.formatPointer
 import io.github.mbackschat.a12.dm.interpreter.eval.mandatoryFieldText
 import io.github.mbackschat.a12.dm.interpreter.eval.UNIQUE_INDEX
 import io.github.mbackschat.a12.dm.interpreter.eval.uniqueIndexText
+import io.github.mbackschat.a12.dm.interpreter.eval.renderDateToFormat
 import io.github.mbackschat.a12.dm.interpreter.eval.renderMessage
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.Computed
@@ -211,13 +212,24 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
                     is Val.Txt -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v)
                     is Val.Bool -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v.toString())
                     is Val.Unknown -> Computed(comp.targetPath, ComputeOutcome.CLEARED)
-                    // A computed date-RANGE — provisional ISO `start/end` rendering; format-faithful range
-                    // rendering arrives with the DateRange constructor (no consumer exercises it yet).
-                    is Val.Range -> Computed(comp.targetPath, ComputeOutcome.VALUE, "${v.start}/${v.end}")
+                    // A computed date-RANGE (`DateRange(start, end)`) — rendered to the TARGET field's
+                    // (format, separator), so `2024-06-01`/`2024-06-30` → `01.06.2024-30.06.2024` for a
+                    // `dd.MM.yyyy`-`-` CoverageWindow. Falls back to ISO `start/end` if the target declares no range config.
+                    is Val.Range -> Computed(comp.targetPath, ComputeOutcome.VALUE, renderRange(v, comp.targetPath))
                 }
             }
         }
         return out
+    }
+
+    /** Render a computed [Val.Range] to the target field's `(format, separator)` (e.g. `01.06.2024-30.06.2024`);
+     *  ISO `start/end` fallback when the target declares no range config or an endpoint is malformed. */
+    private fun renderRange(v: Val.Range, targetPath: String): String {
+        val cfg = model.rangeConfig[targetPath] ?: return "${v.start}/${v.end}"
+        val (format, sep) = cfg
+        val s = renderDateToFormat(v.start, format)
+        val e = renderDateToFormat(v.end, format)
+        return if (s != null && e != null) "$s$sep$e" else "${v.start}/${v.end}"
     }
 
     private fun evalRule(rule: RuleDef, doc: Document, locale: String): RuleResult {

@@ -556,6 +556,13 @@ class Interpreter(
         // Time(hours, minutes, seconds): the constructed time as `HH:mm:ss`. Components are in range by model
         // validity (an out-of-range constant is MVK_WRONG_DATE_FORMAT_FOR_OP at codegen); empty/malformed → Unknown.
         FunctionOp.TIME -> timeCompose(f.args)
+        // DateRange(start, end): a date range from two date operands (computation-only — the kernel rejects it in
+        // a condition). Rendered to the target field's format at the compute() boundary. Empty/malformed → Unknown.
+        FunctionOp.DATE_RANGE -> {
+            val s = (evalExpr(f.args[0]) as? Val.Txt)?.v
+            val e = (evalExpr(f.args[1]) as? Val.Txt)?.v
+            if (s == null || e == null) Val.Unknown else Val.Range(s, e)
+        }
         // Date-time arithmetic — reduces to integer seconds, so a day boundary carries automatically.
         FunctionOp.ADD_HOURS -> dateTimeShift(f.args, 3_600L)
         FunctionOp.ADD_MINUTES -> dateTimeShift(f.args, 60L)

@@ -170,6 +170,31 @@ fun parseDateToIso(raw: String, format: String): String? {
     return buildIso(m.groupValues.drop(1), comps)
 }
 
+/**
+ * Render an ISO `yyyy-MM-dd` date back into [format] (the kernel's `DateType`/`DateRangeType.format`, e.g.
+ * `dd.MM.yyyy`) — the inverse of [parseDateToIso], used to render a computed `DateRange(...)` to its target
+ * field's format. Each `y`/`M`/`d` run is the component zero-padded to the run length; other characters are
+ * literal. Null if [iso] is malformed.
+ */
+fun renderDateToFormat(iso: String, format: String): String? {
+    val (y, mo, d) = dateParts(iso) ?: return null
+    val sb = StringBuilder()
+    var i = 0
+    while (i < format.length) {
+        val c = format[i]
+        if (c == 'y' || c == 'M' || c == 'd') {
+            var j = i
+            while (j < format.length && format[j] == c) j++
+            val v = when (c) { 'y' -> y; 'M' -> mo; else -> d }
+            sb.append(v.toString().padStart(j - i, '0'))
+            i = j
+        } else {
+            sb.append(c); i++
+        }
+    }
+    return sb.toString()
+}
+
 /** A regex fragment with one capture group per `y`/`M`/`d` run (exact width = run length) plus the component
  *  order; literals are escaped. Null if [format] carries no date component. */
 private fun dateFragment(format: String): Pair<String, List<Char>>? {
