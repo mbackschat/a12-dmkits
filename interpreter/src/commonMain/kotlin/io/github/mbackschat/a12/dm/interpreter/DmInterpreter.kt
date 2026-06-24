@@ -86,7 +86,7 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
         doc.valuedFields().mapNotNull { vf ->
             val kind = model.kinds[vf.path] ?: return@mapNotNull null
             val scale = model.scaleOf(vf.path)
-            formalError(kind, vf.raw, scale, model.dateFormatOf(vf.path))?.let { code ->
+            formalError(kind, vf.raw, scale, model.dateFormatOf(vf.path), model.datePrecisionOf(vf.path))?.let { code ->
                 Message(code.id, FORMAL_RULE_PATH, formatPointer(vf.path, vf.reps), Severity.ERROR, MsgType.VALUE,
                     formalErrorText(code, locale, scale))
             }
@@ -299,7 +299,7 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
         val raw = ctx.displayValue(path)
         if (raw != null) {
             val kind = model.kinds[path] ?: return null
-            formalError(kind, raw, model.scaleOf(path), model.dateFormatOf(path))?.id?.let { return it }
+            formalError(kind, raw, model.scaleOf(path), model.dateFormatOf(path), model.datePrecisionOf(path))?.id?.let { return it }
             return if (path to ctx.repsOf(path) in dup) UNIQUE_INDEX else null
         }
         return if (requiredEmpty(path, ctx)) MANDATORY_FIELD else null

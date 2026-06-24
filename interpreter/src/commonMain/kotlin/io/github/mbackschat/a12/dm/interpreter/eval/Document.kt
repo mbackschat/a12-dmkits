@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.interpreter.eval
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
 import io.github.mbackschat.a12.dm.interpreter.ast.typedValue
+import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ValuedField
 import kotlin.jvm.JvmOverloads
@@ -49,6 +50,10 @@ class Document @JvmOverloads constructor(
      *  canonicalize a rendered date-time to the ISO `yyyy-MM-dd'T'HH:mm:ss` form, format-aware. ISO default when
      *  unset. (Appended after [scales] to keep the positional constructor compatible with existing callers.) */
     private val dateTimeFormats: Map<String, String> = emptyMap(),
+    /** Each [Kind.DATE] field's [DatePrecision] — a `DAY_OPTIONAL` field accepts a day-omitted `00.MM.yyyy`
+     *  value (well-formed, but resolved to [Val.Unknown] directly; `ValueAsDate` resolves it). Default FULL.
+     *  (Appended for positional-constructor compatibility.) */
+    private val datePrecisions: Map<String, DatePrecision> = emptyMap(),
 ) {
     private data class Placement(val path: String, val reps: List<Int>, val value: String?, val isGroup: Boolean)
 
@@ -220,6 +225,8 @@ class Document @JvmOverloads constructor(
 
         override fun declaredKind(path: String): Kind? = kinds[path]
 
+        override fun dateFormatOf(path: String): String? = dateFormats[path]
+
         override fun repsOf(path: String): List<Int> = repsFor(path, group, rowReps)
 
         /** Index tuples of [starPath] across every row of its deepest repeatable group ancestor in scope. */
@@ -250,12 +257,19 @@ class Document @JvmOverloads constructor(
         // operand — matching the kernel (a formal error makes the value non-evaluable). This catches values
         // that parse but are still invalid: signed-zero `-0`, leading-plus `+5`, too-many-decimals. Without
         // this, an aggregate would silently fold a `-0` as 0 and fire where the kernel suppresses.
-        if (formalError(kind, raw, scales[path], dateFormats[path]) != null) return Val.Unknown
+        val precision = datePrecisions[path] ?: DatePrecision.FULL
+        if (formalError(kind, raw, scales[path], dateFormats[path], precision) != null) return Val.Unknown
         return when (kind) {
             Kind.DATE_RANGE -> rangeConfig[path]?.let { (format, sep) ->
                 parseRangeToIso(raw, format, sep)?.let { Val.Range(it.first, it.second) }
             } ?: Val.Unknown
-            Kind.DATE -> parseDateToIso(raw, dateFormats[path] ?: "yyyy-MM-dd")?.let { Val.Txt(it) } ?: Val.Unknown
+            // A DAY_OPTIONAL field's day-omitted value (`00.MM.yyyy`) is well-formed but NOT a single concrete
+            // date → Unknown for a direct reference (only `ValueAsDate` resolves it); a full value canonicalizes.
+            Kind.DATE -> {
+                val fmt = dateFormats[path] ?: "yyyy-MM-dd"
+                if (precision == DatePrecision.DAY_OPTIONAL && dayOptionalParts(raw, fmt)?.third == 0) Val.Unknown
+                else parseDateToIso(raw, fmt)?.let { Val.Txt(it) } ?: Val.Unknown
+            }
             Kind.DATE_TIME -> parseDateTimeToIso(raw, dateTimeFormats[path] ?: "yyyy-MM-dd'T'HH:mm:ss")
                 ?.let { Val.Txt(it) } ?: Val.Unknown
             else -> typedValue(kind, raw)

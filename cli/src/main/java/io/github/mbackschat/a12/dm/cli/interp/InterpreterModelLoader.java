@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef;
+import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision;
 import io.github.mbackschat.a12.dm.interpreter.eval.Document;
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef;
 import io.github.mbackschat.a12.dm.interpreter.model.Kind;
@@ -74,7 +75,8 @@ public final class InterpreterModelLoader {
             if (type != null && id != null) {
                 switch (type) {
                     case "Field" -> fields.add(new FieldDef(id, kindOf(node), localizedTexts(node.path("labels")),
-                            scaleOf(node), signed(node), requirednessOf(node), formatOf(node), rangeSeparatorOf(node)));
+                            scaleOf(node), signed(node), requirednessOf(node), formatOf(node), rangeSeparatorOf(node),
+                            datePrecisionOf(node)));
                     case "Group" -> {
                         JsonNode g = node.path("Group");
                         if (g.path("repeatability").asInt(0) > 1) {
@@ -120,7 +122,8 @@ public final class InterpreterModelLoader {
     /** Build a {@link Document} from a nested fields map (the {@code DocInstance.readFields} output). */
     public static Document document(Map<String, Object> fields, ModelDef model) {
         Document doc = new Document(model.getKinds(), model.getDeclaredReps(), model.getUnsignedFields(),
-                model.getRangeConfig(), model.getDateFormats(), model.getScales(), model.getDateTimeFormats());
+                model.getRangeConfig(), model.getDateFormats(), model.getScales(), model.getDateTimeFormats(),
+                model.getDatePrecisions());
         walkInstance(doc, fields, new ArrayList<>(), new ArrayList<>());
         return doc;
     }
@@ -190,6 +193,15 @@ public final class InterpreterModelLoader {
         }
         String sep = type.path("DateRangeType").path("rangeSeparator").asText("");
         return sep.isEmpty() ? null : sep;
+    }
+
+    /** A DATE field's precision ({@code DateType.datePrecision}); {@code DAY_OPTIONAL} permits a day-omitted
+     *  {@code 00.MM.yyyy} value. Anything else (incl. absent / a non-date field) maps to {@code FULL}. */
+    private static DatePrecision datePrecisionOf(JsonNode fieldNode) {
+        JsonNode type = fieldNode.path("Field").path("fieldType");
+        boolean dayOptional = "DateType".equals(type.path("type").asText(""))
+                && "DAY_OPTIONAL".equals(type.path("DateType").path("datePrecision").asText(""));
+        return dayOptional ? DatePrecision.DAY_OPTIONAL : DatePrecision.FULL;
     }
 
     /** A NUMBER field's scale ({@code NumberType.maxFractionalDigits}), or null for non-number fields. */

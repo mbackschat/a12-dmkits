@@ -123,6 +123,34 @@ private fun wholePeriods(a: String, b: String, add: (String, Int) -> String?): I
  *  (leap-aware). The realness test behind the `Date(...)` constructor and the `Valid`/`Invalid` predicates. */
 fun isRealDate(year: Int, month: Int, day: Int): Boolean = month in 1..12 && day in 1..daysInMonth(year, month)
 
+/**
+ * Parse a **DAY_OPTIONAL** date value rendered in [format] — like [parseDateToIso] but the DAY may be the
+ * sentinel `00` (day omitted). Returns `(year, month, day)` with `day == 0` for an omitted day, or null if
+ * malformed (bad month, an out-of-range real day, or the format has no day component). The basis for the
+ * `DAY_OPTIONAL` formal check and `ValueAsDate`.
+ */
+fun dayOptionalParts(raw: String, format: String): Triple<Int, Int, Int>? {
+    val (frag, comps) = dateFragment(format) ?: return null
+    val m = Regex("^$frag$").matchEntire(raw) ?: return null
+    val g = m.groupValues.drop(1)
+    var y = -1; var mo = -1; var d = -1
+    comps.forEachIndexed { i, c -> val v = g[i].toInt(); when (c) { 'y' -> y = v; 'M' -> mo = v; 'd' -> d = v } }
+    if (y < 0 || mo < 1 || mo > 12 || d < 0) return null            // year/month required; format must carry a day
+    if (d != 0 && d > daysInMonth(y, mo)) return null               // a specified day must be real
+    return Triple(y, mo, d)
+}
+
+/**
+ * Resolve a DAY_OPTIONAL date value to a concrete ISO date: a specified day → that exact date; an omitted
+ * day (`00`) → day 01 ([lastDay] = false) or the month's last day ([lastDay] = true). Null if malformed. The
+ * `ValueAsDate(field, FirstDay\|LastDay)` resolution.
+ */
+fun resolvePartialDate(raw: String, format: String, lastDay: Boolean): String? {
+    val (y, mo, d) = dayOptionalParts(raw, format) ?: return null
+    val day = if (d != 0) d else if (lastDay) daysInMonth(y, mo) else 1
+    return iso(y, mo, day)
+}
+
 /** The canonical ISO `yyyy-MM-dd` for (year, month, day) — zero-padded; the `Date(...)` constructor's value. */
 fun isoDate(year: Int, month: Int, day: Int): String = iso(year, month, day)
 

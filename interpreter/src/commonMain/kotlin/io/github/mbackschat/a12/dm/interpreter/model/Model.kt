@@ -11,6 +11,15 @@ package io.github.mbackschat.a12.dm.interpreter.model
 enum class Kind { NUMBER, STRING, BOOLEAN, CONFIRM, DATE, TIME, DATE_RANGE, DATE_TIME }
 
 /**
+ * A [Kind.DATE] field's precision (the kernel's `DateType.datePrecision`). [FULL] is a complete date;
+ * [DAY_OPTIONAL] permits the **day** to be omitted — entered as `00` in the day position (`00.06.2024`),
+ * which is well-formed (NOT a format error) but is not a single concrete date. `ValueAsDate(field, FirstDay
+ * \|LastDay)` resolves such a partial value to its earliest / latest concrete date. (Only these two are
+ * modeled; a finer precision would map to FULL until a fixture needs it.)
+ */
+enum class DatePrecision { FULL, DAY_OPTIONAL }
+
+/**
  * The evaluation reference clock — the "current point in time" the kernel reads for the clock constants
  * (`Today`, `Now`). It is **injected**, not read from the platform: `commonMain` stays pure (no
  * `java.time`/`Date.now()`), and a deterministic value makes evaluation testable. The consumer supplies it
@@ -71,6 +80,9 @@ data class FieldDef(
     val format: String? = null,
     /** A [Kind.DATE_RANGE] field's two-date separator (the kernel's `DateRangeType.rangeSeparator`, e.g. `-`). */
     val rangeSeparator: String? = null,
+    /** A [Kind.DATE] field's precision (the kernel's `DateType.datePrecision`); [DatePrecision.DAY_OPTIONAL]
+     *  permits a day-omitted `00.MM.yyyy` value. Default [DatePrecision.FULL]. */
+    val datePrecision: DatePrecision = DatePrecision.FULL,
 )
 
 /**
@@ -143,6 +155,15 @@ data class ModelDef(
 
     /** The DATE field's declared format (ISO default), or null for a non-date field. */
     fun dateFormatOf(path: String): String? = dateFormats[path]
+
+    /** Each [Kind.DATE] field's [DatePrecision] — the partial-date (`DAY_OPTIONAL`) input for the formal check
+     *  and `ValueAsDate`. */
+    val datePrecisions: Map<String, DatePrecision> = fields
+        .filter { it.kind == Kind.DATE }
+        .associate { it.path to it.datePrecision }
+
+    /** The DATE field's precision ([DatePrecision.FULL] default), for the format/partial-date checks. */
+    fun datePrecisionOf(path: String): DatePrecision = datePrecisions[path] ?: DatePrecision.FULL
 
     /** Each [Kind.DATE_TIME] field's rendering format (the kernel's `DateTimeType.format`, e.g.
      *  `yyyy-MM-dd'T'HH:mm:ss`) — the [io.github.mbackschat.a12.dm.interpreter.eval.Document]'s format-aware

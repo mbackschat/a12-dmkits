@@ -60,6 +60,10 @@ interface EvalContext {
      *  type-infer an operand — e.g. to canonicalize a German-format date LITERAL only when compared to a date. */
     fun declaredKind(path: String): Kind? = null
 
+    /** A [Kind.DATE] field's declared rendering format (its `DateType.format`), or null. Lets `ValueAsDate`
+     *  parse the field's RAW partial value (`00.MM.yyyy`) in its own format. */
+    fun dateFormatOf(path: String): String? = null
+
     /**
      * The 1-based repetition indices of a field path **in this row** — one per path part (the kernel's
      * `repetitionIndexes()`), for building a field-instance pointer. Defaults to all-1s (correct for a flat

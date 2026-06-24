@@ -355,6 +355,16 @@ A German-format date literal (`"15.06.2024"`, `dd.MM.yyyy`) is typed a **DATE co
 
 **Interpreter consequence:** since a date literal in a *valid* comparison always faces a date, the interpreter canonicalizes a `dd.MM.yyyy` `StrLit` to ISO exactly where it is used as a date — opposite a date-producing operand (`Interpreter.evalCmpOperand` + `producesDate`, which reads the new `EvalContext.declaredKind`) and inside the date functions' date-arg reads (`coerceDate` in `epochOf`/`dateComponent`/`dateShift`). An ISO-format literal (`"2022-01-01"`) is a string (kernel `MVK_INVALID_TYPE_FOR_COMPARISON`), so `coerceDate` only rewrites `dd.MM.yyyy`. The **omitted-year** form (`"13.07."`, a partial date) is not yet modeled. *(Locked: `adapter.laws.DateLiteralDiffTest` — ==, ordering, arg-position, and the value-list non-canonicalization guard.)*
 
+### §6 supplement — partial dates: the `00.MM.yyyy` form and `ValueAsDate`/`FirstDay`/`LastDay` (probe, 2026-06-24)
+
+A `DateType` with `datePrecision: DAY_OPTIONAL` (the order fixture's `ApproxDate`, `dd.MM.yyyy`) may omit the **day** — stored as the sentinel **`00` in the day position** (`00.06.2024`). Probe-confirmed:
+
+- **`00.MM.yyyy` is well-formed** (no `datumFormatFalsch`); `06.2024` / `.06.2024` / `MM.2024` are NOT (`datumFormatFalsch`). So only a literal `00` day omits the day.
+- **`ValueAsDate(field, FirstDay|LastDay)` resolves a partial value**: `FirstDay` → day **01**, `LastDay` → the **month's last day** (`00.06.2024` → `01.06.2024` / `30.06.2024`). A **full** value resolves to **itself** for both day-specifications. `FirstDay`/`LastDay` are operand-less day-specification keywords (the 2nd arg).
+- **`ValueAsDate` is only valid as a direct comparison operand** — nesting it in an extractor (`DayFromDate(ValueAsDate(…))`) is `MVK_UNEXPECTED_TOKEN`. Its headline form compares to a date literal (`> "01.01.2020"`) — which is why date literals (above) had to land first.
+
+**Interpreter consequence:** a `DAY_OPTIONAL` field's day-omitted value is well-formed (precision-aware `formalError`) but is **not a single concrete date**, so a direct reference resolves to `Val.Unknown` — only `ValueAsDate` resolves it (off the field's RAW value + format, via `DateMath.resolvePartialDate`). `FieldDef.datePrecision` + `EvalContext.dateFormatOf` carry the inputs. *(Locked: `adapter.laws.ValueAsDateDiffTest` — FirstDay/LastDay of a partial, ordering vs a literal, and full→itself.)*
+
 ### §6 supplement — `AddYears`/`AddMonths` calendar corrections (runtime, 2026-06-10, RT-semantics drain)
 
 KERNEL-SEMANTICS §6 notes the shifts "disagree across leap years"; the drained source (`BedingungsOperatorHelper.addiereJahre/addiereMonate`) pins the exact corrections, both probe-confirmed:

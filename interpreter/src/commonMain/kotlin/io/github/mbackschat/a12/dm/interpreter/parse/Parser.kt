@@ -283,7 +283,9 @@ private class ConditionParser(private val src: String, private val base: String)
             "DiffersWithToleranceRange5" to dec("5"), "DiffersWithToleranceRange10" to dec("10"),
         )
 
-        /** No-operand constant keywords — emitted as `Expr.Const` (a bare ident, not a field path). */
-        val CONSTANTS = setOf("Today", "Now", "BaseYear")
+        /** No-operand constant keywords — emitted as `Expr.Const` (a bare ident, not a field path). The
+         *  date-constants resolve to a value; `FirstDay`/`LastDay` are day-specification markers consumed
+         *  structurally by `ValueAsDate` (never evaluated standalone). */
+        val CONSTANTS = setOf("Today", "Now", "BaseYear", "FirstDay", "LastDay")
     }
 }

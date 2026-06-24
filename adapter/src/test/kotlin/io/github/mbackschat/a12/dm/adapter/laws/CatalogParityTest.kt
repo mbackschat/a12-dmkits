@@ -50,6 +50,7 @@ class CatalogParityTest {
         "AtLeastOneFieldValueIncludedInValueList", "NoFieldValueIncludedInValueList",  // Cond.ValueListQuant (shape B)
         "NotAllFieldValuesIncludedInValueList",
         "True", "False",                                                   // Expr.BoolLit
+        "FirstDay", "LastDay",                                             // ValueAsDate day-specification markers (Expr.Const)
     )
 
     private val handled: Set<String> = enumHandled + astHandled
@@ -60,10 +61,6 @@ class CatalogParityTest {
 
     /** The operator backlog — constructs not yet handled, each with a reason. This IS "what's left to build". */
     private val deferred: Map<String, String> = buildMap {
-        group(
-            "partial-date family — needs partial-date (DAY_OPTIONAL) precision resolved to earliest/latest concrete date",
-            "ValueAsDate", "FirstDay", "LastDay",
-        )
         group(
             "repetition uniqueness — across-row key uniqueness of a repetition (distinct from the handled " +
                 "scalar FieldValuesNotUnique and the index-field uniqueIndex check, IF15)",
@@ -123,6 +120,8 @@ class CatalogParityTest {
             "Date", "Time", "Valid", "Invalid")
         group("computation-only — DateRangeComputeDiffTest-locked; the fuzz net is condition-based, not a compute net",
             "DateRange")
+        group("partial-date resolution — ValueAsDateDiffTest-locked; needs a DAY_OPTIONAL field in the fuzz model",
+            "ValueAsDate")
         group(
             "round/abs *Value-field + coercion siblings — RoundDown/RoundAccounting/RoundUpValue + Abs are fuzzed; each DiffTest-locked",
             "RoundUp", "RoundDownValue", "RoundAccountingValue", "AbsValue", "FieldValueAsNumber",

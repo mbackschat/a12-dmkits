@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
+import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 
 /**
@@ -66,13 +67,22 @@ enum class FormalErrorCode(val id: String) {
     PLUS_SIGN("zahlMitPlus"),
 }
 
-fun formalError(kind: Kind, raw: String, scale: Int? = null, dateFormat: String? = null): FormalErrorCode? {
+fun formalError(
+    kind: Kind, raw: String, scale: Int? = null, dateFormat: String? = null,
+    datePrecision: DatePrecision = DatePrecision.FULL,
+): FormalErrorCode? {
     if (raw.isEmpty()) return null
     return when (kind) {
         // Format-aware: a value valid for the field's DECLARED format is well-formed (a `dd.MM.yyyy` field's
         // `15.06.2024` is fine — not ISO, but valid for its format). Canonicalize-or-fail via parseDateToIso;
-        // null format defaults to ISO (KERNEL-FINDINGS plain-date locale handling, PlainDateDiffTest).
-        Kind.DATE -> if (parseDateToIso(raw, dateFormat ?: ISO_FORMAT) != null) null else FormalErrorCode.DATE_FORMAT
+        // null format defaults to ISO (KERNEL-FINDINGS plain-date locale handling, PlainDateDiffTest). A
+        // DAY_OPTIONAL field additionally accepts a day-omitted `00.MM.yyyy` value as well-formed.
+        Kind.DATE -> {
+            val fmt = dateFormat ?: ISO_FORMAT
+            val ok = if (datePrecision == DatePrecision.DAY_OPTIONAL) dayOptionalParts(raw, fmt) != null
+            else parseDateToIso(raw, fmt) != null
+            if (ok) null else FormalErrorCode.DATE_FORMAT
+        }
         Kind.NUMBER -> numberFormalError(raw, scale)
         // TIME's HH:mm:ss check, DATE_TIME's date-time-format check, and DATE_RANGE's `datumBereichFormatFalsch`
         // are deferred (a malformed value already resolves to Val.Unknown via the format-aware parse, so a

@@ -103,6 +103,7 @@ enum class FunctionOp(val kernelName: String) {
     DATE("Date"),
     TIME("Time"),
     DATE_RANGE("DateRange"),
+    VALUE_AS_DATE("ValueAsDate"),
     ADD_HOURS("AddHours"),
     ADD_MINUTES("AddMinutes"),
     ADD_SECONDS("AddSeconds"),

@@ -607,6 +607,10 @@ class Interpreter(
             val e = (evalExpr(f.args[1]) as? Val.Txt)?.v
             if (s == null || e == null) Val.Unknown else Val.Range(s, e)
         }
+        // ValueAsDate(field, FirstDay|LastDay): resolve a partial (DAY_OPTIONAL) date field's RAW value to a
+        // concrete date — FirstDay → day 01, LastDay → the month's last day; a full value → itself. Reads the
+        // raw value + the field's format (the canonicalized Val is Unknown for a `00`-day value).
+        FunctionOp.VALUE_AS_DATE -> valueAsDate(f.args)
         // Date-time arithmetic — reduces to integer seconds, so a day boundary carries automatically.
         FunctionOp.ADD_HOURS -> dateTimeShift(f.args, 3_600L)
         FunctionOp.ADD_MINUTES -> dateTimeShift(f.args, 60L)
@@ -861,6 +865,17 @@ class Interpreter(
         return Val.Num(dec(((b - a) / unitSeconds).toString()))
     }
 
+    /** `ValueAsDate(field, FirstDay|LastDay)` — resolve a (DAY_OPTIONAL) date field's raw value to a concrete
+     *  date: a specified day → itself, an omitted `00` day → the month's first (`FirstDay`) or last (`LastDay`)
+     *  day. Unknown when the field is empty/formally-invalid or the value doesn't parse. */
+    private fun valueAsDate(args: List<Expr>): Val {
+        val path = pathOf(args[0])
+        if (invalid(path)) return Val.Unknown
+        val raw = ctx.displayValue(path) ?: return Val.Unknown
+        val lastDay = (args[1] as? Expr.Const)?.name == "LastDay"
+        return resolvePartialDate(raw, ctx.dateFormatOf(path) ?: "yyyy-MM-dd", lastDay)?.let { Val.Txt(it) } ?: Val.Unknown
+    }
+
     /** `Add{Days,Months,Years}(date, n)` → the [shift]ed date as ISO text; Unknown if the date or count is absent. */
     private fun dateShift(args: List<Expr>, shift: (String, Int) -> String?): Val {
         val date = (coerceDate(evalExpr(args[0])) as? Val.Txt)?.v ?: return Val.Unknown
@@ -923,6 +938,7 @@ class Interpreter(
             FunctionOp.DATE, FunctionOp.DATE_FROM_DATE_TIME,
             FunctionOp.START_OF_DATE_RANGE, FunctionOp.END_OF_DATE_RANGE,
             FunctionOp.ADD_DAYS, FunctionOp.ADD_MONTHS, FunctionOp.ADD_YEARS,
+            FunctionOp.VALUE_AS_DATE,
         )
 
         /** `RangeAsNumber` parses its substring ONLY when it is a run of digits (kernel `\d+`); else the value is 0. */
