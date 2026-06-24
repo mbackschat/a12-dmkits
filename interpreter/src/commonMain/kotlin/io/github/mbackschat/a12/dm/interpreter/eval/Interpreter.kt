@@ -523,6 +523,13 @@ class Interpreter(
         // time extractors read). Empty/malformed operand (no `T`) → Unknown.
         FunctionOp.DATE_FROM_DATE_TIME -> dateTimePart(f.args[0], time = false)
         FunctionOp.TIME_FROM_DATE_TIME -> dateTimePart(f.args[0], time = true)
+        // DateTime(date, time): compose a DATE (`yyyy-MM-dd`) and a TIME (`HH:mm:ss`) into the canonical
+        // date-time `yyyy-MM-dd'T'HH:mm:ss`. Either operand empty/malformed → Unknown.
+        FunctionOp.DATE_TIME -> {
+            val date = (evalExpr(f.args[0]) as? Val.Txt)?.v
+            val time = (evalExpr(f.args[1]) as? Val.Txt)?.v
+            if (date == null || time == null) Val.Unknown else Val.Txt("${date}T$time")
+        }
         // Date arithmetic — date + n days / months / years → a date (ISO text). Empty/absent date → Unknown.
         FunctionOp.ADD_DAYS -> dateShift(f.args, ::addDays)
         FunctionOp.ADD_MONTHS -> dateShift(f.args, ::addMonths)
