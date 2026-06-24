@@ -365,23 +365,95 @@ class DmInterpreter @JvmOverloads constructor(
      */
     fun compute(doc: Document, locale: String = "en_US"): List<Computed> {
         val out = mutableListOf<Computed>()
-        for (comp in model.computations) {
+        // **Cascade** — a computation may reference ANOTHER computation's target field; the kernel computes the
+        // dependency first and the dependent reads its computed value (the CalculationCache). We mirror that
+        // **side-effect-free**: compute in dependency order, accumulating each result into an [overlay] (the
+        // computed values), and evaluate a dependent through an [OverlayContext] that returns those overlaid
+        // values for computed-field reads. Without this the dependent read the stored (empty) operand → a wrong
+        // value (verified vs the kernel). No doc mutation, so a reused doc never accumulates placements; for a
+        // model with no inter-computation dependency the overlay is never consulted (zero behavior change).
+        val overlay = HashMap<Pair<String, List<Int>>, Val>()
+        for (comp in computationsInDependencyOrder()) {
             val expr = exprAstOf(comp)
             val scope = scopeFromRefs(exprRefs(expr) + comp.targetPath, comp.group)
             for (ctx in doc.contextsFor(scope)) {
-                out += when (val v = Interpreter(ctx, clock, model.baseYear, model.indexFields, predefinedTypes).evalExpression(expr)) {
-                    is Val.Num -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v.display())
-                    is Val.Txt -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v)
-                    is Val.Bool -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v.toString())
-                    is Val.Unknown -> Computed(comp.targetPath, ComputeOutcome.CLEARED)
-                    // A computed date-RANGE (`DateRange(start, end)`) — rendered to the TARGET field's
-                    // (format, separator), so `2024-06-01`/`2024-06-30` → `01.06.2024-30.06.2024` for a
-                    // `dd.MM.yyyy`-`-` CoverageWindow. Falls back to ISO `start/end` if the target declares no range config.
-                    is Val.Range -> Computed(comp.targetPath, ComputeOutcome.VALUE, renderRange(v, comp.targetPath))
-                }
+                val ectx = if (overlay.isEmpty()) ctx else OverlayContext(ctx, overlay)
+                val v = Interpreter(ectx, clock, model.baseYear, model.indexFields, predefinedTypes).evalExpression(expr)
+                out += toComputed(comp, v)
+                if (v !is Val.Unknown) overlay[comp.targetPath to ctx.repsOf(comp.targetPath)] = v
             }
         }
         return out
+    }
+
+    /** One computed-field outcome for [comp] from its evaluated [v]: VALUE (resolved, empty-as-0 applies) / CLEARED. */
+    private fun toComputed(comp: ComputationDef, v: Val): Computed = when (v) {
+        is Val.Num -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v.display())
+        is Val.Txt -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v)
+        is Val.Bool -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v.toString())
+        is Val.Unknown -> Computed(comp.targetPath, ComputeOutcome.CLEARED)
+        // A computed date-RANGE (`DateRange(start, end)`) — rendered to the TARGET field's (format, separator),
+        // so `2024-06-01`/`2024-06-30` → `01.06.2024-30.06.2024` for a `dd.MM.yyyy`-`-` CoverageWindow. Falls
+        // back to ISO `start/end` if the target declares no range config.
+        is Val.Range -> Computed(comp.targetPath, ComputeOutcome.VALUE, renderRange(v, comp.targetPath))
+    }
+
+    /**
+     * The model's computations in **dependency order** — a computation whose expression references another
+     * computation's target field comes AFTER it (the cascade). A DFS topological sort; a cyclic dependency
+     * (which the kernel rejects at codegen) throws. References are taken over ALL field/star paths so a
+     * dependency through an aggregate over a computed field is ordered too.
+     */
+    private fun computationsInDependencyOrder(): List<ComputationDef> {
+        val byTarget = model.computations.associateBy { it.targetPath }
+        val ordered = mutableListOf<ComputationDef>()
+        val done = HashSet<String>()
+        val onStack = HashSet<String>()
+        fun visit(c: ComputationDef) {
+            if (c.targetPath in done) return
+            if (!onStack.add(c.targetPath)) {
+                throw UnsupportedConstructException("cyclic computation dependency involving ${c.targetPath}")
+            }
+            for (ref in referencedFieldPaths(exprAstOf(c))) {
+                byTarget[ref]?.let { dep -> if (dep.targetPath != c.targetPath) visit(dep) }
+            }
+            onStack.remove(c.targetPath)
+            if (done.add(c.targetPath)) ordered.add(c)
+        }
+        model.computations.forEach { visit(it) }
+        return ordered
+    }
+
+    /**
+     * Decorates an [EvalContext] so reads of a field that a PRIOR computation produced return its computed
+     * value (the cascade overlay) — keyed by `(path, reps)`, no document mutation. Only the value/fill reads
+     * are overlaid (a direct `[A]` / `FieldFilled(A)` reference to a computed field A); star aggregation over a
+     * computed field is delegated to the real context (an exotic case, unchanged). All other methods delegate.
+     */
+    private class OverlayContext(
+        private val d: EvalContext,
+        private val overlay: Map<Pair<String, List<Int>>, Val>,
+    ) : EvalContext by d {
+        private fun overlaid(path: String): Val? = overlay[path to d.repsOf(path)]
+        override fun field(path: String): Val = overlaid(path) ?: d.field(path)
+        override fun filled(path: String): Boolean = overlaid(path)?.let { it !is Val.Unknown } ?: d.filled(path)
+        override fun displayValue(path: String): String? = when (val v = overlaid(path)) {
+            is Val.Num -> v.v.display()
+            is Val.Txt -> v.v
+            is Val.Bool -> v.v.toString()
+            else -> d.displayValue(path)
+        }
+    }
+
+    /** Every field/star path an expression reads — for cascade dependency ordering (incl. starred aggregates). */
+    private fun referencedFieldPaths(expr: Expr): List<String> = when (expr) {
+        is Expr.Field -> listOf(expr.path)
+        is Expr.Star -> listOf(expr.path)
+        is Expr.Func -> expr.args.flatMap { referencedFieldPaths(it) }
+        is Expr.Arith -> referencedFieldPaths(expr.left) + referencedFieldPaths(expr.right)
+        is Expr.EnumCategory -> listOf(expr.path)
+        is Expr.SemanticIndex -> listOfNotNull(expr.path, expr.indexFieldPath)
+        else -> emptyList()
     }
 
     /** Render a computed [Val.Range] to the target field's `(format, separator)` (e.g. `01.06.2024-30.06.2024`);
@@ -491,8 +563,24 @@ class DmInterpreter @JvmOverloads constructor(
      * rule's node placement — so a rule declared at `/Order` that reaches into `/Order/Items` iterates the
      * Items rows.
      */
-    private fun iterationScope(rule: RuleDef, ast: Cond): String =
-        scopeFromRefs(nonStarredRefs(ast), rule.group)
+    private fun iterationScope(rule: RuleDef, ast: Cond): String {
+        val refs = nonStarredRefs(ast)
+        val scope = scopeFromRefs(refs, rule.group)
+        // **Parallel iteration** — two NON-nested repeatable groups (siblings, neither an ancestor of the
+        // other) referenced per-row. The kernel iterates them JOINTLY as an outer join keyed by a shared index
+        // field (KERNEL-SEMANTICS §9; the kernel's IndexFieldCache makes it O(rows)). The interpreter does not
+        // implement that join, so rather than silently iterate ONE side and read the other at row 1 (a WRONG
+        // answer — verified: it under-fires vs the kernel), it **fails loud**: report the rule unsupported.
+        // (Nested groups are fine — the sibling test is "not on the scope's ancestor chain".)
+        val parallelGroup = refs.flatMap { ancestorGroups(it).filter { g -> g in model.repeatable } }
+            .firstOrNull { it != scope && !scope.startsWith("$it/") }
+        if (parallelGroup != null) {
+            throw UnsupportedConstructException(
+                "parallel iteration over non-nested repeatable groups ($parallelGroup and $scope, joined by a " +
+                    "shared index field) is not modeled — the kernel evaluates this; the interpreter does not yet")
+        }
+        return scope
+    }
 
     /** The deepest repeatable group ancestor of any [refs] path, else [defaultGroup]. */
     private fun scopeFromRefs(refs: List<String>, defaultGroup: String): String =
