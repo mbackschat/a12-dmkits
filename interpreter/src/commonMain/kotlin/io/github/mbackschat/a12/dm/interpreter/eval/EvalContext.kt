@@ -39,6 +39,15 @@ interface EvalContext {
     /** The FILLED values of a starred field across the repeatable group's rows (for aggregates). */
     fun star(path: String): List<Val>
 
+    /**
+     * The value of a starred field for **every** row of its repeatable group, in row order — an EMPTY row
+     * yields the kind's empty value (a number → 0), a malformed value → [Val.Unknown]. Unlike [star] (which
+     * drops empties), this preserves **row alignment**, so two fields of the same repeatable group can be paired
+     * row-by-row (`SumOfProducts`). The general [Document] resolves it; the flat spike contexts don't model rows.
+     */
+    fun starAll(path: String): List<Val> =
+        throw UnsupportedConstructException("row-aligned star needs the general Document context, not $this")
+
     /** Whether a starred aggregate over [path] could still grow (an empty operand, or an
      *  un-instantiated tail below the declared repetition) → types a fired comparison OMISSION. */
     fun starOmission(path: String): Boolean

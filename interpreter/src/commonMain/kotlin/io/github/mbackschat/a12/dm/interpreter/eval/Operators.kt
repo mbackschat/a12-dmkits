@@ -121,6 +121,9 @@ enum class FunctionOp(val kernelName: String) {
     // → `0` (kernel `feldWertAlsZahl`). KERNEL-FINDINGS family 4.
     FIELD_VALUE_AS_STRING("FieldValueAsString"),
     FIELD_VALUE_AS_NUMBER("FieldValueAsNumber"),
+    // `SumOfProducts(a*, b*)` — Σ aᵢ·bᵢ over two parallel field lists of the SAME repeatable group, paired
+    // row-by-row (empty → 0, kernel `summeVonProdukten`); any malformed element → non-evaluable (suppressed).
+    SUM_OF_PRODUCTS("SumOfProducts"),
     ;
 
     companion object {

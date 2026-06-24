@@ -450,6 +450,8 @@ class Interpreter(
             pathOf(f.args[0]).let { if (invalid(it)) Val.Unknown else Val.Txt(ctx.displayValue(it) ?: "") }
         // FieldValueAsNumber(string/numeric-enum field): the value parsed to a number; empty → 0 (kernel feldWertAlsZahl).
         FunctionOp.FIELD_VALUE_AS_NUMBER -> fieldValueAsNumber(pathOf(f.args[0]))
+        // SumOfProducts(a*, b*): Σ aᵢ·bᵢ paired row-by-row (empty → 0); any malformed element → suppressed.
+        FunctionOp.SUM_OF_PRODUCTS -> sumOfProducts(f.args)
         null -> throw UnsupportedConstructException("unsupported function ${f.name}")
     }
 
@@ -483,6 +485,21 @@ class Interpreter(
             if (eq(v, target)) count++
         }
         return Val.Num(dec(count))
+    }
+
+    /**
+     * `SumOfProducts(a*, b*)` — Σ aᵢ·bᵢ over two parallel field lists of the SAME repeatable group, paired
+     * **row-by-row** (the kernel zips the two row iterators). An empty cell reads as `0` (so its product is 0);
+     * any malformed cell makes the whole sum non-evaluable → the rule is suppressed (the formal mechanism). Both
+     * stars resolve over the same group, so `starAll` yields equal-length, row-aligned lists.
+     */
+    private fun sumOfProducts(args: List<Expr>): Val {
+        val a = ctx.starAll((args[0] as Expr.Star).path)
+        val b = ctx.starAll((args[1] as Expr.Star).path)
+        if (a.any { it is Val.Unknown } || b.any { it is Val.Unknown }) return Val.Unknown
+        var sum = DEC_ZERO
+        for (i in a.indices) sum += num(a[i]) * num(b[i])
+        return Val.Num(sum)
     }
 
     /** `FieldValueAsNumber(field)` — the field's value parsed to a number; an EMPTY field reads as `0` (kernel

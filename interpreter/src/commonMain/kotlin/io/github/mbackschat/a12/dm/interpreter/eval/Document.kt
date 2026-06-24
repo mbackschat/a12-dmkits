@@ -200,6 +200,10 @@ class Document @JvmOverloads constructor(
         override fun star(path: String): List<Val> =
             starRows(path).mapNotNull { reps -> valueAt(path, reps)?.value?.let { resolveValue(path, it) } }
 
+        // Row-aligned: one entry per group row — empty → the kind's empty value (number → 0), malformed → Unknown.
+        override fun starAll(path: String): List<Val> =
+            starRows(path).map { reps -> valueAt(path, reps)?.value?.let { resolveValue(path, it) } ?: emptyValue(kindOf(path)) }
+
         override fun starOmission(path: String): Boolean {
             val repGroup = parentGroup(path)
             val rows = starRows(path)
