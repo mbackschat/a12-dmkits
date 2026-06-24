@@ -1,6 +1,5 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
-import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 
@@ -37,61 +36,31 @@ class PerfScalingTest {
     }
 
     /**
-     * **Goal 1 — fast startup.** The kernel's FIRST validateFull pays codegen + Groovy compile; the interpreter's
-     * first call pays only a lazy index build + first rule parse. Times the cold first call of each (a fresh
-     * engine, one validateFull) on the 48-rule model — the interpreter should start far faster.
+     * **Goal 1 — fast startup, measured on the interpreter's OWN terms.** The interpreter's startup is: build
+     * the engine (lazy — just AST wrappers, no parse) + the first `validateFull` (one-time lazy index build +
+     * first rule parse), after which it is steady-state. We report those in absolute terms.
+     *
+     * **We do NOT time the kernel's cold codegen for comparison** — non-negotiable #2: kernel codegen is
+     * *always ahead of use* in real-world projects (model-load / deploy time), so the kernel never pays it per
+     * request; putting it next to the interpreter's startup would be the forbidden, unfair measurement. The
+     * interpreter's *not needing* codegen at all is a capability point (native image, one-shot CLI / JS), not a
+     * startup-timing race — and so it is not benchmarked here.
      */
     @Test
     fun startupCost() {
-        val model = ruled48()
-        val doc = smallDoc()
-
-        // Kernel cold start: build the rt-service (deserialize+expand, no codegen yet), then the FIRST
-        // validateFull triggers Groovy codegen + compile. That whole first call IS the kernel's startup cost.
-        val kEng = RuntimeLaws.kernelEngine(model)
-        val kBuilt = kEng.instance(doc)
-        val kCold = timeOnce { kEng.firedCodesSorted(kBuilt) }
-
-        // Interp cold start: build DmInterpreter (lazy — just AST wrappers) then the FIRST validateFull
-        // (lazy index build + first parse of the touched rules).
         val scenario = PerfCatalog.manyRules(48)
         val tEng = System.nanoTime()
-        val iEng = InterpreterPerfEngine.build(scenario)
-        val iBuildMs = (System.nanoTime() - tEng) / 1e6
-        val iInst = iEng.instance(48)   // small doc
-        val iCold = timeOnce { iInst.run() }
+        val eng = InterpreterPerfEngine.build(scenario)          // lazy — builds AST wrappers, no parse
+        val buildMs = (System.nanoTime() - tEng) / 1e6
+        val inst = eng.instance(48)                              // small doc, built OUTSIDE the timed region
+        val coldMs = timeOnce { inst.run() }                     // first call: lazy index build + first parse + eval
+        val warmMs = (0 until 8).minOf { timeOnce { inst.run() } }   // steady-state per call
 
-        println("[startup] 48-rule model, cold first validateFull:")
-        println("  kernel:  first call (incl. codegen+compile) = %.1f ms".format(kCold))
-        println("  interp:  engine build = %.2f ms,  first call (index+parse) = %.2f ms".format(iBuildMs, iCold))
-        println("  → interpreter startup is ~%.0f× cheaper (no codegen)".format(kCold / (iBuildMs + iCold)))
-    }
-
-    private fun ruled48(): String {
-        // The same 48-rule shape the crossover sweep uses, but inline so this test owns its model.
-        val base = RuntimeLaws.model("models/perf.dm.json")
-        var m = base
-        for (i in 0 until 48) {
-            val code = "R%03d".format(i)
-            m = when (i % 4) {
-                0 -> RuntimeLaws.withRule(m, "/Perf/Lines", "R_$code", "../Qty", code, "FieldFilled(Qty) And [Qty] > ${50 + i}")
-                1 -> RuntimeLaws.withRule(m, "/Perf/Lines", "R_$code", "../Amount", code, "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]")
-                2 -> RuntimeLaws.withRule(m, "/Perf/Lines/Subs", "R_$code", "../Cost", code, "FieldFilled(Cost) And [Cost] > ${40 + (i % 50)}")
-                else -> RuntimeLaws.withRule(m, "/Perf", "R_$code", "../Lines/Amount", code, "Sum(Lines*/Amount) > ${1000 + i}")
-            }
-        }
-        return m
-    }
-
-    private fun smallDoc(): RuntimeLaws.Doc {
-        val doc = RuntimeLaws.doc()
-        for (i in 1..20) {
-            doc.group("/Perf/Lines", 1, i)
-            doc.field("/Perf/Lines/LineKey", "K$i", 1, i, 1)
-            doc.field("/Perf/Lines/Qty", (i * 5).toString(), 1, i, 1)
-            doc.field("/Perf/Lines/Amount", (i * 3).toString(), 1, i, 1)
-        }
-        return doc
+        println("[startup] interpreter, 48-rule model (kernel codegen NOT measured — it is ahead-of-use):")
+        println("  engine build       = %.2f ms (lazy AST wrappers, no parse)".format(buildMs))
+        println("  first validateFull = %.2f ms (one-time lazy index build + first parse)".format(coldMs))
+        println("  steady-state/call  = %.2f ms".format(warmMs))
+        println("  → one-time startup overhead ≈ %.2f ms; the interpreter pays NO codegen step at all".format(buildMs + (coldMs - warmMs)))
     }
 
     private fun timeOnce(block: () -> Unit): Double {
