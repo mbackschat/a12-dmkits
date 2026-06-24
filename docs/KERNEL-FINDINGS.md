@@ -312,6 +312,15 @@ A field's declared date **format** must be a **lowercase Java date pattern** fro
 
 The non-obvious part — and the trap: **that rejection fires at CODE GENERATION, not at the parser consistency check.** Probed: `[OrderDate] >= Now` (a `DateType` field) **passes** `RuleValidator.check` (the parse/consistency phase) but throws `DocumentValidationException … while generating code: … [MVK_INVALID_COMPARE_TO_DATE]` once the model is compiled. By contrast a *number*-vs-`Now` mismatch (`[Quantity] >= Now`) is caught at the **parse** phase (like the `Today` number case, line 288). Consequence: the N7 catalog harness (`CatalogExamplesAreKernelValidTest`, which runs only `RuleValidator.check`) **cannot** verify a codegen-only `invalidExample` — the `Now` catalog entry therefore uses the parse-rejected number mismatch as its executable `invalidExample`, and documents the date-field rejection in prose. *(Interpreter side: `Now` reuses the injected `EvalClock` — `EvalClock.now`, an ISO `yyyy-MM-dd'T'HH:mm:ss` — exactly as `Today` reuses `EvalClock.today`; `Kind.DATE_TIME` canonicalizes a date-time field to ISO text so the comparison stays lexicographic-chronological. Locked: `adapter.laws.NowDiffTest` (FAR-instant firing + polarity) + `InterpreterMultiplatformTest.nowConstantResolvesToInjectedClock` (exact-instant boundary, JVM+JS).)*
 
+### §6 supplement — date-time sub-unit arithmetic: day-carry on add, TRUNCATE-toward-zero on difference (probe, 2026-06-24)
+
+The date-time arithmetic family over DATE_TIME operands — `AddHours`/`AddMinutes`/`AddSeconds` and `DifferenceInHours`/`DifferenceInMinutes`/`DifferenceInSeconds` — reduces to integer **seconds since epoch**, so:
+
+- **`Add*` carries across the day boundary.** `AddHours(2024-06-15T22:00:00, 5)` → `2024-06-16T03:00:00` (probe-confirmed: the resulting DATE part is the 16th, the TIME part 03:00). `AddMinutes`/`AddSeconds` likewise.
+- **`DifferenceInUnit(a, b) = (epochSecond(b) − epochSecond(a)) / unit`, TRUNCATED toward zero — not floored.** Probed decisively with a reverse difference: `DifferenceInHours(later, earlier)` of −5h30m15s is **−5, not −6**. So it is plain integer division (magnitude = the forward floor, sign by direction) — the same truncate-toward-zero the `DifferenceInMonths`/`DifferenceInYears` "whole periods" implementation already produces (`wholePeriods` computes the positive count then negates). The arg order matches `DifferenceInDays`: `b − a`.
+
+*(Interpreter: `DateMath.epochSecond`/`isoFromEpochSecond`/`addDateTimeSeconds` + `Interpreter.dateTimeShift`/`dateTimeDiff`. Locked: `adapter.laws.DateTimeArithmeticDiffTest` — the add day-carry cases + the forward/reverse difference sign cases.)*
+
 ### §6 supplement — `AddYears`/`AddMonths` calendar corrections (runtime, 2026-06-10, RT-semantics drain)
 
 KERNEL-SEMANTICS §6 notes the shifts "disagree across leap years"; the drained source (`BedingungsOperatorHelper.addiereJahre/addiereMonate`) pins the exact corrections, both probe-confirmed:

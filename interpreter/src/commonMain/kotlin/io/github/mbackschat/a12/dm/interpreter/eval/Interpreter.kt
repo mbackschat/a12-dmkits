@@ -530,6 +530,15 @@ class Interpreter(
             val time = (evalExpr(f.args[1]) as? Val.Txt)?.v
             if (date == null || time == null) Val.Unknown else Val.Txt("${date}T$time")
         }
+        // Date-time arithmetic — reduces to integer seconds, so a day boundary carries automatically.
+        FunctionOp.ADD_HOURS -> dateTimeShift(f.args, 3_600L)
+        FunctionOp.ADD_MINUTES -> dateTimeShift(f.args, 60L)
+        FunctionOp.ADD_SECONDS -> dateTimeShift(f.args, 1L)
+        // DifferenceInUnit(a, b) = (epochSecond(b) − epochSecond(a)) / unit, TRUNCATED toward zero (kernel-probed:
+        // a reverse difference of −5.5 units yields −5, not −6 — so plain integer division, not floor).
+        FunctionOp.DIFFERENCE_IN_HOURS -> dateTimeDiff(f.args, 3_600L)
+        FunctionOp.DIFFERENCE_IN_MINUTES -> dateTimeDiff(f.args, 60L)
+        FunctionOp.DIFFERENCE_IN_SECONDS -> dateTimeDiff(f.args, 1L)
         // Date arithmetic — date + n days / months / years → a date (ISO text). Empty/absent date → Unknown.
         FunctionOp.ADD_DAYS -> dateShift(f.args, ::addDays)
         FunctionOp.ADD_MONTHS -> dateShift(f.args, ::addMonths)
@@ -702,6 +711,22 @@ class Interpreter(
         val t = v.indexOf('T')
         if (t < 0) return Val.Unknown
         return Val.Txt(if (time) v.substring(t + 1) else v.substring(0, t))
+    }
+
+    /** `Add{Hours,Minutes,Seconds}(dateTime, n)` → the date-time shifted by `n · [unitSeconds]` (day boundary
+     *  carried), as ISO text; Unknown if the date-time or count is absent/malformed. */
+    private fun dateTimeShift(args: List<Expr>, unitSeconds: Long): Val {
+        val dt = (evalExpr(args[0]) as? Val.Txt)?.v ?: return Val.Unknown
+        val n = (evalExpr(args[1]) as? Val.Num)?.v?.display()?.toLongOrNull() ?: return Val.Unknown
+        return addDateTimeSeconds(dt, n * unitSeconds)?.let { Val.Txt(it) } ?: Val.Unknown
+    }
+
+    /** `DifferenceIn{Hours,Minutes,Seconds}(a, b)` → `(epochSecond(b) − epochSecond(a)) / [unitSeconds]`,
+     *  truncated toward zero; Unknown if either date-time is absent/malformed. */
+    private fun dateTimeDiff(args: List<Expr>, unitSeconds: Long): Val {
+        val a = (evalExpr(args[0]) as? Val.Txt)?.v?.let { epochSecond(it) } ?: return Val.Unknown
+        val b = (evalExpr(args[1]) as? Val.Txt)?.v?.let { epochSecond(it) } ?: return Val.Unknown
+        return Val.Num(dec(((b - a) / unitSeconds).toString()))
     }
 
     /** `Add{Days,Months,Years}(date, n)` → the [shift]ed date as ISO text; Unknown if the date or count is absent. */

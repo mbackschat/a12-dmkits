@@ -51,6 +51,29 @@ fun isoFromEpochDay(z: Long): String {
 /** ISO date [n] days after [iso] (proleptic Gregorian), or null if [iso] is malformed. */
 fun addDays(iso: String, n: Int): String? = epochDay(iso)?.let { isoFromEpochDay(it + n) }
 
+private val ISO_DATE_TIME = Regex("""(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})""")
+
+/** Seconds since 1970-01-01T00:00:00 for a canonical ISO `yyyy-MM-dd'T'HH:mm:ss`, or null if malformed. The
+ *  date-time math (`Add{Hours,Minutes,Seconds}`, `DifferenceIn{Hours,Minutes,Seconds}`) reduces to integer
+ *  arithmetic on this, so a day boundary carries automatically. */
+fun epochSecond(iso: String): Long? {
+    val m = ISO_DATE_TIME.matchEntire(iso) ?: return null
+    val day = epochDay("${m.groupValues[1]}-${m.groupValues[2]}-${m.groupValues[3]}") ?: return null
+    val h = m.groupValues[4].toInt(); val mi = m.groupValues[5].toInt(); val s = m.groupValues[6].toInt()
+    if (h > 23 || mi > 59 || s > 59) return null
+    return day * 86_400L + h * 3_600L + mi * 60L + s
+}
+
+/** Inverse of [epochSecond] — the canonical ISO date-time for a second count (handles day rollover via floorDiv). */
+fun isoFromEpochSecond(z: Long): String {
+    val tod = z.mod(86_400L)                                 // [0, 86399], floor-mod so a negative z still rolls back
+    val date = isoFromEpochDay(z.floorDiv(86_400L))
+    return date + "T" + two((tod / 3_600).toInt()) + ":" + two(((tod % 3_600) / 60).toInt()) + ":" + two((tod % 60).toInt())
+}
+
+/** ISO date-time [seconds] after [iso] (carrying across days), or null if [iso] is malformed. */
+fun addDateTimeSeconds(iso: String, seconds: Long): String? = epochSecond(iso)?.let { isoFromEpochSecond(it + seconds) }
+
 /** ISO date [n] months after [iso], clamping the day to the target month's length (e.g. Jan 31 +1mo → Feb 28/29). */
 fun addMonths(iso: String, n: Int): String? {
     val (y, m, d) = dateParts(iso) ?: return null

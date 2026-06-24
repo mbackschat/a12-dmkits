@@ -64,8 +64,6 @@ class CatalogParityTest {
             "date/time family — needs the date-time/partial-date foundation extended past the Now constant; the " +
                 "Feb-28 leap time-clearing must be replicated when AddYears/AddMonths gain DATE_TIME operands",
             "BaseYear", "Date", "Time",
-            "AddHours", "AddMinutes", "AddSeconds",
-            "DifferenceInHours", "DifferenceInMinutes", "DifferenceInSeconds",
             "DateRange", "ValueAsDate", "FirstDay", "LastDay",
         )
         group(
@@ -120,8 +118,10 @@ class CatalogParityTest {
             "DifferenceInDays", "DifferenceInMonths", "DifferenceInYears",
             "StartOfDateRange", "EndOfDateRange",
         )
-        group("date-time compose/extract — DateTimeExtractDiffTest / DateTimeConstructDiffTest-locked; need date/time fields in the fuzz model",
-            "DateFromDateTime", "TimeFromDateTime", "DateTime")
+        group("date-time compose/extract/arithmetic — DateTime*DiffTest-locked; need date/time fields in the fuzz model",
+            "DateFromDateTime", "TimeFromDateTime", "DateTime",
+            "AddHours", "AddMinutes", "AddSeconds",
+            "DifferenceInHours", "DifferenceInMinutes", "DifferenceInSeconds")
         group(
             "round/abs *Value-field + coercion siblings — RoundDown/RoundAccounting/RoundUpValue + Abs are fuzzed; each DiffTest-locked",
             "RoundUp", "RoundDownValue", "RoundAccountingValue", "AbsValue", "FieldValueAsNumber",
