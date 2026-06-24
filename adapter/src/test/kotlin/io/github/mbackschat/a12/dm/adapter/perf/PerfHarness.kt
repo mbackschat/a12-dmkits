@@ -292,20 +292,19 @@ object PerfHarness {
                 "  $bLabel(${b.size})=${b.distinct()}\n  $aLabel(${a.size})=${a.distinct()}"
         }
 
-    /** A one-line single-document log row: interp vs both kernel baselines + the fair (java) ratio + Groovy tax. */
+    /** A one-line single-document log row: interp vs the kernel baseline(s) + ratios (+ the Java tax when present). */
     fun format(row: PerfRow, caveat: String = ""): String =
-        "[perf] ${row.scenario} N=${row.n} firings=${row.firings}  ${triple(row.interp, row.groovy, row.java, row.ratioJava, row.groovyTax)}  $caveat"
+        "[perf] ${row.scenario} N=${row.n} firings=${row.firings}  ${triple(row.interp, row.groovy, row.java, row.ratioGroovy, row.ratioJava, row.groovyTax)}  $caveat"
 
     /** A one-line repeated-eval log row (per-eval, engine reused). */
     fun formatRepeated(row: RepeatedRow, caveat: String = ""): String =
         "[perf] ${row.scenario} REPEATED N=${row.n} ×${row.variants} variants (per-eval)  " +
-            "${triple(row.interp, row.groovy, row.java, row.ratioJava, row.groovyTax)}  $caveat"
+            "${triple(row.interp, row.groovy, row.java, row.ratioGroovy, row.ratioJava, row.groovyTax)}  $caveat"
 
-    private fun triple(interp: Stats, groovy: Stats?, java: Stats?, ratioJava: Double?, groovyTax: Double?): String =
+    private fun triple(interp: Stats, groovy: Stats?, java: Stats?, ratioGroovy: Double?, ratioJava: Double?, groovyTax: Double?): String =
         "interp=${ms(interp.medianMs)} (min ${ms(interp.minMs)})  " +
-            (if (groovy != null) "groovy=${ms(groovy.medianMs)}  " else "") +
-            (if (java != null) "java=${ms(java.medianMs)}  ratioJava=${"%.2f".format(ratioJava)}  " else "") +
-            (if (groovyTax != null) "groovyTax=${"%.2f".format(groovyTax)}×" else "")
+            (if (groovy != null) "groovy=${ms(groovy.medianMs)}  ratioG=${"%.2f".format(ratioGroovy)}  " else "") +
+            (if (java != null) "java=${ms(java.medianMs)}  ratioJava=${"%.2f".format(ratioJava)}  groovyTax=${"%.2f".format(groovyTax)}×" else "")
 
     private fun ms(v: Double): String = "%.2fms".format(v)
 }
