@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 import com.mgmtp.a12.kernel.md.document.api.IDocument;
 import com.mgmtp.a12.kernel.md.document.api.services.IDocumentFactory;
 import com.mgmtp.a12.kernel.md.document.apiV2.PartiallyKnownDocumentMultiPointer;
+import com.mgmtp.a12.kernel.md.document.apiV2.immutable.DocumentV2;
 import io.github.mbackschat.a12.dm.interpreter.eval.PointerKt;
 import com.mgmtp.a12.kernel.md.facade.DocumentModelServiceFactory;
 import com.mgmtp.a12.kernel.md.facade.DocumentRtServiceFactory;
@@ -28,6 +29,9 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolve
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelResolver;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelService;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
+import com.mgmtp.a12.kernel.md.rt.api.DocumentProcessingConfig;
+import com.mgmtp.a12.kernel.md.rt.api.ICustomCondition;
+import com.mgmtp.a12.kernel.md.rt.api.ICustomConditionFactory;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentComputationResult;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentDynamicServiceConfig;
 import com.mgmtp.a12.kernel.md.rt.api.IDocumentModelIdProvider;
@@ -273,12 +277,56 @@ public final class RuntimeLaws {
 
     /** Evaluate an explicit document instance; return every message (code + pointer) the kernel raised. */
     static List<Msg> messages(String modelJson, Doc doc) {
-        return validate(modelJson, doc, Locale.US).getMessages().stream()
-                .map(m -> new Msg(m.getErrorCode(), String.valueOf(m.getErrorFieldPointer()), m.getMessageType(),
-                        fmtPointer(m.getErrorFieldPointer()),
-                        m.getReferencedFieldsPointers().stream().map(RuntimeLaws::fmtPointer).toList(),
-                        m.getRefOmissionErrorResponsiblePointers().stream().map(RuntimeLaws::fmtPointer).toList()))
-                .toList();
+        return validate(modelJson, doc, Locale.US).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+    }
+
+    /** Map a kernel {@link IMessage} to our {@link Msg} (code + raw pointer + type + the clean rich channels). */
+    private static Msg toMsg(IMessage m) {
+        return new Msg(m.getErrorCode(), String.valueOf(m.getErrorFieldPointer()), m.getMessageType(),
+                fmtPointer(m.getErrorFieldPointer()),
+                m.getReferencedFieldsPointers().stream().map(RuntimeLaws::fmtPointer).toList(),
+                m.getRefOmissionErrorResponsiblePointers().stream().map(RuntimeLaws::fmtPointer).toList());
+    }
+
+    // ---- modern custom-condition path (DocumentV2 + DocumentProcessingConfig) --------------------
+
+    /**
+     * Modern-path validation with a custom-condition factory — converts the instance to {@link DocumentV2}
+     * and runs {@code validateFull(DocumentV2, DocumentProcessingConfig)} with {@code customConditions}
+     * registered (name → md {@link ICustomCondition}). This is the path that reliably INVOKES data-reading
+     * custom conditions; the deprecated {@code validateFull(IDocument, Locale)} + static-service path
+     * invoked only constant ones in this harness (KERNEL-FINDINGS "CustomCondition").
+     */
+    private static IDocumentValidationResult validateWithConditions(String modelJson, Doc doc,
+            Map<String, ICustomCondition> customConditions) {
+        IDocumentModel model = expandedModel(modelJson);
+        IDocumentModelResolver resolver = id -> model;
+        DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
+        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
+        IDocumentFactory df = dsf.createDocumentFactory();
+        DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, df, doc));
+        DocumentProcessingConfig config = DocumentProcessingConfig.builder(Locale.US)
+                .customConditionFactory(ICustomConditionFactory.fromMap(customConditions))
+                .build();
+        return rt.validateFull(v2, config);
+    }
+
+    /** Every message from the modern custom-condition path (see {@link #validateWithConditions}). */
+    static List<Msg> messages(String modelJson, Doc doc, Map<String, ICustomCondition> customConditions) {
+        return validateWithConditions(modelJson, doc, customConditions).getMessages().stream()
+                .map(RuntimeLaws::toMsg).toList();
+    }
+
+    /** Whether {@code errorCode} fires under the modern custom-condition path. */
+    static boolean fires(String modelJson, String errorCode, Doc doc, Map<String, ICustomCondition> customConditions) {
+        return messages(modelJson, doc, customConditions).stream().anyMatch(m -> m.code().equals(errorCode));
+    }
+
+    /** The {@link IMessage.MessageType} of {@code errorCode} under the modern custom-condition path. */
+    static Optional<IMessage.MessageType> typeOf(String modelJson, String errorCode, Doc doc,
+            Map<String, ICustomCondition> customConditions) {
+        return messages(modelJson, doc, customConditions).stream()
+                .filter(m -> m.code().equals(errorCode)).map(Msg::type).findFirst();
     }
 
     /** The kernel's fully-rendered (localized, params substituted) error text for {@code errorCode}. */

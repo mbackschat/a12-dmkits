@@ -1,0 +1,84 @@
+package io.github.mbackschat.a12.dm.adapter.laws
+
+import com.mgmtp.a12.kernel.core.rt.a12internal.validation.ICustomCondition
+import com.mgmtp.a12.kernel.md.document.api.IDocument
+import com.mgmtp.a12.kernel.md.document.api.IEntityInstance
+import com.mgmtp.a12.kernel.md.document.api.IFieldInstance
+import io.github.mbackschat.a12.dm.adapter.KernelCustomConditions
+import io.github.mbackschat.a12.dm.interpreter.DmInterpreter
+import io.github.mbackschat.a12.dm.interpreter.eval.Document
+import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
+import io.github.mbackschat.a12.dm.interpreter.model.Kind
+import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.interpreter.model.MsgType
+import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
+
+/**
+ * Differential — `CustomCondition <name>`, the host-callback predicate the rule language can't express. This
+ * is the "works with existing implementations" proof: the interpreter side runs a REAL kernel <em>core</em>
+ * [ICustomCondition] (the `IData`-based contract projects already implement) through the
+ * [KernelCustomConditions] bridge, while the kernel oracle runs the SAME logic as an md condition over its
+ * modern `validateFull(DocumentV2, …customConditionFactory)` path (the path that reliably invokes data-reading
+ * conditions — KERNEL-FINDINGS "CustomCondition"). Identical firing + polarity across scenarios proves the
+ * interpreter's MECHANISM matches the kernel (evaluated row, formally-correct gating, polarity VALUE, no-fire
+ * on an empty row) AND that the bridge faithfully feeds an existing core condition the row's data.
+ *
+ * Both sides express the same trivial business logic ("the error field's value is ACME"); the differential
+ * verifies the surrounding mechanism, not the (identical) predicate.
+ */
+class CustomConditionDiffTest {
+
+    private val order = RuntimeLaws.model("models/order.dm.json")
+    private val cond = "FieldFilled(CustomerName) And CustomCondition NameIsAcme"
+    private val kModel = RuntimeLaws.withRule(order, "/Order", "R", "../CustomerName", "CC", cond)
+    private val def = ModelDef(
+        listOf(FieldDef(NAME, Kind.STRING)),
+        listOf(RuleDef("/Order/R", "/Order", cond, "CC", "../CustomerName")),
+    )
+
+    /** Kernel side — an md condition reading the error field's value from the document (fires iff "ACME"). */
+    private val mdNameIsAcme = object : com.mgmtp.a12.kernel.md.rt.api.ICustomCondition {
+        override fun check(
+            doc: IDocument,
+            relevant: Set<IEntityInstance>?,
+            formallyIncorrect: Set<IEntityInstance>,
+            errorEntity: IEntityInstance,
+        ): Boolean {
+            val v = doc.entityInstances.filterIsInstance<IFieldInstance>()
+                .firstOrNull { it.path == errorEntity.path && it.repetitions.contentEquals(errorEntity.repetitions) }
+                ?.value?.orElse(null)?.toString()
+            return v == "ACME"
+        }
+    }
+
+    /** Interpreter side — a REAL kernel CORE condition (the kind projects ship), run via the bridge. */
+    private val coreNameIsAcme = ICustomCondition { data, _, _, errorField -> data.getValue(errorField) == "ACME" }
+
+    /** Run the SAME logic on both engines for CustomerName = [name] (null = empty); compare firing + polarity. */
+    private fun agree(name: String?, msg: String) {
+        val kDoc = RuntimeLaws.doc().group("/Order", 1)
+        val iDoc = Document(
+            def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats,
+            def.scales, def.dateTimeFormats, def.datePrecisions, def.enumValues, def.enumCategories,
+        ).group("/Order", 1)
+        if (name != null) {
+            kDoc.field(NAME, name, 1, 1)
+            iDoc.field(NAME, name, 1, 1)
+        }
+        val k = RuntimeLaws.typeOf(kModel, "CC", kDoc, mapOf("NameIsAcme" to mdNameIsAcme)).map { it.name }.orElse(null)
+        val i = DmInterpreter(def, customConditions = KernelCustomConditions.fromCore(mapOf("NameIsAcme" to coreNameIsAcme)))
+            .validate(iDoc).messages.firstOrNull { it.code == "CC" }
+            ?.type?.let { if (it == MsgType.OMISSION) "OMISSION_ERROR" else "VALUE_ERROR" }
+        assertEquals(k, i, "$msg  (kernel=$k interp=$i)")
+    }
+
+    @Test fun acmeFires() = agree("ACME", "value ACME → condition true → fires VALUE")
+    @Test fun otherNoFire() = agree("Other", "value Other → condition false → no fire")
+    @Test fun emptyNoFire() = agree(null, "empty row → condition not evaluated → no fire")
+
+    private companion object {
+        const val NAME = "/Order/CustomerName"
+    }
+}

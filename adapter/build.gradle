@@ -46,12 +46,20 @@ dependencies {
     implementation "com.mgmtp.a12.kernel:kernel-md-document-api:${kernelVersion}"  // IDocument, IDocumentFactory, IEntityInstance
     runtimeOnly "com.mgmtp.a12.kernel:kernel-md-runtime-service:${kernelVersion}"  // DocumentDynamicRtService impl behind the facade
 
+    // CORE custom-condition SPI (the IData-based contract the kernel's own conditions + JS/TS codegen use) —
+    // for KernelCustomConditions, the JVM bridge that runs a project's EXISTING kernel ICustomCondition on the
+    // interpreter. core-runtime-api resolves to 32.3.4 in the 30.8.1 distribution (already on the runtime
+    // classpath via md-runtime-service; promoted to compile here). The bridge provides its OWN IData/IIdentifier
+    // (the kernel documents the caller does so) — it constructs no kernel `…Impl` (N8/D15 guardrail).
+    implementation "com.mgmtp.a12.kernel:kernel-core-runtime-api:32.3.4"           // ICustomCondition (core), IData, IIdentifier
+
     // modelkit (structure builder) folded into the root project (2026-06-09) — its classes arrive via
     // `api project(':')`, so a read round-trip's test can author a model with it without a separate dep.
 
-    // SPIKE (docs/INTERPRETER-PROPOSAL.md §10): the KMP interpreter under test — its JVM target is
-    // consumed here, where the kernel oracle (RuntimeLaws) runs the differential comparison.
-    testImplementation project(':interpreter')
+    // The kernel-free interpreter (docs/INTERPRETER-BUILDOUT.md). Its JVM target is consumed here for two
+    // reasons: (1) MAIN — KernelCustomConditions bridges a kernel core ICustomCondition onto the interpreter's
+    // CustomCondition SPI; (2) TEST — the kernel oracle (RuntimeLaws) runs the differential comparison.
+    implementation project(':interpreter')
 
     // Custom-field-type SPI (predefined types) — TEST-ONLY: lets the differential register a project type
     // (e.g. a pattern-based "EMail") in the kernel oracle, so `Valid(field, "EMail")` does a REAL check (the
