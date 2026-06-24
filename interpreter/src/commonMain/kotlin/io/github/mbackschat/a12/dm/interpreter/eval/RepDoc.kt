@@ -6,14 +6,19 @@ import io.github.mbackschat.a12.dm.interpreter.ast.typedValue
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 
 /**
- * A document with ONE repeatable subgroup — NO kernel types. Outer fields plus a list of
- * item rows. It produces two kinds of [EvalContext]:
+ * A **lightweight, map-backed test double** for unit-testing the [Interpreter] on ONE repeatable subgroup —
+ * outer fields plus a list of item rows, NO model/`Document` stack. It produces two kinds of [EvalContext]:
  *  - [outerContext] — for an aggregate rule evaluated once in the outer row (Sum/MaxValue over `star`);
  *  - [rowContexts] — one per item row, for a per-row rule that iterates the repetition.
  *
  * Item-field values live under [itemsPath]; outer values under [outerPath]. [declaredReps] is the
  * group's declared max repetition count: the un-instantiated tail below it is a fillable omission, so a
  * starred aggregate stays OMISSION-typed until every declared row is instantiated and filled.
+ *
+ * **Like [SingleRowDoc], this is a test seam, NOT a second production document model** (consolidating onto the
+ * general [Document] was considered and rejected 2026-06-24 — it only burdens the isolated unit tests). The
+ * general [Document] is the production AND performance path; this `Map`-backed double's timings are a fiction —
+ * **never benchmark it** (INTERPRETER-PERFORMANCE.md).
  */
 class RepDoc(
     private val outerPath: String,

@@ -6,9 +6,16 @@ import io.github.mbackschat.a12.dm.interpreter.ast.typedValue
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 
 /**
- * The plain-data document the interpreter walks for SINGLE-ROW shapes (1-3) — NO kernel types. A field
- * referenced but ABSENT from [values] is EMPTY; the kernel's "an entirely empty row is not evaluated"
- * rule is the [evaluated] gate. It IS an [EvalContext] (no repetition, so [star] is unused).
+ * A **lightweight, map-backed [EvalContext] double** for unit-testing the [Interpreter] directly on SINGLE-ROW
+ * shapes — `Interpreter(SingleRowDoc("/Order", values, kinds)).fires(cond)` — with no model/`Document` stack.
+ * A field referenced but ABSENT from [values] is EMPTY; the kernel's "an entirely empty row is not evaluated"
+ * rule is the [evaluated] gate. No repetition, so [star] is unused.
+ *
+ * **This is NOT a second production document model — it is a test seam, kept deliberately** (the alternative,
+ * consolidating onto the general [Document], was considered and rejected 2026-06-24: it would only make the
+ * isolated Interpreter unit tests heavier without removing real duplication). The general [Document] is the
+ * production AND **performance** path — benchmark only that. This `Map`-backed double has O(1) lookups, so its
+ * timings are a fiction; **never benchmark it** (INTERPRETER-PERFORMANCE.md).
  */
 class SingleRowDoc(
     private val rowPath: String,
