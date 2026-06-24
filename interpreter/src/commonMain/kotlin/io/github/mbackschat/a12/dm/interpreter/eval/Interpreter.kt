@@ -85,7 +85,7 @@ class Interpreter(
         PredicateOp.FIELD_VALUE_IN_LIST, PredicateOp.FIELD_VALUE_NOT_IN_LIST,
         PredicateOp.DATE_RANGES_OVERLAP -> false   // needs present ranges; an empty row is not evaluated
         PredicateOp.FIELD_NOT_FILLED, PredicateOp.GROUP_NOT_FILLED -> true
-        else -> quantifierFires(op, 0, p.args.size)
+        else -> quantifierFires(op, t = 0, f = p.args.size, n = p.args.size)   // all-empty: every operand FALSE
     }
 
     private data class Res(val truth: Tri, val type: MsgType)
@@ -201,8 +201,11 @@ class Interpreter(
         val op = PredicateOp.byName(p.name) ?: return MsgType.VALUE
         op.polarity?.let { return it }
         val n = p.args.size
-        val k = quantCount(op, p.args)
-        val fillable = ((k + 1)..n).any { kp -> !quantifierFires(op, kp, n) }
+        val (t, f) = quantTally(op, p.args)
+        // OMISSION iff filling some currently-empty (FALSE) operand could clear the firing — each fill moves a
+        // FALSE to TRUE: (t, f) → (t+j, f-j). (UNKNOWN operands aren't "fillable" — they need correcting, not
+        // filling — so they don't enter this; the type isn't differential-checked with malformed operands.)
+        val fillable = (1..f).any { j -> !quantifierFires(op, t + j, f - j, n) }
         return if (fillable) MsgType.OMISSION else MsgType.VALUE
     }
 
@@ -232,13 +235,15 @@ class Interpreter(
             PredicateOp.FIELD_VALUE_IN_LIST -> valueInList(p.args)
             PredicateOp.FIELD_VALUE_NOT_IN_LIST -> not(valueInList(p.args))
             PredicateOp.DATE_RANGES_OVERLAP -> dateRangesOverlap(p.args)
-            // List quantifiers over the count k of filled operands (row-evaluated gate is upstream in eval).
+            // List quantifiers over the (TRUE, FALSE) operand tally (row-evaluated gate is upstream in eval).
             PredicateOp.ALL_FIELDS_FILLED, PredicateOp.NO_FIELD_FILLED, PredicateOp.AT_LEAST_ONE_FIELD_FILLED,
             PredicateOp.MORE_THAN_ONE_FIELD_FILLED, PredicateOp.NOT_ALL_FIELDS_FILLED,
             PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED, PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED,
             PredicateOp.ALL_GROUPS_FILLED, PredicateOp.NO_GROUP_FILLED, PredicateOp.AT_LEAST_ONE_GROUP_FILLED,
-            PredicateOp.NOT_ALL_GROUPS_FILLED, PredicateOp.GROUPS_NOT_COLLECTIVELY_FILLED ->
-                Tri.of(quantifierFires(op, quantCount(op, p.args), p.args.size))
+            PredicateOp.NOT_ALL_GROUPS_FILLED, PredicateOp.GROUPS_NOT_COLLECTIVELY_FILLED -> {
+                val (t, f) = quantTally(op, p.args)
+                Tri.of(quantifierFires(op, t, f, p.args.size))
+            }
         }
     }
 
@@ -255,19 +260,37 @@ class Interpreter(
         else -> Tri.TRUE
     }
 
-    /** The filled-operand count behind a list quantifier — filled GROUPS when [PredicateOp.countsGroups], else filled fields. */
-    private fun quantCount(op: PredicateOp, args: List<Expr>): Int =
-        if (op.countsGroups) args.count { ctx.groupFilled(pathOf(it)) } else args.count { ctx.filled(pathOf(it)) }
+    /** A list quantifier's operand tally as `(t, f)` — `t` = TRUE (present + check-relevant), `f` = FALSE
+     *  (check-relevant but empty); the rest are UNKNOWN (present but not check-relevant — a malformed value),
+     *  counted in NEITHER, matching the kernel's `isWertAngegeben`. GROUP operands have no UNKNOWN state (a group
+     *  can't be malformed), so `f = n - t`. The kernel counts only TRUE for "filled" and only FALSE for "empty";
+     *  a malformed field is neither — so e.g. `AtLeastOneFieldFilled` does NOT fire on a lone malformed field. */
+    private fun quantTally(op: PredicateOp, args: List<Expr>): Pair<Int, Int> {
+        if (op.countsGroups) {
+            val t = args.count { ctx.groupFilled(pathOf(it)) }
+            return t to (args.size - t)
+        }
+        var t = 0
+        var f = 0
+        for (a in args) when {
+            !ctx.filled(pathOf(a)) -> f++          // empty (check-relevant) → FALSE
+            invalid(pathOf(a)) -> {}               // present but not check-relevant (malformed/dup) → UNKNOWN
+            else -> t++                            // present + check-relevant → TRUE
+        }
+        return t to f
+    }
 
-    /** Whether a list quantifier [op] fires for [k] filled operands among [n] (the count law; field/group share it). */
-    private fun quantifierFires(op: PredicateOp, k: Int, n: Int): Boolean = when (op) {
-        PredicateOp.ALL_FIELDS_FILLED, PredicateOp.ALL_GROUPS_FILLED -> k == n
-        PredicateOp.NO_FIELD_FILLED, PredicateOp.NO_GROUP_FILLED -> k == 0
-        PredicateOp.AT_LEAST_ONE_FIELD_FILLED, PredicateOp.AT_LEAST_ONE_GROUP_FILLED -> k >= 1
-        PredicateOp.MORE_THAN_ONE_FIELD_FILLED -> k >= 2
-        PredicateOp.NOT_ALL_FIELDS_FILLED, PredicateOp.NOT_ALL_GROUPS_FILLED -> k < n
-        PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED -> k != 1
-        PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED, PredicateOp.GROUPS_NOT_COLLECTIVELY_FILLED -> k in 1 until n
+    /** Whether a list quantifier [op] fires for a tally of [t] TRUE + [f] FALSE operands among [n] (the rest
+     *  UNKNOWN). Reduces to the binary count law when there are no UNKNOWN operands (`f = n - t`); field/group
+     *  share it. The kernel's runtime (`alleEntitiesAngegeben`/`keineEntityAngegeben`/… , KERNEL-FINDINGS §1/§3). */
+    private fun quantifierFires(op: PredicateOp, t: Int, f: Int, n: Int): Boolean = when (op) {
+        PredicateOp.ALL_FIELDS_FILLED, PredicateOp.ALL_GROUPS_FILLED -> t == n
+        PredicateOp.NO_FIELD_FILLED, PredicateOp.NO_GROUP_FILLED -> f == n
+        PredicateOp.AT_LEAST_ONE_FIELD_FILLED, PredicateOp.AT_LEAST_ONE_GROUP_FILLED -> t >= 1
+        PredicateOp.MORE_THAN_ONE_FIELD_FILLED -> t >= 2
+        PredicateOp.NOT_ALL_FIELDS_FILLED, PredicateOp.NOT_ALL_GROUPS_FILLED -> f >= 1
+        PredicateOp.NOT_EXACTLY_ONE_FIELD_FILLED -> f == n || t >= 2
+        PredicateOp.FIELDS_NOT_COLLECTIVELY_FILLED, PredicateOp.GROUPS_NOT_COLLECTIVELY_FILLED -> t >= 1 && f >= 1
         else -> error("not a list quantifier: $op")
     }
 
