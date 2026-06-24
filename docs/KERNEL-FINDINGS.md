@@ -469,6 +469,18 @@ The author-written sibling of `uniqueIndex` (the auto index check above). It has
 
 *(Locked: `adapter.laws.FieldValuesNotUniqueDiffTest` — plain + starred — + a fuzz rule `FU` = `FieldValuesNotUnique(Qty, Price)`. Interpreter: `PredicateOp.FIELD_VALUES_NOT_UNIQUE`, `Interpreter.fieldValuesNotUnique` — collects plain-field + starred-row values, O(k²) pairwise `eq`.)*
 
+## §9 supplement — `RepetitionNotUnique`: per-row cross-row composite-key uniqueness (probe, 2026-06-24)
+
+The author-written **cross-ROW** uniqueness rule (vs `FieldValuesNotUnique`'s value-list, and the auto `uniqueIndex`). The rule sits at the **PARENT** group and iterates the keys' repeatable group; the error field is **inside** the repeated group, so it emits **one message per offending row**. Probed semantics:
+
+- **Fires per row whose (composite) key DUPLICATES another row's** within the parent-row scope — `Count [5,5]` flags both rows (2 messages); `[5,7,5]` flags rows 1 & 3, not 2; `[5,7]` and a single row → none. A **composite** key is the tuple: `(Count,Weight) [(5,1),(5,2)]` distinct → none, `[(5,1),(5,1)]` → both flagged.
+- **An ALL-empty key row is skipped** (`empty,empty` → none; `5,empty` → the empty row drops, the lone `5` is not a duplicate). But **among participants** (≥1 key field filled) **empties match empties**: a composite `(5,empty),(5,empty)` → the two rows ARE duplicates → flagged.
+- **Polarity is directional**: an all-filled duplicate is **VALUE** (change a value); a duplicate whose key has an **empty (fillable) component** is **OMISSION** (`(5,empty),(5,empty)` → OMISSION — filling the empty `Weight` could make them distinct).
+- **Keys are plain fields on one path** — no groups (`MVK_NO_GROUPS_ALLOWED`), no asterisks (`MVK_NO_WILDCARDS_ALLOWED`), all on a single path (`MVK_NOT_IN_SAME_PATH`); each must be repeatable relative to the rule group, so the rule must be authored at the PARENT (error field inside the repeated group), not inside it (`MVK_REPEATABLE_GROUP_MISSING`).
+- The optional **`@From` scope** selector (the `FromScope` path-op) names the reference repetition for the scope (per-scope vs across-all); **the default per-parent-row scope is implemented**, `@From` is deferred (needs a nested-repeatable fixture to observe the difference).
+
+*(Interpreter: a dedicated uniqueness pass `DmInterpreter.repetitionNotUniqueMessages` — recognized via `repetitionNotUniqueKeys`, routed out of the per-row `evalRule` flow like `uniqueIndex`; groups rows by parent scope, flags `count > 1`. Locked: `adapter.laws.RepetitionNotUniqueDiffTest` — the FULL per-row message set, pointer + polarity, incl. the empty-component OMISSION.)*
+
 ## §8 supplement — the value-list membership family (2026-06-04 experiments)
 
 Five operators in two grammar shapes, not covered by KERNEL-SEMANTICS. **Shape A** `FieldValueIncludedInValueList(field, v1, …)` / `FieldValueNotIncludedInValueList(…)` (DE: `FeldWertInWerteListe`/`FeldWertNichtInWerteListe`); **shape B** `AtLeastOne|No|NotAllFieldValue(s)IncludedInValueList(f1, f2 In v1, …)` (DE: `MindestensEin…`/`Kein…`/`NichtAlle…`; `In` is a language-independent grammar literal like the symbols). Slot rules:

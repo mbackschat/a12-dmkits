@@ -272,7 +272,7 @@ private class ConditionParser(private val src: String, private val base: String)
             "AllGroupsFilled", "NoGroupFilled", "AtLeastOneGroupFilled",
             "NotAllGroupsFilled", "GroupsNotCollectivelyFilled",
             "DateRangesOverlap", "AtLeastOneDateRangeOverlaps", "FieldValuesNotUnique",
-            "Valid", "Invalid",
+            "Valid", "Invalid", "RepetitionNotUnique",
         )
         val PATTERN_OPS = setOf("PatternMatched", "PatternViolated")
 

@@ -51,6 +51,7 @@ class CatalogParityTest {
         "NotAllFieldValuesIncludedInValueList",
         "True", "False",                                                   // Expr.BoolLit
         "FirstDay", "LastDay",                                             // ValueAsDate day-specification markers (Expr.Const)
+        "RepetitionNotUnique",                                             // a whole-rule uniqueness pass (not evalPred-dispatched)
     )
 
     private val handled: Set<String> = enumHandled + astHandled
@@ -62,9 +63,10 @@ class CatalogParityTest {
     /** The operator backlog — constructs not yet handled, each with a reason. This IS "what's left to build". */
     private val deferred: Map<String, String> = buildMap {
         group(
-            "repetition uniqueness — across-row key uniqueness of a repetition (distinct from the handled " +
-                "scalar FieldValuesNotUnique and the index-field uniqueIndex check, IF15)",
-            "RepetitionNotUnique", "FromScope",
+            "the @From scope selector for RepetitionNotUnique — names the reference repetition for the " +
+                "uniqueness scope; needs a nested-repeatable fixture to exercise per-scope vs across-all (the " +
+                "default per-parent-row scope is handled, RepetitionNotUniqueDiffTest)",
+            "FromScope",
         )
         group(
             "path-ops / scope — operate on the path/repetition selection, not as a standalone predicate/function",

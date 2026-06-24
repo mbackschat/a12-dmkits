@@ -68,7 +68,9 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
         val unsupported = mutableListOf<UnsupportedRule>()
         for (rule in model.rules) {
             try {
-                messages += messagesFor(rule, doc, locale, dup)
+                val keys = repetitionNotUniqueKeys(rule)
+                messages += if (keys != null) repetitionNotUniqueMessages(rule, keys, doc, locale)
+                else messagesFor(rule, doc, locale, dup)
             } catch (e: UnsupportedConstructException) {
                 unsupported += UnsupportedRule(rule.path, e.message ?: "unsupported construct")
             }
@@ -155,6 +157,48 @@ class DmInterpreter @JvmOverloads constructor(private val model: ModelDef, priva
             Message(UNIQUE_INDEX, uniqueRulePath(path), formatPointer(path, reps), Severity.ERROR, MsgType.VALUE,
                 uniqueIndexText(locale))
         }
+
+    /**
+     * If [rule]'s condition is a standalone `RepetitionNotUnique(key, …)` over plain fields, its key field
+     * paths; else null (a normal rule, handled per-row). The kernel forbids groups/asterisks as keys, so a
+     * non-field arg makes it unsupported (returns null → the per-row flow throws `UnsupportedConstruct`).
+     */
+    private fun repetitionNotUniqueKeys(rule: RuleDef): List<String>? {
+        val ast = parseCondition(rule.conditionText, rule.group)
+        if (ast !is Cond.Pred || ast.name != "RepetitionNotUnique") return null
+        val keys = ast.args.map { (it as? Expr.Field)?.path ?: return null }
+        return keys.ifEmpty { null }
+    }
+
+    /**
+     * `RepetitionNotUnique(keys…)` — one [Message] per repetition row whose (composite) key DUPLICATES another
+     * row's within the same parent-row scope (kernel-probed): empties match empties among participants, an
+     * **all-empty** key row is skipped, and a duplicate whose key has an empty (fillable) component is
+     * **OMISSION** (else VALUE). The rule sits at the parent and iterates the keys' repeatable group.
+     */
+    private fun repetitionNotUniqueMessages(rule: RuleDef, keys: List<String>, doc: Document, locale: String): List<Message> {
+        val repGroup = parentGroup(keys.first())     // the keys' shared repeatable group (kernel: keys on one path)
+        val errorPath = resolveErrorPath(rule)
+        data class Row(val ctx: EvalContext, val reps: List<Int>, val key: List<String?>)
+        val rows = doc.contextsFor(repGroup).map { ctx ->
+            Row(ctx, ctx.repsOf(errorPath), keys.map { ctx.displayValue(it)?.takeIf { v -> v.isNotEmpty() } })
+        }
+        val out = mutableListOf<Message>()
+        rows.filter { row -> row.key.any { it != null } }      // participant: at least one key field is filled
+            .groupBy { it.reps.dropLast(2) }                   // scope: per parent row (drop the row + field index)
+            .forEach { (_, scope) ->
+                val dups = scope.groupingBy { it.key }.eachCount().filterValues { it > 1 }.keys
+                for (row in scope.filter { it.key in dups }) {
+                    val type = if (row.key.any { it == null }) MsgType.OMISSION else MsgType.VALUE
+                    val text = rule.messages[locale]?.let { renderMessage(it, rule.group, row.ctx) { p -> model.labelOf(p, locale) } } ?: ""
+                    val referenced = keys.map { formatPointer(it, row.ctx.repsOf(it)) }
+                    val fillToFix = if (type == MsgType.OMISSION) referenced else emptyList()
+                    out += Message(rule.errorCode, rule.path, formatPointer(errorPath, row.reps),
+                        rule.severity, type, text, referenced, fillToFix)
+                }
+            }
+        return out
+    }
 
     private fun mandatoryMessage(path: String, reps: List<Int>, locale: String): Message {
         val ptr = formatPointer(path, reps)
