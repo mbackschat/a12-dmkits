@@ -8,7 +8,6 @@ import io.github.mbackschat.a12.dm.interpreter.gen.asSink
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
-import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome
 
 /**
  * **FuzzDiagnostics** (harness B) — when the differential fuzz net catches a diverging seed, this turns the
@@ -127,13 +126,8 @@ object FuzzDiagnostics {
         else "seed=$seed  kernel-only=$kOnly  interp-only=$iOnly"
     }
 
-    // ---- raw per-engine outcomes (for the loud-not-wrong contract — harness G parallel iteration) ----
-
-    /** The interpreter's full [ValidationOutcome] (messages + unsupported-rule report) for [seed]'s document. */
-    fun interpValidation(scenario: PerfScenario, seed: Int): ValidationOutcome =
-        DmInterpreter(scenario.interpModel).validate(interpDoc(scenario.interpModel, record(scenario, seed)))
-
-    /** The kernel's fired-code set for [seed]'s document (the oracle the interpreter is held to / declines against). */
+    /** The kernel's fired-code set for [seed]'s document — the sanity oracle for the parallel-iteration fuzz
+     *  (confirming the kernel really fires the joined rule, so the agreement check isn't vacuous). */
     fun kernelCodes(scenario: PerfScenario, seed: Int): Set<String> =
         kernelDetail(scenario.kernelModel, record(scenario, seed)).codes.toSet()
 

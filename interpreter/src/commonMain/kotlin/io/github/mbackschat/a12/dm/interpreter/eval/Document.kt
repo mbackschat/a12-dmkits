@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
+import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
 import io.github.mbackschat.a12.dm.interpreter.ast.typedValue
@@ -9,6 +10,13 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ValuedField
 import kotlin.jvm.JvmOverloads
+
+/**
+ * The repetition index a parallel-iteration pointer carries for a group that has **no row** for the current
+ * index value (the outer-join "not specified" side) — the kernel's `IIdentifier.UNKNOWN`, a fixed sentinel, so
+ * the rendered pointer (`…/Demand[-5]/Headcount`) matches the kernel bit-for-bit (KERNEL-FINDINGS §9).
+ */
+internal const val UNKNOWN_REP = -5
 
 /**
  * A general document instance the interpreter walks — NO kernel types. Addressed exactly like the
@@ -177,6 +185,71 @@ class Document @JvmOverloads constructor(
             RowContext(groupPath, reps, attach.any { (depth, prefixes) -> reps.take(depth) in prefixes })
         }
     }
+
+    /**
+     * **Parallel iteration** — joint iteration of sibling repeatable [groups] (neither nested in the other),
+     * keyed by their shared **index field** [indexFieldName], within each row of their deepest common ancestor
+     * [commonParent]. The kernel evaluates this as an *outer join over the index VALUES* (KERNEL-SEMANTICS §9 /
+     * KERNEL-FINDINGS §9 — its `IndexFieldCache`): for each value present in ANY group, each group resolves to
+     * the row whose index cell equals that value, or counts as **not specified** when it has no such row. One
+     * [EvalContext] per (common-parent row × index value) is produced; a group with no matching row resolves its
+     * fields empty (and its pointer level to [UNKNOWN_REP], -5).
+     *
+     * The iteration value set is the **union of the groups' index-field values** within each common-parent row
+     * (the kernel's `ValidationCache.getIterationValuesForGroups` — the per-group value→repetition map keys,
+     * last write winning on a duplicate, empty cells excluded). Each value resolves each group to the row that
+     * carries it, or **not specified** when the group has no row for it.
+     *
+     * **Invalid index → 3VL (KERNEL-FINDINGS §9):** a group whose index is *invalid* here (a duplicate value or
+     * an empty cell — `invalidIndexGroups`) reads its **unmatched** references as 3-valued **UNKNOWN**, not
+     * "empty" — matching the kernel's behavior, which suppresses a negative operator like
+     * `FieldsNotCollectivelyFilled` on the compromised side. A *valid* group's unmatched reference is definite
+     * "empty". A *matched* reference always resolves to its row (definite), regardless of group validity. The
+     * duplicate/empty rows additionally carry the auto `uniqueIndex`/`mandatoryField` errors (emitted
+     * independently). Iteration order is irrelevant (the message multiset is compared).
+     *
+     * **Frame (a nested repeatable above one joined group):** when one joined group [frameGroup] sits under a
+     * repeatable non-indexed ancestor [deepestFrame] (between [commonParent] and it), the kernel iterates that
+     * frame normally and does the join INSIDE each frame row (KERNEL-FINDINGS §9 — the `/Plan/X/A ⋈ B` case):
+     * the framed group's rows + index values are scoped to the current frame row, while the other (clean) joined
+     * groups stay shared under [commonParent]. With no frame ([deepestFrame] null) this reduces to one join per
+     * common-parent row.
+     */
+    fun parallelContexts(groups: List<String>, indexFieldName: String, commonParent: String,
+            frameGroup: String? = null, deepestFrame: String? = null): List<EvalContext> {
+        val out = ArrayList<EvalContext>()
+        for (cReps in parentRowsOf(commonParent)) {
+            val frameRows = if (deepestFrame != null) rowsWithPrefix(deepestFrame, cReps) else listOf(cReps)
+            for (fr in frameRows) {
+                // each group's parent context: the framed group is scoped to the current frame row, others to cReps
+                val parentReps = groups.associateWith { g -> if (g == frameGroup) fr else cReps }
+                val invalid = HashSet<String>()
+                val perGroup = groups.associateWith { g ->
+                    val idxPath = "$g/$indexFieldName"
+                    val byValue = LinkedHashMap<String, List<Int>>()
+                    for (row in rowsWithPrefix(g, parentReps.getValue(g))) {
+                        val v = valueAt(idxPath, row + 1)?.value
+                        if (v.isNullOrEmpty()) invalid.add(g)                    // empty index cell → group invalid here
+                        else { if (byValue.put(v, row) != null) invalid.add(g) } // duplicate value → group invalid here
+                    }
+                    byValue
+                }
+                val values = LinkedHashSet<String>().apply { groups.forEach { addAll(perGroup.getValue(it).keys) } }
+                for (v in values) {
+                    out += ParallelRowContext(commonParent, cReps, groups, parentReps,
+                        groups.associateWith { perGroup.getValue(it)[v] }, invalid)
+                }
+            }
+        }
+        return out
+    }
+
+    /** Common-parent context rows for a parallel iteration: the parent group's instantiated rows, or the all-1s
+     *  prefix when a non-repeatable parent is not separately instantiated. */
+    private fun parentRowsOf(commonParent: String): List<List<Int>> =
+        rowsOf(commonParent).ifEmpty {
+            if (commonParent in declaredReps) emptyList() else listOf(List(parts(commonParent).size) { 1 })
+        }
 
     /**
      * The per-group attach-depth index: `attach-depth → the set of row index-prefixes that have a valued field
@@ -357,6 +430,99 @@ class Document @JvmOverloads constructor(
             return rowsWithPrefix(repGroup, rowReps.take(common))
                 .map { it + 1 }   // append the field's own index (1) to address the leaf
         }
+    }
+
+    /**
+     * One iteration of a [parallelContexts] outer join: the common-parent row [cReps] and, per parallel group,
+     * the matched row reps in [matches] (a `null` entry = no row for this index value → the group counts as
+     * "not specified"). A field reference resolves through whichever parallel group it belongs to — empty when
+     * that group has no matching row, with the group's pointer level set to [UNKNOWN_REP]; a reference outside
+     * the parallel groups resolves relative to [commonParent], the common-prefix way ([repsFor]).
+     */
+    private inner class ParallelRowContext(
+        private val commonParent: String,
+        private val cReps: List<Int>,
+        private val groups: List<String>,
+        private val parentReps: Map<String, List<Int>>,
+        private val matches: Map<String, List<Int>?>,
+        private val invalidIndexGroups: Set<String>,
+    ) : EvalContext {
+
+        // A row over a present index value is always evaluated (the value exists in at least one group).
+        override val evaluated: Boolean = true
+
+        /** The parallel group [path] belongs to (itself or a descendant), or null when [path] is outside them. */
+        private fun groupOf(path: String): String? = groups.firstOrNull { path == it || path.startsWith("$it/") }
+
+        /** Whether [path]'s group has no row for the current index value (the outer-join "not specified" side). */
+        private fun unmatched(path: String): Boolean = groupOf(path)?.let { matches[it] == null } ?: false
+
+        override fun repsOf(path: String): List<Int> {
+            val g = groupOf(path) ?: return repsFor(path, commonParent, cReps)
+            val gDepth = parts(g).size
+            val parent = parentReps.getValue(g)   // the group's join parent: a frame row, else the common parent
+            val matched = matches[g]
+            val segs = parts(path)
+            return List(segs.size) { i ->
+                when {
+                    i < parent.size -> parent[i]            // the group's parent prefix (frame / common-parent — real)
+                    i >= gDepth -> 1                        // the field / deeper level
+                    matched != null -> matched[i]           // a matched row carries the real index at every level
+                    // Unmatched (no row for this value): a REPEATABLE level is UNKNOWN (-5); a non-repeatable
+                    // intermediate wrapper is always 1 (the kernel renders `…/W1[1]/A[-5]/…`, not `W1[-5]`).
+                    "/" + segs.take(i + 1).joinToString("/") in declaredReps -> UNKNOWN_REP
+                    else -> 1
+                }
+            }
+        }
+
+        /** The raw value of [path] in this iteration, or null when its group has no matching row (or it is empty). */
+        private fun resolved(path: String): String? {
+            val reps = repsOf(path)
+            return if (reps.any { it == UNKNOWN_REP }) null else valueAt(path, reps)?.value
+        }
+
+        // An UNMATCHED reference into an INVALID-index group reads as 3VL UNKNOWN (not empty) — the kernel's
+        // invalid-index behavior (KERNEL-FINDINGS §9), routed through [presenceUnknown] for presence predicates
+        // and Val.Unknown here for value comparisons. A valid group's unmatched ref is the kind's empty value.
+        override fun field(path: String): Val = when {
+            unmatched(path) -> if (groupOf(path) in invalidIndexGroups) Val.Unknown else emptyValue(kindOf(path))
+            else -> resolved(path)?.let { resolveValue(path, it) } ?: emptyValue(kindOf(path))
+        }
+
+        override fun filled(path: String): Boolean = resolved(path) != null
+
+        override fun presenceUnknown(path: String): Boolean = unmatched(path) && groupOf(path) in invalidIndexGroups
+
+        override fun displayValue(path: String): String? = resolved(path)
+
+        override fun signed(path: String): Boolean = path !in unsignedFields
+
+        override fun declaredKind(path: String): Kind? = kinds[path]
+
+        override fun dateFormatOf(path: String): String? = dateFormats[path]
+
+        // A parallel group is "filled" for this iteration iff it has a matching row.
+        override fun groupFilled(groupPath: String): Boolean =
+            if (groupPath in groups) matches[groupPath] != null
+            else throw UnsupportedConstructException(
+                "group-filled on a non-parallel group ($groupPath) inside a parallel iteration is not modeled")
+
+        override fun enumCategory(path: String, category: String): Val {
+            val raw = resolved(path)
+            if (raw.isNullOrEmpty()) return Val.Unknown
+            val idx = (enumValues[path] ?: return Val.Unknown).indexOf(raw)
+            if (idx < 0) return Val.Unknown
+            return enumCategories[path]?.get(category)?.getOrNull(idx)?.let { Val.Txt(it) } ?: Val.Unknown
+        }
+
+        // Aggregates / filters / semantic index / custom conditions are NOT valid inside a parallel iteration
+        // (KERNEL-SEMANTICS §9: a filter condition may not contain a parallel iteration, and vice versa) — fail
+        // loud rather than risk a silently-wrong answer.
+        override fun star(path: String): List<Val> = unsupportedInParallel()
+        override fun starOmission(path: String): Boolean = unsupportedInParallel()
+        private fun unsupportedInParallel(): Nothing =
+            throw UnsupportedConstructException("an aggregate/filter inside a parallel iteration is not modeled")
     }
 
     /**

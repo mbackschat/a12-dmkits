@@ -139,6 +139,45 @@ class PerfGateTest {
     }
 
     /**
+     * **Parallel iteration at scale** — the index-keyed outer join over two sibling repeatable groups. Asserts
+     * the join agrees with the kernel (interp == kernel) and stays competitive at the gate N. The kernel's
+     * `IndexFieldCache` makes this O(rows); the interpreter mirrors it (a value→row map per group, O(1) row
+     * lookups via the prefix index), so it must NOT regress to a nested-loop O(rows²).
+     */
+    @Test
+    fun parallelIterationScalesLikeKernel() {
+        val row = PerfHarness.runScenario(PerfCatalog.parallel(), n = 2_000, withJava = false)   // 2000 × 2 groups
+        println(PerfHarness.format(row, CAVEAT))
+        assertTrue(row.interp.medianMs < ABS_CEILING_MS,
+            "${row.scenario}: interpreter ${row.interp.medianMs}ms exceeds ${ABS_CEILING_MS}ms at N=${row.n}")
+        val ratio = row.ratioGroovy
+        if (ratio != null) assertTrue(ratio < RATIO_CEILING,
+            "${row.scenario}: parallel interp/kernel ratio $ratio exceeds $RATIO_CEILING at N=${row.n}")
+    }
+
+    /**
+     * The O(rows²) detector for the **parallel-iteration outer join** — the place a naive sibling-join would
+     * quadratic. Time the interpreter (only) at N and 4N; the index-keyed join is linear (≈4×), a nested-loop
+     * join would be ≈16×. Guards the `IndexFieldCache`-analog (value→row map + prefix-indexed rows).
+     */
+    @Test
+    fun parallelIterationStaysSubQuadratic() {
+        val pi = PerfCatalog.parallel()
+        var best = Double.MAX_VALUE
+        var bSmall = 0.0; var bLarge = 0.0
+        repeat(GROWTH_REPEATS) {
+            val small = PerfHarness.timeInterpreter(pi, N_SMALL, warmup = 5, iters = 7)
+            val large = PerfHarness.timeInterpreter(pi, N_SMALL * 4, warmup = 5, iters = 7)
+            val g = large.minMs / small.minMs
+            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        }
+        println("[perf] parallel-iteration sub-quadratic: ${"%.1f".format(bSmall)}ms@$N_SMALL → " +
+            "${"%.1f".format(bLarge)}ms@${N_SMALL * 4}  min-growth=${"%.2f".format(best)}× (linear≈4, nested-loop≈16)")
+        assertTrue(best < SUB_QUADRATIC_MAX,
+            "parallel-iteration scaling looks super-linear: 4× rows took ${best}× the time (nested-loop join regression?)")
+    }
+
+    /**
      * **Cold-path / startup gate — a CO-EQUAL goal.** The warm gates above prime everything out, so they are
      * blind to startup cost (that is how the index-build O(N²) hid). This guards the COLD first-call: a fresh
      * engine + fresh document + ONE `validateFull` (no warmup), timed at N and 4N. A reintroduced cold O(N²)

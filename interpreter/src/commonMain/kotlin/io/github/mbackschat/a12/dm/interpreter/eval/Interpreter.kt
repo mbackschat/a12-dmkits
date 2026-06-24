@@ -429,6 +429,7 @@ class Interpreter(
      * check on a malformed field is not-check-relevant even though it reads no value. (KERNEL-FINDINGS §3.)
      */
     private fun filledTri(path: String): Tri = when {
+        ctx.presenceUnknown(path) -> Tri.UNKNOWN   // presence itself is 3VL (invalid parallel index) — before filled
         !ctx.filled(path) -> Tri.FALSE
         invalid(path) -> Tri.UNKNOWN
         else -> Tri.TRUE
@@ -447,6 +448,7 @@ class Interpreter(
         var t = 0
         var f = 0
         for (a in args) when {
+            ctx.presenceUnknown(pathOf(a)) -> {}   // presence 3VL (invalid parallel index) → UNKNOWN, neither
             !ctx.filled(pathOf(a)) -> f++          // empty (check-relevant) → FALSE
             invalid(pathOf(a)) -> {}               // present but not check-relevant (malformed/dup) → UNKNOWN
             else -> t++                            // present + check-relevant → TRUE

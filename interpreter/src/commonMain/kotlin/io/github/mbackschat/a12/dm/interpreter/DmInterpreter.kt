@@ -495,7 +495,7 @@ class DmInterpreter @JvmOverloads constructor(
         val ast = condAstOf(rule)
         val refs = nonStarredRefs(ast).distinct()
         val errorPath = resolveErrorPath(rule)
-        return doc.contextsFor(iterationScope(rule, ast)).map { ctx ->
+        return iterationContexts(rule, ast, doc).map { ctx ->
             // Partial validation: the kernel runs a rule only if its error-field instance is relevant — else
             // the rule is NOT executed for this row (no message, not a suppression). Full validation: always.
             if (!isRelevant(errorPath, ctx.repsOf(errorPath))) return@map RowOutcome.Passed
@@ -555,31 +555,75 @@ class DmInterpreter @JvmOverloads constructor(
     }
 
     /**
-     * A rule is evaluated per row of its iteration scope — the **deepest repeatable group** that is an
-     * ancestor of any *non-aggregated* field reference in the condition (a starred ref is an aggregate
-     * and collapses the repetition, so it does NOT force iteration). With no repeatable ref, the scope is
-     * the rule's declared [RuleDef.group]. This implements the kernel law (KERNEL-FINDINGS §9 supplement,
-     * `IterationLawsTest`): the iteration scope is the set of *referenced* repeatable fields, NOT the
-     * rule's node placement — so a rule declared at `/Order` that reaches into `/Order/Items` iterates the
-     * Items rows.
+     * The contexts a rule is evaluated over. The normal case: one per row of its iteration **scope** — the
+     * **deepest repeatable group** that is an ancestor of any *non-aggregated* field reference (a starred ref
+     * is an aggregate and collapses the repetition, so it does NOT force iteration); with no repeatable ref, the
+     * scope is the rule's declared [RuleDef.group]. This is the kernel law (KERNEL-FINDINGS §9 supplement,
+     * `IterationLawsTest`): the iteration scope is the set of *referenced* repeatable fields, NOT the rule's node
+     * placement — a rule at `/Order` reaching into `/Order/Items` iterates the Items rows.
+     *
+     * **Parallel iteration** — when the condition references TWO (or more) NON-nested repeatable groups per-row
+     * (siblings, neither an ancestor of the other), the kernel iterates them JOINTLY as an outer join keyed by a
+     * shared index field (KERNEL-SEMANTICS §9). [parallelIterationContexts] builds that join; an unsupported
+     * parallel shape (non-sibling depth, missing / mismatched index field) fails loud (reported unsupported),
+     * never silently wrong.
      */
-    private fun iterationScope(rule: RuleDef, ast: Cond): String {
+    private fun iterationContexts(rule: RuleDef, ast: Cond, doc: Document): List<EvalContext> {
         val refs = nonStarredRefs(ast)
         val scope = scopeFromRefs(refs, rule.group)
-        // **Parallel iteration** — two NON-nested repeatable groups (siblings, neither an ancestor of the
-        // other) referenced per-row. The kernel iterates them JOINTLY as an outer join keyed by a shared index
-        // field (KERNEL-SEMANTICS §9; the kernel's IndexFieldCache makes it O(rows)). The interpreter does not
-        // implement that join, so rather than silently iterate ONE side and read the other at row 1 (a WRONG
-        // answer — verified: it under-fires vs the kernel), it **fails loud**: report the rule unsupported.
-        // (Nested groups are fine — the sibling test is "not on the scope's ancestor chain".)
-        val parallelGroup = refs.flatMap { ancestorGroups(it).filter { g -> g in model.repeatable } }
-            .firstOrNull { it != scope && !scope.startsWith("$it/") }
-        if (parallelGroup != null) {
+        val parallelGroups = refs.flatMap { ancestorGroups(it).filter { g -> g in model.repeatable } }
+            .distinct().filter { it != scope && !scope.startsWith("$it/") }
+        return if (parallelGroups.isEmpty()) doc.contextsFor(scope)
+        else parallelIterationContexts(scope, parallelGroups, doc)
+    }
+
+    /**
+     * Build the parallel-iteration outer-join contexts: the joined groups (the [scope] group + the
+     * [parallelGroups]) iterated jointly over the union of their shared index field's values (delegated to
+     * [Document.parallelContexts]). Each joined group must carry the **same-named** index field. Non-repeatable
+     * intermediates between the common ancestor and a joined group are transparent — sibling, wrapped, and
+     * asymmetric-depth groups all qualify (the kernel renders the wrappers `[1]`). A *repeatable* non-indexed
+     * intermediate above ONE joined group is a **frame**: the kernel iterates it normally and joins inside each
+     * frame row (the `/Plan/X/A ⋈ B` case), supported via the `frameGroup` argument. The one **unsupported
+     * shape** is a repeatable frame above MORE THAN ONE joined group (an exotic multi-frame cross-product),
+     * which throws [UnsupportedConstructException] (→ rule reported unsupported, loud-not-wrong). An **invalid**
+     * index (duplicate/empty) is NOT declined — modeled exactly: the compromised group's unmatched references
+     * read 3VL UNKNOWN (KERNEL-FINDINGS §9), and the auto checks still emit `uniqueIndex`/`mandatoryField`.
+     */
+    private fun parallelIterationContexts(scope: String, parallelGroups: List<String>, doc: Document): List<EvalContext> {
+        val joined = (listOf(scope) + parallelGroups).distinct()
+        val commonParent = commonAncestor(joined)
+        val parentDepth = pathParts(commonParent).size
+        val indexNames = joined.map { g ->
+            val indexField = model.indexFields.firstOrNull { parentGroup(it) == g }
+                ?: throw UnsupportedConstructException("parallel iteration group $g has no index field")
+            pathParts(indexField).last()
+        }.distinct()
+        if (indexNames.size != 1) {
             throw UnsupportedConstructException(
-                "parallel iteration over non-nested repeatable groups ($parallelGroup and $scope, joined by a " +
-                    "shared index field) is not modeled — the kernel evaluates this; the interpreter does not yet")
+                "parallel-iterated groups must share one index field name, found $indexNames")
         }
-        return scope
+        // A "framed" joined group sits under a repeatable non-indexed ancestor (strictly between the common
+        // ancestor and it) — the kernel iterates that frame normally and joins inside each frame row (the
+        // `/Plan/X/A ⋈ B` case). At most ONE joined group may be framed; a frame above two joined groups is an
+        // exotic cross-product, not modeled → loud decline.
+        fun frameAncestors(g: String) = ancestorGroups(g).filter { pathParts(it).size > parentDepth && it in model.repeatable }
+        val framed = joined.filter { frameAncestors(it).isNotEmpty() }
+        if (framed.size > 1) {
+            throw UnsupportedConstructException(
+                "parallel iteration with repeatable frames above multiple joined groups ($framed) is not modeled")
+        }
+        val frameGroup = framed.firstOrNull()
+        val deepestFrame = frameGroup?.let { g -> frameAncestors(g).maxByOrNull { pathParts(it).size } }
+        return doc.parallelContexts(joined, indexNames.single(), commonParent, frameGroup, deepestFrame)
+    }
+
+    /** The deepest common ancestor group path of [groups] (their longest shared path prefix). */
+    private fun commonAncestor(groups: List<String>): String {
+        val partsList = groups.map { pathParts(it) }
+        var n = 0
+        while (n < partsList.minOf { it.size } && partsList.all { it[n] == partsList[0][n] }) n++
+        return "/" + partsList[0].take(n).joinToString("/")
     }
 
     /** The deepest repeatable group ancestor of any [refs] path, else [defaultGroup]. */

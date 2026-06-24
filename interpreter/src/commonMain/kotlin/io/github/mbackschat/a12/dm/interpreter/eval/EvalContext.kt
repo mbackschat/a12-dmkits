@@ -21,6 +21,15 @@ interface EvalContext {
     fun filled(path: String): Boolean
 
     /**
+     * Whether the field's very **presence** is 3-valued UNKNOWN (not just its value) — distinct from [filled],
+     * which can only say present/absent. The only case today: a **parallel iteration** reference into a group
+     * whose index is INVALID (a duplicate/empty index value) for an index value that group has no row for — the
+     * kernel reads such a reference as UNKNOWN, not "empty" (KERNEL-FINDINGS §9), so a presence predicate like
+     * `FieldsNotCollectivelyFilled` is suppressed there. Default false (a normal context knows its presences).
+     */
+    fun presenceUnknown(path: String): Boolean = false
+
+    /**
      * Whether a NUMBER field is *signed* (the kernel's `hatVorzeichen` — it permits negative values). This
      * drives the **directional** value-vs-omission typing: an empty number can always be filled bigger
      * (`kannGroesserWerden`), but can be filled smaller only if signed (`kannKleinerWerden = hatVorzeichen`,

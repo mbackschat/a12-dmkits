@@ -74,8 +74,9 @@ object SiblingGroupFuzz {
 
     /**
      * A **parallel-iteration** case for [modelSeed] (a per-row reference into BOTH siblings, joined by the shared
-     * `Dept` index). The kernel evaluates it as an index-keyed outer join; until the interpreter models that
-     * join it must FAIL LOUD (report the rule unsupported), never silently produce a wrong/missing message.
+     * `Dept` index). The interpreter evaluates it as the index-keyed outer join and must agree with the kernel
+     * at the full-message level — across matched, A-only, B-only values AND the occasional invalid index
+     * (duplicate/empty → the 3VL corner, KERNEL-FINDINGS §9), all of which the value strategy generates.
      */
     fun parallelCase(modelSeed: Int): ParallelCase {
         val spec = when (modelSeed % 2) {
@@ -94,13 +95,21 @@ object SiblingGroupFuzz {
             indexFields = setOf("$A/Dept", "$B/Dept"),
         )
         val gen = SeedGenerator(interpModel)
-        // Rows: 0..5 per sibling. Index Dept from a small pool (collisions → shared join keys AND within-group
-        // uniqueIndex), ~20% empty (→ requiredness). Numbers: random 0..100 or ~30% empty (→ empty-as-0).
+        // Rows: 0..5 per sibling. Index Dept is mostly UNIQUE per group — `D<rowIndex>` — so A and B share keys
+        // `D1..D_min` (matched join rows) and diverge beyond (unmatched → the `-5` synthetic side), heavily
+        // exercising matched / A-only / B-only values. ~10% of cells are deliberately INVALID — empty (→
+        // `mandatoryField`) or a fixed `DUP` collision (→ `uniqueIndex`) — exercising the invalid-index 3VL
+        // (an unmatched ref into a compromised group reads UNKNOWN, KERNEL-FINDINGS §9), which the interpreter
+        // now models exactly. Numbers: random 0..100 or ~30% empty (→ empty-as-0 across the join).
         val rows: (String, List<Int>, Random) -> Int = { g, _, r -> if (g == A || g == B) r.nextInt(0, 6) else 0 }
         val indexFields = setOf("$A/Dept", "$B/Dept")
-        val values = ValueStrategy { f, _, r ->
+        val values = ValueStrategy { f, reps, r ->
             when {
-                f.path in indexFields -> if (r.nextDouble() < 0.2) null else "D" + r.nextInt(3)
+                f.path in indexFields -> when {
+                    r.nextDouble() < 0.1 -> null                 // empty index → mandatoryField + invalid-index 3VL
+                    r.nextDouble() < 0.1 -> "DUP"                // forced collision → uniqueIndex + invalid-index 3VL
+                    else -> "D" + reps[reps.size - 2]            // unique within group, overlapping across groups
+                }
                 r.nextDouble() < 0.3 -> null
                 else -> r.nextInt(0, 101).toString()
             }

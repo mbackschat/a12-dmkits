@@ -9,6 +9,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.modelkit.FieldKind
+import io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder
+import java.util.function.Consumer
 import kotlin.random.Random
 
 /** How many rows to instantiate for a repeatable group under a given parent row (the [SeedGenerator] hook). */
@@ -220,6 +224,62 @@ object PerfCatalog {
     fun semanticIndexPerRow(): PerfScenario =
         scenario("SI cliff", LINES, "SI", "../Amount",
             "FieldFilled(Amount) And [/Perf/Lines/Amount For \"NOMATCH\"] > 0", ::flatRows)
+
+    private const val PA = "/Plan/A"
+    private const val PB = "/Plan/B"
+    private val parallelJson: String by lazy {
+        DocumentModelDraft.named("plan").locale("en_US")
+            .rootGroup("Plan", Consumer { root ->
+                root.group("A", Consumer { g ->
+                    g.repeatable(DECLARED_MAX).indexField("Dept")
+                    g.field("Dept", FieldKind.STRING)
+                    g.numberField("Va", Consumer<NumberFieldBuilder> { it.fractionDigits(0) })
+                })
+                root.group("B", Consumer { g ->
+                    g.repeatable(DECLARED_MAX).indexField("Dept")
+                    g.field("Dept", FieldKind.STRING)
+                    g.numberField("Vb", Consumer<NumberFieldBuilder> { it.fractionDigits(0) })
+                })
+            })
+            .build().toJson()
+    }
+    private val parallelFields = listOf(
+        FieldDef("$PA/Dept", Kind.STRING), FieldDef("$PA/Va", Kind.NUMBER, scale = 0),
+        FieldDef("$PB/Dept", Kind.STRING), FieldDef("$PB/Vb", Kind.NUMBER, scale = 0),
+    )
+
+    // The parallel scenario's values: Dept is unique per group (`D<rowIndex>`) and OVERLAPPING across groups, so
+    // A and B share keys `D1..DN` — a full matched outer join (N joined keys). ~half the A rows leave Va empty
+    // (→ that key is "not collectively filled" → fires); B's Vb is always filled. [variant] shifts the parity.
+    private fun parallelValues(variant: Int): ValueStrategy = ValueStrategy { f, reps, _ ->
+        when (f.path) {
+            "$PA/Dept", "$PB/Dept" -> "D" + reps[reps.size - 2]
+            "$PA/Va" -> if ((reps[reps.size - 2] + variant) % 2 == 0) "1" else null
+            "$PB/Vb" -> "1"
+            else -> "0"
+        }
+    }
+
+    /**
+     * **Parallel iteration at scale** — two sibling repeatable groups `A` ⊥ `B` joined by the shared `Dept`
+     * index, evaluated as a per-shared-key outer join (`FieldsNotCollectivelyFilled(A/Va, B/Vb)`). The scale
+     * knob N is the rows-per-group; the keys fully overlap (`D1..DN`), so the join does N matched pairings — the
+     * shape the kernel's `IndexFieldCache` makes O(rows) and where a naive nested-loop join would be O(rows²).
+     */
+    fun parallel(): PerfScenario {
+        val cond = "FieldsNotCollectivelyFilled(A/Va, B/Vb)"
+        val kernelModel = RuntimeLaws.withRule(parallelJson, "/Plan", "PI", "../A/Va", "PI", cond)
+        val interpModel = ModelDef(
+            parallelFields, listOf(RuleDef("/Plan/PI", "/Plan", cond, "PI", "../A/Va")),
+            repeatableGroups = setOf(PA, PB),
+            declaredReps = mapOf(PA to DECLARED_MAX, PB to DECLARED_MAX),
+            indexFields = setOf("$PA/Dept", "$PB/Dept"),
+        )
+        val gen = SeedGenerator(interpModel)
+        return PerfScenario("PI parallel", kernelModel, interpModel) { sink, n, variant ->
+            gen.populate(sink, rowsOf = { g, _, _ -> if (g == PA || g == PB) n else 0 }, value = parallelValues(variant))
+        }
+    }
 
     /** Every catalog scenario, in order — for the gate to sweep. */
     fun all(): List<PerfScenario> = listOf(b1(), b2(), b3(), b4(), b5(), b6())
