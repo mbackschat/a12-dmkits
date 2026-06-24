@@ -1,6 +1,6 @@
 # Interpreter findings — design & treatment record
 
-The numbered **design-findings** for the `:interpreter` module (the kernel-free, native-safe + Kotlin/JS rule evaluator) — the *why* behind how it reproduces kernel behavior. This is the interpreter's peer of [API-FINDINGS.md](API-FINDINGS.md) (the rulekit/modelkit library's findings): a **rationale record, not a status surface**. What's *built* is shown by the differential tests (`adapter/…/laws/*DiffTest.kt`) and [INTERPRETER-BUILDOUT.md](INTERPRETER-BUILDOUT.md)'s coverage map.
+The numbered **design-findings** for the `:interpreter` module (the kernel-free, native-safe + Kotlin/JS rule evaluator) — the *why* behind how it reproduces kernel behavior. This is the interpreter's peer of [API-FINDINGS.md](API-FINDINGS.md) (the rulekit/modelkit library's findings): a **rationale record, not a status surface**. What's *built* is shown by the differential tests (`adapter/…/laws/*DiffTest.kt`) and the catalog-parity meter; the implementation structure is [INTERPRETER-ARCHITECTURE.md](INTERPRETER-ARCHITECTURE.md), the design contract [INTERPRETER-SPEC.md](INTERPRETER-SPEC.md).
 
 **Where a fact lives (the routing rule the owner set, 2026-06-23):**
 - a **kernel-behavior** truth → [KERNEL-FINDINGS.md](KERNEL-FINDINGS.md) (write), cross-checked against the consult-only `../a12-kernel-demo/KERNEL-SEMANTICS.md` (read);
@@ -53,7 +53,7 @@ This shapes the differential: the kernel side uses its **wall clock** and the in
 
 A `Kind.TIME` field is modeled as a `Val.Txt` holding the ISO `HH:mm:ss` string — **no new `Val` variant**, exactly as `Kind.DATE` is. The reason is the same one that makes date comparison free: a zero-padded ISO time string's **lexicographic order is its chronological order**, so the existing text `ORDER` comparator already compares times correctly, and the time-of-day extractors (`HoursFromTime`/`MinutesFromTime`/`SecondsFromTime`) just parse the `HH:mm:ss` parts (the `timeComponent` sibling of `dateComponent`). This is the pattern the upcoming `DATE_TIME` kind will follow too (`yyyy-MM-ddTHH:mm:ss`, still ISO-ordered). An empty TIME → `Unknown` (not evaluated), like DATE.
 
-One deliberate gap: a TIME value is **not yet format-checked** (`formalError(Kind.TIME) == null`). The kernel formal-checks a malformed time and suppresses a rule referencing it; the interpreter would instead try to extract from it. This only diverges on **malformed** time input and needs the kernel's time formal-error code + a suppression differential — a separate increment, tracked in INTERPRETER-BUILDOUT.md's open list. *(Locked: `adapter.laws.TimeExtractDiffTest`.)*
+One deliberate gap: a TIME value is **not yet format-checked** (`formalError(Kind.TIME) == null`). The kernel formal-checks a malformed time and suppresses a rule referencing it; the interpreter would instead try to extract from it. This only diverges on **malformed** time input and needs the kernel's time formal-error code + a suppression differential — a known, separate increment (not yet built). *(Locked: `adapter.laws.TimeExtractDiffTest`.)*
 
 ### IF9 — Value-vs-omission leaf typing is DIRECTIONAL and sign-aware (matches the kernel's `kannGroesser/kannKleiner`)
 

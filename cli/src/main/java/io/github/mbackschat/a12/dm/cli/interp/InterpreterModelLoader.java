@@ -23,13 +23,12 @@ import io.github.mbackschat.a12.dm.interpreter.model.Severity;
 /**
  * Loads a DM-JSON model into the kernel-free {@link ModelDef}, and a {@code {"fields":{…}}} instance tree
  * into a {@link Document} — the consumer-side bridge that lets {@code dmtool} drive the interpreter on a
- * REAL model (the engine behind the runtime verbs' default path; INTERPRETER-BUILDOUT.md). Verified by
- * {@code InterpreterRealModelDiffTest} (the load→interpret path agrees with the live kernel).
+ * REAL model (the engine behind the runtime verbs' default path; docs/INTERPRETER-ARCHITECTURE.md). Verified
+ * by {@code InterpreterRealModelDiffTest} (the load→interpret path agrees with the live kernel).
  *
  * <p>The model walk is a flat scan-by-type (every node carries a {@code type} + full-path {@code id}), so
  * it doesn't depend on the exact element nesting. Handles a <b>self-contained</b> model (no includes — a
- * model with imports needs the kernel's expansion first, native-safe via the read tier). The field-source
- * mapping is recorded in INTERPRETER-BUILDOUT.md "DM-JSON → ModelDef loader".
+ * model with imports needs the kernel's expansion first, native-safe via the read tier).
  */
 public final class InterpreterModelLoader {
 

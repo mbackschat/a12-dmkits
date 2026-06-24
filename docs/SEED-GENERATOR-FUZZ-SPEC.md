@@ -7,7 +7,7 @@ Two coupled pieces that share one engine:
 
 Around these sit a few **companion harnesses** that make the exact-match loop fast: a **kernel probe battery** (learn the kernel's behavior *before* implementing), **fuzz divergence localization** (pinpoint *which* row/code diverged), and a **catalog-parity meter** (guard against unhandled operators). They're documented in "[Companion harnesses](#companion-harnesses--the-probe-first-loop)" below.
 
-This doc is the **stable method**. The generator's *consumers* (the perf harness, a future `dmtool seed` verb) have their own homes — [INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md) for the perf side, task #33 for the verb. The catalogue of operators the fuzz model exercises is the *coverage map* in [INTERPRETER-BUILDOUT.md](INTERPRETER-BUILDOUT.md), not here.
+This doc is the **stable method**. The generator's *consumers* have their own homes — [INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md) for the perf harness, the `dmtool model seed` verb ([CLI-SPEC.md](CLI-SPEC.md) §5). Which operators the interpreter handles is the **catalog-parity meter** (`adapter.laws.CatalogParityTest`, build-checked — 109/109), not a hand-maintained map here.
 
 ## Why a generator at all
 
@@ -107,7 +107,7 @@ A hand-written `*DiffTest` proves one operator behaves on one input. The fuzz ne
 
 ## Extending the net — the per-operator loop
 
-Adding an operator follows one loop (the standing build-out method, [INTERPRETER-BUILDOUT.md](INTERPRETER-BUILDOUT.md)):
+Adding an operator follows one loop (the standing per-operator build method):
 
 > **probe the kernel → implement clean-room → pin a `*DiffTest` → add a rule to the fuzz model → commit**
 

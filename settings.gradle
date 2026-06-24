@@ -16,6 +16,6 @@ include 'adapter'
 // jlink/jpackage in the inner loop). Depends on core now; +adapter when read/explain verbs land.
 include 'cli'
 
-// SPIKE (docs/INTERPRETER-PROPOSAL.md §10): a Kotlin Multiplatform interpreter module (jvm + js) — a
-// throwaway prototype proving the cross-platform thesis. Not part of the shipped build.
+// The :interpreter module (docs/INTERPRETER-SPEC.md): the kernel-free, native-safe runtime evaluator —
+// Kotlin Multiplatform (jvm + js), the publishable standalone artifact + the native image's runtime engine.
 include 'interpreter'

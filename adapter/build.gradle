@@ -1,6 +1,7 @@
 plugins {
     id 'java-library'
-    // Kotlin JVM — for the interpreter SPIKE prototype (test-scope only, throwaway). See docs/INTERPRETER-SPIKE-PLAN.md.
+    // Kotlin JVM — for the interpreter↔kernel differential tests (laws/*DiffTest.kt) + the KernelCustomConditions
+    // bridge in main; consumes :interpreter. See docs/INTERPRETER-ARCHITECTURE.md (the kernel-as-oracle approach).
     id 'org.jetbrains.kotlin.jvm' version '2.2.0'
 }
 
@@ -56,7 +57,7 @@ dependencies {
     // modelkit (structure builder) folded into the root project (2026-06-09) — its classes arrive via
     // `api project(':')`, so a read round-trip's test can author a model with it without a separate dep.
 
-    // The kernel-free interpreter (docs/INTERPRETER-BUILDOUT.md). Its JVM target is consumed here for two
+    // The kernel-free interpreter (docs/INTERPRETER-ARCHITECTURE.md). Its JVM target is consumed here for two
     // reasons: (1) MAIN — KernelCustomConditions bridges a kernel core ICustomCondition onto the interpreter's
     // CustomCondition SPI; (2) TEST — the kernel oracle (RuntimeLaws) runs the differential comparison.
     implementation project(':interpreter')
