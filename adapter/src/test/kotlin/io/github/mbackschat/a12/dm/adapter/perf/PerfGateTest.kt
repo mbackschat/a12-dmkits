@@ -76,22 +76,31 @@ class PerfGateTest {
     @Test
     fun scalingIsSubQuadratic() {
         val b1 = PerfCatalog.b1()
-        val small = PerfHarness.timeInterpreter(b1, N_SMALL, warmup = 5, iters = 7)
-        val large = PerfHarness.timeInterpreter(b1, N_SMALL * 4, warmup = 5, iters = 7)
-        // Use the MIN time per N, not the median: min is the least-contended (truest single-thread) run, and a
-        // RATIO of two independently-noisy medians amplifies load spikes — that made this gate flip pass↔fail
-        // under machine load on identical code. Noise only inflates times, so min/min is the robust estimator.
-        val growth = large.minMs / small.minMs
-        println("[perf] B1 sub-quadratic check: ${"%.1f".format(small.minMs)}ms@$N_SMALL → " +
-            "${"%.1f".format(large.minMs)}ms@${N_SMALL * 4}  growth=${"%.2f".format(growth)}× (linear≈4, quadratic≈16)")
-        assertTrue(growth < SUB_QUADRATIC_MAX,
-            "B1 scaling looks super-linear: 4× the rows took ${growth}× the time (quadratic would be ~16×)")
+        // Robust estimator against machine load (this gate flipped pass↔fail on identical code):
+        //  - per N, take the MIN time (least-contended single-thread run; noise only inflates);
+        //  - measure small+large back-to-back so a repeat's two Ns share the same load → their RATIO is stable;
+        //  - take the MIN growth over a few repeats → the least-contended pairing. (A single min/min could still
+        //    inflate under SUSTAINED load if large-N never got a clean slot while small-N did; min-of-repeats does not.)
+        var best = Double.MAX_VALUE
+        var bestSmall = 0.0
+        var bestLarge = 0.0
+        repeat(GROWTH_REPEATS) {
+            val small = PerfHarness.timeInterpreter(b1, N_SMALL, warmup = 5, iters = 7)
+            val large = PerfHarness.timeInterpreter(b1, N_SMALL * 4, warmup = 5, iters = 7)
+            val growth = large.minMs / small.minMs
+            if (growth < best) { best = growth; bestSmall = small.minMs; bestLarge = large.minMs }
+        }
+        println("[perf] B1 sub-quadratic check: ${"%.1f".format(bestSmall)}ms@$N_SMALL → " +
+            "${"%.1f".format(bestLarge)}ms@${N_SMALL * 4}  min-growth=${"%.2f".format(best)}× (linear≈4, quadratic≈16)")
+        assertTrue(best < SUB_QUADRATIC_MAX,
+            "B1 scaling looks super-linear: 4× the rows took ${best}× the time (quadratic would be ~16×)")
     }
 
     private companion object {
         const val ABS_CEILING_MS = 5_000.0
         const val RATIO_CEILING = 5.0
         const val N_SMALL = 5_000
+        const val GROWTH_REPEATS = 3        // min growth over a few back-to-back pairings → robust to machine load
         const val SUB_QUADRATIC_MAX = 9.0   // linear ≈ 4; a quadratic 4×-rows blowup is ≈ 16 — 9 is the trip line
         // Codegen is NOT in the timed region (primed out by warmup — the kernel generates ahead). The residual
         // unfairness is only that the kernel validates MORE dimensions than the interpreter models yet.
