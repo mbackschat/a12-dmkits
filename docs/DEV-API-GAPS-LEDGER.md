@@ -42,7 +42,7 @@ The gaps below were the **ergonomic and consistency remainder** — what added f
 | **DG6** | model-modularity completeness (`includeLevel` authorable, transitive-include distinguished on read) | API-FINDINGS finding 44 |
 | *smaller edges* | catalog discovery queries (`byKeyword`/`byKind`/`byReturns`); the kernel-free `ModelResolver` SAM | API-FINDINGS findings 42, 43 |
 
-**Genuinely open (the live backlog), both cosmetic:** a read→modify→write *cohesion pointer* on `KernelAdapter` (it exposes `read`+`diff` but not write-back — that lives on `BoundModel`/`EditSession`), and grouping the flat ~130-method `Dsl` factory into lightweight sub-facades for discovery. Batch alongside whichever area they touch.
+**Genuinely open (the live backlog):** two cosmetic — a read→modify→write *cohesion pointer* on `KernelAdapter` (it exposes `read`+`diff` but not write-back — that lives on `BoundModel`/`EditSession`), and grouping the flat ~130-method `Dsl` factory into lightweight sub-facades for discovery (batch alongside whichever area they touch) — and one **structural-authoring gap surfaced 2026-06-26: modelkit has no `GroupBuilder.sortField(…)`** to author a repeatable group's declared row **sort fields** (`IGroup.getSortInfo` / `ISortField`). Authoritative entry + the CLI half + the eval/read-fidelity analysis: [`FEATURE-GAPS-LEDGER.md`](FEATURE-GAPS-LEDGER.md) §3 **G28** (it's purely an authoring + read-fidelity concern — the kernel runtime does not consume sort order for `validateFull`/`compute`, so the interpreter correctly ignores it).
 
 ---
 

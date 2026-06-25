@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
+import io.github.mbackschat.a12.dm.interpreter.decOrNull
 import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
+import io.github.mbackschat.a12.dm.interpreter.model.FieldConstraints
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 
 /**
@@ -74,11 +76,39 @@ enum class FormalErrorCode(val id: String) {
 
     /** A DATE_RANGE with two valid dates, but the start is AFTER the end (start == end is allowed). */
     DATE_RANGE_INVALID("datumBereichNichtGueltig"),
+
+    // ── Declared field-type CONSTRAINT violations (IF20) — auto-fired against the field-type declaration,
+    //    same `formalePruefung` mechanism as the format checks above (KERNEL-FINDINGS §3 "declared field-type
+    //    constraints"). Each carries the kernel's verbatim runtime code; all are VALUE errors. ──
+    /** A STRING shorter than the field's declared `minLength` (the kernel's `stringZuKurz`). */
+    STRING_TOO_SHORT("stringZuKurz"),
+
+    /** A STRING longer than the field's declared `maxLength` (the kernel's `stringZuLang`). */
+    STRING_TOO_LONG("stringZuLang"),
+
+    /** A STRING not matching the field's declared `pattern`, OR an ENUM value not in the field's value domain
+     *  (both → the kernel's `stringFalschesMuster`; the pattern/domain check runs BEFORE the length checks). */
+    PATTERN("stringFalschesMuster"),
+
+    /** A NUMBER below the field's declared `minValue` (the kernel's `zahlZuKlein`). */
+    NUMBER_TOO_SMALL("zahlZuKlein"),
+
+    /** A NUMBER above the field's declared `maxValue` (the kernel's `zahlZuGross`). */
+    NUMBER_TOO_BIG("zahlZuGross"),
+
+    /** A NUMBER with a decimal point but FEWER fractional digits than `minFractionalDigits` — the kernel's
+     *  `zahlFalscheAnzahlNachkommastellen` (the SAME code as [TOO_MANY_DECIMALS]; "wrong number of decimals"). */
+    TOO_FEW_DECIMALS("zahlFalscheAnzahlNachkommastellen"),
+
+    /** A NUMBER with NO decimal point where `minFractionalDigits > 0` requires one (the kernel's
+     *  `zahlOhneDezimalTrenner` — "number without decimal separator"). */
+    NO_DECIMAL_SEPARATOR("zahlOhneDezimalTrenner"),
 }
 
 fun formalError(
     kind: Kind, raw: String, scale: Int? = null, format: String? = null,
     datePrecision: DatePrecision = DatePrecision.FULL, rangeSep: String? = null,
+    constraints: FieldConstraints = FieldConstraints.NONE,
 ): FormalErrorCode? {
     if (raw.isEmpty()) return null
     return when (kind) {
@@ -92,7 +122,10 @@ fun formalError(
             else parseDateToIso(raw, fmt) != null
             if (ok) null else FormalErrorCode.DATE_FORMAT
         }
-        Kind.NUMBER -> numberFormalError(raw, scale)
+        // Format well-formedness FIRST (blanks, invalid chars, signed-zero/plus, decimal-separator,
+        // too-MANY decimals via scale); only a well-formed number reaches the declared-constraint checks
+        // (min fractional digits, then range) — KERNEL-FINDINGS §3 precedence.
+        Kind.NUMBER -> numberFormalError(raw, scale) ?: numberConstraintError(raw, constraints)
         // A malformed TIME / DATE_TIME value carries the kernel's `datumFormatFalsch` (probe-verified — the same
         // code as DATE), and resolving it to Val.Unknown suppresses a referencing rule. (TIME was previously
         // unchecked entirely, so a malformed time even *escaped* suppression — KERNEL-FINDINGS §6 / IF8.)
@@ -121,8 +154,45 @@ fun formalError(
                 }
             }
         }
-        Kind.STRING, Kind.BOOLEAN, Kind.CONFIRM -> null
+        // A STRING (incl. an ENUM, which is STRING-kind) is well-formed by construction; its only formal
+        // errors are the declared constraints (pattern / enum-domain, then length).
+        Kind.STRING -> stringConstraintError(raw, constraints)
+        Kind.BOOLEAN, Kind.CONFIRM -> null
     }
+}
+
+/**
+ * Declared-constraint check for a (well-formed, non-empty) STRING or ENUM value (IF20). The kernel checks the
+ * **pattern / enum-domain BEFORE the length** (probe-verified: a value that is both out-of-pattern and too short
+ * reports `stringFalschesMuster`, not `stringZuKurz`).
+ */
+private fun stringConstraintError(raw: String, c: FieldConstraints): FormalErrorCode? {
+    if (c.enumValues.isNotEmpty()) {
+        if (raw !in c.enumValues) return FormalErrorCode.PATTERN     // out-of-domain enum → stringFalschesMuster
+    } else if (c.patternRegex != null) {
+        if (!c.patternRegex.matches(raw)) return FormalErrorCode.PATTERN
+    }
+    if (c.minLength != null && raw.length < c.minLength) return FormalErrorCode.STRING_TOO_SHORT
+    if (c.maxLength != null && raw.length > c.maxLength) return FormalErrorCode.STRING_TOO_LONG
+    return null
+}
+
+/**
+ * Declared-constraint check for a (well-formed) NUMBER value (IF20): the minimum-fractional-digits rule (a
+ * format-layer concern — too few decimals, or none at all when one is required), then the value range. Range
+ * uses the scale-aware [io.github.mbackschat.a12.dm.interpreter.Dec.compareScaled19] compare (the same kernel-
+ * matching compare the interpreter uses everywhere).
+ */
+private fun numberConstraintError(raw: String, c: FieldConstraints): FormalErrorCode? {
+    val minFrac = c.minFractionalDigits ?: 0
+    if (minFrac > 0) {
+        if (!raw.contains('.')) return FormalErrorCode.NO_DECIMAL_SEPARATOR
+        if (fractionalDigits(raw) < minFrac) return FormalErrorCode.TOO_FEW_DECIMALS
+    }
+    val v = decOrNull(raw) ?: return null
+    if (c.minValue != null) decOrNull(c.minValue)?.let { if (v.compareScaled19(it) < 0) return FormalErrorCode.NUMBER_TOO_SMALL }
+    if (c.maxValue != null) decOrNull(c.maxValue)?.let { if (v.compareScaled19(it) > 0) return FormalErrorCode.NUMBER_TOO_BIG }
+    return null
 }
 
 private fun numberFormalError(raw: String, scale: Int?): FormalErrorCode? = when {
@@ -174,6 +244,20 @@ fun formalErrorText(code: FormalErrorCode, locale: String, scale: Int? = null): 
             if (de) "Datumsbereich enthält kein gültiges Datum." else "Date range contains an invalid date."
         FormalErrorCode.DATE_RANGE_INVALID ->
             if (de) "Datumsbereich: Startdatum liegt nach dem Enddatum." else "Date range: the start date is after the end date."
+        FormalErrorCode.STRING_TOO_SHORT ->
+            if (de) "Wert ist zu kurz." else "Value is too short."
+        FormalErrorCode.STRING_TOO_LONG ->
+            if (de) "Wert ist zu lang." else "Value is too long."
+        FormalErrorCode.PATTERN ->
+            if (de) "Wert entspricht nicht dem erlaubten Muster oder Wertebereich." else "Value does not match the allowed pattern or value domain."
+        FormalErrorCode.NUMBER_TOO_SMALL ->
+            if (de) "Wert ist kleiner als der zulässige Mindestwert." else "Value is below the allowed minimum."
+        FormalErrorCode.NUMBER_TOO_BIG ->
+            if (de) "Wert ist größer als der zulässige Höchstwert." else "Value is above the allowed maximum."
+        FormalErrorCode.TOO_FEW_DECIMALS ->
+            if (de) "Wert hat zu wenige Nachkommastellen." else "Value has too few decimal places."
+        FormalErrorCode.NO_DECIMAL_SEPARATOR ->
+            if (de) "Wert benötigt ein Dezimaltrennzeichen." else "Value requires a decimal separator."
     }
 }
 

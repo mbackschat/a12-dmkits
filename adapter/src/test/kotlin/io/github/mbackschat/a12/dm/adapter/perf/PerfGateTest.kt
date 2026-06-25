@@ -279,6 +279,30 @@ class PerfGateTest {
     }
 
     /**
+     * Guards **IF20 declared field-type constraints** (here a NUMBER min/max range) against a per-row regression:
+     * the constraint check runs once per filled cell inside the existing single-pass formal loop, so it must stay
+     * LINEAR. Time the interpreter (only) over N and 4N rows of a constrained field with valid values; linear ≈ 4×,
+     * a per-row rescan ≈ 16×. This is the measured "no O(N²)" for the per-cell family (uniqueValue — the genuine
+     * O(N²) risk — is deferred precisely because it needs the canonical-key set, not this per-cell path).
+     */
+    @Test
+    fun constrainedFieldsStaySubQuadratic() {
+        val cf = PerfCatalog.constrainedFields()
+        var best = Double.MAX_VALUE
+        var bSmall = 0.0; var bLarge = 0.0
+        repeat(GROWTH_REPEATS) {
+            val small = PerfHarness.timeInterpreter(cf, N_SMALL, warmup = 5, iters = 7)
+            val large = PerfHarness.timeInterpreter(cf, N_SMALL * 4, warmup = 5, iters = 7)
+            val g = large.minMs / small.minMs
+            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        }
+        println("[perf] constrained-field formal check sub-quadratic: ${"%.1f".format(bSmall)}ms@$N_SMALL → " +
+            "${"%.1f".format(bLarge)}ms@${N_SMALL * 4} rows  min-growth=${"%.2f".format(best)}× (linear≈4, per-row-rescan≈16)")
+        assertTrue(best < SUB_QUADRATIC_MAX,
+            "constrained-field formal check looks super-linear: 4× rows took ${best}× the time (the per-cell constraint check rescans?)")
+    }
+
+    /**
      * **Parallel iteration at scale** — the index-keyed outer join over two sibling repeatable groups. Asserts
      * the join agrees with the kernel (interp == kernel) and stays competitive at the gate N. The kernel's
      * `IndexFieldCache` makes this O(rows); the interpreter mirrors it (a value→row map per group, O(1) row

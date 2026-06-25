@@ -76,7 +76,9 @@ public final class InterpreterModelLoader {
                 switch (type) {
                     case "Field" -> fields.add(new FieldDef(id, kindOf(node), localizedTexts(node.path("labels")),
                             scaleOf(node), signed(node), requirednessOf(node), formatOf(node), rangeSeparatorOf(node),
-                            datePrecisionOf(node), enumValuesOf(node), enumCategoriesOf(node)));
+                            datePrecisionOf(node), enumValuesOf(node), enumCategoriesOf(node),
+                            stringTypeInt(node, "minLength"), stringTypeInt(node, "maxLength"), stringTypeText(node, "pattern"),
+                            numberTypeText(node, "minValue"), numberTypeText(node, "maxValue"), numberTypeInt(node, "minFractionalDigits")));
                     case "Group" -> {
                         JsonNode g = node.path("Group");
                         if (g.path("repeatability").asInt(0) > 1) {
@@ -235,6 +237,42 @@ public final class InterpreterModelLoader {
         boolean dayOptional = "DateType".equals(type.path("type").asText(""))
                 && "DAY_OPTIONAL".equals(type.path("DateType").path("datePrecision").asText(""));
         return dayOptional ? DatePrecision.DAY_OPTIONAL : DatePrecision.FULL;
+    }
+
+    // ── Declared field-type constraints (IF20) — extracted into FieldDef for the per-cell formal check. ──
+
+    /** An {@code int} property of a {@code StringType} field type (e.g. {@code minLength}), or null. */
+    private static Integer stringTypeInt(JsonNode fieldNode, String prop) {
+        return typedInt(fieldNode, "StringType", prop);
+    }
+
+    /** A {@code String} property of a {@code StringType} field type (e.g. {@code pattern}), or null. */
+    private static String stringTypeText(JsonNode fieldNode, String prop) {
+        JsonNode v = typed(fieldNode, "StringType").path(prop);
+        return v.isTextual() ? v.asText() : null;
+    }
+
+    /** A NUMBER constraint stored as raw text ({@code minValue}/{@code maxValue}) — kept verbatim for an exact,
+     *  scale-aware compare against the value (Dec); or null for a non-number field / absent property. */
+    private static String numberTypeText(JsonNode fieldNode, String prop) {
+        JsonNode v = typed(fieldNode, "NumberType").path(prop);
+        return v.isNumber() || v.isTextual() ? v.asText() : null;
+    }
+
+    /** An {@code int} property of a {@code NumberType} field type (e.g. {@code minFractionalDigits}), or null. */
+    private static Integer numberTypeInt(JsonNode fieldNode, String prop) {
+        return typedInt(fieldNode, "NumberType", prop);
+    }
+
+    /** The {@code Field.fieldType.<typeName>} object, but only when the field's declared {@code type} matches. */
+    private static JsonNode typed(JsonNode fieldNode, String typeName) {
+        JsonNode type = fieldNode.path("Field").path("fieldType");
+        return typeName.equals(type.path("type").asText("")) ? type.path(typeName) : type.path("__absent__");
+    }
+
+    private static Integer typedInt(JsonNode fieldNode, String typeName, String prop) {
+        JsonNode v = typed(fieldNode, typeName).path(prop);
+        return v.isInt() ? v.asInt() : null;
     }
 
     /** A NUMBER field's scale ({@code NumberType.maxFractionalDigits}), or null for non-number fields. */

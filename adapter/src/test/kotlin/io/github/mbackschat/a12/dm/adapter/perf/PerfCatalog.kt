@@ -431,6 +431,38 @@ object PerfCatalog {
         }
     }
 
+    // ---- CONSTRAINED fields (IF20): a declared min/max NUMBER constraint checked per row in the formal pass. ----
+    /** A repeatable Line group with a NUMBER field declaring `minValue`/`maxValue`, filled with VALID values, over
+     *  N rows. The IF20 per-cell constraint check (range compare) runs once per filled cell inside the existing
+     *  single-pass formal loop — so it must stay O(rows), NOT introduce a per-row rescan. The scale knob N = rows.
+     *  (This is the perf half of IF20's per-cell family — measured, not asserted; uniqueValue would be the O(N²)
+     *  risk and is deferred precisely because it needs the canonical-key treatment, not this per-cell path.) */
+    fun constrainedFields(): PerfScenario {
+        val kernelModel = DocumentModelDraft.named("constrained").locale("en_US")
+            .rootGroup("C", Consumer { root ->
+                root.group("Lines", Consumer { g ->
+                    g.repeatable(DECLARED_MAX).indexField("K")
+                    g.field("K", FieldKind.STRING)
+                    g.numberField("V", Consumer<NumberFieldBuilder> { it.fractionDigits(0).min("1").max("1000000") })
+                })
+            }).build().toJson()
+        val fields = listOf(
+            FieldDef("/C/Lines/K", Kind.STRING),
+            FieldDef("/C/Lines/V", Kind.NUMBER, scale = 0, minValue = "1", maxValue = "1000000"),
+        )
+        val interpModel = ModelDef(
+            fields, emptyList(),
+            repeatableGroups = setOf("/C/Lines"), declaredReps = mapOf("/C/Lines" to DECLARED_MAX),
+            indexFields = setOf("/C/Lines/K"),
+        )
+        val gen = SeedGenerator(interpModel)
+        return PerfScenario("constrained fields", kernelModel, interpModel) { sink, n, _ ->
+            gen.populate(sink, rowsOf = { g, _, _ -> if (g == "/C/Lines") n else 0 }, value = ValueStrategy { field, reps, _ ->
+                if (field.path.endsWith("/K")) "K" + reps.joinToString("_") else ((reps[1] % 1000) + 1).toString()   // V in 1..1000 → all valid
+            })
+        }
+    }
+
     // B7's value strategy: like [perfValues] but leaves the COMPUTED field (Amount) EMPTY in the seed — so the
     // kernel's compute() reports every Line's Amount as a change (empty → Sum), matching the interpreter which
     // computes every row. Cost is filled (the aggregate operand); index fields filled (required).

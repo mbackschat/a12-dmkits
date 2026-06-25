@@ -129,6 +129,20 @@ data class FieldDef(
     /** For an ENUMERATION field: each category's positional value list (the kernel's `getCategoryValues`),
      *  keyed by category name — index `i` pairs with [enumValues]`[i]`. Drives `[Field -> Category]`. */
     val enumCategories: Map<String, List<String>> = emptyMap(),
+    // ── Declared field-type CONSTRAINTS (IF20) — auto-validated against a filled value (KERNEL-FINDINGS §3). ──
+    /** A STRING field's declared minimum length (`StringType.minLength`); a shorter value → `stringZuKurz`. */
+    val minLength: Int? = null,
+    /** A STRING field's declared maximum length (`StringType.maxLength`); a longer value → `stringZuLang`. */
+    val maxLength: Int? = null,
+    /** A STRING field's declared regex (`StringType.pattern`); a non-matching value → `stringFalschesMuster`. */
+    val pattern: String? = null,
+    /** A NUMBER field's declared minimum value (`NumberType.minValue`), raw text; below it → `zahlZuKlein`. */
+    val minValue: String? = null,
+    /** A NUMBER field's declared maximum value (`NumberType.maxValue`), raw text; above it → `zahlZuGross`. */
+    val maxValue: String? = null,
+    /** A NUMBER field's declared minimum fractional digits (`NumberType.minFractionalDigits`); too few →
+     *  `zahlFalscheAnzahlNachkommastellen`, none at all → `zahlOhneDezimalTrenner`. */
+    val minFractionalDigits: Int? = null,
 )
 
 /**
@@ -152,6 +166,35 @@ data class RuleDef(
  * (a null precondition always applies — the unconditional default), KERNEL-FINDINGS §2 "tiered computations".
  */
 data class ComputationAlternative(val precondition: String?, val operation: String)
+
+/**
+ * The declared field-type constraints the kernel auto-validates against a filled value (IF20) — string length
+ * + pattern, enum value-domain membership, number range, and the minimum-fractional-digits rule. Built per
+ * field from the DM-JSON field type; [NONE] for an unconstrained field. The compiled [patternRegex] is cached.
+ * (`zeroAllowed` / `maxNumberOfDigitsBeforeDecimalPlace` are runtime-only INumberType qualities with no DM-JSON
+ * serialization — unreachable from a loadable model — so they are out of scope; see INTERPRETER-FINDINGS IF20.)
+ */
+data class FieldConstraints(
+    val minLength: Int? = null,
+    val maxLength: Int? = null,
+    val pattern: String? = null,
+    /** An ENUM field's value domain (the kernel's `getXMLValues`); a filled value outside it is `stringFalschesMuster`. */
+    val enumValues: List<String> = emptyList(),
+    /** The declared `minValue` / `maxValue`, raw DM-JSON text — parsed to `Dec` for an exact, scale-aware compare. */
+    val minValue: String? = null,
+    val maxValue: String? = null,
+    val minFractionalDigits: Int? = null,
+) {
+    val patternRegex: Regex? = pattern?.let { Regex(it) }
+
+    /** Whether this field declares any constraint (else the per-cell constraint pass is skipped). */
+    val any: Boolean = minLength != null || maxLength != null || pattern != null ||
+        enumValues.isNotEmpty() || minValue != null || maxValue != null || (minFractionalDigits ?: 0) > 0
+
+    companion object {
+        val NONE = FieldConstraints()
+    }
+}
 
 /**
  * One computation: a list of [alternatives] (each an optional precondition + an operation), optionally under a
@@ -258,6 +301,20 @@ data class ModelDef(
     /** Each NUMBER field's scale (`maxFractionalDigits`) — the formal-check input (decimal-places errors); the
      *  [io.github.mbackschat.a12.dm.interpreter.eval.Document] needs it to gate a formally-invalid value to Unknown. */
     val scales: Map<String, Int?> = fields.associate { it.path to it.scale }
+
+    /** Each field's declared-constraint set (IF20) — the per-cell formal-check input for length/pattern/enum-
+     *  domain/range/min-decimals. Only fields that declare a constraint appear; [constraintsOf] returns NONE
+     *  otherwise (so the constraint pass is a no-op for an unconstrained field). */
+    val fieldConstraints: Map<String, FieldConstraints> = fields
+        .associate {
+            it.path to FieldConstraints(
+                it.minLength, it.maxLength, it.pattern, it.enumValues, it.minValue, it.maxValue, it.minFractionalDigits,
+            )
+        }
+        .filterValues { it.any }
+
+    /** The field's declared constraints (IF20), or [FieldConstraints.NONE] when it declares none. */
+    fun constraintsOf(path: String): FieldConstraints = fieldConstraints[path] ?: FieldConstraints.NONE
 
     /** Each enumeration field's XML value list — the [io.github.mbackschat.a12.dm.interpreter.eval.Document]'s
      *  `EnumCategory` positional-map input (the index of the stored value). */
