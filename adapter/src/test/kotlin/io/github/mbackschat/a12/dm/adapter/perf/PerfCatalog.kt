@@ -4,6 +4,7 @@ import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws
 import io.github.mbackschat.a12.dm.interpreter.gen.SeedGenerator
 import io.github.mbackschat.a12.dm.interpreter.gen.ValidValues
 import io.github.mbackschat.a12.dm.interpreter.gen.ValueStrategy
+import io.github.mbackschat.a12.dm.interpreter.model.ComputationAlternative
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -458,6 +459,45 @@ object PerfCatalog {
         val gen = SeedGenerator(interpModel)
         return PerfScenario("B7 compute", kernelModel, interpModel, PerfOp.COMPUTE) { sink, n, variant ->
             gen.populate(sink, rowsOf = nestedRows(n), value = b7Values(variant))
+        }
+    }
+
+    /**
+     * **Tiered-computation compute() at scale (IF21)** — a per-Line `Amount` selected by a `precondition` over
+     * `Qty`: `[Qty] < 100 → [Qty]` else `[Qty] >= 100 → 0`. The compute path evaluates the precondition AND
+     * selects the operation **per Line row**, so this stresses the tiered selection at scale; it must stay
+     * LINEAR (O(rows · precondition), no per-row rescan) — the perf twin of the IF21 correctness fix. Measured
+     * interp-vs-kernel (the kernel compiles the same tiered alternatives). Scale knob N = the Line count;
+     * Subs are not populated (the computation reads only the Line-level `Qty`). Qty straddles the two tiers.
+     */
+    fun tieredComputation(): PerfScenario {
+        // Operations are scale-EXEMPT literals (KERNEL-FINDINGS §5) — Amount is scale-2 and Qty is scale-0, so a
+        // field operand would trip the kernel's scale gate (MVK_INVALID_COMPARE_DEC_PLACES); the precondition over
+        // Qty (ordering is scale-exempt) is what's evaluated per row, which is the cost this benchmark stresses.
+        val alts = listOf(RuntimeLaws.CompAlt("[Qty] < 100", "9.99"), RuntimeLaws.CompAlt("[Qty] >= 100", "0"))
+        val kernelModel = RuntimeLaws.withTieredComputation(perfJson, LINES, "TierComp", "../Amount", null, alts)
+        val interpModel = ModelDef(
+            fields, emptyList(),
+            computations = listOf(ComputationDef(AMOUNT, LINES, listOf(
+                ComputationAlternative("[Qty] < 100", "9.99"), ComputationAlternative("[Qty] >= 100", "0")))),
+            repeatableGroups = setOf(LINES, SUBS),
+            declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX),
+            indexFields = setOf(LINE_KEY, SUB_KEY),
+        )
+        val gen = SeedGenerator(interpModel)
+        return PerfScenario("tiered compute", kernelModel, interpModel, PerfOp.COMPUTE) { sink, n, variant ->
+            gen.populate(sink, rowsOf = { g, _, _ -> if (g == LINES) n else 0 }, value = tieredValues(variant))
+        }
+    }
+
+    /** Tiered-compute value strategy: Amount empty (computed), LineKey filled (required index), Qty straddles
+     *  the `< 100` / `>= 100` tiers so both alternatives are exercised across rows. */
+    private fun tieredValues(variant: Int): ValueStrategy = ValueStrategy { field, reps, _ ->
+        when (field.path) {
+            AMOUNT -> null
+            QTY -> ((reps[1] * 7 + variant) % 200).toString()   // 0..199 → straddles the two tiers
+            LINE_KEY -> "K" + reps.joinToString("_")
+            else -> "0"
         }
     }
 

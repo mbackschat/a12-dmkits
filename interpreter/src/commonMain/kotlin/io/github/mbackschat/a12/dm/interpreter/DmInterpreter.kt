@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.interpreter
 
 import io.github.mbackschat.a12.dm.interpreter.ast.Cond
 import io.github.mbackschat.a12.dm.interpreter.ast.Expr
+import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
@@ -92,15 +93,26 @@ class DmInterpreter @JvmOverloads constructor(
      */
     private val ruleCondAst: Map<RuleDef, Lazy<Cond>> =
         model.rules.associateWith { r -> lazy { parseCondition(r.conditionText, r.group) } }
-    private val compExprAst: Map<ComputationDef, Lazy<Expr>> =
-        model.computations.associateWith { c -> lazy { parseExpression(c.expressionText, c.group) } }
+    private val compParsedAst: Map<ComputationDef, Lazy<ParsedComputation>> =
+        model.computations.associateWith { c -> lazy { parseComputation(c) } }
+
+    /** A computation's parsed form: each tiered alternative's (precondition?, operation), under an optional
+     *  whole-computation common precondition — all parsed once. The kernel selects the first alternative whose
+     *  precondition holds (null precondition = unconditional); a present common precondition gates them all. */
+    private class ParsedComputation(val commonPrecondition: Cond?, val alternatives: List<ParsedAlternative>)
+    private class ParsedAlternative(val precondition: Cond?, val operation: Expr)
+
+    private fun parseComputation(c: ComputationDef): ParsedComputation = ParsedComputation(
+        c.commonPrecondition?.let { parseCondition(it, c.group) },
+        c.alternatives.map { ParsedAlternative(it.precondition?.let { p -> parseCondition(p, c.group) }, parseExpression(it.operation, c.group)) },
+    )
 
     /** The parsed condition AST for [rule] — cached for a model rule; a one-off parse for an ad-hoc candidate. */
     private fun condAstOf(rule: RuleDef): Cond =
         ruleCondAst[rule]?.value ?: parseCondition(rule.conditionText, rule.group)
 
-    /** The parsed expression AST for [comp] (a model computation) — cached. */
-    private fun exprAstOf(comp: ComputationDef): Expr = compExprAst.getValue(comp).value
+    /** The parsed form of [comp] (a model computation) — cached. */
+    private fun parsedOf(comp: ComputationDef): ParsedComputation = compParsedAst.getValue(comp).value
 
     /**
      * Run every rule over each row of its iteration scope and return one [Message] per firing — the
@@ -383,16 +395,33 @@ class DmInterpreter @JvmOverloads constructor(
         // model with no inter-computation dependency the overlay is never consulted (zero behavior change).
         val overlay = HashMap<Pair<String, List<Int>>, Val>()
         for (comp in computationsInDependencyOrder()) {
-            val expr = exprAstOf(comp)
-            val scope = scopeFromRefs(exprRefs(expr) + comp.targetPath, comp.group)
+            val parsed = parsedOf(comp)
+            val scope = scopeFromRefs(computationScopeRefs(parsed) + comp.targetPath, comp.group)
             for (ctx in doc.contextsFor(scope)) {
                 val ectx = if (overlay.isEmpty()) ctx else OverlayContext(ctx, overlay)
-                val v = Interpreter(ectx, clock, model.baseYear, model.indexFields, predefinedTypes).evalExpression(expr)
+                val interp = Interpreter(ectx, clock, model.baseYear, model.indexFields, predefinedTypes)
+                val v = evalComputation(parsed, interp)
                 out += toComputed(comp, v)
                 if (v !is Val.Unknown) overlay[comp.targetPath to ctx.repsOf(comp.targetPath)] = v
             }
         }
         return out
+    }
+
+    /**
+     * Evaluate a parsed (tiered) computation in one row context, mirroring the kernel's
+     * `CodeGenCalculationAlternative` codegen (KERNEL-FINDINGS §2): a present [commonPrecondition] must hold,
+     * then the alternatives are tried IN ORDER and the FIRST whose precondition holds supplies the value (a
+     * null precondition is unconditional). If the common precondition fails, or no alternative's precondition
+     * holds, the field computes nothing ([Val.Unknown] → CLEARED). A precondition "holds" iff it evaluates to
+     * three-valued TRUE — an UNKNOWN/FALSE precondition (e.g. over an empty operand) does not select its branch.
+     */
+    private fun evalComputation(parsed: ParsedComputation, interp: Interpreter): Val {
+        if (parsed.commonPrecondition != null && interp.eval(parsed.commonPrecondition) != Tri.TRUE) return Val.Unknown
+        for (alt in parsed.alternatives) {
+            if (alt.precondition == null || interp.eval(alt.precondition) == Tri.TRUE) return interp.evalExpression(alt.operation)
+        }
+        return Val.Unknown
     }
 
     /** One computed-field outcome for [comp] from its evaluated [v]: VALUE (resolved, empty-as-0 applies) / CLEARED. */
@@ -423,7 +452,7 @@ class DmInterpreter @JvmOverloads constructor(
             if (!onStack.add(c.targetPath)) {
                 throw UnsupportedConstructException("cyclic computation dependency involving ${c.targetPath}")
             }
-            for (ref in referencedFieldPaths(exprAstOf(c))) {
+            for (ref in computationDepRefs(parsedOf(c))) {
                 byTarget[ref]?.let { dep -> if (dep.targetPath != c.targetPath) visit(dep) }
             }
             onStack.remove(c.targetPath)
@@ -695,6 +724,22 @@ class DmInterpreter @JvmOverloads constructor(
         is Expr.SemanticIndex -> expr.indexFieldPath?.let { listOf(it) } ?: emptyList()
         else -> emptyList()
     }
+
+    /** Non-starred refs of a whole tiered computation — its iteration SCOPE input: each operation's non-starred
+     *  expr refs plus each precondition's + the common precondition's refs (a starred aggregate is evaluated
+     *  WITHIN the scope, so it does not drive it — mirrors the single-operation `exprRefs` use). */
+    private fun computationScopeRefs(parsed: ParsedComputation): List<String> =
+        condRefsOrEmpty(parsed.commonPrecondition) +
+            parsed.alternatives.flatMap { condRefsOrEmpty(it.precondition) + exprRefs(it.operation) }
+
+    /** All field/star refs of a whole tiered computation — its cascade DEPENDENCY input: each operation's full
+     *  refs (incl. starred, so a dependency through an aggregate over a computed field is ordered) plus each
+     *  precondition's + the common precondition's refs. */
+    private fun computationDepRefs(parsed: ParsedComputation): List<String> =
+        condRefsOrEmpty(parsed.commonPrecondition) +
+            parsed.alternatives.flatMap { condRefsOrEmpty(it.precondition) + referencedFieldPaths(it.operation) }
+
+    private fun condRefsOrEmpty(cond: Cond?): List<String> = cond?.let { nonStarredRefs(it) } ?: emptyList()
 
     private fun ancestorGroups(fieldPath: String): List<String> {
         val parts = fieldPath.trim('/').split('/')

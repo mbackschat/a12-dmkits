@@ -92,6 +92,24 @@ class PerfGateTest {
     }
 
     /**
+     * **Tiered compute at scale (IF21)**: the `compute()` path over a per-Line computation selected by a
+     * `precondition` (`[Qty] < 100 → [Qty]` else `0`). Asserts the computed-field outcomes agree (interp ==
+     * kernel — the kernel compiles the same tiered alternatives) at the gate N, the same generous bounds, and
+     * prints the interp/kernel ratio. The twin of [computeScalesLikeKernel] for the tiered selection — the
+     * measured-against-the-kernel half of the IF21 fix (the growth guard is [tieredComputationStaysSubQuadratic]).
+     */
+    @Test
+    fun tieredComputeScalesLikeKernel() {
+        val row = PerfHarness.runScenario(PerfCatalog.tieredComputation(), n = 3_000, withJava = false)
+        println(PerfHarness.format(row, CAVEAT))
+        assertTrue(row.interp.medianMs < ABS_CEILING_MS,
+            "${row.scenario}: interpreter ${row.interp.medianMs}ms exceeds ${ABS_CEILING_MS}ms at N=${row.n}")
+        val ratio = row.ratioGroovy
+        if (ratio != null) assertTrue(ratio < RATIO_CEILING,
+            "${row.scenario}: tiered-compute interp/kernel ratio $ratio exceeds $RATIO_CEILING at N=${row.n}")
+    }
+
+    /**
      * The precise O(N²) detector: time the interpreter (only — no kernel, so high N stays cheap) on B1 at N and
      * 4N; a linear engine grows ~4×, a quadratic one ~16×. Assert the growth factor stays well under quadratic.
      * This is what actually guards the #28 indexing from a reintroduced linear-scan regression.
@@ -233,6 +251,31 @@ class PerfGateTest {
             "${"%.1f".format(bLarge)}ms@${small0 * 4} groups  min-growth=${"%.2f".format(best)}× (linear≈4, per-group-scan≈16)")
         assertTrue(best < SUB_QUADRATIC_MAX,
             "wide sibling-groups scaling looks super-linear: 4× groups took ${best}× the time (per-group setup scans the whole model?)")
+    }
+
+    /**
+     * Guards **tiered computations** (IF21) against a per-row regression: `compute()` evaluates each alternative's
+     * `precondition` and selects the operation PER Line row, so the cost is O(rows · precondition) — it must stay
+     * LINEAR (the precondition is a `Cond` eval per computed instance, exactly like a rule, folded into the
+     * existing dependency graph; no per-row rescan). Time the interpreter (only) over N and 4N Line rows; linear
+     * ≈ 4×, a per-row-rescan quadratic ≈ 16×. This is the perf half of the IF21 fix the standing perf discipline
+     * requires — the "no O(N²)" claim MEASURED, not asserted.
+     */
+    @Test
+    fun tieredComputationStaysSubQuadratic() {
+        val tc = PerfCatalog.tieredComputation()
+        var best = Double.MAX_VALUE
+        var bSmall = 0.0; var bLarge = 0.0
+        repeat(GROWTH_REPEATS) {
+            val small = PerfHarness.timeInterpreter(tc, N_SMALL, warmup = 5, iters = 7)
+            val large = PerfHarness.timeInterpreter(tc, N_SMALL * 4, warmup = 5, iters = 7)
+            val g = large.minMs / small.minMs
+            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        }
+        println("[perf] tiered compute sub-quadratic: ${"%.1f".format(bSmall)}ms@$N_SMALL → " +
+            "${"%.1f".format(bLarge)}ms@${N_SMALL * 4} rows  min-growth=${"%.2f".format(best)}× (linear≈4, per-row-rescan≈16)")
+        assertTrue(best < SUB_QUADRATIC_MAX,
+            "tiered-computation compute scaling looks super-linear: 4× rows took ${best}× the time (precondition selection rescans per row?)")
     }
 
     /**

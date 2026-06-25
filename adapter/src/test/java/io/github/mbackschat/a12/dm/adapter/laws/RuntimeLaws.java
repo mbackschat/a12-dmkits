@@ -157,6 +157,49 @@ public final class RuntimeLaws {
         return modelJson.substring(0, br + 1) + "\n" + comp + modelJson.substring(br + 1);
     }
 
+    /** One tiered-computation alternative: an optional {@code precondition} gating an {@code operation} (the kernel
+     *  selects the first whose precondition holds; a null precondition is unconditional). For {@link #withTieredComputation}. */
+    public record CompAlt(String precondition, String operation) {
+    }
+
+    /**
+     * Inject a TIERED computation (multiple {@code computationAlternatives}, each an optional precondition + an
+     * operation, under an optional {@code commonPrecondition}) into {@code groupId}'s elements — the IF21
+     * differential's kernel side, the tiered twin of {@link #withComputation}.
+     */
+    public static String withTieredComputation(String modelJson, String groupId, String name,
+            String computedFieldRelPath, String commonPrecondition, List<CompAlt> alternatives) {
+        StringBuilder alts = new StringBuilder();
+        for (int i = 0; i < alternatives.size(); i++) {
+            CompAlt a = alternatives.get(i);
+            if (i > 0) {
+                alts.append(", ");
+            }
+            alts.append("{ ");
+            if (a.precondition() != null) {
+                alts.append("\"precondition\": \"").append(esc(a.precondition())).append("\", ");
+            }
+            alts.append("\"operation\": \"").append(esc(a.operation())).append("\" }");
+        }
+        String common = commonPrecondition == null ? ""
+                : " \"commonPrecondition\": \"" + esc(commonPrecondition) + "\",";
+        String comp = "{ \"type\": \"Computation\", \"id\": \"" + groupId + "/" + name + "\", \"name\": \"" + name + "\","
+                + " \"Computation\": { \"computedFieldRelPath\": \"" + computedFieldRelPath + "\"," + common
+                + " \"computationAlternatives\": [ " + alts + " ],"
+                + " \"errorMessage\": [ { \"locale\": \"en_US\", \"text\": \"x\" }, { \"locale\": \"de_DE\", \"text\": \"x\" } ] } },\n";
+        int g = modelJson.indexOf("\"id\": \"" + groupId + "\"");
+        if (g < 0) {
+            g = modelJson.indexOf("\"id\" : \"" + groupId + "\"");
+        }
+        int br = modelJson.indexOf("\"elements\"", g);
+        br = modelJson.indexOf('[', br);
+        return modelJson.substring(0, br + 1) + "\n" + comp + modelJson.substring(br + 1);
+    }
+
+    private static String esc(String s) {
+        return s.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
     /**
      * Evaluate the model (rules included) against a document instance and return the error codes that
      * fired. {@code groupPaths} are the group rows to instantiate (e.g. {@code "/Order"}); each provided

@@ -10,6 +10,7 @@ import java.util.Set;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.github.mbackschat.a12.dm.interpreter.model.ComputationAlternative;
 import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef;
 import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision;
 import io.github.mbackschat.a12.dm.interpreter.eval.Document;
@@ -97,8 +98,17 @@ public final class InterpreterModelLoader {
                     case "Computation" -> {
                         JsonNode c = node.path("Computation");
                         String target = resolveRel(id, c.path("computedFieldRelPath").asText());
-                        String op = c.path("computationAlternatives").path(0).path("operation").asText();
-                        comps.add(new ComputationDef(target, parent(id), op));
+                        // A tiered computation: every alternative's (precondition?, operation), under an optional
+                        // commonPrecondition — the kernel selects the first alternative whose precondition holds
+                        // (IF21 / KERNEL-FINDINGS §2). The DSL text stays raw (relative to the group); the
+                        // interpreter parses it with the computation's group.
+                        String common = c.hasNonNull("commonPrecondition") ? c.path("commonPrecondition").asText() : null;
+                        List<ComputationAlternative> alts = new ArrayList<>();
+                        for (JsonNode alt : c.path("computationAlternatives")) {
+                            String precond = alt.hasNonNull("precondition") ? alt.path("precondition").asText() : null;
+                            alts.add(new ComputationAlternative(precond, alt.path("operation").asText()));
+                        }
+                        comps.add(new ComputationDef(target, parent(id), alts, common));
                     }
                     default -> { /* header / other nodes carry no rule surface */ }
                 }

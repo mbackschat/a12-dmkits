@@ -144,15 +144,33 @@ data class RuleDef(
 )
 
 /**
- * One computation: an expression evaluated over its iteration scope [group], its result assigned to
- * [targetPath]. The kernel's empty-as-0 applies — `[BaseFee]` over an absent base fee computes 0, not
- * nothing.
+ * One TIERED alternative of a [ComputationDef]: an optional [precondition] (DSL condition text) gating an
+ * [operation] (DSL value-expression text). The kernel selects the first alternative whose precondition holds
+ * (a null precondition always applies — the unconditional default), KERNEL-FINDINGS §2 "tiered computations".
+ */
+data class ComputationAlternative(val precondition: String?, val operation: String)
+
+/**
+ * One computation: a list of [alternatives] (each an optional precondition + an operation), optionally under a
+ * whole-computation [commonPrecondition], evaluated over its iteration scope [group], its result assigned to
+ * [targetPath]. The kernel evaluates the alternatives **in order** and the FIRST whose precondition holds
+ * supplies the value; if [commonPrecondition] is present and not satisfied, or no alternative's precondition
+ * holds, the field is **cleared** (computes nothing). The kernel's empty-as-0 applies inside an operation —
+ * `[BaseFee]` over an absent base fee computes 0, not nothing.
+ *
+ * The common case — a single unconditional operation — has the [expressionText] secondary constructor as sugar
+ * (so a hand-built model or a non-tiered computation reads `ComputationDef(target, group, "[A] + [B]")`).
  */
 data class ComputationDef(
     val targetPath: String,
     val group: String,
-    val expressionText: String,
-)
+    val alternatives: List<ComputationAlternative>,
+    val commonPrecondition: String? = null,
+) {
+    /** Sugar for the common single-unconditional-operation computation (no precondition, no common guard). */
+    constructor(targetPath: String, group: String, expressionText: String) :
+        this(targetPath, group, listOf(ComputationAlternative(null, expressionText)))
+}
 
 /**
  * A model: its fields (→ kinds), its rules, its computations, the set of **repeatable** group paths (a
