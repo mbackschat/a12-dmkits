@@ -314,7 +314,7 @@ private fun buildIsoDateTime(values: List<String>, comps: List<Char>): String? {
         val v = values[idx].toInt()
         when (c) { 'y' -> y = v; 'M' -> mo = v; 'd' -> d = v; 'H' -> h = v; 'm' -> mi = v; 's' -> s = v }
     }
-    if (y < 0 || mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59 || s > 59) return null
+    if (y < 0 || mo < 1 || mo > 12 || d < 1 || d > daysInMonth(y, mo) || h > 23 || mi > 59 || s > 59) return null
     return iso(y, mo, d) + "T" + two(h) + ":" + two(mi) + ":" + two(s)
 }
 
@@ -324,6 +324,6 @@ private fun two(n: Int): String = n.toString().padStart(2, '0')
 private fun buildIso(values: List<String>, comps: List<Char>): String? {
     var y = -1; var mo = -1; var d = -1
     comps.forEachIndexed { idx, c -> when (c) { 'y' -> y = values[idx].toInt(); 'M' -> mo = values[idx].toInt(); 'd' -> d = values[idx].toInt() } }
-    if (y < 0 || mo < 1 || mo > 12 || d < 1 || d > 31) return null
+    if (y < 0 || mo < 1 || mo > 12 || d < 1 || d > daysInMonth(y, mo)) return null
     return iso(y, mo, d)
 }

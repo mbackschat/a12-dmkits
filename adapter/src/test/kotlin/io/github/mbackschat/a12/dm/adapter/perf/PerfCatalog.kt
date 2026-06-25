@@ -288,13 +288,16 @@ object PerfCatalog {
 
     // Unambiguously-malformed values (scale-independent) for the kinds the interpreter formal-checks. NUMBER:
     // invalid chars / signed-zero / leading-plus / leading-blank. DATE: garbage / a value in the WRONG format
-    // for the field (ISO on a de field, de on an ISO field) — each must produce the kernel's formal code and
-    // suppress the referencing rule, identically in both engines. Other kinds stay valid (not yet formal-checked).
+    // for the field (ISO on a de field, de on an ISO field) / a CALENDAR-INVALID day (Feb 31 — a day past the
+    // month's length, the gap the day≤28 ValidValues never surfaced) — each must produce the kernel's formal
+    // code and suppress the referencing rule, identically in both engines. Other kinds stay valid.
     private fun malformed(field: io.github.mbackschat.a12.dm.interpreter.model.FieldDef, rnd: Random): String? = when (field.kind) {
         Kind.NUMBER -> listOf("abc", "-0", "+5", " 5 ").let { it[rnd.nextInt(it.size)] }
         Kind.DATE -> {
-            val wrongFormat = if (field.format == "dd.MM.yyyy") "2024-06-15" else "15.06.2024"
-            listOf("not-a-date", wrongFormat).let { it[rnd.nextInt(it.size)] }
+            val de = field.format == "dd.MM.yyyy"
+            val wrongFormat = if (de) "2024-06-15" else "15.06.2024"
+            val calendarInvalid = if (de) "31.02.2024" else "2024-02-31"   // Feb 31 → datumFormatFalsch
+            listOf("not-a-date", wrongFormat, calendarInvalid).let { it[rnd.nextInt(it.size)] }
         }
         else -> null
     }

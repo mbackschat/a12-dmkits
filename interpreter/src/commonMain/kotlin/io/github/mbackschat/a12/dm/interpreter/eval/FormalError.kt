@@ -65,11 +65,20 @@ enum class FormalErrorCode(val id: String) {
 
     /** A NUMBER with a leading plus sign (`+5`, `+0`) — the kernel forbids an explicit plus. */
     PLUS_SIGN("zahlMitPlus"),
+
+    /** A DATE_RANGE value whose separator is missing or misplaced (it does not split into exactly two dates). */
+    DATE_RANGE_SEPARATOR("datumBereichTrennerFehlt"),
+
+    /** A DATE_RANGE value split in two, but a side is not a valid date for the field's format. */
+    DATE_RANGE_FORMAT("datumBereichFormatFalsch"),
+
+    /** A DATE_RANGE with two valid dates, but the start is AFTER the end (start == end is allowed). */
+    DATE_RANGE_INVALID("datumBereichNichtGueltig"),
 }
 
 fun formalError(
     kind: Kind, raw: String, scale: Int? = null, format: String? = null,
-    datePrecision: DatePrecision = DatePrecision.FULL,
+    datePrecision: DatePrecision = DatePrecision.FULL, rangeSep: String? = null,
 ): FormalErrorCode? {
     if (raw.isEmpty()) return null
     return when (kind) {
@@ -89,10 +98,30 @@ fun formalError(
         // unchecked entirely, so a malformed time even *escaped* suppression — KERNEL-FINDINGS §6 / IF8.)
         Kind.TIME -> if (parseTimeToIso(raw, format ?: "HH:mm:ss") != null) null else FormalErrorCode.DATE_FORMAT
         Kind.DATE_TIME -> if (parseDateTimeToIso(raw, format ?: "yyyy-MM-dd'T'HH:mm:ss") != null) null else FormalErrorCode.DATE_FORMAT
-        // DATE_RANGE's `datumBereich*` formal MESSAGE is still deferred (a malformed range already resolves to
-        // Val.Unknown via parseRangeToIso, so the referencing rule is suppressed correctly; only the standalone
-        // formal-error message is missing — IF12).
-        Kind.STRING, Kind.BOOLEAN, Kind.CONFIRM, Kind.DATE_RANGE -> null
+        // A malformed DATE_RANGE carries one of the kernel's `datumBereich*` codes (probe-verified): a value that
+        // does not split into exactly two parts on the separator → `datumBereichTrennerFehlt`; split but a side
+        // is not a valid date for the format (incl. calendar-invalid like 31.02) → `datumBereichFormatFalsch`;
+        // two valid dates but start AFTER end → `datumBereichNichtGueltig` (start == end is allowed). A malformed
+        // range also resolves to Val.Unknown, suppressing a referencing rule.
+        Kind.DATE_RANGE -> {
+            if (format == null || rangeSep == null) null   // no range config → nothing to check
+            else {
+                val parts = raw.split(rangeSep)
+                when {
+                    parts.size != 2 -> FormalErrorCode.DATE_RANGE_SEPARATOR
+                    else -> {
+                        val a = parseDateToIso(parts[0], format)
+                        val b = parseDateToIso(parts[1], format)
+                        when {
+                            a == null || b == null -> FormalErrorCode.DATE_RANGE_FORMAT
+                            a > b -> FormalErrorCode.DATE_RANGE_INVALID   // ISO strings: lexicographic == chronological
+                            else -> null
+                        }
+                    }
+                }
+            }
+        }
+        Kind.STRING, Kind.BOOLEAN, Kind.CONFIRM -> null
     }
 }
 
@@ -139,6 +168,12 @@ fun formalErrorText(code: FormalErrorCode, locale: String, scale: Int? = null): 
             if (de) "Null darf kein Vorzeichen haben." else "Zero must not carry a sign."
         FormalErrorCode.PLUS_SIGN ->
             if (de) "Zahl darf kein führendes Pluszeichen haben." else "Number must not have a leading plus sign."
+        FormalErrorCode.DATE_RANGE_SEPARATOR ->
+            if (de) "Datumsbereich-Trennzeichen fehlt oder steht falsch." else "Date-range separator is missing or misplaced."
+        FormalErrorCode.DATE_RANGE_FORMAT ->
+            if (de) "Datumsbereich enthält kein gültiges Datum." else "Date range contains an invalid date."
+        FormalErrorCode.DATE_RANGE_INVALID ->
+            if (de) "Datumsbereich: Startdatum liegt nach dem Enddatum." else "Date range: the start date is after the end date."
     }
 }
 

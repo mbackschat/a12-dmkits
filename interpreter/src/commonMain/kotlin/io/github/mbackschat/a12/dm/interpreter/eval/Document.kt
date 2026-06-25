@@ -567,15 +567,16 @@ class Document @JvmOverloads constructor(
         // that parse but are still invalid: signed-zero `-0`, leading-plus `+5`, too-many-decimals. Without
         // this, an aggregate would silently fold a `-0` as 0 and fire where the kernel suppresses.
         val precision = datePrecisions[path] ?: DatePrecision.FULL
-        // The field's date-ish format for the formal check — DATE/TIME/DATE_TIME each from their own map (so a
-        // malformed TIME/DATE_TIME also resolves to Unknown, not just DATE; KERNEL-FINDINGS §6).
+        // The field's date-ish format for the formal check — DATE/TIME/DATE_TIME/DATE_RANGE each from their own
+        // map (so a malformed TIME/DATE_TIME/range also resolves to Unknown, not just DATE; KERNEL-FINDINGS §6).
         val dateLikeFormat = when (kind) {
             Kind.DATE -> dateFormats[path]
             Kind.TIME -> timeFormats[path]
             Kind.DATE_TIME -> dateTimeFormats[path]
+            Kind.DATE_RANGE -> rangeConfig[path]?.first
             else -> null
         }
-        if (formalError(kind, raw, scales[path], dateLikeFormat, precision) != null) return Val.Unknown
+        if (formalError(kind, raw, scales[path], dateLikeFormat, precision, rangeConfig[path]?.second) != null) return Val.Unknown
         return when (kind) {
             Kind.DATE_RANGE -> rangeConfig[path]?.let { (format, sep) ->
                 parseRangeToIso(raw, format, sep)?.let { Val.Range(it.first, it.second) }

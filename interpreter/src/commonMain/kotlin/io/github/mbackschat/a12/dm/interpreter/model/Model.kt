@@ -231,6 +231,9 @@ data class ModelDef(
         else -> null
     }
 
+    /** The DATE_RANGE field's separator (the formal check splits the value on it), else null. */
+    fun rangeSeparatorOf(path: String): String? = rangeConfig[path]?.second
+
     /** Each NUMBER field's scale (`maxFractionalDigits`) — the formal-check input (decimal-places errors); the
      *  [io.github.mbackschat.a12.dm.interpreter.eval.Document] needs it to gate a formally-invalid value to Unknown. */
     val scales: Map<String, Int?> = fields.associate { it.path to it.scale }
