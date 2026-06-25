@@ -109,7 +109,11 @@ class Document @JvmOverloads constructor(
     // ---- lookup index (built once on first query, invalidated on mutation) ----------------------------
 
     private class Index(
-        val valueByKey: Map<Pair<String, List<Int>>, Placement>,   // non-group placements, FIRST per key wins
+        // Non-group placements, FIRST per key wins. Split by path (path → reps → placement) rather than a flat
+        // `Map<Pair<String, List<Int>>, _>`: `valueAt` is on the hottest path, and the nested form drops the
+        // per-lookup `Pair` allocation + `Pair.equals`/`hashCode` (the JFR profile's largest residual cluster) —
+        // the outer `String` lookup is cheap; only the reps are hashed inside.
+        val valueByKey: Map<String, Map<List<Int>, Placement>>,
         val rowsByGroup: Map<String, List<List<Int>>>,             // group path → distinct reps, document order
         val valued: List<Placement>,                               // valued (value != null) non-group placements
         val partsByPath: Map<String, List<String>>,                // memoized path split
@@ -139,7 +143,7 @@ class Document @JvmOverloads constructor(
     private fun index(): Index = cachedIndex ?: build().also { cachedIndex = it }
 
     private fun build(): Index {
-        val byKey = HashMap<Pair<String, List<Int>>, Placement>()
+        val byKey = HashMap<String, HashMap<List<Int>, Placement>>()
         val rows = LinkedHashMap<String, MutableList<List<Int>>>()
         val valued = ArrayList<Placement>()
         val partsMemo = HashMap<String, List<String>>()
@@ -153,7 +157,7 @@ class Document @JvmOverloads constructor(
                 // pays — the startup / CLI-one-shot path, and the reason a single JS pass blew up at scale.
                 rows.getOrPut(p.path) { ArrayList() }.add(p.reps)
             } else {
-                byKey.getOrPut(p.path to p.reps) { p }   // FIRST placement per key wins (matches firstOrNull)
+                byKey.getOrPut(p.path) { HashMap() }.getOrPut(p.reps) { p }   // FIRST placement per (path,reps) wins
                 if (p.value != null) valued.add(p)
             }
         }
@@ -324,7 +328,7 @@ class Document @JvmOverloads constructor(
         return refParts.indices.map { i -> if (i < common) rowReps[i] else 1 }
     }
 
-    private fun valueAt(path: String, reps: List<Int>): Placement? = index().valueByKey[path to reps]
+    private fun valueAt(path: String, reps: List<Int>): Placement? = index().valueByKey[path]?.get(reps)
 
     /**
      * Whether the field instance at [path]/[reps] carries a value — the requiredness check for an

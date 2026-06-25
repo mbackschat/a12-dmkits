@@ -52,7 +52,7 @@ private val ALL_RELEVANT: Relevance = { _, _ -> true }
  *  validation, so a field instance's status is stable — computing it once per distinct instance replaces the
  *  per-operand, per-row recompute (measured: `formalErrorAt` was ~56% of `validateFull` before this memo).
  *  Created per validate call (never shared across calls), so the reused engine stays thread-safe. */
-private typealias FormalCache = MutableMap<Pair<String, List<Int>>, String?>
+private typealias FormalCache = MutableMap<String, MutableMap<List<Int>, String?>>   // path → reps → code (split to drop the Pair key, hot in firstSuppressor)
 
 /**
  * The public entry point — evaluates a [ModelDef]'s rules over a [Document] instance, kernel-free, on
@@ -571,11 +571,11 @@ class DmInterpreter @JvmOverloads constructor(
      * referencing it, branch-scoped exactly like a formal error (verified, KERNEL-FINDINGS §4 supplement).
      */
     private fun formalErrorAt(path: String, reps: List<Int>, ctx: EvalContext, dup: Set<Pair<String, List<Int>>>, cache: FormalCache): String? {
-        val key = path to reps
-        cache[key]?.let { return it }
-        if (cache.containsKey(key)) return null   // memoized "usable" (null) — distinct from "not yet computed"
+        val inner = cache.getOrPut(path) { HashMap() }
+        inner[reps]?.let { return it }
+        if (inner.containsKey(reps)) return null   // memoized "usable" (null) — distinct from "not yet computed"
         val v = computeFormalErrorAt(path, reps, ctx, dup)
-        cache[key] = v
+        inner[reps] = v
         return v
     }
 
