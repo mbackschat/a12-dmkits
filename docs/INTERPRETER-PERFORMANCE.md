@@ -244,6 +244,17 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 *(dated baselines, newest first — populated as benchmarks land)*
 
+**2026-06-25 — Layer 1 (sealed compiled-node eval) measured ~7% end-to-end, NOT the 2.5× the spike implied — the eval is not the `validateFull` bottleneck (reverted).** A faithful sealed-node compiler for the `manyRules` subset (`And`/`Or`/`Cmp`/`FieldFilled`/`Sum`) was wired behind a whole-rule compile-or-fallback seam, passed the full `:adapter` differential (bit-for-bit correct), and was A/B'd against the tree-walk fallback **in one JVM run** (the noise-free comparison the spike lacked):
+
+| regime | rules | fires | fallback | compiled | speedup |
+|---|--:|--:|--:|--:|:--:|
+| high-firing (all fire) | 192 | 156 729 | 568 ms | 528 ms | 1.08× |
+| **low-firing (mostly pass)** | 48 | 0 | 125 ms | 117 ms | **1.08×** |
+| **low-firing (mostly pass)** | 96 | 0 | 241 ms | 227 ms | **1.06×** |
+| **low-firing (mostly pass)** | 192 | 0 | 479 ms | 448 ms | **1.07×** |
+
+The spike's **~2.5×** was the firing-only eval *in isolation* (per-row `Interpreter` alloc + AST re-walk); at the `validateFull` level that eval is **only ~7% of the cost**, even in the 0-fire regime where it should dominate most. The rest — `iterationContexts` construction, the formal/mandatory/uniqueness pre-passes, the **per-row suppressor scan** (`firstSuppressor` → `formalErrorAt` per ref, per non-firing row), the `EvalContext` Document lookups, and (when rules fire) message rendering — is **shared by both paths**, so an eval-only optimization can't move it. **Conclusion: the eval is the wrong lever.** Layer 1 was reverted (a ~7% win does not justify a new compiler subsystem — "minimum code, nothing speculative"); the next step is to **profile `validateFull`** and target the dominant *shared* cost (likely the per-row suppressor scan + `iterationContexts`). The measure-to-guide discipline did its job: it stopped a complex, low-value addition before it shipped.
+
 **2026-06-25 — pre-optimization baseline for the layered work** ([`INTERPRETER-PERFORMANCE-DESIGN.md`](INTERPRETER-PERFORMANCE-DESIGN.md); `KernelEdgeTest.ruleCountCrossover`, N=1000 Lines × 5 Subs, median of 8 after 12 warmups; codegen excluded; `ratioJava` = the fair algorithmic ratio). This is the yardstick each layer's delta is read against:
 
 | rules | interp | kernel-Groovy | kernel-Java | interp/java |
