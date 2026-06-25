@@ -22,6 +22,11 @@ class KernelEdgeTest {
 
     private val n: Int get() = System.getProperty("perf.edge.n", "1000").toInt()
 
+    /** The rule counts the crossover sweeps walk — overridable via `-Dperf.edge.counts=192,384,768,1000` to
+     *  probe scaling beyond the default ceiling. */
+    private val counts: List<Int>
+        get() = System.getProperty("perf.edge.counts", "6,12,24,48,96,192").split(",").map { it.trim().toInt() }
+
     /**
      * Rule-count sweep at fixed document size: as the rule count grows, the interpreter re-parses ALL rules on
      * every `validateFull` call while the kernel runs already-generated code — so interp/kernel-Java climbs
@@ -30,7 +35,7 @@ class KernelEdgeTest {
     @Test
     fun ruleCountCrossover() {
         println("[edge] rule-count sweep @ N=$n Lines (×5 Subs), single document (interp/java is the fair ratio):")
-        for (count in listOf(6, 12, 24, 48, 96, 192)) {
+        for (count in counts) {
             val row = PerfHarness.runScenario(PerfCatalog.manyRules(count), n)
             println("  rules=%3d  %s".format(count, PerfHarness.format(row)))
         }
@@ -46,9 +51,33 @@ class KernelEdgeTest {
     @Test
     fun ruleCountCrossoverLowFiring() {
         println("[edge] LOW-FIRING rule-count sweep @ N=$n Lines (×5 Subs), valid doc (mostly passes):")
-        for (count in listOf(6, 12, 24, 48, 96, 192)) {
+        for (count in counts) {
             val row = PerfHarness.runScenario(PerfCatalog.manyRules(count, firing = false), n)
             println("  rules=%3d  %s".format(count, PerfHarness.format(row)))
+        }
+    }
+
+    /**
+     * **Interpreter scaling PAST the kernel's structural ceiling.** At ~512–768 rules the kernel's Groovy
+     * codegen generates a single `fuehreAus_0` validation method that exceeds the **JVM 64 KB method bytecode
+     * limit** (`MethodTooLargeException`) — so the kernel **cannot build the validator at all** beyond that. The
+     * interpreter is a tree-walk with no per-model codegen, so it has no such ceiling. This sweep times the
+     * interpreter ONLY (no kernel) across high rule counts to show it stays **linear** where the kernel can't
+     * run. Counts via `-Dperf.edge.counts=384,768,1000,1500,2000`; both firing regimes.
+     */
+    @Test
+    fun interpScalingPastKernelCeiling() {
+        println("[edge] INTERP-ONLY scaling @ N=$n (the kernel cannot codegen past ~512–768 rules — 64KB method limit):")
+        for (firing in listOf(true, false)) {
+            var prev = 0.0
+            val regime = if (firing) "firing    " else "low-firing"
+            for (count in counts) {
+                val s = PerfHarness.timeInterpreter(PerfCatalog.manyRules(count, firing = firing), n, warmup = 8, iters = 8)
+                val perRule = "%.3fms/rule".format(s.medianMs / count)
+                val growth = if (prev > 0) "  ×%.2f".format(s.medianMs / prev) else ""
+                println("  %s rules=%4d  interp=%7.2fms  %s%s".format(regime, count, s.medianMs, perRule, growth))
+                prev = s.medianMs
+            }
         }
     }
 

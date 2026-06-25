@@ -78,7 +78,7 @@ tasks.named('test') {
     // test JVM, e.g. -Da12.kernel.mm.dir=… / -Dperf.profile=true / -Dperf.edge=true — harnesses skip (or gate)
     // when their property is unset.
     ['a12.kernel.mm.dir', 'a12.corpus1.dir',
-     'perf.profile', 'perf.n', 'perf.edge', 'perf.edge.n', 'perf.scaling', 'perf.scaling.n'].each { k ->
+     'perf.profile', 'perf.n', 'perf.edge', 'perf.edge.n', 'perf.edge.counts', 'perf.scaling', 'perf.scaling.n'].each { k ->
         if (System.getProperty(k) != null) systemProperty k, System.getProperty(k)
     }
     // Opt-in JFR sampling: -Dperf.jfr=<file.jfr> records the (profile-config) flight recorder on the test JVM
