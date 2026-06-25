@@ -103,6 +103,46 @@ Plus non-cache kernel optimizations worth noting as hints: **iterator pruning** 
 
 So across the passes we **mirrored every remaining kernel-cache analog clean-room** (semantic-index #4, repeatable group-fill #6, cold-path build #7, non-repeatable group-fill #8, the cascade, the parallel-iteration outer join) — leaving **no known O(N²) cliff on any common path** and **no known silent disagreement**. Parallel iteration is now exact for every shape the kernel will *accept* (the declined shapes are kernel-invalid models). The lesson: a tree-walker isn't inherently fast OR inherently correct at the edges — you earn parity by indexing/ordering exactly where the kernel does, one verified case at a time, reverse-engineering the intricate corners from the source (and *probing which shapes are even valid*, so a "gap" isn't really an unreachable one), and **failing loud on what you haven't built yet**.
 
+## How the kernel's GENERATED code evaluates a rule — and what the interpreter can mimic (2026-06-25)
+
+A deep read of the kernel's **generated Java** validator (dumped for the `manyRules` shapes + an `Or` and a 3-way `And`, via `generateValidationCode(…, JAVA)`) shows *exactly* where its per-operation edge comes from — and confirms the owner's intuition that it's **mimickable with tree-walk techniques, no codegen needed.** (Mechanism described in our own words + stylized pseudocode; the verbatim generated source is not reproduced — license-safe rule.)
+
+**The generated shape — one rule = one method, a two-phase body.** Each rule compiles to a method that iterates its scope and, per row, does:
+
+```
+for (row in iter) {                                  // the rule's iteration scope (cached repetitions)
+  if ( fieldsGiven(Qty).isKnownAndTrue()             // PHASE 1: short-circuit BOOLEAN guard —
+       && compare(GT, num(Qty), num(Amount))         //   Java && / || ; reads only .isKnownAndTrue();
+            .isKnownAndTrue() ) {                     //   later operands skipped once firing is decided
+    var tb0 = fieldsGiven(Qty);                       // PHASE 2 (only inside the if = only when it FIRES):
+    var tb1 = compare(GT, num(Qty), num(Amount));     //   RE-evaluate operands, build the typed results,
+    var v   = tb0.combineUND(tb1);                    //   combine (UND for And, ODER for Or) to get polarity
+    addMessage(errorField, row, code, v.fehlerType());
+  }
+}
+```
+
+**The two structural differences from our tree-walk** (both confirmed across `And`, `Or`, `Cmp`, `FieldFilled`, `Sum` — the pattern is uniform; only the combine differs per operator: `combineUND` ↔ our `And` type rule, `combineODER` ↔ our `orType`):
+
+| | kernel generated code | interpreter (`Interpreter.firedType` → `evalTyped`) |
+|---|---|---|
+| **firing decision** | **short-circuits** — `a.isKnownAndTrue() && b…` / `|| ` skips later operands (and *their* whole evaluation) once the result is forced | **no short-circuit** — `Kleene.and(evalCond(l), evalCond(r))` evaluates **both** sides, always |
+| **polarity (VALUE/OMISSION)** | computed **only when the rule fires** (the `combineUND/ODER → fehlerType()` is inside the `if`) | computed **every row** — `evalTyped` calls `leafType`/`fill` (→ `ctx.filled`/`ctx.signed`) for every operand whether or not it fires |
+| **index/reps** | primitive `long[]` (no boxing) | `List<Int>` (boxed `Integer`s) — the research-flagged Kotlin/JS cliff |
+| **dispatch** | generated straight-line calls (no per-node `when`) | AST re-walk per node (the ~7% the Layer-1 spike measured) |
+
+**Why this matters for the profiler hotspot.** The profiler put **eval-proper at ~181 ms** (low-firing, the residual after the `formalErrorAt` memo): `ctx.field` + `Val` allocation + the walk **+ the polarity (`leafType`/`fill`)**. The kernel pays the polarity **only on the rare firing rows** and **skips whole operands** via short-circuit; the interpreter pays polarity + both operands on **every** row. In the realistic **low-firing** regime (valid documents — most rules pass) this is pure waste: e.g. `FieldFilled(Qty) And [Qty] > 50` with a small `Qty` evaluates `FieldFilled` (true) then the comparison (false → no fire), and the interpreter *also* computes the comparison's `leafType`/`fill` polarity that is then discarded.
+
+**Per-operand primitive cost is ~equal — it is NOT the lever.** `controller.vergleiche(…)` builds a `ValidierungsErgebnis` (truth **+** `fehlerTyp`, eager — set in its constructor) and `feldWertAlsZahl` returns an allocated decimal — the same order of work as our `evalCmp` + `leafType` + `Val.Num`. So polarity is eager in *both*; the kernel's win is **not** a cheaper leaf, it is **(a) not running the leaf at all when short-circuited, and (b) not combining/typing on non-firing rows.**
+
+**The mimic — a two-phase tree-walk (no codegen, native/JS-safe), the recommended next optimization:**
+- **Phase 1 — `fires(cond): Boolean`** (short-circuit, truth-only, no polarity): `And → fires(l) && fires(r)`, `Or → fires(l) || fires(r)`, leaf → `eval3(leaf) == TRUE`. Mirrors the kernel's `&&`/`||` guard exactly; skips later operands *and* all polarity for the common non-firing row.
+- **Phase 2 — the existing typed `firedType`** runs **only when `fires` is true** (the rare firing row), giving the polarity.
+- This is the **reverse** of the current "one typed walk per row" (which was chosen to avoid a double-walk on *firing* rows): it trades a double-walk on rare firing rows for **skipping polarity + short-circuiting on the common non-firing rows** — the kernel's exact tradeoff, optimal for valid documents. It is `commonMain` (JVM+JS), no codegen, no warmup, and gated by the full differential.
+- A further, larger lever (research-flagged): replace `List<Int>` reps with a primitive `IntArray` to kill `Integer` boxing on the hottest path (pervasive change — `repsOf`/`FieldPointer`/`Index` keys).
+
+**Conclusion (the owner's assumption, confirmed):** the interpreter *can* mimic the generated code's evaluation profile closely — the kernel's edge is **structural** (short-circuit + polarity-on-fire + unboxed indices + straight-line dispatch), not a faster primitive, and every structural piece is reproducible in the tree-walk. The generator is one way to get straight-line dispatch; the two-phase short-circuit gets the bigger, dispatch-independent share.
+
 ## Optimization catalog (rationale · implementation · example · results)
 
 Every optimization here is in **`commonMain`**, so it benefits **JVM and JS identically** (one code path; JS is verified by `DocumentScaleTest`/`InterpreterMultiplatformTest` on Node). The governing constraint is **fast startup**: each is **lazy** (built on first use inside the mutation-invalidated `Index`, or a per-rule `lazy {}`) — never eager work in the constructor. Listed in evaluation-pipeline order.
