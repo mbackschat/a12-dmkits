@@ -135,13 +135,11 @@ for (row in iter) {                                  // the rule's iteration sco
 
 **Per-operand primitive cost is ~equal — it is NOT the lever.** `controller.vergleiche(…)` builds a `ValidierungsErgebnis` (truth **+** `fehlerTyp`, eager — set in its constructor) and `feldWertAlsZahl` returns an allocated decimal — the same order of work as our `evalCmp` + `leafType` + `Val.Num`. So polarity is eager in *both*; the kernel's win is **not** a cheaper leaf, it is **(a) not running the leaf at all when short-circuited, and (b) not combining/typing on non-firing rows.**
 
-**The mimic — a two-phase tree-walk (no codegen, native/JS-safe), the recommended next optimization:**
-- **Phase 1 — `fires(cond): Boolean`** (short-circuit, truth-only, no polarity): `And → fires(l) && fires(r)`, `Or → fires(l) || fires(r)`, leaf → `eval3(leaf) == TRUE`. Mirrors the kernel's `&&`/`||` guard exactly; skips later operands *and* all polarity for the common non-firing row.
-- **Phase 2 — the existing typed `firedType`** runs **only when `fires` is true** (the rare firing row), giving the polarity.
-- This is the **reverse** of the current "one typed walk per row" (which was chosen to avoid a double-walk on *firing* rows): it trades a double-walk on rare firing rows for **skipping polarity + short-circuiting on the common non-firing rows** — the kernel's exact tradeoff, optimal for valid documents. It is `commonMain` (JVM+JS), no codegen, no warmup, and gated by the full differential.
-- A further, larger lever (research-flagged): replace `List<Int>` reps with a primitive `IntArray` to kill `Integer` boxing on the hottest path (pervasive change — `repsOf`/`FieldPointer`/`Index` keys).
+**The mimic that was tried — a two-phase tree-walk — and why it was REVERTED (measured 2026-06-25).** The natural mimic is two-phase: Phase 1 a short-circuit truth-only `fires(cond)` (`And → fires(l) && fires(r)`, `Or → fires(l) || fires(r)`, leaf → `eval3 == TRUE`); Phase 2 the typed `firedType` **only when `fires`**. A noise-free in-run A/B (toggle, same JVM) showed it is **not a clean win**: **+1.16× on low-firing** (valid docs) but **−1.5× on high-firing** (192 rules: 475 → 724 ms — see the results log). The reason is the **second walk**: the kernel affords its two-phase because its Phase-2 re-eval (`combineUND`) is cheap *straight-line generated code*; the interpreter's Phase-2 (`firedType`) is a full **tree-walk**, so the double-walk on firing rows costs more than the polarity-skip saves whenever firing is common (interactive error-fixing, batch of mixed docs). Net loss against the crossover metric → reverted. **Lesson:** the kernel's edge is *not* separable into "short-circuit you can bolt on" — it is inseparable from **cheap per-operation dispatch**. The interpreter can't cherry-pick the two-phase without *also* having straight-line eval.
 
-**Conclusion (the owner's assumption, confirmed):** the interpreter *can* mimic the generated code's evaluation profile closely — the kernel's edge is **structural** (short-circuit + polarity-on-fire + unboxed indices + straight-line dispatch), not a faster primitive, and every structural piece is reproducible in the tree-walk. The generator is one way to get straight-line dispatch; the two-phase short-circuit gets the bigger, dispatch-independent share.
+**What this means for the real lever.** The against-kernel low-firing sweep (`KernelEdgeTest.ruleCountCrossoverLowFiring`) shows the kernel's per-operation edge is **largest in the realistic valid-document regime** (192 rules: interp/java **≈1.70** low-firing vs ≈1.16 high-firing — the kernel drops far more when rules pass, via short-circuit + no message-building + straight-line). So closing the gap requires **cheaper per-operation eval**, not an eval *restructure*: the candidates are (a) **compiled/straight-line dispatch** (the Layer-1 sealed-node engine — measured ~7% alone, but it's the prerequisite that would *also* let a two-phase pay off), (b) **unboxed `IntArray` reps** (kill `Integer` boxing on `repsOf`/`FieldPointer`/`Index` keys — research-flagged), and (c) **vectorized columnar eval** for the rows axis. The structural mimic alone is not enough.
+
+**Conclusion (refining the owner's assumption).** The interpreter *can* mimic the generated code's structure — but the measurement shows the structure (short-circuit + two-phase) is **only worth it on top of cheap dispatch**. The kernel's advantage is the *combination* (straight-line + short-circuit + unboxed), and the dispatch piece is load-bearing: bolting the two-phase onto a tree-walk regresses the firing-heavy case. The honest path to parity is the cheaper-per-op work (compiled dispatch / unboxing / vectorization), with the two-phase reconsidered *after* dispatch is cheap.
 
 ## Optimization catalog (rationale · implementation · example · results)
 
@@ -283,6 +281,24 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 ## Results log
 
 *(dated baselines, newest first — populated as benchmarks land)*
+
+**2026-06-25 — the kernel's per-op edge is LARGEST in low-firing; the two-phase mimic measured a net loss (reverted).** Added a **low-firing** against-kernel sweep (`KernelEdgeTest.ruleCountCrossoverLowFiring` — valid docs, ~0 fires, the realistic regime). It exposed what the high-firing crossover hides:
+
+| regime (192 rules) | interp | kernel-Java | interp/java |
+|---|--:|--:|:--:|
+| high-firing (`manyRules`, 87.5k fires) | 586 ms | 505 ms | 1.16 |
+| **low-firing** (valid doc, 0 fires) | 451 ms | **265 ms** | **1.70** |
+
+The kernel nearly halves (505→265 ms) when rules pass — short-circuit guard + no message-building + straight-line — while the interpreter drops far less. So the kernel's edge is **biggest in the realistic valid-document case**, not the firing-heavy one.
+
+Then the **two-phase short-circuit mimic** (short-circuit `fires` guard + `firedType` polarity only on fire — mirroring the generated code) was A/B'd noise-free in one JVM run (toggle, single-walk vs two-phase):
+
+| regime (192 rules) | single walk | two-phase | speedup |
+|---|--:|--:|:--:|
+| low-firing | 373 ms | 321 ms | **1.16×** |
+| high-firing | 475 ms | **724 ms** | **0.66× (1.5× slower)** |
+
+Net **loss**: the +1.16× low-firing gain is outweighed by the −1.5× high-firing loss, because the interpreter's Phase-2 (`firedType`) is a full tree-walk (the kernel's is cheap straight-line). **Reverted.** Correct throughout (full differential green). The low-firing benchmark is **kept** (it gates the realistic regime). Conclusion: the real lever is **cheaper per-operation eval** (compiled/straight-line dispatch, unboxed `IntArray` reps, vectorization) — not an eval restructure; see "How the kernel's GENERATED code evaluates a rule".
 
 **2026-06-25 — profiled `validateFull`: `formalErrorAt` was 56% (redundant per-operand recompute) → memoized.** Profiling the low-firing 192-rule/1000×5 probe (0 fires, the realistic *valid-document* regime) attributed the cost:
 

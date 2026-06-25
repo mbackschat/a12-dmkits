@@ -536,6 +536,9 @@ class DmInterpreter @JvmOverloads constructor(
             // ONE typed walk per row (the fired MsgType, or null if it doesn't fire) — replaces the old
             // fires()+firedType() pair, which walked the AST TWICE on every firing row. firedType != null ⟺
             // the rule fires (truth == TRUE), and the value IS the polarity, so a firing row now costs one walk.
+            // (A kernel-style two-phase short-circuit guard was measured to trade a 1.16× low-firing gain for a
+            // 1.5× high-firing loss — the interpreter's second walk is an expensive tree-walk, not the kernel's
+            // cheap straight-line re-eval — so the single walk stays. INTERPRETER-PERFORMANCE.md results log.)
             val firedType = interp.firedType(ast)
             if (firedType != null) {
                 val type = firedType

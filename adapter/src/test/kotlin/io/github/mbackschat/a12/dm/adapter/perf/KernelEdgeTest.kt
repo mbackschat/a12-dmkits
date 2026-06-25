@@ -37,6 +37,22 @@ class KernelEdgeTest {
     }
 
     /**
+     * The **low-firing** rule-count sweep — the realistic *valid-document* regime (most rules PASS, ~0 fires).
+     * Here the per-row eval (firedType + polarity) is the dominant cost (no message-building to hide behind), so
+     * this is the regime the kernel's two-phase short-circuit guard helps and the interpreter's single typed walk
+     * does not (INTERPRETER-PERFORMANCE.md "How the kernel's generated code evaluates a rule"). The high-firing
+     * [ruleCountCrossover] above hides that behind message-rendering; this is the twin that exposes it.
+     */
+    @Test
+    fun ruleCountCrossoverLowFiring() {
+        println("[edge] LOW-FIRING rule-count sweep @ N=$n Lines (×5 Subs), valid doc (mostly passes):")
+        for (count in listOf(6, 12, 24, 48, 96, 192)) {
+            val row = PerfHarness.runScenario(PerfCatalog.manyRules(count, firing = false), n)
+            println("  rules=%3d  %s".format(count, PerfHarness.format(row)))
+        }
+    }
+
+    /**
      * **The semantic-index cliff — found, then closed.** A per-row rule resolves `[/Perf/Lines/Amount For
      * "NOMATCH"]`. WITHOUT a row index, the interpreter scanned the whole repetition list per lookup (O(rows))
      * × per-row iteration → **O(rows²)** — verified to go quadratic (growth ×3.5/doubling, the interp's lead

@@ -157,7 +157,7 @@ object PerfCatalog {
      * **rule count**, used by the kernel-edge sweep to find where the interpreter's per-call re-parse (#31)
      * loses to the kernel's compile-once codegen — the kernel's documented architectural advantage.
      */
-    fun manyRules(count: Int): PerfScenario {
+    fun manyRules(count: Int, firing: Boolean = true): PerfScenario {
         val rules = (0 until count).map { i ->
             val code = "R%03d".format(i)
             when (i % 4) {
@@ -175,8 +175,25 @@ object PerfCatalog {
             indexFields = setOf(LINE_KEY, SUB_KEY),
         )
         val gen = SeedGenerator(interpModel)
-        return PerfScenario("manyRules($count)", kernelModel, interpModel) { sink, n, variant ->
-            gen.populate(sink, rowsOf = nestedRows(n), value = perfValues(variant))
+        val name = if (firing) "manyRules($count)" else "manyRules($count,low-firing)"
+        return PerfScenario(name, kernelModel, interpModel) { sink, n, variant ->
+            gen.populate(sink, rowsOf = nestedRows(n), value = if (firing) perfValues(variant) else lowFiringValues(variant))
+        }
+    }
+
+    /**
+     * The **low-firing** counterpart of [perfValues] (the realistic *valid-document* regime — most rules PASS):
+     * every numeric field is a small `1`, below every `manyRules` threshold (`Qty>50+i`, `Cost>40+i`,
+     * `Amount>Qty` → `1>1` false, the `Sum(Lines* then Amount) > 1000+i` aggregate → `n` Lines × 1 = `n` ≤ 1000 < 1003) → **0 fires**
+     * at the benchmark's N=1000. Index keys stay UNIQUE (else duplicate-index errors would fire). This is the
+     * regime where the per-row eval (firedType + polarity) dominates — where the kernel's two-phase short-circuit
+     * helps and ours doesn't (yet); the firing-heavy [perfValues] hides it behind message-building.
+     */
+    private fun lowFiringValues(variant: Int): ValueStrategy = ValueStrategy { field, reps, _ ->
+        when (field.path) {
+            LINE_KEY, SUB_KEY -> "K" + reps.joinToString("_")   // unique → no duplicate-index firing
+            QTY, COST, AMOUNT -> "1"                            // below every threshold → rules pass
+            else -> "0"
         }
     }
 
