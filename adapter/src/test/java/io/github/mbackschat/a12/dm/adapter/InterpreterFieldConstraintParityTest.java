@@ -58,8 +58,8 @@ class InterpreterFieldConstraintParityTest {
                 "FieldConstraints.minFractionalDigits → zahlFalscheAnzahlNachkommastellen / zahlOhneDezimalTrenner (IF20)");
         outOfScope("INumberType.getMaxNumberOfDigitsBeforeDecimalPlace",
                 "confirmed NOT DM-JSON-deserializable 2026-06-26 — runtime-only quality; zahlZuVieleVorkommastellen unreachable (FEATURE-GAPS §4)");
-        outOfScope("INumberType.isZeroAllowed",
-                "confirmed NOT DM-JSON-deserializable 2026-06-26 — runtime-only quality; zahlIstNull unreachable (FEATURE-GAPS §4)");
+        modeled("INumberType.isZeroAllowed",
+                "FieldConstraints.zeroNotAllowed → zahlIstNull (IF20) — authored via the inverted DM-JSON key `zeroNotAllowed`");
         outOfScope("INumberType.getMinLength", "total-digit length — editor expert-mode knob (FEATURE-GAPS §4), not modelkit-authorable");
         outOfScope("INumberType.getMaxLength", "total-digit length — editor expert-mode knob (FEATURE-GAPS §4), not modelkit-authorable");
         deferred("INumberType.isNumberTraitAmount",

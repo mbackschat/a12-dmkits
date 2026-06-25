@@ -62,6 +62,36 @@ class FieldConstraintFormalDiffTest {
     @Test fun tooManyDecimals() = agree(scoreField, scoreDef, "/Order/Score", "5.000", "3 frac > max 2 → zahlFalscheAnzahlNachkommastellen")
     @Test fun numberValid() = agree(scoreField, scoreDef, "/Order/Score", "50.00", "valid → no formal error")
 
+    // ── DEFAULT-forbidden format checks (no declaration needed; a toggle turns them off) ──
+    private val plainStr = """{ "type": "Field", "id": "/Order/Note", "name": "Note", "Field": { "fieldType": {
+        "type": "StringType", "StringType": { } } } },"""
+    private val plainStrDef = FieldDef("/Order/Note", Kind.STRING)
+    private val nlOkStr = """{ "type": "Field", "id": "/Order/Note", "name": "Note", "Field": { "fieldType": {
+        "type": "StringType", "StringType": { "lineBreaksPermitted": true } } } },"""
+    private val nlOkDef = FieldDef("/Order/Note", Kind.STRING, lineBreaksPermitted = true)
+
+    @Test fun newlineForbiddenByDefault() = agree(plainStr, plainStrDef, "/Order/Note", "a\nb", "newline default-forbidden → stringMitNewline")
+    @Test fun newlineCleanWithoutBreak() = agree(plainStr, plainStrDef, "/Order/Note", "abc", "no newline → clean")
+    @Test fun newlinePermittedWhenDeclared() = agree(nlOkStr, nlOkDef, "/Order/Note", "a\nb", "lineBreaksPermitted → clean")
+
+    private val plainNum = """{ "type": "Field", "id": "/Order/Num", "name": "Num", "Field": { "fieldType": {
+        "type": "NumberType", "NumberType": { "maxFractionalDigits": 0 } } } },"""
+    private val plainNumDef = FieldDef("/Order/Num", Kind.NUMBER, scale = 0)
+    private val lzOkNum = """{ "type": "Field", "id": "/Order/Num", "name": "Num", "Field": { "fieldType": {
+        "type": "NumberType", "NumberType": { "maxFractionalDigits": 0, "leadingZerosAllowed": true } } } },"""
+    private val lzOkDef = FieldDef("/Order/Num", Kind.NUMBER, scale = 0, leadingZerosAllowed = true)
+
+    @Test fun leadingZerosForbiddenByDefault() = agree(plainNum, plainNumDef, "/Order/Num", "007", "leading zeros default-forbidden → zahlHatFuehrendeNullen")
+    @Test fun leadingZeroSingleIsClean() = agree(plainNum, plainNumDef, "/Order/Num", "0", "lone 0 → clean")
+    @Test fun leadingZerosPermittedWhenDeclared() = agree(lzOkNum, lzOkDef, "/Order/Num", "007", "leadingZerosAllowed → clean")
+
+    private val zna = """{ "type": "Field", "id": "/Order/NZ", "name": "NZ", "Field": { "fieldType": {
+        "type": "NumberType", "NumberType": { "maxFractionalDigits": 0, "zeroNotAllowed": true } } } },"""
+    private val znaDef = FieldDef("/Order/NZ", Kind.NUMBER, scale = 0, zeroNotAllowed = true)
+
+    @Test fun zeroNotAllowedFires() = agree(zna, znaDef, "/Order/NZ", "0", "zeroNotAllowed + 0 → zahlIstNull")
+    @Test fun zeroNotAllowedCleanNonZero() = agree(zna, znaDef, "/Order/NZ", "5", "zeroNotAllowed + 5 → clean")
+
     // Enum value-domain: the order fixture's Priority (STANDARD/EXPRESS/OVERNIGHT). Out-of-domain → stringFalschesMuster.
     private val priorityDef = FieldDef("/Order/Priority", Kind.STRING, enumValues = listOf("STANDARD", "EXPRESS", "OVERNIGHT"))
 

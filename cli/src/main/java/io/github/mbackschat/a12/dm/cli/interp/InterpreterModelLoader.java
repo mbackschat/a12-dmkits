@@ -78,7 +78,9 @@ public final class InterpreterModelLoader {
                             scaleOf(node), signed(node), requirednessOf(node), formatOf(node), rangeSeparatorOf(node),
                             datePrecisionOf(node), enumValuesOf(node), enumCategoriesOf(node),
                             stringTypeInt(node, "minLength"), stringTypeInt(node, "maxLength"), stringTypeText(node, "pattern"),
-                            numberTypeText(node, "minValue"), numberTypeText(node, "maxValue"), numberTypeInt(node, "minFractionalDigits")));
+                            numberTypeText(node, "minValue"), numberTypeText(node, "maxValue"), numberTypeInt(node, "minFractionalDigits"),
+                            typedBool(node, "StringType", "lineBreaksPermitted"),
+                            typedBool(node, "NumberType", "leadingZerosAllowed"), typedBool(node, "NumberType", "zeroNotAllowed")));
                     case "Group" -> {
                         JsonNode g = node.path("Group");
                         if (g.path("repeatability").asInt(0) > 1) {
@@ -273,6 +275,11 @@ public final class InterpreterModelLoader {
     private static Integer typedInt(JsonNode fieldNode, String typeName, String prop) {
         JsonNode v = typed(fieldNode, typeName).path(prop);
         return v.isInt() ? v.asInt() : null;
+    }
+
+    /** A {@code boolean} property of a {@code <typeName>} field type (absent → false, the kernel default). */
+    private static boolean typedBool(JsonNode fieldNode, String typeName, String prop) {
+        return typed(fieldNode, typeName).path(prop).asBoolean(false);
     }
 
     /** A NUMBER field's scale ({@code NumberType.maxFractionalDigits}), or null for non-number fields. */

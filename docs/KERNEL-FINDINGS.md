@@ -129,22 +129,22 @@ The format checks above (decimals, invalid chars, blanks, signed-zero) test whet
 
 The constraints are declared on the field type (kernel `IStringType` / `INumberType`, source-read) and the formal-error codes are the kernel's full runtime set (`FormalErrorCodesProvider.getFormalErrorCodes`, ~55 codes). The constraint → code map (the ones a DM-JSON model can declare and a document can violate):
 
-| field type | declared constraint (DM-JSON) | runtime formal-error code |
+| field type | DM-JSON declaration | runtime formal-error code |
 |---|---|---|
-| **NUMBER** | `minValue` | `zahlZuKlein` |
-| | `maxValue` | `zahlZuGross` |
-| | `maxNumberOfDigitsBeforeDecimalPlace` | `zahlZuVieleVorkommastellen` |
-| | `minFractionalDigits` | (too few decimals) |
-| | `zeroAllowed: false` | `zahlIstNull` |
-| | `maxLength` / `minLength` (total digits) | `zahlZuLang` / `zahlZuKurz` |
+| **NUMBER** | `minValue` / `maxValue` | `zahlZuKlein` / `zahlZuGross` |
+| | `minFractionalDigits` (too few / none) | `zahlFalscheAnzahlNachkommastellen` / `zahlOhneDezimalTrenner` |
+| | `zeroNotAllowed: true` *(inverted key — NOT `zeroAllowed`)* | `zahlIstNull` |
+| | **leading zeros** — forbidden BY DEFAULT; `leadingZerosAllowed: true` opts out | `zahlHatFuehrendeNullen` |
 | **STRING** | `pattern` (regex) | `stringFalschesMuster` |
 | | `minLength` / `maxLength` | `stringZuKurz` / `stringZuLang` |
-| | (charset / newline) | `zeichenNichtImZeichensatz` / `stringMitNewline` |
+| | **newline** — forbidden BY DEFAULT; `lineBreaksPermitted: true` opts out | `stringMitNewline` |
 | **ENUMERATION** | the value domain (out-of-domain stored value) | `stringFalschesMuster` |
 
-**Probe-verified (2026-06-25)** over the order fixture: `/Order/BirthDay` (`minValue:1, maxValue:31`) — `"99"` → `zahlZuGross`, `"0"` → `zahlZuKlein`, `"15"` → clean; `/Order/Priority` (enum STANDARD/EXPRESS/OVERNIGHT) — `"BOGUS"` → `stringFalschesMuster`, `"EXPRESS"` → clean. The **suppression** was confirmed the same run: a rule `[BirthDay] == 99` with `BirthDay = "99"` does **not** fire (only `zahlZuGross` shows — the field is unknown), and `[Priority] != "STANDARD"` with `Priority = "BOGUS"` does **not** fire (only `stringFalschesMuster`). So an out-of-constraint value is observable two ways: the **auto-emitted formal error** *and* the **suppression of referencing rules**.
+**Two are kernel DEFAULTS, not declarations** (follow-up probe 2026-06-26): a plain number rejects a leading zero (`"007"` → `zahlHatFuehrendeNullen`; `"0"`/`"0.50"` clean) and a plain string rejects a newline (`"a\nb"` → `stringMitNewline`) unless the field opts in. **Out of scope (probe-confirmed):** `maxNumberOfDigitsBeforeDecimalPlace` (`zahlZuVieleVorkommastellen`) + number total-`min/maxLength` have **no DM-JSON key**; a **charset** check (`zeichenNichtImZeichensatz`) is not declarable and does not fire by default (tab / non-ASCII / control chars on a plain string are all clean). A field-level `uniqueValue` is also not DM-JSON-deserializable.
 
-This is the same class of behavior as §94/§98 (format-error suppression) — the only difference is the trigger (a declared constraint vs raw well-formedness). The **interpreter does NOT model this dimension** (it carries no constraint metadata) — see INTERPRETER-FINDINGS IF20, the input-validity scope boundary. *(Not yet `…LawsTest`-locked — recorded as the verified contract; a lock lands with any interpreter implementation of the dimension.)*
+**Probe-verified (2026-06-25/26)**: `/Order/BirthDay` (`minValue:1, maxValue:31`) — `"99"` → `zahlZuGross`, `"0"` → `zahlZuKlein`; `/Order/Priority` (enum) — `"BOGUS"` → `stringFalschesMuster`; precedence — string pattern/newline fire **before** length; the **suppression** was confirmed (a rule `[BirthDay] == 99` with `BirthDay = "99"` does **not** fire — only `zahlZuGross`, the field is unknown). So an out-of-constraint value is observable two ways: the **auto-emitted formal error** *and* the **suppression of referencing rules**.
+
+This is the same class as §94/§98 (format-error suppression) — only the trigger differs (a declared constraint / kernel default vs raw well-formedness). The **interpreter now models this dimension** (the per-cell family + the two defaults) — INTERPRETER-FINDINGS IF20, differential-locked by `adapter.laws.FieldConstraintFormalDiffTest`.
 
 ## §3 supplement — a DATE value is stored and formal-checked in the field's DECLARED format, not ISO (runtime, 2026-06-23)
 

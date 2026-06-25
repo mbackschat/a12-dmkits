@@ -143,6 +143,12 @@ data class FieldDef(
     /** A NUMBER field's declared minimum fractional digits (`NumberType.minFractionalDigits`); too few →
      *  `zahlFalscheAnzahlNachkommastellen`, none at all → `zahlOhneDezimalTrenner`. */
     val minFractionalDigits: Int? = null,
+    /** STRING `lineBreaksPermitted` — default false (the kernel forbids line breaks → `stringMitNewline`). */
+    val lineBreaksPermitted: Boolean = false,
+    /** NUMBER `leadingZerosAllowed` — default false (the kernel forbids leading zeros → `zahlHatFuehrendeNullen`). */
+    val leadingZerosAllowed: Boolean = false,
+    /** NUMBER `zeroNotAllowed` — default false (zero allowed); true → a zero value is `zahlIstNull`. */
+    val zeroNotAllowed: Boolean = false,
 )
 
 /**
@@ -184,12 +190,23 @@ data class FieldConstraints(
     val minValue: String? = null,
     val maxValue: String? = null,
     val minFractionalDigits: Int? = null,
+    /** STRING: whether line breaks are permitted. **Default false** = the kernel forbids them (`stringMitNewline`);
+     *  `true` is the non-default that allows them. So [NONE] (false) reproduces the kernel default for a plain field. */
+    val lineBreaksPermitted: Boolean = false,
+    /** NUMBER: whether leading zeros are permitted. **Default false** = the kernel forbids them
+     *  (`zahlHatFuehrendeNullen`); `true` allows. [NONE] (false) reproduces the kernel default. */
+    val leadingZerosAllowed: Boolean = false,
+    /** NUMBER: whether a zero value is forbidden (`zahlIstNull`). Default false = zero allowed. */
+    val zeroNotAllowed: Boolean = false,
 ) {
     val patternRegex: Regex? = pattern?.let { Regex(it) }
 
-    /** Whether this field declares any constraint (else the per-cell constraint pass is skipped). */
+    /** Whether this field carries any NON-DEFAULT constraint, so it must be stored (else [NONE] — whose false
+     *  booleans already encode the kernel defaults — is used). The `*Allowed`/`*NotAllowed` flags count only when
+     *  `true` (the non-default); the default-forbidden newline/leading-zeros checks still run via [NONE]. */
     val any: Boolean = minLength != null || maxLength != null || pattern != null ||
-        enumValues.isNotEmpty() || minValue != null || maxValue != null || (minFractionalDigits ?: 0) > 0
+        enumValues.isNotEmpty() || minValue != null || maxValue != null || (minFractionalDigits ?: 0) > 0 ||
+        lineBreaksPermitted || leadingZerosAllowed || zeroNotAllowed
 
     companion object {
         val NONE = FieldConstraints()
@@ -309,6 +326,7 @@ data class ModelDef(
         .associate {
             it.path to FieldConstraints(
                 it.minLength, it.maxLength, it.pattern, it.enumValues, it.minValue, it.maxValue, it.minFractionalDigits,
+                it.lineBreaksPermitted, it.leadingZerosAllowed, it.zeroNotAllowed,
             )
         }
         .filterValues { it.any }

@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.interpreter.eval
 
+import io.github.mbackschat.a12.dm.interpreter.DEC_ZERO
 import io.github.mbackschat.a12.dm.interpreter.decOrNull
 import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.FieldConstraints
@@ -103,6 +104,19 @@ enum class FormalErrorCode(val id: String) {
     /** A NUMBER with NO decimal point where `minFractionalDigits > 0` requires one (the kernel's
      *  `zahlOhneDezimalTrenner` — "number without decimal separator"). */
     NO_DECIMAL_SEPARATOR("zahlOhneDezimalTrenner"),
+
+    /** A STRING containing a line break where the field does not permit them (the kernel's `stringMitNewline`).
+     *  **Default-forbidden** — fires unless the field declares `lineBreaksPermitted: true`. Checked as a format
+     *  concern, BEFORE the length checks (probe-verified). */
+    NEWLINE("stringMitNewline"),
+
+    /** A NUMBER whose integer part carries a forbidden leading zero (`07`, `00`, `00.50`; the kernel's
+     *  `zahlHatFuehrendeNullen`). **Default-forbidden** — fires unless the field declares `leadingZerosAllowed:
+     *  true`. A lone `0` and `0.50` (integer part `0`) are fine. */
+    LEADING_ZEROS("zahlHatFuehrendeNullen"),
+
+    /** A NUMBER equal to zero where the field declares `zeroNotAllowed: true` (the kernel's `zahlIstNull`). */
+    ZERO_NOT_ALLOWED("zahlIstNull"),
 }
 
 fun formalError(
@@ -125,7 +139,7 @@ fun formalError(
         // Format well-formedness FIRST (blanks, invalid chars, signed-zero/plus, decimal-separator,
         // too-MANY decimals via scale); only a well-formed number reaches the declared-constraint checks
         // (min fractional digits, then range) — KERNEL-FINDINGS §3 precedence.
-        Kind.NUMBER -> numberFormalError(raw, scale) ?: numberConstraintError(raw, constraints)
+        Kind.NUMBER -> numberFormalError(raw, scale, constraints.leadingZerosAllowed) ?: numberConstraintError(raw, constraints)
         // A malformed TIME / DATE_TIME value carries the kernel's `datumFormatFalsch` (probe-verified — the same
         // code as DATE), and resolving it to Val.Unknown suppresses a referencing rule. (TIME was previously
         // unchecked entirely, so a malformed time even *escaped* suppression — KERNEL-FINDINGS §6 / IF8.)
@@ -167,11 +181,13 @@ fun formalError(
  * reports `stringFalschesMuster`, not `stringZuKurz`).
  */
 private fun stringConstraintError(raw: String, c: FieldConstraints): FormalErrorCode? {
+    // An ENUM field's only value check is value-domain membership (it has no pattern/length/newline checks).
     if (c.enumValues.isNotEmpty()) {
-        if (raw !in c.enumValues) return FormalErrorCode.PATTERN     // out-of-domain enum → stringFalschesMuster
-    } else if (c.patternRegex != null) {
-        if (!c.patternRegex.matches(raw)) return FormalErrorCode.PATTERN
+        return if (raw !in c.enumValues) FormalErrorCode.PATTERN else null   // out-of-domain → stringFalschesMuster
     }
+    // A plain STRING: line break (default-forbidden, BEFORE length — probe-verified) → pattern → length.
+    if (!c.lineBreaksPermitted && (raw.contains('\n') || raw.contains('\r'))) return FormalErrorCode.NEWLINE
+    if (c.patternRegex != null && !c.patternRegex.matches(raw)) return FormalErrorCode.PATTERN
     if (c.minLength != null && raw.length < c.minLength) return FormalErrorCode.STRING_TOO_SHORT
     if (c.maxLength != null && raw.length > c.maxLength) return FormalErrorCode.STRING_TOO_LONG
     return null
@@ -184,6 +200,7 @@ private fun stringConstraintError(raw: String, c: FieldConstraints): FormalError
  * matching compare the interpreter uses everywhere).
  */
 private fun numberConstraintError(raw: String, c: FieldConstraints): FormalErrorCode? {
+    if (c.zeroNotAllowed) decOrNull(raw)?.let { if (it.compareScaled19(DEC_ZERO) == 0) return FormalErrorCode.ZERO_NOT_ALLOWED }
     val minFrac = c.minFractionalDigits ?: 0
     if (minFrac > 0) {
         if (!raw.contains('.')) return FormalErrorCode.NO_DECIMAL_SEPARATOR
@@ -195,7 +212,7 @@ private fun numberConstraintError(raw: String, c: FieldConstraints): FormalError
     return null
 }
 
-private fun numberFormalError(raw: String, scale: Int?): FormalErrorCode? = when {
+private fun numberFormalError(raw: String, scale: Int?, leadingZerosAllowed: Boolean): FormalErrorCode? = when {
     raw != raw.trim() -> FormalErrorCode.LEADING_BLANK
     // A leading `+` on an otherwise-valid number is its own error (the kernel reports it, not "invalid chars").
     raw.startsWith("+") && DECIMAL.matches(raw.drop(1)) -> FormalErrorCode.PLUS_SIGN
@@ -203,12 +220,22 @@ private fun numberFormalError(raw: String, scale: Int?): FormalErrorCode? = when
     // Signed-zero is checked BEFORE the scale/separator checks (verified: `-0.0` on a scale-0 field is the
     // signed-zero error, NOT the decimal-separator one — kernel order, NumberSignFormalDiffTest).
     isNegativeZero(raw) -> FormalErrorCode.SIGNED_ZERO
+    // Leading zeros in the integer part are forbidden BY DEFAULT (probe-verified: `07`/`00`/`-07` fire; `0`/`0.50`
+    // are clean) — unless the field declares `leadingZerosAllowed`. A format concern, after the sign checks.
+    !leadingZerosAllowed && hasLeadingZeros(raw) -> FormalErrorCode.LEADING_ZEROS
     scale == 0 && raw.contains('.') -> FormalErrorCode.DECIMAL_SEPARATOR
     scale != null && fractionalDigits(raw) > scale -> FormalErrorCode.TOO_MANY_DECIMALS
     else -> null
 }
 
 private fun fractionalDigits(raw: String): Int = raw.substringAfter('.', "").length
+
+/** Whether a well-formed number's integer part has a forbidden leading zero — `07`, `00`, `-07`, `00.50`, `07.50`
+ *  (the kernel's `zahlHatFuehrendeNullen`); a lone `0` and `0.50` (integer part `0`) are fine. */
+private fun hasLeadingZeros(raw: String): Boolean {
+    val intPart = raw.trimStart('-', '+').substringBefore('.')
+    return intPart.length > 1 && intPart[0] == '0'
+}
 
 /** A minus-signed value whose magnitude is zero (`-0`, `-0.0`, `-0.00`) — the kernel's signed-zero error. */
 private fun isNegativeZero(raw: String): Boolean =
@@ -258,6 +285,12 @@ fun formalErrorText(code: FormalErrorCode, locale: String, scale: Int? = null): 
             if (de) "Wert hat zu wenige Nachkommastellen." else "Value has too few decimal places."
         FormalErrorCode.NO_DECIMAL_SEPARATOR ->
             if (de) "Wert benötigt ein Dezimaltrennzeichen." else "Value requires a decimal separator."
+        FormalErrorCode.NEWLINE ->
+            if (de) "Wert darf keinen Zeilenumbruch enthalten." else "Value must not contain a line break."
+        FormalErrorCode.LEADING_ZEROS ->
+            if (de) "Zahl darf keine führenden Nullen haben." else "Number must not have leading zeros."
+        FormalErrorCode.ZERO_NOT_ALLOWED ->
+            if (de) "Wert darf nicht null sein." else "Value must not be zero."
     }
 }
 
