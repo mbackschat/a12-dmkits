@@ -197,6 +197,61 @@ object PerfCatalog {
         }
     }
 
+    /**
+     * A **realistically DISTRIBUTED** many-rules scenario: [count] rules, each on its OWN field (`F0..F{count-1}`,
+     * one rule per field, under the repeatable `Lines` group), so the rules spread across [count] DISTINCT error
+     * fields instead of piling onto ~3 the way [manyRules] does. This is the "sensible model" shape (a wide form
+     * where each field carries its own validation), and it matters for the kernel: its Groovy codegen splits the
+     * generated validator by ERROR-FIELD count (10 fields/method — `CodeGenTeilValidierung`), so concentrated
+     * rules collapse into ONE method and blow the JVM 64 KB method limit (~512–768 rules), while distributed
+     * rules fan out across many small methods and compile. The interpreter (no codegen) is indifferent to the
+     * shape. Low-firing by default (each field `1`, below its `> 50+i` threshold → 0 fires — the valid-doc case).
+     */
+    fun manyRulesDistributed(count: Int, firing: Boolean = false): PerfScenario {
+        val rules = (0 until count).map { i ->
+            FuzzRule(LINES, "R%04d".format(i), "../F$i", "FieldFilled(F$i) And [F$i] > ${50 + i}")
+        }
+        val kernelModel = rules.fold(distributedModelJson(count)) { m, r ->
+            RuntimeLaws.withRule(m, r.group, "R_${r.code}", r.errorRel, r.code, r.cond)
+        }
+        val distFields = buildList {
+            add(FieldDef(LINE_KEY, Kind.STRING))
+            for (i in 0 until count) add(FieldDef("/Perf/Lines/F$i", Kind.NUMBER))
+        }
+        val interpModel = ModelDef(
+            distFields, rules.map { RuleDef("${it.group}/${it.code}", it.group, it.cond, it.code, it.errorRel) },
+            repeatableGroups = setOf(LINES), declaredReps = mapOf(LINES to DECLARED_MAX), indexFields = setOf(LINE_KEY),
+        )
+        val gen = SeedGenerator(interpModel)
+        val name = "manyRulesDistributed($count${if (firing) "" else ",low-firing"})"
+        return PerfScenario(name, kernelModel, interpModel) { sink, n, _ ->
+            gen.populate(sink, rowsOf = flatRows(n), value = distributedValues(firing))
+        }
+    }
+
+    /** Per-field values for [manyRulesDistributed]: each `Fi` is `1` (low-firing, below its `> 50+i` bound) or
+     *  just above it (`51+i`, firing); the line key stays unique (no duplicate-index firing). */
+    private fun distributedValues(firing: Boolean): ValueStrategy = ValueStrategy { field, reps, _ ->
+        val idx = field.path.removePrefix("/Perf/Lines/F").toIntOrNull()
+        when {
+            idx != null -> if (firing) (51 + idx).toString() else "1"
+            field.path == LINE_KEY -> "K" + reps.joinToString("_")
+            else -> "0"
+        }
+    }
+
+    /** A DM-JSON model with [numFields] flat NUMBER fields (`F0..F{numFields-1}`) under the repeatable `Lines`
+     *  group — the base model [manyRulesDistributed] injects its one-rule-per-field set into. Built as a string
+     *  (the field block is the only variable part). NB: keys use the spaced `": "` form because
+     *  [RuntimeLaws.withRule] locates the injection group by string-searching for `"id": "<group>"` literally
+     *  (a compact `"id":"…"` would miss, mis-inserting the rule). */
+    private fun distributedModelJson(numFields: Int): String {
+        val fieldsJson = (0 until numFields).joinToString(", ") { i ->
+            """{"type": "Field", "id": "/Perf/Lines/F$i", "name": "F$i", "Field": {"fieldType": {"type": "NumberType", "NumberType": {"maxFractionalDigits": 0}}}}"""
+        }
+        return """{"header": {"id": "perf", "modelType": "document", "modelVersion": "28.4.0", "locales": [{"code": "en_US"}], "labels": [], "annotations": [], "modelReferences": []}, "content": {"modelInfo": {"name": "perf", "variant": "cockpit", "revision": "Arbeitsversion", "immutable": false}, "modelConfig": {"decimalSeparator": ".", "timeZone": "Europe/Berlin", "conditionLanguage": {"code": "en_US"}, "fieldRefByShortNameAllowed": true}, "modelRoot": {"rootGroups": [{"type": "Group", "id": "/Perf", "name": "Perf", "Group": {"repeatability": 1, "elements": [{"type": "Group", "id": "/Perf/Lines", "name": "Lines", "Group": {"repeatability": 200000, "indexFieldName": "LineKey", "elements": [{"type": "Field", "id": "/Perf/Lines/LineKey", "name": "LineKey", "Field": {"fieldType": {"type": "StringType", "StringType": {}}}}, $fieldsJson]}}]}}]}}}"""
+    }
+
     // B7's value strategy: like [perfValues] but leaves the COMPUTED field (Amount) EMPTY in the seed — so the
     // kernel's compute() reports every Line's Amount as a change (empty → Sum), matching the interpreter which
     // computes every row. Cost is filled (the aggregate operand); index fields filled (required).

@@ -58,6 +58,31 @@ class KernelEdgeTest {
     }
 
     /**
+     * **DISTRIBUTED rules — does spreading rules across fields lift the kernel's codegen ceiling?** The
+     * [ruleCountCrossover] sweep concentrates rules on ~3 error fields (`manyRules`), forcing the kernel's
+     * codegen into one method that blows the 64 KB limit at ~768. THIS sweep uses [PerfCatalog.manyRulesDistributed]
+     * (one rule per distinct field) — the realistic "wide form" shape — so the kernel splits across many small
+     * methods. It reports the interp/java ratio per count and, if codegen still fails, says so (caught, not
+     * aborted). Counts via `-Dperf.edge.counts`; a modest row count (the model is WIDE, not tall).
+     */
+    @Test
+    fun distributedRuleScaling() {
+        val dn = 100   // wide model (count fields/row); rows kept modest — the field/rule count is the scale knob
+        println("[edge] DISTRIBUTED rules (1 rule per field, realistic) @ N=$dn rows — kernel codegen + interp/java:")
+        for (count in counts) {
+            try {
+                val row = PerfHarness.runScenario(PerfCatalog.manyRulesDistributed(count, firing = false), dn)
+                println("  distributed rules=%4d  %s".format(count, PerfHarness.format(row)))
+            } catch (e: Throwable) {
+                val tooLarge = generateSequence(e as Throwable?) { it.cause }
+                    .any { (it.message ?: "").contains("Method too large") }
+                println("  distributed rules=%4d  KERNEL CODEGEN FAILED: %s".format(count,
+                    if (tooLarge) "Method too large (JVM 64KB limit)" else (e.message ?: e::class.simpleName)?.take(90)))
+            }
+        }
+    }
+
+    /**
      * **Interpreter scaling PAST the kernel's structural ceiling.** At ~512–768 rules the kernel's Groovy
      * codegen generates a single `fuehreAus_0` validation method that exceeds the **JVM 64 KB method bytecode
      * limit** (`MethodTooLargeException`) — so the kernel **cannot build the validator at all** beyond that. The
