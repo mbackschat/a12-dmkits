@@ -81,4 +81,8 @@ tasks.named('test') {
      'perf.profile', 'perf.n', 'perf.edge', 'perf.edge.n', 'perf.scaling', 'perf.scaling.n'].each { k ->
         if (System.getProperty(k) != null) systemProperty k, System.getProperty(k)
     }
+    // Opt-in JFR sampling: -Dperf.jfr=<file.jfr> records the (profile-config) flight recorder on the test JVM
+    // and dumps on exit — feed a tight validateFull loop (a perf.profile test) and `jfr print` the hot methods.
+    def jfr = System.getProperty('perf.jfr')
+    if (jfr != null) jvmArgs "-XX:StartFlightRecording=settings=profile,filename=${jfr},dumponexit=true"
 }

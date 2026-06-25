@@ -344,11 +344,20 @@ class Document @JvmOverloads constructor(
          * row contexts are reused across every rule iterating this scope, so caching pays across all of them.
          * The document is immutable during a validation, so the placement is stable (correct for full + partial).
          */
+        // The reps (1-based repetition indices) of a referenced path in THIS row context — `repsFor` is
+        // deterministic in (path, group, rowReps), and group/rowReps are fixed here, so memoize by path. The
+        // profile (#64) put `repsFor` + its `commonPrefixLen` string-compares + the `List<Int>` alloc among the
+        // top costs: `repsOf` is called many times per row (the error path, each referenced field, the
+        // FormalCache key, the suppressor scan) and recomputed every time. Caching also returns the SAME list
+        // instance, so the FormalCache `Pair` key stops re-allocating it. (Stable: the document is immutable.)
+        private val repsCache = HashMap<String, List<Int>>()
+        private fun reps(path: String): List<Int> = repsCache.getOrPut(path) { repsFor(path, group, rowReps) }
+
         private val placeCache = HashMap<String, Placement?>()
         private fun placeOf(path: String): Placement? {
             placeCache[path]?.let { return it }
             if (placeCache.containsKey(path)) return null
-            val p = valueAt(path, repsFor(path, group, rowReps))
+            val p = valueAt(path, reps(path))
             placeCache[path] = p
             return p
         }
@@ -383,7 +392,7 @@ class Document @JvmOverloads constructor(
                 // A repeatable group is "filled" iff its instance at this row's reps is instantiated — an O(1)
                 // membership via the row-prefix index (was an O(rows) `in` on the row List, i.e. O(rows²) when
                 // hit per row by requiredness over a sparse-required document).
-                rowsWithPrefix(groupPath, repsFor(groupPath, group, rowReps)).isNotEmpty()
+                rowsWithPrefix(groupPath, reps(groupPath)).isNotEmpty()
             else
                 // A NON-repeatable group is "filled" iff some valued DESCENDANT is in this row's scope.
                 // O(1) per call via the per-(groupPath, group) attach-depth index (the GroupFillCache analog) —
@@ -457,14 +466,14 @@ class Document @JvmOverloads constructor(
         // (Unknown → the rule does not fire / is suppressed, matching the kernel's empty-string compare /
         // formal-error-suppression on a value not in the enumeration).
         override fun enumCategory(path: String, category: String): Val {
-            val raw = valueAt(path, repsFor(path, group, rowReps))?.value
+            val raw = valueAt(path, reps(path))?.value
             if (raw.isNullOrEmpty()) return Val.Unknown
             val idx = (enumValues[path] ?: return Val.Unknown).indexOf(raw)
             if (idx < 0) return Val.Unknown
             return enumCategories[path]?.get(category)?.getOrNull(idx)?.let { Val.Txt(it) } ?: Val.Unknown
         }
 
-        override fun repsOf(path: String): List<Int> = repsFor(path, group, rowReps)
+        override fun repsOf(path: String): List<Int> = reps(path)
 
         /** Index tuples of [starPath] across every row of its deepest repeatable group ancestor in scope. The
          *  in-scope rows are fetched by prefix in O(1) (via the [Index] prefix index), not by an O(all-rows)
