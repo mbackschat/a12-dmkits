@@ -85,8 +85,11 @@ object PredefinedTypeRegistry {
  */
 enum class Requiredness { NOT_REQUIRED, ABSOLUTE, RELATIVE_TO_PARENT }
 
-/** Rule/finding severity — mirrors the kernel's ERROR / WARNING. */
-enum class Severity { ERROR, WARNING }
+/** Rule/finding severity — mirrors the kernel's `IRule.RuleSeverityType` (ERROR / WARNING / INFO). Severity is
+ *  **UI classification only**; it does not change whether a rule fires or its message is emitted (probe-verified:
+ *  an INFO rule fires + emits at `validateFull` exactly like ERROR — KERNEL-FINDINGS line 987 / IF23). INFO must
+ *  be modeled or the loader's `Severity.valueOf("INFO")` throws on a valid model (the IF23 loud crash). */
+enum class Severity { ERROR, WARNING, INFO }
 
 /** A present field instance: its [path], 1-based repetition [reps] (one per path part), and [raw] value. */
 data class ValuedField(val path: String, val reps: List<Int>, val raw: String)
