@@ -139,6 +139,31 @@ class PerfGateTest {
     }
 
     /**
+     * Guards the **deep-nested `Having` path** against the O(N²) the `deepRichScaling` benchmark exposed: the
+     * `Having` clause's per-scope row contexts (`rowContextsScoped`) scanned ALL rows of the group and
+     * prefix-filtered — O(scopes·rows) on a deep doc (it flipped interp/kernel from 0.34 to 1.77 at 1000
+     * vendors). The fix routes it through the prefix index ([Document] `rowsWithPrefix`). Time the interpreter
+     * (only) at N and 4N vendors (×12 tiers each); linear ≈ 4×, the old quadratic ≈ 16×. Trip well below.
+     */
+    @Test
+    fun deepNestedHavingStaysSubQuadratic() {
+        val dr = PerfCatalog.deepRich(firing = false)
+        val small0 = 250
+        var best = Double.MAX_VALUE
+        var bSmall = 0.0; var bLarge = 0.0
+        repeat(GROWTH_REPEATS) {
+            val small = PerfHarness.timeInterpreter(dr, small0, warmup = 5, iters = 7)
+            val large = PerfHarness.timeInterpreter(dr, small0 * 4, warmup = 5, iters = 7)
+            val g = large.minMs / small.minMs
+            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        }
+        println("[perf] deep-nested Having sub-quadratic: ${"%.1f".format(bSmall)}ms@$small0 → " +
+            "${"%.1f".format(bLarge)}ms@${small0 * 4} vendors  min-growth=${"%.2f".format(best)}× (linear≈4, old-quadratic≈16)")
+        assertTrue(best < SUB_QUADRATIC_MAX,
+            "deep-nested Having scaling looks super-linear: 4× vendors took ${best}× the time (rowContextsScoped prefix-index regressed?)")
+    }
+
+    /**
      * **Parallel iteration at scale** — the index-keyed outer join over two sibling repeatable groups. Asserts
      * the join agrees with the kernel (interp == kernel) and stays competitive at the gate N. The kernel's
      * `IndexFieldCache` makes this O(rows); the interpreter mirrors it (a value→row map per group, O(1) row

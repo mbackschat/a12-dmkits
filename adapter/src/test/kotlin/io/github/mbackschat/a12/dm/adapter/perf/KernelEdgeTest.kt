@@ -58,6 +58,25 @@ class KernelEdgeTest {
     }
 
     /**
+     * **DEEP + RICH rules** (4-level nesting + cross-level / `Having` / nested-star). The realistic "sensible
+     * rules across a deep DM" shape: a per-level comparison, cross-level refs **1 and 3 parents up** (common-prefix
+     * walk-up), a `Having`-filtered Sum, and a 3-level deep nested-star Sum — distributed across the levels.
+     * Runs BOTH regimes (firing exercises the cross-level walk-up non-trivially → interp==kernel is a real
+     * multi-construct correctness check, asserted in the harness) and scales on the Vendor count (×12 tiers each).
+     */
+    @Test
+    fun deepRichScaling() {
+        println("[edge] DEEP+RICH (4-level, cross-level/Having/nested-star) @ interp/java:")
+        for (firing in listOf(false, true)) {
+            for (vendors in listOf(100, 500, 1000)) {
+                val row = PerfHarness.runScenario(PerfCatalog.deepRich(firing), vendors)
+                println("  %-10s vendors=%4d (=%d tiers)  %s".format(
+                    if (firing) "firing" else "low-firing", vendors, vendors * 12, PerfHarness.format(row)))
+            }
+        }
+    }
+
+    /**
      * **HUGE-DOC scaling (many rows).** The non-quadratic `Document` is designed for up to ~100k rows
      * (PROJECT goal); this sweep exercises that. It times the interpreter at growing row counts on a per-row
      * rule (B1) and a deep nested-star aggregate (B5) — interp-only at the extreme (no kernel instance, so 100k

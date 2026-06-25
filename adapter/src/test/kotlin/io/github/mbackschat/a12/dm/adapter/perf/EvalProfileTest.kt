@@ -21,19 +21,24 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 class EvalProfileTest {
 
     @Test
-    fun loopLowFiring192ForProfiler() {
-        val scenario = PerfCatalog.manyRules(192, firing = false)
+    fun loopLowFiring192ForProfiler() = profile(PerfCatalog.manyRules(192, firing = false),
+        System.getProperty("perf.n", "1000").toInt(), "low-firing 192")
+
+    /** Profile the DEEP+RICH scenario (the one that exposed a super-linear cliff) at `-Dperf.n` vendors. */
+    @Test
+    fun loopDeepRichForProfiler() = profile(PerfCatalog.deepRich(firing = false),
+        System.getProperty("perf.n", "500").toInt(), "deepRich")
+
+    private fun profile(scenario: io.github.mbackschat.a12.dm.adapter.perf.PerfScenario, n: Int, label: String) {
         val model = scenario.interpModel
-        val n = System.getProperty("perf.n", "1000").toInt()
         val doc = Document(model.kinds, model.declaredReps, model.unsignedFields, model.rangeConfig, model.dateFormats, model.scales)
         scenario.instance(doc.asSink(), n, 0)
         val interp = DmInterpreter(model)
-
         repeat(20) { interp.validateFull(doc) }   // warm + let JFR start sampling
         val deadline = System.nanoTime() + SECONDS * 1_000_000_000L
         var loops = 0
         while (System.nanoTime() < deadline) { interp.validateFull(doc); loops++ }
-        println("[profile] low-firing 192 @ N=$n: $loops validateFull calls in ~${SECONDS}s")
+        println("[profile] $label @ N=$n: $loops validateFull calls in ~${SECONDS}s")
     }
 
     private companion object { const val SECONDS = 20 }

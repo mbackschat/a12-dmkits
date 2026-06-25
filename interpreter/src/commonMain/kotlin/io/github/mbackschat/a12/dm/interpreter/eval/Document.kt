@@ -306,11 +306,14 @@ class Document @JvmOverloads constructor(
     private fun rowsOf(groupPath: String): List<List<Int>> = index().rowsByGroup[groupPath] ?: emptyList()
 
     /** [EvalContext]s for the rows of [groupPath] whose reps extend [scopeReps] (the rows under a given parent
-     *  row) — the scoped form of [contextsFor], for a `Having` per-row filter. */
+     *  row) — the scoped form of [contextsFor], for a `Having` per-row filter. Uses the **prefix index**
+     *  ([rowsWithPrefix], O(in-scope rows)) rather than scanning ALL rows of [groupPath] and prefix-filtering:
+     *  the `Having` clause asks for this per parent scope, so the old O(all-rows) scan was O(scopes·rows) =
+     *  quadratic on a deep nested doc (the `deepRichScaling` cliff — JFR-confirmed). The prefix map is built
+     *  once per group; document order is preserved (the same rows the filter returned). */
     private fun rowContextsScoped(groupPath: String, scopeReps: List<Int>): List<EvalContext> {
         val attach = attachByDepth(groupPath)   // memoized per group — no O(valued) rescan per nested row
-        return rowsOf(groupPath)
-            .filter { reps -> reps.take(scopeReps.size) == scopeReps }
+        return rowsWithPrefix(groupPath, scopeReps)
             .map { reps -> RowContext(groupPath, reps, attach.any { (d, pfx) -> reps.take(d) in pfx }) }
     }
 

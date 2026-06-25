@@ -252,6 +252,97 @@ object PerfCatalog {
         return """{"header": {"id": "perf", "modelType": "document", "modelVersion": "28.4.0", "locales": [{"code": "en_US"}], "labels": [], "annotations": [], "modelReferences": []}, "content": {"modelInfo": {"name": "perf", "variant": "cockpit", "revision": "Arbeitsversion", "immutable": false}, "modelConfig": {"decimalSeparator": ".", "timeZone": "Europe/Berlin", "conditionLanguage": {"code": "en_US"}, "fieldRefByShortNameAllowed": true}, "modelRoot": {"rootGroups": [{"type": "Group", "id": "/Perf", "name": "Perf", "Group": {"repeatability": 1, "elements": [{"type": "Group", "id": "/Perf/Lines", "name": "Lines", "Group": {"repeatability": 200000, "indexFieldName": "LineKey", "elements": [{"type": "Field", "id": "/Perf/Lines/LineKey", "name": "LineKey", "Field": {"fieldType": {"type": "StringType", "StringType": {}}}}, $fieldsJson]}}]}}]}}}"""
     }
 
+    // ---- deep nesting (4 repeatable levels) + RICH rules: cross-level (1 & 3 parents up), Having-filtered
+    //      Sum, deep nested-star Sum (the "sensible rules across a deep DM" benchmark). E-commerce catalog:
+    //      Vendor > Product > Offer > Tier, each repeatable + index-keyed. ------------------------------------
+    private const val VENDOR = "/Cat/Vendor"
+    private const val PRODUCT = "/Cat/Vendor/Product"
+    private const val OFFER = "/Cat/Vendor/Product/Offer"
+    private const val TIER = "/Cat/Vendor/Product/Offer/Tier"
+
+    /** A 4-level nested repeatable model (Vendor ▸ Product ▸ Offer ▸ Tier), built with the structure builder. */
+    private val deepJson: String by lazy {
+        DocumentModelDraft.named("cat").locale("en_US")
+            .rootGroup("Cat", Consumer { root ->
+                root.group("Vendor", Consumer { v ->
+                    v.repeatable(DECLARED_MAX).indexField("VKey")
+                    v.field("VKey", FieldKind.STRING)
+                    v.numberField("MinMargin", Consumer<NumberFieldBuilder> { it.fractionDigits(0) })
+                    v.group("Product", Consumer { p ->
+                        p.repeatable(DECLARED_MAX).indexField("PKey")
+                        p.field("PKey", FieldKind.STRING)
+                        p.numberField("BasePrice", Consumer<NumberFieldBuilder> { it.fractionDigits(0) })
+                        p.group("Offer", Consumer { o ->
+                            o.repeatable(DECLARED_MAX).indexField("OKey")
+                            o.field("OKey", FieldKind.STRING)
+                            o.numberField("Discount", Consumer<NumberFieldBuilder> { it.fractionDigits(0) })
+                            o.group("Tier", Consumer { t ->
+                                t.repeatable(DECLARED_MAX).indexField("TKey")
+                                t.field("TKey", FieldKind.STRING)
+                                t.numberField("Qty", Consumer<NumberFieldBuilder> { it.fractionDigits(0) })
+                                t.numberField("UnitPrice", Consumer<NumberFieldBuilder> { it.fractionDigits(0) })
+                            })
+                        })
+                    })
+                })
+            }).build().toJson()
+    }
+
+    private val deepFields = listOf(
+        FieldDef("$VENDOR/VKey", Kind.STRING), FieldDef("$VENDOR/MinMargin", Kind.NUMBER, scale = 0),
+        FieldDef("$PRODUCT/PKey", Kind.STRING), FieldDef("$PRODUCT/BasePrice", Kind.NUMBER, scale = 0),
+        FieldDef("$OFFER/OKey", Kind.STRING), FieldDef("$OFFER/Discount", Kind.NUMBER, scale = 0),
+        FieldDef("$TIER/TKey", Kind.STRING), FieldDef("$TIER/Qty", Kind.NUMBER, scale = 0),
+        FieldDef("$TIER/UnitPrice", Kind.NUMBER, scale = 0),
+    )
+
+    /** The rich rule set — exercises a per-level comparison, cross-level refs 1 AND 3 parents up (resolved by
+     *  common-prefix walk-up), a `Having`-filtered Sum, and a deep 3-level nested-star Sum. */
+    private fun deepRules(): List<FuzzRule> = listOf(
+        FuzzRule(TIER, "TUP", "../UnitPrice", "FieldFilled(UnitPrice) And [UnitPrice] > 1000"),                       // per-level
+        FuzzRule(TIER, "TOD", "../UnitPrice", "FieldFilled(UnitPrice) And [UnitPrice] > [$OFFER/Discount]"),          // 1 parent up
+        FuzzRule(TIER, "TVM", "../UnitPrice", "FieldFilled(UnitPrice) And [UnitPrice] > [$VENDOR/MinMargin]"),        // 3 parents up
+        FuzzRule(OFFER, "OHS", "../Tier/Qty", "Sum(Tier*/Qty Having [Tier/UnitPrice] > 5) > 100"),                    // Having-filtered Sum
+        FuzzRule(VENDOR, "VNS", "../Product/Offer/Tier/Qty", "Sum(Product*/Offer*/Tier*/Qty) > 100000"),              // deep nested-star Sum
+    )
+
+    /**
+     * **Deep + rich**: a 4-level nested DM with cross-level / `Having` / nested-star rules — the "sensible rules
+     * across a deep document" benchmark. [firing] picks the regime: low-firing (valid doc — every rule passes)
+     * or firing (a tier `UnitPrice` above both the parent `Offer/Discount` AND the 3-levels-up `Vendor/MinMargin`
+     * → the two cross-level rules fire on every tier, exercising the walk-up resolution non-trivially while the
+     * aggregates evaluate to a passing result — so interp==kernel is a real, multi-construct correctness check).
+     * Scale knob N = Vendor count; each vendor fans out to 2 products × 2 offers × 3 tiers = 12 tiers.
+     */
+    fun deepRich(firing: Boolean = false): PerfScenario {
+        val rules = deepRules()
+        val kernelModel = rules.fold(deepJson) { m, r -> RuntimeLaws.withRule(m, r.group, "R_${r.code}", r.errorRel, r.code, r.cond) }
+        val interpModel = ModelDef(
+            deepFields, rules.map { RuleDef("${it.group}/${it.code}", it.group, it.cond, it.code, it.errorRel) },
+            repeatableGroups = setOf(VENDOR, PRODUCT, OFFER, TIER),
+            declaredReps = mapOf(VENDOR to DECLARED_MAX, PRODUCT to DECLARED_MAX, OFFER to DECLARED_MAX, TIER to DECLARED_MAX),
+            indexFields = setOf("$VENDOR/VKey", "$PRODUCT/PKey", "$OFFER/OKey", "$TIER/TKey"),
+        )
+        val gen = SeedGenerator(interpModel)
+        return PerfScenario("deepRich(4-level${if (firing) "" else ",low-firing"})", kernelModel, interpModel) { sink, n, _ ->
+            gen.populate(sink, rowsOf = deepRows(n), value = deepValues(firing))
+        }
+    }
+
+    private fun deepRows(n: Int): RowsFn = { g, _, _ -> when (g) { VENDOR -> n; PRODUCT -> 2; OFFER -> 2; TIER -> 3; else -> 0 } }
+
+    private fun deepValues(firing: Boolean): ValueStrategy = ValueStrategy { field, reps, _ ->
+        when (field.path.substringAfterLast("/")) {
+            "VKey", "PKey", "OKey", "TKey" -> "K" + reps.joinToString("_")   // unique index key per row (required)
+            "MinMargin" -> if (firing) "8" else "1000"
+            "BasePrice" -> "100"
+            "Discount" -> "5"
+            "Qty" -> "1"
+            "UnitPrice" -> if (firing) "10" else "1"   // firing: 10 > Discount(5) AND 10 > MinMargin(8) → TOD+TVM fire
+            else -> "0"
+        }
+    }
+
     // B7's value strategy: like [perfValues] but leaves the COMPUTED field (Amount) EMPTY in the seed — so the
     // kernel's compute() reports every Line's Amount as a change (empty → Sum), matching the interpreter which
     // computes every row. Cost is filled (the aggregate operand); index fields filled (required).
