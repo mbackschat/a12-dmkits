@@ -336,13 +336,29 @@ class Document @JvmOverloads constructor(
         override val evaluated: Boolean,
     ) : EvalContext {
 
+        /**
+         * Resolve a referenced field to its placement (or null) ONCE per path, cached for this row context —
+         * the kernel's single-resolution `vergleiche`/`feldWertAlsZahl` analog. `field`, `filled`, and
+         * `displayValue` all resolved the SAME `(path, reps)` independently (each `repsFor` allocating a reps
+         * list + a `valueAt` map lookup), so a comparison's field operand was resolved ~2× per row — and the
+         * row contexts are reused across every rule iterating this scope, so caching pays across all of them.
+         * The document is immutable during a validation, so the placement is stable (correct for full + partial).
+         */
+        private val placeCache = HashMap<String, Placement?>()
+        private fun placeOf(path: String): Placement? {
+            placeCache[path]?.let { return it }
+            if (placeCache.containsKey(path)) return null
+            val p = valueAt(path, repsFor(path, group, rowReps))
+            placeCache[path] = p
+            return p
+        }
+
         override fun field(path: String): Val {
-            val v = valueAt(path, repsFor(path, group, rowReps))?.value
+            val v = placeOf(path)?.value
             return if (v != null) resolveValue(path, v) else emptyValue(kindOf(path))
         }
 
-        override fun filled(path: String): Boolean =
-            valueAt(path, repsFor(path, group, rowReps))?.value != null
+        override fun filled(path: String): Boolean = placeOf(path)?.value != null
 
         override fun signed(path: String): Boolean = path !in unsignedFields
 
@@ -395,8 +411,7 @@ class Document @JvmOverloads constructor(
         override fun firstStarRowEmpty(path: String): Boolean =
             starRows(path).indexOfFirst { reps -> valueAt(path, reps)?.value != null } > 0
 
-        override fun displayValue(path: String): String? =
-            valueAt(path, repsFor(path, group, rowReps))?.value
+        override fun displayValue(path: String): String? = placeOf(path)?.value
 
         override fun declaredKind(path: String): Kind? = kinds[path]
 

@@ -282,6 +282,17 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 *(dated baselines, newest first — populated as benchmarks land)*
 
+**2026-06-25 — per-row field-resolution cache: the interpreter now BEATS kernel-Java at 192 high-firing (the session's biggest win).** The kernel-codegen analysis pointed at the real lever: the kernel resolves a referenced field ONCE per row (its `vergleiche`/`feldWertAlsZahl`, cached per row in `IndexFieldCache`), while the interpreter's `field`/`filled`/`displayValue` each re-resolved the same `(path, reps)` independently (`repsFor` list-alloc + `valueAt` map lookup) — and worse, **every rule re-resolved the same field on the same row**. Since the `Document` row contexts are **reused across all rules** iterating a scope, a tiny per-context `placeCache` (path → placement) collapses ~`rules × fields` resolutions per row to ~`fields` (e.g. 192 rules × ~2 fields → ~3 distinct). Measured (interp/kernel-**Java**, the noise-controlled within-run ratio):
+
+| regime, 192 rules | ratioJava post-memo | **+placeCache** |
+|---|:--:|:--:|
+| high-firing | ~1.25 | **0.84** (interp faster than kernel-Java) |
+| low-firing | 1.70 | **1.49** |
+| 96 low-firing | 1.28 | **1.05** |
+| 48 low-firing | 0.93 | **0.73** |
+
+This is the **kernel-mimic that worked** — not the two-phase eval *structure* (which a tree-walk can't make cheap), but the kernel's **per-row resolution caching** (`IndexFieldCache` analog). Behavior-preserving (pure memo, the document is immutable during a validation; correct for full + partial — full `:adapter` differential green), `commonMain` (JVM+JS). The remaining low-firing gap (1.49) is the next target: the per-call `Val`/`Fill`/`Res` allocations + boxed `List<Int>` reps (the resolution is now cached, the *allocation* is not).
+
 **2026-06-25 — the kernel's per-op edge is LARGEST in low-firing; the two-phase mimic measured a net loss (reverted).** Added a **low-firing** against-kernel sweep (`KernelEdgeTest.ruleCountCrossoverLowFiring` — valid docs, ~0 fires, the realistic regime). It exposed what the high-firing crossover hides:
 
 | regime (192 rules) | interp | kernel-Java | interp/java |
