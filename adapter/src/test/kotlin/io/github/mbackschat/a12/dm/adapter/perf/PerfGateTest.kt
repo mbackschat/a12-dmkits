@@ -187,6 +187,29 @@ class PerfGateTest {
     }
 
     /**
+     * Guards **`FieldValuesNotUnique`** against the O(values²) it had with a STARRED operand: uniqueness across
+     * a repetition's rows was an O(n²) pairwise `eq` scan (latent — every other benchmark used unique keys, so
+     * this path was never stressed; `latentQuadraticHunt` caught it ×9.6). Fixed to an O(n) canonical-key set.
+     * Time the interpreter (only) over N and 4N all-distinct rows; linear ≈ ×4, the old quadratic ≈ ×16.
+     */
+    @Test
+    fun fieldValuesNotUniqueStaysSubQuadratic() {
+        val fvnu = PerfCatalog.fieldValuesNotUniqueStar()
+        var best = Double.MAX_VALUE
+        var bSmall = 0.0; var bLarge = 0.0
+        repeat(GROWTH_REPEATS) {
+            val small = PerfHarness.timeInterpreter(fvnu, N_SMALL, warmup = 5, iters = 7)
+            val large = PerfHarness.timeInterpreter(fvnu, N_SMALL * 4, warmup = 5, iters = 7)
+            val g = large.minMs / small.minMs
+            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        }
+        println("[perf] FieldValuesNotUnique sub-quadratic: ${"%.1f".format(bSmall)}ms@$N_SMALL → " +
+            "${"%.1f".format(bLarge)}ms@${N_SMALL * 4} values  min-growth=${"%.2f".format(best)}× (linear≈4, old-quadratic≈16)")
+        assertTrue(best < SUB_QUADRATIC_MAX,
+            "FieldValuesNotUnique scaling looks quadratic: 4× values took ${best}× the time (the key-set regressed to a pairwise scan?)")
+    }
+
+    /**
      * Guards the **breadth axis** (many sibling groups) against a per-group setup that scans the whole model
      * (which would be O(groups²)). Time the interpreter (only) at N and 4N sibling groups, fixed rows/group;
      * linear ≈ 4×, a per-group full-model scan ≈ 16×. The per-group machinery (`contextsFor`, attach-depth maps)

@@ -69,6 +69,7 @@ class KernelEdgeTest {
         for ((name, sc) in listOf(
             "per-row-global-agg" to PerfCatalog.perRowGlobalAggregate(),
             "NumberOfDifferentValues" to PerfCatalog.numDifferentValues(),
+            "FieldValuesNotUnique" to PerfCatalog.fieldValuesNotUniqueStar(),
         )) {
             val small = PerfHarness.timeInterpreter(sc, 2000, warmup = 5, iters = 6)
             val large = PerfHarness.timeInterpreter(sc, 8000, warmup = 5, iters = 6)

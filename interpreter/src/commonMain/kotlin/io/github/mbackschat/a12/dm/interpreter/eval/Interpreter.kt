@@ -883,8 +883,20 @@ class Interpreter(
                 values.add(v)
             }
         }
-        for (i in values.indices) {
-            for (j in i + 1 until values.size) if (eq(values[i], values[j])) return Tri.TRUE
+        // O(n) duplicate detection via canonical keys. The starred operand collects ONE value per row, so the
+        // old O(n²) pairwise `eq` scan went quadratic on a large repetition list (confirmed super-linear; the
+        // kernel memoizes this via its RepetitionNotUniqueErrorCache). The key matches [eq]: numbers by their
+        // scale-19 form (`compareScaled19` equality — scale-insensitive, exact past 19 digits), strings/bools by
+        // themselves (the prefix prevents cross-type collision); a `Range` never `eq`-matches, so it's skipped.
+        val seen = HashSet<String>(values.size * 2)
+        for (v in values) {
+            val k = when (v) {
+                is Val.Num -> "N" + v.v.scale19().display()
+                is Val.Txt -> "S" + v.v
+                is Val.Bool -> "B" + v.v
+                else -> continue   // Range / other: never eq → cannot form a duplicate
+            }
+            if (!seen.add(k)) return Tri.TRUE
         }
         return Tri.FALSE
     }

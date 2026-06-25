@@ -103,6 +103,29 @@ object PerfCatalog {
         scenario("PRA per-row-global-agg", LINES, "PGA", "../Amount",
             "FieldFilled(Amount) And [Amount] > Sum(Lines*/Amount)", ::flatRows)
 
+    /** **FVNU — `FieldValuesNotUnique` over a large star** (`Lines* / Amount`): uniqueness across the repetition's
+     *  rows. With all-distinct values it never fires but runs the FULL pairwise scan — O(rows²) if naive. Each
+     *  Line's Amount is unique (the row index). */
+    fun fieldValuesNotUniqueStar(): PerfScenario {
+        val cond = "FieldValuesNotUnique(Lines*/Amount)"
+        val kernelModel = RuntimeLaws.withRule(perfJson, "/Perf", "R_FVNU", "../Lines/Amount", "FVNU", cond)
+        val interpModel = ModelDef(
+            fields, listOf(RuleDef("/Perf/R_FVNU", "/Perf", cond, "FVNU", "../Lines/Amount")),
+            repeatableGroups = setOf(LINES, SUBS),
+            declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX), indexFields = setOf(LINE_KEY, SUB_KEY),
+        )
+        val gen = SeedGenerator(interpModel)
+        return PerfScenario("FVNU uniqueness", kernelModel, interpModel) { sink, n, _ ->
+            gen.populate(sink, rowsOf = flatRows(n), value = ValueStrategy { field, reps, _ ->
+                when (field.path) {
+                    LINE_KEY -> "K" + reps.joinToString("_")
+                    AMOUNT -> reps[1].toString()   // unique per line → all distinct → full pairwise scan, no early-out
+                    else -> "0"
+                }
+            })
+        }
+    }
+
     /** **NDV — `NumberOfDifferentValues` over a large star** (`> 999999`, never fires): one aggregate eval whose
      *  distinct count was computed by a linear scan per element → O(values²). Each Line's Amount is UNIQUE (the
      *  row index) so the distinct set grows to N — the worst case that exposes the quadratic. */
