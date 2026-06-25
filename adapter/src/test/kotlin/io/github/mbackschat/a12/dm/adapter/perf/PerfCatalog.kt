@@ -95,6 +95,37 @@ object PerfCatalog {
     fun b1(): PerfScenario =
         scenario("B1 per-row", LINES, "HQ", "../Qty", "FieldFilled(Qty) And [Qty] > 50", ::flatRows)
 
+    /** **PRA — a per-row rule comparing each Line to a ROW-INVARIANT global aggregate** (`[Amount] > Sum(Lines* /
+     *  Amount)`): the Sum over ALL lines is the same for every line but recomputed per row → O(rows²) unless the
+     *  aggregate is memoized (the kernel's CalculationCache analog). The latent cliff #50 (aggregate memoization)
+     *  targets. */
+    fun perRowGlobalAggregate(): PerfScenario =
+        scenario("PRA per-row-global-agg", LINES, "PGA", "../Amount",
+            "FieldFilled(Amount) And [Amount] > Sum(Lines*/Amount)", ::flatRows)
+
+    /** **NDV — `NumberOfDifferentValues` over a large star** (`> 999999`, never fires): one aggregate eval whose
+     *  distinct count was computed by a linear scan per element → O(values²). Each Line's Amount is UNIQUE (the
+     *  row index) so the distinct set grows to N — the worst case that exposes the quadratic. */
+    fun numDifferentValues(): PerfScenario {
+        val cond = "NumberOfDifferentValues(Lines*/Amount) > 999999"
+        val kernelModel = RuntimeLaws.withRule(perfJson, "/Perf", "R_NDV", "../Lines/Amount", "NDV", cond)
+        val interpModel = ModelDef(
+            fields, listOf(RuleDef("/Perf/R_NDV", "/Perf", cond, "NDV", "../Lines/Amount")),
+            repeatableGroups = setOf(LINES, SUBS),
+            declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX), indexFields = setOf(LINE_KEY, SUB_KEY),
+        )
+        val gen = SeedGenerator(interpModel)
+        return PerfScenario("NDV distinct-count", kernelModel, interpModel) { sink, n, _ ->
+            gen.populate(sink, rowsOf = flatRows(n), value = ValueStrategy { field, reps, _ ->
+                when (field.path) {
+                    LINE_KEY -> "K" + reps.joinToString("_")
+                    AMOUNT -> reps[1].toString()   // unique per line → distinct set grows to N (worst case)
+                    else -> "0"
+                }
+            })
+        }
+    }
+
     /** B2 — star aggregate `Sum(Lines* / Amount) > 0` at /Perf: star collection + fold across N rows. The error
      *  field is the aggregated `Amount` itself (the kernel requires the error field be referenced in the
      *  condition — `MVK_ERROR_FIELD_NOT_REFERENCED`). */

@@ -714,9 +714,14 @@ class Interpreter(
         FunctionOp.MAX_VALUE -> combine(starVals(f)) { it.maxWithOrNull(ORDER) ?: Val.Unknown }
         FunctionOp.MIN_VALUE -> combine(starVals(f)) { it.minWithOrNull(ORDER) ?: Val.Unknown }
         FunctionOp.NUMBER_OF_DIFFERENT_VALUES -> combine(starVals(f)) { vs ->
-            val distinct = mutableListOf<Dec>()
-            for (v in vs) { val x = num(v); if (distinct.none { it.compareTo(x) == 0 }) distinct.add(x) }
-            Val.Num(dec(distinct.size))
+            // Distinct count by numeric equality (compareTo, scale-insensitive). Sort + count adjacent-distinct
+            // is O(n log n); the prior "linear scan of the distinct-so-far per element" was O(n²) — a latent
+            // cliff on a large value list (confirmed super-linear by latentQuadraticHunt). Same count: sorting
+            // groups equal values adjacently, so a run boundary (compareTo != prev) is a new distinct value.
+            val nums = vs.map { num(it) }.sortedWith { a, b -> a.compareTo(b) }
+            var count = 0
+            for (i in nums.indices) if (i == 0 || nums[i].compareTo(nums[i - 1]) != 0) count++
+            Val.Num(dec(count))
         }
         // DifferenceInDays(a, b) = b − a in whole days (sign = second − first), as a number. An empty or
         // malformed date operand → Unknown (the rule typically guards it with AllFieldsFilled).

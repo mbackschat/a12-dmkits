@@ -164,6 +164,29 @@ class PerfGateTest {
     }
 
     /**
+     * Guards **`NumberOfDifferentValues`** against the O(values²) it had: the distinct count was a linear scan of
+     * the distinct-so-far per element (a latent cliff the easy benchmarks overshadowed; `latentQuadraticHunt`
+     * caught it super-linear). Fixed to sort + count adjacent-distinct (O(n log n)). Time the interpreter (only)
+     * over N and 4N all-distinct values; n log n ≈ ~4–5×, the old quadratic ≈ 16×. Trip well below.
+     */
+    @Test
+    fun numberOfDifferentValuesStaysSubQuadratic() {
+        val ndv = PerfCatalog.numDifferentValues()
+        var best = Double.MAX_VALUE
+        var bSmall = 0.0; var bLarge = 0.0
+        repeat(GROWTH_REPEATS) {
+            val small = PerfHarness.timeInterpreter(ndv, N_SMALL, warmup = 5, iters = 7)
+            val large = PerfHarness.timeInterpreter(ndv, N_SMALL * 4, warmup = 5, iters = 7)
+            val g = large.minMs / small.minMs
+            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        }
+        println("[perf] NumberOfDifferentValues sub-quadratic: ${"%.1f".format(bSmall)}ms@$N_SMALL → " +
+            "${"%.1f".format(bLarge)}ms@${N_SMALL * 4} values  min-growth=${"%.2f".format(best)}× (n·log n≈4–5, old-quadratic≈16)")
+        assertTrue(best < SUB_QUADRATIC_MAX,
+            "NumberOfDifferentValues scaling looks quadratic: 4× values took ${best}× the time (the distinct sort regressed to a linear scan?)")
+    }
+
+    /**
      * Guards the **breadth axis** (many sibling groups) against a per-group setup that scans the whole model
      * (which would be O(groups²)). Time the interpreter (only) at N and 4N sibling groups, fixed rows/group;
      * linear ≈ 4×, a per-group full-model scan ≈ 16×. The per-group machinery (`contextsFor`, attach-depth maps)

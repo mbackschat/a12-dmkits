@@ -58,6 +58,25 @@ class KernelEdgeTest {
     }
 
     /**
+     * **LATENT O(N²) hunt** — the constructs the easy benchmarks overshadowed (the `Having` cliff's siblings).
+     * Times the interpreter at N and 4N; **linear ≈ ×4, quadratic ≈ ×16**. Suspects: a per-row rule referencing a
+     * row-INVARIANT global aggregate (`Sum` recomputed per row), and `NumberOfDifferentValues` (linear distinct
+     * scan = O(values²)). A ×16-ish growth means a hidden quadratic to fix.
+     */
+    @Test
+    fun latentQuadraticHunt() {
+        println("[edge] LATENT O(N²) hunt — interp growth N→4N (linear≈4, quadratic≈16):")
+        for ((name, sc) in listOf(
+            "per-row-global-agg" to PerfCatalog.perRowGlobalAggregate(),
+            "NumberOfDifferentValues" to PerfCatalog.numDifferentValues(),
+        )) {
+            val small = PerfHarness.timeInterpreter(sc, 2000, warmup = 5, iters = 6)
+            val large = PerfHarness.timeInterpreter(sc, 8000, warmup = 5, iters = 6)
+            println("  %-24s %.1fms@2000 → %.1fms@8000  x%.2f".format(name, small.medianMs, large.medianMs, large.medianMs / small.medianMs))
+        }
+    }
+
+    /**
      * **WIDE — many sibling groups (breadth axis).** A model with N sibling repeatable groups, each its own
      * index + field + per-row rule, at fixed rows/group. Stresses any per-group setup that scans the whole model
      * (would show as super-linear group-count growth); the interpreter's per-group machinery is memoized, so it
