@@ -119,7 +119,8 @@ Rather than discover kernel constraints by tripping over them, these sweep the k
 
 | guardian | what it pins |
 |---|---|
-| `SlotParityTest` | every public `IRule`/`IComputation` accessor is supported or explicitly deferred |
+| `SlotParityTest` | every public `IRule`/`IComputation` accessor is supported or explicitly deferred (the **authoring** side) |
+| `adapter.InterpreterFieldConstraintParityTest` | every kernel `IStringType`/`INumberType` constraint accessor is classified for the **interpreter** model (modeled / deferred / out-of-scope) — the forcing-function whose absence let IF20 hide; catches a kernel-added field-type constraint the interpreter would otherwise silently drop |
 | `MvkLedgerTest` | every `MVK_*` code is classified (erased / pre-checked / delegated / pending) — [`MVK-LEDGER.md`](MVK-LEDGER.md) |
 | `SerializerTierParityTest` | the `BasicDocumentModelConsistencyCategory` write-gate enum (F6) is fully classified |
 | `KernelConstructParityTest` | every parsetree construct-name enum member is cataloged or excluded (catches operators the kernel *adds*) |
