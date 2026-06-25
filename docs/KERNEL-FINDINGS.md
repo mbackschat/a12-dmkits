@@ -113,6 +113,29 @@ Surfaced by the **differential fuzz net** (`adapter.perf.InterpreterKernelFuzzTe
 
 Both ride `formalePruefung` (the sentinel rule path) like the other formal errors, and suppress a referencing author rule (branch-scoped). *(Locked: `adapter.laws.NumberSignFormalDiffTest` — interp vs kernel over a scale-2 and a scale-0 field; the precedence is part of the lock.)*
 
+## §3 supplement — DECLARED field-type CONSTRAINTS are formal errors too (range / length / pattern / digit-count / enum-domain), source + probe-verified 2026-06-25
+
+The format checks above (decimals, invalid chars, blanks, signed-zero) test whether a value is *well-formed for its kind*. But the kernel's `validateFull` **also** auto-validates the value against the field type's **declared constraints** — and these ride the **same `formalePruefung` mechanism**: an out-of-constraint value is a formal error, the field becomes **"unknown"**, and a referencing author rule is **suppressed** (branch-scoped, §3 / IF17). No rule is involved — the kernel emits these purely from the field-type declaration.
+
+The constraints are declared on the field type (kernel `IStringType` / `INumberType`, source-read) and the formal-error codes are the kernel's full runtime set (`FormalErrorCodesProvider.getFormalErrorCodes`, ~55 codes). The constraint → code map (the ones a DM-JSON model can declare and a document can violate):
+
+| field type | declared constraint (DM-JSON) | runtime formal-error code |
+|---|---|---|
+| **NUMBER** | `minValue` | `zahlZuKlein` |
+| | `maxValue` | `zahlZuGross` |
+| | `maxNumberOfDigitsBeforeDecimalPlace` | `zahlZuVieleVorkommastellen` |
+| | `minFractionalDigits` | (too few decimals) |
+| | `zeroAllowed: false` | `zahlIstNull` |
+| | `maxLength` / `minLength` (total digits) | `zahlZuLang` / `zahlZuKurz` |
+| **STRING** | `pattern` (regex) | `stringFalschesMuster` |
+| | `minLength` / `maxLength` | `stringZuKurz` / `stringZuLang` |
+| | (charset / newline) | `zeichenNichtImZeichensatz` / `stringMitNewline` |
+| **ENUMERATION** | the value domain (out-of-domain stored value) | `stringFalschesMuster` |
+
+**Probe-verified (2026-06-25)** over the order fixture: `/Order/BirthDay` (`minValue:1, maxValue:31`) — `"99"` → `zahlZuGross`, `"0"` → `zahlZuKlein`, `"15"` → clean; `/Order/Priority` (enum STANDARD/EXPRESS/OVERNIGHT) — `"BOGUS"` → `stringFalschesMuster`, `"EXPRESS"` → clean. The **suppression** was confirmed the same run: a rule `[BirthDay] == 99` with `BirthDay = "99"` does **not** fire (only `zahlZuGross` shows — the field is unknown), and `[Priority] != "STANDARD"` with `Priority = "BOGUS"` does **not** fire (only `stringFalschesMuster`). So an out-of-constraint value is observable two ways: the **auto-emitted formal error** *and* the **suppression of referencing rules**.
+
+This is the same class of behavior as §94/§98 (format-error suppression) — the only difference is the trigger (a declared constraint vs raw well-formedness). The **interpreter does NOT model this dimension** (it carries no constraint metadata) — see INTERPRETER-FINDINGS IF20, the input-validity scope boundary. *(Not yet `…LawsTest`-locked — recorded as the verified contract; a lock lands with any interpreter implementation of the dimension.)*
+
 ## §3 supplement — a DATE value is stored and formal-checked in the field's DECLARED format, not ISO (runtime, 2026-06-23)
 
 Also surfaced by the **fuzz net**. A `DateType` field's value is the date **rendered in that field's `format`** — `OrderDate` (`yyyy-MM-dd`) holds `2024-06-15`, but `ApproxDate` (`dd.MM.yyyy`) holds `15.06.2024`. The formal check is **against the declared format**: a value in the field's own format is well-formed; a value in a *different* format is `datumFormatFalsch` (verified both ways — `ApproxDate = "2024-06-15"` → `datumFormatFalsch`; `OrderDate = "15.06.2024"` → `datumFormatFalsch`). So there is **no single canonical wire format** — a consumer must read each field's `format` to parse/validate its dates (the same is already known for `DateRangeType`, IF12). The interpreter canonicalizes every date to ISO internally via the declared format. *(Locked: `adapter.laws.PlainDateDiffTest`.)*

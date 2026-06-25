@@ -14,11 +14,14 @@ import org.junit.jupiter.api.Test
  * cached; warmup primes it out, so the timed region is steady-state validation against already-generated code).
  *
  * **Fairness caveat — read the ratio with care.** Still NOT fully apples-to-apples: the interpreter matches
- * the kernel on requiredness, formal-checking, rich messages, AND index-field uniqueness (the fuzz net forced
- * parity there), but the kernel's `validateFull` still validates dimensions the interpreter does not yet model
- * (enum/value-list checks, the explicit `FieldValuesNotUnique` constraint). So "interp faster" partly means
- * "interp does less" — the honest read is **competitive-to-faster on these scenarios**, not "Nx faster" as a
- * speed verdict. The bounds are GATES (catch a regression, tolerate CI variance), not SLAs. Pure engine, no CLI.
+ * the kernel on requiredness, format/formal-checking, rich messages, index-field uniqueness, AND the
+ * `FieldValuesNotUnique` operator (all forced to parity by the fuzz net), but the kernel's `validateFull` still
+ * auto-validates one dimension the interpreter does not model — the **declared field-type constraints** (number
+ * range min/max + integer-digit-count, string length/pattern, enum/value-list domain membership; KERNEL-FINDINGS
+ * §3 "declared field-type constraints" / INTERPRETER-FINDINGS IF20). These scenarios carry no such constraints,
+ * so the missing dimension does not skew them, but in general "interp faster" can partly mean "interp does less"
+ * — the honest read is **competitive-to-faster on these scenarios**, not "Nx faster" as a speed verdict. The
+ * bounds are GATES (catch a regression, tolerate CI variance), not SLAs. Pure engine, no CLI.
  */
 class PerfGateTest {
 
@@ -328,6 +331,6 @@ class PerfGateTest {
         // Codegen is NOT in the timed region (primed out by warmup — the kernel generates ahead). This routine
         // gate measures against Groovy (the shortcut); the Groovy execution tax (~1.0–1.3×, pinned by
         // KernelEdgeTest) and the residual "kernel validates MORE dimensions" make this NOT apples-to-apples.
-        const val CAVEAT = "(NOT apples-to-apples: kernel also validates enum/value-list + FieldValuesNotUnique; codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)"
+        const val CAVEAT = "(NOT apples-to-apples: kernel also auto-validates declared field-type constraints (range/length/pattern/enum-domain — IF20); codegen excluded; Groovy baseline + ~1.0–1.3× Groovy tax)"
     }
 }
