@@ -530,7 +530,8 @@ class DmInterpreter @JvmOverloads constructor(
             // registry + the row's error-field pointer ride along for a `CustomCondition X` leaf.
             val interp = Interpreter(ctx, clock, model.baseYear, model.indexFields, predefinedTypes,
                 customConditions, FieldPointer(errorPath, ctx.repsOf(errorPath))) { path ->
-                    formalErrorAt(path, ctx, dup, cache) != null || !isRelevant(path, ctx.repsOf(path))
+                    val reps = ctx.repsOf(path)   // computed once, reused for the formal check AND relevance
+                    formalErrorAt(path, reps, ctx, dup, cache) != null || !isRelevant(path, reps)
                 }
             // ONE typed walk per row (the fired MsgType, or null if it doesn't fire) — replaces the old
             // fires()+firedType() pair, which walked the AST TWICE on every firing row. firedType != null ⟺
@@ -556,7 +557,7 @@ class DmInterpreter @JvmOverloads constructor(
 
     /** The first referenced field that is "unknown" in [ctx] (malformed value, required-empty, or duplicate index), else null. */
     private fun firstSuppressor(refs: List<String>, ctx: EvalContext, dup: Set<Pair<String, List<Int>>>, cache: FormalCache): Suppression? =
-        refs.firstNotNullOfOrNull { path -> formalErrorAt(path, ctx, dup, cache)?.let { Suppression(path, it) } }
+        refs.firstNotNullOfOrNull { path -> formalErrorAt(path, ctx.repsOf(path), ctx, dup, cache)?.let { Suppression(path, it) } }
 
     /**
      * The "unknown-operand" code of the field instance at [path] in [ctx], or null when the field is usable.
@@ -566,24 +567,25 @@ class DmInterpreter @JvmOverloads constructor(
      * index** value ([UNIQUE_INDEX], the [dup] cells) — a duplicate-index field is unknown for any rule
      * referencing it, branch-scoped exactly like a formal error (verified, KERNEL-FINDINGS §4 supplement).
      */
-    private fun formalErrorAt(path: String, ctx: EvalContext, dup: Set<Pair<String, List<Int>>>, cache: FormalCache): String? {
-        val key = path to ctx.repsOf(path)
+    private fun formalErrorAt(path: String, reps: List<Int>, ctx: EvalContext, dup: Set<Pair<String, List<Int>>>, cache: FormalCache): String? {
+        val key = path to reps
         cache[key]?.let { return it }
         if (cache.containsKey(key)) return null   // memoized "usable" (null) — distinct from "not yet computed"
-        val v = computeFormalErrorAt(path, ctx, dup)
+        val v = computeFormalErrorAt(path, reps, ctx, dup)
         cache[key] = v
         return v
     }
 
     /** The uncached formal/mandatory/duplicate-index check — the single source for "is this operand unknown?".
-     *  Wrapped by [formalErrorAt]'s [FormalCache] (the document is immutable during a validation). */
-    private fun computeFormalErrorAt(path: String, ctx: EvalContext, dup: Set<Pair<String, List<Int>>>): String? {
+     *  Wrapped by [formalErrorAt]'s [FormalCache] (the document is immutable during a validation). [reps] is the
+     *  resolved instance of [path] (passed in, not recomputed — `repsOf` allocates and the caller already has it). */
+    private fun computeFormalErrorAt(path: String, reps: List<Int>, ctx: EvalContext, dup: Set<Pair<String, List<Int>>>): String? {
         val raw = ctx.displayValue(path)
         if (raw != null) {
             val kind = model.kinds[path] ?: return null
             formalError(kind, raw, model.scaleOf(path), model.dateLikeFormatOf(path), model.datePrecisionOf(path),
                 model.rangeSeparatorOf(path))?.id?.let { return it }
-            return if (path to ctx.repsOf(path) in dup) UNIQUE_INDEX else null
+            return if (path to reps in dup) UNIQUE_INDEX else null
         }
         return if (requiredEmpty(path, ctx)) MANDATORY_FIELD else null
     }
