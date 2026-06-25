@@ -244,6 +244,19 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 *(dated baselines, newest first — populated as benchmarks land)*
 
+**2026-06-25 — pre-optimization baseline for the layered work** ([`INTERPRETER-PERFORMANCE-DESIGN.md`](INTERPRETER-PERFORMANCE-DESIGN.md); `KernelEdgeTest.ruleCountCrossover`, N=1000 Lines × 5 Subs, median of 8 after 12 warmups; codegen excluded; `ratioJava` = the fair algorithmic ratio). This is the yardstick each layer's delta is read against:
+
+| rules | interp | kernel-Groovy | kernel-Java | interp/java |
+|--:|--:|--:|--:|:--:|
+| 6 | 28.0 ms | 118.2 ms | 110.3 ms | **0.25** |
+| 12 | 41.9 ms | 128.8 ms | 118.5 ms | 0.35 |
+| 24 | 78.4 ms | 152.0 ms | 148.9 ms | 0.53 |
+| 48 | 140.6 ms | 201.4 ms | 175.2 ms | 0.80 |
+| 96 | 272.1 ms | 284.7 ms | 274.4 ms | **0.99 ← crossover** |
+| 192 | 543.2 ms | 502.9 ms | 414.2 ms | **1.31** |
+
+Confirms the regime the optimization targets: the interpreter wins decisively below ~50 rules, reaches parity with kernel-Java at ~96, and loses (1.31×) at 192 — exactly the high-rule hot-reuse case the `a12-kernel-mm` metamodels hit (90 source / 192 composed). Layer 1's measured ~2.5× per-(rule×row) win is aimed here; the target is to push the crossover to ~240 and turn 192 into a win.
+
 **2026-06-24 — full spectrum + the Java baseline + the rule-count crossover + startup & row scaling** (`adapter.perf.*`; build-once engines, median of 8 after 12 warmups unless noted; JVM, single-threaded; correctness — interp == kernel fired-code/compute **multiset** — asserted before timing; **codegen excluded** from every timed region). Three baselines: **interp** (`DmInterpreter`), **groovy** (the kernel's dynamic path — the routine shortcut), **java** (the kernel's OWN validator compiled as Java — the *Groovy-tax-free* baseline). `ratioJava` is the fair algorithmic comparison.
 
 *The spectrum* (single document, 3000 rows; B3–B5 are 600 Lines × 5 Subs):
