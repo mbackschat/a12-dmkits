@@ -353,9 +353,13 @@ class Document @JvmOverloads constructor(
             return p
         }
 
-        override fun field(path: String): Val {
+        // The resolved [Val] per path, cached for this row context — `field` is called once per operand per
+        // RULE, so many rules referencing the same field on the same row re-resolved (`resolveValue`, a `Val`
+        // allocation) independently. The value is stable (immutable document), so cache it once per row.
+        private val valCache = HashMap<String, Val>()
+        override fun field(path: String): Val = valCache.getOrPut(path) {
             val v = placeOf(path)?.value
-            return if (v != null) resolveValue(path, v) else emptyValue(kindOf(path))
+            if (v != null) resolveValue(path, v) else emptyValue(kindOf(path))
         }
 
         override fun filled(path: String): Boolean = placeOf(path)?.value != null
@@ -417,16 +421,24 @@ class Document @JvmOverloads constructor(
 
         override fun dateFormatOf(path: String): String? = dateFormats[path]
 
-        // SemanticIndex: scan the target field's repetition rows (in scope) for the one whose sibling index
-        // cell equals indexValue; return its resolved value, or null when no row matches or the cell is empty.
+        /**
+         * SemanticIndex `[F For "v"]`: the value of [targetPath] in the in-scope row whose sibling [indexField]
+         * cell equals [indexValue]. The kernel's `IndexFieldCache` analog — a per-context `indexValue → row`
+         * memo built ONCE per index field (first match wins, matching a scan) and reused across every reference
+         * and every rule sharing this row context, instead of an O(rows) scan **per reference** (latent
+         * O(refs·rows)). Rows of the index field's group == `starRows(targetPath)` (same group, sibling leaves),
+         * and the row reps address the leaf for any sibling, so the map is shared across sibling targets.
+         */
+        private val indexRowCache = HashMap<String, Map<String, List<Int>>>()
         override fun indexedCell(targetPath: String, indexField: String, indexValue: String): Val? {
-            for (reps in starRows(targetPath)) {
-                if (valueAt(indexField, reps)?.value == indexValue) {
-                    val raw = valueAt(targetPath, reps)?.value
-                    return if (!raw.isNullOrEmpty()) resolveValue(targetPath, raw) else null
-                }
+            val byValue = indexRowCache.getOrPut(indexField) {
+                val m = HashMap<String, List<Int>>()
+                for (reps in starRows(targetPath)) valueAt(indexField, reps)?.value?.let { if (it !in m) m[it] = reps }
+                m
             }
-            return null
+            val reps = byValue[indexValue] ?: return null
+            val raw = valueAt(targetPath, reps)?.value
+            return if (!raw.isNullOrEmpty()) resolveValue(targetPath, raw) else null
         }
 
         // Rows of groupPath scoped UNDER this row (the Having filter's per-row contexts).

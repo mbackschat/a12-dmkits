@@ -121,35 +121,43 @@ class Interpreter(
         else -> quantifierFires(op, t = 0, f = p.args.size, n = p.args.size)   // all-empty: every operand FALSE
     }
 
-    private data class Res(val truth: Tri, val type: MsgType)
+    /** A node's (truth, polarity). **Interned** (3 × 2 = 6 instances) — the kernel returns an interned
+     *  `ValidierungsErgebnis` enum (0 alloc); a node result is allocated per-node-per-row in the hot walk, so
+     *  routing construction through [of] removes that allocation. Use `Res.of(...)`, never the constructor. */
+    private data class Res(val truth: Tri, val type: MsgType) {
+        companion object {
+            private val interned = Array(Tri.entries.size) { t -> Array(MsgType.entries.size) { m -> Res(Tri.entries[t], MsgType.entries[m]) } }
+            fun of(truth: Tri, type: MsgType): Res = interned[truth.ordinal][type.ordinal]
+        }
+    }
 
     // The typing rides alongside the truth value (kernel: ValidierungsErgebnis.combineUND/combineODER):
     //   And — omission wins (a fillable branch makes the whole error fillable);
     //   Or  — value wins  (a satisfied value branch convicts regardless of filling).
     private fun evalTyped(c: Cond): Res = when (c) {
-        is Cond.Cmp -> Res(evalCmp(c), leafType(c.op, c.left, c.right))
-        is Cond.Tolerance -> Res(evalTolerance(c), toleranceType(c))
-        is Cond.ValueListQuant -> Res(evalValueListQuant(c), valueListQuantType(c))
-        is Cond.Pred -> Res(evalPred(c), predType(c))
+        is Cond.Cmp -> Res.of(evalCmp(c), leafType(c.op, c.left, c.right))
+        is Cond.Tolerance -> Res.of(evalTolerance(c), toleranceType(c))
+        is Cond.ValueListQuant -> Res.of(evalValueListQuant(c), valueListQuantType(c))
+        is Cond.Pred -> Res.of(evalPred(c), predType(c))
         // A pattern fires only on a PRESENT value (empty → not evaluated), so a fired pattern is always a
         // present-value error → VALUE (there is no "fill more to fix it" omission — the field is filled).
-        is Cond.Pattern -> Res(evalPattern(c), MsgType.VALUE)
+        is Cond.Pattern -> Res.of(evalPattern(c), MsgType.VALUE)
         // A custom condition's verdict is host-decided; a fired one is a present-value error → VALUE (kernel-probed).
-        is Cond.Custom -> Res(evalCustom(c), MsgType.VALUE)
+        is Cond.Custom -> Res.of(evalCustom(c), MsgType.VALUE)
         is Cond.And -> {
             val a = evalTyped(c.left)
             val b = evalTyped(c.right)
             val type = if (a.type == MsgType.OMISSION || b.type == MsgType.OMISSION) MsgType.OMISSION else MsgType.VALUE
-            Res(Kleene.and(a.truth, b.truth), type)
+            Res.of(Kleene.and(a.truth, b.truth), type)
         }
         is Cond.Or -> {
             val a = evalTyped(c.left)
             val b = evalTyped(c.right)
-            Res(Kleene.or(a.truth, b.truth), orType(a, b))
+            Res.of(Kleene.or(a.truth, b.truth), orType(a, b))
         }
         is Cond.Not -> {
             val a = evalTyped(c.c)
-            Res(Kleene.not(a.truth), a.type)
+            Res.of(Kleene.not(a.truth), a.type)
         }
     }
 
@@ -168,12 +176,12 @@ class Interpreter(
      *  other operand (star aggregate, function, arithmetic) keeps the prior *symmetric* omission notion — so
      *  for those, `leafType` below reduces exactly to the old `leafOmission(left) || leafOmission(right)`. */
     private fun fill(e: Expr): Fill = when (e) {
-        is Expr.Field -> if (ctx.filled(e.path)) Fill(false, false) else Fill(true, ctx.signed(e.path))
+        is Expr.Field -> if (ctx.filled(e.path)) Fill.of(false, false) else Fill.of(true, ctx.signed(e.path))
         is Expr.Func -> funcFill(e)
         // A SemanticIndex resolves to a matched cell or (absent row / empty cell) the empty value — fillable
         // exactly when empty, with the target field's sign, so its directional polarity matches a field ref.
-        is Expr.SemanticIndex -> if (semanticIndexFilled(e)) Fill(false, false) else Fill(true, ctx.signed(e.path))
-        else -> leafOmission(e).let { Fill(it, it) }
+        is Expr.SemanticIndex -> if (semanticIndexFilled(e)) Fill.of(false, false) else Fill.of(true, ctx.signed(e.path))
+        else -> leafOmission(e).let { Fill.of(it, it) }
     }
 
     /** Whether a SemanticIndex resolves to a present (filled) cell — vs an absent row / empty cell (or an
@@ -191,30 +199,40 @@ class Interpreter(
      * date functions) keeps the symmetric notion.
      */
     private fun funcFill(f: Expr.Func): Fill = when (FunctionOp.byName(f.name)) {
-        FunctionOp.SUM -> starFill(f) { signed -> Fill(canGrow = true, canShrink = signed) }
-        FunctionOp.MAX_VALUE -> starFill(f) { Fill(canGrow = true, canShrink = false) }
-        FunctionOp.MIN_VALUE -> starFill(f) { Fill(canGrow = false, canShrink = true) }
+        FunctionOp.SUM -> starFill(f) { signed -> Fill.of(canGrow = true, canShrink = signed) }
+        FunctionOp.MAX_VALUE -> starFill(f) { Fill.of(canGrow = true, canShrink = false) }
+        FunctionOp.MIN_VALUE -> starFill(f) { Fill.of(canGrow = false, canShrink = true) }
         // CurrentRepetition is the structural ROW INDEX — no field-fill can change it, so a fired comparison
         // against it is always a VALUE error (kernel-probed). The generic fallback would wrongly read its group
         // argument as an "unfilled field" and type it OMISSION.
-        FunctionOp.CURRENT_REPETITION -> Fill(false, false)
+        FunctionOp.CURRENT_REPETITION -> Fill.of(false, false)
         // FirstFilledValue is displaceable by filling only when an instantiated EMPTY row PRECEDES the first
         // filled one (filling it could become the new first value); else the first value is fixed → VALUE. The
         // generic fallback (any empty/short star tail → fillable) over-reports OMISSION (kernel-probed).
         FunctionOp.FIRST_FILLED_VALUE ->
             ((f.args.singleOrNull() as? Expr.Star)?.path?.let { ctx.firstStarRowEmpty(it) } ?: false)
-                .let { Fill(it, it) }
-        else -> leafOmission(f).let { Fill(it, it) }
+                .let { Fill.of(it, it) }
+        else -> leafOmission(f).let { Fill.of(it, it) }
     }
 
     /** A starred aggregate's fill: [build] (with the starred field's sign) while its tail can still grow,
      *  else fixed; falls back to the symmetric notion if the operand is not a single star. */
     private fun starFill(f: Expr.Func, build: (signed: Boolean) -> Fill): Fill {
-        val star = f.args.singleOrNull() as? Expr.Star ?: return leafOmission(f).let { Fill(it, it) }
-        return if (ctx.starOmission(star.path)) build(ctx.signed(star.path)) else Fill(false, false)
+        val star = f.args.singleOrNull() as? Expr.Star ?: return leafOmission(f).let { Fill.of(it, it) }
+        return if (ctx.starOmission(star.path)) build(ctx.signed(star.path)) else Fill.of(false, false)
     }
 
-    private data class Fill(val canGrow: Boolean, val canShrink: Boolean)
+    /** Directional fillability of a comparison operand. **Interned** (2 × 2 = 4 instances) — the kernel packs
+     *  these as booleans on the value (no separate object); allocated per `Cmp` operand in the hot walk, so use
+     *  `Fill.of(...)`, never the constructor. */
+    private data class Fill(val canGrow: Boolean, val canShrink: Boolean) {
+        companion object {
+            private val FF = Fill(false, false); private val FT = Fill(false, true)
+            private val TF = Fill(true, false); private val TT = Fill(true, true)
+            fun of(canGrow: Boolean, canShrink: Boolean): Fill =
+                if (canGrow) (if (canShrink) TT else TF) else (if (canShrink) FT else FF)
+        }
+    }
 
     /**
      * VALUE vs OMISSION of a fired comparison: OMISSION (fillable) iff filling an operand *in the breaking
