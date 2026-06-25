@@ -244,6 +244,19 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 *(dated baselines, newest first — populated as benchmarks land)*
 
+**2026-06-25 — profiled `validateFull`: `formalErrorAt` was 56% (redundant per-operand recompute) → memoized.** Profiling the low-firing 192-rule/1000×5 probe (0 fires, the realistic *valid-document* regime) attributed the cost:
+
+| phase | before memo | after memo |
+|---|--:|--:|
+| `eval` (alloc + firedType) | 372 ms | 326 ms |
+| └ `invalid` (`formalErrorAt`) | **200 ms** | 145 ms |
+| suppressor (`formalErrorAt`) | **80 ms** | 39 ms |
+| iterationContexts | 0.8 ms | — |
+| formal/mandatory/unique pre-pass | 0.6 ms | — |
+| **total** | **498 ms** | **395 ms** (instrumentation-inclusive) |
+
+`formalErrorAt` (the field-instance's format/mandatory/duplicate-index status) was being **recomputed per operand occurrence per row and per suppressor ref** — ~56% of `validateFull` — even though the document is immutable during a validation. **Fix: memoize it by `(path, reps)` per `validateFull`** (`FormalCache`, behavior-preserving — kept relevance-independent so partial validation reuses it; thread-safe — created per call). This is the direct analog of the kernel's `ValidationCache`. Effect is **regime-dependent**: ~20% on the **low-firing valid-document case** (the common runtime case — most rules pass); modest on the high-firing `manyRules` crossover (543→529 ms at 192, ratioJava 1.31→1.25) where message-rendering dominates instead. Correct (full `:adapter` differential green). **Residual headroom** (next): the memo's residual `invalid` cost is now the cache *key* (`ctx.repsOf(path)` computed twice per call — once for the key, once for `isRelevant` — plus the map lookup), and the eval-proper cost is `ctx.field`/`Val` allocation; neither is the formal check anymore.
+
 **2026-06-25 — Layer 1 (sealed compiled-node eval) measured ~7% end-to-end, NOT the 2.5× the spike implied — the eval is not the `validateFull` bottleneck (reverted).** A faithful sealed-node compiler for the `manyRules` subset (`And`/`Or`/`Cmp`/`FieldFilled`/`Sum`) was wired behind a whole-rule compile-or-fallback seam, passed the full `:adapter` differential (bit-for-bit correct), and was A/B'd against the tree-walk fallback **in one JVM run** (the noise-free comparison the spike lacked):
 
 | regime | rules | fires | fallback | compiled | speedup |

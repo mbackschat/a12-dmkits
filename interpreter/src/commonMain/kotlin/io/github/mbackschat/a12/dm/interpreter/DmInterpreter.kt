@@ -47,6 +47,13 @@ private typealias Relevance = (String, List<Int>) -> Boolean
 /** The full-validation relevance: every instance is relevant. */
 private val ALL_RELEVANT: Relevance = { _, _ -> true }
 
+/** Per-validation memo of [DmInterpreter.formalErrorAt] keyed by `(path, reps)` → the field instance's
+ *  unknown code (format / mandatory / duplicate-index) or null when usable. The document is immutable during a
+ *  validation, so a field instance's status is stable — computing it once per distinct instance replaces the
+ *  per-operand, per-row recompute (measured: `formalErrorAt` was ~56% of `validateFull` before this memo).
+ *  Created per validate call (never shared across calls), so the reused engine stays thread-safe. */
+private typealias FormalCache = MutableMap<Pair<String, List<Int>>, String?>
+
 /**
  * The public entry point — evaluates a [ModelDef]'s rules over a [Document] instance, kernel-free, on
  * JVM and JS alike. The standalone-library façade (proposal goal 2) and the engine dmtool's native
@@ -144,11 +151,12 @@ class DmInterpreter @JvmOverloads constructor(
         val messages = (formalErrors(doc, locale, isRelevant) + mandatoryErrors(doc, locale, isRelevant)
                 + uniquenessMessages(dup, locale, isRelevant)).toMutableList()
         val unsupported = mutableListOf<UnsupportedRule>()
+        val cache: FormalCache = HashMap()   // memo across ALL rules of this validation (the doc is immutable here)
         for (rule in model.rules) {
             try {
                 val rnu = repetitionNotUnique(rule)
                 messages += if (rnu != null) repetitionNotUniqueMessages(rule, rnu, doc, locale, isRelevant)
-                else messagesFor(rule, doc, locale, dup, isRelevant)
+                else messagesFor(rule, doc, locale, dup, cache, isRelevant)
             } catch (e: UnsupportedConstructException) {
                 unsupported += UnsupportedRule(rule.path, e.message ?: "unsupported construct")
             }
@@ -481,7 +489,7 @@ class DmInterpreter @JvmOverloads constructor(
     }
 
     private fun evalRule(rule: RuleDef, doc: Document, locale: String): RuleResult {
-        val rows = rowOutcomes(rule, doc, locale, duplicateIndexCells(doc))
+        val rows = rowOutcomes(rule, doc, locale, duplicateIndexCells(doc), HashMap())
         rows.firstNotNullOfOrNull { it as? RowOutcome.Fired }?.let {
             return RuleResult(rule.path, Verdict.FIRED, it.message.text, it.message.type)
         }
@@ -494,8 +502,8 @@ class DmInterpreter @JvmOverloads constructor(
 
     /** Every firing of one rule across its iteration-scope rows, as [Message]s (suppressed rows produce none). */
     private fun messagesFor(rule: RuleDef, doc: Document, locale: String, dup: Set<Pair<String, List<Int>>>,
-            isRelevant: Relevance = ALL_RELEVANT): List<Message> =
-        rowOutcomes(rule, doc, locale, dup, isRelevant).filterIsInstance<RowOutcome.Fired>().map { it.message }
+            cache: FormalCache, isRelevant: Relevance = ALL_RELEVANT): List<Message> =
+        rowOutcomes(rule, doc, locale, dup, cache, isRelevant).filterIsInstance<RowOutcome.Fired>().map { it.message }
 
     /** The per-row outcome of one rule: fired (with its message), passed, or suppressed (which field/code). */
     private sealed interface RowOutcome {
@@ -505,7 +513,7 @@ class DmInterpreter @JvmOverloads constructor(
     }
 
     private fun rowOutcomes(rule: RuleDef, doc: Document, locale: String, dup: Set<Pair<String, List<Int>>>,
-            isRelevant: Relevance = ALL_RELEVANT): List<RowOutcome> {
+            cache: FormalCache, isRelevant: Relevance = ALL_RELEVANT): List<RowOutcome> {
         val ast = condAstOf(rule)
         val refs = nonStarredRefs(ast).distinct()
         val errorPath = resolveErrorPath(rule)
@@ -522,7 +530,7 @@ class DmInterpreter @JvmOverloads constructor(
             // registry + the row's error-field pointer ride along for a `CustomCondition X` leaf.
             val interp = Interpreter(ctx, clock, model.baseYear, model.indexFields, predefinedTypes,
                 customConditions, FieldPointer(errorPath, ctx.repsOf(errorPath))) { path ->
-                    formalErrorAt(path, ctx, dup) != null || !isRelevant(path, ctx.repsOf(path))
+                    formalErrorAt(path, ctx, dup, cache) != null || !isRelevant(path, ctx.repsOf(path))
                 }
             // ONE typed walk per row (the fired MsgType, or null if it doesn't fire) — replaces the old
             // fires()+firedType() pair, which walked the AST TWICE on every firing row. firedType != null ⟺
@@ -541,14 +549,14 @@ class DmInterpreter @JvmOverloads constructor(
             } else {
                 // Not fired: a formally-invalid operand means the rule was NOT cleanly evaluated → SUPPRESSED
                 // (the `rule test` third verdict), naming the offending field/code; else a clean PASSED.
-                firstSuppressor(refs, ctx, dup)?.let { RowOutcome.Suppressed(it) } ?: RowOutcome.Passed
+                firstSuppressor(refs, ctx, dup, cache)?.let { RowOutcome.Suppressed(it) } ?: RowOutcome.Passed
             }
         }
     }
 
     /** The first referenced field that is "unknown" in [ctx] (malformed value, required-empty, or duplicate index), else null. */
-    private fun firstSuppressor(refs: List<String>, ctx: EvalContext, dup: Set<Pair<String, List<Int>>>): Suppression? =
-        refs.firstNotNullOfOrNull { path -> formalErrorAt(path, ctx, dup)?.let { Suppression(path, it) } }
+    private fun firstSuppressor(refs: List<String>, ctx: EvalContext, dup: Set<Pair<String, List<Int>>>, cache: FormalCache): Suppression? =
+        refs.firstNotNullOfOrNull { path -> formalErrorAt(path, ctx, dup, cache)?.let { Suppression(path, it) } }
 
     /**
      * The "unknown-operand" code of the field instance at [path] in [ctx], or null when the field is usable.
@@ -558,7 +566,18 @@ class DmInterpreter @JvmOverloads constructor(
      * index** value ([UNIQUE_INDEX], the [dup] cells) — a duplicate-index field is unknown for any rule
      * referencing it, branch-scoped exactly like a formal error (verified, KERNEL-FINDINGS §4 supplement).
      */
-    private fun formalErrorAt(path: String, ctx: EvalContext, dup: Set<Pair<String, List<Int>>>): String? {
+    private fun formalErrorAt(path: String, ctx: EvalContext, dup: Set<Pair<String, List<Int>>>, cache: FormalCache): String? {
+        val key = path to ctx.repsOf(path)
+        cache[key]?.let { return it }
+        if (cache.containsKey(key)) return null   // memoized "usable" (null) — distinct from "not yet computed"
+        val v = computeFormalErrorAt(path, ctx, dup)
+        cache[key] = v
+        return v
+    }
+
+    /** The uncached formal/mandatory/duplicate-index check — the single source for "is this operand unknown?".
+     *  Wrapped by [formalErrorAt]'s [FormalCache] (the document is immutable during a validation). */
+    private fun computeFormalErrorAt(path: String, ctx: EvalContext, dup: Set<Pair<String, List<Int>>>): String? {
         val raw = ctx.displayValue(path)
         if (raw != null) {
             val kind = model.kinds[path] ?: return null
