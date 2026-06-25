@@ -30,6 +30,10 @@ actual class Dec(val v: Big) : Comparable<Dec> {
     actual override fun compareTo(other: Dec): Int = v.cmp(other.v)
     actual fun abs(): Dec = Dec(v.abs())
     actual fun scale19(): Dec = Dec(v.round(19, 1))   // 1 = big.js roundHalfUp ≡ JVM RoundingMode.HALF_UP
+    // big.js exposes no cheap fractional-scale accessor, and JS is not the differential target (the kernel is
+    // JVM-only) — so JS keeps the exact, explicit round-both form. The allocation-skipping fast path is the
+    // JVM actual's; here correctness is all that matters and round(19,1).cmp() == scale19().compareTo().
+    actual fun compareScaled19(other: Dec): Int = v.round(19, 1).cmp(other.v.round(19, 1))
     actual fun roundTo(places: Int, mode: RoundMode): Dec {
         // The kernel's two-step BigDecimalUtils.runden: pre-round to DEFAULT_SCALE (19) HALF_UP, then to places.
         // big.js has only roundDown(0, toward zero), roundHalfUp(1), roundUp(3, away from zero) — it has NO

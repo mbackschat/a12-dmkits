@@ -540,15 +540,15 @@ class Interpreter(
      * Distinct from [ORDER] (`min`/`max` *selection*), which the kernel does at full precision.
      */
     private fun vglCompare(l: Val, r: Val): Int = when {
-        l is Val.Num && r is Val.Num -> l.v.scale19().compareTo(r.v.scale19())
+        l is Val.Num && r is Val.Num -> l.v.compareScaled19(r.v)
         l is Val.Txt && r is Val.Txt -> l.v.compareTo(r.v)
         else -> error("incomparable values $l vs $r")
     }
 
     private fun evalExpr(e: Expr): Val = when (e) {
-        is Expr.NumLit -> Val.Num(e.v)
-        is Expr.StrLit -> Val.Txt(e.v)
-        is Expr.BoolLit -> Val.Bool(e.v)
+        is Expr.NumLit -> e.asVal
+        is Expr.StrLit -> e.asVal
+        is Expr.BoolLit -> e.asVal
         is Expr.Field -> if (invalid(e.path)) Val.Unknown else ctx.field(e.path)
         is Expr.Star -> error("a starred path must sit inside an aggregate (Sum/MaxValue/…)")
         is Expr.Func -> evalFunc(e)
@@ -1027,7 +1027,7 @@ class Interpreter(
 
     private fun eq(l: Val, r: Val): Boolean = when {
         // NUMBER equality rounds both to scale 19 HALF_UP, like the comparison ops (the kernel's `vergleiche`).
-        l is Val.Num && r is Val.Num -> l.v.scale19().compareTo(r.v.scale19()) == 0
+        l is Val.Num && r is Val.Num -> l.v.compareScaled19(r.v) == 0
         l is Val.Txt && r is Val.Txt -> l.v == r.v
         l is Val.Bool && r is Val.Bool -> l.v == r.v
         else -> false

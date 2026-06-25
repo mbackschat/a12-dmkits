@@ -37,6 +37,15 @@ expect class Dec : Comparable<Dec> {
      */
     fun scale19(): Dec
 
+    /**
+     * This compared to [other] under the kernel's scale-19 NUMBER comparison rounding — **bit-identical** to
+     * `scale19().compareTo(other.scale19())`, but allocates the rounded operands ONLY when one exceeds 19
+     * fractional digits. For ≤19 fractional digits the scale-19 rounding only pads trailing zeros, which
+     * [compareTo] ignores, so the rounding is a no-op for the *outcome* and is skipped (the hot path of every
+     * NUMBER `<`/`>`/`==`/`!=`, where it saved two `BigDecimal` allocations per comparison).
+     */
+    fun compareScaled19(other: Dec): Int
+
     /** Absolute value (`|this|`) — for the `Abs`/`AbsValue` operators. */
     fun abs(): Dec
 

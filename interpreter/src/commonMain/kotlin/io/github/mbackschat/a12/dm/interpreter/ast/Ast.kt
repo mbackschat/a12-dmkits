@@ -101,9 +101,21 @@ enum class ArithOp { ADD, SUB, MUL, DIV, POW }
 /** Expression AST. */
 sealed interface Expr {
     data class Field(val path: String) : Expr
-    data class NumLit(val v: Dec) : Expr
-    data class StrLit(val v: String) : Expr
-    data class BoolLit(val v: Boolean) : Expr
+
+    /** A numeric literal. [asVal] is the typed value, built ONCE at parse (the AST is cached per rule, #31)
+     *  so evaluating the literal costs zero allocation per (rule, row) — the kernel's constant is likewise
+     *  a field of the generated code, built once at compile. (Not a constructor param → out of equals/copy.) */
+    data class NumLit(val v: Dec) : Expr {
+        val asVal: Val.Num = Val.Num(v)
+    }
+
+    data class StrLit(val v: String) : Expr {
+        val asVal: Val.Txt = Val.Txt(v)
+    }
+
+    data class BoolLit(val v: Boolean) : Expr {
+        val asVal: Val.Bool = Val.Bool(v)
+    }
 
     /** A starred path, e.g. `Items* / Count` — the values across repetition rows; only inside an aggregate.
      *  [having] is an optional per-row FILTER (a `… Having <cond>` clause on the starred operand): the

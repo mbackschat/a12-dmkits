@@ -21,6 +21,13 @@ actual class Dec(val v: BigDecimal) : Comparable<Dec> {
     actual override fun compareTo(other: Dec): Int = v.compareTo(other.v)
     actual fun abs(): Dec = Dec(v.abs())
     actual fun scale19(): Dec = Dec(v.setScale(19, RoundingMode.HALF_UP))
+    actual fun compareScaled19(other: Dec): Int =
+        // Fast path: at ≤19 fractional digits, setScale(19, HALF_UP) only appends trailing zeros (it never
+        // rounds away a significant digit), and BigDecimal.compareTo ignores scale — so the rounded compare
+        // equals the raw compare. Skip the two setScale allocations. Beyond 19 digits the rounding can change
+        // the value, so fall back to the explicit form (identical to scale19().compareTo(scale19())).
+        if (v.scale() <= 19 && other.v.scale() <= 19) v.compareTo(other.v)
+        else v.setScale(19, RoundingMode.HALF_UP).compareTo(other.v.setScale(19, RoundingMode.HALF_UP))
     actual fun roundTo(places: Int, mode: RoundMode): Dec {
         // The kernel's two-step BigDecimalUtils.runden: pre-round to DEFAULT_SCALE (19) HALF_UP, then to places.
         val pre = v.setScale(19, RoundingMode.HALF_UP)
