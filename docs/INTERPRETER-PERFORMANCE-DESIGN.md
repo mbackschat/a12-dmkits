@@ -153,11 +153,21 @@ Per the owner's direction ("always measure against the kernel to guide you") and
 
 ---
 
-## 8. Proposed build order
+## 8. Build order (refined 2026-06-25 by the baseline + "measure to guide")
 
-1. **Layer 0 — CSE / shared DAG + aggregate-memo generalization** (cheap, portable, attacks the proven-real rules axis). Measure vs kernel.
-2. **Layer 1 — sealed compiled-node tree** (the ~2.5× scalar win, productionized from the spike as sealed nodes). Measure vs kernel on JVM (inner loop) + JS (often); native at the layer boundary.
+The original order was Layer 0 → Layer 1. The 2026-06-25 baseline ([`INTERPRETER-PERFORMANCE.md`](INTERPRETER-PERFORMANCE.md) results log) and the "measure to guide / don't do speculative work" rule flip it: **do the measured, standalone win first.**
+
+1. **Layer 1 — sealed compiled-node tree** (FIRST). It is the *measured* ~2.5× win (the spike), it **stands alone** (does not need the DAG), and it directly attacks the high-rule scalar-eval cost the baseline confirmed (1.31× at 192). Measure vs kernel on JVM (inner loop) + JS (often); native at the layer boundary.
+2. **Layer 0 — CSE / shared DAG + aggregate-memo** (SECOND, folded into Layer 1's compiler). Its payoff is **unverified** — it only helps if the metamodels' rules actually share subexpressions/aggregates, which is untested; building it first would be speculative. Implement it as "compile the shared DAG once" *inside* the Layer 1 compiler and **measure its independent delta** on the real metamodels.
 3. *Decision point:* read the matrix. Only if the rows axis is still the cost → **Layer 2 vectorized batch** (with the row-at-a-time threshold). Otherwise stop — the rules axis was the regime.
 4. Layer 3 only if a measured workload justifies a JVM-only extra.
 
 Each step: red/green against the kernel differential first (correctness), then the against-kernel perf gate, then graduate the technique's "applied + rationale" detail into [`INTERPRETER-PERFORMANCE.md`](INTERPRETER-PERFORMANCE.md)'s optimization catalog and flip this proposal's item.
+
+### 8a. Layer 1 implementation approach (the concrete seam + strategy)
+
+- **The seam.** `DmInterpreter.rowOutcomes` allocates an `Interpreter(ctx, …, errorField) { invalid }` **per row** and calls `firedType(ast)` — the per-row allocation + AST re-walk the spike measured. The compiled path builds, **once per rule (engine lifetime, lazy)**, a `CompiledCond` from the rule's AST; per row it calls `compiled.firedType(rowEval)` where `rowEval` bundles the per-row `(ctx, errorField, invalid)`. Engine config (`clock`, `baseYear`, `indexFields`, `predefinedTypes`, `customConditions`) is captured at compile time.
+- **Compile-or-fallback, whole-rule (the safe increment).** `compile(cond)` returns `null` if **any** node is off the supported subset; such a rule keeps today's exact path (build `Interpreter`, `firedType`) — so the change is **purely additive**: compiled rules take the fast path, everything else is byte-for-byte unchanged. Coverage grows over increments until most rules compile. (Composing compiled structural nodes with fallback *leaves* needs the leaf's `Res(truth,type)`, which is `Interpreter`-internal; whole-rule compile-or-fallback sidesteps that and matches the spike.)
+- **First subset:** `And`/`Or`/`Not`, numeric `Cmp` (incl. the empty-string/Unknown suppression + scale-19 rescale), `Pred` `FieldFilled`/`FieldNotFilled`/`GroupFilled`/`GroupNotFilled`, `Field`/`NumLit`/`StrLit`/`BoolLit` operands, `Sum` over a star. Plus the static `canFireEmpty` gate, hoisted to compile time.
+- **The gate (correctness #1).** Wire the compiled path into `validateFull` and run the **entire** `:adapter` differential + fuzz suite — it must stay bit-identical (truth AND polarity AND across all fuzz), not just fire-count-equal (the spike's weaker check). Only then trust it.
+- **Anti-divergence → the generator-ready layering (IF10).** To stop the compiled subset from drifting from `Interpreter`, extract the leaf operator semantics (`compare`, `leafType`/`fill`, `Kleene` combine, the gate) into a shared **runtime-semantics layer** both the tree-walk and the compiled nodes call. Do this incrementally as coverage grows; it's the standing IF10 refactor, and it's what keeps two strategies (tree-walk, compiled) — and a future generator — from re-implementing semantics.
