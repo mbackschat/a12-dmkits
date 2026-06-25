@@ -53,6 +53,22 @@ class KernelEdgeTest {
     }
 
     /**
+     * **Aggregate-heavy sweep** (the `Sum` fold's home). The fold — B2's star sum over Amount, B5's deep
+     * nested-star sum over Cost across both repetition levels, and B7's per-Line `compute` of Sum-over-Subs —
+     * is where decimal-addition cost concentrates. It is once-per-`validateFull` in the `manyRules` sweeps, so
+     * THIS is the sweep that shows a fold optimization. interp/kernel-Java; correctness asserted before timing.
+     */
+    @Test
+    fun aggregateSweep() {
+        println("[edge] AGGREGATE sweep (Sum fold) @ interp/java:")
+        for (n in listOf(1000, 3000)) {
+            println("  B2 star-sum        " + PerfHarness.format(PerfHarness.runScenario(PerfCatalog.b2(), n)))
+            println("  B5 deep-nested-sum " + PerfHarness.format(PerfHarness.runScenario(PerfCatalog.b5(), n / 5)))   // ×5 subs
+            println("  B7 per-line compute" + PerfHarness.format(PerfHarness.runScenario(PerfCatalog.b7(), n / 5)))   // ×5 subs
+        }
+    }
+
+    /**
      * **The semantic-index cliff — found, then closed.** A per-row rule resolves `[/Perf/Lines/Amount For
      * "NOMATCH"]`. WITHOUT a row index, the interpreter scanned the whole repetition list per lookup (O(rows))
      * × per-row iteration → **O(rows²)** — verified to go quadratic (growth ×3.5/doubling, the interp's lead
