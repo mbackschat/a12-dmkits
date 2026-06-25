@@ -343,6 +343,39 @@ object PerfCatalog {
         }
     }
 
+    // ---- WIDE model: many sibling repeatable groups (breadth axis) — each its own index + field + rule. -----
+    /** A model with [numGroups] sibling repeatable groups `G0..G{n-1}` under the root, each with an index key
+     *  and one NUMBER field + a per-row rule on it. Scales the group COUNT (breadth) at fixed rows-per-group —
+     *  stresses any per-group setup that scans the whole model (would be O(groups²)); the interpreter's
+     *  per-group machinery (`contextsFor`, attach-depth maps) is memoized per group, so it should stay linear. */
+    fun wideGroups(numGroups: Int): PerfScenario {
+        val json = DocumentModelDraft.named("wide").locale("en_US")
+            .rootGroup("Wide", Consumer { root ->
+                for (i in 0 until numGroups) root.group("G$i", Consumer { g ->
+                    g.repeatable(DECLARED_MAX).indexField("K$i")
+                    g.field("K$i", FieldKind.STRING)
+                    g.numberField("V$i", Consumer<NumberFieldBuilder> { it.fractionDigits(0) })
+                })
+            }).build().toJson()
+        val rules = (0 until numGroups).map { i -> FuzzRule("/Wide/G$i", "R$i", "../V$i", "FieldFilled(V$i) And [V$i] > 1000") }
+        val kernelModel = rules.fold(json) { m, r -> RuntimeLaws.withRule(m, r.group, "R_${r.code}", r.errorRel, r.code, r.cond) }
+        val fields = buildList {
+            for (i in 0 until numGroups) { add(FieldDef("/Wide/G$i/K$i", Kind.STRING)); add(FieldDef("/Wide/G$i/V$i", Kind.NUMBER, scale = 0)) }
+        }
+        val groups = (0 until numGroups).map { "/Wide/G$it" }.toSet()
+        val interpModel = ModelDef(
+            fields, rules.map { RuleDef("${it.group}/${it.code}", it.group, it.cond, it.code, it.errorRel) },
+            repeatableGroups = groups, declaredReps = groups.associateWith { DECLARED_MAX },
+            indexFields = (0 until numGroups).map { "/Wide/G$it/K$it" }.toSet(),
+        )
+        val gen = SeedGenerator(interpModel)
+        return PerfScenario("wideGroups($numGroups)", kernelModel, interpModel) { sink, n, _ ->
+            gen.populate(sink, rowsOf = { g, _, _ -> if (g in groups) n else 0 }, value = ValueStrategy { field, reps, _ ->
+                if (field.path.substringAfterLast("/").startsWith("K")) "K" + reps.joinToString("_") else "1"   // V=1 → all pass
+            })
+        }
+    }
+
     // B7's value strategy: like [perfValues] but leaves the COMPUTED field (Amount) EMPTY in the seed — so the
     // kernel's compute() reports every Line's Amount as a change (empty → Sum), matching the interpreter which
     // computes every row. Cost is filled (the aggregate operand); index fields filled (required).

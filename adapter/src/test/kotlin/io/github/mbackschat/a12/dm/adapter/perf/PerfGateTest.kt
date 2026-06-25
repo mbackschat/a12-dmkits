@@ -164,6 +164,29 @@ class PerfGateTest {
     }
 
     /**
+     * Guards the **breadth axis** (many sibling groups) against a per-group setup that scans the whole model
+     * (which would be O(groups²)). Time the interpreter (only) at N and 4N sibling groups, fixed rows/group;
+     * linear ≈ 4×, a per-group full-model scan ≈ 16×. The per-group machinery (`contextsFor`, attach-depth maps)
+     * is memoized per group, so this stays linear — the guard catches a regression that de-memoizes it.
+     */
+    @Test
+    fun wideGroupsStaysSubQuadratic() {
+        val small0 = 50
+        var best = Double.MAX_VALUE
+        var bSmall = 0.0; var bLarge = 0.0
+        repeat(GROWTH_REPEATS) {
+            val small = PerfHarness.timeInterpreter(PerfCatalog.wideGroups(small0), 20, warmup = 5, iters = 7)
+            val large = PerfHarness.timeInterpreter(PerfCatalog.wideGroups(small0 * 4), 20, warmup = 5, iters = 7)
+            val g = large.minMs / small.minMs
+            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        }
+        println("[perf] wide sibling-groups sub-quadratic: ${"%.1f".format(bSmall)}ms@$small0 → " +
+            "${"%.1f".format(bLarge)}ms@${small0 * 4} groups  min-growth=${"%.2f".format(best)}× (linear≈4, per-group-scan≈16)")
+        assertTrue(best < SUB_QUADRATIC_MAX,
+            "wide sibling-groups scaling looks super-linear: 4× groups took ${best}× the time (per-group setup scans the whole model?)")
+    }
+
+    /**
      * **Parallel iteration at scale** — the index-keyed outer join over two sibling repeatable groups. Asserts
      * the join agrees with the kernel (interp == kernel) and stays competitive at the gate N. The kernel's
      * `IndexFieldCache` makes this O(rows); the interpreter mirrors it (a value→row map per group, O(1) row

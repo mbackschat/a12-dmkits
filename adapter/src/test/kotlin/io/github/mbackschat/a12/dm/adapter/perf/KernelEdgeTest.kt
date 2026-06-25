@@ -58,6 +58,24 @@ class KernelEdgeTest {
     }
 
     /**
+     * **WIDE — many sibling groups (breadth axis).** A model with N sibling repeatable groups, each its own
+     * index + field + per-row rule, at fixed rows/group. Stresses any per-group setup that scans the whole model
+     * (would show as super-linear group-count growth); the interpreter's per-group machinery is memoized, so it
+     * should stay linear. Also confirms the kernel codegen handles many groups (rules distributed 1-per-field).
+     */
+    @Test
+    fun wideGroupsScaling() {
+        println("[edge] WIDE (many sibling groups) @ 20 rows/group — interp/java + group-count growth:")
+        var prev = 0.0
+        for (g in listOf(25, 50, 100, 200)) {
+            val row = PerfHarness.runScenario(PerfCatalog.wideGroups(g), 20)
+            val growth = if (prev > 0) "  interp×%.2f".format(row.interp.medianMs / prev) else ""
+            println("  groups=%4d  %s%s".format(g, PerfHarness.format(row), growth))
+            prev = row.interp.medianMs
+        }
+    }
+
+    /**
      * **DEEP + RICH rules** (4-level nesting + cross-level / `Having` / nested-star). The realistic "sensible
      * rules across a deep DM" shape: a per-level comparison, cross-level refs **1 and 3 parents up** (common-prefix
      * walk-up), a `Having`-filtered Sum, and a 3-level deep nested-star Sum — distributed across the levels.
