@@ -77,10 +77,14 @@ class Interpreter(
         return evalCond(cond)
     }
 
-    /** The polarity [MsgType] of a fired rule, or null when it does not fire — VALUE vs OMISSION. */
+    /**
+     * The polarity [MsgType] of a fired rule, or null when it does not fire — VALUE vs OMISSION. Uses the
+     * [evalTypedLazy] single walk (polarity computed only on TRUE nodes), measured faster than the full typed
+     * walk in BOTH the realistic low-firing and the error-heavy high-firing regimes (INTERPRETER-PERFORMANCE.md).
+     */
     fun firedType(cond: Cond): MsgType? {
         if (!gated(cond)) return null
-        val r = evalTyped(cond)
+        val r = evalTypedLazy(cond)
         return if (r.truth == Tri.TRUE) r.type else null
     }
 
@@ -159,6 +163,45 @@ class Interpreter(
             val a = evalTyped(c.c)
             Res.of(Kleene.not(a.truth), a.type)
         }
+    }
+
+    /**
+     * **Lazy-polarity single walk** — the production typed walk behind [firedType], the kernel-mimic that pays
+     * (INTERPRETER-PERFORMANCE.md #62). It computes the truth like [evalTyped] but computes a node's POLARITY
+     * (`leafType`/`predType`/the And·Or combine) **only when that node's truth is TRUE**; a non-firing node
+     * returns a placeholder type that is provably never read. So a **non-firing** row skips all the
+     * `fill`/`leafType` work (the low-firing win) and a **firing** row does ONE walk — no double-walk, no leaf
+     * re-eval, no double custom-condition invocation (the naive evalCond-then-evalTyped two-phase's costs, which
+     * measured a net loss). The placeholder is sound by induction on the read sites: an `And`/`Or`'s type is
+     * read only when ITS truth is TRUE, which forces both operands TRUE (And) or the read operands TRUE
+     * (`orType` reads only TRUE branches) — and a TRUE node always computed its real type. The ONE exception is
+     * `Not` (a firing `Not` has a FALSE child whose type it needs); `Not` is unreachable from the parser but,
+     * for totality, its subtree falls back to the full [evalTyped]. Pattern / Custom keep the constant VALUE
+     * type, so their truth (the costly part) is still evaluated exactly once. Correctness is gated by the full
+     * kernel differential (the rendered messages' polarity must match the kernel on the whole corpus).
+     */
+    private fun evalTypedLazy(c: Cond): Res = when (c) {
+        is Cond.Cmp -> evalCmp(c).let { Res.of(it, if (it == Tri.TRUE) leafType(c.op, c.left, c.right) else MsgType.VALUE) }
+        is Cond.Tolerance -> evalTolerance(c).let { Res.of(it, if (it == Tri.TRUE) toleranceType(c) else MsgType.VALUE) }
+        is Cond.ValueListQuant -> evalValueListQuant(c).let { Res.of(it, if (it == Tri.TRUE) valueListQuantType(c) else MsgType.VALUE) }
+        is Cond.Pred -> evalPred(c).let { Res.of(it, if (it == Tri.TRUE) predType(c) else MsgType.VALUE) }
+        is Cond.Pattern -> Res.of(evalPattern(c), MsgType.VALUE)
+        is Cond.Custom -> Res.of(evalCustom(c), MsgType.VALUE)
+        is Cond.And -> {
+            val a = evalTypedLazy(c.left)
+            val b = evalTypedLazy(c.right)
+            val truth = Kleene.and(a.truth, b.truth)
+            // type read only when truth==TRUE ⟹ both a,b TRUE ⟹ both types real (not the placeholder).
+            val type = if (truth == Tri.TRUE && (a.type == MsgType.OMISSION || b.type == MsgType.OMISSION)) MsgType.OMISSION else MsgType.VALUE
+            Res.of(truth, type)
+        }
+        is Cond.Or -> {
+            val a = evalTypedLazy(c.left)
+            val b = evalTypedLazy(c.right)
+            val truth = Kleene.or(a.truth, b.truth)
+            Res.of(truth, if (truth == Tri.TRUE) orType(a, b) else MsgType.VALUE)
+        }
+        is Cond.Not -> evalTyped(c.c).let { Res.of(Kleene.not(it.truth), it.type) }   // dead path: full typing keeps Not sound
     }
 
     /** Or: among the branches that are TRUE, a VALUE branch convicts → VALUE; else OMISSION. */
