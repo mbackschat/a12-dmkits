@@ -178,6 +178,31 @@ class PerfGateTest {
     }
 
     /**
+     * **Framed** parallel iteration (`/Plan/X/A ⋈ B`, X a repeatable frame) must stay **linear in the frame-row
+     * count**. N scales the frame (X); the shared clean group B has a BOUNDED key set, built ONCE per
+     * common-parent row (the `IndexFieldCache`-analog hoist), so each frame row's join is O(1) and the whole
+     * thing O(N). Time the interpreter (only) at N and 4N — linear ≈4×; a regression that rebuilt B's map per
+     * frame row, or made the frame loop super-linear, trips well above. (Scaling B too is inherently
+     * O(frame × B) for both engines — the framed shape's cost, not a cliff — so only the frame scales here.)
+     */
+    @Test
+    fun parallelFramedStaysSubQuadratic() {
+        val pf = PerfCatalog.parallelFramed()
+        var best = Double.MAX_VALUE
+        var bSmall = 0.0; var bLarge = 0.0
+        repeat(GROWTH_REPEATS) {
+            val small = PerfHarness.timeInterpreter(pf, N_SMALL, warmup = 5, iters = 7)
+            val large = PerfHarness.timeInterpreter(pf, N_SMALL * 4, warmup = 5, iters = 7)
+            val g = large.minMs / small.minMs
+            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        }
+        println("[perf] framed parallel-iteration sub-quadratic: ${"%.1f".format(bSmall)}ms@$N_SMALL → " +
+            "${"%.1f".format(bLarge)}ms@${N_SMALL * 4}  min-growth=${"%.2f".format(best)}× (linear≈4, un-hoisted≈16)")
+        assertTrue(best < SUB_QUADRATIC_MAX,
+            "framed parallel-iteration scaling looks super-linear: 4× rows took ${best}× the time (clean-group map not hoisted out of the frame loop?)")
+    }
+
+    /**
      * **Cold-path / startup gate — a CO-EQUAL goal.** The warm gates above prime everything out, so they are
      * blind to startup cost (that is how the index-build O(N²) hid). This guards the COLD first-call: a fresh
      * engine + fresh document + ONE `validateFull` (no warmup), timed at N and 4N. A reintroduced cold O(N²)

@@ -223,21 +223,18 @@ class Document @JvmOverloads constructor(
             frameGroup: String? = null, deepestFrame: String? = null): List<EvalContext> {
         val out = ArrayList<EvalContext>()
         for (cReps in parentRowsOf(commonParent)) {
+            // The NON-framed (clean) groups are shared across every frame row — build their value maps + invalid
+            // flags ONCE per common-parent row, NOT per frame row (else a clean group of M rows is rescanned per
+            // frame row → O(frames × M)). Only the framed group's map depends on the current frame row.
+            val cleanInvalid = HashSet<String>()
+            val cleanMaps = groups.filter { it != frameGroup }.associateWith { indexMap(it, indexFieldName, cReps, cleanInvalid) }
             val frameRows = if (deepestFrame != null) rowsWithPrefix(deepestFrame, cReps) else listOf(cReps)
             for (fr in frameRows) {
                 // each group's parent context: the framed group is scoped to the current frame row, others to cReps
                 val parentReps = groups.associateWith { g -> if (g == frameGroup) fr else cReps }
-                val invalid = HashSet<String>()
-                val perGroup = groups.associateWith { g ->
-                    val idxPath = "$g/$indexFieldName"
-                    val byValue = LinkedHashMap<String, List<Int>>()
-                    for (row in rowsWithPrefix(g, parentReps.getValue(g))) {
-                        val v = valueAt(idxPath, row + 1)?.value
-                        if (v.isNullOrEmpty()) invalid.add(g)                    // empty index cell → group invalid here
-                        else { if (byValue.put(v, row) != null) invalid.add(g) } // duplicate value → group invalid here
-                    }
-                    byValue
-                }
+                val invalid = HashSet(cleanInvalid)
+                val perGroup = if (frameGroup == null) cleanMaps
+                    else cleanMaps + (frameGroup to indexMap(frameGroup, indexFieldName, fr, invalid))
                 val values = LinkedHashSet<String>().apply { groups.forEach { addAll(perGroup.getValue(it).keys) } }
                 for (v in values) {
                     out += ParallelRowContext(commonParent, cReps, groups, parentReps,
@@ -254,6 +251,19 @@ class Document @JvmOverloads constructor(
         rowsOf(commonParent).ifEmpty {
             if (commonParent in declaredReps) emptyList() else listOf(List(parts(commonParent).size) { 1 })
         }
+
+    /** [group]'s `indexValue → matching-row reps` map under parent context [ctxReps] (last write wins on a
+     *  duplicate); adds [group] to [invalidOut] if its index has a duplicate value or an empty cell here. */
+    private fun indexMap(group: String, indexFieldName: String, ctxReps: List<Int>, invalidOut: MutableSet<String>): Map<String, List<Int>> {
+        val idxPath = "$group/$indexFieldName"
+        val byValue = LinkedHashMap<String, List<Int>>()
+        for (row in rowsWithPrefix(group, ctxReps)) {
+            val v = valueAt(idxPath, row + 1)?.value
+            if (v.isNullOrEmpty()) invalidOut.add(group)                    // empty index cell → group invalid here
+            else if (byValue.put(v, row) != null) invalidOut.add(group)     // duplicate value → group invalid here
+        }
+        return byValue
+    }
 
     /**
      * The per-group attach-depth index: `attach-depth → the set of row index-prefixes that have a valued field

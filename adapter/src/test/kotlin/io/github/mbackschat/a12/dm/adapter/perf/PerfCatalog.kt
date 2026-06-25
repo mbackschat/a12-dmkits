@@ -281,6 +281,68 @@ object PerfCatalog {
         }
     }
 
+    // ---- framed parallel iteration (a repeatable frame X above one joined group) — the O(frames × clean-rows) trap
+    private const val FX = "/Plan/X"
+    private const val FXA = "/Plan/X/A"
+    private const val FB = "/Plan/B"
+    private val framedJson: String by lazy {
+        DocumentModelDraft.named("plan").locale("en_US")
+            .rootGroup("Plan", Consumer { root ->
+                root.group("X", Consumer { x ->                       // a repeatable, NON-indexed frame
+                    x.repeatable(DECLARED_MAX)
+                    x.group("A", Consumer { g ->
+                        g.repeatable(DECLARED_MAX).indexField("Dept")
+                        g.field("Dept", FieldKind.STRING)
+                        g.numberField("Va", Consumer<NumberFieldBuilder> { it.fractionDigits(0) })
+                    })
+                })
+                root.group("B", Consumer { g ->
+                    g.repeatable(DECLARED_MAX).indexField("Dept")
+                    g.field("Dept", FieldKind.STRING)
+                    g.numberField("Vb", Consumer<NumberFieldBuilder> { it.fractionDigits(0) })
+                })
+            })
+            .build().toJson()
+    }
+    private val framedFields = listOf(
+        FieldDef("$FXA/Dept", Kind.STRING), FieldDef("$FXA/Va", Kind.NUMBER, scale = 0),
+        FieldDef("$FB/Dept", Kind.STRING), FieldDef("$FB/Vb", Kind.NUMBER, scale = 0),
+    )
+
+    private const val FRAMED_KEYS = 3   // the shared clean group B has a BOUNDED key set (see parallelFramed)
+
+    /**
+     * **Framed parallel iteration — frame scaling** (`/Plan/X/A ⋈ B`, X a repeatable frame). The scale knob N is
+     * the **frame-row count** (X), with one A row per X row; the shared clean group B has a small BOUNDED key
+     * set ([FRAMED_KEYS]) that the A keys cycle through (so each frame row's join matches). This stays **O(N)**
+     * and exercises the **per-common-parent-row hoist** of B's index map (the kernel's `IndexFieldCache` analog —
+     * built once, not rebuilt per frame row). *(Scaling B too would be O(frame × B) for BOTH engines — the
+     * framed shape's inherent cost, not a cliff — so only the frame scales here.)*
+     */
+    fun parallelFramed(): PerfScenario {
+        val cond = "FieldFilled(X/A/Va) And FieldFilled(B/Vb) And [X/A/Va] > [B/Vb]"
+        val kernelModel = RuntimeLaws.withRule(framedJson, "/Plan", "PF", "../X/A/Va", "PF", cond)
+        val interpModel = ModelDef(
+            framedFields, listOf(RuleDef("/Plan/PF", "/Plan", cond, "PF", "../X/A/Va")),
+            repeatableGroups = setOf(FX, FXA, FB),
+            declaredReps = mapOf(FX to DECLARED_MAX, FXA to DECLARED_MAX, FB to DECLARED_MAX),
+            indexFields = setOf("$FXA/Dept", "$FB/Dept"),
+        )
+        val gen = SeedGenerator(interpModel)
+        val values = ValueStrategy { f, reps, _ ->
+            when (f.path) {
+                "$FXA/Dept" -> "D" + (1 + reps[reps.size - 3] % FRAMED_KEYS)  // A's key cycles through B's bounded keys
+                "$FB/Dept" -> "D" + reps[reps.size - 2]                       // B's keys: D1..D{FRAMED_KEYS}
+                "$FXA/Va" -> "9"
+                "$FB/Vb" -> "5"
+                else -> "0"
+            }
+        }
+        return PerfScenario("PF framed", kernelModel, interpModel) { sink, n, _ ->
+            gen.populate(sink, rowsOf = { g, _, _ -> when (g) { FX -> n; FB -> FRAMED_KEYS; FXA -> 1; else -> 0 } }, value = values)
+        }
+    }
+
     /** Every catalog scenario, in order — for the gate to sweep. */
     fun all(): List<PerfScenario> = listOf(b1(), b2(), b3(), b4(), b5(), b6())
 
