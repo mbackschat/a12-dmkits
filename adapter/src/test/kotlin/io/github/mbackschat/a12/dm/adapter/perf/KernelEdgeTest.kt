@@ -58,6 +58,36 @@ class KernelEdgeTest {
     }
 
     /**
+     * **HUGE-DOC scaling (many rows).** The non-quadratic `Document` is designed for up to ~100k rows
+     * (PROJECT goal); this sweep exercises that. It times the interpreter at growing row counts on a per-row
+     * rule (B1) and a deep nested-star aggregate (B5) — interp-only at the extreme (no kernel instance, so 100k
+     * is cheap) — and prints interp-vs-kernel at the largest row count the kernel comfortably builds. A flat
+     * ms/row (B1) confirms the linear scan the [PerfGateTest] gates; here we *see* the absolute numbers at scale.
+     */
+    @Test
+    fun hugeDocScaling() {
+        val maxRows = System.getProperty("perf.edge.rows", "20000").toInt()
+        println("[edge] HUGE-DOC interp scaling (per-row B1):")
+        var prev = 0.0
+        for (rows in listOf(1_000, 5_000, 10_000, maxRows)) {
+            val s = PerfHarness.timeInterpreter(PerfCatalog.b1(), rows, warmup = 3, iters = 5)
+            val growth = if (prev > 0) "  ×%.2f".format(s.medianMs / prev) else ""
+            println("  B1 per-row     N=%6d  interp=%8.2fms  %.4f ms/row%s".format(rows, s.medianMs, s.medianMs / rows, growth))
+            prev = s.medianMs
+        }
+        println("[edge] HUGE-DOC interp scaling (deep nested-star B5, ×5 subs/line):")
+        for (rows in listOf(1_000, 2_000, maxRows / 5)) {
+            val s = PerfHarness.timeInterpreter(PerfCatalog.b5(), rows, warmup = 3, iters = 5)
+            println("  B5 nested-star N=%6d (=%d sub rows)  interp=%8.2fms".format(rows, rows * PerfCatalog.SUBS_PER_LINE, s.medianMs))
+        }
+        println("[edge] interp vs kernel-Java at a large doc (B1 per-row):")
+        for (rows in listOf(10_000, maxRows)) {
+            val row = PerfHarness.runScenario(PerfCatalog.b1(), rows)
+            println("  B1 N=%6d  %s".format(rows, PerfHarness.format(row)))
+        }
+    }
+
+    /**
      * **DISTRIBUTED rules — does spreading rules across fields lift the kernel's codegen ceiling?** The
      * [ruleCountCrossover] sweep concentrates rules on ~3 error fields (`manyRules`), forcing the kernel's
      * codegen into one method that blows the 64 KB limit at ~768. THIS sweep uses [PerfCatalog.manyRulesDistributed]
