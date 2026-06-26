@@ -34,11 +34,6 @@ A systematic **7-surface gap audit (2026-06-26, kernel-source-verified)** found 
 |---|---|---|---|
 | **IG16** | **`variantFilter`** (`ONLY`/`ALL_EXCEPT`) on Field/Rule/Computation not read | open — with `variant==null` (the differential oracle + dmtool default) the kernel **drops** an `ONLY [v]` element; the interpreter keeps + evaluates it → extra firings/computes on all three entry points. | `InterpreterModelLoader.java:96-116`; kernel `VariantFiltering`+`ValidationModelConverter` |
 
-### Date construction
-| code | item | status / action | detail |
-|---|---|---|---|
-| **IG12** | 4-arg century **`Date(day, month, century, year)`** declined as `MALFORMED` *(probe the year arithmetic)* | open — `Interpreter.kt:980` (`parts.size != 3` → `MALFORMED`) makes `Year/Month/DayFromDate` yield `Unknown` and `Valid/Invalid` wrong; the kernel evaluates the real century date. Reachable via grammar + `Dsl.date/4` + the 4-arg `DslRenderer` emit. Either model it (`century*100 + year2`) or make it a **loud** decline (it's a silent `MALFORMED` today — worst case). | `Interpreter.kt:980` |
-
 **The lock to build:** a **partial-validation FUZZ differential** (today only 7 curated partial cases, no fuzz) — it would turn IG9/IG11 into hard differential failures instead of reasoned claims.
 
 Deferred items are in §2; a fixed gap is deleted from here (git + its `IFn` finding are the record).

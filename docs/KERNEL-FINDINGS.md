@@ -466,6 +466,8 @@ So the interpreter classifies a `Date(...)` construction as REAL / UNREAL_PRESEN
 
 *(Interpreter: `Interpreter.analyzeDate`/`dateStatusOf` + `DateMath.isRealDate`/`isoDate`. Locked: `adapter.laws.DateConstructionDiffTest` — value-via-extractor, the Valid/Invalid truth table, the OMISSION-vs-VALUE polarity split, the malformed-suppression, the empty-row firing, and `Time("h","m","s")` compose.)*
 
+**4-arg century form `Date(day, month, century, year)`** (probe-verified 2026-06-26): the year is split into a 2-digit century + 2-digit year, full year = `century*100 + year` (`Date(15,6,20,24)` → 2024). The grammar accepts up to 4 `datumParam` (`datumKonstrukt`), and the runtime evaluates it as a real date through the same REAL/UNREAL/HAS_EMPTY/MALFORMED classification. **Operand constraints:** each `Date` param must be a **field reference** (integer literals are rejected), and the field must carry a **date-compatible NumberType range** or the model fails to build (`MVK_WRONG_DATE_FORMAT_FOR_OP`). Interpreter: arity-flexible `analyzeDate` (IF31); locked by `adapter.laws.Date4ArgConstructionDiffTest`.
+
 ### §6 supplement — `BaseYear` is polymorphic by the other operand: base-year-START date vs the year number (probe, 2026-06-24)
 
 `BaseYear` (DE `Referenzjahr`) is the model's configured base year (`content.modelInfo.baseYear`, e.g. `2020`) — the third point-in-time constant alongside `Today`/`Now` (kernel `PointInTimeOperationName`). It is **polymorphic, resolved by the comparison's OTHER operand** (probe-confirmed against the order fixture's `baseYear = 2020`):

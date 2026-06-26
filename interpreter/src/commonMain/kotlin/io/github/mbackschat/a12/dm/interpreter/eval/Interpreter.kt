@@ -974,19 +974,23 @@ class Interpreter(
     private enum class DateStatus { REAL, UNREAL_PRESENT, HAS_EMPTY, MALFORMED }
     private data class DateAnalysis(val status: DateStatus, val iso: String?)
 
-    /** Classify a `Date(day, month, year)` construction's three operands. Precedence: any malformed part →
-     *  MALFORMED; else any empty field part → HAS_EMPTY; else REAL/UNREAL_PRESENT by the calendar check. */
+    /** Classify a `Date(...)` construction's operands. Two arities: `Date(day, month, year)` and the 4-arg
+     *  century form `Date(day, month, century, year)` whose full year is `century*100 + year` (kernel-probed,
+     *  IF31). Precedence: any malformed part → MALFORMED; else any empty field part → HAS_EMPTY; else
+     *  REAL/UNREAL_PRESENT by the calendar check. */
     private fun analyzeDate(parts: List<Expr>): DateAnalysis {
-        if (parts.size != 3) return DateAnalysis(DateStatus.MALFORMED, null)   // 4-arg century form not yet modeled
+        if (parts.size != 3 && parts.size != 4) return DateAnalysis(DateStatus.MALFORMED, null)
         var hasEmpty = false
-        val nums = IntArray(3)
-        for (i in 0..2) {
+        val nums = IntArray(parts.size)
+        for (i in parts.indices) {
             val e = parts[i]
             if (e is Expr.Field && !ctx.filled(e.path)) { hasEmpty = true; continue }
             nums[i] = valToInt(evalExpr(e)) ?: return DateAnalysis(DateStatus.MALFORMED, null)
         }
         if (hasEmpty) return DateAnalysis(DateStatus.HAS_EMPTY, null)
-        val (d, m, y) = Triple(nums[0], nums[1], nums[2])
+        val d = nums[0]; val m = nums[1]
+        // 4-arg century form splits the year into century + 2-digit year: full year = century*100 + year.
+        val y = if (parts.size == 3) nums[2] else nums[2] * 100 + nums[3]
         return if (isRealDate(y, m, d)) DateAnalysis(DateStatus.REAL, isoDate(y, m, d))
         else DateAnalysis(DateStatus.UNREAL_PRESENT, null)
     }
