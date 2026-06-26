@@ -85,8 +85,17 @@ enum class FormalErrorCode(val id: String) {
     /** A DATE value that is not `YYYY-MM-DD`. */
     DATE_FORMAT("datumFormatFalsch"),
 
-    /** A NUMBER value with a leading/trailing blank (checked before parsing). */
+    /** ANY field value with a **leading** blank — a baseline value check the kernel runs before the type format
+     *  (`checkFieldValueFormat`), for every kind (string/number/date/…). IF43. */
     LEADING_BLANK("fuehrendesBlank"),
+
+    /** ANY field value with a **trailing** blank — the baseline-check sibling of [LEADING_BLANK] (IF43). */
+    TRAILING_BLANK("nachfolgendesBlank"),
+
+    /** ANY field value containing a character outside the model's legal charset. With no programming-language
+     *  charset configured (a DM-JSON model), the default legal set is the **BMP** (`0x0000-0xFFFF`), so any
+     *  SUPPLEMENTARY-plane character (a UTF-16 surrogate pair, e.g. an emoji) is illegal. IF43. */
+    CHARSET("ZeichenNichtImZeichensatz"),
 
     /** A NUMBER value with non-numeric characters. */
     INVALID_NUMBER("zahlHatUngueltigeZeichen"),
@@ -175,6 +184,10 @@ fun formalError(
     constraints: FieldConstraints = FieldConstraints.NONE,
 ): FormalErrorCode? {
     if (raw.isEmpty()) return null
+    // BASELINE value checks the kernel runs for EVERY kind before the type format (`checkFieldValueFormat`,
+    // IF43): legal charset, then leading blank, then trailing blank. They pre-empt the type-specific check
+    // (a ` 2024-01-01` DATE is `fuehrendesBlank`, not a date-format error).
+    baselineValueError(raw)?.let { return it }
     return when (kind) {
         // Format-aware: a value valid for the field's DECLARED format is well-formed (a `dd.MM.yyyy` field's
         // `15.06.2024` is fine — not ISO, but valid for its format). Canonicalize-or-fail via parseDateToIso;
@@ -276,7 +289,7 @@ private fun numberConstraintError(raw: String, c: FieldConstraints): FormalError
 }
 
 private fun numberFormalError(raw: String, scale: Int?, leadingZerosAllowed: Boolean): FormalErrorCode? = when {
-    raw != raw.trim() -> FormalErrorCode.LEADING_BLANK
+    // (leading/trailing blanks are handled by the cross-kind baselineValueError before this, IF43)
     // A leading `+` on an otherwise-valid number is its own error (the kernel reports it, not "invalid chars").
     raw.startsWith("+") && DECIMAL.matches(raw.drop(1)) -> FormalErrorCode.PLUS_SIGN
     !DECIMAL.matches(raw) -> FormalErrorCode.INVALID_NUMBER
@@ -288,6 +301,20 @@ private fun numberFormalError(raw: String, scale: Int?, leadingZerosAllowed: Boo
     !leadingZerosAllowed && hasLeadingZeros(raw) -> FormalErrorCode.LEADING_ZEROS
     scale == 0 && raw.contains('.') -> FormalErrorCode.DECIMAL_SEPARATOR
     scale != null && fractionalDigits(raw) > scale -> FormalErrorCode.TOO_MANY_DECIMALS
+    else -> null
+}
+
+/**
+ * The kernel's baseline VALUE checks (`FormalChecker.checkFieldValueFormat`, IF43), run for EVERY field kind
+ * before the type-specific format check, in this order: legal **charset** → **leading** blank → **trailing**
+ * blank. With no programming-language charset configured (a DM-JSON model), the default legal charset is the
+ * **BMP** (`0x0000-0xFFFF`), so any supplementary-plane character — a UTF-16 surrogate (e.g. an emoji) — is
+ * illegal. A leading/trailing blank is reported even when the type check would otherwise pass or fail differently.
+ */
+private fun baselineValueError(raw: String): FormalErrorCode? = when {
+    raw.any { it.isHighSurrogate() || it.isLowSurrogate() } -> FormalErrorCode.CHARSET
+    raw.startsWith(' ') -> FormalErrorCode.LEADING_BLANK
+    raw.endsWith(' ') -> FormalErrorCode.TRAILING_BLANK
     else -> null
 }
 
@@ -320,7 +347,11 @@ fun formalErrorText(code: FormalErrorCode, locale: String, scale: Int? = null): 
         FormalErrorCode.DATE_FORMAT ->
             if (de) "Wert ist kein gültiges Datum (erwartet JJJJ-MM-TT)." else "Value is not a valid date (expected YYYY-MM-DD)."
         FormalErrorCode.LEADING_BLANK ->
-            if (de) "Wert hat ein führendes oder nachgestelltes Leerzeichen." else "Value has a leading or trailing blank."
+            if (de) "Wert hat ein führendes Leerzeichen." else "Value has a leading blank."
+        FormalErrorCode.TRAILING_BLANK ->
+            if (de) "Wert hat ein nachgestelltes Leerzeichen." else "Value has a trailing blank."
+        FormalErrorCode.CHARSET ->
+            if (de) "Wert enthält ein Zeichen außerhalb des erlaubten Zeichensatzes." else "Value contains a character outside the legal character set."
         FormalErrorCode.INVALID_NUMBER ->
             if (de) "Wert ist keine gültige Zahl." else "Value is not a valid number."
         FormalErrorCode.DECIMAL_SEPARATOR ->

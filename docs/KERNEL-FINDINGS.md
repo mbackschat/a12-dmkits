@@ -134,6 +134,15 @@ Surfaced by the **differential fuzz net** (`adapter.perf.InterpreterKernelFuzzTe
 
 Both ride `formalePruefung` (the sentinel rule path) like the other formal errors, and suppress a referencing author rule (branch-scoped). *(Locked: `adapter.laws.NumberSignFormalDiffTest` — interp vs kernel over a scale-2 and a scale-0 field; the precedence is part of the lock.)*
 
+## §3 supplement — BASELINE value checks run for EVERY kind before the type format: charset + leading/trailing blank (probe + source, 2026-06-26)
+
+`FormalChecker.checkFieldValueFormat` runs three baseline checks on **every filled field value**, regardless of kind (string/number/date/…), **before** the type-specific format check — and they **pre-empt** it:
+
+- **legal charset** → **`ZeichenNichtImZeichensatz`**. The legal set is `metaData.getLegalCodepoints()` — a **programming-language/codegen** config (`MetaModelImpl`, the codegen target's restricted charset; cf. the codegen `MVK_INVALID_CHAR_IN_RESTRICTED_CHARSET` "not permitted for the programming language"). It is **NOT a DM-JSON field/model property** (no `charset` key on `StringType`/`IStringType` in 30.8.1). With none configured — a plain DM-JSON model — the **default legal charset is the BMP** (`0x0000-0xFFFF`; `CharsetUtil`: "empty list ≡ 0x0000-0xFFFF"). So **any supplementary-plane character** (a UTF-16 surrogate, e.g. an emoji `😀` U+1F600) is illegal; BMP chars (`é`/`ü`/`€`/`™`/CJK) are legal. Probe-confirmed on a plain string field.
+- **leading blank** → **`fuehrendesBlank`**; **trailing blank** → **`nachfolgendesBlank`** (distinct codes). Probe-confirmed across STRING, NUMBER, and DATE — and they pre-empt the type check (a ` 2024-01-01` DATE is `fuehrendesBlank`, not a date-format error).
+
+Order: charset → leading → trailing → (type format). This **corrects** the earlier suspect §3 "string charset is not DM-JSON-declarable / no serialized key" note — the basis was about a per-field `StringType.charset` key (which indeed doesn't exist), but the runtime check fires anyway from the **default BMP** charset; the conclusion ("out of scope") was WRONG. *(Interpreter: a single cross-kind `baselineValueError` in `eval/FormalError.kt`, IF43; locked `adapter.laws.BaselineValueFormalDiffTest`.)*
+
 ## §3 supplement — DECLARED field-type CONSTRAINTS are formal errors too (range / length / pattern / digit-count / enum-domain), source + probe-verified 2026-06-25
 
 The format checks above (decimals, invalid chars, blanks, signed-zero) test whether a value is *well-formed for its kind*. But the kernel's `validateFull` **also** auto-validates the value against the field type's **declared constraints** — and these ride the **same `formalePruefung` mechanism**: an out-of-constraint value is a formal error, the field becomes **"unknown"**, and a referencing author rule is **suppressed** (branch-scoped, §3 / IF17). No rule is involved — the kernel emits these purely from the field-type declaration.
