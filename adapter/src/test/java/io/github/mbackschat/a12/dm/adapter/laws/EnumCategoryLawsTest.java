@@ -8,6 +8,10 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+
 /**
  * Behavioral law — <b>enum-category access maps the stored value positionally and compares the
  * category value</b> (RT-SEMANTICS-LEDGER: {@code RuntimeController} dispatch tail; the model-side
@@ -20,9 +24,16 @@ class EnumCategoryLawsTest {
     private static final String ORDER = RuntimeLaws.model("models/order.dm.json");
     private static final Set<String> ORDER_ROW = Set.of("/Order");
 
+    // Conditions are authored with the rulekit typed DSL and rendered to the canonical string fed to the kernel.
+    private static final BoundModel M = BoundModel.ofJson(ORDER);
+
+    private static String render(Condition c) {
+        return new DslRenderer().render(c);
+    }
+
     private static String model() {
         return RuntimeLaws.withRule(ORDER, "/Order", "FastLane", "../Priority", "FAST_LANE",
-                "[Priority -> SpeedClass] == \"FAST\"");
+                render(M.enumOf("/Order/Priority").category("SpeedClass").is("FAST")));
     }
 
     @Test

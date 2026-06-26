@@ -7,6 +7,11 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+
 /**
  * Behavioral law — <b>the field-list "not …" quantifiers are not complements</b> (KERNEL-SEMANTICS §1,
  * "There is no generic negation operator"). Over a two-field list, the three negative quantifiers
@@ -28,14 +33,21 @@ class FieldListQuantifierLawsTest {
 
     private static final String ORDER = RuntimeLaws.model("models/order.dm.json");
     private static final Set<String> ORDER_ROW = Set.of("/Order");
-    private static final String LIST = "ProductCode, BackorderQuantity";
+
+    // Conditions are authored with the rulekit typed DSL and rendered to the canonical string fed to
+    // the kernel — no free-text condition literals. The list is ProductCode, BackorderQuantity.
+    private static final BoundModel m = BoundModel.ofJson(ORDER);
+
+    private static String render(Condition c) {
+        return new DslRenderer().render(c);
+    }
 
     private static final String NAF = RuntimeLaws.withRule(ORDER, "/Order", "R", "../ProductCode",
-            "NAF", "NotAllFieldsFilled(" + LIST + ")");
+            "NAF", render(Dsl.notAllFieldsFilled(m.field("/Order/ProductCode"), m.field("/Order/BackorderQuantity"))));
     private static final String FNC = RuntimeLaws.withRule(ORDER, "/Order", "R", "../ProductCode",
-            "FNC", "FieldsNotCollectivelyFilled(" + LIST + ")");
+            "FNC", render(Dsl.fieldsNotCollectivelyFilled(m.field("/Order/ProductCode"), m.field("/Order/BackorderQuantity"))));
     private static final String NEO = RuntimeLaws.withRule(ORDER, "/Order", "R", "../ProductCode",
-            "NEO", "NotExactlyOneFieldFilled(" + LIST + ")");
+            "NEO", render(Dsl.notExactlyOneFieldFilled(m.field("/Order/ProductCode"), m.field("/Order/BackorderQuantity"))));
 
     @Test
     void allEmpty_notAllAndNotExactlyOneFire_butCollectivelyDoesNot() {

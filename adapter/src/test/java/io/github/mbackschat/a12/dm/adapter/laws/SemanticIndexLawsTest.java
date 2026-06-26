@@ -5,6 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+
 /**
  * Behavioral law — <b>the semantic index resolves a repetition by its index-field value</b>
  * (RT-SEMANTICS-LEDGER: {@code RuntimeController} dispatch tail / {@code IndexFieldCache}; the
@@ -16,9 +20,19 @@ class SemanticIndexLawsTest {
 
     private static final String ORDER = RuntimeLaws.model("models/order.dm.json");
 
+    // The condition is authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to the
+    // kernel — the test's own kernel-law assertion is the safety net. `m.num(p).forIndex("SKU-1")` is the literal
+    // semantic index `[Items/Count For "SKU-1"]`; ABSOLUTE paths render relativized.
+    private static final BoundModel m = BoundModel.ofJson(ORDER);
+
+    private static String render(Condition c) {
+        return new DslRenderer().render(c);
+    }
+
     private static String model() {
         return RuntimeLaws.withRule(ORDER, "/Order", "Sku1Count", "../CustomerName", "SKU1_COUNT",
-                "FieldFilled(CustomerName) And [Items/Count For \"SKU-1\"] > 0");
+                render(m.str("/Order/CustomerName").filled()
+                        .and(m.num("/Order/Items/Count").forIndex("SKU-1").gt(0))));
     }
 
     private static RuntimeLaws.Doc rows(String count1, String count2) {

@@ -8,6 +8,10 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+
 /**
  * Behavioral law — <b>polarity</b> (KERNEL-SEMANTICS framing; the #1 eval trap, lint
  * {@code RK_INVERTED_REQUIREDNESS}). A rule's {@code errorCondition} describes the <em>violation</em>:
@@ -20,11 +24,19 @@ class PolarityLawsTest {
     private static final String ORDER = RuntimeLaws.model("models/order.dm.json");
     private static final Set<String> ORDER_ROW = Set.of("/Order");
 
+    // Conditions are authored with the rulekit typed DSL and rendered to the canonical string fed to
+    // the kernel — no free-text condition literals.
+    private static final BoundModel m = BoundModel.ofJson(ORDER);
+
+    private static String render(Condition c) {
+        return new DslRenderer().render(c);
+    }
+
     @Test
     void firesWhenTheErrorConditionHolds_notWhenTheRequirementIsMet() {
         // requirement: "quantity must be <= 100" → the VIOLATION is "[Quantity] > 100"
         String model = RuntimeLaws.withRule(ORDER, "/Order", "QtyCap", "../Quantity", "QTY_TOO_HIGH",
-                "FieldFilled(Quantity) And [Quantity] > 100");
+                render(m.num("/Order/Quantity").filled().and(m.num("/Order/Quantity").gt(100))));
 
         // violating data → fires
         assertTrue(RuntimeLaws.fires(model, "QTY_TOO_HIGH", ORDER_ROW, Map.of("/Order/Quantity", "150")),
@@ -38,7 +50,7 @@ class PolarityLawsTest {
     void invertedPolarityFiresOnTheCompliantCase_theTrapMadeVisible() {
         // the WRONG way (condition = the requirement, not the violation): "[Quantity] <= 100"
         String inverted = RuntimeLaws.withRule(ORDER, "/Order", "QtyCapWrong", "../Quantity", "QTY_WRONG",
-                "FieldFilled(Quantity) And [Quantity] <= 100");
+                render(m.num("/Order/Quantity").filled().and(m.num("/Order/Quantity").le(100))));
 
         // the inversion fires on the *compliant* value and stays silent on the *violating* one — backwards
         assertTrue(RuntimeLaws.fires(inverted, "QTY_WRONG", ORDER_ROW, Map.of("/Order/Quantity", "50")),

@@ -10,6 +10,11 @@ import org.junit.jupiter.api.Test;
 
 import com.mgmtp.a12.kernel.md.rt.api.IMessage.MessageType;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+
 /**
  * Behavioral law — <b>aggregate uncertainty marking</b> (RT-SEMANTICS-LEDGER: {@code Combiner} +
  * {@code NumberCombiner} + {@code NumberOfDifferentValuesCombiner}; KERNEL-FINDINGS §9 supplement).
@@ -34,6 +39,14 @@ import com.mgmtp.a12.kernel.md.rt.api.IMessage.MessageType;
 class AggregateUncertaintyLawsTest {
 
     private static final String ORDER = RuntimeLaws.model("models/order.dm.json");
+
+    // Conditions are authored with the rulekit typed DSL (m) and rendered to the canonical string fed
+    // to the kernel — no free-text condition literals. The kernel-law assertion is the safety net.
+    private static final BoundModel m = BoundModel.ofJson(ORDER);
+
+    private static String render(Condition c) {
+        return new DslRenderer().render(c);
+    }
 
     /** The error field must be referenced in the condition — hence the CustomerName guard idiom. */
     private static String withAggRule(String name, String code, String condition) {
@@ -60,7 +73,8 @@ class AggregateUncertaintyLawsTest {
 
     @Test
     void anEmptyOperandIsNotADistinctValue() {
-        String model = withAggRule("OneSize", "ONE_SIZE", "NumberOfDifferentValues(Items*/Count) == 1");
+        String model = withAggRule("OneSize", "ONE_SIZE",
+                render(Dsl.numberOfDifferentValues(m.flatten("/Order/Items*/Count")).eq(1)));
 
         // 5, empty, 5 → one distinct value, the empty does not count as a second
         assertTrue(RuntimeLaws.fires(model, "ONE_SIZE", rows("5", null, "5")),
@@ -74,7 +88,8 @@ class AggregateUncertaintyLawsTest {
         // The probe corrected the source-read expectation: VALUE_ERROR was expected for the fully
         // filled instance, but the kernel types it OMISSION_ERROR — the un-instantiated remainder of
         // the repeatable group counts as an omitted, fillable tail (Combiner.setOmittedTail).
-        String model = withAggRule("OneSize", "ONE_SIZE", "NumberOfDifferentValues(Items*/Count) == 1");
+        String model = withAggRule("OneSize", "ONE_SIZE",
+                render(Dsl.numberOfDifferentValues(m.flatten("/Order/Items*/Count")).eq(1)));
 
         Optional<MessageType> uncertain = RuntimeLaws.typeOf(model, "ONE_SIZE", rows("5", null, "5"));
         assertEquals(Optional.of(MessageType.OMISSION_ERROR), uncertain,
@@ -89,7 +104,8 @@ class AggregateUncertaintyLawsTest {
     void exhaustingTheRepetitionMakesTheAggregateCertain() {
         // The boundary that proves the tail logic: with ALL 50 repetitions (the group's declared
         // repeatability) instantiated and filled, no fillable tail remains → VALUE_ERROR.
-        String model = withAggRule("TotalLow", "TOTAL_LOW", "Sum(Items*/Count) < 100");
+        String model = withAggRule("TotalLow", "TOTAL_LOW",
+                render(Dsl.sum(m.flatten("/Order/Items*/Count")).lt(100)));
 
         RuntimeLaws.Doc full = RuntimeLaws.doc().group("/Order", 1)
                 .field("/Order/CustomerName", "Acme", 1, 1);
@@ -102,7 +118,8 @@ class AggregateUncertaintyLawsTest {
 
     @Test
     void anEmptyOperandMakesTheSumFillable() {
-        String model = withAggRule("TotalLow", "TOTAL_LOW", "Sum(Items*/Count) < 100");
+        String model = withAggRule("TotalLow", "TOTAL_LOW",
+                render(Dsl.sum(m.flatten("/Order/Items*/Count")).lt(100)));
 
         Optional<MessageType> uncertain = RuntimeLaws.typeOf(model, "TOTAL_LOW", rows("5", null, "7"));
         assertEquals(Optional.of(MessageType.OMISSION_ERROR), uncertain,
@@ -130,7 +147,8 @@ class AggregateUncertaintyLawsTest {
     @Test
     void theLatestDateWins() {
         String model = withAggRule("LatePromise", "LATE_PROMISE",
-                "MaxValue(Items*/PromiseDate) > [DeliveryDate]");
+                render(Dsl.latestOf(m.flatten("/Order/Items*/PromiseDate"))
+                        .after(m.date("/Order/DeliveryDate"))));
 
         assertTrue(RuntimeLaws.fires(model, "LATE_PROMISE",
                 dateRows("2026-06-15", "2026-07-20", "2026-06-20")),
@@ -143,7 +161,8 @@ class AggregateUncertaintyLawsTest {
     @Test
     void aDateAggregateIsFillableUntilTheRepetitionIsExhausted() {
         String model = withAggRule("LatePromise", "LATE_PROMISE",
-                "MaxValue(Items*/PromiseDate) > [DeliveryDate]");
+                render(Dsl.latestOf(m.flatten("/Order/Items*/PromiseDate"))
+                        .after(m.date("/Order/DeliveryDate"))));
 
         Optional<MessageType> tail = RuntimeLaws.typeOf(model, "LATE_PROMISE",
                 dateRows("2026-07-20", "2026-07-21", "2026-07-22"));
@@ -158,7 +177,8 @@ class AggregateUncertaintyLawsTest {
         // kernel types this OMISSION_ERROR: the not-given flag travels inside the VkDate value
         // through max/min, so dates behave like numbers after all.
         String model = withAggRule("LatePromise", "LATE_PROMISE",
-                "MaxValue(Items*/PromiseDate) > [DeliveryDate]");
+                render(Dsl.latestOf(m.flatten("/Order/Items*/PromiseDate"))
+                        .after(m.date("/Order/DeliveryDate"))));
 
         String[] dates = new String[50];
         java.util.Arrays.fill(dates, "2026-07-20");
@@ -171,7 +191,8 @@ class AggregateUncertaintyLawsTest {
     @Test
     void exhaustingTheRepetitionMakesTheDateAggregateCertainToo() {
         String model = withAggRule("LatePromise", "LATE_PROMISE",
-                "MaxValue(Items*/PromiseDate) > [DeliveryDate]");
+                render(Dsl.latestOf(m.flatten("/Order/Items*/PromiseDate"))
+                        .after(m.date("/Order/DeliveryDate"))));
 
         String[] dates = new String[50];
         java.util.Arrays.fill(dates, "2026-07-20");

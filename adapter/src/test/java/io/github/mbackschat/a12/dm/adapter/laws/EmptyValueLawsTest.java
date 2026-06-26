@@ -8,6 +8,11 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+
 /**
  * Behavioral law — <b>non-specified (empty) values</b> (KERNEL-SEMANTICS §2): an empty <b>number</b>
  * field has a default of {@code 0} substituted in a comparison, so {@code [Quantity] < 100} <em>fires</em>
@@ -46,10 +51,18 @@ class EmptyValueLawsTest {
     /** A sibling value that makes the /Order row genuinely filled (so its empty fields are evaluated). */
     private static final Map<String, String> FILLED_ROW = Map.of("/Order/CustomerName", "Acme");
 
+    // Conditions are authored with the rulekit typed DSL (m) and rendered to the canonical string fed
+    // to the kernel — no free-text condition literals. The kernel-law assertion is the safety net.
+    private static final BoundModel m = BoundModel.ofJson(ORDER);
+
+    private static String render(Condition c) {
+        return new DslRenderer().render(c);
+    }
+
     @Test
     void emptyNumberInAFilledRowIsSubstitutedWithZero() {
         String model = RuntimeLaws.withRule(ORDER, "/Order", "QtyLow", "../Quantity", "QTY_LOW",
-                "[Quantity] < 100");
+                render(m.num("/Order/Quantity").lt(100)));
 
         // row filled by a sibling, Quantity empty → treated as 0 → 0 < 100 → fires
         assertTrue(RuntimeLaws.fires(model, "QTY_LOW", ORDER_ROW, FILLED_ROW),
@@ -62,7 +75,7 @@ class EmptyValueLawsTest {
     @Test
     void anEntirelyEmptyRowIsNotEvaluated() {
         String model = RuntimeLaws.withRule(ORDER, "/Order", "QtyLow", "../Quantity", "QTY_LOW",
-                "[Quantity] < 100");
+                render(m.num("/Order/Quantity").lt(100)));
 
         // group row present but with NO field values at all → not evaluated → no 0-substitution, no fire
         assertFalse(RuntimeLaws.fires(model, "QTY_LOW", ORDER_ROW, Map.of()),
@@ -74,7 +87,7 @@ class EmptyValueLawsTest {
         // a Confirm is a checkbox whose only value is True; unspecified counts as False in a comparison,
         // so "not confirmed" ([Confirm] != True) FIRES on an empty TermsConfirmed (in a filled row)
         String model = RuntimeLaws.withRule(ORDER, "/Order", "MustConfirm", "../TermsConfirmed", "NOT_CONFIRMED",
-                "[TermsConfirmed] != True");
+                render(m.confirm("/Order/TermsConfirmed").notConfirmed()));
 
         assertTrue(RuntimeLaws.fires(model, "NOT_CONFIRMED", ORDER_ROW, Set.of("/Order/TermsConfirmed"), FILLED_ROW),
                 "an empty confirm is treated as False, so [Confirm] != True fires");
@@ -87,7 +100,7 @@ class EmptyValueLawsTest {
     void emptyBooleanIsNotEvaluated() {
         // unlike confirm, an empty Boolean leaves the comparison NOT evaluated — the asymmetry trap
         String model = RuntimeLaws.withRule(ORDER, "/Order", "MustExpress", "../ExpressShipping", "NOT_EXPRESS",
-                "[ExpressShipping] == True");
+                render(m.bool("/Order/ExpressShipping").isTrue()));
 
         assertFalse(RuntimeLaws.fires(model, "NOT_EXPRESS", ORDER_ROW, Set.of("/Order/ExpressShipping"), FILLED_ROW),
                 "an empty boolean is not evaluated, so the comparison does not fire (unlike an empty confirm)");
@@ -101,7 +114,7 @@ class EmptyValueLawsTest {
         // an empty string field leaves the comparison not evaluated (and there are no empty strings:
         // [F] == "" is never satisfied — KERNEL-SEMANTICS §2)
         String model = RuntimeLaws.withRule(ORDER, "/Order", "CodeIsAbc", "../ProductCode", "CODE_ABC",
-                "[ProductCode] == \"ABC\"");
+                render(m.str("/Order/ProductCode").eq("ABC")));
 
         assertFalse(RuntimeLaws.fires(model, "CODE_ABC", ORDER_ROW, Set.of("/Order/ProductCode"), FILLED_ROW),
                 "an empty string is not evaluated, so the comparison does not fire");
@@ -117,7 +130,7 @@ class EmptyValueLawsTest {
         // (RT-SEMANTICS-LEDGER: BigDecimalUtils.laenge — the comment says exactly this). So the
         // string family has its own "empty-as-0" backdoor, the same trap as the number column.
         String model = RuntimeLaws.withRule(ORDER, "/Order", "CodeShort", "../ProductCode", "CODE_SHORT",
-                "Length(ProductCode) < 5");
+                render(Dsl.length(m.str("/Order/ProductCode")).lt(5)));
 
         assertTrue(RuntimeLaws.fires(model, "CODE_SHORT", ORDER_ROW, Set.of("/Order/ProductCode"), FILLED_ROW),
                 "Length of an empty string is 0 (0 < 5), so the rule fires — unlike [F] == \"…\"");
@@ -133,7 +146,7 @@ class EmptyValueLawsTest {
         // PatternViolated does NOT fire on an empty field, the polarity-adjacent trap ("empty
         // surely violates my format" — no: absence needs FieldNotFilled, not a pattern)
         String model = RuntimeLaws.withRule(ORDER, "/Order", "CodeFormat", "../ProductCode", "CODE_FORMAT",
-                "[ProductCode] PatternViolated \"[A-Z]{3}\"");
+                render(m.str("/Order/ProductCode").violates("[A-Z]{3}")));
 
         assertFalse(RuntimeLaws.fires(model, "CODE_FORMAT", ORDER_ROW, Set.of("/Order/ProductCode"), FILLED_ROW),
                 "an empty string does not violate the pattern — the comparison is not evaluated");
@@ -152,7 +165,8 @@ class EmptyValueLawsTest {
         // number operand arrives as the substituted 0 and WINS the Min — the families differ exactly
         // on empty handling (the Combiner contract's testValidity flag)
         String model = RuntimeLaws.withRule(ORDER, "/Order", "MinZero", "../Quantity", "MIN_ZERO",
-                "Min([Quantity], [BackorderQuantity]) == 0");
+                render(Dsl.min(m.num("/Order/Quantity").asNumber(),
+                        m.num("/Order/BackorderQuantity").asNumber()).eq(0)));
 
         assertTrue(RuntimeLaws.fires(model, "MIN_ZERO", ORDER_ROW, Set.of("/Order/Quantity"),
                 Map.of("/Order/CustomerName", "Acme", "/Order/BackorderQuantity", "5")),
@@ -167,7 +181,7 @@ class EmptyValueLawsTest {
         // value-list membership rides the not-evaluated track on an empty subject — even though the
         // membership is "value error" by nature, absence simply yields no fire
         String model = RuntimeLaws.withRule(ORDER, "/Order", "CodeListed", "../ProductCode", "CODE_LISTED",
-                "FieldValueIncludedInValueList(ProductCode, \"A\", \"B\")");
+                render(m.str("/Order/ProductCode").in("A", "B")));
 
         assertFalse(RuntimeLaws.fires(model, "CODE_LISTED", ORDER_ROW, Set.of("/Order/ProductCode"), FILLED_ROW),
                 "an empty field's value is never in a value list — not evaluated");
@@ -181,6 +195,9 @@ class EmptyValueLawsTest {
         // the inverse direction is the trap: a FIELD entry of a numeric value list that is itself
         // empty can never be matched — the empty-as-0 substitution does NOT apply to list entries
         // (RuntimeController.feldWertInWerteListe: an entry that could grow/shrink never equals)
+        // DSL-EXEMPT: a single-field FieldValueIncludedInValueList with an ENTITY (field-reference)
+        // value-list entry has no rulekit builder — NumberRef.in takes only integer literals, and the
+        // entity-list quantifiers are the multi-subject AtLeastOne/No forms, not this single-subject shape.
         String model = RuntimeLaws.withRule(ORDER, "/Order", "QtyAllowed", "../Quantity", "QTY_ALLOWED",
                 "FieldValueIncludedInValueList(Quantity, [BackorderQuantity])");
 
@@ -198,7 +215,8 @@ class EmptyValueLawsTest {
         // the §6 date-literal syntax: DifferenceInDays(a, b) = b - a (verified), so Delivery before Order
         // gives a negative diff.
         String model = RuntimeLaws.withRule(ORDER, "/Order", "DeliveryBeforeOrder", "../OrderDate",
-                "DELIVERY_BEFORE", "DifferenceInDays(OrderDate, DeliveryDate) < 0");
+                "DELIVERY_BEFORE", render(Dsl.differenceInDays(m.date("/Order/OrderDate"),
+                        m.date("/Order/DeliveryDate")).lt(0)));
 
         // both dates filled, DeliveryDate before OrderDate → diff < 0 → fires
         assertTrue(RuntimeLaws.fires(model, "DELIVERY_BEFORE", ORDER_ROW, Map.of("/Order/CustomerName", "Acme",
@@ -218,11 +236,17 @@ class EmptyValueLawsTest {
         // value the comparison evaluates and fires on. The mitigation is an AllFieldsFilled guard on the
         // concatenated operands (NOT the empty-as-not-evaluated free pass the direct comparison gets).
         String PERSON = RuntimeLaws.model("models/person.dm.json");
+        BoundModel mp = BoundModel.ofJson(PERSON);
         Set<String> row = Set.of("/Person");
         Set<String> emptyNames = Set.of("/Person/FirstName", "/Person/LastName");
 
+        // [FirstName] + " " + [LastName]
+        var fullName = mp.str("/Person/FullName");
+        Condition mismatch = fullName.ne(mp.str("/Person/FirstName").asString()
+                .plus(" ").plus(mp.str("/Person/LastName").asString()));
+
         String unguarded = RuntimeLaws.withRule(PERSON, "/Person", "FullNameMismatch", "../FullName",
-                "FULLNAME_MISMATCH", "[FullName] != [FirstName] + \" \" + [LastName]");
+                "FULLNAME_MISMATCH", render(mismatch));
         // FullName filled, FirstName/LastName empty → " " concat ≠ "Alice Smith" → FIRES (the trap)
         assertTrue(RuntimeLaws.fires(unguarded, "FULLNAME_MISMATCH", row, emptyNames,
                 Map.of("/Person/FullName", "Alice Smith")),
@@ -232,8 +256,10 @@ class EmptyValueLawsTest {
                 Map.of("/Person/FullName", "Alice Smith", "/Person/FirstName", "Alice", "/Person/LastName", "Smith")),
                 "consistent first+space+last does not fire");
 
+        Condition guardedCond = Dsl.allFieldsFilled(mp.field("/Person/FirstName"),
+                mp.field("/Person/LastName")).and(mismatch);
         String guarded = RuntimeLaws.withRule(PERSON, "/Person", "FullNameMismatchGuarded", "../FullName",
-                "FULLNAME_MISMATCH_G", "AllFieldsFilled(FirstName, LastName) And [FullName] != [FirstName] + \" \" + [LastName]");
+                "FULLNAME_MISMATCH_G", render(guardedCond));
         // the gold's guard suppresses the empty-operand false positive
         assertFalse(RuntimeLaws.fires(guarded, "FULLNAME_MISMATCH_G", row, emptyNames,
                 Map.of("/Person/FullName", "Alice Smith")),
@@ -244,7 +270,8 @@ class EmptyValueLawsTest {
     void fieldFilledGuardSuppressesTheEmptyZeroError() {
         // the documented mitigation (§2): guard the comparison with FieldFilled
         String model = RuntimeLaws.withRule(ORDER, "/Order", "QtyLowGuarded", "../Quantity", "QTY_LOW_G",
-                "FieldFilled(Quantity) And [Quantity] < 100");
+                render(Dsl.fieldFilled(m.field("/Order/Quantity"))
+                        .and(m.num("/Order/Quantity").lt(100))));
 
         assertFalse(RuntimeLaws.fires(model, "QTY_LOW_G", ORDER_ROW, FILLED_ROW),
                 "the FieldFilled guard suppresses the empty-as-0 false positive even in a filled row");

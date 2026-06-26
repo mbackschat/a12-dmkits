@@ -11,6 +11,9 @@ import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.adapter.RuleTestOutcome;
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
  * Scoped single-rule test (FEATURE-GAPS §3.3) — {@link KernelAdapter#testRule} reports a rule's empirical
@@ -22,9 +25,18 @@ import io.github.mbackschat.a12.dm.adapter.RuleTestOutcome;
 class RuleTestLawsTest {
 
     private static final String ORDER = RuntimeLaws.model("models/order.dm.json");
+
+    // The condition is authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to the
+    // kernel — the test's own kernel-law assertion is the safety net. ABSOLUTE path; the renderer relativizes.
+    private static final BoundModel m = BoundModel.ofJson(ORDER);
+
+    private static String render(Condition c) {
+        return new DslRenderer().render(c);
+    }
+
     // PriceHigh fires when UnitPrice > 5; it references /Order/UnitPrice.
     private static final String MODEL = RuntimeLaws.withRule(ORDER, "/Order", "PriceHigh", "../UnitPrice",
-            "PRICE_HIGH", "[UnitPrice] > 5");
+            "PRICE_HIGH", render(m.num("/Order/UnitPrice").gt(5)));
     private static final Locale EN = Locale.forLanguageTag("en-US");
 
     private static RuleTestOutcome test(String unitPrice) {

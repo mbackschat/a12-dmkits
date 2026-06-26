@@ -10,6 +10,10 @@ import org.junit.jupiter.api.Test;
 
 import com.mgmtp.a12.kernel.md.rt.api.IMessage.MessageType;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+
 /**
  * Behavioral law — <b>the value-vs-omission error typing</b> (RT-SEMANTICS-LEDGER:
  * {@code ValidierungsErgebnis} + {@code BedingungsOperatorHelper}; KERNEL-FINDINGS §12 supplement).
@@ -31,10 +35,18 @@ class ErrorTypeLawsTest {
     private static final String ORDER = RuntimeLaws.model("models/order.dm.json");
     private static final Set<String> ORDER_ROW = Set.of("/Order");
 
+    // Conditions are authored with the rulekit typed DSL and rendered to the canonical string fed to
+    // the kernel — no free-text condition literals.
+    private static final BoundModel m = BoundModel.ofJson(ORDER);
+
+    private static String render(Condition c) {
+        return new DslRenderer().render(c);
+    }
+
     @Test
     void aComparisonOverFilledValuesIsAValueError() {
         String model = RuntimeLaws.withRule(ORDER, "/Order", "QtyHigh", "../Quantity", "QTY_HIGH",
-                "[Quantity] > 5");
+                render(m.num("/Order/Quantity").gt(5)));
 
         Optional<MessageType> type = RuntimeLaws.typeOf(model, "QTY_HIGH", ORDER_ROW, Set.of(),
                 Map.of("/Order/Quantity", "10"));
@@ -47,7 +59,7 @@ class ErrorTypeLawsTest {
         // empty number in a filled row → 0 substituted (EmptyValueLawsTest) — and the kernel marks the
         // result as fillable-away: the message is typed OMISSION_ERROR, not VALUE_ERROR
         String model = RuntimeLaws.withRule(ORDER, "/Order", "QtyPresent", "../Quantity", "QTY_NONNEG",
-                "[Quantity] >= 0");
+                render(m.num("/Order/Quantity").ge(0)));
 
         Optional<MessageType> type = RuntimeLaws.typeOf(model, "QTY_NONNEG", ORDER_ROW,
                 Set.of("/Order/Quantity"), Map.of("/Order/CustomerName", "Acme"));
@@ -60,7 +72,7 @@ class ErrorTypeLawsTest {
         // [Quantity] > 5 is a VALUE branch (10 filled); [BackorderQuantity] >= 0 fires on the empty
         // substitution (OMISSION branch). And-combined: OMISSION (combineUND: WF ∧ AF = AF).
         String model = RuntimeLaws.withRule(ORDER, "/Order", "AndTyping", "../Quantity", "AND_TYPING",
-                "[Quantity] > 5 And [BackorderQuantity] >= 0");
+                render(m.num("/Order/Quantity").gt(5).and(m.num("/Order/BackorderQuantity").ge(0))));
 
         Optional<MessageType> type = RuntimeLaws.typeOf(model, "AND_TYPING", ORDER_ROW,
                 Set.of("/Order/BackorderQuantity"), Map.of("/Order/Quantity", "10"));
@@ -73,7 +85,7 @@ class ErrorTypeLawsTest {
         // same branches, Or-combined: the VALUE branch alone convicts → VALUE_ERROR
         // (combineODER: WF ∨ AF = WF).
         String model = RuntimeLaws.withRule(ORDER, "/Order", "OrTyping", "../Quantity", "OR_TYPING",
-                "[Quantity] > 5 Or [BackorderQuantity] >= 0");
+                render(m.num("/Order/Quantity").gt(5).or(m.num("/Order/BackorderQuantity").ge(0))));
 
         Optional<MessageType> type = RuntimeLaws.typeOf(model, "OR_TYPING", ORDER_ROW,
                 Set.of("/Order/BackorderQuantity"), Map.of("/Order/Quantity", "10"));
@@ -85,7 +97,7 @@ class ErrorTypeLawsTest {
     void presencePredicateIsAnOmissionError() {
         // the presence predicates' whole point is "fill this" — FieldNotFilled fires as OMISSION_ERROR
         String model = RuntimeLaws.withRule(ORDER, "/Order", "NeedQty", "../Quantity", "NEED_QTY",
-                "FieldNotFilled(Quantity)");
+                render(m.num("/Order/Quantity").notFilled()));
 
         Optional<MessageType> type = RuntimeLaws.typeOf(model, "NEED_QTY", ORDER_ROW,
                 Set.of("/Order/Quantity"), Map.of("/Order/CustomerName", "Acme"));

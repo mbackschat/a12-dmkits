@@ -8,6 +8,10 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+
 /**
  * Behavioral law — <b>formal errors and the "unknown" state</b> (KERNEL-SEMANTICS §3). A value that
  * violates its field's data-type configuration (wrong type, too many decimal places, leading/trailing
@@ -24,11 +28,19 @@ class FormalErrorLawsTest {
     private static final String ORDER = RuntimeLaws.model("models/order.dm.json");
     private static final Set<String> ORDER_ROW = Set.of("/Order");
 
+    // Conditions are authored with the rulekit typed DSL (m) and rendered to the canonical string fed
+    // to the kernel — no free-text condition literals. The kernel-law assertion is the safety net.
+    private static final BoundModel m = BoundModel.ofJson(ORDER);
+
+    private static String render(Condition c) {
+        return new DslRenderer().render(c);
+    }
+
     @Test
     void tooManyDecimalsMakesTheFieldUnknownAndSuppressesTheRule() {
         // UnitPrice is a scale-2 number; rule "[UnitPrice] > 5"
         String model = RuntimeLaws.withRule(ORDER, "/Order", "PriceHigh", "../UnitPrice", "PRICE_HIGH",
-                "[UnitPrice] > 5");
+                render(m.num("/Order/UnitPrice").gt(5)));
 
         // a valid value is evaluated normally
         assertTrue(RuntimeLaws.fires(model, "PRICE_HIGH", ORDER_ROW, filled("/Order/UnitPrice", "10.00")),
@@ -46,7 +58,7 @@ class FormalErrorLawsTest {
     @Test
     void nonNumericValueMakesTheFieldUnknownAndSuppressesTheRule() {
         String model = RuntimeLaws.withRule(ORDER, "/Order", "PriceHigh", "../UnitPrice", "PRICE_HIGH",
-                "[UnitPrice] > 5");
+                render(m.num("/Order/UnitPrice").gt(5)));
 
         Set<String> codes = RuntimeLaws.firedCodes(model, ORDER_ROW, filled("/Order/UnitPrice", "abc"));
         assertFalse(codes.contains("PRICE_HIGH"),
@@ -59,7 +71,7 @@ class FormalErrorLawsTest {
     void aLeadingOrTrailingSpaceIsAFormalError() {
         // KERNEL-SEMANTICS §3: leading/trailing spaces are a formal error (string value " ABC ")
         String model = RuntimeLaws.withRule(ORDER, "/Order", "CodeAbc", "../ProductCode", "CODE_ABC",
-                "[ProductCode] == \"ABC\"");
+                render(m.str("/Order/ProductCode").eq("ABC")));
 
         Set<String> codes = RuntimeLaws.firedCodes(model, ORDER_ROW, filled("/Order/ProductCode", " ABC "));
         assertTrue(codes.contains("fuehrendesBlank"),

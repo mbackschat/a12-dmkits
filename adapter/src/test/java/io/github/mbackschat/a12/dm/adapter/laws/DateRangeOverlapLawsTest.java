@@ -5,6 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+
 /**
  * Behavioral law — <b>date ranges are closed intervals: touching ranges overlap</b>
  * (RT-SEMANTICS-LEDGER: {@code RuntimeController} dispatch tail; source {@code DatumBereich.ueberlappt}
@@ -18,9 +23,18 @@ class DateRangeOverlapLawsTest {
 
     private static final String ORDER = RuntimeLaws.model("models/order.dm.json");
 
+    // Conditions are authored with the rulekit typed DSL and rendered to the canonical string fed to the kernel.
+    private static final BoundModel M = BoundModel.ofJson(ORDER);
+
+    private static String render(Condition c) {
+        return new DslRenderer().render(c);
+    }
+
     private static String model() {
         return RuntimeLaws.withRule(ORDER, "/Order", "CoverageClash", "../CustomerName", "COVERAGE_CLASH",
-                "FieldFilled(CustomerName) And DateRangesOverlap(CoverageWindow, Items*/ItemCoverage)");
+                render(M.field("/Order/CustomerName").filled()
+                        .and(Dsl.dateRangesOverlap(M.field("/Order/CoverageWindow"),
+                                M.flatten("/Order/Items*/ItemCoverage")))));
     }
 
     private static RuntimeLaws.Doc doc(String window, String itemCoverage) {

@@ -7,6 +7,11 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+
 /**
  * Behavioral law — <b>repetition, iteration, and aggregation</b> (KERNEL-SEMANTICS §9), the kernel's
  * most distinctive and most-mis-authored semantics. Two facets are locked here against the real runtime
@@ -24,9 +29,18 @@ class RepetitionLawsTest {
 
     private static final String ORDER = RuntimeLaws.model("models/order.dm.json");
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to the
+    // kernel — the test's own kernel-law assertion is the safety net. ABSOLUTE paths; the renderer relativizes.
+    private static final BoundModel m = BoundModel.ofJson(ORDER);
+
+    private static String render(Condition c) {
+        return new DslRenderer().render(c);
+    }
+
     // rule in /Order whose error field /Order/Items/Count reaches through repeatable Items → iterates per row
     private static final String PER_ROW = RuntimeLaws.withRule(ORDER, "/Order", "CountCap", "../Items/Count",
-            "COUNT_HIGH", "FieldFilled(Items/Count) And [Items/Count] > 50");
+            "COUNT_HIGH",
+            render(Dsl.fieldFilled(m.field("/Order/Items/Count")).and(m.num("/Order/Items/Count").gt(50))));
 
     /** Three Items rows with the given Count values (null = empty). */
     private static RuntimeLaws.Doc items(String c1, String c2, String c3) {
@@ -66,12 +80,14 @@ class RepetitionLawsTest {
     @Test
     void sumSubstitutesZeroForEmptyRows() {
         String sum80 = RuntimeLaws.withRule(ORDER, "/Order", "Sum80", "../CustomerName", "SUM_80",
-                "FieldFilled(CustomerName) And Sum(Items*/Count) == 80");
+                render(Dsl.fieldFilled(m.field("/Order/CustomerName"))
+                        .and(Dsl.sum(m.flatten("/Order/Items*/Count")).eq(80))));
         assertTrue(RuntimeLaws.fires(sum80, "SUM_80", items("40", null, "40")),
                 "an empty row contributes 0, so Sum(40, _, 40) == 80");
 
         String sum0 = RuntimeLaws.withRule(ORDER, "/Order", "Sum0", "../CustomerName", "SUM_0",
-                "FieldFilled(CustomerName) And Sum(Items*/Count) == 0");
+                render(Dsl.fieldFilled(m.field("/Order/CustomerName"))
+                        .and(Dsl.sum(m.flatten("/Order/Items*/Count")).eq(0))));
         assertTrue(RuntimeLaws.fires(sum0, "SUM_0", items(null, null, null)),
                 "a Sum over an all-empty number list is 0");
     }
@@ -79,7 +95,8 @@ class RepetitionLawsTest {
     @Test
     void maxIgnoresEmptyRows() {
         String max40 = RuntimeLaws.withRule(ORDER, "/Order", "Max40", "../CustomerName", "MAX_40",
-                "FieldFilled(CustomerName) And MaxValue(Items*/Count) == 40");
+                render(Dsl.fieldFilled(m.field("/Order/CustomerName"))
+                        .and(Dsl.maxValue(m.flatten("/Order/Items*/Count")).eq(40))));
         assertTrue(RuntimeLaws.fires(max40, "MAX_40", items("40", null, "10")),
                 "MaxValue ignores the empty row, so Max(40, _, 10) == 40");
     }
@@ -89,7 +106,7 @@ class RepetitionLawsTest {
         // "filled" means the ROW EXISTS, not that it has data — GroupFilled(Items) fires for a created
         // row whose Count is empty, but not when there is no Items row at all
         String model = RuntimeLaws.withRule(ORDER, "/Order", "RowExists", "../Items/Count", "ROW_EXISTS",
-                "GroupFilled(Items)");
+                render(Dsl.groupFilled(m.group("/Order/Items"))));
 
         RuntimeLaws.Doc rowExists = RuntimeLaws.doc().group("/Order", 1).field("/Order/CustomerName", "Acme", 1, 1)
                 .group("/Order/Items", 1, 1).field("/Order/Items/Sku", "A", 1, 1, 1)

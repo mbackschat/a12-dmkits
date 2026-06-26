@@ -7,6 +7,11 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+
 /**
  * Behavioral law — <b>parallel iteration</b> (KERNEL-SEMANTICS §9). When a rule references two
  * repeatable groups where neither is nested in the other, they are iterated <b>jointly, keyed by a
@@ -23,9 +28,20 @@ import org.junit.jupiter.api.Test;
 class ParallelIterationLawsTest {
 
     private static final String STAFFING = RuntimeLaws.model("models/staffing.dm.json");
+
+    // The condition is authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to the
+    // kernel — the test's own kernel-law assertion is the safety net. The cross-group parallel join is implicit
+    // in the two sibling ABSOLUTE field paths; the renderer relativizes.
+    private static final BoundModel m = BoundModel.ofJson(STAFFING);
+
+    private static String render(Condition c) {
+        return new DslRenderer().render(c);
+    }
+
     private static final String RULE = RuntimeLaws.withRule(STAFFING, "/Staffing", "Mismatch",
             "../Demand/Headcount", "MISMATCH",
-            "FieldsNotCollectivelyFilled(Demand/Headcount, Supply/Headcount)");
+            render(Dsl.fieldsNotCollectivelyFilled(
+                    m.field("/Staffing/Demand/Headcount"), m.field("/Staffing/Supply/Headcount"))));
 
     @Test
     void aDepartmentMissingFromOneSideFires_butAMatchedDepartmentDoesNot() {

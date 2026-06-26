@@ -12,6 +12,12 @@ import org.junit.jupiter.api.Test;
 
 import com.mgmtp.a12.kernel.md.rt.api.IMessage.MessageType;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
+
 /**
  * Behavioral law — <b>{@code NumberOfFilledFields} counting semantics</b> (RT-SEMANTICS-LEDGER:
  * {@code RuntimeController.anzahlAngegebenerEntities}):
@@ -30,9 +36,26 @@ class FilledCountLawsTest {
     private static final String ORDER = RuntimeLaws.model("models/order.dm.json");
     private static final Set<String> ORDER_ROW = Set.of("/Order");
 
+    // Conditions are authored with the rulekit typed DSL and rendered to the canonical string fed to
+    // the kernel — no free-text condition literals.
+    private static final BoundModel m = BoundModel.ofJson(ORDER);
+
+    private static String render(Condition c) {
+        return new DslRenderer().render(c);
+    }
+
     private static String countRule(String op, int n) {
-        return RuntimeLaws.withRule(ORDER, "/Order", "QtyCount", "../Quantity", "QTY_COUNT",
-                "NumberOfFilledFields(Quantity, BackorderQuantity) " + op + " " + n);
+        NumberExpr count = Dsl.numberOfFilledFields(m.field("/Order/Quantity"), m.field("/Order/BackorderQuantity"));
+        Condition cond = switch (op) {
+            case "==" -> count.eq(n);
+            case "!=" -> count.ne(n);
+            case "<" -> count.lt(n);
+            case "<=" -> count.le(n);
+            case ">" -> count.gt(n);
+            case ">=" -> count.ge(n);
+            default -> throw new IllegalArgumentException("unsupported operator " + op);
+        };
+        return RuntimeLaws.withRule(ORDER, "/Order", "QtyCount", "../Quantity", "QTY_COUNT", render(cond));
     }
 
     @Test

@@ -8,6 +8,11 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+
 /**
  * Behavioral law — <b>formal-error suppression is branch-scoped, not rule-scoped</b>
  * (RT-SEMANTICS-LEDGER: {@code MainValidatorController}; refines the §3 finding — probe-corrected:
@@ -30,10 +35,19 @@ class FormalErrorScopeLawsTest {
     private static final String ORDER = RuntimeLaws.model("models/order.dm.json");
     private static final Set<String> ORDER_ROW = Set.of("/Order");
 
+    // Conditions are authored with the rulekit typed DSL (m) and rendered to the canonical string fed
+    // to the kernel — no free-text condition literals. The kernel-law assertion is the safety net.
+    private static final BoundModel m = BoundModel.ofJson(ORDER);
+
+    private static String render(Condition c) {
+        return new DslRenderer().render(c);
+    }
+
     @Test
     void anOrFiresViaItsHealthyBranchDespiteAFormalErrorInTheOther() {
         String model = RuntimeLaws.withRule(ORDER, "/Order", "QtyOrBackorder", "../Quantity", "QTY_OR_BACK",
-                "FieldNotFilled(Quantity) Or [BackorderQuantity] > 0");
+                render(Dsl.fieldNotFilled(m.field("/Order/Quantity"))
+                        .or(m.num("/Order/BackorderQuantity").gt(0))));
 
         // baseline: healthy second branch → fires via FieldNotFilled(Quantity)
         assertTrue(RuntimeLaws.fires(model, "QTY_OR_BACK", ORDER_ROW, Set.of("/Order/Quantity"),
@@ -48,7 +62,8 @@ class FormalErrorScopeLawsTest {
     @Test
     void anAndIsAbsorbedByItsBrokenBranch() {
         String model = RuntimeLaws.withRule(ORDER, "/Order", "QtyAndBackorder", "../Quantity", "QTY_AND_BACK",
-                "FieldNotFilled(Quantity) And [BackorderQuantity] > 0");
+                render(Dsl.fieldNotFilled(m.field("/Order/Quantity"))
+                        .and(m.num("/Order/BackorderQuantity").gt(0))));
 
         // baseline: healthy second branch (5 > 0) → fires
         assertTrue(RuntimeLaws.fires(model, "QTY_AND_BACK", ORDER_ROW, Set.of("/Order/Quantity"),

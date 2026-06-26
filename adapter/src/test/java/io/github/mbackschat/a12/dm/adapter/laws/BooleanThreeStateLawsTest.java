@@ -7,6 +7,10 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+
 /**
  * Behavioral law — <b>Boolean is a three-state field type</b> (KERNEL-SEMANTICS §1): an unset
  * Boolean is a distinct state from {@code True} and {@code False}. The full matrix (verified, in a
@@ -30,12 +34,20 @@ class BooleanThreeStateLawsTest {
     private static final Set<String> ORDER_ROW = Set.of("/Order");
     private static final String FLAG = "/Order/ExpressShipping";
 
+    // Conditions are authored with the rulekit typed DSL and rendered to the canonical string fed to
+    // the kernel — no free-text condition literals.
+    private static final BoundModel m = BoundModel.ofJson(ORDER);
+
+    private static String render(Condition c) {
+        return new DslRenderer().render(c);
+    }
+
     private static final String EQ_TRUE = RuntimeLaws.withRule(ORDER, "/Order", "R", "../ExpressShipping",
-            "EQ_TRUE", "[ExpressShipping] == True");
+            "EQ_TRUE", render(m.bool(FLAG).isTrue()));
     private static final String EQ_FALSE = RuntimeLaws.withRule(ORDER, "/Order", "R", "../ExpressShipping",
-            "EQ_FALSE", "[ExpressShipping] == False");
+            "EQ_FALSE", render(m.bool(FLAG).isFalse()));
     private static final String FILLED = RuntimeLaws.withRule(ORDER, "/Order", "R", "../ExpressShipping",
-            "FILLED", "FieldFilled(ExpressShipping)");
+            "FILLED", render(m.bool(FLAG).filled()));
 
     @Test
     void unsetBooleanSatisfiesNeitherEqualityNorFilled() {

@@ -8,6 +8,11 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance;
+
 /**
  * Behavioral law — <b>the tolerance comparisons fire strictly beyond the tolerance</b>
  * (RT-SEMANTICS-LEDGER: {@code BedingungsOperatorHelper.vergleiche}, the {@code NE1/NE2/NE5/NE10}
@@ -20,10 +25,19 @@ class ToleranceComparisonLawsTest {
     private static final String ORDER = RuntimeLaws.model("models/order.dm.json");
     private static final Set<String> ORDER_ROW = Set.of("/Order");
 
+    // Conditions are authored with the rulekit typed DSL and rendered to the canonical string fed to the kernel.
+    private static final BoundModel M = BoundModel.ofJson(ORDER);
+    private static final String QTY_DRIFT_COND = render(
+            M.num("/Order/Quantity").differsWithTolerance(Tolerance.RANGE_2, M.num("/Order/BackorderQuantity")));
+
+    private static String render(Condition c) {
+        return new DslRenderer().render(c);
+    }
+
     @Test
     void aDifferenceOfExactlyTheToleranceDoesNotFire() {
         String model = RuntimeLaws.withRule(ORDER, "/Order", "QtyDrift", "../Quantity", "QTY_DRIFT",
-                "[Quantity] DiffersWithToleranceRange2 [BackorderQuantity]");
+                QTY_DRIFT_COND);
 
         assertFalse(RuntimeLaws.fires(model, "QTY_DRIFT", ORDER_ROW,
                 Map.of("/Order/Quantity", "10", "/Order/BackorderQuantity", "8")),
@@ -33,7 +47,7 @@ class ToleranceComparisonLawsTest {
     @Test
     void aDifferenceJustBeyondTheToleranceFires() {
         String model = RuntimeLaws.withRule(ORDER, "/Order", "QtyDrift", "../Quantity", "QTY_DRIFT",
-                "[Quantity] DiffersWithToleranceRange2 [BackorderQuantity]");
+                QTY_DRIFT_COND);
 
         assertTrue(RuntimeLaws.fires(model, "QTY_DRIFT", ORDER_ROW,
                 Map.of("/Order/Quantity", "11", "/Order/BackorderQuantity", "8")),
@@ -43,7 +57,7 @@ class ToleranceComparisonLawsTest {
     @Test
     void theToleranceIsSymmetric() {
         String model = RuntimeLaws.withRule(ORDER, "/Order", "QtyDrift", "../Quantity", "QTY_DRIFT",
-                "[Quantity] DiffersWithToleranceRange2 [BackorderQuantity]");
+                QTY_DRIFT_COND);
 
         assertFalse(RuntimeLaws.fires(model, "QTY_DRIFT", ORDER_ROW,
                 Map.of("/Order/Quantity", "8", "/Order/BackorderQuantity", "10")),

@@ -8,6 +8,10 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+
 /**
  * Behavioral law — <b>the "required" property</b> (KERNEL-SEMANTICS §4; encoded in DM-JSON as a
  * field's {@code requirednessConfig: {mode: …}}). An unfilled required field produces the
@@ -29,6 +33,15 @@ class RequiredPropertyLawsTest {
 
     private static final String ORDER = RuntimeLaws.model("models/order.dm.json");
     private static final Set<String> ORDER_ROW = Set.of("/Order");
+
+    // Conditions are authored with the rulekit typed DSL (m) and rendered to the canonical string fed
+    // to the kernel — no free-text condition literals. The kernel-law assertion is the safety net.
+    // (Bound from the base model — the injected requirednessConfig does not change a field's handle.)
+    private static final BoundModel m = BoundModel.ofJson(ORDER);
+
+    private static String render(Condition c) {
+        return new DslRenderer().render(c);
+    }
 
     // /Order/ShippingAddress/Street made required under each mode (a sub-group field, so the parent
     // ShippingAddress can genuinely be filled or not).
@@ -72,7 +85,7 @@ class RequiredPropertyLawsTest {
         // §2 empty-as-0 does not apply and [Quantity] < 100 does NOT fire (only the mandatory error does)
         String reqQty = require(ORDER, "/Order/Quantity", "absoluteOrRelativeToNextRepAncestor");
         String model = RuntimeLaws.withRule(reqQty, "/Order", "QtyLow", "../Quantity", "QTY_LOW",
-                "[Quantity] < 100");
+                render(m.num("/Order/Quantity").lt(100)));
 
         Set<String> empty = RuntimeLaws.firedCodes(model, ORDER_ROW, Set.of("/Order/Quantity"),
                 Map.of("/Order/CustomerName", "Acme"));

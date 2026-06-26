@@ -7,6 +7,11 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
+
 /**
  * Behavioral law — <b>{@code RepetitionNotUnique}</b> (KERNEL-SEMANTICS §9): detects duplicate values
  * <em>across the rows</em> of a repeatable group, firing on each offending row. Two verified facets:
@@ -28,6 +33,14 @@ class RepetitionNotUniqueLawsTest {
 
     private static final String ORDER = RuntimeLaws.model("models/order.dm.json");
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to the
+    // kernel — the test's own kernel-law assertion is the safety net. ABSOLUTE paths; the renderer relativizes.
+    private static final BoundModel m = BoundModel.ofJson(ORDER);
+
+    private static String render(Condition c) {
+        return new DslRenderer().render(c);
+    }
+
     /** Items rows with the given Count values; Sku is the (unique) index field, auto A, B, C, … */
     private static RuntimeLaws.Doc counts(String... values) {
         RuntimeLaws.Doc d = RuntimeLaws.doc().group("/Order", 1).field("/Order/CustomerName", "Acme", 1, 1);
@@ -42,7 +55,7 @@ class RepetitionNotUniqueLawsTest {
     @Test
     void duplicateNonIndexValuesFireOnEachOffendingRow() {
         String model = RuntimeLaws.withRule(ORDER, "/Order", "Uniq", "../Items/Count", "DUP",
-                "RepetitionNotUnique(Items/Count)");
+                render(Dsl.repetitionNotUnique(m.field("/Order/Items/Count"))));
 
         // Counts 5, 5, 9 → rows 1 and 2 are duplicates
         List<RuntimeLaws.Msg> dup = RuntimeLaws.messages(model, counts("5", "5", "9")).stream()
@@ -61,7 +74,7 @@ class RepetitionNotUniqueLawsTest {
         // a rule that would be redundant on the index field — duplicates of Sku (the index) are caught
         // by the kernel's own uniqueIndex check, independent of the author rule (whose code never fires)
         String model = RuntimeLaws.withRule(ORDER, "/Order", "Uniq", "../Items/Sku", "DUP_SKU",
-                "RepetitionNotUnique(Items/Sku)");
+                render(Dsl.repetitionNotUnique(m.field("/Order/Items/Sku"))));
         RuntimeLaws.Doc dupSku = RuntimeLaws.doc().group("/Order", 1).field("/Order/CustomerName", "Acme", 1, 1)
                 .group("/Order/Items", 1, 1).field("/Order/Items/Sku", "A", 1, 1, 1).field("/Order/Items/Count", "1", 1, 1, 1)
                 .group("/Order/Items", 1, 2).field("/Order/Items/Sku", "A", 1, 2, 1).field("/Order/Items/Count", "2", 1, 2, 1);
