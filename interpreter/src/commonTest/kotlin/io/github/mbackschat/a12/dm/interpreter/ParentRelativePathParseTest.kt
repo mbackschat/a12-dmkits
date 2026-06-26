@@ -12,8 +12,9 @@ import kotlin.test.assertEquals
  * missing **`../` parent-relative** case: `../Qty` from base `/Order/Lines/Subs` resolves to the same AST as the
  * absolute `/Order/Lines/Qty`, in BOTH a `[...]` value reference and a bare predicate / aggregate argument.
  *
- * INTERPRETER-GAPS-LEDGER IG1 — surfaced when the perf catalog moved to DSL-authored (group-relative) conditions
- * and `[../Qty]` choked the parser; a real kernel model storing the canonical relative form would hit the same.
+ * INTERPRETER-FINDINGS IF25 (graduated from gap IG1) — surfaced when the perf catalog moved to DSL-authored
+ * (group-relative) conditions and `[../Qty]` choked the parser; a real kernel model storing the canonical
+ * relative form would hit the same.
  */
 class ParentRelativePathParseTest {
 

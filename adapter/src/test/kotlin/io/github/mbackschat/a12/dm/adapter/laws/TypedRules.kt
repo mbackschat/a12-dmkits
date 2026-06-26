@@ -22,9 +22,9 @@ object TypedRules {
     /**
      * The rule's condition in the kernel-canonical GROUP-RELATIVE form — `[Rule.render]`, the dogfood-faithful
      * derived render both engines parse (the kernel natively; the interpreter via the relative + IF24-absolute +
-     * IG1 `../` parent-relative path support). This is the strongest differential lock: every catalog/fuzz shape
+     * IF25 `../` parent-relative path support). This is the strongest differential lock: every catalog/fuzz shape
      * now drives the interpreter's `../` resolution against the real kernel, since cross-level UP refs render as
-     * `../Qty`. (Until IG1 shipped, this had to render ABSOLUTE as a workaround — see INTERPRETER-GAPS-LEDGER IG1.)
+     * `../Qty`. (Until the `../` parser support shipped — INTERPRETER-FINDINGS IF25 — this had to render ABSOLUTE.)
      */
     private fun cond(rule: Rule): String = rule.render()
 
