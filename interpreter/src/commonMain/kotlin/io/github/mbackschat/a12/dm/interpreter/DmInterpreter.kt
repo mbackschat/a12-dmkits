@@ -148,10 +148,11 @@ class DmInterpreter @JvmOverloads constructor(
      * a repetition level (the encouraged form). With the whole document relevant this equals [validate].
      * KERNEL-FINDINGS "Partial validation".
      *
-     * Boundaries (vs the kernel) — each tracked as an open gap in INTERPRETER-GAPS-LEDGER §1, not as loose
-     * prose here: wildcard/aggregate references under a *subset* of relevant repetitions are unverified for
-     * arbitrary subsets (IG9); a `CustomCondition` is invoked with `relevant = null` (full) in partial mode
-     * (IG10); global-field auto-relevance is not modeled (IG11).
+     * Modeled & locked: starred aggregates under a *subset* of relevant repetitions are gated UNKNOWN (IF35),
+     * and GLOBAL fields are auto-relevant (IF37, the kernel's md-layer behavior). Remaining boundaries — tracked
+     * as open gaps in INTERPRETER-GAPS-LEDGER §1, not as loose prose here: a `CustomCondition` is invoked with
+     * `relevant = null` (full) in partial mode (IG10), and `uniqueIndex`/`RepetitionNotUnique` under a subset of
+     * relevant rows is unverified (probe).
      */
     fun validatePart(doc: Document, relevant: Set<RelevantEntity>, locale: String = "en_US"): ValidationOutcome =
         validateWith(doc, locale, relevanceOf(relevant))
@@ -925,7 +926,10 @@ class DmInterpreter @JvmOverloads constructor(
      * relevant (the kernel rule). An empty set → nothing relevant (no rule runs).
      */
     private fun relevanceOf(relevant: Set<RelevantEntity>): Relevance =
-        { path, reps -> relevant.any { matches(it, path, reps) } }
+        // The kernel's md-runtime-service auto-adds every GLOBAL field (wildcarded at all reps) to the relevant
+        // set before validating (LowKernelApiUtils.addGlobalFieldsToRelevantEntities), so a global field's
+        // instances are relevant regardless of the caller's set — IG11→IF37, KERNEL-FINDINGS "Partial validation".
+        { path, reps -> path in model.globalFields || relevant.any { matches(it, path, reps) } }
 
     /** Whether relevant entity [r] covers the instance at [path]/[reps] — [r.path] a prefix of [path] (== or a
      *  group ancestor) with each of [r]'s indices either [RelevantEntity.ALL] or equal to the instance's. */

@@ -18,7 +18,6 @@ A systematic **7-surface gap audit (2026-06-26, kernel-source-verified)** found 
 | code | item | status / action | detail |
 |---|---|---|---|
 | **IG10** | partial: a `CustomCondition` is invoked with `relevant = null` (full) in partial mode | open — thread the relevance predicate into the `CustomCondition` invocation; lock with a partial-mode `CustomConditionDiffTest` case. | `DmInterpreter.validatePart` KDoc |
-| **IG11** | partial: kernel **global-field auto-relevance** not modeled | open — confirm reachability (does a global-field model load?) → model it, or move to §3 with a trigger. | `DmInterpreter.validatePart` KDoc |
 | | partial: `uniqueIndex`/`RepetitionNotUnique` under subset-relevant rows *(probe — sibling of IG9)* | open — interpreter scans both rows; kernel may require the duplicate *partner* row relevant to flag the collision. Probe `firedCodesPart` with one row relevant. | `DmInterpreter.kt:255-356` |
 
 ### compute()

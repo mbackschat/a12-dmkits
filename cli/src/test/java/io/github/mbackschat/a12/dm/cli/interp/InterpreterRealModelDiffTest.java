@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.interp;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.InputStream;
@@ -26,6 +27,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Message;
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef;
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef;
 import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 
 /**
  * The strongest differential: load a REAL DM-JSON model into the kernel-free interpreter (via
@@ -65,6 +67,21 @@ class InterpreterRealModelDiffTest {
         assertValidationMatches("models/order-variant.dm.json",
                 "{ \"fields\": { \"Order\": { \"OrderDate\": \"2024-06-01\", \"DeliveryDate\": \"2024-05-15\" } } }",
                 Set.of());
+    }
+
+    @Test
+    void loaderReadsTheGlobalFieldFlagIntoModelDef() {
+        // IG11->IF37: the kernel `global` field flag drives partial-validation auto-relevance. The loader must
+        // read it from the Field body (`"global": true`) into ModelDef.globalFields — the sibling of the
+        // ModelDef-built adapter differential (PartialValidationGlobalFieldDiffTest).
+        String model = DocumentModelDraft.named("policy").locale("en_US")
+                .rootGroup("Policy", g -> g.numberField("Premium", b -> { })
+                        .numberField("RiskScore", b -> b.global()))
+                .build().toJson();
+        ModelDef def = InterpreterModelLoader.load(model);
+        assertTrue(def.getGlobalFields().contains("/Policy/RiskScore"),
+                "the loader reads the kernel `global` flag into ModelDef.globalFields");
+        assertFalse(def.getGlobalFields().contains("/Policy/Premium"), "a non-global field is not global");
     }
 
     @Test

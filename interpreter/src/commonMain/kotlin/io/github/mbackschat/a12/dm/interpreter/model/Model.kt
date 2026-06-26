@@ -166,6 +166,11 @@ data class FieldDef(
     val numberMinLength: Int? = null,
     /** NUMBER `maxLength` — value-string length above it → `zahlZuLang`. */
     val numberMaxLength: Int? = null,
+    /** The kernel's `global` field flag (`IField.isGlobal`). A global field is **auto-relevant in partial
+     *  validation**: the md-runtime-service layer adds every global field (wildcarded at all reps) to the
+     *  caller's relevant set before validating — so a rule whose error field is global RUNS even when the
+     *  caller's relevant set omits it ([ModelDef.globalFields] → [io.github.mbackschat.a12.dm.interpreter.DmInterpreter.validatePart]). No effect on full validation. */
+    val global: Boolean = false,
 )
 
 /**
@@ -294,6 +299,12 @@ data class ModelDef(
 ) {
     val kinds: Map<String, Kind> = fields.associate { it.path to it.kind }
     val repeatable: Set<String> = repeatableGroups + declaredReps.keys
+
+    /** Paths of the model's `global` fields ([FieldDef.global]). In **partial** validation the kernel's
+     *  md-runtime-service auto-adds every global field (all reps) to the relevant set, so a global field's
+     *  instances are relevant regardless of the caller's set; full validation is unaffected. KERNEL-FINDINGS
+     *  "Partial validation". */
+    val globalFields: Set<String> = fields.filter { it.global }.map { it.path }.toSet()
 
     /** Unsigned NUMBER fields (the kernel's `hatVorzeichen == false`) — the [io.github.mbackschat.a12.dm.interpreter.eval.Document]'s
      *  directional-polarity input ([FieldDef.signed]). */
