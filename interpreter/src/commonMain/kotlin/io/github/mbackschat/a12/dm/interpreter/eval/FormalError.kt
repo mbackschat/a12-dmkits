@@ -60,6 +60,26 @@ fun customTypeInvalidText(locale: String): String =
     if (locale.startsWith("de")) "Wert ist kein gültiger Wert des benutzerdefinierten Feldtyps."
     else "Value is not a valid instance of the custom field type."
 
+/**
+ * The kernel's STRUCTURAL over-repetition codes (`FormalChecker.checkIndicesLessOrEqualThanMax`): a repeatable
+ * group instance whose **own** row index exceeds its declared `repeatability` is **`zuGrosseZeile`** (on the
+ * group entity); an entity (e.g. a field) sitting **inside** an over-limit repeatable ancestor — where the
+ * over-limit index is an *intermediate* level, not the entity's own — is **`zuGrosseKontextnummer`**. Both are
+ * VALUE errors on the `formalePruefung` path, and an over-limit instance is "unknown" (its ordinary checks are
+ * suppressed). KERNEL-FINDINGS "over-repetition errors". (The third sibling `FEHLER_LAUFENDE_NR_ZU_GROSS` rides
+ * the USB/multi-form form counter — out of the single-document interpreter's scope.)
+ */
+const val OVER_REPETITION_ROW = "zuGrosseZeile"
+const val OVER_REPETITION_CONTEXT = "zuGrosseKontextnummer"
+
+/** Our OWN end-user text for an over-repetition error (Option-A). */
+fun overRepetitionText(locale: String, row: Boolean): String = when {
+    row && locale.startsWith("de") -> "Es gibt mehr Zeilen, als die Wiederholbarkeit der Gruppe erlaubt."
+    row -> "There are more rows than the group's repeatability allows."
+    locale.startsWith("de") -> "Der Wiederholungsindex einer übergeordneten Gruppe ist zu groß."
+    else -> "A containing group's repetition index is too large."
+}
+
 /** The formal-error checks the interpreter performs, each with the kernel's verbatim [id]. */
 enum class FormalErrorCode(val id: String) {
     /** A DATE value that is not `YYYY-MM-DD`. */

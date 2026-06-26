@@ -8,7 +8,10 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
 import io.github.mbackschat.a12.dm.interpreter.eval.CUSTOM_TYPE_INVALID
 import io.github.mbackschat.a12.dm.interpreter.eval.FORMAL_RULE_PATH
+import io.github.mbackschat.a12.dm.interpreter.eval.OVER_REPETITION_CONTEXT
+import io.github.mbackschat.a12.dm.interpreter.eval.OVER_REPETITION_ROW
 import io.github.mbackschat.a12.dm.interpreter.eval.customTypeInvalidText
+import io.github.mbackschat.a12.dm.interpreter.eval.overRepetitionText
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.MANDATORY_FIELD
 import io.github.mbackschat.a12.dm.interpreter.eval.formalError
@@ -163,7 +166,7 @@ class DmInterpreter @JvmOverloads constructor(
     private fun validateWith(doc: Document, locale: String, isRelevant: Relevance): ValidationOutcome {
         val dup = duplicateIndexCells(doc)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
         val messages = (formalErrors(doc, locale, isRelevant) + mandatoryErrors(doc, locale, isRelevant)
-                + uniquenessMessages(dup, locale, isRelevant)).toMutableList()
+                + uniquenessMessages(dup, locale, isRelevant) + overRepetitionMessages(doc, locale, isRelevant)).toMutableList()
         val unsupported = customTypeUnsupported(doc, isRelevant).toMutableList()
         val cache: FormalCache = HashMap()   // memo across ALL rules of this validation (the doc is immutable here)
         for (rule in model.rules) {
@@ -187,6 +190,9 @@ class DmInterpreter @JvmOverloads constructor(
     private fun formalErrors(doc: Document, locale: String, isRelevant: Relevance): List<Message> =
         doc.valuedFields().filter { isRelevant(it.path, it.reps) }.mapNotNull { vf ->
             val kind = model.kinds[vf.path] ?: return@mapNotNull null
+            // An over-limit cell is "unknown": it carries zuGrosseKontextnummer (the over-repetition pass), not a
+            // format/constraint error — the kernel stops at the over-limit index and skips the field's other checks.
+            if (overLimitLevel(vf.path, vf.reps) != null) return@mapNotNull null
             val scale = model.scaleOf(vf.path)
             val code = formalError(kind, vf.raw, scale, model.dateLikeFormatOf(vf.path), model.datePrecisionOf(vf.path),
                     model.rangeSeparatorOf(vf.path), model.constraintsOf(vf.path))
@@ -220,8 +226,10 @@ class DmInterpreter @JvmOverloads constructor(
                 if (!doc.filledAt(path, reps) && isRelevant(path, reps)) out += mandatoryMessage(path, reps, locale)
             } else {
                 for (ctx in doc.contextsFor(emissionScope(path))) {
-                    if (requiredEmpty(path, ctx) && isRelevant(path, ctx.repsOf(path))) {
-                        out += mandatoryMessage(path, ctx.repsOf(path), locale)
+                    val r = ctx.repsOf(path)
+                    // An over-limit row's mandatory check is suppressed (it carries the over-repetition code instead).
+                    if (requiredEmpty(path, ctx) && isRelevant(path, r) && overLimitLevel(path, r) == null) {
+                        out += mandatoryMessage(path, r, locale)
                     }
                 }
             }
@@ -249,6 +257,7 @@ class DmInterpreter @JvmOverloads constructor(
         for (indexField in model.indexFields) {
             val rows = doc.contextsFor(parentGroup(indexField)).mapNotNull { ctx ->
                 val reps = ctx.repsOf(indexField)
+                if (overLimitLevel(indexField, reps) != null) return@mapNotNull null   // over-limit rows are suppressed
                 ctx.displayValue(indexField)?.takeIf { it.isNotEmpty() }?.let { reps to it }
             }
             rows.groupBy { it.first.dropLast(2) }.forEach { (_, scope) ->
@@ -619,6 +628,10 @@ class DmInterpreter @JvmOverloads constructor(
      *  Wrapped by [formalErrorAt]'s [FormalCache] (the document is immutable during a validation). [reps] is the
      *  resolved instance of [path] (passed in, not recomputed — `repsOf` allocates and the caller already has it). */
     private fun computeFormalErrorAt(path: String, reps: List<Int>, ctx: EvalContext, dup: Set<Pair<String, List<Int>>>): String? {
+        // An over-limit cell (its row exceeds a declared `repeatability`) is "unknown" — it carries the
+        // over-repetition code, suppressing any rule that references it AND its own format/required/unique checks,
+        // exactly as the kernel skips an over-limit instance's ordinary checks (KERNEL-FINDINGS "over-repetition").
+        if (overLimitLevel(path, reps) != null) return OVER_REPETITION_CONTEXT
         val raw = ctx.displayValue(path)
         if (raw != null) {
             val kind = model.kinds[path] ?: return null
@@ -649,6 +662,51 @@ class DmInterpreter @JvmOverloads constructor(
             if (typeName in predefinedTypes) null
             else UnsupportedRule(formatPointer(vf.path, vf.reps), "custom field type '$typeName' has no registered validator")
         }
+
+    /** The path-part index of the OUTERMOST repeatable group whose row index in [reps] exceeds its declared
+     *  `repeatability` ([ModelDef.declaredReps]), or null when within all declared bounds — the over-repetition
+     *  test (KERNEL-FINDINGS "over-repetition errors", the kernel's `FormalChecker.checkIndicesLessOrEqualThanMax`). */
+    private fun overLimitLevel(path: String, reps: List<Int>): Int? {
+        if (model.declaredReps.isEmpty()) return null
+        val parts = pathParts(path)
+        for (k in parts.indices) {
+            val max = model.declaredReps["/" + parts.take(k + 1).joinToString("/")] ?: continue
+            if (k < reps.size && reps[k] > max) return k
+        }
+        return null
+    }
+
+    /**
+     * The STRUCTURAL over-repetition messages (KERNEL-FINDINGS "over-repetition errors"; the kernel's
+     * `FormalChecker`): each entity instance whose repetition index exceeds the declared `repeatability` is
+     * flagged — a **field** inside an over-limit repeatable ancestor (the over-limit level is *intermediate*) →
+     * `zuGrosseKontextnummer` (full field pointer); a **repeatable group row** whose OWN index is over the cap →
+     * `zuGrosseZeile` (group pointer — [formatPointer] omits the group's own trailing index). One VALUE message
+     * per over-limit instance. An over-limit instance is "unknown": [computeFormalErrorAt] suppresses rules over
+     * it and [formalErrors] skips its format check (it carries the over-repetition code instead).
+     */
+    private fun overRepetitionMessages(doc: Document, locale: String, isRelevant: Relevance): List<Message> {
+        if (model.declaredReps.isEmpty()) return emptyList()
+        val out = mutableListOf<Message>()
+        for (vf in doc.valuedFields()) {
+            if (overLimitLevel(vf.path, vf.reps) != null && isRelevant(vf.path, vf.reps)) {
+                out += Message(OVER_REPETITION_CONTEXT, FORMAL_RULE_PATH, formatPointer(vf.path, vf.reps),
+                    Severity.ERROR, MsgType.VALUE, overRepetitionText(locale, row = false))
+            }
+        }
+        for (group in model.declaredReps.keys) {
+            val ownLevel = pathParts(group).size - 1
+            for (ctx in doc.contextsFor(group)) {
+                val row = ctx.repsOf(group)
+                val lvl = overLimitLevel(group, row) ?: continue
+                if (!isRelevant(group, row)) continue
+                val isRow = lvl == ownLevel
+                out += Message(if (isRow) OVER_REPETITION_ROW else OVER_REPETITION_CONTEXT, FORMAL_RULE_PATH,
+                    formatPointer(group, row), Severity.ERROR, MsgType.VALUE, overRepetitionText(locale, isRow))
+            }
+        }
+        return out
+    }
 
     /**
      * The contexts a rule is evaluated over. The normal case: one per row of its iteration **scope** — the
