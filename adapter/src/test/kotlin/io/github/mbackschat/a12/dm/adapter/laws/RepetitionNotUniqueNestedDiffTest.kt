@@ -7,6 +7,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -20,8 +24,15 @@ import org.junit.jupiter.api.Test
 class RepetitionNotUniqueNestedDiffTest {
 
     private val project = RuntimeLaws.model("models/project.dm.json")
+
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. Refs use ABSOLUTE paths; the renderer emits absolute and both
+    // engines accept it (IF24). `repetitionNotUnique(field).from(group)` is the `@From` reference-scope form.
+    private val m = BoundModel.ofJson(project)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     private val fields = listOf(FieldDef(PHASE, Kind.STRING), FieldDef(TASK_ID, Kind.STRING), FieldDef(EFFORT, Kind.NUMBER))
-    private val cond = "RepetitionNotUnique(Milestones/Tasks/Effort)"
+    private val cond = render(Dsl.repetitionNotUnique(m.field(EFFORT)))
 
     /** Milestones each holding a list of Task Efforts; Phase/TaskId distinct (indexes). Compare kernel vs interp. */
     private fun agree(efforts: List<List<String>>, msg: String) = agree(cond, efforts, msg)
@@ -66,15 +77,15 @@ class RepetitionNotUniqueNestedDiffTest {
 
     // @From overrides the reference group. M1[5,7] M2[5,9]: the 5 dups across milestones, unique within each.
     @Test fun fromMilestonesIsGlobal() =
-        agree("RepetitionNotUnique(Milestones/Tasks/Effort @From Milestones)",
+        agree(render(Dsl.repetitionNotUnique(m.field(EFFORT)).from(m.group("/Project/Milestones"))),
             listOf(listOf("5", "7"), listOf("5", "9")), "@From Milestones → reference Milestones → checked across all milestones (fires)")
 
     @Test fun fromTasksIsPerMilestone() =
-        agree("RepetitionNotUnique(Milestones/Tasks/Effort @From Milestones/Tasks)",
+        agree(render(Dsl.repetitionNotUnique(m.field(EFFORT)).from(m.group("/Project/Milestones/Tasks"))),
             listOf(listOf("5", "7"), listOf("5", "9")), "@From Milestones/Tasks → reference Tasks → per-milestone scope (no cross-milestone dup → none)")
 
     @Test fun fromTasksStillFiresWithinAMilestone() =
-        agree("RepetitionNotUnique(Milestones/Tasks/Effort @From Milestones/Tasks)",
+        agree(render(Dsl.repetitionNotUnique(m.field(EFFORT)).from(m.group("/Project/Milestones/Tasks"))),
             listOf(listOf("5", "5"), listOf("7", "9")), "@From Milestones/Tasks → 5,5 within M1 still flagged (per-milestone)")
 
     private companion object {

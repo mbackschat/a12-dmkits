@@ -7,6 +7,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -28,6 +32,11 @@ class NowDiffTest {
     private val fields = listOf(FieldDef(SA, Kind.DATE_TIME, format = "yyyy-MM-dd'T'HH:mm:ss"))
     private val clock = EvalClock(today = "2025-06-23", now = "2025-06-23T12:00:00")
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. The renderer emits absolute paths; both engines accept them.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     private fun agree(cond: String, instant: String, msg: String) {
         val k = RuntimeLaws.fires(RuntimeLaws.withRule(order, "/Order", "R", "../ScheduledAt", "NW", cond), "NW",
             RuntimeLaws.doc().group("/Order", 1).field(SA, instant, 1, 1))
@@ -39,13 +48,13 @@ class NowDiffTest {
     }
 
     @Test fun scheduledAfterNow() {
-        val c = "FieldFilled(ScheduledAt) And [ScheduledAt] > Now"
+        val c = render(m.dateTime(SA).filled().and(m.dateTime(SA).after(Dsl.now())))
         agree(c, FAR_PAST, "a year-2000 instant is not after now")
         agree(c, FAR_FUTURE, "a year-2999 instant is after now")
     }
 
     @Test fun scheduledBeforeNow() {
-        val c = "FieldFilled(ScheduledAt) And [ScheduledAt] < Now"
+        val c = render(m.dateTime(SA).filled().and(m.dateTime(SA).before(Dsl.now())))
         agree(c, FAR_PAST, "a year-2000 instant is before now")
         agree(c, FAR_FUTURE, "a year-2999 instant is not before now")
     }

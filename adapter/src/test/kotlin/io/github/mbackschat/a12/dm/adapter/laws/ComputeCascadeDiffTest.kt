@@ -6,6 +6,12 @@ import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -20,8 +26,12 @@ import org.junit.jupiter.api.Test
 class ComputeCascadeDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
-    private val opA = "{ [Quantity] * 2 }"
-    private val opB = "{ [StockOnHand] + 1 }"
+    // Operations authored with the rulekit typed DSL ([m]), rendered (relative to the computation group
+    // /Order) to the canonical string fed to BOTH engines — no free-text operation literals.
+    private val m = BoundModel.ofJson(order)
+    private fun renderOp(c: Calculation): String = DslRenderer(ConditionLanguage.EN, "/Order").render(c)
+    private val opA = renderOp(m.num("/Order/Quantity").asNumber().times(NumberExpr(NumberLiteral.of(2))).expression())
+    private val opB = renderOp(m.num("/Order/StockOnHand").asNumber().plus(1).expression())
     private val kModel = RuntimeLaws.withComputation(
         RuntimeLaws.withComputation(order, "/Order", "CompA", "../StockOnHand", opA),
         "/Order", "CompB", "../BackorderQuantity", opB)

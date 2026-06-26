@@ -7,6 +7,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.model.Verdict
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -19,7 +23,15 @@ import org.junit.jupiter.api.Test
 class DifferenceInDaysDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
-    private val condition = "AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, DeliveryDate) < 0"
+
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. The renderer emits absolute paths; both engines accept them.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+    private val condition = render(
+        Dsl.allFieldsFilled(m.date(OD).field(), m.date(DD).field())
+            .and(Dsl.differenceInDays(m.date(OD), m.date(DD)).lt(0))
+    )
     private val rule = RuleDef("/Order/DeliveryNotBeforeOrder", "/Order", condition, "DELIVERY_BEFORE_ORDER", "../DeliveryDate")
     private val model = RuntimeLaws.withRule(order, "/Order", "DeliveryNotBeforeOrder", "../DeliveryDate", "DELIVERY_BEFORE_ORDER", condition)
     private val def = ModelDef(listOf(FieldDef(OD, Kind.DATE), FieldDef(DD, Kind.DATE)), listOf(rule))

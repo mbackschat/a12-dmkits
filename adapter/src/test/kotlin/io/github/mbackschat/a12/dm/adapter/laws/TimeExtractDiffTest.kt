@@ -6,6 +6,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -22,6 +26,11 @@ class TimeExtractDiffTest {
     private val fields = listOf(FieldDef(OT, Kind.TIME))
     private val kinds = mapOf(OT to Kind.TIME)
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. The renderer emits absolute paths; both engines accept them.
+    private val m = BoundModel.ofJson(appt)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     private fun agree(cond: String, time: String, msg: String) {
         val k = RuntimeLaws.fires(RuntimeLaws.withRule(appt, "/Appointment", "R", "../OnSiteTime", "TX", cond), "TX",
             RuntimeLaws.doc().group("/Appointment", 1).field(OT, time, 1, 1))
@@ -31,17 +40,17 @@ class TimeExtractDiffTest {
     }
 
     @Test fun hoursFromTime() {
-        val c = "HoursFromTime(OnSiteTime) >= 12"
+        val c = render(Dsl.hoursFromTime(m.time(OT)).ge(12))
         agree(c, "14:30:50", "14:00+ is afternoon"); agree(c, "09:30:00", "09:00 is morning")
     }
 
     @Test fun minutesFromTime() {
-        val c = "MinutesFromTime(OnSiteTime) == 30"
+        val c = render(Dsl.minutesFromTime(m.time(OT)).eq(30))
         agree(c, "14:30:50", "half past fires"); agree(c, "14:45:00", "quarter to no")
     }
 
     @Test fun secondsFromTime() {
-        val c = "SecondsFromTime(OnSiteTime) < 10"
+        val c = render(Dsl.secondsFromTime(m.time(OT)).lt(10))
         agree(c, "14:30:05", "5s < 10 fires"); agree(c, "14:30:50", "50s not < 10")
     }
 

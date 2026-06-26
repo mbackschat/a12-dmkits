@@ -6,6 +6,11 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -21,9 +26,20 @@ class DateDifferenceDiffTest {
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val fields = listOf(FieldDef(OD, Kind.DATE), FieldDef(DD, Kind.DATE))
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. The renderer emits absolute paths; both engines accept them.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+    // DifferenceIn<Unit>(OrderDate, DeliveryDate) — the unit selects the Dsl builder; `fn` names it for messages.
+    private fun difference(fn: String): NumberExpr = when (fn) {
+        "DifferenceInMonths" -> Dsl.differenceInMonths(m.date(OD), m.date(DD))
+        "DifferenceInYears" -> Dsl.differenceInYears(m.date(OD), m.date(DD))
+        else -> error("unmapped difference fn: $fn")
+    }
+
     /** Assert the interpreter agrees with the kernel that `fn(OrderDate, DeliveryDate) == k`. */
     private fun pin(fn: String, a: String, b: String, k: Int) {
-        val cond = "$fn(OrderDate, DeliveryDate) == $k"
+        val cond = render(difference(fn).eq(k.toLong()))
         val kf = RuntimeLaws.fires(RuntimeLaws.withRule(order, "/Order", "R", "../DeliveryDate", "DD", cond), "DD",
             RuntimeLaws.doc().group("/Order", 1).field(OD, a, 1, 1).field(DD, b, 1, 1))
         val if_ = DmInterpreter(ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "DD", "../DeliveryDate"))))

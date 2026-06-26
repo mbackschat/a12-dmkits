@@ -6,6 +6,11 @@ import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -18,13 +23,18 @@ import org.junit.jupiter.api.Test
 class DateRangeComputeDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
+    // Operation authored with the rulekit typed DSL ([m]) — DateRange(start, end) — rendered (relative to
+    // the computation group /Order) to the canonical string fed to BOTH engines; no free-text literal.
+    private val m = BoundModel.ofJson(order)
+    private fun renderOp(c: Calculation): String = DslRenderer(ConditionLanguage.EN, "/Order").render(c)
     private val fields = listOf(
         FieldDef(OD, Kind.DATE), FieldDef(DD, Kind.DATE),
         FieldDef(CW, Kind.DATE_RANGE, format = "dd.MM.yyyy", rangeSeparator = "-"),
     )
-    private val comp = ComputationDef(CW, "/Order", "DateRange(OrderDate, DeliveryDate)")
+    private val operation = renderOp(Dsl.dateRange(m.date(OD), m.date(DD)))
+    private val comp = ComputationDef(CW, "/Order", operation)
     private val def = ModelDef(fields, emptyList(), computations = listOf(comp))
-    private val model = RuntimeLaws.withComputation(order, "/Order", "CWComp", "../CoverageWindow", "DateRange(OrderDate, DeliveryDate)")
+    private val model = RuntimeLaws.withComputation(order, "/Order", "CWComp", "../CoverageWindow", operation)
 
     private fun agree(orderDate: String, deliveryDate: String, msg: String) {
         val kernel = RuntimeLaws.compute(model, RuntimeLaws.doc()

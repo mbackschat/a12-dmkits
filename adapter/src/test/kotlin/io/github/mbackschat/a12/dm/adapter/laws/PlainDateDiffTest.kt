@@ -6,6 +6,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -26,9 +30,14 @@ class PlainDateDiffTest {
         FieldDef(AD, Kind.DATE, format = "dd.MM.yyyy"),   // de, non-ISO
     )
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. The renderer emits absolute paths; both engines accept them.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     /** `YearFromDate(field) > 2020` over [field] = [value] — kernel and interpreter must agree on the relevant codes. */
-    private fun agree(field: String, name: String, value: String, code: String, errorRel: String) {
-        val cond = "FieldFilled($name) And YearFromDate($name) > 2020"
+    private fun agree(field: String, value: String, code: String, errorRel: String) {
+        val cond = render(m.date(field).filled().and(Dsl.yearFromDate(m.date(field)).gt(2020)))
         val kModel = RuntimeLaws.withRule(order, "/Order", code, errorRel, code, cond)
         val def = ModelDef(fields, listOf(RuleDef("/Order/$code", "/Order", cond, code, errorRel)))
         val kDoc = RuntimeLaws.doc().group("/Order", 1).field(field, value, 1, 1)
@@ -40,11 +49,11 @@ class PlainDateDiffTest {
         assertEquals(kernel, interp, "$field = '$value'  (kernel=$kernel interp=$interp)")
     }
 
-    @Test fun nonIsoFieldExtractsItsOwnFormat() = agree(AD, "ApproxDate", "15.06.2024", "AY", "../ApproxDate")
-    @Test fun nonIsoFieldRejectsAnIsoValue() = agree(AD, "ApproxDate", "2024-06-15", "AY", "../ApproxDate")
-    @Test fun nonIsoFieldRejectsGarbage() = agree(AD, "ApproxDate", "not-a-date", "AY", "../ApproxDate")
-    @Test fun isoFieldExtractsIsoValue() = agree(OD, "OrderDate", "2024-06-15", "OY", "../OrderDate")
-    @Test fun isoFieldRejectsADeValue() = agree(OD, "OrderDate", "15.06.2024", "OY", "../OrderDate")
+    @Test fun nonIsoFieldExtractsItsOwnFormat() = agree(AD, "15.06.2024", "AY", "../ApproxDate")
+    @Test fun nonIsoFieldRejectsAnIsoValue() = agree(AD, "2024-06-15", "AY", "../ApproxDate")
+    @Test fun nonIsoFieldRejectsGarbage() = agree(AD, "not-a-date", "AY", "../ApproxDate")
+    @Test fun isoFieldExtractsIsoValue() = agree(OD, "2024-06-15", "OY", "../OrderDate")
+    @Test fun isoFieldRejectsADeValue() = agree(OD, "15.06.2024", "OY", "../OrderDate")
 
     private companion object {
         const val OD = "/Order/OrderDate"

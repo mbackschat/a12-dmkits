@@ -7,6 +7,12 @@ import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Calculation
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -22,6 +28,13 @@ class ComputationPreconditionDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val fields = listOf(FieldDef(QTY, Kind.NUMBER), FieldDef(PRICE, Kind.NUMBER, scale = 2))
+
+    // Preconditions and operations are authored with the rulekit typed DSL ([m]) and rendered (relative to
+    // the computation group /Order) to the canonical strings fed to BOTH engines — no free-text literals.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer(ConditionLanguage.EN, "/Order").render(c)
+    private fun renderOp(c: Calculation): String = DslRenderer(ConditionLanguage.EN, "/Order").render(c)
+    private fun op(value: String): String = renderOp(NumberLiteral.of(value))
 
     /** Compute UnitPrice for the given [quantity] under [common] + [alts] on BOTH engines; assert they agree. */
     private fun agree(common: String?, alts: List<Pair<String?, String>>, quantity: String?, msg: String) {
@@ -46,13 +59,13 @@ class ComputationPreconditionDiffTest {
         else assertEquals(kVal, iVal, "$msg (kernel=$kVal interp=$iVal)")
     }
 
-    private val tier = listOf<Pair<String?, String>>("[Quantity] < 100" to "9.99", "[Quantity] >= 100" to "0")
+    private val tier = listOf<Pair<String?, String>>(render(m.num(QTY).lt(100)) to op("9.99"), render(m.num(QTY).ge(100)) to op("0"))
 
     @Test fun lowPicksFirstAlternative() = agree(null, tier, "50", "Quantity<100 → first alt 9.99")
     @Test fun highPicksSecondAlternative() = agree(null, tier, "150", "Quantity>=100 → second alt 0")
 
     // A gap between the alternatives' preconditions: no alternative matches → the field is cleared.
-    private val gapped = listOf<Pair<String?, String>>("[Quantity] < 50" to "1", "[Quantity] > 100" to "2")
+    private val gapped = listOf<Pair<String?, String>>(render(m.num(QTY).lt(50)) to op("1"), render(m.num(QTY).gt(100)) to op("2"))
 
     @Test fun noAlternativeMatchesClears() = agree(null, gapped, "75", "75 in [50,100] → no alt → cleared")
     @Test fun gappedLowMatches() = agree(null, gapped, "20", "20<50 → first alt 1")
@@ -64,9 +77,9 @@ class ComputationPreconditionDiffTest {
 
     // commonPrecondition gates the whole computation: false → cleared regardless of the alternatives.
     @Test fun commonPreconditionFalseClears() =
-        agree("[Quantity] >= 100", tier, "50", "common [Quantity]>=100 is false at 50 → cleared")
+        agree(render(m.num(QTY).ge(100)), tier, "50", "common [Quantity]>=100 is false at 50 → cleared")
     @Test fun commonPreconditionTrueProceeds() =
-        agree("[Quantity] >= 100", listOf(null to "7"), "150", "common true at 150 → unconditional 7")
+        agree(render(m.num(QTY).ge(100)), listOf(null to op("7")), "150", "common true at 150 → unconditional 7")
 
     private companion object {
         const val QTY = "/Order/Quantity"

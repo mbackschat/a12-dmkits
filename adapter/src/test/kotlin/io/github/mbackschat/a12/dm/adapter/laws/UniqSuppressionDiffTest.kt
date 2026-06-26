@@ -6,6 +6,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -18,6 +22,13 @@ import org.junit.jupiter.api.Test
 class UniqSuppressionDiffTest {
 
     private val fuzz = RuntimeLaws.model("models/fuzz.dm.json")
+
+    // The referencing rule's condition is authored with the rulekit typed DSL ([m]) and rendered to the canonical
+    // string fed to BOTH engines — no free-text condition literals. Refs use ABSOLUTE paths; the renderer emits
+    // absolute and both engines accept it (IF24). The duplicate-index doc setup is unchanged.
+    private val m = BoundModel.ofJson(fuzz)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     private val fields = listOf(FieldDef(ITEM, Kind.STRING), FieldDef(PRICE, Kind.NUMBER, scale = 2))
 
     /** Two Lines with index values [k1]/[k2] (Price 5 each); the author rule's firing count must match. */
@@ -36,13 +47,13 @@ class UniqSuppressionDiffTest {
     }
 
     @Test fun ruleOnUniqueIndexFires() =
-        agree("FieldFilled(ItemId) And Length(ItemId) > 0", "../ItemId", "A", "B", "unique index → rule fires both rows")
+        agree(render(m.field(ITEM).filled().and(Dsl.length(m.str(ITEM)).gt(0))), "../ItemId", "A", "B", "unique index → rule fires both rows")
 
     @Test fun ruleOnDuplicateIndexIsSuppressed() =
-        agree("FieldFilled(ItemId) And Length(ItemId) > 0", "../ItemId", "A", "A", "duplicate index → field unknown → rule suppressed")
+        agree(render(m.field(ITEM).filled().and(Dsl.length(m.str(ITEM)).gt(0))), "../ItemId", "A", "A", "duplicate index → field unknown → rule suppressed")
 
     @Test fun ruleOnSiblingFieldStillFiresOnDuplicateRows() =
-        agree("[Price] > 0", "../Price", "A", "A", "a rule on a sibling field still fires on duplicate-index rows (branch-scoped)")
+        agree(render(m.num(PRICE).gt(0)), "../Price", "A", "A", "a rule on a sibling field still fires on duplicate-index rows (branch-scoped)")
 
     private companion object {
         const val ITEM = "/Cart/Lines/ItemId"

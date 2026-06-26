@@ -10,6 +10,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.modelkit.DateTimeFieldBuilder
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.TimeFieldBuilder
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -37,6 +40,12 @@ class TimeDateTimeFormalDiffTest {
         ),
         emptyList(),
     )
+
+    // The rule condition is authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed
+    // to BOTH engines — no free-text condition literal. The renderer emits absolute paths; both engines accept
+    // them. The malformed TIME/DATE_TIME values that exercise the formal check stay in the doc-building below.
+    private val m = BoundModel.ofJson(json)
+    private fun render(c: Condition): String = DslRenderer().render(c)
 
     private fun iDoc() = Document(
         kinds = def.kinds, scales = def.scales, dateFormats = def.dateFormats,
@@ -66,7 +75,7 @@ class TimeDateTimeFormalDiffTest {
         // A rule comparing the TIME must be SUPPRESSED on a malformed value (it resolves to Unknown), exactly as
         // the kernel — previously the interpreter treated the bad time as plain text and could mis-fire. A simple
         // string-equality guard that references the malformed field.
-        val ruleCond = "FieldFilled(T) And [T] == [T]"
+        val ruleCond = render(m.time("/Form/T").filled().and(m.time("/Form/T").eq(m.time("/Form/T"))))
         val ruleModel = RuntimeLaws.withRule(json, "/Form", "TR", "../T", "TR", ruleCond)
         val rdef = def.copy(rules = listOf(RuleDef("/Form/TR", "/Form", ruleCond, "TR", "../T")))
         val kDoc = RuntimeLaws.doc().group("/Form", 1).field("/Form/T", "notatime", 1, 1)

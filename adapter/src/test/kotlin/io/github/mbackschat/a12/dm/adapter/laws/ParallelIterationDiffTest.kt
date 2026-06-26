@@ -9,6 +9,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -29,6 +33,15 @@ import org.junit.jupiter.api.Test
 class ParallelIterationDiffTest {
 
     private val staffing = RuntimeLaws.model("models/staffing.dm.json")
+
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. Refs use ABSOLUTE paths; the renderer emits absolute and both
+    // engines accept it (IF24). The cross-group parallel join is implicit in the two sibling field paths.
+    private val m = BoundModel.ofJson(staffing)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+    private val DEMAND_HC = "/Staffing/Demand/Headcount"
+    private val SUPPLY_HC = "/Staffing/Supply/Headcount"
+
     private val def = ModelDef(
         listOf(
             FieldDef("/Staffing/PlanName", Kind.STRING),
@@ -88,20 +101,21 @@ class ParallelIterationDiffTest {
     @Test
     fun fieldsNotCollectivelyFilledMatchesKernel() {
         // Eng (Demand=3, Supply missing) AND Ops (Demand missing → Demand[-5], Supply=2) both fire OMISSION.
-        assertAgrees("PI", "FieldsNotCollectivelyFilled(Demand/Headcount, Supply/Headcount)", "5", "3", "5", "2")
+        assertAgrees("PI", render(Dsl.fieldsNotCollectivelyFilled(m.field(DEMAND_HC), m.field(SUPPLY_HC))), "5", "3", "5", "2")
     }
 
     @Test
     fun guardedPerRowCompareMatchesKernel() {
         // Both-filled guard → only the matched index value (Sales: 9 > 5) fires, VALUE; no synthetic-index row.
-        assertAgrees("PX", "FieldFilled(Demand/Headcount) And FieldFilled(Supply/Headcount) And [Demand/Headcount] > [Supply/Headcount]",
+        assertAgrees("PX", render(m.field(DEMAND_HC).filled().and(m.field(SUPPLY_HC).filled())
+            .and(m.num(DEMAND_HC).gt(m.num(SUPPLY_HC)))),
             "9", "3", "5", "2")
     }
 
     @Test
     fun unguardedPerRowCompareMatchesKernel() {
         // Empty-as-0 across the join: Sales 9>5 VALUE ; Eng 3>0(missing) OMISSION ; Ops 0>2 no fire.
-        assertAgrees("RW", "[Demand/Headcount] > [Supply/Headcount]", "9", "3", "5", "2")
+        assertAgrees("RW", render(m.num(DEMAND_HC).gt(m.num(SUPPLY_HC))), "9", "3", "5", "2")
     }
 
     @Test
@@ -111,7 +125,7 @@ class ParallelIterationDiffTest {
         // on Supply's valid Ops value (→ the synthetic Demand[-5]) but suppresses it where the Supply side is
         // unknown. The interpreter models exactly that (the empty index also emits `mandatoryField`); assert the
         // full message signatures agree (KERNEL-FINDINGS §9).
-        val cond = "FieldsNotCollectivelyFilled(Demand/Headcount, Supply/Headcount)"
+        val cond = render(Dsl.fieldsNotCollectivelyFilled(m.field(DEMAND_HC), m.field(SUPPLY_HC)))
         fun build(sink: PlacementSink) {
             sink.group("/Staffing", 1); sink.field("/Staffing/PlanName", "Q3", 1, 1)
             sink.group("/Staffing/Demand", 1, 1); sink.field("/Staffing/Demand/Department", "Sales", 1, 1, 1); sink.field("/Staffing/Demand/Headcount", "5", 1, 1, 1)
@@ -127,7 +141,7 @@ class ParallelIterationDiffTest {
     fun allUnmatchedDisjointKeysMatchesKernel() {
         // Demand IS the error field's group and HAS rows (Sales,Eng) while Supply is empty — every iteration fires
         // OMISSION (Supply unspecified). Sanity: the kernel really fires (the assertion isn't vacuous).
-        val cond = "FieldsNotCollectivelyFilled(Demand/Headcount, Supply/Headcount)"
+        val cond = render(Dsl.fieldsNotCollectivelyFilled(m.field(DEMAND_HC), m.field(SUPPLY_HC)))
         assertTrue(kernelSigs("PI", cond) { place(it, "5", "3", null, null) }.isNotEmpty(),
             "kernel must fire PI for the test to be meaningful")
         assertAgrees("PI", cond, "5", "3", null, null)

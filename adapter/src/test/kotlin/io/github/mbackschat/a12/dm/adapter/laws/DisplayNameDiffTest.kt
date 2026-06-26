@@ -6,6 +6,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import java.util.Locale
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -24,6 +27,13 @@ class DisplayNameDiffTest {
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val fields = listOf(FieldDef(Q, Kind.NUMBER))
 
+    // The rule condition is authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to
+    // BOTH engines — no free-text condition literal. Re-authoring the same condition does not affect the test,
+    // which checks the $field$ display-name rendering on the fired message text. The renderer emits absolute
+    // paths; both engines accept them.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     private fun interpRender(cond: String, msg: String, doc: Document, locale: String): String =
         DmInterpreter(ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "POL", "../Quantity",
             messages = mapOf(locale to msg)))))
@@ -38,7 +48,7 @@ class DisplayNameDiffTest {
     @Test
     fun displayNameAndValueMatchKernel() {
         // $Quantity$ (name) + $Quantity.value$ (value) in one message — fires on Quantity 50 < 100.
-        val cond = "[Quantity] < 100"
+        val cond = render(m.num(Q).lt(100))
         val msg = "\$Quantity\$ is below 100 (was \$Quantity.value\$)"
         val kernel = kernelRender(order, cond, msg, msg, Locale.US)
         val interp = interpRender(cond, msg, Document(kinds).field(Q, "50", 1, 1), "en_US")
@@ -49,7 +59,7 @@ class DisplayNameDiffTest {
 
     @Test
     fun displayNameOnlyMatchesKernel() {
-        val cond = "[Quantity] < 100"
+        val cond = render(m.num(Q).lt(100))
         val msg = "Please review \$Quantity\$."
         val kernel = kernelRender(order, cond, msg, msg, Locale.US)
         val interp = interpRender(cond, msg, Document(kinds).field(Q, "50", 1, 1), "en_US")
@@ -63,7 +73,7 @@ class DisplayNameDiffTest {
         // order.dm.json declares only en_US — add de_DE so the kernel renders both; the NAME is the same in
         // either locale (no field label is defined), so the display name does not vary by locale here.
         val bilingual = order.replaceFirst("\"locales\": [", "\"locales\": [ { \"code\": \"de_DE\" }, ")
-        val cond = "[Quantity] < 100"
+        val cond = render(m.num(Q).lt(100))
         val en = "Check \$Quantity\$"
         val de = "Prüfe \$Quantity\$"
         val kernelDe = kernelRender(bilingual, cond, en, de, Locale.GERMANY)
