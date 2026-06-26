@@ -26,7 +26,7 @@ A systematic **7-surface gap audit (2026-06-26, kernel-source-verified)** found 
 | code | item | status / action | detail |
 |---|---|---|---|
 | **IG13** | `compute()` has **no operand-formal-error gating**: `ComputeOutcome.ERRORED` has zero producers, no out-of-range computed-value bucket, no cascade-skip on an invalid dependency *(probe the exact bucketing)* | open — a computation over a malformed/out-of-range operand computes a **wrong VALUE** (empty-as-0 on the `Unknown`'d operand) where the kernel skips/errors the dependent. | `DmInterpreter.kt:403-453`, `Model.kt:448`; kernel `IDocumentRtService.compute` javadoc |
-| **IG19** | `toComputed` doesn't apply the target field's **format/scale** *(probe)* | open — a date result isn't reformatted to a non-ISO target date format; a number result isn't scaled/zero-padded to the target's declared scale (e.g. `49.90`→`49.9`). Kernel may render canonical too — probe before fixing. | `DmInterpreter.kt:444-453` |
+| **IG19** | `toComputed` doesn't reformat a **DATE_TIME** computed result to a non-ISO target datetime format *(probe — unverified)* | open (narrowed 2026-06-26) — the DATE case shipped (IF33: a computed date → target format) and the number-scale case was **parity** (kernel strips like the interpreter, `ComputeDiffTest`). What remains: a computed DATE_TIME into a custom datetime-format target has no re-formatter; the divergence is **unverified** (probe before building — it may be parity if the format is ISO-like). | `DmInterpreter.renderScalarValue` |
 
 ### Model loader (kernel-honored DM-JSON keys the loader drops)
 | code | item | status / action | detail |

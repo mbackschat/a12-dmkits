@@ -27,6 +27,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Computed
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
 import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
+import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.Message
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
@@ -466,7 +467,10 @@ class DmInterpreter @JvmOverloads constructor(
     /** One computed-field outcome for [comp] from its evaluated [v]: VALUE (resolved, empty-as-0 applies) / CLEARED. */
     private fun toComputed(comp: ComputationDef, v: Val): Computed = when (v) {
         is Val.Num -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v.display())
-        is Val.Txt -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v)
+        // A computed DATE is rendered to the TARGET field's declared format (the kernel stores a computed date
+        // in the field's format — `AddYears(...)` into a `dd.MM.yyyy` field yields `30.06.2026`, not ISO; IF33).
+        // Other Val.Txt kinds (STRING, and DATE_TIME — no datetime re-formatter yet) pass through unchanged.
+        is Val.Txt -> Computed(comp.targetPath, ComputeOutcome.VALUE, renderScalarValue(v.v, comp.targetPath))
         is Val.Bool -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v.toString())
         is Val.Unknown -> Computed(comp.targetPath, ComputeOutcome.CLEARED)
         // A computed date-RANGE (`DateRange(start, end)`) — rendered to the TARGET field's (format, separator),
@@ -555,6 +559,14 @@ class DmInterpreter @JvmOverloads constructor(
         val e = renderDateToFormat(v.end, format)
         return if (s != null && e != null) "$s$sep$e" else "${v.start}/${v.end}"
     }
+
+    /** Render a computed scalar to the TARGET field's stored form: a DATE result is reformatted from the
+     *  interpreter's ISO to the target's declared date format (the kernel stores a computed date in the field's
+     *  format, IF33). STRING and DATE_TIME results pass through (no datetime re-formatter yet). */
+    private fun renderScalarValue(iso: String, targetPath: String): String =
+        if (model.kinds[targetPath] == Kind.DATE)
+            model.dateFormats[targetPath]?.let { renderDateToFormat(iso, it) } ?: iso
+        else iso
 
     private fun evalRule(rule: RuleDef, doc: Document, locale: String): RuleResult {
         val rows = rowOutcomes(rule, doc, locale, duplicateIndexCells(doc), HashMap())
