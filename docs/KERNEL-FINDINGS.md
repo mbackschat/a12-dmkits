@@ -4,6 +4,8 @@
 
 Kernel-behavior facts **verified by experiment against kernel `30.8.1`** that are *not* (yet) covered by KERNEL-SEMANTICS.md — which we **consult before each increment** and never duplicate here. Each finding is locked by a test in this repo (named per entry); rulekit's *treatment* of each fact lives in [`KERNEL-INTEGRATION-NOTES.md`](./KERNEL-INTEGRATION-NOTES.md).
 
+> **What lands HERE vs INTERPRETER-FINDINGS (the routing rule + decision test).** This doc holds **kernel truths** — a behavior, capability, error code, limit, or extensibility surface that is true *regardless of our code*. How the **interpreter** reproduces/diverges-from/locks such a truth is an `IF<n>` in [`INTERPRETER-FINDINGS.md`](INTERPRETER-FINDINGS.md) (which cites the kernel fact here); how **rulekit/modelkit** treats it is in [`KERNEL-INTEGRATION-NOTES.md`](KERNEL-INTEGRATION-NOTES.md). **Decision test:** *"Would this fact be true, and worth recording, even if our interpreter and dmkit did not exist?"* → **yes ⇒ here.** The full three-home table + the worked mis-file lesson live in the INTERPRETER-FINDINGS header.
+
 ## §1 supplement — Boolean/Confirm comparability codes
 
 The Boolean≠Confirm split is enforced at parse time with distinct codes: a Boolean compares only to `True`/`False` or another Boolean — anything else (e.g. a string) is **`MVK_INVALID_COMPARE_TO_YESNO`**; a Confirm compares only to `True` or another Confirm — `[Confirm] == False` and Boolean↔Confirm cross-comparisons are **`MVK_INVALID_COMPARE_TO_YES`**. "Not confirmed" is written `[Confirm] != True` (an unset confirm counts as not confirmed). *(Locked: `validate.laws.BooleanConfirmLawsTest`.)*

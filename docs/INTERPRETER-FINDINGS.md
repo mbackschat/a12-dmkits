@@ -4,9 +4,15 @@ The numbered **design-findings** for the `:interpreter` module (the kernel-free,
 
 > **Open issues, deferred items, and to-fix gaps are NOT here — they live in [INTERPRETER-GAPS-LEDGER.md](INTERPRETER-GAPS-LEDGER.md)** (`IG2`–`IG8`; a shipped gap like IG1 is deleted from the ledger and lives as a finding here — IF25). This doc is **settled, verified knowhow** you read to warm up and not re-investigate (like `KERNEL-FINDINGS.md`): the timeless fact, the decision, the *why*. Where a finding below mentions a deferred/residual item, the live *status* is tracked in the ledger by `IG<n>`; the finding keeps only the knowhow.
 
-**Where a fact lives (the routing rule the owner set, 2026-06-23):**
-- a **kernel-behavior** truth → [KERNEL-FINDINGS.md](KERNEL-FINDINGS.md) (write), cross-checked against the consult-only `../a12-kernel-demo/KERNEL-SEMANTICS.md` (read);
-- an **interpreter design / treatment** finding (how the interpreter mirrors the kernel, an idiom, a deliberate divergence) → **here** (write).
+**Where a fact lives — the routing rule + its decision test (owner-set 2026-06-23; sharpened 2026-06-26 after a mis-file).** Three homes, chosen by *what the fact is about*:
+
+| the fact is about… | home | recorded as |
+|---|---|---|
+| **what the KERNEL does** — a behavior, capability, error code, limit, or extensibility surface (true regardless of our code; a kernel-team member would recognize it, and it would matter even if neither the interpreter nor dmkit existed) | [KERNEL-FINDINGS.md](KERNEL-FINDINGS.md) (write), cross-checked vs the consult-only `../a12-kernel-demo/KERNEL-SEMANTICS.md` | section-numbered to mirror KERNEL-SEMANTICS; experiment/source-verified |
+| **how the INTERPRETER reproduces / diverges from / locks it** — an engine design choice, a mechanism, a deliberate divergence, the differential that proves parity | **here** (an `IF<n>`) | cite the kernel fact in KERNEL-FINDINGS; keep only the interpreter treatment + the lock |
+| **how rulekit/modelkit (the JVM library) treats a kernel fact** | [KERNEL-INTEGRATION-NOTES.md](KERNEL-INTEGRATION-NOTES.md) | the treatment note |
+
+**The decision test — apply it before writing a finding:** *"Would this fact be true, and worth recording, even if our interpreter and dmkit did not exist?"* → **yes ⇒ KERNEL-FINDINGS** (a kernel truth); **no, it's about how OUR code mirrors/diverges/locks it ⇒ here.** A finding that is *purely* a kernel statement whose interpreter "treatment" is generic (e.g. "an unknown X fails loud") belongs in KERNEL-FINDINGS with a one-line pointer from here — **not** dressed as an `IF<n>`. (Worked example of the trap: *"custom computations are not a kernel concept"* moved to KERNEL-FINDINGS "Custom-extensibility surface" on 2026-06-26 — it was a kernel-capability truth, not an interpreter design. A full sweep that day confirmed it was the **only** such mis-file; every other `IF<n>` is genuine interpreter treatment that correctly cites its kernel fact in KERNEL-FINDINGS §2/§3/§6/§9.)
 
 Correctness throughout = **agrees with the real kernel** (the `RuntimeLaws` differential oracle). Each finding cites the lock.
 
