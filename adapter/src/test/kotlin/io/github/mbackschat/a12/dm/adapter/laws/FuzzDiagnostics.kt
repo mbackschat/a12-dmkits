@@ -8,6 +8,8 @@ import io.github.mbackschat.a12.dm.interpreter.gen.asSink
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
+import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
+import kotlin.random.Random
 
 /**
  * **FuzzDiagnostics** (harness B) — when the differential fuzz net catches a diverging seed, this turns the
@@ -178,6 +180,73 @@ object FuzzDiagnostics {
                 else -> "$p|VALUE|${it.value().orElse("")}"
             }
         }.sorted()
+    }
+
+    // ---- partial-validation differential (harness: random relevant subsets over a generated document) ----
+
+    /**
+     * Build matching relevant sets — the kernel's [RuntimeLaws.Relevant] form and the interpreter's
+     * [RelevantEntity] form — from [places]: each placement is included with ~50% probability under a
+     * [relevantSeed]-seeded RNG, as a CONCRETE pointer (its placement reps). A relevant GROUP makes its
+     * descendants relevant on BOTH engines (kernel `expandRelevantGroup` ⇄ interpreter ancestor-prefix match),
+     * so including groups exercises that expansion. The two sets are the same instances in the two encodings.
+     */
+    private fun relevantSets(places: List<Place>, relevantSeed: Int): Pair<Set<RuntimeLaws.Relevant>, Set<RelevantEntity>> {
+        val rng = Random(relevantSeed)
+        val k = HashSet<RuntimeLaws.Relevant>()
+        val i = HashSet<RelevantEntity>()
+        for (p in places) if (rng.nextBoolean()) {
+            k += RuntimeLaws.Relevant.of(p.path, *p.reps.toIntArray())
+            i += RelevantEntity(p.path, p.reps)
+        }
+        return k to i
+    }
+
+    private fun interpPartialSignatures(model: ModelDef, places: List<Place>, rel: Set<RelevantEntity>): List<String> =
+        DmInterpreter(model).validatePart(interpDoc(model, places), rel).messages
+            .map { "${it.code}|${polarity(it.type)}|${it.errorPath}" }.sorted()
+
+    private fun kernelPartialSignatures(modelJson: String, places: List<Place>, rel: Set<RuntimeLaws.Relevant>): List<String> {
+        val builder = RuntimeLaws.doc()
+        replay(places, object : PlacementSink {
+            override fun group(path: String, vararg reps: Int) { builder.group(path, *reps) }
+            override fun field(path: String, value: String, vararg reps: Int) { builder.field(path, value, *reps) }
+            override fun emptyField(path: String, vararg reps: Int) { builder.emptyField(path, *reps) }
+        })
+        return RuntimeLaws.messagesPart(modelJson, builder, rel).map { "${it.code}|${it.type.name}|${it.field}" }.sorted()
+    }
+
+    /** Drop the signatures whose code is in [ignoreCodes] (the IG20 boundary — see [partialSignaturesAgree]). */
+    private fun filterCodes(sigs: List<String>, ignoreCodes: Set<String>): List<String> =
+        if (ignoreCodes.isEmpty()) sigs else sigs.filterNot { it.substringBefore('|') in ignoreCodes }
+
+    /**
+     * Whether [seed]'s generated document, under a random relevant subset ([relevantSeed]), produces the SAME
+     * fired-message signatures (`code|type|pointer`) from the kernel's `validatePart` and the interpreter's — the
+     * partial-validation differential gate (rule-gating + 3VL + non-aggregate rules + formal/uniqueness errors).
+     *
+     * [ignoreCodes] carves out the **IG20 boundary**: STARRED AGGREGATES over a repeatable group under *mixed*
+     * partial relevance (some cells relevant via their group, some via a direct field pointer, some non-relevant)
+     * are not yet kernel-exact — the kernel's per-operator rule (e.g. `FirstFilled` needs only the first filled
+     * relevant cell; `Sum` treats a cell whose GROUP row is non-relevant as Unknown even when the field pointer
+     * is listed) is subtler than the blanket IF35 gate. Those rule codes are excluded pending IG20.
+     */
+    fun partialSignaturesAgree(scenario: PerfScenario, seed: Int, relevantSeed: Int, ignoreCodes: Set<String> = emptySet()): Boolean {
+        val places = record(scenario, seed)
+        val (kRel, iRel) = relevantSets(places, relevantSeed)
+        return filterCodes(interpPartialSignatures(scenario.interpModel, places, iRel), ignoreCodes) ==
+            filterCodes(kernelPartialSignatures(scenario.kernelModel, places, kRel), ignoreCodes)
+    }
+
+    /** A localized partial report for ([seed], [relevantSeed]): the signatures present in only one engine. */
+    fun partialDivergence(scenario: PerfScenario, seed: Int, relevantSeed: Int, ignoreCodes: Set<String> = emptySet()): String {
+        val places = record(scenario, seed)
+        val (kRel, iRel) = relevantSets(places, relevantSeed)
+        val k = filterCodes(kernelPartialSignatures(scenario.kernelModel, places, kRel), ignoreCodes)
+        val i = filterCodes(interpPartialSignatures(scenario.interpModel, places, iRel), ignoreCodes)
+        if (k == i) return "seed=$seed/rel=$relevantSeed: signatures agree"
+        return "seed=$seed/rel=$relevantSeed  relevant=${iRel.size}/${places.size}" +
+            "  kernel-only=${multisetMinus(k, i)}  interp-only=${multisetMinus(i, k)}"
     }
 
     private val INDEX = Regex("\\[\\d+]")
