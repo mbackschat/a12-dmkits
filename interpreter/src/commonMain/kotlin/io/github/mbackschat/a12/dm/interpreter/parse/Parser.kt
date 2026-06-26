@@ -154,6 +154,10 @@ private class ConditionParser(private val src: String, private val base: String)
                 }
             }
             '"' -> readString()
+            // A bare ABSOLUTE path as a predicate / aggregate argument — `FieldFilled(/Pol/Cap0)`,
+            // `AllFieldsFilled(/A/x, /B/y)`, `Sum(/A*/v)` — the form the kernel and the rulekit DSL renderer
+            // emit. (Absolute paths inside `[...]` value refs were already handled above.)
+            '/' -> { next(); pathFrom(readIdent(), absolute = true) }
             else -> when {
                 c == '-' || c.isDigit() -> readNumber()
                 else -> {
