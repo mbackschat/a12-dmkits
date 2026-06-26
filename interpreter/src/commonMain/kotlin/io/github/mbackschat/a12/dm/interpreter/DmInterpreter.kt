@@ -147,10 +147,10 @@ class DmInterpreter @JvmOverloads constructor(
      * a repetition level (the encouraged form). With the whole document relevant this equals [validate].
      * KERNEL-FINDINGS "Partial validation".
      *
-     * Boundaries (vs the kernel, documented): wildcard/aggregate references under a *subset* of relevant
-     * repetitions follow the encouraged all-repetitions form exactly but are not yet pinned for arbitrary
-     * subsets; a `CustomCondition` still sees `relevant = null` (full) in partial mode; global-field
-     * auto-relevance is a model-structure concept the interpreter does not model.
+     * Boundaries (vs the kernel) — each tracked as an open gap in INTERPRETER-GAPS-LEDGER §1, not as loose
+     * prose here: wildcard/aggregate references under a *subset* of relevant repetitions are unverified for
+     * arbitrary subsets (IG9); a `CustomCondition` is invoked with `relevant = null` (full) in partial mode
+     * (IG10); global-field auto-relevance is not modeled (IG11).
      */
     fun validatePart(doc: Document, relevant: Set<RelevantEntity>, locale: String = "en_US"): ValidationOutcome =
         validateWith(doc, locale, relevanceOf(relevant))

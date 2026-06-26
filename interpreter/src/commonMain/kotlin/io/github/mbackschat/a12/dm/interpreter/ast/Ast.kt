@@ -95,7 +95,8 @@ sealed interface Cond {
     data class Custom(val name: String) : Cond
 }
 
-/** Binary arithmetic operators (language-independent symbols). Division/power are not yet modeled. */
+/** Binary arithmetic operators (language-independent symbols). All five are evaluated and differential-locked
+ *  by `DivPowDiffTest` (incl. divide-by-zero → Unknown and the `^` > `*`/`/` > `+`/`-` precedence). */
 enum class ArithOp { ADD, SUB, MUL, DIV, POW }
 
 /** Expression AST. */
