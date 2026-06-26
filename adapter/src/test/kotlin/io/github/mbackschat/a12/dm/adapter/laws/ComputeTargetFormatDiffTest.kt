@@ -18,10 +18,18 @@ import org.junit.jupiter.api.Test
 import java.util.function.Consumer
 
 /**
- * Differential — does `compute()` render a DATE result in the TARGET field's declared format (IG19)? `OrderDate`
- * is `yyyy-MM-dd`; `Maturity` is `dd.MM.yyyy`. The computed `AddYears(OrderDate, 2)` is stored into `Maturity` —
- * the question is whether the kernel emits the target-format text (`30.06.2026`) while the interpreter emits ISO.
- * Settles IG19 by comparing the computed value to the kernel's (no hardcoded expectation).
+ * Differential — does `compute()` render a date-ish result in the TARGET field's declared format (IF33/IG19)?
+ *
+ *  - **DATE** (`computedDateUsesTargetFormatLikeKernel`): `OrderDate` is `yyyy-MM-dd`, `Maturity` is `dd.MM.yyyy`;
+ *    `AddYears(OrderDate, 2)` into `Maturity` — the kernel emits the target-format text (`30.06.2026`). Locked by IF33.
+ *  - **DATE_TIME** (`computedDateTimeUsesTargetFormatLikeKernel`): `D` is `yyyy-MM-dd`, `T` is `HH:mm:ss`, `Stamp`
+ *    is `yyyy-MM-dd'T'HH:mm:ss`; `DateTime(D, T)` into `Stamp` agrees with the kernel. This is the **parity lock**
+ *    for the IG19-residual question "does the kernel reformat a computed DATE_TIME to a custom target format?".
+ *    The answer is **parity by construction**: the kernel admits only ONE date-bearing DATE_TIME format — the ISO
+ *    `yyyy-MM-dd'T'HH:mm:ss` (every other is rejected `The date format is invalid`, KERNEL-FINDINGS §6 "DATE_TIME
+ *    field formats"), and the degenerate time-only `HH:mm:ss` datetime can't receive a full `DateTime(...)` (the
+ *    implicit computation-validation compare is `MVK_INVALID_COMPARE_TO_DATE` at codegen, IF32). So every authorable
+ *    computed-datetime target IS ISO — exactly the interpreter's output; no datetime re-formatter is needed.
  */
 class ComputeTargetFormatDiffTest {
 
@@ -50,8 +58,43 @@ class ComputeTargetFormatDiffTest {
         assertEquals(kValue, iValue, "AddYears(OrderDate,2) into a dd.MM.yyyy target — kernel=$kValue interp=$iValue")
     }
 
+    // ── DATE_TIME (IG19 residual) ──────────────────────────────────────────────────────────────────────────────
+    private val dtJson = DocumentModelDraft.named("dt").locale("en_US")
+        .rootGroup("Dt", Consumer { g: GroupBuilder ->
+            g.dateField("D", Consumer { it.format("yyyy-MM-dd") })
+                .timeField("T", Consumer { it.format("HH:mm:ss") })
+                .dateTimeField("Stamp", Consumer { it.format("yyyy-MM-dd'T'HH:mm:ss") })
+        })
+        .build().toJson()
+
+    private val dtM = BoundModel.ofJson(dtJson)
+    private val dtOp = DslRenderer(ConditionLanguage.EN, "/Dt").render(Dsl.dateTime(dtM.date(D), dtM.time(T)).expression())
+    private val dtDef = ModelDef(
+        listOf(
+            FieldDef(D, Kind.DATE, format = "yyyy-MM-dd"),
+            FieldDef(T, Kind.TIME, format = "HH:mm:ss"),
+            FieldDef(STAMP, Kind.DATE_TIME, format = "yyyy-MM-dd'T'HH:mm:ss"),
+        ),
+        emptyList(),
+        computations = listOf(ComputationDef(STAMP, "/Dt", dtOp)),
+    )
+    private val dtKModel = RuntimeLaws.withComputation(dtJson, "/Dt", "StampComp", "../Stamp", dtOp)
+
+    @Test fun computedDateTimeUsesTargetFormatLikeKernel() {
+        val kValue = RuntimeLaws.computedValue(RuntimeLaws.compute(dtKModel,
+            RuntimeLaws.doc().group("/Dt", 1).field(D, "2024-06-30", 1, 1).field(T, "10:30:00", 1, 1)), STAMP).orElse(null)
+        val iValue = DmInterpreter(dtDef).compute(Document(dtDef.kinds, dtDef.declaredReps, dtDef.unsignedFields,
+            dtDef.rangeConfig, dtDef.dateFormats, dtDef.scales, dtDef.dateTimeFormats, timeFormats = dtDef.timeFormats)
+            .group("/Dt", 1).field(D, "2024-06-30", 1, 1).field(T, "10:30:00", 1, 1))
+            .firstOrNull { it.path == STAMP }?.value
+        assertEquals(kValue, iValue, "DateTime(D,T) into a dd.MM.yyyy HH:mm:ss target — kernel=$kValue interp=$iValue")
+    }
+
     private companion object {
         const val ORDER = "/Cal/OrderDate"
         const val MAT = "/Cal/Maturity"
+        const val D = "/Dt/D"
+        const val T = "/Dt/T"
+        const val STAMP = "/Dt/Stamp"
     }
 }

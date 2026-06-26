@@ -238,7 +238,8 @@ class FieldVerbTest {
     void dateAndTimeFieldFormatsAreFixedAndLocaleIndependent(@TempDir Path dir) throws Exception {
         // probe 08: date/time field FORMATS are lowercase Java patterns from a FIXED allowed set, independent
         // of the model's locale AND conditionLanguage. The editor's uppercase presets are rejected, TIME needs
-        // full seconds, and the accepted DATERANGE (format, separator) pairs are the same under en/de. KERNEL-FINDINGS §6.
+        // full seconds, the accepted DATERANGE (format, separator) pairs are the same under en/de, and the only
+        // date-bearing DATE_TIME format is the ISO yyyy-MM-dd'T'HH:mm:ss. KERNEL-FINDINGS §6.
         Path m = dir.resolve("d.dm.json");
         assertEquals(0, CliTestSupport.run("model", "new", "--id", "d", "--locale", "en_US",
                 "--root", "D", "-o", m.toString()).code());
@@ -262,6 +263,14 @@ class FieldVerbTest {
         assertNotEquals(0, addFieldRc(m, dir, """
                 {"group":"/D","name":"R3","kind":"DATERANGE","dateRange":{"format":"yyyy-MM-dd","separator":"-"}}"""),
                 "a mismatched separator (yyyy-MM-dd + -) is rejected");
+        // DATE_TIME: the ONLY date-bearing datetime format is the ISO yyyy-MM-dd'T'HH:mm:ss; every other date-bearing
+        // form is rejected `The date format is invalid` (KERNEL-FINDINGS §6 — IG19 parity-by-construction).
+        assertEquals(0, addFieldRc(m, dir, """
+                {"group":"/D","name":"S1","kind":"DATE_TIME","dateTime":{"format":"yyyy-MM-dd'T'HH:mm:ss"}}"""),
+                "the ISO datetime format is accepted");
+        assertNotEquals(0, addFieldRc(m, dir, """
+                {"group":"/D","name":"S2","kind":"DATE_TIME","dateTime":{"format":"dd.MM.yyyy'T'HH:mm:ss"}}"""),
+                "a German date-bearing datetime format is rejected");
         // LOCALE-INDEPENDENCE: a de_DE conditionLanguage accepts the IDENTICAL set (not a different one)
         Path de = dir.resolve("de.dm.json");
         assertEquals(0, CliTestSupport.run("model", "new", "--id", "de", "--locale", "en_US",
