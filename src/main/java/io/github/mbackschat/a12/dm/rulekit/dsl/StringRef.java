@@ -88,6 +88,28 @@ public record StringRef(FieldRef field, boolean correlated) {
         return new ValueListCondition(field, false, stringValues(first, rest));
     }
 
+    /**
+     * {@code FieldValueIncludedInValueList(field, [f1], …)} — membership against other STRING FIELDS'
+     * values (the kernel allows field-reference entries, not only literals). DEV-API-GAPS DG10.
+     */
+    public Condition in(StringRef first, StringRef... rest) {
+        return new ValueListCondition(field, true, fieldValues(first, rest));
+    }
+
+    /** {@code FieldValueNotIncludedInValueList(field, [f1], …)} — field-reference entries (see {@link #in(StringRef, StringRef...)}). */
+    public Condition notIn(StringRef first, StringRef... rest) {
+        return new ValueListCondition(field, false, fieldValues(first, rest));
+    }
+
+    static java.util.List<Calculation> fieldValues(StringRef first, StringRef... rest) {
+        var values = new java.util.ArrayList<Calculation>();
+        values.add(first.value());
+        for (StringRef r : rest) {
+            values.add(r.value());
+        }
+        return values;
+    }
+
     static java.util.List<Calculation> stringValues(String first, String... rest) {
         var values = new java.util.ArrayList<Calculation>();
         values.add(new StringLiteral(first));

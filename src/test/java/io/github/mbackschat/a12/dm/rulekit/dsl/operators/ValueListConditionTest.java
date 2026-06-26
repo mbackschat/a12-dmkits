@@ -36,6 +36,15 @@ class ValueListConditionTest {
     }
 
     @Test
+    void valueListEntriesCanBeFieldReferences() {
+        // DEV-API-GAPS DG10: the kernel allows a value-list ENTRY to be a field reference, not only a literal.
+        assertEquals("FieldValueIncludedInValueList(/Subscription/Addons/MonthlyFee, [/Subscription/Billing/BaseFee])",
+                new DslRenderer().render(m.num(MONTHLY_FEE).in(m.num("/Subscription/Billing/BaseFee"))));
+        assertEquals("FieldValueNotIncludedInValueList(/Subscription/Addons/Name, [/Subscription/Billing/InvoiceEmail])",
+                new DslRenderer().render(m.str(NAME).notIn(m.str("/Subscription/Billing/InvoiceEmail"))));
+    }
+
+    @Test
     void enumValueListsPreCheckTheDomain() {
         Condition c = m.enumOf("/Subscription/Tier").in("PRO", "ENTERPRISE");
         assertEquals("FieldValueIncludedInValueList(/Subscription/Tier, \"PRO\", \"ENTERPRISE\")",

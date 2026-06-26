@@ -220,11 +220,34 @@ public record NumberRef(FieldRef field, int scale, boolean correlated) {
         return new ValueListCondition(field, false, integerValues(first, rest));
     }
 
+    /**
+     * {@code FieldValueIncludedInValueList(field, [f1], …)} — membership against other NUMBER FIELDS'
+     * values (the kernel allows field-reference entries in the value list, not only literals).
+     * DEV-API-GAPS DG10.
+     */
+    public Condition in(NumberRef first, NumberRef... rest) {
+        return new ValueListCondition(field, true, fieldValues(first, rest));
+    }
+
+    /** {@code FieldValueNotIncludedInValueList(field, [f1], …)} — field-reference entries (see {@link #in(NumberRef, NumberRef...)}). */
+    public Condition notIn(NumberRef first, NumberRef... rest) {
+        return new ValueListCondition(field, false, fieldValues(first, rest));
+    }
+
     private static java.util.List<Calculation> integerValues(long first, long... rest) {
         var values = new java.util.ArrayList<Calculation>();
         values.add(NumberLiteral.of(first));
         for (long v : rest) {
             values.add(NumberLiteral.of(v));
+        }
+        return values;
+    }
+
+    private static java.util.List<Calculation> fieldValues(NumberRef first, NumberRef... rest) {
+        var values = new java.util.ArrayList<Calculation>();
+        values.add(first.value());
+        for (NumberRef r : rest) {
+            values.add(r.value());
         }
         return values;
     }

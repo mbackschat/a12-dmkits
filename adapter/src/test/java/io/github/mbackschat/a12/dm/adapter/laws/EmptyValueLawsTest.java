@@ -195,11 +195,9 @@ class EmptyValueLawsTest {
         // the inverse direction is the trap: a FIELD entry of a numeric value list that is itself
         // empty can never be matched — the empty-as-0 substitution does NOT apply to list entries
         // (RuntimeController.feldWertInWerteListe: an entry that could grow/shrink never equals)
-        // DSL-EXEMPT: a single-field FieldValueIncludedInValueList with an ENTITY (field-reference)
-        // value-list entry has no rulekit builder — NumberRef.in takes only integer literals, and the
-        // entity-list quantifiers are the multi-subject AtLeastOne/No forms, not this single-subject shape.
+        // The value-list entry is a FIELD reference (not a literal) — authored via the DG10 builder.
         String model = RuntimeLaws.withRule(ORDER, "/Order", "QtyAllowed", "../Quantity", "QTY_ALLOWED",
-                "FieldValueIncludedInValueList(Quantity, [BackorderQuantity])");
+                render(m.num("/Order/Quantity").in(m.num("/Order/BackorderQuantity"))));
 
         assertFalse(RuntimeLaws.fires(model, "QTY_ALLOWED", ORDER_ROW, Set.of("/Order/BackorderQuantity"),
                 Map.of("/Order/CustomerName", "Acme", "/Order/Quantity", "0")),
