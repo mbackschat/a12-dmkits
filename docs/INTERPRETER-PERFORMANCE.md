@@ -280,8 +280,9 @@ Each scenario is a real DM-JSON model + an instance built at parameterized scale
 | B5 | aggregate over a **deep** list (`Sum(A*/B*/C)`) | nested-star collection | rows per level |
 | B6 | many rules × many rows (a realistic model: dozens of rules over 10k–100k rows) | whole-document throughput | rules × rows |
 | B7 | computations at scale (`compute` over nested groups) | the compute path, not just validate | rows |
+| **B8 (combined)** | the **real-world worst case** — deep + wide + rule-heavy + data-axis at ONCE (≈1000 fields, ≈1000 rules: per-row, walk-ups 1 & 3 up, cross-sibling, the tax-shape `GroupFilled`/`agreesWith` mirroring rule ×many, `Having`-Sum, nested-star, cross-group Sum-vs-Sum) | **interaction-effect O(N²)** (rules × rows × cross-ref walk) that single-axis shapes hide | N = Claim rows (×6 charge rows) |
 
-The catalog must favor **non-obvious** combinations (nesting × aggregation × cross-level), not just "more rows of the flat case." Use own-domain fixtures (the license-safe rule); a dedicated `models/perf-*.dm.json` set is fine.
+The catalog must favor **non-obvious** combinations (nesting × aggregation × cross-level), not just "more rows of the flat case" — **B8** is the combine-everything case (`PerfCatalog.complexRealWorld*` → `ComplexRealWorld`, authored with the dmkits). Use own-domain fixtures (the license-safe rule); a dedicated `models/perf-*.dm.json` set is fine.
 
 ## The regression gate (mechanics)
 
@@ -301,7 +302,28 @@ The catalog must favor **non-obvious** combinations (nesting × aggregation × c
 
 ## Results log
 
-*(dated baselines, newest first — populated as benchmarks land)*
+*(dated baselines, newest first — populated as benchmarks land. The **at-a-glance table** is the current headline; the dated entries below are the optimization journey + lessons.)*
+
+### At a glance (current — 2026-06-26)
+
+All ratios are **`ratioJava` = interp_median / kernel-Java_median** (the *fair* algorithmic comparison — same kernel logic, Groovy execution tax removed; **lower = the interpreter is faster**). Measured on the real `Document`/kernel evaluation path (never the spike `RepDoc`). "interp speed" = how much faster the interpreter is (1 / ratioJava).
+
+| scenario | scale | ratioJava | interp speed |
+|---|---|---|---|
+| **combined real-world** (deep + wide + rule-heavy + data-axis — the tax-shape worst case) | **1233 fields / 1017 rules**, 3000 charge rows | **0.19** (both regimes) | **~5× faster**; N→4N **×3.45–3.72** (sub-linear — no interaction O(N²)) |
+| rule-count sweep (firing) | 6 → 192 rules @ 1000 rows | 0.20 → 0.32 | 3–5× faster |
+| rule-count sweep (low-firing, valid doc) | 6 → 192 rules | 0.07 → 0.45 | 2–14× faster |
+| aggregates (B2/B5/B7 — `Sum` / nested-star / compute) | 3000 rows | 0.02 → 0.04 | 25–50× faster |
+| deep + rich (4-level, cross-level / `Having` / nested-star) | 100 → 1000 vendors | 0.09 → 0.12 | ~10× faster |
+| distributed rules (realistic "wide form") | 192 → 2000 rules | 0.13 → 0.16 | 6–8× faster |
+| wide sibling-groups (breadth axis) | 25 → 200 groups | 0.06 → 0.07 | ~15× faster |
+| batch / repeated-eval (the kernel's home turf) | ×20 docs | 0.15 → 0.26 | 4–7× faster |
+| huge doc (data axis) | 10k → 20k rows | 0.02 → 0.01 | ~50× → ~165× faster |
+| constrained fields / tiered compute (IF20/IF21) | N → 4N rows | — (interp-only growth) | ×4.18 / ×2.89 (linear, no O(N²)) |
+
+**Bottom line:** across **every** measured shape — including the combined worst case that stresses all axes at once — the interpreter is competitive-to-far-faster than the kernel and scales **linearly**; no regime where the kernel wins remains for DM models.
+
+**2026-06-26 — the COMBINED real-world worst-case (all axes at once, authored on the dmkits): interp ~5× faster than kernel-Java, sub-linear scaling — the interaction-O(N²) concern, measured and cleared.** Built `complexRealWorld` — the faithful "complex tax-like" model (insurance-claims domain): **deep** (Claim ▸ Visit ▸ Charge) **and wide** (40 top-level + 45 numeric sections + 20 consistency sections) **and rule-heavy** (**1233 fields, 1017 rules**: per-row comparisons, top-level walk-ups 1 & 3 parents up, cross-sibling refs, the anonymized **tax consistency / mirroring rule** — `GroupFilled` context + null-safe `agreesWith` blocks — emitted 20×, a numeric mirroring variant per Claim, a `Having`-filtered Sum, a deep nested-star Sum, and a cross-group Sum-vs-Sum). The one benchmark that exercises **huge rows × many fields × deep nesting × many rules × many up/sibling refs simultaneously** — where an *interaction-effect* O(N²) (rules × rows × cross-ref walk) would hide from every single-axis benchmark. **Result (`KernelEdgeTest.complexRealWorldScaling`, 500 claims = 3000 charge rows):** low-firing interp **80 ms** vs kernel-Java **418 ms** (**ratioJava 0.19**, ~5.2× faster, groovyTax 1.04×, 0 fires); firing interp **106 ms** vs **571 ms** (**ratioJava 0.19**, ~5.4×, 46 157 fires, groovyTax 1.15×). **Interp-only N→4N (500 → 2000 claims): ×3.45 (low-firing) / ×3.72 (firing) — *sub-linear*, far below the quadratic ×16** → no interaction quadratic even with 1017 rules including the big boolean mirroring trees. Authored **with the dmkits themselves** (modelkit `DocumentModelDraft` for the structure, rulekit typed DSL + parametric combinators for every rule — no free-text strings); this surfaced and fixed an interpreter parser gap (absolute paths in predicate/aggregate args — IF24). Gated by `PerfGateTest.{complexRealWorldAgreesWithKernel (interp==kernel both regimes), complexRealWorldStaysSubQuadratic}`.
 
 **2026-06-26 — comprehensive fresh sweep after the IF20/IF21/IF23 features: interpreter wins kernel-Java at EVERY rule count + scale, both regimes; the crossover is closed; the new per-cell checks are linear (no O(N²)).** Full re-run on this session's code (`PerfGateTest` Groovy gate + sub-quadratic guards, and the opt-in `KernelEdgeTest` with the Java baseline). Headline `ratioJava` (interp/kernel-Java, the fair comparison; lower = interp faster):
 - **Rule-count sweep, N=1000 Lines** — firing **0.20 → 0.32** (6 → 192 rules), low-firing **0.07 → 0.45**. The interpreter is the faster engine at **every** count in **both** regimes — **the crossover the kernel used to win (192 rules ≈ 1.31× before the `repsOf` memo + map-key split) is gone**; the "where the kernel wins" regime is now empty for DM models.
