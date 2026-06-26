@@ -6,6 +6,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -24,6 +28,11 @@ class DateRangeDiffTest {
         FieldDef(CW, Kind.DATE_RANGE, format = "dd.MM.yyyy", rangeSeparator = "-"),
     )
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. The renderer emits absolute paths; both engines accept them.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     /** `<cond>` over OrderDate filled + CoverageWindow = `coverage` — kernel and interpreter must agree on firing. */
     private fun agree(cond: String, coverage: String, msg: String) {
         val kModel = RuntimeLaws.withRule(order, "/Order", "RR", "../OrderDate", "RR", cond)
@@ -39,19 +48,20 @@ class DateRangeDiffTest {
 
     private val cov = "01.06.2021-30.06.2021"   // 1 Jun 2021 .. 30 Jun 2021
 
-    @Test fun startYearFires() = agree("FieldFilled(OrderDate) And YearFromDate(StartOfDateRange(CoverageWindow)) > 2020", cov, "start year 2021 > 2020")
-    @Test fun startYearDoesNotFire() = agree("FieldFilled(OrderDate) And YearFromDate(StartOfDateRange(CoverageWindow)) > 2021", cov, "start year 2021 not > 2021")
-    @Test fun startMonth() = agree("FieldFilled(OrderDate) And MonthFromDate(StartOfDateRange(CoverageWindow)) == 6", cov, "start month is 6")
-    @Test fun endDayFires() = agree("FieldFilled(OrderDate) And DayFromDate(EndOfDateRange(CoverageWindow)) > 28", cov, "end day 30 > 28")
-    @Test fun endDayDoesNotFire() = agree("FieldFilled(OrderDate) And DayFromDate(EndOfDateRange(CoverageWindow)) > 30", cov, "end day 30 not > 30")
+    @Test fun startYearFires() = agree(render(m.date(OD).filled().and(Dsl.yearFromDate(Dsl.startOfDateRange(m.dateRange(CW))).gt(2020))), cov, "start year 2021 > 2020")
+    @Test fun startYearDoesNotFire() = agree(render(m.date(OD).filled().and(Dsl.yearFromDate(Dsl.startOfDateRange(m.dateRange(CW))).gt(2021))), cov, "start year 2021 not > 2021")
+    @Test fun startMonth() = agree(render(m.date(OD).filled().and(Dsl.monthFromDate(Dsl.startOfDateRange(m.dateRange(CW))).eq(6))), cov, "start month is 6")
+    @Test fun endDayFires() = agree(render(m.date(OD).filled().and(Dsl.dayFromDate(Dsl.endOfDateRange(m.dateRange(CW))).gt(28))), cov, "end day 30 > 28")
+    @Test fun endDayDoesNotFire() = agree(render(m.date(OD).filled().and(Dsl.dayFromDate(Dsl.endOfDateRange(m.dateRange(CW))).gt(30))), cov, "end day 30 not > 30")
 
     // ---- DateRangesOverlap(scalar, starred) — closed intervals, any-row overlap (KERNEL-FINDINGS §6) -----
 
     private val overlapFields = fields + FieldDef(IC, Kind.DATE_RANGE, format = "dd.MM.yyyy", rangeSeparator = "-")
-    private val overlapCond = "FieldFilled(OrderDate) And DateRangesOverlap(CoverageWindow, Items*/ItemCoverage)"
-    // The `IN`-syntax sibling — kernel-probed semantically identical to DateRangesOverlap (KERNEL-FINDINGS §6),
-    // so the SAME scenarios must agree. (The kernel grammar's `IN` token is distinct from the value-list `In`.)
-    private val atLeastOneCond = "FieldFilled(OrderDate) And AtLeastOneDateRangeOverlaps(CoverageWindow IN Items*/ItemCoverage)"
+    private val items = "/Order/Items*/ItemCoverage"
+    private val overlapCond = render(m.date(OD).filled().and(Dsl.dateRangesOverlap(m.field(CW), m.flatten(items))))
+    // The `In`-syntax sibling — kernel-probed semantically identical to DateRangesOverlap (KERNEL-FINDINGS §6),
+    // so the SAME scenarios must agree. (The kernel grammar's `In` token is distinct from the value-list `In`.)
+    private val atLeastOneCond = render(m.date(OD).filled().and(Dsl.atLeastOneDateRangeOverlaps(m.field(CW), m.flatten(items))))
 
     /** [cond] (rule [code]) over CoverageWindow vs N ItemCoverage rows — kernel and interpreter agree on firing. */
     private fun agreeOverlap(cond: String, code: String, window: String, itemCoverages: List<String>, msg: String) {

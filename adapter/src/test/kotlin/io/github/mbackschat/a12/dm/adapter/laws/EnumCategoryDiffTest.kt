@@ -7,6 +7,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -29,6 +32,11 @@ class EnumCategoryDiffTest {
         ),
     )
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines. `m.enumOf(p).category("SpeedClass").is/isNot("FAST")` is the enum-category access `[field -> Cat]`.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     /** [cond] with Priority = [priority] (null = empty); compare kernel vs interpreter (firing + polarity). */
     private fun agree(cond: String, priority: String?, msg: String) {
         val kModel = RuntimeLaws.withRule(order, "/Order", "R", "../Priority", "EC", cond)
@@ -43,15 +51,15 @@ class EnumCategoryDiffTest {
         assertEquals(k, i, "$msg  (kernel=$k interp=$i)")
     }
 
-    @Test fun expressMapsToFast() = agree("[Priority -> SpeedClass] == \"FAST\"", "EXPRESS", "EXPRESS → FAST → fires VALUE")
-    @Test fun overnightMapsToFast() = agree("[Priority -> SpeedClass] == \"FAST\"", "OVERNIGHT", "OVERNIGHT → FAST → fires VALUE")
-    @Test fun standardIsNotFast() = agree("[Priority -> SpeedClass] == \"FAST\"", "STANDARD", "STANDARD → NORMAL ≠ FAST → no fire")
-    @Test fun standardMapsToNormal() = agree("[Priority -> SpeedClass] == \"NORMAL\"", "STANDARD", "STANDARD → NORMAL → fires VALUE")
-    @Test fun emptyEnumNoFireFast() = agree("[Priority -> SpeedClass] == \"FAST\"", null, "empty Priority → no fire")
-    @Test fun emptyEnumNoFireNormal() = agree("[Priority -> SpeedClass] == \"NORMAL\"", null, "empty Priority → no fire (NORMAL)")
-    @Test fun outOfEnumSuppressed() = agree("[Priority -> SpeedClass] == \"FAST\"", "BOGUS", "out-of-enum → suppressed → no fire")
-    @Test fun notFastFiresOnNormal() = agree("[Priority -> SpeedClass] != \"FAST\"", "STANDARD", "STANDARD → NORMAL != FAST → fires VALUE")
-    @Test fun notFastNoFireOnFast() = agree("[Priority -> SpeedClass] != \"FAST\"", "EXPRESS", "EXPRESS → FAST, != FAST → no fire")
+    @Test fun expressMapsToFast() = agree(render(m.enumOf(PRIORITY).category("SpeedClass").`is`("FAST")), "EXPRESS", "EXPRESS → FAST → fires VALUE")
+    @Test fun overnightMapsToFast() = agree(render(m.enumOf(PRIORITY).category("SpeedClass").`is`("FAST")), "OVERNIGHT", "OVERNIGHT → FAST → fires VALUE")
+    @Test fun standardIsNotFast() = agree(render(m.enumOf(PRIORITY).category("SpeedClass").`is`("FAST")), "STANDARD", "STANDARD → NORMAL ≠ FAST → no fire")
+    @Test fun standardMapsToNormal() = agree(render(m.enumOf(PRIORITY).category("SpeedClass").`is`("NORMAL")), "STANDARD", "STANDARD → NORMAL → fires VALUE")
+    @Test fun emptyEnumNoFireFast() = agree(render(m.enumOf(PRIORITY).category("SpeedClass").`is`("FAST")), null, "empty Priority → no fire")
+    @Test fun emptyEnumNoFireNormal() = agree(render(m.enumOf(PRIORITY).category("SpeedClass").`is`("NORMAL")), null, "empty Priority → no fire (NORMAL)")
+    @Test fun outOfEnumSuppressed() = agree(render(m.enumOf(PRIORITY).category("SpeedClass").`is`("FAST")), "BOGUS", "out-of-enum → suppressed → no fire")
+    @Test fun notFastFiresOnNormal() = agree(render(m.enumOf(PRIORITY).category("SpeedClass").isNot("FAST")), "STANDARD", "STANDARD → NORMAL != FAST → fires VALUE")
+    @Test fun notFastNoFireOnFast() = agree(render(m.enumOf(PRIORITY).category("SpeedClass").isNot("FAST")), "EXPRESS", "EXPRESS → FAST, != FAST → no fire")
 
     private companion object {
         const val PRIORITY = "/Order/Priority"

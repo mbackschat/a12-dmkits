@@ -6,6 +6,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -19,6 +23,11 @@ class DateTimeExtractDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val fields = listOf(FieldDef(SA, Kind.DATE_TIME, format = "yyyy-MM-dd'T'HH:mm:ss"))
+
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. The renderer emits absolute paths; both engines accept them.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
 
     /** `<cond>` over ScheduledAt = `instant` — kernel and interpreter must agree on firing. */
     private fun agree(cond: String, instant: String, msg: String) {
@@ -34,16 +43,16 @@ class DateTimeExtractDiffTest {
     private val instant = "2024-06-15T10:30:45"
 
     // DateFromDateTime → the date part, read by the date extractors.
-    @Test fun yearFromDatePart() = agree("FieldFilled(ScheduledAt) And YearFromDate(DateFromDateTime(ScheduledAt)) == 2024", instant, "year 2024")
-    @Test fun yearMismatch() = agree("FieldFilled(ScheduledAt) And YearFromDate(DateFromDateTime(ScheduledAt)) == 2023", instant, "year not 2023")
-    @Test fun monthFromDatePart() = agree("FieldFilled(ScheduledAt) And MonthFromDate(DateFromDateTime(ScheduledAt)) == 6", instant, "month 6")
-    @Test fun dayFromDatePart() = agree("FieldFilled(ScheduledAt) And DayFromDate(DateFromDateTime(ScheduledAt)) == 15", instant, "day 15")
+    @Test fun yearFromDatePart() = agree(render(m.dateTime(SA).filled().and(Dsl.yearFromDate(Dsl.dateFromDateTime(m.dateTime(SA))).eq(2024))), instant, "year 2024")
+    @Test fun yearMismatch() = agree(render(m.dateTime(SA).filled().and(Dsl.yearFromDate(Dsl.dateFromDateTime(m.dateTime(SA))).eq(2023))), instant, "year not 2023")
+    @Test fun monthFromDatePart() = agree(render(m.dateTime(SA).filled().and(Dsl.monthFromDate(Dsl.dateFromDateTime(m.dateTime(SA))).eq(6))), instant, "month 6")
+    @Test fun dayFromDatePart() = agree(render(m.dateTime(SA).filled().and(Dsl.dayFromDate(Dsl.dateFromDateTime(m.dateTime(SA))).eq(15))), instant, "day 15")
 
     // TimeFromDateTime → the time part, read by the time extractors.
-    @Test fun hoursFromTimePart() = agree("FieldFilled(ScheduledAt) And HoursFromTime(TimeFromDateTime(ScheduledAt)) == 10", instant, "hours 10")
-    @Test fun hoursMismatch() = agree("FieldFilled(ScheduledAt) And HoursFromTime(TimeFromDateTime(ScheduledAt)) == 11", instant, "hours not 11")
-    @Test fun minutesFromTimePart() = agree("FieldFilled(ScheduledAt) And MinutesFromTime(TimeFromDateTime(ScheduledAt)) == 30", instant, "minutes 30")
-    @Test fun secondsFromTimePart() = agree("FieldFilled(ScheduledAt) And SecondsFromTime(TimeFromDateTime(ScheduledAt)) == 45", instant, "seconds 45")
+    @Test fun hoursFromTimePart() = agree(render(m.dateTime(SA).filled().and(Dsl.hoursFromTime(Dsl.timeFromDateTime(m.dateTime(SA))).eq(10))), instant, "hours 10")
+    @Test fun hoursMismatch() = agree(render(m.dateTime(SA).filled().and(Dsl.hoursFromTime(Dsl.timeFromDateTime(m.dateTime(SA))).eq(11))), instant, "hours not 11")
+    @Test fun minutesFromTimePart() = agree(render(m.dateTime(SA).filled().and(Dsl.minutesFromTime(Dsl.timeFromDateTime(m.dateTime(SA))).eq(30))), instant, "minutes 30")
+    @Test fun secondsFromTimePart() = agree(render(m.dateTime(SA).filled().and(Dsl.secondsFromTime(Dsl.timeFromDateTime(m.dateTime(SA))).eq(45))), instant, "seconds 45")
 
     private companion object {
         const val SA = "/Order/ScheduledAt"

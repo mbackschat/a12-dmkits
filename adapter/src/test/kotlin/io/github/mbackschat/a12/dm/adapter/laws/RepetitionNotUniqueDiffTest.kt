@@ -7,6 +7,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -22,6 +26,11 @@ class RepetitionNotUniqueDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val fields = listOf(FieldDef(SKU, Kind.STRING), FieldDef(COUNT, Kind.NUMBER), FieldDef(WEIGHT, Kind.NUMBER))
+
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. ABSOLUTE paths; both engines accept them.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
 
     /** [cond] over `Items` rows = [rows] (count, weight); compare the kernel's and interpreter's RU message set. */
     private fun agree(cond: String, rows: List<Pair<String?, String?>>, msg: String) {
@@ -45,8 +54,8 @@ class RepetitionNotUniqueDiffTest {
         assertEquals(kDesc, iDesc, "$msg\n  kernel=$kDesc\n  interp=$iDesc")
     }
 
-    private val single = "RepetitionNotUnique(Items/Count)"
-    private val composite = "RepetitionNotUnique(Items/Count, Items/UnitWeight)"
+    private val single = render(Dsl.repetitionNotUnique(m.field(COUNT)))
+    private val composite = render(Dsl.repetitionNotUnique(m.field(COUNT), m.field(WEIGHT)))
 
     @Test fun duplicateCountFlagsBothRows() = agree(single, listOf("5" to null, "5" to null), "5,5 → both rows flagged (VALUE)")
     @Test fun distinctCountsNoFire() = agree(single, listOf("5" to null, "7" to null), "5,7 → none")

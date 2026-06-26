@@ -6,6 +6,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -20,6 +24,11 @@ class DateLiteralDiffTest {
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val fields = listOf(FieldDef(OD, Kind.DATE), FieldDef(CN, Kind.STRING))
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. The renderer emits absolute paths; both engines accept them.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     private fun agree(cond: String, errorRel: String, set: (RuntimeLaws.Doc) -> Unit, setI: (Document) -> Unit, msg: String) {
         val k = RuntimeLaws.fires(RuntimeLaws.withRule(order, "/Order", "R", errorRel, "DL", cond), "DL",
             RuntimeLaws.doc().group("/Order", 1).also { set(it) })
@@ -33,26 +42,26 @@ class DateLiteralDiffTest {
         agree(cond, "../OrderDate", { it.field(OD, date, 1, 1) }, { it.field(OD, date, 1, 1) }, msg)
 
     @Test fun equalsLiteral() {
-        val c = "FieldFilled(OrderDate) And [OrderDate] == \"15.06.2024\""
+        val c = render(m.date(OD).filled().and(m.date(OD).eq(Dsl.dateValue("15.06.2024"))))
         onDate(c, "2024-06-15", "the ISO field value equals the German literal")
         onDate(c, "2021-01-01", "a different date does not equal the literal")
     }
 
     @Test fun afterLiteral() {
-        val c = "FieldFilled(OrderDate) And [OrderDate] > \"01.01.2022\""
+        val c = render(m.date(OD).filled().and(m.date(OD).after(Dsl.dateValue("01.01.2022"))))
         onDate(c, "2024-06-15", "2024 is after 2022-01-01")
         onDate(c, "2021-01-01", "2021 is not after 2022-01-01")
     }
 
     @Test fun beforeLiteral() {
-        val c = "FieldFilled(OrderDate) And [OrderDate] < \"01.01.2022\""
+        val c = render(m.date(OD).filled().and(m.date(OD).before(Dsl.dateValue("01.01.2022"))))
         onDate(c, "2021-01-01", "2021 is before 2022-01-01")
         onDate(c, "2024-06-15", "2024 is not before 2022-01-01")
     }
 
     @Test fun literalInArgumentPosition() {
         // DifferenceInDays(a, b) = b − a; b is the literal 2022-01-01.
-        val c = "FieldFilled(OrderDate) And DifferenceInDays(OrderDate, \"01.01.2022\") > 0"
+        val c = render(m.date(OD).filled().and(Dsl.differenceInDays(m.date(OD), Dsl.dateValue("01.01.2022")).gt(0)))
         onDate(c, "2021-01-01", "2022-01-01 − 2021-01-01 = +365 > 0")
         onDate(c, "2024-06-15", "2022-01-01 − 2024-06-15 < 0")
     }
@@ -61,7 +70,7 @@ class DateLiteralDiffTest {
         // In a value LIST a date-looking entry is a plain STRING value (not a date constant) — proving the
         // canonicalization is position-scoped (comparison-vs-date / date-arg), never a blanket literal rewrite.
         // A STRING field whose RAW value is "15.06.2024" is in the list; the ISO form is not.
-        val c = "FieldFilled(CustomerName) And FieldValueIncludedInValueList(CustomerName, \"15.06.2024\")"
+        val c = render(m.str(CN).filled().and(m.str(CN).`in`("15.06.2024")))
         agree(c, "../CustomerName", { it.field(CN, "15.06.2024", 1, 1) }, { it.field(CN, "15.06.2024", 1, 1) },
             "the raw date-looking string is in the value list")
         agree(c, "../CustomerName", { it.field(CN, "2024-06-15", 1, 1) }, { it.field(CN, "2024-06-15", 1, 1) },

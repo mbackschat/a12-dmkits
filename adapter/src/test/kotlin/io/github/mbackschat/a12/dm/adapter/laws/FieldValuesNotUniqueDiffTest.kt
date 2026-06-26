@@ -6,6 +6,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -26,6 +30,11 @@ class FieldValuesNotUniqueDiffTest {
         FieldDef(NAME, Kind.STRING), FieldDef(CODE, Kind.STRING),
     )
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. ABSOLUTE paths; both engines accept them.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     /** Inject [cond] at /Order (error field [errorRel] — must be referenced in the condition), set each
      *  (path → value) cell (null = leave empty), assert firing agrees with the kernel. */
     private fun agree(cond: String, vararg cells: Pair<String, String?>, errorRel: String = "../Quantity", msg: String) {
@@ -42,8 +51,8 @@ class FieldValuesNotUniqueDiffTest {
         assertEquals(kernel, interp, "$msg  (kernel=$kernel interp=$interp)")
     }
 
-    private val two = "FieldValuesNotUnique(Quantity, BackorderQuantity)"
-    private val three = "FieldValuesNotUnique(Quantity, BackorderQuantity, StockOnHand)"
+    private val two = render(Dsl.fieldValuesNotUnique(m.field(QTY), m.field(BACK)))
+    private val three = render(Dsl.fieldValuesNotUnique(m.field(QTY), m.field(BACK), m.field(STOCK)))
 
     @Test fun twoEqualFires() = agree(two, QTY to "5", BACK to "5", msg = "5 == 5 → not all distinct → fires")
     @Test fun twoDistinctDoesNotFire() = agree(two, QTY to "5", BACK to "9", msg = "5 != 9 → distinct → not fire")
@@ -57,14 +66,14 @@ class FieldValuesNotUniqueDiffTest {
     @Test fun threeOneFilledTwoEmptyDoesNotFire() = agree(three, QTY to "5", BACK to null, STOCK to null, msg = "one value, empties skipped → no duplicate")
 
     @Test fun crossScaleNumericEqualFires() =
-        agree("FieldValuesNotUnique(Quantity, UnitPrice)", QTY to "5", PRICE to "5.00", msg = "5 == 5.00 numerically across scales → fires")
+        agree(render(Dsl.fieldValuesNotUnique(m.field(QTY), m.field(PRICE))), QTY to "5", PRICE to "5.00", msg = "5 == 5.00 numerically across scales → fires")
 
     @Test fun equalStringsFires() =
-        agree("FieldValuesNotUnique(CustomerName, ProductCode)", NAME to "AB", CODE to "AB",
+        agree(render(Dsl.fieldValuesNotUnique(m.field(NAME), m.field(CODE))), NAME to "AB", CODE to "AB",
             errorRel = "../CustomerName", msg = "\"AB\" == \"AB\" → fires")
 
     @Test fun distinctStringsDoesNotFire() =
-        agree("FieldValuesNotUnique(CustomerName, ProductCode)", NAME to "AB", CODE to "CD",
+        agree(render(Dsl.fieldValuesNotUnique(m.field(NAME), m.field(CODE))), NAME to "AB", CODE to "CD",
             errorRel = "../CustomerName", msg = "\"AB\" != \"CD\" → not fire")
 
     // The STARRED form `FieldValuesNotUnique(Items* / Count)` — cross-ROW distinctness of one repeatable field
@@ -92,7 +101,7 @@ class FieldValuesNotUniqueDiffTest {
         assertEquals(kernel, interp, "$msg  (kernel=$kernel interp=$interp)")
     }
 
-    private val star = "FieldValuesNotUnique(Items*/Count)"
+    private val star = render(Dsl.fieldValuesNotUnique(m.flatten("/Order/Items*/Count")))
 
     @Test fun starredCrossRowDupFires() = starAgree(star, listOf("5", "9", "5"), msg = "two rows Count=5 → fires")
     @Test fun starredCrossRowDistinctDoesNotFire() = starAgree(star, listOf("5", "9", "3"), msg = "all distinct rows → not fire")

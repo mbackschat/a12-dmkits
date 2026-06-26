@@ -6,6 +6,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -25,6 +29,11 @@ class RoundDiffTest {
         FieldDef(ITEM, Kind.STRING), FieldDef(QTY, Kind.NUMBER, scale = 0), FieldDef(PRICE, Kind.NUMBER, scale = 2),
     )
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines. `Dsl.roundDown(m.num(p).asNumber(), n)` / `Dsl.roundDownValue(m.num(p))` (and Up/Accounting/abs).
+    private val m = BoundModel.ofJson(fuzz)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     private fun agree(cond: String, item: String, qty: String, price: String, msg: String) {
         val errorRel = "../Price"
         val kModel = RuntimeLaws.withRule(fuzz, "/Cart/Lines", "RR", errorRel, "RR", cond)
@@ -41,37 +50,37 @@ class RoundDiffTest {
 
     // RoundDown = FLOOR (toward −∞). Negative is the catcher: toward-zero would give -1 (not < -1).
     @Test fun roundDownNegativeIsFloor() =
-        agree("FieldFilled(Price) And RoundDown([Price], 0) < -1", "A", "1", "-1.40", "FLOOR(-1.40) = -2 < -1")
+        agree(render(m.num(PRICE).filled().and(Dsl.roundDown(m.num(PRICE).asNumber(), 0).lt(-1))), "A", "1", "-1.40", "FLOOR(-1.40) = -2 < -1")
     @Test fun roundDownPositive() =
-        agree("FieldFilled(Price) And RoundDown([Price], 0) < 2", "A", "1", "1.80", "FLOOR(1.80) = 1 < 2")
+        agree(render(m.num(PRICE).filled().and(Dsl.roundDown(m.num(PRICE).asNumber(), 0).lt(2))), "A", "1", "1.80", "FLOOR(1.80) = 1 < 2")
     @Test fun roundDownToOnePlace() =
-        agree("FieldFilled(Price) And RoundDown([Price], 1) < -1.4", "A", "1", "-1.45", "FLOOR(-1.45, 1) = -1.5 < -1.4")
+        agree(render(m.num(PRICE).filled().and(Dsl.roundDown(m.num(PRICE).asNumber(), 1).lt("-1.4"))), "A", "1", "-1.45", "FLOOR(-1.45, 1) = -1.5 < -1.4")
 
     // RoundUp = CEILING (toward +∞). Negative is the catcher: away-from-zero would give -2 (not > -2).
     @Test fun roundUpNegativeIsCeiling() =
-        agree("FieldFilled(Price) And RoundUp([Price], 0) > -2", "A", "1", "-1.40", "CEILING(-1.40) = -1 > -2")
+        agree(render(m.num(PRICE).filled().and(Dsl.roundUp(m.num(PRICE).asNumber(), 0).gt(-2))), "A", "1", "-1.40", "CEILING(-1.40) = -1 > -2")
     @Test fun roundUpPositive() =
-        agree("FieldFilled(Price) And RoundUp([Price], 0) > 1", "A", "1", "1.20", "CEILING(1.20) = 2 > 1")
+        agree(render(m.num(PRICE).filled().and(Dsl.roundUp(m.num(PRICE).asNumber(), 0).gt(1))), "A", "1", "1.20", "CEILING(1.20) = 2 > 1")
 
     // RoundAccounting = HALF_UP away-from-zero. The .5 boundary catches half-even.
     @Test fun roundAccountingNegativeHalf() =
-        agree("FieldFilled(Price) And RoundAccounting([Price], 0) < -2", "A", "1", "-2.50", "HALF_UP(-2.50) = -3 < -2")
+        agree(render(m.num(PRICE).filled().and(Dsl.roundAccounting(m.num(PRICE).asNumber(), 0).lt(-2))), "A", "1", "-2.50", "HALF_UP(-2.50) = -3 < -2")
     @Test fun roundAccountingPositiveHalf() =
-        agree("FieldFilled(Price) And RoundAccounting([Price], 0) > 2", "A", "1", "2.50", "HALF_UP(2.50) = 3 > 2")
+        agree(render(m.num(PRICE).filled().and(Dsl.roundAccounting(m.num(PRICE).asNumber(), 0).gt(2))), "A", "1", "2.50", "HALF_UP(2.50) = 3 > 2")
     @Test fun roundAccountingExpression() =
-        agree("FieldFilled(Price) And RoundAccounting([Price] * [Qty], 1) > 4.6", "A", "3", "1.55", "HALF_UP(4.65, 1) = 4.7 > 4.6")
+        agree(render(m.num(PRICE).filled().and(Dsl.roundAccounting(m.num(PRICE).asNumber().times(m.num(QTY).asNumber()), 1).gt("4.6"))), "A", "3", "1.55", "HALF_UP(4.65, 1) = 4.7 > 4.6")
 
     // *Value forms — round a bare field to an integer (0 places), same direction as their siblings.
     @Test fun roundDownValueNegative() =
-        agree("FieldFilled(Price) And RoundDownValue(Price) < -1", "A", "1", "-1.40", "RoundDownValue(-1.40) = -2 < -1")
+        agree(render(m.num(PRICE).filled().and(Dsl.roundDownValue(m.num(PRICE)).lt(-1))), "A", "1", "-1.40", "RoundDownValue(-1.40) = -2 < -1")
     @Test fun roundUpValueNegative() =
-        agree("FieldFilled(Price) And RoundUpValue(Price) > -2", "A", "1", "-1.40", "RoundUpValue(-1.40) = -1 > -2")
+        agree(render(m.num(PRICE).filled().and(Dsl.roundUpValue(m.num(PRICE)).gt(-2))), "A", "1", "-1.40", "RoundUpValue(-1.40) = -1 > -2")
     @Test fun roundAccountingValueNegative() =
-        agree("FieldFilled(Price) And RoundAccountingValue(Price) < -2", "A", "1", "-2.50", "RoundAccountingValue(-2.50) = -3 < -2")
+        agree(render(m.num(PRICE).filled().and(Dsl.roundAccountingValue(m.num(PRICE)).lt(-2))), "A", "1", "-2.50", "RoundAccountingValue(-2.50) = -3 < -2")
 
     // A clean non-firing case (the rounded value does not satisfy the comparison).
     @Test fun roundDownDoesNotFire() =
-        agree("FieldFilled(Price) And RoundDown([Price], 0) > 5", "A", "1", "4.90", "FLOOR(4.90) = 4 not > 5")
+        agree(render(m.num(PRICE).filled().and(Dsl.roundDown(m.num(PRICE).asNumber(), 0).gt(5))), "A", "1", "4.90", "FLOOR(4.90) = 4 not > 5")
 
     private companion object {
         const val ITEM = "/Cart/Lines/ItemId"

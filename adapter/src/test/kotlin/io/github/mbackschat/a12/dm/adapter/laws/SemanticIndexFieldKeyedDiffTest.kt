@@ -46,6 +46,9 @@ class SemanticIndexFieldKeyedDiffTest {
 
     private val present = listOf("SKU-1" to "5", "SKU-2" to "3")
 
+    // DSL-EXEMPT: the field-keyed semantic index `[<field> For <keyField>]` has no DSL builder —
+    // `NumberRef.forIndex` accepts only a String literal (the `[field For "value"]` form), and
+    // `SemanticIndexValue` carries only `(FieldRef, String indexValue)`. No findable builder for a field key.
     @Test fun matchedValueGreater() =
         agree("FieldFilled(CustomerName) And [Items/Count For CustomerName] > 0", "SKU-1", present, "key SKU-1 → count 5 > 0 → VALUE")
     @Test fun matchedValueEquals() =

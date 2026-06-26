@@ -7,6 +7,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.model.Verdict
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -24,8 +28,13 @@ class SuppressionDiffTest {
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val fields = listOf(FieldDef(OD, Kind.DATE), FieldDef(DD, Kind.DATE))
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. `m.date(p).before(m.date(q))` is the orderable date comparison.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     // A date rule: delivery strictly before order is a violation (mirrors cli-runtime's DeliveryNotBeforeOrder).
-    private val condition = "[DeliveryDate] < [OrderDate]"
+    private val condition = render(m.date(DD).before(m.date(OD)))
     private val rule = RuleDef("/Order/DeliveryNotBeforeOrder", "/Order", condition, "DELIVERY_BEFORE_ORDER", "../DeliveryDate")
     private val model = RuntimeLaws.withRule(order, "/Order", "DeliveryNotBeforeOrder", "../DeliveryDate", "DELIVERY_BEFORE_ORDER", condition)
     private val def = ModelDef(fields, listOf(rule))
@@ -73,7 +82,7 @@ class SuppressionDiffTest {
         // skip the whole rule. So `<malformed-comparison> Or <true>` STILL fires (unknown Or true = true),
         // alongside the format error. (The mirror of the requiredness Or case; verified against the kernel.)
         val q = "/Order/Quantity"
-        val cond = "[Quantity] < 100 Or FieldFilled(CustomerName)"
+        val cond = render(m.num(q).lt(100).or(Dsl.fieldFilled(m.field("/Order/CustomerName"))))
         val kModel = RuntimeLaws.withRule(order, "/Order", "Cap", "../Quantity", "QTY_LOW", cond)
         val numDef = ModelDef(listOf(FieldDef(q, Kind.NUMBER), FieldDef("/Order/CustomerName", Kind.STRING)),
             listOf(RuleDef("/Order/Cap", "/Order", cond, "QTY_LOW", "../Quantity")))

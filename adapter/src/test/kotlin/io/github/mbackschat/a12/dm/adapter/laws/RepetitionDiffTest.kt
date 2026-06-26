@@ -7,6 +7,10 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.eval.RepDoc
 import io.github.mbackschat.a12.dm.interpreter.dec
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -22,10 +26,17 @@ class RepetitionDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
 
+    // Conditions fed to the KERNEL are authored with the rulekit typed DSL ([m]) and rendered — no free-text
+    // condition literals. The interpreter side still drives off the hand-built [ast]; only the kernel's
+    // condition string changes (the differential asserts they agree). The `FieldFilled(CustomerName) And `
+    // prefix the agg helpers prepend stays a string literal there.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     @Test
     fun perRowRuleFiresOnTheOffendingRows() {
         val model = RuntimeLaws.withRule(order, "/Order", "CountCap", "../Items/Count", "COUNT_HIGH",
-            "FieldFilled(Items/Count) And [Items/Count] > 50")
+            render(Dsl.fieldFilled(m.field(IC)).and(m.num(IC).gt(50))))
         val ast = Cond.And(
             Cond.Pred("FieldFilled", listOf(Expr.Field(IC))),
             Cond.Cmp(CmpOp.GT, Expr.Field(IC), Expr.NumLit(dec(50))),
@@ -39,19 +50,20 @@ class RepetitionDiffTest {
 
     @Test
     fun starredNumberAggregates() {
+        val counts = m.flatten("/Order/Items*/Count")
         assertAll(
-            aggDiff("SUM80A", "Sum(Items*/Count) == 80", sumEq(80), listOf("40", null, "40")),
-            aggDiff("SUM120", "Sum(Items*/Count) == 80", sumEq(80), listOf("40", "40", "40")),
-            aggDiff("SUM0", "Sum(Items*/Count) == 0", sumEq(0), listOf(null, null, null)),
-            aggDiff("MAXV40", "MaxValue(Items*/Count) == 40", maxvalEq(40), listOf("40", null, "10")),
-            aggDiff("NDV1", "NumberOfDifferentValues(Items*/Count) == 1", ndvEq(1), listOf("5", null, "5")),
-            aggDiff("NDV2", "NumberOfDifferentValues(Items*/Count) == 1", ndvEq(1), listOf("5", "6", "5")),
+            aggDiff("SUM80A", render(Dsl.sum(counts).eq(80)), sumEq(80), listOf("40", null, "40")),
+            aggDiff("SUM120", render(Dsl.sum(counts).eq(80)), sumEq(80), listOf("40", "40", "40")),
+            aggDiff("SUM0", render(Dsl.sum(counts).eq(0)), sumEq(0), listOf(null, null, null)),
+            aggDiff("MAXV40", render(Dsl.maxValue(counts).eq(40)), maxvalEq(40), listOf("40", null, "10")),
+            aggDiff("NDV1", render(Dsl.numberOfDifferentValues(counts).eq(1)), ndvEq(1), listOf("5", null, "5")),
+            aggDiff("NDV2", render(Dsl.numberOfDifferentValues(counts).eq(1)), ndvEq(1), listOf("5", "6", "5")),
         )
     }
 
     @Test
     fun starredDateAggregate() {
-        val cond = "MaxValue(Items*/PromiseDate) > [DeliveryDate]"
+        val cond = render(Dsl.latestOf(m.flatten("/Order/Items*/PromiseDate")).after(m.date(DD)))
         val ast = Cond.Cmp(CmpOp.GT, Expr.Func("MaxValue", listOf(Expr.Star(IP))), Expr.Field(DD))
         assertAll(
             dateDiff("LATE1", cond, ast, listOf("2026-06-15", "2026-07-20", "2026-06-20")),

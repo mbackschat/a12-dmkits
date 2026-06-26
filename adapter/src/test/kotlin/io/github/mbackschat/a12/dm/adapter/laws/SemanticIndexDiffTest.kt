@@ -7,6 +7,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -20,6 +23,11 @@ class SemanticIndexDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val fields = listOf(FieldDef(CN, Kind.STRING), FieldDef(SKU, Kind.STRING), FieldDef(COUNT, Kind.NUMBER))
+
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines. `m.num(p).forIndex("key")` is the literal semantic index `[field For "key"]`; absolute paths render.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
 
     /** [cond] over Items rows = [rows] (sku, count); compare kernel vs interpreter (firing + polarity). */
     private fun agree(cond: String, rows: List<Pair<String, String?>>, msg: String) {
@@ -45,16 +53,16 @@ class SemanticIndexDiffTest {
     private val emptyCount = listOf("SKU-1" to null, "SKU-2" to "3")
     private val noKey = listOf("SKU-2" to "3")
 
-    @Test fun matchedValueGreater() = agree("FieldFilled(CustomerName) And [Items/Count For \"SKU-1\"] > 0", present, "SKU-1 count 5 > 0 → VALUE")
-    @Test fun matchedValueEquals() = agree("FieldFilled(CustomerName) And [Items/Count For \"SKU-1\"] == 5", present, "SKU-1 count == 5")
-    @Test fun matchedValueNotEquals() = agree("FieldFilled(CustomerName) And [Items/Count For \"SKU-1\"] == 9", present, "SKU-1 count != 9")
-    @Test fun otherKey() = agree("FieldFilled(CustomerName) And [Items/Count For \"SKU-2\"] == 3", present, "SKU-2 count == 3")
+    @Test fun matchedValueGreater() = agree(render(m.str(CN).filled().and(m.num(COUNT).forIndex("SKU-1").gt(0))), present, "SKU-1 count 5 > 0 → VALUE")
+    @Test fun matchedValueEquals() = agree(render(m.str(CN).filled().and(m.num(COUNT).forIndex("SKU-1").eq(5))), present, "SKU-1 count == 5")
+    @Test fun matchedValueNotEquals() = agree(render(m.str(CN).filled().and(m.num(COUNT).forIndex("SKU-1").eq(9))), present, "SKU-1 count != 9")
+    @Test fun otherKey() = agree(render(m.str(CN).filled().and(m.num(COUNT).forIndex("SKU-2").eq(3))), present, "SKU-2 count == 3")
 
     // Absent row / empty matched cell → empty value (0), fillable → OMISSION on == 0, no fire on > 0 / == 5.
-    @Test fun emptyCellEqualsZeroIsOmission() = agree("FieldFilled(CustomerName) And [Items/Count For \"SKU-1\"] == 0", emptyCount, "empty SKU-1 count → 0 → OMISSION")
-    @Test fun emptyCellGreaterZeroNoFire() = agree("FieldFilled(CustomerName) And [Items/Count For \"SKU-1\"] > 0", emptyCount, "empty SKU-1 count → 0 not > 0")
-    @Test fun missingKeyEqualsZeroIsOmission() = agree("FieldFilled(CustomerName) And [Items/Count For \"SKU-1\"] == 0", noKey, "no SKU-1 row → 0 → OMISSION")
-    @Test fun missingKeyEqualsValueNoFire() = agree("FieldFilled(CustomerName) And [Items/Count For \"SKU-1\"] == 5", noKey, "no SKU-1 row → 0 != 5")
+    @Test fun emptyCellEqualsZeroIsOmission() = agree(render(m.str(CN).filled().and(m.num(COUNT).forIndex("SKU-1").eq(0))), emptyCount, "empty SKU-1 count → 0 → OMISSION")
+    @Test fun emptyCellGreaterZeroNoFire() = agree(render(m.str(CN).filled().and(m.num(COUNT).forIndex("SKU-1").gt(0))), emptyCount, "empty SKU-1 count → 0 not > 0")
+    @Test fun missingKeyEqualsZeroIsOmission() = agree(render(m.str(CN).filled().and(m.num(COUNT).forIndex("SKU-1").eq(0))), noKey, "no SKU-1 row → 0 → OMISSION")
+    @Test fun missingKeyEqualsValueNoFire() = agree(render(m.str(CN).filled().and(m.num(COUNT).forIndex("SKU-1").eq(5))), noKey, "no SKU-1 row → 0 != 5")
 
     private companion object {
         const val CN = "/Order/CustomerName"

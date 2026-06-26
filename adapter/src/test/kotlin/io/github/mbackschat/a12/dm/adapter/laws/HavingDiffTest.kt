@@ -6,6 +6,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -20,6 +24,15 @@ class HavingDiffTest {
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val fields = listOf(FieldDef(CN, Kind.STRING), FieldDef(SKU, Kind.STRING),
         FieldDef(WEIGHT, Kind.NUMBER, scale = 2), FieldDef(COUNT, Kind.NUMBER))
+
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. `Dsl.sum(flatten.having(...))` is the per-row Having filter.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+    private val itemCounts = m.flatten("/Order/Items*/Count")
+    private fun filledCn() = Dsl.fieldFilled(m.field(CN))
+    /** Sum of the starred Items Count list, filtered to rows where UnitWeight == [w] — the per-row Having aggregate. */
+    private fun filteredSum(w: Long) = Dsl.sum(itemCounts.having(m.num(WEIGHT).eq(w)))
 
     /** [cond] over Items rows = [rows] (weight, count) — kernel and interpreter agree on firing. */
     private fun agree(cond: String, rows: List<Pair<String, String>>, msg: String) {
@@ -41,11 +54,11 @@ class HavingDiffTest {
 
     private val rows = listOf("1" to "3", "2" to "10", "1" to "4")   // W==1 rows have Count 3 + 4 = 7
 
-    @Test fun sumOverFilteredRowsFires() = agree("FieldFilled(CustomerName) And Sum(Items*/Count Having [Items/UnitWeight] == 1) > 5", rows, "filtered Sum 7 > 5")
-    @Test fun sumOverFilteredRowsBoundary() = agree("FieldFilled(CustomerName) And Sum(Items*/Count Having [Items/UnitWeight] == 1) > 7", rows, "filtered Sum 7 not > 7")
-    @Test fun sumOverFilteredRowsEquals() = agree("FieldFilled(CustomerName) And Sum(Items*/Count Having [Items/UnitWeight] == 1) == 7", rows, "filtered Sum == 7")
-    @Test fun noMatchingRowsSumZero() = agree("FieldFilled(CustomerName) And Sum(Items*/Count Having [Items/UnitWeight] == 9) == 0", rows, "no W==9 rows → filtered Sum 0")
-    @Test fun unfilteredSumDiffers() = agree("FieldFilled(CustomerName) And Sum(Items*/Count) == 17", rows, "the UNfiltered Sum is 17 (all rows)")
+    @Test fun sumOverFilteredRowsFires() = agree(render(filledCn().and(filteredSum(1).gt(5))), rows, "filtered Sum 7 > 5")
+    @Test fun sumOverFilteredRowsBoundary() = agree(render(filledCn().and(filteredSum(1).gt(7))), rows, "filtered Sum 7 not > 7")
+    @Test fun sumOverFilteredRowsEquals() = agree(render(filledCn().and(filteredSum(1).eq(7))), rows, "filtered Sum == 7")
+    @Test fun noMatchingRowsSumZero() = agree(render(filledCn().and(filteredSum(9).eq(0))), rows, "no W==9 rows → filtered Sum 0")
+    @Test fun unfilteredSumDiffers() = agree(render(filledCn().and(Dsl.sum(itemCounts).eq(17))), rows, "the UNfiltered Sum is 17 (all rows)")
 
     private companion object {
         const val CN = "/Order/CustomerName"

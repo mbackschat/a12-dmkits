@@ -7,6 +7,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
+import io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -23,6 +27,11 @@ class ToleranceDiffTest {
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val fields = listOf(FieldDef(QTY, Kind.NUMBER, scale = 0), FieldDef(BACK, Kind.NUMBER, scale = 0))
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines. `m.num(a).differsWithTolerance(Tolerance.RANGE_N, m.num(b))` is `[a] DiffersWithToleranceRangeN [b]`.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     /** Inject [cond] at /Order; set Quantity=[q]/BackorderQuantity=[b] (null = empty); assert the fired type agrees. */
     private fun agree(cond: String, q: String?, b: String?, msg: String) {
         val model = RuntimeLaws.withRule(order, "/Order", "DT", "../Quantity", "DT", cond)
@@ -38,8 +47,8 @@ class ToleranceDiffTest {
         assertEquals(kernel, interp, "$msg  [kernel=$kernel interp=$interp]")
     }
 
-    private val t1 = "[Quantity] DiffersWithToleranceRange1 [BackorderQuantity]"
-    private val t5 = "[Quantity] DiffersWithToleranceRange5 [BackorderQuantity]"
+    private val t1 = render(m.num(QTY).differsWithTolerance(Tolerance.RANGE_1, m.num(BACK)))
+    private val t5 = render(m.num(QTY).differsWithTolerance(Tolerance.RANGE_5, m.num(BACK)))
 
     @Test fun diffAboveBandFiresValue() = agree(t1, "5", "9", msg = "|5−9|=4 > 1, both present → VALUE")
     @Test fun diffAtBandDoesNotFire() = agree(t1, "5", "6", msg = "|5−6|=1, not > 1 → no fire")

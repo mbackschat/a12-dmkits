@@ -6,6 +6,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -20,6 +24,11 @@ class BaseYearDiffTest {
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val fields = listOf(FieldDef(OD, Kind.DATE), FieldDef(QTY, Kind.NUMBER))
     private val baseYear = 2020
+
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. ABSOLUTE paths; both engines accept them.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
 
     private fun agreeDate(cond: String, date: String, msg: String) {
         val k = RuntimeLaws.fires(RuntimeLaws.withRule(order, "/Order", "R", "../OrderDate", "BY", cond), "BY",
@@ -39,23 +48,25 @@ class BaseYearDiffTest {
 
     // Date polymorphism — BaseYear is the base-year start 2020-01-01.
     @Test fun dateOnOrAfterBaseYearStart() {
-        val c = "FieldFilled(OrderDate) And [OrderDate] >= BaseYear"
+        val c = render(m.date(OD).filled().and(m.date(OD).onOrAfter(Dsl.baseYear())))
         agreeDate(c, "2020-01-01", "the base-year start is on/after itself")
         agreeDate(c, "2019-12-31", "the day before is not on/after the base-year start")
         agreeDate(c, "2024-06-01", "a later date is on/after the base-year start")
     }
 
     @Test fun dateBeforeBaseYearStart() {
-        val c = "FieldFilled(OrderDate) And [OrderDate] < BaseYear"
+        val c = render(m.date(OD).filled().and(m.date(OD).before(Dsl.baseYear())))
         agreeDate(c, "2019-12-31", "the day before is before the base-year start")
         agreeDate(c, "2020-01-01", "the start itself is not before the base-year start")
     }
 
     // Number polymorphism — BaseYear is the year number 2020.
     @Test fun numberVsBaseYear() {
-        agreeNumber("FieldFilled(Quantity) And [Quantity] > BaseYear", "2021", "2021 > 2020")
-        agreeNumber("FieldFilled(Quantity) And [Quantity] > BaseYear", "5", "5 not > 2020")
-        agreeNumber("FieldFilled(Quantity) And [Quantity] == BaseYear", "2020", "2020 equals the base year number")
+        val gt = render(m.num(QTY).filled().and(m.num(QTY).gt(Dsl.baseYearNumber())))
+        agreeNumber(gt, "2021", "2021 > 2020")
+        agreeNumber(gt, "5", "5 not > 2020")
+        agreeNumber(render(m.num(QTY).filled().and(m.num(QTY).eq(Dsl.baseYearNumber()))), "2020",
+            "2020 equals the base year number")
     }
 
     private companion object {
