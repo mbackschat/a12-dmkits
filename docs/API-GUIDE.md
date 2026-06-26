@@ -808,8 +808,13 @@ order.addField("Discount", NUMBER)
 // a ref to ANY child — new or existing — comes from relative navigation off that SAME editor:
 NumberRef discount = order.num("Discount");        // … never a re-typed "/Order/..." path
 GroupRef  items    = order.group("Items");
+FieldListRef lines = order.flatten("Items*/Qty");  // star aggregate, relative — base prepended (DG11)
 ```
 *(There is **no** session-as-actor / ref-returning duplicate — no `NumberRef d = s.addField(order, …)`. The editor's fluent edits + relative navigation are the **whole** editing story; the lower-level session mutator, if it exists at all, is an internal delegate the editor forwards to, not public surface.)*
+
+**Relative navigation covers star aggregates too (DG11).** Alongside the scalar `num`/`str`/`group`/… nav, `GroupEditor.flatten(relativeStarPath)` / `flattenGroup(…)` (and the read peers on `GroupInfo`) yield a `FieldListRef`/`GroupListRef` with the editor's path prepended and the relative portion carrying its own `*`(s) — so `sum(order.flatten("Items*/Qty"))` needs no full `/Order/Items*/Qty` string. The base path lives once, in the editor.
+
+**Build a `Rule`/`Computation` off the editor — with or without adding it (DG12).** `addRule(b -> …)` / `addComputation(field, b -> …)` build-AND-add to the session; `rule(b -> …): Rule` / `computation(field, b -> …): Computation` are the **compose peers** that build-and-RETURN the typed object without mutating the session. Either way the rule's error field + condition are refs and its `errorEntityRelPath()` (`"../…"`) + `render()` are **derived**, never hand-written — so a differential harness can author one typed `Rule` and feed it to two engines from a single source. (Both surfaced + filled by dogfooding the perf benchmark through the editor — DEV-API-GAPS-LEDGER DG11/DG12.)
 
 The same **per-type field builders** as the from-scratch builder are on the editor too (DG1) — configure scale/bounds/pattern/enum-domain + metadata fluently while editing, instead of dropping to a hand-built `FieldTypeSpec` (a field added this way is byte-identical to one built from scratch — one shared `FieldAttrs.toField` assembly):
 

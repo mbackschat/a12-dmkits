@@ -193,6 +193,15 @@ class NavigationTest {
         assertTrue(m.groupAt("/Subscription/Tier").isEmpty(), "a field is not a group");
     }
 
+    @Test
+    void groupInfoFlattensRelativeStarPaths() {
+        // the star-aggregate peer of the relative scalar nav above: a flatten relative to this group, with
+        // the base path prepended and the relative portion carrying its own *(s). Equal to the by-path form.
+        GroupInfo sub = m.groupAt("/Subscription").orElseThrow();
+        assertEquals(m.flatten("/Subscription/Addons*/MonthlyFee"), sub.flatten("Addons*/MonthlyFee"));
+        assertEquals(m.flattenGroup("/Subscription/Addons*"), sub.flattenGroup("Addons*"));
+    }
+
     private static Reader fixture(String classpathLocation) {
         InputStream in = NavigationTest.class.getClassLoader().getResourceAsStream(classpathLocation);
         assertNotNull(in, "fixture not found: " + classpathLocation);

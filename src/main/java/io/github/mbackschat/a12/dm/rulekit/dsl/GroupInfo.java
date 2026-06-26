@@ -108,6 +108,23 @@ public final class GroupInfo {
         return model.group(at(relative));
     }
 
+    /**
+     * A flattened repetition list relative to this group — the star-aggregate peer of the scalar navigation
+     * above. The {@code relativeStarPath} carries its own star on each repeatable segment (e.g. flattening a
+     * child {@code Cost} across a repeatable {@code Subs} subgroup); this group's path is prepended, so the
+     * call resolves {@code <thisPath>} then the relative portion. Equal to the by-path {@code model.flatten};
+     * the read peer of {@link io.github.mbackschat.a12.dm.edit.GroupEditor#flatten(String)}.
+     */
+    public FieldListRef flatten(String relativeStarPath) {
+        return model.flatten(at(relativeStarPath));
+    }
+
+    /** A (possibly starred) group scope relative to this group — the group analogue of {@link #flatten(String)}
+     *  (for the field-fill group quantifiers). */
+    public GroupListRef flattenGroup(String relativeStarPath) {
+        return model.flattenGroup(at(relativeStarPath));
+    }
+
     @Override
     public String toString() {
         return path + (repeating ? " (repeating)" : "");

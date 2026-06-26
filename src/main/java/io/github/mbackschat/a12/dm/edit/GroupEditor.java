@@ -24,7 +24,9 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.DateRangeRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.GroupListRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupReference;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
@@ -129,6 +131,21 @@ public final class GroupEditor implements GroupReference {
     /** A pure {@link DateRangeRef} for the child date-range field {@code name}; fails fast otherwise. */
     public DateRangeRef dateRange(String name) {
         return session.boundModel().dateRange(child(name));
+    }
+
+    /**
+     * A flattened repetition list relative to this group — the star-aggregate peer of the scalar navigation
+     * above (mirrors {@link io.github.mbackschat.a12.dm.rulekit.dsl.GroupInfo#flatten(String)} on the read
+     * surface). The {@code relativeStarPath} carries its own star on each repeatable segment (e.g. flattening
+     * a child {@code Cost} across a repeatable {@code Subs} subgroup); this group's path is prepended.
+     */
+    public FieldListRef flatten(String relativeStarPath) {
+        return session.boundModel().flatten(child(relativeStarPath));
+    }
+
+    /** A (possibly starred) group scope relative to this group — the group analogue of {@link #flatten(String)}. */
+    public GroupListRef flattenGroup(String relativeStarPath) {
+        return session.boundModel().flattenGroup(child(relativeStarPath));
     }
 
     // --- fluent structure edits (forward to the session; chain) --------------------------------------
@@ -251,6 +268,26 @@ public final class GroupEditor implements GroupReference {
     public GroupEditor addComputation(NumberRef computed, Function<Computation.Builder, Computation> body) {
         session.addComputation(m -> body.apply(m.computation(computed)));
         return this;
+    }
+
+    /**
+     * BUILD a rule scoped to this group and RETURN it (the rule is <b>not</b> added) — the compose peer of
+     * {@link #addRule}. {@code body} receives a {@link Rule.Builder} already scoped here; the built {@link Rule}
+     * carries its error field + condition as refs, with {@link Rule#errorEntityRelPath()} and {@link
+     * Rule#render()} <em>derived</em>. Use it to obtain a typed rule for inspection or to hand to another
+     * consumer (e.g. a differential harness) without mutating the session.
+     */
+    public Rule rule(Function<Rule.Builder, Rule> body) {
+        return body.apply(session.boundModel().rule(this));
+    }
+
+    /**
+     * BUILD a computation for {@code computed} (a number field of this group, via {@link #num(String)}) and
+     * RETURN it (not added) — the compose peer of {@link #addComputation}. {@link Computation#computedFieldRelPath()}
+     * is derived from the ref; the session is left unchanged.
+     */
+    public Computation computation(NumberRef computed, Function<Computation.Builder, Computation> body) {
+        return body.apply(session.boundModel().computation(computed));
     }
 
     /** Set a name/value annotation on this group. Chains. */

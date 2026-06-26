@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.edit;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -10,10 +11,13 @@ import io.github.mbackschat.a12.dm.Fixtures;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.FieldTypeSpec;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Computation;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConfirmRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.GroupRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
 /**
@@ -53,6 +57,51 @@ class GroupEditorTest {
         assertEquals("/Subscription/Addons", addonsEd.ref().path());
         assertEquals("/Subscription/Addons/MonthlyFee", addonsEd.num("MonthlyFee").field().path());
         assertEquals("/Subscription/Addons/Name", addonsEd.str("Name").field().path());
+    }
+
+    @Test
+    void flattensRelativeStarPaths() {
+        // the star-aggregate peer of relative scalar nav (mirrors GroupInfo.flatten): a flatten relative to
+        // the editor's group, base prepended, the relative portion carrying its own *(s). Equal to by-path.
+        EditSession s = EditSession.read(Fixtures.subscriptionJson());
+        assertEquals(s.boundModel().flatten("/Subscription/Addons*/MonthlyFee"),
+                s.group("/Subscription").flatten("Addons*/MonthlyFee"));
+        assertEquals(s.boundModel().flattenGroup("/Subscription/Addons*"),
+                s.group("/Subscription").flattenGroup("Addons*"));
+    }
+
+    @Test
+    void buildsAStandaloneRuleScopedToTheGroupWithoutAddingIt() {
+        // dogfood: a consumer authoring a Rule off an editor — the error field + condition are REFS, and the
+        // kernel-relative error path ("../MonthlyFee") + the rendered condition are DERIVED, never hand-typed.
+        // rule(...) BUILDS and returns (the read peer of addRule, which builds-and-adds) — the session is untouched.
+        EditSession s = EditSession.read(Fixtures.subscriptionJson());
+        GroupEditor addons = s.group("/Subscription/Addons");
+        NumberRef fee = addons.num("MonthlyFee");
+
+        Rule r = addons.rule(b -> b.name("FeeCap").code("FEE_CAP")
+                .errorField(fee).when(fee.gt(1000))
+                .severity(Severity.ERROR).message(Dsl.en("fee too high"), Dsl.de("Gebühr zu hoch")).build());
+
+        assertEquals("/Subscription/Addons", r.group().path());
+        assertEquals("../MonthlyFee", r.errorEntityRelPath());     // derived from the ref, not "../MonthlyFee" typed
+        assertEquals("[MonthlyFee] > 1000", r.render());           // group-relative canonical render
+        assertFalse(s.toJson().contains("FeeCap"), "rule(...) builds and returns; it must NOT add to the session");
+    }
+
+    @Test
+    void buildsAStandaloneComputationScopedToTheGroupWithoutAddingIt() {
+        // dogfood: the computation peer — computed field is a ref, computedFieldRelPath() ("../EffectiveFee")
+        // is derived; computation(...) builds-and-returns (peer of addComputation), leaving the session untouched.
+        EditSession s = EditSession.read(Fixtures.subscriptionJson());
+        GroupEditor billing = s.group("/Subscription/Billing");
+        NumberRef eff = billing.num("EffectiveFee");
+
+        Computation c = billing.computation(eff, b -> b.name("EffComp")
+                .calc(NumberLiteral.of("9.99")).message(Dsl.en("computed"), Dsl.de("berechnet")).build());
+
+        assertEquals("../EffectiveFee", c.computedFieldRelPath());
+        assertFalse(s.toJson().contains("EffComp"), "computation(...) builds and returns; it must NOT add to the session");
     }
 
     @Test
