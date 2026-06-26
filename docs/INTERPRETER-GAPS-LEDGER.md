@@ -12,19 +12,14 @@
 
 ## 1. Open (to fix)
 
-A systematic **7-surface gap audit (2026-06-26, kernel-source-verified)** found the interpreter **materially short of full kernel parity beyond `validateFull`** — across the parser, `compute()`, the model loader, date construction, and partial validation (method: enumerate every surface where a divergence can hide — disposition prose, `unsupported`/throw census, entry-point × parameter dimensions, construct × entry-point matrix, loader-property diff, kernel ledgers cross-checked, differential-coverage holes — then verify each candidate against the kernel source). The bulk of the audit's confirmed divergences have since **shipped** (each graduated to a numbered `IF` finding + a differential lock and was **deleted** from here — git is the record). What remains below is the **residual/narrowed** set: one partial-validation probe (the `uniqueIndex`/subset case the aggregate-cell fix didn't cover) and one narrowed compute residual (IG13). Each row is a kernel-source-verified divergence; rows tagged *(probe)* need a runtime differential to pin the exact kernel behavior before the fix. (Closed 2026-06-26: IG11 global-field auto-relevance → IF37; IG10 CustomCondition relevant-set propagation → IF38; IG19's DATE_TIME residual as **parity by construction** → IF33.)
-
-### Partial validation (the relevant-set dimension)
-| code | item | status / action | detail |
-|---|---|---|---|
-| | partial: `uniqueIndex`/`RepetitionNotUnique` under subset-relevant rows *(probe — sibling of IG9)* | open — interpreter scans both rows; kernel may require the duplicate *partner* row relevant to flag the collision. Probe `firedCodesPart` with one row relevant. | `DmInterpreter.kt:255-356` |
+A systematic **7-surface gap audit (2026-06-26, kernel-source-verified)** found the interpreter **materially short of full kernel parity beyond `validateFull`** — across the parser, `compute()`, the model loader, date construction, and partial validation (method: enumerate every surface where a divergence can hide — disposition prose, `unsupported`/throw census, entry-point × parameter dimensions, construct × entry-point matrix, loader-property diff, kernel ledgers cross-checked, differential-coverage holes — then verify each candidate against the kernel source). The bulk of the audit's confirmed divergences have since **shipped** (each graduated to a numbered `IF` finding + a differential lock and was **deleted** from here — git is the record). What remains below is the **residual/narrowed** set: one narrowed compute residual (IG13). The **partial-validation** dimension is now fully modeled and locked against the kernel (rule-gating + 3VL, subset aggregates IF35, global fields IF37, custom-condition relevant-set IF38, subset uniqueness IF39). Each row is a kernel-source-verified divergence. (Closed 2026-06-26: IG11 global-field auto-relevance → IF37; IG10 CustomCondition relevant-set propagation → IF38; the `uniqueIndex`/`RepetitionNotUnique` subset case → IF39; IG19's DATE_TIME residual as **parity by construction** → IF33.)
 
 ### compute()
 | code | item | status / action | detail |
 |---|---|---|---|
 | **IG13** | `compute()` **cascade-skip on an invalid dependency** *(residual)* | open (narrowed 2026-06-26) — the out-of-range ERRORED bucket shipped (IF34: a formally-invalid computed value → ERRORED, value returned); empty-operand→0 is parity. What remains: the kernel SKIPS a computation that depends (directly/indirectly) on an errored computed field, while the interpreter still overlays the errored value — so a *dependent* computation diverges. | `DmInterpreter.kt` compute overlay (line ~444) |
 
-**The lock to build:** a **partial-validation FUZZ differential** (today only a handful of curated partial cases, no fuzz) — it would turn the remaining partial items (IG10/IG11 + the `uniqueIndex`-subset probe) into hard differential failures instead of reasoned claims.
+**The lock to build:** a **partial-validation FUZZ differential** (today the partial surface is covered by curated `*DiffTest`s, no fuzz) — it would turn the partial-validation parity claims into randomized hard differential failures and is the standing guard against future regressions in the relevant-set dimension.
 
 Deferred items are in §2; a fixed gap is deleted from here (git + its `IFn` finding are the record).
 

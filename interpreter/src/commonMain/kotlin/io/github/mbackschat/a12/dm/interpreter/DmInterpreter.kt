@@ -148,10 +148,10 @@ class DmInterpreter @JvmOverloads constructor(
      * a repetition level (the encouraged form). With the whole document relevant this equals [validate].
      * KERNEL-FINDINGS "Partial validation".
      *
-     * Modeled & locked: starred aggregates under a *subset* of relevant repetitions are gated UNKNOWN (IF35),
-     * GLOBAL fields are auto-relevant (IF37, the kernel's md-layer behavior), and a `CustomCondition` receives
-     * the relevant set (IF38). Remaining boundary — tracked as an open gap in INTERPRETER-GAPS-LEDGER §1, not as
-     * loose prose here: `uniqueIndex`/`RepetitionNotUnique` under a subset of relevant rows is unverified (probe).
+     * Matches the kernel across the partial surface: rule-gating + 3VL suppression; starred aggregates under a
+     * *subset* of relevant repetitions gated UNKNOWN (IF35); GLOBAL fields auto-relevant (IF37, the kernel's
+     * md-layer behavior); a `CustomCondition` receives the relevant set (IF38); and uniqueness (`uniqueIndex` /
+     * `RepetitionNotUnique`) needs the duplicate partner relevant too (IF39). All locked by `…laws/PartialValidation*DiffTest`.
      */
     fun validatePart(doc: Document, relevant: Set<RelevantEntity>, locale: String = "en_US"): ValidationOutcome =
         validateWith(doc, locale, relevanceOf(relevant), customRelevantOf(relevant))
@@ -175,7 +175,7 @@ class DmInterpreter @JvmOverloads constructor(
      */
     private fun validateWith(doc: Document, locale: String, isRelevant: Relevance,
             customRelevant: Set<FieldPointer>? = null): ValidationOutcome {
-        val dup = duplicateIndexCells(doc)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
+        val dup = duplicateIndexCells(doc, isRelevant)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
         val messages = (formalErrors(doc, locale, isRelevant) + mandatoryErrors(doc, locale, isRelevant)
                 + uniquenessMessages(dup, locale, isRelevant) + overRepetitionMessages(doc, locale, isRelevant)).toMutableList()
         val unsupported = customTypeUnsupported(doc, isRelevant).toMutableList()
@@ -286,12 +286,16 @@ class DmInterpreter @JvmOverloads constructor(
      * (verified: a rule on the dup field is suppressed; a rule on a sibling field still fires). Computed once
      * per evaluation and threaded, not recomputed per operand.
      */
-    private fun duplicateIndexCells(doc: Document): Set<Pair<String, List<Int>>> {
+    private fun duplicateIndexCells(doc: Document, isRelevant: Relevance = ALL_RELEVANT): Set<Pair<String, List<Int>>> {
         val out = mutableSetOf<Pair<String, List<Int>>>()
         for (indexField in model.indexFields) {
             val rows = doc.contextsFor(parentGroup(indexField)).mapNotNull { ctx ->
                 val reps = ctx.repsOf(indexField)
                 if (overLimitLevel(indexField, reps) != null) return@mapNotNull null   // over-limit rows are suppressed
+                // Partial validation: only RELEVANT cells participate in duplicate detection — the kernel builds its
+                // index cache from the relevant fields only (`ValidationCommand.befuelleCacheMitRelevantenFeldern`),
+                // so a relevant row whose duplicate PARTNER is not relevant is NOT flagged (IF39). Full: all cells.
+                if (!isRelevant(indexField, reps)) return@mapNotNull null
                 ctx.displayValue(indexField)?.takeIf { it.isNotEmpty() }?.let { reps to it }
             }
             rows.groupBy { it.first.dropLast(2) }.forEach { (_, scope) ->
@@ -373,11 +377,14 @@ class DmInterpreter @JvmOverloads constructor(
         }
         val out = mutableListOf<Message>()
         rows.filter { row -> row.key.any { it != null } }      // participant: at least one key field is filled
+            // Partial validation: only RELEVANT rows participate in duplicate detection — the kernel builds its
+            // duplicate cache from the relevant fields only, so a relevant row whose duplicate PARTNER is not
+            // relevant is NOT flagged (IF39, the sibling of the uniqueIndex case). Full: every row (ALL_RELEVANT).
+            .filter { row -> isRelevant(errorPath, row.reps) }
             .groupBy { it.reps.take(scopeLen) }                // scope: per reference-group parent row (basic version)
             .forEach { (_, scope) ->
                 val dups = scope.groupingBy { it.key }.eachCount().filterValues { it > 1 }.keys
                 for (row in scope.filter { it.key in dups }) {
-                    if (!isRelevant(errorPath, row.reps)) continue   // partial: only if the error field is relevant
                     val type = if (row.key.any { it == null }) MsgType.OMISSION else MsgType.VALUE
                     val text = rule.messages[locale]?.let { renderMessage(it, rule.group, row.ctx) { p -> model.labelOf(p, locale) } } ?: ""
                     val referenced = keys.map { formatPointer(it, row.ctx.repsOf(it)) }
