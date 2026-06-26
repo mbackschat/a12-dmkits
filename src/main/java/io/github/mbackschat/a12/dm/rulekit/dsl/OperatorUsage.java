@@ -97,6 +97,7 @@ public final class OperatorUsage {
                 collect(s.amount(), ops);
             }
             case SemanticIndexValue v -> ops.add(v.operatorId());
+            case SemanticIndexFieldValue v -> ops.add(v.operatorId());
             case Arithmetic a -> {
                 collect(a.left(), ops);
                 collect(a.right(), ops);

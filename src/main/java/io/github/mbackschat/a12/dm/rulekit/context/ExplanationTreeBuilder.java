@@ -122,6 +122,7 @@ final class ExplanationTreeBuilder {
             case ListAggregate a -> List.of(leaf(a.operatorId(), a));
             case CurrentRepetition r -> List.of(leaf(r.operatorId(), r));
             case SemanticIndexValue v -> List.of(leaf(v.operatorId(), v));
+            case io.github.mbackschat.a12.dm.rulekit.dsl.SemanticIndexFieldValue v -> List.of(leaf(v.operatorId(), v));
             case Today t -> List.of(leaf(t.operatorId(), t));
             case Now n -> List.of(leaf(n.operatorId(), n));
             case BaseYear b -> List.of(leaf(b.operatorId(), b));

@@ -123,6 +123,15 @@ public record NumberRef(FieldRef field, int scale, boolean correlated) {
         return new NumberExpr(new SemanticIndexValue(field, indexValue));
     }
 
+    /**
+     * {@code [field For keyField]} — the FIELD-KEYED semantic index: this field's value in the repetition
+     * whose index field equals the CURRENT value of {@code keyField} (the kernel's "the index value can be a
+     * constant or a Field" form; the constant-key peer is {@link #forIndex(String)}). DEV-API-GAPS DG8.
+     */
+    public NumberExpr forIndex(FieldRef keyField) {
+        return new NumberExpr(new SemanticIndexFieldValue(field, keyField));
+    }
+
     // --- field-vs-field comparison (finding 18) --------------------------------------------------
     // Ordering ignores scale; == / != require equal declared scale (MVK_INVALID_COMPARE_DEC_PLACES,
     // pre-checked here — verified 2026-06-04, the D13 gate made cheap since rulekit knows both scales).

@@ -7,6 +7,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -22,6 +25,12 @@ class SemanticIndexFieldKeyedDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val fields = listOf(FieldDef(CN, Kind.STRING), FieldDef(SKU, Kind.STRING), FieldDef(COUNT, Kind.NUMBER))
+
+    // Conditions authored via the rulekit DSL — the field-keyed semantic index `[Count For CustomerName]`
+    // is `m.num(COUNT).forIndex(m.field(CN))` (DG8). Rendered to the canonical string fed to both engines.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+    private fun countForCustomer() = m.num(COUNT).forIndex(m.field(CN))
 
     /** [cond] over Items=[rows], with CustomerName=[key] (the field-keyed index value); kernel vs interp. */
     private fun agree(cond: String, key: String?, rows: List<Pair<String, String?>>, msg: String) {
@@ -46,23 +55,20 @@ class SemanticIndexFieldKeyedDiffTest {
 
     private val present = listOf("SKU-1" to "5", "SKU-2" to "3")
 
-    // DSL-EXEMPT: the field-keyed semantic index `[<field> For <keyField>]` has no DSL builder —
-    // `NumberRef.forIndex` accepts only a String literal (the `[field For "value"]` form), and
-    // `SemanticIndexValue` carries only `(FieldRef, String indexValue)`. No findable builder for a field key.
     @Test fun matchedValueGreater() =
-        agree("FieldFilled(CustomerName) And [Items/Count For CustomerName] > 0", "SKU-1", present, "key SKU-1 → count 5 > 0 → VALUE")
+        agree(render(m.field(CN).filled().and(countForCustomer().gt(0))), "SKU-1", present, "key SKU-1 → count 5 > 0 → VALUE")
     @Test fun matchedValueEquals() =
-        agree("FieldFilled(CustomerName) And [Items/Count For CustomerName] == 5", "SKU-1", present, "key SKU-1 → count == 5")
+        agree(render(m.field(CN).filled().and(countForCustomer().eq(5))), "SKU-1", present, "key SKU-1 → count == 5")
     @Test fun matchedValueNotEquals() =
-        agree("FieldFilled(CustomerName) And [Items/Count For CustomerName] == 9", "SKU-1", present, "key SKU-1 → count != 9")
+        agree(render(m.field(CN).filled().and(countForCustomer().eq(9))), "SKU-1", present, "key SKU-1 → count != 9")
     @Test fun otherKey() =
-        agree("FieldFilled(CustomerName) And [Items/Count For CustomerName] == 3", "SKU-2", present, "key SKU-2 → count == 3")
+        agree(render(m.field(CN).filled().and(countForCustomer().eq(3))), "SKU-2", present, "key SKU-2 → count == 3")
 
     // No matching row OR an empty key field → the empty value (0), fillable → OMISSION on == 0, no fire on > 0.
     @Test fun noMatchEqualsZeroIsOmission() =
-        agree("FieldFilled(CustomerName) And [Items/Count For CustomerName] == 0", "SKU-9", present, "key SKU-9 (no row) → 0 → OMISSION")
+        agree(render(m.field(CN).filled().and(countForCustomer().eq(0))), "SKU-9", present, "key SKU-9 (no row) → 0 → OMISSION")
     @Test fun noMatchGreaterZeroNoFire() =
-        agree("FieldFilled(CustomerName) And [Items/Count For CustomerName] > 0", "SKU-9", present, "key SKU-9 (no row) → 0 not > 0")
+        agree(render(m.field(CN).filled().and(countForCustomer().gt(0))), "SKU-9", present, "key SKU-9 (no row) → 0 not > 0")
 
     private companion object {
         const val CN = "/Order/CustomerName"

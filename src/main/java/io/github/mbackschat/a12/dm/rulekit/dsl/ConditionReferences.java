@@ -115,6 +115,10 @@ public record ConditionReferences(Set<String> fieldPaths, Set<String> groupPaths
                 collect(s.amount(), fields, groups);
             }
             case SemanticIndexValue v -> fields.add(v.field().path());
+            case SemanticIndexFieldValue v -> {
+                fields.add(v.field().path());
+                fields.add(v.indexField().path());
+            }
             case Arithmetic a -> {
                 collect(a.left(), fields, groups);
                 collect(a.right(), fields, groups);

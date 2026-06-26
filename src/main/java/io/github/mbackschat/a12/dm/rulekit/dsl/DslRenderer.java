@@ -303,6 +303,8 @@ public final class DslRenderer {
                     keyword(r.operatorId()) + "(" + (r.outer() ? "$" : "") + path(r.group().path()) + ")";
             case SemanticIndexValue v ->
                     "[" + path(v.field().path()) + " " + keyword(v.operatorId()) + " " + quote(v.indexValue()) + "]";
+            case SemanticIndexFieldValue v ->   // field-keyed: the key is a bare field path, not a quoted literal
+                    "[" + path(v.field().path()) + " " + keyword(v.operatorId()) + " " + path(v.indexField().path()) + "]";
             case Today t -> keyword(t.operatorId());
             case Now n -> keyword(n.operatorId());
             case BaseYear b -> keyword(b.operatorId());

@@ -134,6 +134,15 @@ class IterationConditionTest {
     }
 
     @Test
+    void rendersFieldKeyedSemanticIndex() {
+        // [Field For keyField] — the field-keyed form (the index value is another field's value, DEV-API-GAPS DG8)
+        BoundModel order = Fixtures.order();
+        Condition c = order.num("/Order/Items/Count").forIndex(order.field("/Order/CustomerName")).gt(0);
+        assertEquals("[/Order/Items/Count For /Order/CustomerName] > 0", new DslRenderer().render(c));
+        assertEquals("[/Order/Items/Count Fuer /Order/CustomerName] > 0", new DslRenderer(ConditionLanguage.DE).render(c));
+    }
+
+    @Test
     void rendersFieldValuesNotUniqueOverPlainAndStarredOperands() {
         assertEquals("FieldValuesNotUnique(/Subscription/Billing/BaseFee, /Subscription/Billing/EffectiveFee)",
                 new DslRenderer().render(Dsl.fieldValuesNotUnique(
