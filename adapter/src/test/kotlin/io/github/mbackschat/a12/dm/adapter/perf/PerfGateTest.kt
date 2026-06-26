@@ -389,6 +389,56 @@ class PerfGateTest {
             "cold first-call scaling looks super-linear: 4× rows took ${best}× the time (a cold-path O(N²) regression?)")
     }
 
+    /**
+     * **The combined real-world worst-case — correctness gate.** A REDUCED-size instance of the
+     * deep+wide+rule-heavy+data-axis model ([PerfCatalog.complexRealWorldGate] — ~100 rules, fast kernel
+     * codegen), run in BOTH firing regimes. Asserts interp == kernel on the **full multi-construct mix at once**
+     * (per-row + top-level walk-up + cross-sibling + `Having`-Sum + deep nested-star + cross-group Sum-vs-Sum) —
+     * a combination no single-construct `*DiffTest` covers — then the generous gate bounds. The headline
+     * interp-vs-Java numbers at the ≈1000-field/≈1000-rule real-world scale live in
+     * `KernelEdgeTest.complexRealWorldScaling` (opt-in, where the full kernel codegen cost is acceptable).
+     */
+    @Test
+    fun complexRealWorldAgreesWithKernel() {
+        for (firing in listOf(false, true)) {
+            val row = PerfHarness.runScenario(PerfCatalog.complexRealWorldGate(firing), n = 60, withJava = false)
+            println(PerfHarness.format(row, CAVEAT))
+            assertTrue(row.interp.medianMs < ABS_CEILING_MS,
+                "${row.scenario}: interpreter ${row.interp.medianMs}ms exceeds ${ABS_CEILING_MS}ms at N=${row.n}")
+            val ratio = row.ratioGroovy
+            if (ratio != null) assertTrue(ratio < RATIO_CEILING,
+                "${row.scenario}: complex interp/kernel ratio $ratio exceeds $RATIO_CEILING at N=${row.n}")
+        }
+    }
+
+    /**
+     * **The interaction-effect O(N²) guard** — the reason the combined benchmark exists. The FULL
+     * ≈1000-field/≈1000-rule model, interp-only (no kernel codegen, so high N stays cheap), timed at N and 4N
+     * Claim rows. The deep chain (Claim ▸ Visit ▸ Charge) scales with N while the whole ≈1000-rule mix runs; a
+     * per-row rule that walked O(rows) (an un-indexed cross-ref / re-folded aggregate) would compound to
+     * O(rows²) — invisible to every single-axis benchmark, visible here. Linear ≈ 4×; trip well below the
+     * quadratic ~16×. (The fixed breadth-rule cost dilutes the ratio *toward* linear, so this is conservative —
+     * a trip is a real regression, not noise.)
+     */
+    @Test
+    fun complexRealWorldStaysSubQuadratic() {
+        val sc = PerfCatalog.complexRealWorldFull(firing = false)
+        val small0 = 250
+        var best = Double.MAX_VALUE
+        var bSmall = 0.0; var bLarge = 0.0
+        repeat(GROWTH_REPEATS) {
+            val small = PerfHarness.timeInterpreter(sc, small0, warmup = 4, iters = 6)
+            val large = PerfHarness.timeInterpreter(sc, small0 * 4, warmup = 4, iters = 6)
+            val g = large.minMs / small.minMs
+            if (g < best) { best = g; bSmall = small.minMs; bLarge = large.minMs }
+        }
+        println("[perf] complex real-world (${sc.interpModel.fields.size}f/${sc.interpModel.rules.size}r) sub-quadratic: " +
+            "${"%.1f".format(bSmall)}ms@$small0 → ${"%.1f".format(bLarge)}ms@${small0 * 4} claims  " +
+            "min-growth=${"%.2f".format(best)}× (linear≈4, quadratic≈16)")
+        assertTrue(best < SUB_QUADRATIC_MAX,
+            "complex real-world scaling looks super-linear: 4× claims took ${best}× the time (an interaction O(N²)?)")
+    }
+
     private companion object {
         const val ABS_CEILING_MS = 5_000.0
         const val RATIO_CEILING = 5.0

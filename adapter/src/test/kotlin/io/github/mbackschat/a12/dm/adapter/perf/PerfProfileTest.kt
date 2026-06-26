@@ -30,6 +30,11 @@ class PerfProfileTest {
     @Test
     fun profileCrossLevel_B4() = profile(PerfCatalog.b4(), n / PerfCatalog.SUBS_PER_LINE)
 
+    /** Profile the COMBINED real-world model (deep+wide+rule-heavy) — the JFR target if its scaling sweep ever
+     *  goes super-linear. N = Claim rows (×6 Charge rows each), so `n/50` ≈ 2000 claims at the 100k default. */
+    @Test
+    fun profileComplexRealWorld() = profile(PerfCatalog.complexRealWorldFull(firing = false), n / 50)
+
     private fun profile(scenario: PerfScenario, n: Int) {
         val prep = InterpreterPerfEngine.build(scenario).instance(n)
         val firings = prep.run().size   // also the correctness payload, though profile mode does not gate

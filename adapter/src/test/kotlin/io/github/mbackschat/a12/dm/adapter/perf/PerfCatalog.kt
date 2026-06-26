@@ -463,6 +463,15 @@ object PerfCatalog {
         }
     }
 
+    // ---- COMBINED real-world worst-case (deep+wide+rule-heavy+data-axis) — built with the dmkits THEMSELVES
+    //      (modelkit DocumentModelDraft + rulekit typed DSL combinators), so the worst case dogfoods the typed
+    //      builder. The model/rules/mirroring-combinators live in [ComplexRealWorld] (kept out of this file). --
+    /** The "full" complex shape — ≈1000 fields / ≈1000 rules (the user's real-world target). */
+    fun complexRealWorldFull(firing: Boolean = false): PerfScenario = ComplexRealWorld.scenario(ComplexRealWorld.FULL, firing)
+
+    /** A reduced complex shape for the CI gate (fast kernel codegen + correctness check). */
+    fun complexRealWorldGate(firing: Boolean = false): PerfScenario = ComplexRealWorld.scenario(ComplexRealWorld.GATE, firing)
+
     // B7's value strategy: like [perfValues] but leaves the COMPUTED field (Amount) EMPTY in the seed — so the
     // kernel's compute() reports every Line's Amount as a change (empty → Sum), matching the interpreter which
     // computes every row. Cost is filled (the aggregate operand); index fields filled (required).

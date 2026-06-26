@@ -255,4 +255,33 @@ class KernelEdgeTest {
             println("  rules=%3d  %s".format(count, PerfHarness.formatRepeated(row)))
         }
     }
+
+    /**
+     * **THE COMBINED REAL-WORLD WORST-CASE** — the headline measurement (the user's real-world tax-validation
+     * shape: 1000s of fields, 1000s of rules, many crossing groups, summing, top-level references, scaled on the
+     * data axis). The FULL ≈1000-field/≈1000-rule model — deep (Claim ▸ Visit ▸ Charge) **and** wide (top-level
+     * + many coverage groups) **and** rule-heavy (per-row + walk-up + cross-sibling + `Having`-Sum + nested-star
+     * + cross-group Sum-vs-Sum) — measured **interp vs kernel-Java** at **N and 4N** Claim rows, both regimes.
+     * The N→4N interp growth factor is the interaction-effect O(N²) detector at the real scale (linear ≈ 4×);
+     * the `PerfGateTest.complexRealWorldStaysSubQuadratic` guard trips the build if it regresses. Correctness
+     * (interp == groovy == java) is asserted inside the harness before any timing. If the growth ever goes
+     * super-linear, profile with `*PerfProfileTest.profileComplexRealWorld -Dperf.profile=true` + JFR.
+     */
+    @Test
+    fun complexRealWorldScaling() {
+        val probe = PerfCatalog.complexRealWorldFull(firing = false)
+        println("[edge] COMBINED real-world (deep+wide+rule-heavy+data-axis): " +
+            "${probe.interpModel.fields.size} fields, ${probe.interpModel.rules.size} rules, interp/java + interp N→4N growth:")
+        for (firing in listOf(false, true)) {
+            val regime = if (firing) "firing    " else "low-firing"
+            var prev = 0.0
+            for (claims in listOf(500, 2000)) {   // N and 4N — each recodegens the ~1000-rule kernel validator
+                val row = PerfHarness.runScenario(PerfCatalog.complexRealWorldFull(firing), claims)
+                val growth = if (prev > 0) "  interp×%.2f (N→4N; linear≈4)".format(row.interp.medianMs / prev) else ""
+                println("  %s claims=%4d (=%d charge rows)  %s%s".format(
+                    regime, claims, claims * 6, PerfHarness.format(row), growth))
+                prev = row.interp.medianMs
+            }
+        }
+    }
 }
