@@ -76,6 +76,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.StringLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ValueListCondition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateExpr;
+import io.github.mbackschat.a12.dm.rulekit.dsl.DateShift;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateLiteral;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateOperand;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DateTimeConstruction;
@@ -1622,9 +1623,12 @@ final class ConditionConverter {
             case AddDays -> Dsl.addDays(base, amount);
             case AddMonths -> Dsl.addMonths(base, amount);
             case AddYears -> Dsl.addYears(base, amount);
-            case AddHours -> Dsl.addHours(base, amount);
-            case AddMinutes -> Dsl.addMinutes(base, amount);
-            case AddSeconds -> Dsl.addSeconds(base, amount);
+            // sub-day shifts yield a date-time; the authoring builders return a DateTimeExpr, but this read
+            // method's contract is a DateOperand carrying the shift calc (the caller re-wraps it as a
+            // DateTimeExpr where needed, see the date-time-extraction-source path), so build the node directly.
+            case AddHours -> new DateExpr(new DateShift(DateShift.Unit.HOURS, base.expression(), amount.expression()));
+            case AddMinutes -> new DateExpr(new DateShift(DateShift.Unit.MINUTES, base.expression(), amount.expression()));
+            case AddSeconds -> new DateExpr(new DateShift(DateShift.Unit.SECONDS, base.expression(), amount.expression()));
             default -> throw unsupported("date-add operator " + add.getOperatorName(), add);
         };
     }

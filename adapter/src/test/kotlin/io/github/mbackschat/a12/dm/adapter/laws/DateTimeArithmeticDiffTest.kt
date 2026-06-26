@@ -47,12 +47,12 @@ class DateTimeArithmeticDiffTest {
     private val lateEve = "2024-06-15T22:00:00"
     private val anyCa = "2024-06-16T03:30:15"
 
-    // DSL-EXEMPT: DateFromDateTime/TimeFromDateTime only accept a DateTimeRef field handle (Dsl.dateFromDateTime),
-    // not the DateExpr produced by Dsl.addHours/addMinutes/addSeconds — the intermediate wrap is unrepresentable.
-    @Test fun addHoursCarriesDay() = agree("FieldFilled(ScheduledAt) And DayFromDate(DateFromDateTime(AddHours(ScheduledAt, 5))) == 16", lateEve, anyCa, "22:00 +5h → next day")
-    @Test fun addHoursCarriesHour() = agree("FieldFilled(ScheduledAt) And HoursFromTime(TimeFromDateTime(AddHours(ScheduledAt, 5))) == 3", lateEve, anyCa, "22:00 +5h → 03:00")
-    @Test fun addMinutes() = agree("FieldFilled(ScheduledAt) And HoursFromTime(TimeFromDateTime(AddMinutes(ScheduledAt, 90))) == 23", lateEve, anyCa, "22:00 +90m → 23:30")
-    @Test fun addSeconds() = agree("FieldFilled(ScheduledAt) And SecondsFromTime(TimeFromDateTime(AddSeconds(ScheduledAt, 75))) == 15", lateEve, anyCa, "22:00:00 +75s → :01:15")
+    // sub-day shifts now yield a DateTimeExpr, which the (widened) DateFromDateTime/TimeFromDateTime extractors
+    // accept — so the intermediate `DateFromDateTime(AddHours(...))` composition is expressible (DG9).
+    @Test fun addHoursCarriesDay() = agree(render(m.dateTime(SA).filled().and(Dsl.dayFromDate(Dsl.dateFromDateTime(Dsl.addHours(m.dateTime(SA), 5))).eq(16))), lateEve, anyCa, "22:00 +5h → next day")
+    @Test fun addHoursCarriesHour() = agree(render(m.dateTime(SA).filled().and(Dsl.hoursFromTime(Dsl.timeFromDateTime(Dsl.addHours(m.dateTime(SA), 5))).eq(3))), lateEve, anyCa, "22:00 +5h → 03:00")
+    @Test fun addMinutes() = agree(render(m.dateTime(SA).filled().and(Dsl.hoursFromTime(Dsl.timeFromDateTime(Dsl.addMinutes(m.dateTime(SA), 90))).eq(23))), lateEve, anyCa, "22:00 +90m → 23:30")
+    @Test fun addSeconds() = agree(render(m.dateTime(SA).filled().and(Dsl.secondsFromTime(Dsl.timeFromDateTime(Dsl.addSeconds(m.dateTime(SA), 75))).eq(15))), lateEve, anyCa, "22:00:00 +75s → :01:15")
 
     // ---- DifferenceIn{Hours,Minutes,Seconds}: b − a, truncated toward zero ------------------------------
     private val a = "2024-06-15T22:00:00"

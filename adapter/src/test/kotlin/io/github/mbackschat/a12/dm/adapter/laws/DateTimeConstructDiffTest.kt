@@ -44,15 +44,14 @@ class DateTimeConstructDiffTest {
         assertEquals(k, i, "$msg (date=$date time=$time sched=$sched)")
     }
 
-    // DSL-EXEMPT: no builder for DateFromDateTime/TimeFromDateTime over a DateTime(...) CONSTRUCTION —
-    // Dsl.dateFromDateTime/timeFromDateTime accept only a DateTimeRef (a field handle), not a DateTimeExpr.
+    // DateFromDateTime/TimeFromDateTime over a DateTime(...) CONSTRUCTION — the extractors now accept any
+    // DateTimeOperand (field OR construction), so `composed()` (a DateTimeExpr) feeds them directly (DG9).
     @Test fun composedDateRoundTrips() =
-        agree("FieldFilled(OrderDate) And DayFromDate(DateFromDateTime(DateTime(OrderDate, PickupTime))) == 15",
+        agree(render(m.date(OD).filled().and(Dsl.dayFromDate(Dsl.dateFromDateTime(composed())).eq(15))),
             "2024-06-15", "10:30:45", "2024-06-15T10:30:45", "composed date's day is 15")
 
-    // DSL-EXEMPT: same as composedDateRoundTrips — TimeFromDateTime has no DateTimeExpr (construction) overload.
     @Test fun composedTimeRoundTrips() =
-        agree("FieldFilled(OrderDate) And HoursFromTime(TimeFromDateTime(DateTime(OrderDate, PickupTime))) == 10",
+        agree(render(m.date(OD).filled().and(Dsl.hoursFromTime(Dsl.timeFromDateTime(composed())).eq(10))),
             "2024-06-15", "10:30:45", "2024-06-15T10:30:45", "composed time's hour is 10")
 
     @Test fun composedEqualsDateTimeField() =

@@ -454,13 +454,15 @@ public final class Dsl {
         return new DateExpr(new ValueAsDate(partiallyKnownDate, false));
     }
 
-    /** {@code DateFromDateTime(dt)} — the date part of a date-time, as a comparable date. */
-    public static DateExpr dateFromDateTime(DateTimeRef dateTime) {
+    /** {@code DateFromDateTime(dt)} — the date part of a date-time, as a comparable date. Accepts any
+     *  {@link DateTimeOperand}: a date-time field OR a {@code DateTime(date, time)} construction (DG9). */
+    public static DateExpr dateFromDateTime(DateTimeOperand dateTime) {
         return new DateExpr(new DateTimePart(DateTimePart.Unit.DATE, dateTime.expression()));
     }
 
-    /** {@code TimeFromDateTime(dt)} — the time-of-day part of a date-time, as a comparable time. */
-    public static TimeExpr timeFromDateTime(DateTimeRef dateTime) {
+    /** {@code TimeFromDateTime(dt)} — the time-of-day part of a date-time, as a comparable time. Accepts any
+     *  {@link DateTimeOperand}: a date-time field OR a {@code DateTime(date, time)} construction (DG9). */
+    public static TimeExpr timeFromDateTime(DateTimeOperand dateTime) {
         return new TimeExpr(new DateTimePart(DateTimePart.Unit.TIME, dateTime.expression()));
     }
 
@@ -490,30 +492,33 @@ public final class Dsl {
         return new DateExpr(new DateShift(DateShift.Unit.YEARS, date.expression(), amount.expression()));
     }
 
-    /** {@code AddHours(dateTime, n)} — shifts a date-time by {@code n} hours, yielding a date-time ({@code n} may be negative). */
-    public static DateExpr addHours(TemporalOperand dateTime, long amount) {
+    /** {@code AddHours(dateTime, n)} — shifts a date-time by {@code n} hours, yielding a **date-time**
+     *  ({@code n} may be negative). Returns a {@link DateTimeExpr} (a sub-day shift is a date-time, matching
+     *  {@code DateShift.Unit.HOURS}'s declared kind), so it composes as a date-time operand — comparisons AND
+     *  {@code dateFromDateTime}/{@code timeFromDateTime} (DG9). */
+    public static DateTimeExpr addHours(TemporalOperand dateTime, long amount) {
         return addHours(dateTime, number(Long.toString(amount)));
     }
 
-    public static DateExpr addMinutes(TemporalOperand dateTime, long amount) {
+    public static DateTimeExpr addMinutes(TemporalOperand dateTime, long amount) {
         return addMinutes(dateTime, number(Long.toString(amount)));
     }
 
-    public static DateExpr addSeconds(TemporalOperand dateTime, long amount) {
+    public static DateTimeExpr addSeconds(TemporalOperand dateTime, long amount) {
         return addSeconds(dateTime, number(Long.toString(amount)));
     }
 
-    /** {@code AddHours(dateTime, n)} where the amount is a numeric expression. */
-    public static DateExpr addHours(TemporalOperand dateTime, NumberExpr amount) {
-        return new DateExpr(new DateShift(DateShift.Unit.HOURS, dateTime.expression(), amount.expression()));
+    /** {@code AddHours(dateTime, n)} where the amount is a numeric expression (yields a date-time — DG9). */
+    public static DateTimeExpr addHours(TemporalOperand dateTime, NumberExpr amount) {
+        return new DateTimeExpr(new DateShift(DateShift.Unit.HOURS, dateTime.expression(), amount.expression()));
     }
 
-    public static DateExpr addMinutes(TemporalOperand dateTime, NumberExpr amount) {
-        return new DateExpr(new DateShift(DateShift.Unit.MINUTES, dateTime.expression(), amount.expression()));
+    public static DateTimeExpr addMinutes(TemporalOperand dateTime, NumberExpr amount) {
+        return new DateTimeExpr(new DateShift(DateShift.Unit.MINUTES, dateTime.expression(), amount.expression()));
     }
 
-    public static DateExpr addSeconds(TemporalOperand dateTime, NumberExpr amount) {
-        return new DateExpr(new DateShift(DateShift.Unit.SECONDS, dateTime.expression(), amount.expression()));
+    public static DateTimeExpr addSeconds(TemporalOperand dateTime, NumberExpr amount) {
+        return new DateTimeExpr(new DateShift(DateShift.Unit.SECONDS, dateTime.expression(), amount.expression()));
     }
 
     /** A numeric literal as a comparable expression — e.g. an arithmetic operand ({@code … + 2}). */
