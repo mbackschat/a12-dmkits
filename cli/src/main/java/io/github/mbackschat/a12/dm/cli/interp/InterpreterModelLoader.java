@@ -74,7 +74,7 @@ public final class InterpreterModelLoader {
             String id = node.path("id").asText(null);
             if (type != null && id != null) {
                 switch (type) {
-                    case "Field" -> fields.add(new FieldDef(id, kindOf(node), localizedTexts(node.path("labels")),
+                    case "Field" -> { if (acceptedByVariantFilter(node.path("Field"))) fields.add(new FieldDef(id, kindOf(node), localizedTexts(node.path("labels")),
                             scaleOf(node), signed(node), requirednessOf(node), formatOf(node), rangeSeparatorOf(node),
                             datePrecisionOf(node), enumValuesOf(node), enumCategoriesOf(node), customTypeNameOf(node),
                             stringTypeInt(node, "minLength"), stringTypeInt(node, "maxLength"), stringTypeText(node, "pattern"),
@@ -83,7 +83,7 @@ public final class InterpreterModelLoader {
                             typedBool(node, "StringType", "lineBreaksPermitted"),
                             typedBool(node, "NumberType", "leadingZerosAllowed"), typedBool(node, "NumberType", "zeroNotAllowed"),
                             numberTypeInt(node, "maxIntegerDigits"), "amount".equals(numberTypeText(node, "trait")),
-                            numberTypeInt(node, "minLength"), numberTypeInt(node, "maxLength")));
+                            numberTypeInt(node, "minLength"), numberTypeInt(node, "maxLength"))); }
                     case "Group" -> {
                         JsonNode g = node.path("Group");
                         if (g.path("repeatability").asInt(0) > 1) {
@@ -98,9 +98,11 @@ public final class InterpreterModelLoader {
                     }
                     case "Rule" -> {
                         JsonNode r = node.path("Rule");
-                        rules.add(new RuleDef(id, parent(id), r.path("errorCondition").asText(),
-                                r.path("errorCode").asText(), r.path("errorEntityRelPath").asText(),
-                                Severity.valueOf(r.path("severity").asText("ERROR")), localizedTexts(r.path("errorMessage"))));
+                        if (acceptedByVariantFilter(r)) {
+                            rules.add(new RuleDef(id, parent(id), r.path("errorCondition").asText(),
+                                    r.path("errorCode").asText(), r.path("errorEntityRelPath").asText(),
+                                    Severity.valueOf(r.path("severity").asText("ERROR")), localizedTexts(r.path("errorMessage"))));
+                        }
                     }
                     case "Computation" -> {
                         JsonNode c = node.path("Computation");
@@ -117,7 +119,7 @@ public final class InterpreterModelLoader {
                         }
                         // The computation's element name is the error code of its implicit validation rule (IF32).
                         String compName = node.hasNonNull("name") ? node.path("name").asText() : null;
-                        comps.add(new ComputationDef(target, parent(id), alts, common, compName));
+                        if (acceptedByVariantFilter(c)) comps.add(new ComputationDef(target, parent(id), alts, common, compName));
                     }
                     default -> { /* header / other nodes carry no rule surface */ }
                 }
@@ -292,6 +294,17 @@ public final class InterpreterModelLoader {
     /** A {@code boolean} property of a {@code <typeName>} field type (absent → false, the kernel default). */
     private static boolean typedBool(JsonNode fieldNode, String typeName, String prop) {
         return typed(fieldNode, typeName).path(prop).asBoolean(false);
+    }
+
+    /**
+     * Whether an element (Field/Rule/Computation, given its type sub-object) is accepted under the interpreter's
+     * NULL variant. The kernel's {@code VariantFiltering} drops a {@code variantFilter: {filterType: "ONLY"}}
+     * element when the variant is null (the differential oracle + dmtool default) and keeps {@code ALL_EXCEPT};
+     * the interpreter has no variant, so it mirrors the null-variant decision (IF36). No filter → kept.
+     */
+    private static boolean acceptedByVariantFilter(JsonNode typeSub) {
+        JsonNode vf = typeSub.path("variantFilter");
+        return vf.isMissingNode() || vf.isNull() || !"ONLY".equals(vf.path("filterType").asText());
     }
 
     /** A NUMBER field's scale ({@code NumberType.maxFractionalDigits}), or null for non-number fields. */

@@ -57,6 +57,17 @@ class InterpreterRealModelDiffTest {
     }
 
     @Test
+    void variantFilterOnlyRuleIsDroppedLikeKernel() {
+        // order-variant.dm.json carries `variantFilter: ONLY [VARIANT_X]` on DELIVERY_BEFORE_ORDER. At the
+        // interpreter's null variant the kernel DROPS an ONLY-filtered rule (VariantFiltering), so a
+        // delivery-before-order doc — which would otherwise fire it — fires NOTHING. The interpreter's loader
+        // must drop it too (IG16); before the fix it kept + fired the rule.
+        assertValidationMatches("models/order-variant.dm.json",
+                "{ \"fields\": { \"Order\": { \"OrderDate\": \"2024-06-01\", \"DeliveryDate\": \"2024-05-15\" } } }",
+                Set.of());
+    }
+
+    @Test
     void postalCodePatternFiresLikeKernel() {
         // a malformed billing postal code trips PostalCodeFormat (PatternViolated), nested under BillingAddress
         assertValidationMatches("models/order-ruled.dm.json",
