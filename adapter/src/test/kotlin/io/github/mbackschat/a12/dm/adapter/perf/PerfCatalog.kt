@@ -1,18 +1,26 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
 import io.github.mbackschat.a12.dm.adapter.laws.RuntimeLaws
+import io.github.mbackschat.a12.dm.adapter.laws.TypedRules
+import io.github.mbackschat.a12.dm.edit.EditSession
+import io.github.mbackschat.a12.dm.edit.GroupEditor
 import io.github.mbackschat.a12.dm.interpreter.gen.SeedGenerator
 import io.github.mbackschat.a12.dm.interpreter.gen.ValidValues
 import io.github.mbackschat.a12.dm.interpreter.gen.ValueStrategy
-import io.github.mbackschat.a12.dm.interpreter.model.ComputationAlternative
-import io.github.mbackschat.a12.dm.interpreter.model.ComputationDef
 import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
-import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
 import io.github.mbackschat.a12.dm.modelkit.FieldKind
 import io.github.mbackschat.a12.dm.modelkit.NumberFieldBuilder
+import io.github.mbackschat.a12.dm.rulekit.dsl.Computation
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberLiteral
+import io.github.mbackschat.a12.dm.rulekit.dsl.Rule
+import io.github.mbackschat.a12.dm.rulekit.dsl.Severity
+import io.github.mbackschat.a12.dm.rulekit.dsl.Tolerance
 import java.util.function.Consumer
 import kotlin.random.Random
 
@@ -41,6 +49,23 @@ object PerfCatalog {
 
     private val perfJson = RuntimeLaws.model("models/perf.dm.json")
 
+    // Every scenario authors its rules/computations as the dmkit's own TYPED objects through the EDITOR surface
+    // ([EditSession] → [GroupEditor]): a session on the model hands out group editors that yield typed refs by
+    // RELATIVE child name (no full paths re-typed; fail-fast on a bad name/kind; flatten() for star aggregates),
+    // and a rule is a [Rule] whose error field + condition are refs and whose kernel-relative error path +
+    // canonical text are DERIVED. [TypedRules] feeds one such typed object to BOTH engines — no hand-written
+    // "../…" error paths, no condition/operation strings. (Eat your own dogfood: the benchmark consumes the kits.)
+    private val perf = EditSession.read(perfJson)
+    private val perfRoot = perf.group("/Perf")            // anchor for the /Perf-level star aggregates
+    private val lines = perf.group(LINES)                 // editor on the repeatable Lines group
+    private val subs = perf.group(SUBS)                   // editor on the nested repeatable Subs group
+
+    /** Author an ERROR rule off this group editor: name `R_<code>`, the error field + condition as refs. The
+     *  severity + dummy message satisfy [Rule] (the kernel harness supplies its own message); the error path
+     *  and the rendered condition are derived by the [Rule], never hand-typed. */
+    private fun GroupEditor.errorRule(code: String, errorField: FieldRef, cond: Condition): Rule =
+        rule { it.name("R_$code").code(code).errorField(errorField).`when`(cond).severity(Severity.ERROR).message(Dsl.en("x")).build() }
+
     const val LINE_KEY = "/Perf/Lines/LineKey"
     const val QTY = "/Perf/Lines/Qty"
     const val AMOUNT = "/Perf/Lines/Amount"
@@ -59,13 +84,17 @@ object PerfCatalog {
         FieldDef(SUB_KEY, Kind.STRING), FieldDef(COST, Kind.NUMBER),
     )
 
-    /** Build a single-rule validate scenario for BOTH engines from one set of rule params — no drift. */
-    private fun scenario(
-        name: String, group: String, code: String, errorRel: String, cond: String, rows: (Int) -> RowsFn,
-    ): PerfScenario {
-        val kernelModel = RuntimeLaws.withRule(perfJson, group, "R_$code", errorRel, code, cond)
+    // Typed, VALIDATED number handles by RELATIVE child name off the group editors — bound once and reused
+    // (the full path lives only in the editor's group path; .num() throws on a bad name/kind).
+    private val qty = lines.num("Qty")
+    private val amount = lines.num("Amount")
+    private val cost = subs.num("Cost")
+
+    /** Build a single-rule validate scenario for BOTH engines from ONE typed [Rule] — no drift, no strings. */
+    private fun scenario(name: String, rule: Rule, rows: (Int) -> RowsFn): PerfScenario {
+        val kernelModel = TypedRules.inject(perfJson, rule)
         val interpModel = ModelDef(
-            fields, listOf(RuleDef("$group/R_$code", group, cond, code, errorRel)),
+            fields, listOf(TypedRules.def(rule)),
             repeatableGroups = setOf(LINES, SUBS),
             declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX),
             indexFields = setOf(LINE_KEY, SUB_KEY),
@@ -94,24 +123,25 @@ object PerfCatalog {
 
     /** B1 — per-row comparison over Lines (`Qty > 50`): baseline row iteration. */
     fun b1(): PerfScenario =
-        scenario("B1 per-row", LINES, "HQ", "../Qty", "FieldFilled(Qty) And [Qty] > 50", ::flatRows)
+        scenario("B1 per-row", lines.errorRule("HQ", qty.field(), qty.filled().and(qty.gt(50))), ::flatRows)
 
     /** **PRA — a per-row rule comparing each Line to a ROW-INVARIANT global aggregate** (`[Amount] > Sum(Lines* /
      *  Amount)`): the Sum over ALL lines is the same for every line but recomputed per row → O(rows²) unless the
      *  aggregate is memoized (the kernel's CalculationCache analog). The latent cliff #50 (aggregate memoization)
      *  targets. */
     fun perRowGlobalAggregate(): PerfScenario =
-        scenario("PRA per-row-global-agg", LINES, "PGA", "../Amount",
-            "FieldFilled(Amount) And [Amount] > Sum(Lines*/Amount)", ::flatRows)
+        scenario("PRA per-row-global-agg",
+            lines.errorRule("PGA", amount.field(), amount.filled().and(amount.asNumber().gt(Dsl.sum(perfRoot.flatten("Lines*/Amount"))))),
+            ::flatRows)
 
     /** **FVNU — `FieldValuesNotUnique` over a large star** (`Lines* / Amount`): uniqueness across the repetition's
      *  rows. With all-distinct values it never fires but runs the FULL pairwise scan — O(rows²) if naive. Each
      *  Line's Amount is unique (the row index). */
     fun fieldValuesNotUniqueStar(): PerfScenario {
-        val cond = "FieldValuesNotUnique(Lines*/Amount)"
-        val kernelModel = RuntimeLaws.withRule(perfJson, "/Perf", "R_FVNU", "../Lines/Amount", "FVNU", cond)
+        val rule = perfRoot.errorRule("FVNU", amount.field(), Dsl.fieldValuesNotUnique(perfRoot.flatten("Lines*/Amount")))
+        val kernelModel = TypedRules.inject(perfJson, rule)
         val interpModel = ModelDef(
-            fields, listOf(RuleDef("/Perf/R_FVNU", "/Perf", cond, "FVNU", "../Lines/Amount")),
+            fields, listOf(TypedRules.def(rule)),
             repeatableGroups = setOf(LINES, SUBS),
             declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX), indexFields = setOf(LINE_KEY, SUB_KEY),
         )
@@ -131,10 +161,10 @@ object PerfCatalog {
      *  distinct count was computed by a linear scan per element → O(values²). Each Line's Amount is UNIQUE (the
      *  row index) so the distinct set grows to N — the worst case that exposes the quadratic. */
     fun numDifferentValues(): PerfScenario {
-        val cond = "NumberOfDifferentValues(Lines*/Amount) > 999999"
-        val kernelModel = RuntimeLaws.withRule(perfJson, "/Perf", "R_NDV", "../Lines/Amount", "NDV", cond)
+        val rule = perfRoot.errorRule("NDV", amount.field(), Dsl.numberOfDifferentValues(perfRoot.flatten("Lines*/Amount")).gt(999999))
+        val kernelModel = TypedRules.inject(perfJson, rule)
         val interpModel = ModelDef(
-            fields, listOf(RuleDef("/Perf/R_NDV", "/Perf", cond, "NDV", "../Lines/Amount")),
+            fields, listOf(TypedRules.def(rule)),
             repeatableGroups = setOf(LINES, SUBS),
             declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX), indexFields = setOf(LINE_KEY, SUB_KEY),
         )
@@ -154,48 +184,48 @@ object PerfCatalog {
      *  field is the aggregated `Amount` itself (the kernel requires the error field be referenced in the
      *  condition — `MVK_ERROR_FIELD_NOT_REFERENCED`). */
     fun b2(): PerfScenario =
-        scenario("B2 star-aggregate", "/Perf", "TP", "../Lines/Amount", "Sum(Lines*/Amount) > 0", ::flatRows)
+        scenario("B2 star-aggregate",
+            perfRoot.errorRule("TP", amount.field(), Dsl.sum(perfRoot.flatten("Lines*/Amount")).gt(0)), ::flatRows)
 
     /** B3 — per-sub comparison over nested Subs (`Cost > 50`): iteration-scope resolution at depth. */
     fun b3(): PerfScenario =
-        scenario("B3 nested per-sub", SUBS, "HC", "../Cost", "FieldFilled(Cost) And [Cost] > 50", ::nestedRows)
+        scenario("B3 nested per-sub", subs.errorRule("HC", cost.field(), cost.filled().and(cost.gt(50))), ::nestedRows)
 
     /** B4 — a Subs-row rule referencing the parent Line's Qty (`Cost > [/Perf/Lines/Qty]`): cross-level walk per row. */
     fun b4(): PerfScenario =
-        scenario("B4 cross-level", SUBS, "XL", "../Cost",
-            "FieldFilled(Cost) And [Cost] > [/Perf/Lines/Qty]", ::nestedRows)
+        scenario("B4 cross-level", subs.errorRule("XL", cost.field(), cost.filled().and(cost.gt(qty))), ::nestedRows)
 
     /** B5 — deep nested-star aggregate `Sum(Lines* / Subs* / Cost) > 0` at /Perf: nested-star collection across
      *  BOTH repetition levels (every Sub of every Line folded into one sum), the hardest aggregate shape. */
     fun b5(): PerfScenario =
-        scenario("B5 deep-nested-star", "/Perf", "DN", "../Lines/Subs/Cost",
-            "Sum(Lines*/Subs*/Cost) > 0", ::nestedRows)
+        scenario("B5 deep-nested-star",
+            perfRoot.errorRule("DN", cost.field(), Dsl.sum(perfRoot.flatten("Lines*/Subs*/Cost")).gt(0)), ::nestedRows)
 
     /** The B6 many-rules set (12): per-row, cross-field, threshold, aggregates (incl. deep nested-star),
      *  nested per-sub, cross-level — a realistic complex model. Codes unique within the model; all forms are
      *  kernel-valid (CurrentRepetition is covered by the fuzz net + its own diff test, not needed here). */
-    private fun b6Rules(): List<FuzzRule> = listOf(
-        FuzzRule(LINES, "HQ", "../Qty", "FieldFilled(Qty) And [Qty] > 50"),
-        FuzzRule(LINES, "HA", "../Amount", "FieldFilled(Amount) And [Amount] > 50"),
-        FuzzRule(LINES, "VQ", "../Qty", "FieldFilled(Qty) And [Qty] > 90"),
-        FuzzRule(LINES, "AX", "../Amount", "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]"),
-        FuzzRule(LINES, "LQ", "../Qty", "FieldFilled(Qty) And [Qty] < 10"),
-        FuzzRule("/Perf", "TA", "../Lines/Amount", "Sum(Lines*/Amount) > 1000"),
-        FuzzRule("/Perf", "TQ", "../Lines/Qty", "Sum(Lines*/Qty) > 1000"),
-        FuzzRule("/Perf", "DN", "../Lines/Subs/Cost", "Sum(Lines*/Subs*/Cost) > 5000"),
-        FuzzRule(SUBS, "HC", "../Cost", "FieldFilled(Cost) And [Cost] > 50"),
-        FuzzRule(SUBS, "VC", "../Cost", "FieldFilled(Cost) And [Cost] > 90"),
-        FuzzRule(SUBS, "XL", "../Cost", "FieldFilled(Cost) And [Cost] > [/Perf/Lines/Qty]"),
-        FuzzRule(SUBS, "LC", "../Cost", "FieldFilled(Cost) And [Cost] < 10"),
+    private fun b6Rules(): List<Rule> = listOf(
+        lines.errorRule("HQ", qty.field(), qty.filled().and(qty.gt(50))),
+        lines.errorRule("HA", amount.field(), amount.filled().and(amount.gt(50))),
+        lines.errorRule("VQ", qty.field(), qty.filled().and(qty.gt(90))),
+        lines.errorRule("AX", amount.field(), qty.filled().and(amount.filled()).and(amount.gt(qty))),
+        lines.errorRule("LQ", qty.field(), qty.filled().and(qty.lt(10))),
+        perfRoot.errorRule("TA", amount.field(), Dsl.sum(perfRoot.flatten("Lines*/Amount")).gt(1000)),
+        perfRoot.errorRule("TQ", qty.field(), Dsl.sum(perfRoot.flatten("Lines*/Qty")).gt(1000)),
+        perfRoot.errorRule("DN", cost.field(), Dsl.sum(perfRoot.flatten("Lines*/Subs*/Cost")).gt(5000)),
+        subs.errorRule("HC", cost.field(), cost.filled().and(cost.gt(50))),
+        subs.errorRule("VC", cost.field(), cost.filled().and(cost.gt(90))),
+        subs.errorRule("XL", cost.field(), cost.filled().and(cost.gt(qty))),
+        subs.errorRule("LC", cost.field(), cost.filled().and(cost.lt(10))),
     )
 
     /** B6 — MANY rules over the nested model: whole-document throughput where the interpreter's per-call rule
      *  re-parse (the #31 "prepare once" cost) bites hardest (the kernel codegens all rules once). */
     fun b6(): PerfScenario {
         val rules = b6Rules()
-        val kernelModel = rules.fold(perfJson) { m, r -> RuntimeLaws.withRule(m, r.group, "R_${r.code}", r.errorRel, r.code, r.cond) }
+        val kernelModel = rules.fold(perfJson) { json, r -> TypedRules.inject(json, r) }
         val interpModel = ModelDef(
-            fields, rules.map { RuleDef("${it.group}/R_${it.code}", it.group, it.cond, it.code, it.errorRel) },
+            fields, rules.map { TypedRules.def(it) },
             repeatableGroups = setOf(LINES, SUBS),
             declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX),
             indexFields = setOf(LINE_KEY, SUB_KEY),
@@ -216,15 +246,15 @@ object PerfCatalog {
         val rules = (0 until count).map { i ->
             val code = "R%03d".format(i)
             when (i % 4) {
-                0 -> FuzzRule(LINES, code, "../Qty", "FieldFilled(Qty) And [Qty] > ${50 + i}")
-                1 -> FuzzRule(LINES, code, "../Amount", "FieldFilled(Qty) And FieldFilled(Amount) And [Amount] > [Qty]")
-                2 -> FuzzRule(SUBS, code, "../Cost", "FieldFilled(Cost) And [Cost] > ${40 + (i % 50)}")
-                else -> FuzzRule("/Perf", code, "../Lines/Amount", "Sum(Lines*/Amount) > ${1000 + i}")
+                0 -> lines.errorRule(code, qty.field(), qty.filled().and(qty.gt(50L + i)))
+                1 -> lines.errorRule(code, amount.field(), qty.filled().and(amount.filled()).and(amount.gt(qty)))
+                2 -> subs.errorRule(code, cost.field(), cost.filled().and(cost.gt(40L + (i % 50))))
+                else -> perfRoot.errorRule(code, amount.field(), Dsl.sum(perfRoot.flatten("Lines*/Amount")).gt(1000L + i))
             }
         }
-        val kernelModel = rules.fold(perfJson) { m, r -> RuntimeLaws.withRule(m, r.group, "R_${r.code}", r.errorRel, r.code, r.cond) }
+        val kernelModel = rules.fold(perfJson) { json, r -> TypedRules.inject(json, r) }
         val interpModel = ModelDef(
-            fields, rules.map { RuleDef("${it.group}/${it.code}", it.group, it.cond, it.code, it.errorRel) },
+            fields, rules.map { TypedRules.def(it) },
             repeatableGroups = setOf(LINES, SUBS),
             declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX),
             indexFields = setOf(LINE_KEY, SUB_KEY),
@@ -263,18 +293,19 @@ object PerfCatalog {
      * shape. Low-firing by default (each field `1`, below its `> 50+i` threshold → 0 fires — the valid-doc case).
      */
     fun manyRulesDistributed(count: Int, firing: Boolean = false): PerfScenario {
+        val distJson = distributedModelJson(count)
+        val distLines = EditSession.read(distJson).group(LINES)
         val rules = (0 until count).map { i ->
-            FuzzRule(LINES, "R%04d".format(i), "../F$i", "FieldFilled(F$i) And [F$i] > ${50 + i}")
+            val f = distLines.num("F$i")
+            distLines.errorRule("R%04d".format(i), f.field(), f.filled().and(f.gt(50L + i)))
         }
-        val kernelModel = rules.fold(distributedModelJson(count)) { m, r ->
-            RuntimeLaws.withRule(m, r.group, "R_${r.code}", r.errorRel, r.code, r.cond)
-        }
+        val kernelModel = rules.fold(distJson) { json, r -> TypedRules.inject(json, r) }
         val distFields = buildList {
             add(FieldDef(LINE_KEY, Kind.STRING))
             for (i in 0 until count) add(FieldDef("/Perf/Lines/F$i", Kind.NUMBER))
         }
         val interpModel = ModelDef(
-            distFields, rules.map { RuleDef("${it.group}/${it.code}", it.group, it.cond, it.code, it.errorRel) },
+            distFields, rules.map { TypedRules.def(it) },
             repeatableGroups = setOf(LINES), declaredReps = mapOf(LINES to DECLARED_MAX), indexFields = setOf(LINE_KEY),
         )
         val gen = SeedGenerator(interpModel)
@@ -343,6 +374,8 @@ object PerfCatalog {
             }).build().toJson()
     }
 
+    private val deep: EditSession by lazy { EditSession.read(deepJson) }
+
     private val deepFields = listOf(
         FieldDef("$VENDOR/VKey", Kind.STRING), FieldDef("$VENDOR/MinMargin", Kind.NUMBER, scale = 0),
         FieldDef("$PRODUCT/PKey", Kind.STRING), FieldDef("$PRODUCT/BasePrice", Kind.NUMBER, scale = 0),
@@ -353,13 +386,21 @@ object PerfCatalog {
 
     /** The rich rule set — exercises a per-level comparison, cross-level refs 1 AND 3 parents up (resolved by
      *  common-prefix walk-up), a `Having`-filtered Sum, and a deep 3-level nested-star Sum. */
-    private fun deepRules(): List<FuzzRule> = listOf(
-        FuzzRule(TIER, "TUP", "../UnitPrice", "FieldFilled(UnitPrice) And [UnitPrice] > 1000"),                       // per-level
-        FuzzRule(TIER, "TOD", "../UnitPrice", "FieldFilled(UnitPrice) And [UnitPrice] > [$OFFER/Discount]"),          // 1 parent up
-        FuzzRule(TIER, "TVM", "../UnitPrice", "FieldFilled(UnitPrice) And [UnitPrice] > [$VENDOR/MinMargin]"),        // 3 parents up
-        FuzzRule(OFFER, "OHS", "../Tier/Qty", "Sum(Tier*/Qty Having [Tier/UnitPrice] > 5) > 100"),                    // Having-filtered Sum
-        FuzzRule(VENDOR, "VNS", "../Product/Offer/Tier/Qty", "Sum(Product*/Offer*/Tier*/Qty) > 100000"),              // deep nested-star Sum
-    )
+    private fun deepRules(): List<Rule> {
+        val tier = deep.group(TIER)
+        val offer = deep.group(OFFER)
+        val vendor = deep.group(VENDOR)
+        val up = tier.num("UnitPrice")
+        return listOf(
+            tier.errorRule("TUP", up.field(), up.filled().and(up.gt(1000))),                                  // per-level
+            tier.errorRule("TOD", up.field(), up.filled().and(up.gt(offer.num("Discount")))),                 // 1 parent up
+            tier.errorRule("TVM", up.field(), up.filled().and(up.gt(vendor.num("MinMargin")))),               // 3 parents up
+            offer.errorRule("OHS", offer.num("Tier/Qty").field(),                                             // Having-filtered Sum
+                Dsl.sum(offer.flatten("Tier*/Qty").having(tier.num("UnitPrice").gt(5))).gt(100)),
+            vendor.errorRule("VNS", vendor.num("Product/Offer/Tier/Qty").field(),                             // deep nested-star Sum
+                Dsl.sum(vendor.flatten("Product*/Offer*/Tier*/Qty")).gt(100000)),
+        )
+    }
 
     /**
      * **Deep + rich**: a 4-level nested DM with cross-level / `Having` / nested-star rules — the "sensible rules
@@ -371,9 +412,9 @@ object PerfCatalog {
      */
     fun deepRich(firing: Boolean = false): PerfScenario {
         val rules = deepRules()
-        val kernelModel = rules.fold(deepJson) { m, r -> RuntimeLaws.withRule(m, r.group, "R_${r.code}", r.errorRel, r.code, r.cond) }
+        val kernelModel = rules.fold(deepJson) { json, r -> TypedRules.inject(json, r) }
         val interpModel = ModelDef(
-            deepFields, rules.map { RuleDef("${it.group}/${it.code}", it.group, it.cond, it.code, it.errorRel) },
+            deepFields, rules.map { TypedRules.def(it) },
             repeatableGroups = setOf(VENDOR, PRODUCT, OFFER, TIER),
             declaredReps = mapOf(VENDOR to DECLARED_MAX, PRODUCT to DECLARED_MAX, OFFER to DECLARED_MAX, TIER to DECLARED_MAX),
             indexFields = setOf("$VENDOR/VKey", "$PRODUCT/PKey", "$OFFER/OKey", "$TIER/TKey"),
@@ -404,7 +445,7 @@ object PerfCatalog {
      *  stresses any per-group setup that scans the whole model (would be O(groups²)); the interpreter's
      *  per-group machinery (`contextsFor`, attach-depth maps) is memoized per group, so it should stay linear. */
     fun wideGroups(numGroups: Int): PerfScenario {
-        val json = DocumentModelDraft.named("wide").locale("en_US")
+        val wideJson = DocumentModelDraft.named("wide").locale("en_US")
             .rootGroup("Wide", Consumer { root ->
                 for (i in 0 until numGroups) root.group("G$i", Consumer { g ->
                     g.repeatable(DECLARED_MAX).indexField("K$i")
@@ -412,14 +453,19 @@ object PerfCatalog {
                     g.numberField("V$i", Consumer<NumberFieldBuilder> { it.fractionDigits(0) })
                 })
             }).build().toJson()
-        val rules = (0 until numGroups).map { i -> FuzzRule("/Wide/G$i", "R$i", "../V$i", "FieldFilled(V$i) And [V$i] > 1000") }
-        val kernelModel = rules.fold(json) { m, r -> RuntimeLaws.withRule(m, r.group, "R_${r.code}", r.errorRel, r.code, r.cond) }
+        val wide = EditSession.read(wideJson)
+        val rules = (0 until numGroups).map { i ->
+            val g = wide.group("/Wide/G$i")
+            val v = g.num("V$i")
+            g.errorRule("R$i", v.field(), v.filled().and(v.gt(1000)))
+        }
+        val kernelModel = rules.fold(wideJson) { json, r -> TypedRules.inject(json, r) }
         val fields = buildList {
             for (i in 0 until numGroups) { add(FieldDef("/Wide/G$i/K$i", Kind.STRING)); add(FieldDef("/Wide/G$i/V$i", Kind.NUMBER, scale = 0)) }
         }
         val groups = (0 until numGroups).map { "/Wide/G$it" }.toSet()
         val interpModel = ModelDef(
-            fields, rules.map { RuleDef("${it.group}/${it.code}", it.group, it.cond, it.code, it.errorRel) },
+            fields, rules.map { TypedRules.def(it) },
             repeatableGroups = groups, declaredReps = groups.associateWith { DECLARED_MAX },
             indexFields = (0 until numGroups).map { "/Wide/G$it/K$it" }.toSet(),
         )
@@ -489,10 +535,13 @@ object PerfCatalog {
      *  the compute path (not validate) over nested groups; the computed field is empty in the seed so every Line
      *  computes a value. The scale knob N is the Line count (× [SUBS_PER_LINE] Sub operands each). */
     fun b7(): PerfScenario {
-        val kernelModel = RuntimeLaws.withComputation(perfJson, LINES, "AmountComp", "../Amount", "Sum(Subs*/Cost)")
+        val comp = lines.computation(amount) {
+            it.name("AmountComp").calc(Dsl.sum(lines.flatten("Subs*/Cost")).expression()).message(Dsl.en("x")).build()
+        }
+        val kernelModel = TypedRules.inject(perfJson, comp)
         val interpModel = ModelDef(
             fields, emptyList(),
-            computations = listOf(ComputationDef(AMOUNT, LINES, "Sum(Subs*/Cost)")),
+            computations = listOf(TypedRules.def(comp)),
             repeatableGroups = setOf(LINES, SUBS),
             declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX),
             indexFields = setOf(LINE_KEY, SUB_KEY),
@@ -515,12 +564,16 @@ object PerfCatalog {
         // Operations are scale-EXEMPT literals (KERNEL-FINDINGS §5) — Amount is scale-2 and Qty is scale-0, so a
         // field operand would trip the kernel's scale gate (MVK_INVALID_COMPARE_DEC_PLACES); the precondition over
         // Qty (ordering is scale-exempt) is what's evaluated per row, which is the cost this benchmark stresses.
-        val alts = listOf(RuntimeLaws.CompAlt("[Qty] < 100", "9.99"), RuntimeLaws.CompAlt("[Qty] >= 100", "0"))
-        val kernelModel = RuntimeLaws.withTieredComputation(perfJson, LINES, "TierComp", "../Amount", null, alts)
+        val comp = lines.computation(amount) {
+            it.name("TierComp")
+                .`when`(qty.lt(100)).calc(NumberLiteral.of("9.99"))   // [Qty] < 100 → 9.99
+                .`when`(qty.ge(100)).calc(NumberLiteral.of("0"))      // [Qty] >= 100 → 0
+                .message(Dsl.en("x")).build()
+        }
+        val kernelModel = TypedRules.inject(perfJson, comp)
         val interpModel = ModelDef(
             fields, emptyList(),
-            computations = listOf(ComputationDef(AMOUNT, LINES, listOf(
-                ComputationAlternative("[Qty] < 100", "9.99"), ComputationAlternative("[Qty] >= 100", "0")))),
+            computations = listOf(TypedRules.def(comp)),
             repeatableGroups = setOf(LINES, SUBS),
             declaredReps = mapOf(LINES to DECLARED_MAX, SUBS to DECLARED_MAX),
             indexFields = setOf(LINE_KEY, SUB_KEY),
@@ -553,8 +606,8 @@ object PerfCatalog {
      * are supported; see SemanticIndexDiffTest / SemanticIndexFieldKeyedDiffTest.)
      */
     fun semanticIndexPerRow(): PerfScenario =
-        scenario("SI cliff", LINES, "SI", "../Amount",
-            "FieldFilled(Amount) And [/Perf/Lines/Amount For \"NOMATCH\"] > 0", ::flatRows)
+        scenario("SI cliff",
+            lines.errorRule("SI", amount.field(), amount.filled().and(amount.forIndex("NOMATCH").gt(0))), ::flatRows)
 
     private const val PA = "/Plan/A"
     private const val PB = "/Plan/B"
@@ -574,6 +627,7 @@ object PerfCatalog {
             })
             .build().toJson()
     }
+    private val parallelSession: EditSession by lazy { EditSession.read(parallelJson) }
     private val parallelFields = listOf(
         FieldDef("$PA/Dept", Kind.STRING), FieldDef("$PA/Va", Kind.NUMBER, scale = 0),
         FieldDef("$PB/Dept", Kind.STRING), FieldDef("$PB/Vb", Kind.NUMBER, scale = 0),
@@ -598,10 +652,12 @@ object PerfCatalog {
      * shape the kernel's `IndexFieldCache` makes O(rows) and where a naive nested-loop join would be O(rows²).
      */
     fun parallel(): PerfScenario {
-        val cond = "FieldsNotCollectivelyFilled(A/Va, B/Vb)"
-        val kernelModel = RuntimeLaws.withRule(parallelJson, "/Plan", "PI", "../A/Va", "PI", cond)
+        val va = parallelSession.group(PA).field("Va")
+        val vb = parallelSession.group(PB).field("Vb")
+        val rule = parallelSession.group("/Plan").errorRule("PI", va, Dsl.fieldsNotCollectivelyFilled(va, vb))
+        val kernelModel = TypedRules.inject(parallelJson, rule)
         val interpModel = ModelDef(
-            parallelFields, listOf(RuleDef("/Plan/PI", "/Plan", cond, "PI", "../A/Va")),
+            parallelFields, listOf(TypedRules.def(rule)),
             repeatableGroups = setOf(PA, PB),
             declaredReps = mapOf(PA to DECLARED_MAX, PB to DECLARED_MAX),
             indexFields = setOf("$PA/Dept", "$PB/Dept"),
@@ -635,6 +691,7 @@ object PerfCatalog {
             })
             .build().toJson()
     }
+    private val framedSession: EditSession by lazy { EditSession.read(framedJson) }
     private val framedFields = listOf(
         FieldDef("$FXA/Dept", Kind.STRING), FieldDef("$FXA/Va", Kind.NUMBER, scale = 0),
         FieldDef("$FB/Dept", Kind.STRING), FieldDef("$FB/Vb", Kind.NUMBER, scale = 0),
@@ -651,10 +708,13 @@ object PerfCatalog {
      * framed shape's inherent cost, not a cliff — so only the frame scales here.)*
      */
     fun parallelFramed(): PerfScenario {
-        val cond = "FieldFilled(X/A/Va) And FieldFilled(B/Vb) And [X/A/Va] > [B/Vb]"
-        val kernelModel = RuntimeLaws.withRule(framedJson, "/Plan", "PF", "../X/A/Va", "PF", cond)
+        val xaVa = framedSession.group(FXA).num("Va")
+        val bVb = framedSession.group(FB).num("Vb")
+        val rule = framedSession.group("/Plan").errorRule("PF", xaVa.field(),
+            xaVa.filled().and(bVb.filled()).and(xaVa.gt(bVb)))
+        val kernelModel = TypedRules.inject(framedJson, rule)
         val interpModel = ModelDef(
-            framedFields, listOf(RuleDef("/Plan/PF", "/Plan", cond, "PF", "../X/A/Va")),
+            framedFields, listOf(TypedRules.def(rule)),
             repeatableGroups = setOf(FX, FXA, FB),
             declaredReps = mapOf(FX to DECLARED_MAX, FXA to DECLARED_MAX, FB to DECLARED_MAX),
             indexFields = setOf("$FXA/Dept", "$FB/Dept"),
@@ -677,8 +737,6 @@ object PerfCatalog {
     /** Every catalog scenario, in order — for the gate to sweep. */
     fun all(): List<PerfScenario> = listOf(b1(), b2(), b3(), b4(), b5(), b6())
 
-    private data class FuzzRule(val group: String, val code: String, val errorRel: String, val cond: String)
-
     // Unambiguously-malformed values (scale-independent) for the kinds the interpreter formal-checks. NUMBER:
     // invalid chars / signed-zero / leading-plus / leading-blank. DATE: garbage / a value in the WRONG format
     // for the field (ISO on a de field, de on an ISO field) / a CALENDAR-INVALID day (Feb 31 — a day past the
@@ -700,8 +758,20 @@ object PerfCatalog {
     // BOOLEAN, nested two levels. The non-ISO date is the high-value bit: it exercises locale-variant date
     // canonicalization under fuzz. Only supported operators, valid (referenced) error fields.
     private val fuzzJson = RuntimeLaws.model("models/fuzz.dm.json")
-    private const val FZ_LINES = "/Cart/Lines"
+    private val fuzz = EditSession.read(fuzzJson)
+    private const val FZ_LINES = "/Cart/Lines"   // the rule-target group paths
     private const val FZ_PARTS = "/Cart/Lines/Parts"
+    private val cart = fuzz.group("/Cart")             // anchor for the /Cart-level star aggregates
+    private val cartLines = fuzz.group(FZ_LINES)       // editor on the repeatable Lines group
+    private val cartParts = fuzz.group(FZ_PARTS)       // editor on the nested repeatable Parts group
+    // Typed, VALIDATED field handles by RELATIVE child name off the editors (fail-fast on a bad name/kind).
+    // (.field() yields the underlying FieldRef where a field-LIST operator wants a FieldOperand.)
+    private val fzItem = cartLines.str("ItemId")
+    private val fzQty = cartLines.num("Qty")
+    private val fzPrice = cartLines.num("Price")
+    private val fzOrdered = cartLines.date("OrderedOn")
+    private val fzDue = cartLines.date("DueBy")
+    private val fzWeight = cartParts.num("Weight")
     private val fuzzFields = listOf(
         FieldDef("/Cart/Lines/ItemId", Kind.STRING),
         FieldDef("/Cart/Lines/Qty", Kind.NUMBER, scale = 0),
@@ -718,36 +788,36 @@ object PerfCatalog {
      * can read which constructs the fuzz exercises WITHOUT building the kernel model. Keeping this the one source
      * means a rule added here is automatically seen by both the fuzz net and the parity guard.
      */
-    private fun fuzzRuleSpecs(): List<FuzzRule> =
-        listOf(
-            FuzzRule(FZ_LINES, "HQ", "../Qty", "FieldFilled(Qty) And [Qty] > 50"),
-            FuzzRule(FZ_LINES, "YO", "../OrderedOn", "FieldFilled(OrderedOn) And YearFromDate(OrderedOn) > 2020"),
-            FuzzRule(FZ_LINES, "YD", "../DueBy", "FieldFilled(DueBy) And YearFromDate(DueBy) > 2020"),
-            FuzzRule("/Cart", "TP", "../Lines/Price", "Sum(Lines*/Price) > 1000"),
-            FuzzRule("/Cart", "FF", "../Lines/Qty", "FirstFilledValue(Lines*/Qty) > 50"),   // first specified row, skip empties
-            FuzzRule("/Cart", "SP", "../Lines/Qty", "SumOfProducts(Lines*/Qty, Lines*/Price) > 100000"),   // Σ qᵢ·pᵢ, row-paired
-            FuzzRule(FZ_LINES, "DV", "../Price", "FieldFilled(Qty) And { [Price] / [Qty] } > 5"),   // division (+ div-by-zero quiet)
-            FuzzRule(FZ_LINES, "PW", "../Qty", "{ [Qty] ^ 2 } > 100"),                                // power
-            FuzzRule(FZ_LINES, "AB", "../Price", "Abs([Price]) > 500"),                               // |x|
-            FuzzRule(FZ_LINES, "LN", "../ItemId", "FieldFilled(ItemId) And Length(ItemId) > 1"),      // string length (+ uniqueIndex suppression on dup keys)
-            FuzzRule(FZ_LINES, "NV", "../Qty", "FieldFilled(Qty) And NumberOfValueInFields(0 In Qty, Price) >= 1"), // count-of-value (In syntax; empty not counted)
-            FuzzRule(FZ_LINES, "RS", "../ItemId", """FieldFilled(ItemId) And RangeAsString(ItemId, 1, 2) == "K0""""), // substring of the index pool
-            FuzzRule(FZ_LINES, "RN", "../ItemId", "FieldFilled(ItemId) And RangeAsNumber(ItemId, 2, 2) >= 1"),         // substring-as-number (\\d+ else 0)
-            FuzzRule(FZ_LINES, "FS", "../Qty", """FieldFilled(Qty) And FieldValueAsString(Qty) == "0""""),            // number→string raw-value coercion
-            FuzzRule(FZ_LINES, "AF", "../Qty", "AllFieldsFilled(Qty, Price)"),   // field-list quantifier (3VL on a malformed operand)
-            FuzzRule(FZ_LINES, "FU", "../Qty", "FieldValuesNotUnique(Qty, Price)"),   // fires when Qty == Price numerically (cross-scale); empties skipped
-            FuzzRule(FZ_LINES, "DT", "../Qty", "[Qty] DiffersWithToleranceRange5 [Price]"),   // |Qty − Price| > 5 (strict band; empty→0)
+    private fun fuzzRuleSpecs(): List<Rule> = listOf(
+        cartLines.errorRule("HQ", fzQty.field(), fzQty.filled().and(fzQty.gt(50))),
+        cartLines.errorRule("YO", fzOrdered.field(), fzOrdered.filled().and(Dsl.yearFromDate(fzOrdered).gt(2020))),
+        cartLines.errorRule("YD", fzDue.field(), fzDue.filled().and(Dsl.yearFromDate(fzDue).gt(2020))),
+        cart.errorRule("TP", fzPrice.field(), Dsl.sum(cart.flatten("Lines*/Price")).gt(1000)),
+        cart.errorRule("FF", fzQty.field(), Dsl.firstFilledNumber(cart.flatten("Lines*/Qty")).gt(50)),   // first specified row, skip empties
+        cart.errorRule("SP", fzQty.field(), Dsl.sumOfProducts(cart.flatten("Lines*/Qty"), cart.flatten("Lines*/Price")).gt(100000)),   // Σ qᵢ·pᵢ, row-paired
+        cartLines.errorRule("DV", fzPrice.field(), fzQty.filled().and(fzPrice.asNumber().dividedBy(fzQty.asNumber()).gt(5))),   // division (+ div-by-zero quiet)
+        cartLines.errorRule("PW", fzQty.field(), fzQty.asNumber().toThePowerOf(Dsl.number("2")).gt(100)),                       // power
+        cartLines.errorRule("AB", fzPrice.field(), Dsl.abs(fzPrice.asNumber()).gt(500)),                                        // |x|
+        cartLines.errorRule("LN", fzItem.field(), fzItem.filled().and(fzItem.length().gt(1))),                                // string length (+ uniqueIndex suppression on dup keys)
+        cartLines.errorRule("NV", fzQty.field(), fzQty.filled().and(Dsl.numberOfValueInFields(0L, fzQty.field(), fzPrice.field()).ge(1))), // count-of-value (In syntax; empty not counted)
+        cartLines.errorRule("RS", fzItem.field(), fzItem.filled().and(Dsl.rangeAsString(fzItem.field(), 1, 2).eq("K0"))), // substring of the index pool
+        cartLines.errorRule("RN", fzItem.field(), fzItem.filled().and(Dsl.rangeAsNumber(fzItem.field(), 2, 2).ge(1))),         // substring-as-number (\\d+ else 0)
+        cartLines.errorRule("FS", fzQty.field(), fzQty.filled().and(Dsl.fieldValueAsString(fzQty.field()).eq("0"))),            // number→string raw-value coercion
+        cartLines.errorRule("AF", fzQty.field(), Dsl.allFieldsFilled(fzQty.field(), fzPrice.field())),   // field-list quantifier (3VL on a malformed operand)
+        cartLines.errorRule("FU", fzQty.field(), Dsl.fieldValuesNotUnique(fzQty.field(), fzPrice.field())),   // fires when Qty == Price numerically (cross-scale); empties skipped
+        cartLines.errorRule("DT", fzQty.field(), fzQty.differsWithTolerance(Tolerance.RANGE_5, fzPrice)),   // |Qty − Price| > 5 (strict band; empty→0)
 
-            FuzzRule(FZ_LINES, "RD", "../Price", "FieldFilled(Price) And RoundDown([Price], 0) > 50"), // FLOOR (signed Price → negatives)
-            FuzzRule(FZ_LINES, "RA", "../Price", "FieldFilled(Price) And RoundAccounting([Price] * [Qty], 1) > 100"), // HALF_UP over a product
-            FuzzRule(FZ_PARTS, "HW", "../Weight", "FieldFilled(Weight) And [Weight] > 50"),
-            FuzzRule(FZ_PARTS, "RW", "../Weight", "FieldFilled(Weight) And RoundUpValue(Weight) > 50"), // CEILING, *Value field form
-            FuzzRule("/Cart", "CR", "../Lines/Qty", "FieldFilled(Lines/Qty) And CurrentRepetition(Lines) > 2"), // per-row index
-            FuzzRule(FZ_PARTS, "XL", "../Weight", "FieldFilled(Weight) And [Weight] > [/Cart/Lines/Qty]"),
-        )
+        cartLines.errorRule("RD", fzPrice.field(), fzPrice.filled().and(Dsl.roundDown(fzPrice.asNumber(), 0).gt(50))), // FLOOR (signed Price → negatives)
+        cartLines.errorRule("RA", fzPrice.field(), fzPrice.filled().and(Dsl.roundAccounting(fzPrice.asNumber().times(fzQty.asNumber()), 1).gt(100))), // HALF_UP over a product
+        cartParts.errorRule("HW", fzWeight.field(), fzWeight.filled().and(fzWeight.gt(50))),
+        cartParts.errorRule("RW", fzWeight.field(), fzWeight.filled().and(Dsl.roundUpValue(fzWeight).gt(50))), // CEILING, *Value field form
+        cart.errorRule("CR", fzQty.field(), fzQty.filled().and(Dsl.currentRepetition(cartLines.ref()).gt(2))), // per-row index
+        cartParts.errorRule("XL", fzWeight.field(), fzWeight.filled().and(fzWeight.gt(fzQty))),
+    )
 
-    /** The fuzz rules' condition texts — what [CatalogParityTest] scans to know which constructs the net covers. */
-    fun fuzzConditions(): List<String> = fuzzRuleSpecs().map { it.cond }
+    /** The fuzz rules' rendered condition texts — what [CatalogParityTest] scans to know which constructs the
+     *  net covers (each [Rule] renders its own canonical, group-relative condition). */
+    fun fuzzConditions(): List<String> = fuzzRuleSpecs().map { it.render() }
 
     /**
      * A MULTI-rule scenario over the diverse [fuzzJson] model whose instance is **random** — random row counts
@@ -765,9 +835,9 @@ object PerfCatalog {
      */
     fun fuzz(): PerfScenario {
         val rules = fuzzRuleSpecs()
-        val kernelModel = rules.fold(fuzzJson) { m, r -> RuntimeLaws.withRule(m, r.group, "R_${r.code}", r.errorRel, r.code, r.cond) }
+        val kernelModel = rules.fold(fuzzJson) { json, r -> TypedRules.inject(json, r) }
         val interpModel = ModelDef(
-            fuzzFields, rules.map { RuleDef("${it.group}/R_${it.code}", it.group, it.cond, it.code, it.errorRel) },
+            fuzzFields, rules.map { TypedRules.def(it) },
             repeatableGroups = setOf(FZ_LINES, FZ_PARTS),
             declaredReps = mapOf(FZ_LINES to 1000, FZ_PARTS to 1000),
             indexFields = setOf("/Cart/Lines/ItemId", "/Cart/Lines/Parts/PartId"),
