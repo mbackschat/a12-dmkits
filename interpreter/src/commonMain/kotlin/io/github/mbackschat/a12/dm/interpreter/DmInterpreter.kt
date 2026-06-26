@@ -451,15 +451,32 @@ class DmInterpreter @JvmOverloads constructor(
         // value (verified vs the kernel). No doc mutation, so a reused doc never accumulates placements; for a
         // model with no inter-computation dependency the overlay is never consulted (zero behavior change).
         val overlay = HashMap<Pair<String, List<Int>>, Val>()
+        // A computation that reads an ERRORED computed dependency is SKIPPED by the kernel — it produces NO
+        // outcome (not changed / cleared / errored; probe-confirmed, IF40). We track each errored (or transitively
+        // dependent) target instance as *poisoned* and skip any dependent that reads it.
+        val poisoned = HashSet<Pair<String, List<Int>>>()
+        val computedTargets = model.computations.mapTo(HashSet()) { it.targetPath }
         for (comp in computationsInDependencyOrder()) {
             val parsed = parsedOf(comp)
+            val depTargets = computationDepRefs(parsed).filter { it in computedTargets }   // its COMPUTED dependencies
             val scope = scopeFromRefs(computationScopeRefs(parsed) + comp.targetPath, comp.group)
             for (ctx in doc.contextsFor(scope)) {
+                val targetKey = comp.targetPath to ctx.repsOf(comp.targetPath)
+                if (depTargets.any { dep -> (dep to ctx.repsOf(dep)) in poisoned }) {
+                    poisoned += targetKey   // depends on an errored value → skipped + transitively poisoned
+                    continue
+                }
                 val ectx = if (overlay.isEmpty()) ctx else OverlayContext(ctx, overlay)
                 val interp = Interpreter(ectx, clock, model.baseYear, model.indexFields, predefinedTypes)
                 val v = evalComputation(parsed, interp)
-                out += toComputed(comp, v)
-                if (v !is Val.Unknown) overlay[comp.targetPath to ctx.repsOf(comp.targetPath)] = v
+                val computed = toComputed(comp, v)
+                out += computed
+                // ERRORED: report it, but poison the target and do NOT overlay — a dependent must be skipped, not
+                // computed from the bad value. A resolved VALUE overlays so dependents read the computed result.
+                when {
+                    computed.outcome == ComputeOutcome.ERRORED -> poisoned += targetKey
+                    v !is Val.Unknown -> overlay[targetKey] = v
+                }
             }
         }
         return out
