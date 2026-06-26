@@ -17,7 +17,6 @@ A systematic **7-surface gap audit (2026-06-26, kernel-source-verified)** found 
 ### Partial validation (the relevant-set dimension)
 | code | item | status / action | detail |
 |---|---|---|---|
-| **IG9** | partial: wildcard/aggregate references under a **subset** of relevant repetitions | open — **CONFIRMED divergent** by `PartialValidationSubsetRepDiffTest` (kernel=false, interp=true): the aggregate/star resolution walks the document and does **not** gate non-relevant rows to `Unknown`. Root fix = gate non-relevant instances to `Unknown` at operand resolution (covers the nested-group / parallel / starred-quantifier siblings, which all reduce to this root). | `DmInterpreter.validatePart` KDoc; KERNEL-FINDINGS "Partial validation" |
 | **IG10** | partial: a `CustomCondition` is invoked with `relevant = null` (full) in partial mode | open — thread the relevance predicate into the `CustomCondition` invocation; lock with a partial-mode `CustomConditionDiffTest` case. | `DmInterpreter.validatePart` KDoc |
 | **IG11** | partial: kernel **global-field auto-relevance** not modeled | open — confirm reachability (does a global-field model load?) → model it, or move to §3 with a trigger. | `DmInterpreter.validatePart` KDoc |
 | | partial: `uniqueIndex`/`RepetitionNotUnique` under subset-relevant rows *(probe — sibling of IG9)* | open — interpreter scans both rows; kernel may require the duplicate *partner* row relevant to flag the collision. Probe `firedCodesPart` with one row relevant. | `DmInterpreter.kt:255-356` |
@@ -33,7 +32,7 @@ A systematic **7-surface gap audit (2026-06-26, kernel-source-verified)** found 
 |---|---|---|---|
 | **IG16** | **`variantFilter`** (`ONLY`/`ALL_EXCEPT`) on Field/Rule/Computation not read | open — with `variant==null` (the differential oracle + dmtool default) the kernel **drops** an `ONLY [v]` element; the interpreter keeps + evaluates it → extra firings/computes on all three entry points. | `InterpreterModelLoader.java:96-116`; kernel `VariantFiltering`+`ValidationModelConverter` |
 
-**The lock to build:** a **partial-validation FUZZ differential** (today only 7 curated partial cases, no fuzz) — it would turn IG9/IG11 into hard differential failures instead of reasoned claims.
+**The lock to build:** a **partial-validation FUZZ differential** (today only a handful of curated partial cases, no fuzz) — it would turn the remaining partial items (IG10/IG11 + the `uniqueIndex`-subset probe) into hard differential failures instead of reasoned claims.
 
 Deferred items are in §2; a fixed gap is deleted from here (git + its `IFn` finding are the record).
 

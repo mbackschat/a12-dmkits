@@ -619,10 +619,14 @@ class DmInterpreter @JvmOverloads constructor(
             // suppression (`And` suppresses, `Or` with a relevant-true operand still fires). The custom-condition
             // registry + the row's error-field pointer ride along for a `CustomCondition X` leaf.
             val interp = Interpreter(ctx, clock, model.baseYear, model.indexFields, predefinedTypes,
-                customConditions, FieldPointer(errorPath, ctx.repsOf(errorPath))) { path ->
+                customConditions, FieldPointer(errorPath, ctx.repsOf(errorPath)),
+                invalid = { path ->
                     val reps = ctx.repsOf(path)   // computed once, reused for the formal check AND relevance
                     formalErrorAt(path, reps, ctx, dup, cache) != null || !isRelevant(path, reps)
-                }
+                },
+                // Partial validation only: a star-aggregate cell that is not relevant makes the aggregate Unknown
+                // (IF35). Null in full validation, so the gate (and its starCells call) is skipped entirely.
+                cellRelevant = if (isRelevant === ALL_RELEVANT) null else { path, reps -> isRelevant(path, reps) })
             // ONE typed walk per row (the fired MsgType, or null if it doesn't fire) — firedType != null ⟺ the
             // rule fires (truth == TRUE), and the value IS the polarity. The walk is LAZY-polarity: it skips the
             // VALUE/OMISSION typing on non-firing nodes (the kernel types only firing rows), measured faster in

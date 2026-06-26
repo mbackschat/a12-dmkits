@@ -61,6 +61,12 @@ class Interpreter(
      * which has no formal-error increment yet). [DmInterpreter] supplies it from the model + context.
      */
     private val invalid: (String) -> Boolean = { false },
+    /** Partial validation only: whether a star-aggregate CELL at `(path, reps)` is relevant. A starred aggregate
+     *  with ANY non-relevant cell evaluates to [Val.Unknown] — the kernel treats the aggregate as non-evaluable
+     *  under a subset relevant set (it does NOT apply directional 3VL to the non-relevant cells, kernel-probed;
+     *  IF35). **Null in full validation** — the gate is skipped entirely (no `starCells` call, so the flat-spike
+     *  `RepDoc` context is unaffected). [DmInterpreter] supplies it only for partial validation. */
+    private val cellRelevant: ((String, List<Int>) -> Boolean)? = null,
 ) {
 
     fun fires(cond: Cond): Boolean = eval(cond) == Tri.TRUE
@@ -710,7 +716,17 @@ class Interpreter(
         return Val.Num(base.pow(e))
     }
 
-    private fun evalFunc(f: Expr.Func): Val = when (FunctionOp.byName(f.name)) {
+    private fun evalFunc(f: Expr.Func): Val {
+        // Partial validation only (cellRelevant != null): a starred aggregate whose star path has ANY non-relevant
+        // cell is UNKNOWN — the kernel treats the aggregate as non-evaluable under a subset relevant set (it does
+        // NOT apply directional 3VL to the non-relevant cells, kernel-probed; IF35). Skipped in full validation.
+        if (cellRelevant != null) {
+            f.args.forEach { arg ->
+                val sp = (arg as? Expr.Star)?.path
+                if (sp != null && ctx.starCells(sp).any { !cellRelevant.invoke(sp, it.first) }) return Val.Unknown
+            }
+        }
+        return when (FunctionOp.byName(f.name)) {
         // operand-list forms: every operand counts (an empty number arrives as the substituted 0)
         FunctionOp.MIN -> combine(f.args.map { evalExpr(it) }) { it.minWithOrNull(ORDER) ?: Val.Unknown }
         FunctionOp.MAX -> combine(f.args.map { evalExpr(it) }) { it.maxWithOrNull(ORDER) ?: Val.Unknown }
@@ -829,6 +845,7 @@ class Interpreter(
         // CurrentRepetition(group): the current row's 1-based index at that group's level (the last reps part).
         FunctionOp.CURRENT_REPETITION -> Val.Num(dec(ctx.repsOf(pathOf(f.args[0])).last()))
         null -> throw UnsupportedConstructException("unsupported function ${f.name}")
+        }
     }
 
     /** `Round*([expr], n)` — round the numeric first operand to the n-decimal-places literal with [mode];
