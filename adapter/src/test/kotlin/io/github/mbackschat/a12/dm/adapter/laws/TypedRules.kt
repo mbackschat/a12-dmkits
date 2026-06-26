@@ -20,14 +20,13 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Rule
 object TypedRules {
 
     /**
-     * The rule's condition rendered with ABSOLUTE paths — the lingua franca both engines parse. NOTE: we do
-     * NOT use [Rule.render] (the kernel-canonical GROUP-RELATIVE form), because that emits `../`-relative
-     * cross-level refs (`[../Qty]`) which the interpreter's parser cannot yet read (INTERPRETER-GAPS-LEDGER IG1 —
-     * a real gap a `../`-storing kernel model would hit; the hand-written-absolute fixtures masked it). The
-     * absolute form is equivalent (both engines resolve a self/cross ref via the common prefix) and is what the
-     * pre-typed fixtures used; the rule stays fully typed — only the path-rendering style differs.
+     * The rule's condition in the kernel-canonical GROUP-RELATIVE form — `[Rule.render]`, the dogfood-faithful
+     * derived render both engines parse (the kernel natively; the interpreter via the relative + IF24-absolute +
+     * IG1 `../` parent-relative path support). This is the strongest differential lock: every catalog/fuzz shape
+     * now drives the interpreter's `../` resolution against the real kernel, since cross-level UP refs render as
+     * `../Qty`. (Until IG1 shipped, this had to render ABSOLUTE as a workaround — see INTERPRETER-GAPS-LEDGER IG1.)
      */
-    private fun cond(rule: Rule): String = DslRenderer().render(rule.condition())
+    private fun cond(rule: Rule): String = rule.render()
 
     /** Inject the typed [rule] into [json] — the kernel side of the differential. */
     fun inject(json: String, rule: Rule): String =

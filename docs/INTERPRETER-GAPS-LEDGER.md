@@ -10,14 +10,11 @@
 
 ## 1. Open (to fix)
 
-### IG1 — condition parser rejects `../` parent-relative field references (OPEN, surfaced 2026-06-26)
+*(none — IG1 graduated to a finding; see below.)*
 
-**A real correctness gap the dmkit migration exposed; worked around in the differential, not yet fixed.** The kernel's canonical condition render (its `FormatterVisitor`, fork #9 — what rulekit's `Rule.render()` reproduces) writes paths **relative to the rule's group**, so a cross-level UP reference — a `/Perf/Lines/Subs`-scoped rule reading the parent Line's `Qty` — renders **`[../Qty]`** (each `..` = one group level up). The interpreter's `parse/Parser.kt` `[…]` branch handles a leading `/` (absolute — IF24) and a bare-relative ident, but has **no case for `..` segments**: `readIdent()` on `../Qty` reads nothing and `expect(']')` throws `parser: expected ']' … [../Qty]`. Same for `[../Discount]` at depth.
+### IG1 — condition parser rejects `../` parent-relative field references → **FIXED 2026-06-26, graduated to [IF25](INTERPRETER-FINDINGS.md)**
 
-- **Why it stayed hidden:** every pre-migration fixture hand-wrote cross-level refs **absolute** (`[/Perf/Lines/Qty]`), which IF24 made parseable; nothing fed the interpreter the kernel's *relative* form. It surfaced the moment `PerfCatalog` authored rules as typed `Rule`s and rendered them with `Rule.render()` (group-relative) — `PerfGateTest`, `InterpreterKernelFuzzTest`, `deepNestedHavingStaysSubQuadratic` all choked.
-- **Implication beyond tests:** if real kernel-authored DM-JSON stores the canonical relative form (its formatter emits it), the interpreter **cannot load a model with a cross-level rule** — needs confirming against a real stored model, but the formatter evidence says it's likely.
-- **Current handling (NOT a fix):** the differential bridge `adapter.laws.TypedRules` renders conditions **absolute** (`DslRenderer().render(rule.condition())`) — the lingua franca both engines parse (interp via IF24, kernel natively) and equivalent (both resolve self/cross refs via the common prefix). It sidesteps IG1, it does not resolve it.
-- **Proper fix:** extend `parseAtom`'s `[` branch (and the bare-path argument case) to consume one-or-more `../` prefixes and resolve them by walking up the rule's group path into the absolute path the resolver already handles — needs the group context at resolution time + a differential lock that `../` resolves bit-identically to the kernel. **Top interpreter follow-up.**
+The kernel's canonical group-relative render writes a cross-level UP reference as `[../Qty]` (each `..` = one group level up), which the parser's `[…]` and bare-arg branches could not read (`parser: expected ']' … [../Qty]`) — a real load-a-real-model gap, surfaced when the dmkit migration rendered typed `Rule`s with `Rule.render()`. **Fixed** by `readRef()`/`readParentUps()`/`walkUp()` in `parse/Parser.kt` — a `../` ref resolves to the same absolute path the absolute form produces (byte-identical AST), so it is **parse-time only, no eval/perf change**. Locked by `interpreter.ParentRelativePathParseTest` and differentially by switching `adapter.laws.TypedRules` to the canonical group-relative render (the whole catalog/fuzz gate now drives `../` against the real kernel). Full rationale: [IF25](INTERPRETER-FINDINGS.md).
 
 ---
 

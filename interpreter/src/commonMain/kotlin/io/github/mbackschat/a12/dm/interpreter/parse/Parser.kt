@@ -123,9 +123,7 @@ private class ConditionParser(private val src: String, private val base: String)
             '{' -> { next(); val e = parseExpr(); skipWs(); expect('}'); e }
             '[' -> {
                 next()
-                val absolute = peek() == '/'      // an absolute reference [/Group/Field], used as-is (no base)
-                if (absolute) next()
-                val p = pathFrom(readIdent(), absolute)
+                val p = readRef()                 // [/abs] · [../parent-rel] · [relative] — readRef resolves all
                 skipWs()
                 when {
                     // `[field -> Category]` — an EnumCategory access mapping the enum value to its category value.
@@ -142,9 +140,7 @@ private class ConditionParser(private val src: String, private val base: String)
                         val sem = if (peek() == '"') {
                             Expr.SemanticIndex((p as Expr.Field).path, indexValue = readString().v)
                         } else {
-                            val absIdx = peek() == '/'
-                            if (absIdx) next()
-                            val keyField = pathFrom(readIdent(), absIdx) as Expr.Field
+                            val keyField = readRef() as Expr.Field
                             Expr.SemanticIndex((p as Expr.Field).path, indexFieldPath = keyField.path)
                         }
                         skipWs(); expect(']')
@@ -154,10 +150,10 @@ private class ConditionParser(private val src: String, private val base: String)
                 }
             }
             '"' -> readString()
-            // A bare ABSOLUTE path as a predicate / aggregate argument — `FieldFilled(/Pol/Cap0)`,
-            // `AllFieldsFilled(/A/x, /B/y)`, `Sum(/A*/v)` — the form the kernel and the rulekit DSL renderer
-            // emit. (Absolute paths inside `[...]` value refs were already handled above.)
-            '/' -> { next(); pathFrom(readIdent(), absolute = true) }
+            // A bare ABSOLUTE (`/A/x`) or PARENT-RELATIVE (`../x`) path as a predicate / aggregate argument —
+            // `FieldFilled(/Pol/Cap0)`, `AllFieldsFilled(../A, ../B)`, `Sum(/A*/v)` — the forms the kernel and
+            // the rulekit DSL renderer emit. (The same forms inside `[...]` value refs are handled above.)
+            '/', '.' -> readRef()
             else -> when {
                 c == '-' || c.isDigit() -> readNumber()
                 else -> {
@@ -178,11 +174,35 @@ private class ConditionParser(private val src: String, private val base: String)
     }
 
     /**
-     * Build a Field/Star from a first segment, reading optional `*` and further `/segment`s. A relative
-     * path resolves against the rule's group [base]; an [absolute] path (a leading `/` inside the brackets)
-     * is used as-is — the kernel allows both in conditions.
+     * Read a field/value reference at the current position, resolving its path to absolute. Three forms,
+     * exactly as the kernel — and the rulekit renderer — emit them: a leading `/` is **absolute** (used
+     * as-is, IF24); one-or-more `../` runs are **parent-relative** (each `..` walks one group level up from
+     * the rule's group [base], IG1); otherwise it is **relative** to [base].
      */
-    private fun pathFrom(firstSeg: String, absolute: Boolean = false): Expr {
+    private fun readRef(): Expr {
+        if (peek() == '/') { next(); return pathFrom(readIdent(), absolute = true) }
+        val ups = readParentUps()   // MUST precede readIdent — the `..` prefix comes before the first segment
+        return pathFrom(readIdent(), ups = ups)
+    }
+
+    /** Consume leading `../` segments (each = one group level up) and return how many — 0 if none (IG1). */
+    private fun readParentUps(): Int {
+        var ups = 0
+        while (peek() == '.' && pos + 1 < src.length && src[pos + 1] == '.') {
+            pos += 2                                                              // ".."
+            require(peek() == '/') { "parser: '..' must be followed by '/' at $pos in \"$src\"" }
+            next()                                                               // "/"
+            ups++
+        }
+        return ups
+    }
+
+    /**
+     * Build a Field/Star from a first segment, reading optional `*` and further `/segment`s. A relative
+     * path resolves against the rule's group [base] walked up [ups] levels (0 = the group itself); an
+     * [absolute] path (a leading `/`) is used as-is — the kernel allows all three forms in conditions.
+     */
+    private fun pathFrom(firstSeg: String, absolute: Boolean = false, ups: Int = 0): Expr {
         val segs = mutableListOf(firstSeg)
         var starred = false
         if (peek() == '*') { next(); starred = true }
@@ -192,8 +212,17 @@ private class ConditionParser(private val src: String, private val base: String)
             if (peek() == '*') { next(); starred = true }
         }
         val joined = segs.joinToString("/")
-        val full = if (absolute) "/$joined" else "$base/$joined"
+        val full = if (absolute) "/$joined" else "${walkUp(base, ups)}/$joined"
         return if (starred) Expr.Star(full) else Expr.Field(full)
+    }
+
+    /** Walk [path] up [ups] group levels (drop that many trailing segments) — the base for a `../` ref (IG1). */
+    private fun walkUp(path: String, ups: Int): String {
+        if (ups == 0) return path
+        val segs = path.split("/").toMutableList()      // "/Order/Lines" -> ["", "Order", "Lines"]
+        require(ups <= segs.size - 1) { "parser: '..' walks above the root from base \"$base\" in \"$src\"" }
+        repeat(ups) { segs.removeAt(segs.lastIndex) }
+        return segs.joinToString("/")
     }
 
     /**
