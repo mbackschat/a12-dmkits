@@ -141,6 +141,9 @@ data class FieldDef(
     val maxLength: Int? = null,
     /** A STRING field's declared regex (`StringType.pattern`); a non-matching value → `stringFalschesMuster`. */
     val pattern: String? = null,
+    /** A STRING field's `noValueValidation` — when true the kernel's `FormatDefinitionString.validiereFormat`
+     *  returns `Valid` immediately, so ALL value checks (pattern / length / the default newline) are skipped. */
+    val noValueValidation: Boolean = false,
     /** A NUMBER field's declared minimum value (`NumberType.minValue`), raw text; below it → `zahlZuKlein`. */
     val minValue: String? = null,
     /** A NUMBER field's declared maximum value (`NumberType.maxValue`), raw text; above it → `zahlZuGross`. */
@@ -203,6 +206,10 @@ data class FieldConstraints(
     val leadingZerosAllowed: Boolean = false,
     /** NUMBER: whether a zero value is forbidden (`zahlIstNull`). Default false = zero allowed. */
     val zeroNotAllowed: Boolean = false,
+    /** STRING `noValueValidation` — when true the kernel skips the WHOLE per-cell string format check (Valid
+     *  immediately). A kernel-valid `noValueValidation` field forbids pattern/minLength and requires line breaks
+     *  (`MVK_STRING_TYPE_*`), so the observable effect is that a declared `maxLength` is NOT enforced. */
+    val noValueValidation: Boolean = false,
 ) {
     val patternRegex: Regex? = pattern?.let { Regex(it) }
 
@@ -211,7 +218,7 @@ data class FieldConstraints(
      *  `true` (the non-default); the default-forbidden newline/leading-zeros checks still run via [NONE]. */
     val any: Boolean = minLength != null || maxLength != null || pattern != null ||
         enumValues.isNotEmpty() || minValue != null || maxValue != null || (minFractionalDigits ?: 0) > 0 ||
-        lineBreaksPermitted || leadingZerosAllowed || zeroNotAllowed
+        lineBreaksPermitted || leadingZerosAllowed || zeroNotAllowed || noValueValidation
 
     companion object {
         val NONE = FieldConstraints()
@@ -331,7 +338,7 @@ data class ModelDef(
         .associate {
             it.path to FieldConstraints(
                 it.minLength, it.maxLength, it.pattern, it.enumValues, it.minValue, it.maxValue, it.minFractionalDigits,
-                it.lineBreaksPermitted, it.leadingZerosAllowed, it.zeroNotAllowed,
+                it.lineBreaksPermitted, it.leadingZerosAllowed, it.zeroNotAllowed, it.noValueValidation,
             )
         }
         .filterValues { it.any }

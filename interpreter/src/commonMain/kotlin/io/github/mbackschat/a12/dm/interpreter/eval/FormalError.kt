@@ -215,6 +215,11 @@ fun formalError(
  * reports `stringFalschesMuster`, not `stringZuKurz`).
  */
 private fun stringConstraintError(raw: String, c: FieldConstraints): FormalErrorCode? {
+    // `noValueValidation` short-circuits the WHOLE string format check (the kernel's
+    // FormatDefinitionString.validiereFormat returns Valid immediately) — so pattern / length / newline are all
+    // skipped. A kernel-valid such field carries no pattern/minLength and allows line breaks, so this effectively
+    // means a declared maxLength is NOT enforced (IF29).
+    if (c.noValueValidation) return null
     // An ENUM field's only value check is value-domain membership (it has no pattern/length/newline checks).
     if (c.enumValues.isNotEmpty()) {
         return if (raw !in c.enumValues) FormalErrorCode.PATTERN else null   // out-of-domain → stringFalschesMuster

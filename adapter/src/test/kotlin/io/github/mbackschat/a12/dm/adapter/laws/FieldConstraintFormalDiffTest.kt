@@ -74,6 +74,18 @@ class FieldConstraintFormalDiffTest {
     @Test fun newlineCleanWithoutBreak() = agree(plainStr, plainStrDef, "/Order/Note", "abc", "no newline → clean")
     @Test fun newlinePermittedWhenDeclared() = agree(nlOkStr, nlOkDef, "/Order/Note", "a\nb", "lineBreaksPermitted → clean")
 
+    // noValueValidation (IG17): the kernel's FormatDefinitionString.validiereFormat returns Valid immediately,
+    // skipping every value check. A model is only kernel-VALID with noValueValidation when line breaks are allowed
+    // and NO pattern/minLength is set (MVK_STRING_TYPE_PARAMS_INCONSISTENT / MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK
+    // — only maxLength may accompany it). So the observable skip is maxLength: a value LONGER than maxLength is clean
+    // for the kernel but the interpreter wrongly fired stringZuLang. Reachable on shipped A12 Tools StringType fields.
+    private val noValStr = """{ "type": "Field", "id": "/Order/Code", "name": "Code", "Field": { "fieldType": {
+        "type": "StringType", "StringType": { "maxLength": 6, "noValueValidation": true, "lineBreaksPermitted": true } } } },"""
+    private val noValDef = FieldDef("/Order/Code", Kind.STRING, maxLength = 6, noValueValidation = true, lineBreaksPermitted = true)
+
+    @Test fun noValueValidationSkipsMaxLength() = agree(noValStr, noValDef, "/Order/Code", "ABCDEFG", "noValueValidation → maxLength (7>6) skipped → clean")
+    @Test fun noValueValidationCleanWithinLength() = agree(noValStr, noValDef, "/Order/Code", "ABC", "noValueValidation, within maxLength → clean (control)")
+
     private val plainNum = """{ "type": "Field", "id": "/Order/Num", "name": "Num", "Field": { "fieldType": {
         "type": "NumberType", "NumberType": { "maxFractionalDigits": 0 } } } },"""
     private val plainNumDef = FieldDef("/Order/Num", Kind.NUMBER, scale = 0)

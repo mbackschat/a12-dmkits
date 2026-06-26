@@ -78,6 +78,7 @@ public final class InterpreterModelLoader {
                             scaleOf(node), signed(node), requirednessOf(node), formatOf(node), rangeSeparatorOf(node),
                             datePrecisionOf(node), enumValuesOf(node), enumCategoriesOf(node), customTypeNameOf(node),
                             stringTypeInt(node, "minLength"), stringTypeInt(node, "maxLength"), stringTypeText(node, "pattern"),
+                            typedBool(node, "StringType", "noValueValidation"),
                             numberTypeText(node, "minValue"), numberTypeText(node, "maxValue"), numberTypeInt(node, "minFractionalDigits"),
                             typedBool(node, "StringType", "lineBreaksPermitted"),
                             typedBool(node, "NumberType", "leadingZerosAllowed"), typedBool(node, "NumberType", "zeroNotAllowed")));
