@@ -49,6 +49,12 @@ actual class Dec(val v: Big) : Comparable<Dec> {
         return Dec(pre.round(places, rm))
     }
     actual fun display(): String = v.toString()
+
+    // VALUE equality, scale-INSENSITIVE — consistent with [compareTo] (big.js `cmp`), matching the JVM actual
+    // (IF41). big.js `toString()` is the canonical trailing-zero-stripped form, so it keys a hashCode that is
+    // consistent with equals (equal values hash the same).
+    override fun equals(other: Any?): Boolean = other is Dec && v.cmp(other.v) == 0
+    override fun hashCode(): Int = v.toString().hashCode()
 }
 
 actual fun dec(value: String): Dec = Dec(Big(value))

@@ -39,6 +39,13 @@ actual class Dec(val v: BigDecimal) : Comparable<Dec> {
         return Dec(pre.setScale(places, jmode))
     }
     actual fun display(): String = v.stripTrailingZeros().toPlainString()
+
+    // VALUE equality, scale-INSENSITIVE — consistent with [compareTo] (and `BigDecimal.compareTo`, which the
+    // interpreter uses everywhere numbers are compared), NOT `BigDecimal.equals` (scale-sensitive) nor object
+    // identity. So `2.0 == 2.00`, and the data classes holding a Dec (Val.Num, Expr.NumLit) get correct equality.
+    // hashCode keys off the canonical (trailing-zero-stripped) form, so equal values hash the same (IF41).
+    override fun equals(other: Any?): Boolean = other is Dec && v.compareTo(other.v) == 0
+    override fun hashCode(): Int = v.stripTrailingZeros().toPlainString().hashCode()
 }
 
 /** The kernel's `VkBigDecimal.INTERNAL_PRECISION` — 50 significant digits, HALF_UP — for ÷ and ^. */
