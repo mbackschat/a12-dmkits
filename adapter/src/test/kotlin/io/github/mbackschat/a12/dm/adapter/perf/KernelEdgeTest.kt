@@ -261,27 +261,31 @@ class KernelEdgeTest {
      * shape: 1000s of fields, 1000s of rules, many crossing groups, summing, top-level references, scaled on the
      * data axis). The FULL ≈1000-field/≈1000-rule model — deep (Claim ▸ Visit ▸ Charge) **and** wide (top-level
      * + many coverage groups) **and** rule-heavy (per-row + walk-up + cross-sibling + `Having`-Sum + nested-star
-     * + cross-group Sum-vs-Sum) — measured **interp vs kernel-Java** at **N and 4N** Claim rows, both regimes.
-     * The N→4N interp growth factor is the interaction-effect O(N²) detector at the real scale (linear ≈ 4×);
-     * the `PerfGateTest.complexRealWorldStaysSubQuadratic` guard trips the build if it regresses. Correctness
-     * (interp == groovy == java) is asserted inside the harness before any timing. If the growth ever goes
-     * super-linear, profile with `*PerfProfileTest.profileComplexRealWorld -Dperf.profile=true` + JFR.
+     * + cross-group Sum-vs-Sum) — measured **interp vs kernel-Java** at N (both regimes), then the interp-only
+     * N→4N growth as the interaction-effect O(N²) detector (linear ≈ 4×). The kernel is the ratio baseline at the
+     * **feasible N** only: at 4N it would build a 12k-row IDocument + compile the ~1000-rule Java validator and
+     * OOM the test worker — and the kernel can't go native anyway, so the interpreter is the thing being stressed
+     * (same split as `hugeDocScaling`). The `PerfGateTest.complexRealWorldStaysSubQuadratic` guard trips the build
+     * if the growth regresses; correctness (interp == groovy == java) is asserted in the harness at N. If the
+     * growth ever goes super-linear, profile with `*PerfProfileTest.profileComplexRealWorld -Dperf.profile=true` + JFR.
      */
     @Test
     fun complexRealWorldScaling() {
         val probe = PerfCatalog.complexRealWorldFull(firing = false)
         println("[edge] COMBINED real-world (deep+wide+rule-heavy+data-axis): " +
-            "${probe.interpModel.fields.size} fields, ${probe.interpModel.rules.size} rules, interp/java + interp N→4N growth:")
+            "${probe.interpModel.fields.size} fields, ${probe.interpModel.rules.size} rules:")
+        val small = 500
         for (firing in listOf(false, true)) {
             val regime = if (firing) "firing    " else "low-firing"
-            var prev = 0.0
-            for (claims in listOf(500, 2000)) {   // N and 4N — each recodegens the ~1000-rule kernel validator
-                val row = PerfHarness.runScenario(PerfCatalog.complexRealWorldFull(firing), claims)
-                val growth = if (prev > 0) "  interp×%.2f (N→4N; linear≈4)".format(row.interp.medianMs / prev) else ""
-                println("  %s claims=%4d (=%d charge rows)  %s%s".format(
-                    regime, claims, claims * 6, PerfHarness.format(row), growth))
-                prev = row.interp.medianMs
-            }
+            val sc = PerfCatalog.complexRealWorldFull(firing)
+            // interp-vs-kernel-Java at the feasible N (correctness asserted in the harness)
+            val row = PerfHarness.runScenario(sc, small)
+            println("  %s claims=%4d (=%d charge rows)  %s".format(regime, small, small * 6, PerfHarness.format(row)))
+            // interp-ONLY N→4N growth (the interaction-O(N²) detector at the real scale — no giant kernel doc)
+            val n1 = PerfHarness.timeInterpreter(sc, small, warmup = 4, iters = 6)
+            val n4 = PerfHarness.timeInterpreter(sc, small * 4, warmup = 4, iters = 6)
+            println("  %s interp-only  %.1fms@%d → %.1fms@%d claims  N→4N=×%.2f (linear≈4, quadratic≈16)".format(
+                regime, n1.medianMs, small, n4.medianMs, small * 4, n4.medianMs / n1.medianMs))
         }
     }
 }
