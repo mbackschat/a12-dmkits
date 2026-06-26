@@ -261,6 +261,9 @@ data class ComputationDef(
     val group: String,
     val alternatives: List<ComputationAlternative>,
     val commonPrecondition: String? = null,
+    /** The computation's NAME — the error code of its implicit validation rule (the kernel auto-generates a
+     *  `FieldFilled(F) And [F] != <term>` validation per computation; IF32). Null = no implicit validation. */
+    val name: String? = null,
 ) {
     /** Sugar for the common single-unconditional-operation computation (no precondition, no common guard). */
     constructor(targetPath: String, group: String, expressionText: String) :

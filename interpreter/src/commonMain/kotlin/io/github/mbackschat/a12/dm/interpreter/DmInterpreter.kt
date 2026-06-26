@@ -178,7 +178,30 @@ class DmInterpreter @JvmOverloads constructor(
                 unsupported += UnsupportedRule(rule.path, e.message ?: "unsupported construct")
             }
         }
+        // Every computation is ALSO a validation rule (KERNEL-FINDINGS, IF32): the kernel auto-generates an
+        // implicit `FieldFilled(F) And [F] != <term>` that fires under the computation's NAME when a stored
+        // computed value disagrees with its term. Synthesize + evaluate it through the same rule machinery.
+        for (comp in model.computations) {
+            val implicit = implicitComputationRule(comp) ?: continue
+            try {
+                messages += messagesFor(implicit, doc, locale, dup, cache, isRelevant)
+            } catch (e: UnsupportedConstructException) {
+                unsupported += UnsupportedRule(comp.targetPath, e.message ?: "unsupported computation validation")
+            }
+        }
         return ValidationOutcome(messages, unsupported)
+    }
+
+    /** The implicit per-computation validation rule (IF32): `FieldFilled(F) And [F] != <term>`, error code = the
+     *  computation's name, error field = F. Null when the computation is unnamed or TIERED (a precondition / >1
+     *  alternative / common guard) — those validate against the selected-tier result, not a single static term,
+     *  so they are not synthesized here (the common single-unconditional form is). */
+    private fun implicitComputationRule(comp: ComputationDef): RuleDef? {
+        val name = comp.name ?: return null
+        if (comp.commonPrecondition != null || comp.alternatives.size != 1 || comp.alternatives[0].precondition != null) return null
+        val fRel = comp.targetPath.removePrefix(comp.group.removeSuffix("/") + "/")
+        val cond = "FieldFilled($fRel) And [$fRel] != ${comp.alternatives[0].operation}"
+        return RuleDef("${comp.group}/$name", comp.group, cond, name, fRel)
     }
 
     /**

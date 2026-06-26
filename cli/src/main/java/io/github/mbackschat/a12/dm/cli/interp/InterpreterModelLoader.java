@@ -115,7 +115,9 @@ public final class InterpreterModelLoader {
                             String precond = alt.hasNonNull("precondition") ? alt.path("precondition").asText() : null;
                             alts.add(new ComputationAlternative(precond, alt.path("operation").asText()));
                         }
-                        comps.add(new ComputationDef(target, parent(id), alts, common));
+                        // The computation's element name is the error code of its implicit validation rule (IF32).
+                        String compName = node.hasNonNull("name") ? node.path("name").asText() : null;
+                        comps.add(new ComputationDef(target, parent(id), alts, common, compName));
                     }
                     default -> { /* header / other nodes carry no rule surface */ }
                 }

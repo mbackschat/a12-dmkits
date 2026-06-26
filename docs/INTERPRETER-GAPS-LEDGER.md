@@ -26,7 +26,6 @@ A systematic **7-surface gap audit (2026-06-26, kernel-source-verified)** found 
 | code | item | status / action | detail |
 |---|---|---|---|
 | **IG13** | `compute()` has **no operand-formal-error gating**: `ComputeOutcome.ERRORED` has zero producers, no out-of-range computed-value bucket, no cascade-skip on an invalid dependency *(probe the exact bucketing)* | open — a computation over a malformed/out-of-range operand computes a **wrong VALUE** (empty-as-0 on the `Unknown`'d operand) where the kernel skips/errors the dependent. | `DmInterpreter.kt:403-453`, `Model.kt:448`; kernel `IDocumentRtService.compute` javadoc |
-| **IG14** | implicit **per-computation validation rule** (`FieldFilled(F) And [F] != <term>`, fires under the computation's name) is NOT injected into `validateWith` | open — so `validateFull`/`validatePart` never fire when a stored computed value disagrees with its term. Locked kernel-only by `ComputationValidationLawsTest`. | `DmInterpreter.validateWith:166-182` |
 | **IG19** | `toComputed` doesn't apply the target field's **format/scale** *(probe)* | open — a date result isn't reformatted to a non-ISO target date format; a number result isn't scaled/zero-padded to the target's declared scale (e.g. `49.90`→`49.9`). Kernel may render canonical too — probe before fixing. | `DmInterpreter.kt:444-453` |
 
 ### Model loader (kernel-honored DM-JSON keys the loader drops)

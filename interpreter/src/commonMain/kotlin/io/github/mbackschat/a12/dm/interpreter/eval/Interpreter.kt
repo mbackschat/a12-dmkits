@@ -302,9 +302,14 @@ class Interpreter(
     private fun neFillable(left: Expr, right: Expr, l: Fill, r: Fill): Boolean {
         val lv = evalExpr(left)
         val rv = evalExpr(right)
-        if (lv is Val.Unknown || rv is Val.Unknown) return l.canGrow || l.canShrink || r.canGrow || r.canShrink
+        // Direction is only meaningful for ORDERABLE (number/text) operands both known — e.g. a DATE_RANGE `!=`
+        // (the implicit computation-validation) is unordered; fall back to the symmetric fillability (the answer
+        // is discarded unless the rule fires with both present, where symmetric → VALUE is correct).
+        if (!orderable(lv) || !orderable(rv)) return l.canGrow || l.canShrink || r.canGrow || r.canShrink
         return if (vglCompare(lv, rv) < 0) l.canGrow || r.canShrink else l.canShrink || r.canGrow
     }
+
+    private fun orderable(v: Val): Boolean = v is Val.Num || v is Val.Txt
 
     /**
      * `left DiffersWithToleranceRangeN right` — fires iff `|left − right| > [Cond.Tolerance.tolerance]` (the
@@ -1094,6 +1099,9 @@ class Interpreter(
         l is Val.Num && r is Val.Num -> l.v.compareScaled19(r.v) == 0
         l is Val.Txt && r is Val.Txt -> l.v == r.v
         l is Val.Bool && r is Val.Bool -> l.v == r.v
+        // A DATE_RANGE pair is equal iff both endpoints match (the implicit computation-validation of a
+        // date-range computed field compares two ranges; the kernel uses endpoint equality). IF32.
+        l is Val.Range && r is Val.Range -> l.start == r.start && l.end == r.end
         else -> false
     }
 
