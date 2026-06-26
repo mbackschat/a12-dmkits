@@ -14,11 +14,6 @@
 
 A systematic **7-surface gap audit (2026-06-26, kernel-source-verified)** found the interpreter is **materially short of full kernel parity beyond `validateFull`** — the gaps cluster in **`compute()`**, the **model loader**, the **parser**, and **date construction**, not just partial validation. PV-1 (IG9) was the tip. Method: enumerate every surface where a divergence can hide (disposition prose, `unsupported`/throw census, entry-point × parameter dimensions, construct × entry-point matrix, loader-property diff, kernel ledgers cross-checked, differential-coverage holes), then verify each candidate against the kernel source. Each row below is a **kernel-source-verified divergence**; it graduates to an `IFn` finding and is **deleted** here once fixed + differential-locked (red→green). **Severity: IG18 is a CRASH; IG17 is a false-positive; the rest are missing checks or silent wrong-values.** Rows tagged *(probe)* need a runtime differential to pin the exact kernel behavior before the fix.
 
-### Parser (crash)
-| code | item | status / action | detail |
-|---|---|---|---|
-| **IG18** | **CRASH** — a leading `;;` comment in stored condition/operation text crashes `validateFull`/`validatePart`/`compute`/`evalCandidate` with `IllegalArgumentException` | open (2026-06-26) — `skipWs()` skips only `' '` (not `;`/`\n`/`\t`); `readIdent`'s `require(name.isNotEmpty())` throws on `;`; `validateWith`'s catch is `UnsupportedConstructException`-only, so it escapes. Kernel strips the comment at parse. Reachable via `dmtool add --comment` / `Comments.preserveLeading`. Fix at the parser root (tolerate the `;;` block) + widen the catch. | `Parser.kt:352,161`; `DmInterpreter.kt:177`; kernel `CommentRoundTripTest`, `Comments.java` |
-
 ### Partial validation (the relevant-set dimension)
 | code | item | status / action | detail |
 |---|---|---|---|

@@ -349,7 +349,23 @@ private class ConditionParser(private val src: String, private val base: String)
 
     private fun peek(): Char = if (pos < src.length) src[pos] else '\u0000'
     private fun next(): Char = src[pos++]
-    private fun skipWs() { while (pos < src.length && src[pos] == ' ') pos++ }
+    /** Skip insignificant input: all whitespace (the kernel lexer's `WS` is `channel(HIDDEN)`) and `;;` line
+     *  comments (the kernel's `Comment` token — `;; …` to end of line, valid as `before`/`after` of a
+     *  condition/operation per `teilBedingung`/`operation`). Stripping here covers every parse position, so a
+     *  commented condition/operation parses to its body on all entry points (validateFull/validatePart/compute). */
+    private fun skipWs() {
+        while (pos < src.length) {
+            val c = src[pos]
+            when {
+                c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\u000C' -> pos++
+                c == ';' && pos + 1 < src.length && src[pos + 1] == ';' -> {
+                    pos += 2
+                    while (pos < src.length && src[pos] != '\n' && src[pos] != '\r') pos++
+                }
+                else -> return
+            }
+        }
+    }
     private fun expect(c: Char) {
         require(peek() == c) { "parser: expected '$c' at $pos in \"$src\"" }
         next()
