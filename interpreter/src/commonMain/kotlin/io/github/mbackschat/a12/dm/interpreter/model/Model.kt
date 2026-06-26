@@ -157,6 +157,15 @@ data class FieldDef(
     val leadingZerosAllowed: Boolean = false,
     /** NUMBER `zeroNotAllowed` — default false (zero allowed); true → a zero value is `zahlIstNull`. */
     val zeroNotAllowed: Boolean = false,
+    /** NUMBER explicit `maxIntegerDigits` — integer-part digit count above it → `zahlZuvieleVorkommastellen`. */
+    val maxIntegerDigits: Int? = null,
+    /** NUMBER `trait:"amount"` — an implicit integer-digit cap of `15 − scale` (a DIFFERENT code, `stelligkeitZuLang`),
+     *  applied only when no explicit [maxIntegerDigits] is set (the kernel's `TypeConverter` amount rule). */
+    val amountTrait: Boolean = false,
+    /** NUMBER `minLength` — value-string length below it → `zahlZuKurz` (counts sign + decimal point). */
+    val numberMinLength: Int? = null,
+    /** NUMBER `maxLength` — value-string length above it → `zahlZuLang`. */
+    val numberMaxLength: Int? = null,
 )
 
 /**
@@ -185,8 +194,9 @@ data class ComputationAlternative(val precondition: String?, val operation: Stri
  * The declared field-type constraints the kernel auto-validates against a filled value (IF20) — string length
  * + pattern, enum value-domain membership, number range, and the minimum-fractional-digits rule. Built per
  * field from the DM-JSON field type; [NONE] for an unconstrained field. The compiled [patternRegex] is cached.
- * (`zeroAllowed` / `maxNumberOfDigitsBeforeDecimalPlace` are runtime-only INumberType qualities with no DM-JSON
- * serialization — unreachable from a loadable model — so they are out of scope; see INTERPRETER-FINDINGS IF20.)
+ * (`zeroAllowed` is a runtime-only INumberType quality with no DM-JSON serialization. The integer-digit cap —
+ * explicit `maxIntegerDigits` / implicit `trait:"amount"` — and the number `min/maxLength` DO serialize and are
+ * modeled here; see INTERPRETER-FINDINGS IF30.)
  */
 data class FieldConstraints(
     val minLength: Int? = null,
@@ -210,6 +220,15 @@ data class FieldConstraints(
      *  immediately). A kernel-valid `noValueValidation` field forbids pattern/minLength and requires line breaks
      *  (`MVK_STRING_TYPE_*`), so the observable effect is that a declared `maxLength` is NOT enforced. */
     val noValueValidation: Boolean = false,
+    /** NUMBER explicit `maxIntegerDigits` — integer-part digit count above it → `zahlZuvieleVorkommastellen`. */
+    val maxIntegerDigits: Int? = null,
+    /** NUMBER `trait:"amount"` integer-digit cap, precomputed as `15 − scale` (or null) — exceeded →
+     *  `stelligkeitZuLang`; applied only when [maxIntegerDigits] is unset. */
+    val amountMaxIntegerDigits: Int? = null,
+    /** NUMBER `minLength` — value-string length below it → `zahlZuKurz`. */
+    val numberMinLength: Int? = null,
+    /** NUMBER `maxLength` — value-string length above it → `zahlZuLang`. */
+    val numberMaxLength: Int? = null,
 ) {
     val patternRegex: Regex? = pattern?.let { Regex(it) }
 
@@ -218,7 +237,8 @@ data class FieldConstraints(
      *  `true` (the non-default); the default-forbidden newline/leading-zeros checks still run via [NONE]. */
     val any: Boolean = minLength != null || maxLength != null || pattern != null ||
         enumValues.isNotEmpty() || minValue != null || maxValue != null || (minFractionalDigits ?: 0) > 0 ||
-        lineBreaksPermitted || leadingZerosAllowed || zeroNotAllowed || noValueValidation
+        lineBreaksPermitted || leadingZerosAllowed || zeroNotAllowed || noValueValidation ||
+        maxIntegerDigits != null || amountMaxIntegerDigits != null || numberMinLength != null || numberMaxLength != null
 
     companion object {
         val NONE = FieldConstraints()
@@ -339,6 +359,10 @@ data class ModelDef(
             it.path to FieldConstraints(
                 it.minLength, it.maxLength, it.pattern, it.enumValues, it.minValue, it.maxValue, it.minFractionalDigits,
                 it.lineBreaksPermitted, it.leadingZerosAllowed, it.zeroNotAllowed, it.noValueValidation,
+                it.maxIntegerDigits,
+                // trait:"amount" → an implicit integer-digit cap of 15 − scale, but only when no explicit maxIntegerDigits.
+                if (it.amountTrait && it.maxIntegerDigits == null) 15 - (it.scale ?: 0) else null,
+                it.numberMinLength, it.numberMaxLength,
             )
         }
         .filterValues { it.any }

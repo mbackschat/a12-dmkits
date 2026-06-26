@@ -81,7 +81,9 @@ public final class InterpreterModelLoader {
                             typedBool(node, "StringType", "noValueValidation"),
                             numberTypeText(node, "minValue"), numberTypeText(node, "maxValue"), numberTypeInt(node, "minFractionalDigits"),
                             typedBool(node, "StringType", "lineBreaksPermitted"),
-                            typedBool(node, "NumberType", "leadingZerosAllowed"), typedBool(node, "NumberType", "zeroNotAllowed")));
+                            typedBool(node, "NumberType", "leadingZerosAllowed"), typedBool(node, "NumberType", "zeroNotAllowed"),
+                            numberTypeInt(node, "maxIntegerDigits"), "amount".equals(numberTypeText(node, "trait")),
+                            numberTypeInt(node, "minLength"), numberTypeInt(node, "maxLength")));
                     case "Group" -> {
                         JsonNode g = node.path("Group");
                         if (g.path("repeatability").asInt(0) > 1) {

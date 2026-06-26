@@ -139,12 +139,18 @@ The constraints are declared on the field type (kernel `IStringType` / `INumberT
 | | `minFractionalDigits` (too few / none) | `zahlFalscheAnzahlNachkommastellen` / `zahlOhneDezimalTrenner` |
 | | `zeroNotAllowed: true` *(inverted key — NOT `zeroAllowed`)* | `zahlIstNull` |
 | | **leading zeros** — forbidden BY DEFAULT; `leadingZerosAllowed: true` opts out | `zahlHatFuehrendeNullen` |
+| | `maxIntegerDigits` (integer-part digits above it) | `zahlZuvieleVorkommastellen` |
+| | `trait:"amount"` (implicit `15 − scale` integer-digit cap; only without explicit `maxIntegerDigits`) | `stelligkeitZuLang` |
+| | `minLength` / `maxLength` (value-string length) | `zahlZuKurz` / `zahlZuLang` |
 | **STRING** | `pattern` (regex) | `stringFalschesMuster` |
+| | `noValueValidation: true` — disables the WHOLE string check (pattern/length/newline) | *(skips all — only `maxLength` may accompany it, and it is not enforced)* |
 | | `minLength` / `maxLength` | `stringZuKurz` / `stringZuLang` |
 | | **newline** — forbidden BY DEFAULT; `lineBreaksPermitted: true` opts out | `stringMitNewline` |
 | **ENUMERATION** | the value domain (out-of-domain stored value) | `stringFalschesMuster` |
 
-**Two are kernel DEFAULTS, not declarations** (follow-up probe 2026-06-26): a plain number rejects a leading zero (`"007"` → `zahlHatFuehrendeNullen`; `"0"`/`"0.50"` clean) and a plain string rejects a newline (`"a\nb"` → `stringMitNewline`) unless the field opts in. **Out of scope (probe-confirmed):** `maxNumberOfDigitsBeforeDecimalPlace` (`zahlZuVieleVorkommastellen`) + number total-`min/maxLength` have **no DM-JSON key**; a **charset** check (`zeichenNichtImZeichensatz`) is not declarable and does not fire by default (tab / non-ASCII / control chars on a plain string are all clean). A field-level `uniqueValue` is also not DM-JSON-deserializable.
+**Two are kernel DEFAULTS, not declarations** (follow-up probe 2026-06-26): a plain number rejects a leading zero (`"007"` → `zahlHatFuehrendeNullen`; `"0"`/`"0.50"` clean) and a plain string rejects a newline (`"a\nb"` → `stringMitNewline`) unless the field opts in.
+
+**More NumberType integer-digit / length constraints DO serialize (corrected 2026-06-26 — the earlier "no DM-JSON key" claim was WRONG):** `maxIntegerDigits` → `zahlZuvieleVorkommastellen` (integer-digit count above the cap; sign + decimals excluded); `trait:"amount"` → an implicit cap of `15 − scale` but a **distinct** code `stelligkeitZuLang` (applies only when no explicit `maxIntegerDigits`); NumberType `minLength`/`maxLength` → `zahlZuKurz`/`zahlZuLang` on the value-string length (sign + decimal point counted). All probe-verified 2026-06-26 and modeled by the interpreter (IF30). **Still out of scope (probe-confirmed):** a **charset** check (`zeichenNichtImZeichensatz`) is not declarable and does not fire by default (tab / non-ASCII / control chars on a plain string are all clean); a field-level `uniqueValue` is not DM-JSON-deserializable.
 
 **Probe-verified (2026-06-25/26)**: `/Order/BirthDay` (`minValue:1, maxValue:31`) — `"99"` → `zahlZuGross`, `"0"` → `zahlZuKlein`; `/Order/Priority` (enum) — `"BOGUS"` → `stringFalschesMuster`; precedence — string pattern/newline fire **before** length; the **suppression** was confirmed (a rule `[BirthDay] == 99` with `BirthDay = "99"` does **not** fire — only `zahlZuGross`, the field is unknown). So an out-of-constraint value is observable two ways: the **auto-emitted formal error** *and* the **suppression of referencing rules**.
 

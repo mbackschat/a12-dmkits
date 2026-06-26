@@ -151,6 +151,22 @@ enum class FormalErrorCode(val id: String) {
 
     /** A NUMBER equal to zero where the field declares `zeroNotAllowed: true` (the kernel's `zahlIstNull`). */
     ZERO_NOT_ALLOWED("zahlIstNull"),
+
+    /** A NUMBER whose INTEGER-part digit count exceeds the field's explicit `maxIntegerDigits` (the kernel's
+     *  `zahlZuvieleVorkommastellen`). Sign and fractional digits are excluded from the count. */
+    TOO_MANY_INTEGER_DIGITS("zahlZuvieleVorkommastellen"),
+
+    /** A NUMBER whose INTEGER-part digit count exceeds the implicit `trait:"amount"` cap (`15 − maxFractionalDigits`)
+     *  — the kernel's `stelligkeitZuLang` (a precision check distinct from [TOO_MANY_INTEGER_DIGITS]; applies only
+     *  when no explicit `maxIntegerDigits` is set). */
+    AMOUNT_PRECISION_TOO_LONG("stelligkeitZuLang"),
+
+    /** A NUMBER whose value-string length is below the field's declared `minLength` (the kernel's `zahlZuKurz`);
+     *  the length counts the full stored text incl. sign and decimal point. */
+    NUMBER_TOO_SHORT("zahlZuKurz"),
+
+    /** A NUMBER whose value-string length exceeds the field's declared `maxLength` (the kernel's `zahlZuLang`). */
+    NUMBER_TOO_LONG("zahlZuLang"),
 }
 
 fun formalError(
@@ -245,6 +261,14 @@ private fun numberConstraintError(raw: String, c: FieldConstraints): FormalError
         if (!raw.contains('.')) return FormalErrorCode.NO_DECIMAL_SEPARATOR
         if (fractionalDigits(raw) < minFrac) return FormalErrorCode.TOO_FEW_DECIMALS
     }
+    // Integer-digit cap: explicit maxIntegerDigits (zahlZuvieleVorkommastellen), else the trait:"amount" cap of
+    // 15 − scale (stelligkeitZuLang — a distinct code). Sign + fractional digits are excluded from the count.
+    val intDigits = integerDigits(raw)
+    if (c.maxIntegerDigits != null && intDigits > c.maxIntegerDigits) return FormalErrorCode.TOO_MANY_INTEGER_DIGITS
+    if (c.amountMaxIntegerDigits != null && intDigits > c.amountMaxIntegerDigits) return FormalErrorCode.AMOUNT_PRECISION_TOO_LONG
+    // Value-string length bounds (the full stored text, incl. sign + decimal point).
+    if (c.numberMinLength != null && raw.length < c.numberMinLength) return FormalErrorCode.NUMBER_TOO_SHORT
+    if (c.numberMaxLength != null && raw.length > c.numberMaxLength) return FormalErrorCode.NUMBER_TOO_LONG
     val v = decOrNull(raw) ?: return null
     if (c.minValue != null) decOrNull(c.minValue)?.let { if (v.compareScaled19(it) < 0) return FormalErrorCode.NUMBER_TOO_SMALL }
     if (c.maxValue != null) decOrNull(c.maxValue)?.let { if (v.compareScaled19(it) > 0) return FormalErrorCode.NUMBER_TOO_BIG }
@@ -268,6 +292,9 @@ private fun numberFormalError(raw: String, scale: Int?, leadingZerosAllowed: Boo
 }
 
 private fun fractionalDigits(raw: String): Int = raw.substringAfter('.', "").length
+
+/** The integer-part digit count of a well-formed number (sign and fractional part excluded): `-1234.5` → 4, `0.50` → 1. */
+private fun integerDigits(raw: String): Int = raw.trimStart('-', '+').substringBefore('.').length
 
 /** Whether a well-formed number's integer part has a forbidden leading zero — `07`, `00`, `-07`, `00.50`, `07.50`
  *  (the kernel's `zahlHatFuehrendeNullen`); a lone `0` and `0.50` (integer part `0`) are fine. */
@@ -330,6 +357,14 @@ fun formalErrorText(code: FormalErrorCode, locale: String, scale: Int? = null): 
             if (de) "Zahl darf keine führenden Nullen haben." else "Number must not have leading zeros."
         FormalErrorCode.ZERO_NOT_ALLOWED ->
             if (de) "Wert darf nicht null sein." else "Value must not be zero."
+        FormalErrorCode.TOO_MANY_INTEGER_DIGITS ->
+            if (de) "Zahl hat zu viele Vorkommastellen." else "Number has too many digits before the decimal point."
+        FormalErrorCode.AMOUNT_PRECISION_TOO_LONG ->
+            if (de) "Betrag hat zu viele Stellen." else "Amount has too many significant digits."
+        FormalErrorCode.NUMBER_TOO_SHORT ->
+            if (de) "Zahl ist zu kurz." else "Number is too short."
+        FormalErrorCode.NUMBER_TOO_LONG ->
+            if (de) "Zahl ist zu lang." else "Number is too long."
     }
 }
 

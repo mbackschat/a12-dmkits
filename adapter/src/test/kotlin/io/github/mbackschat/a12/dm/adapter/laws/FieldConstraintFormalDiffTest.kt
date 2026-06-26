@@ -86,6 +86,30 @@ class FieldConstraintFormalDiffTest {
     @Test fun noValueValidationSkipsMaxLength() = agree(noValStr, noValDef, "/Order/Code", "ABCDEFG", "noValueValidation → maxLength (7>6) skipped → clean")
     @Test fun noValueValidationCleanWithinLength() = agree(noValStr, noValDef, "/Order/Code", "ABC", "noValueValidation, within maxLength → clean (control)")
 
+    // IG15: NUMBER integer-digit cap (explicit maxIntegerDigits / implicit trait:"amount") + value-string length —
+    // kernel-honored NumberType keys the interpreter previously dropped (disproving the "no DM-JSON key" claim).
+    private val maxIntStr = """{ "type": "Field", "id": "/Order/N", "name": "N", "Field": { "fieldType": {
+        "type": "NumberType", "NumberType": { "maxFractionalDigits": 0, "maxIntegerDigits": 3 } } } },"""
+    private val maxIntDef = FieldDef("/Order/N", Kind.NUMBER, scale = 0, maxIntegerDigits = 3)
+    @Test fun tooManyIntegerDigits() = agree(maxIntStr, maxIntDef, "/Order/N", "1234", "4 int digits > 3 → zahlZuvieleVorkommastellen")
+    @Test fun integerDigitsWithinCap() = agree(maxIntStr, maxIntDef, "/Order/N", "123", "3 int digits → clean")
+
+    private val amountStr = """{ "type": "Field", "id": "/Order/N", "name": "N", "Field": { "fieldType": {
+        "type": "NumberType", "NumberType": { "maxFractionalDigits": 2, "trait": "amount" } } } },"""
+    private val amountDef = FieldDef("/Order/N", Kind.NUMBER, scale = 2, amountTrait = true)
+    @Test fun amountPrecisionTooLong() = agree(amountStr, amountDef, "/Order/N", "12345678901234.00", "14 int > 15-2=13 → stelligkeitZuLang")
+    @Test fun amountPrecisionWithinCap() = agree(amountStr, amountDef, "/Order/N", "1234567890123.00", "13 int = cap → clean")
+
+    private val numMinStr = """{ "type": "Field", "id": "/Order/N", "name": "N", "Field": { "fieldType": {
+        "type": "NumberType", "NumberType": { "maxFractionalDigits": 0, "minLength": 5 } } } },"""
+    private val numMinDef = FieldDef("/Order/N", Kind.NUMBER, scale = 0, numberMinLength = 5)
+    @Test fun numberTooShort() = agree(numMinStr, numMinDef, "/Order/N", "12", "len 2 < min 5 → zahlZuKurz")
+
+    private val numMaxStr = """{ "type": "Field", "id": "/Order/N", "name": "N", "Field": { "fieldType": {
+        "type": "NumberType", "NumberType": { "maxFractionalDigits": 0, "maxLength": 3 } } } },"""
+    private val numMaxDef = FieldDef("/Order/N", Kind.NUMBER, scale = 0, numberMaxLength = 3)
+    @Test fun numberTooLong() = agree(numMaxStr, numMaxDef, "/Order/N", "12345", "len 5 > max 3 → zahlZuLang")
+
     private val plainNum = """{ "type": "Field", "id": "/Order/Num", "name": "Num", "Field": { "fieldType": {
         "type": "NumberType", "NumberType": { "maxFractionalDigits": 0 } } } },"""
     private val plainNumDef = FieldDef("/Order/Num", Kind.NUMBER, scale = 0)
