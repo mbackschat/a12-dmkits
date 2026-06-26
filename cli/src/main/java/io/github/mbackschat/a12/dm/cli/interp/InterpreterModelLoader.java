@@ -76,7 +76,7 @@ public final class InterpreterModelLoader {
                 switch (type) {
                     case "Field" -> fields.add(new FieldDef(id, kindOf(node), localizedTexts(node.path("labels")),
                             scaleOf(node), signed(node), requirednessOf(node), formatOf(node), rangeSeparatorOf(node),
-                            datePrecisionOf(node), enumValuesOf(node), enumCategoriesOf(node),
+                            datePrecisionOf(node), enumValuesOf(node), enumCategoriesOf(node), customTypeNameOf(node),
                             stringTypeInt(node, "minLength"), stringTypeInt(node, "maxLength"), stringTypeText(node, "pattern"),
                             numberTypeText(node, "minValue"), numberTypeText(node, "maxValue"), numberTypeInt(node, "minFractionalDigits"),
                             typedBool(node, "StringType", "lineBreaksPermitted"),
@@ -264,6 +264,13 @@ public final class InterpreterModelLoader {
     /** An {@code int} property of a {@code NumberType} field type (e.g. {@code minFractionalDigits}), or null. */
     private static Integer numberTypeInt(JsonNode fieldNode, String prop) {
         return typedInt(fieldNode, "NumberType", prop);
+    }
+
+    /** The {@code name} of a {@code CustomFieldType} field — the predefined type its values are validated against
+     *  (the implicit per-cell {@code Valid(field, name)}); null for a non-custom field. */
+    private static String customTypeNameOf(JsonNode fieldNode) {
+        JsonNode v = typed(fieldNode, "CustomFieldType").path("name");
+        return v.isTextual() ? v.asText() : null;
     }
 
     /** The {@code Field.fieldType.<typeName>} object, but only when the field's declared {@code type} matches. */

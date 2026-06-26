@@ -274,6 +274,18 @@ The umbrella over the two SPI findings above (§8 predefined-type validity, and 
 
 So the kernel's custom escape hatches are for **conditions** and **field types** only. (Challenged + re-verified 2026-06-26 across kernel source, BA/semantics docs, the grammar, and this registration API.) rulekit/CLI treatment: a computation's operation is the closed `Calculation` sealed set; the interpreter's treatment (an unknown function fails loud) is INTERPRETER-FINDINGS IF22.
 
+## §8 supplement — a CUSTOM-typed field is validated by FULL DELEGATION to a registered validator; an unregistered one THROWS (source-verified 2026-06-26)
+
+How the kernel validates a field declared with a **`CustomFieldType{name, minLength?, maxLength?}`** at `validateFull` (the sibling of the §8 `Valid`/`Invalid` *operator* — this is the *declared-field* form). Source: `FormatDefinitionVordefiniert.validiereFormat` (+ its TS twin `FormatDefinitionVordefiniert.ts`, byte-identical):
+
+- **Full delegation, NOT generic enforcement.** Unlike a plain `StringType` (whose `FormatDefinitionString` checks `minLength`/`maxLength` itself → `stringZuKurz`/`stringZuLang`), a `CustomFieldType` field delegates the **entire** check — length included — to the registered `ICustomFieldValidator.validate(value, param, …)`. The kernel performs **no** length comparison of its own.
+- **The declared bounds are only HINTS.** The kernel passes `minLength`/`maxLength` to the validator via `ICustomFieldTypeValidationParam` (`-1` = `UNSPECIFIED_LENGTH` → `Optional.empty()`), and the interface javadoc tells the validator it generally should *not* rely on them — they are informational, the validator owns the decision.
+- **No registered validator → it THROWS.** `getCustomFieldValidator` resolves the validator from the factory / global `CustomFieldTypeService`; missing → `ValidatorException("Custom field validator '<name>' missing.")`, which `validateFull` surfaces as `FaultException("Unable to invoke validation")`. So a *filled* custom-typed field on a bare model fails the **whole** validation (an empty/not-relevant cell short-circuits before reaching it). There is no "fire a formal error" and no "skip".
+- **The error code is the validator's OWN key**, `ICustomFieldTypeCheckError.getErrorKey()` (project-specific, e.g. `"invalidCreditCardNumber"`) — **not** a fixed kernel code like the `StringType` length codes.
+- **The bounds DO reach the model + runtime** (`md.model.api.fieldtypes.ICustomFieldType.getMinLength/getMaxLength`; codegen carries them into the validation param) — they are real model properties, just never kernel-enforced.
+
+This is the kernel truth behind the interpreter's treatment (auto-validate each filled custom cell against the consumer-registered predefined type; unregistered → report unsupported + degrade leniently, since the native runtime cannot host the validator) — INTERPRETER-FINDINGS IF26. JS/TS identical, so a Kotlin/JS consumer mirrors it.
+
 ## Partial validation (`validatePart`) — rule-gating + 3VL relevance (source + probe-confirmed 2026-06-24)
 
 `validatePart(DocumentV2, Set<DocumentMultiPointer> relevantEntities, DocumentProcessingConfig)` validates only a *part* of the document. The contract (kernel javadoc on `IDocumentRtService.validatePart`, probe-confirmed) is two mechanisms:

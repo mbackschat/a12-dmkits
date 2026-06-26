@@ -46,6 +46,20 @@ const val UNIQUE_INDEX = "uniqueIndex"
 fun uniqueIndexText(locale: String): String =
     if (locale.startsWith("de")) "Der Indexwert ist nicht eindeutig." else "The index value is not unique."
 
+/**
+ * The interpreter's code for a value REJECTED by its field's declared **custom field type** (`CustomFieldType` —
+ * a client-SPI check, KERNEL-FINDINGS "Custom-extensibility surface"). Like a format error it makes the cell
+ * **"unknown"** (a referencing rule is suppressed) and emits a per-cell message. The id is the interpreter's OWN
+ * (Option-A, like [mandatoryFieldText]): the kernel emits the *validator's* project-specific error key, which is
+ * not a fixed kernel code — so unlike the [FormalErrorCode] family there is no verbatim kernel id to carry.
+ */
+const val CUSTOM_TYPE_INVALID = "customFieldTypeInvalid"
+
+/** Our OWN end-user text for a custom-field-type rejection (Option-A). */
+fun customTypeInvalidText(locale: String): String =
+    if (locale.startsWith("de")) "Wert ist kein gültiger Wert des benutzerdefinierten Feldtyps."
+    else "Value is not a valid instance of the custom field type."
+
 /** The formal-error checks the interpreter performs, each with the kernel's verbatim [id]. */
 enum class FormalErrorCode(val id: String) {
     /** A DATE value that is not `YYYY-MM-DD`. */

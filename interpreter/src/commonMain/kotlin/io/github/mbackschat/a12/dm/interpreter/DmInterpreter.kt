@@ -6,7 +6,9 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.eval.Document
 import io.github.mbackschat.a12.dm.interpreter.eval.EvalContext
+import io.github.mbackschat.a12.dm.interpreter.eval.CUSTOM_TYPE_INVALID
 import io.github.mbackschat.a12.dm.interpreter.eval.FORMAL_RULE_PATH
+import io.github.mbackschat.a12.dm.interpreter.eval.customTypeInvalidText
 import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.eval.MANDATORY_FIELD
 import io.github.mbackschat.a12.dm.interpreter.eval.formalError
@@ -162,7 +164,7 @@ class DmInterpreter @JvmOverloads constructor(
         val dup = duplicateIndexCells(doc)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
         val messages = (formalErrors(doc, locale, isRelevant) + mandatoryErrors(doc, locale, isRelevant)
                 + uniquenessMessages(dup, locale, isRelevant)).toMutableList()
-        val unsupported = mutableListOf<UnsupportedRule>()
+        val unsupported = customTypeUnsupported(doc, isRelevant).toMutableList()
         val cache: FormalCache = HashMap()   // memo across ALL rules of this validation (the doc is immutable here)
         for (rule in model.rules) {
             try {
@@ -186,10 +188,15 @@ class DmInterpreter @JvmOverloads constructor(
         doc.valuedFields().filter { isRelevant(it.path, it.reps) }.mapNotNull { vf ->
             val kind = model.kinds[vf.path] ?: return@mapNotNull null
             val scale = model.scaleOf(vf.path)
-            formalError(kind, vf.raw, scale, model.dateLikeFormatOf(vf.path), model.datePrecisionOf(vf.path),
-                    model.rangeSeparatorOf(vf.path), model.constraintsOf(vf.path))?.let { code ->
-                Message(code.id, FORMAL_RULE_PATH, formatPointer(vf.path, vf.reps), Severity.ERROR, MsgType.VALUE,
-                    formalErrorText(code, locale, scale))
+            val code = formalError(kind, vf.raw, scale, model.dateLikeFormatOf(vf.path), model.datePrecisionOf(vf.path),
+                    model.rangeSeparatorOf(vf.path), model.constraintsOf(vf.path))
+            when {
+                code != null -> Message(code.id, FORMAL_RULE_PATH, formatPointer(vf.path, vf.reps), Severity.ERROR,
+                    MsgType.VALUE, formalErrorText(code, locale, scale))
+                // A registered custom field type that rejects the value (the implicit per-cell `Valid(field, type)`).
+                customTypeRejected(vf.path, vf.raw) -> Message(CUSTOM_TYPE_INVALID, FORMAL_RULE_PATH,
+                    formatPointer(vf.path, vf.reps), Severity.ERROR, MsgType.VALUE, customTypeInvalidText(locale))
+                else -> null
             }
         }
 
@@ -617,10 +624,31 @@ class DmInterpreter @JvmOverloads constructor(
             val kind = model.kinds[path] ?: return null
             formalError(kind, raw, model.scaleOf(path), model.dateLikeFormatOf(path), model.datePrecisionOf(path),
                 model.rangeSeparatorOf(path), model.constraintsOf(path))?.id?.let { return it }
+            if (customTypeRejected(path, raw)) return CUSTOM_TYPE_INVALID
             return if (path to reps in dup) UNIQUE_INDEX else null
         }
         return if (requiredEmpty(path, ctx)) MANDATORY_FIELD else null
     }
+
+    /** Whether the filled value [raw] at [path] is REJECTED by the field's declared custom field type — i.e. the
+     *  field IS custom-typed, its type IS registered in [predefinedTypes], and the value fails the type's `accepts`
+     *  check (the implicit per-cell `Valid(field, type)`). An UNregistered custom type returns false here (no
+     *  formal error): the value is then used leniently as a plain string and the cell is reported by
+     *  [customTypeUnsupported] instead (the kernel throws without a validator; the interpreter degrades). */
+    private fun customTypeRejected(path: String, raw: String): Boolean {
+        val type = model.customTypeOf(path)?.let { predefinedTypes[it] } ?: return false
+        return !type.accepts(raw)
+    }
+
+    /** Filled cells whose declared custom field type has NO registered validator — reported [ValidationOutcome.unsupported]
+     *  (the kernel throws "Unable to invoke validation" here; the interpreter degrades: it reports the cell and uses
+     *  the value leniently as a plain string, so the rest of the document can still be validated / test-run). */
+    private fun customTypeUnsupported(doc: Document, isRelevant: Relevance): List<UnsupportedRule> =
+        doc.valuedFields().filter { isRelevant(it.path, it.reps) }.mapNotNull { vf ->
+            val typeName = model.customTypeOf(vf.path) ?: return@mapNotNull null
+            if (typeName in predefinedTypes) null
+            else UnsupportedRule(formatPointer(vf.path, vf.reps), "custom field type '$typeName' has no registered validator")
+        }
 
     /**
      * The contexts a rule is evaluated over. The normal case: one per row of its iteration **scope** — the

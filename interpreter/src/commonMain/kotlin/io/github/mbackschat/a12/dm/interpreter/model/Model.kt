@@ -129,6 +129,11 @@ data class FieldDef(
     /** For an ENUMERATION field: each category's positional value list (the kernel's `getCategoryValues`),
      *  keyed by category name — index `i` pairs with [enumValues]`[i]`. Drives `[Field -> Category]`. */
     val enumCategories: Map<String, List<String>> = emptyMap(),
+    /** For a CUSTOM-typed field (`CustomFieldType{name}`): the predefined-type NAME its filled values are
+     *  validated against — the [ModelDef] resolves it via the consumer's [PredefinedTypeRegistry], so a declared
+     *  custom type is the implicit per-cell form of `Valid(field, name)` (KERNEL-FINDINGS "Custom-extensibility
+     *  surface"). Null for a non-custom field; the kind stays [Kind.STRING] (the value is string-shaped). */
+    val customTypeName: String? = null,
     // ── Declared field-type CONSTRAINTS (IF20) — auto-validated against a filled value (KERNEL-FINDINGS §3). ──
     /** A STRING field's declared minimum length (`StringType.minLength`); a shorter value → `stringZuKurz`. */
     val minLength: Int? = null,
@@ -333,6 +338,16 @@ data class ModelDef(
 
     /** The field's declared constraints (IF20), or [FieldConstraints.NONE] when it declares none. */
     fun constraintsOf(path: String): FieldConstraints = fieldConstraints[path] ?: FieldConstraints.NONE
+
+    /** Each CUSTOM-typed field's predefined-type name ([FieldDef.customTypeName]) — the per-cell auto-validation
+     *  input: a filled value is validated against the consumer's [PredefinedTypeRegistry] entry of that name,
+     *  exactly like `Valid(field, name)` (the kernel's client-SPI custom field type). */
+    val customTypes: Map<String, String> = fields
+        .filter { it.customTypeName != null }
+        .associate { it.path to it.customTypeName!! }
+
+    /** The field's declared custom-type name, or null when it is not a custom-typed field. */
+    fun customTypeOf(path: String): String? = customTypes[path]
 
     /** Each enumeration field's XML value list — the [io.github.mbackschat.a12.dm.interpreter.eval.Document]'s
      *  `EnumCategory` positional-map input (the index of the stored value). */
