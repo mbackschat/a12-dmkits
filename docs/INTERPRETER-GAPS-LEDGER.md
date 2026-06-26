@@ -21,7 +21,6 @@
 | code | item | status / re-open trigger | detail in |
 |---|---|---|---|
 | **IG2** | `uniqueValue` per-field constraint | deferred — probe-confirmed **not DM-JSON-deserializable** (`Field.unique`/`StringType.unique` don't load; `IField` has no `unique` accessor); it rides the USB/declared-unique machinery, not a field property. No O(N²) risk outstanding (the one risk is unauthorable). Re-open if a real model authors it. | IF20 |
-| **IG3** | `mandatoryGroup` (empty repeatable + `requirednessConfig{ABSOLUTE}`) | deferred — did not fire the obvious way (returned empty); not reachable via group requiredness as tried; needs deeper (likely USB/multi-form) probing. Low priority. | IF20 |
 | **IG4** | `Dec` number literal compares by **identity** (no value `equals`/`hashCode`) | deferred — whole-AST equality is unreliable wherever a number literal appears (tests use field-comparison forms to avoid it). A cross-platform + BigDecimal scale-sensitivity decision; a dedicated follow-up. | IF24 |
 | **IG5** | runtime-semantics extraction (generator-readiness) | tracked refactor, **not** a prerequisite — migrate the comparison/3VL/aggregate logic still inside `Interpreter` into the pure runtime layer **as touched**; `DateMath`/`Kleene`/`quantifierFires`/the op registries already moved. | IF10 |
 | **IG6** | formal-error message **text** = interpreter's own wording (Option A) | deferred — the byte-identical-kernel-text path (Option B) is not built (German-only kernel text, IF3 license boundary); the *code*/pointer/severity already match the kernel. Re-open only if a consumer needs verbatim kernel message text. | IF (formal errors) / KERNEL-INTEGRATION-NOTES |
@@ -33,5 +32,6 @@
 
 - **string charset** (`zeichenNichtImZeichensatz`) — **not DM-JSON-declarable** (no serialized key) and does not fire by default (probe: tab / non-ASCII / control chars on a plain string are all clean). Detail: IF20/IF22.
 - **`maxNumberOfDigitsBeforeDecimalPlace`** (`zahlZuVieleVorkommastellen`) — not DM-JSON-declarable (no serialized key). Detail: IF20.
-- **over-repetition structural bound** (a row count beyond a group's declared `repeatability`) — a structural/USB concern, not a per-eval check. Detail: IF20.
+- **over-repetition structural bound** (a row count beyond a group's declared `repeatability`) — a structural/consistency check on document *shape*, not rule evaluation; the kernel emits `zuGrosseZeile`/`zuGrosseKontextnummer` at `validateFull`, the interpreter assumes structurally-valid input. Detail + re-open trigger: KERNEL-FINDINGS "over-repetition errors".
+- **`mandatoryGroup`** (`FEHLER_PFLICHTKONTEXT`) — **source-confirmed unreachable in 30.8.1**: the code is defined but **never emitted**, and **no DM-JSON property declares a group mandatory**, so it can't fire on any loadable model (parity by construction). Was the deferred IG3; re-check on a kernel upgrade. Detail: KERNEL-FINDINGS "mandatoryGroup is a DEAD code in 30.8.1".
 - **`getRoundingMode`** on a computation — inert in the runtime (rounding is explicit via the round operators). Detail: IF22.
