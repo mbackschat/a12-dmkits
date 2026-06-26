@@ -5,6 +5,7 @@ import io.github.mbackschat.a12.dm.interpreter.decOrNull
 import io.github.mbackschat.a12.dm.interpreter.model.DatePrecision
 import io.github.mbackschat.a12.dm.interpreter.model.FieldConstraints
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
+import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
 
 /**
  * Formal-error detection — whether a raw field value is *well-formed for its kind*. The kernel runs this
@@ -182,12 +183,13 @@ fun formalError(
     kind: Kind, raw: String, scale: Int? = null, format: String? = null,
     datePrecision: DatePrecision = DatePrecision.FULL, rangeSep: String? = null,
     constraints: FieldConstraints = FieldConstraints.NONE,
+    legalCharset: LegalCharset = LegalCharset.BMP,
 ): FormalErrorCode? {
     if (raw.isEmpty()) return null
     // BASELINE value checks the kernel runs for EVERY kind before the type format (`checkFieldValueFormat`,
-    // IF43): legal charset, then leading blank, then trailing blank. They pre-empt the type-specific check
-    // (a ` 2024-01-01` DATE is `fuehrendesBlank`, not a date-format error).
-    baselineValueError(raw)?.let { return it }
+    // IF43): legal charset (default BMP; [legalCharset] customizes it, e.g. DIN 91379), then leading blank, then
+    // trailing blank. They pre-empt the type-specific check (a ` 2024-01-01` DATE is `fuehrendesBlank`).
+    baselineValueError(raw, legalCharset)?.let { return it }
     return when (kind) {
         // Format-aware: a value valid for the field's DECLARED format is well-formed (a `dd.MM.yyyy` field's
         // `15.06.2024` is fine — not ISO, but valid for its format). Canonicalize-or-fail via parseDateToIso;
@@ -311,11 +313,26 @@ private fun numberFormalError(raw: String, scale: Int?, leadingZerosAllowed: Boo
  * **BMP** (`0x0000-0xFFFF`), so any supplementary-plane character — a UTF-16 surrogate (e.g. an emoji) — is
  * illegal. A leading/trailing blank is reported even when the type check would otherwise pass or fail differently.
  */
-private fun baselineValueError(raw: String): FormalErrorCode? = when {
-    raw.any { it.isHighSurrogate() || it.isLowSurrogate() } -> FormalErrorCode.CHARSET
+private fun baselineValueError(raw: String, legalCharset: LegalCharset): FormalErrorCode? = when {
+    !allCodepointsLegal(raw, legalCharset) -> FormalErrorCode.CHARSET
     raw.startsWith(' ') -> FormalErrorCode.LEADING_BLANK
     raw.endsWith(' ') -> FormalErrorCode.TRAILING_BLANK
     else -> null
+}
+
+/** Whether every Unicode code point in [s] is legal per [charset] — a cross-platform code-point walk (combining
+ *  UTF-16 surrogate pairs, since `String.codePoints()` is JVM-only). The [LegalCharset.BMP] default rejects any
+ *  supplementary-plane code point (i.e. any surrogate); a custom charset (e.g. DIN 91379) narrows it further. */
+private fun allCodepointsLegal(s: String, charset: LegalCharset): Boolean {
+    var i = 0
+    while (i < s.length) {
+        val c = s[i]
+        val cp = if (c.isHighSurrogate() && i + 1 < s.length && s[i + 1].isLowSurrogate()) {
+            val combined = 0x10000 + ((c.code - 0xD800) shl 10) + (s[i + 1].code - 0xDC00); i += 2; combined
+        } else { i += 1; c.code }
+        if (!charset.allows(cp)) return false
+    }
+    return true
 }
 
 private fun fractionalDigits(raw: String): Int = raw.substringAfter('.', "").length

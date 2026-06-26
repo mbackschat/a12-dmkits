@@ -25,6 +25,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.renderMessage
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.Computed
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
+import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
 import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
@@ -83,6 +84,12 @@ class DmInterpreter @JvmOverloads constructor(
      *  unsupported (fail-fast). A JVM consumer adapts existing kernel `ICustomCondition` impls onto the SPI; a
      *  JS consumer implements the SPI directly. */
     private val customConditions: Map<String, CustomCondition> = emptyMap(),
+    /** The legal character set field values are validated against — the kernel's project-level restricted charset
+     *  ([LegalCharset], IF43). **Default [LegalCharset.BMP]** (the kernel's DM-JSON runtime default: an emoji /
+     *  supplementary-plane char is illegal). A consumer running the kernel with a narrower programming-language
+     *  charset (e.g. **DIN 91379**) supplies the matching set here so the interpreter enforces the SAME restriction
+     *  — the interpreter must expose every kernel customization to be 100% compatible. */
+    private val legalCharset: LegalCharset = LegalCharset.BMP,
 ) {
 
     /**
@@ -249,7 +256,7 @@ class DmInterpreter @JvmOverloads constructor(
             if (overLimitLevel(vf.path, vf.reps) != null) return@mapNotNull null
             val scale = model.scaleOf(vf.path)
             val code = formalError(kind, vf.raw, scale, model.dateLikeFormatOf(vf.path), model.datePrecisionOf(vf.path),
-                    model.rangeSeparatorOf(vf.path), model.constraintsOf(vf.path))
+                    model.rangeSeparatorOf(vf.path), model.constraintsOf(vf.path), legalCharset)
             when {
                 code != null -> Message(code.id, FORMAL_RULE_PATH, formatPointer(vf.path, vf.reps), Severity.ERROR,
                     MsgType.VALUE, formalErrorText(code, locale, scale))
@@ -539,7 +546,7 @@ class DmInterpreter @JvmOverloads constructor(
     private fun computedOutcome(targetPath: String, rendered: String): ComputeOutcome {
         val kind = model.kinds[targetPath] ?: return ComputeOutcome.VALUE
         val invalid = formalError(kind, rendered, model.scaleOf(targetPath), model.dateLikeFormatOf(targetPath),
-            model.datePrecisionOf(targetPath), model.rangeSeparatorOf(targetPath), model.constraintsOf(targetPath)) != null
+            model.datePrecisionOf(targetPath), model.rangeSeparatorOf(targetPath), model.constraintsOf(targetPath), legalCharset) != null
         return if (invalid) ComputeOutcome.ERRORED else ComputeOutcome.VALUE
     }
 
@@ -746,7 +753,7 @@ class DmInterpreter @JvmOverloads constructor(
         if (raw != null) {
             val kind = model.kinds[path] ?: return null
             formalError(kind, raw, model.scaleOf(path), model.dateLikeFormatOf(path), model.datePrecisionOf(path),
-                model.rangeSeparatorOf(path), model.constraintsOf(path))?.id?.let { return it }
+                model.rangeSeparatorOf(path), model.constraintsOf(path), legalCharset)?.id?.let { return it }
             if (customTypeRejected(path, raw)) return CUSTOM_TYPE_INVALID
             return if (path to reps in dup) UNIQUE_INDEX else null
         }
