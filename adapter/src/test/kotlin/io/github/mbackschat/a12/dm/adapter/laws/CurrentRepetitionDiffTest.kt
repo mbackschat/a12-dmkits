@@ -7,6 +7,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -20,6 +24,11 @@ class CurrentRepetitionDiffTest {
 
     private val fuzz = RuntimeLaws.model("models/fuzz.dm.json")
     private val fields = listOf(FieldDef(ITEM, Kind.STRING), FieldDef(QTY, Kind.NUMBER, scale = 0))
+
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines (kernel injection + the interpreter) — no free-text condition literals.
+    private val m = BoundModel.ofJson(fuzz)
+    private fun render(c: Condition): String = DslRenderer().render(c)
 
     /** Instantiate [rows] Lines (each with ItemId + Qty="5" filled), run the `/Cart`-level rule, compare firing. */
     private fun agree(cond: String, rows: Int, msg: String) =
@@ -47,12 +56,12 @@ class CurrentRepetitionDiffTest {
         assertEquals(kernel, interp, "$msg  (kernel=$kernel interp=$interp)")
     }
 
-    private val gt1 = "FieldFilled(Lines/Qty) And CurrentRepetition(Lines) > 1"
-    private val gt2 = "FieldFilled(Lines/Qty) And CurrentRepetition(Lines) > 2"
+    private val gt1 = render(m.field(QTY).filled().and(Dsl.currentRepetition(m.group(LINES)).gt(1)))
+    private val gt2 = render(m.field(QTY).filled().and(Dsl.currentRepetition(m.group(LINES)).gt(2)))
 
     @Test fun firesFromSecondRow() = agree(gt1, 3, "rows 2,3 have rep > 1 → fires")
     @Test fun singleRowDoesNotFire() = agree(gt1, 1, "only row 1 (rep 1), not > 1 → no fire")
-    @Test fun everyRowAtLeastOne() = agree("FieldFilled(Lines/Qty) And CurrentRepetition(Lines) >= 1", 2, "every row rep >= 1 → fires")
+    @Test fun everyRowAtLeastOne() = agree(render(m.field(QTY).filled().and(Dsl.currentRepetition(m.group(LINES)).ge(1))), 2, "every row rep >= 1 → fires")
     @Test fun thresholdAboveRowCountDoesNotFire() = agree(gt2, 2, "max rep 2, not > 2 → no fire")
     @Test fun thirdRowCrossesThreshold() = agree(gt2, 3, "row 3 (rep 3) > 2 → fires")
 
@@ -63,6 +72,7 @@ class CurrentRepetitionDiffTest {
     @Test fun malformedAtNonFiringRow() = agreeRows(gt2, listOf("abc", "5", "5"), "row 1 Qty malformed, rows 2,3 valid")
 
     private companion object {
+        const val LINES = "/Cart/Lines"
         const val ITEM = "/Cart/Lines/ItemId"
         const val QTY = "/Cart/Lines/Qty"
     }

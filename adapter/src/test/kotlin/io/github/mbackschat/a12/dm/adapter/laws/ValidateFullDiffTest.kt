@@ -7,6 +7,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -24,9 +28,14 @@ class ValidateFullDiffTest {
         FieldDef(IC, Kind.NUMBER), FieldDef(IS, Kind.STRING),
     )
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines (the interpreter [RuleDef] + the kernel injection) — no free-text condition literals.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     @Test
     fun flatSingleRuleAgreesWithKernel() {
-        val rule = RuleDef("/Order/QtyCap", "/Order", "[Quantity] < 100", "QTY_LOW", "../Quantity")
+        val rule = RuleDef("/Order/QtyCap", "/Order", render(m.num(Q).lt(100)), "QTY_LOW", "../Quantity")
         val model = RuntimeLaws.withRule(order, "/Order", "QtyCap", "../Quantity", "QTY_LOW", rule.conditionText)
         val def = ModelDef(fields, listOf(rule))
 
@@ -45,8 +54,8 @@ class ValidateFullDiffTest {
 
     @Test
     fun multipleRulesOverFlatAndRepetitionAgreeWithKernel() {
-        val qtyRule = RuleDef("/Order/QtyCap", "/Order", "FieldFilled(Quantity) And [Quantity] < 100", "QTY_LOW", "../Quantity")
-        val rowRule = RuleDef("/Order/CountCap", "/Order", "FieldFilled(Items/Count) And [Items/Count] > 50", "COUNT_HIGH", "../Items/Count")
+        val qtyRule = RuleDef("/Order/QtyCap", "/Order", render(m.num(Q).filled().and(m.num(Q).lt(100))), "QTY_LOW", "../Quantity")
+        val rowRule = RuleDef("/Order/CountCap", "/Order", render(m.num(IC).filled().and(m.num(IC).gt(50))), "COUNT_HIGH", "../Items/Count")
 
         var model = RuntimeLaws.withRule(order, "/Order", "QtyCap", "../Quantity", "QTY_LOW", qtyRule.conditionText)
         model = RuntimeLaws.withRule(model, "/Order", "CountCap", "../Items/Count", "COUNT_HIGH", rowRule.conditionText)
@@ -72,8 +81,9 @@ class ValidateFullDiffTest {
     fun unsupportedRuleIsToleratedNotCrashed() {
         // A model mixing a supported rule with an external CustomCondition rule (cli-runtime's
         // EligibilityCheck shape): validate() reports the latter as unsupported and still fires the former.
-        val ok = RuleDef("/Order/QtyCap", "/Order", "FieldFilled(Quantity) And [Quantity] > 100", "QTY_HIGH", "../Quantity")
-        val external = RuleDef("/Order/Eligibility", "/Order", "FieldFilled(CustomerName) And CustomCondition ExternalEligibility", "INELIGIBLE", "../CustomerName")
+        val ok = RuleDef("/Order/QtyCap", "/Order", render(m.num(Q).filled().and(m.num(Q).gt(100))), "QTY_HIGH", "../Quantity")
+        val external = RuleDef("/Order/Eligibility", "/Order",
+            render(Dsl.fieldFilled(m.field(CN)).and(Dsl.customCondition("ExternalEligibility"))), "INELIGIBLE", "../CustomerName")
         val def = ModelDef(fields, listOf(ok, external))
 
         val outcome = DmInterpreter(def).validate(Document(def.kinds).field(Q, "150", 1, 1).field(CN, "Acme", 1, 1))
@@ -84,7 +94,7 @@ class ValidateFullDiffTest {
     @Test
     fun firedPolarityMatchesKernel() {
         // And: filled VALUE branch + empty-substituted OMISSION branch → OMISSION (omission wins)
-        val rule = RuleDef("/Order/Pol", "/Order", "[Quantity] > 5 And [BackorderQuantity] >= 0", "POL", "../Quantity")
+        val rule = RuleDef("/Order/Pol", "/Order", render(m.num(Q).gt(5).and(m.num(BQ).ge(0))), "POL", "../Quantity")
         val model = RuntimeLaws.withRule(order, "/Order", "Pol", "../Quantity", "POL", rule.conditionText)
         val def = ModelDef(fields, listOf(rule))
 

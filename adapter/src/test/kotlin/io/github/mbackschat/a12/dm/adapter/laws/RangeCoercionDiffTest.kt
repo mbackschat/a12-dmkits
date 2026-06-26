@@ -6,6 +6,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -25,6 +29,12 @@ class RangeCoercionDiffTest {
     private val fuzz = RuntimeLaws.model("models/fuzz.dm.json")
     private val fields = listOf(FieldDef(ITEM, Kind.STRING))
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. `Dsl.rangeAsString`/`rangeAsNumber` are the substring coercions;
+    // `m.str(ItemId).eq("")`/`.ne("")` author the empty-string-literal compares (the root-fix probes).
+    private val m = BoundModel.ofJson(fuzz)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     private fun agree(cond: String, item: String?, msg: String) {
         val kModel = RuntimeLaws.withRule(fuzz, "/Cart/Lines", "RC", "../ItemId", "RC", cond)
         val def = ModelDef(fields, listOf(RuleDef("/Cart/Lines/RC", "/Cart/Lines", cond, "RC", "../ItemId")),
@@ -39,25 +49,25 @@ class RangeCoercionDiffTest {
 
     // RangeAsString — 1-based inclusive substring; out-of-range → "" → empty operand → comparison does not fire.
     @Test fun rangeAsStringInRangeFires() =
-        agree("""FieldFilled(ItemId) And RangeAsString(ItemId, 1, 3) == "BAD"""", "BADGE", "BADGE[1..3] = BAD")
+        agree(render(m.str(ITEM).filled().and(Dsl.rangeAsString(m.field(ITEM), 1, 3).eq("BAD"))), "BADGE", "BADGE[1..3] = BAD")
     @Test fun rangeAsStringMismatchDoesNotFire() =
-        agree("""FieldFilled(ItemId) And RangeAsString(ItemId, 1, 3) == "BAD"""", "GOOD9", "GOOD9[1..3] = GOO != BAD")
+        agree(render(m.str(ITEM).filled().and(Dsl.rangeAsString(m.field(ITEM), 1, 3).eq("BAD"))), "GOOD9", "GOOD9[1..3] = GOO != BAD")
     @Test fun rangeAsStringOutOfRangeIsEmpty() =
-        agree("""FieldFilled(ItemId) And RangeAsString(ItemId, 1, 3) == "AB"""", "AB", "AB shorter than 3 → \"\" → empty operand, no fire")
+        agree(render(m.str(ITEM).filled().and(Dsl.rangeAsString(m.field(ITEM), 1, 3).eq("AB"))), "AB", "AB shorter than 3 → \"\" → empty operand, no fire")
 
     // RangeAsNumber — only a pure-digit substring parses; else 0.
     @Test fun rangeAsNumberDigitsFires() =
-        agree("FieldFilled(ItemId) And RangeAsNumber(ItemId, 1, 2) == 12", "12X", "12X[1..2] = 12")
+        agree(render(m.str(ITEM).filled().and(Dsl.rangeAsNumber(m.field(ITEM), 1, 2).eq(12))), "12X", "12X[1..2] = 12")
     @Test fun rangeAsNumberNonDigitIsZero() =
-        agree("FieldFilled(ItemId) And RangeAsNumber(ItemId, 1, 2) == 0", "AB3", "AB not digits → 0")
+        agree(render(m.str(ITEM).filled().and(Dsl.rangeAsNumber(m.field(ITEM), 1, 2).eq(0))), "AB3", "AB not digits → 0")
     @Test fun rangeAsNumberOutOfRangeIsZero() =
-        agree("FieldFilled(ItemId) And RangeAsNumber(ItemId, 1, 2) == 0", "A", "A shorter than 2 → \"\" → 0")
+        agree(render(m.str(ITEM).filled().and(Dsl.rangeAsNumber(m.field(ITEM), 1, 2).eq(0))), "A", "A shorter than 2 → \"\" → 0")
 
     // The empty-string compare rule (the root fix): a filled field compared to "" never fires, == AND !=.
     @Test fun notEqualToEmptyLiteralDoesNotFire() =
-        agree("""FieldFilled(ItemId) And [ItemId] != """"", "X", "X != \"\" → empty operand → kernel does NOT fire")
+        agree(render(m.str(ITEM).filled().and(m.str(ITEM).ne(""))), "X", "X != \"\" → empty operand → kernel does NOT fire")
     @Test fun equalToEmptyLiteralDoesNotFire() =
-        agree("""FieldFilled(ItemId) And [ItemId] == """"", "X", "X == \"\" → empty operand → no fire")
+        agree(render(m.str(ITEM).filled().and(m.str(ITEM).eq(""))), "X", "X == \"\" → empty operand → no fire")
 
     private companion object {
         const val ITEM = "/Cart/Lines/ItemId"

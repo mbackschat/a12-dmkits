@@ -7,6 +7,10 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.eval.SingleRowDoc
 import io.github.mbackschat.a12.dm.interpreter.dec
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -21,6 +25,11 @@ import org.junit.jupiter.api.function.Executable
 class InterpreterDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
+
+    // The kernel-side condition [text] is authored with the rulekit typed DSL ([m]) and rendered — no free-text
+    // condition literals. The interpreter side still drives off the hand-built [ast], so only the [text] changes.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
 
     /** The miniature metadata bridge: the field kinds the empty-value asymmetry needs. */
     private val kinds = mapOf(
@@ -42,38 +51,38 @@ class InterpreterDiffTest {
     )
 
     private val cases = listOf(
-        Case("comparison: 200 not < 100 → no fire", "[Quantity] < 100",
+        Case("comparison: 200 not < 100 → no fire", render(m.num(Q).lt(100)),
             lt(f(Q), n(100)), "../Quantity", values = mapOf(Q to "200")),
-        Case("comparison: 50 < 100 → fire", "[Quantity] < 100",
+        Case("comparison: 50 < 100 → fire", render(m.num(Q).lt(100)),
             lt(f(Q), n(100)), "../Quantity", values = mapOf(Q to "50")),
-        Case("empty number in a filled row → 0 < 100 → fire", "[Quantity] < 100",
+        Case("empty number in a filled row → 0 < 100 → fire", render(m.num(Q).lt(100)),
             lt(f(Q), n(100)), "../Quantity", values = mapOf(CN to "Acme")),
-        Case("entirely empty row → not evaluated → no fire", "[Quantity] < 100",
+        Case("entirely empty row → not evaluated → no fire", render(m.num(Q).lt(100)),
             lt(f(Q), n(100)), "../Quantity", values = emptyMap()),
-        Case("empty confirm → False → (!= True) fires", "[TermsConfirmed] != True",
+        Case("empty confirm → False → (!= True) fires", render(m.confirm(TC).notConfirmed()),
             ne(f(TC), tru), "../TermsConfirmed", empties = setOf(TC), values = mapOf(CN to "Acme")),
-        Case("confirm true → not (!= True) → no fire", "[TermsConfirmed] != True",
+        Case("confirm true → not (!= True) → no fire", render(m.confirm(TC).notConfirmed()),
             ne(f(TC), tru), "../TermsConfirmed", values = mapOf(CN to "Acme", TC to "true")),
-        Case("empty boolean → not evaluated → no fire", "[ExpressShipping] == True",
+        Case("empty boolean → not evaluated → no fire", render(m.bool(ES).isTrue()),
             eq(f(ES), tru), "../ExpressShipping", empties = setOf(ES), values = mapOf(CN to "Acme")),
-        Case("boolean true → == True → fire", "[ExpressShipping] == True",
+        Case("boolean true → == True → fire", render(m.bool(ES).isTrue()),
             eq(f(ES), tru), "../ExpressShipping", values = mapOf(CN to "Acme", ES to "true")),
-        Case("empty string → not evaluated → no fire", "[ProductCode] == \"ABC\"",
+        Case("empty string → not evaluated → no fire", render(m.str(PC).eq("ABC")),
             eq(f(PC), s("ABC")), "../ProductCode", empties = setOf(PC), values = mapOf(CN to "Acme")),
-        Case("string match → fire", "[ProductCode] == \"ABC\"",
+        Case("string match → fire", render(m.str(PC).eq("ABC")),
             eq(f(PC), s("ABC")), "../ProductCode", values = mapOf(CN to "Acme", PC to "ABC")),
         Case("FieldFilled guard suppresses empty-0 → no fire",
-            "FieldFilled(Quantity) And [Quantity] < 100",
+            render(m.num(Q).filled().and(m.num(Q).lt(100))),
             Cond.And(Cond.Pred("FieldFilled", listOf(f(Q))), lt(f(Q), n(100))),
             "../Quantity", values = mapOf(CN to "Acme")),
         Case("FieldFilled guard, 50 filled → fire",
-            "FieldFilled(Quantity) And [Quantity] < 100",
+            render(m.num(Q).filled().and(m.num(Q).lt(100))),
             Cond.And(Cond.Pred("FieldFilled", listOf(f(Q))), lt(f(Q), n(100))),
             "../Quantity", values = mapOf(Q to "50")),
-        Case("operand-list Min(∅→0, 5) == 0 → fire", "Min([Quantity], [BackorderQuantity]) == 0",
+        Case("operand-list Min(∅→0, 5) == 0 → fire", render(Dsl.min(m.num(Q).asNumber(), m.num(BQ).asNumber()).eq(0)),
             eq(Expr.Func("Min", listOf(f(Q), f(BQ))), n(0)), "../Quantity",
             empties = setOf(Q), values = mapOf(CN to "Acme", BQ to "5")),
-        Case("operand-list Min(3, 5) == 0 → no fire", "Min([Quantity], [BackorderQuantity]) == 0",
+        Case("operand-list Min(3, 5) == 0 → no fire", render(Dsl.min(m.num(Q).asNumber(), m.num(BQ).asNumber()).eq(0)),
             eq(Expr.Func("Min", listOf(f(Q), f(BQ))), n(0)), "../Quantity",
             values = mapOf(CN to "Acme", Q to "3", BQ to "5")),
     )

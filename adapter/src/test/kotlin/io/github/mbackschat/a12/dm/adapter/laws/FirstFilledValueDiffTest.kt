@@ -7,6 +7,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -23,6 +27,11 @@ class FirstFilledValueDiffTest {
     private val fields = listOf(
         FieldDef(ITEM, Kind.STRING), FieldDef(QTY, Kind.NUMBER, scale = 0),
     )
+
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. `Dsl.firstFilledNumber(Qty*)` is FirstFilledValue over a number list.
+    private val m = BoundModel.ofJson(fuzz)
+    private fun render(c: Condition): String = DslRenderer().render(c)
 
     /** Place one Line per [qtys] entry (ItemId always filled; Qty placed when the entry is non-null), run the
      *  `/Cart`-level `FirstFilledValue(Lines* / Qty)` rule, and assert both engines fire identically. */
@@ -47,7 +56,7 @@ class FirstFilledValueDiffTest {
         assertEquals(kernel, interp, "$msg  (kernel=$kernel interp=$interp)")
     }
 
-    private val gt10 = "FirstFilledValue(Lines*/Qty) > 10"
+    private val gt10 = render(Dsl.firstFilledNumber(m.flatten("/Cart/Lines*/Qty")).gt(10))
 
     // The first FILLED row decides; an earlier empty row is skipped, a later row is invisible.
     @Test fun firesOnFirstFilledSkippingEmpty() = agree(gt10, listOf(null, "30", "5"), "first filled = 30 > 10")

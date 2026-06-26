@@ -108,6 +108,8 @@ class FieldConstraintFormalDiffTest {
 
     /** Suppression: a rule referencing a constraint-violating field must NOT fire (the field is unknown) — both engines. */
     @Test fun constraintViolationSuppressesReferencingRule() {
+        // DSL-EXEMPT: /Order/Score is SPLICED into the model by withField(scoreField); it is absent from the base
+        // order.dm.json, so BoundModel.ofJson(order).num("/Order/Score") cannot resolve a typed handle (throws).
         val kModel = RuntimeLaws.withRule(withField(scoreField), "/Order", "R", "../Score", "R", "[Score] >= 0")
         val kFires = RuntimeLaws.firedCodes(kModel, setOf("/Order"), mapOf("/Order/Score" to "150.00")).contains("R")
         val def = ModelDef(listOf(scoreDef), listOf(RuleDef("/Order/R", "/Order", "[Score] >= 0", "R", "../Score")))

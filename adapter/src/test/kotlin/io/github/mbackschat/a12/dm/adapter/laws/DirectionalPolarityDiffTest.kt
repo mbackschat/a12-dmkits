@@ -7,6 +7,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -27,6 +30,11 @@ class DirectionalPolarityDiffTest {
     private val kinds = mapOf(Q to Kind.NUMBER, SOH to Kind.NUMBER, CN to Kind.STRING)
     private val unsigned = setOf(SOH)
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines (kernel injection + the interpreter) — no free-text condition literals.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     /** `cond` fires on a row where [emptyField] is empty (substituted 0) and CustomerName is filled. */
     private fun agree(cond: String, emptyField: String, errorRel: String, msg: String) {
         val code = "DP"
@@ -42,18 +50,18 @@ class DirectionalPolarityDiffTest {
 
     @Test fun unsignedEmptyGreaterEqualZeroIsValueNotOmission() {
         // The divergence: an unsigned empty can't shrink below 0, so `>= 0` can't be broken by filling → VALUE.
-        agree("[StockOnHand] >= 0", SOH, "../StockOnHand", "unsigned [StockOnHand] >= 0 (empty) is a VALUE error")
+        agree(render(m.num(SOH).ge(0)), SOH, "../StockOnHand", "unsigned [StockOnHand] >= 0 (empty) is a VALUE error")
     }
 
     @Test fun signedEmptyGreaterEqualZeroIsOmission() {
         // Control: a signed empty CAN shrink (fill negative) → `>= 0` is fillable-to-fix → OMISSION.
-        agree("[Quantity] >= 0", Q, "../Quantity", "signed [Quantity] >= 0 (empty) is an OMISSION error")
+        agree(render(m.num(Q).ge(0)), Q, "../Quantity", "signed [Quantity] >= 0 (empty) is an OMISSION error")
     }
 
     @Test fun emptyLessEqualIsOmissionRegardlessOfSign() {
         // Either sign: an empty can grow, breaking `<= 100` → fillable → OMISSION.
-        agree("[StockOnHand] <= 100", SOH, "../StockOnHand", "unsigned [StockOnHand] <= 100 (empty) is OMISSION")
-        agree("[Quantity] <= 100", Q, "../Quantity", "signed [Quantity] <= 100 (empty) is OMISSION")
+        agree(render(m.num(SOH).le(100)), SOH, "../StockOnHand", "unsigned [StockOnHand] <= 100 (empty) is OMISSION")
+        agree(render(m.num(Q).le(100)), Q, "../Quantity", "signed [Quantity] <= 100 (empty) is OMISSION")
     }
 
     private companion object {

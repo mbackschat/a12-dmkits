@@ -24,6 +24,9 @@ class PrecisionDiffTest {
 
     /** `{ [Quantity] + <tiny> } <op> 0` over Quantity=0 — kernel and interpreter must agree on firing. */
     private fun agree(op: String, tiny: String, msg: String) {
+        // DSL-EXEMPT: the kernel's brace-grouped arithmetic operand `{ [Quantity] + <tiny> }` has no DSL form —
+        // the renderer never emits `{ }` and there is no grouped-Calculation node, so the typed DSL cannot
+        // reproduce this exact string. Authored free-text on purpose.
         val cond = "{ [Quantity] + $tiny } $op 0"
         val kModel = RuntimeLaws.withRule(order, "/Order", "Prec", "../Quantity", "PREC", cond)
         val defWithRule = ModelDef(def.fields, listOf(RuleDef("/Order/Prec", "/Order", cond, "PREC", "../Quantity")))

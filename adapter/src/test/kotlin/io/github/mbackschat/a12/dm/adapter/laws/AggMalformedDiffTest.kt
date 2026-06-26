@@ -6,6 +6,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -26,6 +30,13 @@ class AggMalformedDiffTest {
         FieldDef(ITEM, Kind.STRING), FieldDef(QTY, Kind.NUMBER, scale = 0), FieldDef(PRICE, Kind.NUMBER, scale = 2),
     )
 
+    // The numeric-combiner conditions are authored with the rulekit typed DSL ([m]) and rendered to the
+    // canonical string fed to BOTH engines — no free-text condition literals. The MALFORMED operand values
+    // (e.g. "abc") stay in the doc-building below; only the condition authoring changes.
+    private val m = BoundModel.ofJson(fuzz)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+    private val prices = m.flatten("/Cart/Lines*/Price")
+
     /** A starred-aggregate rule at /Cart over two Lines (Price `p1`, `p2`) — kernel and interpreter must agree. */
     private fun starred(cond: String, code: String, p1: String, p2: String) {
         val kModel = RuntimeLaws.withRule(fuzz, "/Cart", code, "../Lines/Price", code, cond)
@@ -40,7 +51,7 @@ class AggMalformedDiffTest {
 
     /** An operand-list `Min([Qty], [Price])` rule on one Line — kernel and interpreter must agree. */
     private fun operandMin(qty: String, price: String) {
-        val cond = "Min([Qty], [Price]) > 0"
+        val cond = render(Dsl.min(m.num(QTY).asNumber(), m.num(PRICE).asNumber()).gt(0))
         val kModel = RuntimeLaws.withRule(fuzz, "/Cart/Lines", "OM", "../Qty", "OM", cond)
         val def = model(RuleDef("/Cart/Lines/OM", "/Cart/Lines", cond, "OM", "../Qty"))
         val kDoc = RuntimeLaws.doc().group("/Cart", 1)
@@ -63,11 +74,11 @@ class AggMalformedDiffTest {
 
     private fun doc(def: ModelDef) = Document(def.kinds, def.declaredReps, def.unsignedFields, def.rangeConfig, def.dateFormats, def.scales)
 
-    @Test fun sumSuppressedByMalformedElement() = starred("Sum(Lines*/Price) > 100", "SM", "200", "abc")
-    @Test fun sumComputesWhenAllValid() = starred("Sum(Lines*/Price) > 100", "SM", "200", "50")
-    @Test fun maxValueSuppressedByMalformedElement() = starred("MaxValue(Lines*/Price) > 100", "MX", "200", "abc")
-    @Test fun minValueSuppressedByMalformedElement() = starred("MinValue(Lines*/Price) > 0", "MN", "200", " 5 ")
-    @Test fun distinctSuppressedByMalformedElement() = starred("NumberOfDifferentValues(Lines*/Price) > 1", "ND", "200", "abc")
+    @Test fun sumSuppressedByMalformedElement() = starred(render(Dsl.sum(prices).gt(100)), "SM", "200", "abc")
+    @Test fun sumComputesWhenAllValid() = starred(render(Dsl.sum(prices).gt(100)), "SM", "200", "50")
+    @Test fun maxValueSuppressedByMalformedElement() = starred(render(Dsl.maxValue(prices).gt(100)), "MX", "200", "abc")
+    @Test fun minValueSuppressedByMalformedElement() = starred(render(Dsl.minValue(prices).gt(0)), "MN", "200", " 5 ")
+    @Test fun distinctSuppressedByMalformedElement() = starred(render(Dsl.numberOfDifferentValues(prices).gt(1)), "ND", "200", "abc")
     @Test fun minOperandSuppressedByMalformedOperand() = operandMin("abc", "50")
     @Test fun minOperandComputesWhenAllValid() = operandMin("10", "50")
 

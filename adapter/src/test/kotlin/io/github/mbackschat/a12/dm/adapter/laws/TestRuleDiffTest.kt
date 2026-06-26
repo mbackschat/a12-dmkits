@@ -7,6 +7,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.interpreter.model.Verdict
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -20,6 +23,12 @@ class TestRuleDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val fields = listOf(FieldDef(Q, Kind.NUMBER), FieldDef(CN, Kind.STRING))
+
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+    private val capCondition = render(m.num(Q).filled().and(m.num(Q).gt(100)))
 
     private fun verdictMatchesKernel(condition: String, values: Map<String, String>, empties: Set<String>) {
         val rule = RuleDef("/Order/Cap", "/Order", condition, "CAP", "../Quantity")
@@ -40,16 +49,16 @@ class TestRuleDiffTest {
 
     @Test
     fun firedVerdictMatchesKernel() =
-        verdictMatchesKernel("FieldFilled(Quantity) And [Quantity] > 100", mapOf(Q to "150"), emptySet())
+        verdictMatchesKernel(capCondition, mapOf(Q to "150"), emptySet())
 
     @Test
     fun passedVerdictMatchesKernel() =
-        verdictMatchesKernel("FieldFilled(Quantity) And [Quantity] > 100", mapOf(Q to "50"), emptySet())
+        verdictMatchesKernel(capCondition, mapOf(Q to "50"), emptySet())
 
     @Test
     fun candidateRuleFiredMatchesKernel() {
         // the `model eval --condition` path: an injected, non-stored candidate over Quantity=150
-        val candidate = RuleDef("/Order/EvalDocCandidate", "/Order", "[Quantity] > 100", "EVAL_DOC", "../Quantity")
+        val candidate = RuleDef("/Order/EvalDocCandidate", "/Order", render(m.num(Q).gt(100)), "EVAL_DOC", "../Quantity")
         val model = RuntimeLaws.withRule(order, "/Order", "EvalDocCandidate", "../Quantity", "EVAL_DOC", candidate.conditionText)
         val def = ModelDef(fields, emptyList())   // candidate is NOT in the model
 

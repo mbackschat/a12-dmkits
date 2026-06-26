@@ -7,6 +7,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.Requiredness
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -25,13 +28,19 @@ class RequirednessDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
 
+    // Rule conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed
+    // to BOTH engines (kernel injection + the interpreter) — no free-text condition literals. The requiredness
+    // SETUP (the `require(...)` model rewrite + the `Requiredness` field configs) is unchanged.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     // ---- absolute requiredness on a root-level NUMBER (Quantity) -----------------------------------
 
     @Test
     fun absoluteRequiredEmptyNumberIsUnknownNotZero() {
         // [Quantity] < 100 would fire on an empty (→0) number — but a REQUIRED-empty number is unknown, so
         // only mandatoryField fires (the comparison is suppressed via the unknown operand).
-        val cond = "[Quantity] < 100"
+        val cond = render(m.num(Q).lt(100))
         val kModel = RuntimeLaws.withRule(require(order, "/Order/Quantity", "absoluteOrRelativeToNextRepAncestor"),
             "/Order", "Cap", "../Quantity", "QTY_LOW", cond)
         val def = ModelDef(listOf(FieldDef(Q, Kind.NUMBER, required = Requiredness.ABSOLUTE), FieldDef(CN, Kind.STRING)),
@@ -50,7 +59,7 @@ class RequirednessDiffTest {
     fun requiredEmptyOperandPropagatesAsUnknownThroughOr() {
         // unknown Or <true> = true → the author rule STILL fires (alongside mandatoryField). This is the
         // operand-level-unknown behaviour, not a whole-rule skip (which would drop QTY_LOW).
-        val cond = "[Quantity] < 100 Or FieldFilled(CustomerName)"
+        val cond = render(m.num(Q).lt(100).or(m.field(CN).filled()))
         val kModel = RuntimeLaws.withRule(require(order, "/Order/Quantity", "absoluteOrRelativeToNextRepAncestor"),
             "/Order", "Cap", "../Quantity", "QTY_LOW", cond)
         val def = ModelDef(listOf(FieldDef(Q, Kind.NUMBER, required = Requiredness.ABSOLUTE), FieldDef(CN, Kind.STRING)),

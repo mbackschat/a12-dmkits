@@ -6,6 +6,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -22,6 +26,12 @@ class SumOfProductsDiffTest {
     private val fields = listOf(
         FieldDef(ITEM, Kind.STRING), FieldDef(QTY, Kind.NUMBER, scale = 0), FieldDef(PRICE, Kind.NUMBER, scale = 2),
     )
+
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. `Dsl.sumOfProducts(qty*, price*)` pairs the two lists row-by-row.
+    private val m = BoundModel.ofJson(fuzz)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+    private val sopExpr = Dsl.sumOfProducts(m.flatten("/Cart/Lines*/Qty"), m.flatten("/Cart/Lines*/Price"))
 
     /** Place one Line per [rows] `(qty, price)` (ItemId always filled, distinct), run the `/Cart`-level rule. */
     private fun agree(cond: String, rows: List<Pair<String?, String?>>, msg: String) {
@@ -42,18 +52,16 @@ class SumOfProductsDiffTest {
         assertEquals(kernel, interp, "$msg  (kernel=$kernel interp=$interp)")
     }
 
-    private val sp = "SumOfProducts(Lines*/Qty, Lines*/Price)"
-
     @Test fun pairsRowByRow() =
-        agree("$sp > 23", listOf("2" to "3", "4" to "5"), "2·3 + 4·5 = 26 > 23 (a mis-pairing → 22, would not)")
+        agree(render(sopExpr.gt(23)), listOf("2" to "3", "4" to "5"), "2·3 + 4·5 = 26 > 23 (a mis-pairing → 22, would not)")
     @Test fun doesNotFireBelowThreshold() =
-        agree("$sp > 30", listOf("2" to "3", "4" to "5"), "26 not > 30")
+        agree(render(sopExpr.gt(30)), listOf("2" to "3", "4" to "5"), "26 not > 30")
     @Test fun emptyCellCountsAsZero() =
-        agree("$sp > 5", listOf("2" to "3", "10" to null), "2·3 + 10·0 = 6 > 5")
+        agree(render(sopExpr.gt(5)), listOf("2" to "3", "10" to null), "2·3 + 10·0 = 6 > 5")
     @Test fun malformedCellSuppresses() =
-        agree("$sp > 0", listOf("2" to "3", "abc" to "5"), "malformed Qty → sum non-evaluable → suppressed")
+        agree(render(sopExpr.gt(0)), listOf("2" to "3", "abc" to "5"), "malformed Qty → sum non-evaluable → suppressed")
     @Test fun singleRow() =
-        agree("$sp > 10", listOf("3" to "4"), "3·4 = 12 > 10")
+        agree(render(sopExpr.gt(10)), listOf("3" to "4"), "3·4 = 12 > 10")
 
     private companion object {
         const val ITEM = "/Cart/Lines/ItemId"

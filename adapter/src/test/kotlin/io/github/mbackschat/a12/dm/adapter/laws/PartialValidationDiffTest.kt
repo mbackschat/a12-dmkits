@@ -8,6 +8,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RelevantEntity
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -23,6 +27,11 @@ import org.junit.jupiter.api.Test
 class PartialValidationDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
+
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
 
     private fun def(cond: String) = ModelDef(
         listOf(FieldDef(NAME, Kind.STRING), FieldDef(CODE, Kind.STRING)),
@@ -57,8 +66,8 @@ class PartialValidationDiffTest {
     private val iCode = RelevantEntity.anyRep(CODE)
     private val iGroup = RelevantEntity.anyRep("/Order")
 
-    private val and = "FieldFilled(CustomerName) And FieldFilled(ProductCode)"
-    private val or = "FieldFilled(CustomerName) Or FieldFilled(ProductCode)"
+    private val and = render(Dsl.fieldFilled(m.field(NAME)).and(Dsl.fieldFilled(m.field(CODE))))
+    private val or = render(Dsl.fieldFilled(m.field(NAME)).or(Dsl.fieldFilled(m.field(CODE))))
 
     @Test fun andBothRelevantFires() =
         agree(and, setOf(kName, kCode), setOf(iName, iCode), true, "And, both relevant → fires")

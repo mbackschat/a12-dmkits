@@ -13,6 +13,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedTypeRegistry
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
@@ -35,6 +39,12 @@ class PredefinedTypeValidityDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val fields = listOf(FieldDef(NAME, Kind.STRING))
+
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. `Dsl.validType(m.field(p), "EMail")` is Valid(field, "EMail").
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+    private val cn = m.field(NAME)
 
     /** A kernel custom-field-type validator for "EMail" that delegates to the SAME spec the interpreter uses,
      *  so both engines apply byte-identical validation logic. */
@@ -72,18 +82,18 @@ class PredefinedTypeValidityDiffTest {
     private val invalid = "not-an-email"
 
     // Guarded form (the catalog's idiomatic `FieldFilled(...) And Valid(...)`).
-    @Test fun validEmailValidFires() = agree("FieldFilled(CustomerName) And Valid(CustomerName, \"EMail\")", valid, "valid email → Valid fires VALUE")
-    @Test fun invalidEmailValidNoFire() = agree("FieldFilled(CustomerName) And Valid(CustomerName, \"EMail\")", invalid, "invalid email → Valid no fire")
-    @Test fun invalidEmailInvalidFires() = agree("FieldFilled(CustomerName) And Invalid(CustomerName, \"EMail\")", invalid, "invalid email → Invalid fires VALUE")
-    @Test fun validEmailInvalidNoFire() = agree("FieldFilled(CustomerName) And Invalid(CustomerName, \"EMail\")", valid, "valid email → Invalid no fire")
+    @Test fun validEmailValidFires() = agree(render(cn.filled().and(Dsl.validType(cn, "EMail"))), valid, "valid email → Valid fires VALUE")
+    @Test fun invalidEmailValidNoFire() = agree(render(cn.filled().and(Dsl.validType(cn, "EMail"))), invalid, "invalid email → Valid no fire")
+    @Test fun invalidEmailInvalidFires() = agree(render(cn.filled().and(Dsl.invalidType(cn, "EMail"))), invalid, "invalid email → Invalid fires VALUE")
+    @Test fun validEmailInvalidNoFire() = agree(render(cn.filled().and(Dsl.invalidType(cn, "EMail"))), valid, "valid email → Invalid no fire")
 
     // Bare form — empty is "not specified": neither Valid nor Invalid fires (no FieldFilled guard needed).
-    @Test fun bareValidValidFires() = agree("Valid(CustomerName, \"EMail\")", valid, "bare Valid, valid → fires VALUE")
-    @Test fun bareValidInvalidNoFire() = agree("Valid(CustomerName, \"EMail\")", invalid, "bare Valid, invalid → no fire")
-    @Test fun bareValidEmptyNoFire() = agree("Valid(CustomerName, \"EMail\")", null, "bare Valid, empty → no fire (not specified)")
-    @Test fun bareInvalidInvalidFires() = agree("Invalid(CustomerName, \"EMail\")", invalid, "bare Invalid, invalid → fires VALUE")
-    @Test fun bareInvalidValidNoFire() = agree("Invalid(CustomerName, \"EMail\")", valid, "bare Invalid, valid → no fire")
-    @Test fun bareInvalidEmptyNoFire() = agree("Invalid(CustomerName, \"EMail\")", null, "bare Invalid, empty → no fire (not specified)")
+    @Test fun bareValidValidFires() = agree(render(Dsl.validType(cn, "EMail")), valid, "bare Valid, valid → fires VALUE")
+    @Test fun bareValidInvalidNoFire() = agree(render(Dsl.validType(cn, "EMail")), invalid, "bare Valid, invalid → no fire")
+    @Test fun bareValidEmptyNoFire() = agree(render(Dsl.validType(cn, "EMail")), null, "bare Valid, empty → no fire (not specified)")
+    @Test fun bareInvalidInvalidFires() = agree(render(Dsl.invalidType(cn, "EMail")), invalid, "bare Invalid, invalid → fires VALUE")
+    @Test fun bareInvalidValidNoFire() = agree(render(Dsl.invalidType(cn, "EMail")), valid, "bare Invalid, valid → no fire")
+    @Test fun bareInvalidEmptyNoFire() = agree(render(Dsl.invalidType(cn, "EMail")), null, "bare Invalid, empty → no fire (not specified)")
 
     private companion object {
         const val NAME = "/Order/CustomerName"

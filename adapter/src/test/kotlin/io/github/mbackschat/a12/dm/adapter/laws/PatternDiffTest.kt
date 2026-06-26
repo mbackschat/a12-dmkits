@@ -4,6 +4,9 @@ import io.github.mbackschat.a12.dm.interpreter.eval.Interpreter
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.eval.SingleRowDoc
 import io.github.mbackschat.a12.dm.interpreter.parse.parseCondition
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -19,6 +22,12 @@ class PatternDiffTest {
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val kinds = mapOf(PC to Kind.STRING, CN to Kind.STRING)
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. `m.str(p).violates/matches(rx)` is PatternViolated/PatternMatched.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+    private val rx = "[A-Z]{3}"
+
     private data class Case(
         val text: String,
         val empties: Set<String> = emptySet(),
@@ -27,15 +36,15 @@ class PatternDiffTest {
 
     private val cases = listOf(
         // PatternViolated: fires when a PRESENT value does not match the whole-value regex.
-        Case("[ProductCode] PatternViolated \"[A-Z]{3}\"", values = mapOf(PC to "ABC")),   // matches → no fire
-        Case("[ProductCode] PatternViolated \"[A-Z]{3}\"", values = mapOf(PC to "abcd")),  // no match → fires
-        Case("[ProductCode] PatternViolated \"[A-Z]{3}\"", values = mapOf(PC to "AB")),    // wrong length → fires
-        Case("[ProductCode] PatternViolated \"[A-Z]{3}\"", empties = setOf(PC), values = mapOf(CN to "Acme")), // empty → not evaluated
+        Case(render(m.str(PC).violates(rx)), values = mapOf(PC to "ABC")),   // matches → no fire
+        Case(render(m.str(PC).violates(rx)), values = mapOf(PC to "abcd")),  // no match → fires
+        Case(render(m.str(PC).violates(rx)), values = mapOf(PC to "AB")),    // wrong length → fires
+        Case(render(m.str(PC).violates(rx)), empties = setOf(PC), values = mapOf(CN to "Acme")), // empty → not evaluated
         // PatternMatched: fires when the whole value matches.
-        Case("[ProductCode] PatternMatched \"[A-Z]{3}\"", values = mapOf(PC to "ABC")),    // matches → fires
-        Case("[ProductCode] PatternMatched \"[A-Z]{3}\"", values = mapOf(PC to "xy")),     // no match → no fire
+        Case(render(m.str(PC).matches(rx)), values = mapOf(PC to "ABC")),    // matches → fires
+        Case(render(m.str(PC).matches(rx)), values = mapOf(PC to "xy")),     // no match → no fire
         // guarded form from the catalog example (FieldFilled And pattern)
-        Case("FieldFilled(ProductCode) And [ProductCode] PatternViolated \"[A-Z]{3}\"",
+        Case(render(m.field(PC).filled().and(m.str(PC).violates(rx))),
             empties = setOf(PC), values = mapOf(CN to "Acme")),                            // unfilled → guard false → no fire
     )
 

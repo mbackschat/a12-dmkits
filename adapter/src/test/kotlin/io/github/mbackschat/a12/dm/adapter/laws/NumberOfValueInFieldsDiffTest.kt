@@ -6,6 +6,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -23,6 +27,12 @@ class NumberOfValueInFieldsDiffTest {
         FieldDef(ITEM, Kind.STRING), FieldDef(QTY, Kind.NUMBER, scale = 0), FieldDef(PRICE, Kind.NUMBER, scale = 2),
     )
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. `Dsl.numberOfValueInFields(0L, m.field(a), m.field(b))` renders
+    // `NumberOfValueInFields(0 In a, b)`; the `In` separates the counted VALUE from the field list.
+    private val m = BoundModel.ofJson(fuzz)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     private fun agree(cond: String, qty: String?, price: String?, msg: String) {
         val kModel = RuntimeLaws.withRule(fuzz, "/Cart/Lines", "NV", "../Qty", "NV", cond)
         val def = ModelDef(fields, listOf(RuleDef("/Cart/Lines/NV", "/Cart/Lines", cond, "NV", "../Qty")),
@@ -37,8 +47,8 @@ class NumberOfValueInFieldsDiffTest {
         assertEquals(kernel, interp, "$msg  (kernel=$kernel interp=$interp)")
     }
 
-    private val zeroGt0 = "FieldFilled(Qty) And NumberOfValueInFields(0 In Qty, Price) > 0"
-    private val zeroGe2 = "FieldFilled(Qty) And NumberOfValueInFields(0 In Qty, Price) >= 2"
+    private val zeroGt0 = render(m.field(QTY).filled().and(Dsl.numberOfValueInFields(0L, m.field(QTY), m.field(PRICE)).gt(0)))
+    private val zeroGe2 = render(m.field(QTY).filled().and(Dsl.numberOfValueInFields(0L, m.field(QTY), m.field(PRICE)).ge(2)))
 
     @Test fun countsOneMatchingFilledField() = agree(zeroGt0, "0", "5.00", "Qty==0 → count 1 > 0")
     @Test fun emptyFieldIsNotCountedAsZero() = agree(zeroGe2, "0", null, "Qty==0, Price empty → count 1 (empty not 0), not >= 2")
