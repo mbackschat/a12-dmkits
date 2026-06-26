@@ -26,7 +26,7 @@ Deferred items are in §2; a fixed gap is deleted from here (git + its `IFn` fin
 
 | code | item | status / re-open trigger | detail in |
 |---|---|---|---|
-| **IG5** | runtime-semantics extraction (generator-readiness) | tracked refactor, **not** a prerequisite — migrate the comparison/3VL/aggregate logic still inside `Interpreter` into the pure runtime layer **as touched**; `DateMath`/`Kleene`/`quantifierFires`/the op registries/**`ValCompare`** (value comparison — `language` + `ORDER`) already moved. Remaining: the aggregate folds + the directional-fill polarity logic. | IF10 |
+| **IG5** | runtime-semantics extraction (generator-readiness) | tracked refactor, **not** a prerequisite — migrate the comparison/3VL/aggregate logic still inside `Interpreter` into the pure runtime layer **as touched**; `DateMath`/`Kleene`/`quantifierFires`/the op registries/**`ValCompare`**/**`Aggregates`** (the `sum`/`min`/`max`/`numberOfDifferentValues` folds — 2026-06-27) already moved. Remaining: the directional-fill polarity (`fill`/`funcFill`/`leafType`) + the `SumOfProducts` pairing fold. | IF10 |
 
 ---
 

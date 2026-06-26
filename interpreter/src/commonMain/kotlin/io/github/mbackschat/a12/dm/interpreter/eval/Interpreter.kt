@@ -729,23 +729,17 @@ class Interpreter(
             }
         }
         return when (op) {
+        // Value aggregates — the FOLDS are pure runtime semantics ([Aggregates], IG5→IF10); the strategy only
+        // RESOLVES operands (operand-list `map { evalExpr }` vs the starred `starVals`) and gates Unknown
+        // ([combine]). The same fold serves both forms (`Min`/`MinValue` share [Aggregates.min]).
         // operand-list forms: every operand counts (an empty number arrives as the substituted 0)
-        FunctionOp.MIN -> combine(f.args.map { evalExpr(it) }) { it.minWithOrNull(ValCompare.ORDER) ?: Val.Unknown }
-        FunctionOp.MAX -> combine(f.args.map { evalExpr(it) }) { it.maxWithOrNull(ValCompare.ORDER) ?: Val.Unknown }
+        FunctionOp.MIN -> combine(f.args.map { evalExpr(it) }, Aggregates::min)
+        FunctionOp.MAX -> combine(f.args.map { evalExpr(it) }, Aggregates::max)
         // starred aggregates: empties are SKIPPED (Sum substitutes 0 = same result; Max/distinct ignore)
-        FunctionOp.SUM -> combine(starVals(f)) { vs -> Val.Num(vs.fold(DEC_ZERO) { a, b -> a + num(b) }) }
-        FunctionOp.MAX_VALUE -> combine(starVals(f)) { it.maxWithOrNull(ValCompare.ORDER) ?: Val.Unknown }
-        FunctionOp.MIN_VALUE -> combine(starVals(f)) { it.minWithOrNull(ValCompare.ORDER) ?: Val.Unknown }
-        FunctionOp.NUMBER_OF_DIFFERENT_VALUES -> combine(starVals(f)) { vs ->
-            // Distinct count by numeric equality (compareTo, scale-insensitive). Sort + count adjacent-distinct
-            // is O(n log n); the prior "linear scan of the distinct-so-far per element" was O(n²) — a latent
-            // cliff on a large value list (confirmed super-linear by latentQuadraticHunt). Same count: sorting
-            // groups equal values adjacently, so a run boundary (compareTo != prev) is a new distinct value.
-            val nums = vs.map { num(it) }.sortedWith { a, b -> a.compareTo(b) }
-            var count = 0
-            for (i in nums.indices) if (i == 0 || nums[i].compareTo(nums[i - 1]) != 0) count++
-            Val.Num(dec(count))
-        }
+        FunctionOp.SUM -> combine(starVals(f), Aggregates::sum)
+        FunctionOp.MAX_VALUE -> combine(starVals(f), Aggregates::max)
+        FunctionOp.MIN_VALUE -> combine(starVals(f), Aggregates::min)
+        FunctionOp.NUMBER_OF_DIFFERENT_VALUES -> combine(starVals(f), Aggregates::numberOfDifferentValues)
         // DifferenceInDays(a, b) = b − a in whole days (sign = second − first), as a number. An empty or
         // malformed date operand → Unknown (the rule typically guards it with AllFieldsFilled).
         FunctionOp.DIFFERENCE_IN_DAYS -> {
