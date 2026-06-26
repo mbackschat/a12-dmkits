@@ -21,13 +21,13 @@ import com.mgmtp.a12.kernel.core.tool.a12internal.api.ado.serviceparams.ICalcula
  * {@link InterpreterFieldConstraintParityTest} (which covers the field-type constraint slots). Together they are
  * the forcing function whose absence let IF20/IF21/IF23 hide: every declared, no-arg accessor of the kernel's
  * {@link IRule}, {@link ICalculationInfo} (the computation model) and {@link IGroup} must be **classified exactly
- * once** — MODELED (the interpreter loads/evaluates it), or DEFERRED / OUT_OF_SCOPE with a reason. A kernel
+ * once** — MODELED (the interpreter loads/evaluates it) or OUT_OF_SCOPE with a reason. A kernel
  * upgrade that ADDS a model-element slot fails this build until the new slot is accounted for, so it cannot be
  * silently dropped (the IF21 tiered-alternatives / IF23 severity-INFO class).
  */
 class InterpreterModelElementParityTest {
 
-    private enum Disposition { MODELED, DEFERRED, OUT_OF_SCOPE }
+    private enum Disposition { MODELED, OUT_OF_SCOPE }
 
     private record Classification(Disposition disposition, String note) {
     }
@@ -43,12 +43,14 @@ class InterpreterModelElementParityTest {
         modeled("IRule.getErrorCode", "RuleDef.errorCode");
         modeled("IRule.getSeverityType", "RuleDef.severity — Severity{ERROR,WARNING,INFO} incl. INFO (IF23)");
         outOfScope("IRule.getAnnotations", "editor metadata (descriptions/annotations via the `meta` verb) — not eval-relevant");
-        deferred("IRule.getCustomRefErrorEntitiesIfFilled",
-                "custom-ref error-entity refinement for CustomCondition rules — which field(s) a custom-condition rule "
-                        + "BLAMES based on filled-state; affects rich-message ATTRIBUTION only (not fire/no-fire). The "
-                        + "interpreter attributes to the rule's errorEntity; refinement not modeled — a documented boundary "
-                        + "(custom conditions are an SPI escape hatch), low priority. Recorded, not glossed.");
-        deferred("IRule.getCustomRefErrorEntitiesIfNotFilled", "the not-filled branch of the same custom-ref error-entity refinement.");
+        outOfScope("IRule.getCustomRefErrorEntitiesIfFilled",
+                "modeler-defined error-entity refinement (which field(s) a rule BLAMES by filled-state; ATTRIBUTION only, "
+                        + "not fire/no-fire) — UNWIRED in kernel 30.8.1: the md-model rule mapping returns empty pending "
+                        + "A12K-2281/2361, every rule impl returns empty, and RuleParser short-circuits when both are empty "
+                        + "(always). So the kernel always uses its default error-entity attribution, which the interpreter "
+                        + "matches (parity by construction; CustomConditionDiffTest locks the error field). KERNEL-FINDINGS "
+                        + "'getCustomRefErrorEntities… UNWIRED'.");
+        outOfScope("IRule.getCustomRefErrorEntitiesIfNotFilled", "the not-filled branch of the same UNWIRED custom-ref error-entity refinement.");
 
         // ── ICalculationInfo (the computation model) ──
         modeled("ICalculationInfo.getCalculatedField", "ComputationDef.targetPath");
@@ -72,10 +74,6 @@ class InterpreterModelElementParityTest {
 
     private static void modeled(String accessor, String note) {
         CLASSIFIED.put(accessor, new Classification(Disposition.MODELED, note));
-    }
-
-    private static void deferred(String accessor, String note) {
-        CLASSIFIED.put(accessor, new Classification(Disposition.DEFERRED, note));
     }
 
     private static void outOfScope(String accessor, String note) {
@@ -107,7 +105,7 @@ class InterpreterModelElementParityTest {
         assertTrue(unclassified.isEmpty(),
                 "Kernel rule/computation/group accessor(s) with no classification — the kernel added a model-element "
                         + "slot the interpreter may silently drop (the IF21/IF23 class). MODEL it or classify it "
-                        + "DEFERRED/OUT_OF_SCOPE with a reason:\n  " + String.join("\n  ", unclassified));
+                        + "OUT_OF_SCOPE with a reason:\n  " + String.join("\n  ", unclassified));
     }
 
     @Test
