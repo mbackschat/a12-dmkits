@@ -37,7 +37,7 @@ One engine, two compile targets, from a single `commonMain` source set:
 | `.model` | `ModelDef`/`FieldDef`/`RuleDef`/`ComputationDef` · `Kind`/`MsgType`/`Severity`/`Requiredness` · `Message`/`RuleResult`/`ValidationOutcome`/`Computed` · `RelevantEntity` · the `CustomCondition` SPI (`CustomCondition`/`CustomConditionData`/`FieldPointer`) · `PredefinedType` registry | the data contract consumers build/read |
 | `.ast` | `Cond` / `Expr` (sealed) · `Val` / `Tri` · `typedValue`/`emptyValue` | the parsed rule, as data |
 | `.parse` | `parseCondition` / `parseExpression` — recursive descent (§3) | text → AST |
-| `.eval` | `Interpreter` · `EvalContext` + `Document` (+ the `SingleRowDoc`/`RepDoc` test doubles) · the operator registries (`PredicateOp`/`FunctionOp`/`ConstantOp`) · `Kleene` · `DateMath` · `FormalError` · `Pointer` · the message renderer | the engine |
+| `.eval` | `Interpreter` · `EvalContext` + `Document` (+ the `SingleRowDoc`/`RepDoc` test doubles) · the operator registries (`PredicateOp`/`FunctionOp`/`ConstantOp`) · `Kleene` · `DateMath` · `ValCompare` · `Aggregates` · `FormalError` · `Pointer` · the message renderer | the engine |
 | root | `DmInterpreter` (the public façade), the `Dec` `expect`, `UnsupportedConstructException` | API surface |
 
 **Dependency direction:** `model ← ast ← parse`, `model,ast ← eval`, all ← root. `:interpreter` itself depends on **nothing** (no kernel, no dmtool); `:`/`:adapter`/`:cli` consume *it*, never the reverse.
@@ -65,13 +65,15 @@ The engine is layered so an interpreter (tree-walk, today) and a future **genera
    runtime         pure functions over RESOLVED values, AST-walk-agnostic:
    semantics         · Kleene 3VL (and/or/not)         · quantifierFires (list quantifiers)
                      · PredicateOp/FunctionOp/ConstantOp registries   · DateMath
-                     · directional comparison polarity · aggregates · value-list · pattern
+                     · ValCompare (value order)   · Aggregates (Sum/Min/Max/distinct folds)
+                     · [still in Interpreter, migrating as-touched: directional polarity ·
+                        SumOfProducts pairing · value-list · pattern]
    ───────────────────────────────────────────────────────────────────────────────────────
    data access     EvalContext / Document — field / filled / signed / star / reps
 ```
 
 - **The truth model is Kleene's strong three-valued logic** (`eval/ThreeValued.kt`, `object Kleene`). A condition is `TRUE` (fires), `FALSE`, or `UNKNOWN` ("can't decide"); a rule fires **only on `TRUE`**. This one tiny truth table is the *single* mechanism behind formal-error suppression, empty-row gating, and partial validation — every suppression path just sends an operand to `UNKNOWN`, and `T ∨ U = T` / `T ∧ U = U` does the rest. It is verified bit-for-bit against the kernel's `combineUND`/`combineODER` (`KleeneDiffTest`; full treatment in [INTERPRETER-FINDINGS.md](INTERPRETER-FINDINGS.md) IF17).
-- **Value-only semantics are already extracted** as pure, strategy-agnostic functions (`Kleene`, `quantifierFires`, `DateMath`, the operator registries); the `ctx`-reading parts (directional comparison polarity, aggregates) still live in `Interpreter` and migrate into the runtime layer **with** a data-access/semantics split, as touched. We do **not** build the generator now — this only keeps adding one later a new top layer, not a rewrite.
+- **Value-only semantics are already extracted** as pure, strategy-agnostic functions (`Kleene`, `quantifierFires`, `DateMath`, the operator registries, `ValCompare` (value order), and the `Aggregates` folds — `Sum`/`Min`/`Max`/`NumberOfDifferentValues`, 2026-06-27); the remaining `ctx`-reading parts (directional comparison polarity, the `SumOfProducts` parallel-pairing, value-list/pattern resolution) still live in `Interpreter` and migrate into the runtime layer **with** a data-access/semantics split, as touched. We do **not** build the generator now — this only keeps adding one later a new top layer, not a rewrite.
 
 ## 5. Performance techniques
 
