@@ -154,7 +154,27 @@ class DmInterpreter @JvmOverloads constructor(
      * `RepetitionNotUnique`) needs the duplicate partner relevant too (IF39). All locked by `…laws/PartialValidation*DiffTest`.
      */
     fun validatePart(doc: Document, relevant: Set<RelevantEntity>, locale: String = "en_US"): ValidationOutcome =
-        validateWith(doc, locale, relevanceOf(relevant), customRelevantOf(relevant))
+        validateWith(doc, locale, relevanceOf(relevant), customRelevantOf(relevant), starRelevantOf(relevant))
+
+    /**
+     * Whether a STARRED aggregate over `starPath` is relevant in PARTIAL mode (IF42). The kernel evaluates an
+     * all-rows aggregate (`Sum`/`Max`/`Min`/`NumberOfDifferentValues`/`SumOfProducts`) only when the relevant set
+     * **wildcards** every repeatable level of the path — `ALL_SEMANTIC` at the starred group, or a relevant
+     * ANCESTOR group (whose descent makes all rows relevant). Enumerating concrete rows — even ALL of them — is
+     * NOT enough (kernel-probed: the `*` reference is "fully known" only via a wildcard). A relevant entity covers
+     * the star iff it is an ancestor-or-equal prefix AND wildcards every repeatable level it itself specifies
+     * (levels deeper than it are covered by group descent). `FirstFilled` does NOT use this — it is order-aware.
+     */
+    private fun starRelevantOf(relevant: Set<RelevantEntity>): (String) -> Boolean = { starPath ->
+        val sParts = pathParts(starPath)
+        relevant.any { r ->
+            val rParts = pathParts(r.path)
+            rParts.size <= sParts.size && rParts == sParts.take(rParts.size) &&
+                r.indices.indices.all { i ->
+                    r.indices[i] == RelevantEntity.ALL || "/" + rParts.take(i + 1).joinToString("/") !in model.repeatable
+                }
+        }
+    }
 
     /** The relevant set a [io.github.mbackschat.a12.dm.interpreter.model.CustomCondition] sees in PARTIAL mode —
      *  the kernel feeds it the caller's relevant entities (wildcards preserved, groups NOT expanded) **plus the
@@ -174,7 +194,7 @@ class DmInterpreter @JvmOverloads constructor(
      * field's relevance.
      */
     private fun validateWith(doc: Document, locale: String, isRelevant: Relevance,
-            customRelevant: Set<FieldPointer>? = null): ValidationOutcome {
+            customRelevant: Set<FieldPointer>? = null, starRelevant: ((String) -> Boolean)? = null): ValidationOutcome {
         val dup = duplicateIndexCells(doc, isRelevant)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
         val messages = (formalErrors(doc, locale, isRelevant) + mandatoryErrors(doc, locale, isRelevant)
                 + uniquenessMessages(dup, locale, isRelevant) + overRepetitionMessages(doc, locale, isRelevant)).toMutableList()
@@ -184,7 +204,7 @@ class DmInterpreter @JvmOverloads constructor(
             try {
                 val rnu = repetitionNotUnique(rule)
                 messages += if (rnu != null) repetitionNotUniqueMessages(rule, rnu, doc, locale, isRelevant)
-                else messagesFor(rule, doc, locale, dup, cache, isRelevant, customRelevant)
+                else messagesFor(rule, doc, locale, dup, cache, isRelevant, customRelevant, starRelevant)
             } catch (e: UnsupportedConstructException) {
                 unsupported += UnsupportedRule(rule.path, e.message ?: "unsupported construct")
             }
@@ -195,7 +215,7 @@ class DmInterpreter @JvmOverloads constructor(
         for (comp in model.computations) {
             val implicit = implicitComputationRule(comp) ?: continue
             try {
-                messages += messagesFor(implicit, doc, locale, dup, cache, isRelevant, customRelevant)
+                messages += messagesFor(implicit, doc, locale, dup, cache, isRelevant, customRelevant, starRelevant)
             } catch (e: UnsupportedConstructException) {
                 unsupported += UnsupportedRule(comp.targetPath, e.message ?: "unsupported computation validation")
             }
@@ -627,8 +647,8 @@ class DmInterpreter @JvmOverloads constructor(
     /** Every firing of one rule across its iteration-scope rows, as [Message]s (suppressed rows produce none). */
     private fun messagesFor(rule: RuleDef, doc: Document, locale: String, dup: Set<Pair<String, List<Int>>>,
             cache: FormalCache, isRelevant: Relevance = ALL_RELEVANT,
-            customRelevant: Set<FieldPointer>? = null): List<Message> =
-        rowOutcomes(rule, doc, locale, dup, cache, isRelevant, customRelevant)
+            customRelevant: Set<FieldPointer>? = null, starRelevant: ((String) -> Boolean)? = null): List<Message> =
+        rowOutcomes(rule, doc, locale, dup, cache, isRelevant, customRelevant, starRelevant)
             .filterIsInstance<RowOutcome.Fired>().map { it.message }
 
     /** The per-row outcome of one rule: fired (with its message), passed, or suppressed (which field/code). */
@@ -640,7 +660,7 @@ class DmInterpreter @JvmOverloads constructor(
 
     private fun rowOutcomes(rule: RuleDef, doc: Document, locale: String, dup: Set<Pair<String, List<Int>>>,
             cache: FormalCache, isRelevant: Relevance = ALL_RELEVANT,
-            customRelevant: Set<FieldPointer>? = null): List<RowOutcome> {
+            customRelevant: Set<FieldPointer>? = null, starRelevant: ((String) -> Boolean)? = null): List<RowOutcome> {
         val ast = condAstOf(rule)
         val refs = nonStarredRefs(ast).distinct()
         val errorPath = resolveErrorPath(rule)
@@ -661,11 +681,13 @@ class DmInterpreter @JvmOverloads constructor(
                     val reps = ctx.repsOf(path)   // computed once, reused for the formal check AND relevance
                     formalErrorAt(path, reps, ctx, dup, cache) != null || !isRelevant(path, reps)
                 },
-                // Partial validation only: a star-aggregate cell that is not relevant makes the aggregate Unknown
-                // (IF35). Null in full validation, so the gate (and its starCells call) is skipped entirely.
+                // Partial validation only: per-cell relevance, for FirstFilled's order-aware gate (IF42); null in
+                // full validation, so the gate is skipped entirely (the flat-spike `RepDoc` path is untouched).
                 cellRelevant = if (isRelevant === ALL_RELEVANT) null else { path, reps -> isRelevant(path, reps) },
                 // The relevant set a CustomCondition sees — null in full, the caller's set + globals in partial (IF38).
-                customRelevant = customRelevant)
+                customRelevant = customRelevant,
+                // Partial validation only: whether an all-rows aggregate's star is wildcard-relevant (IF42).
+                starRelevant = starRelevant)
             // ONE typed walk per row (the fired MsgType, or null if it doesn't fire) — firedType != null ⟺ the
             // rule fires (truth == TRUE), and the value IS the polarity. The walk is LAZY-polarity: it skips the
             // VALUE/OMISSION typing on non-firing nodes (the kernel types only firing rows), measured faster in

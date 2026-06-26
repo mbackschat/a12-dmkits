@@ -67,6 +67,11 @@ class Interpreter(
      *  IF35). **Null in full validation** — the gate is skipped entirely (no `starCells` call, so the flat-spike
      *  `RepDoc` context is unaffected). [DmInterpreter] supplies it only for partial validation. */
     private val cellRelevant: ((String, List<Int>) -> Boolean)? = null,
+    /** Partial validation only: whether an ALL-ROWS aggregate's starred path is **wildcard-relevant** — the
+     *  kernel evaluates `Sum`/`Max`/`Min`/`NumberOfDifferentValues`/`SumOfProducts` only when the relevant set
+     *  WILDCARDS the starred level; concrete per-row enumeration (even of all rows) is NOT enough (IF42).
+     *  `FirstFilled` does NOT use this (it is order-aware via [cellRelevant]). **Null in full validation.** */
+    private val starRelevant: ((String) -> Boolean)? = null,
     /** Partial validation only: the relevant entity set passed to a [CustomCondition]'s `check` (the kernel's
      *  `relevantEntities` — `MainValidatorController` feeds it `getAllPruefungsrelevanteEntitiesExtern`). **Null
      *  in full validation** (the kernel passes `null` there, "all relevant"); a partial validation supplies the
@@ -724,16 +729,18 @@ class Interpreter(
     }
 
     private fun evalFunc(f: Expr.Func): Val {
-        // Partial validation only (cellRelevant != null): a starred aggregate whose star path has ANY non-relevant
-        // cell is UNKNOWN — the kernel treats the aggregate as non-evaluable under a subset relevant set (it does
-        // NOT apply directional 3VL to the non-relevant cells, kernel-probed; IF35). Skipped in full validation.
-        if (cellRelevant != null) {
+        val op = FunctionOp.byName(f.name)
+        // Partial validation only: an ALL-ROWS starred aggregate (Sum/Max/Min/distinct/sum-of-products) is
+        // UNKNOWN unless the relevant set WILDCARDS its starred level — concrete per-row enumeration, even of all
+        // rows, is not enough (kernel-probed, IF42). `FirstFilled` is EXEMPT here (handled order-aware in its
+        // branch). Full validation: starRelevant is null → skipped. O(relevant-set), no per-cell scan.
+        if (starRelevant != null && op != FunctionOp.FIRST_FILLED_VALUE) {
             f.args.forEach { arg ->
                 val sp = (arg as? Expr.Star)?.path
-                if (sp != null && ctx.starCells(sp).any { !cellRelevant.invoke(sp, it.first) }) return Val.Unknown
+                if (sp != null && !starRelevant.invoke(sp)) return Val.Unknown
             }
         }
-        return when (FunctionOp.byName(f.name)) {
+        return when (op) {
         // operand-list forms: every operand counts (an empty number arrives as the substituted 0)
         FunctionOp.MIN -> combine(f.args.map { evalExpr(it) }) { it.minWithOrNull(ORDER) ?: Val.Unknown }
         FunctionOp.MAX -> combine(f.args.map { evalExpr(it) }) { it.maxWithOrNull(ORDER) ?: Val.Unknown }
@@ -834,7 +841,7 @@ class Interpreter(
         // FirstFilledValue: the first FILLED value in row order (empties already dropped by `star`). NOT
         // `combine` — a later malformed element is invisible; but if the first filled one is malformed it
         // arrives as Unknown, so the comparison is Unknown and the rule is suppressed. No filled row → Unknown.
-        FunctionOp.FIRST_FILLED_VALUE -> starVals(f).firstOrNull() ?: Val.Unknown
+        FunctionOp.FIRST_FILLED_VALUE -> firstFilledValue(f)
         // NumberOfValueInFields(value In f1, f2, …): count the FILLED fields equal to the constant.
         FunctionOp.NUMBER_OF_VALUE_IN_FIELDS -> numberOfValueInFields(f.args)
         // RangeAsString/RangeAsNumber(field, s, e): a substring of a STRING field by 1-based inclusive range.
@@ -1093,6 +1100,20 @@ class Interpreter(
     /** Epoch day of a date-valued expression (ISO text), or null if empty/malformed. */
     private fun epochOf(e: Expr): Long? = (coerceDate(evalExpr(e)) as? Val.Txt)?.let { epochDay(it.v) }
 
+    /** `FirstFilled(G* / f)` — the first FILLED cell's value in row order. In PARTIAL validation it is order-aware
+     *  (IF42): a NON-relevant cell encountered BEFORE the first filled cell makes the result UNKNOWN (its
+     *  filledness is unknown, so we cannot skip past it); the first relevant-FILLED cell's value wins. Full
+     *  validation (or a non-star / Having operand): the plain first-filled value. */
+    private fun firstFilledValue(f: Expr.Func): Val {
+        val star = f.args.singleOrNull() as? Expr.Star
+        if (cellRelevant == null || star == null || star.having != null) return starVals(f).firstOrNull() ?: Val.Unknown
+        for ((reps, value) in ctx.starCells(star.path)) {
+            if (!cellRelevant.invoke(star.path, reps)) return Val.Unknown
+            if (value != null) return value
+        }
+        return Val.Unknown
+    }
+
     private fun starVals(f: Expr.Func): List<Val> {
         val star = f.args.single() as Expr.Star
         if (star.having == null) return ctx.star(star.path)
@@ -1100,7 +1121,7 @@ class Interpreter(
         // filled values (empties dropped, like `star`) — the aggregate then consumes only those.
         val group = star.path.substringBeforeLast('/')
         return ctx.rowContexts(group)
-            .filter { rc -> Interpreter(rc, clock, baseYear, indexFields, predefinedTypes, customConditions, customErrorField, invalid, customRelevant = customRelevant).fires(star.having) }
+            .filter { rc -> Interpreter(rc, clock, baseYear, indexFields, predefinedTypes, customConditions, customErrorField, invalid, customRelevant = customRelevant, starRelevant = starRelevant, cellRelevant = cellRelevant).fires(star.having) }
             .mapNotNull { rc -> if (rc.filled(star.path)) rc.field(star.path) else null }
     }
 
