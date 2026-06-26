@@ -314,16 +314,19 @@ private fun numberFormalError(raw: String, scale: Int?, leadingZerosAllowed: Boo
  * illegal. A leading/trailing blank is reported even when the type check would otherwise pass or fail differently.
  */
 private fun baselineValueError(raw: String, legalCharset: LegalCharset): FormalErrorCode? = when {
-    !allCodepointsLegal(raw, legalCharset) -> FormalErrorCode.CHARSET
+    !charsetLegal(raw, legalCharset) -> FormalErrorCode.CHARSET
     raw.startsWith(' ') -> FormalErrorCode.LEADING_BLANK
     raw.endsWith(' ') -> FormalErrorCode.TRAILING_BLANK
     else -> null
 }
 
-/** Whether every Unicode code point in [s] is legal per [charset] — a cross-platform code-point walk (combining
- *  UTF-16 surrogate pairs, since `String.codePoints()` is JVM-only). The [LegalCharset.BMP] default rejects any
- *  supplementary-plane code point (i.e. any surrogate); a custom charset (e.g. DIN 91379) narrows it further. */
-private fun allCodepointsLegal(s: String, charset: LegalCharset): Boolean {
+/** Whether every Unicode code point in [s] is legal per [charset]. This runs in the formal-error HOT path (per
+ *  valued field on every validation), so the default [LegalCharset.BMP] takes a fast path: BMP ≡ "no
+ *  supplementary-plane char" ≡ no UTF-16 surrogate — a tight inline char scan with NO per-code-point callback.
+ *  Only a CUSTOM charset (e.g. DIN 91379) pays the per-code-point walk (combining surrogate pairs, since
+ *  `String.codePoints()` is JVM-only). */
+private fun charsetLegal(s: String, charset: LegalCharset): Boolean {
+    if (charset === LegalCharset.BMP) return s.none { it.isHighSurrogate() || it.isLowSurrogate() }
     var i = 0
     while (i < s.length) {
         val c = s[i]
