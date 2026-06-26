@@ -214,6 +214,8 @@ dmtool -m order.dm.json model seed    --rows /Order/Items:2        # generate a 
 
 This is the empirical check a static "is it valid?" can't give — it's how you confirm a rule's *polarity* on concrete data. `rule test` scopes it to one rule with a three-way verdict, distinguishing a genuine **pass** from a rule the engine **suppressed** because a field it references is formally invalid. These verbs run on a **native-safe interpreter** by default (it reproduces the kernel's runtime semantics, verified rule-for-rule); `--kernel` switches to the A12 kernel on the JVM.
 
+> **The interpreter is kernel-exact *and* fast.** A clean-room, kernel-free evaluator (Kotlin, runs in the native image *and* the browser) whose results are checked rule-for-rule against the real A12 kernel by a differential test suite + a model-driven fuzzer. It scales **linearly** — and on the JVM it measures **competitive-to-faster than the kernel at every rule count and document size**, by a wide margin on large documents (the kernel goes super-linear where the interpreter stays flat). Method + full numbers: [`docs/INTERPRETER-PERFORMANCE.md`](docs/INTERPRETER-PERFORMANCE.md).
+
 ### Edit, with a preview diff
 
 ```sh
