@@ -8,6 +8,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -25,6 +29,11 @@ class NumberOfFilledDiffTest {
         FieldDef(SIB, Kind.NUMBER, scale = 2), FieldDef(SA_STREET, Kind.STRING), FieldDef(BA_PC, Kind.STRING),
     )
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to
+    // BOTH engines — no free-text condition literals (renderer emits absolute paths; both engines accept them).
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     private fun rule(cond: String, errField: String) =
         DmInterpreter(ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "NF", errField))))
 
@@ -36,7 +45,7 @@ class NumberOfFilledDiffTest {
     @Test
     fun numberOfFilledFieldsInComparison() {
         // NumberOfFilledFields(CustomerName, ProductCode, Quantity) < 2 → fires at count 0 and 1.
-        val cond = "NumberOfFilledFields(CustomerName, ProductCode, Quantity) < 2"
+        val cond = render(Dsl.numberOfFilledFields(m.field(CN), m.field(PC), m.field(Q)).lt(2))
         fun iDoc(vararg f: String) = Document(kinds).field(SIB, "1.00", 1, 1).also { d -> f.forEach { d.field(it, "x", 1, 1) } }
         fun kDoc(vararg f: String) = RuntimeLaws.doc().group("/Order", 1).field(SIB, "1.00", 1, 1).also { d -> f.forEach { d.field(it, "x", 1, 1) } }
         agree(cond, "../CustomerName", iDoc(), kDoc(), "count 0 < 2 fires")
@@ -48,7 +57,7 @@ class NumberOfFilledDiffTest {
     @Test
     fun numberOfFilledGroupsInComparison() {
         // NumberOfFilledGroups(ShippingAddress, BillingAddress) == 2 → fires only when both groups filled.
-        val cond = "NumberOfFilledGroups(ShippingAddress, BillingAddress) == 2"
+        val cond = render(Dsl.numberOfFilledGroups(m.group(SA), m.group(BA)).eq(2))
         fun iDoc(vararg g: String) = Document(kinds).field(SIB, "1.00", 1, 1)
             .also { d -> listOf(SA to SA_STREET, BA to BA_PC).forEach { (grp, mem) -> d.group(grp, 1, 1); if (grp in g) d.field(mem, "x", 1, 1, 1) } }
         fun kDoc(vararg g: String) = RuntimeLaws.doc().group("/Order", 1).field(SIB, "1.00", 1, 1)
@@ -61,7 +70,7 @@ class NumberOfFilledDiffTest {
     @Test
     fun firedComparisonPolarityMatchesKernel() {
         // The catalog form `< 2` firing at count 1 — its message polarity must match the kernel.
-        val cond = "NumberOfFilledFields(CustomerName, ProductCode, Quantity) < 2"
+        val cond = render(Dsl.numberOfFilledFields(m.field(CN), m.field(PC), m.field(Q)).lt(2))
         val i = Document(kinds).field(SIB, "1.00", 1, 1).field(CN, "x", 1, 1)
         val k = RuntimeLaws.doc().group("/Order", 1).field(SIB, "1.00", 1, 1).field(CN, "x", 1, 1)
         val kType = RuntimeLaws.typeOf(RuntimeLaws.withRule(order, "/Order", "R", "../CustomerName", "NF", cond), "NF", k).orElseThrow()

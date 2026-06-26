@@ -8,6 +8,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.eval.RepDoc
 import io.github.mbackschat.a12.dm.interpreter.dec
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertAll
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -24,6 +28,13 @@ class AggPolarityDiffTest {
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val kinds = mapOf(CN to Kind.STRING, IC to Kind.NUMBER, IS to Kind.STRING)
 
+    // The aggregate sub-condition fed to the kernel is authored with the rulekit typed DSL ([m]) and rendered —
+    // no free-text condition literals. The interpreter side still drives off the hand-built [ast]; only the
+    // [condText] (the agg after the `FieldFilled(CustomerName) And` prefix the helper prepends) changes.
+    private val m = BoundModel.ofJson(order)
+    private val itemCounts = m.flatten("/Order/Items*/Count")
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     private val filledCn = Cond.Pred("FieldFilled", listOf(Expr.Field(CN)))
     private fun ndvEq1() = Cond.And(
         filledCn,
@@ -38,11 +49,11 @@ class AggPolarityDiffTest {
     fun starredAggregateTypingAgreesWithKernel() {
         assertAll(
             typeDiff("ndv, empty operand → OMISSION", "ONE_SIZE",
-                "NumberOfDifferentValues(Items*/Count) == 1", ndvEq1(), listOf("5", null, "5")),
+                render(Dsl.numberOfDifferentValues(itemCounts).eq(1)), ndvEq1(), listOf("5", null, "5")),
             typeDiff("ndv, 3-of-50 instantiated → OMISSION (fillable tail)", "ONE_SIZE",
-                "NumberOfDifferentValues(Items*/Count) == 1", ndvEq1(), listOf("5", "5", "5")),
+                render(Dsl.numberOfDifferentValues(itemCounts).eq(1)), ndvEq1(), listOf("5", "5", "5")),
             typeDiff("sum, all 50 filled → VALUE (exhausted)", "TOTAL_LOW",
-                "Sum(Items*/Count) < 100", sumLt100(), List(50) { "1" }),
+                render(Dsl.sum(itemCounts).lt(100)), sumLt100(), List(50) { "1" }),
         )
     }
 

@@ -8,6 +8,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -23,6 +27,11 @@ class FieldListQuantifierDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val fields = listOf(FieldDef(CN, Kind.STRING), FieldDef(PC, Kind.STRING), FieldDef(SIB, Kind.NUMBER, scale = 0))
+
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. The list fields are `m.field(CN)` / `m.field(PC)` (absolute paths).
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
 
     /** Build the interpreter doc: the sibling filled (row evaluated) + the chosen list fields filled. */
     private fun iDoc(filled: Set<String>): Document {
@@ -47,45 +56,45 @@ class FieldListQuantifierDiffTest {
     }
 
     @Test fun noFieldFilled() {
-        val c = "NoFieldFilled(CustomerName, ProductCode)"
+        val c = render(Dsl.noFieldFilled(m.field(CN), m.field(PC)))
         agree(c, setOf(), "k=0 fires"); agree(c, setOf(CN), "k=1"); agree(c, setOf(CN, PC), "k=2")
     }
 
     @Test fun atLeastOneFieldFilled() {
-        val c = "AtLeastOneFieldFilled(CustomerName, ProductCode)"
+        val c = render(Dsl.atLeastOneFieldFilled(m.field(CN), m.field(PC)))
         agree(c, setOf(), "k=0"); agree(c, setOf(CN), "k=1 fires"); agree(c, setOf(CN, PC), "k=2 fires")
     }
 
     @Test fun moreThanOneFieldFilled() {
-        val c = "MoreThanOneFieldFilled(CustomerName, ProductCode)"
+        val c = render(Dsl.moreThanOneFieldFilled(m.field(CN), m.field(PC)))
         agree(c, setOf(), "k=0"); agree(c, setOf(CN), "k=1"); agree(c, setOf(CN, PC), "k=2 fires")
     }
 
     @Test fun notAllFieldsFilled() {
-        val c = "NotAllFieldsFilled(CustomerName, ProductCode)"
+        val c = render(Dsl.notAllFieldsFilled(m.field(CN), m.field(PC)))
         agree(c, setOf(), "k=0 fires"); agree(c, setOf(CN), "k=1 fires"); agree(c, setOf(CN, PC), "k=2")
     }
 
     @Test fun notExactlyOneFieldFilled() {
-        val c = "NotExactlyOneFieldFilled(CustomerName, ProductCode)"
+        val c = render(Dsl.notExactlyOneFieldFilled(m.field(CN), m.field(PC)))
         agree(c, setOf(), "k=0 fires"); agree(c, setOf(CN), "k=1"); agree(c, setOf(CN, PC), "k=2 fires")
     }
 
     @Test fun fieldsNotCollectivelyFilled() {
         // The trap: excludes the all-empty case (needs ≥1 filled), unlike the two siblings above.
-        val c = "FieldsNotCollectivelyFilled(CustomerName, ProductCode)"
+        val c = render(Dsl.fieldsNotCollectivelyFilled(m.field(CN), m.field(PC)))
         agree(c, setOf(), "k=0 does NOT fire"); agree(c, setOf(CN), "k=1 fires"); agree(c, setOf(CN, PC), "k=2")
     }
 
     @Test fun messageTypeMatchesKernel() {
         // For each quantifier, at a firing instance, the interpreter's polarity must equal the kernel's.
-        check("NoFieldFilled(CustomerName, ProductCode)", setOf())
-        check("AtLeastOneFieldFilled(CustomerName, ProductCode)", setOf(CN))
-        check("MoreThanOneFieldFilled(CustomerName, ProductCode)", setOf(CN, PC))
-        check("NotAllFieldsFilled(CustomerName, ProductCode)", setOf(CN))
-        check("NotExactlyOneFieldFilled(CustomerName, ProductCode)", setOf())        // k=0
-        check("NotExactlyOneFieldFilled(CustomerName, ProductCode)", setOf(CN, PC))  // k=2 — data-dependent?
-        check("FieldsNotCollectivelyFilled(CustomerName, ProductCode)", setOf(CN))
+        check(render(Dsl.noFieldFilled(m.field(CN), m.field(PC))), setOf())
+        check(render(Dsl.atLeastOneFieldFilled(m.field(CN), m.field(PC))), setOf(CN))
+        check(render(Dsl.moreThanOneFieldFilled(m.field(CN), m.field(PC))), setOf(CN, PC))
+        check(render(Dsl.notAllFieldsFilled(m.field(CN), m.field(PC))), setOf(CN))
+        check(render(Dsl.notExactlyOneFieldFilled(m.field(CN), m.field(PC))), setOf())        // k=0
+        check(render(Dsl.notExactlyOneFieldFilled(m.field(CN), m.field(PC))), setOf(CN, PC))  // k=2 — data-dependent?
+        check(render(Dsl.fieldsNotCollectivelyFilled(m.field(CN), m.field(PC))), setOf(CN))
     }
 
     private fun check(cond: String, filled: Set<String>) {

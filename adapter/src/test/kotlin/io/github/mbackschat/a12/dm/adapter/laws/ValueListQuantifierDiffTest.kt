@@ -7,6 +7,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -26,6 +30,11 @@ class ValueListQuantifierDiffTest {
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val fields = listOf(FieldDef(CN, Kind.STRING), FieldDef(PC, Kind.STRING))
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. The list fields are `m.str(CN)` / `m.str(PC)` (absolute paths).
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     /** Inject [cond] at /Order (error field [errorRel], referenced in [cond]); set cells; assert fired type agrees. */
     private fun agree(cond: String, errorRel: String, vararg cells: Pair<String, String?>, msg: String) {
         val model = RuntimeLaws.withRule(order, "/Order", "VQ", errorRel, "VQ", cond)
@@ -40,9 +49,10 @@ class ValueListQuantifierDiffTest {
         assertEquals(kernel, interp, "$msg  [kernel=$kernel interp=$interp]")
     }
 
-    private val atLeastOne = "AtLeastOneFieldValueIncludedInValueList(CustomerName, ProductCode In \"AB\", \"CD\")"
-    private val no = "NoFieldValueIncludedInValueList(CustomerName, ProductCode In \"AB\", \"CD\")"
-    private val notAll = "NotAllFieldValuesIncludedInValueList(CustomerName, ProductCode In \"AB\", \"CD\")"
+    private val vals = listOf("AB", "CD")
+    private val atLeastOne = render(Dsl.atLeastOneFieldValueIncludedInValueList(vals, m.str(CN), m.str(PC)))
+    private val no = render(Dsl.noFieldValueIncludedInValueList(vals, m.str(CN), m.str(PC)))
+    private val notAll = render(Dsl.notAllFieldValuesIncludedInValueList(vals, m.str(CN), m.str(PC)))
     private val cn = "../CustomerName"
 
     @Test fun atLeastOneSomeInListFiresValue() = agree(atLeastOne, cn, CN to "AB", PC to "XX", msg = "AB in list → fires VALUE")

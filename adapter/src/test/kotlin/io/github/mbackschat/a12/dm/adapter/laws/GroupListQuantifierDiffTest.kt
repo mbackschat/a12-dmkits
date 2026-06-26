@@ -8,6 +8,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -22,6 +26,11 @@ class GroupListQuantifierDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val fields = listOf(FieldDef(SA_STREET, Kind.STRING), FieldDef(BA_PC, Kind.STRING), FieldDef(CN, Kind.STRING))
+
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. The groups are `m.group(SA)` / `m.group(BA)` (absolute paths).
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
 
     private fun member(group: String) = if (group == SA) SA_STREET else BA_PC
 
@@ -45,36 +54,36 @@ class GroupListQuantifierDiffTest {
     }
 
     @Test fun allGroupsFilled() {
-        val c = "AllGroupsFilled(ShippingAddress, BillingAddress)"
+        val c = render(Dsl.allGroupsFilled(m.group(SA), m.group(BA)))
         agree(c, setOf(), "k=0"); agree(c, setOf(SA), "k=1"); agree(c, setOf(SA, BA), "k=2 fires")
     }
 
     @Test fun noGroupFilled() {
-        val c = "NoGroupFilled(ShippingAddress, BillingAddress)"
+        val c = render(Dsl.noGroupFilled(m.group(SA), m.group(BA)))
         agree(c, setOf(), "k=0 fires"); agree(c, setOf(SA), "k=1"); agree(c, setOf(SA, BA), "k=2")
     }
 
     @Test fun atLeastOneGroupFilled() {
-        val c = "AtLeastOneGroupFilled(ShippingAddress, BillingAddress)"
+        val c = render(Dsl.atLeastOneGroupFilled(m.group(SA), m.group(BA)))
         agree(c, setOf(), "k=0"); agree(c, setOf(SA), "k=1 fires"); agree(c, setOf(SA, BA), "k=2 fires")
     }
 
     @Test fun notAllGroupsFilled() {
-        val c = "NotAllGroupsFilled(ShippingAddress, BillingAddress)"
+        val c = render(Dsl.notAllGroupsFilled(m.group(SA), m.group(BA)))
         agree(c, setOf(), "k=0 fires"); agree(c, setOf(SA), "k=1 fires"); agree(c, setOf(SA, BA), "k=2")
     }
 
     @Test fun groupsNotCollectivelyFilled() {
-        val c = "GroupsNotCollectivelyFilled(ShippingAddress, BillingAddress)"
+        val c = render(Dsl.groupsNotCollectivelyFilled(m.group(SA), m.group(BA)))
         agree(c, setOf(), "k=0 does NOT fire"); agree(c, setOf(SA), "k=1 fires"); agree(c, setOf(SA, BA), "k=2")
     }
 
     @Test fun messageTypeMatchesKernel() {
-        check("AllGroupsFilled(ShippingAddress, BillingAddress)", setOf(SA, BA))
-        check("NoGroupFilled(ShippingAddress, BillingAddress)", setOf())
-        check("AtLeastOneGroupFilled(ShippingAddress, BillingAddress)", setOf(SA))
-        check("NotAllGroupsFilled(ShippingAddress, BillingAddress)", setOf(SA))
-        check("GroupsNotCollectivelyFilled(ShippingAddress, BillingAddress)", setOf(SA))
+        check(render(Dsl.allGroupsFilled(m.group(SA), m.group(BA))), setOf(SA, BA))
+        check(render(Dsl.noGroupFilled(m.group(SA), m.group(BA))), setOf())
+        check(render(Dsl.atLeastOneGroupFilled(m.group(SA), m.group(BA))), setOf(SA))
+        check(render(Dsl.notAllGroupsFilled(m.group(SA), m.group(BA))), setOf(SA))
+        check(render(Dsl.groupsNotCollectivelyFilled(m.group(SA), m.group(BA))), setOf(SA))
     }
 
     private fun check(cond: String, filled: Set<String>) {

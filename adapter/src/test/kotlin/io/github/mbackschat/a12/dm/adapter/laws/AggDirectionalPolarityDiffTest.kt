@@ -7,6 +7,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -27,10 +31,18 @@ class AggDirectionalPolarityDiffTest {
     )
     private val kinds = fields.associate { it.path to it.kind }
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to
+    // BOTH engines — no free-text condition literals (renderer emits absolute paths; both engines accept them).
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     /** `Sum(Items* / <field>) >= 0` over 3 filled Items rows (of 50 declared, leaving a fillable tail). */
     private fun agree(starField: String, msg: String) {
         val code = "SUMNN"
-        val cond = "FieldFilled(CustomerName) And Sum(Items*/${starField.substringAfterLast('/')}) >= 0"
+        val cond = render(
+            Dsl.fieldFilled(m.field(CN))
+                .and(Dsl.sum(m.flatten("/Order/Items*/${starField.substringAfterLast('/')}")).ge(0)),
+        )
         val model = RuntimeLaws.withRule(order, "/Order", code, "../CustomerName", code, cond)
         val kDoc = RuntimeLaws.doc().group("/Order", 1).field(CN, "Acme", 1, 1)
         val iDoc = Document(kinds, mapOf("/Order/Items" to 50), setOf(SQ)).field(CN, "Acme", 1, 1)

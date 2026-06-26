@@ -6,6 +6,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -25,6 +29,15 @@ class FieldValueCoercionDiffTest {
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val fields = listOf(FieldDef(QTY, Kind.NUMBER, scale = 0), FieldDef(RUSH, Kind.STRING))
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. `Dsl.fieldValueAsString`/`fieldValueAsNumber` are the coercions.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+    private val asStringEq5 =
+        render(m.field(QTY).filled().and(Dsl.fieldValueAsString(m.field(QTY)).eq("5")))
+    private val asNumberGe2 =
+        render(m.field(RUSH).filled().and(Dsl.fieldValueAsNumber(m.field(RUSH)).ge(2)))
+
     private fun agree(cond: String, errorRel: String, qty: String?, rush: String?, msg: String) {
         val kModel = RuntimeLaws.withRule(order, "/Order", "FC", errorRel, "FC", cond)
         val def = ModelDef(fields, listOf(RuleDef("/Order/FC", "/Order", cond, "FC", errorRel)))
@@ -39,15 +52,15 @@ class FieldValueCoercionDiffTest {
 
     // FieldValueAsString — the raw stored value as a string.
     @Test fun asStringMatchesRawValue() =
-        agree("""FieldFilled(Quantity) And FieldValueAsString(Quantity) == "5"""", "../Quantity", "5", null, "raw \"5\" == \"5\"")
+        agree(asStringEq5, "../Quantity", "5", null, "raw \"5\" == \"5\"")
     @Test fun asStringMismatchDoesNotFire() =
-        agree("""FieldFilled(Quantity) And FieldValueAsString(Quantity) == "5"""", "../Quantity", "7", null, "raw \"7\" != \"5\"")
+        agree(asStringEq5, "../Quantity", "7", null, "raw \"7\" != \"5\"")
 
     // FieldValueAsNumber — the numeric enum's code as a number.
     @Test fun asNumberOfEnumFires() =
-        agree("FieldFilled(RushLevel) And FieldValueAsNumber(RushLevel) >= 2", "../RushLevel", null, "2", "enum \"2\" → 2 >= 2")
+        agree(asNumberGe2, "../RushLevel", null, "2", "enum \"2\" → 2 >= 2")
     @Test fun asNumberOfEnumDoesNotFire() =
-        agree("FieldFilled(RushLevel) And FieldValueAsNumber(RushLevel) >= 2", "../RushLevel", null, "1", "enum \"1\" → 1, not >= 2")
+        agree(asNumberGe2, "../RushLevel", null, "1", "enum \"1\" → 1, not >= 2")
 
     private companion object {
         const val QTY = "/Order/Quantity"

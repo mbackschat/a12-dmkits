@@ -6,6 +6,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -24,6 +28,11 @@ class QuantifierMalformedDiffTest {
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val fields = listOf(FieldDef(QTY, Kind.NUMBER, scale = 0), FieldDef(BACK, Kind.NUMBER, scale = 0))
 
+    // The CONDITIONS are well-formed quantifiers, authored with the rulekit typed DSL ([m]) and rendered to the
+    // canonical string fed to BOTH engines; the malformed VALUES live in the doc-building below (unchanged).
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     /** One `/Order` instance with Quantity/Backorder per arg (null = empty), run the quantifier rule, compare firing. */
     private fun agree(code: String, cond: String, qty: String?, back: String?, msg: String) {
         val kModel = RuntimeLaws.withRule(order, "/Order", code, "../Quantity", code, cond)
@@ -40,27 +49,27 @@ class QuantifierMalformedDiffTest {
 
     // A malformed operand is UNKNOWN — it does NOT count toward a TRUE-requiring quantifier.
     @Test fun allFieldsFilledNeedsRealTrues() =
-        agree("AF", "AllFieldsFilled(Quantity, BackorderQuantity)", "5", "abc", "Backorder malformed → not all TRUE → not fire")
+        agree("AF", render(Dsl.allFieldsFilled(m.field(QTY), m.field(BACK))), "5", "abc", "Backorder malformed → not all TRUE → not fire")
     @Test fun atLeastOneNeedsARealTrue() =
-        agree("A1", "AtLeastOneFieldFilled(Quantity, BackorderQuantity)", "abc", null, "only operand malformed → t=0 → not fire")
+        agree("A1", render(Dsl.atLeastOneFieldFilled(m.field(QTY), m.field(BACK))), "abc", null, "only operand malformed → t=0 → not fire")
     @Test fun moreThanOneNeedsTwoTrues() =
-        agree("M1", "MoreThanOneFieldFilled(Quantity, BackorderQuantity)", "5", "abc", "one TRUE + one malformed → t=1 → not fire")
+        agree("M1", render(Dsl.moreThanOneFieldFilled(m.field(QTY), m.field(BACK))), "5", "abc", "one TRUE + one malformed → t=1 → not fire")
     @Test fun notExactlyOneWithMalformed() =
-        agree("X1", "NotExactlyOneFieldFilled(Quantity, BackorderQuantity)", "5", "abc", "t=1, f=0 → neither all-empty nor ≥2 → not fire")
+        agree("X1", render(Dsl.notExactlyOneFieldFilled(m.field(QTY), m.field(BACK))), "5", "abc", "t=1, f=0 → neither all-empty nor ≥2 → not fire")
     @Test fun fieldsNotCollectivelyNeedsATrue() =
-        agree("FC", "FieldsNotCollectivelyFilled(Quantity, BackorderQuantity)", "abc", null, "malformed + empty → no TRUE → not fire")
+        agree("FC", render(Dsl.fieldsNotCollectivelyFilled(m.field(QTY), m.field(BACK))), "abc", null, "malformed + empty → no TRUE → not fire")
 
     // A malformed operand keys off a real FALSE (empty) for these.
     @Test fun notAllFiresOnARealEmpty() =
-        agree("NA", "NotAllFieldsFilled(Quantity, BackorderQuantity)", "abc", null, "Backorder empty (FALSE) → fires; malformed Quantity irrelevant")
+        agree("NA", render(Dsl.notAllFieldsFilled(m.field(QTY), m.field(BACK))), "abc", null, "Backorder empty (FALSE) → fires; malformed Quantity irrelevant")
     @Test fun noFieldFilledWithMalformed() =
-        agree("NF", "NoFieldFilled(Quantity, BackorderQuantity)", "abc", null, "Quantity malformed (not FALSE) → not all-empty → not fire")
+        agree("NF", render(Dsl.noFieldFilled(m.field(QTY), m.field(BACK))), "abc", null, "Quantity malformed (not FALSE) → not all-empty → not fire")
 
     // All-valid / regression sanity (u = 0 reduces to the binary law).
     @Test fun allFieldsFilledFiresWhenBothValid() =
-        agree("AF", "AllFieldsFilled(Quantity, BackorderQuantity)", "5", "9", "both TRUE → fires")
+        agree("AF", render(Dsl.allFieldsFilled(m.field(QTY), m.field(BACK))), "5", "9", "both TRUE → fires")
     @Test fun notExactlyOneFiresWhenBothEmpty() =
-        agree("X1", "NotExactlyOneFieldFilled(Quantity, BackorderQuantity)", null, null, "both empty (f=n) → fires")
+        agree("X1", render(Dsl.notExactlyOneFieldFilled(m.field(QTY), m.field(BACK))), null, null, "both empty (f=n) → fires")
 
     private companion object {
         const val QTY = "/Order/Quantity"

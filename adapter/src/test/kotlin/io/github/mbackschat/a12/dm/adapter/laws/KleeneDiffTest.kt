@@ -8,6 +8,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -28,6 +31,11 @@ class KleeneDiffTest {
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val fields = listOf(FieldDef(A, Kind.NUMBER, scale = 0), FieldDef(B, Kind.NUMBER, scale = 0))
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. `conn` selects And vs Or over the two `[field] > 0` branches.
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+
     /** The value that forces `[field] > 0` to the wanted truth: 5 → TRUE, 0 → FALSE, `x` (malformed) → UNKNOWN. */
     private fun valueFor(t: Tri): String = when (t) {
         Tri.TRUE -> "5"
@@ -37,7 +45,9 @@ class KleeneDiffTest {
 
     /** For one connective and one (left, right) truth pair: kernel-fires == interp-fires == Kleene prediction. */
     private fun agree(conn: String, left: Tri, right: Tri, predicted: Boolean) {
-        val cond = "[Quantity] > 0 $conn [BackorderQuantity] > 0"
+        val q = m.num(A).gt(0)
+        val bq = m.num(B).gt(0)
+        val cond = render(if (conn == "And") q.and(bq) else q.or(bq))
         val kModel = RuntimeLaws.withRule(order, "/Order", "R", "../Quantity", "K", cond)
         val def = ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "K", "../Quantity")))
         val kDoc = RuntimeLaws.doc().group("/Order", 1)
