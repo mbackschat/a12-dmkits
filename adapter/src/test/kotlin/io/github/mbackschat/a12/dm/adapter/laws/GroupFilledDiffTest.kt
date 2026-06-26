@@ -6,6 +6,9 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -23,6 +26,12 @@ class GroupFilledDiffTest {
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val fields = listOf(FieldDef(STREET, Kind.STRING), FieldDef(CITY, Kind.STRING), FieldDef(CN, Kind.STRING))
 
+    // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
+    // engines — no free-text condition literals. `m.group(path).filled()` is GroupFilled (Kontext=Group).
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
+    private val SHIP = "/Order/ShippingAddress"
+
     private fun interpFires(cond: String, doc: Document): Boolean =
         DmInterpreter(ModelDef(fields, listOf(RuleDef("/Order/R", "/Order", cond, "GF", "../ShippingAddress/Street"))))
             .validate(doc).messages.any { it.code == "GF" }
@@ -32,7 +41,7 @@ class GroupFilledDiffTest {
 
     @Test
     fun groupFilledFiresWhenAMemberIsFilled() {
-        val cond = "GroupFilled(ShippingAddress)"
+        val cond = render(m.group(SHIP).filled())
         assertEquals(
             kernelFires(cond, RuntimeLaws.doc().group("/Order", 1).group("/Order/ShippingAddress", 1, 1)
                 .field(STREET, "Main St", 1, 1, 1)),
@@ -43,7 +52,7 @@ class GroupFilledDiffTest {
 
     @Test
     fun groupFilledDoesNotFireWhenEmpty() {
-        val cond = "GroupFilled(ShippingAddress)"
+        val cond = render(m.group(SHIP).filled())
         // CustomerName filled (row evaluated) but ShippingAddress empty → GroupFilled false → no fire.
         assertEquals(
             kernelFires(cond, RuntimeLaws.doc().group("/Order", 1).field(CN, "Acme", 1, 1)
@@ -55,7 +64,7 @@ class GroupFilledDiffTest {
 
     @Test
     fun groupNotFilledFiresWhenEmpty() {
-        val cond = "GroupNotFilled(ShippingAddress)"
+        val cond = render(m.group(SHIP).notFilled())
         assertEquals(
             kernelFires(cond, RuntimeLaws.doc().group("/Order", 1).field(CN, "Acme", 1, 1)
                 .group("/Order/ShippingAddress", 1, 1)),
@@ -66,7 +75,7 @@ class GroupFilledDiffTest {
 
     @Test
     fun groupNotFilledDoesNotFireWhenAMemberIsFilled() {
-        val cond = "GroupNotFilled(ShippingAddress)"
+        val cond = render(m.group(SHIP).notFilled())
         assertEquals(
             kernelFires(cond, RuntimeLaws.doc().group("/Order", 1).group("/Order/ShippingAddress", 1, 1)
                 .field(STREET, "Main St", 1, 1, 1)),
