@@ -244,6 +244,37 @@ public final class DslRenderer {
     }
 
     /** A field-list operand: its path, plus a {@code Having <filter>} clause for a filtered list. */
+    /**
+     * Render an arithmetic operand, wrapping it in a {@code { … }} group when its operator binds LOOSER than
+     * the parent's (so the parse round-trips). Precedence: {@code +}/{@code -} &lt; {@code *}/{@code /} &lt;
+     * {@code ^}. A same-precedence child needs a group only where associativity would otherwise re-parse it:
+     * the RIGHT operand of left-associative {@code -}/{@code /} ({@code a - {b - c}}), and the LEFT operand of
+     * right-associative {@code ^} ({@code {a ^ b} ^ c}). DEV-API-GAPS DG7 — without this, e.g.
+     * {@code times(plus(1, 1))} mis-rendered as {@code … * 1 + 1} (re-parsing to the wrong tree).
+     */
+    private String arithOperand(Calculation child, Arithmetic.Op parent, boolean isLeft) {
+        if (child instanceof Arithmetic a) {
+            int childPrec = arithPrec(a.op());
+            int parentPrec = arithPrec(parent);
+            boolean group = childPrec < parentPrec
+                    || (childPrec == parentPrec && !isLeft
+                            && (parent == Arithmetic.Op.SUBTRACT || parent == Arithmetic.Op.DIVIDE))
+                    || (childPrec == parentPrec && isLeft && parent == Arithmetic.Op.POWER);
+            if (group) {
+                return "{ " + render(child) + " }";
+            }
+        }
+        return render(child);
+    }
+
+    private static int arithPrec(Arithmetic.Op op) {
+        return switch (op) {
+            case ADD, SUBTRACT -> 1;
+            case MULTIPLY, DIVIDE -> 2;
+            case POWER -> 3;
+        };
+    }
+
     private String operand(FieldOperand op) {
         // a $ outer-iteration correlation on a bare reference (D13): NoFieldFilled($a, $b), or the value
         // side of an entity-valued value-list ($Group*/field). Applies to both FieldRef and FieldListRef.
@@ -312,7 +343,8 @@ public final class DslRenderer {
                     + "(" + renderArg(d.left()) + ", " + renderArg(d.right()) + ")";
             case DateShift s -> keyword(s.operatorId())
                     + "(" + renderArg(s.date()) + ", " + render(s.amount()) + ")";
-            case Arithmetic a -> render(a.left()) + " " + a.op().symbol() + " " + render(a.right());
+            case Arithmetic a -> arithOperand(a.left(), a.op(), true) + " " + a.op().symbol()
+                    + " " + arithOperand(a.right(), a.op(), false);
             case Rounding r -> keyword(r.operatorId()) + "(" + render(r.operand()) + ", " + r.decimalPlaces() + ")";
             case Concatenation c -> c.parts().stream().map(this::render)
                     .collect(java.util.stream.Collectors.joining(" + "));

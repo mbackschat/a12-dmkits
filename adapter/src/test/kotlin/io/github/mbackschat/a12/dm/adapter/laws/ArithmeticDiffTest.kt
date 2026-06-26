@@ -25,8 +25,8 @@ class ArithmeticDiffTest {
     private val kinds = mapOf(Q to Kind.NUMBER, BQ to Kind.NUMBER, CN to Kind.STRING)
 
     // Conditions are authored with the rulekit typed DSL ([m]) and rendered to the canonical string fed to BOTH
-    // engines (kernel injection + the interpreter parser) — no free-text condition literals, except where a
-    // DSL-EXEMPT note marks a shape the renderer cannot express (precedence-overriding curly braces).
+    // engines (kernel injection + the interpreter parser) — no free-text condition literals; the renderer now
+    // braces a looser-binding nested arithmetic operand (DG7), so precedence-overriding groups are expressible.
     private val m = BoundModel.ofJson(order)
     private fun render(c: Condition): String = DslRenderer().render(c)
 
@@ -42,9 +42,9 @@ class ArithmeticDiffTest {
         // multiplication binds tighter than addition: the flat render reproduces the natural-precedence text
         Case(render(m.num(Q).gt(m.num(BQ).asNumber().times(Dsl.number("2")).plus(1))), mapOf(Q to "21", BQ to "10")),
         Case(render(m.num(Q).gt(m.num(BQ).asNumber().times(Dsl.number("2")).plus(1))), mapOf(Q to "20", BQ to "10")),
-        // DSL-EXEMPT: curly-brace grouping overrides `*`-over-`+` precedence; the renderer emits flat infix
-        // (no `{ }` for nested arithmetic), so `[BQ] * {1 + 1}` cannot be expressed via the typed builder.
-        Case("[Quantity] > [BackorderQuantity] * {1 + 1}", mapOf(Q to "21", BQ to "10")),
+        // curly-brace grouping overrides `*`-over-`+` precedence: the renderer now braces a looser-binding
+        // nested operand (DG7), so `times(plus(1, 1))` renders `[BackorderQuantity] * { 1 + 1 }`.
+        Case(render(m.num(Q).gt(m.num(BQ).asNumber().times(Dsl.number("1").plus(1)))), mapOf(Q to "21", BQ to "10")),
         // empty numeric operand reads as 0 in arithmetic
         Case(render(m.field(CN).filled().and(m.num(Q).asNumber().plus(m.num(BQ).asNumber()).lt(1))), mapOf(CN to "Acme")),
     )

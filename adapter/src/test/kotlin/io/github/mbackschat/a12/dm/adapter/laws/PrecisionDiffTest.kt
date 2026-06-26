@@ -6,6 +6,10 @@ import io.github.mbackschat.a12.dm.interpreter.model.FieldDef
 import io.github.mbackschat.a12.dm.interpreter.model.Kind
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition
+import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -21,13 +25,18 @@ class PrecisionDiffTest {
 
     private val order = RuntimeLaws.model("models/order.dm.json")
     private val def = ModelDef(listOf(FieldDef(Q, Kind.NUMBER)), emptyList())
+    private val m = BoundModel.ofJson(order)
+    private fun render(c: Condition): String = DslRenderer().render(c)
 
-    /** `{ [Quantity] + <tiny> } <op> 0` over Quantity=0 — kernel and interpreter must agree on firing. */
+    /** `[Quantity] + <tiny> <op> 0` over Quantity=0 — kernel and interpreter must agree on firing. (Arithmetic
+     *  binds tighter than the comparison, so the bare operand is equivalent to the kernel's `{ … }` grouping.) */
     private fun agree(op: String, tiny: String, msg: String) {
-        // DSL-EXEMPT: the kernel's brace-grouped arithmetic operand `{ [Quantity] + <tiny> }` has no DSL form —
-        // the renderer never emits `{ }` and there is no grouped-Calculation node, so the typed DSL cannot
-        // reproduce this exact string. Authored free-text on purpose.
-        val cond = "{ [Quantity] + $tiny } $op 0"
+        val lhs = m.num(Q).asNumber().plus(Dsl.number(tiny))
+        val cond = render(when (op) {
+            "==" -> lhs.eq(0)
+            ">" -> lhs.gt(0)
+            else -> error("unhandled op $op")
+        })
         val kModel = RuntimeLaws.withRule(order, "/Order", "Prec", "../Quantity", "PREC", cond)
         val defWithRule = ModelDef(def.fields, listOf(RuleDef("/Order/Prec", "/Order", cond, "PREC", "../Quantity")))
 
