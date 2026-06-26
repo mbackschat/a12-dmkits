@@ -323,7 +323,7 @@ class Interpreter(
         // (the implicit computation-validation) is unordered; fall back to the symmetric fillability (the answer
         // is discarded unless the rule fires with both present, where symmetric → VALUE is correct).
         if (!orderable(lv) || !orderable(rv)) return l.canGrow || l.canShrink || r.canGrow || r.canShrink
-        return if (vglCompare(lv, rv) < 0) l.canGrow || r.canShrink else l.canShrink || r.canGrow
+        return if (ValCompare.language(lv, rv) < 0) l.canGrow || r.canShrink else l.canShrink || r.canGrow
     }
 
     private fun orderable(v: Val): Boolean = v is Val.Num || v is Val.Txt
@@ -592,23 +592,11 @@ class Interpreter(
         return when (c.op) {
             CmpOp.EQ -> Tri.of(eq(l, r))
             CmpOp.NE -> Tri.of(!eq(l, r))
-            CmpOp.LT -> Tri.of(vglCompare(l, r) < 0)
-            CmpOp.LE -> Tri.of(vglCompare(l, r) <= 0)
-            CmpOp.GT -> Tri.of(vglCompare(l, r) > 0)
-            CmpOp.GE -> Tri.of(vglCompare(l, r) >= 0)
+            CmpOp.LT -> Tri.of(ValCompare.language(l, r) < 0)
+            CmpOp.LE -> Tri.of(ValCompare.language(l, r) <= 0)
+            CmpOp.GT -> Tri.of(ValCompare.language(l, r) > 0)
+            CmpOp.GE -> Tri.of(ValCompare.language(l, r) >= 0)
         }
-    }
-
-    /**
-     * The kernel's language comparison (`BedingungsOperatorHelper.vergleiche` / `vergleicheSTRING`): a NUMBER
-     * pair is rounded to **scale 19** `HALF_UP` first (`VkBigDecimal.DEFAULT_SCALE`) — observable only beyond
-     * 19 fractional digits (e.g. a scale-10 × scale-10 product); strings/dates compare lexicographically.
-     * Distinct from [ORDER] (`min`/`max` *selection*), which the kernel does at full precision.
-     */
-    private fun vglCompare(l: Val, r: Val): Int = when {
-        l is Val.Num && r is Val.Num -> l.v.compareScaled19(r.v)
-        l is Val.Txt && r is Val.Txt -> l.v.compareTo(r.v)
-        else -> error("incomparable values $l vs $r")
     }
 
     private fun evalExpr(e: Expr): Val = when (e) {
@@ -742,12 +730,12 @@ class Interpreter(
         }
         return when (op) {
         // operand-list forms: every operand counts (an empty number arrives as the substituted 0)
-        FunctionOp.MIN -> combine(f.args.map { evalExpr(it) }) { it.minWithOrNull(ORDER) ?: Val.Unknown }
-        FunctionOp.MAX -> combine(f.args.map { evalExpr(it) }) { it.maxWithOrNull(ORDER) ?: Val.Unknown }
+        FunctionOp.MIN -> combine(f.args.map { evalExpr(it) }) { it.minWithOrNull(ValCompare.ORDER) ?: Val.Unknown }
+        FunctionOp.MAX -> combine(f.args.map { evalExpr(it) }) { it.maxWithOrNull(ValCompare.ORDER) ?: Val.Unknown }
         // starred aggregates: empties are SKIPPED (Sum substitutes 0 = same result; Max/distinct ignore)
         FunctionOp.SUM -> combine(starVals(f)) { vs -> Val.Num(vs.fold(DEC_ZERO) { a, b -> a + num(b) }) }
-        FunctionOp.MAX_VALUE -> combine(starVals(f)) { it.maxWithOrNull(ORDER) ?: Val.Unknown }
-        FunctionOp.MIN_VALUE -> combine(starVals(f)) { it.minWithOrNull(ORDER) ?: Val.Unknown }
+        FunctionOp.MAX_VALUE -> combine(starVals(f)) { it.maxWithOrNull(ValCompare.ORDER) ?: Val.Unknown }
+        FunctionOp.MIN_VALUE -> combine(starVals(f)) { it.minWithOrNull(ValCompare.ORDER) ?: Val.Unknown }
         FunctionOp.NUMBER_OF_DIFFERENT_VALUES -> combine(starVals(f)) { vs ->
             // Distinct count by numeric equality (compareTo, scale-insensitive). Sort + count adjacent-distinct
             // is O(n log n); the prior "linear scan of the distinct-so-far per element" was O(n²) — a latent
@@ -1165,14 +1153,5 @@ class Interpreter(
 
         /** `RangeAsNumber` parses its substring ONLY when it is a run of digits (kernel `\d+`); else the value is 0. */
         val DIGITS = Regex("""\d+""")
-
-        /** Orders comparable values: numbers numerically, text lexicographically (ISO dates → chronological). */
-        val ORDER = Comparator<Val> { a, b ->
-            when {
-                a is Val.Num && b is Val.Num -> a.v.compareTo(b.v)
-                a is Val.Txt && b is Val.Txt -> a.v.compareTo(b.v)
-                else -> error("incomparable values $a vs $b")
-            }
-        }
     }
 }
