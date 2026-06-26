@@ -465,18 +465,28 @@ class DmInterpreter @JvmOverloads constructor(
     }
 
     /** One computed-field outcome for [comp] from its evaluated [v]: VALUE (resolved, empty-as-0 applies) / CLEARED. */
-    private fun toComputed(comp: ComputationDef, v: Val): Computed = when (v) {
-        is Val.Num -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v.display())
-        // A computed DATE is rendered to the TARGET field's declared format (the kernel stores a computed date
-        // in the field's format — `AddYears(...)` into a `dd.MM.yyyy` field yields `30.06.2026`, not ISO; IF33).
-        // Other Val.Txt kinds (STRING, and DATE_TIME — no datetime re-formatter yet) pass through unchanged.
-        is Val.Txt -> Computed(comp.targetPath, ComputeOutcome.VALUE, renderScalarValue(v.v, comp.targetPath))
-        is Val.Bool -> Computed(comp.targetPath, ComputeOutcome.VALUE, v.v.toString())
-        is Val.Unknown -> Computed(comp.targetPath, ComputeOutcome.CLEARED)
-        // A computed date-RANGE (`DateRange(start, end)`) — rendered to the TARGET field's (format, separator),
-        // so `2024-06-01`/`2024-06-30` → `01.06.2024-30.06.2024` for a `dd.MM.yyyy`-`-` CoverageWindow. Falls
-        // back to ISO `start/end` if the target declares no range config.
-        is Val.Range -> Computed(comp.targetPath, ComputeOutcome.VALUE, renderRange(v, comp.targetPath))
+    private fun toComputed(comp: ComputationDef, v: Val): Computed {
+        // Render the computed value to the TARGET field's stored form: a Num → canonical decimal; a DATE Txt →
+        // the field's date format (IF33; `AddYears(...)` into `dd.MM.yyyy` → `30.06.2026`); a date-RANGE → the
+        // field's (format, separator). An Unknown computes nothing → CLEARED.
+        val rendered = when (v) {
+            is Val.Num -> v.v.display()
+            is Val.Txt -> renderScalarValue(v.v, comp.targetPath)
+            is Val.Bool -> v.v.toString()
+            is Val.Range -> renderRange(v, comp.targetPath)
+            is Val.Unknown -> return Computed(comp.targetPath, ComputeOutcome.CLEARED)
+        }
+        return Computed(comp.targetPath, computedOutcome(comp.targetPath, rendered), rendered)
+    }
+
+    /** A computed value's bucket: ERRORED when it is formally INVALID for the target field (e.g. a number out of
+     *  the declared range — the kernel returns the value but flags it `getComputedFieldInstancesWithErrors`, IF34);
+     *  else VALUE. The value is returned either way. Runs the SAME per-cell formal check a stored value gets. */
+    private fun computedOutcome(targetPath: String, rendered: String): ComputeOutcome {
+        val kind = model.kinds[targetPath] ?: return ComputeOutcome.VALUE
+        val invalid = formalError(kind, rendered, model.scaleOf(targetPath), model.dateLikeFormatOf(targetPath),
+            model.datePrecisionOf(targetPath), model.rangeSeparatorOf(targetPath), model.constraintsOf(targetPath)) != null
+        return if (invalid) ComputeOutcome.ERRORED else ComputeOutcome.VALUE
     }
 
     /**

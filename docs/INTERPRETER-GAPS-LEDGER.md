@@ -25,7 +25,7 @@ A systematic **7-surface gap audit (2026-06-26, kernel-source-verified)** found 
 ### compute()
 | code | item | status / action | detail |
 |---|---|---|---|
-| **IG13** | `compute()` has **no operand-formal-error gating**: `ComputeOutcome.ERRORED` has zero producers, no out-of-range computed-value bucket, no cascade-skip on an invalid dependency *(probe the exact bucketing)* | open — a computation over a malformed/out-of-range operand computes a **wrong VALUE** (empty-as-0 on the `Unknown`'d operand) where the kernel skips/errors the dependent. | `DmInterpreter.kt:403-453`, `Model.kt:448`; kernel `IDocumentRtService.compute` javadoc |
+| **IG13** | `compute()` **cascade-skip on an invalid dependency** *(residual)* | open (narrowed 2026-06-26) — the out-of-range ERRORED bucket shipped (IF34: a formally-invalid computed value → ERRORED, value returned); empty-operand→0 is parity. What remains: the kernel SKIPS a computation that depends (directly/indirectly) on an errored computed field, while the interpreter still overlays the errored value — so a *dependent* computation diverges. | `DmInterpreter.kt` compute overlay (line ~444) |
 | **IG19** | `toComputed` doesn't reformat a **DATE_TIME** computed result to a non-ISO target datetime format *(probe — unverified)* | open (narrowed 2026-06-26) — the DATE case shipped (IF33: a computed date → target format) and the number-scale case was **parity** (kernel strips like the interpreter, `ComputeDiffTest`). What remains: a computed DATE_TIME into a custom datetime-format target has no re-formatter; the divergence is **unverified** (probe before building — it may be parity if the format is ISO-like). | `DmInterpreter.renderScalarValue` |
 
 ### Model loader (kernel-honored DM-JSON keys the loader drops)
