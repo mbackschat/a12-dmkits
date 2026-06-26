@@ -67,6 +67,12 @@ class Interpreter(
      *  IF35). **Null in full validation** — the gate is skipped entirely (no `starCells` call, so the flat-spike
      *  `RepDoc` context is unaffected). [DmInterpreter] supplies it only for partial validation. */
     private val cellRelevant: ((String, List<Int>) -> Boolean)? = null,
+    /** Partial validation only: the relevant entity set passed to a [CustomCondition]'s `check` (the kernel's
+     *  `relevantEntities` — `MainValidatorController` feeds it `getAllPruefungsrelevanteEntitiesExtern`). **Null
+     *  in full validation** (the kernel passes `null` there, "all relevant"); a partial validation supplies the
+     *  caller's relevant entities + the auto-added global fields, wildcards preserved. So a relevance-aware
+     *  custom condition can return false when its fields are not relevant (IF38). [DmInterpreter] supplies it. */
+    private val customRelevant: Set<FieldPointer>? = null,
 ) {
 
     fun fires(cond: Cond): Boolean = eval(cond) == Tri.TRUE
@@ -421,8 +427,9 @@ class Interpreter(
     /**
      * `CustomCondition <name>` — delegate to the consumer-supplied [CustomCondition] (the kernel's
      * `ICustomCondition` SPI). Fires iff `check` returns true; an **unregistered** name → the rule is reported
-     * unsupported (fail-fast). Passes the row's data view + the rule's error field; `relevant = null` (full
-     * validation) and `formallyIncorrect` = the row's formally-invalid fields, mirroring the kernel's call.
+     * unsupported (fail-fast). Passes the row's data view + the rule's error field; [customRelevant] (null in
+     * full validation, the relevant set in partial — IF38) and `formallyIncorrect` = the row's formally-invalid
+     * fields, mirroring the kernel's call.
      */
     private fun evalCustom(c: Cond.Custom): Tri {
         val condition = customConditions[c.name]
@@ -431,7 +438,7 @@ class Interpreter(
             ?: throw UnsupportedConstructException("custom condition \"${c.name}\" needs the rule's error field — unavailable in this context")
         val data = ctx.customConditionData()
         val formallyIncorrect = data.fields().filter { invalid(it.path) }.toSet()
-        return Tri.of(condition.check(data, relevant = null, formallyIncorrect = formallyIncorrect, errorField = errorField))
+        return Tri.of(condition.check(data, relevant = customRelevant, formallyIncorrect = formallyIncorrect, errorField = errorField))
     }
 
     private fun evalPred(p: Cond.Pred): Tri {
@@ -1093,7 +1100,7 @@ class Interpreter(
         // filled values (empties dropped, like `star`) — the aggregate then consumes only those.
         val group = star.path.substringBeforeLast('/')
         return ctx.rowContexts(group)
-            .filter { rc -> Interpreter(rc, clock, baseYear, indexFields, predefinedTypes, customConditions, customErrorField, invalid).fires(star.having) }
+            .filter { rc -> Interpreter(rc, clock, baseYear, indexFields, predefinedTypes, customConditions, customErrorField, invalid, customRelevant = customRelevant).fires(star.having) }
             .mapNotNull { rc -> if (rc.filled(star.path)) rc.field(star.path) else null }
     }
 

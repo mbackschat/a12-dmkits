@@ -414,6 +414,14 @@ public final class RuntimeLaws {
 
     /** Partial validation — every message the kernel raises for the given {@code relevant} entity set. */
     static List<Msg> messagesPart(String modelJson, Doc doc, Set<Relevant> relevant) {
+        return messagesPart(modelJson, doc, relevant, Map.of());
+    }
+
+    /** Partial validation WITH custom conditions registered — the {@code validatePart} twin of
+     *  {@link #validateWithConditions}. The relevant set passed to a {@link ICustomCondition} is what the
+     *  IG10 differential probes (the kernel feeds it the partial relevant entities, null for full). */
+    static List<Msg> messagesPart(String modelJson, Doc doc, Set<Relevant> relevant,
+            Map<String, ICustomCondition> customConditions) {
         IDocumentModel model = expandedModel(modelJson);
         IDocumentModelResolver resolver = id -> model;
         DocumentServiceFactory dsf = new DocumentServiceFactory(resolver);
@@ -422,7 +430,9 @@ public final class RuntimeLaws {
         DocumentV2 v2 = dsf.createDocumentV1V2Converter().ofDocumentV1(buildInstance(modelJson, df, doc));
         Set<DocumentMultiPointer> relevantPointers = relevant.stream()
                 .map(r -> DocumentMultiPointer.of(r.path(), r.reps())).collect(Collectors.toSet());
-        DocumentProcessingConfig config = DocumentProcessingConfig.builder(Locale.US).build();
+        DocumentProcessingConfig config = DocumentProcessingConfig.builder(Locale.US)
+                .customConditionFactory(ICustomConditionFactory.fromMap(customConditions))
+                .build();
         return rt.validatePart(v2, relevantPointers, config).getMessages().stream().map(RuntimeLaws::toMsg).toList();
     }
 
