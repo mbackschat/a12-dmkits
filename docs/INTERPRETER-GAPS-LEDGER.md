@@ -29,7 +29,7 @@ Deferred items are in §2; a fixed gap is deleted from here (git + its `IFn` fin
 
 | code | item | status / re-open trigger | detail in |
 |---|---|---|---|
-| **IG2** | `uniqueValue` per-field constraint | deferred — probe-confirmed **not DM-JSON-deserializable** (`Field.unique`/`StringType.unique` don't load; `IField` has no `unique` accessor); it rides the USB/declared-unique machinery, not a field property. No O(N²) risk outstanding (the one risk is unauthorable). Re-open if a real model authors it. | IF20 |
+| **IG2** | `uniqueValue` formal-error code | deferred — **re-confirmed source-level 2026-06-26**: `uniqueValue` is `IFormaleFehlerConstants.FEHLER_MULTI_SELECT` — a **multi-select** field's value-uniqueness, NOT a generic per-field `unique` flag (which has **no** serializer: no `unique`/`isUnique` in any field serializer or `IField`/`IStringType`). The interpreter models single-valued fields only (no MULTI_SELECT `Kind`), so the code can't fire on a loadable interpreter model — parity by construction. Re-open if the interpreter ever models multi-select fields. | IF20 |
 | **IG5** | runtime-semantics extraction (generator-readiness) | tracked refactor, **not** a prerequisite — migrate the comparison/3VL/aggregate logic still inside `Interpreter` into the pure runtime layer **as touched**; `DateMath`/`Kleene`/`quantifierFires`/the op registries already moved. | IF10 |
 | **IG6** | formal-error message **text** = interpreter's own wording (Option A) | deferred — the byte-identical-kernel-text path (Option B) is not built (German-only kernel text, IF3 license boundary); the *code*/pointer/severity already match the kernel. Re-open only if a consumer needs verbatim kernel message text. | IF (formal errors) / KERNEL-INTEGRATION-NOTES |
 
