@@ -3,6 +3,9 @@
 .gradle-isolated/
 build/
 
+# Kotlin build/daemon cache
+.kotlin/
+
 # IDEs
 .idea/
 *.iml
