@@ -28,7 +28,7 @@ import picocli.CommandLine.Option;
  * {@code dmtool include add --alias <a> --reference <r> --parent <path> --name <n>} — declare a header
  * model-reference and mount it as a group, then write the model back (in place; {@code -o}/{@code --dry-run}).
  * {@code --repeatability} mounts a repeating sub-form; {@code --exclude-rules}/{@code --exclude-computations}
- * drop the included model's own rules/computations on expand (FEATURE-GAPS §3.9). The referenced model is
+ * drop the included model's own rules/computations on expand (FEATURE-GAPS). The referenced model is
  * resolved + kernel-validated via {@code -w/--workspace}; a missing reference or an invalid mount is a
  * {@code rejected} envelope.
  */

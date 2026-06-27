@@ -23,7 +23,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
 /**
- * Include <b>{@code excludeRules}</b> (FEATURE-GAPS §3.9) — a mount option that drops the <em>included</em>
+ * Include <b>{@code excludeRules}</b> (FEATURE-GAPS) — a mount option that drops the <em>included</em>
  * model's own rules (and {@code excludeComputations}, its computations) when the kernel expands the mount.
  * The kernel ties the flag to a mount: {@code excludeRules} is valid only where {@code modelAlias} is set
  * (metamodel rule {@code EXCLUDE_RULES_INVALID}), which a mount always is.

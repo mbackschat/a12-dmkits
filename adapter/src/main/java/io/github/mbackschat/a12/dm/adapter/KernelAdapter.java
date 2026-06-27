@@ -629,7 +629,7 @@ public final class KernelAdapter {
     private static final String FORMAL_CHECK = "formalePruefung";
 
     /**
-     * Test <b>one rule</b> against a document instance (FEATURE-GAPS §3.3) — the scoped, suppression-aware
+     * Test <b>one rule</b> against a document instance (FEATURE-GAPS) — the scoped, suppression-aware
      * polarity check over {@link #evaluate}. Returns a three-way {@link RuleTestOutcome.Verdict}: the rule
      * <b>FIRED</b> (a message carries its path), it <b>PASSED</b> (evaluated, no message), or it was
      * <b>SUPPRESSED</b> — never evaluated because a field it references is formally invalid (the kernel skips

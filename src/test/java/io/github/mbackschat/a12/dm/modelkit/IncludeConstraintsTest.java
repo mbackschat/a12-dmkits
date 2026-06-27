@@ -13,7 +13,7 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolve
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 
 /**
- * Include constraints are the <b>kernel's</b> to enforce on expand (FEATURE-GAPS §2 — closes the ◐). This
+ * Include constraints are the <b>kernel's</b> to enforce on expand (FEATURE-GAPS — closes the ◐). This
  * locks one of them empirically: the base model's declared locales must be a <b>superset</b> of an included
  * model's, so including a model that declares a locale the base lacks is rejected on load. (Cycles and the
  * single-root rule are likewise the kernel's job on expand; modelkit doesn't re-implement them.)

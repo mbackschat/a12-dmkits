@@ -13,7 +13,7 @@ import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 
 /**
- * Field-level metadata (FEATURE-GAPS §3.5): the kernel field flags {@code global}/{@code transient} and the
+ * Field-level metadata (FEATURE-GAPS): the kernel field flags {@code global}/{@code transient} and the
  * three localized text slots distinct from the label — internal/external description and helper text.
  * Verified by kernel read-back via {@code ModelIndex.field(path) → IField} (the DM-JSON deserializer ignores
  * unknown keys, so a clean load proves nothing — KERNEL-FINDINGS).

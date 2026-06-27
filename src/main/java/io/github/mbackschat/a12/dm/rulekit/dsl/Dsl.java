@@ -924,7 +924,7 @@ public final class Dsl {
     }
 
     /**
-     * A field-<em>label</em> interpolation token for an error message (FEATURE-GAPS §3.6) — renders
+     * A field-<em>label</em> interpolation token for an error message (FEATURE-GAPS) — renders
      * {@code $<path>$} (a bare path, no {@code .value} suffix), the kernel's placeholder for the field's
      * localized <b>label</b> (its name, replaceable by the UI label) rather than its runtime value. The
      * label peer of {@link #fieldValue}: {@code en(fieldLabel(fee) + " is too high.")}.
@@ -934,7 +934,7 @@ public final class Dsl {
     }
 
     /**
-     * A repetition-<em>index</em> interpolation token for an error message (FEATURE-GAPS §3.6) — renders
+     * A repetition-<em>index</em> interpolation token for an error message (FEATURE-GAPS) — renders
      * {@code $#<groupPath>$}, the kernel's placeholder for the 1-based row number of the repeatable
      * {@code group}'s current repetition. Pairs naturally with a uniqueness/per-row rule:
      * {@code en("Row #" + repetitionIndex(items) + " is invalid.")}.

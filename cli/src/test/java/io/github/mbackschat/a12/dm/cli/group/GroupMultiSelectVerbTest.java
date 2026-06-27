@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * {@code group multiselect} — expand a Multi-Select group template (FEATURE-GAPS §3.8): a repeatable group
+ * {@code group multiselect} — expand a Multi-Select group template (FEATURE-GAPS): a repeatable group
  * with one enum/string selection field. Kernel-validated on write ({@code MultiSelectGroupRule}).
  */
 class GroupMultiSelectVerbTest {

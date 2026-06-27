@@ -14,7 +14,7 @@ import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelSerializer;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 
 /**
- * Type-def-only model + import (FEATURE-GAPS §3.9). A <b>type-def-only</b> model carries only reusable
+ * Type-def-only model + import (FEATURE-GAPS). A <b>type-def-only</b> model carries only reusable
  * {@code typeDefinitions} and no structure — a normal {@code modelType: "document"} model with an empty
  * root, which the kernel accepts standalone. A consumer pulls those types in with a {@code modelReferences}
  * entry of {@code purpose: "typeDefinitions"} (the kernel constant {@code PURPOSE_4_ONLY_TYPE_DEFS}); the

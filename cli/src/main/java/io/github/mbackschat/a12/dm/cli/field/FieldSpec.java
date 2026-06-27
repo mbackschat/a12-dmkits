@@ -18,7 +18,7 @@ import io.github.mbackschat.a12.dm.modelkit.Requiredness;
 /**
  * Parses the rich {@code field add <spec.json>} input — an agent-friendly JSON describing a field fully
  * (kind + per-kind config + field-level metadata) — into the modelkit {@link ElementDraft.Field} the tool
- * adds. This is the CLI surface for FEATURE-GAPS §3.4 (field-config) and §3.5 (metadata): everything the
+ * adds. This is the CLI surface for FEATURE-GAPS (field-config) and metadata: everything the
  * typed builders express, reachable from the bare CLI. The contract is published as {@code field-add.schema.json}.
  */
 public final class FieldSpec {

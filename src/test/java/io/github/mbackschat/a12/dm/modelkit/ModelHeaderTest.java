@@ -15,7 +15,7 @@ import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 
 /**
- * Model-level header metadata (FEATURE-GAPS §2 Config): a per-locale model **label** and a model-level
+ * Model-level header metadata (FEATURE-GAPS): a per-locale model **label** and a model-level
  * **annotation**, emitted into the previously-empty header arrays. Verified by a deserialize → serialize
  * round-trip through the kernel's <em>own</em> serializer: the header values our emitter writes must survive
  * the kernel reading the model and writing it back. The DM-JSON deserializer ignores unknown keys

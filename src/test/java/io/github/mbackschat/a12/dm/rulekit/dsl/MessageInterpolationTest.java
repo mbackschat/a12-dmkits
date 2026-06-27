@@ -12,7 +12,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.RuleValidator;
 import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
 
 /**
- * Error-message interpolation tokens beyond {@code $Field.value$} (FEATURE-GAPS §3.6). {@link Dsl#fieldLabel}
+ * Error-message interpolation tokens beyond {@code $Field.value$} (FEATURE-GAPS). {@link Dsl#fieldLabel}
  * renders the kernel's {@code $Field$} — the localized-label form (a bare path, no {@code .value} suffix) —
  * and {@link Dsl#repetitionIndex} renders {@code $#Group$}, the current repetition index of a repeatable
  * group. Both are message-rendering tokens, typed to a {@link FieldRef}/{@link GroupRef}, and verified

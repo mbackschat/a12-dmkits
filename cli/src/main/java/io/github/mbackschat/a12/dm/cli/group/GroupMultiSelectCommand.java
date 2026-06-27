@@ -26,7 +26,7 @@ import picocli.CommandLine.Option;
 
 /**
  * {@code dmtool group multiselect --parent <p> --name <n> --field <f> [--values v,v,…] --max-rows <n>} —
- * expand a <b>Multi-Select</b> group template (FEATURE-GAPS §3.8): a repeatable group holding one selection
+ * expand a <b>Multi-Select</b> group template (FEATURE-GAPS): a repeatable group holding one selection
  * field (enum when {@code --values} is given, else a free string). The kernel skeleton ({@code usageType},
  * repeatability, the single-field + requiredness rules) is generated; you supply the field and the max number
  * of selections. Re-bound through the kernel ({@code MultiSelectGroupRule}); an invalid result is a

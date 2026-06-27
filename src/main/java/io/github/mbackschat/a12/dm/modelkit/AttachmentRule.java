@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.modelkit;
 
 /**
- * The four rules an A12 <b>attachment</b> group must carry (FEATURE-GAPS §3.8). The kernel's
+ * The four rules an A12 <b>attachment</b> group must carry (FEATURE-GAPS). The kernel's
  * {@code AttachmentGroupRule} validates an attachment group by matching each rule's {@code errorCondition}
  * <em>string</em> (in the model's condition language) against a fixed set — so the generator emits exactly
  * these, verbatim. This enum is the closed catalog: each constant carries its rule name, error code, the

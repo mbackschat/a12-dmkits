@@ -15,7 +15,7 @@ import io.github.mbackschat.a12.dm.core.ModelLoader;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 
 /**
- * Config: <b>supported characters</b> (FEATURE-GAPS §3.9 / §2 Config) — the {@code modelConfig}
+ * Config: <b>supported characters</b> (FEATURE-GAPS) — the {@code modelConfig}
  * allowed-character set the kernel validates field values against. Each entry is a single character or a
  * range like {@code " -~"} (space through tilde); an empty list means all Unicode-Plane-0 characters are
  * allowed ({@code IDocumentModelConfig}).

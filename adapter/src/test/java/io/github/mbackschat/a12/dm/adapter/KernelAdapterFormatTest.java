@@ -19,7 +19,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
 /**
- * The kernel-authoritative condition formatter (FEATURE-GAPS §3.2). {@link KernelAdapter#canonicalConditionText(String)}
+ * The kernel-authoritative condition formatter (FEATURE-GAPS). {@link KernelAdapter#canonicalConditionText(String)}
  * already round-trips a condition through the kernel's own formatter; its {@code (…, Locale)} peer re-emits
  * with the other keyword language (EN↔DE) via the kernel's {@code formatAndTranslateConditionText}. The
  * canonical form is the engine's, not ours — the oracle the {@code rule format}/{@code computation format}

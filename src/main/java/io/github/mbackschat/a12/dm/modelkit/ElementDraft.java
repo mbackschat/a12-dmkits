@@ -25,7 +25,7 @@ public sealed interface ElementDraft
     /**
      * A leaf field — its typed config ({@link FieldTypeSpec}), how it must be filled, per-locale display
      * {@code labels} (locale → text), and element-level {@code annotations}. Plus the field-level metadata
-     * (FEATURE-GAPS §3.5): the kernel flags {@code global} (relevant to partial validation) and
+     * (FEATURE-GAPS): the kernel flags {@code global} (relevant to partial validation) and
      * {@code notPersisted} (the kernel {@code transient} flag — not stored), and three per-locale text slots
      * distinct from the label — {@code internalDescription} / {@code externalDescription} (element-level) and
      * {@code helperText} (field-level UI help).
@@ -41,7 +41,7 @@ public sealed interface ElementDraft
             helperText = helperText == null ? Map.of() : Map.copyOf(helperText);
         }
 
-        /** The pre-§3.5 form: no field-level flags or description/helper text. */
+        /** The earlier form: no field-level flags or description/helper text. */
         public Field(String name, FieldTypeSpec type, Requiredness requiredness, Map<String, String> labels,
                 List<Annotation> annotations) {
             this(name, type, requiredness, labels, annotations, false, false, Map.of(), Map.of(), Map.of());
@@ -52,7 +52,7 @@ public sealed interface ElementDraft
      * A group; {@code repeatability == 1} is single, {@code > 1} a repeatable list. A repeatable group
      * may carry an {@code indexFieldName} — the direct child field whose value identifies a row (so two
      * lists can be iterated in lockstep); {@code null} when unset. {@code usageType} is the kernel's
-     * group-template marker ({@code "attachment"} / {@code "multi-select"}, FEATURE-GAPS §3.8); {@code null}
+     * group-template marker ({@code "attachment"} / {@code "multi-select"}, FEATURE-GAPS); {@code null}
      * for a plain group.
      */
     record Group(String name, int repeatability, String indexFieldName, List<ElementDraft> elements,
@@ -82,7 +82,7 @@ public sealed interface ElementDraft
      * An include mount: a group with no inline elements that carries {@code modelAlias}; on expand the
      * kernel mounts the referenced model's content here (the {@code alias} resolves via the header's
      * {@code modelReferences}). KERNEL-FINDINGS §10. The {@link MountOptions} carry {@code repeatability}
-     * (&gt; 1 = a repeatable sub-form, FEATURE-GAPS §2) and the rule/computation exclusions (§3.9).
+     * (&gt; 1 = a repeatable sub-form, FEATURE-GAPS) and the rule/computation exclusions.
      */
     record Mount(String name, String alias, MountOptions options, List<Annotation> annotations)
             implements ElementDraft {
@@ -102,7 +102,7 @@ public sealed interface ElementDraft
      * A <b>raw rule node</b> — a fixed {@code errorCondition} (in the model's condition language) plus its
      * {@code errorCode} / {@code severity} / per-locale {@code messages} / {@code errorEntityRelPath}. This
      * is the structural emission primitive used by <b>template generators</b> (the attachment template's
-     * kernel-mandated rules, FEATURE-GAPS §3.8) — <em>not</em> a logic-authoring API: author real rules with
+     * kernel-mandated rules, FEATURE-GAPS) — <em>not</em> a logic-authoring API: author real rules with
      * rulekit's typed DSL ({@code EditSession.addRule}), which renders + kernel-validates the condition. Rules
      * carry no element-level annotations here.
      */

@@ -414,7 +414,7 @@ public final class ModelDocument {
 
     /**
      * Add a fully-configured {@link ElementDraft.Field} — its type, requiredness, per-locale labels, element
-     * annotations, and the §3.5 metadata (global/transient flags, descriptions, helper text) — emitted via
+     * annotations, and the field-level metadata (global/transient flags, descriptions, helper text) — emitted via
      * the same node builder a freshly-authored field uses. The rich peer of the {@code (name, type)} overload;
      * the CLI {@code field add <spec.json>} path builds the full field, then chains {@link #validate}.
      */
@@ -532,7 +532,7 @@ public final class ModelDocument {
         }
     }
 
-    /** Upsert one model-level header <b>label</b> locale (the model-level peer of {@link #setLabel}, §3.5/§2). */
+    /** Upsert one model-level header <b>label</b> locale (the model-level peer of {@link #setLabel}). */
     public ModelDocument setModelLabel(String locale, String text) {
         ArrayNode labels = headerArray("labels");
         for (JsonNode l : labels) {
@@ -829,7 +829,7 @@ public final class ModelDocument {
     }
 
     /**
-     * Add a <b>Multi-Select</b> group template (FEATURE-GAPS §3.8) named {@code name} under {@code parentPath}
+     * Add a <b>Multi-Select</b> group template (FEATURE-GAPS) named {@code name} under {@code parentPath}
      * — a repeatable group with one enum/string selection field; {@code body} supplies the field + maxRows
      * via the same {@link DocumentModelDraft.MultiSelectBuilder} the from-scratch authoring path uses. The
      * kernel's {@code MultiSelectGroupRule} validates it on the next {@code validate(...)}.
@@ -844,7 +844,7 @@ public final class ModelDocument {
     }
 
     /**
-     * Add an <b>Attachment</b> group template (FEATURE-GAPS §3.8) named {@code name} under {@code parentPath}
+     * Add an <b>Attachment</b> group template (FEATURE-GAPS) named {@code name} under {@code parentPath}
      * — the kernel's canonical file-attachment composition (8 fields + 4 rules + {@code content} config). The
      * mandated rules are emitted in the model's condition language; the model must be {@code en_US}/{@code
      * de_DE} (else the builder refuses). Validated by {@code AttachmentGroupRule} on the next {@code validate(...)}.
@@ -1438,14 +1438,14 @@ public final class ModelDocument {
         return mount(parentPath, name, alias, 1);
     }
 
-    /** Mount a declared include as a <b>repeatable</b> sub-form ({@code repeatability} rows; FEATURE-GAPS §2). */
+    /** Mount a declared include as a <b>repeatable</b> sub-form ({@code repeatability} rows; FEATURE-GAPS). */
     public ModelDocument mount(String parentPath, String name, String alias, int repeatability) {
         return mount(parentPath, name, alias, MountOptions.repeatable(repeatability));
     }
 
     /**
      * Mount a declared include with explicit {@link MountOptions} — repeatability plus whether to exclude
-     * the included model's rules / computations on expand (FEATURE-GAPS §3.9).
+     * the included model's rules / computations on expand (FEATURE-GAPS).
      */
     public ModelDocument mount(String parentPath, String name, String alias, MountOptions options) {
         ArrayNode container = parentPath.isEmpty() ? rootGroups() : containerElements(parentPath);

@@ -207,7 +207,7 @@ public final class DocumentModelDraft {
         ObjectNode body = node.putObject("Group");
         body.put("repeatability", group.repeatability());
         if (group.usageType() != null) {
-            // the kernel group-template marker (attachment / multi-select), FEATURE-GAPS §3.8
+            // the kernel group-template marker (attachment / multi-select), FEATURE-GAPS
             body.put("usageType", group.usageType());
         }
         if (group.indexFieldName() != null) {
@@ -226,7 +226,7 @@ public final class DocumentModelDraft {
     }
 
     /** A raw rule node ({@code {type:"Rule", Rule:{errorCondition, errorCode, severity, errorMessage, …}}}). */
-    // package-private: reused by ModelDocument when emitting a template group's mandated rules (§3.8)
+    // package-private: reused by ModelDocument when emitting a template group's mandated rules
     static ObjectNode ruleNode(ElementDraft.Rule rule, String parentPath) {
         ObjectNode node = MAPPER.createObjectNode();
         node.put("type", "Rule");
@@ -258,7 +258,7 @@ public final class DocumentModelDraft {
         if (options.includeLevel() == IncludeLevel.MODEL_ROOT) {
             body.put("includeLevel", "MODEL_ROOT");
         }
-        // rule/computation exclusions sit on the mount group beside modelAlias (metamodel MM_Group, §3.9)
+        // rule/computation exclusions sit on the mount group beside modelAlias (metamodel MM_Group)
         if (options.excludeRules()) {
             body.put("excludeRules", true);
         }
@@ -720,7 +720,7 @@ public final class DocumentModelDraft {
             return this;
         }
 
-        /** Add a top-level <b>Multi-Select</b> group template (FEATURE-GAPS §3.8); see {@link GroupBuilder#multiSelectGroup}. */
+        /** Add a top-level <b>Multi-Select</b> group template (FEATURE-GAPS); see {@link GroupBuilder#multiSelectGroup}. */
         public Builder multiSelectGroup(String name, Consumer<MultiSelectBuilder> body) {
             if (typeDefOnly) {
                 throw new IllegalStateException("a type-def-only model has no root groups");
@@ -732,7 +732,7 @@ public final class DocumentModelDraft {
         }
 
         /**
-         * Add a top-level <b>Attachment</b> group template (FEATURE-GAPS §3.8) — the kernel's canonical
+         * Add a top-level <b>Attachment</b> group template (FEATURE-GAPS) — the kernel's canonical
          * file-attachment composition (8 fields + 4 rules + {@code content} config). Its rules are authored
          * in the model's condition language (the first declared locale), so a locale must be declared first
          * and the model must be {@code en_US}/{@code de_DE}. See {@link AttachmentBuilder}.
@@ -939,7 +939,7 @@ public final class DocumentModelDraft {
         }
 
         /**
-         * Add a <b>Multi-Select</b> group template (FEATURE-GAPS §3.8): a repeatable group holding one
+         * Add a <b>Multi-Select</b> group template (FEATURE-GAPS): a repeatable group holding one
          * enum/string selection field. The generator owns the kernel skeleton ({@code usageType},
          * repeatability, the single-field rule); {@code body} supplies the field + {@code maxRows}.
          */
@@ -955,14 +955,14 @@ public final class DocumentModelDraft {
             return mount(name, alias, 1);
         }
 
-        /** Mount an included model as a <b>repeatable</b> sub-form ({@code repeatability} rows; §2). */
+        /** Mount an included model as a <b>repeatable</b> sub-form ({@code repeatability} rows). */
         public GroupBuilder mount(String name, String alias, int repeatability) {
             return mount(name, alias, MountOptions.repeatable(repeatability));
         }
 
         /**
          * Mount an included model with explicit {@link MountOptions} — repeatability plus whether to
-         * exclude the included model's rules / computations on expand (§3.9). E.g.
+         * exclude the included model's rules / computations on expand. E.g.
          * {@code mount("Prices", "catalog", MountOptions.single().excludingRules())}.
          */
         public GroupBuilder mount(String name, String alias, MountOptions options) {
@@ -995,7 +995,7 @@ public final class DocumentModelDraft {
     }
 
     /**
-     * Builds a <b>Multi-Select</b> group template (FEATURE-GAPS §3.8) — a repeatable group holding exactly
+     * Builds a <b>Multi-Select</b> group template (FEATURE-GAPS) — a repeatable group holding exactly
      * one enum/string selection field (each row = one chosen value). The generator owns the kernel skeleton
      * ({@code usageType: "multi-select"}, repeatability {@code > 1}, the single field, the field's
      * requiredness, no index field — {@code MultiSelectGroupRule}); the caller supplies the field and
@@ -1069,7 +1069,7 @@ public final class DocumentModelDraft {
     }
 
     /**
-     * Builds an <b>Attachment</b> group template (FEATURE-GAPS §3.8) — a {@code usageType: "attachment"}
+     * Builds an <b>Attachment</b> group template (FEATURE-GAPS) — a {@code usageType: "attachment"}
      * group with the kernel-mandated composition: 8 named fields, the 4 {@link AttachmentRule}s (their exact
      * {@code errorCondition} strings, in the model's condition language), and a {@code content} field with
      * {@code noValueValidation} + {@code lineBreaksPermitted}. The whole skeleton is fixed; the caller only

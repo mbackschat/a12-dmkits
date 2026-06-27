@@ -11,7 +11,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 
 /**
- * Index-field auto-rules (FEATURE-GAPS §2 "Groups, rules, computations" — confirms the ◐). The kernel-team
+ * Index-field auto-rules (FEATURE-GAPS — confirms the ◐). The kernel-team
  * BA doc states that declaring a group's index field <b>auto-generates</b> two rules (no authoring needed):
  * the index value must be <b>unique</b> within each iteration (<code>RepetitionNotUnique(indexField)</code>)
  * and it must be <b>filled</b> when the group is (<code>GroupFilled And FieldNotFilled(indexField)</code>).

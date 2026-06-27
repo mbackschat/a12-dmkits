@@ -44,13 +44,13 @@ public final class RuleEditor {
         return this;
     }
 
-    /** Re-set this rule's severity in place (condition + messages untouched, FEATURE-GAPS §3.7). Chains. */
+    /** Re-set this rule's severity in place (condition + messages untouched, FEATURE-GAPS). Chains. */
     public RuleEditor severity(Severity severity) {
         session.modifyRuleSeverity(fullName, severity);
         return this;
     }
 
-    /** Replace this rule's per-locale messages in place (condition + severity untouched, §3.7). Chains. */
+    /** Replace this rule's per-locale messages in place (condition + severity untouched). Chains. */
     public RuleEditor messages(LocalizedText... messages) {
         session.modifyRuleMessages(fullName, List.of(messages));
         return this;

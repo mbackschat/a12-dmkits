@@ -13,7 +13,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * {@code rule format} / {@code computation format} (FEATURE-GAPS §3.2) — the kernel's canonical condition
+ * {@code rule format} / {@code computation format} (FEATURE-GAPS) — the kernel's canonical condition
  * text, optionally translated EN↔DE, on the read envelope's {@code data}. The canonical form is the engine's
  * own (a parse + format round-trip through its formatter); each verb refuses a name of the wrong element kind.
  */

@@ -15,7 +15,7 @@ import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 
 /**
- * The <b>Multi-Select</b> group template (FEATURE-GAPS §3.8). A {@code usageType: "multi-select"} group
+ * The <b>Multi-Select</b> group template (FEATURE-GAPS). A {@code usageType: "multi-select"} group
  * holds exactly one repeatable enum/string field (each row = one selection). The kernel's
  * {@code MultiSelectGroupRule} validates it at {@code checkConsistency} (KERNEL-FINDINGS), so a correct
  * template <em>loads</em> and a malformed one is <em>rejected</em> — the kernel is the oracle.

@@ -10,7 +10,7 @@ import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionLanguage;
 
 /**
- * Shared assembly for the {@code rule format} / {@code computation format} verbs (FEATURE-GAPS §3.2): the
+ * Shared assembly for the {@code rule format} / {@code computation format} verbs (FEATURE-GAPS): the
  * kernel's canonical condition text — optionally re-emitted in the other keyword language (EN↔DE) — rides the
  * read envelope's {@code data}. The two verbs differ only in their target kind and which element-kind names
  * they accept; the canonical-text round-trip is identical, so it lives here (one source, no drift).

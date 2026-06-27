@@ -77,7 +77,7 @@ public final class ModelWriter {
 
     /**
      * Returns {@code modelJson} with the rule's {@code severity} slot set to {@code severity} (the enum name),
-     * leaving its condition and messages untouched — the in-place severity edit (FEATURE-GAPS §3.7).
+     * leaving its condition and messages untouched — the in-place severity edit (FEATURE-GAPS).
      */
     public static String replaceSeverity(String modelJson, String ruleFullName, String severity) {
         try {
@@ -96,7 +96,7 @@ public final class ModelWriter {
 
     /**
      * Returns {@code modelJson} with the rule's per-locale {@code errorMessage} array replaced by
-     * {@code messages}, leaving its condition and severity untouched — the in-place message edit (§3.7).
+     * {@code messages}, leaving its condition and severity untouched — the in-place message edit.
      */
     public static String replaceMessages(String modelJson, String ruleFullName, List<LocalizedText> messages) {
         try {

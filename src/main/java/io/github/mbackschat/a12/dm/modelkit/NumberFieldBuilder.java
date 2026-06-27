@@ -18,7 +18,7 @@ public final class NumberFieldBuilder extends FieldAttrs<NumberFieldBuilder> {
         return this;
     }
 
-    /** Bound the scale to a {@code [min, max]} range of decimal places (FEATURE-GAPS §3.4). */
+    /** Bound the scale to a {@code [min, max]} range of decimal places (FEATURE-GAPS). */
     public NumberFieldBuilder fractionDigits(int min, int max) {
         this.minFractionalDigits = min;
         this.maxFractionalDigits = max;
@@ -47,7 +47,7 @@ public final class NumberFieldBuilder extends FieldAttrs<NumberFieldBuilder> {
         return this;
     }
 
-    /** Set the unit trait — {@code AMOUNT} (money), {@code PERCENT}, or {@code PERMILLE} (§3.4). */
+    /** Set the unit trait — {@code AMOUNT} (money), {@code PERCENT}, or {@code PERMILLE}. */
     public NumberFieldBuilder unit(NumberTrait trait) {
         this.trait = trait;
         return this;

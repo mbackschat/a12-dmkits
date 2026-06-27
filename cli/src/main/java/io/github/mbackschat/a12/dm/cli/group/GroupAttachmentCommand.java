@@ -26,7 +26,7 @@ import picocli.CommandLine.Option;
 
 /**
  * {@code dmtool group attachment --parent <p> --name <n>} — expand an <b>Attachment</b> group template
- * (FEATURE-GAPS §3.8): the kernel's canonical file-attachment composition (8 fields + 4 rules +
+ * (FEATURE-GAPS): the kernel's canonical file-attachment composition (8 fields + 4 rules +
  * {@code content} config) is generated; you only tune the exposed knobs ({@code --repeatable},
  * {@code --max-size-bytes}, {@code --allowed-mime}, {@code --categories}). The mandated rules are authored
  * in the model's condition language — an attachment on a non-{@code en_US}/{@code de_DE} model is refused

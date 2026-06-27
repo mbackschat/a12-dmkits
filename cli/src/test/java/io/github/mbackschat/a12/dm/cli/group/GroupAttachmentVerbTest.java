@@ -18,7 +18,7 @@ import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 
 /**
- * {@code group attachment} — expand an Attachment group template (FEATURE-GAPS §3.8): the canonical
+ * {@code group attachment} — expand an Attachment group template (FEATURE-GAPS): the canonical
  * 8-field + 4-rule file-attachment composition, kernel-validated by {@code AttachmentGroupRule}. Includes
  * the removal path: removing a composite group takes its internal rules with it, in one op, without forcing
  * {@code --cascade} for rules the author never sees.

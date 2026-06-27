@@ -142,7 +142,7 @@ class SchemaVerbTest {
 
     @Test
     void fieldAddContractCarriesTheRichInputSchema() throws Exception {
-        // field add now also takes a rich <spec.json> (FEATURE-GAPS §3.4/§3.5) — its contract surfaces the input
+        // field add now also takes a rich <spec.json> (FEATURE-GAPS) — its contract surfaces the input
         JsonNode c = MAPPER.readTree(CliTestSupport.run("schema", "field", "add").out());
         assertEquals("result", c.path("returns").asText());
         assertTrue(c.path("input").has("properties"), () -> "field add's contract carries the input schema: " + c);

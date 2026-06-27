@@ -16,7 +16,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * {@code rule test} (FEATURE-GAPS §3.3) — the scoped, suppression-aware runtime polarity check for one rule
+ * {@code rule test} (FEATURE-GAPS) — the scoped, suppression-aware runtime polarity check for one rule
  * against a document INSTANCE. It must distinguish fired / passed / **suppressed** (a rule the kernel skipped
  * because a referenced field is formally invalid — reporting that as a pass would mislead), and refuse a name
  * that isn't a validation rule. The fixture rule is {@code FeeCapRule}: fires when {@code MonthlyFee > 1000}.

@@ -227,7 +227,7 @@ public final class EditSession {
         return editStructure(d -> d.setDecimalSeparator(separator));
     }
 
-    /** Upsert one model-level header label locale (FEATURE-GAPS §2 Config). */
+    /** Upsert one model-level header label locale (FEATURE-GAPS). */
     public EditSession setModelLabel(String locale, String text) {
         return editStructure(d -> d.setModelLabel(locale, text));
     }
@@ -291,7 +291,7 @@ public final class EditSession {
         return editStructure(d -> d.addInclude(alias, reference));
     }
 
-    /** Import the type definitions of {@code reference} ({@code purpose: "typeDefinitions"}); merged by id, not mounted (§3.9). */
+    /** Import the type definitions of {@code reference} ({@code purpose: "typeDefinitions"}); merged by id, not mounted. */
     public EditSession addImport(String reference) {
         return editStructure(d -> d.addImport(reference));
     }
@@ -301,13 +301,13 @@ public final class EditSession {
         return editStructure(d -> d.removeImport(reference));
     }
 
-    /** Add a Multi-Select group template (FEATURE-GAPS §3.8) under {@code parentPath}; see {@link ModelDocument#addMultiSelectGroup}. */
+    /** Add a Multi-Select group template (FEATURE-GAPS) under {@code parentPath}; see {@link ModelDocument#addMultiSelectGroup}. */
     public EditSession addMultiSelectGroup(String parentPath, String name,
             java.util.function.Consumer<DocumentModelDraft.MultiSelectBuilder> body) {
         return editStructure(d -> d.addMultiSelectGroup(parentPath, name, body));
     }
 
-    /** Add an Attachment group template (FEATURE-GAPS §3.8) under {@code parentPath}; see {@link ModelDocument#addAttachmentGroup}. */
+    /** Add an Attachment group template (FEATURE-GAPS) under {@code parentPath}; see {@link ModelDocument#addAttachmentGroup}. */
     public EditSession addAttachmentGroup(String parentPath, String name,
             java.util.function.Consumer<DocumentModelDraft.AttachmentBuilder> body) {
         return editStructure(d -> d.addAttachmentGroup(parentPath, name, body));
@@ -317,12 +317,12 @@ public final class EditSession {
         return editStructure(d -> d.mount(parentPath, name, alias));
     }
 
-    /** Mount a declared include as a repeatable sub-form ({@code repeatability} rows; FEATURE-GAPS §2). */
+    /** Mount a declared include as a repeatable sub-form ({@code repeatability} rows; FEATURE-GAPS). */
     public EditSession mount(String parentPath, String name, String alias, int repeatability) {
         return editStructure(d -> d.mount(parentPath, name, alias, repeatability));
     }
 
-    /** Mount a declared include with explicit {@link MountOptions} (repeatability + rule/computation exclusions; §3.9). */
+    /** Mount a declared include with explicit {@link MountOptions} (repeatability + rule/computation exclusions). */
     public EditSession mount(String parentPath, String name, String alias, MountOptions options) {
         return editStructure(d -> d.mount(parentPath, name, alias, options));
     }
@@ -447,13 +447,13 @@ public final class EditSession {
         return this;
     }
 
-    /** Re-set a rule's {@code severity} in place — condition and messages untouched (FEATURE-GAPS §3.7). */
+    /** Re-set a rule's {@code severity} in place — condition and messages untouched (FEATURE-GAPS). */
     public EditSession modifyRuleSeverity(String ruleFullName, Severity severity) {
         json = ModelWriter.replaceSeverity(json, ruleFullName, severity.name());
         return this;
     }
 
-    /** Replace a rule's per-locale messages in place — condition and severity untouched (§3.7). */
+    /** Replace a rule's per-locale messages in place — condition and severity untouched. */
     public EditSession modifyRuleMessages(String ruleFullName, List<LocalizedText> messages) {
         json = ModelWriter.replaceMessages(json, ruleFullName, messages);
         return this;

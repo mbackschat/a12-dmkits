@@ -51,7 +51,7 @@ class RuleComputationEditorTest {
 
     @Test
     void reSeveritiesAndReMessagesARuleByHeldReference() {
-        // FEATURE-GAPS §3.7: severity / message edits in place — no full replace, no re-typing the path.
+        // FEATURE-GAPS: severity / message edits in place — no full replace, no re-typing the path.
         EditSession s = EditSession.read(Fixtures.subscriptionJson());
         GroupEditor addons = s.group("/Subscription/Addons");
         addons.addField("Discount", FieldKind.NUMBER);

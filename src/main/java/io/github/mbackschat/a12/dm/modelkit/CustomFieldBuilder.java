@@ -1,6 +1,6 @@
 package io.github.mbackschat.a12.dm.modelkit;
 
-/** Configures a custom-typed field: a named kernel custom type with optional length bounds (FEATURE-GAPS §3.4). */
+/** Configures a custom-typed field: a named kernel custom type with optional length bounds (FEATURE-GAPS). */
 public final class CustomFieldBuilder extends FieldAttrs<CustomFieldBuilder> {
     private String typeName;
     private Integer minLength;

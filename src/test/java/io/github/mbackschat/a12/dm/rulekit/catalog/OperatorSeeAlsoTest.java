@@ -9,7 +9,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
- * The {@code seeAlso} bridge (FEATURE-GAPS §2 G7): operators that have a field-config twin point at it, so an
+ * The {@code seeAlso} bridge (FEATURE-GAPS G7): operators that have a field-config twin point at it, so an
  * agent exploring the rule operator discovers the field-level alternative (and vice versa, via the field
  * schema's descriptions). The link is <b>factual</b> — it states what relates, not which to pick (mechanism
  * choice is the skill's job). This locks that the bridge exists and names the field-config knob it relates to.

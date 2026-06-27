@@ -32,13 +32,13 @@ public abstract class FieldAttrs<SELF extends FieldAttrs<SELF>> extends ElementM
         return self();
     }
 
-    /** Mark the field {@code global} — passed to partial validation (a kernel field flag, §3.5). */
+    /** Mark the field {@code global} — passed to partial validation (a kernel field flag). */
     public SELF global() {
         this.global = true;
         return self();
     }
 
-    /** Mark the field {@code transient} — present at runtime but not persisted (a kernel field flag, §3.5). */
+    /** Mark the field {@code transient} — present at runtime but not persisted (a kernel field flag). */
     public SELF notPersisted() {
         this.notPersisted = true;
         return self();

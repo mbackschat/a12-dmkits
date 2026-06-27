@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * {@code field modify} — re-type an existing field's config in place (FEATURE-GAPS §2 G6). The headline is the
+ * {@code field modify} — re-type an existing field's config in place (FEATURE-GAPS G6). The headline is the
  * agent-session case: turn a plain STRING postal-code field into a 5-digit-pattern one <em>without</em> the
  * delete-and-recreate workaround. Plus the gate test (does-fire): modifying a missing field refuses, it does
  * not silently create or stack-trace.

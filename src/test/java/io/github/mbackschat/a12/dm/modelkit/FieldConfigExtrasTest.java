@@ -18,7 +18,7 @@ import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 
 /**
- * Field-config completeness sweep (FEATURE-GAPS §3.4). Each slot is verified by a <b>kernel read-back</b>,
+ * Field-config completeness sweep (FEATURE-GAPS). Each slot is verified by a <b>kernel read-back</b>,
  * not just emit + load: the kernel's DM-JSON deserializer is {@code @JsonIgnoreProperties(ignoreUnknown=true)},
  * so a wrong key would be silently dropped and still "load valid" — only reading the value back through the
  * kernel's typed field-type API ({@code INumberType}/{@code IStringType}/…) proves the engine <em>honored</em>

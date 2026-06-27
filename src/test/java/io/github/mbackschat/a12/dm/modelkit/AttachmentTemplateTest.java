@@ -16,7 +16,7 @@ import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 
 /**
- * The <b>Attachment</b> group template (FEATURE-GAPS §3.8). A {@code usageType: "attachment"} group carries
+ * The <b>Attachment</b> group template (FEATURE-GAPS). A {@code usageType: "attachment"} group carries
  * a kernel-mandated composition — 8 named fields, 4 rules (matched by exact {@code errorCondition} string in
  * the model's condition language), and a {@code content} field with {@code noValueValidation} +
  * {@code lineBreaksPermitted}. The generator emits all of it; the kernel's {@code AttachmentGroupRule}

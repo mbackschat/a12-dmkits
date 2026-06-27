@@ -92,7 +92,7 @@ public sealed interface FieldTypeSpec {
                     suggestions, false);
         }
 
-        /** The pre-§3.4 form: length bounds + optional anchored pattern, no hint-list/line-break/sorting slots. */
+        /** The earlier form: length bounds + optional anchored pattern, no hint-list/line-break/sorting slots. */
         public StringSpec(Integer minLength, Integer maxLength, String pattern, String patternMessage) {
             this(minLength, maxLength, pattern, patternMessage, false, false, Map.of());
         }
@@ -105,7 +105,7 @@ public sealed interface FieldTypeSpec {
 
     /**
      * A number field: the decimal scale as a {@code [minFractionalDigits, maxFractionalDigits]} range (the
-     * single-arg form fixes only the max, min defaulting to 0 — FEATURE-GAPS §3.4), optional value bounds,
+     * single-arg form fixes only the max, min defaulting to 0 — FEATURE-GAPS), optional value bounds,
      * the two kernel flags {@code zeroNotAllowed} (the engine emits a dedicated zero-not-allowed error) and
      * {@code leadingZerosAllowed}, and the optional unit {@code trait} (amount/percent/permille).
      */
@@ -128,7 +128,7 @@ public sealed interface FieldTypeSpec {
             }
         }
 
-        /** The pre-§3.4 form: a max-scale (0..{@code fractionDigits}) number with an optional value range. */
+        /** The earlier form: a max-scale (0..{@code fractionDigits}) number with an optional value range. */
         public NumberSpec(Integer fractionDigits, BigDecimal minValue, BigDecimal maxValue) {
             this(null, fractionDigits, minValue, maxValue, false, false, null);
         }
@@ -205,7 +205,7 @@ public sealed interface FieldTypeSpec {
         }
 
         /**
-         * The §3.4 form: a single invalid-value message expanded across every declared locale (G23 added
+         * The single-message form: a single invalid-value message expanded across every declared locale (G23 added
          * the {@code invalidValueMessages} per-locale map below). Empty per-locale map.
          */
         public EnumSpec(List<EnumValue> values, List<EnumCategory> categories, boolean alphabeticalSorting,
@@ -213,7 +213,7 @@ public sealed interface FieldTypeSpec {
             this(values, categories, alphabeticalSorting, invalidValueMessage, Map.of());
         }
 
-        /** The pre-§3.4 form: values + categories, no alphabetical-sort or invalid-value-message slot. */
+        /** The earlier form: values + categories, no alphabetical-sort or invalid-value-message slot. */
         public EnumSpec(List<EnumValue> values, List<EnumCategory> categories) {
             this(values, categories, false, null, Map.of());
         }

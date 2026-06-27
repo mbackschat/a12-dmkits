@@ -14,7 +14,7 @@ import io.github.mbackschat.a12.dm.core.ModelIndex;
 import io.github.mbackschat.a12.dm.core.ModelLoader;
 
 /**
- * Include <b>repeatability</b> (FEATURE-GAPS §2 Type-defs/includes): a mount can carry a repeatability > 1,
+ * Include <b>repeatability</b> (FEATURE-GAPS): a mount can carry a repeatability > 1,
  * mounting the included model as a <em>repeatable</em> sub-form (the mount was previously hardcoded to 1).
  * Kernel is the oracle: the base model with a repeatable mount must expand + validate, and the mount group
  * must read back as repeating. Own domain (an order mounting an address sub-form three times).

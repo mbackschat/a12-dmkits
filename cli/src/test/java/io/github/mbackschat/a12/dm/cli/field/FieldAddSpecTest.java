@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The rich {@code field add <spec.json>} path (FEATURE-GAPS §3.4/§3.5 on the CLI): a JSON spec carrying the
+ * The rich {@code field add <spec.json>} path (FEATURE-GAPS on the CLI): a JSON spec carrying the
  * full per-kind config + field metadata is parsed ({@link FieldSpec}), added, and kernel-validated. Each
  * case asserts the verb accepts the spec (exit 0 = kernel-valid) and the configured keys land in the written
  * model — the kernel's own read-back of those keys is locked by {@code modelkit.FieldConfigExtrasTest}.

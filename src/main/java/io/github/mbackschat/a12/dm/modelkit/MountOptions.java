@@ -1,7 +1,7 @@
 package io.github.mbackschat.a12.dm.modelkit;
 
 /**
- * How a model include is mounted (FEATURE-GAPS §2/§3.9): its {@code repeatability} (1 = single, &gt; 1 a
+ * How a model include is mounted (FEATURE-GAPS): its {@code repeatability} (1 = single, &gt; 1 a
  * repeating sub-form), whether to exclude the <em>included</em> model's own rules / computations when the
  * kernel expands the mount, and the {@link IncludeLevel} (SINGLE_RG = the include becomes one group;
  * MODEL_ROOT = its root becomes the mount — DG6/A12K-3234). The kernel ties the exclusions to a mount —

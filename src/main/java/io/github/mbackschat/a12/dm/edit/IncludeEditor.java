@@ -30,7 +30,7 @@ public final class IncludeEditor {
         return this;
     }
 
-    /** Mount this include as a repeatable sub-form ({@code repeatability} rows; FEATURE-GAPS §2). Chains. */
+    /** Mount this include as a repeatable sub-form ({@code repeatability} rows; FEATURE-GAPS). Chains. */
     public IncludeEditor mount(String parentPath, String name, int repeatability) {
         session.mount(parentPath, name, alias, repeatability);
         return this;
@@ -38,7 +38,7 @@ public final class IncludeEditor {
 
     /**
      * Mount this include with explicit {@link MountOptions} — repeatability plus whether to exclude the
-     * included model's rules / computations on expand (FEATURE-GAPS §3.9). Chains.
+     * included model's rules / computations on expand (FEATURE-GAPS). Chains.
      */
     public IncludeEditor mount(String parentPath, String name, MountOptions options) {
         session.mount(parentPath, name, alias, options);

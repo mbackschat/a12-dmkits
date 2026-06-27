@@ -27,7 +27,7 @@ import picocli.CommandLine.Parameters;
 
 /**
  * {@code dmtool rule test <rulePath> --doc <document.json>} — the scoped, suppression-aware polarity check
- * for ONE rule against a document INSTANCE (FEATURE-GAPS §3.3). The rule-first convenience over {@code doc
+ * for ONE rule against a document INSTANCE (FEATURE-GAPS). The rule-first convenience over {@code doc
  * eval}: it answers <b>fired</b> / <b>passed</b> / <b>suppressed</b> — the last being a rule the kernel never
  * evaluated because a field it references is formally invalid (reporting that as a pass would mislead, so a
  * plain "did it fire" verb isn't enough). Read-only; the verdict rides {@code data}.
