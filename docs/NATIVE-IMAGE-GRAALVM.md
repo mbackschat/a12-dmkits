@@ -176,7 +176,7 @@ The **verification gate is the trip-wire**: if any source lags, a fresh reflecti
 
 The demos are authored for the **full JVM CLI**, so against the native *subset* some are legitimately not-applicable. Rather than eyeball a known red, the gate is split by target:
 
-- **JVM gate** — CI, the `installDist` launcher, **all 6 demos green** (`.github/workflows/ci.yml`). Unchanged.
+- **JVM gate** — CI, the `installDist` launcher, **all 7 demos green** (`.github/workflows/ci.yml`; `node` is set up there for the `cli-custom-types` JS-escape demo). Unchanged.
 - **Native gate** — **[`../scripts/native-gate.sh`](../scripts/native-gate.sh)** — verifies the native binary byte-for-byte across the **native-applicable** demos, and **skips the non-applicable ones with their reason** (never a spurious FAIL). Exits non-zero only on a real regression in a native-applicable demo.
 
 ```
@@ -194,6 +194,8 @@ native gate: GREEN
 
 - `cli-runtime.md` — its runtime verbs (`model eval`/`rule test`/`model compute`) now default to the kernel-free interpreter, so they run on the native binary (verified above). The only JVM-only part is the `--kernel` *option*, **removed from the native command tree** (present only under the JVM profile), guarded by `NativeImageRuntimeVerbsTest`. **Standing convention if a verb ever becomes genuinely native-incompatible:** isolate it in its own demo file (showboat verify is per-file, so one unverifiable block would forfeit native coverage of the rest) — but no verb is in that state today.
 - `cli-tour.md` — its `manifest` block is no longer a native subset: `Cli.JVM_ONLY_VERBS` is empty (no verb hidden), so the native manifest equals the JVM one and the demo verifies byte-for-byte on native too. (`NativeImageRuntimeVerbsTest` superseded the old hiding test.)
+
+> **Pending the next native build: the 7th demo, `cli-custom-types.md` (added 2026-06-27).** It exercises the G31 JS escape (`--custom-conditions-js` / `--custom-field-types-js`), whose blocks spawn the system **`node`**. On native it is applicable **only if `node` is on the host PATH** (else those blocks degrade to `unsupported` → different output → the per-file verify fails). When native is next built: ensure `node` on the native test host (as CI does) and re-measure the demo gate to **7/7**, or — per the standing convention above — isolate the node-dependent blocks. The §1 "6/6" status is the 2026-06-24 measurement, before this demo existed.
 
 > **Closed (v0.2.0) — `manifest` + a real `rule read` read-back are now in the battery.** `manifest` lives only in `cli-tour.md` (which was skipped on native back then), and the fixture sweep's `rule read` runs **without** a `<rulePathInModel>` (picocli rejects it before the read tier) — so for a while the only thing running `manifest` on a native binary was the **Windows CI smoke** (RELEASE-SPEC §4), and the rule read-back was untested locally too. A native-only `manifest` defect (it builds the full picocli tree + operator catalog → a reflection/resource path the read/validate verbs don't hit) would have slipped past the local gate; it surfaced indirectly when the Windows smoke's *own* bugs were fixed and it finally ran `manifest`. **`native-battery.sh` now drives `manifest`, `operators`, and `rule read`/`rule explain /Order/DeliveryNotBeforeOrder`** (catalog + adapter-read-back reflection), so the local gate covers them — not only the Windows-only smoke.
 
