@@ -15,6 +15,7 @@ import io.github.mbackschat.a12.dm.interpreter.ast.Tri
 import io.github.mbackschat.a12.dm.interpreter.ast.Val
 import io.github.mbackschat.a12.dm.interpreter.ast.emptyValue
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
+import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
 import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
@@ -78,6 +79,10 @@ class Interpreter(
      *  caller's relevant entities + the auto-added global fields, wildcards preserved. So a relevance-aware
      *  custom condition can return false when its fields are not relevant (IF38). [DmInterpreter] supplies it. */
     private val customRelevant: Set<FieldPointer>? = null,
+    /** Consumer-supplied CODE-BASED custom field types (the kernel's `ICustomFieldType` SPI) — the imperative tail
+     *  of `Valid(field, "Name")` / `Invalid(field, "Name")`, consulted ONLY after [predefinedTypes] misses (so that
+     *  declarative path stays monomorphic). Supplied by [DmInterpreter]; default empty. */
+    private val customFieldTypes: Map<String, CustomFieldType> = emptyMap(),
 ) {
 
     fun fires(cond: Cond): Boolean = eval(cond) == Tri.TRUE
@@ -476,11 +481,13 @@ class Interpreter(
         val path = pathOf(args[0])
         val typeName = (args[1] as? Expr.StrLit)?.v
             ?: throw UnsupportedConstructException("predefined-type validity needs a string type name, got ${args[1]}")
-        val type = predefinedTypes[typeName]
-            ?: throw UnsupportedConstructException("unknown predefined type \"$typeName\" — register it in the predefined-type registry")
+        // Declarative first (monomorphic), then a code-based type; unregistered in BOTH → unsupported (fail-fast).
+        val accept: (String) -> Boolean = predefinedTypes[typeName]?.let { it::accepts }
+            ?: customFieldTypes[typeName]?.let { it::validate }
+            ?: throw UnsupportedConstructException("unknown predefined type \"$typeName\" — register it in the predefined-type or custom-field-type registry")
         if (!ctx.filled(path)) return Tri.UNKNOWN
         val value = ctx.displayValue(path) ?: return Tri.UNKNOWN
-        return Tri.of(type.accepts(value) == expectValid)
+        return Tri.of(accept(value) == expectValid)
     }
 
     /**
@@ -1076,7 +1083,7 @@ class Interpreter(
         // filled values (empties dropped, like `star`) — the aggregate then consumes only those.
         val group = star.path.substringBeforeLast('/')
         return ctx.rowContexts(group)
-            .filter { rc -> Interpreter(rc, clock, baseYear, indexFields, predefinedTypes, customConditions, customErrorField, invalid, customRelevant = customRelevant, starRelevant = starRelevant, cellRelevant = cellRelevant).fires(star.having) }
+            .filter { rc -> Interpreter(rc, clock, baseYear, indexFields, predefinedTypes, customConditions, customErrorField, invalid, customRelevant = customRelevant, starRelevant = starRelevant, cellRelevant = cellRelevant, customFieldTypes = customFieldTypes).fires(star.having) }
             .mapNotNull { rc -> if (rc.filled(star.path)) rc.field(star.path) else null }
     }
 

@@ -73,6 +73,22 @@ object PredefinedTypeRegistry {
 }
 
 /**
+ * The consumer SPI for a CODE-BASED custom field type — the kernel's `ICustomFieldType` client surface, for an
+ * imperative type whose validity is *logic*, not a format (a checksum: IBAN mod-97, ISIN/Luhn check digit). The
+ * declarative [PredefinedType] (length/pattern) covers the format majority; this covers the imperative tail.
+ *
+ * **Dispatched ALONGSIDE [PredefinedType], never replacing it** (the [DmInterpreter]/`Interpreter` consult a
+ * code-based type only AFTER the declarative registry misses): the declarative per-cell path stays a monomorphic,
+ * JIT-inlined `accepts` call, and this polymorphic [validate] is reached only for a code-backed type — a consumer
+ * who registers none pays nothing. This is the INTERPRETER-PERFORMANCE "hot path stays a monomorphic concrete
+ * call" rule (locked by `CustomTypePerfTest`).
+ */
+fun interface CustomFieldType {
+    /** @return true iff [value] is a valid instance of this type (so an INVALID value fires `customFieldTypeInvalid`). */
+    fun validate(value: String): Boolean
+}
+
+/**
  * A field's requiredness — the kernel's `IRequirednessConfig.Mode`. A required-but-empty field raises
  * the `mandatoryField` error and becomes **"unknown"** (KERNEL-FINDINGS §4): rules referencing it see
  * `Val.Unknown`, so the 3VL propagates it (a comparison goes unknown, but `… Or <true>` still fires). The

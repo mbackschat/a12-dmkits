@@ -25,6 +25,7 @@ import io.github.mbackschat.a12.dm.interpreter.eval.renderMessage
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome
 import io.github.mbackschat.a12.dm.interpreter.model.Computed
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition
+import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType
 import io.github.mbackschat.a12.dm.interpreter.model.LegalCharset
 import io.github.mbackschat.a12.dm.interpreter.model.EvalClock
 import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer
@@ -90,6 +91,11 @@ class DmInterpreter @JvmOverloads constructor(
      *  charset (e.g. **DIN 91379**) supplies the matching set here so the interpreter enforces the SAME restriction
      *  — the interpreter must expose every kernel customization to be 100% compatible. */
     private val legalCharset: LegalCharset = LegalCharset.BMP,
+    /** Consumer-supplied CODE-BASED custom field types ([CustomFieldType] — the kernel's `ICustomFieldType` SPI,
+     *  for imperative checksum types), keyed by name. Default empty. Consulted ONLY after [predefinedTypes] misses,
+     *  so the declarative per-cell path stays monomorphic ([CustomFieldType]'s KDoc; `CustomTypePerfTest`). A
+     *  custom-typed cell whose name is in NEITHER registry is reported unsupported (the lenient degrade). */
+    private val customFieldTypes: Map<String, CustomFieldType> = emptyMap(),
 ) {
 
     /**
@@ -494,7 +500,8 @@ class DmInterpreter @JvmOverloads constructor(
                     continue
                 }
                 val ectx = if (overlay.isEmpty()) ctx else OverlayContext(ctx, overlay)
-                val interp = Interpreter(ectx, clock, model.baseYear, model.indexFields, predefinedTypes)
+                val interp = Interpreter(ectx, clock, model.baseYear, model.indexFields, predefinedTypes,
+                    customFieldTypes = customFieldTypes)
                 val v = evalComputation(parsed, interp)
                 val computed = toComputed(comp, v)
                 out += computed
@@ -694,7 +701,8 @@ class DmInterpreter @JvmOverloads constructor(
                 // The relevant set a CustomCondition sees — null in full, the caller's set + globals in partial (IF38).
                 customRelevant = customRelevant,
                 // Partial validation only: whether an all-rows aggregate's star is wildcard-relevant (IF42).
-                starRelevant = starRelevant)
+                starRelevant = starRelevant,
+                customFieldTypes = customFieldTypes)
             // ONE typed walk per row (the fired MsgType, or null if it doesn't fire) — firedType != null ⟺ the
             // rule fires (truth == TRUE), and the value IS the polarity. The walk is LAZY-polarity: it skips the
             // VALUE/OMISSION typing on non-firing nodes (the kernel types only firing rows), measured faster in
@@ -766,8 +774,10 @@ class DmInterpreter @JvmOverloads constructor(
      *  formal error): the value is then used leniently as a plain string and the cell is reported by
      *  [customTypeUnsupported] instead (the kernel throws without a validator; the interpreter degrades). */
     private fun customTypeRejected(path: String, raw: String): Boolean {
-        val type = model.customTypeOf(path)?.let { predefinedTypes[it] } ?: return false
-        return !type.accepts(raw)
+        val typeName = model.customTypeOf(path) ?: return false
+        predefinedTypes[typeName]?.let { return !it.accepts(raw) }       // declarative: monomorphic, unchanged
+        customFieldTypes[typeName]?.let { return !it.validate(raw) }     // code-based: reached only for a code type
+        return false                                                     // unregistered → unsupported, not rejected
     }
 
     /** Filled cells whose declared custom field type has NO registered validator — reported [ValidationOutcome.unsupported]
@@ -776,7 +786,7 @@ class DmInterpreter @JvmOverloads constructor(
     private fun customTypeUnsupported(doc: Document, isRelevant: Relevance): List<UnsupportedRule> =
         doc.valuedFields().filter { isRelevant(it.path, it.reps) }.mapNotNull { vf ->
             val typeName = model.customTypeOf(vf.path) ?: return@mapNotNull null
-            if (typeName in predefinedTypes) null
+            if (typeName in predefinedTypes || typeName in customFieldTypes) null
             else UnsupportedRule(formatPointer(vf.path, vf.reps), "custom field type '$typeName' has no registered validator")
         }
 
