@@ -22,6 +22,9 @@ public sealed interface ElementDraft
     /** A name/value annotation pair. */
     record Annotation(String name, String value) {}
 
+    /** A repeatable group's declared row sort key — a direct-child field name + its {@link SortOrder}. */
+    record SortField(String fieldName, SortOrder order) {}
+
     /**
      * A leaf field — its typed config ({@link FieldTypeSpec}), how it must be filled, per-locale display
      * {@code labels} (locale → text), and element-level {@code annotations}. Plus the field-level metadata
@@ -57,12 +60,14 @@ public sealed interface ElementDraft
      */
     record Group(String name, int repeatability, String indexFieldName, List<ElementDraft> elements,
             List<Annotation> annotations, String usageType,
-            Map<String, String> internalDescription, Map<String, String> externalDescription)
+            Map<String, String> internalDescription, Map<String, String> externalDescription,
+            List<SortField> sortFields)
             implements ElementDraft {
 
         public Group {
             internalDescription = internalDescription == null ? Map.of() : Map.copyOf(internalDescription);
             externalDescription = externalDescription == null ? Map.of() : Map.copyOf(externalDescription);
+            sortFields = sortFields == null ? List.of() : List.copyOf(sortFields);
         }
 
         /** A plain group — no {@code usageType} template marker, no descriptions. */
@@ -75,6 +80,14 @@ public sealed interface ElementDraft
         public Group(String name, int repeatability, String indexFieldName, List<ElementDraft> elements,
                 List<Annotation> annotations, String usageType) {
             this(name, repeatability, indexFieldName, elements, annotations, usageType, Map.of(), Map.of());
+        }
+
+        /** No declared row sort (the common case) — the eight-arg form defaults {@code sortFields} to empty. */
+        public Group(String name, int repeatability, String indexFieldName, List<ElementDraft> elements,
+                List<Annotation> annotations, String usageType,
+                Map<String, String> internalDescription, Map<String, String> externalDescription) {
+            this(name, repeatability, indexFieldName, elements, annotations, usageType,
+                    internalDescription, externalDescription, List.of());
         }
     }
 

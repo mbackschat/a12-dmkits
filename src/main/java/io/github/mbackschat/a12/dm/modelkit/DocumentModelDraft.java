@@ -213,6 +213,16 @@ public final class DocumentModelDraft {
         if (group.indexFieldName() != null) {
             body.put("indexFieldName", group.indexFieldName());
         }
+        if (!group.sortFields().isEmpty()) {
+            // FEATURE-GAPS G28: each sort field is {"name": <relative child path>, "order": ASC|DESC}
+            // (the kernel's GroupSortFieldMixin maps the field ref to "name"; the Order enum to "order").
+            ArrayNode sortFields = body.putArray("sortFields");
+            for (ElementDraft.SortField sf : group.sortFields()) {
+                ObjectNode sortNode = sortFields.addObject();
+                sortNode.put("name", sf.fieldName());
+                sortNode.put("order", sf.order().name());
+            }
+        }
         ArrayNode elements = body.putArray("elements");
         for (ElementDraft element : group.elements()) {
             elements.add(switch (element) {
@@ -820,6 +830,7 @@ public final class DocumentModelDraft {
         private int repeatability = 1;
         private String indexFieldName;
         private final List<ElementDraft> elements = new ArrayList<>();
+        private final List<ElementDraft.SortField> sortFields = new ArrayList<>();
 
         private GroupBuilder(String name) {
             this.name = name;
@@ -841,6 +852,18 @@ public final class DocumentModelDraft {
          */
         public GroupBuilder indexField(String fieldName) {
             this.indexFieldName = fieldName;
+            return this;
+        }
+
+        /**
+         * Add a declared row <b>sort field</b> (FEATURE-GAPS G28): order this repeatable group's rows by the
+         * direct-child field {@code fieldName}, {@code order} direction. Call repeatedly for a multi-key sort —
+         * the keys apply in declaration order. Requires {@link #repeatable(int)}; the named field must be a
+         * direct child (both checked at build). Display/USB-only — the kernel does not reorder rows for
+         * validation/computation (KERNEL-FINDINGS / INTERPRETER-FINDINGS IF22).
+         */
+        public GroupBuilder sortField(String fieldName, SortOrder order) {
+            sortFields.add(new ElementDraft.SortField(fieldName, order));
             return this;
         }
 
@@ -988,9 +1011,21 @@ public final class DocumentModelDraft {
                             + "' is not a direct child field");
                 }
             }
+            for (ElementDraft.SortField sf : sortFields) {
+                if (repeatability == 1) {
+                    throw new IllegalStateException("group '" + name + "' sets a sort field '"
+                            + sf.fieldName() + "' but is not repeatable");
+                }
+                boolean present = elements.stream()
+                        .anyMatch(e -> e instanceof ElementDraft.Field f && f.name().equals(sf.fieldName()));
+                if (!present) {
+                    throw new IllegalStateException("group '" + name + "' sort field '" + sf.fieldName()
+                            + "' is not a direct child field");
+                }
+            }
             return new ElementDraft.Group(name, repeatability, indexFieldName,
                     List.copyOf(elements), List.copyOf(annotations), null,
-                    Map.copyOf(internalDescription), Map.copyOf(externalDescription));
+                    Map.copyOf(internalDescription), Map.copyOf(externalDescription), List.copyOf(sortFields));
         }
     }
 
