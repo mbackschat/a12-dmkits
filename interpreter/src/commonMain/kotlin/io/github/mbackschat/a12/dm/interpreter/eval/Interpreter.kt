@@ -282,18 +282,6 @@ class Interpreter(
         return if (ctx.starOmission(star.path)) build(ctx.signed(star.path)) else Fill.of(false, false)
     }
 
-    /** Directional fillability of a comparison operand. **Interned** (2 × 2 = 4 instances) — the kernel packs
-     *  these as booleans on the value (no separate object); allocated per `Cmp` operand in the hot walk, so use
-     *  `Fill.of(...)`, never the constructor. */
-    private data class Fill(val canGrow: Boolean, val canShrink: Boolean) {
-        companion object {
-            private val FF = Fill(false, false); private val FT = Fill(false, true)
-            private val TF = Fill(true, false); private val TT = Fill(true, true)
-            fun of(canGrow: Boolean, canShrink: Boolean): Fill =
-                if (canGrow) (if (canShrink) TT else TF) else (if (canShrink) FT else FF)
-        }
-    }
-
     /**
      * VALUE vs OMISSION of a fired comparison: OMISSION (fillable) iff filling an operand *in the breaking
      * direction* could clear it — the kernel's `BedingungsOperatorHelper.vergleiche` rule. GT/GE break when
@@ -304,26 +292,20 @@ class Interpreter(
     private fun leafType(op: CmpOp, left: Expr, right: Expr): MsgType {
         val l = fill(left)
         val r = fill(right)
-        val fillable = when (op) {
-            CmpOp.GT, CmpOp.GE -> l.canShrink || r.canGrow
-            CmpOp.LT, CmpOp.LE -> l.canGrow || r.canShrink
-            CmpOp.EQ -> l.canGrow || l.canShrink || r.canGrow || r.canShrink
-            CmpOp.NE -> neFillable(left, right, l, r)
-        }
+        // Resolve each operand's Fill here (ctx-coupled); the per-operator polarity RULE is pure ([Polarity], IF10).
+        val fillable = if (op == CmpOp.NE) neFillable(left, right, l, r) else Polarity.fillable(op, l, r)
         return if (fillable) MsgType.OMISSION else MsgType.VALUE
     }
 
-    /** `!=` is directional on which operand is larger: if left < right it breaks when left grows or right
-     *  shrinks; if left > right, the mirror (kernel `getFehlerFuerNE`). The ordering is only meaningful when
-     *  the rule fires (both operands known); otherwise the type is discarded, so any answer is safe. */
+    /** `!=` is directional on which operand is larger — the strategy resolves the ordering (both operands), then
+     *  [Polarity.neFillable] applies the rule. The ordering is only meaningful when the rule fires (both known);
+     *  a non-orderable pair (e.g. a DATE_RANGE `!=`) falls back to the symmetric [Polarity.anyMove] (the answer is
+     *  discarded unless the rule fires with both present, where symmetric → VALUE is correct). */
     private fun neFillable(left: Expr, right: Expr, l: Fill, r: Fill): Boolean {
         val lv = evalExpr(left)
         val rv = evalExpr(right)
-        // Direction is only meaningful for ORDERABLE (number/text) operands both known — e.g. a DATE_RANGE `!=`
-        // (the implicit computation-validation) is unordered; fall back to the symmetric fillability (the answer
-        // is discarded unless the rule fires with both present, where symmetric → VALUE is correct).
-        if (!orderable(lv) || !orderable(rv)) return l.canGrow || l.canShrink || r.canGrow || r.canShrink
-        return if (ValCompare.language(lv, rv) < 0) l.canGrow || r.canShrink else l.canShrink || r.canGrow
+        if (!orderable(lv) || !orderable(rv)) return Polarity.anyMove(l, r)
+        return Polarity.neFillable(ValCompare.language(lv, rv) < 0, l, r)
     }
 
     private fun orderable(v: Val): Boolean = v is Val.Num || v is Val.Txt
@@ -342,12 +324,8 @@ class Interpreter(
 
     /** Tolerance polarity is EQ-like (kernel-probed): OMISSION when filling an empty operand toward the other
      *  could close the gap and clear the firing, else VALUE — so it is fillable iff either operand can move. */
-    private fun toleranceType(c: Cond.Tolerance): MsgType {
-        val l = fill(c.left)
-        val r = fill(c.right)
-        val fillable = l.canGrow || l.canShrink || r.canGrow || r.canShrink
-        return if (fillable) MsgType.OMISSION else MsgType.VALUE
-    }
+    private fun toleranceType(c: Cond.Tolerance): MsgType =
+        if (Polarity.anyMove(fill(c.left), fill(c.right))) MsgType.OMISSION else MsgType.VALUE
 
     /**
      * The field-list value-list quantifiers (shape B, kernel-probed). Classify each field against the value
@@ -925,14 +903,9 @@ class Interpreter(
      * any malformed cell makes the whole sum non-evaluable → the rule is suppressed (the formal mechanism). Both
      * stars resolve over the same group, so `starAll` yields equal-length, row-aligned lists.
      */
-    private fun sumOfProducts(args: List<Expr>): Val {
-        val a = ctx.starAll((args[0] as Expr.Star).path)
-        val b = ctx.starAll((args[1] as Expr.Star).path)
-        if (a.any { it is Val.Unknown } || b.any { it is Val.Unknown }) return Val.Unknown
-        var sum = DEC_ZERO
-        for (i in a.indices) sum += num(a[i]) * num(b[i])
-        return Val.Num(sum)
-    }
+    private fun sumOfProducts(args: List<Expr>): Val =
+        // Resolve the two row-aligned star lists here (ctx-coupled); the Σ aᵢ·bᵢ fold is pure ([Aggregates], IF10).
+        Aggregates.sumOfProducts(ctx.starAll((args[0] as Expr.Star).path), ctx.starAll((args[1] as Expr.Star).path))
 
     /** `FieldValueAsNumber(field)` — the field's value parsed to a number; an EMPTY field reads as `0` (kernel
      *  `feldWertAlsZahl`), a formally-invalid one → Unknown. The field's values are compile-guaranteed numeric

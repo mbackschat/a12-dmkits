@@ -41,6 +41,20 @@ object Aggregates {
         return Val.Num(dec(count))
     }
 
+    /**
+     * `SumOfProducts` — Σ aᵢ·bᵢ over two row-aligned value lists (the [Val.Num] products). Any Unknown cell in
+     * EITHER list makes the whole sum non-evaluable → [Val.Unknown] (the formal-suppression mechanism). The lists
+     * are equal-length + row-aligned by construction (both stars resolve over the SAME repeatable group); the
+     * strategy does that resolution and passes the two lists. An empty cell arrives as the substituted 0, so its
+     * product is 0.
+     */
+    fun sumOfProducts(a: List<Val>, b: List<Val>): Val {
+        if (a.any { it is Val.Unknown } || b.any { it is Val.Unknown }) return Val.Unknown
+        var sum = DEC_ZERO
+        for (i in a.indices) sum += numOf(a[i]) * numOf(b[i])
+        return Val.Num(sum)
+    }
+
     /** Unwrap a resolved [Val.Num] to its [Dec] — the values reaching a numeric fold are Num by construction
      *  (the Unknown gate ran in the strategy, and a non-numeric operand is a model/type error upstream). */
     private fun numOf(v: Val): Dec = (v as? Val.Num)?.v ?: error("expected a number, got $v")

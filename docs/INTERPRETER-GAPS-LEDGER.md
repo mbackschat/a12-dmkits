@@ -24,11 +24,11 @@ Deferred items are in §2; a fixed gap is deleted from here (git + its `IFn` fin
 
 ## 2. Deferred / ongoing-incremental (recorded with status; detail in [`INTERPRETER-FINDINGS.md`](INTERPRETER-FINDINGS.md))
 
-Two kinds live here: a **deferred** item (parked until its re-open trigger flips) and an **ongoing as-touched** refactor (actively progressing in increments, no blocker — recorded so the remaining work isn't lost). Neither is a parity gap (those are §1); a fully-shipped item is deleted (its `IF<n>` finding + git are the record).
+Two kinds live here when present: a **deferred** item (parked until its re-open trigger flips) and an **ongoing as-touched** refactor (progressing in increments, recorded so the remaining work isn't lost). Neither is a parity gap (those are §1); a fully-shipped item is deleted (its `IF<n>` finding + git are the record).
 
-| code | item | status — trigger or remaining work | detail in |
-|---|---|---|---|
-| **IG5** | runtime-semantics extraction (generator-readiness) | **ongoing — as-touched** (NOT parked/deferred: no blocker, no trigger — a standing refactor done incrementally as the inlined logic is touched, **not** a prerequisite for any feature). Already moved into the pure runtime layer: `DateMath`/`Kleene`/`quantifierFires`/the op registries/**`ValCompare`**/**`Aggregates`** (the `sum`/`min`/`max`/`numberOfDifferentValues` folds — 2026-06-27). **Remaining:** the directional-fill polarity (`fill`/`funcFill`/`leafType`) + the `SumOfProducts` pairing fold. | IF10 |
+**(none)**
+
+Completed 2026-06-27: **IG5** (runtime-semantics extraction) → graduated to **IF10**. All the substantial operator semantics are now pure functions in the runtime layer — `Polarity` (comparison-polarity rules + the `Fill` value object), `Aggregates` (the `sum`/`min`/`max`/`numberOfDifferentValues` folds + `SumOfProducts`), `ValCompare` (value order), alongside the earlier `DateMath`/`Kleene`/`quantifierFires`/op registries. Operand *resolution* (`fill`/`funcFill` → `Fill`, the star walks, `evalExpr`, the value-list IN/OUT count, the pattern regex) correctly stays in the strategy — that is the data-access layer, not inlined semantics. The standing as-touched discipline (put a new operator's semantics in the runtime layer) lives on in IF10/CLAUDE.md.
 
 ---
 
