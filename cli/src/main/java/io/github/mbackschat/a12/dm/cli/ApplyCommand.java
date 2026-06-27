@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.cli;
 
 import io.github.mbackschat.a12.dm.cli.computation.ComputationSpec;
 import io.github.mbackschat.a12.dm.cli.field.FieldSpec;
+import io.github.mbackschat.a12.dm.cli.group.SortFieldArg;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -72,7 +73,7 @@ final class ApplyCommand extends BaseCommand {
         FIELD_REMOVE("field", "remove", Set.of("fieldPathInModel")),
         GROUP_ADD("group", "add", Set.of("parent", "name", "repeatable")),
         GROUP_MODIFY("group", "modify", Set.of("groupPathInModel", "repeatable", "non-repeatable",
-                "index-field", "clear-index-field")),
+                "index-field", "clear-index-field", "sort-field", "clear-sort-fields")),
         GROUP_REMOVE("group", "remove", Set.of("groupPathInModel", "cascade")),
         RULE_ADD("rule", "add", Set.of("field", "group", "condition", "comment", "code", "severity", "name", "messages",
                 "allowDifferingDecimals")),
@@ -306,15 +307,27 @@ final class ApplyCommand extends BaseCommand {
                 boolean nonRepeatable = op.path("non-repeatable").asBoolean(false);
                 String indexField = op.hasNonNull("index-field") ? op.get("index-field").asText() : null;
                 boolean clearIndex = op.path("clear-index-field").asBoolean(false);
+                List<String> sortArgs = new ArrayList<>();
+                JsonNode sortNode = op.get("sort-field");
+                if (sortNode != null && sortNode.isArray()) {
+                    sortNode.forEach(n -> sortArgs.add(n.asText()));
+                } else if (sortNode != null) {
+                    sortArgs.add(sortNode.asText());   // a bare scalar also binds (the repeatable-key convention)
+                }
+                boolean clearSorts = op.path("clear-sort-fields").asBoolean(false);
                 if (repeatable != null && nonRepeatable) {
                     throw new IllegalArgumentException("group modify: pass at most one of repeatable / non-repeatable");
                 }
                 if (indexField != null && clearIndex) {
                     throw new IllegalArgumentException("group modify: pass at most one of index-field / clear-index-field");
                 }
-                if (repeatable == null && !nonRepeatable && indexField == null && !clearIndex) {
-                    throw new IllegalArgumentException("group modify needs one of "
-                            + "repeatable / non-repeatable / index-field / clear-index-field");
+                if (!sortArgs.isEmpty() && clearSorts) {
+                    throw new IllegalArgumentException("group modify: pass at most one of sort-field / clear-sort-fields");
+                }
+                if (repeatable == null && !nonRepeatable && indexField == null && !clearIndex
+                        && sortArgs.isEmpty() && !clearSorts) {
+                    throw new IllegalArgumentException("group modify needs one of repeatable / non-repeatable / "
+                            + "index-field / clear-index-field / sort-field / clear-sort-fields");
                 }
                 if (repeatable != null) {
                     session.setRepeatable(path, repeatable);
@@ -329,6 +342,19 @@ final class ApplyCommand extends BaseCommand {
                 } else if (clearIndex) {
                     session.clearIndexField(path);
                     changed.putNull("indexField");
+                }
+                if (!sortArgs.isEmpty()) {
+                    var parsed = SortFieldArg.parseAll(sortArgs);
+                    session.setSortFields(path, parsed);
+                    ArrayNode sortArr = changed.putArray("sortFields");
+                    parsed.forEach(sf -> {
+                        ObjectNode n = sortArr.addObject();
+                        n.put("name", sf.fieldName());
+                        n.put("order", sf.order().name());
+                    });
+                } else if (clearSorts) {
+                    session.clearSortFields(path);
+                    changed.putArray("sortFields");
                 }
                 changed.put("group", path);
                 yield staged(which, changed, session);

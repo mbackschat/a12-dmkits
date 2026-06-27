@@ -171,6 +171,14 @@ public final class EditSession {
         return editStructure(d -> d.clearIndexField(groupPath));
     }
 
+    public EditSession setSortFields(String groupPath, List<ElementDraft.SortField> fields) {
+        return editStructure(d -> d.setSortFields(groupPath, fields));
+    }
+
+    public EditSession clearSortFields(String groupPath) {
+        return editStructure(d -> d.clearSortFields(groupPath));
+    }
+
     public EditSession addTypeDefinition(String id, FieldKind underlying) {
         return editStructure(d -> d.addTypeDefinition(id, underlying));
     }

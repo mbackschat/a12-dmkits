@@ -51,7 +51,7 @@
         "messages": [ { "locale": "en_US", "text": "Please confirm the auto-renew choice." } ] }
     ],
     [
-      { "target": "group", "op": "modify", "groupPathInModel": "/Subscription/Addons", "index-field": "Name" },
+      { "target": "group", "op": "modify", "groupPathInModel": "/Subscription/Addons", "index-field": "Name", "sort-field": [ "MonthlyFee:desc", "Name" ] },
       { "target": "typedef", "op": "add", "id": "Tier", "kind": "ENUM",
         "enum": { "values": [ { "value": "GOLD" }, { "value": "SILVER" } ] } },
       { "target": "config", "op": "modify", "role": [ "admin", "editor" ], "comment": "managed by the platform team" }

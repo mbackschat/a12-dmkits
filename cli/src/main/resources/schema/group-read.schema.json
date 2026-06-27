@@ -14,6 +14,7 @@
     "repeatable": { "type": "boolean", "description": "(one group) whether the group repeats (rules over it iterate per row)" },
     "maxRepetitions": { "type": "integer", "description": "(one group) the maximum number of rows; present only for a repeatable group" },
     "indexField": { "type": "string", "description": "(one group) the repetition row-key field, if one is set" },
+    "sortFields": { "type": "array", "description": "(one group) the declared row sort keys (display/USB ordering), in order, present only when any are set", "items": { "type": "object", "additionalProperties": false, "properties": { "name": { "type": "string", "description": "the direct-child field sorted on" }, "order": { "type": "string", "enum": ["ASC", "DESC"], "description": "the sort direction" } } } },
     "fields": { "type": "array", "items": { "type": "string" }, "description": "(one group) the group's DIRECT child field paths (a deeper field belongs to a nested sub-group; see `model describe` for the full tree)" },
     "groups": { "type": "array", "items": { "type": "string" }, "description": "(name-index) every group's full name-path, in document order — pass one back as `group read <path>`" },
     "count": { "type": "integer", "description": "(name-index) the number of groups" }

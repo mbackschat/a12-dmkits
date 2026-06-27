@@ -16,11 +16,13 @@ import java.util.List;
 import java.util.Optional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver;
 
 import io.github.mbackschat.a12.dm.core.ModelConsistencyException;
 import io.github.mbackschat.a12.dm.edit.EditSession;
+import io.github.mbackschat.a12.dm.modelkit.ElementDraft;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
@@ -33,14 +35,16 @@ import picocli.CommandLine.Parameters;
  * previews). {@code --repeatable <max>} (≥2) makes a single group a repetition list, {@code --non-repeatable}
  * collapses a list back to one; {@code --index-field <fieldName>} designates a direct-child field as the
  * repetition row-key (arms {@code RepetitionNotUnique} + parallel iteration; requires a repeatable group),
- * {@code --clear-index-field} removes it. At least one directive is required. The change is re-bound through
- * the kernel gate, so one that breaks the model (e.g. a {@code *}-wildcard rule that now has no list to range
- * over) fails loudly as a {@code rejected} envelope. (Repeatability was settable only at {@code group add} —
- * G15; the index field only via the builder — G24.)
+ * {@code --clear-index-field} removes it; {@code --sort-field <child>[:asc|desc]} (repeatable) declares the
+ * row display sort, {@code --clear-sort-fields} removes it. At least one directive is required. The change is
+ * re-bound through the kernel gate, so one that breaks the model (e.g. a {@code *}-wildcard rule that now has
+ * no list to range over) fails loudly as a {@code rejected} envelope. (Repeatability was settable only at
+ * {@code group add} — G15; the index field only via the builder — G24; sort fields — G28.)
  */
 @Command(name = "modify", mixinStandardHelpOptions = true,
-        description = "Change a group's repeatability (--repeatable <max> / --non-repeatable) and/or its index "
-                + "field (--index-field <fieldName> / --clear-index-field) in place.")
+        description = "Change a group's repeatability (--repeatable <max> / --non-repeatable), index field "
+                + "(--index-field <fieldName> / --clear-index-field), and/or row sort (--sort-field "
+                + "<child>[:asc|desc] / --clear-sort-fields) in place.")
 final class GroupModifyCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -64,6 +68,15 @@ final class GroupModifyCommand extends BaseCommand {
 
     @Option(names = "--clear-index-field", description = "remove the group's index field")
     boolean clearIndexField;
+
+    @Option(names = "--sort-field", paramLabel = "<child>[:asc|desc]",
+            description = "declare a row display-sort key — a direct-child field, optionally :asc (default) or "
+                    + ":desc; repeat for a multi-key sort (in order); requires a repeatable group. Replaces any "
+                    + "existing sort (display/USB-only — not consumed by validation/computation)")
+    List<String> sortFields = new ArrayList<>();
+
+    @Option(names = "--clear-sort-fields", description = "remove the group's declared row sort fields")
+    boolean clearSortFields;
 
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the result here instead of in place (overwriting the model)")
@@ -96,14 +109,24 @@ final class GroupModifyCommand extends BaseCommand {
         if (indexField != null && clearIndexField) {
             return fail("pass at most one of --index-field <fieldName> or --clear-index-field");
         }
+        if (!sortFields.isEmpty() && clearSortFields) {
+            return fail("pass at most one of --sort-field <child> or --clear-sort-fields");
+        }
         boolean repeatabilityChange = repeatable != null || nonRepeatable;
         boolean indexChange = indexField != null || clearIndexField;
-        if (!repeatabilityChange && !indexChange) {
-            return fail("nothing to change — pass --repeatable/--non-repeatable and/or "
-                    + "--index-field/--clear-index-field");
+        boolean sortChange = !sortFields.isEmpty() || clearSortFields;
+        if (!repeatabilityChange && !indexChange && !sortChange) {
+            return fail("nothing to change — pass --repeatable/--non-repeatable, "
+                    + "--index-field/--clear-index-field, and/or --sort-field/--clear-sort-fields");
         }
         if (repeatable != null && repeatable < 2) {
             return fail("--repeatable <max> must be >= 2 (use --non-repeatable to make it a single group)");
+        }
+        List<ElementDraft.SortField> parsedSorts;
+        try {
+            parsedSorts = SortFieldArg.parseAll(sortFields);
+        } catch (IllegalArgumentException e) {
+            return fail(e.getMessage());
         }
         EditSession session = EditSession.read(modelJson, resolver);
         try {
@@ -116,6 +139,11 @@ final class GroupModifyCommand extends BaseCommand {
                 session.setIndexField(group, indexField);
             } else if (clearIndexField) {
                 session.clearIndexField(group);
+            }
+            if (!parsedSorts.isEmpty()) {
+                session.setSortFields(group, parsedSorts);
+            } else if (clearSortFields) {
+                session.clearSortFields(group);
             }
         } catch (RuntimeException e) {
             return fail(e.getMessage());
@@ -145,6 +173,20 @@ final class GroupModifyCommand extends BaseCommand {
         } else if (clearIndexField) {
             changed.putNull("indexField");
             summaryParts.add("index field cleared");
+        }
+        if (!parsedSorts.isEmpty()) {
+            ArrayNode sortArr = changed.putArray("sortFields");
+            List<String> labels = new ArrayList<>();
+            for (ElementDraft.SortField sf : parsedSorts) {
+                ObjectNode n = sortArr.addObject();
+                n.put("name", sf.fieldName());
+                n.put("order", sf.order().name());
+                labels.add(sf.fieldName() + " " + sf.order().name().toLowerCase(java.util.Locale.ROOT));
+            }
+            summaryParts.add("sort by " + String.join(", ", labels));
+        } else if (clearSortFields) {
+            changed.putArray("sortFields");
+            summaryParts.add("sort fields cleared");
         }
         String summary = "set " + group + ": " + String.join(", ", summaryParts);
         if (dryRun) {

@@ -933,6 +933,57 @@ public final class ModelDocument {
         return this;
     }
 
+    /** The group's declared row sort fields (display/USB ordering), in declared order; empty if none. */
+    public List<ElementDraft.SortField> sortFields(String groupPath) {
+        List<ElementDraft.SortField> out = new ArrayList<>();
+        for (JsonNode n : groupBody(groupPath).path("sortFields")) {
+            out.add(new ElementDraft.SortField(n.path("name").asText(),
+                    SortOrder.valueOf(n.path("order").asText("ASC"))));
+        }
+        return out;
+    }
+
+    /**
+     * Set the declared row <b>sort fields</b> of the <b>repeatable</b> group at {@code groupPath} (replacing any
+     * existing) — each a direct-child field + {@link SortOrder}, applied in list order. Requires a repeatable
+     * group (sort order is per-row) and existing direct-child fields; fails fast otherwise. Display/USB-only —
+     * the kernel does not reorder rows for validate/compute (KERNEL-FINDINGS / INTERPRETER-FINDINGS IF22). The
+     * {@code validate()} gate stays the authoritative check.
+     */
+    public ModelDocument setSortFields(String groupPath, List<ElementDraft.SortField> fields) {
+        ObjectNode body = groupBody(groupPath);
+        if (body.path("repeatability").asInt(1) <= 1) {
+            throw new IllegalArgumentException("sort fields need a repeatable group; " + groupPath
+                    + " is not repeatable");
+        }
+        for (ElementDraft.SortField sf : fields) {
+            boolean childField = false;
+            for (JsonNode e : body.path("elements")) {
+                if ("Field".equals(e.path("type").asText()) && sf.fieldName().equals(e.path("name").asText())) {
+                    childField = true;
+                    break;
+                }
+            }
+            if (!childField) {
+                throw new IllegalArgumentException("sort field '" + sf.fieldName()
+                        + "' is not a direct child field of " + groupPath);
+            }
+        }
+        ArrayNode arr = body.putArray("sortFields");
+        for (ElementDraft.SortField sf : fields) {
+            ObjectNode n = arr.addObject();
+            n.put("name", sf.fieldName());
+            n.put("order", sf.order().name());
+        }
+        return this;
+    }
+
+    /** Clear the group's declared row sort fields (no-op if none). Fails fast if no group is there. */
+    public ModelDocument clearSortFields(String groupPath) {
+        groupBody(groupPath).remove("sortFields");
+        return this;
+    }
+
     /** The {@code "Group"} payload object at {@code groupPath}; fails fast if no group is there. */
     private ObjectNode groupBody(String groupPath) {
         JsonNode group = locate(groupPath, true);

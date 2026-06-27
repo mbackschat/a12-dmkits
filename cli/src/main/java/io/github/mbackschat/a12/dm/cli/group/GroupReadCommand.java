@@ -63,6 +63,16 @@ final class GroupReadCommand extends BaseCommand {
             }
             // echo the index field (repetition row-key) so a `group modify --index-field` edit round-trips
             doc.indexField(group).ifPresent(idx -> data.put("indexField", idx));
+            // echo the declared row sort fields (display/USB ordering) so a `group modify --sort-field` round-trips
+            List<io.github.mbackschat.a12.dm.modelkit.ElementDraft.SortField> sorts = doc.sortFields(group);
+            if (!sorts.isEmpty()) {
+                ArrayNode sortFields = data.putArray("sortFields");
+                sorts.forEach(sf -> {
+                    ObjectNode n = sortFields.addObject();
+                    n.put("name", sf.fieldName());
+                    n.put("order", sf.order().name());
+                });
+            }
             // echo the group's DIRECT child fields, so a just-built composite group (attachment / multiselect /
             // bulk add) is confirmable through `group read` alone — without falling back to `model describe`
             // for "what's in here" (probe 10). Direct children only (a deeper field belongs to a sub-group).

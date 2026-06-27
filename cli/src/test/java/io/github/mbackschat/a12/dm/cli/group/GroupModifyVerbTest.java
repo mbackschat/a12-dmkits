@@ -129,6 +129,56 @@ class GroupModifyVerbTest {
     }
 
     @Test
+    void setsRowSortFieldsAndGroupReadEchoesThem(@TempDir Path dir) throws Exception {
+        Path m = subscription(dir);
+        // /Subscription/Addons is repeatable with child fields Name + MonthlyFee (G28)
+        var res = CliTestSupport.run("-m", m.toString(), "group", "modify", "/Subscription/Addons",
+                "--sort-field", "MonthlyFee:desc", "--sort-field", "Name");
+        assertEquals(0, res.code(), res::err);
+        assertEquals("applied", M.readTree(res.out()).path("outcome").asText());
+
+        var read = CliTestSupport.run("-m", m.toString(), "group", "read", "/Subscription/Addons");
+        JsonNode sorts = M.readTree(read.out()).path("data").path("sortFields");
+        assertEquals(2, sorts.size(), () -> "group read echoes both sort fields in order: " + read.out());
+        assertEquals("MonthlyFee", sorts.get(0).path("name").asText());
+        assertEquals("DESC", sorts.get(0).path("order").asText());
+        assertEquals("Name", sorts.get(1).path("name").asText());
+        assertEquals("ASC", sorts.get(1).path("order").asText(), "no :suffix defaults to ASC");
+    }
+
+    @Test
+    void clearsRowSortFields(@TempDir Path dir) throws Exception {
+        Path m = subscription(dir);
+        CliTestSupport.run("-m", m.toString(), "group", "modify", "/Subscription/Addons", "--sort-field", "Name");
+        var res = CliTestSupport.run("-m", m.toString(), "group", "modify", "/Subscription/Addons", "--clear-sort-fields");
+        assertEquals(0, res.code(), res::err);
+        var read = CliTestSupport.run("-m", m.toString(), "group", "read", "/Subscription/Addons");
+        assertTrue(M.readTree(read.out()).path("data").path("sortFields").isMissingNode(),
+                () -> "the sort fields are gone: " + read.out());
+    }
+
+    @Test
+    void sortFieldOnANonRepeatableGroupIsRejected(@TempDir Path dir) throws Exception {
+        Path m = subscription(dir);
+        // /Subscription/Billing is a single group — a row sort there is meaningless
+        var res = CliTestSupport.run("-m", m.toString(), "group", "modify", "/Subscription/Billing",
+                "--sort-field", "BaseFee");
+        assertNotEquals(0, res.code());
+        assertTrue((res.out() + res.err()).toLowerCase().contains("repeat"),
+                () -> "names the repeatability requirement: " + res.out() + res.err());
+    }
+
+    @Test
+    void sortFieldWithABadOrderIsRejected(@TempDir Path dir) throws Exception {
+        Path m = subscription(dir);
+        var res = CliTestSupport.run("-m", m.toString(), "group", "modify", "/Subscription/Addons",
+                "--sort-field", "Name:sideways");
+        assertNotEquals(0, res.code());
+        assertTrue((res.out() + res.err()).toLowerCase().contains("asc or desc"),
+                () -> "names the legal orders: " + res.out() + res.err());
+    }
+
+    @Test
     void dryRunWritesNothing(@TempDir Path dir) throws Exception {
         Path m = subscription(dir);
         String before = Files.readString(m);
