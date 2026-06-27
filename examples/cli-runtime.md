@@ -31,12 +31,14 @@ dmtool -m examples/models/order-ruled.dm.json model eval --help
 ```
 
 ```output
-Usage: dmtool model eval [-hV] [--kernel] [--text] [--code=<errorCode>]
-                         [--condition=<DSL>] [--field=<fieldPathInModel>]
+Usage: dmtool model eval [-hV] [--kernel] [--strict-custom] [--text]
+                         [--code=<errorCode>] [--condition=<DSL>]
+                         [--field=<fieldPathInModel>]
                          [--group=<groupPathInModel>] --instance=<document.
                          json> [--locale=<locale>] [-m=<model.json>]
-                         [--name=<name>] [--rule=<rulePathInModel>]
-                         [--severity=ERROR|WARNING] [-w=<dir>]...
+                         [--name=<name>] [--predefined-types=<file>]
+                         [--rule=<rulePathInModel>] [--severity=ERROR|WARNING]
+                         [-w=<dir>]...
 Run a document INSTANCE through the runtime engine; report which rules fire in
 `data` (runtime).
       --code=<errorCode>     the candidate rule's error code (default: EVAL_DOC)
@@ -62,11 +64,22 @@ Run a document INSTANCE through the runtime engine; report which rules fire in
                                accepted before or after the verb)
       --name=<name>          the candidate rule's name (default:
                                EvalDocCandidate)
+      --predefined-types=<file>
+                             a declarative custom-field-type registry (JSON: {
+                               "<TypeName>": { minLength?, maxLength?, pattern?
+                               } }), merged over the built-ins; lets a
+                               format-constraint custom type validate instead
+                               of being reported unsupported. Interpreter-only.
       --rule=<rulePathInModel>
                              narrow the report to an EXISTING rule (its full
                                slash-path)
       --severity=ERROR|WARNING
                              the candidate rule's severity (default: ERROR)
+      --strict-custom        fail (exit 2) instead of degrading when the engine
+                               can't evaluate a custom construct (a custom
+                               field type with no --predefined-types entry, or
+                               a CustomCondition with no impl) — kernel
+                               fidelity over test-run-ability. Interpreter-only.
       --text                 render the result envelope as human-readable text
                                instead of JSON (JSON is the default and the
                                machine contract). Catalogs
@@ -109,6 +122,10 @@ dmtool -m examples/models/order-ruled.dm.json \
       "message" : "The delivery date must not be earlier than the order date.",
       "referenced" : [ "/Order[1]/OrderDate", "/Order[1]/DeliveryDate" ]
     } ],
+    "unsupported" : [ {
+      "name" : "/Order/EligibilityCheck",
+      "reason" : "unregistered custom condition \"ExternalEligibility\" — register it in the custom-condition registry"
+    } ],
     "rule" : {
       "name" : "/Order/DeliveryNotBeforeOrder",
       "fired" : true
@@ -120,6 +137,8 @@ dmtool -m examples/models/order-ruled.dm.json \
 ```
 
 → `data.rule.fired: true` and `DELIVERY_BEFORE_ORDER` in `data.fired` — the rule fired on this data. The `messages[]` entry attributes it to its `rule` (`/Order/DeliveryNotBeforeOrder`), points at the offending `field` (path + repetition index, e.g. `/Order[1]/DeliveryDate`), and lists `referenced` — the operand fields the rule read. (An **OMISSION** error also carries `fillToFix`: the operands that, filled or changed, would clear it — the kernel's `refOmissionErrorResponsible`.) Remember the **polarity**: the condition describes the *violation* (delivery strictly before order), so "fired" means "this order is bad", not "this order is fine".
+
+Notice `data.unsupported`. The model's *other* rule, `/Order/EligibilityCheck`, uses a `CustomCondition` (`ExternalEligibility`) — project code the native engine can't run. Rather than silently skip it (which would read as a clean pass), the engine **surfaces** it here so you know it wasn't evaluated. Custom *field types* whose format is declarative can be supplied with `--predefined-types`, and `--strict-custom` turns any such gap into a failure instead of a lenient pass — see [`cli-custom-types`](cli-custom-types.md).
 
 Now the **empirical polarity check** — the same rule, the same model, a *compliant* instance. Only the delivery date changes: `2024-06-15` now lands **after** the order. Nothing should fire.
 
@@ -144,6 +163,10 @@ dmtool -m examples/models/order-ruled.dm.json \
   "data" : {
     "fired" : [ ],
     "messages" : [ ],
+    "unsupported" : [ {
+      "name" : "/Order/EligibilityCheck",
+      "reason" : "unregistered custom condition \"ExternalEligibility\" — register it in the custom-condition registry"
+    } ],
     "rule" : {
       "name" : "/Order/DeliveryNotBeforeOrder",
       "fired" : false

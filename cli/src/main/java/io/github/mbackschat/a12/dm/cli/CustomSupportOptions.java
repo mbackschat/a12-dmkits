@@ -1,7 +1,11 @@
 package io.github.mbackschat.a12.dm.cli;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.cli.interp.PredefinedTypesFile;
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType;
@@ -17,6 +21,9 @@ import picocli.CommandLine.Option;
  * <ul>
  *   <li>{@code --predefined-types <file>} (G30) supplies a declarative custom-field-type registry
  *       (length/pattern), so a format-constraint custom type is actually validated instead of skipped.</li>
+ *   <li>{@code --strict-custom} (G29) turns the lenient degrade into a failure: if the engine reported any
+ *       {@code unsupported} construct, the verb refuses (exit 2) instead of returning a (misleadingly clean)
+ *       read — for users who want kernel fidelity over test-run-ability.</li>
  * </ul>
  *
  * <p>Both are <b>interpreter-only</b> (the kernel uses its own field-type factory / throws on an unregistered
@@ -30,6 +37,12 @@ public final class CustomSupportOptions {
                     + "maxLength?, pattern? } }), merged over the built-ins; lets a format-constraint custom "
                     + "type validate instead of being reported unsupported. Interpreter-only.")
     String predefinedTypesPath;
+
+    @Option(names = "--strict-custom",
+            description = "fail (exit 2) instead of degrading when the engine can't evaluate a custom "
+                    + "construct (a custom field type with no --predefined-types entry, or a CustomCondition "
+                    + "with no impl) — kernel fidelity over test-run-ability. Interpreter-only.")
+    boolean strictCustom;
 
     /**
      * The effective predefined-type registry: the built-in defaults ({@code EMail}, …) when no file is given,
@@ -50,13 +63,42 @@ public final class CustomSupportOptions {
 
     /**
      * The corrective message if an interpreter-only option here was combined with {@code --kernel}, else
-     * {@code null}. The kernel runs its own field-type factory, so these options don't apply to it.
+     * {@code null}. The kernel runs its own field-type factory and reports its own custom-construct errors, so
+     * neither option applies to it.
      */
     public String kernelConflict(boolean useKernel) {
-        if (useKernel && predefinedTypesPath != null) {
+        if (!useKernel) {
+            return null;
+        }
+        if (predefinedTypesPath != null) {
             return "--predefined-types applies to the interpreter; the A12 kernel uses its own field-type "
                     + "factory — drop --kernel or --predefined-types";
         }
+        if (strictCustom) {
+            return "--strict-custom applies to the interpreter; the A12 kernel reports its own custom-construct "
+                    + "errors — drop --kernel or --strict-custom";
+        }
         return null;
+    }
+
+    /**
+     * The refused envelope (exit 2) when {@code --strict-custom} is set AND {@code data} carries a non-empty
+     * {@code unsupported} array — the engine couldn't evaluate those constructs and the caller asked for
+     * fidelity-or-fail. Returns {@code null} when not strict, or when everything was evaluated (proceed with
+     * the normal read). The refused envelope keeps the {@code unsupported} list visible in {@code data}.
+     */
+    public ResultEnvelope strictRefusal(String target, String op, ObjectNode data) {
+        if (!strictCustom) {
+            return null;
+        }
+        JsonNode unsupported = data.get("unsupported");
+        if (unsupported == null || unsupported.isEmpty()) {
+            return null;
+        }
+        return ResultEnvelope.refused(target, op,
+                "--strict-custom: " + unsupported.size() + " construct(s) could not be evaluated (a custom field "
+                        + "type with no --predefined-types entry, or a CustomCondition with no impl); supply the "
+                        + "missing handler or drop --strict-custom",
+                data, List.of());
     }
 }

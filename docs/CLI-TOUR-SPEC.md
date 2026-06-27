@@ -4,7 +4,7 @@ The stable **method** for the rulekit CLI demos: how to author, verify, and exte
 
 The demos are authored with [showboat](https://github.com/simonw/showboat): each `examples/*.md` interleaves prose, a command, and its **captured output**, and `showboat verify` re-runs every command to prove the output still matches the live CLI. So a demo is documentation *and* a doc-drift regression test.
 
-**Six demos** now cover the whole target-first verb surface, split by workflow — read/inspect, rulekit write/edit, modelkit structure, the `apply` session, runtime evaluation, and versions/compatibility. The CI gate re-verifies all six (`.github/workflows/ci.yml`). The per-demo verb inventory is kept current in [`../examples/README.md`](../examples/README.md) (rather than enumerated here, where it drifted); the backlog below records what each covers.
+**Seven demos** now cover the whole target-first verb surface, split by workflow — read/inspect, rulekit write/edit, modelkit structure, the `apply` session, runtime evaluation, custom-construct support, and versions/compatibility. The CI gate re-verifies all seven (`.github/workflows/ci.yml`). The per-demo verb inventory is kept current in [`../examples/README.md`](../examples/README.md) (rather than enumerated here, where it drifted); the backlog below records what each covers.
 
 ## Run / verify / regenerate
 
@@ -75,6 +75,7 @@ A fork of showboat to add a redaction hook is the wrong bet — in-band scrubbin
 - ✅ **Modelkit structure** (`cli-structure-edit.md`) — `field`/`group` add·read·remove (the safe-delete gate + `--cascade`) · `typedef` + `field --typedef` · `include` (`-w/--workspace`) · `config read`/`modify` · `export`.
 - ✅ **The `apply` session** (`cli-apply.md`) — atomic multi-op · rollback · op-arg corrective (`RK_UNKNOWN_ARG`/`RK_UNKNOWN_OP` + did-you-mean) · cross-type corrective · read-mid-sequence · `schema apply` (the op-record frame).
 - ✅ **Runtime evaluation** (`cli-runtime.md`) — `model eval` (which rules *fire* on a document instance — the empirical polarity check `check` can't give) · `model compute` (a computed field's value, incl. empty-as-0) · `model seed` (generate a valid sample instance — round-trips into eval/compute).
+- ✅ **Custom field types & conditions** (`cli-custom-types.md`) — `model eval --predefined-types` (validate a declarative custom field type) · `data.unsupported` (visible-ignore, never a silent pass) · `model eval --strict-custom` (fail instead of degrade) · `rule test` on a `CustomCondition` rule (the `unsupported` verdict). The native CLI's graceful support for constructs whose real logic is project code (FEATURE-GAPS G29/G30; the imperative escape G31 is parked).
 - ✅ **Versions & compatibility** (`cli-version.md`) — `--version` + `manifest.version` (the six axes, incl. the A12 Tools distribution label) · the model-version load policy (tolerant `RK_MODEL_VERSION_SKEW` vs fail-fast `RK_MODEL_VERSION_INCOMPATIBLE`, kernel as authority) · write-back preserves the version (no implicit bump).
 
 Comprehension (reading foreign rules back) is shown by `rule read`/`rule explain` in the tour; the self-correction headline is the `apply` op-arg + cross-type correctives in `cli-apply.md`. (When the modelkit *agentic* eval lands — EVAL-SPEC §8d / B — these demos are the executable counterparts of the `modelkit/`+`mixed/` tasks.)

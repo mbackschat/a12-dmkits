@@ -44,6 +44,12 @@ class CustomTypeSupportVerbTest {
         return false;
     }
 
+    /** The {@code data.unsupported[].name} set the engine surfaced (empty if the key is absent). */
+    private static String unsupported(String out) throws Exception {
+        JsonNode u = MAPPER.readTree(out).get("data").get("unsupported");
+        return u == null ? "" : u.toString();
+    }
+
     @Test
     void predefinedTypesValidatesACustomTypedFieldThatWouldOtherwiseBeSkipped(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.paymentCustomType(dir);
@@ -92,6 +98,78 @@ class CustomTypeSupportVerbTest {
         assertNotEquals(0, res.code());
         assertTrue((res.out() + res.err()).contains("--predefined-types applies to the interpreter"),
                 () -> "--kernel + --predefined-types must be refused: " + res.out() + res.err());
+    }
+
+    // ── G29: visible-ignore (data.unsupported) + --strict-custom ──
+
+    @Test
+    void evalSurfacesAnUnsupportedCustomTypedCell(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.paymentCustomType(dir);
+        Path bad = write(dir, "bad.json", """
+                { "fields": { "Payment": { "AccountHolder": "Acme", "Iban": "NOT-AN-IBAN" } } }""");
+        var res = CliTestSupport.run("-m", model.toString(), "model", "eval", "--instance", bad.toString());
+        assertEquals(0, res.code(), res::err);
+        assertTrue(unsupported(res.out()).contains("/Payment[1]/Iban"),
+                () -> "the unregistered custom-typed cell must be surfaced under data.unsupported, not silently skipped: " + res.out());
+    }
+
+    @Test
+    void predefinedTypesClearsTheUnsupportedSurface(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.paymentCustomType(dir);
+        Path good = write(dir, "good.json", """
+                { "fields": { "Payment": { "AccountHolder": "Acme", "Iban": "DE89370400440532013000" } } }""");
+        Path types = write(dir, "types.json", IBAN_TYPES);
+        var res = CliTestSupport.run("-m", model.toString(), "model", "eval",
+                "--instance", good.toString(), "--predefined-types", types.toString());
+        assertEquals(0, res.code(), res::err);
+        assertEquals("", unsupported(res.out()),
+                () -> "once the type is supplied there is nothing unsupported: " + res.out());
+    }
+
+    @Test
+    void evalSurfacesAnUnsupportedCustomConditionRule(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);   // /Order/EligibilityCheck uses CustomCondition ExternalEligibility
+        Path d = write(dir, "doc.json", """
+                { "fields": { "Order": { "CustomerName": "Acme" } } }""");   // filled, so the CustomCondition is reached
+        var res = CliTestSupport.run("-m", model.toString(), "model", "eval", "--instance", d.toString());
+        assertEquals(0, res.code(), res::err);
+        assertTrue(unsupported(res.out()).contains("/Order/EligibilityCheck"),
+                () -> "a CustomCondition rule the engine can't evaluate must be surfaced, not read as a clean pass: " + res.out());
+    }
+
+    @Test
+    void strictCustomRefusesWhenSomethingIsUnsupported(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.paymentCustomType(dir);
+        Path bad = write(dir, "bad.json", """
+                { "fields": { "Payment": { "AccountHolder": "Acme", "Iban": "NOT-AN-IBAN" } } }""");
+        var res = CliTestSupport.run("-m", model.toString(), "model", "eval",
+                "--instance", bad.toString(), "--strict-custom");
+        assertEquals(2, res.code(), () -> "--strict-custom must refuse (exit 2) on an unsupported construct: " + res.out());
+        assertTrue(res.out().contains("--strict-custom"),
+                () -> "the refusal must name --strict-custom: " + res.out());
+    }
+
+    @Test
+    void strictCustomPassesWhenEverythingIsSupported(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.paymentCustomType(dir);
+        Path good = write(dir, "good.json", """
+                { "fields": { "Payment": { "AccountHolder": "Acme", "Iban": "DE89370400440532013000" } } }""");
+        Path types = write(dir, "types.json", IBAN_TYPES);
+        var res = CliTestSupport.run("-m", model.toString(), "model", "eval",
+                "--instance", good.toString(), "--predefined-types", types.toString(), "--strict-custom");
+        assertEquals(0, res.code(), () -> "--strict-custom passes when nothing is unsupported: " + res.out() + res.err());
+    }
+
+    @Test
+    void ruleTestReportsAnUnsupportedCustomConditionRule(@TempDir Path dir) throws Exception {
+        Path model = CliTestSupport.orderRuled(dir);
+        Path d = write(dir, "doc.json", """
+                { "fields": { "Order": { "CustomerName": "Acme" } } }""");
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "test", "/Order/EligibilityCheck",
+                "--instance", d.toString());
+        assertEquals(0, res.code(), res::err);
+        assertEquals("unsupported", MAPPER.readTree(res.out()).get("data").get("verdict").asText(),
+                () -> "rule test reports a CustomCondition rule as 'unsupported', not a crash or a false pass: " + res.out());
     }
 
     @Test

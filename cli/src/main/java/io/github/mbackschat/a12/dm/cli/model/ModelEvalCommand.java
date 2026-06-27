@@ -183,6 +183,11 @@ final class ModelEvalCommand extends BaseCommand {
             return fail("evaluation failed: " + e.getMessage());
         }
 
+        ResultEnvelope refusal = customSupport.strictRefusal("model", "eval", data);
+        if (refusal != null) {
+            out().print(refusal.toJsonString());
+            return refusal.exitCode();
+        }
         ResultEnvelope env = ResultEnvelope.read("model", "eval",
                 data.get("fired").size() + " rule(s) fired", true, List.of(), data);
         out().print(env.toJsonString());

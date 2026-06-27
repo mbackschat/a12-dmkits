@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/compute-doc.schema.json",
   "title": "ComputeDocResult",
-  "description": "Output of `model compute` — the real kernel's runtime computation over a document INSTANCE: what each computed field becomes (compute). Read-only — the input --instance is never modified. The INPUT --instance is the same nested tree `model eval` takes (under \"fields\": repeatable group = array of rows, field = its text value).",
+  "description": "Output of `model compute` — the runtime computation over a document INSTANCE: what each computed field becomes (compute), via the native-safe interpreter by default (`--kernel` for the A12 kernel, JVM only). Read-only — the input --instance is never modified. The INPUT --instance is the same nested tree `model eval` takes (under \"fields\": repeatable group = array of rows, field = its text value).",
   "type": "object",
   "required": ["computed"],
   "additionalProperties": false,

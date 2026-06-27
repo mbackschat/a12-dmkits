@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.interpreter.model.Computed;
 import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome;
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter;
+import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException;
 import io.github.mbackschat.a12.dm.interpreter.eval.Document;
 import io.github.mbackschat.a12.dm.interpreter.model.Message;
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef;
@@ -18,6 +19,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType;
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef;
 import io.github.mbackschat.a12.dm.interpreter.model.RuleResult;
 import io.github.mbackschat.a12.dm.interpreter.model.Severity;
+import io.github.mbackschat.a12.dm.interpreter.model.UnsupportedRule;
 import io.github.mbackschat.a12.dm.interpreter.model.ValidationOutcome;
 import io.github.mbackschat.a12.dm.interpreter.model.Verdict;
 
@@ -51,15 +53,16 @@ public final class InterpreterEngine {
         for (Message m : outcome.getMessages()) {
             addMessage(messages.addObject(), m);
         }
+        addUnsupported(data, outcome.getUnsupported());
         if (targetRule != null) {
             boolean ruleFired = outcome.getMessages().stream().anyMatch(m -> m.getRulePath().equals(targetRule));
             ObjectNode rule = data.putObject("rule");
             rule.put("name", targetRule);
             rule.put("fired", ruleFired);
         }
-        // A rule using an unmodeled/external construct (e.g. CustomCondition) is simply absent from `fired`
-        // (it was not evaluated — like a non-firing rule), keeping the `data` shape identical across engines.
-        // The unsupported set stays available programmatically via ValidationOutcome.getUnsupported().
+        // A construct the engine can't evaluate (a CustomCondition with no registered impl, or a custom-typed
+        // cell with no --predefined-types entry) is reported in `data.unsupported` (G29) — NOT silently absent
+        // from `fired`, which would read as a clean pass. `model eval --strict-custom` then refuses (the command).
         return data;
     }
 
@@ -113,12 +116,24 @@ public final class InterpreterEngine {
         return data;
     }
 
-    /** {@code rule test}: the FIRED / PASSED / SUPPRESSED verdict for one stored rule. */
+    /** {@code rule test}: the FIRED / PASSED / SUPPRESSED verdict for one stored rule (or {@code unsupported}). */
     public static ObjectNode ruleTestData(String modelJson, Map<String, Object> fields, String locale, String rulePath,
             Map<String, PredefinedType> predefinedTypes) {
         ModelDef def = InterpreterModelLoader.load(modelJson);
         Document doc = InterpreterModelLoader.document(fields, def);
-        RuleResult result = new DmInterpreter(def, null, predefinedTypes).testRule(rulePath, doc, locale);
+        RuleResult result;
+        try {
+            result = new DmInterpreter(def, null, predefinedTypes).testRule(rulePath, doc, locale);
+        } catch (UnsupportedConstructException e) {
+            // The rule uses a construct the engine can't evaluate (a CustomCondition with no impl) → report it
+            // unsupported instead of crashing, mirroring whole-document eval's tolerance (G29).
+            ObjectNode data = MAPPER.createObjectNode();
+            data.put("rule", rulePath);
+            data.put("fired", false);
+            data.put("verdict", "unsupported");
+            addUnsupported(data, List.of(new UnsupportedRule(rulePath, e.getMessage())));
+            return data;
+        }
 
         ObjectNode data = MAPPER.createObjectNode();
         data.put("rule", result.getRulePath());
@@ -136,6 +151,21 @@ public final class InterpreterEngine {
             });
         }
         return data;
+    }
+
+    /** Surface the constructs the engine could NOT evaluate (G29) as {@code data.unsupported} — present only
+     *  when non-empty, like {@code suppressedBy}. Each entry is {@code {name, reason}}: {@code name} is the
+     *  rule's slash-path (a CustomCondition rule) or the cell's instance pointer (an unregistered custom type). */
+    private static void addUnsupported(ObjectNode data, List<UnsupportedRule> unsupported) {
+        if (unsupported.isEmpty()) {
+            return;
+        }
+        ArrayNode arr = data.putArray("unsupported");
+        for (UnsupportedRule u : unsupported) {
+            ObjectNode n = arr.addObject();
+            n.put("name", u.getRulePath());
+            n.put("reason", u.getReason());
+        }
     }
 
     private static void addMessage(ObjectNode mn, Message m) {

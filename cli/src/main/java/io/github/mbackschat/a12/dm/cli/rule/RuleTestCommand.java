@@ -96,6 +96,11 @@ final class RuleTestCommand extends BaseCommand {
             } else {
                 data = InterpreterEngine.ruleTestData(json, fields, localeTag, rule, customSupport.predefinedTypes());
             }
+            ResultEnvelope refusal = customSupport.strictRefusal("rule", "test", data);
+            if (refusal != null) {
+                out().print(refusal.toJsonString());
+                return refusal.exitCode();
+            }
             ResultEnvelope env = ResultEnvelope.read("rule", "test", summary(data), true, List.of(), data);
             out().print(env.toJsonString());
             return env.exitCode();
@@ -113,6 +118,8 @@ final class RuleTestCommand extends BaseCommand {
             case "fired" -> r + " FIRED on this instance (a violation)";
             case "passed" -> r + " passed (evaluated; condition false)";
             case "suppressed" -> r + " was NOT evaluated — a referenced field is formally invalid";
+            case "unsupported" -> r + " could NOT be evaluated — it uses a construct the engine doesn't model "
+                    + "(e.g. a CustomCondition with no impl)";
             default -> r;
         };
     }
