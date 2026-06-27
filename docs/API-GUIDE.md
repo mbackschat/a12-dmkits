@@ -714,6 +714,8 @@ ModelDocument.read(json)
 ```
 Add-ops reuse the build-from-scratch node emitter, so an *added* field is byte-shaped identically to a *built* one. A missing target path fails fast with `IllegalArgumentException`; the full constraint set rides `validate()`. *Locked by `modelkit.ModelEditTest`.*
 
+A repeatable group can also declare a **display row sort** on the from-scratch builder — `GroupBuilder.sortField("Amount", SortOrder.DESC).sortField("Sku", SortOrder.ASC)` (multi-key, in declaration order). Like `indexField` it fails fast on a non-repeatable group or a non-child field. It is display/USB-only — the kernel doesn't reorder rows for validate/compute (so the interpreter ignores it) — making it an authoring + read-fidelity slot (finding 51). *Locked by `modelkit.GroupSortFieldTest` (kernel read-back).*
+
 ### The coverage tail — doc config, type definitions, includes
 
 <!-- teaser -->
