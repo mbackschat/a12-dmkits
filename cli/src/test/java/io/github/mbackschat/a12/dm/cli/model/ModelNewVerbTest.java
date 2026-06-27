@@ -43,6 +43,12 @@ class ModelNewVerbTest {
                 "model", "new", "--id", "subs", "--locale", "en_US", "-o", model.toString());
         assertEquals(0, res.code(), res::err);
         assertTrue(Files.exists(model), "the model file is written");
+        // -o emits a machine-confirmable WRITE envelope on stdout (the model JSON went to the file) — the one
+        // mutating path that previously had NO success signal an agent could read.
+        var env = M.readTree(res.out());
+        assertEquals("applied", env.path("outcome").asText(), () -> "model new -o confirms with an applied envelope: " + res.out());
+        assertTrue(env.path("written").asBoolean(), () -> "written:true: " + res.out());
+        assertEquals(model.toString(), env.path("output").asText(), () -> "the envelope names the output path: " + res.out());
         // and the agent can immediately edit it — `model describe` binds it
         CliTestSupport.Result describe = CliTestSupport.run("-m", model.toString(), "model", "describe");
         assertEquals(0, describe.code(), describe::err);

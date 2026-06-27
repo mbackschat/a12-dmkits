@@ -102,7 +102,8 @@ final class SchemaCommand extends BaseCommand {
             "patterns", "emits the validation-idiom catalog (and a scaffolded rule-spec) itself — run it",
             "diagnostics", "emits the diagnostic registry itself — run it",
             "export", "renders an artifact (model card / dot / …), not the result envelope",
-            "model new", "emits a brand-new model document (an artifact), not the result envelope",
+            "model new", "emits a brand-new model document (an artifact) to stdout; with -o stdout carries an "
+                    + "additive write-confirmation envelope, but the primary form has no directional contract",
             "model seed", "emits a generated sample document instance (an artifact), not the result envelope");
 
     /** Leaf op-names whose verb returns a read payload in the envelope's {@code data}. */

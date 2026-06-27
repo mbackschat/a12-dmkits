@@ -28,16 +28,16 @@ dmtool model new --id catalog --locale en_US --root Catalog \
 {"id":"catalog","root":"Catalog"}
 ```
 
-What it emits is **kernel-checked**, so the fresh model binds immediately — write it with `-o`, then edit it like any other:
+What it emits is **kernel-checked**, so the fresh model binds immediately. With `-o` the model goes to the file and stdout carries a machine-confirmable **write envelope** (`outcome: applied`, `written: true`, the `output` path) — a success signal the agent can read instead of inspecting the file. Then edit it like any other:
 
 ```bash
 dmtool model new --id catalog --locale en_US --root Catalog -o /tmp/created.dm.json \
-  && echo "created /tmp/created.dm.json"
+  | jq -c '{outcome, written, output}'
 dmtool -m /tmp/created.dm.json model validate | jq -c '{ok, valid, fields: (.data.fields|length)}'
 ```
 
 ```output
-created /tmp/created.dm.json
+{"outcome":"applied","written":true,"output":"/tmp/created.dm.json"}
 {"ok":true,"valid":true,"fields":0}
 ```
 
