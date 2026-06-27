@@ -156,6 +156,9 @@ public final class Cli {
                     if (hint == null) {
                         hint = locatorPositionalHint(ex);
                     }
+                    if (hint == null) {
+                        hint = specInputHint(ex);
+                    }
                     if (hint != null) {
                         w.println(hint);
                     }
@@ -262,6 +265,38 @@ public final class Cli {
                 return "→ " + spec.qualifiedName() + " locates its target by a POSITIONAL " + label
                         + ", not a flag — pass it directly: `" + spec.qualifiedName() + " " + label
                         + "` (you passed " + flag + ").";
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The spec-input corrective: a verb whose input is a JSON spec FILE ({@code <spec.json>}/{@code <ops.json>}
+     * — {@code rule add}, {@code computation add}, {@code field add}, {@code apply}, …) handed a {@code --flag}
+     * it doesn't define (an agent reuses {@code rule check}'s {@code --field}/{@code --condition} on
+     * {@code rule add}, whose fields live INSIDE the spec) is pointed at {@code schema <verb>} for the spec
+     * shape, not left with a bare "Unknown option" (eval finding: {@code rule add} unknown-option → schema
+     * {@code rule add}). Returns {@code null} when it doesn't apply (no unmatched {@code --flag}, or the verb
+     * has no spec-file positional). Runs AFTER the locator/instance hints, so a locator-positional verb keeps
+     * its own corrective; this is for the spec-input verbs the locator hint deliberately skips.
+     */
+    private static String specInputHint(CommandLine.ParameterException ex) {
+        if (!(ex instanceof CommandLine.UnmatchedArgumentException uae)) {
+            return null;
+        }
+        String flag = uae.getUnmatched().stream().filter(a -> a.startsWith("--")).findFirst().orElse(null);
+        if (flag == null) {
+            return null;
+        }
+        CommandLine.Model.CommandSpec spec = ex.getCommandLine().getCommandSpec();
+        for (CommandLine.Model.PositionalParamSpec p : spec.positionalParameters()) {
+            if (p.paramLabel().contains(".json")) {   // a spec-input positional (<spec.json>/<ops.json>)
+                // qualifiedName is "<tool> <target> <op>" (or "<tool> <verb>"); insert "schema" after the tool
+                // name to form the resolvable `schema <target> <op>` / `schema <verb>` pointer for its input shape.
+                String schemaRef = spec.qualifiedName().replaceFirst(" ", " schema ");
+                return "→ " + spec.qualifiedName() + " takes a JSON spec " + p.paramLabel() + " as its input — "
+                        + "see `" + schemaRef + "` for the fields it expects (you passed " + flag
+                        + ", which it doesn't define; for a rule the field/condition/code go INSIDE the spec).";
             }
         }
         return null;

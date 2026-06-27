@@ -100,13 +100,28 @@ class CliHelpTest {
     }
 
     @Test
-    void aWrongFlagOnASpecInputVerbDoesNotGetTheLocatorHint() {
+    void aWrongFlagOnASpecInputVerbRedirectsToItsSchema() {
         // does-not-misfire: `field add` takes a <spec.json> positional (NOT a locator path/id), so an unknown
-        // flag must NOT be told to "pass it as the positional" — only the default unknown-option + usage.
+        // flag must NOT be told to "pass it as the positional" — instead it is redirected to the spec shape.
         CliTestSupport.Result res = CliTestSupport.run("-m", "x.json", "field", "add", "--bogus", "v");
         assertEquals(2, res.code());
         assertFalse(res.err().contains("locates its target by a POSITIONAL"),
                 () -> "no locator hint on a spec-input verb: " + res.err());
+        // the distinctive HINT line (not the pre-existing @Command description, which also names the schema)
+        assertTrue(res.err().contains("takes a JSON spec") && res.err().contains("schema field add"),
+                () -> "a spec-input verb redirects an unknown flag to its schema: " + res.err());
+    }
+
+    @Test
+    void ruleAddUnknownFlagRedirectsToSchemaRuleAdd() {
+        // eval finding (08/11): an agent reuses `rule check`'s --field/--condition on `rule add`, whose fields
+        // live INSIDE the JSON spec. The unknown-option error must point at `schema rule add`, not leave a bare
+        // "Unknown option". Assert the HINT line specifically (not the description that also names the schema).
+        CliTestSupport.Result res = CliTestSupport.run("-m", "x.json", "rule", "add", "--field", "/Order/Q",
+                "--condition", "[Q] > 0", "--code", "C");
+        assertEquals(2, res.code());
+        assertTrue(res.err().contains("takes a JSON spec") && res.err().contains("schema rule add"),
+                () -> "rule add redirects an unknown flag to `schema rule add`: " + res.err());
     }
 
     @Test
