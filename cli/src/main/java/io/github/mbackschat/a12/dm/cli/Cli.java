@@ -44,11 +44,23 @@ public final class Cli {
      * <p><b>Currently empty.</b> The runtime-eval verbs ({@code model eval}/{@code compute}, {@code rule
      * test}) used to live here because they ran the kernel's Groovy codegen, which a native image forbids
      * — but they now default to the native-safe <b>interpreter</b> ({@code dm.interpreter}, no Groovy), so
-     * they are native-capable and stay in the tree. Their {@code --kernel} option is the JVM-only part and
-     * is refused at runtime under the native profile (see each verb + {@link #isNativeImage}), not hidden
-     * here. {@code {target, op}} pairs.
+     * they are native-capable and stay in the tree. Their {@code --kernel} <i>option</i> is the JVM-only
+     * part — removed from the native tree by {@link #removeNativeUnavailableOptions} (see
+     * {@link #NATIVE_REMOVED_OPTIONS}), not the whole verb. {@code {target, op}} pairs.
      */
     static final List<String[]> JVM_ONLY_VERBS = List.of();
+
+    /**
+     * Options removed from the native command tree (and thus from every derived self-describing surface —
+     * {@code manifest}/{@code --help}/{@code schema} all derive from the live tree). {@code --kernel} selects
+     * the kernel's Groovy engine, which a native image can't run — and the interpreter is the only native
+     * engine — so under the native profile the flag is <b>removed entirely</b>, not merely refused at
+     * runtime. Surfacing a flag that always fails would mislead an LLM agent that discovers it via
+     * {@code --help}/{@code manifest} (the agent-first design); removing it keeps every surface honest.
+     * Every verb that declares {@code --kernel} is interpreter-backed (the default engine), so the removal
+     * is uniform and self-maintaining — a future {@code --kernel} verb is by construction interpreter-backed.
+     */
+    static final List<String> NATIVE_REMOVED_OPTIONS = List.of("--kernel");
 
     /**
      * Native-image detection — overridable in tests (the guard test forces the native profile on the JVM).
@@ -148,6 +160,7 @@ public final class Cli {
                 });
         if (nativeProfile) {
             hideJvmOnlyVerbs(cli);
+            removeNativeUnavailableOptions(cli);
         }
         try {
             return cli.execute(args);
@@ -227,6 +240,25 @@ public final class Cli {
             if (target != null) {
                 target.getCommandSpec().removeSubcommand(verb[1]);
             }
+        }
+    }
+
+    /**
+     * Remove the {@link #NATIVE_REMOVED_OPTIONS} (today: {@code --kernel}) from every command in the live
+     * tree, recursively. As with {@link #hideJvmOnlyVerbs}, this single removal drops the option from every
+     * derived self-describing surface ({@code manifest}/{@code --help}/{@code schema}) at once — so a cold
+     * native agent never discovers a flag the native binary can't honor.
+     */
+    static void removeNativeUnavailableOptions(CommandLine cli) {
+        for (CommandLine sub : cli.getSubcommands().values()) {
+            CommandLine.Model.CommandSpec spec = sub.getCommandSpec();
+            for (String opt : NATIVE_REMOVED_OPTIONS) {
+                CommandLine.Model.OptionSpec found = spec.findOption(opt);
+                if (found != null) {
+                    spec.remove(found);
+                }
+            }
+            removeNativeUnavailableOptions(sub);
         }
     }
 }

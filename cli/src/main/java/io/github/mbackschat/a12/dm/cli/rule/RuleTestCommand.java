@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.rule;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
-import io.github.mbackschat.a12.dm.cli.Cli;
 import io.github.mbackschat.a12.dm.cli.DocInstance;
 import io.github.mbackschat.a12.dm.cli.ModelPaths;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -60,9 +59,8 @@ final class RuleTestCommand extends BaseCommand {
 
     @Override
     public Integer call() {
-        if (useKernel && Cli.isNativeImage()) {
-            return fail("--kernel is not available in the native image — the interpreter is the only engine here; drop --kernel");
-        }
+        // --kernel is removed from the native command tree (Cli.removeNativeUnavailableOptions), so under the
+        // native profile useKernel can never be set — no runtime refusal needed; the JVM keeps both engines.
         String modelPath = model();
         String json = readModelJson(modelPath);   // null (after printing the failure) if no -m / unreadable
         if (json == null) {

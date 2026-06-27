@@ -1,7 +1,6 @@
 package io.github.mbackschat.a12.dm.cli.model;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
-import io.github.mbackschat.a12.dm.cli.Cli;
 import io.github.mbackschat.a12.dm.cli.DocInstance;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
@@ -40,8 +39,8 @@ import picocli.CommandLine.Option;
  * not persisted). Computations are NOT run — use {@code model compute}.
  */
 @Command(name = "eval", mixinStandardHelpOptions = true,
-        description = "Run a document INSTANCE through the runtime engine (interpreter by default, `--kernel` "
-                + "for the A12 kernel); report which rules fire in `data` (runtime).")
+        description = "Run a document INSTANCE through the runtime engine; report which rules fire in `data` "
+                + "(runtime).")
 final class ModelEvalCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -92,9 +91,8 @@ final class ModelEvalCommand extends BaseCommand {
 
     @Override
     public Integer call() {
-        if (useKernel && Cli.isNativeImage()) {
-            return fail("--kernel is not available in the native image — the interpreter is the only engine here; drop --kernel");
-        }
+        // --kernel is removed from the native command tree (Cli.removeNativeUnavailableOptions), so under the
+        // native profile useKernel can never be set — no runtime refusal needed; the JVM keeps both engines.
         String model = model();
         if (model == null) {
             return fail("pass -m <model.json> (before or after the verb)");
