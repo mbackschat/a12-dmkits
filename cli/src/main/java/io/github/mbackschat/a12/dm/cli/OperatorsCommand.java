@@ -40,7 +40,9 @@ final class OperatorsCommand extends BaseCommand {
     String kind;
 
     @Option(names = "--keyword", paramLabel = "<text>",
-            description = "filter the list to operators whose EN/DE keyword contains this text")
+            description = "filter the list to operators whose EN/DE keyword OR meaning contains this text — a "
+                    + "TOPICAL filter, so `--keyword date` finds the date-arithmetic operators (DifferenceInDays, "
+                    + "AddYears, Today, …) too, not only those with 'date' in the keyword")
     String keyword;
 
     @Override
@@ -75,7 +77,11 @@ final class OperatorsCommand extends BaseCommand {
         String n = needle.toLowerCase(Locale.ROOT);
         String en = e.keywords() == null ? "" : String.valueOf(e.keywords().en()).toLowerCase(Locale.ROOT);
         String de = e.keywords() == null ? "" : String.valueOf(e.keywords().de()).toLowerCase(Locale.ROOT);
-        return en.contains(n) || de.contains(n);
+        // Also match the MEANING so --keyword is a TOPICAL filter: an agent's `--keyword date` must surface the
+        // date-arithmetic ops (DifferenceInDays/AddYears/Today) whose keyword has no "date" but whose meaning
+        // does (eval finding 01b — the keyword-only filter missed the family the agent was after).
+        String meaning = e.meaning() == null ? "" : e.meaning().toLowerCase(Locale.ROOT);
+        return en.contains(n) || de.contains(n) || meaning.contains(n);
     }
 
     /** The positional substring filter (G13): match the needle against the id, EN/DE keyword, or meaning. */

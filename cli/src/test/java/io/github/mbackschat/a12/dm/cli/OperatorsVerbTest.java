@@ -66,6 +66,21 @@ class OperatorsVerbTest {
     }
 
     @Test
+    void keywordIsATopicalFilterMatchingMeaningNotJustTheKeyword() throws Exception {
+        // eval finding 01b: --keyword is a TOPICAL filter (keyword OR meaning), so `--keyword date` surfaces the
+        // date-arithmetic ops whose keyword has no "date" (DifferenceInDays/AddYears) but whose meaning does —
+        // not only those with "date" literally in the keyword.
+        CliTestSupport.Result res = CliTestSupport.run("operators", "--keyword", "date");
+        assertEquals(0, res.code(), res::err);
+        boolean hasArithmetic = false;
+        for (Iterator<JsonNode> it = MAPPER.readTree(res.out()).path("operators").elements(); it.hasNext();) {
+            String id = it.next().path("id").asText();
+            hasArithmetic |= "DifferenceInDays".equals(id) || "AddYears".equals(id);
+        }
+        assertTrue(hasArithmetic, () -> "--keyword date surfaces the date-arithmetic family via meaning: " + res.out());
+    }
+
+    @Test
     void aNonIdPositionalFiltersTheCatalogBySubstring() throws Exception {
         // G13: an agent's natural reach — `operators <substring>` — narrows the list instead of failing
         // (an exact id still gives the full single operator; a non-id positional is a substring needle)
