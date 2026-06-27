@@ -48,6 +48,10 @@ class ApplyVerbTest {
         assertTrue(j.path("written").asBoolean());
         assertEquals(2, j.path("results").size());
         assertEquals("staged", j.path("results").get(0).path("outcome").asText());
+        // the wrapper carries a human net-effect summary — per-op results are staged/written:false (the write is
+        // ATOMIC at the wrapper, not per op), so an agent reads `summary`/`committed`, not the per-op flags (eval).
+        assertTrue(j.path("summary").asText().contains("committed") && j.path("summary").asText().contains("written"),
+                () -> "the apply wrapper summarizes the net effect: " + res.out());
         String written = Files.readString(model);
         assertTrue(written.contains("Discount") && written.contains("Notes"));
     }

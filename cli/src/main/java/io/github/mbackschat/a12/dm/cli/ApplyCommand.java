@@ -215,6 +215,14 @@ final class ApplyCommand extends BaseCommand {
         summary.put("verb", "apply");
         summary.put("ops", ops.size());
         summary.put("committed", committed);
+        // The net effect in one human line — every per-op result is `staged`/`written:false` (the write is
+        // ATOMIC at this wrapper, not per op), which misreads as "nothing happened". `committed`/`written` are
+        // the authoritative signals; this restates them so an agent doesn't infer failure from a per-op flag.
+        summary.put("summary", committed
+                ? (written ? ops.size() + " op(s) committed, written to " + output
+                           : ops.size() + " op(s) committed (dry-run — nothing written)")
+                : (failedAt != null ? "rolled back at op " + failedAt + " — nothing written (atomic: all-or-nothing)"
+                                    : "the terminal kernel gate rejected the sequence — rolled back, nothing written"));
         if (failedAt != null) {
             summary.put("failedAt", failedAt);
         } else {
