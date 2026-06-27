@@ -1,13 +1,16 @@
 package io.github.mbackschat.a12.dm.cli;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import io.github.mbackschat.a12.dm.cli.interp.CustomJsWorker;
 import io.github.mbackschat.a12.dm.cli.interp.PredefinedTypesFile;
+import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition;
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType;
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedTypeRegistry;
 import picocli.CommandLine.Command;
@@ -24,10 +27,13 @@ import picocli.CommandLine.Option;
  *   <li>{@code --strict-custom} (G29) turns the lenient degrade into a failure: if the engine reported any
  *       {@code unsupported} construct, the verb refuses (exit 2) instead of returning a (misleadingly clean)
  *       read — for users who want kernel fidelity over test-run-ability.</li>
+ *   <li>{@code --custom-conditions-js <dir>} (G31) runs the project's real JS {@code CustomCondition} impls
+ *       ({@code <Name>.js}) via a persistent Node worker, so a model's imperative custom conditions actually
+ *       evaluate instead of being reported unsupported.</li>
  * </ul>
  *
- * <p>Both are <b>interpreter-only</b> (the kernel uses its own field-type factory / throws on an unregistered
- * type), so combining either with {@code --kernel} is a usage error — see {@link #kernelConflict(boolean)}.
+ * <p>All are <b>interpreter-only</b> (the kernel uses its own factories / throws on an unregistered construct),
+ * so combining any with {@code --kernel} is a usage error — see {@link #kernelConflict(boolean)}.
  */
 @Command // a mixin must be a "command"
 public final class CustomSupportOptions {
@@ -43,6 +49,13 @@ public final class CustomSupportOptions {
                     + "construct (a custom field type with no --predefined-types entry, or a CustomCondition "
                     + "with no impl) — kernel fidelity over test-run-ability. Interpreter-only.")
     boolean strictCustom;
+
+    @Option(names = "--custom-conditions-js", paramLabel = "<dir>",
+            description = "a directory of project JS custom-condition impls (<Name>.js, exporting "
+                    + "check(data, relevantEntities, formallyIncorrectFields, errorField)); run via a persistent "
+                    + "Node worker so a model's imperative CustomConditions evaluate. Needs `node`; if absent, "
+                    + "the condition stays unsupported. Interpreter-only.")
+    String customConditionsJsDir;
 
     /**
      * The effective predefined-type registry: the built-in defaults ({@code EMail}, …) when no file is given,
@@ -62,6 +75,23 @@ public final class CustomSupportOptions {
     }
 
     /**
+     * The project's JS custom conditions ({@code --custom-conditions-js <dir>}), worker-backed and keyed by
+     * name; empty when the flag is absent (a model's {@code CustomCondition} then stays unsupported, as before).
+     *
+     * @throws IllegalArgumentException if the directory can't be listed (mapped to a {@code fail()})
+     */
+    public Map<String, CustomCondition> customConditions() {
+        if (customConditionsJsDir == null) {
+            return Map.of();
+        }
+        try {
+            return CustomJsWorker.customConditions(Path.of(customConditionsJsDir));
+        } catch (IOException e) {
+            throw new IllegalArgumentException("cannot read --custom-conditions-js dir: " + e.getMessage());
+        }
+    }
+
+    /**
      * The corrective message if an interpreter-only option here was combined with {@code --kernel}, else
      * {@code null}. The kernel runs its own field-type factory and reports its own custom-construct errors, so
      * neither option applies to it.
@@ -77,6 +107,10 @@ public final class CustomSupportOptions {
         if (strictCustom) {
             return "--strict-custom applies to the interpreter; the A12 kernel reports its own custom-construct "
                     + "errors — drop --kernel or --strict-custom";
+        }
+        if (customConditionsJsDir != null) {
+            return "--custom-conditions-js applies to the interpreter; the A12 kernel runs its own custom "
+                    + "conditions — drop --kernel or --custom-conditions-js";
         }
         return null;
     }

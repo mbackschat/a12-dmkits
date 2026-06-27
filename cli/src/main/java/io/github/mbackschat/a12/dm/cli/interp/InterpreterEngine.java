@@ -12,6 +12,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.ComputeOutcome;
 import io.github.mbackschat.a12.dm.interpreter.DmInterpreter;
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException;
 import io.github.mbackschat.a12.dm.interpreter.eval.Document;
+import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition;
 import io.github.mbackschat.a12.dm.interpreter.model.Message;
 import io.github.mbackschat.a12.dm.interpreter.model.ModelDef;
 import io.github.mbackschat.a12.dm.interpreter.model.MsgType;
@@ -41,10 +42,10 @@ public final class InterpreterEngine {
 
     /** {@code model eval} over the whole model (optionally narrowing the {@code rule} verdict to {@code targetRule}). */
     public static ObjectNode evalData(String modelJson, Map<String, Object> fields, String locale, String targetRule,
-            Map<String, PredefinedType> predefinedTypes) {
+            Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions) {
         ModelDef def = InterpreterModelLoader.load(modelJson);
         Document doc = InterpreterModelLoader.document(fields, def);
-        ValidationOutcome outcome = new DmInterpreter(def, null, predefinedTypes).validate(doc, locale);
+        ValidationOutcome outcome = new DmInterpreter(def, null, predefinedTypes, customConditions).validate(doc, locale);
 
         ObjectNode data = MAPPER.createObjectNode();
         ArrayNode fired = data.putArray("fired");
@@ -69,12 +70,12 @@ public final class InterpreterEngine {
     /** {@code model eval --condition/--field}: an injected, non-stored candidate rule. */
     public static ObjectNode evalCandidateData(String modelJson, Map<String, Object> fields, String locale,
             String group, String name, String errorEntityRelPath, String condition, String code, String severity,
-            Map<String, PredefinedType> predefinedTypes) {
+            Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions) {
         ModelDef def = InterpreterModelLoader.load(modelJson);
         Document doc = InterpreterModelLoader.document(fields, def);
         RuleDef candidate = new RuleDef(group + "/" + name, group, condition, code, errorEntityRelPath,
                 Severity.valueOf(severity.toUpperCase()), Map.of());
-        RuleResult result = new DmInterpreter(def, null, predefinedTypes).evalCandidate(candidate, doc, locale);
+        RuleResult result = new DmInterpreter(def, null, predefinedTypes, customConditions).evalCandidate(candidate, doc, locale);
 
         boolean fired = result.getVerdict() == Verdict.FIRED;
         ObjectNode data = MAPPER.createObjectNode();
@@ -118,12 +119,12 @@ public final class InterpreterEngine {
 
     /** {@code rule test}: the FIRED / PASSED / SUPPRESSED verdict for one stored rule (or {@code unsupported}). */
     public static ObjectNode ruleTestData(String modelJson, Map<String, Object> fields, String locale, String rulePath,
-            Map<String, PredefinedType> predefinedTypes) {
+            Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions) {
         ModelDef def = InterpreterModelLoader.load(modelJson);
         Document doc = InterpreterModelLoader.document(fields, def);
         RuleResult result;
         try {
-            result = new DmInterpreter(def, null, predefinedTypes).testRule(rulePath, doc, locale);
+            result = new DmInterpreter(def, null, predefinedTypes, customConditions).testRule(rulePath, doc, locale);
         } catch (UnsupportedConstructException e) {
             // The rule uses a construct the engine can't evaluate (a CustomCondition with no impl) → report it
             // unsupported instead of crashing, mirroring whole-document eval's tolerance (G29).

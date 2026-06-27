@@ -33,6 +33,7 @@ dmtool -m examples/models/order-ruled.dm.json model eval --help
 ```output
 Usage: dmtool model eval [-hV] [--kernel] [--strict-custom] [--text]
                          [--code=<errorCode>] [--condition=<DSL>]
+                         [--custom-conditions-js=<dir>]
                          [--field=<fieldPathInModel>]
                          [--group=<groupPathInModel>] --instance=<document.
                          json> [--locale=<locale>] [-m=<model.json>]
@@ -45,6 +46,14 @@ Run a document INSTANCE through the runtime engine; report which rules fire in
       --condition=<DSL>      evaluate a CANDIDATE rule (with --field): a
                                condition true on a VIOLATION; injected, not
                                persisted
+      --custom-conditions-js=<dir>
+                             a directory of project JS custom-condition impls
+                               (<Name>.js, exporting check(data,
+                               relevantEntities, formallyIncorrectFields,
+                               errorField)); run via a persistent Node worker
+                               so a model's imperative CustomConditions
+                               evaluate. Needs `node`; if absent, the condition
+                               stays unsupported. Interpreter-only.
       --field=<fieldPathInModel>
                              the candidate rule's error field as a path INSIDE
                                the model (with --condition)
