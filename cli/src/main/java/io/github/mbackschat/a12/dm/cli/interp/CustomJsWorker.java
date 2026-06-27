@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.interpreter.UnsupportedConstructException;
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition;
 import io.github.mbackschat.a12.dm.interpreter.model.CustomConditionData;
+import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType;
 import io.github.mbackschat.a12.dm.interpreter.model.FieldPointer;
 
 /**
@@ -83,6 +84,37 @@ public final class CustomJsWorker implements AutoCloseable {
         return conditions;
     }
 
+    /**
+     * Worker-backed {@link CustomFieldType}s, one per {@code <Name>.js} in {@code dir} (each exporting a
+     * {@code validate(value)} / {@code check(value)}), sharing ONE worker. A type with no {@code <Name>.js}
+     * stays unregistered (its cells are reported {@code unsupported}, as before).
+     *
+     * @throws IOException if {@code dir} can't be listed
+     */
+    public static Map<String, CustomFieldType> customFieldTypes(Path dir) throws IOException {
+        Map<String, CustomFieldType> types = new LinkedHashMap<>();
+        CustomJsWorker worker = new CustomJsWorker(dir);
+        try (Stream<Path> files = Files.list(dir)) {
+            files.filter(p -> p.getFileName().toString().endsWith(".js")).forEach(p -> {
+                String file = p.getFileName().toString();
+                String name = file.substring(0, file.length() - ".js".length());
+                types.put(name, value -> worker.checkFieldType(name, value));
+            });
+        }
+        if (!types.isEmpty()) {
+            Runtime.getRuntime().addShutdownHook(new Thread(worker::close, "custom-js-fieldtype-cleanup"));
+        }
+        return types;
+    }
+
+    private synchronized boolean checkFieldType(String name, String value) {
+        ObjectNode req = MAPPER.createObjectNode();
+        req.put("kind", "fieldType");
+        req.put("name", name);
+        req.put("value", value);
+        return rpc(req, "custom field type", name);
+    }
+
     private synchronized boolean checkCondition(String name, CustomConditionData data, Set<FieldPointer> relevant,
             Set<FieldPointer> formallyIncorrect, FieldPointer errorField) {
         ObjectNode req = MAPPER.createObjectNode();
@@ -105,12 +137,12 @@ public final class CustomJsWorker implements AutoCloseable {
         }
         putPointers(req.putArray("formallyIncorrect"), formallyIncorrect);
         putPointer(req.putObject("errorField"), errorField);
-        return rpc(req, name);
+        return rpc(req, "custom condition", name);
     }
 
-    private boolean rpc(ObjectNode req, String name) {
+    private boolean rpc(ObjectNode req, String kind, String name) {
         if (unavailable) {
-            throw unsupported(name, "the JS worker is unavailable");
+            throw unsupported(kind, name, "the JS worker is unavailable");
         }
         try {
             ensureStarted();
@@ -121,16 +153,16 @@ public final class CustomJsWorker implements AutoCloseable {
             String line = fromWorker.readLine();
             if (line == null) {
                 unavailable = true;
-                throw unsupported(name, "the JS worker exited unexpectedly");
+                throw unsupported(kind, name, "the JS worker exited unexpectedly");
             }
             JsonNode resp = MAPPER.readTree(line);
             if (resp.hasNonNull("error")) {
-                throw unsupported(name, resp.get("error").asText());
+                throw unsupported(kind, name, resp.get("error").asText());
             }
             return resp.path("result").asBoolean();
         } catch (IOException e) {
             unavailable = true;
-            throw unsupported(name, e.getMessage());
+            throw unsupported(kind, name, e.getMessage());
         }
     }
 
@@ -178,8 +210,8 @@ public final class CustomJsWorker implements AutoCloseable {
         }
     }
 
-    private static UnsupportedConstructException unsupported(String name, String why) {
-        return new UnsupportedConstructException("custom condition \"" + name + "\" (JS): " + why);
+    private static UnsupportedConstructException unsupported(String kind, String name, String why) {
+        return new UnsupportedConstructException(kind + " \"" + name + "\" (JS): " + why);
     }
 
     @Override

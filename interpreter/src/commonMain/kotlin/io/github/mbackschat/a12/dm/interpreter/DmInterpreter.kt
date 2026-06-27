@@ -85,17 +85,17 @@ class DmInterpreter @JvmOverloads constructor(
      *  unsupported (fail-fast). A JVM consumer adapts existing kernel `ICustomCondition` impls onto the SPI; a
      *  JS consumer implements the SPI directly. */
     private val customConditions: Map<String, CustomCondition> = emptyMap(),
+    /** Consumer-supplied CODE-BASED custom field types ([CustomFieldType] — the kernel's `ICustomFieldType` SPI,
+     *  for imperative checksum types), keyed by name. Default empty. Consulted ONLY after [predefinedTypes] misses,
+     *  so the declarative per-cell path stays monomorphic ([CustomFieldType]'s KDoc; `CustomTypePerfTest`). A
+     *  custom-typed cell whose name is in NEITHER registry is reported unsupported (the lenient degrade). */
+    private val customFieldTypes: Map<String, CustomFieldType> = emptyMap(),
     /** The legal character set field values are validated against — the kernel's project-level restricted charset
      *  ([LegalCharset], IF43). **Default [LegalCharset.BMP]** (the kernel's DM-JSON runtime default: an emoji /
      *  supplementary-plane char is illegal). A consumer running the kernel with a narrower programming-language
      *  charset (e.g. **DIN 91379**) supplies the matching set here so the interpreter enforces the SAME restriction
      *  — the interpreter must expose every kernel customization to be 100% compatible. */
     private val legalCharset: LegalCharset = LegalCharset.BMP,
-    /** Consumer-supplied CODE-BASED custom field types ([CustomFieldType] — the kernel's `ICustomFieldType` SPI,
-     *  for imperative checksum types), keyed by name. Default empty. Consulted ONLY after [predefinedTypes] misses,
-     *  so the declarative per-cell path stays monomorphic ([CustomFieldType]'s KDoc; `CustomTypePerfTest`). A
-     *  custom-typed cell whose name is in NEITHER registry is reported unsupported (the lenient degrade). */
-    private val customFieldTypes: Map<String, CustomFieldType> = emptyMap(),
 ) {
 
     /**
@@ -209,9 +209,12 @@ class DmInterpreter @JvmOverloads constructor(
     private fun validateWith(doc: Document, locale: String, isRelevant: Relevance,
             customRelevant: Set<FieldPointer>? = null, starRelevant: ((String) -> Boolean)? = null): ValidationOutcome {
         val dup = duplicateIndexCells(doc, isRelevant)   // computed ONCE: feeds both the uniqueIndex messages and the suppression
-        val messages = (formalErrors(doc, locale, isRelevant) + mandatoryErrors(doc, locale, isRelevant)
-                + uniquenessMessages(dup, locale, isRelevant) + overRepetitionMessages(doc, locale, isRelevant)).toMutableList()
+        // Custom-type unsupported is collected up front (cells whose type is in NEITHER registry); formalErrors
+        // ADDS to it any REGISTERED code-based type whose validate() can't run (a JS worker down / errored), so
+        // that degrades to unsupported per cell rather than crashing the whole validation.
         val unsupported = customTypeUnsupported(doc, isRelevant).toMutableList()
+        val messages = (formalErrors(doc, locale, isRelevant, unsupported) + mandatoryErrors(doc, locale, isRelevant)
+                + uniquenessMessages(dup, locale, isRelevant) + overRepetitionMessages(doc, locale, isRelevant)).toMutableList()
         val cache: FormalCache = HashMap()   // memo across ALL rules of this validation (the doc is immutable here)
         for (rule in model.rules) {
             try {
@@ -254,7 +257,8 @@ class DmInterpreter @JvmOverloads constructor(
      * pointer, ERROR, VALUE); the human text is the interpreter's own wording ([formalErrorText]), not the
      * kernel's German bundle (KERNEL-INTEGRATION-NOTES "Formal-error message text").
      */
-    private fun formalErrors(doc: Document, locale: String, isRelevant: Relevance): List<Message> =
+    private fun formalErrors(doc: Document, locale: String, isRelevant: Relevance,
+            customUnsupported: MutableList<UnsupportedRule>): List<Message> =
         doc.valuedFields().filter { isRelevant(it.path, it.reps) }.mapNotNull { vf ->
             val kind = model.kinds[vf.path] ?: return@mapNotNull null
             // An over-limit cell is "unknown": it carries zuGrosseKontextnummer (the over-repetition pass), not a
@@ -263,13 +267,24 @@ class DmInterpreter @JvmOverloads constructor(
             val scale = model.scaleOf(vf.path)
             val code = formalError(kind, vf.raw, scale, model.dateLikeFormatOf(vf.path), model.datePrecisionOf(vf.path),
                     model.rangeSeparatorOf(vf.path), model.constraintsOf(vf.path), legalCharset)
-            when {
-                code != null -> Message(code.id, FORMAL_RULE_PATH, formatPointer(vf.path, vf.reps), Severity.ERROR,
+            if (code != null) {
+                return@mapNotNull Message(code.id, FORMAL_RULE_PATH, formatPointer(vf.path, vf.reps), Severity.ERROR,
                     MsgType.VALUE, formalErrorText(code, locale, scale))
-                // A registered custom field type that rejects the value (the implicit per-cell `Valid(field, type)`).
-                customTypeRejected(vf.path, vf.raw) -> Message(CUSTOM_TYPE_INVALID, FORMAL_RULE_PATH,
-                    formatPointer(vf.path, vf.reps), Severity.ERROR, MsgType.VALUE, customTypeInvalidText(locale))
-                else -> null
+            }
+            // A registered custom field type that rejects the value (the implicit per-cell `Valid(field, type)`).
+            // A CODE-BASED type whose validate() can't run (a JS worker down / errored) throws here → degrade the
+            // cell to unsupported instead of crashing the whole validation (mirrors the per-rule tolerance).
+            try {
+                if (customTypeRejected(vf.path, vf.raw)) {
+                    Message(CUSTOM_TYPE_INVALID, FORMAL_RULE_PATH, formatPointer(vf.path, vf.reps), Severity.ERROR,
+                        MsgType.VALUE, customTypeInvalidText(locale))
+                } else {
+                    null
+                }
+            } catch (e: UnsupportedConstructException) {
+                customUnsupported += UnsupportedRule(formatPointer(vf.path, vf.reps),
+                    e.message ?: "custom field type could not be evaluated")
+                null
             }
         }
 

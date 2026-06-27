@@ -1,7 +1,7 @@
 # dmtool CLI — custom field types & custom conditions
 
-*2026-06-27T19:58:28Z by Showboat 0.6.1*
-<!-- showboat-id: 9b719c58-0b02-43de-b498-97163200a46f -->
+*2026-06-27T21:13:11Z by Showboat 0.6.1*
+<!-- showboat-id: 0d9765d1-2b87-406e-80d5-141de904cc63 -->
 
 Real document models lean on **custom constructs** — a `CustomFieldType` (an IBAN, an ISIN, a policy number) and a `CustomCondition` (logic the rule DSL can't express). Their validation logic is *project code* that lives in the deploying application, not in the model JSON, so a native, kernel-free `dmtool` cannot *run* it. Full-fidelity evaluation of arbitrary custom logic is the **library's** job (a JVM/JS consumer registers the real impl). What `dmtool` does instead is **author** such models (it's just text) and **test-run** them honestly — degrading visibly, and accepting *declarative* custom types so the common cases still validate. These runtime verbs default to the native-safe interpreter; output is captured by [showboat](https://github.com/simonw/showboat) (re-check with `uvx showboat@0.6.1 verify examples/cli-custom-types.md`).
 
@@ -109,5 +109,31 @@ dmtool -m examples/models/order-ruled.dm.json \
 {"rule":"/Order/EligibilityCheck","verdict":"unsupported","reason":"unregistered custom condition \"ExternalEligibility\" — register it in the custom-condition registry"}
 ```
 
-So `dmtool` stays useful on models full of custom constructs: it **authors** them, **validates** the declarative custom types (`--predefined-types`), and is **honest** about the rest — surfacing what it couldn't evaluate (and failing on demand with `--strict-custom`) rather than reporting a false clean pass. For the imperative tail (checksums, real `CustomCondition` code), register the impl on the `:interpreter` library directly, or evaluate with `--kernel` on the JVM.
+## The imperative tail — the JS escape
+
+`--predefined-types` covers a custom field type whose validity is a *format* (length/pattern). But a real IBAN also has a **mod-97 checksum**, and a `CustomCondition` is by definition logic the DSL can't express — neither has a declarative form. For those, point `dmtool` at the project's **own JS** with `--custom-field-types-js <dir>` / `--custom-conditions-js <dir>`: each `<Name>.js` (a field type exports `validate(value)`; a condition exports `check(data, …)` — the kernel's `ICustomCondition` shape, so an existing browser-side impl is reusable) runs through a single, persistent **Node worker**. Here a project `Iban.js` rejects a value the pattern would have accepted:
+
+```bash
+mkdir -p /tmp/ct-js
+cat > /tmp/ct-js/Iban.js <<'JS'
+// The project's real validator — here a stand-in for IBAN's mod-97: must start with a DE country code.
+export function validate(value) { return value.startsWith('DE') && value.length >= 15; }
+JS
+cat > /tmp/ct-fr.json <<'JSON'
+{ "fields": { "Payment": { "AccountHolder": "Acme", "Iban": "FR7630006000011234567890189" } } }
+JSON
+dmtool -m examples/models/payment-customtype.dm.json \
+  model eval --instance /tmp/ct-fr.json \
+  --custom-field-types-js /tmp/ct-js \
+  | jq -c '{fired: .data.fired, msg: [.data.messages[] | {code, field}]}'
+
+```
+
+```output
+{"fired":["customFieldTypeInvalid"],"msg":[{"code":"customFieldTypeInvalid","field":"/Payment[1]/Iban"}]}
+```
+
+The worker **never outlives `dmtool`** (it self-exits when the parent's pipe closes — even on a hard kill — plus an idle timeout and a JVM shutdown hook). And it degrades the same way: no `node` on PATH, or a `.js` that throws, leaves the construct `unsupported` rather than crashing.
+
+So `dmtool` stays useful on models full of custom constructs: it **authors** them, **validates** the declarative custom types (`--predefined-types`), runs the **imperative** ones from the project's own JS (`--custom-field-types-js` / `--custom-conditions-js`), and is **honest** about anything still unhandled — surfacing it (and failing on demand with `--strict-custom`) rather than reporting a false clean pass. For full in-process fidelity, register the impls on the `:interpreter` library directly, or evaluate with `--kernel` on the JVM.
 

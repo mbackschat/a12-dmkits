@@ -34,6 +34,7 @@ dmtool -m examples/models/order-ruled.dm.json model eval --help
 Usage: dmtool model eval [-hV] [--kernel] [--strict-custom] [--text]
                          [--code=<errorCode>] [--condition=<DSL>]
                          [--custom-conditions-js=<dir>]
+                         [--custom-field-types-js=<dir>]
                          [--field=<fieldPathInModel>]
                          [--group=<groupPathInModel>] --instance=<document.
                          json> [--locale=<locale>] [-m=<model.json>]
@@ -54,6 +55,14 @@ Run a document INSTANCE through the runtime engine; report which rules fire in
                                so a model's imperative CustomConditions
                                evaluate. Needs `node`; if absent, the condition
                                stays unsupported. Interpreter-only.
+      --custom-field-types-js=<dir>
+                             a directory of project JS custom-field-type impls
+                               (<Name>.js, exporting validate(value)); run via
+                               the same Node worker so an imperative custom
+                               field type (a checksum) validates instead of
+                               being reported unsupported. Needs `node`; if
+                               absent, the cell stays unsupported.
+                               Interpreter-only.
       --field=<fieldPathInModel>
                              the candidate rule's error field as a path INSIDE
                                the model (with --condition)

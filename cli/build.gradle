@@ -152,6 +152,7 @@ graalvmNative {
             buildArgs.add('-H:IncludeResources=schema/.*\\.json')       // CLI schema contracts
             buildArgs.add('-H:IncludeResources=verb-examples\\.json')
             buildArgs.add('-H:IncludeResources=.*version\\.properties')
+            buildArgs.add('-H:IncludeResources=.*custom-js-worker\\.mjs')   // the G31 Node worker (extracted + run via `node`)
         }
     }
 }

@@ -95,7 +95,8 @@ final class RuleTestCommand extends BaseCommand {
                 data = data(adapter.testRule(rule, fields, locale));
             } else {
                 data = InterpreterEngine.ruleTestData(json, fields, localeTag, rule,
-                        customSupport.predefinedTypes(), customSupport.customConditions());
+                        customSupport.predefinedTypes(), customSupport.customConditions(),
+                        customSupport.customFieldTypes());
             }
             ResultEnvelope refusal = customSupport.strictRefusal("rule", "test", data);
             if (refusal != null) {

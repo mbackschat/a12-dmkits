@@ -90,6 +90,11 @@ jobs:
           GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated
         run: ./gradlew --no-daemon :cli:installDist
 
+      - name: Set up Node (for the --custom-conditions-js / --custom-field-types-js worker + its demo)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Set up uv (for uvx showboat)
         uses: astral-sh/setup-uv@v6
         with:

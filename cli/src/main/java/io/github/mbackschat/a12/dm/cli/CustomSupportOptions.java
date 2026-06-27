@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.cli.interp.CustomJsWorker;
 import io.github.mbackschat.a12.dm.cli.interp.PredefinedTypesFile;
 import io.github.mbackschat.a12.dm.interpreter.model.CustomCondition;
+import io.github.mbackschat.a12.dm.interpreter.model.CustomFieldType;
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType;
 import io.github.mbackschat.a12.dm.interpreter.model.PredefinedTypeRegistry;
 import picocli.CommandLine.Command;
@@ -57,6 +58,13 @@ public final class CustomSupportOptions {
                     + "the condition stays unsupported. Interpreter-only.")
     String customConditionsJsDir;
 
+    @Option(names = "--custom-field-types-js", paramLabel = "<dir>",
+            description = "a directory of project JS custom-field-type impls (<Name>.js, exporting "
+                    + "validate(value)); run via the same Node worker so an imperative custom field type "
+                    + "(a checksum) validates instead of being reported unsupported. Needs `node`; if absent, "
+                    + "the cell stays unsupported. Interpreter-only.")
+    String customFieldTypesJsDir;
+
     /**
      * The effective predefined-type registry: the built-in defaults ({@code EMail}, …) when no file is given,
      * else {@code defaults + project types} parsed from {@link #predefinedTypesPath}.
@@ -92,6 +100,24 @@ public final class CustomSupportOptions {
     }
 
     /**
+     * The project's JS custom field types ({@code --custom-field-types-js <dir>}), worker-backed and keyed by
+     * name; empty when the flag is absent (a custom-typed cell then stays unsupported unless covered by
+     * {@code --predefined-types}).
+     *
+     * @throws IllegalArgumentException if the directory can't be listed (mapped to a {@code fail()})
+     */
+    public Map<String, CustomFieldType> customFieldTypes() {
+        if (customFieldTypesJsDir == null) {
+            return Map.of();
+        }
+        try {
+            return CustomJsWorker.customFieldTypes(Path.of(customFieldTypesJsDir));
+        } catch (IOException e) {
+            throw new IllegalArgumentException("cannot read --custom-field-types-js dir: " + e.getMessage());
+        }
+    }
+
+    /**
      * The corrective message if an interpreter-only option here was combined with {@code --kernel}, else
      * {@code null}. The kernel runs its own field-type factory and reports its own custom-construct errors, so
      * neither option applies to it.
@@ -111,6 +137,10 @@ public final class CustomSupportOptions {
         if (customConditionsJsDir != null) {
             return "--custom-conditions-js applies to the interpreter; the A12 kernel runs its own custom "
                     + "conditions — drop --kernel or --custom-conditions-js";
+        }
+        if (customFieldTypesJsDir != null) {
+            return "--custom-field-types-js applies to the interpreter; the A12 kernel runs its own custom "
+                    + "field types — drop --kernel or --custom-field-types-js";
         }
         return null;
     }

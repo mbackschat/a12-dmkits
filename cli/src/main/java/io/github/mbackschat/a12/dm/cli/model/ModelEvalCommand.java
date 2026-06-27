@@ -173,10 +173,12 @@ final class ModelEvalCommand extends BaseCommand {
             } else if (candidate) {
                 data = InterpreterEngine.evalCandidateData(modelJson, fields, localeTag,
                         effectiveGroup, name, errorEntityRelPath, condition, code, severity,
-                        customSupport.predefinedTypes(), customSupport.customConditions());
+                        customSupport.predefinedTypes(), customSupport.customConditions(),
+                        customSupport.customFieldTypes());
             } else {
                 data = InterpreterEngine.evalData(modelJson, fields, localeTag, ruleId,
-                        customSupport.predefinedTypes(), customSupport.customConditions());
+                        customSupport.predefinedTypes(), customSupport.customConditions(),
+                        customSupport.customFieldTypes());
             }
         } catch (IllegalArgumentException badDoc) {
             return fail(badDoc.getMessage());
