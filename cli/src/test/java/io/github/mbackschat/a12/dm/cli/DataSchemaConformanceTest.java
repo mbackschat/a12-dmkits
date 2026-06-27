@@ -89,8 +89,8 @@ class DataSchemaConformanceTest {
                 new Run("group-read", new String[]{"-m", order.toString(), "group", "read"}),
                 new Run("typedef-read", new String[]{"-m", td.toString(), "typedef", "read", "Money"}),
                 new Run("typedef-read", new String[]{"-m", td.toString(), "typedef", "read"}),
-                new Run("eval-doc", new String[]{"-m", order.toString(), "model", "eval", "--doc", doc.toString()}),
-                new Run("compute-doc", new String[]{"-m", order.toString(), "model", "compute", "--doc", doc.toString()}),
+                new Run("eval-doc", new String[]{"-m", order.toString(), "model", "eval", "--instance", doc.toString()}),
+                new Run("compute-doc", new String[]{"-m", order.toString(), "model", "compute", "--instance", doc.toString()}),
                 new Run("workspace-list", new String[]{"workspace", "list", dir.toString()}));
 
         for (Run run : runs) {

@@ -25,7 +25,7 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
- * {@code dmtool rule test <rulePath> --doc <document.json>} — the scoped, suppression-aware polarity check
+ * {@code dmtool rule test <rulePath> --instance <document.json>} — the scoped, suppression-aware polarity check
  * for ONE rule against a document INSTANCE (FEATURE-GAPS). The rule-first convenience over {@code doc
  * eval}: it answers <b>fired</b> / <b>passed</b> / <b>suppressed</b> — the last being a rule the kernel never
  * evaluated because a field it references is formally invalid (reporting that as a pass would mislead, so a
@@ -41,9 +41,9 @@ final class RuleTestCommand extends BaseCommand {
             description = "the rule's full name — its slash-path in the model, e.g. /Order/SomeRule")
     String rule;
 
-    @Option(names = "--doc", required = true, paramLabel = "<document.json>",
+    @Option(names = "--instance", required = true, paramLabel = "<document.json>",
             description = "the document INSTANCE (field data) — a nested JSON tree under \"fields\". See `schema model eval`.")
-    String doc;
+    String instance;
 
     @Option(names = "--locale", defaultValue = "en_US", paramLabel = "<locale>",
             description = "the evaluation locale (default: ${DEFAULT-VALUE})")
@@ -68,7 +68,7 @@ final class RuleTestCommand extends BaseCommand {
         }
         Map<String, Object> fields;
         try {
-            fields = DocInstance.readFields(doc);
+            fields = DocInstance.readFields(instance);
         } catch (IllegalArgumentException badShape) {
             return fail(badShape.getMessage());
         } catch (IOException e) {

@@ -149,7 +149,13 @@ public final class Cli {
                     CommandLine offending = ex.getCommandLine();
                     PrintWriter w = offending.getErr();
                     w.println(ex.getMessage());
-                    String hint = locatorPositionalHint(ex);
+                    // The instance-flag hint wins over the locator hint: `rule test` takes BOTH an --instance
+                    // and a positional <rulePathInModel>, so a wrong --doc must be corrected to --instance, not
+                    // sent to the positional. Fall back to the locator corrective otherwise.
+                    String hint = instanceFlagHint(ex, parsedArgs);
+                    if (hint == null) {
+                        hint = locatorPositionalHint(ex);
+                    }
                     if (hint != null) {
                         w.println(hint);
                     }
@@ -210,6 +216,33 @@ public final class Cli {
      * verb whose positional is {@code <spec.json>} never misfires). Probe 06-rr: an agent carries
      * {@code rule check --field} over to {@code field read}/{@code rule read}, which locate by a positional.
      */
+    /** Common wrong guesses for the runtime verbs' {@code --instance} flag — agents reach for these after
+     *  reading "the document INSTANCE". */
+    private static final java.util.Set<String> INSTANCE_FLAG_SYNONYMS = java.util.Set.of("--doc", "--document", "--data");
+
+    /**
+     * The instance-flag corrective: the runtime verbs ({@code model eval}/{@code compute}, {@code rule test})
+     * describe their input as the document INSTANCE, so an agent naturally guesses {@code --doc} /
+     * {@code --document} / {@code --data}. When a command that HAS an {@code --instance} option saw one of
+     * those synonyms in its args, name {@code --instance} instead of leaving a bare error — a clean break (the
+     * flag is {@code --instance}, not a silent alias) with a corrective error (the agent-first design).
+     * Scans the raw args, not just the unmatched set, because {@code --instance} is REQUIRED: picocli reports
+     * the missing required option (a {@code MissingParameterException}) before flagging the unknown synonym,
+     * so the synonym never reaches {@code getUnmatched()}. Returns {@code null} when it doesn't apply.
+     */
+    private static String instanceFlagHint(CommandLine.ParameterException ex, String[] args) {
+        if (ex.getCommandLine().getCommandSpec().findOption("--instance") == null) {
+            return null; // only the instance-consuming verbs
+        }
+        for (String arg : args) {
+            String flag = arg.split("=", 2)[0];
+            if (INSTANCE_FLAG_SYNONYMS.contains(flag)) {
+                return "→ the document-instance flag is --instance (you passed " + flag + ").";
+            }
+        }
+        return null;
+    }
+
     private static String locatorPositionalHint(CommandLine.ParameterException ex) {
         if (!(ex instanceof CommandLine.UnmatchedArgumentException uae)) {
             return null;

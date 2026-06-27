@@ -32,7 +32,7 @@ import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 
 /**
- * {@code dmtool model eval --doc <document.json>} — the runtime counterpart of {@code rule check}: run the
+ * {@code dmtool model eval --instance <document.json>} — the runtime counterpart of {@code rule check}: run the
  * kernel's {@code validateFull} over a document INSTANCE and report which rules FIRED (the empirical
  * polarity check). Read-only: the {@code fired}/{@code messages}/{@code rule} payload rides {@code data}.
  * Narrow with {@code --rule} (existing) or a candidate ({@code --condition} + {@code --field}, injected,
@@ -45,9 +45,9 @@ final class ModelEvalCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @Option(names = "--doc", required = true, paramLabel = "<document.json>",
+    @Option(names = "--instance", required = true, paramLabel = "<document.json>",
             description = "the document INSTANCE (field data) — a nested JSON tree under \"fields\". See `schema model eval`.")
-    String doc;
+    String instance;
 
     @Option(names = "--rule", paramLabel = "<rulePathInModel>",
             description = "narrow the report to an EXISTING rule (its full slash-path)")
@@ -112,7 +112,7 @@ final class ModelEvalCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         try {
-            fields = DocInstance.readFields(doc);
+            fields = DocInstance.readFields(instance);
         } catch (IllegalArgumentException badShape) {
             return fail(badShape.getMessage());
         } catch (IOException e) {

@@ -55,7 +55,7 @@ final class SchemaCommand extends BaseCommand {
             "typedef add", "typedef-add",
             "typedef modify", "typedef-add");
 
-    /** Ops that consume a {@code --doc} document INSTANCE → the schema describing that instance tree. */
+    /** Ops that consume a {@code --instance} document INSTANCE → the schema describing that instance tree. */
     static final Map<String, String> DOC_INPUT = Map.of(
             "model eval", "document-instance",
             "model compute", "document-instance",
@@ -160,7 +160,7 @@ final class SchemaCommand extends BaseCommand {
             }
             c.set("input", schema);
         }
-        // a `--doc` document instance the verb evaluates (eval/compute/test) — the shape it expects
+        // a `--instance` document instance the verb evaluates (eval/compute/test) — the shape it expects
         String docInput = DOC_INPUT.get(verb);
         if (docInput != null) {
             JsonNode schema = readSchema(docInput);

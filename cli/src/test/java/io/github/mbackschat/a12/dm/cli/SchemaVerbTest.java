@@ -104,13 +104,13 @@ class SchemaVerbTest {
 
     @Test
     void docInstanceVerbsSurfaceTheDocInputShape() throws Exception {
-        // the gap-finder (Option C) found 3/3: `--help` promises the --doc instance shape via `schema <verb>`,
+        // the gap-finder (Option C) found 3/3: `--help` promises the --instance instance shape via `schema <verb>`,
         // but the contract never served it. Now `schema model eval`/`model compute`/`rule test` carry `docInput`.
         for (String verb : new String[] {"model eval", "model compute", "rule test"}) {
             String[] t = verb.split(" ");
             JsonNode c = MAPPER.readTree(CliTestSupport.run("schema", t[0], t[1]).out());
             assertEquals("DocumentInstance", c.path("docInput").path("title").asText(),
-                    () -> verb + " contract surfaces the --doc document-instance schema: " + c);
+                    () -> verb + " contract surfaces the --instance document-instance schema: " + c);
             assertTrue(c.path("docInput").path("properties").has("fields"),
                     () -> verb + " docInput describes the `fields` instance tree: " + c);
         }

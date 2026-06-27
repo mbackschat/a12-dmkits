@@ -26,7 +26,7 @@ import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 
 /**
- * {@code dmtool model compute --doc <document.json>} — run the kernel's {@code compute} over a document
+ * {@code dmtool model compute --instance <document.json>} — run the kernel's {@code compute} over a document
  * INSTANCE and report what each computed field becomes (value / cleared / error). Read-only: the {@code
  * computed[]} payload rides {@code data}; the document is never mutated.
  */
@@ -36,9 +36,9 @@ final class ModelComputeCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @Option(names = "--doc", required = true, paramLabel = "<document.json>",
+    @Option(names = "--instance", required = true, paramLabel = "<document.json>",
             description = "the document INSTANCE (field data) — a nested JSON tree under \"fields\". See `schema model compute`.")
-    String doc;
+    String instance;
 
     @Option(names = "--locale", defaultValue = "en_US", paramLabel = "<locale>",
             description = "the computation locale (default: ${DEFAULT-VALUE})")
@@ -68,7 +68,7 @@ final class ModelComputeCommand extends BaseCommand {
             return fail("cannot read model: " + e.getMessage());
         }
         try {
-            fields = DocInstance.readFields(doc);
+            fields = DocInstance.readFields(instance);
         } catch (IllegalArgumentException badShape) {
             return fail(badShape.getMessage());
         } catch (IOException e) {

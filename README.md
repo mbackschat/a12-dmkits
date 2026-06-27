@@ -205,10 +205,10 @@ Diagnostics are **corrective**: each carries a stable `code`, a `where`, and a `
 ### Run the rules against real data (not just static checks)
 
 ```sh
-dmtool -m order.dm.json model eval    --doc order-instance.json   # which rules actually FIRE on this document
-dmtool -m order.dm.json rule test /Order/DeliveryNotBeforeOrder --doc order-instance.json  # one rule: fired / passed / suppressed
-dmtool -m sub.dm.json   model compute --doc sub-instance.json     # what each computed field evaluates to
-dmtool -m order.dm.json model eval    --doc order-instance.json --kernel   # same, but via the A12 kernel (JVM only)
+dmtool -m order.dm.json model eval    --instance order-instance.json   # which rules actually FIRE on this document
+dmtool -m order.dm.json rule test /Order/DeliveryNotBeforeOrder --instance order-instance.json  # one rule: fired / passed / suppressed
+dmtool -m sub.dm.json   model compute --instance sub-instance.json     # what each computed field evaluates to
+dmtool -m order.dm.json model eval    --instance order-instance.json --kernel   # same, but via the A12 kernel (JVM only)
 dmtool -m order.dm.json model seed    --rows /Order/Items:2        # generate a valid sample instance (feeds the verbs above)
 ```
 

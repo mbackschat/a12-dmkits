@@ -80,6 +80,25 @@ class CliHelpTest {
     }
 
     @Test
+    void aWrongInstanceFlagSelfCorrectsToInstance() {
+        // agent-first: the runtime verbs (model eval/compute, rule test) describe their input as the document
+        // INSTANCE, so an agent naturally guesses --doc / --document / --data. A wrong guess must NAME the real
+        // flag (--instance), not leave a bare "Unknown option".
+        for (String wrong : new String[]{"--doc", "--document", "--data"}) {
+            CliTestSupport.Result r = CliTestSupport.run("-m", "x.json", "model", "eval", wrong, "d.json");
+            assertEquals(2, r.code());
+            assertTrue(r.err().contains("--instance") && r.err().contains(wrong),
+                    () -> "model eval must correct " + wrong + " → --instance: " + r.err());
+        }
+        // rule test takes BOTH --instance AND a positional locator — the instance hint must win for --doc
+        // (the locator hint would wrongly say "pass it as the positional <rulePathInModel>").
+        CliTestSupport.Result rt = CliTestSupport.run("-m", "x.json", "rule", "test", "/Order/R", "--doc", "d.json");
+        assertEquals(2, rt.code());
+        assertTrue(rt.err().contains("--instance"),
+                () -> "rule test must correct --doc → --instance (not the locator hint): " + rt.err());
+    }
+
+    @Test
     void aWrongFlagOnASpecInputVerbDoesNotGetTheLocatorHint() {
         // does-not-misfire: `field add` takes a <spec.json> positional (NOT a locator path/id), so an unknown
         // flag must NOT be told to "pass it as the positional" — only the default unknown-option + usage.

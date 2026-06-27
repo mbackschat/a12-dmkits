@@ -107,14 +107,14 @@ class NativeImageRuntimeVerbsTest {
     void nativeRejectsTheRemovedKernelFlagAndRunsTheDefaultEngine() {
         // --kernel is removed from the native tree: passing it is an unknown option (usage error, exit 2).
         CliTestSupport.Result kernel = CliTestSupport.runNative(
-                "-m", "x.json", "model", "eval", "--doc", "y.json", "--kernel");
+                "-m", "x.json", "model", "eval", "--instance", "y.json", "--kernel");
         assertEquals(2, kernel.code(), () -> "native --kernel must be a usage error (unknown option): " + kernel.out() + kernel.err());
         assertTrue(kernel.err().contains("--kernel"),
                 () -> "the unknown-option error must name --kernel:\n" + kernel.err());
 
         // the default (no --kernel) reaches the engine — here it then fails on the dummy model path, NOT on --kernel.
         CliTestSupport.Result def = CliTestSupport.runNative(
-                "-m", "x.json", "model", "eval", "--doc", "y.json");
+                "-m", "x.json", "model", "eval", "--instance", "y.json");
         assertTrue(!def.err().contains("Unknown option") || !def.err().contains("--kernel"),
                 () -> "the default path must NOT trip on --kernel:\n" + def.err());
     }

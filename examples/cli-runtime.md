@@ -32,20 +32,17 @@ dmtool -m examples/models/order-ruled.dm.json model eval --help
 
 ```output
 Usage: dmtool model eval [-hV] [--kernel] [--text] [--code=<errorCode>]
-                         [--condition=<DSL>] --doc=<document.json>
-                         [--field=<fieldPathInModel>]
-                         [--group=<groupPathInModel>] [--locale=<locale>]
-                         [-m=<model.json>] [--name=<name>]
-                         [--rule=<rulePathInModel>] [--severity=ERROR|WARNING]
-                         [-w=<dir>]...
-Run a document INSTANCE through the runtime engine (interpreter by default,
-`--kernel` for the A12 kernel); report which rules fire in `data` (runtime).
+                         [--condition=<DSL>] [--field=<fieldPathInModel>]
+                         [--group=<groupPathInModel>] --instance=<document.
+                         json> [--locale=<locale>] [-m=<model.json>]
+                         [--name=<name>] [--rule=<rulePathInModel>]
+                         [--severity=ERROR|WARNING] [-w=<dir>]...
+Run a document INSTANCE through the runtime engine; report which rules fire in
+`data` (runtime).
       --code=<errorCode>     the candidate rule's error code (default: EVAL_DOC)
       --condition=<DSL>      evaluate a CANDIDATE rule (with --field): a
                                condition true on a VIOLATION; injected, not
                                persisted
-      --doc=<document.json>  the document INSTANCE (field data) — a nested JSON
-                               tree under "fields". See `schema model eval`.
       --field=<fieldPathInModel>
                              the candidate rule's error field as a path INSIDE
                                the model (with --condition)
@@ -53,6 +50,9 @@ Run a document INSTANCE through the runtime engine (interpreter by default,
                              the candidate rule's iteration scope (group path);
                                defaults to the field's parent
   -h, --help                 Show this help message and exit.
+      --instance=<document.json>
+                             the document INSTANCE (field data) — a nested JSON
+                               tree under "fields". See `schema model eval`.
       --kernel               use the A12 kernel engine instead of the default
                                interpreter (JVM only; not available in the
                                native image, where the interpreter is the only
@@ -86,7 +86,7 @@ Evaluate the violation instance, narrowed to the date rule:
 ```bash
 dmtool -m examples/models/order-ruled.dm.json \
   model eval \
-  --doc /tmp/rt-order-violation.json \
+  --instance /tmp/rt-order-violation.json \
   --rule /Order/DeliveryNotBeforeOrder
 ```
 
@@ -129,7 +129,7 @@ cat > /tmp/rt-order-ok.json <<'JSON'
 JSON
 dmtool -m examples/models/order-ruled.dm.json \
   model eval \
-  --doc /tmp/rt-order-ok.json \
+  --instance /tmp/rt-order-ok.json \
   --rule /Order/DeliveryNotBeforeOrder
 ```
 
@@ -163,7 +163,7 @@ dmtool -m examples/models/order-ruled.dm.json \
 ```bash
 dmtool -m examples/models/order-ruled.dm.json \
   rule test /Order/DeliveryNotBeforeOrder \
-  --doc /tmp/rt-order-violation.json
+  --instance /tmp/rt-order-violation.json
 ```
 
 ```output
@@ -193,7 +193,7 @@ cat > /tmp/rt-order-baddate.json <<'JSON'
 JSON
 dmtool -m examples/models/order-ruled.dm.json \
   rule test /Order/DeliveryNotBeforeOrder \
-  --doc /tmp/rt-order-baddate.json
+  --instance /tmp/rt-order-baddate.json
 ```
 
 ```output
@@ -230,7 +230,7 @@ cat > /tmp/rt-qty-over.json <<'JSON'
 JSON
 dmtool -m examples/models/order-ruled.dm.json \
   model eval \
-  --doc /tmp/rt-qty-over.json \
+  --instance /tmp/rt-qty-over.json \
   --condition "[/Order/Quantity] > 100" \
   --field /Order/Quantity \
   --code QTY_CAP
@@ -275,13 +275,15 @@ dmtool -m examples/models/subscription-computed.dm.json model compute --help
 ```
 
 ```output
-Usage: dmtool model compute [-hV] [--kernel] [--text] --doc=<document.json>
-                            [--locale=<locale>] [-m=<model.json>] [-w=<dir>]...
+Usage: dmtool model compute [-hV] [--kernel] [--text] --instance=<document.
+                            json> [--locale=<locale>] [-m=<model.json>]
+                            [-w=<dir>]...
 Run computations over a document INSTANCE; report each computed field's value
 in `data` (read-only).
-      --doc=<document.json>  the document INSTANCE (field data) — a nested JSON
-                               tree under "fields". See `schema model compute`.
   -h, --help                 Show this help message and exit.
+      --instance=<document.json>
+                             the document INSTANCE (field data) — a nested JSON
+                               tree under "fields". See `schema model compute`.
       --kernel               use the A12 kernel engine instead of the default
                                interpreter (JVM only; not available in the
                                native image, where the interpreter is the only
@@ -308,7 +310,7 @@ cat > /tmp/rt-sub-filled.json <<'JSON'
 { "fields": { "Subscription": { "Billing": { "BaseFee": "49.90" } } } }
 JSON
 dmtool -m examples/models/subscription-computed.dm.json \
-  model compute --doc /tmp/rt-sub-filled.json
+  model compute --instance /tmp/rt-sub-filled.json
 ```
 
 ```output
@@ -340,7 +342,7 @@ cat > /tmp/rt-sub-empty.json <<'JSON'
 { "fields": { "Subscription": { "Billing": { } } } }
 JSON
 dmtool -m examples/models/subscription-computed.dm.json \
-  model compute --doc /tmp/rt-sub-empty.json
+  model compute --instance /tmp/rt-sub-empty.json
 ```
 
 ```output
@@ -385,7 +387,7 @@ Because the output IS a document instance, it round-trips straight into `model e
 
 ```bash
 dmtool -m examples/models/order-ruled.dm.json model seed --seed 1 > /tmp/rt-seeded.json
-dmtool -m examples/models/order-ruled.dm.json model eval --doc /tmp/rt-seeded.json | jq -c '{outcome}'
+dmtool -m examples/models/order-ruled.dm.json model eval --instance /tmp/rt-seeded.json | jq -c '{outcome}'
 ```
 
 ```output

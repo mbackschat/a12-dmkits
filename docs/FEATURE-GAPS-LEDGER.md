@@ -12,7 +12,7 @@ A BA does not write DSL. The kernel BA doc frames the job as mapping a business 
 
 dmkits serves the **correctness** axis well, and these strengths are the baseline:
 - `schema rule add` **teaches polarity inline** ("TRUE on a VIOLATION … to enforce a requirement write its violation").
-- `rule test --doc` / `model eval --doc` **confirm polarity by execution** (fired / passed / suppressed) and also return the **interpolated end-user message**.
+- `rule test --instance` / `model eval --instance` **confirm polarity by execution** (fired / passed / suppressed) and also return the **interpolated end-user message**.
 - `RK_INVERTED_REQUIREDNESS` backstops the #1 trap; diagnostics are coded, located, fix-carrying (`diagnostics <CODE>`).
 
 ---

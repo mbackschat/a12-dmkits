@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/document-instance.schema.json",
   "title": "DocumentInstance",
-  "description": "The `--doc` payload for `model eval` / `model compute` / `rule test`: a filled document INSTANCE (the data to evaluate), NOT the model. One object with a single key `fields`, holding a tree that mirrors the model's group/field structure: a non-repeatable group = a nested object keyed by child name; a repeatable group = an ARRAY of row objects; a field = its value as a STRING (\"\" or null = present-but-unfilled; an absent key = no instance for that field). Encode dates as ISO \"YYYY-MM-DD\", numbers/enums as their string form. Discover the model's structure with `model describe`.",
+  "description": "The `--instance` payload for `model eval` / `model compute` / `rule test`: a filled document INSTANCE (the data to evaluate), NOT the model. One object with a single key `fields`, holding a tree that mirrors the model's group/field structure: a non-repeatable group = a nested object keyed by child name; a repeatable group = an ARRAY of row objects; a field = its value as a STRING (\"\" or null = present-but-unfilled; an absent key = no instance for that field). Encode dates as ISO \"YYYY-MM-DD\", numbers/enums as their string form. Discover the model's structure with `model describe`.",
   "type": "object",
   "required": ["fields"],
   "additionalProperties": false,
