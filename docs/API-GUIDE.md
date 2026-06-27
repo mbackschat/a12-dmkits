@@ -1043,6 +1043,8 @@ e.invalidExample(); // dsl + the exact MVK_* + the fix — every example kernel-
 
 An LLM reads exactly this. The **self-sufficiency eval** (N6) is the runnable acceptance test: given only the catalog + skill + javadoc, author and correctly explain a rule per covered operator — where it can't, the material (not the LLM) is deemed incomplete.
 
+**This is also why `Dsl` stays a flat factory.** A coding agent discovers an operator by *querying this catalog* (and grepping examples), not by browsing IDE autocomplete the way a human does. So the ~130 `Dsl.*` factory methods are deliberately **flat** — one import, greppable, `Dsl.addYears` with no "which sub-facade?" hop, and a single way to reach each node. Grouping them into `Dsl.dates().…` sub-facades would help a human's autocomplete but cost an agent an indirection and a dual surface, so the discovery investment goes into the catalog + consistent verb-prefix naming instead (the *why*: API-FINDINGS finding 52).
+
 ### 6b. The model-context surface (`context` package) — `describe`/`find`/`whereUsed`/`export`
 
 The agent's entry point is usually a *name*, not a rule. Three projections compose the answer. (Shipped API is instance methods — `new ModelContext(m).describe()` / `.find(...)` / `.explain(...)`; the `Context.*` static shape below is the original sketch.)
