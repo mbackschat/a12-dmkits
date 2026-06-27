@@ -85,6 +85,21 @@ class FieldConfigExtrasTest {
     }
 
     @Test
+    void stringNoValueValidationRoundTripsThroughTheKernel() throws Exception {
+        // DG14 — the kernel mandates line breaks alongside noValueValidation (MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK).
+        DocumentModelDraft draft = permit()
+                .rootGroup("Permit", p -> p
+                        .stringField("ExternalRef", s -> s.noValueValidation().lineBreaks())
+                        .stringField("Notes", s -> s.maxLength(500)))
+                .build();
+        IStringType externalRef = (IStringType) fieldTypeAfterRoundTrip(draft, "/Permit/ExternalRef");
+        assertTrue(externalRef.isNoValueValidation(), "noValueValidation honored");
+
+        IStringType notes = (IStringType) fieldTypeAfterRoundTrip(draft, "/Permit/Notes");
+        assertFalse(notes.isNoValueValidation(), "default is off for a field that didn't opt in");
+    }
+
+    @Test
     void enumSortingAndInvalidValueMessageRoundTripThroughTheKernel() throws Exception {
         DocumentModelDraft draft = permit()
                 .rootGroup("Permit", p -> p

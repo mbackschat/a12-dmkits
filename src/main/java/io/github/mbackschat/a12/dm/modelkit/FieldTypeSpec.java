@@ -60,6 +60,12 @@ public sealed interface FieldTypeSpec {
             if ((pattern == null) != (patternMessage == null)) {
                 throw new IllegalArgumentException("a pattern and its error message must be set together");
             }
+            // KERNEL-FINDINGS IF29: a no-value-validation string MUST permit line breaks — the kernel rejects
+            // the pair otherwise (MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK). Fail fast with our own message.
+            if (noValueValidation && !lineBreaksPermitted) {
+                throw new IllegalArgumentException(
+                        "noValueValidation requires line breaks to be permitted (MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK)");
+            }
             // a LinkedHashMap copy keeps the per-locale hint-list emit deterministic (idempotent toJson)
             suggestions = suggestions == null
                     ? Map.of()

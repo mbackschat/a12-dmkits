@@ -13,6 +13,7 @@ public final class StringFieldBuilder extends FieldAttrs<StringFieldBuilder> {
     private final Map<String, String> patternMessages = new LinkedHashMap<>();
     private boolean lineBreaksPermitted;
     private boolean alphabeticalSorting;
+    private boolean noValueValidation;
     private final Map<String, List<String>> suggestions = new LinkedHashMap<>();
 
     public StringFieldBuilder minLength(int n) {
@@ -54,6 +55,18 @@ public final class StringFieldBuilder extends FieldAttrs<StringFieldBuilder> {
         return this;
     }
 
+    /**
+     * Skip the kernel's per-cell value validation for this field (the {@code noValueValidation} flag the
+     * attachment {@code content} field uses) — the cell carries data the field-type checks shouldn't reject.
+     * The kernel requires such a field to also permit {@link #lineBreaks() line breaks}
+     * ({@code MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK}) and forbids a {@code pattern}/{@code minLength}
+     * alongside it; combine accordingly. See KERNEL-FINDINGS "STRING {@code noValueValidation}".
+     */
+    public StringFieldBuilder noValueValidation() {
+        this.noValueValidation = true;
+        return this;
+    }
+
     /** Add localized input suggestions (a hint list) for one locale; validated against the field's own pattern. */
     public StringFieldBuilder suggestions(String locale, String... values) {
         this.suggestions.put(locale, List.of(values));
@@ -62,6 +75,6 @@ public final class StringFieldBuilder extends FieldAttrs<StringFieldBuilder> {
 
     protected FieldTypeSpec spec() {
         return new FieldTypeSpec.StringSpec(minLength, maxLength, pattern, patternMessage,
-                lineBreaksPermitted, alphabeticalSorting, suggestions, false, patternMessages);
+                lineBreaksPermitted, alphabeticalSorting, suggestions, noValueValidation, patternMessages);
     }
 }

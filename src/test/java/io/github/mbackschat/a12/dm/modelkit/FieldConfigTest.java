@@ -93,6 +93,10 @@ class FieldConfigTest {
         assertThrows(IllegalStateException.class, () -> DocumentModelDraft.named("m").locale("en_US")
                 .rootGroup("G", g -> g.enumField("F", e -> { }))
                 .build());
+        // noValueValidation requires line breaks (MVK_STRING_TYPE_NO_VAL_AND_NO_LINE_BREAK) — caught at build
+        assertThrows(IllegalArgumentException.class, () -> DocumentModelDraft.named("m").locale("en_US")
+                .rootGroup("G", g -> g.stringField("F", s -> s.noValueValidation()))
+                .build());
     }
 
     @Test

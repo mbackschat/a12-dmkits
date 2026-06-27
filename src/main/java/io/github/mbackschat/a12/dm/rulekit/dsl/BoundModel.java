@@ -206,6 +206,20 @@ public final class BoundModel {
         return new StringRef(field(path));
     }
 
+    /**
+     * A string-shaped handle to a custom-typed field. A {@code Custom} field's value is text, and the kernel
+     * grammar compares it like any string ({@code [Code] == "x"}), so it reuses the {@link StringRef} surface.
+     * Distinct from {@link #str(String)}, which keeps its {@code STRING}-only contract. Throws if the field at
+     * {@code path} is not a custom field.
+     */
+    public StringRef custom(String path) {
+        ValueKind kind = index.kindOf(path);
+        if (kind != ValueKind.CUSTOM) {
+            throw new IllegalArgumentException(path + " is not a custom field (kind=" + kind + ")");
+        }
+        return new StringRef(field(path));
+    }
+
     /** A typed date handle. Throws if the field at {@code path} is not a date. */
     public DateRef date(String path) {
         ValueKind kind = index.kindOf(path);

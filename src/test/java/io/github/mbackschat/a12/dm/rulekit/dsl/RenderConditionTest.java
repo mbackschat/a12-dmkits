@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 
 /**
  * The renderer/handle core: composition, parenthesization, literal quoting, typed-handle kind
@@ -53,6 +54,33 @@ class RenderConditionTest {
     @Test
     void typedStringHandleRejectsANumberField() {
         assertThrows(IllegalArgumentException.class, () -> m.str(MONTHLY_FEE));
+    }
+
+    // A model carrying a custom-typed field, so the CUSTOM-kind handle (m.custom) has something to bind to.
+    private static final BoundModel customModel = BoundModel.ofJson(
+            DocumentModelDraft.named("form").locale("en_US")
+                    .rootGroup("Order", g -> g
+                            .customField("Code", c -> c.type("Code").minLength(3).maxLength(5))
+                            .stringField("Note", s -> {}))
+                    .build().toJson());
+    private static final String CODE = "/Order/Code";
+
+    @Test
+    void customHandleRendersAValueComparison() {
+        // DG13 — a custom field's value is string-shaped; the kernel grammar compares it like any string.
+        Condition c = customModel.custom(CODE).eq("abcd");
+        assertEquals("[/Order/Code] == \"abcd\"", new DslRenderer().render(c));
+    }
+
+    @Test
+    void typedCustomHandleRejectsANonCustomField() {
+        assertThrows(IllegalArgumentException.class, () -> customModel.custom("/Order/Note"));
+    }
+
+    @Test
+    void typedStringHandleRejectsACustomField() {
+        // str() keeps its STRING-only contract — the custom value goes through custom(), not str().
+        assertThrows(IllegalArgumentException.class, () -> customModel.str(CODE));
     }
 
     @Test

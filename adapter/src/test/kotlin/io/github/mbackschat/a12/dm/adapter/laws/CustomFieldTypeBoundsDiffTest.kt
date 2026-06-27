@@ -14,6 +14,8 @@ import io.github.mbackschat.a12.dm.interpreter.model.PredefinedType
 import io.github.mbackschat.a12.dm.interpreter.model.RuleDef
 import io.github.mbackschat.a12.dm.modelkit.CustomFieldBuilder
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft
+import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel
+import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
@@ -61,12 +63,13 @@ class CustomFieldTypeBoundsDiffTest {
 
     private fun iDoc() = Document(kinds = def.kinds, scales = def.scales)
 
-    // A value-reading rule (`[Code] == "abcd"`) over the custom field. Authored as free-text on purpose: the typed
-    // DSL cannot express it — `BoundModel.str()` rejects a CUSTOM-kind field (recorded as a dev-API gap). Both
-    // engines parse the canonical string identically; the rule reads the cell, so a rejected (Unknown) cell suppresses it.
+    // A value-reading rule over the custom field, authored through the typed DSL: `BoundModel.custom(...)` returns a
+    // string-shaped handle for a CUSTOM-kind field, so `== "abcd"` is expressed without a hand-written string. Both
+    // engines parse the same rendered condition; the rule reads the cell, so a rejected (Unknown) cell suppresses it.
+    private val cond = DslRenderer().render(BoundModel.ofJson(json).custom(CODE).eq("abcd"))
+
     /** Rule R reads the cell; a rejected cell → Unknown → R suppressed, exactly as the kernel. */
     private fun assertRuleAgrees(value: String, msg: String) {
-        val cond = "[Code] == \"abcd\""
         val ruleModel = RuntimeLaws.withRule(json, "/Order", "R", "../Code", "R", cond)
         val rdef = def.copy(rules = listOf(RuleDef("/Order/R", "/Order", cond, "R", "../Code")))
         val kDoc = RuntimeLaws.doc().group("/Order", 1).field(CODE, value, 1, 1)
