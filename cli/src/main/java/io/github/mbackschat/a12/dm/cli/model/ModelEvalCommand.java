@@ -87,6 +87,14 @@ final class ModelEvalCommand extends BaseCommand {
                     + "not available in the native image, where the interpreter is the only engine)")
     boolean useKernel;
 
+    @Option(names = "--no-computations",
+            description = "validate the document's STORED values as-is (the kernel's bare validateFull). By DEFAULT, "
+                    + "eval first runs the model's computations and applies their values (the form-engine flow), so a "
+                    + "required-or-referenced COMPUTED field is filled before validation — matching the running app. "
+                    + "Use this to validate stored values directly, e.g. to check a computed field's stored value "
+                    + "against its computation. Computations are reported separately by `model compute`.")
+    boolean noComputations;
+
     @Mixin
     WorkspaceOption workspace = new WorkspaceOption();
 
@@ -169,16 +177,18 @@ final class ModelEvalCommand extends BaseCommand {
                         return fail("'" + ruleId + "' is not a rule in this model — rules: " + rules);
                     }
                 }
-                data = kernelEvalData(KernelAdapter.ofJson(evalJson, resolver).evaluate(fields, locale), targetRule);
+                KernelAdapter ka = KernelAdapter.ofJson(evalJson, resolver);
+                data = kernelEvalData(noComputations ? ka.evaluate(fields, locale) : ka.evaluateApplied(fields, locale),
+                        targetRule);
             } else if (candidate) {
                 data = InterpreterEngine.evalCandidateData(modelJson, fields, localeTag,
                         effectiveGroup, name, errorEntityRelPath, condition, code, severity,
                         customSupport.predefinedTypes(), customSupport.customConditions(),
-                        customSupport.customFieldTypes());
+                        customSupport.customFieldTypes(), !noComputations);
             } else {
                 data = InterpreterEngine.evalData(modelJson, fields, localeTag, ruleId,
                         customSupport.predefinedTypes(), customSupport.customConditions(),
-                        customSupport.customFieldTypes());
+                        customSupport.customFieldTypes(), !noComputations);
             }
         } catch (IllegalArgumentException badDoc) {
             return fail(badDoc.getMessage());

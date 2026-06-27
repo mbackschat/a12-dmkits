@@ -31,8 +31,8 @@ dmtool -m examples/models/order-ruled.dm.json model eval --help
 ```
 
 ```output
-Usage: dmtool model eval [-hV] [--kernel] [--strict-custom] [--text]
-                         [--code=<errorCode>] [--condition=<DSL>]
+Usage: dmtool model eval [-hV] [--kernel] [--no-computations] [--strict-custom]
+                         [--text] [--code=<errorCode>] [--condition=<DSL>]
                          [--custom-conditions-js=<dir>]
                          [--custom-field-types-js=<dir>]
                          [--field=<fieldPathInModel>]
@@ -82,6 +82,16 @@ Run a document INSTANCE through the runtime engine; report which rules fire in
                                accepted before or after the verb)
       --name=<name>          the candidate rule's name (default:
                                EvalDocCandidate)
+      --no-computations      validate the document's STORED values as-is (the
+                               kernel's bare validateFull). By DEFAULT, eval
+                               first runs the model's computations and applies
+                               their values (the form-engine flow), so a
+                               required-or-referenced COMPUTED field is filled
+                               before validation — matching the running app.
+                               Use this to validate stored values directly, e.
+                               g. to check a computed field's stored value
+                               against its computation. Computations are
+                               reported separately by `model compute`.
       --predefined-types=<file>
                              a declarative custom-field-type registry (JSON: {
                                "<TypeName>": { minLength?, maxLength?, pattern?
@@ -449,3 +459,37 @@ Read-only runtime verbs over a nested `{"fields":{…}}` instance — and `model
 | `model seed` | give me a valid sample instance | the `{"fields":{…}}` document itself | structure matches the model; round-trips into `eval` |
 
 Neither verb writes (`written: false`) — they evaluate the *model* against the *instance*, no mutation. The instance carries only the fields a check needs; everything else is absent (and, for numbers, reads as `0`).
+
+## model eval — computations run first (the form-engine flow)
+
+`model compute` showed `EffectiveFee` computes from `[BaseFee]`. Does `model eval` *see* that computed value? **By default, yes** — `model eval` runs the form-engine flow **compute → apply → validate**, so a rule (or a required check) over a computed field sees the computed value, exactly as the running application would. `--no-computations` drops to the kernel's bare `validateFull`, validating the *stored* values as-is. Watch a candidate rule `[EffectiveFee] > 0` flip between the two: `BaseFee` is `10`, `EffectiveFee` is left empty.
+
+```bash
+printf '%s' '{ "fields": { "Subscription": { "Billing": { "BaseFee": "10.00" } } } }' > /tmp/rt-eff.json
+dmtool -m examples/models/subscription-computed.dm.json \
+  model eval --instance /tmp/rt-eff.json \
+  --field /Subscription/Billing/EffectiveFee --condition "[EffectiveFee] > 0" --code EFF_POSITIVE \
+  | jq -c '{fired: .data.fired, ruleFired: .data.rule.fired}'
+
+```
+
+```output
+{"fired":["EFF_POSITIVE"],"ruleFired":true}
+```
+
+→ the computation filled `EffectiveFee` (`10`) **before** the candidate ran, so `[EffectiveFee] > 0` fired — the form-engine answer.
+
+```bash
+dmtool -m examples/models/subscription-computed.dm.json \
+  model eval --instance /tmp/rt-eff.json \
+  --field /Subscription/Billing/EffectiveFee --condition "[EffectiveFee] > 0" --code EFF_POSITIVE \
+  --no-computations \
+  | jq -c '{fired: .data.fired, ruleFired: .data.rule.fired}'
+
+```
+
+```output
+{"fired":[],"ruleFired":false}
+```
+
+→ with `--no-computations` the stored `EffectiveFee` is empty (an empty number reads as `0`), so `0 > 0` is false and nothing fired. Same instance, same rule — the only difference is whether computations ran first. **Use the default to validate as the app will; `--no-computations` to validate stored values as-is.**

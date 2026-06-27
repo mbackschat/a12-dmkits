@@ -55,6 +55,13 @@ final class RuleTestCommand extends BaseCommand {
                     + "not available in the native image, where the interpreter is the only engine)")
     boolean useKernel;
 
+    @Option(names = "--no-computations",
+            description = "test against the document's STORED values as-is. By DEFAULT, rule test first runs the "
+                    + "model's computations and applies their values (the form-engine flow), so a rule over a COMPUTED "
+                    + "field sees the computed value — matching the running app. Use this to test against stored values "
+                    + "directly.")
+    boolean noComputations;
+
     @Mixin
     WorkspaceOption workspace = new WorkspaceOption();
 
@@ -92,11 +99,11 @@ final class RuleTestCommand extends BaseCommand {
                 if (problem != null) {
                     return fail(problem);
                 }
-                data = data(adapter.testRule(rule, fields, locale));
+                data = data(adapter.testRule(rule, fields, locale, !noComputations));
             } else {
                 data = InterpreterEngine.ruleTestData(json, fields, localeTag, rule,
                         customSupport.predefinedTypes(), customSupport.customConditions(),
-                        customSupport.customFieldTypes());
+                        customSupport.customFieldTypes(), !noComputations);
             }
             ResultEnvelope refusal = customSupport.strictRefusal("rule", "test", data);
             if (refusal != null) {

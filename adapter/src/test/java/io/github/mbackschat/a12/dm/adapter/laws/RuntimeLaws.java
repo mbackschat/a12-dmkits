@@ -493,6 +493,26 @@ public final class RuntimeLaws {
         return outcomes.stream().anyMatch(c -> c.path().equals(path) && c.cleared());
     }
 
+    /**
+     * The kernel's **form-engine validation flow**: {@code compute()} → {@code applyTo(doc)} →
+     * {@code validateFull(doc)}. The computation result's {@code applyTo(IDocument)} mutates the document in
+     * place — applying the {@code WithChanges} values and CLEARING the {@code WithErrors}/{@code Cleared}
+     * instances (KERNEL-FINDINGS "validateFull does NOT run computations" + {@code IDocumentComputationResult}) —
+     * then full validation runs over the applied document. This is the oracle for {@link DmInterpreter#applyComputations}
+     * + {@code validate} (the {@code model eval} default), the apply-computed-back step the interpreter mirrors.
+     * Uses the deprecated in-place {@code applyTo(IDocument)} (the {@code IDocument} seam this harness builds on).
+     */
+    @SuppressWarnings("deprecation")
+    static List<Msg> messagesAfterCompute(String modelJson, Doc doc, Locale locale) {
+        IDocumentModel model = expandedModel(modelJson);
+        IDocumentModelResolver resolver = id -> model;
+        IDocumentRtService rt = new DocumentRtServiceFactory(resolver).createDocumentRtService(dynamicConfig());
+        IDocumentFactory df = new DocumentServiceFactory(resolver).createDocumentFactory();
+        IDocument d = buildInstance(modelJson, df, doc);
+        rt.compute(d, locale).applyTo(d);   // apply computed values back: changes set, errored/cleared emptied
+        return rt.validateFull(d, locale).getMessages().stream().map(RuntimeLaws::toMsg).toList();
+    }
+
     /** Whether the rule with {@code errorCode} fires for the given explicit instance. */
     static boolean fires(String modelJson, String errorCode, Doc doc) {
         return firedCodes(modelJson, doc).contains(errorCode);

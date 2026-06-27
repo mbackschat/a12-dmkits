@@ -112,6 +112,41 @@ class EvalDocVerbTest {
     }
 
     @Test
+    void evalAppliesComputationsByDefaultButNotWithNoComputations(@TempDir Path dir) throws Exception {
+        // subscription-computed: EffectiveFee := [BaseFee] (a computation). A candidate rule [EffectiveFee] > 0
+        // fires only once the computation is applied. With BaseFee=10 and EffectiveFee empty in the instance, the
+        // DEFAULT (form-engine flow: compute → apply → validate) computes EffectiveFee=10 → fires; --no-computations
+        // validates the stored (empty→0) value → does not fire. Both engines must agree.
+        Path model = CliTestSupport.subscriptionComputed(dir);
+        Path d = doc(dir, """
+                { "fields": { "Subscription": { "Billing": { "BaseFee": "10.00" } } } }""");
+        String[] candidate = { "-m", model.toString(), "model", "eval", "--instance", d.toString(),
+                "--field", "/Subscription/Billing/EffectiveFee", "--condition", "[EffectiveFee] > 0", "--code", "EFF_POS" };
+
+        // default interpreter engine: applies computations → fires; --no-computations is raw → does not fire
+        var def = CliTestSupport.run(candidate);
+        assertEquals(0, def.code(), def::err);
+        assertTrue(firedContains(def.out(), "EFF_POS"),
+                () -> "default eval applies the computation (EffectiveFee=10) so the candidate fires: " + def.out());
+        var raw = CliTestSupport.run(concat(candidate, "--no-computations"));
+        assertEquals(0, raw.code(), raw::err);
+        assertFalse(firedContains(raw.out(), "EFF_POS"),
+                () -> "--no-computations validates stored EffectiveFee (empty→0) so the candidate does not fire: " + raw.out());
+
+        // the kernel engine agrees on both modes (the --kernel compose path == the interpreter default)
+        assertTrue(firedContains(CliTestSupport.runKernel(candidate).out(), "EFF_POS"),
+                "kernel default applies computations");
+        assertFalse(firedContains(CliTestSupport.runKernel(concat(candidate, "--no-computations")).out(), "EFF_POS"),
+                "kernel --no-computations is raw validateFull");
+    }
+
+    private static String[] concat(String[] base, String extra) {
+        String[] out = java.util.Arrays.copyOf(base, base.length + 1);
+        out[base.length] = extra;
+        return out;
+    }
+
+    @Test
     void multiRowAttributesMessagesToTheOffendingRow(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.orderRuled(dir);
         // two Items rows (Sku supplied so the mandatory-field check is quiet); only row 2 (Count 80) violates "> 50"

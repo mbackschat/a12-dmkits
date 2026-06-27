@@ -489,19 +489,53 @@ class DmInterpreter @JvmOverloads constructor(
      * / CLEARED (the expression computed nothing). ERRORED (an operand/computation error) awaits the
      * formal-error increment.
      */
-    fun compute(doc: Document, locale: String = "en_US"): List<Computed> {
-        val out = mutableListOf<Computed>()
-        // **Cascade** — a computation may reference ANOTHER computation's target field; the kernel computes the
-        // dependency first and the dependent reads its computed value (the CalculationCache). We mirror that
-        // **side-effect-free**: compute in dependency order, accumulating each result into an [overlay] (the
-        // computed values), and evaluate a dependent through an [OverlayContext] that returns those overlaid
-        // values for computed-field reads. Without this the dependent read the stored (empty) operand → a wrong
-        // value (verified vs the kernel). No doc mutation, so a reused doc never accumulates placements; for a
-        // model with no inter-computation dependency the overlay is never consulted (zero behavior change).
+    fun compute(doc: Document, locale: String = "en_US"): List<Computed> =
+        computeInstances(doc).map { it.computed }
+
+    /**
+     * Apply this model's computations to [doc] and return the **updated document** (old + computed values) —
+     * the interpreter's twin of the kernel's `compute().applyTo(doc)` (KERNEL-FINDINGS "validateFull does NOT
+     * run computations": the kernel keeps validate and compute separate and the consumer applies). A VALUE
+     * outcome sets the computed cell; an ERRORED or CLEARED outcome empties it (matching the kernel's `applyTo`,
+     * which applies the changed values and CLEARS both the errored and the cleared instances). The original
+     * [doc] is unchanged.
+     *
+     * This is the apply-computed-back primitive behind the **form-engine validation flow**
+     * `validate(applyComputations(doc))` — what the running application does, and the default behaviour of the
+     * `model eval` verb (a required-but-computed field is filled by the computation before the required check
+     * runs, so it is not a false `mandatoryField`).
+     */
+    fun applyComputations(doc: Document, locale: String = "en_US"): Document {
+        val overrides = HashMap<Pair<String, List<Int>>, String?>()
+        for ((reps, computed) in computeInstances(doc)) {
+            overrides[computed.path to reps] = if (computed.outcome == ComputeOutcome.VALUE) computed.value else null
+        }
+        return doc.withComputed(overrides)
+    }
+
+    /** One computed-field outcome paired with the repetition indices of its target cell. */
+    private data class ComputedInstance(val reps: List<Int>, val computed: Computed)
+
+    /**
+     * Every computed-field outcome WITH its target's repetition indices — the reps-aware core behind both
+     * [compute] (which strips the reps into the public report) and [applyComputations] (which needs them to
+     * address the right cell).
+     *
+     * **Cascade** — a computation may reference ANOTHER computation's target field; the kernel computes the
+     * dependency first and the dependent reads its computed value (the CalculationCache). We mirror that
+     * **side-effect-free**: compute in dependency order, accumulating each result into an [overlay] (the
+     * computed values), and evaluate a dependent through an [OverlayContext] that returns those overlaid
+     * values for computed-field reads. Without this the dependent read the stored (empty) operand → a wrong
+     * value (verified vs the kernel). No doc mutation, so a reused doc never accumulates placements; for a
+     * model with no inter-computation dependency the overlay is never consulted (zero behavior change).
+     *
+     * A computation that reads an ERRORED computed dependency is SKIPPED by the kernel — it produces NO
+     * outcome (not changed / cleared / errored; probe-confirmed, IF40). We track each errored (or transitively
+     * dependent) target instance as *poisoned* and skip any dependent that reads it.
+     */
+    private fun computeInstances(doc: Document): List<ComputedInstance> {
+        val out = mutableListOf<ComputedInstance>()
         val overlay = HashMap<Pair<String, List<Int>>, Val>()
-        // A computation that reads an ERRORED computed dependency is SKIPPED by the kernel — it produces NO
-        // outcome (not changed / cleared / errored; probe-confirmed, IF40). We track each errored (or transitively
-        // dependent) target instance as *poisoned* and skip any dependent that reads it.
         val poisoned = HashSet<Pair<String, List<Int>>>()
         val computedTargets = model.computations.mapTo(HashSet()) { it.targetPath }
         for (comp in computationsInDependencyOrder()) {
@@ -519,7 +553,7 @@ class DmInterpreter @JvmOverloads constructor(
                     customFieldTypes = customFieldTypes)
                 val v = evalComputation(parsed, interp)
                 val computed = toComputed(comp, v)
-                out += computed
+                out += ComputedInstance(targetKey.second, computed)
                 // ERRORED: report it, but poison the target and do NOT overlay — a dependent must be skipped, not
                 // computed from the bad value. A resolved VALUE overlays so dependents read the computed result.
                 when {

@@ -176,6 +176,50 @@ class Document @JvmOverloads constructor(
         index().valued.map { ValuedField(it.path, it.reps, it.value!!) }
 
     /**
+     * A copy of this document with computed values applied — the interpreter's twin of the kernel's
+     * `IDocumentComputationResult.applyTo` (KERNEL-FINDINGS "validateFull does NOT run computations"): each
+     * [overrides] entry's value REPLACES the cell at `(path, reps)`; a `null` value CLEARS it. (The kernel
+     * applies the `WithChanges` values and clears both the `WithErrors` and the `Cleared` instances, so an
+     * errored/cleared computation maps to a `null` override here.) The original document is unchanged.
+     *
+     * Used by [DmInterpreter.applyComputations] to materialize the compute-applied document for the
+     * form-engine validation flow (compute → apply → validate); re-adding through the public builders keeps the
+     * indices/auto-grouping invariants and document order intact.
+     */
+    internal fun withComputed(overrides: Map<Pair<String, List<Int>>, String?>): Document {
+        val copy = emptyCopy()
+        val applied = HashSet<Pair<String, List<Int>>>()
+        for (p in placements) {
+            if (p.isGroup) {
+                copy.group(p.path, *p.reps.toIntArray())
+                continue
+            }
+            val key = p.path to p.reps
+            when {
+                key in overrides -> {
+                    applied += key
+                    overrides[key]?.let { copy.field(p.path, it, *p.reps.toIntArray()) }
+                        ?: copy.emptyField(p.path, *p.reps.toIntArray())
+                }
+                p.value != null -> copy.field(p.path, p.value, *p.reps.toIntArray())
+                else -> copy.emptyField(p.path, *p.reps.toIntArray())
+            }
+        }
+        // A value computed into a cell with no prior placement (an empty computed field never present as a
+        // placement): add it. A null override (clear) for an absent cell is a no-op.
+        for ((key, value) in overrides) {
+            if (key !in applied && value != null) copy.field(key.first, value, *key.second.toIntArray())
+        }
+        return copy
+    }
+
+    /** An empty document carrying this one's model configuration (kinds/reps/formats/…) but no placements —
+     *  the single place the config param list is threaded, so [withComputed] stays in lockstep with the
+     *  constructor. */
+    private fun emptyCopy(): Document = Document(kinds, declaredReps, unsignedFields, rangeConfig, dateFormats,
+        scales, dateTimeFormats, datePrecisions, enumValues, enumCategories, timeFormats)
+
+    /**
      * One [EvalContext] per instantiated row of [groupPath]; empty if the group has no rows. Each row's
      * `evaluated` flag is computed here in a single amortized pass over the valued fields: a row is
      * evaluated iff some valued field is in its scope, i.e. its index-prefix matches the field at the depth

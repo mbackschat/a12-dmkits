@@ -208,12 +208,13 @@ Diagnostics are **corrective**: each carries a stable `code`, a `where`, and a `
 dmtool -m order.dm.json model eval    --instance order-instance.json   # which rules actually FIRE on this document
 dmtool -m order.dm.json rule test /Order/DeliveryNotBeforeOrder --instance order-instance.json  # one rule: fired / passed / suppressed
 dmtool -m sub.dm.json   model compute --instance sub-instance.json     # what each computed field evaluates to
+dmtool -m order.dm.json model eval    --instance order-instance.json --no-computations  # validate STORED values as-is (bare validateFull)
 dmtool -m order.dm.json model eval    --instance order-instance.json --kernel   # same, but via the A12 kernel (JVM only)
 dmtool -m order.dm.json model seed    --rows /Order/Items:2        # generate a valid sample instance (feeds the verbs above)
 dmtool -m pay.dm.json   model eval    --instance pay.json --predefined-types iban.json  # validate a custom field type
 ```
 
-This is the empirical check a static "is it valid?" can't give — it's how you confirm a rule's *polarity* on concrete data. `rule test` scopes it to one rule with a three-way verdict, distinguishing a genuine **pass** from a rule the engine **suppressed** because a field it references is formally invalid. These verbs run on a **native-safe interpreter** by default (it reproduces the kernel's runtime semantics, verified rule-for-rule); `--kernel` switches to the A12 kernel on the JVM.
+This is the empirical check a static "is it valid?" can't give — it's how you confirm a rule's *polarity* on concrete data. `rule test` scopes it to one rule with a three-way verdict, distinguishing a genuine **pass** from a rule the engine **suppressed** because a field it references is formally invalid. `model eval` / `rule test` run the **form-engine flow by default** — *compute → apply → validate* — so a required-or-referenced **computed** field is filled by its computation before validation, matching the running app (the kernel keeps `validateFull` and `compute` separate, so a bare validate would false-fail a computed field); `--no-computations` opts down to the bare `validateFull` over stored values. These verbs run on a **native-safe interpreter** by default (it reproduces the kernel's runtime semantics, verified rule-for-rule); `--kernel` switches to the A12 kernel on the JVM.
 
 **Models that use custom constructs** still run: a `CustomFieldType` whose format is declarative is validated with `--predefined-types <file>`; for the *imperative* tail — a `CustomCondition`, or a checksum custom type — point `dmtool` at the project's own JS with `--custom-conditions-js` / `--custom-field-types-js` (run through a persistent Node worker); and anything still unhandled is **surfaced** under `data.unsupported` rather than silently passed, with `--strict-custom` turning that into a failure. Walkthrough: [`examples/cli-custom-types.md`](examples/cli-custom-types.md).
 

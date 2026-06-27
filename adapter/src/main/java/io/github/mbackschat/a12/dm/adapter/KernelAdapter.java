@@ -608,7 +608,29 @@ public final class KernelAdapter {
      */
     public EvalResult evaluate(Map<String, Object> fields, Locale locale) {
         DocRuntime runtime = prepare(fields);
-        IDocumentValidationResult result = runtime.rt().validateFull(runtime.document(), locale);
+        return toEvalResult(runtime.rt().validateFull(runtime.document(), locale));
+    }
+
+    /**
+     * The <b>form-engine validation flow</b> over a document instance: {@code compute()} →
+     * {@code applyTo(doc)} → {@code validateFull(doc)}. The kernel keeps validation and computation separate
+     * (KERNEL-FINDINGS "validateFull does NOT run computations"); this applies the computed values back —
+     * changes set, errored/cleared emptied, the kernel's own {@code applyTo} — <em>before</em> validating, so a
+     * required-but-computed field is filled by its computation before the required check runs (no false
+     * {@code mandatoryField}). The {@code --kernel} engine's compose path, the peer of the interpreter's
+     * {@link DmInterpreter#applyComputations} + {@code validate} that is the {@code model eval} default.
+     * Uses the deprecated in-place {@code applyTo(IDocument)} (the {@code IDocument} runtime seam this adapter
+     * is built on); the document is freshly prepared per call, so the in-place mutation is local.
+     */
+    @SuppressWarnings("deprecation")
+    public EvalResult evaluateApplied(Map<String, Object> fields, Locale locale) {
+        DocRuntime runtime = prepare(fields);
+        runtime.rt().compute(runtime.document(), locale).applyTo(runtime.document());
+        return toEvalResult(runtime.rt().validateFull(runtime.document(), locale));
+    }
+
+    /** Map a kernel {@link IDocumentValidationResult} to the JDK-only {@link EvalResult} (shared by both paths). */
+    private static EvalResult toEvalResult(IDocumentValidationResult result) {
         List<EvalMessage> messages = new ArrayList<>();
         for (IMessage m : result.getMessages()) {
             messages.add(new EvalMessage(m.getErrorCode(), m.getRulePath(),
@@ -638,8 +660,18 @@ public final class KernelAdapter {
      * the rule's {@linkplain #referencedFields referenced fields} drew a formal-check error and, if so, name them.
      */
     public RuleTestOutcome testRule(String ruleFullName, Map<String, Object> fields, Locale locale) {
+        return testRule(ruleFullName, fields, locale, false);
+    }
+
+    /**
+     * {@link #testRule(String, Map, Locale)} with an explicit choice of validation flow: {@code applyComputations}
+     * true runs the form-engine {@link #evaluateApplied compute → apply → validate} (the {@code rule test}
+     * default — so a rule over a computed field sees the computed value); false runs the bare {@link #evaluate
+     * validateFull} (the raw differential's flow). The verdict logic is identical; only the message source differs.
+     */
+    public RuleTestOutcome testRule(String ruleFullName, Map<String, Object> fields, Locale locale, boolean applyComputations) {
         Set<String> referenced = referencedFields(ruleFullName);
-        List<EvalMessage> messages = evaluate(fields, locale).messages();
+        List<EvalMessage> messages = (applyComputations ? evaluateApplied(fields, locale) : evaluate(fields, locale)).messages();
         Optional<EvalMessage> firedMessage = messages.stream()
                 .filter(m -> m.rulePath().filter(ruleFullName::equals).isPresent()).findFirst();
         if (firedMessage.isPresent()) {
