@@ -103,6 +103,13 @@ public final class CliTestSupport {
         return file;
     }
 
+    /** Write the {@code payment-customtype} fixture (a {@code CustomFieldType "Iban"} field) to a temp file. */
+    public static Path paymentCustomType(Path dir) throws IOException {
+        Path file = dir.resolve("payment-customtype.dm.json");
+        Files.writeString(file, resource("models/payment-customtype.dm.json"));
+        return file;
+    }
+
     /** Write the {@code subscription-computed} fixture (en_US + de_DE, a computation) to a temp file. */
     public static Path subscriptionComputed(Path dir) throws IOException {
         Path file = dir.resolve("subscription-computed.dm.json");

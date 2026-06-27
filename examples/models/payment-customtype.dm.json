@@ -1,0 +1,69 @@
+{
+  "header": {
+    "id": "payment",
+    "modelType": "document",
+    "modelVersion": "28.4.0",
+    "locales": [
+      {
+        "code": "en_US"
+      }
+    ],
+    "labels": [],
+    "annotations": [],
+    "modelReferences": []
+  },
+  "content": {
+    "modelInfo": {
+      "name": "payment",
+      "variant": "cockpit",
+      "revision": "Arbeitsversion",
+      "baseYear": "2020",
+      "immutable": false
+    },
+    "modelConfig": {
+      "decimalSeparator": ".",
+      "timeZone": "Europe/Berlin",
+      "conditionLanguage": {
+        "code": "en_US"
+      },
+      "fieldRefByShortNameAllowed": true
+    },
+    "modelRoot": {
+      "rootGroups": [
+        {
+          "type": "Group",
+          "id": "/Payment",
+          "name": "Payment",
+          "Group": {
+            "repeatability": 1,
+            "elements": [
+              {
+                "type": "Field",
+                "id": "/Payment/AccountHolder",
+                "name": "AccountHolder",
+                "Field": {
+                  "fieldType": {
+                    "type": "StringType"
+                  }
+                }
+              },
+              {
+                "type": "Field",
+                "id": "/Payment/Iban",
+                "name": "Iban",
+                "Field": {
+                  "fieldType": {
+                    "type": "CustomFieldType",
+                    "CustomFieldType": {
+                      "name": "Iban"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

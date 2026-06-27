@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.model;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.CustomSupportOptions;
 import io.github.mbackschat.a12.dm.cli.DocInstance;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
 import io.github.mbackschat.a12.dm.cli.WorkspaceOption;
@@ -89,6 +90,9 @@ final class ModelEvalCommand extends BaseCommand {
     @Mixin
     WorkspaceOption workspace = new WorkspaceOption();
 
+    @Mixin
+    CustomSupportOptions customSupport = new CustomSupportOptions();
+
     @Override
     public Integer call() {
         // --kernel is removed from the native command tree (Cli.removeNativeUnavailableOptions), so under the
@@ -96,6 +100,10 @@ final class ModelEvalCommand extends BaseCommand {
         String model = model();
         if (model == null) {
             return fail("pass -m <model.json> (before or after the verb)");
+        }
+        String kernelConflict = customSupport.kernelConflict(useKernel);
+        if (kernelConflict != null) {
+            return fail(kernelConflict);
         }
         boolean candidate = condition != null || field != null;
         if (candidate && ruleId != null) {
@@ -164,9 +172,10 @@ final class ModelEvalCommand extends BaseCommand {
                 data = kernelEvalData(KernelAdapter.ofJson(evalJson, resolver).evaluate(fields, locale), targetRule);
             } else if (candidate) {
                 data = InterpreterEngine.evalCandidateData(modelJson, fields, localeTag,
-                        effectiveGroup, name, errorEntityRelPath, condition, code, severity);
+                        effectiveGroup, name, errorEntityRelPath, condition, code, severity,
+                        customSupport.predefinedTypes());
             } else {
-                data = InterpreterEngine.evalData(modelJson, fields, localeTag, ruleId);
+                data = InterpreterEngine.evalData(modelJson, fields, localeTag, ruleId, customSupport.predefinedTypes());
             }
         } catch (IllegalArgumentException badDoc) {
             return fail(badDoc.getMessage());

@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.cli.rule;
 
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
+import io.github.mbackschat.a12.dm.cli.CustomSupportOptions;
 import io.github.mbackschat.a12.dm.cli.DocInstance;
 import io.github.mbackschat.a12.dm.cli.ModelPaths;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
@@ -57,6 +58,9 @@ final class RuleTestCommand extends BaseCommand {
     @Mixin
     WorkspaceOption workspace = new WorkspaceOption();
 
+    @Mixin
+    CustomSupportOptions customSupport = new CustomSupportOptions();
+
     @Override
     public Integer call() {
         // --kernel is removed from the native command tree (Cli.removeNativeUnavailableOptions), so under the
@@ -65,6 +69,10 @@ final class RuleTestCommand extends BaseCommand {
         String json = readModelJson(modelPath);   // null (after printing the failure) if no -m / unreadable
         if (json == null) {
             return 2;
+        }
+        String kernelConflict = customSupport.kernelConflict(useKernel);
+        if (kernelConflict != null) {
+            return fail(kernelConflict);
         }
         Map<String, Object> fields;
         try {
@@ -86,7 +94,7 @@ final class RuleTestCommand extends BaseCommand {
                 }
                 data = data(adapter.testRule(rule, fields, locale));
             } else {
-                data = InterpreterEngine.ruleTestData(json, fields, localeTag, rule);
+                data = InterpreterEngine.ruleTestData(json, fields, localeTag, rule, customSupport.predefinedTypes());
             }
             ResultEnvelope env = ResultEnvelope.read("rule", "test", summary(data), true, List.of(), data);
             out().print(env.toJsonString());
