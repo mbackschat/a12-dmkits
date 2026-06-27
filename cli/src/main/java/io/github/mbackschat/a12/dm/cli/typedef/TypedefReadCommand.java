@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
@@ -36,14 +37,23 @@ final class TypedefReadCommand extends BaseCommand {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Parameters(index = "0", arity = "0..1", paramLabel = "<typeDefId>",
-            description = "a type-definition id to read just that one; omit to list every declared id")
+            description = "a type-definition id to read just that one; omit to list every declared id "
+                    + "(or address it with --typedef / --id)")
     String id;
+
+    @Option(names = {"--typedef", "--id"}, paramLabel = "<typeDefId>",
+            description = "the type-definition id — the named-flag alias for the positional (the locator "
+                    + "contract: the target-noun flag always works). The positional wins if both are given.")
+    String idFlag;
 
     @Override
     public Integer call() {
         String model = model();
         if (model == null) {
             return fail("pass -m <model.json> (before or after the verb)");
+        }
+        if (id == null) {   // locator contract: --typedef/--id is the named alias for the positional
+            id = idFlag;
         }
         String json;
         try {

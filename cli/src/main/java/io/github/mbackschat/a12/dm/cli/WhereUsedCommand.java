@@ -36,11 +36,13 @@ final class WhereUsedCommand extends BaseCommand {
 
     @Parameters(index = "0", arity = "0..1", paramLabel = "<entityPath>",
             description = "the field or group's full (absolute) path inside the model, e.g. /Order/Quantity "
-                    + "(positional, like `rule read <path>`; or pass --entity)")
+                    + "(positional, like `rule read <path>`; or pass --entity / the matching --field|--group|…)")
     String entityArg;
 
-    @Option(names = "--entity", paramLabel = "<entityPath>",
-            description = "the explicit alias for the positional <entityPath>")
+    @Option(names = {"--entity", "--field", "--group", "--rule", "--computation", "--typedef"}, paramLabel = "<entityPath>",
+            description = "the entity's full path — the named-flag alias for the positional. The target is "
+                    + "polymorphic, so the noun flag for whatever you're looking up the usages of (--field, "
+                    + "--group, …) is accepted as well as the canonical --entity (the locator contract).")
     String entityOpt;
 
     @Mixin

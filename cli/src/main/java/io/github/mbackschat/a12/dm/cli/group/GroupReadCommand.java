@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
@@ -30,14 +31,23 @@ final class GroupReadCommand extends BaseCommand {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Parameters(index = "0", arity = "0..1", paramLabel = "<groupPathInModel>",
-            description = "the group's full name-path, e.g. /Order/BillingAddress; omit to list every group's path")
+            description = "the group's full name-path, e.g. /Order/BillingAddress; omit to list every group's "
+                    + "path (or address it with --group)")
     String group;
+
+    @Option(names = "--group", paramLabel = "<groupPathInModel>",
+            description = "the group's full name-path — the named-flag alias for the positional (the locator "
+                    + "contract: the target-noun flag always works). The positional wins if both are given.")
+    String groupFlag;
 
     @Override
     public Integer call() {
         String model = model();
         if (model == null) {
             return fail("pass -m <model.json> (before or after the verb)");
+        }
+        if (group == null) {   // locator contract: --group is the named alias for the positional
+            group = groupFlag;
         }
         String json;
         try {

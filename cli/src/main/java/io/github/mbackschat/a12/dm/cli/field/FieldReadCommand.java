@@ -36,8 +36,13 @@ final class FieldReadCommand extends BaseCommand {
 
     @Parameters(index = "0", arity = "0..1", paramLabel = "<fieldPathInModel>",
             description = "the field's full name-path, e.g. /Order/Quantity; omit to list every field's path "
-                    + "(or address it with --group + --name instead)")
+                    + "(or address it with --field, or --group + --name)")
     String field;
+
+    @Option(names = "--field", paramLabel = "<fieldPathInModel>",
+            description = "the field's full name-path — the named-flag alias for the positional (the locator "
+                    + "contract: the target-noun flag always works). The positional wins if both are given.")
+    String fieldFlag;
 
     @Option(names = "--group", paramLabel = "<path>",
             description = "the field's group (with --name, as an alternative to the positional path)")
@@ -55,7 +60,7 @@ final class FieldReadCommand extends BaseCommand {
         }
         String fieldPath;
         try {
-            fieldPath = FieldLocator.resolve(field, group, name).orElse(null);
+            fieldPath = FieldLocator.resolve(field != null ? field : fieldFlag, group, name).orElse(null);
         } catch (IllegalArgumentException e) {
             return fail(e.getMessage());
         }

@@ -117,6 +117,13 @@ public final class CliTestSupport {
         return file;
     }
 
+    /** Write the {@code typedefs} fixture (a local type definition {@code PostalCodeType}) to a temp file. */
+    public static Path typedefs(Path dir) throws IOException {
+        Path file = dir.resolve("typedefs.dm.json");
+        Files.writeString(file, resource("models/typedefs.dm.json"));
+        return file;
+    }
+
     private static String resource(String classpathPath) {
         try (InputStream in = CliTestSupport.class.getClassLoader().getResourceAsStream(classpathPath)) {
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);

@@ -59,24 +59,25 @@ class CliHelpTest {
 
     @Test
     void aWrongLocatorFlagOnALocatorVerbSelfCorrectsToThePositional() {
-        // probe 06-rr: an agent carries `rule check --field` over to `field read` / `rule read`, which locate
-        // by a POSITIONAL. The parse error must NAME the positional form, not leave a bare "Unknown option".
-        CliTestSupport.Result fieldRead = CliTestSupport.run("-m", "x.json", "field", "read", "--field", "/Doc/Age");
+        // The locator contract makes the TARGET-NOUN flag valid (--field on field read, etc. — see
+        // LocatorContractTest); the self-correction now covers OTHER guesses like --path. The parse error must
+        // NAME the positional form, not leave a bare "Unknown option".
+        CliTestSupport.Result fieldRead = CliTestSupport.run("-m", "x.json", "field", "read", "--path", "/Doc/Age");
         assertEquals(2, fieldRead.code());
         assertTrue(fieldRead.err().contains("POSITIONAL") && fieldRead.err().contains("fieldPathInModel")
-                        && fieldRead.err().contains("--field"),
-                () -> "field read corrects --field → the positional: " + fieldRead.err());
+                        && fieldRead.err().contains("--path"),
+                () -> "field read corrects --path → the positional: " + fieldRead.err());
         CliTestSupport.Result ruleRead = CliTestSupport.run("-m", "x.json", "rule", "read", "--path", "/Doc/X");
         assertEquals(2, ruleRead.code());
         assertTrue(ruleRead.err().contains("rulePathInModel"),
                 () -> "rule read corrects --path → the positional: " + ruleRead.err());
-        // probe 04-whereused-locator: `where-used` locates by a POSITIONAL <entityPath> (the sibling the
-        // narrower "PathInModel" match missed); a wrong locator flag must self-correct here too.
-        CliTestSupport.Result whereUsed = CliTestSupport.run("-m", "x.json", "where-used", "--field", "/Order/Buyer");
+        // probe 04-whereused-locator: `where-used` locates by a POSITIONAL <entityPath>; a wrong locator flag
+        // (not one of the accepted noun aliases) must self-correct here too.
+        CliTestSupport.Result whereUsed = CliTestSupport.run("-m", "x.json", "where-used", "--path", "/Order/Buyer");
         assertEquals(2, whereUsed.code());
         assertTrue(whereUsed.err().contains("POSITIONAL") && whereUsed.err().contains("entityPath")
-                        && whereUsed.err().contains("--field"),
-                () -> "where-used corrects --field → the positional <entityPath>: " + whereUsed.err());
+                        && whereUsed.err().contains("--path"),
+                () -> "where-used corrects --path → the positional <entityPath>: " + whereUsed.err());
     }
 
     @Test
