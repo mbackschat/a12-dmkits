@@ -27,7 +27,7 @@ import com.mgmtp.a12.kernel.core.tool.a12internal.api.ado.IStringType;
  *
  * <p>Scope: the **field-type constraint** interfaces (where IF20 lived). The companion model-element slots —
  * {@code IRule.getSeverity} (IF23), {@code ICalculation.getComputationAlternatives}/{@code getCommonPrecondition}
- * (IF21), {@code IGroup.getSortInfo} (G28) — are each individually findings-tracked + (for IF21/IF23) test-locked;
+ * (IF21), {@code IGroup.getSortInfo} (authoring shipped — finding 51, G28) — are each individually findings-tracked + (for IF21/IF23) test-locked;
  * extending this reflective guard to those interfaces is a tracked follow-on (INTERPRETER-FINDINGS IF22).
  */
 class InterpreterFieldConstraintParityTest {

@@ -68,8 +68,8 @@ class InterpreterModelElementParityTest {
         outOfScope("IGroup.getCustomType", "group usage type (attachment / multi-select / complex-type) — form-UI, not eval-relevant");
         outOfScope("IGroup.getSortInfo",
                 "editor/USB DISPLAY ordering — NOT consumed by kernel-core-runtime/calc (eval iterates document order), "
-                        + "so the interpreter correctly ignores it. The dmkit AUTHORING gap (unauthorable via modelkit/CLI) "
-                        + "is recorded as FEATURE-GAPS-LEDGER §3 G28 — not dismissed.");
+                        + "so the interpreter correctly ignores it. The dmkit AUTHORING surface shipped "
+                        + "(modelkit GroupBuilder.sortField + CLI group modify --sort-field — API-FINDINGS finding 51, G28).");
     }
 
     private static void modeled(String accessor, String note) {

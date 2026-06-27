@@ -283,6 +283,42 @@ dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons | jq -c '.data'
 
 → `changed.indexField: Name` and the read's `data.indexField` confirm the row-key landed. `--clear-index-field` removes it; an index field on a single (non-repeating) group is refused.
 
+## group modify — the row sort (display order)
+
+A repetition list can also declare how its rows are **sorted for display** — one or more direct-child fields, each `:asc` (default) or `:desc`, applied in order. `group modify --sort-field` sets them (repeat the flag for a multi-key sort; replaces any existing sort), and `group read` echoes `data.sortFields`. This is a display/USB attribute — it does not change how rules or computations evaluate (they iterate in document order) — so it requires a repeatable group but never alters validation:
+
+```bash
+dmtool -m /tmp/struct2.dm.json group modify /Subscription/Addons \
+  --sort-field MonthlyFee:desc --sort-field Name
+dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons | jq -c '.data.sortFields'
+```
+
+```output
+{
+  "target" : "group",
+  "op" : "modify",
+  "outcome" : "applied",
+  "ok" : true,
+  "summary" : "set /Subscription/Addons: sort by MonthlyFee desc, Name asc",
+  "changed" : {
+    "group" : "/Subscription/Addons",
+    "sortFields" : [ {
+      "name" : "MonthlyFee",
+      "order" : "DESC"
+    }, {
+      "name" : "Name",
+      "order" : "ASC"
+    } ]
+  },
+  "diagnostics" : [ ],
+  "written" : true,
+  "output" : "/tmp/struct2.dm.json"
+}
+[{"name":"MonthlyFee","order":"DESC"},{"name":"Name","order":"ASC"}]
+```
+
+→ `changed.sortFields` and the read's `data.sortFields` confirm the order landed (highest fee first, then name). `--clear-sort-fields` removes it; a sort field on a single (non-repeating) group, or a `:order` other than `asc`/`desc`, is refused.
+
 ## group remove — drop a whole sub-tree
 
 `group remove` deletes the group and everything under it. Like `field remove`, it runs the reference check first and refuses (exit 2) a group still referenced by a rule or computation unless you pass `--cascade`. `/Subscription/Addons` is unreferenced, so it goes cleanly — `changed.cascaded` is empty, meaning nothing else had to come with it:
