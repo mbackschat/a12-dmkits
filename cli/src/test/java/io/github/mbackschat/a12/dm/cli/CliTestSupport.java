@@ -32,7 +32,7 @@ public final class CliTestSupport {
         return new Result(code, out.toString(), err.toString());
     }
 
-    /** Run with the <b>native build profile</b> forced (the JVM-only verbs hidden) — for the native-hiding guard. */
+    /** Run with the <b>native build profile</b> forced ({@code --kernel} removed from the tree) — for the native-surface guard. */
     public static Result runNative(String... args) {
         StringBuilder out = new StringBuilder();
         StringBuilder err = new StringBuilder();

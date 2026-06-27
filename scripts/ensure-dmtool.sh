@@ -26,8 +26,9 @@
 # scripts/selftest-ensure-dmtool.sh (EnsureDmtoolCacheTest).
 #
 # Never hard-fails the session: on any download/verify problem it warns to stderr and exits 0 (the
-# session continues; `dmtool` just won't be on PATH). The runtime-eval verbs are intentionally absent
-# from the native binary (model eval / rule test / model compute are JVM-only — see the project docs).
+# session continues; `dmtool` just won't be on PATH). The runtime-eval verbs (model eval / rule test /
+# model compute / model seed) DO run on the native binary via the kernel-free interpreter; only the opt-in
+# `--kernel` engine needs a JVM (see the project docs).
 set -uo pipefail
 
 VERSION="v0.7.0"

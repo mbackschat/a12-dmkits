@@ -105,7 +105,7 @@ xattr -d com.apple.quarantine dmtool-macos-arm64
 
 The CLI is **self-describing** — `dmtool --help`, `dmtool manifest`, `dmtool operators`, `dmtool schema <target> <op>`.
 
-> The native binary covers rule **authoring / checking / structure / read**. The runtime-evaluation verbs (`model eval`, `rule test`, `model compute`) require a JVM and are **not** in the native binary.
+> The native binary covers rule **authoring / checking / structure / read** **and runtime evaluation** — `model eval`, `rule test`, `model compute`, `model seed` run on the native-safe interpreter (kernel-free). Only the opt-in `--kernel` engine (the A12 kernel via Groovy) requires a JVM and is refused under the native profile.
 
 ## What you can do — a quick tour
 

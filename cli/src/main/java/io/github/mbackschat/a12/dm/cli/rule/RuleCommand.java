@@ -11,8 +11,8 @@ import picocli.CommandLine.Spec;
  * A bare {@code dmtool rule} prints its op list (exit 2); the ops are its subcommands.
  */
 @Command(name = "rule", mixinStandardHelpOptions = true,
-        description = "Validation-rule operations: check, read, explain, deps, format, add, modify, remove, rename. "
-                + "Running a rule against a sample document is a JVM-only capability — absent from the native binary.",
+        description = "Validation-rule operations: check, read, explain, deps, format, test, add, modify, remove, rename. "
+                + "`rule test` runs a rule against a sample document on the native-safe interpreter (`--kernel` for the A12 kernel, JVM only).",
         subcommands = { RuleCheckCommand.class, RuleReadCommand.class, RuleExplainCommand.class,
                 RuleDepsCommand.class, RuleFormatCommand.class, RuleTestCommand.class, RuleAddCommand.class,
                 RuleModifyCommand.class, RuleRemoveCommand.class, RuleRenameCommand.class })

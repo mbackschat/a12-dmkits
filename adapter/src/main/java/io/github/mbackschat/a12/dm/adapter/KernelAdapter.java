@@ -369,7 +369,7 @@ public final class KernelAdapter {
      * The error messages stored on a validation rule (locale → text), <b>raw and uninterpolated</b> — read
      * straight from the model, no runtime evaluation, so it is native-capable. Surfaced by {@code rule read}
      * (FEATURE-GAPS G10) so an agent/BA can audit a rule's wording, message length, and locale coverage
-     * without reaching for the JVM-only runtime-eval verbs. The interpolated, runtime message is the
+     * without reaching for the heavier runtime-eval verbs. The interpolated, runtime message is the
      * separate (and harder) {@code validateFull} path.
      */
     public List<LocalizedText> ruleMessages(String ruleFullName) {
