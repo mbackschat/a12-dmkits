@@ -87,9 +87,16 @@ import com.mgmtp.a12.kernel.md.rt.api.IModelCodeCache;
  * <p><b>Boundary conversion (N8):</b> every public method takes/returns only rulekit or JDK types —
  * the kernel {@code IMVK_Service}/{@code ICondition}/{@code IRule} never escape this class.
  * <b>Read-only:</b> no kernel {@code …Impl} is constructed or mutated (the only way to obtain a tool
- * {@code IRule} is to look one up among the model's existing rules). The converter visitor (F10) and
- * {@code IProblem → Diagnostic} mapping are the next increments; this slice proves the wiring with
- * format / referenced-entities / validity.
+ * {@code IRule} is to look one up among the model's existing rules). The converter visitor (F10, the
+ * {@link ReadResult.Converted}/{@link ReadResult.Opaque} read) and {@code IProblem → Diagnostic} mapping
+ * are built on this wiring (format / referenced-entities / validity).
+ *
+ * <p><b>Read + diff, not write-back (cohesion):</b> this adapter <em>reads</em> foreign rules
+ * ({@link #read}/{@link #readAll}/{@link #readModel}) and <em>renders</em> a diff ({@link #diff}/
+ * {@link #diffComputation}) over the kernel — it deliberately does not persist changes. The
+ * read&rarr;modify&rarr;write-back loop closes on {@link BoundModel} / {@code EditSession} (the
+ * modelkit/edit write surface): read a rule here, re-express + emit it there. Keeping mutation off this
+ * internal read tier is the N8 boundary, not an omission.
  */
 public final class KernelAdapter {
 
