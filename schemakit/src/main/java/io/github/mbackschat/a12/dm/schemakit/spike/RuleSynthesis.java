@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.schemakit.spike;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
+import io.github.mbackschat.a12.dm.rulekit.dsl.EnumRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
@@ -27,7 +28,7 @@ final class RuleSynthesis {
     private RuleSynthesis() {}
 
     /** A synthesized-rule request, collected during the import walk. Sealed so the synthesizer is exhaustive. */
-    sealed interface Need permits ExclusiveBound, DependentRequired, ConstValue, MultipleOf {}
+    sealed interface Need permits ExclusiveBound, DependentRequired, ConstValue, MultipleOf, DiscriminatedRequired {}
 
     /** {@code exclusiveMinimum}/{@code exclusiveMaximum} on a number field (a12 field bounds are inclusive-only). */
     record ExclusiveBound(String fieldPath, boolean min, String bound) implements Need {}
@@ -40,6 +41,12 @@ final class RuleSynthesis {
 
     /** {@code multipleOf}: divisibility, expressed as a modulo rule (a12 has no modulo operator). */
     record MultipleOf(String fieldPath, String divisor) implements Need {}
+
+    /** A {@code oneOf}/{@code anyOf} discriminator: {@code requiredField} is required when the discriminator
+     *  enum equals {@code value} (the structural enforcement of a variant's {@code required}, keyed on the
+     *  discriminator — SCHEMAKIT-SPEC §4b). */
+    record DiscriminatedRequired(String groupPath, String discriminator, String value, String requiredField)
+            implements Need {}
 
     static String apply(String dmJson, List<Need> needs, TranscodeReport.Builder report) {
         if (needs.isEmpty()) {
@@ -99,6 +106,19 @@ final class RuleSynthesis {
                         .code("MULTIPLE_OF_" + field.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
                         .message(Dsl.en(field + " must be a multiple of " + mo.divisor() + ".")).build();
             }
+            case DiscriminatedRequired dr -> {
+                EnumRef discriminator = m.enumOf(dr.groupPath() + "/" + dr.discriminator());
+                FieldRef required = m.field(dr.groupPath() + "/" + dr.requiredField());
+                String tag = sanitize(dr.value());
+                yield m.rule(m.group(dr.groupPath()))
+                        .name(dr.requiredField() + "RequiredWhen" + capitalize(dr.discriminator()) + "Is" + tag)
+                        .errorField(required)
+                        .when(discriminator.is(dr.value()).and(Dsl.fieldNotFilled(required)))
+                        .code("DISCRIMINATED_REQUIRED_" + dr.requiredField().toUpperCase(Locale.ROOT)
+                                + "_" + tag.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
+                        .message(Dsl.en(dr.requiredField() + " is required when " + dr.discriminator()
+                                + " is " + dr.value() + ".")).build();
+            }
         };
     }
 
@@ -108,6 +128,7 @@ final class RuleSynthesis {
             case DependentRequired d -> d.groupPath() + "/" + d.dependent();
             case ConstValue c -> c.fieldPath();
             case MultipleOf mo -> mo.fieldPath();
+            case DiscriminatedRequired dr -> dr.groupPath() + "/" + dr.requiredField();
         };
     }
 
@@ -117,6 +138,8 @@ final class RuleSynthesis {
             case DependentRequired d -> "rule dependentRequired(" + d.trigger() + " → " + d.dependent() + ")";
             case ConstValue c -> "rule const = " + c.value();
             case MultipleOf mo -> "rule multipleOf " + mo.divisor();
+            case DiscriminatedRequired dr -> "rule discriminated-required(" + dr.discriminator() + "="
+                    + dr.value() + " → " + dr.requiredField() + ")";
         };
     }
 
@@ -126,5 +149,14 @@ final class RuleSynthesis {
 
     private static String lastSegment(String path) {
         return path.substring(path.lastIndexOf('/') + 1);
+    }
+
+    /** Strip a discriminator value to an identifier-safe token for a unique rule name/code suffix. */
+    private static String sanitize(String value) {
+        return value.replaceAll("[^A-Za-z0-9]", "");
+    }
+
+    private static String capitalize(String s) {
+        return s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);
     }
 }

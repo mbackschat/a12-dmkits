@@ -14,6 +14,7 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.IntConsumer;
 
@@ -105,6 +106,10 @@ public final class JsonSchemaImporter {
         String path = groupPath + "/" + name;
         if (schema.has("$ref")) {
             addRef(g, name, schema, isRequired, path, ctx);
+            return;
+        }
+        if (isObjectUnion(schema)) {
+            addUnion(g, name, unionVariants(schema), path, ctx);
             return;
         }
         switch (schema.path("type").asText("")) {
@@ -352,6 +357,143 @@ public final class JsonSchemaImporter {
             }
         });
         ctx.report().structure(path, "map → repeatable {key, value} group (max " + max + ")");
+    }
+
+    // --- oneOf/anyOf of object variants (SCHEMAKIT-SPEC §4b): a12 has no sum type → superset + discriminator ---
+
+    private static JsonNode unionNode(JsonNode schema) {
+        JsonNode oneOf = schema.path("oneOf");
+        return oneOf.isArray() ? oneOf : schema.path("anyOf");
+    }
+
+    /** A {@code oneOf}/{@code anyOf} whose variants are ALL objects — the only union shape a12 can superset. */
+    private static boolean isObjectUnion(JsonNode schema) {
+        JsonNode variants = unionNode(schema);
+        if (!variants.isArray() || variants.isEmpty()) {
+            return false;
+        }
+        for (JsonNode v : variants) {
+            if (!"object".equals(v.path("type").asText("")) && !v.path("properties").isObject()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static List<JsonNode> unionVariants(JsonNode schema) {
+        List<JsonNode> variants = new ArrayList<>();
+        unionNode(schema).forEach(variants::add);
+        return variants;
+    }
+
+    private static void addUnion(DocumentModelDraft.GroupBuilder g, String name, List<JsonNode> variants,
+                                 String path, Ctx ctx) {
+        switch (ctx.profile().unionStrategy()) {
+            case OMIT -> ctx.report().omit(path, "property '" + name + "' is a oneOf/anyOf union of object "
+                    + "variants — omitted. TO DO: model the variants as a superset group by hand, or set the "
+                    + "union strategy in the MappingProfile (SUPERSET_RULE / FIRST_VARIANT)");
+            case FIRST_VARIANT -> {
+                g.group(name, sub -> populate(sub, variants.get(0), path, ctx));
+                ctx.report().structure(path, "group (first oneOf/anyOf variant only)");
+            }
+            case SUPERSET_RULE -> buildSuperset(g, name, variants, path, ctx);
+        }
+    }
+
+    /** The superset: union every variant's fields (all optional), lift a discriminator to an enum + rules. */
+    private static void buildSuperset(DocumentModelDraft.GroupBuilder g, String name, List<JsonNode> variants,
+                                      String path, Ctx ctx) {
+        Optional<String> discriminator = findDiscriminator(variants);
+        g.group(name, sub -> {
+            Set<String> seen = new LinkedHashSet<>();
+            discriminator.ifPresent(disc -> {
+                seen.add(disc);
+                sub.enumField(disc, e -> discriminatorValues(variants, disc).forEach(e::value));
+                ctx.report().structure(path + "/" + disc, "discriminator ENUMERATION");
+            });
+            for (JsonNode variant : variants) {
+                for (Iterator<Map.Entry<String, JsonNode>> it = variant.path("properties").fields(); it.hasNext(); ) {
+                    Map.Entry<String, JsonNode> e = it.next();
+                    if (seen.add(e.getKey())) {   // first occurrence only; superset fields are all OPTIONAL
+                        addProperty(sub, e.getKey(), e.getValue(), false, path, ctx);
+                    }
+                }
+            }
+        });
+        ctx.report().structure(path, "oneOf/anyOf superset group (" + variants.size() + " variants)");
+        if (discriminator.isPresent()) {
+            collectDiscriminatorRules(variants, discriminator.get(), path, ctx);
+        } else {
+            ctx.report().diagnostic("oneOf/anyOf at '" + name + "' merged into a superset of optional fields; "
+                    + "cross-variant exclusivity has no discriminator to key on and is NOT structurally enforced. "
+                    + "TO DO: add a discriminator (a const field in each variant), or enforce exclusivity by hand");
+        }
+    }
+
+    /** A discriminator: a property present in every variant that each variant pins to a single value. */
+    private static Optional<String> findDiscriminator(List<JsonNode> variants) {
+        for (Iterator<Map.Entry<String, JsonNode>> it = variants.get(0).path("properties").fields(); it.hasNext(); ) {
+            String candidate = it.next().getKey();
+            boolean pinnedInEvery = variants.stream()
+                    .allMatch(v -> singleValueOf(v.path("properties").path(candidate)).isPresent());
+            if (pinnedInEvery) {
+                return Optional.of(candidate);
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** The single value a variant pins a property to: {@code const}, or a one-element {@code enum}. */
+    private static Optional<String> singleValueOf(JsonNode propSchema) {
+        if (propSchema.has("const")) {
+            return Optional.of(propSchema.get("const").asText());
+        }
+        JsonNode en = propSchema.path("enum");
+        return en.isArray() && en.size() == 1 ? Optional.of(en.get(0).asText()) : Optional.empty();
+    }
+
+    private static List<String> discriminatorValues(List<JsonNode> variants, String disc) {
+        List<String> values = new ArrayList<>();
+        for (JsonNode variant : variants) {
+            singleValueOf(variant.path("properties").path(disc))
+                    .filter(v -> !values.contains(v))
+                    .ifPresent(values::add);
+        }
+        return values;
+    }
+
+    private static void collectDiscriminatorRules(List<JsonNode> variants, String disc, String groupPath, Ctx ctx) {
+        for (JsonNode variant : variants) {
+            Optional<String> value = singleValueOf(variant.path("properties").path(disc));
+            if (value.isEmpty()) {
+                continue;
+            }
+            JsonNode props = variant.path("properties");
+            for (JsonNode reqNode : variant.path("required")) {
+                String req = reqNode.asText();
+                if (req.equals(disc)) {
+                    continue;   // the discriminator itself is the enum, not a dependent
+                }
+                if (!ruleEligibleScalar(props.path(req))) {
+                    ctx.report().diagnostic("discriminator rule for '" + req + "' (required when " + disc + "="
+                            + value.get() + ") not synthesized — only scalar string/integer/boolean/enum required "
+                            + "fields are supported; enforce it by hand");
+                    continue;
+                }
+                ctx.ruleNeeds().add(new RuleSynthesis.DiscriminatedRequired(groupPath, disc, value.get(), req));
+            }
+        }
+    }
+
+    /** A required field a discriminator rule can reference: a reliably-imported scalar (a {@code FieldRef}). */
+    private static boolean ruleEligibleScalar(JsonNode propSchema) {
+        if (propSchema.has("enum")) {
+            return true;
+        }
+        return switch (propSchema.path("type").asText("")) {
+            case "string", "integer", "boolean" -> true;   // 'number' import is profile-dependent → excluded
+            default -> false;
+        };
     }
 
     private static void addScalar(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,

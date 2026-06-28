@@ -7,8 +7,8 @@ package io.github.mbackschat.a12.dm.schemakit.spike;
  * enum so illegal states are unrepresentable.
  *
  * <p>Decisions consulted today: {@link #numberScale}, {@link #booleanKind}, {@link #arrayOfScalar},
- * {@link #mapStrategy}. The remaining structural strategies ({@link #unionStrategy}, {@link #format},
- * {@link #recursionDepth}) are declared here and wired by their own increments (tasks #4–#6/#10).
+ * {@link #mapStrategy}, {@link #unionStrategy}. The remaining structural strategies ({@link #format},
+ * {@link #recursionDepth}) are declared here and wired by their own increments (tasks #6/#10).
  */
 public record MappingProfile(
         NumberScale numberScale,
@@ -72,6 +72,11 @@ public record MappingProfile(
 
     public MappingProfile withMapStrategy(MapStrategy strategy) {
         return new MappingProfile(numberScale, defaultScale, arrayOfScalar, strategy, unionStrategy,
+                format, booleanKind, enumLabels, recursionDepth);
+    }
+
+    public MappingProfile withUnionStrategy(UnionStrategy strategy) {
+        return new MappingProfile(numberScale, defaultScale, arrayOfScalar, mapStrategy, strategy,
                 format, booleanKind, enumLabels, recursionDepth);
     }
 }
