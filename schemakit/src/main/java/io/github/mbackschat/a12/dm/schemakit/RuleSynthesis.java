@@ -487,6 +487,7 @@ final class RuleSynthesis {
         return switch (doc.fieldKind(path).orElse("")) {
             case "ENUMERATION" -> Optional.of(m.enumOf(path).filled().and(m.enumOf(path).isNot(value)));
             case "STRING" -> Optional.of(m.str(path).filled().and(m.str(path).ne(value)));
+            case "NUMBER" -> Optional.of(m.num(path).filled().and(m.num(path).ne(value)));   // mirror equalsValue
             default -> Optional.empty();
         };
     }

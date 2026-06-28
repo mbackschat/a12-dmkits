@@ -198,6 +198,21 @@ class IfThenNotShapeTest {
     }
 
     @Test
+    void elseWorksWithANumericDiscriminator() {
+        // regression: notEqualsValue must mirror equalsValue on NUMBER, so a numeric discriminator's else maps.
+        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
+                { "title": "Sub", "type": "object",
+                  "properties": { "level": { "type": "integer" }, "note": { "type": "string" } },
+                  "if": { "properties": { "level": { "const": 5 } } },
+                  "then": { "required": [] },
+                  "else": { "required": ["note"] } }
+                """);
+
+        assertKernelAccepts(r.dmJson());
+        assertEquals(1, synthesized(r), () -> "else on a numeric discriminator (level≠5) synthesizes a rule: " + r.report().dispositions());
+    }
+
+    @Test
     void notConstSynthesizesAnInequalityRule() {
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
                 { "title": "X", "type": "object",
