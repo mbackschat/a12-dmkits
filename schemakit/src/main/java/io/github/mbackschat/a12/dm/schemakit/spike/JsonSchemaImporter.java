@@ -186,6 +186,9 @@ public final class JsonSchemaImporter {
             case "string" -> {
                 addStringField(g, name, schema, isRequired);
                 ctx.report().structure(path, "STRING");
+                if (schema.has("const")) {
+                    ctx.ruleNeeds().add(new RuleSynthesis.ConstValue(path, false, schema.get("const").asText()));
+                }
             }
             case "boolean" -> {
                 g.field(name, FieldKind.BOOLEAN, req);
@@ -195,6 +198,12 @@ public final class JsonSchemaImporter {
                 addIntegerField(g, name, schema, isRequired);
                 ctx.report().structure(path, "NUMBER(integer, scale 0)");
                 collectStrictBounds(schema, path, ctx);
+                if (schema.has("const")) {
+                    ctx.ruleNeeds().add(new RuleSynthesis.ConstValue(path, true, schema.get("const").asText()));
+                }
+                if (schema.has("multipleOf")) {
+                    ctx.ruleNeeds().add(new RuleSynthesis.MultipleOf(path, schema.get("multipleOf").asText()));
+                }
             }
             // JSON `number` has no faithful a12 target without a scale signal: an a12 number always carries a
             // bounded max scale (modelkit defaults it to 0 = integer), so mapping a bare `number` to scale 0

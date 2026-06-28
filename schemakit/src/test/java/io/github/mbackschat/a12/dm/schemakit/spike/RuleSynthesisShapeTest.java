@@ -57,4 +57,44 @@ class RuleSynthesisShapeTest {
                         .anyMatch(d -> d.tier() == TranscodeReport.Tier.TIER_A_PLUS),
                 "dependentRequired is a Tier-A+ synthesized rule");
     }
+
+    @Test
+    void constSynthesizesAnEqualityRule() {
+        String schema = """
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind":    { "type": "string",  "const": "ORDER" },
+                    "version": { "type": "integer", "const": 1 }
+                  }
+                }
+                """;
+        JsonSchemaImporter.ImportResult imported = new JsonSchemaImporter().importSchema(schema);
+
+        // both consts become kernel-valid equality rules (error when the value differs from the const)
+        assertKernelAccepts(imported.dmJson());
+        assertTrue(imported.dmJson().contains("CONST_KIND"), "string const → a CONST_KIND rule");
+        assertTrue(imported.dmJson().contains("CONST_VERSION"), "integer const → a CONST_VERSION rule");
+        assertTrue(imported.report().dispositions().stream()
+                        .filter(d -> d.tier() == TranscodeReport.Tier.TIER_A_PLUS).count() == 2,
+                "both consts are Tier-A+ synthesized rules");
+    }
+
+    @Test
+    void multipleOfSynthesizesAModuloRule() {
+        String schema = """
+                {
+                  "type": "object",
+                  "properties": { "qty": { "type": "integer", "multipleOf": 5 } }
+                }
+                """;
+        JsonSchemaImporter.ImportResult imported = new JsonSchemaImporter().importSchema(schema);
+
+        assertKernelAccepts(imported.dmJson());
+        // divisibility as a modulo rule: x − floor(x/N)·N ≠ 0  (a12 has no modulo operator)
+        assertTrue(imported.dmJson().contains("RoundDown"), "multipleOf composes via RoundDown (floor)");
+        assertTrue(imported.report().dispositions().stream()
+                        .anyMatch(d -> d.tier() == TranscodeReport.Tier.TIER_A_PLUS),
+                "multipleOf is a Tier-A+ synthesized rule");
+    }
 }

@@ -1,8 +1,10 @@
 package io.github.mbackschat.a12.dm.schemakit.spike;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldRef;
+import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
@@ -25,13 +27,19 @@ final class RuleSynthesis {
     private RuleSynthesis() {}
 
     /** A synthesized-rule request, collected during the import walk. Sealed so the synthesizer is exhaustive. */
-    sealed interface Need permits ExclusiveBound, DependentRequired {}
+    sealed interface Need permits ExclusiveBound, DependentRequired, ConstValue, MultipleOf {}
 
     /** {@code exclusiveMinimum}/{@code exclusiveMaximum} on a number field (a12 field bounds are inclusive-only). */
     record ExclusiveBound(String fieldPath, boolean min, String bound) implements Need {}
 
     /** {@code dependentRequired}: if {@code trigger} is present, {@code dependent} is required (same group). */
     record DependentRequired(String groupPath, String trigger, String dependent) implements Need {}
+
+    /** {@code const}: the field must equal a fixed value (no field-level const in a12 → a rule). */
+    record ConstValue(String fieldPath, boolean numeric, String value) implements Need {}
+
+    /** {@code multipleOf}: divisibility, expressed as a modulo rule (a12 has no modulo operator). */
+    record MultipleOf(String fieldPath, String divisor) implements Need {}
 
     static String apply(String dmJson, List<Need> needs, TranscodeReport.Builder report) {
         if (needs.isEmpty()) {
@@ -68,6 +76,29 @@ final class RuleSynthesis {
                         .message(Dsl.en(d.dependent() + " is required when " + d.trigger() + " is present."))
                         .build();
             }
+            case ConstValue c -> {
+                String field = lastSegment(c.fieldPath());
+                Condition mismatch = c.numeric()
+                        ? m.num(c.fieldPath()).filled().and(m.num(c.fieldPath()).ne(c.value()))
+                        : m.str(c.fieldPath()).filled().and(m.str(c.fieldPath()).ne(c.value()));
+                Rule.Builder b = m.rule(m.group(parentGroup(c.fieldPath()))).name(field + "Const");
+                b = c.numeric() ? b.errorField(m.num(c.fieldPath())) : b.errorField(m.str(c.fieldPath()));
+                yield b.when(mismatch)
+                        .code("CONST_" + field.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
+                        .message(Dsl.en(field + " must equal " + c.value() + ".")).build();
+            }
+            case MultipleOf mo -> {
+                String field = lastSegment(mo.fieldPath());
+                NumberRef ref = m.num(mo.fieldPath());
+                NumberExpr x = ref.asNumber();
+                NumberExpr n = Dsl.number(mo.divisor());
+                NumberExpr modulo = x.minus(Dsl.roundDown(x.dividedBy(n), 0).times(n));   // x − floor(x/N)·N
+                yield m.rule(m.group(parentGroup(mo.fieldPath())))
+                        .name(field + "MultipleOf").errorField(ref)
+                        .when(ref.filled().and(modulo.ne(0)))
+                        .code("MULTIPLE_OF_" + field.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
+                        .message(Dsl.en(field + " must be a multiple of " + mo.divisor() + ".")).build();
+            }
         };
     }
 
@@ -75,6 +106,8 @@ final class RuleSynthesis {
         return switch (need) {
             case ExclusiveBound b -> b.fieldPath();
             case DependentRequired d -> d.groupPath() + "/" + d.dependent();
+            case ConstValue c -> c.fieldPath();
+            case MultipleOf mo -> mo.fieldPath();
         };
     }
 
@@ -82,6 +115,8 @@ final class RuleSynthesis {
         return switch (need) {
             case ExclusiveBound b -> "rule " + (b.min() ? "exclusiveMinimum " : "exclusiveMaximum ") + b.bound();
             case DependentRequired d -> "rule dependentRequired(" + d.trigger() + " → " + d.dependent() + ")";
+            case ConstValue c -> "rule const = " + c.value();
+            case MultipleOf mo -> "rule multipleOf " + mo.divisor();
         };
     }
 
