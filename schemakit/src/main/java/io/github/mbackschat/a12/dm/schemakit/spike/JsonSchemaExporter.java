@@ -120,6 +120,14 @@ public final class JsonSchemaExporter {
         switch (kind) {
             case "STRING" -> {
                 target.put("type", "string");
+                configOpt.ifPresent(c -> {
+                    copyInt(c, "minLength", target, "minLength");
+                    copyInt(c, "maxLength", target, "maxLength");
+                    JsonNode pattern = c.findValue("pattern");
+                    if (pattern != null && pattern.isTextual()) {
+                        target.put("pattern", pattern.asText());
+                    }
+                });
                 return "string";
             }
             case "BOOLEAN" -> {
@@ -132,6 +140,10 @@ public final class JsonSchemaExporter {
                         .map(n -> n.isInt() && n.asInt() == 0)
                         .orElse(false);
                 target.put("type", integer ? "integer" : "number");
+                configOpt.ifPresent(c -> {
+                    copyNumber(c, "min", target, "minimum");   // the read-back number block carries min/max as text
+                    copyNumber(c, "max", target, "maximum");
+                });
                 return integer ? "integer" : "number";
             }
             default -> {
@@ -150,6 +162,29 @@ public final class JsonSchemaExporter {
             }
         }
         return map;
+    }
+
+    private static void copyInt(JsonNode config, String fromKey, ObjectNode target, String toKey) {
+        JsonNode v = config.findValue(fromKey);
+        if (v != null && v.isInt()) {
+            target.put(toKey, v.asInt());
+        }
+    }
+
+    private static void copyNumber(JsonNode config, String fromKey, ObjectNode target, String toKey) {
+        JsonNode v = config.findValue(fromKey);
+        if (v == null || v.isNull()) {
+            return;
+        }
+        String text = v.asText("");
+        if (text.isEmpty()) {
+            return;
+        }
+        try {
+            target.put(toKey, new java.math.BigDecimal(text));   // the bound is stored as text → emit as a number
+        } catch (NumberFormatException ignored) {
+            // a non-numeric bound is not a JSON Schema minimum/maximum — leave it out
+        }
     }
 
     private static boolean isDirectChild(String path, String groupPath) {

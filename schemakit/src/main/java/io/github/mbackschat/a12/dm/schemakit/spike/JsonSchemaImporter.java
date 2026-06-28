@@ -174,7 +174,7 @@ public final class JsonSchemaImporter {
         Requiredness req = isRequired ? Requiredness.REQUIRED : Requiredness.OPTIONAL;
         switch (schema.path("type").asText("")) {
             case "string" -> {
-                g.field(name, FieldKind.STRING, req);
+                addStringField(g, name, schema, isRequired);
                 ctx.report().structure(path, "STRING");
             }
             case "boolean" -> {
@@ -182,12 +182,7 @@ public final class JsonSchemaImporter {
                 ctx.report().structure(path, "BOOLEAN");
             }
             case "integer" -> {
-                g.numberField(name, b -> {
-                    b.fractionDigits(0);
-                    if (isRequired) {
-                        b.required();
-                    }
-                });
+                addIntegerField(g, name, schema, isRequired);
                 ctx.report().structure(path, "NUMBER(integer, scale 0)");
             }
             // JSON `number` has no faithful a12 target without a scale signal: an a12 number always carries a
@@ -200,6 +195,51 @@ public final class JsonSchemaImporter {
                     + (schema.path("type").asText("").isEmpty() ? "<none>" : schema.path("type").asText(""))
                     + "' — omitted (not yet mapped). TO DO: add this field by hand");
         }
+    }
+
+    /** A string field; {@code minLength}/{@code maxLength}/{@code pattern} import to string field config. */
+    private static void addStringField(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
+                                       boolean isRequired) {
+        Integer minLength = schema.has("minLength") ? schema.get("minLength").asInt() : null;
+        Integer maxLength = schema.has("maxLength") ? schema.get("maxLength").asInt() : null;
+        String pattern = schema.path("pattern").isTextual() ? schema.get("pattern").asText() : null;
+        if (minLength == null && maxLength == null && pattern == null) {
+            g.field(name, FieldKind.STRING, isRequired ? Requiredness.REQUIRED : Requiredness.OPTIONAL);
+            return;
+        }
+        g.stringField(name, s -> {
+            if (minLength != null) {
+                s.minLength(minLength);
+            }
+            if (maxLength != null) {
+                s.maxLength(maxLength);
+            }
+            if (pattern != null) {
+                s.pattern(pattern, "must match " + pattern);   // a12 needs a message; JSON Schema has none → synthesize
+            }
+            if (isRequired) {
+                s.required();
+            }
+        });
+    }
+
+    /** An integer field (scale 0); {@code minimum}/{@code maximum} import to number value bounds. */
+    private static void addIntegerField(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
+                                        boolean isRequired) {
+        String minimum = schema.has("minimum") ? schema.get("minimum").asText() : null;
+        String maximum = schema.has("maximum") ? schema.get("maximum").asText() : null;
+        g.numberField(name, n -> {
+            n.fractionDigits(0);
+            if (minimum != null) {
+                n.min(minimum);
+            }
+            if (maximum != null) {
+                n.max(maximum);
+            }
+            if (isRequired) {
+                n.required();
+            }
+        });
     }
 
     private static String defName(JsonNode schema) {
