@@ -124,25 +124,44 @@ public final class JsonSchemaImporter {
             return;
         }
         JsonNode ifProps = objectSchema.path("if").path("properties");
-        JsonNode thenRequired = objectSchema.path("then").path("required");
-        boolean tractable = ifProps.isObject() && ifProps.size() == 1 && thenRequired.isArray() && !thenRequired.isEmpty();
-        Optional<String> value = tractable ? singleValueOf(ifProps.fields().next().getValue()) : Optional.empty();
-        if (!tractable || value.isEmpty()) {
-            ctx.report().diagnostic("if/then at '" + groupPath + "' is not a simple 'if <field>=<value> then "
-                    + "required[…]' shape — not mapped; add the conditional rule by hand");
+        boolean singleCond = ifProps.isObject() && ifProps.size() == 1;
+        Optional<String> value = singleCond ? singleValueOf(ifProps.fields().next().getValue()) : Optional.empty();
+        if (value.isEmpty()) {
+            ctx.report().diagnostic("if/then at '" + groupPath + "' is not a simple 'if <field>=<value> …' shape "
+                    + "(single property, single value) — not mapped; add the conditional rule by hand");
             return;
         }
         String condField = ifProps.fieldNames().next();
-        for (JsonNode dependent : thenRequired) {
+        boolean mappedThen = addConditionalRequired(objectSchema.path("then").path("required"),
+                groupPath, condField, value.get(), true, ctx);
+        boolean mappedElse = addConditionalRequired(objectSchema.path("else").path("required"),
+                groupPath, condField, value.get(), false, ctx);
+        if (!mappedThen && !mappedElse) {
+            ctx.report().diagnostic("if/then at '" + groupPath + "' — no required[] in then/else to map; "
+                    + "then/else value-constraints are not mapped — add the conditional rule by hand");
+        } else if (objectSchema.path("then").has("properties") || objectSchema.path("else").has("properties")) {
+            ctx.report().diagnostic("if/then at '" + groupPath + "': the required-fields part mapped to rules; "
+                    + "then/else VALUE-constraints are NOT mapped — add them by hand");
+        }
+    }
+
+    /** Each {@code required} entry (other than the condition field itself) → a conditional-requiredness rule fired
+     *  on the condition ({@code whenEquals=true} = then) or its negation ({@code false} = else). Returns whether
+     *  it mapped anything. */
+    private static boolean addConditionalRequired(JsonNode required, String groupPath, String condField,
+                                                  String value, boolean whenEquals, Ctx ctx) {
+        if (!required.isArray() || required.isEmpty()) {
+            return false;
+        }
+        boolean mapped = false;
+        for (JsonNode dependent : required) {
             String reqField = dependent.asText();
             if (!reqField.equals(condField)) {
-                ctx.ruleNeeds().add(new RuleSynthesis.DiscriminatedRequired(groupPath, condField, value.get(), reqField));
+                ctx.ruleNeeds().add(new RuleSynthesis.DiscriminatedRequired(groupPath, condField, value, reqField, whenEquals));
+                mapped = true;
             }
         }
-        if (objectSchema.path("then").has("properties") || objectSchema.has("else")) {
-            ctx.report().diagnostic("if/then at '" + groupPath + "': the required-fields part mapped to rules; "
-                    + "then-value-constraints / else are NOT mapped — add them by hand");
-        }
+        return mapped;
     }
 
     /** Add each property once (dedup across the object's own + its allOf subschemas), required per the union. */
@@ -320,9 +339,15 @@ public final class JsonSchemaImporter {
             List<String> values = new ArrayList<>();
             not.get("enum").forEach(v -> values.add(v.asText()));
             ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenEnum(path, values));
+        } else if (not.hasNonNull("pattern")) {
+            ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenPattern(path, not.get("pattern").asText()));
+        } else if (not.path("minimum").isNumber()) {
+            ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenBound(path, true, not.get("minimum").asText()));
+        } else if (not.path("maximum").isNumber()) {
+            ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenBound(path, false, not.get("maximum").asText()));
         } else {
-            ctx.report().diagnostic("property '" + name + "' uses a 'not' that isn't a simple const/enum — "
-                    + "not mapped; add the constraint by hand");
+            ctx.report().diagnostic("property '" + name + "' uses a 'not' that isn't a simple "
+                    + "const/enum/pattern/minimum/maximum — not mapped; add the constraint by hand");
         }
     }
 
@@ -692,7 +717,7 @@ public final class JsonSchemaImporter {
                             + "fields are supported; enforce it by hand");
                     continue;
                 }
-                ctx.ruleNeeds().add(new RuleSynthesis.DiscriminatedRequired(groupPath, disc, value.get(), req));
+                ctx.ruleNeeds().add(new RuleSynthesis.DiscriminatedRequired(groupPath, disc, value.get(), req, true));
             }
         }
     }
