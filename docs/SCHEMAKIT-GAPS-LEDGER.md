@@ -29,3 +29,14 @@ The live, unfinished import-synthesis work. All are **reported, not enforced** t
 - **else** → fires when `tier` is **present and** `≠ PREMIUM` (the `Filled` guard).
 
 This matches the near-universal author intent ("when tier *is* PREMIUM …") and is the right default for best-effort import; schemas that pair the `if` with `required: [tier]` have **no** divergence. Recorded here so it is a deliberate decision, not an accident. Re-open only if a consumer needs strict vacuous-match fidelity (then: also fire on the discriminator's absence) — at which point it becomes a profile switch, not a silent change.
+
+---
+
+## 3. Deferred / out-of-scope (contract & architecture)
+
+Decisions that bound the transcoder's reach today, each with its re-open trigger. Moved here from the spec — a spec holds the *built* contract, not its open edges.
+
+| Item | Decision | Re-open trigger |
+|---|---|---|
+| **Live Tier-2 validation** | The interpreter as the *real* full-rule tier (not just demonstrating carriage + complementarity) needs the DM-JSON→`ModelDef` loader, which lives in **`:cli`** (`interp.InterpreterModelLoader`); reuse-first forbids reimplementing it, and depending on `:cli` from `:schemakit` is a backwards edge. **Deferred (2026-06-28)** — live Tier-2 stays in the CLI. (Shape 5 already proves Tier-1 via a stock validator + that the cross-field rule is *carried* for Tier-2.) | a kernel-free **in-process** Tier-2 round-trip is needed → first move/expose the loader in `:interpreter`, then wire it |
+| **`ExternalSchemaProfile` seam** | Keep the core mapping profile **non-JSON-Schema-specific** so OpenAPI / TypeScript / SQL / Protobuf can become later import profiles (proposal §12.2 #4). No second profile is built today. | a second external-schema source is taken on → factor the JSON-Schema-specific glue behind the seam |

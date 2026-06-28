@@ -41,8 +41,9 @@ The buildable contract for `:schemakit`, the JSON-Schema import/export subprojec
 
 | Aspect | Decision |
 |---|---|
-| Gradle unit | `:schemakit` — a JVM/Java module (`java-library`, JDK 21) |
+| Gradle unit | `:schemakit` — a JVM/Java module (`java-library`, JDK 21). The name is settled (consistent with rulekit/modelkit); reconsider only if it confuses with the `schema` verb |
 | Multiplatform? | **No.** JVM/Java only; native-safe via GraalVM ≠ Kotlin Multiplatform (proposal §10). No KMP, no JS. |
+| Target draft | Draft 2020-12 canonical + Draft-07 read-compatibility (proposal §12/§13) |
 | Depends on | `implementation project(':')` (the engine) · Jackson (JSON Schema parse/emit) · — and, as shapes need them — `:adapter` (typed rule read for Tier-A projection) + `:interpreter` (evaluation, two-tier) |
 | Package | `io.github.mbackschat.a12.dm.schemakit` — public API `JsonSchemaImporter` · `JsonSchemaExporter` · `MappingProfile` · `TranscodeReport`; the synthesis/carriage/projection helpers are package-private internals |
 | Extraction | in-repo; extraction to a sibling `a12-dm-json-schema` repo stays a future option (the interpreter discipline), not a prerequisite |
@@ -83,7 +84,7 @@ Both keep **artifact mode**: the transcode result (DM-JSON / JSON Schema) goes t
 | **Structure** | `object`→group, `array`-of-`object`→repeatable group, scalar→field-kind (the field-type matcher, §4b), `$defs`/`$ref`→typedef (leaf) / inlined group (object; reuse via a separate include child is the deferred multi-model increment, §4e) |
 | **Field config** | `minLength`/`maxLength`/`pattern`→string config; `minimum`/`maximum`→number bounds |
 | **Rules (direct)** | `required`→requiredness; `enum`→ENUMERATION; `uniqueItems`→`RepetitionNotUnique`/`FieldValuesNotUnique`; `pattern`→`PatternViolated` |
-| **Rules (composed), built** | `exclusiveMinimum`/`exclusiveMaximum`→strict `<`/`>`; `multipleOf`→modulo `{[x]−RoundDown([x]/N,0)·N} ≠ 0`; `const`→`!=` / single-value; `dependentRequired`→conditional requiredness; `oneOf`/`anyOf` discriminator→per-variant requiredness rules; `uniqueItems`→`RepetitionNotUnique`; `if {field=value} then/else {required}`→conditional requiredness (the `else` fires on the negated condition); `not {const}`→`!=`, `not {enum}`→not-in-list, `not {pattern}`→match rule, `not {minimum/maximum}`→inverted numeric bound |
+| **Rules (composed), built** | constraints with no field-config home become a12 *rules* — `exclusiveMinimum`/`exclusiveMaximum`, `multipleOf`, `const`, `dependentRequired`, `oneOf`/`anyOf` discriminator, `uniqueItems`, `if {f=v} then/else {required}`, `not {const\|enum\|pattern\|minimum\|maximum}`. **Each keyword's exact fire condition is tabulated in §4f.** |
 | **Rules — not yet built** (reported, not enforced) | the open tractable gaps — `contains`/`minContains`, then/else **value**-constraints, multi-property `if`, complex `not` (`minLength`/`type`/`required`/nested) — are tracked in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md). (`minItems` has **no clean a12 rule form** — §4c; a permanent omission, not a gap.) |
 | **Carriage (export, a12↔a12)** | the full rule rides `x-a12-rule`, a computation `x-a12-computation`; `readOnly:true` marks a computed field |
 | **Two-tier validation** *(proposal §12.1)* | exported Tier-A keywords = field-local tier (any validator); `:interpreter` = full-rule tier |
@@ -123,7 +124,7 @@ Four cases have no static a12 representation even with a strategy; each is **omi
 
 ## 4d. Coverage at a glance
 
-The asymmetry in one place. **Import aims for total coverage** — every JSON Schema feature lands in a12 *or* is surfaced with a corrective to-do (never silent, never blocked). **Export is best-effort** — native Tier-A keywords where they exist, `x-a12-*` carriage otherwise. Read these two tables to see, at a glance, what each direction does and where it loses fidelity.
+The asymmetry in one place. **Import aims for total coverage** — every JSON Schema feature lands in a12 *or* is surfaced with a corrective to-do (never silent, never blocked). **Export is best-effort** — native Tier-A keywords where they exist, `x-a12-*` carriage otherwise. Read these two tables to see, at a glance, what each direction does and where it loses fidelity; the **exact fire condition** of every synthesized `rule (Tier A+)` row is tabulated in §4f.
 
 ### Import — JSON Schema → Document Model
 
@@ -226,6 +227,39 @@ Today schemakit emits **one** model. The multi-model output is deferred; the imp
 
 ---
 
+## 4f. Synthesized rules — the exact a12 fire condition (Tier A+)
+
+The keywords with no field-config home become real a12 **rules** (§4 "Rules (composed), built"). A rule **fires on the *error***, so each condition below is the **negation** of the JSON-Schema constraint. `Filled(f)` = the field is present; `[f]` = its value. Every rule is authored through the typed rulekit DSL (the operator in parentheses) and gated by kernel-accept (§5).
+
+| JSON Schema keyword | a12 rule **fires when** (the error condition) | error field | DSL / operator |
+|---|---|---|---|
+| `exclusiveMinimum: N` | `Filled(f) And [f] ≤ N` | `f` | `num.filled().and(num.le(N))` |
+| `exclusiveMaximum: N` | `Filled(f) And [f] ≥ N` | `f` | `num.ge(N)` |
+| `multipleOf: N` | `Filled(f) And ([f] − RoundDown([f]/N,0)·N) ≠ 0` | `f` | remainder expr (a12 has no modulo operator) |
+| `const: V` | `Filled(f) And [f] ≠ V` | `f` | `str.ne(V)` / `num.ne(V)` |
+| `dependentRequired: A → B` | `Filled(A) And Not Filled(B)` | `B` | `fieldFilled` + `fieldNotFilled` |
+| `oneOf`/`anyOf` discriminator (`disc = V` ⇒ `R` required) | `[disc] = V And Not Filled(R)` | `R` | `enum.is(V)`/`str.eq(V)` + `fieldNotFilled` |
+| `uniqueItems: true` | `RepetitionNotUnique(row fields …)` | first row field | `Dsl.repetitionNotUnique(…)` |
+| `if {f = V} then {required:[D]}` | `[f] = V And Not Filled(D)` | `D` | `enum.is(V)`/`str.eq(V)` + `fieldNotFilled` |
+| `if {f = V} else {required:[E]}` | `Filled(f) And [f] ≠ V And Not Filled(E)` | `E` | `str.ne(V)`/`enum.isNot(V)` (guarded) |
+| `not {const: V}` | `Filled(f) And [f] = V` | `f` | `str.eq(V)` / `num.eq(V)` |
+| `not {enum: […]}` | `Filled(f) And [f] In […]` | `f` | `str.in(…)` |
+| `not {pattern: P}` | `Filled(f) And [f] matches /P/` | `f` | `str.matches(P)` |
+| `not {minimum: N}` | `Filled(f) And [f] ≥ N` | `f` | `num.ge(N)` (value must be `< N`) |
+| `not {maximum: N}` | `Filled(f) And [f] ≤ N` | `f` | `num.le(N)` (value must be `> N`) |
+
+**Why the conditions look "inverted" — polarity.** An a12 rule produces an error when its condition is **true**, so a *constraint* `field > N` is encoded as the *error condition* `[field] ≤ N`. Every row above is therefore the logical negation of the keyword it implements; reading the table is easiest as "the rule fires exactly on the values the schema forbids."
+
+**The `Filled` guard, and where it sits.** Every *value* constraint is guarded by `Filled(f)`, so it bites only when the value is present — matching JSON Schema, where a keyword constrains a value only *if it is there* (an absent optional field is never in error). The **requiredness** rules (`dependentRequired`, discriminator, `if/then`/`else`) are the deliberate exception — they fire *because* the dependent is **absent**, so there the guard sits on the **trigger/discriminator**, not on the error field.
+
+**Kind resolution + graceful skip.** The synthesis resolves each field's kind from the just-built model and only emits a rule the kind can carry: equality (`const`, discriminator, `if/then`/`else`) on **string + enum**; `not {enum|pattern}` on **string**; numeric bounds (`exclusive*`, `multipleOf`, `not {min|max}`) on **number**. A constraint on an incompatible kind (e.g. `not {enum}` on a number) is **skipped and reported**, never silently dropped (the omit-never-silent rule, §4a).
+
+**The `if/then/else` vacuous-match decision.** Bare `if:{properties:{f:{const:V}}}` matches *vacuously* when `f` is absent, so strict JSON Schema would apply `then` even with `f` missing. The importer instead maps the **pragmatic** reading (`then` fires when `f=V`; `else` fires when `f` is **present and** `≠V` — hence the extra `Filled(f)` guard on the `else` row). This is the near-universal author intent; it is recorded as a deliberate decision in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md) §2.
+
+**Authored through the typed surface, kernel-gated.** Each rule is built via the rulekit `Dsl`/`BoundModel` typed builder (the dogfood rule), **not** assembled as a condition string, and every imported model is run through the kernel-accept gate (§5) — so a synthesized rule is guaranteed well-formed. Each carries a deterministic name + code (`EXCLUSIVE_MIN_<FIELD>`, `DISCRIMINATED_REQUIRED_<FIELD>_<VALUE>`, `ELSE_REQUIRED_<FIELD>_<VALUE>`, `FORBIDDEN_PATTERN_<FIELD>`, …), `ERROR` severity, and an English message.
+
+---
+
 ## 5. Verification gates
 
 The differential is **round-trip + kernel-accept** (the kernel-accept gate rides the public facade via `ModelLoader`):
@@ -250,13 +284,4 @@ Built test-first, smallest increment first. Progress is git, not a status table 
 4. **Rule carriage** — Tier-A `if/then`+`required`; Tier-B cross-field/aggregate as `x-a12-rule`; a computation as `x-a12-computation`; meta-schema-valid; re-import reconstructs all three.
 5. **Tier A+ import & interpreter coupling** — synthesize rules from `dependentRequired`/`exclusiveMinimum`/`multipleOf`/`const`/discriminators; two-tier validation holds (proposal §12).
 
----
-
-## 7. Open items
-
-The customizable strategies and the residual omissions are settled in §4b/§4c. The **open import-synthesis gaps** (tractable-but-deferred rule mappings — `contains`/`minContains`, then/else value-constraints, multi-property `if`, complex `not`) are tracked in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md). What's still genuinely open at the contract/architecture level:
-
-- **Module name** — `:schemakit` (consistent with rulekit/modelkit). Reconsider only if it confuses with the `schema` verb.
-- **Target draft** — Draft 2020-12 canonical + Draft-07 read-compat (proposal §12/§13).
-- **`ExternalSchemaProfile` seam** — keep the core profile non-JSON-Schema-specific so OpenAPI/TS/SQL/Protobuf become later profiles (proposal §12.2 #4).
-- **Live Tier-2 (DECIDED 2026-06-28: deferred)** — running the interpreter as the real full-rule tier (not just demonstrating carriage + complementarity) needs the DM-JSON→`ModelDef` loader, which currently lives in **`:cli`** (`interp.InterpreterModelLoader`). Reuse-first forbids reimplementing it; depending on `:cli` from `:schemakit` is a backwards edge. **Owner decision: deferred** — live Tier-2 stays in the CLI; revisit only if a kernel-free in-process Tier-2 round-trip is needed (then move/expose the loader in `:interpreter`). Shape 5 proves Tier-1 (stock validator) + that the cross-field rule is carried for Tier-2.
+> **Open / deferred work** is not tracked here — the stable contract is this spec; the moving edge (import-synthesis gaps + the deferred contract/architecture decisions) lives in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md).
