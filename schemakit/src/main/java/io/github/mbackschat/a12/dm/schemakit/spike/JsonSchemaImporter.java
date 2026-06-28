@@ -15,6 +15,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.IntConsumer;
 
 /**
  * JSON Schema → Document Model, the spike's import direction (SCHEMAKIT-SPEC §6). It authors through the
@@ -35,7 +36,8 @@ public final class JsonSchemaImporter {
     private static final String DEFAULT_MODEL_ID = "ImportedModel";
     private static final String ROOT_GROUP = "Root";
     private static final String LOCALE = "en_US";
-    private static final String ROW_FIELD = "value";   // the single value field in a scalar-array row group
+    private static final String ROW_FIELD = "value";   // the single value field in a scalar-array / map row group
+    private static final String MAP_KEY_FIELD = "key";   // the entry-key field in a map's {key, value} row group
 
     public record ImportResult(String dmJson, TranscodeReport report) {}
 
@@ -107,8 +109,17 @@ public final class JsonSchemaImporter {
         }
         switch (schema.path("type").asText("")) {
             case "object" -> {
-                g.group(name, sub -> populate(sub, schema, path, ctx));
-                ctx.report().structure(path, "group");
+                if (isMap(schema)) {
+                    addMap(g, name, schema, path, ctx);
+                } else {
+                    g.group(name, sub -> populate(sub, schema, path, ctx));
+                    ctx.report().structure(path, "group");
+                    if (hasMapExtras(schema)) {
+                        ctx.report().diagnostic("object '" + name + "' declares additionalProperties/"
+                                + "patternProperties (extra dynamic keys) alongside its fixed properties — the "
+                                + "extras are NOT imported; model them as a separate map property if needed");
+                    }
+                }
             }
             case "array" -> addArray(g, name, schema, path, ctx);
             default -> addScalar(g, name, schema, isRequired, path, ctx);
@@ -196,7 +207,7 @@ public final class JsonSchemaImporter {
     }
 
     /** Run {@code build} with the array's repeatability cap, or omit when there is no {@code maxItems ≥ 2}. */
-    private static void withCap(JsonNode schema, String name, String path, Ctx ctx, java.util.function.IntConsumer build) {
+    private static void withCap(JsonNode schema, String name, String path, Ctx ctx, IntConsumer build) {
         JsonNode maxItems = schema.get("maxItems");
         if (maxItems == null || maxItems.asInt() < 2) {
             ctx.report().omit(path, "array '" + name + "' of scalars has no maxItems ≥ 2 — omitted: an a12 "
@@ -272,6 +283,75 @@ public final class JsonSchemaImporter {
             values[i] = en.get(i).asText();
         }
         return values;
+    }
+
+    /** A JSON object used as a MAP: no fixed property set, just a value schema for arbitrary keys. */
+    private static boolean isMap(JsonNode schema) {
+        boolean hasProperties = schema.path("properties").isObject() && schema.get("properties").size() > 0;
+        return !hasProperties && hasMapExtras(schema);
+    }
+
+    /** Does the object carry dynamic-key extras ({@code additionalProperties} schema / {@code patternProperties})? */
+    private static boolean hasMapExtras(JsonNode schema) {
+        return schema.path("additionalProperties").isObject() || hasPatternProperties(schema);
+    }
+
+    private static boolean hasPatternProperties(JsonNode schema) {
+        return schema.path("patternProperties").isObject() && !schema.get("patternProperties").isEmpty();
+    }
+
+    /** The value schema of a map: {@code additionalProperties} if a schema, else the first {@code patternProperties}. */
+    private static JsonNode mapValueSchema(JsonNode schema) {
+        JsonNode additional = schema.path("additionalProperties");
+        if (additional.isObject()) {
+            return additional;
+        }
+        return schema.path("patternProperties").fields().next().getValue();   // hasPatternProperties guarantees one
+    }
+
+    /**
+     * A map → a repeatable {@code {key, value}} group (SCHEMAKIT-SPEC §4b): each row is one entry, {@value
+     * #MAP_KEY_FIELD} holds the key and {@value #ROW_FIELD} the scalar value (an object value's fields are
+     * inlined alongside {@value #MAP_KEY_FIELD}). The cap comes from {@code maxProperties} (≥ 2; a12
+     * repeatability is a bounded max ≥ 2) — omitted when absent. Omit, never block.
+     */
+    private static void addMap(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
+                               String path, Ctx ctx) {
+        switch (ctx.profile().mapStrategy()) {
+            case OMIT -> ctx.report().omit(path, "object '" + name + "' is a map (additionalProperties/"
+                    + "patternProperties) — omitted. TO DO: add a repeatable {key, value} group by hand, or set "
+                    + "the map strategy in the MappingProfile (REPEATABLE_KEY_VALUE)");
+            case IGNORE -> ctx.report().diagnostic("object '" + name + "' is a map — ignored per the IGNORE map "
+                    + "strategy; no structure emitted for its dynamic keys");
+            case REPEATABLE_KEY_VALUE -> withMapCap(schema, name, path, ctx,
+                    max -> buildKeyValueGroup(g, name, schema, max, path, ctx));
+        }
+    }
+
+    /** Run {@code build} with the map's repeatability cap, or omit when there is no {@code maxProperties ≥ 2}. */
+    private static void withMapCap(JsonNode schema, String name, String path, Ctx ctx, IntConsumer build) {
+        JsonNode maxProperties = schema.get("maxProperties");
+        if (maxProperties == null || maxProperties.asInt() < 2) {
+            ctx.report().omit(path, "map '" + name + "' has no maxProperties ≥ 2 — omitted: an a12 repeatable "
+                    + "group needs a bounded max ≥ 2. TO DO: set maxProperties on the schema, or add the group by hand");
+            return;
+        }
+        build.accept(maxProperties.asInt());
+    }
+
+    private static void buildKeyValueGroup(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
+                                           int max, String path, Ctx ctx) {
+        JsonNode value = mapValueSchema(schema);
+        g.group(name, sub -> {
+            sub.repeatable(max);
+            sub.field(MAP_KEY_FIELD, FieldKind.STRING, Requiredness.REQUIRED);   // the entry key
+            if ("object".equals(value.path("type").asText(""))) {
+                populate(sub, value, path, ctx);   // inline the value object's fields alongside the key
+            } else {
+                addScalar(sub, ROW_FIELD, value, true, path + "/" + ROW_FIELD, ctx);
+            }
+        });
+        ctx.report().structure(path, "map → repeatable {key, value} group (max " + max + ")");
     }
 
     private static void addScalar(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
