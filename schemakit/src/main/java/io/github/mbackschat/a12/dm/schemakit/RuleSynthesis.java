@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.schemakit;
 
+import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Dsl;
@@ -10,8 +11,10 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 /**
  * Tier A+ rule synthesis (SCHEMAKIT-SPEC §4, proposal §12.2): JSON Schema validation keywords with no
@@ -28,7 +31,8 @@ final class RuleSynthesis {
     private RuleSynthesis() {}
 
     /** A synthesized-rule request, collected during the import walk. Sealed so the synthesizer is exhaustive. */
-    sealed interface Need permits ExclusiveBound, DependentRequired, ConstValue, MultipleOf, DiscriminatedRequired {}
+    sealed interface Need permits ExclusiveBound, DependentRequired, ConstValue, MultipleOf, DiscriminatedRequired,
+            UniqueItems {}
 
     /** {@code exclusiveMinimum}/{@code exclusiveMaximum} on a number field (a12 field bounds are inclusive-only). */
     record ExclusiveBound(String fieldPath, boolean min, String bound) implements Need {}
@@ -48,40 +52,49 @@ final class RuleSynthesis {
     record DiscriminatedRequired(String groupPath, String discriminator, String value, String requiredField)
             implements Need {}
 
+    /** {@code uniqueItems: true} on an array → a {@code RepetitionNotUnique} rule keyed on the repeatable
+     *  group's row fields (resolved post-build from {@code groupPath}). */
+    record UniqueItems(String groupPath) implements Need {}
+
     static String apply(String dmJson, List<Need> needs, TranscodeReport.Builder report) {
         if (needs.isEmpty()) {
             return dmJson;
         }
         BoundModel m = BoundModel.ofJson(dmJson);
+        ModelDocument doc = ModelDocument.read(dmJson);   // to resolve a repeatable group's actual row fields
         for (Need need : needs) {
-            m = m.add(rule(m, need));
-            report.mapped(source(need), describe(need), TranscodeReport.Tier.TIER_A_PLUS);
+            Optional<Rule> rule = ruleFor(m, doc, need, report);
+            if (rule.isPresent()) {
+                m = m.add(rule.get());
+                report.mapped(source(need), describe(need), TranscodeReport.Tier.TIER_A_PLUS);
+            }
         }
         return m.toJson();
     }
 
-    private static Rule rule(BoundModel m, Need need) {
+    /** Build the rule for {@code need}, or {@link Optional#empty()} when it cannot be synthesized (reported). */
+    private static Optional<Rule> ruleFor(BoundModel m, ModelDocument doc, Need need, TranscodeReport.Builder report) {
         return switch (need) {
             case ExclusiveBound b -> {
                 String field = lastSegment(b.fieldPath());
                 NumberRef ref = m.num(b.fieldPath());
                 String code = (b.min() ? "EXCLUSIVE_MIN_" : "EXCLUSIVE_MAX_") + field.toUpperCase(Locale.ROOT);
-                yield m.rule(m.group(parentGroup(b.fieldPath())))
+                yield Optional.of(m.rule(m.group(parentGroup(b.fieldPath())))
                         .name(field + (b.min() ? "ExclusiveMin" : "ExclusiveMax")).errorField(ref)
                         .when(b.min() ? ref.filled().and(ref.le(b.bound())) : ref.filled().and(ref.ge(b.bound())))
                         .code(code).severity(Severity.ERROR)
                         .message(Dsl.en(field + (b.min() ? " must be greater than " : " must be less than ")
-                                + b.bound() + ".")).build();
+                                + b.bound() + ".")).build());
             }
             case DependentRequired d -> {
                 FieldRef trigger = m.field(d.groupPath() + "/" + d.trigger());
                 FieldRef dependent = m.field(d.groupPath() + "/" + d.dependent());
-                yield m.rule(m.group(d.groupPath()))
+                yield Optional.of(m.rule(m.group(d.groupPath()))
                         .name(d.dependent() + "RequiredWith" + d.trigger()).errorField(dependent)
                         .when(Dsl.fieldFilled(trigger).and(Dsl.fieldNotFilled(dependent)))
                         .code("DEPENDENT_REQUIRED_" + d.dependent().toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
                         .message(Dsl.en(d.dependent() + " is required when " + d.trigger() + " is present."))
-                        .build();
+                        .build());
             }
             case ConstValue c -> {
                 String field = lastSegment(c.fieldPath());
@@ -90,9 +103,9 @@ final class RuleSynthesis {
                         : m.str(c.fieldPath()).filled().and(m.str(c.fieldPath()).ne(c.value()));
                 Rule.Builder b = m.rule(m.group(parentGroup(c.fieldPath()))).name(field + "Const");
                 b = c.numeric() ? b.errorField(m.num(c.fieldPath())) : b.errorField(m.str(c.fieldPath()));
-                yield b.when(mismatch)
+                yield Optional.of(b.when(mismatch)
                         .code("CONST_" + field.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
-                        .message(Dsl.en(field + " must equal " + c.value() + ".")).build();
+                        .message(Dsl.en(field + " must equal " + c.value() + ".")).build());
             }
             case MultipleOf mo -> {
                 String field = lastSegment(mo.fieldPath());
@@ -100,26 +113,52 @@ final class RuleSynthesis {
                 NumberExpr x = ref.asNumber();
                 NumberExpr n = Dsl.number(mo.divisor());
                 NumberExpr modulo = x.minus(Dsl.roundDown(x.dividedBy(n), 0).times(n));   // x − floor(x/N)·N
-                yield m.rule(m.group(parentGroup(mo.fieldPath())))
+                yield Optional.of(m.rule(m.group(parentGroup(mo.fieldPath())))
                         .name(field + "MultipleOf").errorField(ref)
                         .when(ref.filled().and(modulo.ne(0)))
                         .code("MULTIPLE_OF_" + field.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
-                        .message(Dsl.en(field + " must be a multiple of " + mo.divisor() + ".")).build();
+                        .message(Dsl.en(field + " must be a multiple of " + mo.divisor() + ".")).build());
             }
             case DiscriminatedRequired dr -> {
                 EnumRef discriminator = m.enumOf(dr.groupPath() + "/" + dr.discriminator());
                 FieldRef required = m.field(dr.groupPath() + "/" + dr.requiredField());
                 String tag = sanitize(dr.value());
-                yield m.rule(m.group(dr.groupPath()))
+                yield Optional.of(m.rule(m.group(dr.groupPath()))
                         .name(dr.requiredField() + "RequiredWhen" + capitalize(dr.discriminator()) + "Is" + tag)
                         .errorField(required)
                         .when(discriminator.is(dr.value()).and(Dsl.fieldNotFilled(required)))
                         .code("DISCRIMINATED_REQUIRED_" + dr.requiredField().toUpperCase(Locale.ROOT)
                                 + "_" + tag.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
                         .message(Dsl.en(dr.requiredField() + " is required when " + dr.discriminator()
-                                + " is " + dr.value() + ".")).build();
+                                + " is " + dr.value() + ".")).build());
+            }
+            case UniqueItems u -> {
+                List<FieldRef> keys = new ArrayList<>();
+                for (String fieldPath : doc.fieldPaths()) {
+                    if (isDirectChild(fieldPath, u.groupPath()) && doc.fieldKind(fieldPath).isPresent()) {
+                        keys.add(m.field(fieldPath));   // RepetitionNotUnique keys are the row's scalar fields
+                    }
+                }
+                if (keys.isEmpty()) {
+                    report.diagnostic("uniqueItems on '" + lastSegment(u.groupPath()) + "' — no scalar row fields "
+                            + "to key on; enforce row uniqueness by hand");
+                    yield Optional.empty();
+                }
+                String row = lastSegment(u.groupPath());
+                FieldRef[] rest = keys.subList(1, keys.size()).toArray(new FieldRef[0]);
+                yield Optional.of(m.rule(m.group(parentGroup(u.groupPath())))
+                        .name(row + "RowsUnique").errorField(keys.get(0))
+                        .when(Dsl.repetitionNotUnique(keys.get(0), rest))
+                        .code("UNIQUE_ITEMS_" + row.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
+                        .message(Dsl.en("Each " + row + " row must be unique.")).build());
             }
         };
+    }
+
+    /** Is {@code path} a direct child element of {@code groupPath} (one segment below, no deeper)? */
+    private static boolean isDirectChild(String path, String groupPath) {
+        String prefix = groupPath + "/";
+        return path.startsWith(prefix) && path.indexOf('/', prefix.length()) < 0;
     }
 
     private static String source(Need need) {
@@ -129,6 +168,7 @@ final class RuleSynthesis {
             case ConstValue c -> c.fieldPath();
             case MultipleOf mo -> mo.fieldPath();
             case DiscriminatedRequired dr -> dr.groupPath() + "/" + dr.requiredField();
+            case UniqueItems u -> u.groupPath();
         };
     }
 
@@ -140,6 +180,7 @@ final class RuleSynthesis {
             case MultipleOf mo -> "rule multipleOf " + mo.divisor();
             case DiscriminatedRequired dr -> "rule discriminated-required(" + dr.discriminator() + "="
                     + dr.value() + " → " + dr.requiredField() + ")";
+            case UniqueItems u -> "rule uniqueItems(" + lastSegment(u.groupPath()) + ")";
         };
     }
 

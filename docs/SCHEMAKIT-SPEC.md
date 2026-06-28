@@ -83,7 +83,8 @@ Both keep **artifact mode**: the transcode result (DM-JSON / JSON Schema) goes t
 | **Structure** | `object`→group, `array`-of-`object`→repeatable group, scalar→field-kind (the field-type matcher, §4b), `$defs`/`$ref`→typedef (leaf) / include-or-inline (object) |
 | **Field config** | `minLength`/`maxLength`/`pattern`→string config; `minimum`/`maximum`→number bounds |
 | **Rules (direct)** | `required`→requiredness; `enum`→ENUMERATION; `uniqueItems`→`RepetitionNotUnique`/`FieldValuesNotUnique`; `pattern`→`PatternViolated` |
-| **Rules (composed)** | `exclusiveMinimum`/`exclusiveMaximum`→strict `<`/`>`; `multipleOf`→modulo `{[x]−RoundDown([x]/N,0)·N} ≠ 0`; `const`→`!=` / single-value enum; `minItems`→`NumberOfFilledGroups ≥ N`; `dependentRequired`/`if-then`→conditional requiredness; `contains`/`minContains`→`Having`+count; `not`/`oneOf`/`anyOf`-of-`const`→opposite ops / mutual exclusion |
+| **Rules (composed), built** | `exclusiveMinimum`/`exclusiveMaximum`→strict `<`/`>`; `multipleOf`→modulo `{[x]−RoundDown([x]/N,0)·N} ≠ 0`; `const`→`!=` / single-value; `dependentRequired`→conditional requiredness; `oneOf`/`anyOf` discriminator→per-variant requiredness rules |
+| **Rules — not yet built** (reported, not enforced) | `contains`/`minContains`→`Having`+count; general `if`/`then`/`else`; `not`→opposite ops. (`minItems` has **no clean a12 rule form** — §4c; reported, not enforced.) |
 | **Carriage (export, a12↔a12)** | the full rule rides `x-a12-rule`, a computation `x-a12-computation`; `readOnly:true` marks a computed field |
 | **Two-tier validation** *(proposal §12.1)* | exported Tier-A keywords = field-local tier (any validator); `:interpreter` = full-rule tier |
 
@@ -141,6 +142,7 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | `format: email` / `uuid` | STRING + standard pattern | field-config (profile: format) |
 | `exclusiveMinimum` / `exclusiveMaximum` | strict `<` / `>` rule | rule (Tier A+) |
 | `multipleOf` · `const` · `dependentRequired` | modulo rule · `!=` rule · conditional-requiredness rule | rule (Tier A+) |
+| `uniqueItems` | `RepetitionNotUnique` rule keyed on the repeatable group's row fields | rule (Tier A+) |
 | `oneOf`/`anyOf` of same-kind objects | superset group + discriminator → enum + per-variant requiredness rules | strategy + rule (profile: union) |
 | `array` of scalar | repeatable single-field group (default) / multi-select / value-list | strategy (profile; **imported by default**) |
 | `array` / map with no `maxItems` / `maxProperties` | repeatable group capped at `--default-repeat-cap` (default 1000) | strategy (profile; **imported by default**, capped) |
@@ -152,7 +154,7 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | cross-kind `type:[X,Y]` · mixed `oneOf`/`anyOf` | reported | omitted (§4c) |
 | `unevaluatedProperties` / `unevaluatedItems` | structure imports; constraint reported — **not enforced** | omitted (§4c) |
 | `$dynamicRef` / `$dynamicAnchor` | reported | omitted (§4c) |
-| `uniqueItems` · `contains`/`minContains` · `if`/`then`/`else` · `not` | structure imports; keyword reported — **not yet mapped** | omitted (gap) |
+| `contains`/`minContains` · `if`/`then`/`else` · `not` | structure imports; keyword reported — **not yet mapped** | omitted (gap) |
 
 ### Export — Document Model → JSON Schema
 

@@ -125,7 +125,7 @@ public final class JsonSchemaImporter {
 
     /** Validation keywords with no a12 mapping yet — reported (never silently dropped); structure still imports. */
     private static final List<String> UNSUPPORTED_KEYWORDS =
-            List.of("uniqueItems", "contains", "minContains", "if", "then", "else", "not");
+            List.of("contains", "minContains", "if", "then", "else", "not");
 
     private static void addProperty(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
                                     boolean isRequired, String groupPath, Ctx ctx) {
@@ -222,6 +222,11 @@ public final class JsonSchemaImporter {
 
     private static void addArray(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
                                  String path, Ctx ctx) {
+        if (schema.path("uniqueItems").asBoolean(false)) {
+            // a repeatable group is built below (object or scalar array) → key its rows for uniqueness; the
+            // synthesis resolves the actual row fields post-build and skips if the group/fields didn't import.
+            ctx.ruleNeeds().add(new RuleSynthesis.UniqueItems(path));
+        }
         JsonNode items = schema.path("items");
         if (!"object".equals(items.path("type").asText(""))) {
             addScalarArray(g, name, schema, items, path, ctx);
