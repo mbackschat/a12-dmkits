@@ -114,6 +114,58 @@ Four cases have no static a12 representation even with a strategy; each is **omi
 
 ---
 
+## 4d. Coverage at a glance
+
+The asymmetry in one place. **Import aims for total coverage** — every JSON Schema feature lands in a12 *or* is surfaced with a corrective to-do (never silent, never blocked). **Export is best-effort** — native Tier-A keywords where they exist, `x-a12-*` carriage otherwise. Read these two tables to see, at a glance, what each direction does and where it loses fidelity.
+
+### Import — JSON Schema → Document Model
+
+| JSON Schema | a12 import | Mapping |
+|---|---|---|
+| `object` + `properties`; nested `object` | group; nested group | structure |
+| `allOf` of objects | one merged group (props unioned, `required` unioned, `$ref` bases resolved) | structure |
+| `array` of `object` (+ `maxItems` ≥ 2) | repeatable group | structure |
+| `$ref`/`$defs` → leaf / → object | typeDefinition + ref / inlined group | structure |
+| `string` · `integer` · `boolean` · `enum` | STRING · NUMBER(scale 0) · BOOLEAN\|CONFIRM · ENUMERATION | structure (boolean: profile) |
+| `type:[X,"null"]` (nullable) | optional `X` | structure |
+| `format: date` / `date-time` / `time` | DATE / DATE_TIME / TIME field | structure |
+| `required` | field requiredness | structure |
+| `minLength` / `maxLength` / `pattern` | string field config | field-config |
+| `minimum` / `maximum` | number value bounds | field-config |
+| `format: email` / `uuid` | STRING + standard pattern | field-config (profile: format) |
+| `exclusiveMinimum` / `exclusiveMaximum` | strict `<` / `>` rule | rule (Tier A+) |
+| `multipleOf` · `const` · `dependentRequired` | modulo rule · `!=` rule · conditional-requiredness rule | rule (Tier A+) |
+| `oneOf`/`anyOf` of same-kind objects | superset group + discriminator → enum + per-variant requiredness rules | strategy + rule (profile: union) |
+| `array` of scalar (+ `maxItems` ≥ 2) | multi-select / value-list / repeatable single-field group | strategy (profile; default **omit**) |
+| `additionalProperties` / `patternProperties` (map) | repeatable `{key, value}` group | strategy (profile: map) |
+| bare `number` (no `multipleOf`) | NUMBER at a chosen scale | strategy (profile; default **omit**) |
+| `format: <other>` | pattern / custom field type / plain string | strategy (profile: format) |
+| recursive `$ref` | bounded expansion to `recursionDepth` | strategy (profile; default **omit**) |
+| `minItems` | reported — **not enforced** (no a12 cardinality rule, KERNEL-FINDINGS) | omitted |
+| cross-kind `type:[X,Y]` · mixed `oneOf`/`anyOf` | reported | omitted (§4c) |
+| `unevaluatedProperties` / `unevaluatedItems` | structure imports; constraint reported — **not enforced** | omitted (§4c) |
+| `$dynamicRef` / `$dynamicAnchor` | reported | omitted (§4c) |
+| `uniqueItems` · `contains`/`minContains` · `if`/`then`/`else` · `not` | structure imports; keyword reported — **not yet mapped** | omitted (gap) |
+
+### Export — Document Model → JSON Schema
+
+| a12 construct | JSON Schema export | Fidelity |
+|---|---|---|
+| group; repeatable group | `object`; `array` + `maxItems` | exact |
+| STRING (+ `minLength`/`maxLength`/`pattern`) | `string` (+ constraints) | exact |
+| NUMBER scale 0 / scale > 0 (+ `min`/`max`) | `integer` / `number` (+ `minimum`/`maximum`) | exact |
+| BOOLEAN · ENUMERATION | `boolean` · `enum` | exact |
+| typeDefinition | `$defs` entry + `$ref` | exact |
+| Rule recognized as a field `pattern` (Tier-A) | native `pattern` keyword | projected |
+| any other Rule | `x-a12-rule` (a12↔a12 round-trip) | carriage |
+| Computation | `x-a12-computation` (a12↔a12 round-trip) | carriage |
+| DATE / DATE_TIME / TIME / DATE_RANGE / DATE_FRAGMENT | `string` placeholder + diagnostic | **lossy** (no `format` emitted yet) |
+| CONFIRM · CUSTOM | `string` placeholder + diagnostic | **lossy** |
+
+The **mismatch in one line:** import turns rules/strategies/temporal-formats into native a12 constructs; export only round-trips the Tier-A subset natively and carries the rest as `x-a12-*` (or, for temporal/custom *fields*, falls back to `string`). That export-side temporal/custom loss is the main asymmetry — the inverse of the import `format`→kind mapping (§4b).
+
+---
+
 ## 5. Verification gates
 
 The differential is **round-trip + kernel-accept** (the kernel-accept gate rides the public facade via `ModelLoader`):
