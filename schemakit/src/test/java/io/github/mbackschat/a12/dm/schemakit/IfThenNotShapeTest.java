@@ -95,6 +95,20 @@ class IfThenNotShapeTest {
     }
 
     @Test
+    void multiPropertyElseValueConstraintSynthesizesADisjunctiveRule() {
+        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
+                { "title": "Sub", "type": "object",
+                  "properties": { "tier": { "type": "string" }, "region": { "type": "string" }, "fee": { "type": "integer" } },
+                  "if": { "properties": { "tier": { "const": "PREMIUM" }, "region": { "const": "EU" } } },
+                  "else": { "properties": { "fee": { "minimum": 1 } } } }
+                """);
+
+        assertKernelAccepts(r.dmJson());
+        assertEquals(1, synthesized(r), () -> "else of a multi-property if (a disjunction) → one rule: " + r.report().dispositions());
+        assertTrue(r.dmJson().contains("Or"), "the else condition is the disjunction of the negated if-conditions");
+    }
+
+    @Test
     void thenPatternConstraintSynthesizesAViolationRule() {
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
                 { "title": "Sub", "type": "object",

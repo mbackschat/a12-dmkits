@@ -52,10 +52,10 @@ final class RuleSynthesis {
     record ThenConstrained(String groupPath, List<FieldValue> conditions, String targetField, ValueConstraint constraint)
             implements Need {}
 
-    /** An {@code else} VALUE-constraint (single-property {@code if}): when the negated condition holds
-     *  ({@code Filled(f) And f≠value}), {@code targetField} must satisfy {@code constraint}. Multi-property
-     *  {@code else} (a disjunction) stays reported — SCHEMAKIT-SPEC §4f. */
-    record ElseConstrained(String groupPath, FieldValue condition, String targetField, ValueConstraint constraint)
+    /** An {@code else} VALUE-constraint: when the {@code if} did NOT hold, {@code targetField} must satisfy
+     *  {@code constraint}. The negation of the conjunction is a disjunction — an OR of the per-condition negations
+     *  ({@code Filled(f) And f≠value}); a single condition is the one-element case — SCHEMAKIT-SPEC §4f. */
+    record ElseConstrained(String groupPath, List<FieldValue> conditions, String targetField, ValueConstraint constraint)
             implements Need {}
 
     /** A simple value constraint on a field (the tractable {@code then}-keyword set), with the requirement text. */
@@ -382,12 +382,19 @@ final class RuleSynthesis {
                         .message(Dsl.en(field + " must not be one of " + f.values() + ".")).build());
             }
             case ElseConstrained ec -> {
-                String condPath = ec.groupPath() + "/" + ec.condition().field();
-                Optional<Condition> negated = notEqualsValue(m, doc, condPath, ec.condition().value());
-                if (negated.isEmpty()) {
-                    report.diagnostic("else-constraint on '" + ec.targetField() + "' skipped — condition field '"
-                            + ec.condition().field() + "' is neither a string nor an enum");
-                    yield Optional.empty();
+                List<Condition> negs = new ArrayList<>();
+                for (FieldValue fv : ec.conditions()) {
+                    Optional<Condition> n = notEqualsValue(m, doc, ec.groupPath() + "/" + fv.field(), fv.value());
+                    if (n.isEmpty()) {
+                        report.diagnostic("else-constraint on '" + ec.targetField() + "' skipped — condition field '"
+                                + fv.field() + "' is neither a string nor an enum");
+                        yield Optional.empty();
+                    }
+                    negs.add(n.get());
+                }
+                Condition negated = negs.get(0);
+                for (int i = 1; i < negs.size(); i++) {
+                    negated = negated.or(negs.get(i));   // NOT(a=X And b=Y) = (a≠X) Or (b≠Y)
                 }
                 String targetPath = ec.groupPath() + "/" + ec.targetField();
                 Optional<Condition> violation = violationCondition(m, doc, targetPath, ec.constraint(), report);
@@ -395,14 +402,16 @@ final class RuleSynthesis {
                     yield Optional.empty();
                 }
                 FieldRef errorField = m.field(targetPath);
-                String tag = capitalize(ec.condition().field()) + sanitize(ec.condition().value());
+                String tag = ec.conditions().stream()
+                        .map(fv -> capitalize(fv.field()) + sanitize(fv.value())).collect(Collectors.joining());
+                String when = ec.conditions().stream()
+                        .map(fv -> fv.field() + " is not " + fv.value()).collect(Collectors.joining(" or "));
                 yield Optional.of(m.rule(m.group(ec.groupPath()))
                         .name(ec.targetField() + "ConstrainedWhenNot" + tag).errorField(errorField)
-                        .when(negated.get().and(violation.get()))
+                        .when(negated.and(violation.get()))
                         .code("ELSE_CONSTRAINT_" + ec.targetField().toUpperCase(Locale.ROOT)
                                 + "_" + tag.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
-                        .message(Dsl.en(ec.constraint().requirement(ec.targetField()) + " when "
-                                + ec.condition().field() + " is not " + ec.condition().value() + ".")).build());
+                        .message(Dsl.en(ec.constraint().requirement(ec.targetField()) + " when " + when + ".")).build());
             }
             case ContainsCount cc -> {
                 List<Condition> preds = new ArrayList<>();
@@ -571,8 +580,9 @@ final class RuleSynthesis {
             case ThenConstrained tc -> "rule then-constraint(" + tc.conditions().stream()
                     .map(fv -> fv.field() + "=" + fv.value()).collect(Collectors.joining(" and "))
                     + " → " + tc.constraint().requirement(tc.targetField()) + ")";
-            case ElseConstrained ec -> "rule else-constraint(" + ec.condition().field() + "≠" + ec.condition().value()
-                    + " → " + ec.constraint().requirement(ec.targetField()) + ")";
+            case ElseConstrained ec -> "rule else-constraint(not[" + ec.conditions().stream()
+                    .map(fv -> fv.field() + "=" + fv.value()).collect(Collectors.joining(" and "))
+                    + "] → " + ec.constraint().requirement(ec.targetField()) + ")";
             case ContainsCount cc -> "rule " + (cc.min() ? "minContains(" : "maxContains(") + cc.bound() + " × "
                     + lastSegment(cc.groupPath()) + "[" + cc.predicates().stream()
                     .map(fv -> fv.field() + "=" + fv.value()).collect(Collectors.joining(",")) + "])";

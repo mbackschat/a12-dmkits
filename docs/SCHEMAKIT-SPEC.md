@@ -84,8 +84,8 @@ Both keep **artifact mode**: the transcode result (DM-JSON / JSON Schema) goes t
 | **Structure** | `object`→group, `array`-of-`object`→repeatable group, scalar→field-kind (the field-type matcher, §4b), `$defs`/`$ref`→typedef (leaf) / inlined group (object; reuse via a separate include child is the deferred multi-model increment, §4e) |
 | **Field config** | `minLength`/`maxLength`/`pattern`→string config; `minimum`/`maximum`→number bounds |
 | **Rules (direct)** | `required`→requiredness; `enum`→ENUMERATION; `uniqueItems`→`RepetitionNotUnique`/`FieldValuesNotUnique`; `pattern`→`PatternViolated` |
-| **Rules (composed), built** | constraints with no field-config home become a12 *rules* — `exclusiveMinimum`/`exclusiveMaximum`, `multipleOf`, `const`, `dependentRequired`, `oneOf`/`anyOf` discriminator, `uniqueItems`, `if {f=v [and …]} then/else {required}` (incl. **multi-property** `if`), **then/else value-constraints** (`g` must satisfy `const`/`enum`/`min`/`max`/`pattern` when the `if` holds, and the single-property `else`), `contains`/`minContains`/`maxContains` (simple predicate → a filtered-count rule), `not {const\|enum\|pattern\|minimum\|maximum\|minLength\|maxLength}`, object-level `not {required}`. **Each keyword's exact fire condition is tabulated in §4f.** |
-| **Rules — not yet built** (reported, not enforced) | the open *feasible* gaps — **multi-property else** value-constraints, **nested/compound** `not`, a `contains` predicate with a **non-single-valued** clause (a range / arbitrary item subschema) — are tracked in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md) §1. *Not-feasible* constraints (`not {type}`, `minItems`, §4c) are permanently omitted — ledger §4. |
+| **Rules (composed), built** | constraints with no field-config home become a12 *rules* — `exclusiveMinimum`/`exclusiveMaximum`, `multipleOf`, `const`, `dependentRequired`, `oneOf`/`anyOf` discriminator, `uniqueItems`, `if {f=v [and …]} then/else {required}` (incl. **multi-property** `if`), **then/else value-constraints** (`g` must satisfy `const`/`enum`/`min`/`max`/`pattern` when the `if` holds, and on the `else` — single- or multi-property), `contains`/`minContains`/`maxContains` (simple predicate → a filtered-count rule), `not {const\|enum\|pattern\|minimum\|maximum\|minLength\|maxLength}`, object-level `not {required}`. **Each keyword's exact fire condition is tabulated in §4f.** |
+| **Rules — not yet built** (reported, not enforced) | the open *feasible* gaps — **nested/compound** `not`, a `contains` predicate with a **non-single-valued** clause (a range / arbitrary item subschema) — are tracked in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md) §1. *Not-feasible* constraints (`not {type}`, `minItems`, §4c) are permanently omitted — ledger §4. |
 | **Carriage (export, a12↔a12)** | the full rule rides `x-a12-rule`, a computation `x-a12-computation`; `readOnly:true` marks a computed field |
 | **Two-tier validation** *(proposal §12.1)* | exported Tier-A keywords = field-local tier (any validator); `:interpreter` = full-rule tier |
 
@@ -163,7 +163,7 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | `unevaluatedProperties` / `unevaluatedItems` | structure imports; constraint reported — **not enforced** | omitted (§4c) |
 | `$dynamicRef` / `$dynamicAnchor` | reported | omitted (§4c) |
 | `contains`/`minContains`/`maxContains` (single- or multi-property predicate) | a `Having`-filtered count rule (`≥`/`≤ N` matching rows) | rule (Tier A+) |
-| multi-property else **value**-constraints; nested/compound `not`; `contains` with a non-single-valued clause | structure imports; keyword reported — **not yet mapped** ([`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md) §1) | omitted (feasible gap) |
+| nested/compound `not`; `contains` with a non-single-valued clause | structure imports; keyword reported — **not yet mapped** ([`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md) §1) | omitted (feasible gap) |
 | `not {type}` | structure imports; reported — **not feasible** (a12 field kind is fixed; no type-check operator to negate) | omitted (ledger §4) |
 
 ### Export — Document Model → JSON Schema
@@ -249,7 +249,7 @@ The keywords with no field-config home become real a12 **rules** (§4 "Rules (co
 | `if {f = V} else {required:[E]}` | `Filled(f) And [f] ≠ V And Not Filled(E)` | `E` | `str.ne(V)`/`enum.isNot(V)` (guarded) |
 | `if {a = X, b = Y} then {required:[D]}` (multi-property) | `[a] = X And [b] = Y And Not Filled(D)` | `D` | conjunction of equals + `fieldNotFilled` (else of a conjunction is a disjunction → reported) |
 | `if {f = V} then {properties:{g:{minimum:N}}}` (then value-constraint) | `[f] = V And [g] < N` | `g` | the if-condition + the *negated* then-keyword — `const`/`enum`/`min`/`max`/`exclusive*`, and `pattern` via `str.violates` (`PatternViolated`) |
-| `if {f = V} else {properties:{g:{maximum:M}}}` (else value-constraint, single-property) | `Filled(f) And [f] ≠ V And [g] > M` | `g` | the negated condition + the same violation mapper (multi-property `else` = a disjunction → reported) |
+| `if {f = V} else {properties:{g:{maximum:M}}}` (else value-constraint) | `Filled(f) And [f] ≠ V And [g] > M` | `g` | the negated condition + the violation mapper; a multi-property `if` → an `Or` of the per-condition negations (`a≠X Or b≠Y`) |
 | `not {const: V}` | `Filled(f) And [f] = V` | `f` | `str.eq(V)` / `num.eq(V)` |
 | `not {enum: […]}` | `Filled(f) And [f] In […]` | `f` | `str.in(…)` |
 | `not {pattern: P}` | `Filled(f) And [f] matches /P/` | `f` | `str.matches(P)` |
