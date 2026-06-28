@@ -191,13 +191,15 @@ A single JSON Schema imports to **exactly one** document model today. Multiplici
 
 ### Which reuse construct fans out into how many models
 
-| JSON-Schema construct | a12 vehicle | Models produced |
-|---|---|---|
-| leaf `$def` (string/integer) | typeDefinition (local) | **1** (same model) |
-| object `$def` reused in N places | include/mount | host **+ 1 child per reused object** |
-| recursive `$def` (self-reference) | self-mount | host **+ 1** (the child *is* the model) |
-| a leaf type shared across schemas | type-def-only model + import | host **+ 1 library model** |
-| input is a bundle / many external `$ref`s | one model per resource | **N** + include wiring |
+**Every scenario produces exactly one model today** — the importer collapses all reuse into the host model (the *Models today* column is uniformly **1**); the right column is the multi-model target once the deferred increment lands. The *how* of the collapse is the gap table below.
+
+| JSON-Schema construct | a12 vehicle | Models today | Models (target) |
+|---|---|---|---|
+| leaf `$def` (string/integer) | typeDefinition (local) | **1** | 1 (same model) |
+| object `$def` reused in N places | include/mount | **1** | host + 1 child per reused object |
+| recursive `$def` (self-reference) | self-mount | **1** | host + 1 (the child *is* the model) |
+| a leaf type shared across schemas | type-def-only model + import | **1** | host + 1 library model |
+| input is a bundle / many external `$ref`s | one model per resource | **1** | N + include wiring |
 
 ### The clean way to say it
 
