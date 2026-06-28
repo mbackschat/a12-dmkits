@@ -113,3 +113,4 @@ jobs:
           uvx showboat@0.6.1 verify examples/cli-runtime.md
           uvx showboat@0.6.1 verify examples/cli-custom-types.md
           uvx showboat@0.6.1 verify examples/cli-version.md
+          uvx showboat@0.6.1 verify examples/cli-jsonschema.md
