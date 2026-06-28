@@ -3,35 +3,29 @@ package io.github.mbackschat.a12.dm.schemakit;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import org.junit.jupiter.api.Test;
 
-import java.util.Optional;
-
 import static io.github.mbackschat.a12.dm.schemakit.SchemaTestSupport.assertKernelAccepts;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Validation keywords the importer does not yet map ({@code contains}/{@code minContains}, {@code if}/{@code
- * then}/{@code else}, {@code not}) must be <b>reported</b>, not silently dropped (the omit-never-silent
- * directive, task #13). The declared structure still imports; the unenforced keyword rides a corrective to-do.
- * ({@code uniqueItems} is no longer here — it now synthesizes a {@code RepetitionNotUnique} rule.)
+ * The validation keywords the importer still does not map ({@code contains}/{@code minContains}) must be
+ * <b>reported</b>, not silently dropped (the omit-never-silent directive, task #13). The declared structure
+ * still imports; the unenforced keyword rides a corrective to-do. ({@code uniqueItems}, {@code if}/{@code then},
+ * and {@code not} are no longer here — they now synthesize rules; only the starred-aggregate {@code contains}
+ * family remains deferred.)
  */
 class UnsupportedKeywordReportTest {
 
     @Test
-    void unsupportedValidationKeywordsAreReportedAndStructureStillImports() {
+    void containsIsReportedAndTheStructureStillImports() {
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
                 { "type": "object", "properties": {
                     "tags": { "type": "array", "maxItems": 5, "contains": { "const": "vip" },
-                              "items": { "type": "object", "properties": { "v": { "type": "string" } } } },
-                    "name": { "type": "string", "not": { "const": "anonymous" } } } }
+                              "items": { "type": "object", "properties": { "v": { "type": "string" } } } } } }
                 """);
 
         assertKernelAccepts(r.dmJson());
-        // the structure imports despite the unmapped keywords
-        assertEquals(Optional.of("STRING"), ModelDocument.read(r.dmJson()).fieldKind("/Root/name"));
-        assertTrue(ModelDocument.read(r.dmJson()).isRepeating("/Root/tags"));
-        // both unmapped keywords are reported, not dropped silently
-        assertTrue(r.report().diagnostics().stream().anyMatch(d -> d.contains("'contains'")), "contains reported");
-        assertTrue(r.report().diagnostics().stream().anyMatch(d -> d.contains("'not'")), "not reported");
+        assertTrue(ModelDocument.read(r.dmJson()).isRepeating("/Root/tags"), "the array structure still imports");
+        assertTrue(r.report().diagnostics().stream().anyMatch(d -> d.contains("'contains'")),
+                () -> "the unmapped contains is reported: " + r.report().diagnostics());
     }
 }

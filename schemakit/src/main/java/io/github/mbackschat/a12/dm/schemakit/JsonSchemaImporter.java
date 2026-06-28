@@ -106,9 +106,42 @@ public final class JsonSchemaImporter {
             addMergedProperties(g, sub.path("properties"), required, seen, groupPath, ctx);
         }
         collectDependentRequired(objectSchema, groupPath, ctx);
+        collectIfThen(objectSchema, groupPath, ctx);
         if (!allOf.isEmpty()) {
             ctx.report().diagnostic("merged " + allOf.size() + " allOf object subschema(s) into '" + groupPath
                     + "' — all constraints apply together (intersection)");
+        }
+    }
+
+    /**
+     * {@code if}/{@code then} (SCHEMAKIT-SPEC §4): the tractable shape — {@code if} pins a single property to a
+     * value and {@code then} requires fields — maps to a conditional-requiredness rule per dependent (the same
+     * synthesis as a union discriminator). Anything else (arbitrary {@code if}/{@code then} schemas, {@code
+     * then} value constraints, {@code else}) is reported, not silently dropped.
+     */
+    private static void collectIfThen(JsonNode objectSchema, String groupPath, Ctx ctx) {
+        if (!objectSchema.has("if")) {
+            return;
+        }
+        JsonNode ifProps = objectSchema.path("if").path("properties");
+        JsonNode thenRequired = objectSchema.path("then").path("required");
+        boolean tractable = ifProps.isObject() && ifProps.size() == 1 && thenRequired.isArray() && !thenRequired.isEmpty();
+        Optional<String> value = tractable ? singleValueOf(ifProps.fields().next().getValue()) : Optional.empty();
+        if (!tractable || value.isEmpty()) {
+            ctx.report().diagnostic("if/then at '" + groupPath + "' is not a simple 'if <field>=<value> then "
+                    + "required[…]' shape — not mapped; add the conditional rule by hand");
+            return;
+        }
+        String condField = ifProps.fieldNames().next();
+        for (JsonNode dependent : thenRequired) {
+            String reqField = dependent.asText();
+            if (!reqField.equals(condField)) {
+                ctx.ruleNeeds().add(new RuleSynthesis.DiscriminatedRequired(groupPath, condField, value.get(), reqField));
+            }
+        }
+        if (objectSchema.path("then").has("properties") || objectSchema.has("else")) {
+            ctx.report().diagnostic("if/then at '" + groupPath + "': the required-fields part mapped to rules; "
+                    + "then-value-constraints / else are NOT mapped — add them by hand");
         }
     }
 
@@ -124,8 +157,9 @@ public final class JsonSchemaImporter {
     }
 
     /** Validation keywords with no a12 mapping yet — reported (never silently dropped); structure still imports. */
-    private static final List<String> UNSUPPORTED_KEYWORDS =
-            List.of("contains", "minContains", "if", "then", "else", "not");
+    // `contains`/`minContains` need starred-aggregate synthesis (deferred); `if`/`then`/`else` + `not` are
+    // handled specially (collectIfThen / collectNot) — their tractable shapes synthesize rules, the rest report.
+    private static final List<String> UNSUPPORTED_KEYWORDS = List.of("contains", "minContains");
 
     private static void addProperty(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
                                     boolean isRequired, String groupPath, Ctx ctx) {
@@ -227,6 +261,7 @@ public final class JsonSchemaImporter {
             // synthesis resolves the actual row fields post-build and skips if the group/fields didn't import.
             ctx.ruleNeeds().add(new RuleSynthesis.UniqueItems(path));
         }
+        noteMinItems(schema, name, ctx);   // minItems is not enforced (KERNEL-FINDINGS) — report it for BOTH array kinds
         JsonNode items = schema.path("items");
         if (!"object".equals(items.path("type").asText(""))) {
             addScalarArray(g, name, schema, items, path, ctx);
@@ -243,7 +278,6 @@ public final class JsonSchemaImporter {
             populate(sub, items, path, ctx);
         });
         ctx.report().structure(path, "repeatable group (max " + max + ")");
-        noteMinItems(schema, name, ctx);
     }
 
     /**
@@ -270,6 +304,28 @@ public final class JsonSchemaImporter {
      * cardinality (the error entity controls a rule's iteration, and {@code NumberOfFilledGroups} needs ≥ 2
      * group args — KERNEL-FINDINGS). So it is reported, never silently implied to be enforced (task #7).
      */
+    /**
+     * {@code not: {const}} / {@code not: {enum}} → a forbidding rule (SCHEMAKIT-SPEC §4); any other {@code not}
+     * shape is reported, not silently dropped. The synthesis resolves the field's kind post-build (and reports
+     * if the kind can't carry the constraint), so this just records the request.
+     */
+    private static void collectNot(String name, JsonNode schema, String path, Ctx ctx) {
+        JsonNode not = schema.path("not");
+        if (not.isMissingNode()) {
+            return;
+        }
+        if (not.has("const")) {
+            ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenConst(path, not.get("const").asText()));
+        } else if (not.path("enum").isArray() && !not.get("enum").isEmpty()) {
+            List<String> values = new ArrayList<>();
+            not.get("enum").forEach(v -> values.add(v.asText()));
+            ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenEnum(path, values));
+        } else {
+            ctx.report().diagnostic("property '" + name + "' uses a 'not' that isn't a simple const/enum — "
+                    + "not mapped; add the constraint by hand");
+        }
+    }
+
     /** Report any {@link #UNSUPPORTED_KEYWORDS} present — surfaced, not silently dropped (task #13). */
     private static void noteUnsupportedKeywords(String name, JsonNode schema, Ctx ctx) {
         for (String kw : UNSUPPORTED_KEYWORDS) {
@@ -655,6 +711,7 @@ public final class JsonSchemaImporter {
     private static void addScalar(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
                                   boolean isRequired, String path, Ctx ctx) {
         Requiredness req = isRequired ? Requiredness.REQUIRED : Requiredness.OPTIONAL;
+        collectNot(name, schema, path, ctx);   // a 'not' const/enum → a forbidding rule (the synthesis resolves the kind)
         if (schema.has("enum") && schema.get("enum").isArray() && !schema.get("enum").isEmpty()) {
             addEnumField(g, name, schema, isRequired);
             ctx.report().structure(path, "ENUMERATION");

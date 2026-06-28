@@ -10,6 +10,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.NumberExpr;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
+import io.github.mbackschat.a12.dm.rulekit.dsl.StringRef;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +33,7 @@ final class RuleSynthesis {
 
     /** A synthesized-rule request, collected during the import walk. Sealed so the synthesizer is exhaustive. */
     sealed interface Need permits ExclusiveBound, DependentRequired, ConstValue, MultipleOf, DiscriminatedRequired,
-            UniqueItems {}
+            UniqueItems, ForbiddenConst, ForbiddenEnum {}
 
     /** {@code exclusiveMinimum}/{@code exclusiveMaximum} on a number field (a12 field bounds are inclusive-only). */
     record ExclusiveBound(String fieldPath, boolean min, String bound) implements Need {}
@@ -55,6 +56,12 @@ final class RuleSynthesis {
     /** {@code uniqueItems: true} on an array → a {@code RepetitionNotUnique} rule keyed on the repeatable
      *  group's row fields (resolved post-build from {@code groupPath}). */
     record UniqueItems(String groupPath) implements Need {}
+
+    /** {@code not: {const}}: the field must NOT equal {@code value} (error fires when it does; string/number field). */
+    record ForbiddenConst(String fieldPath, String value) implements Need {}
+
+    /** {@code not: {enum}}: the field must NOT be one of {@code values} (error fires when it is — a string field). */
+    record ForbiddenEnum(String fieldPath, List<String> values) implements Need {}
 
     static String apply(String dmJson, List<Need> needs, TranscodeReport.Builder report) {
         if (needs.isEmpty()) {
@@ -120,17 +127,60 @@ final class RuleSynthesis {
                         .message(Dsl.en(field + " must be a multiple of " + mo.divisor() + ".")).build());
             }
             case DiscriminatedRequired dr -> {
-                EnumRef discriminator = m.enumOf(dr.groupPath() + "/" + dr.discriminator());
+                String condPath = dr.groupPath() + "/" + dr.discriminator();
+                Optional<Condition> equals = equalsValue(m, doc, condPath, dr.value());
+                if (equals.isEmpty()) {
+                    report.diagnostic("conditional rule for '" + dr.requiredField() + "' skipped — the condition "
+                            + "field '" + dr.discriminator() + "' is neither a string nor an enum");
+                    yield Optional.empty();
+                }
                 FieldRef required = m.field(dr.groupPath() + "/" + dr.requiredField());
                 String tag = sanitize(dr.value());
                 yield Optional.of(m.rule(m.group(dr.groupPath()))
                         .name(dr.requiredField() + "RequiredWhen" + capitalize(dr.discriminator()) + "Is" + tag)
                         .errorField(required)
-                        .when(discriminator.is(dr.value()).and(Dsl.fieldNotFilled(required)))
+                        .when(equals.get().and(Dsl.fieldNotFilled(required)))
                         .code("DISCRIMINATED_REQUIRED_" + dr.requiredField().toUpperCase(Locale.ROOT)
                                 + "_" + tag.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
                         .message(Dsl.en(dr.requiredField() + " is required when " + dr.discriminator()
                                 + " is " + dr.value() + ".")).build());
+            }
+            case ForbiddenConst f -> {
+                String field = lastSegment(f.fieldPath());
+                String code = "FORBIDDEN_" + field.toUpperCase(Locale.ROOT);
+                yield switch (doc.fieldKind(f.fieldPath()).orElse("")) {
+                    case "STRING" -> {
+                        StringRef r = m.str(f.fieldPath());
+                        yield Optional.of(m.rule(m.group(parentGroup(f.fieldPath()))).name(field + "NotConst")
+                                .errorField(r).when(r.filled().and(r.eq(f.value())))
+                                .code(code).severity(Severity.ERROR)
+                                .message(Dsl.en(field + " must not equal " + f.value() + ".")).build());
+                    }
+                    case "NUMBER" -> {
+                        NumberRef r = m.num(f.fieldPath());
+                        yield Optional.of(m.rule(m.group(parentGroup(f.fieldPath()))).name(field + "NotConst")
+                                .errorField(r).when(r.filled().and(r.eq(f.value())))
+                                .code(code).severity(Severity.ERROR)
+                                .message(Dsl.en(field + " must not equal " + f.value() + ".")).build());
+                    }
+                    default -> {
+                        report.diagnostic("'not const' on '" + field + "' skipped — only string/number fields supported");
+                        yield Optional.empty();
+                    }
+                };
+            }
+            case ForbiddenEnum f -> {
+                String field = lastSegment(f.fieldPath());
+                if (!doc.fieldKind(f.fieldPath()).map("STRING"::equals).orElse(false)) {
+                    report.diagnostic("'not enum' on '" + field + "' skipped — only string fields supported");
+                    yield Optional.empty();
+                }
+                StringRef r = m.str(f.fieldPath());
+                String[] rest = f.values().subList(1, f.values().size()).toArray(new String[0]);
+                yield Optional.of(m.rule(m.group(parentGroup(f.fieldPath()))).name(field + "NotInList").errorField(r)
+                        .when(r.filled().and(r.in(f.values().get(0), rest)))
+                        .code("FORBIDDEN_VALUES_" + field.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
+                        .message(Dsl.en(field + " must not be one of " + f.values() + ".")).build());
             }
             case UniqueItems u -> {
                 List<FieldRef> keys = new ArrayList<>();
@@ -155,6 +205,15 @@ final class RuleSynthesis {
         };
     }
 
+    /** The {@code [field] == value} condition for a string or enum field (else empty — no other kind compares). */
+    private static Optional<Condition> equalsValue(BoundModel m, ModelDocument doc, String path, String value) {
+        return switch (doc.fieldKind(path).orElse("")) {
+            case "ENUMERATION" -> Optional.of(m.enumOf(path).is(value));
+            case "STRING" -> Optional.of(m.str(path).eq(value));
+            default -> Optional.empty();
+        };
+    }
+
     /** Is {@code path} a direct child element of {@code groupPath} (one segment below, no deeper)? */
     private static boolean isDirectChild(String path, String groupPath) {
         String prefix = groupPath + "/";
@@ -169,6 +228,8 @@ final class RuleSynthesis {
             case MultipleOf mo -> mo.fieldPath();
             case DiscriminatedRequired dr -> dr.groupPath() + "/" + dr.requiredField();
             case UniqueItems u -> u.groupPath();
+            case ForbiddenConst f -> f.fieldPath();
+            case ForbiddenEnum f -> f.fieldPath();
         };
     }
 
@@ -181,6 +242,8 @@ final class RuleSynthesis {
             case DiscriminatedRequired dr -> "rule discriminated-required(" + dr.discriminator() + "="
                     + dr.value() + " → " + dr.requiredField() + ")";
             case UniqueItems u -> "rule uniqueItems(" + lastSegment(u.groupPath()) + ")";
+            case ForbiddenConst f -> "rule not-const(" + lastSegment(f.fieldPath()) + " ≠ " + f.value() + ")";
+            case ForbiddenEnum f -> "rule not-enum(" + lastSegment(f.fieldPath()) + " ∉ " + f.values() + ")";
         };
     }
 
