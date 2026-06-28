@@ -1,12 +1,12 @@
-package io.github.mbackschat.a12.dm.schemakit.spike;
+package io.github.mbackschat.a12.dm.schemakit;
 
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
 
-import static io.github.mbackschat.a12.dm.schemakit.spike.SchemaTestSupport.assertKernelAccepts;
-import static io.github.mbackschat.a12.dm.schemakit.spike.SchemaTestSupport.normalize;
+import static io.github.mbackschat.a12.dm.schemakit.SchemaTestSupport.assertKernelAccepts;
+import static io.github.mbackschat.a12.dm.schemakit.SchemaTestSupport.normalize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**

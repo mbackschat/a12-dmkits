@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.schemakit.spike;
+package io.github.mbackschat.a12.dm.schemakit;
 
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;

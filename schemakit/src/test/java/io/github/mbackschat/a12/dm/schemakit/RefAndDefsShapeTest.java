@@ -1,17 +1,17 @@
-package io.github.mbackschat.a12.dm.schemakit.spike;
+package io.github.mbackschat.a12.dm.schemakit;
 
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
 
-import static io.github.mbackschat.a12.dm.schemakit.spike.SchemaTestSupport.assertKernelAccepts;
-import static io.github.mbackschat.a12.dm.schemakit.spike.SchemaTestSupport.normalize;
+import static io.github.mbackschat.a12.dm.schemakit.SchemaTestSupport.assertKernelAccepts;
+import static io.github.mbackschat.a12.dm.schemakit.SchemaTestSupport.normalize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Spike shape 3 (SCHEMAKIT-SPEC §6, proposal §4.1): a leaf {@code $def} ↔ a12 typeDefinition round-trips
+ * Shape 3 (SCHEMAKIT-SPEC §6, proposal §4.1): a leaf {@code $def} ↔ a12 typeDefinition round-trips
  * via {@code $ref}; an object {@code $def} is inlined (with a reported reuse-collapse); and a
  * <em>recursive</em> {@code $ref} is OMITTED with a corrective to-do — import never blocks.
  */

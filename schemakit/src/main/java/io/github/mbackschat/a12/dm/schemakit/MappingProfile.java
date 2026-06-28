@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.schemakit.spike;
+package io.github.mbackschat.a12.dm.schemakit;
 
 /**
  * The customizable import decisions (SCHEMAKIT-SPEC §4b; proposal §5/§9) — a value object of named,

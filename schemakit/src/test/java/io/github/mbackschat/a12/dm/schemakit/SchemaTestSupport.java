@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.schemakit.spike;
+package io.github.mbackschat.a12.dm.schemakit;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,7 +16,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.fail;
 
-/** Shared spike-test helpers: the public-facade kernel-accept gate, and an order-insensitive schema compare. */
+/** Shared schemakit test helpers: the public-facade kernel-accept gate, and an order-insensitive schema compare. */
 final class SchemaTestSupport {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

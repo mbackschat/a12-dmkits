@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.schemakit.spike;
+package io.github.mbackschat.a12.dm.schemakit;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Spike shape 5 (SCHEMAKIT-SPEC §6; proposal §12.1) — the two-tier validation coupling, field-local tier.
+ * Shape 5 (SCHEMAKIT-SPEC §6; proposal §12.1) — the two-tier validation coupling, field-local tier.
  * The exported schema's native Tier-A keywords validate with a STOCK JSON-Schema validator
  * ({@code com.networknt}); but a cross-field rule that JSON Schema cannot express slips past that validator
  * and is carried in {@code x-a12-rule} for the interpreter (the full-rule tier). This proves the

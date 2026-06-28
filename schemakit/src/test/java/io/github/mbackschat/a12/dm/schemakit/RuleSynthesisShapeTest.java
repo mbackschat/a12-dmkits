@@ -1,8 +1,8 @@
-package io.github.mbackschat.a12.dm.schemakit.spike;
+package io.github.mbackschat.a12.dm.schemakit;
 
 import org.junit.jupiter.api.Test;
 
-import static io.github.mbackschat.a12.dm.schemakit.spike.SchemaTestSupport.assertKernelAccepts;
+import static io.github.mbackschat.a12.dm.schemakit.SchemaTestSupport.assertKernelAccepts;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**

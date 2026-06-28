@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.schemakit.spike;
+package io.github.mbackschat.a12.dm.schemakit;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,7 +19,7 @@ import java.util.Set;
 import java.util.function.IntConsumer;
 
 /**
- * JSON Schema → Document Model, the spike's import direction (SCHEMAKIT-SPEC §6). It authors through the
+ * JSON Schema → Document Model, the import direction (SCHEMAKIT-SPEC §6). It authors through the
  * typed surface (the dogfood rule) — modelkit's {@link DocumentModelDraft} — so the emitted DM-JSON is
  * kernel-valid by construction, and it touches the kernel only transitively via the public facade.
  *

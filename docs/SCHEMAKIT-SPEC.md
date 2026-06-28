@@ -1,8 +1,8 @@
 # schemakit — JSON Schema ⇄ Document Model (spec)
 
-The buildable contract for `:schemakit`, the JSON-Schema import/export subproject. **The rationale — the asymmetry finding, the interop-vs-fidelity fork, the three-tier rule story, the `$ref`→include/typedef split, the missed-potential list — lives in [`JSON-SCHEMA-PROPOSAL.md`](JSON-SCHEMA-PROPOSAL.md); this doc does not repeat it.** The spec holds the *contract*: the dependency boundary, the module shape, the verb surface, the verification gates, and the spike increments.
+The buildable contract for `:schemakit`, the JSON-Schema import/export subproject. **The rationale — the asymmetry finding, the interop-vs-fidelity fork, the three-tier rule story, the `$ref`→include/typedef split, the missed-potential list — lives in [`JSON-SCHEMA-PROPOSAL.md`](JSON-SCHEMA-PROPOSAL.md); this doc does not repeat it.** The spec holds the *contract*: the dependency boundary, the module shape, the verb surface, the verification gates, and the increment plan.
 
-**Status:** spike in progress (in-repo under a `.spike` package, per the extraction discipline below). What is built is shown by git + the `:schemakit` test suite, not a status board here.
+**Status:** the transcoder is built as a stable in-repo library (package `io.github.mbackschat.a12.dm.schemakit`). The import direction maps or loudly surfaces every JSON Schema feature (§4d); export is best-effort. What is built is shown by git + the `:schemakit` test suite, not a status board here.
 
 ---
 
@@ -44,8 +44,8 @@ The buildable contract for `:schemakit`, the JSON-Schema import/export subprojec
 | Gradle unit | `:schemakit` — a JVM/Java module (`java-library`, JDK 21) |
 | Multiplatform? | **No.** JVM/Java only; native-safe via GraalVM ≠ Kotlin Multiplatform (proposal §10). No KMP, no JS. |
 | Depends on | `implementation project(':')` (the engine) · Jackson (JSON Schema parse/emit) · — and, as shapes need them — `:adapter` (typed rule read for Tier-A projection) + `:interpreter` (evaluation, two-tier) |
-| Package | `io.github.mbackschat.a12.dm.schemakit` — spike work under **`…schemakit.spike`** until promoted |
-| Extraction | spike in-repo under `.spike`; extract to `a12-dm-json-schema` before promotion (the interpreter discipline) |
+| Package | `io.github.mbackschat.a12.dm.schemakit` — public API `JsonSchemaImporter` · `JsonSchemaExporter` · `MappingProfile` · `TranscodeReport`; the synthesis/carriage/projection helpers are package-private internals |
+| Extraction | in-repo; extraction to a sibling `a12-dm-json-schema` repo stays a future option (the interpreter discipline), not a prerequisite |
 
 The transcoder operates through dmkits' typed surface (the dogfood rule): **import** builds via modelkit `DocumentModelDraft` and synthesizes rules via the rulekit `Dsl` builder + `DslRenderer`; **export** reads via modelkit `ModelDocument` (kernel-free) and the rulekit AST. The structural validity oracle is the kernel itself, reached only through `ModelLoader` (facade).
 
@@ -173,24 +173,22 @@ The differential is **round-trip + kernel-accept** (the kernel-accept gate rides
 1. **Kernel-accept** — every imported model loads clean: `ModelLoader.loadSelfContained` does not throw `ModelConsistencyException`.
 2. **Round-trip** — `import(schema) → DM → export → schema'` is structurally equal on `{type, properties, required, $defs}`; and `DM → export → import → DM'` preserves structure + (a12↔a12) rules/computations via `x-a12-*`.
 3. **Valid JSON Schema** — exports validate against the JSON-Schema meta-schema.
-4. **Report accuracy** — the transcoding report states every disposition; it is asserted against (it doubles as the spike's evidence, proposal §11).
+4. **Report accuracy** — the transcoding report states every disposition; it is asserted against (it doubles as the suite's evidence, proposal §11).
 5. **Two-tier** *(shape 5)* — exported Tier-A keywords feed a stock validator while `interpreter.validateFull` enforces the full rule set on the same instance.
 
 Tests live in `:schemakit:test`; the kernel-accept gate uses only the public facade (`ModelLoader`), so the structural shapes need no `:adapter` on the test classpath. Tier-A projection and the two-tier shape pull in `:adapter`/`:interpreter` as those increments land.
 
 ---
 
-## 6. Spike increments (the de-risking path, proposal §11)
+## 6. Increments (the de-risking path, proposal §11)
 
-Built test-first, smallest increment first. Progress is git, not a status table here.
+Built test-first, smallest increment first. Progress is git, not a status table here. The five foundation increments below de-risked feasibility; the choice-driven mapping **strategies** (array-of-scalar, map, union, allOf, format, residual-omissions) built on top of them and are catalogued in §4b/§4d.
 
-1. **Flat object** — `object` + string/integer/number/boolean properties + `required` → DM with fields + requiredness; export back; round-trip equal; kernel-accepts. *(the first increment)*
+1. **Flat object** — `object` + string/integer/number/boolean properties + `required` → DM with fields + requiredness; export back; round-trip equal; kernel-accepts.
 2. **Nested + array-of-object** — groups + repeatable groups + `minItems`/`maxItems`.
-3. **`$defs`/`$ref` both kinds** — object `$def`→include/mount, leaf `$def`→typedef; recursive `$ref` **omitted** with a corrective to-do.
+3. **`$defs`/`$ref` both kinds** — object `$def`→include/mount, leaf `$def`→typedef; recursive `$ref` **omitted** with a corrective to-do (bounded by `recursionDepth`).
 4. **Rule carriage** — Tier-A `if/then`+`required`; Tier-B cross-field/aggregate as `x-a12-rule`; a computation as `x-a12-computation`; meta-schema-valid; re-import reconstructs all three.
-5. **Tier A+ import & interpreter coupling** — synthesize rules from `dependentRequired`/`uniqueItems`; two-tier validation holds (proposal §12).
-
-Success = all five succeed; the suite settles feasibility (proposal §11).
+5. **Tier A+ import & interpreter coupling** — synthesize rules from `dependentRequired`/`exclusiveMinimum`/`multipleOf`/`const`/discriminators; two-tier validation holds (proposal §12).
 
 ---
 
@@ -201,4 +199,4 @@ The customizable strategies and the residual omissions are settled in §4b/§4c.
 - **Module name** — `:schemakit` (consistent with rulekit/modelkit). Reconsider only if it confuses with the `schema` verb.
 - **Target draft** — Draft 2020-12 canonical + Draft-07 read-compat (proposal §12/§13).
 - **`ExternalSchemaProfile` seam** — keep the core profile non-JSON-Schema-specific so OpenAPI/TS/SQL/Protobuf become later profiles (proposal §12.2 #4).
-- **Live Tier-2 in-spike (owner decision)** — running the interpreter as the real full-rule tier (not just demonstrating carriage + complementarity) needs the DM-JSON→`ModelDef` loader, which currently lives in **`:cli`** (`interp.InterpreterModelLoader`). Reuse-first forbids reimplementing it; depending on `:cli` from `:schemakit` is a backwards edge. **Decision to make:** move/expose the loader in `:interpreter` (so any consumer can load + evaluate), or leave live Tier-2 to the CLI. Shape 5 currently proves Tier-1 (stock validator) + that the cross-field rule is carried for Tier-2.
+- **Live Tier-2 (DECIDED 2026-06-28: deferred)** — running the interpreter as the real full-rule tier (not just demonstrating carriage + complementarity) needs the DM-JSON→`ModelDef` loader, which currently lives in **`:cli`** (`interp.InterpreterModelLoader`). Reuse-first forbids reimplementing it; depending on `:cli` from `:schemakit` is a backwards edge. **Owner decision: deferred** — live Tier-2 stays in the CLI; revisit only if a kernel-free in-process Tier-2 round-trip is needed (then move/expose the loader in `:interpreter`). Shape 5 proves Tier-1 (stock validator) + that the cross-field rule is carried for Tier-2.

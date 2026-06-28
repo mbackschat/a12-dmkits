@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.schemakit.spike;
+package io.github.mbackschat.a12.dm.schemakit;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,7 +16,7 @@ import java.util.OptionalInt;
 import java.util.TreeSet;
 
 /**
- * Document Model → JSON Schema, the spike's export direction (SCHEMAKIT-SPEC §6) — the mirror of
+ * Document Model → JSON Schema, the export direction (SCHEMAKIT-SPEC §6) — the mirror of
  * {@link JsonSchemaImporter}. It reads structure through modelkit's kernel-free {@link ModelDocument} (no
  * kernel, no {@code :adapter}): the single root group → the top-level object, nested groups → object
  * properties, repeatable groups → {@code array} properties, and an a12 typeDefinition → a {@code $defs}

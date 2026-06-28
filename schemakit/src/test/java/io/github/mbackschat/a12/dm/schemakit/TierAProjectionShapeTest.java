@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.schemakit.spike;
+package io.github.mbackschat.a12.dm.schemakit;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Spike shape 4b (SCHEMAKIT-SPEC §6; proposal §6 Tier A) — the project-or-carry split. A string pattern
+ * Shape 4b (SCHEMAKIT-SPEC §6; proposal §6 Tier A) — the project-or-carry split. A string pattern
  * rule is BOTH projected to a native JSON Schema {@code pattern} keyword (for a foreign reader) AND carried
  * as {@code x-a12-rule} (for a12 fidelity); the rule read is reused from {@code :adapter}. A rule with no
  * native home (a cross-field rule) is carried only.

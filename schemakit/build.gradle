@@ -39,8 +39,8 @@ dependencies {
     // JSON Schema parse/emit — Jackson tree (the same tree-walking style as modelkit's DM-JSON read).
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
 
-    // (Joins at spike shape 5: implementation project(':interpreter') — the kernel-free evaluator for the
-    //  two-tier validation coupling.)
+    // (Joins when live Tier-2 lands: implementation project(':interpreter') — the kernel-free evaluator for
+    //  the two-tier validation coupling. Deferred per the owner decision, SCHEMAKIT-SPEC §7.)
 
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'

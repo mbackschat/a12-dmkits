@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.schemakit.spike;
+package io.github.mbackschat.a12.dm.schemakit;
 
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
@@ -12,13 +12,13 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
 import io.github.mbackschat.a12.dm.rulekit.dsl.StringRef;
 import org.junit.jupiter.api.Test;
 
-import static io.github.mbackschat.a12.dm.schemakit.spike.SchemaTestSupport.assertKernelAccepts;
-import static io.github.mbackschat.a12.dm.schemakit.spike.SchemaTestSupport.normalize;
+import static io.github.mbackschat.a12.dm.schemakit.SchemaTestSupport.assertKernelAccepts;
+import static io.github.mbackschat.a12.dm.schemakit.SchemaTestSupport.normalize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Spike shape 4 (SCHEMAKIT-SPEC §6, proposal §6) — Tier-B / Tier-C carriage: a rule and a computation
+ * Shape 4 (SCHEMAKIT-SPEC §6, proposal §6) — Tier-B / Tier-C carriage: a rule and a computation
  * (which JSON Schema cannot express) ride {@code x-a12-rule} / {@code x-a12-computation} so an
  * a12 → JSON Schema → a12 round-trip preserves them exactly. The fixture is authored through the typed
  * dogfood surface (modelkit {@link DocumentModelDraft} + rulekit {@link BoundModel}); the root group is

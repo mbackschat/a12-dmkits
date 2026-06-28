@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.schemakit.spike;
+package io.github.mbackschat.a12.dm.schemakit;
 
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.modelkit.Requiredness;
@@ -6,13 +6,13 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
 
-import static io.github.mbackschat.a12.dm.schemakit.spike.SchemaTestSupport.assertKernelAccepts;
-import static io.github.mbackschat.a12.dm.schemakit.spike.SchemaTestSupport.normalize;
+import static io.github.mbackschat.a12.dm.schemakit.SchemaTestSupport.assertKernelAccepts;
+import static io.github.mbackschat.a12.dm.schemakit.SchemaTestSupport.normalize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Spike shape 2 (SCHEMAKIT-SPEC §6): nested {@code object}s → nested groups and {@code array}-of-{@code
+ * Shape 2 (SCHEMAKIT-SPEC §6): nested {@code object}s → nested groups and {@code array}-of-{@code
  * object} → repeatable groups round-trip; the structural asymmetries a12 cannot express ({@code minItems},
  * unbounded arrays) are reported, never silently mismapped.
  */

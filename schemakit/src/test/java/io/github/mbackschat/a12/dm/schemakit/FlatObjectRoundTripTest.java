@@ -1,4 +1,4 @@
-package io.github.mbackschat.a12.dm.schemakit.spike;
+package io.github.mbackschat.a12.dm.schemakit;
 
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.modelkit.Requiredness;
@@ -6,17 +6,17 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
 
-import static io.github.mbackschat.a12.dm.schemakit.spike.SchemaTestSupport.assertKernelAccepts;
-import static io.github.mbackschat.a12.dm.schemakit.spike.SchemaTestSupport.normalize;
+import static io.github.mbackschat.a12.dm.schemakit.SchemaTestSupport.assertKernelAccepts;
+import static io.github.mbackschat.a12.dm.schemakit.SchemaTestSupport.normalize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Spike shape 1 (SCHEMAKIT-SPEC §6): a flat top-level object round-trips, and every imported model is
+ * Shape 1 (SCHEMAKIT-SPEC §6): a flat top-level object round-trips, and every imported model is
  * kernel-accepted — the accept gate rides the public facade (`ModelLoader`), so the structural shapes need
  * no internal tier (the dependency boundary is SCHEMAKIT-SPEC §1).
  */
-class JsonSchemaSpikeTest {
+class FlatObjectRoundTripTest {
 
     private static final String FLAT_SCHEMA = """
             {
@@ -43,7 +43,7 @@ class JsonSchemaSpikeTest {
         assertEquals(Requiredness.REQUIRED, doc.requiredness("/Root/quantity").orElse(Requiredness.OPTIONAL));
         assertEquals(Requiredness.OPTIONAL, doc.requiredness("/Root/express").orElse(Requiredness.OPTIONAL));
 
-        // the report states every disposition — its accuracy IS the spike's evidence (SCHEMAKIT-SPEC §5)
+        // the report states every disposition — its accuracy IS the report's evidence (SCHEMAKIT-SPEC §5)
         assertEquals(3, imported.report().dispositions().size());
         assertEquals(0, imported.report().diagnostics().size());
     }
