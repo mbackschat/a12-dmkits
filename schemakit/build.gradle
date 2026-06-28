@@ -45,6 +45,11 @@ dependencies {
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // A STOCK JSON-Schema validator (Draft 2020-12) — the field-local tier of the two-tier validation
+    // demo (shape 5): proves the exported native keywords validate with any off-the-shelf validator, and
+    // that it cannot catch the cross-field rules (which are carried for the interpreter). Test-only.
+    testImplementation 'com.networknt:json-schema-validator:1.5.7'
 }
 
 tasks.named('test') {
