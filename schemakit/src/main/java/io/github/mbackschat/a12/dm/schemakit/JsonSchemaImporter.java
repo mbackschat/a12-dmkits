@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.schemakit;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.MissingNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
@@ -42,36 +43,99 @@ public final class JsonSchemaImporter {
 
     public record ImportResult(String dmJson, TranscodeReport report) {}
 
-    /** Per-transcode state threaded through the recursion: the {@code $defs} pool, the inline stack (for
-     *  recursion detection), the report, the Tier-A+ rule-synthesis needs, and the customization profile. */
-    private record Ctx(JsonNode defs, Deque<String> inlining, TranscodeReport.Builder report,
-                       List<RuleSynthesis.Need> ruleNeeds, MappingProfile profile) {}
+    /** Per-transcode state threaded through the recursion: the whole document {@code root} (for JSON-Pointer
+     *  {@code $ref} resolution), the resolved {@code dialect}, the reusable-definitions pool, the inline stack
+     *  (recursion detection), the report, the Tier-A+ rule-synthesis needs, and the customization profile. */
+    private record Ctx(JsonNode root, Dialect dialect, JsonNode defs, Deque<String> inlining,
+                       TranscodeReport.Builder report, List<RuleSynthesis.Need> ruleNeeds, MappingProfile profile) {}
 
     public ImportResult importSchema(String jsonSchema) {
         return importSchema(jsonSchema, MappingProfile.defaults());
     }
 
     public ImportResult importSchema(String jsonSchema, MappingProfile profile) {
+        return importSchema(jsonSchema, profile, Dialect.AUTO, null);
+    }
+
+    /**
+     * Import, selecting the wire {@code dialect} (JSON Schema vs OpenAPI 3.0/3.1; {@link Dialect#AUTO} detects it)
+     * and, for an OpenAPI document, the {@code component} under {@code components/schemas} to use as the model
+     * root (null = the file is itself a bare schema, or — for a multi-schema OpenAPI document — a refusal that
+     * lists the components, SCHEMAKIT-SPEC §4g).
+     */
+    public ImportResult importSchema(String jsonSchema, MappingProfile profile, Dialect requestedDialect, String component) {
         JsonNode root = parse(jsonSchema);
-        String type = root.path("type").asText("");
+        Dialect dialect = resolveDialect(requestedDialect, root);
+        TranscodeReport.Builder report = TranscodeReport.builder();
+        if (dialect.isOpenApi()) {   // JSON Schema is the unremarkable default; an OpenAPI dialect is worth stating
+            report.diagnostic("dialect: " + dialect + (requestedDialect == Dialect.AUTO ? " (auto-detected)" : " (forced)"));
+        }
+        JsonNode rootSchema = entryPointSchema(root, component);
+        String type = rootSchema.path("type").asText("");
         if (!"object".equals(type)) {
             throw new IllegalArgumentException(
                     "import supports a top-level object schema; got type=" + (type.isEmpty() ? "<none>" : type));
         }
-        Ctx ctx = new Ctx(root.path("$defs"), new ArrayDeque<>(), TranscodeReport.builder(), new ArrayList<>(), profile);
-        DocumentModelDraft.Builder b = DocumentModelDraft.named(identifier(root.path("title").asText(null)))
+        JsonNode defsPool = dialect.isOpenApi() ? root.path("components").path("schemas") : root.path("$defs");
+        Ctx ctx = new Ctx(root, dialect, defsPool, new ArrayDeque<>(), report, new ArrayList<>(), profile);
+        DocumentModelDraft.Builder b = DocumentModelDraft
+                .named(identifier(component != null ? component : rootSchema.path("title").asText(null)))
                 .locale(LOCALE);
         declareLeafTypedefs(b, ctx);
-        b.rootGroup(ROOT_GROUP, g -> populate(g, root, "/" + ROOT_GROUP, ctx));
+        b.rootGroup(ROOT_GROUP, g -> populate(g, rootSchema, "/" + ROOT_GROUP, ctx));
 
         String dmJson = b.build().toJson();
         dmJson = RuleSynthesis.apply(dmJson, ctx.ruleNeeds(), ctx.report());   // Tier A+ synthesized rules
-        if (root.has(Carriage.X_RULE) || root.has(Carriage.X_COMPUTATION)) {
+        if (rootSchema.has(Carriage.X_RULE) || rootSchema.has(Carriage.X_COMPUTATION)) {
             ObjectNode tree = (ObjectNode) parse(dmJson);     // restore carried rules/computations (Tier B/C)
-            Carriage.inject(tree, root, ctx.report());
+            Carriage.inject(tree, rootSchema, ctx.report());
             dmJson = tree.toString();
         }
         return new ImportResult(dmJson, ctx.report().build());
+    }
+
+    /** {@link Dialect#AUTO} → sniff the document: the OpenAPI {@code openapi:} version field, else JSON Schema. */
+    private static Dialect resolveDialect(Dialect requested, JsonNode root) {
+        if (requested != Dialect.AUTO) {
+            return requested;
+        }
+        String oas = root.path("openapi").asText("");
+        if (oas.startsWith("3.0")) {
+            return Dialect.OPENAPI_30;
+        }
+        if (oas.startsWith("3.1") || oas.startsWith("3.2")) {
+            return Dialect.OPENAPI_31;
+        }
+        return Dialect.JSON_SCHEMA;
+    }
+
+    /** The schema to import as the model root: a named {@code components/schemas} entry, or the file itself when
+     *  it is a bare schema. A multi-schema OpenAPI document with no {@code component} is refused with the list. */
+    private static JsonNode entryPointSchema(JsonNode root, String component) {
+        if (component != null && !component.isBlank()) {
+            JsonNode picked = root.path("components").path("schemas").path(component);
+            if (picked.isMissingNode()) {
+                throw new IllegalArgumentException("component '" + component + "' not found under components/schemas"
+                        + "; available: " + componentNames(root));
+            }
+            return picked;
+        }
+        if (root.has("type") || root.has("properties") || root.has("allOf") || root.has("$ref")) {
+            return root;   // a bare schema (incl. a single extracted OpenAPI Schema Object)
+        }
+        JsonNode schemas = root.path("components").path("schemas");
+        if (schemas.isObject() && !schemas.isEmpty()) {
+            throw new IllegalArgumentException("this is an OpenAPI document with " + schemas.size()
+                    + " component schemas but no component was selected; choose one of: " + componentNames(root)
+                    + " (the CLI flag is --component)");
+        }
+        return root;   // fall through to the type check, which reports the real shape
+    }
+
+    private static List<String> componentNames(JsonNode root) {
+        List<String> names = new ArrayList<>();
+        root.path("components").path("schemas").fieldNames().forEachRemaining(names::add);
+        return names;
     }
 
     /** A leaf {@code $def} (string/integer) becomes a reusable a12 typeDefinition, declared before the root group. */
@@ -184,8 +248,9 @@ public final class JsonSchemaImporter {
                                     boolean isRequired, String groupPath, Ctx ctx) {
         String path = groupPath + "/" + name;
         noteUnsupportedKeywords(name, schema, ctx);
+        boolean required = resolveNullable(name, schema, isRequired, ctx);   // OpenAPI 3.0 nullable:true ⇒ optional
         if (schema.has("$ref")) {
-            addRef(g, name, schema, isRequired, path, ctx);
+            addRef(g, name, schema, required, path, ctx);
             return;
         }
         if (schema.has("$dynamicRef")) {
@@ -195,7 +260,7 @@ public final class JsonSchemaImporter {
             return;
         }
         if (isObjectUnion(schema)) {
-            addUnion(g, name, unionVariants(schema), path, ctx);
+            addUnion(g, name, unionVariants(schema), path, ctx, explicitDiscriminator(schema, ctx));
             return;
         }
         if (hasUnionNode(schema)) {   // a oneOf/anyOf that is NOT all-object → a cross-kind union (§4c)
@@ -205,7 +270,7 @@ public final class JsonSchemaImporter {
             return;
         }
         if (schema.path("type").isArray()) {
-            addTypeUnion(g, name, schema, isRequired, groupPath, ctx);   // nullable X / cross-kind type array (§4c)
+            addTypeUnion(g, name, schema, required, groupPath, ctx);   // nullable X / cross-kind type array (§4c)
             return;
         }
         if (!schema.has("type") && schema.path("allOf").isArray()) {
@@ -233,17 +298,31 @@ public final class JsonSchemaImporter {
                 }
             }
             case "array" -> addArray(g, name, schema, path, ctx);
-            default -> addScalar(g, name, schema, isRequired, path, ctx);
+            default -> addScalar(g, name, schema, required, path, ctx);
         }
+    }
+
+    /** OpenAPI 3.0 {@code nullable:true} ⇒ the field is OPTIONAL (a12 has no present-but-null). A required+nullable
+     *  field loses its "must be present" half — reported, never silent. Other dialects: requiredness unchanged. */
+    private static boolean resolveNullable(String name, JsonNode schema, boolean isRequired, Ctx ctx) {
+        if (ctx.dialect().isOpenApi30() && schema.path("nullable").asBoolean(false)) {
+            if (isRequired) {
+                ctx.report().diagnostic("property '" + name + "' is nullable+required (OpenAPI 3.0) → imported as "
+                        + "OPTIONAL: a12 cannot express present-but-null. TO DO: enforce presence by hand if needed");
+            }
+            return false;
+        }
+        return isRequired;
     }
 
     private static void addRef(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
                                boolean isRequired, String path, Ctx ctx) {
         String defName = defName(schema);
-        JsonNode def = ctx.defs().path(defName);
+        JsonNode def = resolveRef(ctx, schema);
         if (def.isMissingNode()) {
-            ctx.report().omit(path, "$ref at '" + name + "' → unknown $def '" + defName + "' — omitted. "
-                    + "TO DO: check the schema's $defs, then add the field by hand");
+            ctx.report().omit(path, "$ref at '" + name + "' → unresolved '" + schema.path("$ref").asText() + "' — "
+                    + "omitted. TO DO: check the ref target (" + (ctx.dialect().isOpenApi() ? "components/schemas"
+                    : "$defs") + "), then add the field by hand");
             return;
         }
         switch (def.path("type").asText("")) {
@@ -624,7 +703,7 @@ public final class JsonSchemaImporter {
     }
 
     private static void addUnion(DocumentModelDraft.GroupBuilder g, String name, List<JsonNode> variants,
-                                 String path, Ctx ctx) {
+                                 String path, Ctx ctx, String explicitDiscriminator) {
         switch (ctx.profile().unionStrategy()) {
             case OMIT -> ctx.report().omit(path, "property '" + name + "' is a oneOf/anyOf union of object "
                     + "variants — omitted. TO DO: model the variants as a superset group by hand, or set the "
@@ -633,14 +712,19 @@ public final class JsonSchemaImporter {
                 g.group(name, sub -> populate(sub, variants.get(0), path, ctx));
                 ctx.report().structure(path, "group (first oneOf/anyOf variant only)");
             }
-            case SUPERSET_RULE -> buildSuperset(g, name, variants, path, ctx);
+            case SUPERSET_RULE -> buildSuperset(g, name, variants, path, ctx, explicitDiscriminator);
         }
+    }
+
+    /** The OpenAPI {@code discriminator.propertyName} on a union schema (OpenAPI dialects only), else null. */
+    private static String explicitDiscriminator(JsonNode schema, Ctx ctx) {
+        return ctx.dialect().isOpenApi() ? schema.path("discriminator").path("propertyName").asText(null) : null;
     }
 
     /** The superset: union every variant's fields (all optional), lift a discriminator to an enum + rules. */
     private static void buildSuperset(DocumentModelDraft.GroupBuilder g, String name, List<JsonNode> variants,
-                                      String path, Ctx ctx) {
-        Optional<String> discriminator = findDiscriminator(variants);
+                                      String path, Ctx ctx, String explicitDiscriminator) {
+        Optional<String> discriminator = findDiscriminator(variants, explicitDiscriminator);
         g.group(name, sub -> {
             Set<String> seen = new LinkedHashSet<>();
             discriminator.ifPresent(disc -> {
@@ -667,17 +751,23 @@ public final class JsonSchemaImporter {
         }
     }
 
-    /** A discriminator: a property present in every variant that each variant pins to a single value. */
-    private static Optional<String> findDiscriminator(List<JsonNode> variants) {
+    /** A discriminator: a property present in every variant that each variant pins to a single value. An explicit
+     *  OpenAPI {@code discriminator.propertyName} ({@code explicit}) is preferred when each variant pins it. */
+    private static Optional<String> findDiscriminator(List<JsonNode> variants, String explicit) {
+        if (explicit != null && !explicit.isBlank() && pinnedInEvery(variants, explicit)) {
+            return Optional.of(explicit);
+        }
         for (Iterator<Map.Entry<String, JsonNode>> it = variants.get(0).path("properties").fields(); it.hasNext(); ) {
             String candidate = it.next().getKey();
-            boolean pinnedInEvery = variants.stream()
-                    .allMatch(v -> singleValueOf(v.path("properties").path(candidate)).isPresent());
-            if (pinnedInEvery) {
+            if (pinnedInEvery(variants, candidate)) {
                 return Optional.of(candidate);
             }
         }
         return Optional.empty();
+    }
+
+    private static boolean pinnedInEvery(List<JsonNode> variants, String property) {
+        return variants.stream().allMatch(v -> singleValueOf(v.path("properties").path(property)).isPresent());
     }
 
     /** The single value a variant pins a property to: {@code const}, or a one-element {@code enum}. */
@@ -761,7 +851,7 @@ public final class JsonSchemaImporter {
                 ctx.report().structure(path, kind.name());
             }
             case "integer" -> {
-                addIntegerField(g, name, schema, isRequired);
+                addIntegerField(g, name, schema, isRequired, ctx);
                 ctx.report().structure(path, "NUMBER(integer, scale 0)");
                 collectStrictBounds(schema, path, ctx);
                 if (schema.has("const")) {
@@ -902,12 +992,35 @@ public final class JsonSchemaImporter {
 
     /** Strict bounds have no inclusive field-config home → collect them as Tier-A+ synthesized rules. */
     private static void collectStrictBounds(JsonNode schema, String path, Ctx ctx) {
-        if (schema.has("exclusiveMinimum")) {
-            ctx.ruleNeeds().add(new RuleSynthesis.ExclusiveBound(path, true, schema.get("exclusiveMinimum").asText()));
+        exclusiveBound(schema, true, ctx)
+                .ifPresent(v -> ctx.ruleNeeds().add(new RuleSynthesis.ExclusiveBound(path, true, v)));
+        exclusiveBound(schema, false, ctx)
+                .ifPresent(v -> ctx.ruleNeeds().add(new RuleSynthesis.ExclusiveBound(path, false, v)));
+    }
+
+    /** The strict-bound value, honoring the dialect's encoding: OpenAPI 3.0 uses a <em>boolean</em>
+     *  {@code exclusiveMinimum} flag that modifies {@code minimum}; JSON Schema / OpenAPI 3.1 use a
+     *  <em>numeric</em> {@code exclusiveMinimum}. Empty when there is no strict bound. */
+    private static Optional<String> exclusiveBound(JsonNode schema, boolean min, Ctx ctx) {
+        JsonNode ex = schema.path(min ? "exclusiveMinimum" : "exclusiveMaximum");
+        if (ctx.dialect().isOpenApi30()) {
+            String inc = min ? "minimum" : "maximum";
+            return ex.asBoolean(false) && schema.has(inc) ? Optional.of(schema.get(inc).asText()) : Optional.empty();
         }
-        if (schema.has("exclusiveMaximum")) {
-            ctx.ruleNeeds().add(new RuleSynthesis.ExclusiveBound(path, false, schema.get("exclusiveMaximum").asText()));
+        return ex.isNumber() ? Optional.of(ex.asText()) : Optional.empty();
+    }
+
+    /** The inclusive {@code minimum}/{@code maximum} value, suppressed when OpenAPI 3.0 marks it exclusive (then it
+     *  rides a strict-bound rule instead — {@link #exclusiveBound}). Empty when absent. */
+    private static Optional<String> inclusiveBound(JsonNode schema, boolean min, Ctx ctx) {
+        String inc = min ? "minimum" : "maximum";
+        if (!schema.has(inc)) {
+            return Optional.empty();
         }
+        if (ctx.dialect().isOpenApi30() && schema.path(min ? "exclusiveMinimum" : "exclusiveMaximum").asBoolean(false)) {
+            return Optional.empty();
+        }
+        return Optional.of(schema.get(inc).asText());
     }
 
     /** {@code dependentRequired} on an object → a conditional-requiredness rule per (trigger → dependent). */
@@ -961,19 +1074,16 @@ public final class JsonSchemaImporter {
         }
     }
 
-    /** An integer field (scale 0); {@code minimum}/{@code maximum} import to number value bounds. */
+    /** An integer field (scale 0); inclusive {@code minimum}/{@code maximum} import to number value bounds (an
+     *  OpenAPI-3.0 exclusive bound is suppressed here and rides a strict-bound rule instead — {@link #inclusiveBound}). */
     private static void addIntegerField(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
-                                        boolean isRequired) {
-        String minimum = schema.has("minimum") ? schema.get("minimum").asText() : null;
-        String maximum = schema.has("maximum") ? schema.get("maximum").asText() : null;
+                                        boolean isRequired, Ctx ctx) {
+        Optional<String> minimum = inclusiveBound(schema, true, ctx);
+        Optional<String> maximum = inclusiveBound(schema, false, ctx);
         g.numberField(name, n -> {
             n.fractionDigits(0);
-            if (minimum != null) {
-                n.min(minimum);
-            }
-            if (maximum != null) {
-                n.max(maximum);
-            }
+            minimum.ifPresent(n::min);
+            maximum.ifPresent(n::max);
             if (isRequired) {
                 n.required();
             }
@@ -984,6 +1094,13 @@ public final class JsonSchemaImporter {
         String ref = schema.path("$ref").asText("");
         int slash = ref.lastIndexOf('/');
         return slash >= 0 ? ref.substring(slash + 1) : ref;
+    }
+
+    /** Resolve a local {@code $ref} by JSON Pointer against the document root — handles both
+     *  {@code #/$defs/X} (JSON Schema) and {@code #/components/schemas/X} (OpenAPI). External refs are unsupported. */
+    private static JsonNode resolveRef(Ctx ctx, JsonNode schema) {
+        String ref = schema.path("$ref").asText("");
+        return ref.startsWith("#/") ? ctx.root().at(ref.substring(1)) : MissingNode.getInstance();
     }
 
     private static Set<String> requiredNames(JsonNode objectSchema) {
