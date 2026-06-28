@@ -117,9 +117,10 @@ final class RuleSynthesis {
     record UniqueItems(String groupPath) implements Need {}
 
     /** {@code contains}/{@code minContains}/{@code maxContains}: the repeatable group must have {@code ≥ bound}
-     *  ({@code min}) or {@code ≤ bound} (not {@code min}) rows whose {@code predicate} field equals its value —
-     *  a {@code Having}-filtered {@code NumberOfFilledFields} count over the row predicate (SCHEMAKIT-SPEC §4f). */
-    record ContainsCount(String groupPath, FieldValue predicate, boolean min, int bound) implements Need {}
+     *  ({@code min}) or {@code ≤ bound} (not {@code min}) rows matching ALL {@code predicates} (each a row
+     *  field = value) — a {@code Having}-filtered {@code NumberOfFilledFields} count over the conjunction
+     *  (SCHEMAKIT-SPEC §4f). */
+    record ContainsCount(String groupPath, List<FieldValue> predicates, boolean min, int bound) implements Need {}
 
     /** {@code not: {const}}: the field must NOT equal {@code value} (error fires when it does; string/number field). */
     record ForbiddenConst(String fieldPath, String value) implements Need {}
@@ -380,25 +381,35 @@ final class RuleSynthesis {
                                 + ec.condition().field() + " is not " + ec.condition().value() + ".")).build());
             }
             case ContainsCount cc -> {
-                String predPath = cc.groupPath() + "/" + cc.predicate().field();
-                Optional<Condition> pred = equalsValue(m, doc, predPath, cc.predicate().value());
-                if (pred.isEmpty()) {
-                    report.diagnostic("contains on '" + lastSegment(cc.groupPath()) + "' skipped — predicate field '"
-                            + cc.predicate().field() + "' is not a comparable kind (or wasn't imported)");
-                    yield Optional.empty();
+                List<Condition> preds = new ArrayList<>();
+                for (FieldValue fv : cc.predicates()) {
+                    Optional<Condition> p = equalsValue(m, doc, cc.groupPath() + "/" + fv.field(), fv.value());
+                    if (p.isEmpty()) {
+                        report.diagnostic("contains on '" + lastSegment(cc.groupPath()) + "' skipped — predicate field '"
+                                + fv.field() + "' is not a comparable kind (or wasn't imported)");
+                        yield Optional.empty();
+                    }
+                    preds.add(p.get());
+                }
+                Condition having = preds.get(0);
+                for (int i = 1; i < preds.size(); i++) {
+                    having = having.and(preds.get(i));
                 }
                 String row = lastSegment(cc.groupPath());
-                NumberExpr count = Dsl.numberOfFilledFields(
-                        m.flatten(cc.groupPath() + "*/" + cc.predicate().field()).having(pred.get()));
+                String anchor = cc.predicates().get(0).field();   // flatten on a predicate field; Having filters by all
+                NumberExpr count = Dsl.numberOfFilledFields(m.flatten(cc.groupPath() + "*/" + anchor).having(having));
                 Condition violation = cc.min() ? count.lt(cc.bound()) : count.gt(cc.bound());
-                String tag = sanitize(cc.predicate().value());
+                String tag = cc.predicates().stream().map(fv -> sanitize(fv.value())).collect(Collectors.joining());
+                String desc = cc.predicates().stream()
+                        .map(fv -> fv.field() + " = " + fv.value()).collect(Collectors.joining(" and "));
                 yield Optional.of(m.rule(m.group(parentGroup(cc.groupPath())))
-                        .name(row + (cc.min() ? "MinContains" : "MaxContains") + tag).errorField(m.field(predPath))
+                        .name(row + (cc.min() ? "MinContains" : "MaxContains") + tag)
+                        .errorField(m.field(cc.groupPath() + "/" + anchor))
                         .when(violation)
                         .code((cc.min() ? "MIN_CONTAINS_" : "MAX_CONTAINS_") + row.toUpperCase(Locale.ROOT)
                                 + "_" + tag.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
-                        .message(Dsl.en("At " + (cc.min() ? "least " : "most ") + cc.bound() + " " + row + " must have "
-                                + cc.predicate().field() + " = " + cc.predicate().value() + ".")).build());
+                        .message(Dsl.en("At " + (cc.min() ? "least " : "most ") + cc.bound() + " " + row
+                                + " must have " + desc + ".")).build());
             }
             case UniqueItems u -> {
                 List<FieldRef> keys = new ArrayList<>();
@@ -538,7 +549,8 @@ final class RuleSynthesis {
             case ElseConstrained ec -> "rule else-constraint(" + ec.condition().field() + "≠" + ec.condition().value()
                     + " → " + ec.constraint().requirement(ec.targetField()) + ")";
             case ContainsCount cc -> "rule " + (cc.min() ? "minContains(" : "maxContains(") + cc.bound() + " × "
-                    + lastSegment(cc.groupPath()) + "[" + cc.predicate().field() + "=" + cc.predicate().value() + "])";
+                    + lastSegment(cc.groupPath()) + "[" + cc.predicates().stream()
+                    .map(fv -> fv.field() + "=" + fv.value()).collect(Collectors.joining(",")) + "])";
             case UniqueItems u -> "rule uniqueItems(" + lastSegment(u.groupPath()) + ")";
             case ForbiddenConst f -> "rule not-const(" + lastSegment(f.fieldPath()) + " ≠ " + f.value() + ")";
             case ForbiddenEnum f -> "rule not-enum(" + lastSegment(f.fieldPath()) + " ∉ " + f.values() + ")";

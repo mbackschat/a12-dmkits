@@ -85,7 +85,7 @@ Both keep **artifact mode**: the transcode result (DM-JSON / JSON Schema) goes t
 | **Field config** | `minLength`/`maxLength`/`pattern`→string config; `minimum`/`maximum`→number bounds |
 | **Rules (direct)** | `required`→requiredness; `enum`→ENUMERATION; `uniqueItems`→`RepetitionNotUnique`/`FieldValuesNotUnique`; `pattern`→`PatternViolated` |
 | **Rules (composed), built** | constraints with no field-config home become a12 *rules* — `exclusiveMinimum`/`exclusiveMaximum`, `multipleOf`, `const`, `dependentRequired`, `oneOf`/`anyOf` discriminator, `uniqueItems`, `if {f=v [and …]} then/else {required}` (incl. **multi-property** `if`), **then/else value-constraints** (`g` must satisfy `const`/`enum`/`min`/`max`/`pattern` when the `if` holds, and the single-property `else`), `contains`/`minContains`/`maxContains` (simple predicate → a filtered-count rule), `not {const\|enum\|pattern\|minimum\|maximum\|minLength\|maxLength}`. **Each keyword's exact fire condition is tabulated in §4f.** |
-| **Rules — not yet built** (reported, not enforced) | the open *feasible* gaps — **multi-property else** value-constraints, complex `not` (`required`/nested/compound), a non-simple `contains` predicate — are tracked in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md) §1. *Not-feasible* constraints (`not {type}`, `minItems`, §4c) are permanently omitted — ledger §4. |
+| **Rules — not yet built** (reported, not enforced) | the open *feasible* gaps — **multi-property else** value-constraints, complex `not` (`required`/nested/compound), a `contains` predicate with a **non-single-valued** clause (a range / arbitrary item subschema) — are tracked in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md) §1. *Not-feasible* constraints (`not {type}`, `minItems`, §4c) are permanently omitted — ledger §4. |
 | **Carriage (export, a12↔a12)** | the full rule rides `x-a12-rule`, a computation `x-a12-computation`; `readOnly:true` marks a computed field |
 | **Two-tier validation** *(proposal §12.1)* | exported Tier-A keywords = field-local tier (any validator); `:interpreter` = full-rule tier |
 
@@ -162,8 +162,8 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | cross-kind `type:[X,Y]` · mixed `oneOf`/`anyOf` | reported | omitted (§4c) |
 | `unevaluatedProperties` / `unevaluatedItems` | structure imports; constraint reported — **not enforced** | omitted (§4c) |
 | `$dynamicRef` / `$dynamicAnchor` | reported | omitted (§4c) |
-| `contains`/`minContains`/`maxContains` (simple predicate) | a `Having`-filtered count rule (`≥`/`≤ N` matching rows) | rule (Tier A+) |
-| multi-property else **value**-constraints; complex `not` (`required`/nested); non-simple `contains` predicate | structure imports; keyword reported — **not yet mapped** ([`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md) §1) | omitted (feasible gap) |
+| `contains`/`minContains`/`maxContains` (single- or multi-property predicate) | a `Having`-filtered count rule (`≥`/`≤ N` matching rows) | rule (Tier A+) |
+| multi-property else **value**-constraints; complex `not` (`required`/nested); `contains` with a non-single-valued clause | structure imports; keyword reported — **not yet mapped** ([`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md) §1) | omitted (feasible gap) |
 | `not {type}` | structure imports; reported — **not feasible** (a12 field kind is fixed; no type-check operator to negate) | omitted (ledger §4) |
 
 ### Export — Document Model → JSON Schema
@@ -244,7 +244,7 @@ The keywords with no field-config home become real a12 **rules** (§4 "Rules (co
 | `dependentRequired: A → B` | `Filled(A) And Not Filled(B)` | `B` | `fieldFilled` + `fieldNotFilled` |
 | `oneOf`/`anyOf` discriminator (`disc = V` ⇒ `R` required) | `[disc] = V And Not Filled(R)` | `R` | `enum.is(V)`/`str.eq(V)` + `fieldNotFilled` |
 | `uniqueItems: true` | `RepetitionNotUnique(row fields …)` | first row field | `Dsl.repetitionNotUnique(…)` |
-| `contains {f=V}` + `minContains: N` | `NumberOfFilledFields(G*/f Having f=V) < N` | the `f` row field | `numberOfFilledFields(flatten("G*/f").having(eq))` (a `maxContains` peer uses `> M`) |
+| `contains {f=V[, g=W]}` + `minContains: N` | `NumberOfFilledFields(G*/f Having f=V [And g=W]) < N` | the `f` row field | `numberOfFilledFields(flatten("G*/f").having(eq [And eq]))` — a multi-property predicate ANDs the clauses; a `maxContains` peer uses `> M` |
 | `if {f = V} then {required:[D]}` | `[f] = V And Not Filled(D)` | `D` | `enum.is(V)`/`str.eq(V)` + `fieldNotFilled` |
 | `if {f = V} else {required:[E]}` | `Filled(f) And [f] ≠ V And Not Filled(E)` | `E` | `str.ne(V)`/`enum.isNot(V)` (guarded) |
 | `if {a = X, b = Y} then {required:[D]}` (multi-property) | `[a] = X And [b] = Y And Not Filled(D)` | `D` | conjunction of equals + `fieldNotFilled` (else of a conjunction is a disjunction → reported) |

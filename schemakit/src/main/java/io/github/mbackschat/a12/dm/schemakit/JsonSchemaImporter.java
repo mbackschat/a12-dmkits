@@ -671,11 +671,11 @@ public final class JsonSchemaImporter {
             return;
         }
         boolean objectArray = "object".equals(arraySchema.path("items").path("type").asText(""));
-        Optional<RuleSynthesis.FieldValue> predicate = containsPredicate(arraySchema.get("contains"), objectArray);
+        Optional<List<RuleSynthesis.FieldValue>> predicate = containsPredicate(arraySchema.get("contains"), objectArray);
         if (predicate.isEmpty()) {
             ctx.report().diagnostic("array '" + groupPath + "' has a 'contains' with a non-simple predicate — not "
-                    + "mapped (only contains {const} on a scalar array, or contains {properties:{f:{const}}} on an "
-                    + "object array); add the count rule by hand");
+                    + "mapped (only contains {const} on a scalar array, or contains {properties:{… : {const}}} of "
+                    + "single-valued props on an object array); add the count rule by hand");
             return;
         }
         int minContains = arraySchema.path("minContains").isInt() ? arraySchema.get("minContains").asInt() : 1;
@@ -688,18 +688,27 @@ public final class JsonSchemaImporter {
         }
     }
 
-    /** The {@code contains} predicate as a (row-relative field, value) pair, or empty when it is not a simple
-     *  single-value pin. Scalar arrays pin the row {@code value} field; object arrays pin one property. */
-    private static Optional<RuleSynthesis.FieldValue> containsPredicate(JsonNode contains, boolean objectArray) {
+    /** The {@code contains} predicate as a conjunction of (row-relative field, value) pairs, or empty when it is
+     *  not a simple single-value pin. A scalar array pins the row {@code value} field; an object array pins one or
+     *  more properties (ALL must be single-valued, else the predicate is non-simple → reported). */
+    private static Optional<List<RuleSynthesis.FieldValue>> containsPredicate(JsonNode contains, boolean objectArray) {
         if (objectArray) {
             JsonNode props = contains.path("properties");
-            if (props.isObject() && props.size() == 1) {
-                Map.Entry<String, JsonNode> e = props.fields().next();
-                return singleValueOf(e.getValue()).map(v -> new RuleSynthesis.FieldValue(e.getKey(), v));
+            if (!props.isObject() || props.isEmpty()) {
+                return Optional.empty();
             }
-            return Optional.empty();
+            List<RuleSynthesis.FieldValue> preds = new ArrayList<>();
+            for (Iterator<Map.Entry<String, JsonNode>> it = props.fields(); it.hasNext(); ) {
+                Map.Entry<String, JsonNode> e = it.next();
+                Optional<String> v = singleValueOf(e.getValue());
+                if (v.isEmpty()) {
+                    return Optional.empty();   // a non-single-value property (e.g. a range) → non-simple predicate
+                }
+                preds.add(new RuleSynthesis.FieldValue(e.getKey(), v.get()));
+            }
+            return Optional.of(preds);
         }
-        return singleValueOf(contains).map(v -> new RuleSynthesis.FieldValue(ROW_FIELD, v));
+        return singleValueOf(contains).map(v -> List.of(new RuleSynthesis.FieldValue(ROW_FIELD, v)));
     }
 
     /**
