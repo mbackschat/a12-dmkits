@@ -130,13 +130,35 @@ public final class JsonSchemaImporter {
             addRef(g, name, schema, isRequired, path, ctx);
             return;
         }
+        if (schema.has("$dynamicRef")) {
+            ctx.report().omit(path, "property '" + name + "' uses $dynamicRef '" + schema.get("$dynamicRef").asText()
+                    + "' — a runtime-polymorphic reference with no static a12 form (SCHEMAKIT-SPEC §4c). TO DO: "
+                    + "add the resolved structure by hand");
+            return;
+        }
         if (isObjectUnion(schema)) {
             addUnion(g, name, unionVariants(schema), path, ctx);
+            return;
+        }
+        if (hasUnionNode(schema)) {   // a oneOf/anyOf that is NOT all-object → a cross-kind union (§4c)
+            ctx.report().omit(path, "property '" + name + "' is a oneOf/anyOf of mixed or non-object kinds — "
+                    + "omitted: a12 has no cross-kind sum type (SCHEMAKIT-SPEC §4c). TO DO: model it as separate "
+                    + "fields, or pick the primary variant by hand");
+            return;
+        }
+        if (schema.path("type").isArray()) {
+            addTypeUnion(g, name, schema, isRequired, groupPath, ctx);   // nullable X / cross-kind type array (§4c)
             return;
         }
         if (!schema.has("type") && schema.path("allOf").isArray()) {
             addAllOfGroup(g, name, schema, path, ctx);   // a bare allOf (no type) → a merged group
             return;
+        }
+        if (schema.has("unevaluatedProperties") || schema.has("unevaluatedItems")) {
+            ctx.report().diagnostic("property '" + name + "' uses unevaluatedProperties/unevaluatedItems — an "
+                    + "applicator-dependent dynamic closure with no static a12 form (SCHEMAKIT-SPEC §4c); the "
+                    + "declared structure imports but that constraint is NOT enforced. TO DO: enforce it by hand");
+            // fall through: the object's declared structure still imports
         }
         switch (schema.path("type").asText("")) {
             case "object" -> {
@@ -178,10 +200,11 @@ public final class JsonSchemaImporter {
 
     private static void inlineObjectDef(DocumentModelDraft.GroupBuilder g, String name, String defName,
                                         JsonNode def, String path, Ctx ctx) {
-        if (ctx.inlining().contains(defName)) {
-            ctx.report().omit(path, "recursive $ref at '" + name + "' → '" + defName + "' — omitted: a12 includes "
-                    + "expand, so infinite recursion has no static form. TO DO: add the recursive structure "
-                    + "by hand to the depth you need, or set a bounded recursionDepth in the MappingProfile");
+        long depth = ctx.inlining().stream().filter(defName::equals).count();
+        if (depth > ctx.profile().recursionDepth()) {   // 0 = expand once then stop; N = N extra recursive levels
+            ctx.report().omit(path, "recursive $ref at '" + name + "' → '" + defName + "' — omitted at depth "
+                    + depth + ": a12 includes expand, so infinite recursion has no static form (SCHEMAKIT-SPEC §4c). "
+                    + "TO DO: raise the MappingProfile recursionDepth, or add the deeper structure by hand");
             return;
         }
         ctx.inlining().push(defName);
@@ -427,6 +450,38 @@ public final class JsonSchemaImporter {
     private static JsonNode unionNode(JsonNode schema) {
         JsonNode oneOf = schema.path("oneOf");
         return oneOf.isArray() ? oneOf : schema.path("anyOf");
+    }
+
+    /** Any {@code oneOf}/{@code anyOf} present (object or not) — used to flag a cross-kind union after the
+     *  all-object case ({@link #isObjectUnion}) has been handled. */
+    private static boolean hasUnionNode(JsonNode schema) {
+        return (schema.path("oneOf").isArray() && !schema.path("oneOf").isEmpty())
+                || (schema.path("anyOf").isArray() && !schema.path("anyOf").isEmpty());
+    }
+
+    /**
+     * A {@code type} array (SCHEMAKIT-SPEC §4c). A <em>nullable</em> {@code [X, "null"]} DOES map → an
+     * optional {@code X} field (the value may be absent). A cross-kind {@code [X, Y, …]} has no a12 form (a
+     * field has one kind) → omitted with a corrective to-do. Omit, never block.
+     */
+    private static void addTypeUnion(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
+                                     boolean isRequired, String groupPath, Ctx ctx) {
+        List<String> kinds = new ArrayList<>();
+        for (JsonNode t : schema.get("type")) {
+            if (!"null".equals(t.asText())) {
+                kinds.add(t.asText());
+            }
+        }
+        String path = groupPath + "/" + name;
+        if (kinds.size() == 1) {   // nullable X → optional X (the §4c exception that DOES map)
+            ObjectNode single = (ObjectNode) schema.deepCopy();
+            single.put("type", kinds.get(0));
+            addProperty(g, name, single, false, groupPath, ctx);   // nullable ⇒ optional, regardless of `required`
+            return;
+        }
+        ctx.report().omit(path, "property '" + name + "' has a cross-kind type union " + kinds + " — omitted: an "
+                + "a12 field has exactly one kind (SCHEMAKIT-SPEC §4c). TO DO: split it into separate fields, or "
+                + "pick the primary kind by hand");
     }
 
     /** A {@code oneOf}/{@code anyOf} whose variants are ALL objects — the only union shape a12 can superset. */

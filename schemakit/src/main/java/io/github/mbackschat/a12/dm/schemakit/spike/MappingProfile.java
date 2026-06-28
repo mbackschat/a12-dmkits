@@ -85,4 +85,9 @@ public record MappingProfile(
         return new MappingProfile(numberScale, defaultScale, arrayOfScalar, mapStrategy, unionStrategy,
                 strategy, booleanKind, enumLabels, recursionDepth);
     }
+
+    public MappingProfile withRecursionDepth(int depth) {
+        return new MappingProfile(numberScale, defaultScale, arrayOfScalar, mapStrategy, unionStrategy,
+                format, booleanKind, enumLabels, depth);
+    }
 }
