@@ -43,47 +43,51 @@ dmtool -m /tmp/order.dm.json model check | jq -c '{ok, valid}'
 {"ok":true,"valid":true}
 ```
 
-## The transcoding report — omissions are loud, never silent
+## Best-effort by default — import everything, flag every guess
 
-Some JSON Schema features have no faithful a12 form — a bare `number` (no `multipleOf`) has no a12 scale, so it is **omitted by default** rather than silently coerced to an integer. The omission is reported on **stderr** with a corrective to-do (the model still imports — import never blocks):
-
-```bash
-echo '{ "title": "Pricing", "type": "object", "properties": { "price": { "type": "number" } } }' > /tmp/pricing.schema.json
-dmtool model import-jsonschema --schema /tmp/pricing.schema.json 2>&1 1>/dev/null
-```
-
-```output
-transcoding report: 0 mapped, 1 omitted, 1 note(s)
-  - property 'price' is type 'number' (unbounded decimal) — omitted: an a12 number is always scale-bounded. TO DO: add the field by hand with a chosen scale, or set the MappingProfile numberScale to DEFAULT_SCALE / INTEGER
-```
-
-For a program (or an LLM agent) the omissions are the **to-do list** — what to complete by hand — so they are also **machine-readable**: with `-o`, the same report rides the write-envelope's `changed.report` (counts + the `notes` to-dos), in the structured channel an agent reads from stdout. No scraping stderr:
+Import is **best-effort**: it maps as much as possible rather than dropping what it's unsure of, and *flags every guess*. This matters most for structural containers — an array with no `maxItems` is **unbounded**, but omitting it would prune its whole nested subtree, so the default caps it and **reaches in**. Take a schema with a bare `number` (no a12 scale) and an unbounded `array` of objects:
 
 ```bash
-dmtool model import-jsonschema --schema /tmp/pricing.schema.json -o /tmp/pricing-raw.dm.json 2>/dev/null \
-  | jq -c '.changed.report'
-```
-
-```output
-{"mapped":0,"omitted":1,"notes":["property 'price' is type 'number' (unbounded decimal) — omitted: an a12 number is always scale-bounded. TO DO: add the field by hand with a chosen scale, or set the MappingProfile numberScale to DEFAULT_SCALE / INTEGER"]}
-```
-
-## Tuning the mapping — the MappingProfile flags
-
-The choice-driven decisions are flags. Re-run the same schema with `--number-scale DEFAULT_SCALE` and the bare `number` now imports as a scale-2 NUMBER:
-
-```bash
-dmtool model import-jsonschema --schema /tmp/pricing.schema.json --number-scale DEFAULT_SCALE --default-scale 2 -o /tmp/pricing.dm.json 2>/dev/null \
-  | jq -c '{outcome}'
-dmtool -m /tmp/pricing.dm.json model describe | jq -c '.data.fields[] | {path, kind}'
+echo '{ "title": "Catalog", "type": "object", "properties": {
+        "price": { "type": "number" },
+        "tags":  { "type": "array", "items": { "type": "object", "properties": { "label": { "type": "string" } } } } } }' \
+  > /tmp/catalog.schema.json
+dmtool model import-jsonschema --schema /tmp/catalog.schema.json -o /tmp/catalog.dm.json 2>/dev/null | jq -c '{outcome}'
+dmtool -m /tmp/catalog.dm.json model describe | jq -c '.data.fields[] | {path, kind}'
 ```
 
 ```output
 {"outcome":"applied"}
 {"path":"/Root/price","kind":"NUMBER"}
+{"path":"/Root/tags/label","kind":"STRING"}
 ```
 
-→ Other flags tune the rest: `--array-of-scalar`, `--map`, `--union`, `--format`, `--boolean`, `--recursion-depth` (see SCHEMAKIT-SPEC §4b).
+→ The number imported (at a default scale), and the unbounded array imported **capped** — so its nested `label` field was *reached* instead of the whole `tags` subtree being lost. Neither guess is silent; both ride the **stderr** report:
+
+```bash
+dmtool model import-jsonschema --schema /tmp/catalog.schema.json 2>&1 1>/dev/null
+```
+
+```output
+transcoding report: 3 mapped, 0 omitted, 2 note(s)
+  - number 'price' has no scale in the schema — imported at the default scale 2 (a guess; set --default-scale, --number-scale, or the field's scale by hand if a different precision is needed)
+  - 'tags' has no maxItems — capped at the default 1000 rows (a chosen bound, not from the schema); set maxItems, --default-repeat-cap, or --strict
+```
+
+## --strict — omit everything uncertain (the conservative stance)
+
+The opposite stance is one flag. `--strict` omits everything it would have guessed — and because the omissions are an agent's **to-do list**, they're machine-readable in the `-o` envelope's `changed.report` (not only stderr):
+
+```bash
+dmtool model import-jsonschema --schema /tmp/catalog.schema.json --strict -o /tmp/catalog-strict.dm.json 2>/dev/null \
+  | jq -c '.changed.report'
+```
+
+```output
+{"mapped":0,"omitted":2,"notes":["property 'price' is type 'number' (unbounded decimal) — omitted: an a12 number is always scale-bounded. TO DO: add the field by hand with a chosen scale, or set the MappingProfile numberScale to DEFAULT_SCALE / INTEGER","array 'tags' has no maxItems and no default cap — omitted: a12 group repeatability is a bounded max ≥ 2. TO DO: set maxItems, raise --default-repeat-cap, or add by hand"]}
+```
+
+→ Between the two extremes, per-decision flags tune each choice (`--number-scale`, `--array-of-scalar`, `--default-repeat-cap`, `--union`, `--format`, …) — each value's *implication* is in `dmtool model import-jsonschema --help` and `manifest` (see SCHEMAKIT-SPEC §4b).
 
 ## export-jsonschema — model → JSON Schema (and where it loses fidelity)
 

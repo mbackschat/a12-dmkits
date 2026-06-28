@@ -77,7 +77,7 @@ class RefAndDefsShapeTest {
     }
 
     @Test
-    void recursiveRefIsOmittedNotExpanded() {
+    void recursiveRefExpandsOneLevelByDefaultThenStops() {
         String recursive = """
                 {
                   "type": "object",
@@ -98,14 +98,15 @@ class RefAndDefsShapeTest {
         JsonSchemaImporter.ImportResult imported = new JsonSchemaImporter().importSchema(recursive);
 
         ModelDocument doc = ModelDocument.read(imported.dmJson());
-        // the non-recursive part imports …
+        // best-effort: the recursion expands one level by default (root + root/child) …
         assertEquals(Optional.of("STRING"), doc.fieldKind("/Root/root/value"));
-        // … the recursive child is omitted (not infinitely expanded), and the model still loads — never blocks
-        assertEquals(Optional.empty(), doc.fieldKind("/Root/root/child/value"));
+        assertEquals(Optional.of("STRING"), doc.fieldKind("/Root/root/child/value"), "one level expands by default");
+        // … then stops (not infinitely expanded), and the deeper recursion is reported — never blocks
+        assertEquals(Optional.empty(), doc.fieldKind("/Root/root/child/child/value"));
         assertKernelAccepts(imported.dmJson());
         assertTrue(imported.report().dispositions().stream()
                         .anyMatch(d -> d.tier() == TranscodeReport.Tier.OMITTED),
-                "a recursive $ref is omitted (skipped + reported), not expanded");
+                "the recursion past the depth is omitted (skipped + reported)");
         assertTrue(imported.report().diagnostics().stream().anyMatch(d -> d.contains("recursive")));
     }
 }

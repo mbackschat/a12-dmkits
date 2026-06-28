@@ -91,22 +91,30 @@ class ResidualOmissionsTest {
             """;
 
     @Test
-    void aRecursiveRefIsOmittedByDefault() {
+    void aRecursiveRefExpandsOneLevelByDefault() {
         JsonSchemaImporter.ImportResult r = imp(RECURSIVE);
         ModelDocument doc = ModelDocument.read(r.dmJson());
-        assertEquals(Optional.of("STRING"), doc.fieldKind("/Root/root/value"), "one level expands");
-        assertFalse(doc.groupPaths().contains("/Root/root/child"), "the recursion is omitted by default");
+        assertEquals(Optional.of("STRING"), doc.fieldKind("/Root/root/value"), "level 0");
+        assertEquals(Optional.of("STRING"), doc.fieldKind("/Root/root/child/value"), "level 1 expands by default");
+        assertFalse(doc.groupPaths().contains("/Root/root/child/child"), "but no deeper than the default depth 1");
         assertTrue(r.report().diagnostics().stream().anyMatch(d -> d.contains("recursive")));
     }
 
     @Test
+    void strictOmitsTheRecursionEntirely() {
+        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema(RECURSIVE, MappingProfile.strict());
+        ModelDocument doc = ModelDocument.read(r.dmJson());
+        assertEquals(Optional.of("STRING"), doc.fieldKind("/Root/root/value"), "the root still imports");
+        assertFalse(doc.groupPaths().contains("/Root/root/child"), "--strict omits the recursion (depth 0)");
+    }
+
+    @Test
     void boundedRecursionExpandsToTheConfiguredDepth() {
-        MappingProfile p = MappingProfile.defaults().withRecursionDepth(1);
+        MappingProfile p = MappingProfile.defaults().withRecursionDepth(2);
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema(RECURSIVE, p);
         assertKernelAccepts(r.dmJson());
         ModelDocument doc = ModelDocument.read(r.dmJson());
-        assertEquals(Optional.of("STRING"), doc.fieldKind("/Root/root/value"));
-        assertEquals(Optional.of("STRING"), doc.fieldKind("/Root/root/child/value"), "one extra level expands");
-        assertFalse(doc.groupPaths().contains("/Root/root/child/child"), "but no deeper than recursionDepth");
+        assertEquals(Optional.of("STRING"), doc.fieldKind("/Root/root/child/child/value"), "two extra levels expand");
+        assertFalse(doc.groupPaths().contains("/Root/root/child/child/child"), "but no deeper than recursionDepth");
     }
 }

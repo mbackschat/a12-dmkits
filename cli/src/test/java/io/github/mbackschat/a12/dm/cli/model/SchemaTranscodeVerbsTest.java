@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli.model;
 import io.github.mbackschat.a12.dm.cli.CliTestSupport;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
@@ -60,18 +61,22 @@ class SchemaTranscodeVerbsTest {
         assertTrue(env.path("written").asBoolean(), () -> "written:true: " + res.out());
     }
 
+    private static final String NAME_AND_PRICE = """
+            { "title": "Pricing", "type": "object",
+              "properties": { "name": { "type": "string" }, "price": { "type": "number" } } }
+            """;
+
     @Test
     void theWriteEnvelopeCarriesTheStructuredReportForAnAgent(@TempDir Path dir) throws Exception {
         // an agent's natural path is -o (a file it can then -m edit) + reading stdout; the omissions it must
-        // act on must be MACHINE-READABLE there, not only prose on stderr (the agent-usage reflection).
+        // act on must be MACHINE-READABLE there, not only prose on stderr (the agent-usage reflection). --strict
+        // makes the bare number a genuine omission to carry.
         Path schema = dir.resolve("price.schema.json");
-        Files.writeString(schema, """
-                { "title": "Pricing", "type": "object", "properties": { "price": { "type": "number" } } }
-                """);   // a bare number → one omission the agent must complete by hand
+        Files.writeString(schema, NAME_AND_PRICE);
         Path model = dir.resolve("Pricing.dm.json");
 
         CliTestSupport.Result res = CliTestSupport.run(
-                "model", "import-jsonschema", "--schema", schema.toString(), "-o", model.toString());
+                "model", "import-jsonschema", "--schema", schema.toString(), "--strict", "-o", model.toString());
         assertEquals(0, res.code(), res::err);
         JsonNode report = M.readTree(res.out()).path("changed").path("report");
         assertEquals(1, report.path("omitted").asInt(), () -> "the envelope reports the omission count: " + res.out());
@@ -82,33 +87,48 @@ class SchemaTranscodeVerbsTest {
     }
 
     @Test
-    void importReportsAnOmissionOnStderr(@TempDir Path dir) throws Exception {
+    void bestEffortFlagsTheGuessedScaleOnStderr(@TempDir Path dir) throws Exception {
         Path schema = dir.resolve("price.schema.json");
-        Files.writeString(schema, """
-                { "type": "object", "properties": { "price": { "type": "number" } } }
-                """);   // a bare `number` is omitted by default (no a12 scale) — must be reported, not silent
+        Files.writeString(schema, NAME_AND_PRICE);   // a bare number imports at a guessed scale by default
 
         CliTestSupport.Result res = CliTestSupport.run("model", "import-jsonschema", "--schema", schema.toString());
         assertEquals(0, res.code(), res::err);
-        assertTrue(res.err().contains("number"), () -> "the omission rides the stderr report: " + res.err());
+        assertTrue(res.out().contains("price"), "best-effort imports the number");
+        assertTrue(res.err().contains("scale"), () -> "the guessed scale is flagged on stderr, not silent: " + res.err());
     }
 
     @Test
-    void aProfileFlagChangesTheImportOutcome(@TempDir Path dir) throws Exception {
+    void strictOmitsWhatTheDefaultImports(@TempDir Path dir) throws Exception {
         Path schema = dir.resolve("price.schema.json");
-        Files.writeString(schema, """
-                { "title": "Pricing", "type": "object", "properties": { "price": { "type": "number" } } }
-                """);
+        Files.writeString(schema, NAME_AND_PRICE);
 
-        CliTestSupport.Result res = CliTestSupport.run("model", "import-jsonschema", "--schema", schema.toString(),
-                "--number-scale", "DEFAULT_SCALE", "--default-scale", "2");
+        CliTestSupport.Result dflt = CliTestSupport.run("model", "import-jsonschema", "--schema", schema.toString());
+        assertTrue(dflt.out().contains("price"), () -> "default best-effort imports the number: " + dflt.out());
+
+        CliTestSupport.Result strict = CliTestSupport.run(
+                "model", "import-jsonschema", "--schema", schema.toString(), "--strict");
+        assertEquals(0, strict.code(), strict::err);
+        assertFalse(strict.out().contains("price"), () -> "--strict omits the bare number: " + strict.out());
+        assertTrue(strict.out().contains("name"), "the mappable sibling still imports under --strict");
+    }
+
+    @Test
+    void theDefaultRepeatCapImportsAnUnboundedArraySoNestedStructureIsReached(@TempDir Path dir) throws Exception {
+        Path schema = dir.resolve("rows.schema.json");
+        Files.writeString(schema, """
+                { "title": "Rows", "type": "object", "properties": {
+                    "rows": { "type": "array",
+                              "items": { "type": "object", "properties": { "v": { "type": "string" } } } } } }
+                """);   // no maxItems — best-effort caps it (default 1000) so the nested `v` field is reached
+        Path model = dir.resolve("Rows.dm.json");
+
+        CliTestSupport.Result res = CliTestSupport.run(
+                "model", "import-jsonschema", "--schema", schema.toString(), "-o", model.toString());
         assertEquals(0, res.code(), res::err);
-        // now the bare number IS imported (default-scale 2) — the field exists, and the model is kernel-valid
-        Path model = dir.resolve("Pricing.dm.json");
-        Files.writeString(model, res.out());
-        CliTestSupport.Result checked = CliTestSupport.run("-m", model.toString(), "model", "check");
-        assertEquals(0, checked.code(), checked::err);
-        assertTrue(res.out().contains("price"), () -> "DEFAULT_SCALE imports the number field: " + res.out());
+        CliTestSupport.Result describe = CliTestSupport.run("-m", model.toString(), "model", "describe");
+        assertEquals(0, describe.code(), describe::err);
+        assertTrue(describe.out().contains("/Root/rows/v"),
+                () -> "the unbounded array imported (capped) and its nested field was reached: " + describe.out());
     }
 
     @Test

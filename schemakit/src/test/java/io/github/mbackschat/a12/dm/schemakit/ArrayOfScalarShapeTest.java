@@ -44,10 +44,19 @@ class ArrayOfScalarShapeTest {
             """;
 
     @Test
-    void defaultProfileOmitsAScalarArray() {
+    void defaultProfileImportsAScalarArrayAsRepeatableSingle() {
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema(STRING_ARRAY);
-        assertFalse(ModelDocument.read(r.dmJson()).groupPaths().contains("/Root/tags"), "default OMIT: no group");
-        assertTrue(omitted(r, "/Root/tags"), "default OMIT records a corrective to-do");
+        assertKernelAccepts(r.dmJson());
+        ModelDocument doc = ModelDocument.read(r.dmJson());
+        assertTrue(doc.groupPaths().contains("/Root/tags"), "best-effort default imports the scalar array");
+        assertEquals(Optional.of("STRING"), doc.fieldKind("/Root/tags/value"));
+    }
+
+    @Test
+    void strictProfileOmitsAScalarArray() {
+        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema(STRING_ARRAY, MappingProfile.strict());
+        assertFalse(ModelDocument.read(r.dmJson()).groupPaths().contains("/Root/tags"), "--strict omits it + to-do");
+        assertTrue(omitted(r, "/Root/tags"));
         assertKernelAccepts(r.dmJson());
     }
 
@@ -102,12 +111,22 @@ class ArrayOfScalarShapeTest {
     }
 
     @Test
-    void aScalarArrayWithoutMaxItemsIsOmittedEvenWithAStrategy() {
-        MappingProfile p = MappingProfile.defaults().withArrayOfScalar(MappingProfile.ArrayOfScalar.REPEATABLE_SINGLE);
+    void aScalarArrayWithoutMaxItemsUsesTheDefaultRepeatCap() {
+        // best-effort: an unbounded scalar array still imports (capped at the default), so structure isn't lost
+        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema(STRING_ARRAY_NO_MAX);
+        assertKernelAccepts(r.dmJson());
+        ModelDocument doc = ModelDocument.read(r.dmJson());
+        assertTrue(doc.groupPaths().contains("/Root/tags"));
+        assertEquals(1000, doc.maxRepetitions("/Root/tags"), "the default repeat cap bounds it");
+    }
+
+    @Test
+    void anUnboundedScalarArrayIsOmittedWithNoCap() {
+        MappingProfile p = MappingProfile.defaults().withDefaultRepeatCap(0);
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema(STRING_ARRAY_NO_MAX, p);
 
         assertFalse(ModelDocument.read(r.dmJson()).groupPaths().contains("/Root/tags"),
-                "no maxItems ≥ 2 — an a12 repeatable group needs a bounded max, so it is omitted");
+                "no maxItems and --default-repeat-cap 0 — an a12 repeatable group needs a bounded max, so it is omitted");
         assertTrue(omitted(r, "/Root/tags"));
         assertKernelAccepts(r.dmJson());
     }

@@ -63,12 +63,12 @@ class FlatObjectRoundTripTest {
     }
 
     /**
-     * JSON {@code number} has no faithful a12 target (an a12 number is always scale-bounded, default 0 =
-     * integer). The transcoder must REPORT that, never silently turn a decimal into an integer — the
-     * never-silent-degrade discipline (SCHEMAKIT-SPEC §4).
+     * JSON {@code number} has no scale signal (an a12 number is always scale-bounded). The best-effort default
+     * imports it at a default scale rather than dropping it — and the scale is a GUESS, so it is flagged in
+     * the report (never silent; SCHEMAKIT-SPEC §4b). {@code --number-scale OMIT} / {@code --strict} drops it.
      */
     @Test
-    void unboundedNumberIsReportedNotSilentlyMismapped() {
+    void unboundedNumberIsImportedAtTheDefaultScaleAndFlagged() {
         String withNumber = """
                 {
                   "type": "object",
@@ -78,14 +78,16 @@ class FlatObjectRoundTripTest {
         JsonSchemaImporter.ImportResult imported = new JsonSchemaImporter().importSchema(withNumber);
 
         ModelDocument doc = ModelDocument.read(imported.dmJson());
-        assertEquals(Optional.empty(), doc.fieldKind("/Root/unitPrice"));
-        assertEquals(1, imported.report().diagnostics().size());
-        assertEquals(TranscodeReport.Tier.OMITTED, imported.report().dispositions().get(0).tier());
+        assertEquals(Optional.of("NUMBER"), doc.fieldKind("/Root/unitPrice"), "best-effort imports it");
+        assertEquals(2, doc.fieldConfig("/Root/unitPrice").orElseThrow().findValue("maxFractionalDigits").asInt());
+        assertTrue(imported.report().diagnostics().stream().anyMatch(d -> d.contains("scale")),
+                () -> "the guessed scale is flagged, not silent: " + imported.report().diagnostics());
     }
 
     /**
-     * The omit-never-block policy (SCHEMAKIT-SPEC §1): an unmappable element does NOT abort the import — the
-     * mappable siblings still import into a kernel-valid skeleton, and the omission is a corrective to-do.
+     * The omit-never-block policy (SCHEMAKIT-SPEC §4a): an unmappable element does NOT abort the import — the
+     * mappable siblings still import into a kernel-valid skeleton, and the omission is a corrective to-do. The
+     * omitted sibling here is a cross-kind type union (no a12 form even best-effort — §4c).
      */
     @Test
     void importNeverBlocksAMappableSiblingSurvivesAnOmission() {
@@ -94,7 +96,7 @@ class FlatObjectRoundTripTest {
                   "type": "object",
                   "properties": {
                     "name":   { "type": "string" },
-                    "price":  { "type": "number" },
+                    "weird":  { "type": ["string", "object"] },
                     "active": { "type": "boolean" }
                   },
                   "required": ["name"]
@@ -102,11 +104,11 @@ class FlatObjectRoundTripTest {
                 """;
         JsonSchemaImporter.ImportResult imported = new JsonSchemaImporter().importSchema(mixed);
 
-        // the mappable fields import, the model is kernel-valid — import did not block on the omitted `price`
+        // the mappable fields import, the model is kernel-valid — import did not block on the omitted union
         ModelDocument doc = ModelDocument.read(imported.dmJson());
         assertEquals(Optional.of("STRING"), doc.fieldKind("/Root/name"));
         assertEquals(Optional.of("BOOLEAN"), doc.fieldKind("/Root/active"));
-        assertEquals(Optional.empty(), doc.fieldKind("/Root/price"));
+        assertEquals(Optional.empty(), doc.fieldKind("/Root/weird"), "the cross-kind union has no a12 form");
         assertKernelAccepts(imported.dmJson());
         // the omission is a recorded, corrective to-do
         assertTrue(imported.report().diagnostics().stream().anyMatch(d -> d.contains("TO DO")),

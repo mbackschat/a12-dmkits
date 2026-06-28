@@ -114,7 +114,7 @@ dmtool model import-jsonschema --schema order.schema.json > order.dm.json   # JS
 dmtool -m order.dm.json model export-jsonschema > order.schema.json         # model → JSON Schema (best-effort)
 ```
 
-Import aims for **total coverage** — every JSON Schema feature maps to a12 structure or rules, or is *omitted with a corrective to-do* on stderr (never silent, never blocked); choice-driven mappings are tunable (`--array-of-scalar`, `--union`, `--number-scale`, …). The asymmetry (import maps richly; export is best-effort) is tabulated in [docs/SCHEMAKIT-SPEC.md §4d](docs/SCHEMAKIT-SPEC.md).
+Import is **best-effort by default** — it maps as much as possible (even unbounded arrays and recursive `$ref`s, so nested structure isn't lost) and *flags every guess* in the stderr report; nothing is silent or blocked. `--strict` flips to omit-everything-uncertain, and per-decision flags (`--array-of-scalar`, `--union`, `--number-scale`, `--default-repeat-cap`, …) tune each choice. The asymmetry (import maps richly; export is best-effort) is tabulated in [docs/SCHEMAKIT-SPEC.md §4d](docs/SCHEMAKIT-SPEC.md).
 
 ### Read & understand a model
 

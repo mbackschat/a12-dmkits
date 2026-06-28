@@ -1,15 +1,16 @@
 package io.github.mbackschat.a12.dm.schemakit;
 
 /**
- * The customizable import decisions (SCHEMAKIT-SPEC §4b; proposal §5/§9) — a value object of named,
- * defaulted strategies for the choice-driven mappings. {@link #defaults()} carries the agreed defaults;
- * a consumer overrides any single decision via {@code with…}. (CLI flags build one.) Each strategy is an
- * enum so illegal states are unrepresentable.
+ * The customizable import decisions (SCHEMAKIT-SPEC §4b) — a value object of named, defaulted strategies for
+ * the choice-driven mappings. Each strategy is an enum so illegal states are unrepresentable.
  *
- * <p>Decisions consulted today: {@link #numberScale}, {@link #booleanKind}, {@link #arrayOfScalar},
- * {@link #mapStrategy}, {@link #unionStrategy}, {@link #format}. {@link #recursionDepth} (bounded expansion
- * of a recursive {@code $ref}) is declared here and wired by its own increment (task #10); {@link #enumLabels}
- * is consulted where a JSON Schema carries no label source.
+ * <p><b>The default is best-effort: import as much as possible, flag every guess.</b> {@link #defaults()}
+ * maximizes coverage — a bare {@code number} gets a default scale, a scalar array becomes a repeatable group,
+ * an unbounded array/map gets a fallback row cap, a recursive {@code $ref} expands one level. This matters
+ * most for <em>structural containers</em>: omitting an array/map would prune its entire nested subtree, so the
+ * default reaches in and recurses. None of it is silent — every assumption rides the transcoding report.
+ * {@link #strict()} is the opposite stance (omit everything uncertain) for the interop purist; a consumer
+ * overrides any single decision via {@code with…} (CLI flags build one over {@code defaults()}/{@code strict()}).
  */
 public record MappingProfile(
         NumberScale numberScale,
@@ -20,7 +21,8 @@ public record MappingProfile(
         FormatStrategy format,
         BooleanKind booleanKind,
         EnumLabels enumLabels,
-        int recursionDepth) {
+        int recursionDepth,
+        int defaultRepeatCap) {
 
     /** A bare {@code number} (no {@code multipleOf}) has no faithful a12 scale. */
     public enum NumberScale { OMIT, INTEGER, DEFAULT_SCALE }
@@ -43,51 +45,71 @@ public record MappingProfile(
     /** Where an enum value's label comes from (JSON Schema enums carry no labels). */
     public enum EnumLabels { DERIVE, X_ENUM_NAMES, BLANK }
 
-    /** The agreed defaults (SCHEMAKIT-SPEC §4b). */
+    /** Best-effort defaults — maximize coverage, flag every guess in the report (SCHEMAKIT-SPEC §4b). */
     public static MappingProfile defaults() {
         return new MappingProfile(
-                NumberScale.OMIT, 2,
-                ArrayOfScalar.OMIT,
+                NumberScale.DEFAULT_SCALE, 2,
+                ArrayOfScalar.REPEATABLE_SINGLE,
                 MapStrategy.REPEATABLE_KEY_VALUE,
                 UnionStrategy.SUPERSET_RULE,
                 FormatStrategy.PATTERN,
                 BooleanKind.BOOLEAN,
                 EnumLabels.DERIVE,
-                0);   // recursive $ref omitted by default; > 0 = bounded expansion
+                1,        // recursive $ref expands one level by default
+                1000);    // an array/map with no maxItems/maxProperties is capped at 1000 rows (a chosen bound)
+    }
+
+    /** Conservative: omit everything uncertain — only directly-mapping structure + exact rules import. */
+    public static MappingProfile strict() {
+        return new MappingProfile(
+                NumberScale.OMIT, 2,
+                ArrayOfScalar.OMIT,
+                MapStrategy.OMIT,
+                UnionStrategy.OMIT,
+                FormatStrategy.IGNORE,
+                BooleanKind.BOOLEAN,
+                EnumLabels.DERIVE,
+                0,    // no recursive expansion
+                0);   // no unbounded-container cap → omit
     }
 
     public MappingProfile withNumberScale(NumberScale scale, int defaultScale) {
         return new MappingProfile(scale, defaultScale, arrayOfScalar, mapStrategy, unionStrategy,
-                format, booleanKind, enumLabels, recursionDepth);
+                format, booleanKind, enumLabels, recursionDepth, defaultRepeatCap);
     }
 
     public MappingProfile withBooleanKind(BooleanKind kind) {
         return new MappingProfile(numberScale, defaultScale, arrayOfScalar, mapStrategy, unionStrategy,
-                format, kind, enumLabels, recursionDepth);
+                format, kind, enumLabels, recursionDepth, defaultRepeatCap);
     }
 
     public MappingProfile withArrayOfScalar(ArrayOfScalar strategy) {
         return new MappingProfile(numberScale, defaultScale, strategy, mapStrategy, unionStrategy,
-                format, booleanKind, enumLabels, recursionDepth);
+                format, booleanKind, enumLabels, recursionDepth, defaultRepeatCap);
     }
 
     public MappingProfile withMapStrategy(MapStrategy strategy) {
         return new MappingProfile(numberScale, defaultScale, arrayOfScalar, strategy, unionStrategy,
-                format, booleanKind, enumLabels, recursionDepth);
+                format, booleanKind, enumLabels, recursionDepth, defaultRepeatCap);
     }
 
     public MappingProfile withUnionStrategy(UnionStrategy strategy) {
         return new MappingProfile(numberScale, defaultScale, arrayOfScalar, mapStrategy, strategy,
-                format, booleanKind, enumLabels, recursionDepth);
+                format, booleanKind, enumLabels, recursionDepth, defaultRepeatCap);
     }
 
     public MappingProfile withFormat(FormatStrategy strategy) {
         return new MappingProfile(numberScale, defaultScale, arrayOfScalar, mapStrategy, unionStrategy,
-                strategy, booleanKind, enumLabels, recursionDepth);
+                strategy, booleanKind, enumLabels, recursionDepth, defaultRepeatCap);
     }
 
     public MappingProfile withRecursionDepth(int depth) {
         return new MappingProfile(numberScale, defaultScale, arrayOfScalar, mapStrategy, unionStrategy,
-                format, booleanKind, enumLabels, depth);
+                format, booleanKind, enumLabels, depth, defaultRepeatCap);
+    }
+
+    public MappingProfile withDefaultRepeatCap(int cap) {
+        return new MappingProfile(numberScale, defaultScale, arrayOfScalar, mapStrategy, unionStrategy,
+                format, booleanKind, enumLabels, recursionDepth, cap);
     }
 }

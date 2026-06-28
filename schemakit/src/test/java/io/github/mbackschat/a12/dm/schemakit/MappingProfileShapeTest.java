@@ -9,9 +9,9 @@ import static io.github.mbackschat.a12.dm.schemakit.SchemaTestSupport.assertKern
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * The MappingProfile (SCHEMAKIT-SPEC §4b) makes choice-driven import decisions overridable. The default
- * preserves the omit-never-block behavior; a custom profile changes the outcome. Verified here for the two
- * decisions wired so far: number-scale and boolean kind.
+ * The MappingProfile (SCHEMAKIT-SPEC §4b) makes choice-driven import decisions overridable. The default is
+ * <b>best-effort</b> (import + flag the guess); {@link MappingProfile#strict()} restores omit-everything; a
+ * custom profile changes a single decision. Verified here for number-scale and boolean kind.
  */
 class MappingProfileShapeTest {
 
@@ -23,21 +23,22 @@ class MappingProfileShapeTest {
             """;
 
     @Test
-    void defaultProfileOmitsBareNumber() {
+    void defaultProfileImportsBareNumberAtScaleTwo() {
         JsonSchemaImporter.ImportResult imported = new JsonSchemaImporter().importSchema(NUMBER_SCHEMA);
-        assertEquals(Optional.empty(), ModelDocument.read(imported.dmJson()).fieldKind("/Root/price"));
+        assertKernelAccepts(imported.dmJson());
+        ModelDocument doc = ModelDocument.read(imported.dmJson());
+        assertEquals(Optional.of("NUMBER"), doc.fieldKind("/Root/price"), "best-effort default imports the number");
+        assertEquals(2, doc.fieldConfig("/Root/price").orElseThrow().findValue("maxFractionalDigits").asInt(),
+                "at the default scale 2 (the guess is flagged in the report)");
     }
 
     @Test
-    void defaultScaleStrategyImportsTheNumber() {
-        MappingProfile profile = MappingProfile.defaults()
-                .withNumberScale(MappingProfile.NumberScale.DEFAULT_SCALE, 2);
-        JsonSchemaImporter.ImportResult imported = new JsonSchemaImporter().importSchema(NUMBER_SCHEMA, profile);
-
+    void strictProfileOmitsBareNumber() {
+        JsonSchemaImporter.ImportResult imported =
+                new JsonSchemaImporter().importSchema(NUMBER_SCHEMA, MappingProfile.strict());
+        assertEquals(Optional.empty(), ModelDocument.read(imported.dmJson()).fieldKind("/Root/price"),
+                "--strict omits the guessed-scale number");
         assertKernelAccepts(imported.dmJson());
-        ModelDocument doc = ModelDocument.read(imported.dmJson());
-        assertEquals(Optional.of("NUMBER"), doc.fieldKind("/Root/price"), "DEFAULT_SCALE imports the number");
-        assertEquals(2, doc.fieldConfig("/Root/price").orElseThrow().findValue("maxFractionalDigits").asInt());
     }
 
     @Test

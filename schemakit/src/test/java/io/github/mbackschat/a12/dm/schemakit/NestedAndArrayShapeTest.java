@@ -98,7 +98,7 @@ class NestedAndArrayShapeTest {
     }
 
     @Test
-    void unboundedArrayIsOmitted() {
+    void anUnboundedArrayUsesTheDefaultRepeatCapSoNestedStructureIsReached() {
         String unbounded = """
                 {
                   "type": "object",
@@ -112,10 +112,32 @@ class NestedAndArrayShapeTest {
                 """;
         JsonSchemaImporter.ImportResult imported = new JsonSchemaImporter().importSchema(unbounded);
 
-        // a12 repeatability is bounded (≥2) — an unbounded array is omitted, not given an arbitrary cap,
-        // so the group is never created …
+        // best-effort: an unbounded array is capped at the default rather than dropped — so the group AND its
+        // nested structure (`v`) import, instead of pruning the whole subtree.
+        ModelDocument doc = ModelDocument.read(imported.dmJson());
+        assertEquals(Optional.of("STRING"), doc.fieldKind("/Root/rows/v"), "the nested field is reached");
+        assertEquals(1000, doc.maxRepetitions("/Root/rows"), "the default repeat cap bounds it");
+        assertKernelAccepts(imported.dmJson());
+    }
+
+    @Test
+    void anUnboundedArrayIsOmittedUnderStrict() {
+        String unbounded = """
+                {
+                  "type": "object",
+                  "properties": {
+                    "rows": {
+                      "type": "array",
+                      "items": { "type": "object", "properties": { "v": { "type": "string" } } }
+                    }
+                  }
+                }
+                """;
+        JsonSchemaImporter.ImportResult imported =
+                new JsonSchemaImporter().importSchema(unbounded, MappingProfile.strict());
+
+        // --strict: no default cap, so the unbounded array is omitted (+ to-do), never silently dropped
         assertEquals(Optional.empty(), ModelDocument.read(imported.dmJson()).fieldKind("/Root/rows/v"));
-        // … and the omission is recorded as a to-do (import still produced a model — never blocks)
         assertTrue(imported.report().dispositions().stream()
                 .anyMatch(d -> d.tier() == TranscodeReport.Tier.OMITTED));
     }

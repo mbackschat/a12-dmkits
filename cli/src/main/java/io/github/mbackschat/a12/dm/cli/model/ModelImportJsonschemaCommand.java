@@ -17,21 +17,23 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
 /**
- * {@code dmtool model import-jsonschema} — turn a JSON Schema into a kernel-valid Document Model. Import aims
- * for <b>total coverage</b>: every JSON Schema feature lands in a12 structure or rules (directly, via a
- * composed rule, or via a customizable strategy), and anything a12 genuinely cannot represent is
- * <b>omitted, never blocked</b> — so the result is always a usable model skeleton, and the transcoding report
- * (stderr) carries a corrective to-do for each omission. The choice-driven decisions are tunable via the
- * {@link MappingProfile} flags (see SCHEMAKIT-SPEC §4b/§4d).
+ * {@code dmtool model import-jsonschema} — turn a JSON Schema into a kernel-valid Document Model. Import is
+ * <b>best-effort by default</b>: every JSON Schema feature lands in a12 structure or rules (directly, via a
+ * composed rule, or via a customizable strategy), every guess is flagged in the transcoding report (stderr),
+ * and anything a12 genuinely cannot represent is <b>omitted, never blocked</b> — so the result is always a
+ * usable model skeleton with corrective to-dos. {@code --strict} flips to the conservative stance (omit
+ * everything uncertain); per-decision {@link MappingProfile} flags override either base (SCHEMAKIT-SPEC §4b/§4d).
  *
  * <p>To stdout (no {@code -o}) it emits the model <em>artifact</em> (DM-JSON), so it is classified in
  * {@code SchemaCommand.CONTRACT_EXEMPT} (no result-envelope contract on the artifact form); with {@code -o}
- * the model goes to the file and stdout carries an additive WRITE-confirmation envelope.
+ * the model goes to the file and stdout carries a WRITE-confirmation envelope whose {@code changed.report}
+ * carries the structured to-do list.
  */
 @Command(name = "import-jsonschema", mixinStandardHelpOptions = true,
-        description = "Import a JSON Schema as a kernel-valid model (structure + rules; unmappable features "
-                + "are omitted with a to-do in the report on stderr). The model id comes from the schema's "
-                + "`title` (or a default). Prints the model JSON to stdout, or -o writes it to a file.")
+        description = "Import a JSON Schema as a kernel-valid model. BEST-EFFORT by default (import as much as "
+                + "possible, flag every guess in the stderr report); --strict omits everything uncertain. The "
+                + "model id comes from the schema's `title` (or a default). Prints the model JSON to stdout, or "
+                + "-o writes it to a file + a write envelope.")
 final class ModelImportJsonschemaCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -41,55 +43,75 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
             description = "the JSON Schema file to import (its `title` becomes the model id, else a default)")
     String schemaPath;
 
+    @Option(names = "--strict",
+            description = "conservative mode: omit everything uncertain (a bare number, scalar arrays, maps, "
+                    + "unions → omitted; formats → plain string; no recursion or unbounded-container expansion). "
+                    + "The default is the opposite (best-effort). Per-flag overrides below still apply on top.")
+    boolean strict;
+
     @ParamKind(ParamKind.Kind.FREEFORM)
     @Option(names = "--number-scale", paramLabel = "<strategy>",
-            description = "a bare JSON `number` (no multipleOf) has no a12 scale: OMIT (default), INTEGER, DEFAULT_SCALE")
-    MappingProfile.NumberScale numberScale = MappingProfile.NumberScale.OMIT;
+            description = "a bare JSON `number` has no a12 scale → DEFAULT_SCALE (default; a decimal with "
+                    + "--default-scale places) | INTEGER (scale 0 — DROPS any decimals) | OMIT (skip + to-do).")
+    MappingProfile.NumberScale numberScale;
 
     @ParamKind(ParamKind.Kind.FREEFORM)
     @Option(names = "--default-scale", paramLabel = "<n>",
-            description = "the decimal scale used when --number-scale=DEFAULT_SCALE (default 2)")
-    int defaultScale = 2;
+            description = "decimal places for --number-scale DEFAULT_SCALE (default 2)")
+    Integer defaultScale;
 
     @ParamKind(ParamKind.Kind.FREEFORM)
     @Option(names = "--array-of-scalar", paramLabel = "<strategy>",
-            description = "an array of scalars: OMIT (default), MULTI_SELECT, VALUE_LIST, REPEATABLE_SINGLE")
-    MappingProfile.ArrayOfScalar arrayOfScalar = MappingProfile.ArrayOfScalar.OMIT;
+            description = "an array of scalars → REPEATABLE_SINGLE (default; a repeatable single-field group) | "
+                    + "MULTI_SELECT (a12 multi-select, needs items.enum) | VALUE_LIST (string multi-select) | "
+                    + "OMIT (skip + to-do).")
+    MappingProfile.ArrayOfScalar arrayOfScalar;
 
     @ParamKind(ParamKind.Kind.FREEFORM)
     @Option(names = "--map", paramLabel = "<strategy>",
-            description = "a map (additionalProperties/patternProperties): REPEATABLE_KEY_VALUE (default), OMIT, IGNORE")
-    MappingProfile.MapStrategy mapStrategy = MappingProfile.MapStrategy.REPEATABLE_KEY_VALUE;
+            description = "an object map (additionalProperties/patternProperties) → REPEATABLE_KEY_VALUE (default; "
+                    + "a repeatable {key,value} group) | IGNORE (drop the dynamic keys) | OMIT (skip + to-do).")
+    MappingProfile.MapStrategy mapStrategy;
 
     @ParamKind(ParamKind.Kind.FREEFORM)
     @Option(names = "--union", paramLabel = "<strategy>",
-            description = "oneOf/anyOf of object variants: SUPERSET_RULE (default), FIRST_VARIANT, OMIT")
-    MappingProfile.UnionStrategy unionStrategy = MappingProfile.UnionStrategy.SUPERSET_RULE;
+            description = "oneOf/anyOf of object variants → SUPERSET_RULE (default; union of fields + a "
+                    + "discriminator's per-variant requiredness rules) | FIRST_VARIANT (only the first) | OMIT.")
+    MappingProfile.UnionStrategy unionStrategy;
 
     @ParamKind(ParamKind.Kind.FREEFORM)
     @Option(names = "--format", paramLabel = "<strategy>",
-            description = "a string format (email/uuid/…): PATTERN (default), CUSTOM_TYPE, IGNORE (temporal "
-                    + "formats always map to DATE/TIME kinds)")
-    MappingProfile.FormatStrategy format = MappingProfile.FormatStrategy.PATTERN;
+            description = "a string format (email/uuid/…) → PATTERN (default; a standard regex where known) | "
+                    + "CUSTOM_TYPE (a custom field type named after the format) | IGNORE (plain string). Temporal "
+                    + "formats (date/date-time/time) always map to DATE/TIME kinds regardless.")
+    MappingProfile.FormatStrategy format;
 
     @ParamKind(ParamKind.Kind.FREEFORM)
     @Option(names = "--boolean", paramLabel = "<kind>",
-            description = "a JSON boolean: BOOLEAN (default) or CONFIRM")
-    MappingProfile.BooleanKind booleanKind = MappingProfile.BooleanKind.BOOLEAN;
+            description = "a JSON boolean → BOOLEAN (default) | CONFIRM (a12 confirm/checkbox).")
+    MappingProfile.BooleanKind booleanKind;
 
     @ParamKind(ParamKind.Kind.FREEFORM)
     @Option(names = "--enum-labels", paramLabel = "<strategy>",
-            description = "where enum labels come from (JSON enums carry none): DERIVE (default), X_ENUM_NAMES, BLANK")
-    MappingProfile.EnumLabels enumLabels = MappingProfile.EnumLabels.DERIVE;
+            description = "where enum labels come from (JSON enums carry none) → DERIVE (default; label = value) | "
+                    + "X_ENUM_NAMES (read x-enumNames) | BLANK (no labels).")
+    MappingProfile.EnumLabels enumLabels;
 
     @ParamKind(ParamKind.Kind.FREEFORM)
     @Option(names = "--recursion-depth", paramLabel = "<n>",
-            description = "bounded expansion of a recursive $ref (default 0 = omit the recursion)")
-    int recursionDepth = 0;
+            description = "how many levels to expand a recursive $ref (default 1; 0 = omit the recursion + to-do).")
+    Integer recursionDepth;
+
+    @ParamKind(ParamKind.Kind.FREEFORM)
+    @Option(names = "--default-repeat-cap", paramLabel = "<n>",
+            description = "max rows for an array/map with no maxItems/maxProperties (default 1000; 0 = omit the "
+                    + "unbounded container + to-do). Capping it lets the importer reach into and recurse the items.")
+    Integer defaultRepeatCap;
 
     @ParamKind(ParamKind.Kind.FILE)
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
-            description = "write the imported model here instead of stdout; stdout then carries a write-confirmation envelope")
+            description = "write the imported model here instead of stdout; stdout then carries a write-confirmation "
+                    + "envelope (with the structured report in changed.report)")
     String outputPath;
 
     @Override
@@ -100,8 +122,7 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
         } catch (IOException e) {
             return fail("cannot read schema: " + e.getMessage());
         }
-        MappingProfile profile = new MappingProfile(numberScale, defaultScale, arrayOfScalar, mapStrategy,
-                unionStrategy, format, booleanKind, enumLabels, recursionDepth);
+        MappingProfile profile = buildProfile();
         JsonSchemaImporter.ImportResult result;
         try {
             result = new JsonSchemaImporter().importSchema(schemaJson, profile);
@@ -124,5 +145,25 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
         }
         out().print(result.dmJson());
         return 0;
+    }
+
+    /**
+     * Resolve the profile: start from the base ({@code --strict} → conservative, else best-effort) and apply
+     * only the flags the caller actually set (an unset flag is {@code null}/{@code Integer null}). So
+     * {@code --strict --array-of-scalar MULTI_SELECT} = strict base with that one override.
+     */
+    private MappingProfile buildProfile() {
+        MappingProfile base = strict ? MappingProfile.strict() : MappingProfile.defaults();
+        return new MappingProfile(
+                numberScale != null ? numberScale : base.numberScale(),
+                defaultScale != null ? defaultScale : base.defaultScale(),
+                arrayOfScalar != null ? arrayOfScalar : base.arrayOfScalar(),
+                mapStrategy != null ? mapStrategy : base.mapStrategy(),
+                unionStrategy != null ? unionStrategy : base.unionStrategy(),
+                format != null ? format : base.format(),
+                booleanKind != null ? booleanKind : base.booleanKind(),
+                enumLabels != null ? enumLabels : base.enumLabels(),
+                recursionDepth != null ? recursionDepth : base.recursionDepth(),
+                defaultRepeatCap != null ? defaultRepeatCap : base.defaultRepeatCap());
     }
 }

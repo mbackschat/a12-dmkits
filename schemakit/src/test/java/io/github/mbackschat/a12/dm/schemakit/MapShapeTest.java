@@ -93,11 +93,22 @@ class MapShapeTest {
     }
 
     @Test
-    void aMapWithoutMaxPropertiesIsOmitted() {
+    void aMapWithoutMaxPropertiesUsesTheDefaultRepeatCap() {
+        // best-effort: an unbounded map still imports (capped at the default), so its {key,value} structure isn't lost
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema(MAP_NO_CAP);
+        assertKernelAccepts(r.dmJson());
+        ModelDocument doc = ModelDocument.read(r.dmJson());
+        assertTrue(doc.groupPaths().contains("/Root/attributes"));
+        assertEquals(1000, doc.maxRepetitions("/Root/attributes"), "the default repeat cap bounds it");
+    }
+
+    @Test
+    void aMapWithoutMaxPropertiesIsOmittedWithNoCap() {
+        MappingProfile p = MappingProfile.defaults().withDefaultRepeatCap(0);
+        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema(MAP_NO_CAP, p);
 
         assertFalse(ModelDocument.read(r.dmJson()).groupPaths().contains("/Root/attributes"),
-                "no maxProperties ≥ 2 — an a12 repeatable group needs a bounded max, so it is omitted");
+                "no maxProperties and --default-repeat-cap 0 — omitted (a12 repeatability needs a bounded max)");
         assertTrue(omitted(r, "/Root/attributes"));
         assertKernelAccepts(r.dmJson());
     }

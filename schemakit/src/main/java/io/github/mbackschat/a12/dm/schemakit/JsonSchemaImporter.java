@@ -227,20 +227,37 @@ public final class JsonSchemaImporter {
             addScalarArray(g, name, schema, items, path, ctx);
             return;
         }
-        JsonNode maxItems = schema.get("maxItems");
-        if (maxItems == null || maxItems.asInt() < 2) {
-            ctx.report().omit(path, "array '" + name + "' has no maxItems ≥ 2 — omitted: a12 group repeatability "
-                    + "is a bounded max ≥ 2. TO DO: add the repeatable group by hand with a chosen max, or set "
-                    + "maxItems on the schema");
+        int max = resolvedCap(schema.get("maxItems"), name, "maxItems", ctx);
+        if (max < 0) {
+            ctx.report().omit(path, "array '" + name + "' has no maxItems and no default cap — omitted: a12 group "
+                    + "repeatability is a bounded max ≥ 2. TO DO: set maxItems, raise --default-repeat-cap, or add by hand");
             return;
         }
-        int max = maxItems.asInt();
         g.group(name, sub -> {
             sub.repeatable(max);
             populate(sub, items, path, ctx);
         });
         ctx.report().structure(path, "repeatable group (max " + max + ")");
         noteMinItems(schema, name, ctx);
+    }
+
+    /**
+     * The repeatability cap for a container: the schema's bound ({@code maxItems}/{@code maxProperties}) when
+     * ≥ 2, else the profile's {@code defaultRepeatCap} (best-effort — so an unbounded array/map still imports
+     * and the importer can reach into its nested structure), else {@code -1} = no cap (the caller omits). A
+     * fallback cap is flagged in the report (it is a chosen bound, not from the schema).
+     */
+    private static int resolvedCap(JsonNode bound, String name, String boundKey, Ctx ctx) {
+        if (bound != null && bound.asInt() >= 2) {
+            return bound.asInt();
+        }
+        int fallback = ctx.profile().defaultRepeatCap();
+        if (fallback >= 2) {
+            ctx.report().diagnostic("'" + name + "' has no " + boundKey + " — capped at the default " + fallback
+                    + " rows (a chosen bound, not from the schema); set " + boundKey + ", --default-repeat-cap, or --strict");
+            return fallback;
+        }
+        return -1;
     }
 
     /**
@@ -285,16 +302,16 @@ public final class JsonSchemaImporter {
         }
     }
 
-    /** Run {@code build} with the array's repeatability cap, or omit when there is no {@code maxItems ≥ 2}. */
+    /** Run {@code build} with the array's repeatability cap ({@link #resolvedCap}), or omit when there is none. */
     private static void withCap(JsonNode schema, String name, String path, Ctx ctx, IntConsumer build) {
-        JsonNode maxItems = schema.get("maxItems");
-        if (maxItems == null || maxItems.asInt() < 2) {
-            ctx.report().omit(path, "array '" + name + "' of scalars has no maxItems ≥ 2 — omitted: an a12 "
-                    + "repeatable group needs a bounded max ≥ 2. TO DO: set maxItems on the schema, or add the "
-                    + "group by hand with a chosen max");
+        int max = resolvedCap(schema.get("maxItems"), name, "maxItems", ctx);
+        if (max < 0) {
+            ctx.report().omit(path, "array '" + name + "' of scalars has no maxItems and no default cap — "
+                    + "omitted: an a12 repeatable group needs a bounded max ≥ 2. TO DO: set maxItems, raise "
+                    + "--default-repeat-cap, or add the group by hand");
             return;
         }
-        build.accept(maxItems.asInt());
+        build.accept(max);
     }
 
     /** MULTI_SELECT → an a12 multi-select group of closed enum choices; needs {@code items.enum}. */
@@ -407,15 +424,15 @@ public final class JsonSchemaImporter {
         }
     }
 
-    /** Run {@code build} with the map's repeatability cap, or omit when there is no {@code maxProperties ≥ 2}. */
+    /** Run {@code build} with the map's repeatability cap ({@link #resolvedCap}), or omit when there is none. */
     private static void withMapCap(JsonNode schema, String name, String path, Ctx ctx, IntConsumer build) {
-        JsonNode maxProperties = schema.get("maxProperties");
-        if (maxProperties == null || maxProperties.asInt() < 2) {
-            ctx.report().omit(path, "map '" + name + "' has no maxProperties ≥ 2 — omitted: an a12 repeatable "
-                    + "group needs a bounded max ≥ 2. TO DO: set maxProperties on the schema, or add the group by hand");
+        int max = resolvedCap(schema.get("maxProperties"), name, "maxProperties", ctx);
+        if (max < 0) {
+            ctx.report().omit(path, "map '" + name + "' has no maxProperties and no default cap — omitted: an a12 "
+                    + "repeatable group needs a bounded max ≥ 2. TO DO: set maxProperties, raise --default-repeat-cap, or add by hand");
             return;
         }
-        build.accept(maxProperties.asInt());
+        build.accept(max);
     }
 
     private static void buildKeyValueGroup(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
@@ -838,6 +855,8 @@ public final class JsonSchemaImporter {
                     }
                 });
                 ctx.report().structure(path, "NUMBER(integer, scale 0)");
+                ctx.report().diagnostic("number '" + name + "' imported as a scale-0 integer (--number-scale INTEGER) "
+                        + "— any decimal places are DROPPED; set --number-scale DEFAULT_SCALE to keep them");
             }
             case DEFAULT_SCALE -> {
                 int scale = ctx.profile().defaultScale();
@@ -848,6 +867,9 @@ public final class JsonSchemaImporter {
                     }
                 });
                 ctx.report().structure(path, "NUMBER(scale " + scale + ")");
+                ctx.report().diagnostic("number '" + name + "' has no scale in the schema — imported at the "
+                        + "default scale " + scale + " (a guess; set --default-scale, --number-scale, or the "
+                        + "field's scale by hand if a different precision is needed)");
             }
         }
     }

@@ -64,7 +64,7 @@ schemakit is **runtime-callable and wired into `dmtool` from day one** (proposal
 | `dmtool model import-jsonschema --schema <schema.json> [profile flags] [-o <model.dm.json>]` | JSON Schema → DM-JSON artifact (stdout); the transcoding report → stderr; `-o` writes the model + a write envelope |
 | `dmtool model export-jsonschema -m <model.dm.json> [-o <schema.json>]` | DM-JSON → JSON Schema artifact (stdout); report → stderr; `-o` writes the schema + a write envelope |
 
-Both keep **artifact mode**: the transcode result (DM-JSON / JSON Schema) goes to stdout so it pipes straight into the next tool, and the **transcoding report** — the omission to-dos — rides stderr (loud, never silent); with `-o` the artifact goes to the file and stdout carries a write-confirmation envelope. They are classified `SchemaCommand.CONTRACT_EXEMPT` (no result-envelope contract on the artifact form, like `model new`/`model seed`). **Import** exposes the `MappingProfile` choices as flags — `--number-scale` / `--default-scale` / `--array-of-scalar` / `--map` / `--union` / `--format` / `--boolean` / `--enum-labels` / `--recursion-depth` (§4b).
+Both keep **artifact mode**: the transcode result (DM-JSON / JSON Schema) goes to stdout so it pipes straight into the next tool, and the **transcoding report** — the omission to-dos — rides stderr (loud, never silent); with `-o` the artifact goes to the file and stdout carries a write-confirmation envelope. They are classified `SchemaCommand.CONTRACT_EXEMPT` (no result-envelope contract on the artifact form, like `model new`/`model seed`). **Import** exposes the `MappingProfile` choices as flags — `--strict` (the conservative master switch) plus the per-decision `--number-scale` / `--default-scale` / `--array-of-scalar` / `--map` / `--union` / `--format` / `--boolean` / `--enum-labels` / `--recursion-depth` / `--default-repeat-cap` (§4b).
 
 **The report is the agent's to-do list, so make it machine-readable, not only prose.** The omissions an import leaves are exactly what an agent must complete by hand — its next-step list, not a side note. So beyond the human-readable stderr lines, the `-o` write-envelope carries the **structured report** in `changed.report` (`{mapped, omitted, notes[]}`): the agent's natural path — `-o` writes the model to a file *and* returns the parseable audit trail on stdout — gives it everything in the machine-readable channel it already trusts. (stdout stays the clean artifact in the no-`-o` pipe case; the report cannot also go there without corrupting the artifact, so the structured form rides the `-o` envelope.)
 
@@ -93,19 +93,21 @@ Import **never refuses or aborts.** A feature a12 can't represent is **OMITTED**
 
 ### 4b. Customizable import decisions — the `MappingProfile`
 
-The choice-driven decisions are pluggable strategies on a `MappingProfile` (a shipped default + per-decision overrides; CLI flags build one — proposal §5/§9). Defaults agreed 2026-06-28:
+The choice-driven decisions are pluggable strategies on a `MappingProfile` (CLI flags build one). **The default is best-effort (decided 2026-06-28): import as much as possible and flag every guess in the report — never silently, never blocked.** This matters most for *structural containers*: omitting an array/map would prune its whole nested subtree, so the default reaches in and recurses. **`--strict` (`MappingProfile.strict()`) flips the whole stance** to "omit everything uncertain" for the interop purist; per-decision flags override either base.
 
-| Decision | Default | Alternatives |
-|---|---|---|
-| number scale (no `multipleOf`) | omit + TO-DO | default-scale-`N` / treat-as-integer |
-| array of scalar | omit + TO-DO | multi-select group / value-list / 1-field repeatable group |
-| array, no `maxItems` | omit + TO-DO | default-cap-`N` |
-| `oneOf`/`anyOf` of **same-kind object** shapes | **superset of fields + discriminator rule** | first-variant / omit |
-| `additionalProperties`/`patternProperties` (a map) | **repeatable `{key, value}` group** | ignore-extras / omit |
-| `format` | `pattern` (where a standard regex exists) | custom-type / ignore |
-| boolean | BOOLEAN | CONFIRM |
-| enum labels | derive-from-value | `x-enumNames` / blank |
-| recursive `$ref` | omit + TO-DO | bounded `recursionDepth: N` |
+| Decision (flag) | Best-effort default | Alternatives | `--strict` |
+|---|---|---|---|
+| number scale, no `multipleOf` (`--number-scale`) | **`DEFAULT_SCALE`** (a decimal at `--default-scale`, default 2; the scale is a flagged guess) | `INTEGER` (drops decimals) / `OMIT` | `OMIT` |
+| array of scalar (`--array-of-scalar`) | **`REPEATABLE_SINGLE`** (a repeatable single-field group) | `MULTI_SELECT` / `VALUE_LIST` / `OMIT` | `OMIT` |
+| array/map, no `maxItems`/`maxProperties` (`--default-repeat-cap`) | **cap at 1000 rows** (a chosen bound, flagged) — so the container + its items still import | any `N` / `0` = omit | `0` (omit) |
+| `oneOf`/`anyOf` same-kind object (`--union`) | **`SUPERSET_RULE`** (union of fields + discriminator rules) | `FIRST_VARIANT` / `OMIT` | `OMIT` |
+| `additionalProperties`/`patternProperties` map (`--map`) | **`REPEATABLE_KEY_VALUE`** (a `{key, value}` group) | `IGNORE` / `OMIT` | `OMIT` |
+| `format` (`--format`) | **`PATTERN`** (standard regex where known; temporal → native DATE/TIME kinds) | `CUSTOM_TYPE` / `IGNORE` | `IGNORE` |
+| boolean (`--boolean`) | `BOOLEAN` | `CONFIRM` | `BOOLEAN` |
+| enum labels (`--enum-labels`) | `DERIVE` (label = value) | `X_ENUM_NAMES` / `BLANK` | `DERIVE` |
+| recursive `$ref` (`--recursion-depth`) | **expand 1 level** | any depth `N` / `0` = omit | `0` (omit) |
+
+Every flag (and each value's *implication* — e.g. `INTEGER` drops decimals, `--default-repeat-cap 0` omits) is surfaced in `dmtool manifest` / `--help`, so a cold agent discovers not just the names but what each does.
 
 ### 4c. The residual omissions (no faithful static a12 form — omitted, never block)
 
@@ -114,7 +116,7 @@ Four cases have no static a12 representation even with a strategy; each is **omi
 1. **cross-kind type union** — `type:["string","object"]`, `oneOf` across *different kinds* (a field has one kind). *(nullable `type:[X,"null"]` → optional X, and same-kind object unions → §4b superset — both DO map.)*
 2. **`unevaluatedProperties`/`unevaluatedItems` with applicators** — dynamic, annotation-dependent closure. *(a plain closed object maps for free.)*
 3. **`$dynamicRef`/`$dynamicAnchor`** — runtime-polymorphic references.
-4. **unbounded recursive `$ref`** — omitted by default; opt-in bounded `recursionDepth: N` (§4b).
+4. **unbounded recursive `$ref`** — expanded to `--recursion-depth` levels (default 1), then the deeper recursion is omitted with a to-do; `--strict` / `0` omits it entirely (§4b).
 
 ---
 
@@ -140,11 +142,12 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | `exclusiveMinimum` / `exclusiveMaximum` | strict `<` / `>` rule | rule (Tier A+) |
 | `multipleOf` · `const` · `dependentRequired` | modulo rule · `!=` rule · conditional-requiredness rule | rule (Tier A+) |
 | `oneOf`/`anyOf` of same-kind objects | superset group + discriminator → enum + per-variant requiredness rules | strategy + rule (profile: union) |
-| `array` of scalar (+ `maxItems` ≥ 2) | multi-select / value-list / repeatable single-field group | strategy (profile; default **omit**) |
+| `array` of scalar | repeatable single-field group (default) / multi-select / value-list | strategy (profile; **imported by default**) |
+| `array` / map with no `maxItems` / `maxProperties` | repeatable group capped at `--default-repeat-cap` (default 1000) | strategy (profile; **imported by default**, capped) |
 | `additionalProperties` / `patternProperties` (map) | repeatable `{key, value}` group | strategy (profile: map) |
-| bare `number` (no `multipleOf`) | NUMBER at a chosen scale | strategy (profile; default **omit**) |
+| bare `number` (no `multipleOf`) | NUMBER at the default scale (a flagged guess) | strategy (profile; **imported by default**) |
 | `format: <other>` | pattern / custom field type / plain string | strategy (profile: format) |
-| recursive `$ref` | bounded expansion to `recursionDepth` | strategy (profile; default **omit**) |
+| recursive `$ref` | expand `--recursion-depth` levels (default 1) | strategy (profile; **imported by default**, 1 level) |
 | `minItems` | reported — **not enforced** (no a12 cardinality rule, KERNEL-FINDINGS) | omitted |
 | cross-kind `type:[X,Y]` · mixed `oneOf`/`anyOf` | reported | omitted (§4c) |
 | `unevaluatedProperties` / `unevaluatedItems` | structure imports; constraint reported — **not enforced** | omitted (§4c) |
@@ -190,7 +193,7 @@ Built test-first, smallest increment first. Progress is git, not a status table 
 
 1. **Flat object** — `object` + string/integer/number/boolean properties + `required` → DM with fields + requiredness; export back; round-trip equal; kernel-accepts.
 2. **Nested + array-of-object** — groups + repeatable groups + `minItems`/`maxItems`.
-3. **`$defs`/`$ref` both kinds** — object `$def`→include/mount, leaf `$def`→typedef; recursive `$ref` **omitted** with a corrective to-do (bounded by `recursionDepth`).
+3. **`$defs`/`$ref` both kinds** — object `$def`→include/mount, leaf `$def`→typedef; recursive `$ref` expanded to `recursionDepth` (default 1), then omitted with a corrective to-do.
 4. **Rule carriage** — Tier-A `if/then`+`required`; Tier-B cross-field/aggregate as `x-a12-rule`; a computation as `x-a12-computation`; meta-schema-valid; re-import reconstructs all three.
 5. **Tier A+ import & interpreter coupling** — synthesize rules from `dependentRequired`/`exclusiveMinimum`/`multipleOf`/`const`/discriminators; two-tier validation holds (proposal §12).
 
