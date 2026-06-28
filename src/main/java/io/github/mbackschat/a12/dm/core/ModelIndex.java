@@ -1,8 +1,11 @@
 package io.github.mbackschat.a12.dm.core;
 
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalInt;
 
 import com.mgmtp.a12.kernel.md.model.api.IDocumentModel;
 import com.mgmtp.a12.kernel.md.model.api.IElement;
@@ -11,6 +14,7 @@ import com.mgmtp.a12.kernel.md.model.api.IGroup;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IEnumerationType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IFieldType;
 import com.mgmtp.a12.kernel.md.model.api.fieldtypes.INumberType;
+import com.mgmtp.a12.kernel.md.model.api.fieldtypes.IStringType;
 
 /**
  * A queryable index over a fully-expanded DocumentModel — the foundation everything else binds to
@@ -100,6 +104,38 @@ public final class ModelIndex {
                     fieldPath + " is not a number field (kind=" + ValueKind.of(type) + ")");
         }
         return number.getMaxFractionalDigits();
+    }
+
+    /**
+     * The declared inclusive lower bound of the number field at {@code fieldPath} ({@code minimum}), or empty
+     * when the field is not a number or no bound is declared. A read-only config accessor (no throw on a
+     * non-number, so callers can probe any field) — see {@link #numberMax}/{@link #stringMinLength}/etc.
+     */
+    public Optional<BigDecimal> numberMin(String fieldPath) {
+        return effectiveType(field(fieldPath)) instanceof INumberType n ? n.getMinValue() : Optional.empty();
+    }
+
+    /** The declared inclusive upper bound ({@code maximum}) of the number field, or empty (see {@link #numberMin}). */
+    public Optional<BigDecimal> numberMax(String fieldPath) {
+        return effectiveType(field(fieldPath)) instanceof INumberType n ? n.getMaxValue() : Optional.empty();
+    }
+
+    /** The declared {@code minLength} of the string field, or empty when not a string / unset. */
+    public OptionalInt stringMinLength(String fieldPath) {
+        return effectiveType(field(fieldPath)) instanceof IStringType s
+                ? s.getMinLength().stream().mapToInt(Integer::intValue).findFirst() : OptionalInt.empty();
+    }
+
+    /** The declared {@code maxLength} of the string field, or empty when not a string / unset. */
+    public OptionalInt stringMaxLength(String fieldPath) {
+        return effectiveType(field(fieldPath)) instanceof IStringType s
+                ? s.getMaxLength().stream().mapToInt(Integer::intValue).findFirst() : OptionalInt.empty();
+    }
+
+    /** The declared regex {@code pattern} of the string field, or empty when not a string / no pattern. */
+    public Optional<String> stringPattern(String fieldPath) {
+        return effectiveType(field(fieldPath)) instanceof IStringType s
+                ? s.getPattern().filter(p -> !p.isEmpty()) : Optional.empty();
     }
 
     /**

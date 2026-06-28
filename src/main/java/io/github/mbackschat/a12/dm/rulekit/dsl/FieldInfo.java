@@ -51,6 +51,35 @@ public final class FieldInfo {
         return model.num(path).scale();
     }
 
+    // --- declared field config (read-only): the value constraints the kernel carries on the field type.
+    // Each is empty when the field's kind doesn't carry it OR the constraint is unset, so any field can be
+    // probed without a kind check — the read peer of the modelkit builder's min/max/minLength/maxLength/pattern.
+
+    /** Declared inclusive lower bound ({@code minimum}); empty when not a number or unset. */
+    public java.util.Optional<java.math.BigDecimal> numberMin() {
+        return model.index().numberMin(path);
+    }
+
+    /** Declared inclusive upper bound ({@code maximum}); empty when not a number or unset. */
+    public java.util.Optional<java.math.BigDecimal> numberMax() {
+        return model.index().numberMax(path);
+    }
+
+    /** Declared minimum string length; empty when not a string or unset. */
+    public java.util.OptionalInt minLength() {
+        return model.index().stringMinLength(path);
+    }
+
+    /** Declared maximum string length; empty when not a string or unset. */
+    public java.util.OptionalInt maxLength() {
+        return model.index().stringMaxLength(path);
+    }
+
+    /** Declared regex pattern; empty when not a string or no pattern. */
+    public java.util.Optional<String> pattern() {
+        return model.index().stringPattern(path);
+    }
+
     // --- annotations: the read peer of EditSession.setAnnotation (study finding 9, annotation reads) --
 
     /** This field's element-level annotations, in document order; empty (never {@code null}) when none. */

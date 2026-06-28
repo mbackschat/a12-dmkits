@@ -39,6 +39,32 @@ class ModelContextTest {
     }
 
     @Test
+    void describeSurfacesDeclaredFieldBounds() {
+        // a model carrying the full declared config — read back via FieldInfo and shown in the card.
+        String dmJson = io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft.named("permit").locale("en_US")
+                .rootGroup("Permit", p -> p
+                        .stringField("Code", s -> s.minLength(3).maxLength(12).pattern("[A-Z][A-Z0-9]+", "Code rule."))
+                        .numberField("Fee", n -> n.fractionDigits(2).min("0").max("10000")))
+                .build().toJson();
+        BoundModel m = BoundModel.ofJson(dmJson);
+
+        // FieldInfo exposes the declared config (the gap this fix closed)
+        io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo code = m.fieldAt("/Permit/Code").orElseThrow();
+        assertEquals(java.util.OptionalInt.of(3), code.minLength());
+        assertEquals(java.util.OptionalInt.of(12), code.maxLength());
+        assertEquals(java.util.Optional.of("[A-Z][A-Z0-9]+"), code.pattern());
+        io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo fee = m.fieldAt("/Permit/Fee").orElseThrow();
+        assertEquals(0, fee.numberMin().orElseThrow().compareTo(new java.math.BigDecimal("0")));
+        assertEquals(0, fee.numberMax().orElseThrow().compareTo(new java.math.BigDecimal("10000")));
+
+        // and the describe card JSON carries them
+        String json = new ModelContext(m).describe().toJson();
+        assertTrue(json.contains("\"minLength\" : 3") && json.contains("\"maxLength\" : 12"), json);
+        assertTrue(json.contains("\"pattern\" : \"[A-Z][A-Z0-9]+\""), json);
+        assertTrue(json.contains("\"min\" : 0") && json.contains("\"max\" : 10000"), json);
+    }
+
+    @Test
     void findResolvesAnExactName() {
         List<FieldMatch> hits = ctx.find("Tier");
         assertEquals(1, hits.size(), () -> "hits: " + hits);

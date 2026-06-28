@@ -188,6 +188,12 @@ public final class BoundModel {
         return new FieldRef(path, index.kindOf(path));
     }
 
+    /** Package-private access to the underlying index — lets {@link FieldInfo} surface declared field config
+     *  (numeric bounds, string length/pattern) without exposing the kernel-aware index publicly. */
+    ModelIndex index() {
+        return index;
+    }
+
     /** A typed number handle. Throws if the field at {@code path} is not a number. */
     public NumberRef num(String path) {
         ValueKind kind = index.kindOf(path);

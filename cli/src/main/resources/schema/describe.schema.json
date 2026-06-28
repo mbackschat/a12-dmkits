@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/mbackschat/a12-dmkits/schema/describe.schema.json",
   "title": "ModelCard",
-  "description": "Output of `model describe` — the model's fields (with kind, and scale/enum-domain where applicable), groups (with repeatability), and declared locales. An agent's map of a model without reading raw DM-JSON.",
+  "description": "Output of `model describe` — the model's fields (with kind, scale, declared bounds: numeric min/max, string minLength/maxLength/pattern, and enum-domain, each where applicable), groups (with repeatability), and declared locales. An agent's map of a model without reading raw DM-JSON.",
   "type": "object",
   "required": ["fields", "groups", "locales"],
   "additionalProperties": false,
@@ -23,6 +23,11 @@
           "name": { "type": "string", "description": "the field's local name" },
           "kind": { "type": "string", "description": "value-kind: STRING | NUMBER | BOOLEAN | CONFIRM | DATE | ENUMERATION | CUSTOM | …" },
           "scale": { "type": "integer", "description": "decimal scale; present for NUMBER fields only" },
+          "min": { "type": "number", "description": "declared inclusive lower bound (minimum); present for a NUMBER field that declares one" },
+          "max": { "type": "number", "description": "declared inclusive upper bound (maximum); present for a NUMBER field that declares one" },
+          "minLength": { "type": "integer", "description": "declared minimum string length; present for a STRING field that declares one" },
+          "maxLength": { "type": "integer", "description": "declared maximum string length; present for a STRING field that declares one" },
+          "pattern": { "type": "string", "description": "declared regex pattern; present for a STRING field that declares one" },
           "values": { "type": "array", "items": { "type": "string" }, "description": "allowed stored values; present for ENUMERATION fields only" }
         }
       }

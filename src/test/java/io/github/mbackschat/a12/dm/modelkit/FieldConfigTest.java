@@ -59,6 +59,23 @@ class FieldConfigTest {
     }
 
     @Test
+    void indexSurfacesDeclaredBounds() {
+        ModelIndex index = index(permit());
+
+        // numeric inclusive bounds + string length/pattern — the declared config read back (no longer dropped)
+        assertEquals(0, index.numberMin("/Permit/Fee").orElseThrow().compareTo(new java.math.BigDecimal("0")));
+        assertEquals(0, index.numberMax("/Permit/Fee").orElseThrow().compareTo(new java.math.BigDecimal("10000")));
+        assertEquals(java.util.OptionalInt.of(3), index.stringMinLength("/Permit/Code"));
+        assertEquals(java.util.OptionalInt.of(12), index.stringMaxLength("/Permit/Code"));
+        assertEquals(java.util.Optional.of("[A-Z][A-Z0-9]+"), index.stringPattern("/Permit/Code"));
+
+        // a config accessor probed on the wrong kind is empty, not an exception (safe to call on any field)
+        assertTrue(index.numberMin("/Permit/Code").isEmpty(), "min on a string is empty");
+        assertTrue(index.stringPattern("/Permit/Fee").isEmpty(), "pattern on a number is empty");
+        assertTrue(index.stringMinLength("/Permit/Category").isEmpty(), "minLength on an enum is empty");
+    }
+
+    @Test
     void emitsTheConfigSlotsAndRequiredness() {
         String json = permit().toJson();
         // string config

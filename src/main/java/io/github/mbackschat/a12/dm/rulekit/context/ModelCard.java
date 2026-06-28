@@ -1,7 +1,9 @@
 package io.github.mbackschat.a12.dm.rulekit.context;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalInt;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,10 +27,20 @@ public record ModelCard(List<Field> fields, List<Group> groups, List<String> loc
         locales = locales == null ? List.of() : List.copyOf(locales);
     }
 
-    /** A field: path, short name, value kind, plus scale (numbers) / value domain (enums) when relevant. */
-    public record Field(String path, String name, String kind, Optional<Integer> scale, List<String> enumValues) {
+    /** A field: path, short name, value kind, plus the declared bounds it carries — scale + numeric
+     *  {@code min}/{@code max} (numbers), {@code minLength}/{@code maxLength}/{@code pattern} (strings), and the
+     *  value domain (enums) — each present only when declared. */
+    public record Field(String path, String name, String kind, Optional<Integer> scale,
+                        Optional<BigDecimal> min, Optional<BigDecimal> max,
+                        OptionalInt minLength, OptionalInt maxLength, Optional<String> pattern,
+                        List<String> enumValues) {
         public Field {
             scale = scale == null ? Optional.empty() : scale;
+            min = min == null ? Optional.empty() : min;
+            max = max == null ? Optional.empty() : max;
+            minLength = minLength == null ? OptionalInt.empty() : minLength;
+            maxLength = maxLength == null ? OptionalInt.empty() : maxLength;
+            pattern = pattern == null ? Optional.empty() : pattern;
             enumValues = enumValues == null ? List.of() : List.copyOf(enumValues);
         }
     }
@@ -47,6 +59,11 @@ public record ModelCard(List<Field> fields, List<Group> groups, List<String> loc
             node.put("name", f.name());
             node.put("kind", f.kind());
             f.scale().ifPresent(s -> node.put("scale", s));
+            f.min().ifPresent(v -> node.put("min", v));
+            f.max().ifPresent(v -> node.put("max", v));
+            f.minLength().ifPresent(v -> node.put("minLength", v));
+            f.maxLength().ifPresent(v -> node.put("maxLength", v));
+            f.pattern().ifPresent(v -> node.put("pattern", v));
             if (!f.enumValues().isEmpty()) {
                 ArrayNode values = node.putArray("values");
                 f.enumValues().forEach(values::add);
