@@ -123,9 +123,14 @@ public final class JsonSchemaImporter {
         }
     }
 
+    /** Validation keywords with no a12 mapping yet — reported (never silently dropped); structure still imports. */
+    private static final List<String> UNSUPPORTED_KEYWORDS =
+            List.of("uniqueItems", "contains", "minContains", "if", "then", "else", "not");
+
     private static void addProperty(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
                                     boolean isRequired, String groupPath, Ctx ctx) {
         String path = groupPath + "/" + name;
+        noteUnsupportedKeywords(name, schema, ctx);
         if (schema.has("$ref")) {
             addRef(g, name, schema, isRequired, path, ctx);
             return;
@@ -243,6 +248,17 @@ public final class JsonSchemaImporter {
      * cardinality (the error entity controls a rule's iteration, and {@code NumberOfFilledGroups} needs ≥ 2
      * group args — KERNEL-FINDINGS). So it is reported, never silently implied to be enforced (task #7).
      */
+    /** Report any {@link #UNSUPPORTED_KEYWORDS} present — surfaced, not silently dropped (task #13). */
+    private static void noteUnsupportedKeywords(String name, JsonNode schema, Ctx ctx) {
+        for (String kw : UNSUPPORTED_KEYWORDS) {
+            if (schema.has(kw)) {
+                ctx.report().diagnostic("property '" + name + "' uses '" + kw + "' — not yet imported; the declared "
+                        + "structure imports but that constraint is NOT enforced. TO DO: add the equivalent a12 rule "
+                        + "by hand");
+            }
+        }
+    }
+
     private static void noteMinItems(JsonNode schema, String name, Ctx ctx) {
         if (schema.has("minItems")) {
             ctx.report().diagnostic("array '" + name + "' minItems=" + schema.get("minItems").asInt()
