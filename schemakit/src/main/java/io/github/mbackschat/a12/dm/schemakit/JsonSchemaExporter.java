@@ -28,22 +28,58 @@ public final class JsonSchemaExporter {
 
     public record ExportResult(String jsonSchema, TranscodeReport report) {}
 
-    /** Per-export state: the document, the field→typeDef map, the typeDefs actually referenced, the report. */
+    /** Per-export state: the document, the field→typeDef map, the typeDefs actually referenced, the report, and
+     *  the {@code $ref} prefix (dialect/wrap-dependent: {@code #/$defs/} bare vs {@code #/components/schemas/} wrapped). */
     private record Ctx(ModelDocument doc, Map<String, String> fieldToTypedef,
-                       TreeSet<String> usedDefs, TranscodeReport.Builder report) {}
+                       TreeSet<String> usedDefs, TranscodeReport.Builder report, String refPrefix) {}
 
     public ExportResult export(String dmJson) {
+        return export(dmJson, Dialect.JSON_SCHEMA, false);
+    }
+
+    /**
+     * Export in the chosen wire {@code dialect}; when {@code wrapOpenApi}, wrap the Schema Object in a minimal
+     * OpenAPI document under {@code components/schemas} (refs → {@code #/components/schemas/…}), else emit a bare
+     * Schema Object with its typeDefinitions under {@code $defs} (SCHEMAKIT-SPEC §4g). The {@code x-a12-*} carriage
+     * is dialect-agnostic — it is a valid OpenAPI extension in every version.
+     */
+    public ExportResult export(String dmJson, Dialect dialect, boolean wrapOpenApi) {
         ModelDocument doc = ModelDocument.read(dmJson);
         List<String> groupPaths = doc.groupPaths();
         if (groupPaths.isEmpty()) {
             throw new IllegalArgumentException("model has no group to export");
         }
-        Ctx ctx = new Ctx(doc, fieldTypedefMap(doc), new TreeSet<>(), TranscodeReport.builder());
+        String refPrefix = wrapOpenApi ? "#/components/schemas/" : "#/$defs/";
+        Ctx ctx = new Ctx(doc, fieldTypedefMap(doc), new TreeSet<>(), TranscodeReport.builder(), refPrefix);
         ObjectNode schema = exportGroup(groupPaths.get(0), ctx);   // root group → top-level object
-        emitDefs(schema, ctx);
         Carriage.collect(parse(dmJson), doc.groupPaths(), schema, ctx.report());  // rules/computations → x-a12-* (Tier B/C)
         TierAProjection.project(dmJson, schema, ctx.report());                    // recognized rules → native keywords (Tier A)
+        if (wrapOpenApi) {
+            return new ExportResult(toJson(wrapOpenApi(schema, dialect, ctx)), ctx.report().build());
+        }
+        emitDefs(schema, ctx);
+        if (dialect == Dialect.OPENAPI_30 && !ctx.usedDefs().isEmpty()) {
+            ctx.report().diagnostic("OpenAPI 3.0 has no $defs — the typeDefinitions are emitted as $defs (valid in "
+                    + "JSON Schema / OpenAPI 3.1). Use --wrap-openapi to emit them under components/schemas instead");
+        }
         return new ExportResult(toJson(schema), ctx.report().build());
+    }
+
+    /** Wrap the root Schema Object in a minimal, valid OpenAPI document: the model under {@code components/schemas}
+     *  by its id, its typeDefinitions alongside, and an empty {@code paths} (required by 3.0, allowed by 3.1). */
+    private ObjectNode wrapOpenApi(ObjectNode rootSchema, Dialect dialect, Ctx ctx) {
+        ObjectNode root = JSON.createObjectNode();
+        root.put("openapi", dialect == Dialect.OPENAPI_30 ? "3.0.3" : "3.1.0");
+        ObjectNode info = root.putObject("info");
+        info.put("title", ctx.doc().id());
+        info.put("version", "1.0.0");
+        root.putObject("paths");
+        ObjectNode schemas = root.putObject("components").putObject("schemas");
+        schemas.set(ctx.doc().id(), rootSchema);
+        for (String id : ctx.usedDefs()) {
+            writeLeaf(schemas.putObject(id), leafOfTypeDef(ctx.doc(), id, ctx.report()));
+        }
+        return root;
     }
 
     /** Build {@code {type:object, properties, required}} from a group's direct field + sub-group children. */
@@ -93,7 +129,7 @@ public final class JsonSchemaExporter {
     private void exportField(String fieldPath, String name, ObjectNode properties, Ctx ctx) {
         String typeDefId = ctx.fieldToTypedef().get(fieldPath);
         if (typeDefId != null) {
-            properties.putObject(name).put("$ref", "#/$defs/" + typeDefId);
+            properties.putObject(name).put("$ref", ctx.refPrefix() + typeDefId);
             ctx.usedDefs().add(typeDefId);
             ctx.report().structure(fieldPath, "properties/" + name + " ($ref → " + typeDefId + ")");
             return;

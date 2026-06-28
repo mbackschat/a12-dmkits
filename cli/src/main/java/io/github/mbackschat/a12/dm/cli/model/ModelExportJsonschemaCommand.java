@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli.model;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
+import io.github.mbackschat.a12.dm.schemakit.Dialect;
 import io.github.mbackschat.a12.dm.schemakit.JsonSchemaExporter;
 
 import java.io.IOException;
@@ -35,6 +36,19 @@ final class ModelExportJsonschemaCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    @ParamKind(ParamKind.Kind.FREEFORM)
+    @Option(names = "--dialect", paramLabel = "<dialect>",
+            description = "the output JSON-Schema dialect → JSON_SCHEMA (default; Draft 2020-12, $defs) | OPENAPI_31 "
+                    + "(OpenAPI 3.1/3.2) | OPENAPI_30 (OpenAPI 3.0). a12 has no null and inclusive-only bounds, so the "
+                    + "dialect mainly drives --wrap-openapi's envelope version + the ref location; x-a12-* carriage is "
+                    + "a valid extension in every version.")
+    Dialect dialect;
+
+    @Option(names = "--wrap-openapi",
+            description = "wrap the schema in a minimal OpenAPI document under components/schemas (refs → "
+                    + "#/components/schemas/…), a drop-in vs the bare Schema Object (which uses $defs).")
+    boolean wrapOpenApi;
+
     @ParamKind(ParamKind.Kind.FILE)
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the JSON Schema here instead of stdout; stdout then carries a write-confirmation envelope")
@@ -46,9 +60,10 @@ final class ModelExportJsonschemaCommand extends BaseCommand {
         if (dmJson == null) {
             return 2;
         }
+        Dialect resolvedDialect = dialect != null ? dialect : Dialect.JSON_SCHEMA;
         JsonSchemaExporter.ExportResult result;
         try {
-            result = new JsonSchemaExporter().export(dmJson);
+            result = new JsonSchemaExporter().export(dmJson, resolvedDialect, wrapOpenApi);
         } catch (RuntimeException e) {
             return fail("cannot export the model: " + e.getMessage());
         }
