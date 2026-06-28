@@ -90,6 +90,7 @@ public final class JsonSchemaImporter {
             Map.Entry<String, JsonNode> e = it.next();
             addProperty(g, e.getKey(), e.getValue(), required.contains(e.getKey()), groupPath, ctx);
         }
+        collectDependentRequired(objectSchema, groupPath, ctx);
     }
 
     private static void addProperty(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
@@ -250,12 +251,27 @@ public final class JsonSchemaImporter {
     /** Strict bounds have no inclusive field-config home → collect them as Tier-A+ synthesized rules. */
     private static void collectStrictBounds(JsonNode schema, String path, Ctx ctx) {
         if (schema.has("exclusiveMinimum")) {
-            ctx.ruleNeeds().add(new RuleSynthesis.Need(
-                    path, RuleSynthesis.Kind.EXCLUSIVE_MIN, schema.get("exclusiveMinimum").asText()));
+            ctx.ruleNeeds().add(new RuleSynthesis.ExclusiveBound(path, true, schema.get("exclusiveMinimum").asText()));
         }
         if (schema.has("exclusiveMaximum")) {
-            ctx.ruleNeeds().add(new RuleSynthesis.Need(
-                    path, RuleSynthesis.Kind.EXCLUSIVE_MAX, schema.get("exclusiveMaximum").asText()));
+            ctx.ruleNeeds().add(new RuleSynthesis.ExclusiveBound(path, false, schema.get("exclusiveMaximum").asText()));
+        }
+    }
+
+    /** {@code dependentRequired} on an object → a conditional-requiredness rule per (trigger → dependent). */
+    private static void collectDependentRequired(JsonNode objectSchema, String groupPath, Ctx ctx) {
+        JsonNode dependentRequired = objectSchema.path("dependentRequired");
+        if (!dependentRequired.isObject()) {
+            return;
+        }
+        for (Iterator<Map.Entry<String, JsonNode>> it = dependentRequired.fields(); it.hasNext(); ) {
+            Map.Entry<String, JsonNode> e = it.next();
+            if (!e.getValue().isArray()) {
+                continue;
+            }
+            for (JsonNode dependent : e.getValue()) {
+                ctx.ruleNeeds().add(new RuleSynthesis.DependentRequired(groupPath, e.getKey(), dependent.asText()));
+            }
         }
     }
 

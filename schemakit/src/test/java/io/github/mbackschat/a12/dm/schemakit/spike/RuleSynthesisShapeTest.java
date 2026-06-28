@@ -34,4 +34,27 @@ class RuleSynthesisShapeTest {
                         .filter(d -> d.tier() == TranscodeReport.Tier.TIER_A_PLUS).count() == 2,
                 "both strict bounds are recorded as Tier-A+ synthesized rules");
     }
+
+    @Test
+    void dependentRequiredSynthesizesAConditionalRequirednessRule() {
+        String schema = """
+                {
+                  "type": "object",
+                  "properties": {
+                    "card": { "type": "string" },
+                    "cvv":  { "type": "string" }
+                  },
+                  "dependentRequired": { "card": ["cvv"] }
+                }
+                """;
+        JsonSchemaImporter.ImportResult imported = new JsonSchemaImporter().importSchema(schema);
+
+        assertKernelAccepts(imported.dmJson());
+        // "if card is present, cvv is required" → error when card filled AND cvv not filled
+        assertTrue(imported.dmJson().contains("FieldFilled(card)"));
+        assertTrue(imported.dmJson().contains("FieldNotFilled(cvv)"));
+        assertTrue(imported.report().dispositions().stream()
+                        .anyMatch(d -> d.tier() == TranscodeReport.Tier.TIER_A_PLUS),
+                "dependentRequired is a Tier-A+ synthesized rule");
+    }
 }
