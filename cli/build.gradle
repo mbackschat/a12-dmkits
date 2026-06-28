@@ -53,6 +53,10 @@ dependencies {
     // dependency — re-capture reflection metadata before a native build (NATIVE-IMAGE-GRAALVM §5.1).
     implementation project(':interpreter')
 
+    // schemakit (the JSON Schema ⇄ Document Model transcoder) backs the `model import-jsonschema` /
+    // `model export-jsonschema` verbs. JVM/Java, kernel-free at the source level (SCHEMAKIT-SPEC).
+    implementation project(':schemakit')
+
     // modelkit (the modeller's authoring kit, used to build multi-file include/typedef workspaces in
     // tests) folded into the root project (2026-06-09) — its classes arrive via `implementation project(':')`.
 }

@@ -12,10 +12,11 @@ import picocli.CommandLine.Spec;
  */
 @Command(name = "model", mixinStandardHelpOptions = true,
         description = "Whole-model operations: new, info, check, describe, read, usage, plus the runtime verbs "
-                + "eval/compute/seed against a document instance (export keeps artifact mode).",
+                + "eval/compute/seed against a document instance, and JSON-Schema import/export.",
         subcommands = { ModelNewCommand.class, ModelInfoCommand.class, ModelCheckCommand.class, ModelDescribeCommand.class,
                 ModelReadCommand.class, ModelUsageCommand.class, ModelRenameCommand.class,
-                ModelEvalCommand.class, ModelComputeCommand.class, ModelSeedCommand.class })
+                ModelEvalCommand.class, ModelComputeCommand.class, ModelSeedCommand.class,
+                ModelImportJsonschemaCommand.class, ModelExportJsonschemaCommand.class })
 public final class ModelCommand implements Callable<Integer> {
 
     @Spec

@@ -63,6 +63,11 @@ class VerbDemonstrationTest {
             doc = dir.resolve("doc.json");
             Files.writeString(doc, ex.get("doc").toString());
         }
+        Path schemaFile = null;   // an external JSON Schema input (model import-jsonschema)
+        if (ex.has("schema")) {
+            schemaFile = dir.resolve("schema.json");
+            Files.writeString(schemaFile, ex.get("schema").toString());
+        }
         // a verb that needs an ISOLATED workspace with its own roles.yaml (workspace roles): the shared `dir`
         // accumulates every example's models, so we stage this one's models + roles file in a private subtree.
         Path rolesWorkspace = ex.has("rolesWorkspace") ? materializeRolesWorkspace(ex.get("rolesWorkspace"), dir) : null;
@@ -77,6 +82,10 @@ class VerbDemonstrationTest {
                 case "<doc.json>" -> {
                     assertTrue(doc != null, () -> verb + " uses <doc.json> but declares no `doc`");
                     yield doc.toString();
+                }
+                case "<schema.json>" -> {
+                    assertTrue(schemaFile != null, () -> verb + " uses <schema.json> but declares no `schema`");
+                    yield schemaFile.toString();
                 }
                 // a directory verb (workspace list): the temp dir, already populated with the example's siblings
                 case "<workspace-dir>" -> dir.toString();

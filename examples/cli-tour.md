@@ -24,6 +24,8 @@ model rename
 model eval
 model compute
 model seed
+model import-jsonschema
+model export-jsonschema
 rule check
 rule read
 rule explain

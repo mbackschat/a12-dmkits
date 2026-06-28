@@ -61,10 +61,12 @@ schemakit is **runtime-callable and wired into `dmtool` from day one** (proposal
 
 | Verb | I/O |
 |---|---|
-| `dmtool model import-jsonschema -i <schema.json> [-o <model.dm.json>]` | JSON Schema → DM-JSON + transcoding report |
-| `dmtool model export-jsonschema -m <model.dm.json>` | DM-JSON → JSON Schema + transcoding report |
+| `dmtool model import-jsonschema --schema <schema.json> [profile flags] [-o <model.dm.json>]` | JSON Schema → DM-JSON artifact (stdout); the transcoding report → stderr; `-o` writes the model + a write envelope |
+| `dmtool model export-jsonschema -m <model.dm.json> [-o <schema.json>]` | DM-JSON → JSON Schema artifact (stdout); report → stderr; `-o` writes the schema + a write envelope |
 
-**Naming caveat (proposal §10):** `dmtool schema` is taken (it publishes verb I/O contracts). The JSON-Schema verbs are `import-jsonschema` / `export-jsonschema`, **never** `schema`. Adding the verbs triggers the usual CLI-CONFORMANCE gates (`ManifestVerbTest.EXPECTED_VERBS`, the conformance matrix, `verb-examples.json`, a native re-capture) — see [CLI-CONFORMANCE-SPEC.md](CLI-CONFORMANCE-SPEC.md). The verbs return the result envelope; the report is `data`.
+Both keep **artifact mode**: the transcode result (DM-JSON / JSON Schema) goes to stdout so it pipes straight into the next tool, and the **transcoding report** — the omission to-dos — rides stderr (loud, never silent); with `-o` the artifact goes to the file and stdout carries a write-confirmation envelope. They are classified `SchemaCommand.CONTRACT_EXEMPT` (no result-envelope contract on the artifact form, like `model new`/`model seed`). **Import** exposes the `MappingProfile` choices as flags — `--number-scale` / `--default-scale` / `--array-of-scalar` / `--map` / `--union` / `--format` / `--boolean` / `--enum-labels` / `--recursion-depth` (§4b).
+
+**Naming caveat (proposal §10):** `dmtool schema` is taken (it publishes verb I/O contracts). The JSON-Schema verbs are `import-jsonschema` / `export-jsonschema`, **never** `schema`. Adding the verbs triggered the usual CLI-CONFORMANCE gates (`ManifestVerbTest.EXPECTED_VERBS`, the conformance matrix, `verb-examples.json` + a `<schema.json>` demonstration placeholder) — see [CLI-CONFORMANCE-SPEC.md](CLI-CONFORMANCE-SPEC.md); a native re-capture is needed only before a native build (NATIVE-IMAGE-GRAALVM §5.1).
 
 ---
 

@@ -104,7 +104,11 @@ final class SchemaCommand extends BaseCommand {
             "export", "renders an artifact (model card / dot / …), not the result envelope",
             "model new", "emits a brand-new model document (an artifact) to stdout; with -o stdout carries an "
                     + "additive write-confirmation envelope, but the primary form has no directional contract",
-            "model seed", "emits a generated sample document instance (an artifact), not the result envelope");
+            "model seed", "emits a generated sample document instance (an artifact), not the result envelope",
+            "model import-jsonschema", "reads a JSON Schema file and emits the imported model as a DM-JSON "
+                    + "artifact to stdout (report on stderr); with -o the model goes to file + a write envelope",
+            "model export-jsonschema", "emits the model as a JSON Schema artifact to stdout (report on stderr); "
+                    + "with -o stdout carries a write-confirmation envelope");
 
     /** Leaf op-names whose verb returns a read payload in the envelope's {@code data}. */
     private static final Set<String> READ_OPS =

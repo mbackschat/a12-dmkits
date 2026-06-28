@@ -105,7 +105,16 @@ dmtool -m orders.dm.json field add --group /Order --name Reference --kind STRING
 dmtool -m orders.dm.json field modify postal.spec.json   # re-type a field in place (e.g. add a STRING pattern) — no delete-and-recreate
 ```
 
-`model new` is the one model-*originating* verb (no `-m` — it makes one); every other verb edits an existing `-m` model. What it emits is kernel-checked, so the next `-m` edit binds.
+`model new` is the primary model-*originating* verb (no `-m` — it makes one); every other verb edits an existing `-m` model. What it emits is kernel-checked, so the next `-m` edit binds.
+
+You can also originate a model **from a JSON Schema**, and export one back out:
+
+```sh
+dmtool model import-jsonschema --schema order.schema.json > order.dm.json   # JSON Schema → kernel-valid model
+dmtool -m order.dm.json model export-jsonschema > order.schema.json         # model → JSON Schema (best-effort)
+```
+
+Import aims for **total coverage** — every JSON Schema feature maps to a12 structure or rules, or is *omitted with a corrective to-do* on stderr (never silent, never blocked); choice-driven mappings are tunable (`--array-of-scalar`, `--union`, `--number-scale`, …). The asymmetry (import maps richly; export is best-effort) is tabulated in [docs/SCHEMAKIT-SPEC.md §4d](docs/SCHEMAKIT-SPEC.md).
 
 ### Read & understand a model
 
