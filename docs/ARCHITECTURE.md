@@ -69,7 +69,7 @@ dmkits is **one library with a shared core and two sibling kits**, an **opt-in k
 
 ## 2. Modules & dependencies
 
-Four Gradle units. modelkit and `dm.edit` are **packages inside the root project**, not separate modules (modelkit was folded in 2026-06-09 when the kernel-free module wall was dropped — history in PROJECT-DESIGN §21H).
+Five Gradle units. modelkit and `dm.edit` are **packages inside the root project**, not separate modules (modelkit was folded in 2026-06-09 when the kernel-free module wall was dropped — history in PROJECT-DESIGN §21H).
 
 | Unit | Gradle id | Depends on | Kernel coupling | Ships as |
 |---|---|---|---|---|
@@ -77,6 +77,7 @@ Four Gradle units. modelkit and `dm.edit` are **packages inside the root project
 | **adapter** | `:adapter` | `api project(':')` + the kernel **internal-read** jars + the **runtime-eval** jars + `implementation project(':interpreter')` (the `KernelCustomConditions` bridge in main; the kernel differential in test) | the `a12internal` read tier + runtime evaluation, **confined to this module** | an opt-in read/convert/rewrite/evaluate surface (`KernelAdapter`) + the JVM bridge running existing kernel custom conditions on the interpreter (`KernelCustomConditions`) |
 | **interpreter** | `:interpreter` (Kotlin Multiplatform: jvm + js) | **nothing** (no kernel, no dmtool — purity-lint-enforced) | **none** — kernel-free by construction | a native-safe, cross-platform runtime evaluator (`DmInterpreter`: `validateFull`/`validatePart`/`testRule`/`compute`); the publishable standalone artifact (design [INTERPRETER-SPEC.md](INTERPRETER-SPEC.md) · impl [INTERPRETER-ARCHITECTURE.md](INTERPRETER-ARCHITECTURE.md)) |
 | **cli** | `:cli` (`application` + GraalVM `native` plugins) | `implementation project(':')` + `project(':adapter')` + `project(':interpreter')` + picocli + Jackson | inherits the adapter's (bundled *inside* the binary, never a library surface) | the standalone `dmtool` front-end (JVM `installDist`; opt-in native image) |
+| **schemakit** | `:schemakit` (JVM/Java; spike under the `.spike` package) | `implementation project(':')` (+ later `:interpreter`) + Jackson | **public kernel only**, transitively via root `:` — **never** `:adapter` or the internal jars (the owner constraint, held by `verifySchemakitPurity`) | JSON Schema ⇄ Document Model transcoder ([SCHEMAKIT-SPEC.md](SCHEMAKIT-SPEC.md)) |
 
 The runtime verbs (`model eval`/`compute`, `rule eval`) **default to the `:interpreter` engine** — `:cli`'s `interp.InterpreterModelLoader` loads a DM-JSON model into the kernel-free `ModelDef` and `interp.InterpreterEngine` renders the result envelope, so they need no Groovy; **`--kernel` opts into the kernel** (JVM only — refused under the native profile, where the option is removed from the command tree). Because the default engine is kernel-free, these verbs **run in the native image** — `Cli.JVM_ONLY_VERBS` is empty (no verb hidden), and all 7 showboat demos (incl. `cli-runtime.md`) pass on the native binary; only the `--kernel` *option* is JVM-only (guarded by `NativeImageRuntimeVerbsTest`). The kernel-free `model seed` (generate a sample instance) is likewise native.
 
@@ -113,6 +114,7 @@ Internally `commonMain` is **layered into subpackages** under `dm.interpreter`: 
 - `./gradlew :interpreter:check` — the kernel-free evaluator on **both** targets (`jvmTest` + `jsNodeTest`) + the `verifyInterpreterPurity` lint.
 - `./gradlew :adapter:test` — the adapter (the only suite with the internal tier) + the interpreter↔kernel differential tests.
 - `./gradlew :cli:test` — the CLI (incl. the conformance matrix and the N6 gold oracle over `eval/tasks/`).
+- `./gradlew :schemakit:check` — the JSON-Schema transcoder spike + `verifySchemakitPurity` (the public-facade-only lint). Kernel-accept is via the public facade, so the suite needs no internal tier.
 - `./gradlew test` — everything. Always build through [`./build.sh`](../build.sh) (isolated `GRADLE_USER_HOME` + JDK 21) so the machine's global Gradle config can't contaminate the build.
 
 **Kernel coupling — three tiers (N8/D15).** This is the central architectural constraint:

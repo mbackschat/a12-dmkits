@@ -1,0 +1,82 @@
+// :schemakit (docs/SCHEMAKIT-SPEC.md) — JSON Schema ⇄ Document Model import/export.
+// JVM/Java, native-safe (NOT Kotlin Multiplatform — proposal §10). It authors through dmkits' typed
+// surface (the dogfood rule): import builds via modelkit DocumentModelDraft + rulekit Dsl/DslRenderer;
+// export reads via modelkit ModelDocument. The structural validity oracle is the kernel, reached ONLY
+// through the public facade (ModelLoader).
+//
+// THE non-negotiable (owner constraint 2026-06-28, SCHEMAKIT-SPEC §1): the import/export MUST NOT depend
+// on the A12 kernel beyond `kernel-md-facade`. That holds by construction — this module declares neither
+// :adapter nor any internal kernel jar, so the internal tier is not on its classpath — AND by lint
+// (`verifySchemakitPurity` below). kernel-md-facade is reached only transitively, via root `:`.
+plugins {
+    id 'java-library'
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    // The engine: dm.core (ModelLoader), modelkit (DocumentModelDraft/ModelDocument), rulekit
+    // (Dsl/DslRenderer/RuleValidator). root `:` exposes the kernel ONLY via `api kernel-md-facade`,
+    // so depending on it satisfies the constraint. NOT `:adapter`, NOT the internal kernel jars.
+    implementation project(':')
+
+    // JSON Schema parse/emit — Jackson tree (the same tree-walking style as modelkit's DM-JSON read).
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+
+    // (Joins at Tier-A projection / spike shape 5: implementation project(':interpreter') — the
+    //  kernel-free DSL parser for inspecting stored conditions + the two-tier validation coupling.)
+
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// --- The constraint, locked (SCHEMAKIT-SPEC §1; mirrors :interpreter's verifyInterpreterPurity) --------
+// schemakit's own source must stay free of kernel/groovy types and emit plain data ("data out, never
+// kernel objects"). A forbidden import in src/main fails the build, so the public-facade-only boundary
+// cannot silently erode. The facade is reached only transitively through root `:`.
+def verifySchemakitPurity = tasks.register('verifySchemakitPurity') {
+    group = 'verification'
+    description = 'Fail on a forbidden kernel/groovy import so schemakit touches the kernel only via kernel-md-facade.'
+    def mainSrc = file('src/main')
+    inputs.dir(mainSrc)
+    doLast {
+        def forbidden = ['com.mgmtp.', 'groovy.']
+        def violations = []
+        if (mainSrc.exists()) {
+            mainSrc.eachFileRecurse { f ->
+                if (!f.name.endsWith('.java')) return
+                f.eachLine { line, n ->
+                    def m = (line =~ /^\s*import\s+([\w.]+)/)
+                    if (m) {
+                        def imp = m.group(1)
+                        forbidden.each { bad ->
+                            if (imp.startsWith(bad)) {
+                                violations << "src/main/${f.name}:${n}: import ${imp}".toString()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (violations) {
+            throw new GradleException(
+                "schemakit purity violated — the import/export must touch the kernel only via kernel-md-facade,\n" +
+                "transitively through root ':' (SCHEMAKIT-SPEC §1). Forbidden imports:\n  " + violations.join('\n  '))
+        }
+    }
+}
+tasks.named('check') { dependsOn verifySchemakitPurity }

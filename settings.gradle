@@ -19,3 +19,8 @@ include 'cli'
 // The :interpreter module (docs/INTERPRETER-SPEC.md): the kernel-free, native-safe runtime evaluator —
 // Kotlin Multiplatform (jvm + js), the publishable standalone artifact + the native image's runtime engine.
 include 'interpreter'
+
+// The :schemakit module (docs/SCHEMAKIT-SPEC.md): JSON Schema ⇄ Document Model import/export. JVM/Java,
+// native-safe. Depends on root `:` (public-kernel-only) + later :interpreter — and MUST NOT touch the
+// kernel beyond kernel-md-facade (owner constraint; held by verifySchemakitPurity). Spike under `.spike`.
+include 'schemakit'
