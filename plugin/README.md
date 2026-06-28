@@ -172,12 +172,17 @@ dmtool model import-jsonschema \
   --component Order \
   -o order.dm.json
 
+# …or import the WHOLE document as a bundle — one model per component, wired by includes
+dmtool model import-jsonschema \
+  --schema petstore.openapi.json \
+  --out-dir ./models/
+
 # model → a drop-in OpenAPI components/schemas envelope
 dmtool -m order.dm.json model export-jsonschema \
   --dialect OPENAPI_31 --wrap-openapi > order.openapi.json
 ```
 
-Import is **best-effort** — it maps as much as possible (even unbounded arrays and recursive `$ref`s) and flags every guess in the stderr report; `--strict` omits everything uncertain. `--dialect`, `--component`, and `--wrap-openapi` are self-describing: `dmtool model import-jsonschema --help` enumerates every value and its implication.
+Import is **best-effort** — it maps as much as possible (even unbounded arrays and recursive `$ref`s) and flags every guess in the stderr report; `--strict` omits everything uncertain. Constraints with no field-config home become real a12 **rules** (`required`/`enum`/`pattern`, exclusive bounds, `multipleOf`, `const`, `dependentRequired`, `uniqueItems`, discriminators, `if`/`then`/`else`, `not`, `contains`), each kernel-checked. `--dialect`, `--component`, `--out-dir`, and `--wrap-openapi` are self-describing: `dmtool model import-jsonschema --help` enumerates every value and its implication.
 
 ## Worked examples
 

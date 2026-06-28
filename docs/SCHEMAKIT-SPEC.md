@@ -62,7 +62,7 @@ schemakit is **runtime-callable and wired into `dmtool` from day one** (proposal
 
 | Verb | I/O |
 |---|---|
-| `dmtool model import-jsonschema --schema <schema.json> [--dialect <D>] [--component <name>] [profile flags] [-o <model.dm.json>]` | JSON Schema / OpenAPI → DM-JSON artifact (stdout); the transcoding report → stderr; `-o` writes the model + a write envelope |
+| `dmtool model import-jsonschema --schema <schema.json> [--dialect <D>] [--component <name> \| --out-dir <dir>] [profile flags] [-o <model.dm.json>]` | JSON Schema / OpenAPI → DM-JSON artifact (stdout); `--out-dir` imports the whole OpenAPI bundle → one model per component; the transcoding report → stderr; `-o` writes the model + a write envelope |
 | `dmtool model export-jsonschema -m <model.dm.json> [--dialect <D>] [--wrap-openapi] [-o <schema.json>]` | DM-JSON → JSON Schema / OpenAPI artifact (stdout); report → stderr; `-o` writes the schema + a write envelope |
 
 Both keep **artifact mode**: the transcode result (DM-JSON / JSON Schema) goes to stdout so it pipes straight into the next tool, and the **transcoding report** — the omission to-dos — rides stderr (loud, never silent); with `-o` the artifact goes to the file and stdout carries a write-confirmation envelope. They are classified `SchemaCommand.CONTRACT_EXEMPT` (no result-envelope contract on the artifact form, like `model new`/`model seed`). **Import** exposes the `MappingProfile` choices as flags — `--strict` (the conservative master switch) plus the per-decision `--number-scale` / `--default-scale` / `--array-of-scalar` / `--map` / `--union` / `--format` / `--boolean` / `--enum-labels` / `--recursion-depth` / `--default-repeat-cap` (§4b). **Both verbs** take `--dialect` (JSON Schema vs OpenAPI 3.0/3.1·3.2, §4g); import adds `--component` (the OpenAPI bundle entry point), export adds `--wrap-openapi` (the OpenAPI `components/schemas` envelope).
@@ -194,38 +194,35 @@ A single JSON Schema imports to **exactly one** document model today. Multiplici
 
 ### Which reuse construct fans out into how many models
 
-**Every scenario produces exactly one model today** — the importer collapses all reuse into the host model (the *Models today* column is uniformly **1**); the right column is the multi-model target once the deferred increment lands. The *how* of the collapse is the gap table below.
+**Single-import** (`--component`, or a bare schema) collapses all reuse into **one** model (inline); **`--out-dir`** imports the whole OpenAPI bundle as **N** models wired by mounts. The table shows both; the *how* is the behavior table below.
 
-| JSON-Schema construct | a12 vehicle | Models today | Models (target) |
+| JSON-Schema construct | a12 vehicle | Single-import | Bundle (`--out-dir`) |
 |---|---|---|---|
-| leaf `$def` (string/integer) | typeDefinition (local) | **1** | 1 (same model) |
-| object `$def` reused in N places | include/mount | **1** | host + 1 child per reused object |
-| recursive `$def` (self-reference) | self-mount | **1** | host + 1 (the child *is* the model) |
-| a leaf type shared across schemas | type-def-only model + import | **1** | host + 1 library model |
-| input is a bundle / many external `$ref`s | one model per resource | **1** | N + include wiring |
+| leaf `$def` (string/integer) | typeDefinition (local) | 1 | a local typedef per model |
+| object `$def` / cross-component ref | include/mount | 1 (inlined) | **mounted** — one model per component |
+| recursive `$def` (self-reference) | expand-then-omit | 1 | 1 (expanded, **not** self-mounted) |
+| whole OpenAPI document | one model per `components/schemas` entry | 1 (the chosen entry) | **N** + include wiring |
 
 ### The clean way to say it
 
 - **typeDefinition** = reuse a *type* → stays in **one** model (promote to a shared **type-def-only model** only when the type is shared *across* schemas).
-- **include/mount** = reuse a *structure* → a **separate child model**, one per reused object, the host mounting it by `modelAlias`.
-- An import yields **multiple** models when (a) reused object `$defs` / external `$ref`s map to includes, (b) the schema is **recursive** (forcing a self-mount), or (c) the input is a **bundle** of several schemas.
+- **include/mount** = reuse a *structure* → a **separate child model** the host mounts by `modelAlias`; **`--out-dir`** emits these for object cross-references.
+- An import yields **multiple** models with **`--out-dir`** over an OpenAPI bundle. **Recursion does *not*** yield a self-mount — the kernel forbids a model including itself, so a self-recursive component is *expanded* (to `--recursion-depth`) then omitted.
 
-### Why a separate model (not just inline the structure)
+### Why a mount beats inlining (and where it can't reach)
 
-- **Recursion makes it mandatory, not merely tidy.** A self-referential schema — a `TreeNode` whose `children` is an array of `TreeNode` — has **no finite inline form**; inlining never terminates. a12 includes *expand at runtime*, so a mount that references its own model represents the recursion inlining cannot. This is exactly today's omit case (the `recursionDepth` expand-then-omit), and the multi-model path is what unblocks it.
-- **Reuse without duplication.** An object `$def` referenced in N places inlines the structure N times; a mount references it **once**. Edits — and the included model's own **rules/computations** — stay single-sourced (`MountOptions.excludeRules`/`excludeComputations` opt out per mount when the host doesn't want the child's logic).
-- **Cross-document sharing.** A library of types or structures shared across many imported schemas is precisely the type-def-only model / a common child — the DRY unit a12 already provides, rather than copying the definition into every model.
+- **Reuse without duplication.** An object `$def` referenced in N places inlines the structure N times; a mount references it **once**. Edits — and the included model's own **rules/computations** — stay single-sourced (`MountOptions.excludeRules`/`excludeComputations` opt out per mount).
+- **Cross-document sharing.** A library of structures shared across many schemas is the common child / type-def-only model — the DRY unit a12 already provides, rather than copying the definition into every model.
+- **Recursion is the limit, not a win.** A self-referential schema has *no finite inline form* **and** *no self-include form* — the kernel rejects "a model includes itself." So recursion is bounded by `--recursion-depth` (expand) then reported; neither inlining nor mounting fully represents it.
 
-### Current importer behavior (the honest gap)
+### What the importer does today
 
-Today schemakit emits **one** model. The multi-model output is deferred; the importer collapses reuse into the host model and reports where it did so:
-
-| construct | today | target (multi-model increment) |
+| construct | single-import | `--out-dir` bundle |
 |---|---|---|
-| leaf `$def` (string/integer) | local `typeDefinition` + `typedefField` ref (`declareLeafTypedefs`) | unchanged — promote to a type-def model only for cross-schema sharing |
-| object `$def` | **inlined** as a nested group, with a "reuse via include/mount is a later increment" diagnostic (`inlineObjectDef`) | mount → a child model, one per reused object |
-| recursive `$ref` | expanded to `--recursion-depth` (default 1), then omitted with a corrective to-do | self-mount (the recursion the include represents) |
-| external `$ref` / bundle | not followed | one model per resource + include wiring |
+| leaf `$def` (string/integer) | local `typeDefinition` + ref (`declareLeafTypedefs`) | same, per model |
+| object `$def` / cross-component ref | **inlined** as a nested group (`inlineObjectDef`) | **mounted** as an include (`mount` + header `include`) |
+| recursive (self) `$ref` | expanded to `--recursion-depth`, then omitted with a to-do | same (the kernel forbids a self-include) |
+| whole OpenAPI document | the `--component` entry only | **one model per `components/schemas` entry** |
 
 ---
 
@@ -286,7 +283,8 @@ An OpenAPI document is a **bundle**: its schemas live under `components/schemas`
 
 - **Input is JSON *or* YAML** — most OpenAPI specs are YAML, so the importer tries JSON first (exact behavior for JSON), then YAML (a JSON superset). (A new dep, `jackson-dataformat-yaml`; a native-image re-capture trigger — NATIVE-IMAGE-GRAALVM §5.1.)
 - **`$ref` resolves by JSON Pointer** against the whole document — both `#/$defs/X` (JSON Schema) and `#/components/schemas/X` (OpenAPI).
-- **`--component <Name>`** selects the `components/schemas` entry to import as the model root; its sibling refs resolve. A bare schema needs none; a **multi-schema OpenAPI document with no `--component` is refused, listing the components** — choosing an entry point is a precondition, not a feature-omission (so it is a clear error, not an omit-with-to-do). The multi-model bundle output (all components → one model each, §4e) is the deferred path.
+- **`--component <Name>`** selects the `components/schemas` entry to import as the model root; its sibling refs resolve. A bare schema needs none; a **multi-schema OpenAPI document with no `--component` (and no `--out-dir`) is refused, listing the components** — choosing an entry point is a precondition, not a feature-omission (so it is a clear error, not an omit-with-to-do).
+- **`--out-dir <dir>`** imports the **whole bundle** (§4e): every `components/schemas` entry → its own model (`<dir>/<Component>.dm.json`), and an object **cross-reference becomes an a12 mount** (an include) instead of being inlined — so a shared definition is single-sourced. A **self-recursive** component is *expanded* (to `--recursion-depth`) then omitted, **not** self-mounted (the kernel forbids a model including itself). Mutually exclusive with `--component`.
 - **A top-level union component** — a `components/schemas` entry (or bare schema) that is itself a `oneOf`/`anyOf` of objects (a discriminated union, common in OpenAPI) — becomes a **superset at the model root** (the discriminator → an enum + per-variant requiredness rules), instead of being refused for lacking a `type:object` root.
 - **AUTO** reads the `openapi:` version and states the detected dialect in the report.
 - **OpenAPI 3.0:** `nullable:true` → the field is OPTIONAL (a12 has no present-but-null; a required+nullable field is reported); a boolean `exclusiveMinimum` + `minimum` → a strict-bound rule (and the inclusive `minimum` is suppressed so it isn't doubly enforced).
@@ -321,7 +319,7 @@ Built test-first, smallest increment first. Progress is git, not a status table 
 
 1. **Flat object** — `object` + string/integer/number/boolean properties + `required` → DM with fields + requiredness; export back; round-trip equal; kernel-accepts.
 2. **Nested + array-of-object** — groups + repeatable groups + `minItems`/`maxItems`.
-3. **`$defs`/`$ref` both kinds** — leaf `$def`→typedef; object `$def`→inlined group (the multi-model include/mount → a separate child model is deferred, §4e); recursive `$ref` expanded to `recursionDepth` (default 1), then omitted with a corrective to-do.
+3. **`$defs`/`$ref` both kinds** — leaf `$def`→typedef; object `$def`→inlined group (single-import) or **mounted as an include** (the `--out-dir` bundle, §4e/§4g); recursive `$ref` expanded to `recursionDepth` (default 1), then omitted with a corrective to-do (the kernel forbids a self-include).
 4. **Rule carriage** — Tier-A `if/then`+`required`; Tier-B cross-field/aggregate as `x-a12-rule`; a computation as `x-a12-computation`; meta-schema-valid; re-import reconstructs all three.
 5. **Tier A+ import & interpreter coupling** — synthesize rules from `dependentRequired`/`exclusiveMinimum`/`multipleOf`/`const`/discriminators; two-tier validation holds (proposal §12).
 

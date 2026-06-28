@@ -49,7 +49,12 @@ public final class JsonSchemaImporter {
      *  {@code $ref} resolution), the resolved {@code dialect}, the reusable-definitions pool, the inline stack
      *  (recursion detection), the report, the Tier-A+ rule-synthesis needs, and the customization profile. */
     private record Ctx(JsonNode root, Dialect dialect, JsonNode defs, Deque<String> inlining,
-                       TranscodeReport.Builder report, List<RuleSynthesis.Need> ruleNeeds, MappingProfile profile) {}
+                       TranscodeReport.Builder report, List<RuleSynthesis.Need> ruleNeeds, MappingProfile profile,
+                       boolean bundle, Set<String> includes, String modelId) {}
+
+    /** A multi-model bundle: each {@code components/schemas} entry as its own model (id → result), wired by
+     *  includes/mounts (SCHEMAKIT-SPEC §4g/§4e). */
+    public record BundleResult(java.util.Map<String, ImportResult> models) {}
 
     public ImportResult importSchema(String jsonSchema) {
         return importSchema(jsonSchema, MappingProfile.defaults());
@@ -63,16 +68,52 @@ public final class JsonSchemaImporter {
      * Import, selecting the wire {@code dialect} (JSON Schema vs OpenAPI 3.0/3.1; {@link Dialect#AUTO} detects it)
      * and, for an OpenAPI document, the {@code component} under {@code components/schemas} to use as the model
      * root (null = the file is itself a bare schema, or — for a multi-schema OpenAPI document — a refusal that
-     * lists the components, SCHEMAKIT-SPEC §4g).
+     * lists the components, SCHEMAKIT-SPEC §4g). For the whole bundle at once, see {@link #importBundle}.
      */
     public ImportResult importSchema(String jsonSchema, MappingProfile profile, Dialect requestedDialect, String component) {
         JsonNode root = parse(jsonSchema);
         Dialect dialect = resolveDialect(requestedDialect, root);
         TranscodeReport.Builder report = TranscodeReport.builder();
-        if (dialect.isOpenApi()) {   // JSON Schema is the unremarkable default; an OpenAPI dialect is worth stating
-            report.diagnostic("dialect: " + dialect + (requestedDialect == Dialect.AUTO ? " (auto-detected)" : " (forced)"));
-        }
+        noteDialect(report, dialect, requestedDialect);
         JsonNode rootSchema = entryPointSchema(root, component);
+        String modelId = identifier(component != null ? component : rootSchema.path("title").asText(null));
+        return buildModel(root, rootSchema, modelId, dialect, profile, report, false);
+    }
+
+    /**
+     * Import a whole OpenAPI document as a <b>bundle</b>: every {@code components/schemas} entry becomes its own
+     * model, and an object cross-reference becomes an a12 <b>mount</b> (include) instead of being inlined — so a
+     * shared definition is single-sourced and a recursive {@code $ref} becomes a self-mount (SCHEMAKIT-SPEC §4g).
+     */
+    public BundleResult importBundle(String openApiDoc, MappingProfile profile, Dialect requestedDialect) {
+        JsonNode root = parse(openApiDoc);
+        Dialect dialect = resolveDialect(requestedDialect, root);
+        JsonNode schemas = root.path("components").path("schemas");
+        if (!schemas.isObject() || schemas.isEmpty()) {
+            throw new IllegalArgumentException("no components/schemas to import as a bundle");
+        }
+        java.util.Map<String, ImportResult> models = new java.util.LinkedHashMap<>();
+        for (Iterator<Map.Entry<String, JsonNode>> it = schemas.fields(); it.hasNext(); ) {
+            Map.Entry<String, JsonNode> e = it.next();
+            TranscodeReport.Builder report = TranscodeReport.builder();
+            noteDialect(report, dialect, requestedDialect);
+            models.put(identifier(e.getKey()),
+                    buildModel(root, e.getValue(), identifier(e.getKey()), dialect, profile, report, true));
+        }
+        return new BundleResult(models);
+    }
+
+    /** State the resolved dialect in the report (only for an OpenAPI dialect — JSON Schema is the default). */
+    private static void noteDialect(TranscodeReport.Builder report, Dialect dialect, Dialect requested) {
+        if (dialect.isOpenApi()) {
+            report.diagnostic("dialect: " + dialect + (requested == Dialect.AUTO ? " (auto-detected)" : " (forced)"));
+        }
+    }
+
+    /** Build one model from {@code rootSchema}. In {@code bundle} mode an object cross-reference is mounted as an
+     *  include rather than inlined (the §4e multi-model wiring). */
+    private static ImportResult buildModel(JsonNode root, JsonNode rootSchema, String modelId, Dialect dialect,
+                                           MappingProfile profile, TranscodeReport.Builder report, boolean bundle) {
         boolean rootUnion = isObjectUnion(rootSchema);   // a top-level oneOf/anyOf of objects → a root superset
         if (!rootUnion && !"object".equals(rootSchema.path("type").asText(""))) {
             String type = rootSchema.path("type").asText("");
@@ -80,10 +121,9 @@ public final class JsonSchemaImporter {
                     + "got type=" + (type.isEmpty() ? "<none>" : type));
         }
         JsonNode defsPool = dialect.isOpenApi() ? root.path("components").path("schemas") : root.path("$defs");
-        Ctx ctx = new Ctx(root, dialect, defsPool, new ArrayDeque<>(), report, new ArrayList<>(), profile);
-        DocumentModelDraft.Builder b = DocumentModelDraft
-                .named(identifier(component != null ? component : rootSchema.path("title").asText(null)))
-                .locale(LOCALE);
+        Ctx ctx = new Ctx(root, dialect, defsPool, new ArrayDeque<>(), report, new ArrayList<>(), profile,
+                bundle, new LinkedHashSet<>(), modelId);
+        DocumentModelDraft.Builder b = DocumentModelDraft.named(modelId).locale(LOCALE);
         declareLeafTypedefs(b, ctx);
         b.rootGroup(ROOT_GROUP, g -> {
             if (rootUnion) {
@@ -92,6 +132,7 @@ public final class JsonSchemaImporter {
                 populate(g, rootSchema, "/" + ROOT_GROUP, ctx);
             }
         });
+        ctx.includes().forEach(refId -> b.include(refId, refId));   // header includes for the mounts emitted above
 
         String dmJson = b.build().toJson();
         dmJson = RuleSynthesis.apply(dmJson, ctx.ruleNeeds(), ctx.report());   // Tier A+ synthesized rules
@@ -426,7 +467,16 @@ public final class JsonSchemaImporter {
                 g.typedefField(name, defName, isRequired ? Requiredness.REQUIRED : Requiredness.OPTIONAL);
                 ctx.report().structure(path, "typedef ref → " + defName);
             }
-            case "object" -> inlineObjectDef(g, name, defName, def, path, ctx);
+            case "object" -> {
+                String alias = identifier(defName);
+                if (ctx.bundle() && !alias.equals(ctx.modelId())) {   // §4e: cross-component ref → a mount (single-sourced)
+                    g.mount(name, alias);
+                    ctx.includes().add(alias);
+                    ctx.report().structure(path, "mount → " + alias + " (include)");
+                } else {   // self-reference (the kernel forbids a self-include) or single-model mode → inline/expand-then-omit
+                    inlineObjectDef(g, name, defName, def, path, ctx);
+                }
+            }
             default -> addScalar(g, name, def, isRequired, path, ctx);   // boolean leaf $def → an inline field
         }
     }

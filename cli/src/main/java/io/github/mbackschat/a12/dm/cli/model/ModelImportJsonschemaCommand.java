@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import picocli.CommandLine.Command;
@@ -127,6 +128,14 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
     Integer defaultRepeatCap;
 
     @ParamKind(ParamKind.Kind.FILE)
+    @Option(names = "--out-dir", paramLabel = "<dir>",
+            description = "import the WHOLE OpenAPI document as a BUNDLE — one model per components/schemas entry, "
+                    + "written as <dir>/<Component>.dm.json and wired by includes (an object cross-reference becomes "
+                    + "a mount; a recursive self-reference is expanded, since the kernel forbids a self-include). "
+                    + "Mutually exclusive with --component (which imports a single entry to stdout/-o).")
+    String outDir;
+
+    @ParamKind(ParamKind.Kind.FILE)
     @Option(names = {"--output", "-o"}, paramLabel = "<file>",
             description = "write the imported model here instead of stdout; stdout then carries a write-confirmation "
                     + "envelope (with the structured report in changed.report)")
@@ -142,6 +151,12 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
         }
         MappingProfile profile = buildProfile();
         Dialect resolvedDialect = dialect != null ? dialect : Dialect.AUTO;
+        if (outDir != null) {
+            if (component != null) {
+                return fail("--out-dir (whole-bundle) and --component (single entry) are mutually exclusive");
+            }
+            return importBundle(schemaJson, profile, resolvedDialect);
+        }
         JsonSchemaImporter.ImportResult result;
         try {
             result = new JsonSchemaImporter().importSchema(schemaJson, profile, resolvedDialect, component);
@@ -164,6 +179,42 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
         }
         out().print(result.dmJson());
         return 0;
+    }
+
+    /** Import the whole OpenAPI document as a bundle → one {@code <out-dir>/<Component>.dm.json} per component,
+     *  each report to stderr, and a write envelope listing the models in {@code changed.models}. */
+    private Integer importBundle(String schemaJson, MappingProfile profile, Dialect resolvedDialect) {
+        JsonSchemaImporter.BundleResult bundle;
+        try {
+            bundle = new JsonSchemaImporter().importBundle(schemaJson, profile, resolvedDialect);
+        } catch (RuntimeException e) {
+            return fail("cannot import the bundle: " + e.getMessage());
+        }
+        Path dir = Path.of(outDir);
+        try {
+            Files.createDirectories(dir);
+        } catch (IOException e) {
+            return fail("cannot create --out-dir: " + e.getMessage());
+        }
+        ObjectNode changed = MAPPER.createObjectNode();
+        ArrayNode models = changed.putArray("models");
+        for (var entry : bundle.models().entrySet()) {
+            Path file = dir.resolve(entry.getKey() + ".dm.json");
+            try {
+                Files.writeString(file, entry.getValue().dmJson());
+            } catch (IOException e) {
+                return fail("cannot write " + file + ": " + e.getMessage());
+            }
+            JsonSchemaCli.printReport(err(), entry.getValue().report());
+            ObjectNode m = models.addObject();
+            m.put("id", entry.getKey());
+            m.put("file", file.toString());
+            m.set("report", JsonSchemaCli.reportNode(MAPPER, entry.getValue().report()));
+        }
+        ResultEnvelope env = ResultEnvelope.applied("model", "import-jsonschema",
+                "imported OpenAPI bundle → " + bundle.models().size() + " models", changed, outDir);
+        out().print(env.toJsonString());
+        return env.exitCode();
     }
 
     /**

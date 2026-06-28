@@ -121,6 +121,11 @@ dmtool model import-jsonschema \
   --component Order \
   -o order.dm.json
 
+# …or import the WHOLE OpenAPI document as a bundle — one model per component, wired by includes
+dmtool model import-jsonschema \
+  --schema petstore.openapi.json \
+  --out-dir ./models/
+
 # model → JSON Schema (best-effort)
 dmtool -m order.dm.json model export-jsonschema > order.schema.json
 
@@ -130,8 +135,9 @@ dmtool -m order.dm.json model export-jsonschema \
 ```
 
 - **`--dialect`** (`AUTO` · `JSON_SCHEMA` · `OPENAPI_30` · `OPENAPI_31`) reads/writes the right encoding — OpenAPI 3.0's `nullable:true` and boolean exclusive bounds, `components/schemas` `$ref`s, the explicit `discriminator`. `AUTO` detects it from the `openapi:` version field.
-- **`--component`** picks the OpenAPI bundle's entry-point schema on import; **`--wrap-openapi`** emits the OpenAPI envelope on export.
+- **`--component`** picks the OpenAPI bundle's entry-point schema on import; **`--out-dir`** imports the *whole* bundle (one model per component, object cross-refs wired as mounts); **`--wrap-openapi`** emits the OpenAPI envelope on export.
 - Import is **best-effort by default** — it maps as much as possible (even unbounded arrays and recursive `$ref`s, so nested structure isn't lost) and *flags every guess* in the stderr report; nothing is silent or blocked. `--strict` flips to omit-everything-uncertain; per-decision flags (`--array-of-scalar`, `--union`, `--number-scale`, …) tune each choice.
+- Constraints with no field-config home become real a12 **rules** — `required`/`enum`/`pattern`, exclusive bounds, `multipleOf`, `const`, `dependentRequired`, `uniqueItems`, `oneOf`/`anyOf` discriminators, `if`/`then`/`else` (incl. multi-property), `not`, and `contains`/`minContains` — each kernel-checked (the full table is in the spec).
 
 The dialects, the full mapping contract, and the import↔export asymmetry are tabulated in [docs/SCHEMAKIT-SPEC.md §4d/§4g](docs/SCHEMAKIT-SPEC.md).
 
