@@ -13,6 +13,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.Iterator;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +51,13 @@ public final class JsonSchemaImporter {
      *  (recursion detection), the report, the Tier-A+ rule-synthesis needs, and the customization profile. */
     private record Ctx(JsonNode root, Dialect dialect, JsonNode defs, Deque<String> inlining,
                        TranscodeReport.Builder report, List<RuleSynthesis.Need> ruleNeeds, MappingProfile profile,
-                       boolean bundle, Set<String> includes, String modelId) {}
+                       boolean bundle, Set<String> includes, String modelId, Set<String> breakEdges) {
+
+        /** Would mounting {@code targetId} from this model close an include cycle (break it by inlining instead)? */
+        boolean isCycleEdge(String targetId) {
+            return breakEdges.contains(modelId + "->" + targetId);
+        }
+    }
 
     /** A multi-model bundle: each {@code components/schemas} entry as its own model (id → result), wired by
      *  includes/mounts (SCHEMAKIT-SPEC §4g/§4e). */
@@ -77,7 +84,7 @@ public final class JsonSchemaImporter {
         noteDialect(report, dialect, requestedDialect);
         JsonNode rootSchema = entryPointSchema(root, component);
         String modelId = identifier(component != null ? component : rootSchema.path("title").asText(null));
-        return buildModel(root, rootSchema, modelId, dialect, profile, report, false);
+        return buildModel(root, rootSchema, modelId, dialect, profile, report, false, Set.of());
     }
 
     /**
@@ -92,15 +99,74 @@ public final class JsonSchemaImporter {
         if (!schemas.isObject() || schemas.isEmpty()) {
             throw new IllegalArgumentException("no components/schemas to import as a bundle");
         }
+        Set<String> breakEdges = cycleBreakEdges(schemas, root);   // inline (not mount) one edge per include cycle
         java.util.Map<String, ImportResult> models = new java.util.LinkedHashMap<>();
         for (Iterator<Map.Entry<String, JsonNode>> it = schemas.fields(); it.hasNext(); ) {
             Map.Entry<String, JsonNode> e = it.next();
             TranscodeReport.Builder report = TranscodeReport.builder();
             noteDialect(report, dialect, requestedDialect);
             models.put(identifier(e.getKey()),
-                    buildModel(root, e.getValue(), identifier(e.getKey()), dialect, profile, report, true));
+                    buildModel(root, e.getValue(), identifier(e.getKey()), dialect, profile, report, true, breakEdges));
         }
         return new BundleResult(models);
+    }
+
+    /** The include edges to break (inline instead of mount) so no cycle survives — the kernel rejects cyclic
+     *  includes (like self-includes). A DFS over the cross-component object-ref graph collects each back-edge. */
+    private static Set<String> cycleBreakEdges(JsonNode schemas, JsonNode root) {
+        java.util.Map<String, Set<String>> graph = new java.util.LinkedHashMap<>();
+        for (Iterator<Map.Entry<String, JsonNode>> it = schemas.fields(); it.hasNext(); ) {
+            Map.Entry<String, JsonNode> e = it.next();
+            graph.put(identifier(e.getKey()), objectComponentRefs(e.getValue(), root));
+        }
+        Set<String> breakEdges = new LinkedHashSet<>();
+        Set<String> gray = new LinkedHashSet<>();
+        Set<String> done = new HashSet<>();
+        for (String node : graph.keySet()) {
+            dfsBackEdges(node, graph, gray, done, breakEdges);
+        }
+        return breakEdges;
+    }
+
+    private static void dfsBackEdges(String node, java.util.Map<String, Set<String>> graph, Set<String> gray,
+                                     Set<String> done, Set<String> breakEdges) {
+        if (done.contains(node)) {
+            return;
+        }
+        gray.add(node);
+        for (String next : graph.getOrDefault(node, Set.of())) {
+            if (gray.contains(next)) {
+                breakEdges.add(node + "->" + next);   // a back-edge to a node on the current path → a cycle
+            } else if (!done.contains(next)) {
+                dfsBackEdges(next, graph, gray, done, breakEdges);
+            }
+        }
+        gray.remove(node);
+        done.add(node);
+    }
+
+    /** The object components a schema references (the edges that would become mounts) — a recursive {@code $ref} scan. */
+    private static Set<String> objectComponentRefs(JsonNode schema, JsonNode root) {
+        Set<String> refs = new LinkedHashSet<>();
+        collectObjectRefs(schema, root, refs);
+        return refs;
+    }
+
+    private static void collectObjectRefs(JsonNode node, JsonNode root, Set<String> refs) {
+        if (node == null) {
+            return;
+        }
+        if (node.isObject()) {
+            if (node.has("$ref")) {
+                String defName = defName(node);
+                if ("object".equals(root.path("components").path("schemas").path(defName).path("type").asText(""))) {
+                    refs.add(identifier(defName));
+                }
+            }
+            node.fields().forEachRemaining(e -> collectObjectRefs(e.getValue(), root, refs));
+        } else if (node.isArray()) {
+            node.forEach(e -> collectObjectRefs(e, root, refs));
+        }
     }
 
     /** State the resolved dialect in the report (only for an OpenAPI dialect — JSON Schema is the default). */
@@ -113,7 +179,8 @@ public final class JsonSchemaImporter {
     /** Build one model from {@code rootSchema}. In {@code bundle} mode an object cross-reference is mounted as an
      *  include rather than inlined (the §4e multi-model wiring). */
     private static ImportResult buildModel(JsonNode root, JsonNode rootSchema, String modelId, Dialect dialect,
-                                           MappingProfile profile, TranscodeReport.Builder report, boolean bundle) {
+                                           MappingProfile profile, TranscodeReport.Builder report, boolean bundle,
+                                           Set<String> breakEdges) {
         boolean rootUnion = isObjectUnion(rootSchema);   // a top-level oneOf/anyOf of objects → a root superset
         if (!rootUnion && !"object".equals(rootSchema.path("type").asText(""))) {
             String type = rootSchema.path("type").asText("");
@@ -122,7 +189,7 @@ public final class JsonSchemaImporter {
         }
         JsonNode defsPool = dialect.isOpenApi() ? root.path("components").path("schemas") : root.path("$defs");
         Ctx ctx = new Ctx(root, dialect, defsPool, new ArrayDeque<>(), report, new ArrayList<>(), profile,
-                bundle, new LinkedHashSet<>(), modelId);
+                bundle, new LinkedHashSet<>(), modelId, breakEdges);
         DocumentModelDraft.Builder b = DocumentModelDraft.named(modelId).locale(LOCALE);
         declareLeafTypedefs(b, ctx);
         b.rootGroup(ROOT_GROUP, g -> {
@@ -496,11 +563,15 @@ public final class JsonSchemaImporter {
             }
             case "object" -> {
                 String alias = identifier(defName);
-                if (ctx.bundle() && !alias.equals(ctx.modelId())) {   // §4e: cross-component ref → a mount (single-sourced)
+                if (ctx.bundle() && !alias.equals(ctx.modelId()) && !ctx.isCycleEdge(alias)) {   // §4e: cross-component ref → a mount
                     g.mount(name, alias);
                     ctx.includes().add(alias);
                     ctx.report().structure(path, "mount → " + alias + " (include)");
-                } else {   // self-reference (the kernel forbids a self-include) or single-model mode → inline/expand-then-omit
+                } else {   // self-ref / a cycle-breaking edge (kernel forbids cyclic includes) / single mode → inline
+                    if (ctx.isCycleEdge(alias)) {
+                        ctx.report().diagnostic("'" + alias + "' inlined (not mounted) at '" + path
+                                + "' to break an include cycle — the kernel forbids cyclic includes");
+                    }
                     inlineObjectDef(g, name, defName, def, path, ctx);
                 }
             }
@@ -579,7 +650,7 @@ public final class JsonSchemaImporter {
             return;
         }
         String alias = identifier(defName);
-        if (ctx.bundle() && !alias.equals(ctx.modelId())) {   // §4e: array of a cross-component object → a repeatable mount
+        if (ctx.bundle() && !alias.equals(ctx.modelId()) && !ctx.isCycleEdge(alias)) {   // §4e: array of a cross-component object → a repeatable mount
             g.mount(name, alias, max);
             ctx.includes().add(alias);
             ctx.report().structure(path, "repeatable mount → " + alias + " (max " + max + ")");

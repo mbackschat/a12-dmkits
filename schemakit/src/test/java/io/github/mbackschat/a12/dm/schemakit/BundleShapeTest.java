@@ -55,6 +55,26 @@ class BundleShapeTest {
     }
 
     @Test
+    void mutualRecursionBreaksTheCycleAndStaysLoadable() {
+        // A↔B object refs would be a cyclic include (kernel-rejected); the importer breaks one edge (inline)
+        // so the bundle still loads.
+        JsonSchemaImporter.BundleResult bundle = new JsonSchemaImporter().importBundle("""
+                { "openapi": "3.1.0", "info": { "title": "X", "version": "1" },
+                  "components": { "schemas": {
+                    "Node": { "type": "object", "properties": { "name": { "type": "string" },
+                              "edge": { "$ref": "#/components/schemas/Edge" } } },
+                    "Edge": { "type": "object", "properties": { "weight": { "type": "string" },
+                              "to": { "$ref": "#/components/schemas/Node" } } } } } }
+                """, MappingProfile.defaults(), Dialect.AUTO);
+
+        assertEquals(2, bundle.models().size(), "both components import");
+        assertKernelAcceptsBundle(bundle);   // no cyclic include survives
+        boolean broke = bundle.models().values().stream()
+                .anyMatch(m -> m.report().diagnostics().stream().anyMatch(d -> d.contains("cycle")));
+        assertTrue(broke, "one edge of the cycle was inlined to break it");
+    }
+
+    @Test
     void arrayOfRefBecomesARepeatableMountInABundle() {
         JsonSchemaImporter.BundleResult bundle = new JsonSchemaImporter().importBundle("""
                 { "openapi": "3.1.0", "info": { "title": "X", "version": "1" },
