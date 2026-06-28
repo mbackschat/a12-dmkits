@@ -172,6 +172,11 @@ public final class JsonSchemaImporter {
     private static void addScalar(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
                                   boolean isRequired, String path, Ctx ctx) {
         Requiredness req = isRequired ? Requiredness.REQUIRED : Requiredness.OPTIONAL;
+        if (schema.has("enum") && schema.get("enum").isArray() && !schema.get("enum").isEmpty()) {
+            addEnumField(g, name, schema, isRequired);
+            ctx.report().structure(path, "ENUMERATION");
+            return;
+        }
         switch (schema.path("type").asText("")) {
             case "string" -> {
                 addStringField(g, name, schema, isRequired);
@@ -195,6 +200,20 @@ public final class JsonSchemaImporter {
                     + (schema.path("type").asText("").isEmpty() ? "<none>" : schema.path("type").asText(""))
                     + "' — omitted (not yet mapped). TO DO: add this field by hand");
         }
+    }
+
+    /** A JSON Schema {@code enum} → an a12 ENUMERATION. Labels have no JSON-Schema source → none (the
+     *  label strategy is a MappingProfile knob); values import in order. */
+    private static void addEnumField(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
+                                     boolean isRequired) {
+        g.enumField(name, e -> {
+            for (JsonNode value : schema.get("enum")) {
+                e.value(value.asText());
+            }
+            if (isRequired) {
+                e.required();
+            }
+        });
     }
 
     /** A string field; {@code minLength}/{@code maxLength}/{@code pattern} import to string field config. */

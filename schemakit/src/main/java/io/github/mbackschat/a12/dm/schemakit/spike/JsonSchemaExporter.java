@@ -134,6 +134,16 @@ public final class JsonSchemaExporter {
                 target.put("type", "boolean");
                 return "boolean";
             }
+            case "ENUMERATION" -> {
+                target.put("type", "string");
+                ArrayNode en = target.putArray("enum");
+                configOpt.ifPresent(c -> {
+                    for (JsonNode value : c.path("enum").path("values")) {
+                        en.add(value.path("value").asText());
+                    }
+                });
+                return "enum";
+            }
             case "NUMBER" -> {
                 boolean integer = configOpt
                         .map(c -> c.findValue("maxFractionalDigits"))
