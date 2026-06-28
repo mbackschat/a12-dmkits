@@ -1,6 +1,6 @@
 # schemakit — JSON Schema ⇄ Document Model (spec)
 
-The buildable contract for `:schemakit`, the JSON-Schema import/export subproject. **The rationale — the asymmetry finding, the interop-vs-fidelity fork, the three-tier rule story, the `$ref`→include/typedef split, the missed-potential list — lives in [`JSON-SCHEMA-PROPOSAL.md`](JSON-SCHEMA-PROPOSAL.md); this doc does not repeat it.** The spec holds the *contract*: the dependency boundary, the module shape, the verb surface, the verification gates, and the increment plan.
+The buildable contract for `:schemakit`, the JSON-Schema import/export subproject. **The rationale — the asymmetry finding, the interop-vs-fidelity fork, the three-tier rule story, the `$ref`→include/typedef split, the missed-potential list — lives in [`JSON-SCHEMA-PROPOSAL.md`](archived/JSON-SCHEMA-PROPOSAL.md); this doc does not repeat it.** The spec holds the *contract*: the dependency boundary, the module shape, the verb surface, the verification gates, and the increment plan.
 
 **Status:** the transcoder is built as a stable in-repo library (package `io.github.mbackschat.a12.dm.schemakit`). The import direction maps or loudly surfaces every JSON Schema feature (§4d); export is best-effort. What is built is shown by git + the `:schemakit` test suite, not a status board here.
 
