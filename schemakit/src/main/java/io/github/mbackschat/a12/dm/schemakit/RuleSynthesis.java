@@ -34,8 +34,8 @@ final class RuleSynthesis {
 
     /** A synthesized-rule request, collected during the import walk. Sealed so the synthesizer is exhaustive. */
     sealed interface Need permits ExclusiveBound, DependentRequired, ConstValue, MultipleOf, DiscriminatedRequired,
-            MultiConditionalRequired, ThenConstrained, ContainsCount, UniqueItems, ForbiddenConst, ForbiddenEnum,
-            ForbiddenPattern, ForbiddenBound, ForbiddenLength {}
+            MultiConditionalRequired, ThenConstrained, ElseConstrained, ContainsCount, UniqueItems, ForbiddenConst,
+            ForbiddenEnum, ForbiddenPattern, ForbiddenBound, ForbiddenLength {}
 
     /** One {@code if}-condition conjunct: a field pinned to a value ({@code field == value}). */
     record FieldValue(String field, String value) {}
@@ -50,6 +50,12 @@ final class RuleSynthesis {
      *  {@code constraint} ({@code if {f=v} then {properties:{g:{minimum:N}}}} → error when {@code f=v And g<N}).
      *  SCHEMAKIT-SPEC §4f. */
     record ThenConstrained(String groupPath, List<FieldValue> conditions, String targetField, ValueConstraint constraint)
+            implements Need {}
+
+    /** An {@code else} VALUE-constraint (single-property {@code if}): when the negated condition holds
+     *  ({@code Filled(f) And f≠value}), {@code targetField} must satisfy {@code constraint}. Multi-property
+     *  {@code else} (a disjunction) stays reported — SCHEMAKIT-SPEC §4f. */
+    record ElseConstrained(String groupPath, FieldValue condition, String targetField, ValueConstraint constraint)
             implements Need {}
 
     /** A simple value constraint on a field (the tractable {@code then}-keyword set), with the requirement text. */
@@ -350,6 +356,29 @@ final class RuleSynthesis {
                         .code("FORBIDDEN_VALUES_" + field.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
                         .message(Dsl.en(field + " must not be one of " + f.values() + ".")).build());
             }
+            case ElseConstrained ec -> {
+                String condPath = ec.groupPath() + "/" + ec.condition().field();
+                Optional<Condition> negated = notEqualsValue(m, doc, condPath, ec.condition().value());
+                if (negated.isEmpty()) {
+                    report.diagnostic("else-constraint on '" + ec.targetField() + "' skipped — condition field '"
+                            + ec.condition().field() + "' is neither a string nor an enum");
+                    yield Optional.empty();
+                }
+                String targetPath = ec.groupPath() + "/" + ec.targetField();
+                Optional<Condition> violation = violationCondition(m, doc, targetPath, ec.constraint(), report);
+                if (violation.isEmpty()) {
+                    yield Optional.empty();
+                }
+                FieldRef errorField = m.field(targetPath);
+                String tag = capitalize(ec.condition().field()) + sanitize(ec.condition().value());
+                yield Optional.of(m.rule(m.group(ec.groupPath()))
+                        .name(ec.targetField() + "ConstrainedWhenNot" + tag).errorField(errorField)
+                        .when(negated.get().and(violation.get()))
+                        .code("ELSE_CONSTRAINT_" + ec.targetField().toUpperCase(Locale.ROOT)
+                                + "_" + tag.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
+                        .message(Dsl.en(ec.constraint().requirement(ec.targetField()) + " when "
+                                + ec.condition().field() + " is not " + ec.condition().value() + ".")).build());
+            }
             case ContainsCount cc -> {
                 String predPath = cc.groupPath() + "/" + cc.predicate().field();
                 Optional<Condition> pred = equalsValue(m, doc, predPath, cc.predicate().value());
@@ -481,6 +510,7 @@ final class RuleSynthesis {
             case DiscriminatedRequired dr -> dr.groupPath() + "/" + dr.requiredField();
             case MultiConditionalRequired mc -> mc.groupPath() + "/" + mc.requiredField();
             case ThenConstrained tc -> tc.groupPath() + "/" + tc.targetField();
+            case ElseConstrained ec -> ec.groupPath() + "/" + ec.targetField();
             case ContainsCount cc -> cc.groupPath();
             case UniqueItems u -> u.groupPath();
             case ForbiddenConst f -> f.fieldPath();
@@ -505,6 +535,8 @@ final class RuleSynthesis {
             case ThenConstrained tc -> "rule then-constraint(" + tc.conditions().stream()
                     .map(fv -> fv.field() + "=" + fv.value()).collect(Collectors.joining(" and "))
                     + " → " + tc.constraint().requirement(tc.targetField()) + ")";
+            case ElseConstrained ec -> "rule else-constraint(" + ec.condition().field() + "≠" + ec.condition().value()
+                    + " → " + ec.constraint().requirement(ec.targetField()) + ")";
             case ContainsCount cc -> "rule " + (cc.min() ? "minContains(" : "maxContains(") + cc.bound() + " × "
                     + lastSegment(cc.groupPath()) + "[" + cc.predicate().field() + "=" + cc.predicate().value() + "])";
             case UniqueItems u -> "rule uniqueItems(" + lastSegment(u.groupPath()) + ")";

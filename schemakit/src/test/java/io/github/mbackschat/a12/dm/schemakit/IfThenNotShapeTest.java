@@ -81,6 +81,20 @@ class IfThenNotShapeTest {
     }
 
     @Test
+    void elseValueConstraintSynthesizesAConditionalRule() {
+        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
+                { "title": "Sub", "type": "object",
+                  "properties": { "tier": { "type": "string" }, "discount": { "type": "integer" } },
+                  "if": { "properties": { "tier": { "const": "PREMIUM" } } },
+                  "else": { "properties": { "discount": { "maximum": 0 } } } }
+                """);
+
+        assertKernelAccepts(r.dmJson());
+        assertEquals(1, synthesized(r), () -> "if tier≠PREMIUM then discount≤0 → one rule: " + r.report().dispositions());
+        assertTrue(r.dmJson().contains("PREMIUM"), "the rule keys on the negated if-condition");
+    }
+
+    @Test
     void thenPatternConstraintSynthesizesAViolationRule() {
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
                 { "title": "Sub", "type": "object",

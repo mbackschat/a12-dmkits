@@ -257,8 +257,11 @@ public final class JsonSchemaImporter {
             }
         }
         collectThenValueConstraints(objectSchema.path("then"), conditions, groupPath, ctx);
-        if (objectSchema.path("else").has("properties")) {
-            ctx.report().diagnostic("if/else at '" + groupPath + "': else VALUE-constraints are NOT mapped — add them by hand");
+        if (conditions.size() == 1) {
+            collectElseValueConstraints(objectSchema.path("else"), conditions.get(0), groupPath, ctx);
+        } else if (objectSchema.path("else").has("properties")) {
+            ctx.report().diagnostic("multi-property if/else at '" + groupPath + "': else VALUE-constraints are NOT "
+                    + "mapped (the negation of a conjunction is a disjunction) — add them by hand");
         }
         if (ctx.ruleNeeds().size() == before) {
             ctx.report().diagnostic("if/then at '" + groupPath + "' — nothing mappable (no then/else required[] or "
@@ -334,7 +337,27 @@ public final class JsonSchemaImporter {
         }
     }
 
-    /** A simple {@code then} value constraint, or empty (a shape with no direct violation condition — reported). */
+    /** {@code else.properties} value-constraints for a single-property {@code if} (SCHEMAKIT-SPEC §4f): each target
+     *  field with a simple constraint → a rule firing when the negated condition holds and the field violates it. */
+    private static void collectElseValueConstraints(JsonNode elseNode, RuleSynthesis.FieldValue condition,
+                                                    String groupPath, Ctx ctx) {
+        JsonNode props = elseNode.path("properties");
+        if (!props.isObject()) {
+            return;
+        }
+        for (Iterator<Map.Entry<String, JsonNode>> it = props.fields(); it.hasNext(); ) {
+            Map.Entry<String, JsonNode> e = it.next();
+            Optional<RuleSynthesis.ValueConstraint> vc = valueConstraintOf(e.getValue());
+            if (vc.isPresent()) {
+                ctx.ruleNeeds().add(new RuleSynthesis.ElseConstrained(groupPath, condition, e.getKey(), vc.get()));
+            } else {
+                ctx.report().diagnostic("if/else at '" + groupPath + "': else constraint on '" + e.getKey()
+                        + "' is not a simple const/enum/min/max/pattern — not mapped; add it by hand");
+            }
+        }
+    }
+
+    /** A simple {@code then}/{@code else} value constraint, or empty (no direct violation condition — reported). */
     private static Optional<RuleSynthesis.ValueConstraint> valueConstraintOf(JsonNode schema) {
         if (schema.has("const")) {
             return Optional.of(RuleSynthesis.ValueConstraint.scalar(
