@@ -1,5 +1,6 @@
 package io.github.mbackschat.a12.dm.schemakit.spike;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -25,4 +26,39 @@ public record TranscodeReport(List<Disposition> dispositions, List<String> diagn
      * refusal under the gate-and-refuse discipline.
      */
     public enum Tier { STRUCTURE, TIER_A, TIER_A_PLUS, CARRIED, COMPUTATION, REFUSED }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /** Accumulates dispositions + diagnostics during a transcode; one shared by importer and exporter. */
+    public static final class Builder {
+        private final List<Disposition> dispositions = new ArrayList<>();
+        private final List<String> diagnostics = new ArrayList<>();
+
+        public Builder mapped(String source, String target, Tier tier) {
+            dispositions.add(new Disposition(source, target, tier));
+            return this;
+        }
+
+        public Builder structure(String source, String target) {
+            return mapped(source, target, Tier.STRUCTURE);
+        }
+
+        /** Refuse an element under the gate-and-refuse discipline: record the refusal AND the corrective. */
+        public Builder refuse(String source, String reason) {
+            dispositions.add(new Disposition(source, "<refused>", Tier.REFUSED));
+            diagnostics.add(reason);
+            return this;
+        }
+
+        public Builder diagnostic(String message) {
+            diagnostics.add(message);
+            return this;
+        }
+
+        public TranscodeReport build() {
+            return new TranscodeReport(dispositions, diagnostics);
+        }
+    }
 }

@@ -7,16 +7,15 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.modelkit.Requiredness;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
 
 /**
- * Document Model → JSON Schema, the spike's export direction (SCHEMAKIT-SPEC §6, shape 1: the single root
- * group → a flat top-level object). It reads structure through modelkit's kernel-free {@link ModelDocument}
- * (no kernel, no {@code :adapter}) and emits a Jackson tree. The mirror of {@link JsonSchemaImporter}:
- * {@code import → export} round-trips on {@code {type, properties, required}}. {@code required} is emitted
- * sorted so the round-trip is order-insensitive.
+ * Document Model → JSON Schema, the spike's export direction (SCHEMAKIT-SPEC §6). It reads structure
+ * through modelkit's kernel-free {@link ModelDocument} (no kernel, no {@code :adapter}) and emits a Jackson
+ * tree. The mirror of {@link JsonSchemaImporter}: the single root group → the top-level object, nested
+ * groups → object properties, repeatable groups → {@code array} properties ({@code maxItems} = the
+ * repetition bound). {@code required} is emitted sorted so the round-trip is order-insensitive.
  */
 public final class JsonSchemaExporter {
 
@@ -30,38 +29,57 @@ public final class JsonSchemaExporter {
         if (groupPaths.isEmpty()) {
             throw new IllegalArgumentException("model has no group to export");
         }
-        String rootGroup = groupPaths.get(0);   // shape 1: a single root group
+        TranscodeReport.Builder report = TranscodeReport.builder();
+        ObjectNode schema = exportGroup(groupPaths.get(0), doc, report);   // root group → top-level object
+        return new ExportResult(toJson(schema), report.build());
+    }
 
-        ObjectNode schema = JSON.createObjectNode();
-        schema.put("type", "object");
-        ObjectNode properties = schema.putObject("properties");
+    /** Build {@code {type:object, properties, required}} from a group's direct field + sub-group children. */
+    private ObjectNode exportGroup(String groupPath, ModelDocument doc, TranscodeReport.Builder report) {
+        ObjectNode node = JSON.createObjectNode();
+        node.put("type", "object");
+        ObjectNode properties = node.putObject("properties");
         TreeSet<String> required = new TreeSet<>();
-        List<TranscodeReport.Disposition> dispositions = new ArrayList<>();
-        List<String> diagnostics = new ArrayList<>();
 
         for (String fieldPath : doc.fieldPaths()) {
-            if (!isDirectChild(fieldPath, rootGroup)) {
-                continue;   // shape 1: top-level fields only
+            if (!isDirectChild(fieldPath, groupPath)) {
+                continue;
             }
             String name = lastSegment(fieldPath);
-            String kind = doc.fieldKind(fieldPath).orElse("UNKNOWN");
-            ObjectNode prop = properties.putObject(name);
-            String jsonType = mapKind(kind, doc, fieldPath, prop, diagnostics);
-            dispositions.add(new TranscodeReport.Disposition(
-                    fieldPath, "properties/" + name + " (" + jsonType + ")", TranscodeReport.Tier.STRUCTURE));
+            String jsonType = mapKind(fieldPath, doc, properties.putObject(name), report);
+            report.structure(fieldPath, "properties/" + name + " (" + jsonType + ")");
             if (doc.requiredness(fieldPath).orElse(Requiredness.OPTIONAL) != Requiredness.OPTIONAL) {
                 required.add(name);
             }
         }
+
+        for (String childPath : doc.groupPaths()) {
+            if (!isDirectChild(childPath, groupPath)) {
+                continue;
+            }
+            String name = lastSegment(childPath);
+            ObjectNode childObject = exportGroup(childPath, doc, report);
+            if (doc.isRepeating(childPath)) {
+                ObjectNode arr = properties.putObject(name);
+                arr.put("type", "array");
+                arr.set("items", childObject);
+                arr.put("maxItems", doc.maxRepetitions(childPath));
+                report.structure(childPath, "properties/" + name + " (array, maxItems " + doc.maxRepetitions(childPath) + ")");
+            } else {
+                properties.set(name, childObject);
+                report.structure(childPath, "properties/" + name + " (object)");
+            }
+        }
+
         if (!required.isEmpty()) {
-            ArrayNode req = schema.putArray("required");
+            ArrayNode req = node.putArray("required");
             required.forEach(req::add);
         }
-        return new ExportResult(toJson(schema), new TranscodeReport(dispositions, diagnostics));
+        return node;
     }
 
-    private static String mapKind(String kind, ModelDocument doc, String fieldPath, ObjectNode prop,
-                                  List<String> diag) {
+    private static String mapKind(String fieldPath, ModelDocument doc, ObjectNode prop, TranscodeReport.Builder report) {
+        String kind = doc.fieldKind(fieldPath).orElse("UNKNOWN");
         switch (kind) {
             case "STRING" -> {
                 prop.put("type", "string");
@@ -81,16 +99,16 @@ public final class JsonSchemaExporter {
             }
             default -> {
                 prop.put("type", "string");
-                diag.add("field kind '" + kind + "' on '" + fieldPath
-                        + "' is not mapped in shape 1 — emitted as a string placeholder");
+                report.diagnostic("field kind '" + kind + "' on '" + fieldPath
+                        + "' is not mapped yet — emitted as a string placeholder");
                 return "string(fallback)";
             }
         }
     }
 
-    private static boolean isDirectChild(String fieldPath, String groupPath) {
+    private static boolean isDirectChild(String path, String groupPath) {
         String prefix = groupPath + "/";
-        return fieldPath.startsWith(prefix) && fieldPath.indexOf('/', prefix.length()) < 0;
+        return path.startsWith(prefix) && path.indexOf('/', prefix.length()) < 0;
     }
 
     private static String lastSegment(String path) {
