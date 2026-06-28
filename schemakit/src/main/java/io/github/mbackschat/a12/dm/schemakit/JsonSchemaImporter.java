@@ -197,25 +197,79 @@ public final class JsonSchemaImporter {
         if (!objectSchema.has("if")) {
             return;
         }
-        JsonNode ifProps = objectSchema.path("if").path("properties");
-        boolean singleCond = ifProps.isObject() && ifProps.size() == 1;
-        Optional<String> value = singleCond ? singleValueOf(ifProps.fields().next().getValue()) : Optional.empty();
-        if (value.isEmpty()) {
-            ctx.report().diagnostic("if/then at '" + groupPath + "' is not a simple 'if <field>=<value> …' shape "
-                    + "(single property, single value) — not mapped; add the conditional rule by hand");
+        List<RuleSynthesis.FieldValue> conditions = ifConditions(objectSchema.path("if").path("properties"));
+        if (conditions.isEmpty()) {
+            ctx.report().diagnostic("if/then at '" + groupPath + "' is not a simple 'if <field>=<value> [and …]' "
+                    + "shape (each if-property pinned to a value) — not mapped; add the conditional rule by hand");
             return;
         }
-        String condField = ifProps.fieldNames().next();
+        if (conditions.size() == 1) {
+            collectSingleConditionIfThen(objectSchema, groupPath, conditions.get(0), ctx);
+        } else {
+            collectMultiConditionIfThen(objectSchema, groupPath, conditions, ctx);
+        }
+    }
+
+    /** The {@code if}-conditions: each {@code if.properties} entry pinned to a single value, else empty (the
+     *  shape isn't a simple {@code <field>=<value>} conjunction). */
+    private static List<RuleSynthesis.FieldValue> ifConditions(JsonNode ifProps) {
+        if (!ifProps.isObject() || ifProps.isEmpty()) {
+            return List.of();
+        }
+        List<RuleSynthesis.FieldValue> conds = new ArrayList<>();
+        for (Iterator<Map.Entry<String, JsonNode>> it = ifProps.fields(); it.hasNext(); ) {
+            Map.Entry<String, JsonNode> e = it.next();
+            Optional<String> v = singleValueOf(e.getValue());
+            if (v.isEmpty()) {
+                return List.of();   // a non-pinned condition → not a simple if
+            }
+            conds.add(new RuleSynthesis.FieldValue(e.getKey(), v.get()));
+        }
+        return conds;
+    }
+
+    /** Single-property {@code if}: {@code then} and {@code else} both map (the {@code else} on the negated condition). */
+    private static void collectSingleConditionIfThen(JsonNode objectSchema, String groupPath,
+                                                     RuleSynthesis.FieldValue cond, Ctx ctx) {
         boolean mappedThen = addConditionalRequired(objectSchema.path("then").path("required"),
-                groupPath, condField, value.get(), true, ctx);
+                groupPath, cond.field(), cond.value(), true, ctx);
         boolean mappedElse = addConditionalRequired(objectSchema.path("else").path("required"),
-                groupPath, condField, value.get(), false, ctx);
+                groupPath, cond.field(), cond.value(), false, ctx);
         if (!mappedThen && !mappedElse) {
             ctx.report().diagnostic("if/then at '" + groupPath + "' — no required[] in then/else to map; "
                     + "then/else value-constraints are not mapped — add the conditional rule by hand");
         } else if (objectSchema.path("then").has("properties") || objectSchema.path("else").has("properties")) {
             ctx.report().diagnostic("if/then at '" + groupPath + "': the required-fields part mapped to rules; "
                     + "then/else VALUE-constraints are NOT mapped — add them by hand");
+        }
+    }
+
+    /** Multi-property {@code if}: the {@code then} requiredness fires only when ALL conditions hold (a conjunction).
+     *  The {@code else} of a conjunction is a disjunction — reported, not mapped. */
+    private static void collectMultiConditionIfThen(JsonNode objectSchema, String groupPath,
+                                                    List<RuleSynthesis.FieldValue> conditions, Ctx ctx) {
+        JsonNode thenReq = objectSchema.path("then").path("required");
+        boolean mapped = false;
+        if (thenReq.isArray()) {
+            for (JsonNode dependent : thenReq) {
+                String reqField = dependent.asText();
+                if (conditions.stream().noneMatch(c -> c.field().equals(reqField))) {
+                    ctx.ruleNeeds().add(new RuleSynthesis.MultiConditionalRequired(groupPath, conditions, reqField));
+                    mapped = true;
+                }
+            }
+        }
+        if (!mapped) {
+            ctx.report().diagnostic("multi-property if/then at '" + groupPath + "' — no then required[] to map "
+                    + "(then value-constraints are not mapped); add the conditional rule by hand");
+        }
+        if (objectSchema.has("else")) {
+            ctx.report().diagnostic("multi-property if/then at '" + groupPath + "': else is NOT mapped — the "
+                    + "negation of a multi-condition is a disjunction; add the else rule by hand");
+        }
+        if (objectSchema.path("then").has("properties")) {
+            ctx.report().diagnostic("multi-property if/then at '" + groupPath + "': then VALUE-constraints are "
+                    + "NOT mapped — add them by hand");
         }
     }
 

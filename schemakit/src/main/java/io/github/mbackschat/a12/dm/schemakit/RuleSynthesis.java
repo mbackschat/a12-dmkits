@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Tier A+ rule synthesis (SCHEMAKIT-SPEC §4, proposal §12.2): JSON Schema validation keywords with no
@@ -33,7 +34,16 @@ final class RuleSynthesis {
 
     /** A synthesized-rule request, collected during the import walk. Sealed so the synthesizer is exhaustive. */
     sealed interface Need permits ExclusiveBound, DependentRequired, ConstValue, MultipleOf, DiscriminatedRequired,
-            UniqueItems, ForbiddenConst, ForbiddenEnum, ForbiddenPattern, ForbiddenBound {}
+            MultiConditionalRequired, UniqueItems, ForbiddenConst, ForbiddenEnum, ForbiddenPattern, ForbiddenBound {}
+
+    /** One {@code if}-condition conjunct: a field pinned to a value ({@code field == value}). */
+    record FieldValue(String field, String value) {}
+
+    /** A multi-property {@code if}: {@code requiredField} is required when ALL {@code conditions} hold
+     *  ({@code if {a=X, b=Y} then required:[…]} → the conjunction; the else of a conjunction is a disjunction,
+     *  so multi-property {@code else} stays reported — SCHEMAKIT-SPEC §4). */
+    record MultiConditionalRequired(String groupPath, List<FieldValue> conditions, String requiredField)
+            implements Need {}
 
     /** {@code exclusiveMinimum}/{@code exclusiveMaximum} on a number field (a12 field bounds are inclusive-only). */
     record ExclusiveBound(String fieldPath, boolean min, String bound) implements Need {}
@@ -158,6 +168,33 @@ final class RuleSynthesis {
                         .message(Dsl.en(dr.requiredField() + " is required when " + dr.discriminator()
                                 + isText + dr.value() + ".")).build());
             }
+            case MultiConditionalRequired mc -> {
+                List<Condition> conds = new ArrayList<>();
+                for (FieldValue fv : mc.conditions()) {
+                    Optional<Condition> eq = equalsValue(m, doc, mc.groupPath() + "/" + fv.field(), fv.value());
+                    if (eq.isEmpty()) {
+                        report.diagnostic("multi-condition rule for '" + mc.requiredField() + "' skipped — condition "
+                                + "field '" + fv.field() + "' is neither a string nor an enum");
+                        yield Optional.empty();
+                    }
+                    conds.add(eq.get());
+                }
+                Condition all = conds.get(0);
+                for (int i = 1; i < conds.size(); i++) {
+                    all = all.and(conds.get(i));
+                }
+                FieldRef required = m.field(mc.groupPath() + "/" + mc.requiredField());
+                String tag = mc.conditions().stream()
+                        .map(fv -> capitalize(fv.field()) + sanitize(fv.value())).collect(Collectors.joining());
+                String when = mc.conditions().stream()
+                        .map(fv -> fv.field() + " is " + fv.value()).collect(Collectors.joining(" and "));
+                yield Optional.of(m.rule(m.group(mc.groupPath()))
+                        .name(mc.requiredField() + "RequiredWhen" + tag).errorField(required)
+                        .when(all.and(Dsl.fieldNotFilled(required)))
+                        .code("CONDITIONAL_REQUIRED_" + mc.requiredField().toUpperCase(Locale.ROOT)
+                                + "_" + tag.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
+                        .message(Dsl.en(mc.requiredField() + " is required when " + when + ".")).build());
+            }
             case ForbiddenPattern f -> {
                 String field = lastSegment(f.fieldPath());
                 if (!doc.fieldKind(f.fieldPath()).map("STRING"::equals).orElse(false)) {
@@ -279,6 +316,7 @@ final class RuleSynthesis {
             case ConstValue c -> c.fieldPath();
             case MultipleOf mo -> mo.fieldPath();
             case DiscriminatedRequired dr -> dr.groupPath() + "/" + dr.requiredField();
+            case MultiConditionalRequired mc -> mc.groupPath() + "/" + mc.requiredField();
             case UniqueItems u -> u.groupPath();
             case ForbiddenConst f -> f.fieldPath();
             case ForbiddenEnum f -> f.fieldPath();
@@ -295,6 +333,9 @@ final class RuleSynthesis {
             case MultipleOf mo -> "rule multipleOf " + mo.divisor();
             case DiscriminatedRequired dr -> "rule " + (dr.whenEquals() ? "discriminated-required(" : "else-required(")
                     + dr.discriminator() + (dr.whenEquals() ? "=" : "≠") + dr.value() + " → " + dr.requiredField() + ")";
+            case MultiConditionalRequired mc -> "rule conditional-required(" + mc.conditions().stream()
+                    .map(fv -> fv.field() + "=" + fv.value()).collect(Collectors.joining(" and "))
+                    + " → " + mc.requiredField() + ")";
             case UniqueItems u -> "rule uniqueItems(" + lastSegment(u.groupPath()) + ")";
             case ForbiddenConst f -> "rule not-const(" + lastSegment(f.fieldPath()) + " ≠ " + f.value() + ")";
             case ForbiddenEnum f -> "rule not-enum(" + lastSegment(f.fieldPath()) + " ∉ " + f.values() + ")";

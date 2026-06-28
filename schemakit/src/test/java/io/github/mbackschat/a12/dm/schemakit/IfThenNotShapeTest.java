@@ -52,6 +52,21 @@ class IfThenNotShapeTest {
     }
 
     @Test
+    void multiPropertyIfConjoinsTheConditions() {
+        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
+                { "title": "Sub", "type": "object",
+                  "properties": { "tier": { "type": "string" }, "region": { "type": "string" },
+                                  "vatId": { "type": "string" } },
+                  "if": { "properties": { "tier": { "const": "BUSINESS" }, "region": { "const": "EU" } } },
+                  "then": { "required": ["vatId"] } }
+                """);
+
+        assertKernelAccepts(r.dmJson());
+        assertEquals(1, synthesized(r), () -> "if tier=BUSINESS AND region=EU then vatId required → one rule: " + r.report().dispositions());
+        assertTrue(r.dmJson().contains("BUSINESS") && r.dmJson().contains("EU"), "the rule keys on BOTH if-conditions");
+    }
+
+    @Test
     void ifThenElseSynthesizesBothBranches() {
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
                 { "title": "Sub", "type": "object",

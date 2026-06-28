@@ -84,8 +84,8 @@ Both keep **artifact mode**: the transcode result (DM-JSON / JSON Schema) goes t
 | **Structure** | `object`→group, `array`-of-`object`→repeatable group, scalar→field-kind (the field-type matcher, §4b), `$defs`/`$ref`→typedef (leaf) / inlined group (object; reuse via a separate include child is the deferred multi-model increment, §4e) |
 | **Field config** | `minLength`/`maxLength`/`pattern`→string config; `minimum`/`maximum`→number bounds |
 | **Rules (direct)** | `required`→requiredness; `enum`→ENUMERATION; `uniqueItems`→`RepetitionNotUnique`/`FieldValuesNotUnique`; `pattern`→`PatternViolated` |
-| **Rules (composed), built** | constraints with no field-config home become a12 *rules* — `exclusiveMinimum`/`exclusiveMaximum`, `multipleOf`, `const`, `dependentRequired`, `oneOf`/`anyOf` discriminator, `uniqueItems`, `if {f=v} then/else {required}`, `not {const\|enum\|pattern\|minimum\|maximum}`. **Each keyword's exact fire condition is tabulated in §4f.** |
-| **Rules — not yet built** (reported, not enforced) | the open tractable gaps — `contains`/`minContains`, then/else **value**-constraints, multi-property `if`, complex `not` (`minLength`/`type`/`required`/nested) — are tracked in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md). (`minItems` has **no clean a12 rule form** — §4c; a permanent omission, not a gap.) |
+| **Rules (composed), built** | constraints with no field-config home become a12 *rules* — `exclusiveMinimum`/`exclusiveMaximum`, `multipleOf`, `const`, `dependentRequired`, `oneOf`/`anyOf` discriminator, `uniqueItems`, `if {f=v [and …]} then/else {required}` (incl. **multi-property** `if`), `not {const\|enum\|pattern\|minimum\|maximum}`. **Each keyword's exact fire condition is tabulated in §4f.** |
+| **Rules — not yet built** (reported, not enforced) | the open tractable gaps — `contains`/`minContains`, then/else **value**-constraints, complex `not` (`minLength`/`type`/`required`/nested) — are tracked in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md). (`minItems` has **no clean a12 rule form** — §4c; a permanent omission, not a gap.) |
 | **Carriage (export, a12↔a12)** | the full rule rides `x-a12-rule`, a computation `x-a12-computation`; `readOnly:true` marks a computed field |
 | **Two-tier validation** *(proposal §12.1)* | exported Tier-A keywords = field-local tier (any validator); `:interpreter` = full-rule tier |
 
@@ -144,7 +144,7 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | `exclusiveMinimum` / `exclusiveMaximum` | strict `<` / `>` rule | rule (Tier A+) |
 | `multipleOf` · `const` · `dependentRequired` | modulo rule · `!=` rule · conditional-requiredness rule | rule (Tier A+) |
 | `uniqueItems` | `RepetitionNotUnique` rule keyed on the repeatable group's row fields | rule (Tier A+) |
-| `if {field = value}` + `then` / `else {required}` | conditional-requiredness rule per dependent (the `else` on the negated condition) | rule (Tier A+) |
+| `if {field = value [, …]}` + `then` / `else {required}` | conditional-requiredness rule per dependent (multi-property `if` → the conjunction; `else` on the negated condition) | rule (Tier A+) |
 | `not {const}` · `not {enum}` · `not {pattern}` · `not {min/max}` | `!=` · not-in-list · must-not-match · inverted numeric bound | rule (Tier A+) |
 | `oneOf`/`anyOf` of same-kind objects | superset group + discriminator → enum + per-variant requiredness rules | strategy + rule (profile: union) |
 | `array` of scalar | repeatable single-field group (default) / multi-select / value-list | strategy (profile; **imported by default**) |
@@ -242,6 +242,7 @@ The keywords with no field-config home become real a12 **rules** (§4 "Rules (co
 | `uniqueItems: true` | `RepetitionNotUnique(row fields …)` | first row field | `Dsl.repetitionNotUnique(…)` |
 | `if {f = V} then {required:[D]}` | `[f] = V And Not Filled(D)` | `D` | `enum.is(V)`/`str.eq(V)` + `fieldNotFilled` |
 | `if {f = V} else {required:[E]}` | `Filled(f) And [f] ≠ V And Not Filled(E)` | `E` | `str.ne(V)`/`enum.isNot(V)` (guarded) |
+| `if {a = X, b = Y} then {required:[D]}` (multi-property) | `[a] = X And [b] = Y And Not Filled(D)` | `D` | conjunction of equals + `fieldNotFilled` (else of a conjunction is a disjunction → reported) |
 | `not {const: V}` | `Filled(f) And [f] = V` | `f` | `str.eq(V)` / `num.eq(V)` |
 | `not {enum: […]}` | `Filled(f) And [f] In […]` | `f` | `str.in(…)` |
 | `not {pattern: P}` | `Filled(f) And [f] matches /P/` | `f` | `str.matches(P)` |
