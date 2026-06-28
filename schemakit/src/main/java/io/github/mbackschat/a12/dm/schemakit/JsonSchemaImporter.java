@@ -334,10 +334,11 @@ public final class JsonSchemaImporter {
         }
     }
 
-    /** Validation keywords with no a12 mapping yet — reported (never silently dropped); structure still imports. */
-    // `contains`/`minContains` need starred-aggregate synthesis (deferred); `if`/`then`/`else` + `not` are
-    // handled specially (collectIfThen / collectNot) — their tractable shapes synthesize rules, the rest report.
-    private static final List<String> UNSUPPORTED_KEYWORDS = List.of("contains", "minContains");
+    /** Validation keywords with no dedicated handler — reported (never silently dropped); structure still imports.
+     *  The forward-looking safety net: a keyword a12 can't map and that has no specific reporter is surfaced here.
+     *  (Currently none — {@code contains}/{@code minContains}/{@code maxContains} → {@code collectContains};
+     *  {@code if}/{@code then}/{@code else} + {@code not} → {@code collectIfThen}/{@code collectNot}.) */
+    private static final List<String> UNSUPPORTED_KEYWORDS = List.of();
 
     private static void addProperty(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
                                     boolean isRequired, String groupPath, Ctx ctx) {
@@ -455,6 +456,7 @@ public final class JsonSchemaImporter {
             ctx.ruleNeeds().add(new RuleSynthesis.UniqueItems(path));
         }
         noteMinItems(schema, name, ctx);   // minItems is not enforced (KERNEL-FINDINGS) — report it for BOTH array kinds
+        collectContains(schema, path, ctx);   // contains/minContains/maxContains → a filtered-count rule (simple predicate)
         JsonNode items = schema.path("items");
         if (!"object".equals(items.path("type").asText(""))) {
             addScalarArray(g, name, schema, items, path, ctx);
@@ -471,6 +473,45 @@ public final class JsonSchemaImporter {
             populate(sub, items, path, ctx);
         });
         ctx.report().structure(path, "repeatable group (max " + max + ")");
+    }
+
+    /** {@code contains}/{@code minContains}/{@code maxContains} → a filtered-count rule when the {@code contains}
+     *  predicate is simple ({@code {const}} on a scalar array, or {@code {properties:{f:{const}}}} on an object
+     *  array); a non-simple predicate is reported, not silently dropped (SCHEMAKIT-SPEC §4f). */
+    private static void collectContains(JsonNode arraySchema, String groupPath, Ctx ctx) {
+        if (!arraySchema.has("contains")) {
+            return;
+        }
+        boolean objectArray = "object".equals(arraySchema.path("items").path("type").asText(""));
+        Optional<RuleSynthesis.FieldValue> predicate = containsPredicate(arraySchema.get("contains"), objectArray);
+        if (predicate.isEmpty()) {
+            ctx.report().diagnostic("array '" + groupPath + "' has a 'contains' with a non-simple predicate — not "
+                    + "mapped (only contains {const} on a scalar array, or contains {properties:{f:{const}}} on an "
+                    + "object array); add the count rule by hand");
+            return;
+        }
+        int minContains = arraySchema.path("minContains").isInt() ? arraySchema.get("minContains").asInt() : 1;
+        if (minContains >= 1) {   // bare 'contains' = ≥1; minContains:0 is vacuous
+            ctx.ruleNeeds().add(new RuleSynthesis.ContainsCount(groupPath, predicate.get(), true, minContains));
+        }
+        if (arraySchema.path("maxContains").isInt()) {
+            ctx.ruleNeeds().add(new RuleSynthesis.ContainsCount(groupPath, predicate.get(), false,
+                    arraySchema.get("maxContains").asInt()));
+        }
+    }
+
+    /** The {@code contains} predicate as a (row-relative field, value) pair, or empty when it is not a simple
+     *  single-value pin. Scalar arrays pin the row {@code value} field; object arrays pin one property. */
+    private static Optional<RuleSynthesis.FieldValue> containsPredicate(JsonNode contains, boolean objectArray) {
+        if (objectArray) {
+            JsonNode props = contains.path("properties");
+            if (props.isObject() && props.size() == 1) {
+                Map.Entry<String, JsonNode> e = props.fields().next();
+                return singleValueOf(e.getValue()).map(v -> new RuleSynthesis.FieldValue(e.getKey(), v));
+            }
+            return Optional.empty();
+        }
+        return singleValueOf(contains).map(v -> new RuleSynthesis.FieldValue(ROW_FIELD, v));
     }
 
     /**

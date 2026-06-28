@@ -7,16 +7,16 @@ import static io.github.mbackschat.a12.dm.schemakit.SchemaTestSupport.assertKern
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The validation keywords the importer still does not map ({@code contains}/{@code minContains}) must be
- * <b>reported</b>, not silently dropped (the omit-never-silent directive, task #13). The declared structure
- * still imports; the unenforced keyword rides a corrective to-do. ({@code uniqueItems}, {@code if}/{@code then},
- * and {@code not} are no longer here — they now synthesize rules; only the starred-aggregate {@code contains}
- * family remains deferred.)
+ * A keyword the importer can't map for a given shape must be <b>reported</b>, not silently dropped (the
+ * omit-never-silent directive). The declared structure still imports; the unenforced keyword rides a corrective
+ * to-do. Most former gaps now synthesize rules (uniqueItems, if/then/else, not, then-constraints, and a
+ * <em>simple</em> {@code contains}); this guards the residual reporting path — here a {@code contains {const}}
+ * on an array of <em>objects</em> (a const can't match an object → a non-simple predicate → reported).
  */
 class UnsupportedKeywordReportTest {
 
     @Test
-    void containsIsReportedAndTheStructureStillImports() {
+    void aNonSimpleContainsIsReportedAndTheStructureStillImports() {
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
                 { "type": "object", "properties": {
                     "tags": { "type": "array", "maxItems": 5, "contains": { "const": "vip" },
