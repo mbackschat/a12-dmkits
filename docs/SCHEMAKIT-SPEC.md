@@ -85,7 +85,7 @@ Both keep **artifact mode**: the transcode result (DM-JSON / JSON Schema) goes t
 | **Field config** | `minLength`/`maxLength`/`pattern`→string config; `minimum`/`maximum`→number bounds |
 | **Rules (direct)** | `required`→requiredness; `enum`→ENUMERATION; `uniqueItems`→`RepetitionNotUnique`/`FieldValuesNotUnique`; `pattern`→`PatternViolated` |
 | **Rules (composed), built** | constraints with no field-config home become a12 *rules* — `exclusiveMinimum`/`exclusiveMaximum`, `multipleOf`, `const`, `dependentRequired`, `oneOf`/`anyOf` discriminator, `uniqueItems`, `if {f=v [and …]} then/else {required}` (incl. **multi-property** `if`), **then value-constraints** (`g` must satisfy `const`/`enum`/`min`/`max` when the `if` holds), `contains`/`minContains`/`maxContains` (simple predicate → a filtered-count rule), `not {const\|enum\|pattern\|minimum\|maximum\|minLength\|maxLength}`. **Each keyword's exact fire condition is tabulated in §4f.** |
-| **Rules — not yet built** (reported, not enforced) | the open tractable gaps — **else** value-constraints, **then `pattern`** constraints, complex `not` (`type`/`required`/nested), a non-simple `contains` predicate — are tracked in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md). (`minItems` has **no clean a12 rule form** — §4c; a permanent omission, not a gap.) |
+| **Rules — not yet built** (reported, not enforced) | the open *feasible* gaps — **else** value-constraints, **then `pattern`** constraints, complex `not` (`required`/nested/compound), a non-simple `contains` predicate — are tracked in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md) §1. *Not-feasible* constraints (`not {type}`, `minItems`, §4c) are permanently omitted — ledger §4. |
 | **Carriage (export, a12↔a12)** | the full rule rides `x-a12-rule`, a computation `x-a12-computation`; `readOnly:true` marks a computed field |
 | **Two-tier validation** *(proposal §12.1)* | exported Tier-A keywords = field-local tier (any validator); `:interpreter` = full-rule tier |
 
@@ -113,12 +113,15 @@ Every flag (and each value's *implication* — e.g. `INTEGER` drops decimals, `-
 
 ### 4c. The residual omissions (no faithful static a12 form — omitted, never block)
 
-Four cases have no static a12 representation even with a strategy; each is **omitted with a corrective TO-DO** (not refused — examples in the session log + below):
+Five cases have no static a12 representation even with a strategy; each is **omitted with a corrective TO-DO** (not refused — examples in the session log + below):
 
 1. **cross-kind type union** — `type:["string","object"]`, `oneOf` across *different kinds* (a field has one kind). *(nullable `type:[X,"null"]` → optional X, and same-kind object unions → §4b superset — both DO map.)*
 2. **`unevaluatedProperties`/`unevaluatedItems` with applicators** — dynamic, annotation-dependent closure. *(a plain closed object maps for free.)*
 3. **`$dynamicRef`/`$dynamicAnchor`** — runtime-polymorphic references.
-4. **unbounded recursive `$ref`** — expanded to `--recursion-depth` levels (default 1), then the deeper recursion is omitted with a to-do; `--strict` / `0` omits it entirely (§4b).
+4. **unbounded recursive `$ref`** — expanded to `--recursion-depth` levels (default 1), then the deeper recursion is omitted with a to-do; `--strict` / `0` omits it entirely (§4b). (Self-/cyclic *includes* are likewise rejected by the kernel — §4e.)
+5. **`not {type}`** — an a12 field has one fixed kind (structural), and there is no runtime type-check operator to negate, so "the value must not be of type X" has no rule form. *(The other `not` shapes — `const`/`enum`/`pattern`/`min`/`max`/`minLength`/`maxLength` — DO map via paired negated operators, §4f.)*
+
+The full impossibility view (these + `minItems`) is consolidated in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md) §4.
 
 ---
 
@@ -159,7 +162,8 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | `unevaluatedProperties` / `unevaluatedItems` | structure imports; constraint reported — **not enforced** | omitted (§4c) |
 | `$dynamicRef` / `$dynamicAnchor` | reported | omitted (§4c) |
 | `contains`/`minContains`/`maxContains` (simple predicate) | a `Having`-filtered count rule (`≥`/`≤ N` matching rows) | rule (Tier A+) |
-| else **value**-constraints; then `pattern`; complex `not` (`type`/`required`/nested); non-simple `contains` predicate | structure imports; keyword reported — **not yet mapped** ([`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md)) | omitted (gap) |
+| else **value**-constraints; then `pattern`; complex `not` (`required`/nested); non-simple `contains` predicate | structure imports; keyword reported — **not yet mapped** ([`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md) §1) | omitted (feasible gap) |
+| `not {type}` | structure imports; reported — **not feasible** (a12 field kind is fixed; no type-check operator to negate) | omitted (ledger §4) |
 
 ### Export — Document Model → JSON Schema
 
