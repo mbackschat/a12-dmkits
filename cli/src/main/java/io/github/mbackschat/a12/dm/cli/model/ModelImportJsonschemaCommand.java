@@ -3,6 +3,7 @@ package io.github.mbackschat.a12.dm.cli.model;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ParamKind;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
+import io.github.mbackschat.a12.dm.schemakit.Dialect;
 import io.github.mbackschat.a12.dm.schemakit.JsonSchemaImporter;
 import io.github.mbackschat.a12.dm.schemakit.MappingProfile;
 
@@ -40,8 +41,25 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.FILE)
     @Option(names = "--schema", required = true, paramLabel = "<file>",
-            description = "the JSON Schema file to import (its `title` becomes the model id, else a default)")
+            description = "the JSON Schema or OpenAPI document to import (its `title`, or --component, becomes the "
+                    + "model id; else a default)")
     String schemaPath;
+
+    @ParamKind(ParamKind.Kind.FREEFORM)
+    @Option(names = "--dialect", paramLabel = "<dialect>",
+            description = "the input's JSON-Schema dialect → AUTO (default; detect from the `openapi:` version "
+                    + "field, else assume JSON Schema) | JSON_SCHEMA (Draft 2020-12: type:[X,null] nullability, "
+                    + "numeric exclusiveMinimum, $defs) | OPENAPI_31 (OpenAPI 3.1/3.2 = 2020-12 + components/schemas "
+                    + "refs + the discriminator object) | OPENAPI_30 (OpenAPI 3.0: nullable:true → optional, BOOLEAN "
+                    + "exclusiveMinimum/Maximum). An OpenAPI document also needs --component.")
+    Dialect dialect;
+
+    @ParamKind(ParamKind.Kind.FREEFORM)
+    @Option(names = "--component", paramLabel = "<name>",
+            description = "for an OpenAPI document, the components/schemas entry to import as the model root (e.g. "
+                    + "--component Order); its #/components/schemas/* refs resolve against the siblings. A bare "
+                    + "schema needs none; a multi-schema OpenAPI doc without one is refused, listing the components.")
+    String component;
 
     @Option(names = "--strict",
             description = "conservative mode: omit everything uncertain (a bare number, scalar arrays, maps, "
@@ -123,9 +141,10 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
             return fail("cannot read schema: " + e.getMessage());
         }
         MappingProfile profile = buildProfile();
+        Dialect resolvedDialect = dialect != null ? dialect : Dialect.AUTO;
         JsonSchemaImporter.ImportResult result;
         try {
-            result = new JsonSchemaImporter().importSchema(schemaJson, profile);
+            result = new JsonSchemaImporter().importSchema(schemaJson, profile, resolvedDialect, component);
         } catch (RuntimeException e) {
             return fail("cannot import the schema: " + e.getMessage());
         }
