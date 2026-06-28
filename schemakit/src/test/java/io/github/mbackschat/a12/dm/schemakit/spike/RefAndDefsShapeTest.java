@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Spike shape 3 (SCHEMAKIT-SPEC §6, proposal §4.1): a leaf {@code $def} ↔ a12 typeDefinition round-trips
  * via {@code $ref}; an object {@code $def} is inlined (with a reported reuse-collapse); and a
- * <em>recursive</em> {@code $ref} is REFUSED with a corrective diagnostic — the gate-and-refuse discipline.
+ * <em>recursive</em> {@code $ref} is OMITTED with a corrective to-do — import never blocks.
  */
 class RefAndDefsShapeTest {
 
@@ -77,7 +77,7 @@ class RefAndDefsShapeTest {
     }
 
     @Test
-    void recursiveRefIsRefused() {
+    void recursiveRefIsOmittedNotExpanded() {
         String recursive = """
                 {
                   "type": "object",
@@ -100,12 +100,12 @@ class RefAndDefsShapeTest {
         ModelDocument doc = ModelDocument.read(imported.dmJson());
         // the non-recursive part imports …
         assertEquals(Optional.of("STRING"), doc.fieldKind("/Root/root/value"));
-        // … the recursive child is refused (not infinitely expanded), and the model still loads
+        // … the recursive child is omitted (not infinitely expanded), and the model still loads — never blocks
         assertEquals(Optional.empty(), doc.fieldKind("/Root/root/child/value"));
         assertKernelAccepts(imported.dmJson());
         assertTrue(imported.report().dispositions().stream()
-                        .anyMatch(d -> d.tier() == TranscodeReport.Tier.REFUSED),
-                "a recursive $ref must be refused, not expanded");
+                        .anyMatch(d -> d.tier() == TranscodeReport.Tier.OMITTED),
+                "a recursive $ref is omitted (skipped + reported), not expanded");
         assertTrue(imported.report().diagnostics().stream().anyMatch(d -> d.contains("recursive")));
     }
 }

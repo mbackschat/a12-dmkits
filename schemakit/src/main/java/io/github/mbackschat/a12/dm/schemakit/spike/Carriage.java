@@ -79,7 +79,7 @@ final class Carriage {
             String groupId = entry.path("group").asText();
             ArrayNode elements = DmJson.groupElements(dmTree, groupId);
             if (elements == null) {
-                report.refuse(groupId, "carried element targets group '" + groupId + "', which is not in the "
+                report.omit(groupId, "carried element targets group '" + groupId + "', which is not in the "
                         + "imported structure");
                 continue;
             }

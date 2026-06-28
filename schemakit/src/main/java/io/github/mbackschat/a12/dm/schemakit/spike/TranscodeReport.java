@@ -22,10 +22,12 @@ public record TranscodeReport(List<Disposition> dispositions, List<String> diagn
 
     /**
      * The project-or-carry taxonomy (SCHEMAKIT-SPEC §4): a structural mapping, a native-keyword projection
-     * (Tier A / synthesized Tier A+), opaque {@code x-a12-*} carriage (CARRIED rule / COMPUTATION), or a
-     * refusal under the gate-and-refuse discipline.
+     * (Tier A / synthesized Tier A+), opaque {@code x-a12-*} carriage (CARRIED rule / COMPUTATION), or an
+     * {@code OMITTED} element. <b>Import never blocks</b> (owner directive, 2026-06-28): a feature a12 cannot
+     * represent is OMITTED — skipped with a corrective to-do in the report — so the import still yields a
+     * usable, kernel-valid DM skeleton the user completes by hand. Omission is loud, never silent.
      */
-    public enum Tier { STRUCTURE, TIER_A, TIER_A_PLUS, CARRIED, COMPUTATION, REFUSED }
+    public enum Tier { STRUCTURE, TIER_A, TIER_A_PLUS, CARRIED, COMPUTATION, OMITTED }
 
     public static Builder builder() {
         return new Builder();
@@ -45,10 +47,10 @@ public record TranscodeReport(List<Disposition> dispositions, List<String> diagn
             return mapped(source, target, Tier.STRUCTURE);
         }
 
-        /** Refuse an element under the gate-and-refuse discipline: record the refusal AND the corrective. */
-        public Builder refuse(String source, String reason) {
-            dispositions.add(new Disposition(source, "<refused>", Tier.REFUSED));
-            diagnostics.add(reason);
+        /** Omit an element a12 can't represent: skip it (import proceeds) and record a corrective to-do. */
+        public Builder omit(String source, String corrective) {
+            dispositions.add(new Disposition(source, "<omitted>", Tier.OMITTED));
+            diagnostics.add(corrective);
             return this;
         }
 

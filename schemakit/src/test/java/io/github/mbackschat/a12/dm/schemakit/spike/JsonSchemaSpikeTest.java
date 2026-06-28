@@ -9,6 +9,7 @@ import java.util.Optional;
 import static io.github.mbackschat.a12.dm.schemakit.spike.SchemaTestSupport.assertKernelAccepts;
 import static io.github.mbackschat.a12.dm.schemakit.spike.SchemaTestSupport.normalize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Spike shape 1 (SCHEMAKIT-SPEC §6): a flat top-level object round-trips, and every imported model is
@@ -79,6 +80,36 @@ class JsonSchemaSpikeTest {
         ModelDocument doc = ModelDocument.read(imported.dmJson());
         assertEquals(Optional.empty(), doc.fieldKind("/Root/unitPrice"));
         assertEquals(1, imported.report().diagnostics().size());
-        assertEquals(TranscodeReport.Tier.REFUSED, imported.report().dispositions().get(0).tier());
+        assertEquals(TranscodeReport.Tier.OMITTED, imported.report().dispositions().get(0).tier());
+    }
+
+    /**
+     * The omit-never-block policy (SCHEMAKIT-SPEC §1): an unmappable element does NOT abort the import — the
+     * mappable siblings still import into a kernel-valid skeleton, and the omission is a corrective to-do.
+     */
+    @Test
+    void importNeverBlocksAMappableSiblingSurvivesAnOmission() {
+        String mixed = """
+                {
+                  "type": "object",
+                  "properties": {
+                    "name":   { "type": "string" },
+                    "price":  { "type": "number" },
+                    "active": { "type": "boolean" }
+                  },
+                  "required": ["name"]
+                }
+                """;
+        JsonSchemaImporter.ImportResult imported = new JsonSchemaImporter().importSchema(mixed);
+
+        // the mappable fields import, the model is kernel-valid — import did not block on the omitted `price`
+        ModelDocument doc = ModelDocument.read(imported.dmJson());
+        assertEquals(Optional.of("STRING"), doc.fieldKind("/Root/name"));
+        assertEquals(Optional.of("BOOLEAN"), doc.fieldKind("/Root/active"));
+        assertEquals(Optional.empty(), doc.fieldKind("/Root/price"));
+        assertKernelAccepts(imported.dmJson());
+        // the omission is a recorded, corrective to-do
+        assertTrue(imported.report().diagnostics().stream().anyMatch(d -> d.contains("TO DO")),
+                "an omission must leave a corrective to-do in the report");
     }
 }

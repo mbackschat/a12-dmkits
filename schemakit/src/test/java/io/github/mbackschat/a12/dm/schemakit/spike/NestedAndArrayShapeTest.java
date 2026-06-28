@@ -98,7 +98,7 @@ class NestedAndArrayShapeTest {
     }
 
     @Test
-    void unboundedArrayIsRefused() {
+    void unboundedArrayIsOmitted() {
         String unbounded = """
                 {
                   "type": "object",
@@ -112,11 +112,11 @@ class NestedAndArrayShapeTest {
                 """;
         JsonSchemaImporter.ImportResult imported = new JsonSchemaImporter().importSchema(unbounded);
 
-        // a12 repeatability is bounded (≥2) — an unbounded array is refused, not given an arbitrary cap,
+        // a12 repeatability is bounded (≥2) — an unbounded array is omitted, not given an arbitrary cap,
         // so the group is never created …
         assertEquals(Optional.empty(), ModelDocument.read(imported.dmJson()).fieldKind("/Root/rows/v"));
-        // … and the refusal is recorded
+        // … and the omission is recorded as a to-do (import still produced a model — never blocks)
         assertTrue(imported.report().dispositions().stream()
-                .anyMatch(d -> d.tier() == TranscodeReport.Tier.REFUSED));
+                .anyMatch(d -> d.tier() == TranscodeReport.Tier.OMITTED));
     }
 }

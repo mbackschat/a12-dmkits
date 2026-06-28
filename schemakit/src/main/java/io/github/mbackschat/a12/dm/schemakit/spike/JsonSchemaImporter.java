@@ -23,8 +23,9 @@ import java.util.Set;
  * {@code object} → a repeatable group; scalar properties → fields; {@code $defs}/{@code $ref} — a leaf
  * {@code $def} → a typeDefinition + reference, an object {@code $def} → an inlined nested group (with a
  * reuse-collapse note; the include/mount mapping is a later increment), and a <em>recursive</em>
- * {@code $ref} is REFUSED with a corrective diagnostic. An element with no faithful a12 target is
- * <em>reported</em>, never silently dropped or mismapped.
+ * {@code $ref} is <em>omitted</em> with a corrective to-do. <b>Import never blocks</b>: a feature a12 cannot
+ * represent is omitted (skipped + recorded as a to-do in the report), so the result is always a usable,
+ * kernel-valid DM skeleton the user completes by hand — never a silent drop, never an abort.
  */
 public final class JsonSchemaImporter {
 
@@ -109,7 +110,8 @@ public final class JsonSchemaImporter {
         String defName = defName(schema);
         JsonNode def = ctx.defs().path(defName);
         if (def.isMissingNode()) {
-            ctx.report().refuse(path, "$ref at '" + name + "' → unknown $def '" + defName + "'");
+            ctx.report().omit(path, "$ref at '" + name + "' → unknown $def '" + defName + "' — omitted. "
+                    + "TO DO: check the schema's $defs, then add the field by hand");
             return;
         }
         switch (def.path("type").asText("")) {
@@ -125,8 +127,9 @@ public final class JsonSchemaImporter {
     private static void inlineObjectDef(DocumentModelDraft.GroupBuilder g, String name, String defName,
                                         JsonNode def, String path, Ctx ctx) {
         if (ctx.inlining().contains(defName)) {
-            ctx.report().refuse(path, "recursive $ref at '" + name + "' → '" + defName + "' — a12 includes "
-                    + "expand, so infinite recursion is not expressible; refused per the gate-and-refuse discipline");
+            ctx.report().omit(path, "recursive $ref at '" + name + "' → '" + defName + "' — omitted: a12 includes "
+                    + "expand, so infinite recursion has no static form. TO DO: add the recursive structure "
+                    + "by hand to the depth you need, or set a bounded recursionDepth in the MappingProfile");
             return;
         }
         ctx.inlining().push(defName);
@@ -141,14 +144,16 @@ public final class JsonSchemaImporter {
                                  String path, Ctx ctx) {
         JsonNode items = schema.path("items");
         if (!"object".equals(items.path("type").asText(""))) {
-            ctx.report().refuse(path, "array '" + name + "' has non-object items — array-of-scalar needs a "
-                    + "strategy (multi-select / value-list, proposal §9); not in this increment");
+            ctx.report().omit(path, "array '" + name + "' has scalar items — omitted. TO DO: add it by hand as a "
+                    + "multi-select group or a value-list field (proposal §9), or set the array-of-scalar "
+                    + "strategy in the MappingProfile");
             return;
         }
         JsonNode maxItems = schema.get("maxItems");
         if (maxItems == null || maxItems.asInt() < 2) {
-            ctx.report().refuse(path, "array '" + name + "' needs maxItems ≥ 2 — a12 group repeatability is "
-                    + "bounded and ≥ 2 (there is no unbounded repeatable group)");
+            ctx.report().omit(path, "array '" + name + "' has no maxItems ≥ 2 — omitted: a12 group repeatability "
+                    + "is a bounded max ≥ 2. TO DO: add the repeatable group by hand with a chosen max, or set "
+                    + "maxItems on the schema");
             return;
         }
         int max = maxItems.asInt();
@@ -185,16 +190,15 @@ public final class JsonSchemaImporter {
                 });
                 ctx.report().structure(path, "NUMBER(integer, scale 0)");
             }
-            // JSON `number` has NO faithful a12 target: an a12 number always carries a bounded max scale
-            // (modelkit defaults it to 0 = integer), so an unbounded decimal cannot be expressed without a
-            // scale policy. Mapping it to scale 0 would silently turn a decimal into an integer — so it is
-            // REPORTED, not mismapped. Scale inference (multipleOf → scale, proposal §5) lands later.
-            case "number" -> ctx.report().refuse(path, "property '" + name + "' is type 'number' (unbounded "
-                    + "decimal) — no faithful a12 target: an a12 number is always scale-bounded (default 0 = "
-                    + "integer). Provide 'multipleOf' for a scale, or await the field-type-matcher increment");
-            default -> ctx.report().diagnostic("unsupported property type '"
+            // JSON `number` has no faithful a12 target without a scale signal: an a12 number always carries a
+            // bounded max scale (modelkit defaults it to 0 = integer), so mapping a bare `number` to scale 0
+            // would silently turn a decimal into an integer. So it is omitted, not mismapped.
+            case "number" -> ctx.report().omit(path, "property '" + name + "' is type 'number' (unbounded "
+                    + "decimal) — omitted: an a12 number is always scale-bounded. TO DO: add the field by hand "
+                    + "with a chosen scale, or set 'multipleOf' (→ scale) / a default-scale in the MappingProfile");
+            default -> ctx.report().omit(path, "property '" + name + "' has type '"
                     + (schema.path("type").asText("").isEmpty() ? "<none>" : schema.path("type").asText(""))
-                    + "' on '" + name + "'");
+                    + "' — omitted (not yet mapped). TO DO: add this field by hand");
         }
     }
 
