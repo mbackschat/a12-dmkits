@@ -116,7 +116,7 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
                 return fail("cannot write output: " + e.getMessage());
             }
             ObjectNode changed = MAPPER.createObjectNode();
-            changed.put("dispositions", result.report().dispositions().size());
+            changed.set("report", JsonSchemaCli.reportNode(MAPPER, result.report()));   // the agent's to-do list, structured
             ResultEnvelope env = ResultEnvelope.applied("model", "import-jsonschema",
                     "imported JSON Schema → model", changed, outputPath);
             out().print(env.toJsonString());

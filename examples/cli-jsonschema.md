@@ -57,6 +57,17 @@ transcoding report: 0 mapped, 1 omitted, 1 note(s)
   - property 'price' is type 'number' (unbounded decimal) — omitted: an a12 number is always scale-bounded. TO DO: add the field by hand with a chosen scale, or set the MappingProfile numberScale to DEFAULT_SCALE / INTEGER
 ```
 
+For a program (or an LLM agent) the omissions are the **to-do list** — what to complete by hand — so they are also **machine-readable**: with `-o`, the same report rides the write-envelope's `changed.report` (counts + the `notes` to-dos), in the structured channel an agent reads from stdout. No scraping stderr:
+
+```bash
+dmtool model import-jsonschema --schema /tmp/pricing.schema.json -o /tmp/pricing-raw.dm.json 2>/dev/null \
+  | jq -c '.changed.report'
+```
+
+```output
+{"mapped":0,"omitted":1,"notes":["property 'price' is type 'number' (unbounded decimal) — omitted: an a12 number is always scale-bounded. TO DO: add the field by hand with a chosen scale, or set the MappingProfile numberScale to DEFAULT_SCALE / INTEGER"]}
+```
+
 ## Tuning the mapping — the MappingProfile flags
 
 The choice-driven decisions are flags. Re-run the same schema with `--number-scale DEFAULT_SCALE` and the bare `number` now imports as a scale-2 NUMBER:

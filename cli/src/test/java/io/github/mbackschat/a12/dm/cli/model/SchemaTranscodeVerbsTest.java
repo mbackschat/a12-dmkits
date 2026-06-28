@@ -61,6 +61,27 @@ class SchemaTranscodeVerbsTest {
     }
 
     @Test
+    void theWriteEnvelopeCarriesTheStructuredReportForAnAgent(@TempDir Path dir) throws Exception {
+        // an agent's natural path is -o (a file it can then -m edit) + reading stdout; the omissions it must
+        // act on must be MACHINE-READABLE there, not only prose on stderr (the agent-usage reflection).
+        Path schema = dir.resolve("price.schema.json");
+        Files.writeString(schema, """
+                { "title": "Pricing", "type": "object", "properties": { "price": { "type": "number" } } }
+                """);   // a bare number → one omission the agent must complete by hand
+        Path model = dir.resolve("Pricing.dm.json");
+
+        CliTestSupport.Result res = CliTestSupport.run(
+                "model", "import-jsonschema", "--schema", schema.toString(), "-o", model.toString());
+        assertEquals(0, res.code(), res::err);
+        JsonNode report = M.readTree(res.out()).path("changed").path("report");
+        assertEquals(1, report.path("omitted").asInt(), () -> "the envelope reports the omission count: " + res.out());
+        assertTrue(report.path("notes").isArray() && !report.path("notes").isEmpty(),
+                () -> "the to-do notes ride the structured envelope, not only stderr: " + res.out());
+        assertTrue(report.path("notes").get(0).asText().contains("price"),
+                () -> "the to-do names the omitted property: " + res.out());
+    }
+
+    @Test
     void importReportsAnOmissionOnStderr(@TempDir Path dir) throws Exception {
         Path schema = dir.resolve("price.schema.json");
         Files.writeString(schema, """
