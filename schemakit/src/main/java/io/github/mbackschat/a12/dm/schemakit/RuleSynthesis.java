@@ -53,7 +53,7 @@ final class RuleSynthesis {
             implements Need {}
 
     /** A simple value constraint on a field (the tractable {@code then}-keyword set), with the requirement text. */
-    enum ConstraintKind { CONST, MINIMUM, MAXIMUM, EXCLUSIVE_MIN, EXCLUSIVE_MAX, ENUM }
+    enum ConstraintKind { CONST, MINIMUM, MAXIMUM, EXCLUSIVE_MIN, EXCLUSIVE_MAX, ENUM, PATTERN }
 
     record ValueConstraint(ConstraintKind kind, String value, List<String> values) {
         static ValueConstraint scalar(ConstraintKind kind, String value) {
@@ -70,6 +70,7 @@ final class RuleSynthesis {
                 case EXCLUSIVE_MIN -> " must be greater than " + value;
                 case EXCLUSIVE_MAX -> " must be less than " + value;
                 case ENUM -> " must be one of " + values;
+                case PATTERN -> " must match the pattern " + value;
             };
         }
     }
@@ -454,6 +455,9 @@ final class RuleSynthesis {
                 }
                 default -> reportUnsupported(report, field, "enum");
             };
+            case PATTERN -> "STRING".equals(kind)   // PatternViolated fires when the value does NOT match → the violation
+                    ? Optional.of(m.str(path).filled().and(m.str(path).violates(c.value())))
+                    : reportUnsupported(report, field, "pattern");
         };
     }
 

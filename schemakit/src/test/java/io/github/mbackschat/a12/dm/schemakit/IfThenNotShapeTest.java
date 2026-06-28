@@ -81,7 +81,7 @@ class IfThenNotShapeTest {
     }
 
     @Test
-    void thenPatternConstraintIsReportedNotMapped() {
+    void thenPatternConstraintSynthesizesAViolationRule() {
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
                 { "title": "Sub", "type": "object",
                   "properties": { "tier": { "type": "string" }, "code": { "type": "string" } },
@@ -90,9 +90,8 @@ class IfThenNotShapeTest {
                 """);
 
         assertKernelAccepts(r.dmJson());
-        assertEquals(0, synthesized(r), "a then pattern-constraint has no direct violation condition → not mapped");
-        assertTrue(r.report().diagnostics().stream().anyMatch(d -> d.contains("then constraint")),
-                () -> "the unmapped then-constraint is reported: " + r.report().diagnostics());
+        assertEquals(1, synthesized(r), () -> "if tier=PREMIUM then code matches ^P → one rule: " + r.report().dispositions());
+        assertTrue(r.dmJson().contains("PatternViolated"), "the rule fires when code does NOT match (PatternViolated)");
     }
 
     @Test

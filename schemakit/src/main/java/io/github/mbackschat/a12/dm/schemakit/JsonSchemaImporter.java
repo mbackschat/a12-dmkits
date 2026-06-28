@@ -361,6 +361,10 @@ public final class JsonSchemaImporter {
             return Optional.of(RuleSynthesis.ValueConstraint.scalar(
                     RuleSynthesis.ConstraintKind.MAXIMUM, schema.get("maximum").asText()));
         }
+        if (schema.hasNonNull("pattern")) {   // then {g:{pattern:P}} → g must match P (violation = PatternViolated)
+            return Optional.of(RuleSynthesis.ValueConstraint.scalar(
+                    RuleSynthesis.ConstraintKind.PATTERN, schema.get("pattern").asText()));
+        }
         return Optional.empty();
     }
 
