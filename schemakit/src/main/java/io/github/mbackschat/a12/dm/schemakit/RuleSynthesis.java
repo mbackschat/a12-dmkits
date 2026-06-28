@@ -34,8 +34,8 @@ final class RuleSynthesis {
 
     /** A synthesized-rule request, collected during the import walk. Sealed so the synthesizer is exhaustive. */
     sealed interface Need permits ExclusiveBound, DependentRequired, ConstValue, MultipleOf, DiscriminatedRequired,
-            MultiConditionalRequired, UniqueItems, ForbiddenConst, ForbiddenEnum, ForbiddenPattern, ForbiddenBound,
-            ForbiddenLength {}
+            MultiConditionalRequired, ThenConstrained, UniqueItems, ForbiddenConst, ForbiddenEnum, ForbiddenPattern,
+            ForbiddenBound, ForbiddenLength {}
 
     /** One {@code if}-condition conjunct: a field pinned to a value ({@code field == value}). */
     record FieldValue(String field, String value) {}
@@ -45,6 +45,34 @@ final class RuleSynthesis {
      *  so multi-property {@code else} stays reported — SCHEMAKIT-SPEC §4). */
     record MultiConditionalRequired(String groupPath, List<FieldValue> conditions, String requiredField)
             implements Need {}
+
+    /** A {@code then} VALUE-constraint: when ALL {@code conditions} hold, {@code targetField} must satisfy
+     *  {@code constraint} ({@code if {f=v} then {properties:{g:{minimum:N}}}} → error when {@code f=v And g<N}).
+     *  SCHEMAKIT-SPEC §4f. */
+    record ThenConstrained(String groupPath, List<FieldValue> conditions, String targetField, ValueConstraint constraint)
+            implements Need {}
+
+    /** A simple value constraint on a field (the tractable {@code then}-keyword set), with the requirement text. */
+    enum ConstraintKind { CONST, MINIMUM, MAXIMUM, EXCLUSIVE_MIN, EXCLUSIVE_MAX, ENUM }
+
+    record ValueConstraint(ConstraintKind kind, String value, List<String> values) {
+        static ValueConstraint scalar(ConstraintKind kind, String value) {
+            return new ValueConstraint(kind, value, List.of());
+        }
+        static ValueConstraint ofEnum(List<String> values) {
+            return new ValueConstraint(ConstraintKind.ENUM, null, List.copyOf(values));
+        }
+        String requirement(String field) {
+            return field + switch (kind) {
+                case CONST -> " must equal " + value;
+                case MINIMUM -> " must be at least " + value;
+                case MAXIMUM -> " must be at most " + value;
+                case EXCLUSIVE_MIN -> " must be greater than " + value;
+                case EXCLUSIVE_MAX -> " must be less than " + value;
+                case ENUM -> " must be one of " + values;
+            };
+        }
+    }
 
     /** {@code exclusiveMinimum}/{@code exclusiveMaximum} on a number field (a12 field bounds are inclusive-only). */
     record ExclusiveBound(String fieldPath, boolean min, String bound) implements Need {}
@@ -230,6 +258,38 @@ final class RuleSynthesis {
                         .message(Dsl.en(field + " must be " + (f.min() ? "less than " : "greater than ")
                                 + f.bound() + ".")).build());
             }
+            case ThenConstrained tc -> {
+                List<Condition> conds = new ArrayList<>();
+                for (FieldValue fv : tc.conditions()) {
+                    Optional<Condition> eq = equalsValue(m, doc, tc.groupPath() + "/" + fv.field(), fv.value());
+                    if (eq.isEmpty()) {
+                        report.diagnostic("then-constraint on '" + tc.targetField() + "' skipped — condition field '"
+                                + fv.field() + "' is neither a string nor an enum");
+                        yield Optional.empty();
+                    }
+                    conds.add(eq.get());
+                }
+                String targetPath = tc.groupPath() + "/" + tc.targetField();
+                Optional<Condition> violation = violationCondition(m, doc, targetPath, tc.constraint(), report);
+                if (violation.isEmpty()) {
+                    yield Optional.empty();   // violationCondition reported the kind mismatch
+                }
+                Condition all = conds.get(0);
+                for (int i = 1; i < conds.size(); i++) {
+                    all = all.and(conds.get(i));
+                }
+                FieldRef errorField = m.field(targetPath);
+                String tag = tc.conditions().stream()
+                        .map(fv -> capitalize(fv.field()) + sanitize(fv.value())).collect(Collectors.joining());
+                String when = tc.conditions().stream()
+                        .map(fv -> fv.field() + " is " + fv.value()).collect(Collectors.joining(" and "));
+                yield Optional.of(m.rule(m.group(tc.groupPath()))
+                        .name(tc.targetField() + "ConstrainedWhen" + tag).errorField(errorField)
+                        .when(all.and(violation.get()))
+                        .code("THEN_CONSTRAINT_" + tc.targetField().toUpperCase(Locale.ROOT)
+                                + "_" + tag.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
+                        .message(Dsl.en(tc.constraint().requirement(tc.targetField()) + " when " + when + ".")).build());
+            }
             case ForbiddenLength f -> {
                 String field = lastSegment(f.fieldPath());
                 if (!doc.fieldKind(f.fieldPath()).map("STRING"::equals).orElse(false)) {
@@ -326,6 +386,54 @@ final class RuleSynthesis {
         };
     }
 
+    /** The condition true when {@code path} VIOLATES {@code c} (with a filled guard), or empty when the field's
+     *  kind cannot carry the constraint (reported). Powers then-value-constraints (SCHEMAKIT-SPEC §4f). */
+    private static Optional<Condition> violationCondition(BoundModel m, ModelDocument doc, String path,
+                                                          ValueConstraint c, TranscodeReport.Builder report) {
+        String kind = doc.fieldKind(path).orElse("");
+        String field = lastSegment(path);
+        return switch (c.kind()) {
+            case CONST -> switch (kind) {
+                case "STRING" -> Optional.of(m.str(path).filled().and(m.str(path).ne(c.value())));
+                case "NUMBER" -> Optional.of(m.num(path).filled().and(m.num(path).ne(c.value())));
+                case "ENUMERATION" -> Optional.of(m.enumOf(path).filled().and(m.enumOf(path).isNot(c.value())));
+                default -> reportUnsupported(report, field, "const");
+            };
+            case MINIMUM, MAXIMUM, EXCLUSIVE_MIN, EXCLUSIVE_MAX -> {
+                if (!"NUMBER".equals(kind)) {
+                    yield reportUnsupported(report, field, "numeric bound");
+                }
+                NumberRef r = m.num(path);
+                Condition v = switch (c.kind()) {
+                    case MINIMUM -> r.lt(c.value());          // must be ≥ N → violation < N
+                    case MAXIMUM -> r.gt(c.value());          // must be ≤ N → violation > N
+                    case EXCLUSIVE_MIN -> r.le(c.value());    // must be > N → violation ≤ N
+                    case EXCLUSIVE_MAX -> r.ge(c.value());    // must be < N → violation ≥ N
+                    default -> throw new IllegalStateException();
+                };
+                yield Optional.of(r.filled().and(v));
+            }
+            case ENUM -> switch (kind) {
+                case "STRING" -> {
+                    StringRef r = m.str(path);
+                    String[] rest = c.values().subList(1, c.values().size()).toArray(new String[0]);
+                    yield Optional.of(r.filled().and(r.notIn(c.values().get(0), rest)));
+                }
+                case "ENUMERATION" -> {
+                    EnumRef r = m.enumOf(path);
+                    String[] rest = c.values().subList(1, c.values().size()).toArray(new String[0]);
+                    yield Optional.of(r.filled().and(r.notIn(c.values().get(0), rest)));
+                }
+                default -> reportUnsupported(report, field, "enum");
+            };
+        };
+    }
+
+    private static Optional<Condition> reportUnsupported(TranscodeReport.Builder report, String field, String what) {
+        report.diagnostic("then-constraint (" + what + ") on '" + field + "' skipped — the field's kind cannot carry it");
+        return Optional.empty();
+    }
+
     /** Is {@code path} a direct child element of {@code groupPath} (one segment below, no deeper)? */
     private static boolean isDirectChild(String path, String groupPath) {
         String prefix = groupPath + "/";
@@ -340,6 +448,7 @@ final class RuleSynthesis {
             case MultipleOf mo -> mo.fieldPath();
             case DiscriminatedRequired dr -> dr.groupPath() + "/" + dr.requiredField();
             case MultiConditionalRequired mc -> mc.groupPath() + "/" + mc.requiredField();
+            case ThenConstrained tc -> tc.groupPath() + "/" + tc.targetField();
             case UniqueItems u -> u.groupPath();
             case ForbiddenConst f -> f.fieldPath();
             case ForbiddenEnum f -> f.fieldPath();
@@ -360,6 +469,9 @@ final class RuleSynthesis {
             case MultiConditionalRequired mc -> "rule conditional-required(" + mc.conditions().stream()
                     .map(fv -> fv.field() + "=" + fv.value()).collect(Collectors.joining(" and "))
                     + " → " + mc.requiredField() + ")";
+            case ThenConstrained tc -> "rule then-constraint(" + tc.conditions().stream()
+                    .map(fv -> fv.field() + "=" + fv.value()).collect(Collectors.joining(" and "))
+                    + " → " + tc.constraint().requirement(tc.targetField()) + ")";
             case UniqueItems u -> "rule uniqueItems(" + lastSegment(u.groupPath()) + ")";
             case ForbiddenConst f -> "rule not-const(" + lastSegment(f.fieldPath()) + " ≠ " + f.value() + ")";
             case ForbiddenEnum f -> "rule not-enum(" + lastSegment(f.fieldPath()) + " ∉ " + f.values() + ")";

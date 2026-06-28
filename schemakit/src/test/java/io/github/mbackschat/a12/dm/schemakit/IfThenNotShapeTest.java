@@ -67,6 +67,35 @@ class IfThenNotShapeTest {
     }
 
     @Test
+    void thenValueConstraintSynthesizesAConditionalConstraintRule() {
+        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
+                { "title": "Sub", "type": "object",
+                  "properties": { "tier": { "type": "string" }, "discount": { "type": "integer" } },
+                  "if": { "properties": { "tier": { "const": "PREMIUM" } } },
+                  "then": { "properties": { "discount": { "minimum": 10 } } } }
+                """);
+
+        assertKernelAccepts(r.dmJson());
+        assertEquals(1, synthesized(r), () -> "if tier=PREMIUM then discount>=10 → one rule: " + r.report().dispositions());
+        assertTrue(r.dmJson().contains("PREMIUM"), "the rule keys on the if-condition");
+    }
+
+    @Test
+    void thenPatternConstraintIsReportedNotMapped() {
+        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
+                { "title": "Sub", "type": "object",
+                  "properties": { "tier": { "type": "string" }, "code": { "type": "string" } },
+                  "if": { "properties": { "tier": { "const": "PREMIUM" } } },
+                  "then": { "properties": { "code": { "pattern": "^P" } } } }
+                """);
+
+        assertKernelAccepts(r.dmJson());
+        assertEquals(0, synthesized(r), "a then pattern-constraint has no direct violation condition → not mapped");
+        assertTrue(r.report().diagnostics().stream().anyMatch(d -> d.contains("then constraint")),
+                () -> "the unmapped then-constraint is reported: " + r.report().diagnostics());
+    }
+
+    @Test
     void ifThenElseSynthesizesBothBranches() {
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
                 { "title": "Sub", "type": "object",

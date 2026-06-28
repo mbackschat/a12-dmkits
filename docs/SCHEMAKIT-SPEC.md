@@ -84,8 +84,8 @@ Both keep **artifact mode**: the transcode result (DM-JSON / JSON Schema) goes t
 | **Structure** | `object`→group, `array`-of-`object`→repeatable group, scalar→field-kind (the field-type matcher, §4b), `$defs`/`$ref`→typedef (leaf) / inlined group (object; reuse via a separate include child is the deferred multi-model increment, §4e) |
 | **Field config** | `minLength`/`maxLength`/`pattern`→string config; `minimum`/`maximum`→number bounds |
 | **Rules (direct)** | `required`→requiredness; `enum`→ENUMERATION; `uniqueItems`→`RepetitionNotUnique`/`FieldValuesNotUnique`; `pattern`→`PatternViolated` |
-| **Rules (composed), built** | constraints with no field-config home become a12 *rules* — `exclusiveMinimum`/`exclusiveMaximum`, `multipleOf`, `const`, `dependentRequired`, `oneOf`/`anyOf` discriminator, `uniqueItems`, `if {f=v [and …]} then/else {required}` (incl. **multi-property** `if`), `not {const\|enum\|pattern\|minimum\|maximum\|minLength\|maxLength}`. **Each keyword's exact fire condition is tabulated in §4f.** |
-| **Rules — not yet built** (reported, not enforced) | the open tractable gaps — `contains`/`minContains`, then/else **value**-constraints, complex `not` (`minLength`/`type`/`required`/nested) — are tracked in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md). (`minItems` has **no clean a12 rule form** — §4c; a permanent omission, not a gap.) |
+| **Rules (composed), built** | constraints with no field-config home become a12 *rules* — `exclusiveMinimum`/`exclusiveMaximum`, `multipleOf`, `const`, `dependentRequired`, `oneOf`/`anyOf` discriminator, `uniqueItems`, `if {f=v [and …]} then/else {required}` (incl. **multi-property** `if`), **then value-constraints** (`g` must satisfy `const`/`enum`/`min`/`max` when the `if` holds), `not {const\|enum\|pattern\|minimum\|maximum\|minLength\|maxLength}`. **Each keyword's exact fire condition is tabulated in §4f.** |
+| **Rules — not yet built** (reported, not enforced) | the open tractable gaps — `contains`/`minContains`, **else** value-constraints, **then `pattern`** constraints, complex `not` (`type`/`required`/nested) — are tracked in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md). (`minItems` has **no clean a12 rule form** — §4c; a permanent omission, not a gap.) |
 | **Carriage (export, a12↔a12)** | the full rule rides `x-a12-rule`, a computation `x-a12-computation`; `readOnly:true` marks a computed field |
 | **Two-tier validation** *(proposal §12.1)* | exported Tier-A keywords = field-local tier (any validator); `:interpreter` = full-rule tier |
 
@@ -145,6 +145,7 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | `multipleOf` · `const` · `dependentRequired` | modulo rule · `!=` rule · conditional-requiredness rule | rule (Tier A+) |
 | `uniqueItems` | `RepetitionNotUnique` rule keyed on the repeatable group's row fields | rule (Tier A+) |
 | `if {field = value [, …]}` + `then` / `else {required}` | conditional-requiredness rule per dependent (multi-property `if` → the conjunction; `else` on the negated condition) | rule (Tier A+) |
+| `if {f = v}` + `then {properties:{g:{const/enum/min/max}}}` | conditional value-constraint rule on `g` | rule (Tier A+) |
 | `not {const}` · `{enum}` · `{pattern}` · `{min/max}` · `{minLength/maxLength}` | `!=` · not-in-list · must-not-match · inverted numeric bound · inverted length bound | rule (Tier A+) |
 | `oneOf`/`anyOf` of same-kind objects | superset group + discriminator → enum + per-variant requiredness rules | strategy + rule (profile: union) |
 | `array` of scalar | repeatable single-field group (default) / multi-select / value-list | strategy (profile; **imported by default**) |
@@ -243,6 +244,7 @@ The keywords with no field-config home become real a12 **rules** (§4 "Rules (co
 | `if {f = V} then {required:[D]}` | `[f] = V And Not Filled(D)` | `D` | `enum.is(V)`/`str.eq(V)` + `fieldNotFilled` |
 | `if {f = V} else {required:[E]}` | `Filled(f) And [f] ≠ V And Not Filled(E)` | `E` | `str.ne(V)`/`enum.isNot(V)` (guarded) |
 | `if {a = X, b = Y} then {required:[D]}` (multi-property) | `[a] = X And [b] = Y And Not Filled(D)` | `D` | conjunction of equals + `fieldNotFilled` (else of a conjunction is a disjunction → reported) |
+| `if {f = V} then {properties:{g:{minimum:N}}}` (then value-constraint) | `[f] = V And [g] < N` | `g` | the if-condition + the *negated* then-keyword (`const`/`enum`/`min`/`max`/`exclusive*`); a `then {pattern}` has no negated-match → reported |
 | `not {const: V}` | `Filled(f) And [f] = V` | `f` | `str.eq(V)` / `num.eq(V)` |
 | `not {enum: […]}` | `Filled(f) And [f] In […]` | `f` | `str.in(…)` |
 | `not {pattern: P}` | `Filled(f) And [f] matches /P/` | `f` | `str.matches(P)` |
