@@ -80,7 +80,7 @@ Both keep **artifact mode**: the transcode result (DM-JSON / JSON Schema) goes t
 
 | Layer | Mapping |
 |---|---|
-| **Structure** | `object`→group, `array`-of-`object`→repeatable group, scalar→field-kind (the field-type matcher, §4b), `$defs`/`$ref`→typedef (leaf) / include-or-inline (object) |
+| **Structure** | `object`→group, `array`-of-`object`→repeatable group, scalar→field-kind (the field-type matcher, §4b), `$defs`/`$ref`→typedef (leaf) / inlined group (object; reuse via a separate include child is the deferred multi-model increment, §4e) |
 | **Field config** | `minLength`/`maxLength`/`pattern`→string config; `minimum`/`maximum`→number bounds |
 | **Rules (direct)** | `required`→requiredness; `enum`→ENUMERATION; `uniqueItems`→`RepetitionNotUnique`/`FieldValuesNotUnique`; `pattern`→`PatternViolated` |
 | **Rules (composed), built** | `exclusiveMinimum`/`exclusiveMaximum`→strict `<`/`>`; `multipleOf`→modulo `{[x]−RoundDown([x]/N,0)·N} ≠ 0`; `const`→`!=` / single-value; `dependentRequired`→conditional requiredness; `oneOf`/`anyOf` discriminator→per-variant requiredness rules; `uniqueItems`→`RepetitionNotUnique`; `if {field=value} then {required}`→conditional requiredness; `not {const}`→`!=`, `not {enum}`→not-in-list |
@@ -177,6 +177,53 @@ The **mismatch in one line:** import turns rules/strategies/temporal-formats int
 
 ---
 
+## 4e. Model multiplicity — one schema, one or many models
+
+A single JSON Schema imports to **exactly one** document model today. Multiplicity is not inherent in "a schema" — it appears only when a *reuse* construct (`$defs`, an external `$ref`, or a bundle of schemas) maps onto one of a12's two **reuse vehicles**, and one of those vehicles is itself a separate model. Emitting several models is the deferred multi-model increment (proposal §4.1); this section fixes the contract for when it lands, and states what the importer does in the meantime.
+
+### a12's reuse vehicles
+
+| Vehicle | What it is | Separate model? |
+|---|---|---|
+| **typeDefinition** (local) | a named reusable *type* — a `Money` decimal, an `Iban` string+pattern, an enum — declared in `content.typeDefinitions[]`, referenced by fields (`FieldTypeSpec.TypeDefRef`) | **No** — lives in the model |
+| **type-def-only model** | a `modelType:document` with an empty root carrying *only* `typeDefinitions`, **imported** by others (`DocumentModelDraft.typeDefModel()` / `Builder.importTypeDefs` → header `typeDefImports`) | **Yes** |
+| **include / mount** | a group with `modelAlias` → another model's id (header `includes[]` = alias→reference); on expand the kernel splices the child in (`IncludeLevel.SINGLE_RG` = the child becomes one group, `MODEL_ROOT` = its root fields land directly) | **Yes** |
+
+### Which reuse construct fans out into how many models
+
+| JSON-Schema construct | a12 vehicle | Models produced |
+|---|---|---|
+| leaf `$def` (string/integer) | typeDefinition (local) | **1** (same model) |
+| object `$def` reused in N places | include/mount | host **+ 1 child per reused object** |
+| recursive `$def` (self-reference) | self-mount | host **+ 1** (the child *is* the model) |
+| a leaf type shared across schemas | type-def-only model + import | host **+ 1 library model** |
+| input is a bundle / many external `$ref`s | one model per resource | **N** + include wiring |
+
+### The clean way to say it
+
+- **typeDefinition** = reuse a *type* → stays in **one** model (promote to a shared **type-def-only model** only when the type is shared *across* schemas).
+- **include/mount** = reuse a *structure* → a **separate child model**, one per reused object, the host mounting it by `modelAlias`.
+- An import yields **multiple** models when (a) reused object `$defs` / external `$ref`s map to includes, (b) the schema is **recursive** (forcing a self-mount), or (c) the input is a **bundle** of several schemas.
+
+### Why a separate model (not just inline the structure)
+
+- **Recursion makes it mandatory, not merely tidy.** A self-referential schema — a `TreeNode` whose `children` is an array of `TreeNode` — has **no finite inline form**; inlining never terminates. a12 includes *expand at runtime*, so a mount that references its own model represents the recursion inlining cannot. This is exactly today's omit case (the `recursionDepth` expand-then-omit), and the multi-model path is what unblocks it.
+- **Reuse without duplication.** An object `$def` referenced in N places inlines the structure N times; a mount references it **once**. Edits — and the included model's own **rules/computations** — stay single-sourced (`MountOptions.excludeRules`/`excludeComputations` opt out per mount when the host doesn't want the child's logic).
+- **Cross-document sharing.** A library of types or structures shared across many imported schemas is precisely the type-def-only model / a common child — the DRY unit a12 already provides, rather than copying the definition into every model.
+
+### Current importer behavior (the honest gap)
+
+Today schemakit emits **one** model. The multi-model output is deferred; the importer collapses reuse into the host model and reports where it did so:
+
+| construct | today | target (multi-model increment) |
+|---|---|---|
+| leaf `$def` (string/integer) | local `typeDefinition` + `typedefField` ref (`declareLeafTypedefs`) | unchanged — promote to a type-def model only for cross-schema sharing |
+| object `$def` | **inlined** as a nested group, with a "reuse via include/mount is a later increment" diagnostic (`inlineObjectDef`) | mount → a child model, one per reused object |
+| recursive `$ref` | expanded to `--recursion-depth` (default 1), then omitted with a corrective to-do | self-mount (the recursion the include represents) |
+| external `$ref` / bundle | not followed | one model per resource + include wiring |
+
+---
+
 ## 5. Verification gates
 
 The differential is **round-trip + kernel-accept** (the kernel-accept gate rides the public facade via `ModelLoader`):
@@ -197,7 +244,7 @@ Built test-first, smallest increment first. Progress is git, not a status table 
 
 1. **Flat object** — `object` + string/integer/number/boolean properties + `required` → DM with fields + requiredness; export back; round-trip equal; kernel-accepts.
 2. **Nested + array-of-object** — groups + repeatable groups + `minItems`/`maxItems`.
-3. **`$defs`/`$ref` both kinds** — object `$def`→include/mount, leaf `$def`→typedef; recursive `$ref` expanded to `recursionDepth` (default 1), then omitted with a corrective to-do.
+3. **`$defs`/`$ref` both kinds** — leaf `$def`→typedef; object `$def`→inlined group (the multi-model include/mount → a separate child model is deferred, §4e); recursive `$ref` expanded to `recursionDepth` (default 1), then omitted with a corrective to-do.
 4. **Rule carriage** — Tier-A `if/then`+`required`; Tier-B cross-field/aggregate as `x-a12-rule`; a computation as `x-a12-computation`; meta-schema-valid; re-import reconstructs all three.
 5. **Tier A+ import & interpreter coupling** — synthesize rules from `dependentRequired`/`exclusiveMinimum`/`multipleOf`/`const`/discriminators; two-tier validation holds (proposal §12).
 
