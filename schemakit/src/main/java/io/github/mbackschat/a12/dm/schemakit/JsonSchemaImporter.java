@@ -289,9 +289,28 @@ public final class JsonSchemaImporter {
         }
         collectDependentRequired(objectSchema, groupPath, ctx);
         collectIfThen(objectSchema, groupPath, ctx);
+        collectObjectNot(objectSchema, groupPath, ctx);
         if (!allOf.isEmpty()) {
             ctx.report().diagnostic("merged " + allOf.size() + " allOf object subschema(s) into '" + groupPath
                     + "' — all constraints apply together (intersection)");
+        }
+    }
+
+    /** Object-level {@code not {required:[…]}} → a rule firing when the listed fields are ALL present (they must
+     *  not be together). A nested/compound object {@code not} is reported, not silently dropped (SCHEMAKIT-SPEC §4f). */
+    private static void collectObjectNot(JsonNode objectSchema, String groupPath, Ctx ctx) {
+        JsonNode not = objectSchema.path("not");
+        if (not.isMissingNode()) {
+            return;
+        }
+        JsonNode required = not.path("required");
+        if (required.isArray() && !required.isEmpty()) {
+            List<String> fields = new ArrayList<>();
+            required.forEach(r -> fields.add(r.asText()));
+            ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenAllPresent(groupPath, fields));
+        } else {
+            ctx.report().diagnostic("object 'not' at '" + groupPath + "' isn't a simple 'not {required:[…]}' "
+                    + "(e.g. a nested or compound not) — not mapped; add it by hand");
         }
     }
 

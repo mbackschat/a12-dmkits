@@ -208,6 +208,19 @@ class IfThenNotShapeTest {
     }
 
     @Test
+    void objectNotRequiredForbidsTheFieldsBeingPresentTogether() {
+        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
+                { "title": "X", "type": "object",
+                  "properties": { "cash": { "type": "string" }, "card": { "type": "string" } },
+                  "not": { "required": ["cash", "card"] } }
+                """);
+
+        assertKernelAccepts(r.dmJson());
+        assertEquals(1, synthesized(r), () -> "not{required:[cash,card]} → one 'not all present' rule: " + r.report().dispositions());
+        assertTrue(r.dmJson().contains("AllFieldsFilled"), "the rule fires when both are present");
+    }
+
+    @Test
     void aComplexNotIsReportedNotSilentlyDropped() {
         // not{type} is outside the mapped set (const/enum/pattern/min/max/minLength/maxLength) — stays reported.
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""

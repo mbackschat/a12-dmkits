@@ -84,8 +84,8 @@ Both keep **artifact mode**: the transcode result (DM-JSON / JSON Schema) goes t
 | **Structure** | `object`→group, `array`-of-`object`→repeatable group, scalar→field-kind (the field-type matcher, §4b), `$defs`/`$ref`→typedef (leaf) / inlined group (object; reuse via a separate include child is the deferred multi-model increment, §4e) |
 | **Field config** | `minLength`/`maxLength`/`pattern`→string config; `minimum`/`maximum`→number bounds |
 | **Rules (direct)** | `required`→requiredness; `enum`→ENUMERATION; `uniqueItems`→`RepetitionNotUnique`/`FieldValuesNotUnique`; `pattern`→`PatternViolated` |
-| **Rules (composed), built** | constraints with no field-config home become a12 *rules* — `exclusiveMinimum`/`exclusiveMaximum`, `multipleOf`, `const`, `dependentRequired`, `oneOf`/`anyOf` discriminator, `uniqueItems`, `if {f=v [and …]} then/else {required}` (incl. **multi-property** `if`), **then/else value-constraints** (`g` must satisfy `const`/`enum`/`min`/`max`/`pattern` when the `if` holds, and the single-property `else`), `contains`/`minContains`/`maxContains` (simple predicate → a filtered-count rule), `not {const\|enum\|pattern\|minimum\|maximum\|minLength\|maxLength}`. **Each keyword's exact fire condition is tabulated in §4f.** |
-| **Rules — not yet built** (reported, not enforced) | the open *feasible* gaps — **multi-property else** value-constraints, complex `not` (`required`/nested/compound), a `contains` predicate with a **non-single-valued** clause (a range / arbitrary item subschema) — are tracked in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md) §1. *Not-feasible* constraints (`not {type}`, `minItems`, §4c) are permanently omitted — ledger §4. |
+| **Rules (composed), built** | constraints with no field-config home become a12 *rules* — `exclusiveMinimum`/`exclusiveMaximum`, `multipleOf`, `const`, `dependentRequired`, `oneOf`/`anyOf` discriminator, `uniqueItems`, `if {f=v [and …]} then/else {required}` (incl. **multi-property** `if`), **then/else value-constraints** (`g` must satisfy `const`/`enum`/`min`/`max`/`pattern` when the `if` holds, and the single-property `else`), `contains`/`minContains`/`maxContains` (simple predicate → a filtered-count rule), `not {const\|enum\|pattern\|minimum\|maximum\|minLength\|maxLength}`, object-level `not {required}`. **Each keyword's exact fire condition is tabulated in §4f.** |
+| **Rules — not yet built** (reported, not enforced) | the open *feasible* gaps — **multi-property else** value-constraints, **nested/compound** `not`, a `contains` predicate with a **non-single-valued** clause (a range / arbitrary item subschema) — are tracked in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md) §1. *Not-feasible* constraints (`not {type}`, `minItems`, §4c) are permanently omitted — ledger §4. |
 | **Carriage (export, a12↔a12)** | the full rule rides `x-a12-rule`, a computation `x-a12-computation`; `readOnly:true` marks a computed field |
 | **Two-tier validation** *(proposal §12.1)* | exported Tier-A keywords = field-local tier (any validator); `:interpreter` = full-rule tier |
 
@@ -150,7 +150,7 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | `uniqueItems` | `RepetitionNotUnique` rule keyed on the repeatable group's row fields | rule (Tier A+) |
 | `if {field = value [, …]}` + `then` / `else {required}` | conditional-requiredness rule per dependent (multi-property `if` → the conjunction; `else` on the negated condition) | rule (Tier A+) |
 | `if {f = v}` + `then`/`else {properties:{g:{const/enum/min/max/pattern}}}` | conditional value-constraint rule on `g` (single-property `else` too) | rule (Tier A+) |
-| `not {const}` · `{enum}` · `{pattern}` · `{min/max}` · `{minLength/maxLength}` | `!=` · not-in-list · must-not-match · inverted numeric bound · inverted length bound | rule (Tier A+) |
+| `not {const}` · `{enum}` · `{pattern}` · `{min/max}` · `{minLength/maxLength}` · object `{required}` | `!=` · not-in-list · must-not-match · inverted numeric bound · inverted length bound · not-all-present | rule (Tier A+) |
 | `oneOf`/`anyOf` of same-kind objects | superset group + discriminator → enum + per-variant requiredness rules | strategy + rule (profile: union) |
 | `array` of scalar | repeatable single-field group (default) / multi-select / value-list | strategy (profile; **imported by default**) |
 | `array` / map with no `maxItems` / `maxProperties` | repeatable group capped at `--default-repeat-cap` (default 1000) | strategy (profile; **imported by default**, capped) |
@@ -163,7 +163,7 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | `unevaluatedProperties` / `unevaluatedItems` | structure imports; constraint reported — **not enforced** | omitted (§4c) |
 | `$dynamicRef` / `$dynamicAnchor` | reported | omitted (§4c) |
 | `contains`/`minContains`/`maxContains` (single- or multi-property predicate) | a `Having`-filtered count rule (`≥`/`≤ N` matching rows) | rule (Tier A+) |
-| multi-property else **value**-constraints; complex `not` (`required`/nested); `contains` with a non-single-valued clause | structure imports; keyword reported — **not yet mapped** ([`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md) §1) | omitted (feasible gap) |
+| multi-property else **value**-constraints; nested/compound `not`; `contains` with a non-single-valued clause | structure imports; keyword reported — **not yet mapped** ([`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md) §1) | omitted (feasible gap) |
 | `not {type}` | structure imports; reported — **not feasible** (a12 field kind is fixed; no type-check operator to negate) | omitted (ledger §4) |
 
 ### Export — Document Model → JSON Schema
@@ -257,6 +257,7 @@ The keywords with no field-config home become real a12 **rules** (§4 "Rules (co
 | `not {maximum: N}` | `Filled(f) And [f] ≤ N` | `f` | `num.le(N)` (value must be `> N`) |
 | `not {minLength: N}` | `Filled(f) And length([f]) ≥ N` | `f` | `str.length().ge(N)` (length `< N`) |
 | `not {maxLength: N}` | `Filled(f) And length([f]) ≤ N` | `f` | `str.length().le(N)` (length `> N`) |
+| object `not {required:[a, b]}` | `AllFieldsFilled(a, b)` | first field | `Dsl.allFieldsFilled` / `fieldFilled` — a/b must not all be present together |
 
 **Why the conditions look "inverted" — polarity.** An a12 rule produces an error when its condition is **true**, so a *constraint* `field > N` is encoded as the *error condition* `[field] ≤ N`. Every row above is therefore the logical negation of the keyword it implements; reading the table is easiest as "the rule fires exactly on the values the schema forbids."
 

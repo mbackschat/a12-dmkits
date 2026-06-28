@@ -35,7 +35,7 @@ final class RuleSynthesis {
     /** A synthesized-rule request, collected during the import walk. Sealed so the synthesizer is exhaustive. */
     sealed interface Need permits ExclusiveBound, DependentRequired, ConstValue, MultipleOf, DiscriminatedRequired,
             MultiConditionalRequired, ThenConstrained, ElseConstrained, ContainsCount, UniqueItems, ForbiddenConst,
-            ForbiddenEnum, ForbiddenPattern, ForbiddenBound, ForbiddenLength {}
+            ForbiddenEnum, ForbiddenPattern, ForbiddenBound, ForbiddenLength, ForbiddenAllPresent {}
 
     /** One {@code if}-condition conjunct: a field pinned to a value ({@code field == value}). */
     record FieldValue(String field, String value) {}
@@ -111,6 +111,10 @@ final class RuleSynthesis {
      *  {@code < bound} (error when {@code length >= bound}); else length must be {@code > bound} (error when
      *  {@code length <= bound}). A string field. */
     record ForbiddenLength(String fieldPath, boolean min, int bound) implements Need {}
+
+    /** Object-level {@code not: {required:[…]}}: the {@code fields} must NOT all be present together — error fires
+     *  when they all are ({@code AllFieldsFilled}, or {@code FieldFilled} for one). SCHEMAKIT-SPEC §4f. */
+    record ForbiddenAllPresent(String groupPath, List<String> fields) implements Need {}
 
     /** {@code uniqueItems: true} on an array → a {@code RepetitionNotUnique} rule keyed on the repeatable
      *  group's row fields (resolved post-build from {@code groupPath}). */
@@ -319,6 +323,26 @@ final class RuleSynthesis {
                         .severity(Severity.ERROR)
                         .message(Dsl.en(field + " length must be " + (f.min() ? "less than " : "greater than ")
                                 + f.bound() + ".")).build());
+            }
+            case ForbiddenAllPresent f -> {
+                List<FieldRef> refs = new ArrayList<>();
+                for (String fieldName : f.fields()) {
+                    String fieldPath = f.groupPath() + "/" + fieldName;
+                    if (doc.fieldKind(fieldPath).isEmpty()) {
+                        report.diagnostic("not{required} on '" + lastSegment(f.groupPath()) + "' skipped — '"
+                                + fieldName + "' is not a scalar field (only field presence is enforceable here)");
+                        yield Optional.empty();
+                    }
+                    refs.add(m.field(fieldPath));
+                }
+                Condition allPresent = refs.size() == 1
+                        ? Dsl.fieldFilled(refs.get(0))
+                        : Dsl.allFieldsFilled(List.copyOf(refs));
+                String tag = f.fields().stream().map(RuleSynthesis::capitalize).collect(Collectors.joining());
+                yield Optional.of(m.rule(m.group(f.groupPath())).name("Not" + tag + "Together").errorField(refs.get(0))
+                        .when(allPresent)
+                        .code("FORBIDDEN_TOGETHER_" + tag.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
+                        .message(Dsl.en("These must not all be present together: " + f.fields() + ".")).build());
             }
             case ForbiddenConst f -> {
                 String field = lastSegment(f.fieldPath());
@@ -529,6 +553,7 @@ final class RuleSynthesis {
             case ForbiddenPattern f -> f.fieldPath();
             case ForbiddenBound f -> f.fieldPath();
             case ForbiddenLength f -> f.fieldPath();
+            case ForbiddenAllPresent f -> f.groupPath();
         };
     }
 
@@ -559,6 +584,7 @@ final class RuleSynthesis {
                     + " " + (f.min() ? "<" : ">") + " " + f.bound() + ")";
             case ForbiddenLength f -> "rule not-" + (f.min() ? "minLength(" : "maxLength(") + lastSegment(f.fieldPath())
                     + " length " + (f.min() ? "<" : ">") + " " + f.bound() + ")";
+            case ForbiddenAllPresent f -> "rule not-all-present(" + f.fields() + ")";
         };
     }
 
