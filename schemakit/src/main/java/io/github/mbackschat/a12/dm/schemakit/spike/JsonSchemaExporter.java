@@ -7,15 +7,18 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.modelkit.Requiredness;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.TreeSet;
 
 /**
- * Document Model → JSON Schema, the spike's export direction (SCHEMAKIT-SPEC §6). It reads structure
- * through modelkit's kernel-free {@link ModelDocument} (no kernel, no {@code :adapter}) and emits a Jackson
- * tree. The mirror of {@link JsonSchemaImporter}: the single root group → the top-level object, nested
- * groups → object properties, repeatable groups → {@code array} properties ({@code maxItems} = the
- * repetition bound). {@code required} is emitted sorted so the round-trip is order-insensitive.
+ * Document Model → JSON Schema, the spike's export direction (SCHEMAKIT-SPEC §6) — the mirror of
+ * {@link JsonSchemaImporter}. It reads structure through modelkit's kernel-free {@link ModelDocument} (no
+ * kernel, no {@code :adapter}): the single root group → the top-level object, nested groups → object
+ * properties, repeatable groups → {@code array} properties, and an a12 typeDefinition → a {@code $defs}
+ * entry referenced by {@code $ref}. {@code required} is emitted sorted so the round-trip is order-insensitive.
  */
 public final class JsonSchemaExporter {
 
@@ -23,51 +26,56 @@ public final class JsonSchemaExporter {
 
     public record ExportResult(String jsonSchema, TranscodeReport report) {}
 
+    /** Per-export state: the document, the field→typeDef map, the typeDefs actually referenced, the report. */
+    private record Ctx(ModelDocument doc, Map<String, String> fieldToTypedef,
+                       TreeSet<String> usedDefs, TranscodeReport.Builder report) {}
+
     public ExportResult export(String dmJson) {
         ModelDocument doc = ModelDocument.read(dmJson);
         List<String> groupPaths = doc.groupPaths();
         if (groupPaths.isEmpty()) {
             throw new IllegalArgumentException("model has no group to export");
         }
-        TranscodeReport.Builder report = TranscodeReport.builder();
-        ObjectNode schema = exportGroup(groupPaths.get(0), doc, report);   // root group → top-level object
-        return new ExportResult(toJson(schema), report.build());
+        Ctx ctx = new Ctx(doc, fieldTypedefMap(doc), new TreeSet<>(), TranscodeReport.builder());
+        ObjectNode schema = exportGroup(groupPaths.get(0), ctx);   // root group → top-level object
+        emitDefs(schema, ctx);
+        return new ExportResult(toJson(schema), ctx.report().build());
     }
 
     /** Build {@code {type:object, properties, required}} from a group's direct field + sub-group children. */
-    private ObjectNode exportGroup(String groupPath, ModelDocument doc, TranscodeReport.Builder report) {
+    private ObjectNode exportGroup(String groupPath, Ctx ctx) {
         ObjectNode node = JSON.createObjectNode();
         node.put("type", "object");
         ObjectNode properties = node.putObject("properties");
         TreeSet<String> required = new TreeSet<>();
 
-        for (String fieldPath : doc.fieldPaths()) {
+        for (String fieldPath : ctx.doc().fieldPaths()) {
             if (!isDirectChild(fieldPath, groupPath)) {
                 continue;
             }
             String name = lastSegment(fieldPath);
-            String jsonType = mapKind(fieldPath, doc, properties.putObject(name), report);
-            report.structure(fieldPath, "properties/" + name + " (" + jsonType + ")");
-            if (doc.requiredness(fieldPath).orElse(Requiredness.OPTIONAL) != Requiredness.OPTIONAL) {
+            exportField(fieldPath, name, properties, ctx);
+            if (ctx.doc().requiredness(fieldPath).orElse(Requiredness.OPTIONAL) != Requiredness.OPTIONAL) {
                 required.add(name);
             }
         }
 
-        for (String childPath : doc.groupPaths()) {
+        for (String childPath : ctx.doc().groupPaths()) {
             if (!isDirectChild(childPath, groupPath)) {
                 continue;
             }
             String name = lastSegment(childPath);
-            ObjectNode childObject = exportGroup(childPath, doc, report);
-            if (doc.isRepeating(childPath)) {
+            ObjectNode childObject = exportGroup(childPath, ctx);
+            if (ctx.doc().isRepeating(childPath)) {
+                int max = ctx.doc().maxRepetitions(childPath);
                 ObjectNode arr = properties.putObject(name);
                 arr.put("type", "array");
                 arr.set("items", childObject);
-                arr.put("maxItems", doc.maxRepetitions(childPath));
-                report.structure(childPath, "properties/" + name + " (array, maxItems " + doc.maxRepetitions(childPath) + ")");
+                arr.put("maxItems", max);
+                ctx.report().structure(childPath, "properties/" + name + " (array, maxItems " + max + ")");
             } else {
                 properties.set(name, childObject);
-                report.structure(childPath, "properties/" + name + " (object)");
+                ctx.report().structure(childPath, "properties/" + name + " (object)");
             }
         }
 
@@ -78,32 +86,68 @@ public final class JsonSchemaExporter {
         return node;
     }
 
-    private static String mapKind(String fieldPath, ModelDocument doc, ObjectNode prop, TranscodeReport.Builder report) {
-        String kind = doc.fieldKind(fieldPath).orElse("UNKNOWN");
+    private void exportField(String fieldPath, String name, ObjectNode properties, Ctx ctx) {
+        String typeDefId = ctx.fieldToTypedef().get(fieldPath);
+        if (typeDefId != null) {
+            properties.putObject(name).put("$ref", "#/$defs/" + typeDefId);
+            ctx.usedDefs().add(typeDefId);
+            ctx.report().structure(fieldPath, "properties/" + name + " ($ref → " + typeDefId + ")");
+            return;
+        }
+        String jsonType = writeLeafType(properties.putObject(name),
+                ctx.doc().fieldKind(fieldPath), ctx.doc().fieldConfig(fieldPath), ctx.report(), fieldPath);
+        ctx.report().structure(fieldPath, "properties/" + name + " (" + jsonType + ")");
+    }
+
+    private void emitDefs(ObjectNode schema, Ctx ctx) {
+        if (ctx.usedDefs().isEmpty()) {
+            return;
+        }
+        ObjectNode defs = JSON.createObjectNode();
+        for (String id : ctx.usedDefs()) {
+            writeLeafType(defs.putObject(id),
+                    ctx.doc().typeDefinitionKind(id), ctx.doc().typeDefinitionConfig(id), ctx.report(), "$defs/" + id);
+        }
+        schema.set("$defs", defs);
+    }
+
+    /** Write a leaf type ({@code string}/{@code integer}/{@code number}/{@code boolean}) onto {@code target}. */
+    private static String writeLeafType(ObjectNode target, Optional<String> kindOpt,
+                                        Optional<ObjectNode> configOpt, TranscodeReport.Builder report, String source) {
+        String kind = kindOpt.orElse("UNKNOWN");
         switch (kind) {
             case "STRING" -> {
-                prop.put("type", "string");
+                target.put("type", "string");
                 return "string";
             }
             case "BOOLEAN" -> {
-                prop.put("type", "boolean");
+                target.put("type", "boolean");
                 return "boolean";
             }
             case "NUMBER" -> {
-                boolean integer = doc.fieldConfig(fieldPath)
+                boolean integer = configOpt
                         .map(c -> c.findValue("maxFractionalDigits"))
                         .map(n -> n.isInt() && n.asInt() == 0)
                         .orElse(false);
-                prop.put("type", integer ? "integer" : "number");
+                target.put("type", integer ? "integer" : "number");
                 return integer ? "integer" : "number";
             }
             default -> {
-                prop.put("type", "string");
-                report.diagnostic("field kind '" + kind + "' on '" + fieldPath
-                        + "' is not mapped yet — emitted as a string placeholder");
+                target.put("type", "string");
+                report.diagnostic("kind '" + kind + "' at '" + source + "' is not mapped yet — string placeholder");
                 return "string(fallback)";
             }
         }
+    }
+
+    private static Map<String, String> fieldTypedefMap(ModelDocument doc) {
+        Map<String, String> map = new HashMap<>();
+        for (String id : doc.typeDefinitionIds()) {
+            for (String fieldPath : doc.fieldsUsingTypeDefinition(id)) {
+                map.put(fieldPath, id);
+            }
+        }
+        return map;
     }
 
     private static boolean isDirectChild(String path, String groupPath) {
