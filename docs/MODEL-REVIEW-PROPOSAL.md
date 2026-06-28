@@ -138,6 +138,7 @@ Parses **both** states into the model and compares **structure** (so JSON format
 | **computation** | operation/precondition table, computed target, messages |
 | **group** | repeatability, index field, sort fields, child structure |
 | **typedef / include / config** | added/removed/renamed; mount point; imports; locale/decimal/roles/charset |
+| **element position** | a field/group/rule **reordered** within its parent — a display-order change, which is *semantic* in DM-JSON (§4b) |
 
 ### 7b. Risk taxonomy — *loosening > tightening*
 
@@ -165,6 +166,23 @@ Because the gloss is an *independent* tool reading of the condition, placing it 
 - **json** — the change set (`model-diff.schema.json`).
 - **md** — risk-sorted cards (high first, low collapsed); each rule change shows before→after canonical DSL + the polarity callout; an optional **scoped diff-impact mermaid subgraph** (changed rules → fields, styled).
 - **text** — risk-grouped listing, low-risk collapsed, ASCII; no mermaid.
+
+### 7f. What kind of diff this is — and what a *complete* one needs
+
+"Semantic diff" is a precise term with **three levels**, and naming matters:
+
+| Level | Compares | Shows a reformat as a change? |
+|---|---|---|
+| **textual / line** (`git diff`) | bytes/lines | yes — whitespace/key-reorder is noise |
+| **structural / AST** *(the common "semantic diff")* | the parsed structure | no (format-invariant); but a behavior-preserving *re-expression* still shows |
+| **behavioral** *(the strict sense)* | what the artifact *does* | no — also hides equivalent re-expressions |
+
+**`model diff` is a structural semantic diff** — it parses both states into the model and compares structure (format-invariant, entity-level), so the term fits and is the right way to describe the verb. **`--deep`** (§7c, the fire-set differential) is the **behavioral** upgrade: it can report *"re-expressed but behaviorally identical"* (e.g. `DifferenceInDays(A,B) < 0` vs `[B] < [A]`, or a De Morgan rewrite) where a structural diff would show a change; the polarity check is a targeted slice of it. **Scope distinction:** `model diff` *is* a semantic diff, but the umbrella **`model review` ⊋ semantic diff** — it adds comprehension + risk + gloss, which are *judgment*, not diff.
+
+What's still missing to be a *complete* structural semantic diff (promoted to §12):
+- **AST-level condition diff** — diff the two condition *trees* into an edit script ("`<`→`>=`", "an `And` clause was added referencing X"), not just the before/after rendered text. We already hold both ASTs (rulekit reads conditions to a typed tree); this is the chief gap for rule logic.
+- **Reorder-as-change** — a pure element reorder is a display-order (hence semantic, §4b) change the diff must report.
+- **Robust move/rename + simultaneous-edit matching** (similarity-based, GumTree-style) and **relational grouping** (present a reference-rewriting refactor as *one* operation) — robustness polish over §7's conservative id-matching.
 
 ## 8. Rendering & the mermaid policy
 
@@ -223,3 +241,5 @@ Satellites (triggered) `--deep` behavioral polarity · CI/PR gate · git textcon
 2. **`--deep` behavioral polarity** — phase 2; structural detection first.
 3. **Workspace rollup into v1?** — pulled forward only if multi-model oversight per session proves dominant.
 4. **Risk-policy configurability** — fixed taxonomy v1; no knob until a consumer needs it (consumer-exists discipline).
+5. **AST-level condition diff** — diff the two condition *trees* into a structural edit script, beyond before/after rendered text — the chief gap to a complete rule-logic semantic diff (§7f). The ASTs already exist.
+6. **Reorder-as-change** — report a pure element reorder (display-order, semantic per §4b) as a change kind; currently captured in §7a but not yet specified in the renderings.
