@@ -137,4 +137,35 @@ class DialectImportShapeTest {
         assertTrue(r.dmJson().contains("CARD") && r.dmJson().contains("CASH"),
                 "the discriminator (method) became an enum of the variant values");
     }
+
+    @Test
+    void topLevelUnionComponentBecomesARootSuperset() {
+        // A components/schemas entry that is itself a oneOf (a top-level discriminated union — common in OpenAPI):
+        // the model root becomes the superset, instead of the importer refusing a non-object root.
+        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
+                { "openapi": "3.1.0", "info": { "title": "X", "version": "1" },
+                  "components": { "schemas": {
+                    "Payment": { "discriminator": { "propertyName": "method" },
+                      "oneOf": [
+                        { "type": "object", "properties": { "method": { "const": "CARD" }, "pan": { "type": "string" } } },
+                        { "type": "object", "properties": { "method": { "const": "CASH" }, "received": { "type": "string" } } } ] } } } }
+                """, MappingProfile.defaults(), Dialect.AUTO, "Payment");
+
+        assertKernelAccepts(r.dmJson());
+        assertTrue(r.dmJson().contains("CARD") && r.dmJson().contains("CASH"), "the root discriminator enum carries the variant values");
+        assertTrue(r.dmJson().contains("pan") && r.dmJson().contains("received"), "both variants' fields are unioned at the root");
+    }
+
+    @Test
+    void bareTopLevelUnionSchemaImports() {
+        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
+                { "title": "Shape",
+                  "oneOf": [
+                    { "type": "object", "properties": { "kind": { "const": "CIRCLE" }, "radius": { "type": "integer" } } },
+                    { "type": "object", "properties": { "kind": { "const": "SQUARE" }, "side": { "type": "integer" } } } ] }
+                """);
+
+        assertKernelAccepts(r.dmJson());
+        assertTrue(r.dmJson().contains("radius") && r.dmJson().contains("side"), "a bare top-level union imports as a root superset");
+    }
 }

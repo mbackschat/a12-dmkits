@@ -73,10 +73,11 @@ public final class JsonSchemaImporter {
             report.diagnostic("dialect: " + dialect + (requestedDialect == Dialect.AUTO ? " (auto-detected)" : " (forced)"));
         }
         JsonNode rootSchema = entryPointSchema(root, component);
-        String type = rootSchema.path("type").asText("");
-        if (!"object".equals(type)) {
-            throw new IllegalArgumentException(
-                    "import supports a top-level object schema; got type=" + (type.isEmpty() ? "<none>" : type));
+        boolean rootUnion = isObjectUnion(rootSchema);   // a top-level oneOf/anyOf of objects → a root superset
+        if (!rootUnion && !"object".equals(rootSchema.path("type").asText(""))) {
+            String type = rootSchema.path("type").asText("");
+            throw new IllegalArgumentException("import supports a top-level object or oneOf/anyOf-of-objects schema; "
+                    + "got type=" + (type.isEmpty() ? "<none>" : type));
         }
         JsonNode defsPool = dialect.isOpenApi() ? root.path("components").path("schemas") : root.path("$defs");
         Ctx ctx = new Ctx(root, dialect, defsPool, new ArrayDeque<>(), report, new ArrayList<>(), profile);
@@ -84,7 +85,13 @@ public final class JsonSchemaImporter {
                 .named(identifier(component != null ? component : rootSchema.path("title").asText(null)))
                 .locale(LOCALE);
         declareLeafTypedefs(b, ctx);
-        b.rootGroup(ROOT_GROUP, g -> populate(g, rootSchema, "/" + ROOT_GROUP, ctx));
+        b.rootGroup(ROOT_GROUP, g -> {
+            if (rootUnion) {
+                buildRootSuperset(g, unionVariants(rootSchema), "/" + ROOT_GROUP, ctx, explicitDiscriminator(rootSchema, ctx));
+            } else {
+                populate(g, rootSchema, "/" + ROOT_GROUP, ctx);
+            }
+        });
 
         String dmJson = b.build().toJson();
         dmJson = RuleSynthesis.apply(dmJson, ctx.ruleNeeds(), ctx.report());   // Tier A+ synthesized rules
@@ -122,8 +129,9 @@ public final class JsonSchemaImporter {
             }
             return picked;
         }
-        if (root.has("type") || root.has("properties") || root.has("allOf") || root.has("$ref")) {
-            return root;   // a bare schema (incl. a single extracted OpenAPI Schema Object)
+        if (root.has("type") || root.has("properties") || root.has("allOf") || root.has("$ref")
+                || root.has("oneOf") || root.has("anyOf")) {
+            return root;   // a bare schema (incl. a single extracted OpenAPI Schema Object, or a top-level union)
         }
         JsonNode schemas = root.path("components").path("schemas");
         if (schemas.isObject() && !schemas.isEmpty()) {
@@ -723,27 +731,48 @@ public final class JsonSchemaImporter {
         return ctx.dialect().isOpenApi() ? schema.path("discriminator").path("propertyName").asText(null) : null;
     }
 
-    /** The superset: union every variant's fields (all optional), lift a discriminator to an enum + rules. */
+    /** The superset (property-level): a child group unioning every variant's fields (all optional), with a
+     *  discriminator lifted to an enum + rules. */
     private static void buildSuperset(DocumentModelDraft.GroupBuilder g, String name, List<JsonNode> variants,
                                       String path, Ctx ctx, String explicitDiscriminator) {
         Optional<String> discriminator = findDiscriminator(variants, explicitDiscriminator);
-        g.group(name, sub -> {
-            Set<String> seen = new LinkedHashSet<>();
-            discriminator.ifPresent(disc -> {
-                seen.add(disc);
-                sub.enumField(disc, e -> discriminatorValues(variants, disc).forEach(e::value));
-                ctx.report().structure(path + "/" + disc, "discriminator ENUMERATION");
-            });
-            for (JsonNode variant : variants) {
-                for (Iterator<Map.Entry<String, JsonNode>> it = variant.path("properties").fields(); it.hasNext(); ) {
-                    Map.Entry<String, JsonNode> e = it.next();
-                    if (seen.add(e.getKey())) {   // first occurrence only; superset fields are all OPTIONAL
-                        addProperty(sub, e.getKey(), e.getValue(), false, path, ctx);
-                    }
+        g.group(name, sub -> fillSuperset(sub, variants, discriminator, path, ctx));
+        ctx.report().structure(path, "oneOf/anyOf superset group (" + variants.size() + " variants)");
+        finishSuperset(name, variants, discriminator, path, ctx);
+    }
+
+    /** The superset at the MODEL ROOT: fill the root group itself with the union (no extra nesting). A
+     *  {@code components/schemas} entry that is itself a {@code oneOf}/{@code anyOf} lands here (SCHEMAKIT-SPEC §4g). */
+    private static void buildRootSuperset(DocumentModelDraft.GroupBuilder rootGroup, List<JsonNode> variants,
+                                          String path, Ctx ctx, String explicitDiscriminator) {
+        Optional<String> discriminator = findDiscriminator(variants, explicitDiscriminator);
+        fillSuperset(rootGroup, variants, discriminator, path, ctx);
+        ctx.report().structure(path, "oneOf/anyOf superset at the model root (" + variants.size() + " variants)");
+        finishSuperset(path.substring(path.lastIndexOf('/') + 1), variants, discriminator, path, ctx);
+    }
+
+    /** Fill {@code target} with a discriminator enum (if any) + every variant's fields, deduped, all OPTIONAL. */
+    private static void fillSuperset(DocumentModelDraft.GroupBuilder target, List<JsonNode> variants,
+                                     Optional<String> discriminator, String path, Ctx ctx) {
+        Set<String> seen = new LinkedHashSet<>();
+        discriminator.ifPresent(disc -> {
+            seen.add(disc);
+            target.enumField(disc, e -> discriminatorValues(variants, disc).forEach(e::value));
+            ctx.report().structure(path + "/" + disc, "discriminator ENUMERATION");
+        });
+        for (JsonNode variant : variants) {
+            for (Iterator<Map.Entry<String, JsonNode>> it = variant.path("properties").fields(); it.hasNext(); ) {
+                Map.Entry<String, JsonNode> e = it.next();
+                if (seen.add(e.getKey())) {   // first occurrence only; superset fields are all OPTIONAL
+                    addProperty(target, e.getKey(), e.getValue(), false, path, ctx);
                 }
             }
-        });
-        ctx.report().structure(path, "oneOf/anyOf superset group (" + variants.size() + " variants)");
+        }
+    }
+
+    /** Post-fill: synthesize the discriminator's per-variant requiredness rules, or report missing exclusivity. */
+    private static void finishSuperset(String name, List<JsonNode> variants, Optional<String> discriminator,
+                                       String path, Ctx ctx) {
         if (discriminator.isPresent()) {
             collectDiscriminatorRules(variants, discriminator.get(), path, ctx);
         } else {
