@@ -37,7 +37,6 @@ The live, unfinished work as a table. (Shipped gaps are **not** recorded here �
 | Gap | Surfaced | The friction | Decision / next step |
 |---|---|---|---|
 | **Authoring exemplars teach the editor idiom** | 2026-06-26 | The authoring exemplars (API-GUIDE snippets, README samples, a few canonical tests) should use the editor relative-nav (`EditSession.read(...).group(p).num("child")` / `.flatten(...)`) *where it earns its keep* — authoring **new** structure, path-written-once. | Scoped **adoption** task; **no missing API**. By-path (`m.num("/full/path")`) stays **blessed** for referencing an already-loaded model (clearer/safer for a stateless agent), so the bulk by-path corpus is **deliberately not retrofitted**. Re-open only if the editor idiom isn't visibly winning in new *authoring* contributions. |
-| **`ModelDocument` typed field-config read accessors — partial** | 2026-06-28 | Reading a field's declared constraints back means navigating the raw `fieldConfig` `ObjectNode` and its schema-block quirks (number `min`/`max` are **text** under a `number` sub-block; enum values are `enum.values[].value`; lengths/pattern under `string`). `enumValues(String)` shipped; **still raw-only:** `fieldPattern`, `fieldMinLength`/`fieldMaxLength`, `fieldMinValue`/`fieldMaxValue`, `fieldMaxFractionalDigits` (scale). | Add the typed read-back peers (a consumer reading constraints shouldn't reach into the raw block) when the next consumer needs them. |
 
 ---
 

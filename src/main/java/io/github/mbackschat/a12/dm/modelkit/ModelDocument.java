@@ -3,10 +3,12 @@ package io.github.mbackschat.a12.dm.modelkit;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.UncheckedIOException;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.function.Consumer;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -380,6 +382,102 @@ public final class ModelDocument {
                     return values;
                 })
                 .orElseGet(List::of);
+    }
+
+    /**
+     * The declared regex {@code pattern} of a STRING field at {@code fieldPath}, if any — a typed read-back
+     * peer of {@link #enumValues}, so a consumer reads a declared constraint without navigating the raw
+     * {@link #fieldConfig} schema-block. Empty when the field has no pattern (or is not a string / not present).
+     */
+    public Optional<String> fieldPattern(String fieldPath) {
+        return blockText(fieldConfig(fieldPath), "string", "pattern");
+    }
+
+    /** The declared {@code minLength} of a STRING field at {@code fieldPath}, if any. */
+    public OptionalInt fieldMinLength(String fieldPath) {
+        return blockInt(fieldConfig(fieldPath), "string", "minLength");
+    }
+
+    /** The declared {@code maxLength} of a STRING field at {@code fieldPath}, if any. */
+    public OptionalInt fieldMaxLength(String fieldPath) {
+        return blockInt(fieldConfig(fieldPath), "string", "maxLength");
+    }
+
+    /** The declared minimum value of a NUMBER field at {@code fieldPath}, if any (stored as text → {@link BigDecimal}). */
+    public Optional<BigDecimal> fieldMinValue(String fieldPath) {
+        return blockDecimal(fieldConfig(fieldPath), "number", "min");
+    }
+
+    /** The declared maximum value of a NUMBER field at {@code fieldPath}, if any. */
+    public Optional<BigDecimal> fieldMaxValue(String fieldPath) {
+        return blockDecimal(fieldConfig(fieldPath), "number", "max");
+    }
+
+    /**
+     * The declared decimal scale ({@code maxFractionalDigits}) of a NUMBER field at {@code fieldPath}, if any.
+     * An a12 number is always scale-bounded (the kernel defaults the scale to 0 — KERNEL-FINDINGS), so this is
+     * present for any NUMBER that surfaces config; empty for a non-number field or one with no config.
+     */
+    public OptionalInt fieldMaxFractionalDigits(String fieldPath) {
+        return blockInt(fieldConfig(fieldPath), "number", "maxFractionalDigits");
+    }
+
+    /** The declared {@code pattern} of a leaf typeDefinition {@code id}, if any — the typedef peer of {@link
+     *  #fieldPattern} (a typedef-typed field's own {@link #fieldConfig} is empty; its constraints live here). */
+    public Optional<String> typeDefinitionPattern(String id) {
+        return blockText(typeDefinitionConfig(id), "string", "pattern");
+    }
+
+    /** The declared {@code minLength} of a leaf typeDefinition {@code id}, if any. */
+    public OptionalInt typeDefinitionMinLength(String id) {
+        return blockInt(typeDefinitionConfig(id), "string", "minLength");
+    }
+
+    /** The declared {@code maxLength} of a leaf typeDefinition {@code id}, if any. */
+    public OptionalInt typeDefinitionMaxLength(String id) {
+        return blockInt(typeDefinitionConfig(id), "string", "maxLength");
+    }
+
+    /** The declared minimum value of a leaf number typeDefinition {@code id}, if any. */
+    public Optional<BigDecimal> typeDefinitionMinValue(String id) {
+        return blockDecimal(typeDefinitionConfig(id), "number", "min");
+    }
+
+    /** The declared maximum value of a leaf number typeDefinition {@code id}, if any. */
+    public Optional<BigDecimal> typeDefinitionMaxValue(String id) {
+        return blockDecimal(typeDefinitionConfig(id), "number", "max");
+    }
+
+    /** The declared decimal scale of a leaf number typeDefinition {@code id}, if any. */
+    public OptionalInt typeDefinitionMaxFractionalDigits(String id) {
+        return blockInt(typeDefinitionConfig(id), "number", "maxFractionalDigits");
+    }
+
+    /** Read a textual leaf from a schema-block config ({@code <block>.<key>}); the read-back peers route here. */
+    private static Optional<String> blockText(Optional<ObjectNode> config, String block, String key) {
+        return config.map(c -> c.path(block).path(key)).filter(JsonNode::isTextual).map(JsonNode::asText);
+    }
+
+    /** Read an integral leaf from a schema-block config; empty when absent or not integral. */
+    private static OptionalInt blockInt(Optional<ObjectNode> config, String block, String key) {
+        if (config.isEmpty()) {
+            return OptionalInt.empty();
+        }
+        JsonNode node = config.get().path(block).path(key);
+        return node.canConvertToInt() ? OptionalInt.of(node.asInt()) : OptionalInt.empty();
+    }
+
+    /** Read a decimal leaf stored as text ({@code number.min}/{@code number.max} are text); empty if unparseable. */
+    private static Optional<BigDecimal> blockDecimal(Optional<ObjectNode> config, String block, String key) {
+        return blockText(config, block, key).flatMap(ModelDocument::parseDecimal);
+    }
+
+    private static Optional<BigDecimal> parseDecimal(String text) {
+        try {
+            return Optional.of(new BigDecimal(text));
+        } catch (NumberFormatException e) {
+            return Optional.empty();
+        }
     }
 
     /**

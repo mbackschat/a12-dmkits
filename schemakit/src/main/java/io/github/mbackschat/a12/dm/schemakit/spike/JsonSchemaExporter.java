@@ -7,10 +7,12 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import io.github.mbackschat.a12.dm.modelkit.Requiredness;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.TreeSet;
 
 /**
@@ -104,9 +106,9 @@ public final class JsonSchemaExporter {
             ctx.report().structure(fieldPath, "properties/" + name + " (enum)");
             return;
         }
-        String jsonType = writeLeafType(properties.putObject(name),
-                ctx.doc().fieldKind(fieldPath), ctx.doc().fieldConfig(fieldPath), ctx.report(), fieldPath);
-        ctx.report().structure(fieldPath, "properties/" + name + " (" + jsonType + ")");
+        LeafSchema leaf = leafOfField(ctx.doc(), fieldPath, ctx.report());
+        writeLeaf(properties.putObject(name), leaf);
+        ctx.report().structure(fieldPath, "properties/" + name + " (" + leaf.jsonType() + ")");
     }
 
     private void emitDefs(ObjectNode schema, Ctx ctx) {
@@ -115,52 +117,53 @@ public final class JsonSchemaExporter {
         }
         ObjectNode defs = JSON.createObjectNode();
         for (String id : ctx.usedDefs()) {
-            writeLeafType(defs.putObject(id),
-                    ctx.doc().typeDefinitionKind(id), ctx.doc().typeDefinitionConfig(id), ctx.report(), "$defs/" + id);
+            writeLeaf(defs.putObject(id), leafOfTypeDef(ctx.doc(), id, ctx.report()));
         }
         schema.set("$defs", defs);
     }
 
-    /** Write a leaf type ({@code string}/{@code integer}/{@code number}/{@code boolean}) onto {@code target}. */
-    private static String writeLeafType(ObjectNode target, Optional<String> kindOpt,
-                                        Optional<ObjectNode> configOpt, TranscodeReport.Builder report, String source) {
-        String kind = kindOpt.orElse("UNKNOWN");
-        switch (kind) {
-            case "STRING" -> {
-                target.put("type", "string");
-                configOpt.ifPresent(c -> {
-                    copyInt(c, "minLength", target, "minLength");
-                    copyInt(c, "maxLength", target, "maxLength");
-                    JsonNode pattern = c.findValue("pattern");
-                    if (pattern != null && pattern.isTextual()) {
-                        target.put("pattern", pattern.asText());
-                    }
-                });
-                return "string";
-            }
-            case "BOOLEAN" -> {
-                target.put("type", "boolean");
-                return "boolean";
-            }
+    /** A leaf JSON-Schema type and its constraints — the read-back of a field's or typedef's declared config. */
+    private record LeafSchema(String jsonType, Optional<String> pattern, OptionalInt minLength,
+                              OptionalInt maxLength, Optional<BigDecimal> minimum, Optional<BigDecimal> maximum) {}
+
+    /** Emit a leaf type ({@code string}/{@code integer}/{@code number}/{@code boolean}) + its constraints. */
+    private static void writeLeaf(ObjectNode target, LeafSchema leaf) {
+        target.put("type", leaf.jsonType());
+        leaf.pattern().ifPresent(p -> target.put("pattern", p));
+        leaf.minLength().ifPresent(n -> target.put("minLength", n));
+        leaf.maxLength().ifPresent(n -> target.put("maxLength", n));
+        leaf.minimum().ifPresent(v -> target.put("minimum", v));
+        leaf.maximum().ifPresent(v -> target.put("maximum", v));
+    }
+
+    /** A field's leaf type, read through the typed {@link ModelDocument} accessors (no raw config navigation). */
+    private static LeafSchema leafOfField(ModelDocument doc, String fieldPath, TranscodeReport.Builder report) {
+        return new LeafSchema(
+                jsonTypeFor(doc.fieldKind(fieldPath).orElse("UNKNOWN"), doc.fieldMaxFractionalDigits(fieldPath), report, fieldPath),
+                doc.fieldPattern(fieldPath), doc.fieldMinLength(fieldPath), doc.fieldMaxLength(fieldPath),
+                doc.fieldMinValue(fieldPath), doc.fieldMaxValue(fieldPath));
+    }
+
+    /** A leaf typeDefinition's type, read through the typed typedef accessors (the peers of the field ones). */
+    private static LeafSchema leafOfTypeDef(ModelDocument doc, String id, TranscodeReport.Builder report) {
+        return new LeafSchema(
+                jsonTypeFor(doc.typeDefinitionKind(id).orElse("UNKNOWN"), doc.typeDefinitionMaxFractionalDigits(id), report, "$defs/" + id),
+                doc.typeDefinitionPattern(id), doc.typeDefinitionMinLength(id), doc.typeDefinitionMaxLength(id),
+                doc.typeDefinitionMinValue(id), doc.typeDefinitionMaxValue(id));
+    }
+
+    /** Map an a12 value kind to its JSON-Schema {@code type}; a NUMBER is {@code integer} iff its scale is 0. */
+    private static String jsonTypeFor(String kind, OptionalInt scale, TranscodeReport.Builder report, String source) {
+        return switch (kind) {
+            case "STRING" -> "string";
+            case "BOOLEAN" -> "boolean";
+            case "NUMBER" -> scale.orElse(-1) == 0 ? "integer" : "number";
             // ENUMERATION is handled in exportField via ModelDocument.enumValues (the typed read-back).
-            case "NUMBER" -> {
-                boolean integer = configOpt
-                        .map(c -> c.findValue("maxFractionalDigits"))
-                        .map(n -> n.isInt() && n.asInt() == 0)
-                        .orElse(false);
-                target.put("type", integer ? "integer" : "number");
-                configOpt.ifPresent(c -> {
-                    copyNumber(c, "min", target, "minimum");   // the read-back number block carries min/max as text
-                    copyNumber(c, "max", target, "maximum");
-                });
-                return integer ? "integer" : "number";
-            }
             default -> {
-                target.put("type", "string");
                 report.diagnostic("kind '" + kind + "' at '" + source + "' is not mapped yet — string placeholder");
-                return "string(fallback)";
+                yield "string";
             }
-        }
+        };
     }
 
     private static Map<String, String> fieldTypedefMap(ModelDocument doc) {
@@ -171,29 +174,6 @@ public final class JsonSchemaExporter {
             }
         }
         return map;
-    }
-
-    private static void copyInt(JsonNode config, String fromKey, ObjectNode target, String toKey) {
-        JsonNode v = config.findValue(fromKey);
-        if (v != null && v.isInt()) {
-            target.put(toKey, v.asInt());
-        }
-    }
-
-    private static void copyNumber(JsonNode config, String fromKey, ObjectNode target, String toKey) {
-        JsonNode v = config.findValue(fromKey);
-        if (v == null || v.isNull()) {
-            return;
-        }
-        String text = v.asText("");
-        if (text.isEmpty()) {
-            return;
-        }
-        try {
-            target.put(toKey, new java.math.BigDecimal(text));   // the bound is stored as text → emit as a number
-        } catch (NumberFormatException ignored) {
-            // a non-numeric bound is not a JSON Schema minimum/maximum — leave it out
-        }
     }
 
     private static boolean isDirectChild(String path, String groupPath) {
