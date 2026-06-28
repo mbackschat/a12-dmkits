@@ -10,7 +10,9 @@
 
 ## 1. Open gaps
 
-The live, unfinished import-synthesis work. All are **reported, not enforced** today (the structure imports; the report carries a corrective to-do).
+The live, unfinished import work. All are **reported, not enforced** today (the structure imports; the report carries a corrective to-do) — except where noted as a refusal precondition.
+
+### Rule-synthesis gaps
 
 | Gap | The constraint | What a12 needs | Tractability |
 |---|---|---|---|
@@ -18,6 +20,14 @@ The live, unfinished import-synthesis work. All are **reported, not enforced** t
 | **then/else VALUE-constraints** | `if {f=v} then {properties:{g:{const\|min\|max\|enum\|pattern}}}` (and the `else` peer) | the condition AND the *violation* of g's keyword, error on g — reusing the `ExclusiveBound`/`ConstValue`/`ForbiddenEnum`/pattern primitives behind a small "keyword → violation-condition" mapper | tractable for the simple keyword set; medium effort. (`then`/`else` **`required`** already maps — SCHEMAKIT-SPEC §4.) |
 | **multi-property `if`** | `if {properties:{a:{const:X}, b:{const:Y}}}` → the requiredness fires only when **both** hold | conjoin the per-property `equalsValue` conditions (`a=X And b=Y`) — the synthesis already builds the single-property condition | low–medium effort. Currently the importer maps **single-property `if`** only and reports the rest |
 | **complex / compound `not`** | `not {minLength\|maxLength}`, `not {type}`, `not {required}`, **nested** `not`, or a `not` carrying **several** keywords (compound) | length nots reuse `str.length()` (easy); `type`/`required`/nested have no clean single-field rule; a compound `not` is "not (all of)" — needs decomposition | **mixed**: the length cases are low effort; `type`/`required`/nested are hard. (`not {const\|enum\|pattern\|minimum\|maximum}` already maps — §4.) |
+
+### OpenAPI / structural gaps (SCHEMAKIT-SPEC §4g)
+
+| Gap | Today | What it needs | Tractability |
+|---|---|---|---|
+| **multi-model bundle output** | importing an OpenAPI doc needs `--component` to pick ONE entry-point schema (the rest of `components/schemas` resolve only as inlined refs) | the §4e multi-model path — every component → one model, wired by includes | medium effort; gated on the §4e include/mount output |
+| **top-level union component** | a `components/schemas` entry that is itself a `oneOf`/`anyOf` (no `type:object` root) is **refused** by the "object root" check | superset the union at the **model root** (today the superset only runs at the property level) | low–medium effort |
+| **YAML OpenAPI input** | the importer parses **JSON**; OpenAPI documents are frequently YAML | a YAML→JSON parse step (a Jackson YAML dataformat dep) — a **reuse-first dependency decision** for the owner before adding | small once the dep is approved |
 
 ---
 

@@ -62,10 +62,10 @@ schemakit is **runtime-callable and wired into `dmtool` from day one** (proposal
 
 | Verb | I/O |
 |---|---|
-| `dmtool model import-jsonschema --schema <schema.json> [profile flags] [-o <model.dm.json>]` | JSON Schema → DM-JSON artifact (stdout); the transcoding report → stderr; `-o` writes the model + a write envelope |
-| `dmtool model export-jsonschema -m <model.dm.json> [-o <schema.json>]` | DM-JSON → JSON Schema artifact (stdout); report → stderr; `-o` writes the schema + a write envelope |
+| `dmtool model import-jsonschema --schema <schema.json> [--dialect <D>] [--component <name>] [profile flags] [-o <model.dm.json>]` | JSON Schema / OpenAPI → DM-JSON artifact (stdout); the transcoding report → stderr; `-o` writes the model + a write envelope |
+| `dmtool model export-jsonschema -m <model.dm.json> [--dialect <D>] [--wrap-openapi] [-o <schema.json>]` | DM-JSON → JSON Schema / OpenAPI artifact (stdout); report → stderr; `-o` writes the schema + a write envelope |
 
-Both keep **artifact mode**: the transcode result (DM-JSON / JSON Schema) goes to stdout so it pipes straight into the next tool, and the **transcoding report** — the omission to-dos — rides stderr (loud, never silent); with `-o` the artifact goes to the file and stdout carries a write-confirmation envelope. They are classified `SchemaCommand.CONTRACT_EXEMPT` (no result-envelope contract on the artifact form, like `model new`/`model seed`). **Import** exposes the `MappingProfile` choices as flags — `--strict` (the conservative master switch) plus the per-decision `--number-scale` / `--default-scale` / `--array-of-scalar` / `--map` / `--union` / `--format` / `--boolean` / `--enum-labels` / `--recursion-depth` / `--default-repeat-cap` (§4b).
+Both keep **artifact mode**: the transcode result (DM-JSON / JSON Schema) goes to stdout so it pipes straight into the next tool, and the **transcoding report** — the omission to-dos — rides stderr (loud, never silent); with `-o` the artifact goes to the file and stdout carries a write-confirmation envelope. They are classified `SchemaCommand.CONTRACT_EXEMPT` (no result-envelope contract on the artifact form, like `model new`/`model seed`). **Import** exposes the `MappingProfile` choices as flags — `--strict` (the conservative master switch) plus the per-decision `--number-scale` / `--default-scale` / `--array-of-scalar` / `--map` / `--union` / `--format` / `--boolean` / `--enum-labels` / `--recursion-depth` / `--default-repeat-cap` (§4b). **Both verbs** take `--dialect` (JSON Schema vs OpenAPI 3.0/3.1·3.2, §4g); import adds `--component` (the OpenAPI bundle entry point), export adds `--wrap-openapi` (the OpenAPI `components/schemas` envelope).
 
 **The report is the agent's to-do list, so make it machine-readable, not only prose.** The omissions an import leaves are exactly what an agent must complete by hand — its next-step list, not a side note. So beyond the human-readable stderr lines, the `-o` write-envelope carries the **structured report** in `changed.report` (`{mapped, omitted, notes[]}`): the agent's natural path — `-o` writes the model to a file *and* returns the parseable audit trail on stdout — gives it everything in the machine-readable channel it already trusts. (stdout stays the clean artifact in the no-`-o` pipe case; the report cannot also go there without corrupting the artifact, so the structured form rides the `-o` envelope.)
 
@@ -257,6 +257,38 @@ The keywords with no field-config home become real a12 **rules** (§4 "Rules (co
 **The `if/then/else` vacuous-match decision.** Bare `if:{properties:{f:{const:V}}}` matches *vacuously* when `f` is absent, so strict JSON Schema would apply `then` even with `f` missing. The importer instead maps the **pragmatic** reading (`then` fires when `f=V`; `else` fires when `f` is **present and** `≠V` — hence the extra `Filled(f)` guard on the `else` row). This is the near-universal author intent; it is recorded as a deliberate decision in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md) §2.
 
 **Authored through the typed surface, kernel-gated.** Each rule is built via the rulekit `Dsl`/`BoundModel` typed builder (the dogfood rule), **not** assembled as a condition string, and every imported model is run through the kernel-accept gate (§5) — so a synthesized rule is guaranteed well-formed. Each carries a deterministic name + code (`EXCLUSIVE_MIN_<FIELD>`, `DISCRIMINATED_REQUIRED_<FIELD>_<VALUE>`, `ELSE_REQUIRED_<FIELD>_<VALUE>`, `FORBIDDEN_PATTERN_<FIELD>`, …), `ERROR` severity, and an English message.
+
+---
+
+## 4g. Dialect support — JSON Schema and OpenAPI
+
+OpenAPI's "Schema Object" *is* a dialect of JSON Schema, so most imported/exported schemas come from OpenAPI. schemakit handles three dialects through a `--dialect` knob (the `Dialect` enum) on **both** verbs; the mapping contract (§4–§4f) is otherwise dialect-independent — a dialect only changes the wire encoding of nullability, exclusive bounds, and the `$ref` location.
+
+| `--dialect` | JSON Schema basis | Import reads | Export emits |
+|---|---|---|---|
+| `JSON_SCHEMA` | Draft 2020-12 | `type:[X,"null"]` nullability, **numeric** `exclusive*`, `$defs` refs | 2020-12 (`$defs`) |
+| `OPENAPI_31` (covers 3.2) | 2020-12 + OpenAPI vocab | **+** `components/schemas` refs, explicit `discriminator`, the OpenAPI `format` set | 2020-12; `--wrap-openapi` → `components/schemas` |
+| `OPENAPI_30` | a Draft-05 variant | **+** `nullable:true`→optional, **boolean** `exclusive*` (paired with `minimum`/`maximum`) | bare `$defs` (3.0-lacks-`$defs` reported) or `--wrap-openapi` |
+| `AUTO` (import default) | detected | the `openapi:` version field (3.0 / 3.1 / 3.2), else assume JSON Schema | — (export defaults to `JSON_SCHEMA`) |
+
+**The three version-independent OpenAPI-isms** (the `OPENAPI_*` column's "+") work for *any* OpenAPI version; only `nullable` + the boolean exclusive encoding are 3.0-specific.
+
+### Import — the bundle entry point
+
+An OpenAPI document is a **bundle**: its schemas live under `components/schemas`, cross-`$ref`-ing. So:
+
+- **`$ref` resolves by JSON Pointer** against the whole document — both `#/$defs/X` (JSON Schema) and `#/components/schemas/X` (OpenAPI).
+- **`--component <Name>`** selects the `components/schemas` entry to import as the model root; its sibling refs resolve. A bare schema needs none; a **multi-schema OpenAPI document with no `--component` is refused, listing the components** — choosing an entry point is a precondition, not a feature-omission (so it is a clear error, not an omit-with-to-do). The multi-model bundle output (all components → one model each, §4e) is the deferred path.
+- **AUTO** reads the `openapi:` version and states the detected dialect in the report.
+- **OpenAPI 3.0:** `nullable:true` → the field is OPTIONAL (a12 has no present-but-null; a required+nullable field is reported); a boolean `exclusiveMinimum` + `minimum` → a strict-bound rule (and the inclusive `minimum` is suppressed so it isn't doubly enforced).
+
+### Export — the OpenAPI envelope
+
+- **`--wrap-openapi`** wraps the Schema Object in a minimal, valid OpenAPI document (`openapi`, `info`, empty `paths`, `components/schemas`), refs → `#/components/schemas/…` — a drop-in. The bare form keeps `$defs` (valid JSON Schema / OpenAPI 3.1).
+- **`x-a12-rule` / `x-a12-computation` carriage is dialect-agnostic** — `x-` extensions are first-class in every OpenAPI version, so the a12↔a12 round-trip survives the OpenAPI trip.
+- a12 carries **no null** and **inclusive-only** field bounds (strict bounds live in rules → carriage/projection), so the export dialect mainly drives the ref location + the envelope; `OPENAPI_30` + `$defs` is reported.
+
+The verbs/options are discoverable from the binary (`manifest`/`--help`): import takes `--dialect` + `--component`; export takes `--dialect` + `--wrap-openapi`. Genuine limitations (a top-level union *component* needs a `type:object` root; YAML OpenAPI input) are tracked in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md).
 
 ---
 

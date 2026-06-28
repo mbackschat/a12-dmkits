@@ -161,6 +161,24 @@ dmtool -m order.dm.json rule add rule.json
 
 Every result is a uniform JSON envelope (`{ok, valid, outcome, changed, diagnostics[], …}`) with structured, fix-oriented diagnostics.
 
+### From a JSON Schema or OpenAPI document
+
+Originate a model from an existing **JSON Schema** or **OpenAPI** spec (3.0 / 3.1 / 3.2), and export one back out — the same two verbs handle both, because OpenAPI's Schema Object *is* a JSON-Schema dialect:
+
+```sh
+# OpenAPI → model: --dialect AUTO-detects 3.0/3.1/3.2; --component picks the components/schemas entry
+dmtool model import-jsonschema \
+  --schema petstore.openapi.json \
+  --component Order \
+  -o order.dm.json
+
+# model → a drop-in OpenAPI components/schemas envelope
+dmtool -m order.dm.json model export-jsonschema \
+  --dialect OPENAPI_31 --wrap-openapi > order.openapi.json
+```
+
+Import is **best-effort** — it maps as much as possible (even unbounded arrays and recursive `$ref`s) and flags every guess in the stderr report; `--strict` omits everything uncertain. `--dialect`, `--component`, and `--wrap-openapi` are self-describing: `dmtool model import-jsonschema --help` enumerates every value and its implication.
+
 ## Worked examples
 
 End-to-end walkthroughs of **every verb** — command + real captured output — live in [`examples/`](examples/): the verb tour, the rule/computation edit loop, structure editing with the safe-delete gate, the atomic `apply` session, runtime evaluation, and the version/compatibility surface.

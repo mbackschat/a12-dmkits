@@ -107,14 +107,33 @@ dmtool -m orders.dm.json field modify postal.spec.json   # re-type a field in pl
 
 `model new` is the primary model-*originating* verb (no `-m` — it makes one); every other verb edits an existing `-m` model. What it emits is kernel-checked, so the next `-m` edit binds.
 
-You can also originate a model **from a JSON Schema**, and export one back out:
+### JSON Schema & OpenAPI
+
+Originate a model **from a JSON Schema or an OpenAPI document**, and export one back out — the same two verbs handle both, because OpenAPI's "Schema Object" *is* a dialect of JSON Schema:
 
 ```sh
-dmtool model import-jsonschema --schema order.schema.json > order.dm.json   # JSON Schema → kernel-valid model
-dmtool -m order.dm.json model export-jsonschema > order.schema.json         # model → JSON Schema (best-effort)
+# JSON Schema → kernel-valid model
+dmtool model import-jsonschema --schema order.schema.json > order.dm.json
+
+# OpenAPI 3.0 / 3.1 / 3.2 → model (auto-detects the dialect; pick the components/schemas entry)
+dmtool model import-jsonschema \
+  --schema petstore.openapi.json \
+  --component Order \
+  -o order.dm.json
+
+# model → JSON Schema (best-effort)
+dmtool -m order.dm.json model export-jsonschema > order.schema.json
+
+# model → a drop-in OpenAPI components/schemas envelope
+dmtool -m order.dm.json model export-jsonschema \
+  --dialect OPENAPI_31 --wrap-openapi > order.openapi.json
 ```
 
-Import is **best-effort by default** — it maps as much as possible (even unbounded arrays and recursive `$ref`s, so nested structure isn't lost) and *flags every guess* in the stderr report; nothing is silent or blocked. `--strict` flips to omit-everything-uncertain, and per-decision flags (`--array-of-scalar`, `--union`, `--number-scale`, `--default-repeat-cap`, …) tune each choice. The asymmetry (import maps richly; export is best-effort) is tabulated in [docs/SCHEMAKIT-SPEC.md §4d](docs/SCHEMAKIT-SPEC.md).
+- **`--dialect`** (`AUTO` · `JSON_SCHEMA` · `OPENAPI_30` · `OPENAPI_31`) reads/writes the right encoding — OpenAPI 3.0's `nullable:true` and boolean exclusive bounds, `components/schemas` `$ref`s, the explicit `discriminator`. `AUTO` detects it from the `openapi:` version field.
+- **`--component`** picks the OpenAPI bundle's entry-point schema on import; **`--wrap-openapi`** emits the OpenAPI envelope on export.
+- Import is **best-effort by default** — it maps as much as possible (even unbounded arrays and recursive `$ref`s, so nested structure isn't lost) and *flags every guess* in the stderr report; nothing is silent or blocked. `--strict` flips to omit-everything-uncertain; per-decision flags (`--array-of-scalar`, `--union`, `--number-scale`, …) tune each choice.
+
+The dialects, the full mapping contract, and the import↔export asymmetry are tabulated in [docs/SCHEMAKIT-SPEC.md §4d/§4g](docs/SCHEMAKIT-SPEC.md).
 
 ### Read & understand a model
 
