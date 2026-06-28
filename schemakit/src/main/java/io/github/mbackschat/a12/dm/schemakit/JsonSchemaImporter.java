@@ -705,25 +705,45 @@ public final class JsonSchemaImporter {
 
     /** The {@code contains} predicate as a conjunction of clauses (each a row field + a simple value constraint —
      *  const/enum/min/max/pattern), or empty when a clause isn't mappable. A scalar array constrains the row
-     *  {@code value} field; an object array constrains one or more properties (ALL must be mappable). */
+     *  {@code value} field; an object array constrains one or more properties — descending into nested objects
+     *  (a non-repeatable subgroup of the row) so {@code payment.method} becomes the clause field
+     *  {@code payment/method} (ALL clauses must be mappable). */
     private static Optional<List<RuleSynthesis.Clause>> containsClauses(JsonNode contains, boolean objectArray) {
         if (objectArray) {
             JsonNode props = contains.path("properties");
             if (!props.isObject() || props.isEmpty()) {
                 return Optional.empty();
             }
-            List<RuleSynthesis.Clause> clauses = new ArrayList<>();
-            for (Iterator<Map.Entry<String, JsonNode>> it = props.fields(); it.hasNext(); ) {
-                Map.Entry<String, JsonNode> e = it.next();
-                Optional<RuleSynthesis.ValueConstraint> vc = valueConstraintOf(e.getValue());
-                if (vc.isEmpty()) {
-                    return Optional.empty();   // a property with no mappable constraint → non-simple predicate
-                }
-                clauses.add(new RuleSynthesis.Clause(e.getKey(), vc.get()));
-            }
-            return Optional.of(clauses);
+            return objectClauses(props, "");
         }
         return valueConstraintOf(contains).map(vc -> List.of(new RuleSynthesis.Clause(ROW_FIELD, vc)));
+    }
+
+    /** Flatten a {@code contains}-predicate {@code properties} object into clauses, descending one or more levels
+     *  into nested objects (each a non-repeatable subgroup of the row) so the clause field carries the relative
+     *  path ({@code origin/address/country}). A property that is neither a simple value constraint nor a nested
+     *  object — a nested <em>array</em> (a deeper repetition) or an arbitrary subschema — makes the whole
+     *  predicate non-mappable (returns empty), so the {@code contains} is reported rather than half-synthesized
+     *  ([`SCHEMAKIT-GAPS-LEDGER.md`] §3: nested aggregation stays declined). */
+    private static Optional<List<RuleSynthesis.Clause>> objectClauses(JsonNode props, String prefix) {
+        List<RuleSynthesis.Clause> clauses = new ArrayList<>();
+        for (Iterator<Map.Entry<String, JsonNode>> it = props.fields(); it.hasNext(); ) {
+            Map.Entry<String, JsonNode> e = it.next();
+            String field = prefix + e.getKey();
+            Optional<RuleSynthesis.ValueConstraint> vc = valueConstraintOf(e.getValue());
+            if (vc.isPresent()) {
+                clauses.add(new RuleSynthesis.Clause(field, vc.get()));
+            } else if (e.getValue().path("properties").isObject() && !e.getValue().path("properties").isEmpty()) {
+                Optional<List<RuleSynthesis.Clause>> nested = objectClauses(e.getValue().get("properties"), field + "/");
+                if (nested.isEmpty()) {
+                    return Optional.empty();
+                }
+                clauses.addAll(nested.get());
+            } else {
+                return Optional.empty();   // nested array / arbitrary subschema → non-mappable predicate
+            }
+        }
+        return clauses.isEmpty() ? Optional.empty() : Optional.of(clauses);
     }
 
     /**

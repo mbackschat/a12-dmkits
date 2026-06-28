@@ -102,4 +102,61 @@ class ContainsShapeTest {
         assertTrue(r.report().diagnostics().stream().anyMatch(d -> d.contains("contains")),
                 () -> "the unmapped contains is reported: " + r.report().diagnostics());
     }
+
+    @Test
+    void aNestedObjectContainsClauseSynthesizesACountRule() {
+        // the contains predicate descends one level into a nested object (a non-repeatable subgroup of the row):
+        // "≥1 order whose payment.method == CARD" → a Having-filtered count over /orders*/payment/method.
+        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
+                { "type": "object", "properties": {
+                    "orders": { "type": "array", "maxItems": 50,
+                      "items": { "type": "object", "properties": {
+                        "ref": { "type": "string" },
+                        "payment": { "type": "object", "properties": { "method": { "type": "string" } } } } },
+                      "contains": { "properties": { "payment": { "properties": { "method": { "const": "CARD" } } } } },
+                      "minContains": 1 } } }
+                """);
+
+        assertKernelAccepts(r.dmJson());
+        assertEquals(1, synthesized(r), () -> "≥1 order with payment.method=CARD → one count rule: " + r.report().dispositions());
+        assertTrue(r.dmJson().contains("CARD"), "the rule keys on the nested predicate value");
+    }
+
+    @Test
+    void aDeeplyNestedObjectContainsClauseSynthesizesACountRule() {
+        // two levels deep: "≥1 shipment whose origin.address.country == DE".
+        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
+                { "type": "object", "properties": {
+                    "shipments": { "type": "array", "maxItems": 50,
+                      "items": { "type": "object", "properties": {
+                        "origin": { "type": "object", "properties": {
+                          "address": { "type": "object", "properties": { "country": { "type": "string" } } } } } } },
+                      "contains": { "properties": { "origin": { "properties": {
+                        "address": { "properties": { "country": { "const": "DE" } } } } } } },
+                      "minContains": 1 } } }
+                """);
+
+        assertKernelAccepts(r.dmJson());
+        assertEquals(1, synthesized(r), () -> "≥1 shipment with origin.address.country=DE → one rule: " + r.report().dispositions());
+        assertTrue(r.dmJson().contains("DE"), "the rule keys on the two-level-nested predicate value");
+    }
+
+    @Test
+    void aNestedArrayContainsClauseStaysReported() {
+        // descending into a nested *array* (a deeper repetition) is NOT attempted — that is nested aggregation,
+        // which stays a declined gap (SCHEMAKIT-GAPS-LEDGER §3). The structure imports; the predicate is reported.
+        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
+                { "type": "object", "properties": {
+                    "orders": { "type": "array", "maxItems": 50,
+                      "items": { "type": "object", "properties": {
+                        "lines": { "type": "array", "maxItems": 10,
+                          "items": { "type": "object", "properties": { "sku": { "type": "string" } } } } } },
+                      "contains": { "properties": { "lines": { "type": "array" } } }, "minContains": 1 } } }
+                """);
+
+        assertKernelAccepts(r.dmJson());
+        assertEquals(0, synthesized(r), "a contains clause that descends into a nested array isn't mapped");
+        assertTrue(r.report().diagnostics().stream().anyMatch(d -> d.contains("contains")),
+                () -> "the nested-array contains is reported: " + r.report().diagnostics());
+    }
 }

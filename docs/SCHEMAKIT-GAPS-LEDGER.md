@@ -1,25 +1,24 @@
 # schemakit — import gaps ledger
 
-> **What this is** — the `-LEDGER`-family tracker for the **`:schemakit` JSON-Schema importer**, a peer of [`DEV-API-GAPS-LEDGER.md`](DEV-API-GAPS-LEDGER.md) / [`INTERPRETER-GAPS-LEDGER.md`](INTERPRETER-GAPS-LEDGER.md) / [`FEATURE-GAPS-LEDGER.md`](FEATURE-GAPS-LEDGER.md). It records **only OPEN, tractable-but-deferred import gaps** — a constraint a12 *could* express but the importer does not synthesize **yet**. The stable mapping contract lives in [`SCHEMAKIT-SPEC.md`](SCHEMAKIT-SPEC.md) §4; this ledger holds the moving edge.
+> **What this is** — the `-LEDGER`-family tracker for the **`:schemakit` JSON-Schema importer**, a peer of [`DEV-API-GAPS-LEDGER.md`](DEV-API-GAPS-LEDGER.md) / [`INTERPRETER-GAPS-LEDGER.md`](INTERPRETER-GAPS-LEDGER.md) / [`FEATURE-GAPS-LEDGER.md`](FEATURE-GAPS-LEDGER.md). It records the importer's **open build queue (§1)**, a recorded **semantic decision (§2)**, the constraints that are **feasible but deliberately not built (§3)**, and what has **no a12 form at all (§4)**. The stable mapping contract lives in [`SCHEMAKIT-SPEC.md`](SCHEMAKIT-SPEC.md) §4; this ledger holds the moving edge.
 >
 > **No-history policy** (like its siblings): a shipped gap is **deleted**, never kept as a "shipped" list — git is the *what/when*, and the gap's home is the SCHEMAKIT-SPEC §4 "built" row (its *why*). The `else` branch and `not {pattern}`/`{minimum}`/`{maximum}` shipped this way and so are **not** here.
 >
-> **Open vs not-feasible:** §1 holds **feasible-but-deferred** gaps (a12 *could* express it — there is a kernel operator/structure, possibly needing DSL plumbing). A feature with **no faithful a12 form at all** is *not feasible*, not deferred — it lives in **§4 (Not feasible)**, with the reason. Import never blocks either way: every item still imports the **structure**; only the listed *constraint* is reported, not enforced (the omit-never-silent rule, SCHEMAKIT-SPEC §4a).
+> **The dispositions, by feasibility × intent** — an item sits in exactly one:
+>
+> | Section | Feasible? | Built / queued? |
+> |---|---|---|
+> | **§1 Open** | yes | queued to build (currently **none** — the synthesis backlog is drained) |
+> | **§3 Declined / deferred** | yes | **deliberately not built** (low ROI, or an architecture cost not yet worth paying) — each with a re-open trigger |
+> | **§4 Not feasible** | **no** (no faithful a12/kernel form) | never |
+>
+> §2 is a different instrument: a recorded *decision* about **how** a construct maps, not a gap. **Import never blocks** across any of these — every item still imports the **structure**; only the listed *constraint* is reported, not enforced (the omit-never-silent rule, SCHEMAKIT-SPEC §4a).
 
 ---
 
 ## 1. Open gaps
 
-The live, unfinished import work. All are **reported, not enforced** today (the structure imports; the report carries a corrective to-do) — except where noted as a refusal precondition.
-
-### Rule-synthesis gaps
-
-| Gap | The constraint | What a12 needs | Tractability |
-|---|---|---|---|
-| **`contains` with a nested/arbitrary-subschema clause** | `contains` whose predicate clause is a **nested object** or arbitrary subschema (not a value constraint on a row field) | resolve the clause against the nested structure (a deeper `Having` / cross-level reference) | complex; rare. (const/enum/**range**/pattern clauses, single- and multi-property, already map — §4f.) |
-| **nested / compound `not`** | `not {not {…}}` (double negation); a `not` carrying several keywords (today only the first recognized keyword maps) | nested → unwrap the double negation; compound → De-Morgan into the paired negated operators | complex; **near-zero ROI** (double/compound negation is pathological in real schemas). (`not {const\|enum\|pattern\|min\|max\|minLength\|maxLength}` and object `not {required}` already map — §4/§4f; `not {type}` is **not feasible** — §4.) |
-
-*(No open OpenAPI/structural gaps — array-of-`$ref` items and cross-component cycle-breaking both shipped; see SCHEMAKIT-SPEC §4g.)*
+**None — the synthesis backlog is drained (2026-06-29).** Every feasible *and worthwhile* constraint maps (coverage in SCHEMAKIT-SPEC §4d/§4f). The two remaining feasible-but-unbuilt constraints were judged not worth building and moved to **§3** (with their re-open triggers); the genuinely impossible ones are in **§4**. A new gap lands here only when it is both feasible **and** queued — so a reader never sees a "TODO" that nobody intends to do.
 
 ---
 
@@ -34,9 +33,18 @@ This matches the near-universal author intent ("when tier *is* PREMIUM …") and
 
 ---
 
-## 3. Deferred / out-of-scope (contract & architecture)
+## 3. Declined / deferred — feasible, but deliberately not built
 
-Decisions that bound the transcoder's reach today, each with its re-open trigger. Moved here from the spec — a spec holds the *built* contract, not its open edges.
+Constraints a12 *could* express (there is a kernel operator/structure, possibly needing new DSL plumbing) that are **not on the build queue** — each by a deliberate decision, each with the trigger that would re-open it. They are **not** in §1 (nothing here is queued) and **not** in §4 (they *are* possible). Each still imports the structure and reports the unmapped constraint (§4a), so leaving them costs nothing.
+
+### Rule-synthesis — declined on ROI
+
+| Construct | The constraint | What a12 would need | Why declined | Re-open trigger |
+|---|---|---|---|---|
+| **`contains` descending into a nested array, or an arbitrary combinator subschema** | a `contains` predicate that descends into a nested **array** (a deeper repetition — *nested aggregation*), or whose clause is a **combinator** (`oneOf`/`anyOf`/`not`) rather than a value constraint | nested array → nested quantification over a sub-repetition; combinator → reduce the subschema to a single row condition (an `Or` / negation of clauses) | complex; nested aggregation needs nested quantification, and an arbitrary combinator only *sometimes* reduces to a row condition. Value constraints (const/enum/**range**/pattern), single- and multi-property, **and nested-object clauses** (`payment/method`, `origin/address/country`), all map (§4f). | a real corpus shows either in meaningful numbers |
+| **nested / compound `not`** | `not {not {…}}` (double negation); a `not` carrying several keywords (today only the first recognized keyword maps) | nested → unwrap the double negation; compound → De Morgan into the paired negated operators | **near-zero ROI** — double/compound negation is pathological in hand-written schemas, so building it now would be speculative. `not {const\|enum\|pattern\|min\|max\|minLength\|maxLength}` and object `not {required}` already map (§4/§4f); `not {type}` is **not feasible** (§4). | a real schema needs it |
+
+### Contract & architecture — deferred
 
 | Item | Decision | Re-open trigger |
 |---|---|---|
@@ -47,7 +55,7 @@ Decisions that bound the transcoder's reach today, each with its re-open trigger
 
 ## 4. Not feasible — no a12/kernel representation
 
-These have **no faithful a12/kernel form**, so they are *not* deferred work and will **not** be built. The importer **reports** each (the structure still imports, the rest of the document maps); this section is the single "what won't be built, and why." The test that an item belongs here, not in §1: there is **no kernel operator / structure** that could express it, even with new DSL plumbing.
+These have **no faithful a12/kernel form**, so they are *not* deferred work and will **not** be built. The importer **reports** each (the structure still imports, the rest of the document maps); this section is the single "what won't be built, and why." The test that an item belongs here, not in §3: there is **no kernel operator / structure** that could express it, even with new DSL plumbing.
 
 | Construct | Why a12 cannot represent it |
 |---|---|

@@ -435,7 +435,7 @@ final class RuleSynthesis {
                 String anchor = cc.clauses().get(0).field();   // flatten on a clause field; Having filters by all
                 NumberExpr count = Dsl.numberOfFilledFields(m.flatten(cc.groupPath() + "*/" + anchor).having(having));
                 Condition violation = cc.min() ? count.lt(cc.bound()) : count.gt(cc.bound());
-                String tag = cc.clauses().stream().map(cl -> capitalize(cl.field())).collect(Collectors.joining());
+                String tag = cc.clauses().stream().map(cl -> fieldTag(cl.field())).collect(Collectors.joining());
                 String desc = cc.clauses().stream()
                         .map(cl -> cl.constraint().requirement(cl.field())).collect(Collectors.joining(" and "));
                 yield Optional.of(m.rule(m.group(parentGroup(cc.groupPath())))
@@ -655,5 +655,13 @@ final class RuleSynthesis {
 
     private static String capitalize(String s) {
         return s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
+    /** A name/code-safe camel tag for a (possibly nested) clause field: {@code payment/method} → {@code PaymentMethod}. */
+    private static String fieldTag(String field) {
+        StringBuilder sb = new StringBuilder();
+        for (String seg : field.split("/")) {
+            sb.append(capitalize(sanitize(seg)));
+        }
+        return sb.toString();
     }
 }
