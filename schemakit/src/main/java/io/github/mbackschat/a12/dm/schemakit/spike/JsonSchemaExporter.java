@@ -96,6 +96,14 @@ public final class JsonSchemaExporter {
             ctx.report().structure(fieldPath, "properties/" + name + " ($ref → " + typeDefId + ")");
             return;
         }
+        if ("ENUMERATION".equals(ctx.doc().fieldKind(fieldPath).orElse(""))) {
+            ObjectNode prop = properties.putObject(name);
+            prop.put("type", "string");
+            ArrayNode en = prop.putArray("enum");
+            ctx.doc().enumValues(fieldPath).forEach(en::add);   // typed read-back (modelkit), no raw-tree dig
+            ctx.report().structure(fieldPath, "properties/" + name + " (enum)");
+            return;
+        }
         String jsonType = writeLeafType(properties.putObject(name),
                 ctx.doc().fieldKind(fieldPath), ctx.doc().fieldConfig(fieldPath), ctx.report(), fieldPath);
         ctx.report().structure(fieldPath, "properties/" + name + " (" + jsonType + ")");
@@ -134,16 +142,7 @@ public final class JsonSchemaExporter {
                 target.put("type", "boolean");
                 return "boolean";
             }
-            case "ENUMERATION" -> {
-                target.put("type", "string");
-                ArrayNode en = target.putArray("enum");
-                configOpt.ifPresent(c -> {
-                    for (JsonNode value : c.path("enum").path("values")) {
-                        en.add(value.path("value").asText());
-                    }
-                });
-                return "enum";
-            }
+            // ENUMERATION is handled in exportField via ModelDocument.enumValues (the typed read-back).
             case "NUMBER" -> {
                 boolean integer = configOpt
                         .map(c -> c.findValue("maxFractionalDigits"))

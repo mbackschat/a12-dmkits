@@ -368,6 +368,21 @@ public final class ModelDocument {
     }
 
     /**
+     * The stored values of an ENUMERATION field at {@code fieldPath}, in document order — the typed
+     * read-back peer of the enum builder, so a consumer need not navigate the raw {@link #fieldConfig}
+     * {@code enum.values[].value} block. Empty when the field is not an enumeration or has no values.
+     */
+    public List<String> enumValues(String fieldPath) {
+        return fieldConfig(fieldPath)
+                .map(config -> {
+                    List<String> values = new ArrayList<>();
+                    config.path("enum").path("values").forEach(v -> values.add(v.path("value").asText()));
+                    return values;
+                })
+                .orElseGet(List::of);
+    }
+
+    /**
      * The field's requiredness at {@code fieldPath} — the friendly form of the stored
      * {@code Field.requirednessConfig.mode} (absent = {@link Requiredness#OPTIONAL}). Empty if no such field.
      */
