@@ -89,16 +89,38 @@ public final class JsonSchemaImporter {
         }
     }
 
-    /** Fill {@code g} from the {@code properties} of an object schema; each object level owns its {@code required}. */
+    /**
+     * Fill {@code g} from an object schema's {@code properties} — and, when it carries {@code allOf}, the
+     * MERGED properties of every object subschema too (SCHEMAKIT-SPEC §4b): {@code allOf} is an
+     * <em>intersection</em>, so all subschemas apply together. Properties are unioned (deduped by name,
+     * first wins) and {@code required} is the union across the object + every subschema.
+     */
     private static void populate(DocumentModelDraft.GroupBuilder g, JsonNode objectSchema,
                                  String groupPath, Ctx ctx) {
-        Set<String> required = requiredNames(objectSchema);
-        JsonNode properties = objectSchema.path("properties");
-        for (Iterator<Map.Entry<String, JsonNode>> it = properties.fields(); it.hasNext(); ) {
-            Map.Entry<String, JsonNode> e = it.next();
-            addProperty(g, e.getKey(), e.getValue(), required.contains(e.getKey()), groupPath, ctx);
+        List<JsonNode> allOf = allOfObjectSubschemas(objectSchema, ctx);
+        Set<String> required = new LinkedHashSet<>(requiredNames(objectSchema));
+        allOf.forEach(sub -> required.addAll(requiredNames(sub)));
+        Set<String> seen = new LinkedHashSet<>();
+        addMergedProperties(g, objectSchema.path("properties"), required, seen, groupPath, ctx);
+        for (JsonNode sub : allOf) {
+            addMergedProperties(g, sub.path("properties"), required, seen, groupPath, ctx);
         }
         collectDependentRequired(objectSchema, groupPath, ctx);
+        if (!allOf.isEmpty()) {
+            ctx.report().diagnostic("merged " + allOf.size() + " allOf object subschema(s) into '" + groupPath
+                    + "' — all constraints apply together (intersection)");
+        }
+    }
+
+    /** Add each property once (dedup across the object's own + its allOf subschemas), required per the union. */
+    private static void addMergedProperties(DocumentModelDraft.GroupBuilder g, JsonNode properties,
+                                            Set<String> required, Set<String> seen, String groupPath, Ctx ctx) {
+        for (Iterator<Map.Entry<String, JsonNode>> it = properties.fields(); it.hasNext(); ) {
+            Map.Entry<String, JsonNode> e = it.next();
+            if (seen.add(e.getKey())) {
+                addProperty(g, e.getKey(), e.getValue(), required.contains(e.getKey()), groupPath, ctx);
+            }
+        }
     }
 
     private static void addProperty(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
@@ -110,6 +132,10 @@ public final class JsonSchemaImporter {
         }
         if (isObjectUnion(schema)) {
             addUnion(g, name, unionVariants(schema), path, ctx);
+            return;
+        }
+        if (!schema.has("type") && schema.path("allOf").isArray()) {
+            addAllOfGroup(g, name, schema, path, ctx);   // a bare allOf (no type) → a merged group
             return;
         }
         switch (schema.path("type").asText("")) {
@@ -357,6 +383,34 @@ public final class JsonSchemaImporter {
             }
         });
         ctx.report().structure(path, "map → repeatable {key, value} group (max " + max + ")");
+    }
+
+    // --- allOf of object subschemas (SCHEMAKIT-SPEC §4b): an intersection → merge into one group ---
+
+    /** The object subschemas of {@code allOf}, with each {@code $ref} resolved to its {@code $def} (pure). */
+    private static List<JsonNode> allOfObjectSubschemas(JsonNode schema, Ctx ctx) {
+        List<JsonNode> result = new ArrayList<>();
+        for (JsonNode sub : schema.path("allOf")) {
+            JsonNode resolved = sub.has("$ref") ? ctx.defs().path(defName(sub)) : sub;
+            if (resolved.path("properties").isObject()) {
+                result.add(resolved);
+            }
+        }
+        return result;
+    }
+
+    /** A bare {@code allOf} property (no {@code type}) → a group built from the merged subschemas. */
+    private static void addAllOfGroup(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
+                                      String path, Ctx ctx) {
+        boolean ownProps = schema.path("properties").isObject() && !schema.get("properties").isEmpty();
+        if (!ownProps && allOfObjectSubschemas(schema, ctx).isEmpty()) {
+            ctx.report().omit(path, "property '" + name + "' is an allOf with no object subschema carrying "
+                    + "properties — omitted (an empty group is invalid). TO DO: it may be a scalar-constraint "
+                    + "allOf; add the field by hand");
+            return;
+        }
+        g.group(name, sub -> populate(sub, schema, path, ctx));
+        ctx.report().structure(path, "group (allOf merge)");
     }
 
     // --- oneOf/anyOf of object variants (SCHEMAKIT-SPEC §4b): a12 has no sum type → superset + discriminator ---
