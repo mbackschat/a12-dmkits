@@ -98,6 +98,7 @@ Condition c   = fee.filled().and(fee.lt(0));
 // Info — describe it, to explore; narrow to a Ref when you want to author:
 FieldInfo info = m.fieldAt("/Subscription/Addons/MonthlyFee").orElseThrow();
 info.kind();   // ValueKind.NUMBER    info.scale();   // 2    info.annotation("audited");
+info.numberMin();  info.numberMax();  info.minLength();  info.maxLength();  info.pattern();  // declared bounds (finding 54)
 NumberRef sameFee = info.asNum();                      // lenient explore → strict author
 
 // Editor — change it; a ref to what you just created comes back by relative navigation:
