@@ -212,10 +212,19 @@ public final class JsonSchemaImporter {
             populate(sub, items, path, ctx);
         });
         ctx.report().structure(path, "repeatable group (max " + max + ")");
+        noteMinItems(schema, name, ctx);
+    }
+
+    /**
+     * {@code minItems} (a minimum row count) is NOT enforced — a12 has no clean rule form for group
+     * cardinality (the error entity controls a rule's iteration, and {@code NumberOfFilledGroups} needs ≥ 2
+     * group args — KERNEL-FINDINGS). So it is reported, never silently implied to be enforced (task #7).
+     */
+    private static void noteMinItems(JsonNode schema, String name, Ctx ctx) {
         if (schema.has("minItems")) {
             ctx.report().diagnostic("array '" + name + "' minItems=" + schema.get("minItems").asInt()
-                    + " has no structural home (a12 repeatability has no min slot) — becomes a GroupFilled rule "
-                    + "in the rule-synthesis increment (proposal §4)");
+                    + " is NOT enforced — a12 has no clean rule form for group cardinality (KERNEL-FINDINGS). "
+                    + "TO DO: enforce the minimum row count by hand if it is required");
         }
     }
 
