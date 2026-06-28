@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.mbackschat.a12.dm.core.DmJson;
+
+import java.util.List;
 
 /**
  * Tier-B / Tier-C <em>carriage</em> (SCHEMAKIT-SPEC §4; JSON-SCHEMA-PROPOSAL §6): a rule or computation
@@ -13,10 +16,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  *
  * <p>Carriage works at the DM-JSON <em>tree</em> level — it lifts a {@code Rule}/{@code Computation} element
  * verbatim, keyed by its owning group's id, and restores it. That is deliberate, not a dogfood shortcut:
- * the typed rule-<em>read</em> path ({@code ConditionConverter}) lives in {@code :adapter}, which the
- * dependency boundary (§1) forbids; and carriage <em>preserves</em> an element rather than <em>authoring</em>
- * one, so a verbatim copy is exactly right (and lossless by construction). Each DM-JSON element is a wrapper
- * {@code {type, id, name, <Field|Group|Rule|Computation>}} under
+ * carriage <em>preserves</em> an element rather than <em>authoring</em> one, so a verbatim copy is exactly
+ * right (and lossless by construction). The tree surgery reuses the shared {@link DmJson} primitives
+ * (reuse-first, §2) — {@code groupElements} finds a group's element list by id; the element shape is the
+ * wrapper {@code {type, id, name, <Field|Group|Rule|Computation>}} under
  * {@code content.modelRoot.rootGroups[].Group.elements[]}.
  */
 final class Carriage {
@@ -28,34 +31,30 @@ final class Carriage {
 
     private Carriage() {}
 
-    /** Lift every {@code Rule}/{@code Computation} element from the DM-JSON tree onto the schema as {@code x-a12-*}. */
-    static void collect(JsonNode dmTree, ObjectNode schema, TranscodeReport.Builder report) {
+    /** Lift every {@code Rule}/{@code Computation} element from the model's groups onto the schema as {@code x-a12-*}. */
+    static void collect(JsonNode dmTree, List<String> groupPaths, ObjectNode schema, TranscodeReport.Builder report) {
         ArrayNode rules = JSON.createArrayNode();
         ArrayNode computations = JSON.createArrayNode();
-        for (JsonNode rootGroup : dmTree.path("content").path("modelRoot").path("rootGroups")) {
-            collectFromGroup(rootGroup, rules, computations, report);
+        for (String groupPath : groupPaths) {
+            ArrayNode elements = DmJson.groupElements(dmTree, groupPath);
+            if (elements == null) {
+                continue;
+            }
+            for (JsonNode element : elements) {
+                if (element.has("Rule")) {
+                    rules.add(entry(groupPath, element));
+                    report.mapped(element.path("id").asText(), X_RULE, TranscodeReport.Tier.CARRIED);
+                } else if (element.has("Computation")) {
+                    computations.add(entry(groupPath, element));
+                    report.mapped(element.path("id").asText(), X_COMPUTATION, TranscodeReport.Tier.COMPUTATION);
+                }
+            }
         }
         if (!rules.isEmpty()) {
             schema.set(X_RULE, rules);
         }
         if (!computations.isEmpty()) {
             schema.set(X_COMPUTATION, computations);
-        }
-    }
-
-    private static void collectFromGroup(JsonNode groupWrapper, ArrayNode rules, ArrayNode computations,
-                                         TranscodeReport.Builder report) {
-        String groupId = groupWrapper.path("id").asText();
-        for (JsonNode element : groupWrapper.path("Group").path("elements")) {
-            if (element.has("Rule")) {
-                rules.add(entry(groupId, element));
-                report.mapped(element.path("id").asText(), X_RULE, TranscodeReport.Tier.CARRIED);
-            } else if (element.has("Computation")) {
-                computations.add(entry(groupId, element));
-                report.mapped(element.path("id").asText(), X_COMPUTATION, TranscodeReport.Tier.COMPUTATION);
-            } else if (element.has("Group")) {
-                collectFromGroup(element, rules, computations, report);
-            }
         }
     }
 
@@ -78,40 +77,15 @@ final class Carriage {
         }
         for (JsonNode entry : carried) {
             String groupId = entry.path("group").asText();
-            ObjectNode group = findGroup(dmTree, groupId);
-            if (group == null) {
+            ArrayNode elements = DmJson.groupElements(dmTree, groupId);
+            if (elements == null) {
                 report.refuse(groupId, "carried element targets group '" + groupId + "', which is not in the "
                         + "imported structure");
                 continue;
             }
-            ((ArrayNode) group.get("Group").get("elements")).add(entry.path("element").deepCopy());
+            elements.add(entry.path("element").deepCopy());
             report.mapped(entry.path("element").path("id").asText(), "restored into " + groupId,
                     TranscodeReport.Tier.CARRIED);
         }
-    }
-
-    private static ObjectNode findGroup(JsonNode dmTree, String groupId) {
-        for (JsonNode rootGroup : dmTree.path("content").path("modelRoot").path("rootGroups")) {
-            ObjectNode found = search(rootGroup, groupId);
-            if (found != null) {
-                return found;
-            }
-        }
-        return null;
-    }
-
-    private static ObjectNode search(JsonNode groupWrapper, String groupId) {
-        if (groupId.equals(groupWrapper.path("id").asText())) {
-            return (ObjectNode) groupWrapper;
-        }
-        for (JsonNode element : groupWrapper.path("Group").path("elements")) {
-            if (element.has("Group")) {
-                ObjectNode found = search(element, groupId);
-                if (found != null) {
-                    return found;
-                }
-            }
-        }
-        return null;
     }
 }

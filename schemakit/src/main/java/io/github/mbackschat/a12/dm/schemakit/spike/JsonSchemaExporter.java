@@ -39,7 +39,7 @@ public final class JsonSchemaExporter {
         Ctx ctx = new Ctx(doc, fieldTypedefMap(doc), new TreeSet<>(), TranscodeReport.builder());
         ObjectNode schema = exportGroup(groupPaths.get(0), ctx);   // root group → top-level object
         emitDefs(schema, ctx);
-        Carriage.collect(parse(dmJson), schema, ctx.report());     // rules/computations → x-a12-* (Tier B/C)
+        Carriage.collect(parse(dmJson), doc.groupPaths(), schema, ctx.report());  // rules/computations → x-a12-* (Tier B/C)
         return new ExportResult(toJson(schema), ctx.report().build());
     }
 
