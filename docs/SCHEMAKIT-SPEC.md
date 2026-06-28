@@ -136,6 +136,7 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | `object` + `properties`; nested `object` | group; nested group | structure |
 | `allOf` of objects | one merged group (props unioned, `required` unioned, `$ref` bases resolved) | structure |
 | `array` of `object` (+ `maxItems` ≥ 2) | repeatable group | structure |
+| `array` of `$ref` items (`items:{$ref}`) | repeatable mount (bundle) / repeatable inlined group (single) | structure |
 | `$ref`/`$defs` → leaf / → object | typeDefinition + ref / inlined group | structure |
 | `string` · `integer` · `boolean` · `enum` | STRING · NUMBER(scale 0) · BOOLEAN\|CONFIRM · ENUMERATION | structure (boolean: profile) |
 | `type:[X,"null"]` (nullable) | optional `X` | structure |
@@ -290,6 +291,7 @@ An OpenAPI document is a **bundle**: its schemas live under `components/schemas`
 - **`--component <Name>`** selects the `components/schemas` entry to import as the model root; its sibling refs resolve. A bare schema needs none; a **multi-schema OpenAPI document with no `--component` (and no `--out-dir`) is refused, listing the components** — choosing an entry point is a precondition, not a feature-omission (so it is a clear error, not an omit-with-to-do).
 - **`--out-dir <dir>`** imports the **whole bundle** (§4e): every `components/schemas` entry → its own model (`<dir>/<Component>.dm.json`), and an object **cross-reference becomes an a12 mount** (an include) instead of being inlined — so a shared definition is single-sourced. A **self-recursive** component is *expanded* (to `--recursion-depth`) then omitted, **not** self-mounted (the kernel forbids a model including itself). Mutually exclusive with `--component`.
 - **A top-level union component** — a `components/schemas` entry (or bare schema) that is itself a `oneOf`/`anyOf` of objects (a discriminated union, common in OpenAPI) — becomes a **superset at the model root** (the discriminator → an enum + per-variant requiredness rules), instead of being refused for lacking a `type:object` root.
+- **An array of `$ref` items** (`items: {$ref: …}`, ubiquitous in OpenAPI) is resolved before the scalar/object dispatch → a **repeatable mount** in bundle mode (cross-component) or a repeatable inlined group otherwise; an array of a leaf typedef → a scalar array of that leaf.
 - **AUTO** reads the `openapi:` version and states the detected dialect in the report.
 - **OpenAPI 3.0:** `nullable:true` → the field is OPTIONAL (a12 has no present-but-null; a required+nullable field is reported); a boolean `exclusiveMinimum` + `minimum` → a strict-bound rule (and the inclusive `minimum` is suppressed so it isn't doubly enforced).
 

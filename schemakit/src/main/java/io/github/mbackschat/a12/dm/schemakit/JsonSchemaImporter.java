@@ -508,6 +508,10 @@ public final class JsonSchemaImporter {
         noteMinItems(schema, name, ctx);   // minItems is not enforced (KERNEL-FINDINGS) — report it for BOTH array kinds
         collectContains(schema, path, ctx);   // contains/minContains/maxContains → a filtered-count rule (simple predicate)
         JsonNode items = schema.path("items");
+        if (items.has("$ref")) {   // array of $ref items (ubiquitous in OpenAPI) — resolve before the scalar/object dispatch
+            addRefItemsArray(g, name, schema, items, path, ctx);
+            return;
+        }
         if (!"object".equals(items.path("type").asText(""))) {
             addScalarArray(g, name, schema, items, path, ctx);
             return;
@@ -523,6 +527,42 @@ public final class JsonSchemaImporter {
             populate(sub, items, path, ctx);
         });
         ctx.report().structure(path, "repeatable group (max " + max + ")");
+    }
+
+    /** An {@code array} whose {@code items} is a {@code $ref}: resolve it, then — for an object def — a repeatable
+     *  group (single mode, inlined) or a repeatable **mount** (bundle mode, cross-component); for a leaf def, a
+     *  scalar array of the resolved leaf. */
+    private static void addRefItemsArray(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
+                                         JsonNode items, String path, Ctx ctx) {
+        String defName = defName(items);
+        JsonNode def = resolveRef(ctx, items);
+        if (def.isMissingNode()) {
+            ctx.report().omit(path, "array '" + name + "' items $ref → unresolved '" + items.path("$ref").asText()
+                    + "' — omitted. TO DO: check the ref target, then add the items by hand");
+            return;
+        }
+        if (!"object".equals(def.path("type").asText(""))) {
+            addScalarArray(g, name, schema, def, path, ctx);   // array of a leaf typedef → a scalar array of that leaf
+            return;
+        }
+        int max = resolvedCap(schema.get("maxItems"), name, "maxItems", ctx);
+        if (max < 0) {
+            ctx.report().omit(path, "array '" + name + "' (items $ref) has no maxItems and no default cap — omitted. "
+                    + "TO DO: set maxItems, raise --default-repeat-cap, or add by hand");
+            return;
+        }
+        String alias = identifier(defName);
+        if (ctx.bundle() && !alias.equals(ctx.modelId())) {   // §4e: array of a cross-component object → a repeatable mount
+            g.mount(name, alias, max);
+            ctx.includes().add(alias);
+            ctx.report().structure(path, "repeatable mount → " + alias + " (max " + max + ")");
+        } else {
+            g.group(name, sub -> {
+                sub.repeatable(max);
+                populate(sub, def, path, ctx);
+            });
+            ctx.report().structure(path, "repeatable group (items $ref " + defName + " inlined, max " + max + ")");
+        }
     }
 
     /** {@code contains}/{@code minContains}/{@code maxContains} → a filtered-count rule when the {@code contains}

@@ -18,6 +18,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class NestedAndArrayShapeTest {
 
+    @Test
+    void arrayOfRefInlinesTheReferencedObject() {
+        // array whose items is a $ref to an object def → a repeatable group inlining that object (single-import).
+        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
+                { "type": "object", "$defs": { "Line": { "type": "object", "properties": { "sku": { "type": "string" } } } },
+                  "properties": { "lines": { "type": "array", "maxItems": 50, "items": { "$ref": "#/$defs/Line" } } } }
+                """);
+
+        assertKernelAccepts(r.dmJson());
+        ModelDocument doc = ModelDocument.read(r.dmJson());
+        assertTrue(doc.isRepeating("/Root/lines"), "the array-of-$ref is a repeatable group");
+        assertEquals(Optional.of("STRING"), doc.fieldKind("/Root/lines/sku"), "the referenced object's field is inlined");
+    }
+
     private static final String NESTED_SCHEMA = """
             {
               "type": "object",

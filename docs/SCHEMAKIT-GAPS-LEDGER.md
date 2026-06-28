@@ -26,7 +26,6 @@ The live, unfinished import work. All are **reported, not enforced** today (the 
 | Gap | Today | What it needs | Tractability |
 |---|---|---|---|
 | **mutual recursion across components** | `--out-dir` mounts cross-component object refs and guards the **self**-reference case (expand-then-omit); a *cycle* across components (A mounts B, B mounts A) still produces models the kernel rejects (cyclic includes) | cross-component cycle detection → break one edge by inlining/expanding it, as for self-recursion | low–medium; rare in practice |
-| **array-of-`$ref` items** | an `array` whose `items` is a `$ref` to a component isn't recognized as an object array (no `items.type:object`) → treated as a scalar array | follow the `items` `$ref` before the scalar/object dispatch (then mount/inline per mode) | low–medium |
 
 ---
 

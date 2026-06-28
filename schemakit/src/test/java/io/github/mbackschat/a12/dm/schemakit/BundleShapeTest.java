@@ -54,6 +54,22 @@ class BundleShapeTest {
         assertKernelAcceptsBundle(bundle);
     }
 
+    @Test
+    void arrayOfRefBecomesARepeatableMountInABundle() {
+        JsonSchemaImporter.BundleResult bundle = new JsonSchemaImporter().importBundle("""
+                { "openapi": "3.1.0", "info": { "title": "X", "version": "1" },
+                  "components": { "schemas": {
+                    "Line": { "type": "object", "properties": { "sku": { "type": "string" } } },
+                    "Order": { "type": "object", "properties": {
+                      "lines": { "type": "array", "maxItems": 50, "items": { "$ref": "#/components/schemas/Line" } } } } } } }
+                """, MappingProfile.defaults(), Dialect.AUTO);
+
+        String order = bundle.models().get("Order").dmJson();
+        assertTrue(order.contains("modelAlias") && order.contains("Line"), "the array-of-$ref became a repeatable mount → Line");
+        assertFalse(order.contains("sku"), "Line is mounted, not inlined into Order");
+        assertKernelAcceptsBundle(bundle);
+    }
+
     private static void assertKernelAcceptsBundle(JsonSchemaImporter.BundleResult bundle) {
         var resolver = ReferenceResolvers.of(
                 id -> bundle.models().containsKey(id) ? bundle.models().get(id).dmJson() : null);
