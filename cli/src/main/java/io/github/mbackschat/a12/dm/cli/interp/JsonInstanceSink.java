@@ -11,7 +11,7 @@ import io.github.mbackschat.a12.dm.interpreter.gen.PlacementSink;
 
 /**
  * A {@link PlacementSink} that materializes the generator's placements into the {@code {"fields": {…}}}
- * document-instance JSON the runtime verbs consume ({@code model eval}/{@code compute}/{@code rule test} —
+ * document-instance JSON the runtime verbs consume ({@code model eval}/{@code compute}/{@code rule eval} —
  * see {@code DocInstance} and {@code document-instance.schema.json}): a non-repeatable group is a nested
  * object keyed by child name, a repeatable group an ARRAY of row objects, a field its string value. Each
  * placement is addressed by one 1-based repetition index per path part, so the array index for a repeatable

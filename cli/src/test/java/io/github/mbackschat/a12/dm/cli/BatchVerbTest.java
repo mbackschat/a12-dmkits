@@ -131,12 +131,12 @@ class BatchVerbTest {
     void batchLevelModelIsPropagatedToOpsThatOmitIt(@TempDir Path dir) throws Exception {
         Path m = model(dir);
         Path ops = dir.resolve("ops.json");
-        Files.writeString(ops, "[ {\"verb\":\"model\",\"args\":[\"validate\"]}, {\"verb\":\"config\",\"args\":[\"read\"]} ]");
+        Files.writeString(ops, "[ {\"verb\":\"model\",\"args\":[\"check\"]}, {\"verb\":\"config\",\"args\":[\"read\"]} ]");
         // set -m once on the batch; the ops carry no -m of their own and should inherit it
         var res = CliTestSupport.run("-m", m.toString(), "batch", ops.toString());
         assertEquals(0, res.code(), res::err);
         JsonNode arr = MAPPER.readTree(res.out());
-        assertEquals(0, arr.get(0).get("exit").asInt(), () -> "model validate used the batch -m: " + arr);
+        assertEquals(0, arr.get(0).get("exit").asInt(), () -> "model check used the batch -m: " + arr);
         assertEquals(0, arr.get(1).get("exit").asInt(), () -> "config read used the batch -m: " + arr);
     }
 

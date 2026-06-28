@@ -16,7 +16,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.DslRenderer;
 
 /**
- * Scoped single-rule test (FEATURE-GAPS) — {@link KernelAdapter#testRule} reports a rule's empirical
+ * Scoped single-rule eval (FEATURE-GAPS) — {@link KernelAdapter#testRule} reports a rule's empirical
  * polarity on a document instance, and crucially distinguishes a genuine <b>PASS</b> from a <b>SUPPRESSED</b>
  * rule: one the kernel never evaluated because a field it references is formally invalid (KERNEL-FINDINGS;
  * the formal-error-suppresses-the-rule behavior locked by {@code FormalErrorLawsTest}). A plain "did it fire"

@@ -53,13 +53,13 @@ class RenameVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "field", "rename", "/Order/Note", "--to", "Memo");
         assertEquals(0, res.code(), res.err());
         assertEquals("/Order/Memo", M.readTree(res.out()).path("changed").path("to").asText());
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code());
     }
 
     @Test
     void renamesAReferencedFieldRewritingItsReferrers(@TempDir Path dir) throws Exception {
         // ZipGuard references /Order/Shipping/Zip — the rename now REWRITES that reference (not refuses),
-        // so the result still validates (a dangling ref would fail model validate).
+        // so the result still validates (a dangling ref would fail model check).
         Path model = orderModel(dir);
         var res = CliTestSupport.run("-m", model.toString(), "field", "rename", "/Order/Shipping/Zip", "--to", "Postal");
         assertEquals(0, res.code(), res.err());
@@ -68,7 +68,7 @@ class RenameVerbTest {
         assertEquals("/Order/Shipping/Postal", j.path("changed").path("to").asText());
         assertTrue(j.path("changed").path("rewroteReferences").toString().contains("/Order/ZipGuard"),
                 "the referrer is reported as rewritten");
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code(),
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code(),
                 "the reference was rewritten, so the model still validates");
     }
 
@@ -92,7 +92,7 @@ class RenameVerbTest {
         assertEquals("applied", j.get("outcome").asText());
         assertEquals("/Order/Delivery", j.path("changed").path("to").asText());
         assertTrue(j.path("changed").path("rewroteReferences").toString().contains("/Order/ZipGuard"));
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code(),
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code(),
                 "the external reference followed the rename, so the model still validates");
     }
 

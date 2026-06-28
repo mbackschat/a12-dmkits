@@ -18,7 +18,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.ValidationResult;
  * <p>It embeds the existing {@link Diagnostic} array <b>verbatim</b> (via {@link ValidationResult}); the new
  * part is only the wrapper. The {@code ok}/{@code valid} split fixes a real overload: {@code ok} is "the
  * operation executed as asked", {@code valid} (present for validate/check) is "the subject model is
- * kernel-valid" — a {@code model validate} that finds the model invalid is {@code ok:true, valid:false}.
+ * kernel-valid" — a {@code model check} that finds the model invalid is {@code ok:true, valid:false}.
  */
 public record ResultEnvelope(
         String target,

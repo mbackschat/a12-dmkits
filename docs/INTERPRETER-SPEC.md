@@ -6,8 +6,8 @@
 
 **The committed goal — a full-blown interpreter serving two consumers:**
 
-1. **dmtool's native image** — drive the runtime verbs (`model eval`, `model compute`, `rule test`) that the Groovy ceiling currently bars in a native image (§1). **Acceptance:** the [`examples/cli-runtime.md`](../examples/cli-runtime.md) showboat demo — which exercises exactly those verbs — runs **end-to-end on the native image** (today they are the `JVM_ONLY_VERBS`). That demo concretely bounds the minimum operator/feature coverage use-case 1 needs.
-2. **A standalone Kotlin/JVM + Kotlin/JS library** — for any consumer running **computations and validations — both full *and* partial** — over a document model, with no kernel runtime dependency (§7). The API must also evaluate a **single rule or a single computation** against a document (the `rule test` shape — FIRED / PASSED / SUPPRESSED, and "what does this one computation yield"), not only whole-document validation — this is what dmtool's native-image `rule test` verb consumes (§1).
+1. **dmtool's native image** — drive the runtime verbs (`model eval`, `model compute`, `rule eval`) that the Groovy ceiling currently bars in a native image (§1). **Acceptance:** the [`examples/cli-runtime.md`](../examples/cli-runtime.md) showboat demo — which exercises exactly those verbs — runs **end-to-end on the native image** (today they are the `JVM_ONLY_VERBS`). That demo concretely bounds the minimum operator/feature coverage use-case 1 needs.
+2. **A standalone Kotlin/JVM + Kotlin/JS library** — for any consumer running **computations and validations — both full *and* partial** — over a document model, with no kernel runtime dependency (§7). The API must also evaluate a **single rule or a single computation** against a document (the `rule eval` shape — FIRED / PASSED / SUPPRESSED, and "what does this one computation yield"), not only whole-document validation — this is what dmtool's native-image `rule eval` verb consumes (§1).
 
 Correctness is the user's criterion throughout: **the interpreter is correct iff it agrees with the real kernel**, proven by the differential oracle (§9).
 
@@ -21,7 +21,7 @@ That single step — compiling generated source to JVM bytecode at runtime — i
 |---|---|---|
 | `model eval` | `evaluate(…) → rt().validateFull` | run a model's rules over a document |
 | `model compute` | `compute(…) → rt().compute` | run a model's computations |
-| `rule test` | `testRule(…)` (wraps `evaluate`) | fire one rule, report FIRED/PASSED/SUPPRESSED |
+| `rule eval` | `testRule(…)` (wraps `evaluate`) | fire one rule, report FIRED/PASSED/SUPPRESSED |
 
 Everything else dmtool does — structural `checkConsistency`, the bulk of the verbs — is **already native-safe** (no Groovy). So the gap is narrow and specific: *runtime rule/computation evaluation in a native image (and, as a bonus we want anyway, in the browser).*
 
@@ -140,7 +140,7 @@ The path from idea to shipped, kept as the de-risking record:
 
 1. **The spike (2026-06-21).** A throwaway prototype interpreted four condition shapes end-to-end and ran them through `RuntimeLaws` against the real kernel — comparison + three-valued logic, the empty-as-0 type asymmetry, operand-list + starred aggregates, and per-row `*`-iteration. **All matched the kernel** (25 differential cases, JVM). It was lifted into a real Kotlin Multiplatform `:interpreter` module, and the **same `commonMain` engine ran on Kotlin/JS (Node)** — proving both the native-safe and the cross-platform claims, not asserting them. The only platform-specific code was the `expect/actual` decimal shim; `commonMain` had zero `java.*`/`com.mgmtp.*`/groovy imports; both the Kotlin-JVM and KMP/JS toolchains resolved in the isolated, public-repos-only Gradle home. A follow-up closed the early gaps (big.js arbitrary-precision JS decimal, the VALUE/OMISSION polarity typing, the `commonMain` text→AST parser, throughput, localized message text).
 
-2. **The in-repo build-out (per §8).** Past the spike the engine grew the public `DmInterpreter` API — `validateFull` (whole-document), `validatePart` (partial), `testRule`/`evalCandidate` (single-rule, FIRED/PASSED/SUPPRESSED), `compute` (computations) — over a structured `ModelDef` + a general indexed `Document`. Operator coverage reached **all 109 catalog constructs** (the catalog-parity meter build-fails otherwise), each locked by a `…DiffTest` against the real kernel, then hardened by the full-message + model fuzz harnesses and the Kleene cell-verification. The CLI wired the interpreter as the **default** engine for `model eval`/`compute`/`rule test` (+ `model seed`), with `--kernel` the JVM-only opt-in; the native image then ran `examples/cli-runtime.md` end-to-end (use-case-1 acceptance).
+2. **The in-repo build-out (per §8).** Past the spike the engine grew the public `DmInterpreter` API — `validateFull` (whole-document), `validatePart` (partial), `testRule`/`evalCandidate` (single-rule, FIRED/PASSED/SUPPRESSED), `compute` (computations) — over a structured `ModelDef` + a general indexed `Document`. Operator coverage reached **all 109 catalog constructs** (the catalog-parity meter build-fails otherwise), each locked by a `…DiffTest` against the real kernel, then hardened by the full-message + model fuzz harnesses and the Kleene cell-verification. The CLI wired the interpreter as the **default** engine for `model eval`/`compute`/`rule eval` (+ `model seed`), with `--kernel` the JVM-only opt-in; the native image then ran `examples/cli-runtime.md` end-to-end (use-case-1 acceptance).
 
 The live implementation structure is [INTERPRETER-ARCHITECTURE.md](INTERPRETER-ARCHITECTURE.md); the per-decision findings are [INTERPRETER-FINDINGS.md](INTERPRETER-FINDINGS.md).
 

@@ -150,7 +150,7 @@ class SchemaExamplesGuardTest {
 
     @Test
     void documentInstanceExampleIsAcceptedByDocEval(@TempDir Path dir) throws Exception {
-        // the --instance instance schema (surfaced by `schema model eval`/`compute`/`rule test`) must stay runnable:
+        // the --instance instance schema (surfaced by `schema model eval`/`compute`/`rule eval`) must stay runnable:
         // its example, fed to `model eval`, must evaluate cleanly against a matching model.
         Path model = dir.resolve("order-ruled.dm.json");
         Files.writeString(model, CliTestSupport.orderRuledJson());

@@ -30,7 +30,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 class NativeImageRuntimeVerbsTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final List<String> RUNTIME_VERBS = List.of("model eval", "model compute", "rule test");
+    private static final List<String> RUNTIME_VERBS = List.of("model eval", "model compute", "rule eval");
 
     private static Set<String> manifestVerbs(String json) throws Exception {
         Set<String> verbs = new HashSet<>();
@@ -69,7 +69,7 @@ class NativeImageRuntimeVerbsTest {
         assertTrue(modelHelp.contains("eval"), () -> "model --help should show 'eval' on native:\n" + modelHelp);
         assertTrue(modelHelp.contains("compute"), () -> "model --help should show 'compute' on native:\n" + modelHelp);
         String ruleHelp = CliTestSupport.runNative("rule", "--help").out();
-        assertTrue(ruleHelp.contains("test"), () -> "rule --help should show 'test' on native:\n" + ruleHelp);
+        assertTrue(ruleHelp.contains("eval"), () -> "rule --help should show 'eval' on native:\n" + ruleHelp);
     }
 
     @Test

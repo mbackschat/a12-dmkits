@@ -21,13 +21,20 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
 
 /**
- * {@code dmtool model validate} — run the model through the real kernel (the F4 ground-truth step) and report
- * the uniform result envelope. The op always executes ({@code ok:true}); the model's consistency rides
+ * {@code dmtool model check} — the STATIC validation verb: run the whole model's definitions through the real
+ * kernel's consistency check (the F4 ground-truth step) and report the uniform result envelope. Covers BOTH
+ * rule conditions AND computation expressions; takes no document instance (that is the runtime {@code model
+ * eval}/{@code model compute}). The op always executes ({@code ok:true}); the model's consistency rides
  * {@code valid}, with the kernel's {@code MVK_*} notifications surfaced as enriched {@link Diagnostic}s.
+ *
+ * <p>The model-scope static-check verb — peer of the candidate-rule {@code rule check}; the runtime peers are
+ * {@code model eval} (conditions) and {@code model compute} (computations). See the check/eval/compute
+ * taxonomy in CLI-SPEC.
  */
-@Command(name = "validate", mixinStandardHelpOptions = true,
-        description = "Run the model through the real kernel; report {valid, diagnostics[]} (exit 0 valid, 1 not).")
-final class ModelValidateCommand extends BaseCommand {
+@Command(name = "check", mixinStandardHelpOptions = true,
+        description = "Statically CHECK the whole model's definitions (rules + computations) through the real "
+                + "kernel; report {valid, diagnostics[]} (no document instance — exit 0 valid, 1 not).")
+final class ModelCheckCommand extends BaseCommand {
 
     @Mixin
     WorkspaceOption workspace = new WorkspaceOption();
@@ -63,7 +70,7 @@ final class ModelValidateCommand extends BaseCommand {
 
         long errors = diagnostics.stream().filter(d -> d.severity() == com.mgmtp.a12.model.notification.Severity.ERROR).count();
         String summary = valid ? "model is valid" : "model has " + errors + " error(s)";
-        ResultEnvelope env = ResultEnvelope.read("model", "validate", summary, valid, diagnostics, null);
+        ResultEnvelope env = ResultEnvelope.read("model", "check", summary, valid, diagnostics, null);
         out().print(env.toJsonString());
         return env.exitCode();
     }

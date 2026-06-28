@@ -61,7 +61,7 @@ class StructureIncludeTypedefVerbTest {
         String written = Files.readString(model);
         assertTrue(written.contains("\"Money\""));
         assertTrue(written.contains("TypeDefType"));
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code());
     }
 
     @Test
@@ -93,6 +93,6 @@ class StructureIncludeTypedefVerbTest {
         String written = Files.readString(model);
         assertTrue(written.contains("\"modelAlias\""));
         assertTrue(written.contains("\"reference\""));
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate", "-w", dir.toString()).code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check", "-w", dir.toString()).code());
     }
 }

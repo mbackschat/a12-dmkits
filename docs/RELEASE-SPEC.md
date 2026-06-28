@@ -33,7 +33,7 @@ The **command name is `dmtool`** everywhere it is publicly invoked. `:cli`'s `in
 
 ### 3a. CLI native image (per OS)
 - **Per-OS, no cross-compile:** native-image emits a binary for the OS+arch it runs on. macOS arm64 is built **locally** (cost: avoids the 10× CI multiplier; signing: local cert); linux-x64 / windows-x64 on CI runners (§4). Linux portability: prefer a mostly-static binary (`-H:+StaticExecutableWithDynamicLibC` or musl).
-- **v1 ships native-only** (decision — [`NATIVE-IMAGE-GRAALVM.md`](NATIVE-IMAGE-GRAALVM.md) §7). The shipped CLI is the GraalVM 25 native binary (~31 MB, ~37 ms start, reflection-robust, native gate GREEN). The **runtime-eval verbs** (`model eval`/`rule test`/`model compute`) need Groovy → not native-compilable → **hidden from the shipped binary**; they remain the JVM dev/eval vehicle only, not a shipped artifact.
+- **v1 ships native-only** (decision — [`NATIVE-IMAGE-GRAALVM.md`](NATIVE-IMAGE-GRAALVM.md) §7). The shipped CLI is the GraalVM 25 native binary (~31 MB, ~37 ms start, reflection-robust, native gate GREEN). The **runtime-eval verbs** (`model eval`/`rule eval`/`model compute`) need Groovy → not native-compilable → **hidden from the shipped binary**; they remain the JVM dev/eval vehicle only, not a shipped artifact.
 - **The full build recipe, findings, sizing, the hard ceiling, and the verb-hiding gate live in [`NATIVE-IMAGE-GRAALVM.md`](NATIVE-IMAGE-GRAALVM.md)** — native-image is a topic of its own.
 
 ### 3b. Developer library — DEFERRED (not v1)
@@ -95,7 +95,7 @@ The three jobs and why they're shaped this way:
 | `build-native` (matrix: linux-x64, windows-x64) | ubuntu / windows | download `kernel-m2`; set up **JDK 21** (Gradle toolchain) + **GraalVM 25** (native-image via `GRAALVM_HOME`, since `toolchainDetection=false`); `:cli:nativeCompile`; verify | the toolchain is 21 but native-image needs GraalVM 25 — both must be present, with the 21 toolchain found via `-Porg.gradle.java.installations.fromEnv=JAVA_HOME_21_X64` |
 | `publish` (only if `release_tag` set) | ubuntu | upload the two binaries to the release, then **regenerate `SHA256SUMS` over all assets** (incl. the locally-uploaded mac binary) | keeps the checksum file covering the full per-OS set |
 
-**Per-OS verification asymmetry (deliberate):** Linux runs the full **`native-gate.sh`** (byte-for-byte showboat, §5). Windows runs a **lighter smoke** (`--version` / `manifest` / `model validate` / `rule read`, CRLF-normalized) instead — the showboat demos are bash/`jq`/`python` heredocs that don't run cleanly on Windows, but the smoke still exercises the reflection metadata, which is the real cross-OS porting risk (it's captured on macOS; if Windows surfaces a `MissingReflection`/`MissingResource`, add a Windows `capture-native-config.sh` run).
+**Per-OS verification asymmetry (deliberate):** Linux runs the full **`native-gate.sh`** (byte-for-byte showboat, §5). Windows runs a **lighter smoke** (`--version` / `manifest` / `model check` / `rule read`, CRLF-normalized) instead — the showboat demos are bash/`jq`/`python` heredocs that don't run cleanly on Windows, but the smoke still exercises the reflection metadata, which is the real cross-OS porting risk (it's captured on macOS; if Windows surfaces a `MissingReflection`/`MissingResource`, add a Windows `capture-native-config.sh` run).
 
 **Windows-smoke authoring gotchas (learned v0.2.0 — the job had never run before the token was set, so all three were latent and not binary faults).** The smoke is bash under `set -e -o pipefail`:
 

@@ -30,18 +30,21 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
- * {@code dmtool workspace validate <dir>} — the project gate: kernel-validate <b>every</b> document model in a
+ * {@code dmtool workspace check <dir>} — the project gate: statically CHECK <b>every</b> document model in a
  * directory (resolving each one's references against the whole tree) and report per-model {@code {valid,
- * diagnostics[]}}, the same rich {@code MVK_*}-enriched diagnostics {@code model validate} gives for one model.
+ * diagnostics[]}}, the same rich {@code MVK_*}-enriched diagnostics {@code model check} gives for one model.
  * It is a read (it never mutates), but it gates on the aggregate verdict: {@code valid} is true only when every
  * model is valid, and the process <b>exits 1 if any model is invalid</b> (0 when all pass) — so a pre-commit
  * hook or CI step can call it directly. {@code workspace list --validate} only flags validity (a boolean per
  * model, no diagnostics); this verb is the one that surfaces <em>why</em> and fails the build.
+ *
+ * <p>The workspace-scope static-check verb — the {@code check} family at workspace scope, peer of
+ * {@code model check} / {@code rule check}. See the check/eval/compute taxonomy in CLI-SPEC.
  */
-@Command(name = "validate", mixinStandardHelpOptions = true,
-        description = "Kernel-validate every model in a directory; per-model {valid, diagnostics[]}, "
-                + "exit 1 if any is invalid (the project gate).")
-final class WorkspaceValidateCommand extends BaseCommand {
+@Command(name = "check", mixinStandardHelpOptions = true,
+        description = "Statically CHECK every model in a directory through the kernel; per-model {valid, "
+                + "diagnostics[]}, exit 1 if any is invalid (the project gate).")
+final class WorkspaceCheckCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -96,14 +99,14 @@ final class WorkspaceValidateCommand extends BaseCommand {
         String summary = allValid
                 ? "all " + models.size() + " model" + (models.size() == 1 ? "" : "s") + " valid"
                 : invalid + " of " + models.size() + " model" + (models.size() == 1 ? "" : "s") + " invalid";
-        ResultEnvelope env = ResultEnvelope.read("workspace", "validate", summary, allValid, List.of(), data);
+        ResultEnvelope env = ResultEnvelope.read("workspace", "check", summary, allValid, List.of(), data);
         out().print(env.toJsonString());
         return env.exitCode();   // 0 when all valid, 1 when any model is invalid (the gate)
     }
 
     private record ModelVerdict(boolean valid, List<Diagnostic> diagnostics) {}
 
-    /** Validate one model through the real kernel, capturing its rich diagnostics — the {@code model validate} path. */
+    /** Validate one model through the real kernel, capturing its rich diagnostics — the {@code model check} path. */
     private ModelVerdict validateOne(Path root, IDocumentModelReferenceResolver resolver, Workspace.Model m) {
         List<Diagnostic> diagnostics = new ArrayList<>();
         boolean valid;
@@ -127,7 +130,7 @@ final class WorkspaceValidateCommand extends BaseCommand {
             valid = false;
             diagnostics.add(precheck(e.getMessage()));
         }
-        // version awareness, identical to `model validate`: classify a version mismatch as an ERROR/INFO.
+        // version awareness, identical to `model check`: classify a version mismatch as an ERROR/INFO.
         diagnostics = ModelVersion.classify(json, diagnostics);
         return new ModelVerdict(valid, diagnostics);
     }

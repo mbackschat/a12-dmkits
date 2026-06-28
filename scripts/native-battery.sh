@@ -39,7 +39,7 @@ echo "== fixture sweep (every committed model × read/validate verbs) =="
 mapfile -t FIXTURES < <(find cli/src/test/resources/models examples/models -name "*.dm.json" 2>/dev/null | sort)
 for m in "${FIXTURES[@]}"; do
   short="${m#*/models/}"
-  for op in "model validate" "model describe" "rule read" "computation read" "where-used"; do
+  for op in "model check" "model describe" "rule read" "computation read" "where-used"; do
     run "$short : $op" -m "$m" $op
   done
 done
@@ -52,13 +52,13 @@ base="$WORK/m.json"
 for k in STRING NUMBER DATE BOOLEAN CONFIRM; do
   cp "$base" "$WORK/k.json"
   run "field add plain $k"   -m "$WORK/k.json" field add --group /R --name "F$k" --kind "$k"
-  run "validate after add $k" -m "$WORK/k.json" model validate
+  run "validate after add $k" -m "$WORK/k.json" model check
 done
 # constraint-bearing variants (the localized-message setters + constraint codegen templates)
 printf '{"group":"/R","name":"Pat","kind":"STRING","string":{"pattern":"[0-9]{5}","patternMessage":"five digits"}}' > "$WORK/pat.json"
-cp "$base" "$WORK/c1.json"; run "STRING+pattern add"      -m "$WORK/c1.json" field add "$WORK/pat.json"; run "STRING+pattern validate" -m "$WORK/c1.json" model validate
+cp "$base" "$WORK/c1.json"; run "STRING+pattern add"      -m "$WORK/c1.json" field add "$WORK/pat.json"; run "STRING+pattern validate" -m "$WORK/c1.json" model check
 printf '{"group":"/R","name":"Amt","kind":"NUMBER","number":{"fractionDigits":2,"minValue":"0"}}' > "$WORK/num.json"
-cp "$base" "$WORK/c2.json"; run "NUMBER+constraints add" -m "$WORK/c2.json" field add "$WORK/num.json"; run "NUMBER+constraints validate" -m "$WORK/c2.json" model validate
+cp "$base" "$WORK/c2.json"; run "NUMBER+constraints add" -m "$WORK/c2.json" field add "$WORK/num.json"; run "NUMBER+constraints validate" -m "$WORK/c2.json" model check
 
 echo "== current-date operators (THE v0.1.0 native crash surface: Today / AddYears / YearFromDate / DifferenceInYears) =="
 # v0.1.0 crashed natively on the current-date operators: their codegen reflectively reaches date-runtime
@@ -136,7 +136,7 @@ if ! grep -q modelAlias "$AW/store.dm.json" || ! grep -q roles "$AW/catalog.dm.j
   echo "  FAIL  annotated-include setup did not take (include or roles annotation missing) — guard would be a no-op"
 fi
 run "annotated model: group extract"    -m "$AW/catalog.dm.json" -w "$AW" group extract /Catalog/G --reference subg
-run "annotated include: model validate" -m "$AW/store.dm.json" -w "$AW" model validate
+run "annotated include: model check" -m "$AW/store.dm.json" -w "$AW" model check
 run "annotated include: model describe" -m "$AW/store.dm.json" -w "$AW" model describe
 run "annotated include: export"         -m "$AW/store.dm.json" -w "$AW" export
 

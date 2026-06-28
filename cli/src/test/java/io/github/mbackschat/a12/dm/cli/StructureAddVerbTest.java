@@ -29,7 +29,7 @@ class StructureAddVerbTest {
                 "--group", "/Subscription", "--name", "Discount", "--kind", "NUMBER");
         assertEquals(0, res.code(), res.err());
         assertTrue(Files.readString(model).contains("\"/Subscription/Discount\""));
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code());
     }
 
     @Test
@@ -54,7 +54,7 @@ class StructureAddVerbTest {
         var res = CliTestSupport.run("-m", model.toString(), "group", "add", "--parent", "/Subscription", "--name", "Notes");
         assertEquals(0, res.code(), res.err());
         assertTrue(Files.readString(model).contains("\"/Subscription/Notes\""));
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code());
     }
 
     @Test

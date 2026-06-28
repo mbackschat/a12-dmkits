@@ -81,7 +81,7 @@ Same engine, no Java required. Every command is `dmtool -m <model> <target> <op>
 
 `dmtool` is distributed from the public release repo — **[`a12-dmtool-releases`](https://github.com/mbackschat/a12-dmtool-releases)**, which holds the **single source of install truth**. Both paths are documented there in full: the **agent plugin** (Claude Code / Codex — bundles the binary + the canonical skill, *including the post-install activation step*) and the **raw per-OS binary** (+ `SHA256SUMS`) for plain terminal use. (This source repo holds the plugin *source* under [`plugin/`](plugin/) (Claude Code) and [`plugin-codex/`](plugin-codex/) (Codex); they ship to the mirror at release.)
 
-The binary is **EUPL-1.2** (it embeds the A12 Kernel — see the mirror's `LICENSE`/`NOTICE`); Linux/Windows binaries and Homebrew/Scoop come later. The runtime-evaluation verbs (`model eval`, `rule test`, `model compute`) run on a **native-safe interpreter** by default, so they work in the native binary too — only `--kernel` (the A12 kernel engine) is JVM-only and is refused under the native profile.
+The binary is **EUPL-1.2** (it embeds the A12 Kernel — see the mirror's `LICENSE`/`NOTICE`); Linux/Windows binaries and Homebrew/Scoop come later. The runtime-evaluation verbs (`model eval`, `rule eval`, `model compute`) run on a **native-safe interpreter** by default, so they work in the native binary too — only `--kernel` (the A12 kernel engine) is JVM-only and is refused under the native profile.
 
 ### Discover the tool itself
 
@@ -112,7 +112,7 @@ dmtool -m orders.dm.json field modify postal.spec.json   # re-type a field in pl
 ```sh
 dmtool -m order.dm.json model info              # the header dashboard: identity, super/subtypes, includes/imports (resolved to files), counts
 dmtool -m order.dm.json model describe          # the model card: fields, kinds, enum domains, groups
-dmtool -m order.dm.json model validate          # run it through the real kernel → {valid, diagnostics[]}
+dmtool -m order.dm.json model check          # run it through the real kernel → {valid, diagnostics[]}
 dmtool -m order.dm.json field read /Order/Quantity                 # one field in full: kind, required, AND its per-kind config (min/max/unit/pattern/format) — verify a constraint, never read raw JSON
 dmtool -m order.dm.json rule read  /Order/DeliveryNotBeforeOrder    # a rule's condition, as typed JSON
 dmtool -m order.dm.json rule explain /Order/DeliveryNotBeforeOrder  # what it checks + WHEN it fires
@@ -133,14 +133,14 @@ dmtool workspace list ./models --format table        # the same facts as an alig
 dmtool workspace list ./models --validate            # also flag which models are kernel-valid
 dmtool workspace graph ./models                      # the sub/supertype inheritance hierarchy (nodes + edges)
 dmtool workspace graph ./models --format tree        # …as an indented hierarchy (or --format dot for Graphviz)
-dmtool workspace validate ./models                   # the project GATE: kernel-validate every model, exit 1 if any invalid
+dmtool workspace check ./models                   # the project GATE: kernel-validate every model, exit 1 if any invalid
 dmtool workspace roles ./models                      # the access-control lint: resolve each model's `roles` vs roles.yaml
 ```
 
-`workspace validate` is the **gate** form — it runs the real kernel over every model in the directory (references resolved across the tree), reports per-model `{valid, diagnostics[]}` (the same rich `MVK_*` diagnostics as `model validate`), and **exits non-zero if any model is invalid**. That makes it a one-line pre-commit / CI check over a whole project:
+`workspace check` is the **gate** form — it runs the real kernel over every model in the directory (references resolved across the tree), reports per-model `{valid, diagnostics[]}` (the same rich `MVK_*` diagnostics as `model check`), and **exits non-zero if any model is invalid**. That makes it a one-line pre-commit / CI check over a whole project:
 
 ```sh
-dmtool workspace validate ./models || exit 1         # fail the commit/build on any invalid model
+dmtool workspace check ./models || exit 1         # fail the commit/build on any invalid model
 ```
 
 (`workspace list --validate` differs: it only flags a per-model boolean; `validate` surfaces *why* and fails the build.)
@@ -150,7 +150,7 @@ dmtool workspace validate ./models || exit 1         # fail the commit/build on 
 For multi-file models (one model `include`s or imports another *by id*), set the **workspace root once** so every verb resolves references with no per-call flag:
 
 ```sh
-dmtool -w ./models -m app.dm.json model validate     # -w/--workspace: the dir to resolve includes/imports from
+dmtool -w ./models -m app.dm.json model check     # -w/--workspace: the dir to resolve includes/imports from
 export DMTOOL_WORKSPACE=./models                      # …or set it once per shell session (the env fallback)
 ```
 
@@ -206,7 +206,7 @@ Diagnostics are **corrective**: each carries a stable `code`, a `where`, and a `
 
 ```sh
 dmtool -m order.dm.json model eval    --instance order-instance.json   # which rules actually FIRE on this document
-dmtool -m order.dm.json rule test /Order/DeliveryNotBeforeOrder --instance order-instance.json  # one rule: fired / passed / suppressed
+dmtool -m order.dm.json rule eval /Order/DeliveryNotBeforeOrder --instance order-instance.json  # one rule: fired / passed / suppressed
 dmtool -m sub.dm.json   model compute --instance sub-instance.json     # what each computed field evaluates to
 dmtool -m order.dm.json model eval    --instance order-instance.json --no-computations  # validate STORED values as-is (bare validateFull)
 dmtool -m order.dm.json model eval    --instance order-instance.json --kernel   # same, but via the A12 kernel (JVM only)
@@ -214,7 +214,7 @@ dmtool -m order.dm.json model seed    --rows /Order/Items:2        # generate a 
 dmtool -m pay.dm.json   model eval    --instance pay.json --predefined-types iban.json  # validate a custom field type
 ```
 
-This is the empirical check a static "is it valid?" can't give — it's how you confirm a rule's *polarity* on concrete data. `rule test` scopes it to one rule with a three-way verdict, distinguishing a genuine **pass** from a rule the engine **suppressed** because a field it references is formally invalid. `model eval` / `rule test` run the **form-engine flow by default** — *compute → apply → validate* — so a required-or-referenced **computed** field is filled by its computation before validation, matching the running app (the kernel keeps `validateFull` and `compute` separate, so a bare validate would false-fail a computed field); `--no-computations` opts down to the bare `validateFull` over stored values. These verbs run on a **native-safe interpreter** by default (it reproduces the kernel's runtime semantics, verified rule-for-rule); `--kernel` switches to the A12 kernel on the JVM.
+This is the empirical check a static "is it valid?" can't give — it's how you confirm a rule's *polarity* on concrete data. `rule eval` scopes it to one rule with a three-way verdict, distinguishing a genuine **pass** from a rule the engine **suppressed** because a field it references is formally invalid. `model eval` / `rule eval` run the **form-engine flow by default** — *compute → apply → validate* — so a required-or-referenced **computed** field is filled by its computation before validation, matching the running app (the kernel keeps `validateFull` and `compute` separate, so a bare validate would false-fail a computed field); `--no-computations` opts down to the bare `validateFull` over stored values. These verbs run on a **native-safe interpreter** by default (it reproduces the kernel's runtime semantics, verified rule-for-rule); `--kernel` switches to the A12 kernel on the JVM.
 
 **Models that use custom constructs** still run: a `CustomFieldType` whose format is declarative is validated with `--predefined-types <file>`; for the *imperative* tail — a `CustomCondition`, or a checksum custom type — point `dmtool` at the project's own JS with `--custom-conditions-js` / `--custom-field-types-js` (run through a persistent Node worker); and anything still unhandled is **surfaced** under `data.unsupported` rather than silently passed, with `--strict-custom` turning that into a failure. Walkthrough: [`examples/cli-custom-types.md`](examples/cli-custom-types.md).
 
@@ -322,7 +322,7 @@ dmtool -m order.dm.json apply <ops.json>
 ### Works on real, multi-file apps
 
 ```sh
-dmtool -m app/storefront.dm.json model validate -w lib   # resolves include'd / typedef'd models
+dmtool -m app/storefront.dm.json model check -w lib   # resolves include'd / typedef'd models
 ```
 
 ### Version & compatibility — tolerant, but explicit
@@ -684,7 +684,7 @@ Other useful tasks:
 
 ```sh
 ./gradlew :adapter:test                              # the opt-in internal-tier module
-./gradlew :cli:run --args="-m model.json model validate"   # run the standalone CLI in dev (no packaging)
+./gradlew :cli:run --args="-m model.json model check"   # run the standalone CLI in dev (no packaging)
 ```
 
 `./gradlew :test` keeps the core build free of the internal tier; see [`docs/CLI-SPEC.md`](docs/CLI-SPEC.md) for the CLI.

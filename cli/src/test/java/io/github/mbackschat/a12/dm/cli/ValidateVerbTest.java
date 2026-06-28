@@ -22,10 +22,10 @@ class ValidateVerbTest {
 
     @Test
     void validateAcceptsAConsistentModel(@TempDir Path dir) throws Exception {
-        var res = CliTestSupport.run("-m", CliTestSupport.modelWithRule(dir).toString(), "model", "validate");
+        var res = CliTestSupport.run("-m", CliTestSupport.modelWithRule(dir).toString(), "model", "check");
         assertEquals(0, res.code(), res::err);
         JsonNode j = MAPPER.readTree(res.out());
-        assertTrue(j.get("valid").asBoolean(), "a consistent model validates");
+        assertTrue(j.get("valid").asBoolean(), "a consistent model checks");
         assertTrue(j.get("diagnostics").isEmpty(), "with no diagnostics");
     }
 
@@ -37,7 +37,7 @@ class ValidateVerbTest {
         Path file = dir.resolve("broken.dm.json");
         Files.writeString(file, broken);
 
-        var res = CliTestSupport.run("-m", file.toString(), "model", "validate");
+        var res = CliTestSupport.run("-m", file.toString(), "model", "check");
         assertEquals(1, res.code(), "an invalid model exits non-zero");
         JsonNode j = MAPPER.readTree(res.out());
         assertFalse(j.get("valid").asBoolean(), "valid is false");

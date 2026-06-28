@@ -27,10 +27,10 @@ class ModelNewVerbTest {
     void createsAKernelValidModelToStdout(@TempDir Path dir) throws Exception {
         CliTestSupport.Result res = CliTestSupport.run("model", "new", "--id", "orders", "--locale", "en_US", "--root", "Order");
         assertEquals(0, res.code(), res::err);
-        // the output IS the model JSON — round-trip it through `model validate`
+        // the output IS the model JSON — round-trip it through `model check`
         Path model = dir.resolve("orders.dm.json");
         Files.writeString(model, res.out());
-        CliTestSupport.Result validated = CliTestSupport.run("-m", model.toString(), "model", "validate");
+        CliTestSupport.Result validated = CliTestSupport.run("-m", model.toString(), "model", "check");
         assertEquals(0, validated.code(), validated::err);
         assertTrue(M.readTree(validated.out()).path("valid").asBoolean(),
                 () -> "a freshly-created model is kernel-valid: " + validated.out());

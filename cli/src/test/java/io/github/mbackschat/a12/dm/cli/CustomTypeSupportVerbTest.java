@@ -165,11 +165,11 @@ class CustomTypeSupportVerbTest {
         Path model = CliTestSupport.orderRuled(dir);
         Path d = write(dir, "doc.json", """
                 { "fields": { "Order": { "CustomerName": "Acme" } } }""");
-        var res = CliTestSupport.run("-m", model.toString(), "rule", "test", "/Order/EligibilityCheck",
+        var res = CliTestSupport.run("-m", model.toString(), "rule", "eval", "/Order/EligibilityCheck",
                 "--instance", d.toString());
         assertEquals(0, res.code(), res::err);
         assertEquals("unsupported", MAPPER.readTree(res.out()).get("data").get("verdict").asText(),
-                () -> "rule test reports a CustomCondition rule as 'unsupported', not a crash or a false pass: " + res.out());
+                () -> "rule eval reports a CustomCondition rule as 'unsupported', not a crash or a false pass: " + res.out());
     }
 
     @Test

@@ -16,7 +16,7 @@ dmtool manifest | jq -r ".verbs[].verb"
 ```output
 model new
 model info
-model validate
+model check
 model describe
 model read
 model usage
@@ -29,7 +29,7 @@ rule read
 rule explain
 rule deps
 rule format
-rule test
+rule eval
 rule add
 rule modify
 rule remove
@@ -72,7 +72,7 @@ config read
 config modify
 workspace list
 workspace graph
-workspace validate
+workspace check
 workspace roles
 export
 where-used
@@ -86,7 +86,7 @@ diagnostics
 manifest
 ```
 
-→ The surface is **two axes**: a *target* (`model`, `rule`, `computation`, `field`, `group`, `typedef`, `include`, `config`, `workspace`) crossed with an *op* (`add`/`read`/`modify`/`remove`, plus per-target verbs like `rule check` or `model validate`). (`workspace` is the cross-model exception — it scans a *directory*, not the `-m` model.) The manifest carries each verb's `target`/`op`, its params (with the op-record `key`), and a `schema` pointer. The tool describes itself — the skill teaches *judgment* (polarity, the traps), not this catalog.
+→ The surface is **two axes**: a *target* (`model`, `rule`, `computation`, `field`, `group`, `typedef`, `include`, `config`, `workspace`) crossed with an *op* (`add`/`read`/`modify`/`remove`, plus per-target verbs like `rule check` or `model check`). (`workspace` is the cross-model exception — it scans a *directory*, not the `-m` model.) The manifest carries each verb's `target`/`op`, its params (with the op-record `key`), and a `schema` pointer. The tool describes itself — the skill teaches *judgment* (polarity, the traps), not this catalog.
 
 ## The model — `order-ruled`
 
@@ -104,18 +104,18 @@ dmtool -m examples/models/order-ruled.dm.json model describe | jq -c ".data.fiel
 
 → Two `DATE` fields and a scale-0 `NUMBER`. The kinds drive everything that follows: `DifferenceInDays` only applies because both dates are `DATE`, and `Quantity` being a `NUMBER` is exactly why the empty-reads-as-0 trap surfaces in the `rule check` section.
 
-## model validate
+## model check
 
 Runs a model through the **real kernel** consistency check — the same engine that gates persistence. Like every verb it returns the **result envelope**: `outcome`, `ok` (did the op run), `valid` (is the subject model valid), and `diagnostics[]`, with exit 0 valid / 1 invalid.
 
 ```bash
-dmtool -m examples/models/order-ruled.dm.json model validate
+dmtool -m examples/models/order-ruled.dm.json model check
 ```
 
 ```output
 {
   "target" : "model",
-  "op" : "validate",
+  "op" : "check",
   "outcome" : "read",
   "ok" : true,
   "valid" : true,

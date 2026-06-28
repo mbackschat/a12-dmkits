@@ -20,7 +20,7 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.write.ModelWriter;
 
 /**
- * {@code workspace validate} — the project gate: kernel-validate every model in a directory, per-model
+ * {@code workspace check} — the project gate: kernel-validate every model in a directory, per-model
  * diagnostics, and exit 1 if any is invalid.
  */
 class WorkspaceValidateVerbTest {
@@ -37,7 +37,7 @@ class WorkspaceValidateVerbTest {
         Files.writeString(dir.resolve("alpha.dm.json"), model("alpha", "Alpha", "Name", FieldKind.STRING));
         Files.writeString(dir.resolve("beta.dm.json"), model("beta", "Beta", "Amount", FieldKind.NUMBER));
 
-        var res = CliTestSupport.run("workspace", "validate", dir.toString());
+        var res = CliTestSupport.run("workspace", "check", dir.toString());
         assertEquals(0, res.code(), () -> "all-valid workspace passes the gate: " + res.err() + res.out());
         JsonNode j = M.readTree(res.out());
         assertEquals("read", j.get("outcome").asText());
@@ -57,7 +57,7 @@ class WorkspaceValidateVerbTest {
                 CliTestSupport.modelWithRuleJson(), CliTestSupport.RULE_FULL_NAME, "@@@ not a condition @@@");
         Files.writeString(dir.resolve("broken.dm.json"), brokenJson);
 
-        var res = CliTestSupport.run("workspace", "validate", dir.toString());
+        var res = CliTestSupport.run("workspace", "check", dir.toString());
         assertEquals(1, res.code(), "any invalid model fails the gate (exit 1)");
         JsonNode j = M.readTree(res.out());
         assertEquals("read", j.get("outcome").asText(), "still a read — the op ran");
@@ -84,7 +84,7 @@ class WorkspaceValidateVerbTest {
     @Test
     void aNonDirectoryIsACorrectiveFail(@TempDir Path dir) throws Exception {
         Path notADir = dir.resolve("nope");
-        var res = CliTestSupport.run("workspace", "validate", notADir.toString());
+        var res = CliTestSupport.run("workspace", "check", notADir.toString());
         assertEquals(2, res.code(), "a missing directory is a usage error");
         assertTrue(res.err().toLowerCase().contains("not a directory"), () -> "corrective message: " + res.err());
     }

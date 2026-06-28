@@ -149,7 +149,7 @@ public final class Cli {
                     CommandLine offending = ex.getCommandLine();
                     PrintWriter w = offending.getErr();
                     w.println(ex.getMessage());
-                    // The instance-flag hint wins over the locator hint: `rule test` takes BOTH an --instance
+                    // The instance-flag hint wins over the locator hint: `rule eval` takes BOTH an --instance
                     // and a positional <rulePathInModel>, so a wrong --doc must be corrected to --instance, not
                     // sent to the positional. Fall back to the locator corrective otherwise.
                     String hint = instanceFlagHint(ex, parsedArgs);
@@ -224,7 +224,7 @@ public final class Cli {
     private static final java.util.Set<String> INSTANCE_FLAG_SYNONYMS = java.util.Set.of("--doc", "--document", "--data");
 
     /**
-     * The instance-flag corrective: the runtime verbs ({@code model eval}/{@code compute}, {@code rule test})
+     * The instance-flag corrective: the runtime verbs ({@code model eval}/{@code compute}, {@code rule eval})
      * describe their input as the document INSTANCE, so an agent naturally guesses {@code --doc} /
      * {@code --document} / {@code --data}. When a command that HAS an {@code --instance} option saw one of
      * those synonyms in its args, name {@code --instance} instead of leaving a bare error — a clean break (the

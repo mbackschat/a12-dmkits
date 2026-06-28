@@ -207,20 +207,20 @@ dmtool -m examples/models/order-ruled.dm.json \
 
 → `data.rule.fired: false`, empty `fired`/`messages` — the compliant order does **not** trip the rule. The two runs together are the proof: flip the one date that matters and the verdict flips with it. Same rule, opposite data, opposite outcome.
 
-## rule test — one rule, three outcomes (fired / passed / suppressed)
+## rule eval — one rule, three outcomes (fired / passed / suppressed)
 
-`model eval --rule` answers "did it fire?" — but `fired: false` is **two** different things: the rule was evaluated and *passed*, or it was **never evaluated** because a field it references is formally invalid (the engine skips a rule whose operand is *unknown*). `rule test` is the rule-first verb that tells them apart, with a three-way `verdict`. First the violation instance from above — the rule fires:
+`model eval --rule` answers "did it fire?" — but `fired: false` is **two** different things: the rule was evaluated and *passed*, or it was **never evaluated** because a field it references is formally invalid (the engine skips a rule whose operand is *unknown*). `rule eval` is the rule-first verb that tells them apart, with a three-way `verdict`. First the violation instance from above — the rule fires:
 
 ```bash
 dmtool -m examples/models/order-ruled.dm.json \
-  rule test /Order/DeliveryNotBeforeOrder \
+  rule eval /Order/DeliveryNotBeforeOrder \
   --instance /tmp/rt-order-violation.json
 ```
 
 ```output
 {
   "target" : "rule",
-  "op" : "test",
+  "op" : "eval",
   "outcome" : "read",
   "ok" : true,
   "valid" : true,
@@ -243,14 +243,14 @@ cat > /tmp/rt-order-baddate.json <<'JSON'
 { "fields": { "Order": { "OrderDate": "2024-06-01", "DeliveryDate": "not-a-date" } } }
 JSON
 dmtool -m examples/models/order-ruled.dm.json \
-  rule test /Order/DeliveryNotBeforeOrder \
+  rule eval /Order/DeliveryNotBeforeOrder \
   --instance /tmp/rt-order-baddate.json
 ```
 
 ```output
 {
   "target" : "rule",
-  "op" : "test",
+  "op" : "eval",
   "outcome" : "read",
   "ok" : true,
   "valid" : true,

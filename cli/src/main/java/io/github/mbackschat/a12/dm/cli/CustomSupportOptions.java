@@ -19,7 +19,7 @@ import picocli.CommandLine.Option;
 
 /**
  * The shared options for supporting models that use <b>custom constructs</b> (custom field types, custom
- * conditions) on the runtime-validation verbs ({@code model eval}, {@code rule test}). A native {@code dmtool}
+ * conditions) on the runtime-validation verbs ({@code model eval}, {@code rule eval}). A native {@code dmtool}
  * cannot host arbitrary project validator/condition code, so the interpreter degrades leniently — but these
  * two knobs make that honest and useful:
  * <ul>

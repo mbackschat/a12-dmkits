@@ -26,15 +26,20 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
- * {@code dmtool rule test <rulePath> --instance <document.json>} — the scoped, suppression-aware polarity check
- * for ONE rule against a document INSTANCE (FEATURE-GAPS). The rule-first convenience over {@code doc
- * eval}: it answers <b>fired</b> / <b>passed</b> / <b>suppressed</b> — the last being a rule the kernel never
- * evaluated because a field it references is formally invalid (reporting that as a pass would mislead, so a
- * plain "did it fire" verb isn't enough). Read-only; the verdict rides {@code data}.
+ * {@code dmtool rule eval <rulePath> --instance <document.json>} — the rule-scope RUNTIME verb: the scoped,
+ * suppression-aware polarity check for ONE rule against a document INSTANCE (FEATURE-GAPS). The rule-first
+ * peer of {@code model eval}: it answers <b>fired</b> / <b>passed</b> / <b>suppressed</b> — the last being a
+ * rule the kernel never evaluated because a field it references is formally invalid (reporting that as a pass
+ * would mislead, so a plain "did it fire" verb isn't enough). Read-only; the verdict rides {@code data}.
+ *
+ * <p>Runtime, single-rule scope — the runtime peer of the static candidate-check {@code rule check}; like
+ * {@code model eval} it runs the form-engine flow (compute → apply → validate) by default ({@code
+ * --no-computations} opts to raw). See the check/eval/compute taxonomy in CLI-SPEC.
  */
-@Command(name = "test", mixinStandardHelpOptions = true,
-        description = "Test ONE rule against a document INSTANCE: fired / passed / suppressed (runtime polarity).")
-final class RuleTestCommand extends BaseCommand {
+@Command(name = "eval", mixinStandardHelpOptions = true,
+        description = "Evaluate ONE rule against a document INSTANCE: fired / passed / suppressed (runtime "
+                + "polarity; applies computations first by default, like model eval).")
+final class RuleEvalCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -56,10 +61,10 @@ final class RuleTestCommand extends BaseCommand {
     boolean useKernel;
 
     @Option(names = "--no-computations",
-            description = "test against the document's STORED values as-is. By DEFAULT, rule test first runs the "
-                    + "model's computations and applies their values (the form-engine flow), so a rule over a COMPUTED "
-                    + "field sees the computed value — matching the running app. Use this to test against stored values "
-                    + "directly.")
+            description = "evaluate against the document's STORED values as-is. By DEFAULT, rule eval first runs "
+                    + "the model's computations and applies their values (the form-engine flow), so a rule over a "
+                    + "COMPUTED field sees the computed value — matching the running app. Use this to evaluate against "
+                    + "stored values directly.")
     boolean noComputations;
 
     @Mixin
@@ -105,18 +110,18 @@ final class RuleTestCommand extends BaseCommand {
                         customSupport.predefinedTypes(), customSupport.customConditions(),
                         customSupport.customFieldTypes(), !noComputations);
             }
-            ResultEnvelope refusal = customSupport.strictRefusal("rule", "test", data);
+            ResultEnvelope refusal = customSupport.strictRefusal("rule", "eval", data);
             if (refusal != null) {
                 out().print(refusal.toJsonString());
                 return refusal.exitCode();
             }
-            ResultEnvelope env = ResultEnvelope.read("rule", "test", summary(data), true, List.of(), data);
+            ResultEnvelope env = ResultEnvelope.read("rule", "eval", summary(data), true, List.of(), data);
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (IllegalArgumentException badDoc) {
             return fail(badDoc.getMessage());
         } catch (RuntimeException e) {
-            return fail("rule test failed: " + e.getMessage());
+            return fail("rule eval failed: " + e.getMessage());
         }
     }
 

@@ -54,7 +54,7 @@ are executable docs — kept in sync with the live CLI by a CI gate in the sourc
 | [`cli-edit-loop`](cli-edit-loop.md) | author/modify rules & computations, `batch`, the re-express loop |
 | [`cli-structure-edit`](cli-structure-edit.md) | fields/groups/typedefs/includes/config + the safe-delete gate + the refactors |
 | [`cli-apply`](cli-apply.md) | the atomic multi-op session — rollback + correctives + in-session refactors |
-| [`cli-runtime`](cli-runtime.md) | `model eval` / `rule test` / `model compute` against document instances **(JVM only — not in the native binary)** |
+| [`cli-runtime`](cli-runtime.md) | `model eval` / `rule eval` / `model compute` against document instances **(JVM only — not in the native binary)** |
 | [`cli-version`](cli-version.md) | `--version`, `manifest.version`, the model-version compatibility policy |
 
 > **Try them:** clone this repo and run from its root with `dmtool` on PATH. The commands call the bare

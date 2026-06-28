@@ -24,8 +24,8 @@ class ManifestVerbTest {
 
     // The canonical target-first surface (the legacy flat verbs are hidden aliases, absent from the manifest).
     private static final List<String> EXPECTED_VERBS = List.of(
-            "model new", "model info", "model validate", "model describe", "model read", "model usage", "model rename", "model eval", "model compute", "model seed",
-            "rule check", "rule read", "rule explain", "rule deps", "rule format", "rule test", "rule add",
+            "model new", "model info", "model check", "model describe", "model read", "model usage", "model rename", "model eval", "model compute", "model seed",
+            "rule check", "rule read", "rule explain", "rule deps", "rule format", "rule eval", "rule add",
             "rule modify", "rule remove", "rule rename",
             "computation add", "computation read", "computation explain", "computation format",
             "computation modify", "computation remove",
@@ -36,7 +36,7 @@ class ManifestVerbTest {
             "typedef import", "typedef unimport",
             "include add", "include read", "include remove", "include inline",
             "config read", "config modify",
-            "workspace list", "workspace graph", "workspace validate", "workspace roles",
+            "workspace list", "workspace graph", "workspace check", "workspace roles",
             "where-used", "meta", "export", "batch", "apply", "schema", "operators", "patterns", "diagnostics", "manifest");
 
     @Test

@@ -21,7 +21,7 @@ class CliTextFormatTest {
     @Test
     void defaultOutputIsJson(@TempDir Path dir) throws IOException {
         Path model = CliTestSupport.modelWithRule(dir);
-        CliTestSupport.Result res = CliTestSupport.run("-m", model.toString(), "model", "validate");
+        CliTestSupport.Result res = CliTestSupport.run("-m", model.toString(), "model", "check");
         assertEquals(0, res.code(), res::err);
         assertTrue(res.out().stripLeading().startsWith("{") && res.out().contains("\"outcome\""),
                 () -> "default is JSON: " + res.out());
@@ -30,7 +30,7 @@ class CliTextFormatTest {
     @Test
     void textModeRendersHumanReadableNotJson(@TempDir Path dir) throws IOException {
         Path model = CliTestSupport.modelWithRule(dir);
-        CliTestSupport.Result res = CliTestSupport.run("-m", model.toString(), "model", "validate", "--text");
+        CliTestSupport.Result res = CliTestSupport.run("-m", model.toString(), "model", "check", "--text");
         assertEquals(0, res.code(), res::err);
         String out = res.out();
         assertFalse(out.stripLeading().startsWith("{"), () -> "text mode is not raw JSON: " + out);
@@ -42,8 +42,8 @@ class CliTextFormatTest {
     void textFlagPositionDoesNotMatter(@TempDir Path dir) throws IOException {
         // --text is INHERIT, so it parses before or after the verb (ergonomics parity with -m/-w)
         Path model = CliTestSupport.modelWithRule(dir);
-        String before = CliTestSupport.run("--text", "-m", model.toString(), "model", "validate").out();
-        String after = CliTestSupport.run("-m", model.toString(), "model", "validate", "--text").out();
+        String before = CliTestSupport.run("--text", "-m", model.toString(), "model", "check").out();
+        String after = CliTestSupport.run("-m", model.toString(), "model", "check", "--text").out();
         assertEquals(before, after, "position of --text does not change the rendering");
         assertFalse(before.stripLeading().startsWith("{"), () -> "both are text: " + before);
     }

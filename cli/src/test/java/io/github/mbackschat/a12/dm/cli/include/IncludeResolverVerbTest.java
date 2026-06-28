@@ -62,7 +62,7 @@ class IncludeResolverVerbTest {
 
     @Test
     void validateResolvesASiblingIncludeByDefault(@TempDir Path dir) throws Exception {
-        var res = CliTestSupport.run("-m", workspace(dir).toString(), "model", "validate");
+        var res = CliTestSupport.run("-m", workspace(dir).toString(), "model", "check");
         assertEquals(0, res.code(), () -> "the multi-file model should validate: " + res.err() + res.out());
         JsonNode j = MAPPER.readTree(res.out());
         assertTrue(j.get("valid").asBoolean(), () -> "valid: " + res.out());
@@ -102,7 +102,7 @@ class IncludeResolverVerbTest {
         Path locked = Files.createDirectory(dir.resolve("locked"));   // a sibling dir the walk will hit
         Files.setPosixFilePermissions(locked, Set.of());              // chmod 000 → can't be entered
         try {
-            var res = CliTestSupport.run("-m", model.toString(), "model", "validate");   // default include-dir = dir (holds `locked`)
+            var res = CliTestSupport.run("-m", model.toString(), "model", "check");   // default include-dir = dir (holds `locked`)
             assertEquals(0, res.code(), () -> "the unreadable sibling dir must be skipped, not fatal: " + res.err() + res.out());
             assertTrue(MAPPER.readTree(res.out()).get("valid").asBoolean(), () -> "valid: " + res.out());
         } finally {
@@ -122,7 +122,7 @@ class IncludeResolverVerbTest {
         Files.writeString(storefront, storefrontJson());
 
         // no sibling pricelist → the default (apps/) can't resolve it; -w/--workspace lib does
-        var noHint = CliTestSupport.run("-m", storefront.toString(), "model", "validate");
+        var noHint = CliTestSupport.run("-m", storefront.toString(), "model", "check");
         assertEquals(1, noHint.code(), () -> "without -w/--workspace the sibling default can't resolve it: " + noHint.out());
         // an unresolvable reference is a STRUCTURED rejection (corrective), not a raw stack trace / internal error
         assertEquals("rejected", MAPPER.readTree(noHint.out()).get("outcome").asText(),
@@ -130,7 +130,7 @@ class IncludeResolverVerbTest {
         assertEquals("RK_UNRESOLVED_REFERENCE",
                 MAPPER.readTree(noHint.out()).get("diagnostics").get(0).get("code").asText());
 
-        var withDir = CliTestSupport.run("-m", storefront.toString(), "model", "validate", "-w", lib.toString());
+        var withDir = CliTestSupport.run("-m", storefront.toString(), "model", "check", "-w", lib.toString());
         assertEquals(0, withDir.code(), () -> "-w/--workspace resolves the include: " + withDir.err() + withDir.out());
         assertTrue(MAPPER.readTree(withDir.out()).get("valid").asBoolean());
     }

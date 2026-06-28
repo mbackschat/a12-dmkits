@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 /**
- * Differential for single-rule eval ([DmInterpreter.testRule]) — the `rule test` shape. The FIRED vs
+ * Differential for single-rule eval ([DmInterpreter.testRule]) — the `rule eval` shape. The FIRED vs
  * PASSED verdict must agree with whether the REAL kernel fires the rule over the same instance. (The
  * third verdict, SUPPRESSED, needs the formal-error increment and is not yet covered.) Also checks the
  * injected-candidate path ([DmInterpreter.evalCandidate]) used by `model eval --condition`.

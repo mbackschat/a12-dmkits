@@ -468,7 +468,7 @@ class DmInterpreter @JvmOverloads constructor(
     }
 
     /**
-     * Evaluate a SINGLE stored rule against the instance — the `rule test` shape. [Verdict.FIRED] (a
+     * Evaluate a SINGLE stored rule against the instance — the `rule eval` shape. [Verdict.FIRED] (a
      * violation, with the rendered [RuleResult.message]) / [Verdict.PASSED] (evaluated, clean) /
      * [Verdict.SUPPRESSED] (never evaluated — a referenced field is formally invalid, named in
      * [RuleResult.suppressedBy]).
@@ -771,7 +771,7 @@ class DmInterpreter @JvmOverloads constructor(
                     rule.severity, type, text, referenced, fillToFix))
             } else {
                 // Not fired: a formally-invalid operand means the rule was NOT cleanly evaluated → SUPPRESSED
-                // (the `rule test` third verdict), naming the offending field/code; else a clean PASSED.
+                // (the `rule eval` third verdict), naming the offending field/code; else a clean PASSED.
                 firstSuppressor(refs, ctx, dup, cache)?.let { RowOutcome.Suppressed(it) } ?: RowOutcome.Passed
             }
         }

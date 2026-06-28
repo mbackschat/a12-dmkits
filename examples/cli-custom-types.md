@@ -93,14 +93,14 @@ jq -c '{outcome, ok, summary}' /tmp/ct-strict.json
 
 ## Custom conditions
 
-A `CustomCondition` is, by definition, logic the DSL can't express — so it's genuinely project code, with no declarative substitute. The `order-ruled` model's `/Order/EligibilityCheck` rule uses `CustomCondition ExternalEligibility`. `rule test` reports it with a fourth verdict — **`unsupported`** — rather than a misleading pass or a crash:
+A `CustomCondition` is, by definition, logic the DSL can't express — so it's genuinely project code, with no declarative substitute. The `order-ruled` model's `/Order/EligibilityCheck` rule uses `CustomCondition ExternalEligibility`. `rule eval` reports it with a fourth verdict — **`unsupported`** — rather than a misleading pass or a crash:
 
 ```bash
 cat > /tmp/ct-order.json <<'JSON'
 { "fields": { "Order": { "CustomerName": "Acme" } } }
 JSON
 dmtool -m examples/models/order-ruled.dm.json \
-  rule test /Order/EligibilityCheck --instance /tmp/ct-order.json \
+  rule eval /Order/EligibilityCheck --instance /tmp/ct-order.json \
   | jq -c '{rule: .data.rule, verdict: .data.verdict, reason: .data.unsupported[0].reason}'
 
 ```
@@ -136,4 +136,3 @@ dmtool -m examples/models/payment-customtype.dm.json \
 The worker **never outlives `dmtool`** (it self-exits when the parent's pipe closes — even on a hard kill — plus an idle timeout and a JVM shutdown hook). And it degrades the same way: no `node` on PATH, or a `.js` that throws, leaves the construct `unsupported` rather than crashing.
 
 So `dmtool` stays useful on models full of custom constructs: it **authors** them, **validates** the declarative custom types (`--predefined-types`), runs the **imperative** ones from the project's own JS (`--custom-field-types-js` / `--custom-conditions-js`), and is **honest** about anything still unhandled — surfacing it (and failing on demand with `--strict-custom`) rather than reporting a false clean pass. For full in-process fidelity, register the impls on the `:interpreter` library directly, or evaluate with `--kernel` on the JVM.
-

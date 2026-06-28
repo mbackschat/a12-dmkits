@@ -33,7 +33,7 @@ What it emits is **kernel-checked**, so the fresh model binds immediately. With 
 ```bash
 dmtool model new --id catalog --locale en_US --root Catalog -o /tmp/created.dm.json \
   | jq -c '{outcome, written, output}'
-dmtool -m /tmp/created.dm.json model validate | jq -c '{ok, valid, fields: (.data.fields|length)}'
+dmtool -m /tmp/created.dm.json model check | jq -c '{ok, valid, fields: (.data.fields|length)}'
 ```
 
 ```output
@@ -177,7 +177,7 @@ dmtool -m /tmp/struct.dm.json field remove /Order/DeliveryDate --cascade
 The edited model still passes the real kernel consistency check:
 
 ```bash
-dmtool -m /tmp/struct.dm.json model validate | jq -c "{outcome,valid,diagnostics}"
+dmtool -m /tmp/struct.dm.json model check | jq -c "{outcome,valid,diagnostics}"
 ```
 
 ```output
@@ -671,7 +671,7 @@ dmtool -m /tmp/struct2-rn.json field rename /Order/DeliveryDate --to ShipDate \
 The `DeliveryNotBeforeOrder` condition now reads `/Order/ShipDate` where it read `/Order/DeliveryDate`, so the model still validates — a true reference-preserving rename, not a refusal:
 
 ```bash
-dmtool -m /tmp/struct2-rn.json model validate | jq -c '{valid}'
+dmtool -m /tmp/struct2-rn.json model check | jq -c '{valid}'
 ```
 
 ```output
@@ -707,7 +707,7 @@ dmtool -m /tmp/struct2-rn.json field move /Order/ShipDate --to /Order/ShippingAd
 The rule's error-entity path and its condition both followed the field — `DifferenceInDays(OrderDate, ShippingAddress/ShipDate)` now — so the model still validates:
 
 ```bash
-dmtool -m /tmp/struct2-rn.json model validate | jq -c '{valid}'
+dmtool -m /tmp/struct2-rn.json model check | jq -c '{valid}'
 ```
 
 ```output
@@ -764,7 +764,7 @@ order.dm.json
 The composed pair re-validates through the real kernel — the base resolves the sub-model by id from the same directory (and the gate already re-validated *before* writing, so a bad split never reaches disk):
 
 ```bash
-dmtool -m /tmp/struct2-ext/order.dm.json model validate | jq -c '{valid}'
+dmtool -m /tmp/struct2-ext/order.dm.json model check | jq -c '{valid}'
 ```
 
 ```output
@@ -783,7 +783,7 @@ dmtool -m /tmp/struct2-ext/order.dm.json include inline billing-address \
 ```
 
 ```bash
-jq -c '[.. | objects | select(has("modelAlias")) | .modelAlias]' /tmp/struct2-ext/order.dm.json && dmtool -m /tmp/struct2-ext/order.dm.json model validate | jq -c '{valid}'
+jq -c '[.. | objects | select(has("modelAlias")) | .modelAlias]' /tmp/struct2-ext/order.dm.json && dmtool -m /tmp/struct2-ext/order.dm.json model check | jq -c '{valid}'
 ```
 
 ```output

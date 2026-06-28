@@ -59,7 +59,7 @@ final class SchemaCommand extends BaseCommand {
     static final Map<String, String> DOC_INPUT = Map.of(
             "model eval", "document-instance",
             "model compute", "document-instance",
-            "rule test", "document-instance");
+            "rule eval", "document-instance");
 
     /** Read ops whose {@code data} payload has a published schema → surfaced so the agent learns the output shape. */
     static final Map<String, String> DATA_SCHEMA = Map.ofEntries(
@@ -80,12 +80,12 @@ final class SchemaCommand extends BaseCommand {
 
     /**
      * Verbs whose result is the kernel <b>verdict</b> — the envelope's {@code valid} + {@code diagnostics},
-     * <b>not</b> a {@code data} payload (`model validate` and `rule check` emit no {@code data}). So their
+     * <b>not</b> a {@code data} payload (`model check` and `rule check` emit no {@code data}). So their
      * contract documents the verdict and points at {@code schema result}/{@code schema diagnostic}; it does not
-     * claim a (nonexistent) data shape. ({@code workspace validate} is different — it <i>does</i> return a
+     * claim a (nonexistent) data shape. ({@code workspace check} is different — it <i>does</i> return a
      * {@code data} payload of per-model results, so it is a normal read, not a verdict verb.)
      */
-    static final Set<String> VERDICT_OPS = Set.of("model validate", "rule check");
+    static final Set<String> VERDICT_OPS = Set.of("model check", "rule check");
 
     /**
      * Verbs for which {@code schema <verb>} serves <b>no</b> directional contract — because they do not return

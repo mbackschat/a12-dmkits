@@ -50,7 +50,7 @@ class IncludeInlineVerbTest {
         String baseAfter = Files.readString(model);
         assertFalse(baseAfter.contains("\"modelAlias\""), "the mount became a real group again");
         assertTrue(baseAfter.contains("\"name\" : \"City\""), "Shipping's fields are inline in the base again");
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code(), "self-contained + valid");
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code(), "self-contained + valid");
     }
 
     @Test

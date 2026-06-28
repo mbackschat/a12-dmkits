@@ -665,7 +665,7 @@ public final class KernelAdapter {
 
     /**
      * {@link #testRule(String, Map, Locale)} with an explicit choice of validation flow: {@code applyComputations}
-     * true runs the form-engine {@link #evaluateApplied compute → apply → validate} (the {@code rule test}
+     * true runs the form-engine {@link #evaluateApplied compute → apply → validate} (the {@code rule eval}
      * default — so a rule over a computed field sees the computed value); false runs the bare {@link #evaluate
      * validateFull} (the raw differential's flow). The verdict logic is identical; only the message source differs.
      */

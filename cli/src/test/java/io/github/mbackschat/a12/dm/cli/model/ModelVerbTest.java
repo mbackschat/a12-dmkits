@@ -27,11 +27,11 @@ class ModelVerbTest {
     @Test
     void validatesAValidModelWithModelBeforeTheVerb(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
-        var res = CliTestSupport.run("-m", model.toString(), "model", "validate");
+        var res = CliTestSupport.run("-m", model.toString(), "model", "check");
         assertEquals(0, res.code(), res.err());
         JsonNode j = M.readTree(res.out());
         assertEquals("model", j.get("target").asText());
-        assertEquals("validate", j.get("op").asText());
+        assertEquals("check", j.get("op").asText());
         assertEquals("read", j.get("outcome").asText());
         assertTrue(j.get("ok").asBoolean());
         assertTrue(j.get("valid").asBoolean());
@@ -41,7 +41,7 @@ class ModelVerbTest {
     @Test
     void acceptsTheModelOptionAfterTheVerbToo(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
-        var res = CliTestSupport.run("model", "validate", "-m", model.toString());
+        var res = CliTestSupport.run("model", "check", "-m", model.toString());
         assertEquals(0, res.code(), res.err());
         assertTrue(M.readTree(res.out()).get("valid").asBoolean());
     }

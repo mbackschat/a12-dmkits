@@ -53,7 +53,7 @@ class TypedefRenameVerbTest {
         String written = Files.readString(model);
         assertTrue(written.contains("ArticleCode"));
         assertFalse(written.contains("ProductCode"), "the old id is gone");
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code(), "still kernel-valid");
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code(), "still kernel-valid");
     }
 
     @Test

@@ -143,4 +143,4 @@ Public-tier confirmation ◐: `IRule`/`IComputation`/`IDocumentModel` expose **n
 3. **Cheap wins to adopt early (test tier, no policy change needed):** the differential render oracle and DE-translation oracle (§7); `hasValidConditionText` to speed up the N7 harness (§10); the name-enum parity anchor (§13).
 4. **Catalog authoring:** use the web content catalogs as a *drift-detection oracle* for EN/DE keywords and semantics — opt-in test, EUPL boundary respected (no verbatim copying).
 5. **Path policy:** `PathNotationConfig` (incl. `DEFAULT_MAYBELOSSY = RELATIVE`) confirms §18.9; the parsed notation style being available per reference means a future re-render can *preserve* author path style — note for the #3 blast-radius discussion.
-6. **Exploratory follow-ups (not committed):** on-the-fly rule testing (§12 — spike needed); reduced-model extraction for focused LLM context (§9); ATN "what-comes-next" affordance (§15).
+6. **Exploratory follow-ups (not committed):** on-the-fly rule evaling (§12 — spike needed); reduced-model extraction for focused LLM context (§9); ATN "what-comes-next" affordance (§15).

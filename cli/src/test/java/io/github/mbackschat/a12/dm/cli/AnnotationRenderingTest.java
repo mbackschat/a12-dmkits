@@ -46,7 +46,7 @@ class AnnotationRenderingTest {
         assertEquals(0, CliTestSupport.run("-m", parent.toString(), "config", "modify", "--role", "manager").code());
 
         // each LOADS → kernel EXPAND → serializes the annotated include (and parent) → AnnotationImpl.getName()
-        for (String op : new String[]{"validate", "describe", "export"}) {
+        for (String op : new String[]{"check", "describe", "export"}) {
             CliTestSupport.Result res = "export".equals(op)
                     ? CliTestSupport.run("-m", parent.toString(), "-w", dir.toString(), "export")
                     : CliTestSupport.run("-m", parent.toString(), "-w", dir.toString(), "model", op);

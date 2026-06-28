@@ -22,12 +22,12 @@ import picocli.CommandLine.Option;
  * {@code dmtool model seed} — generate a valid sample document INSTANCE (JSON) from the model, using the
  * kernel-free interpreter generator ({@code SeedGenerator} + {@code ValidValues}). The output is a
  * {@code {"fields": {…}}} tree (see {@code schema model eval}) that round-trips straight into
- * {@code model eval}/{@code compute}/{@code rule test} as {@code --instance}. Native-safe (no kernel); deterministic
+ * {@code model eval}/{@code compute}/{@code rule eval} as {@code --instance}. Native-safe (no kernel); deterministic
  * for a fixed {@code --seed}. Emits the document JSON directly (an artifact, not the result envelope).
  */
 @Command(name = "seed", mixinStandardHelpOptions = true,
         description = "Generate a valid sample document INSTANCE (JSON) from the model — kernel-free, "
-                + "native-safe, deterministic per --seed; feed it to `model eval`/`compute`/`rule test` as --instance.")
+                + "native-safe, deterministic per --seed; feed it to `model eval`/`compute`/`rule eval` as --instance.")
 final class ModelSeedCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

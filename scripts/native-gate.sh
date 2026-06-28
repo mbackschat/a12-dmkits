@@ -25,7 +25,7 @@ export PATH="$ROOT/bin:$PATH"
 # Demos NOT byte-verifiable against the native binary, with WHY. Keep the reason here so a skip is never silent.
 #
 # As of 2026-06-24 the map is EMPTY — ALL demos are native-applicable. The two former skips are obsolete:
-#   • cli-runtime.md — the runtime verbs (`model eval`/`rule test`/`model compute`) used to run the kernel's
+#   • cli-runtime.md — the runtime verbs (`model eval`/`rule eval`/`model compute`) used to run the kernel's
 #     Groovy codegen (JVM-only); they now DEFAULT to the native-safe `dm.interpreter`, so they run on the
 #     native binary. (`--kernel` is the only JVM-only part — refused under the native profile, guarded by
 #     `NativeImageRuntimeVerbsTest`; `model seed` is interpreter-backed too.) Verified: cli-runtime passes native.

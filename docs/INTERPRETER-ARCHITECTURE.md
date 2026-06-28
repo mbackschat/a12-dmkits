@@ -2,7 +2,7 @@
 
 How the `:interpreter` module is built. The **design decision + contract** (why interpret instead of generate-and-eval, the goals, the boundaries) lives in [INTERPRETER-SPEC.md](INTERPRETER-SPEC.md); the **numbered design findings** (the *why* behind specific choices) in [INTERPRETER-FINDINGS.md](INTERPRETER-FINDINGS.md); the **performance method + benchmark catalog** in [INTERPRETER-PERFORMANCE.md](INTERPRETER-PERFORMANCE.md). This doc is the *how* — the code structure, the data structures, the techniques, and the special topics. It describes the system **as it is today**; update it when the structure moves (same reflex as [ARCHITECTURE.md](ARCHITECTURE.md)).
 
-`:interpreter` is a **Kotlin Multiplatform**, **kernel-free** runtime evaluator (`package io.github.mbackschat.a12.dm.interpreter`) — the publishable standalone artifact, and the engine dmtool's native image runs for `model eval`/`compute`, `rule test`, `model seed`. Correctness = **agrees with the real A12 kernel**, verified by a differential oracle.
+`:interpreter` is a **Kotlin Multiplatform**, **kernel-free** runtime evaluator (`package io.github.mbackschat.a12.dm.interpreter`) — the publishable standalone artifact, and the engine dmtool's native image runs for `model eval`/`compute`, `rule eval`, `model seed`. Correctness = **agrees with the real A12 kernel**, verified by a differential oracle.
 
 ## 1. Kotlin Multiplatform & the two targets (JVM + JS)
 

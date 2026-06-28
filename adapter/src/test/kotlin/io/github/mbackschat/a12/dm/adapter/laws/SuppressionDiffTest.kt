@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /**
- * Differential for the SUPPRESSED verdict + formal-error gate — the third `rule test` outcome and the
+ * Differential for the SUPPRESSED verdict + formal-error gate — the third `rule eval` outcome and the
  * cli-runtime `not-a-date` scenario. When a referenced field is formally invalid the kernel does NOT
  * evaluate the rule (it reports a `formalePruefung` formal error and the author rule does not fire); the
  * interpreter must return SUPPRESSED (not PASSED, not FIRED) and name the offending field/code — and

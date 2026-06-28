@@ -474,13 +474,13 @@ data class Message(
 )
 
 /**
- * The three-way verdict of a single-rule eval ([DmInterpreter.testRule]) — the `rule test` contract.
+ * The three-way verdict of a single-rule eval ([DmInterpreter.testRule]) — the `rule eval` contract.
  * FIRED = a violation; PASSED = evaluated and clean; SUPPRESSED = never evaluated because a referenced
  * field is formally invalid (the kernel skips a rule whose operand is *unknown*).
  */
 enum class Verdict { FIRED, PASSED, SUPPRESSED }
 
-/** A field whose formally-invalid value suppressed a rule — the `rule test` `suppressedBy` entry. */
+/** A field whose formally-invalid value suppressed a rule — the `rule eval` `suppressedBy` entry. */
 data class Suppression(val field: String, val formalErrorCode: String)
 
 /** A rule the interpreter could not evaluate because it uses an unmodeled/external construct. */

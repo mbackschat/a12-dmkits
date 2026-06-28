@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The manifest must expose the full {@code target → op} tree (CLI-SPEC §2) so a cold agent discovers a
- * nested op like {@code model validate} in one call — the #1 self-explaining requirement. The runnable
+ * nested op like {@code model check} in one call — the #1 self-explaining requirement. The runnable
  * leaf ops carry qualified verb names; the bare group ({@code doc}) is not itself an op. The {@code
  * -m/--model} context option is inherited by every verb, so it is listed once, globally.
  */
@@ -30,11 +30,11 @@ class ManifestTreeTest {
         for (JsonNode v : j.path("verbs")) {
             String name = v.path("verb").asText();
             verbs.add(name);
-            if ("model validate".equals(name)) {
+            if ("model check".equals(name)) {
                 docValidate = v;
             }
         }
-        assertTrue(verbs.contains("model validate"), () -> "nested op 'model validate' must be discoverable: " + verbs);
+        assertTrue(verbs.contains("model check"), () -> "nested op 'model check' must be discoverable: " + verbs);
         assertFalse(verbs.contains("model"), "the bare group 'model' is not itself a runnable op");
         assertTrue(docValidate != null && !docValidate.path("description").asText().isBlank(),
                 "the nested op carries a description");

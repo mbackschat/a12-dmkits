@@ -47,7 +47,7 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     // the native-safe runtime evaluator — dmtool's DEFAULT engine for the runtime verbs (model eval/compute,
-    // rule test): it loads a DM-JSON model into the kernel-free interpreter and evaluates rules/computations
+    // rule eval): it loads a DM-JSON model into the kernel-free interpreter and evaluates rules/computations
     // WITHOUT the kernel's on-the-fly Groovy, so those verbs can run in the GraalVM native image (the Groovy
     // ceiling, INTERPRETER-SPEC). `--kernel` opts into the kernel (JVM only). NB: this is a native-image
     // dependency — re-capture reflection metadata before a native build (NATIVE-IMAGE-GRAALVM §5.1).
@@ -120,7 +120,7 @@ tasks.named('test') {
 // findings, and status in docs/NATIVE-IMAGE-GRAALVM.md. Not in the dev loop or CI; the JVM build is unaffected.
 // Groovy is excluded from the NATIVE classpath only (the JVM keeps it): GraalVM 25 compiles Groovy fine, but
 // picocli initializes groovy.lang.Closure at build time and its metadata stream is closed at runtime. The
-// trade-off — the runtime-eval verbs (model eval / rule test / model compute) need Groovy and so don't work
+// trade-off — the runtime-eval verbs (model eval / rule eval / model compute) need Groovy and so don't work
 // in the native binary; the authoring/check/structure/read surface does (5/6 showboat demos pass).
 configurations.named('nativeImageClasspath') { exclude group: 'org.codehaus.groovy' }   // native-only; JVM keeps Groovy
 graalvmNative {
@@ -147,7 +147,7 @@ graalvmNative {
             // bundles a traced run actually loads, and these load lazily only when FORMATTING an error (e.g. a
             // parser diagnostic), per locale — so capture missed `vk_parser_common_error_messages` entirely and
             // every locale variant of the rest. A glob over the whole tree includes them by rule. (Bug: native
-            // `rule check`/`model validate` of any invalid condition failed with "Can't find bundle …".)
+            // `rule check`/`model check` of any invalid condition failed with "Can't find bundle …".)
             buildArgs.add('-H:IncludeResources=.*error_messages.*\\.properties')
             buildArgs.add('-H:IncludeResources=schema/.*\\.json')       // CLI schema contracts
             buildArgs.add('-H:IncludeResources=verb-examples\\.json')

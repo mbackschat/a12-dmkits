@@ -20,7 +20,7 @@ import picocli.CommandLine.Model.PositionalParamSpec;
  * The {@code manifest} verb (CLI-SPEC §1a/§2) — a machine-readable map of <b>every runnable op and its
  * parameters</b> as JSON, so an agent discovers the whole tool surface in one call (the self-explaining
  * requirement). It walks the full command tree, so a nested op under a target group is emitted under its
- * <b>qualified</b> name (e.g. {@code "model validate"}); the bare group is not itself an op. The {@code
+ * <b>qualified</b> name (e.g. {@code "model check"}); the bare group is not itself an op. The {@code
  * -m/--model} context option is inherited by every verb, so it is listed once under {@code globalOptions}.
  * Derived from the same picocli model that drives parsing and {@code --help}, so it cannot drift.
  */

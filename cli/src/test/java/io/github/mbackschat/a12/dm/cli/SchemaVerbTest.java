@@ -89,10 +89,10 @@ class SchemaVerbTest {
 
     @Test
     void verdictVerbsNoteTheVerdictNotData() throws Exception {
-        // `model validate` / `rule check` carry their result in the ENVELOPE's valid + diagnostics, not a
+        // `model check` / `rule check` carry their result in the ENVELOPE's valid + diagnostics, not a
         // `data` payload — the contract must say so and must NOT claim a (nonexistent) data shape. Locks the
         // VERDICT_OPS reclassification (they no longer mis-map to the retired validate.schema as a dataSchema).
-        for (String verb : new String[] {"model validate", "rule check"}) {
+        for (String verb : new String[] {"model check", "rule check"}) {
             String[] t = verb.split(" ");
             JsonNode c = MAPPER.readTree(CliTestSupport.run("schema", t[0], t[1]).out());
             assertEquals("result", c.path("returns").asText());
@@ -105,8 +105,8 @@ class SchemaVerbTest {
     @Test
     void docInstanceVerbsSurfaceTheDocInputShape() throws Exception {
         // the gap-finder (Option C) found 3/3: `--help` promises the --instance instance shape via `schema <verb>`,
-        // but the contract never served it. Now `schema model eval`/`model compute`/`rule test` carry `docInput`.
-        for (String verb : new String[] {"model eval", "model compute", "rule test"}) {
+        // but the contract never served it. Now `schema model eval`/`model compute`/`rule eval` carry `docInput`.
+        for (String verb : new String[] {"model eval", "model compute", "rule eval"}) {
             String[] t = verb.split(" ");
             JsonNode c = MAPPER.readTree(CliTestSupport.run("schema", t[0], t[1]).out());
             assertEquals("DocumentInstance", c.path("docInput").path("title").asText(),
@@ -157,7 +157,7 @@ class SchemaVerbTest {
         assertResultEnvelope(CliTestSupport.run("-m", model.toString(), "rule", "read", CliTestSupport.RULE_FULL_NAME));
         assertResultEnvelope(CliTestSupport.run("-m", model.toString(), "field", "read", "/Subscription/Addons/MonthlyFee"));
         assertResultEnvelope(CliTestSupport.run("-m", model.toString(), "config", "read"));
-        assertResultEnvelope(CliTestSupport.run("-m", model.toString(), "model", "validate"));
+        assertResultEnvelope(CliTestSupport.run("-m", model.toString(), "model", "check"));
     }
 
     /** Every top-level key the verb emits must be declared in the universal `result` schema (the F11 drift guard). */

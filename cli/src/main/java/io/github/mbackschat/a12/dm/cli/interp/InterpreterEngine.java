@@ -27,7 +27,7 @@ import io.github.mbackschat.a12.dm.interpreter.model.Verdict;
 
 /**
  * The interpreter-backed engine behind the runtime verbs' DEFAULT path ({@code model eval} / {@code model
- * compute} / {@code rule test}) — the native-safe alternative to the kernel's Groovy runtime. It loads a
+ * compute} / {@code rule eval}) — the native-safe alternative to the kernel's Groovy runtime. It loads a
  * DM-JSON model + a {@code {"fields":{…}}} instance via {@link InterpreterModelLoader}, runs
  * {@link DmInterpreter}, and renders the same {@code data} shape as the kernel path so output is consistent
  * across engines. Two honest differences from the kernel: the {@code field} pointer is the resolved path
@@ -126,7 +126,7 @@ public final class InterpreterEngine {
         return data;
     }
 
-    /** {@code rule test}: the FIRED / PASSED / SUPPRESSED verdict for one stored rule (or {@code unsupported}). */
+    /** {@code rule eval}: the FIRED / PASSED / SUPPRESSED verdict for one stored rule (or {@code unsupported}). */
     public static ObjectNode ruleTestData(String modelJson, Map<String, Object> fields, String locale, String rulePath,
             Map<String, PredefinedType> predefinedTypes, Map<String, CustomCondition> customConditions,
             Map<String, CustomFieldType> customFieldTypes, boolean applyComputations) {

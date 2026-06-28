@@ -73,7 +73,7 @@ class GroupExtractVerbTest {
         assertTrue(baseAfter.contains("\"modelAlias\""), "the base now mounts the sub-model");
         assertFalse(baseAfter.contains("\"name\" : \"City\""), "Shipping's fields left the base");
         // the composed pair re-validates (the sub-model resolves by id from the same dir)
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code(), "composed model is valid");
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code(), "composed model is valid");
     }
 
     @Test
@@ -103,7 +103,7 @@ class GroupExtractVerbTest {
         // the BASE mount keeps the ORIGINAL name (so /Order/Shipping/* paths are preserved) and the composed
         // pair re-validates — proving mount-name != sub-model-root-name composes cleanly
         assertTrue(Files.readString(model).contains("\"name\" : \"Shipping\""), "the base mount keeps the original name");
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code(),
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code(),
                 "composed model is valid with mount-name (Shipping) != sub-model-root-name (Address)");
     }
 
@@ -129,7 +129,7 @@ class GroupExtractVerbTest {
         assertEquals(0, res.code(), res.err());
 
         // THE GUARD: the produced sub-model is valid ON ITS OWN, not only inside the composed pair
-        assertEquals(0, CliTestSupport.run("-m", dir.resolve("shipping.dm.json").toString(), "model", "validate").code(),
+        assertEquals(0, CliTestSupport.run("-m", dir.resolve("shipping.dm.json").toString(), "model", "check").code(),
                 "the extracted sub-model must be valid standalone (carried rule operands re-based to its root)");
         // and the carried rule's operands were rewritten from /Order/Shipping/* to /Shipping/*
         String sub = Files.readString(dir.resolve("shipping.dm.json"));

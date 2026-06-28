@@ -11,9 +11,9 @@ import picocli.CommandLine.Spec;
  * A bare {@code dmtool model} prints its op list (exit 2), like the root; the ops are its subcommands.
  */
 @Command(name = "model", mixinStandardHelpOptions = true,
-        description = "Whole-model operations: new, info, validate, describe, read, usage (export keeps artifact mode). "
-                + "Running a model against a sample document is a JVM-only capability — absent from the native binary.",
-        subcommands = { ModelNewCommand.class, ModelInfoCommand.class, ModelValidateCommand.class, ModelDescribeCommand.class,
+        description = "Whole-model operations: new, info, check, describe, read, usage, plus the runtime verbs "
+                + "eval/compute/seed against a document instance (export keeps artifact mode).",
+        subcommands = { ModelNewCommand.class, ModelInfoCommand.class, ModelCheckCommand.class, ModelDescribeCommand.class,
                 ModelReadCommand.class, ModelUsageCommand.class, ModelRenameCommand.class,
                 ModelEvalCommand.class, ModelComputeCommand.class, ModelSeedCommand.class })
 public final class ModelCommand implements Callable<Integer> {

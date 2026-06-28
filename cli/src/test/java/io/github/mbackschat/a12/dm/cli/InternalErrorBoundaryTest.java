@@ -56,7 +56,7 @@ class InternalErrorBoundaryTest {
     void anUnresolvableReferenceIsAStructuredRejectionNotAnInternalError() {
         var e = new io.github.mbackschat.a12.dm.core.UnresolvedReferenceException(
                 "pricelist", "no document model with id \"pricelist\" found in 1 indexed models under [/apps]");
-        ResultEnvelope env = BaseCommand.unresolvedReferenceEnvelope("model", "validate", e);
+        ResultEnvelope env = BaseCommand.unresolvedReferenceEnvelope("model", "check", e);
         assertEquals(1, env.exitCode(), "an input problem (unresolvable include) is a rejection, exit 1 — not internal error 70");
         JsonNode json = env.toJson();
         assertEquals("rejected", json.get("outcome").asText());

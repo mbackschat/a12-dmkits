@@ -42,7 +42,7 @@ public final class CliTestSupport {
 
     /**
      * Run a runtime verb forcing the <b>kernel</b> engine ({@code --kernel} appended). The {@code model
-     * eval}/{@code compute} and {@code rule test} verbs now default to the interpreter; these helpers keep
+     * eval}/{@code compute} and {@code rule eval} verbs now default to the interpreter; these helpers keep
      * the kernel-fidelity verb tests exercising the kernel (the interpreter has its own differential cover).
      */
     public static Result runKernel(String... args) {

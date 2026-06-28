@@ -48,7 +48,7 @@ class DataSchemaConformanceTest {
     private static final Map<String, String> EXEMPT_SCHEMAS = Map.of(
             "workspace-graph", "needs a multi-model inheritance-graph dir; shape exercised by WorkspaceVerbTest",
             "workspace-roles", "needs roles/users file fixtures; shape exercised by WorkspaceRolesTest");
-    // (`model validate` / `rule check` used to map here as `validate` but emit NO `data` — they are now
+    // (`model check` / `rule check` used to map here as `validate` but emit NO `data` — they are now
     // VERDICT_OPS in SchemaCommand: their result rides the envelope's valid + diagnostics, so they're out of
     // this data-shape audit entirely, not exempt-within-it.)
 

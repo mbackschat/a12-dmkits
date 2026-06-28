@@ -51,7 +51,7 @@ class TypedefExtractInlineVerbTest {
         assertEquals("Money", je.path("changed").path("created").asText());
         assertTrue(je.path("changed").path("fromFields").toString().contains("/Store/Price"));
         assertTrue(Files.readString(model).contains("\"Money\""));
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code(), "kernel-valid");
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code(), "kernel-valid");
 
         var inl = CliTestSupport.run("-m", model.toString(), "typedef", "inline", "Money");
         assertEquals(0, inl.code(), inl.err());

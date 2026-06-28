@@ -168,8 +168,8 @@ jobs:
           # producer (manifest is ~66 KB) → exit 141 under `set -o pipefail`. Mirrors the --version check.
           echo "== manifest (catalog reflection) =="
           "$BIN" manifest | norm > /tmp/m.txt; grep -Eq '"a12Distribution" *: *"2025.06-ext5"' /tmp/m.txt
-          echo "== model validate (kernel reflection) =="
-          "$BIN" -m examples/models/order-ruled.dm.json model validate | norm > /tmp/mv.txt; grep -Eq '"valid" *: *true' /tmp/mv.txt
+          echo "== model check (kernel reflection) =="
+          "$BIN" -m examples/models/order-ruled.dm.json model check | norm > /tmp/mv.txt; grep -Eq '"valid" *: *true' /tmp/mv.txt
           # /Order/... is a POSIX-looking arg → git-bash rewrites it to C:/Program Files/Git/Order/... (MSYS
           # path conversion) → "not a rule". MSYS_NO_PATHCONV=1 passes it verbatim. Windows/git-bash-only —
           # NOT reproducible on mac/linux, so only the Windows CI reveals it.

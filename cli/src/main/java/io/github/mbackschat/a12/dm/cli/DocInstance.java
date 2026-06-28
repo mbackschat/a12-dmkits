@@ -11,7 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Reads a document <b>instance</b> file — the {@code --instance} argument shared by {@code model eval},
- * {@code model compute}, and {@code rule test} — into the nested field tree the kernel runtime consumes. The instance is a
+ * {@code model compute}, and {@code rule eval} — into the nested field tree the kernel runtime consumes. The instance is a
  * JSON object under a top-level {@code "fields"} key (or the root object itself): a repeatable group is an
  * array of row objects, a non-repeatable group a nested object, a field its text value. One source so the
  * runtime verbs can't drift on the document shape.

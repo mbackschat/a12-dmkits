@@ -20,7 +20,7 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
  * The BA's real deliverable is the <b>error text the end-user reads</b> — and with message interpolation
  * ({@code $Field$}, {@code $Field.value$}) the authored template is not what renders. This locks that
  * {@link KernelAdapter#evaluate} surfaces the kernel's <em>interpolated</em> message (its {@code
- * IMessage.getErrorText}), not the raw template, so {@code model eval} / {@code rule test} can answer
+ * IMessage.getErrorText}), not the raw template, so {@code model eval} / {@code rule eval} can answer
  * "here is exactly what the user will see" (FEATURE-GAPS G1).
  */
 class MessageInterpolationTest {

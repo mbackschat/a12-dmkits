@@ -45,7 +45,7 @@ class NativeImageMetadataHygieneTest {
         List<String> probe = List.of(
                 "io.github.mbackschat.a12.dm.cli.ApplyVerbTest",      // a test class — flag
                 "io.github.mbackschat.a12.dm.cli.ApplyVerbTest$1",    // its inner class — flag
-                "io.github.mbackschat.a12.dm.cli.rule.RuleTestCommand",    // PRODUCTION verb (`rule test`) — keep
+                "io.github.mbackschat.a12.dm.cli.rule.RuleTestCommand",    // PRODUCTION verb (`rule eval`) — keep
                 "com.mgmtp.a12.kernel.md.model.a12internal.StringType"); // kernel POJO — keep
         assertEquals(
                 List.of("io.github.mbackschat.a12.dm.cli.ApplyVerbTest",

@@ -96,7 +96,7 @@ dmtool -m /tmp/edit-sub.json \
   computation modify /Subscription/Billing/EffectiveFeeComp \
   --spec /tmp/edit-eff.json
 echo "--- Sum( occurrences in the file after modify: $(grep -c "Sum(" /tmp/edit-sub.json)"
-echo "--- the written model still validates: $(dmtool -m /tmp/edit-sub.json model validate | jq -c ".valid")"
+echo "--- the written model still validates: $(dmtool -m /tmp/edit-sub.json model check | jq -c ".valid")"
 ```
 
 ```output
@@ -124,14 +124,14 @@ echo "--- the written model still validates: $(dmtool -m /tmp/edit-sub.json mode
 
 ## rule add — persist a brand-new rule
 
-`rule add` validates a candidate against the real kernel and, on accept, **writes it into the model in place** (it emits the envelope, not the model text). The new rule's path lands under `.changed.rule`. We add on a fresh `/tmp` copy, then `model validate` the persisted model and confirm the rule count rose via `export`.
+`rule add` validates a candidate against the real kernel and, on accept, **writes it into the model in place** (it emits the envelope, not the model text). The new rule's path lands under `.changed.rule`. We add on a fresh `/tmp` copy, then `model check` the persisted model and confirm the rule count rose via `export`.
 
 ```bash
 printf "%s" "{\"field\":\"/Subscription/Billing/EffectiveFee\",\"condition\":\"[EffectiveFee] < [BaseFee]\",\"code\":\"EFFECTIVE_BELOW_BASE\",\"messages\":[{\"locale\":\"en_US\",\"text\":\"Effective fee is below base fee.\"},{\"locale\":\"de_DE\",\"text\":\"Effektivgebuehr unter Basisgebuehr.\"}]}" > /tmp/edit-rule.json
 cp examples/models/subscription-computed.dm.json /tmp/edit-add.json
 dmtool -m /tmp/edit-add.json rule add /tmp/edit-rule.json \
   | jq -c "{outcome, rule: .changed.rule, written}"
-dmtool -m /tmp/edit-add.json model validate | jq -c "{valid, diagnostics}"
+dmtool -m /tmp/edit-add.json model check | jq -c "{valid, diagnostics}"
 dmtool -m /tmp/edit-add.json export | grep -E "^- rules:"
 ```
 
@@ -237,7 +237,7 @@ dmtool -m /tmp/edit2-order.json \
   rule modify /Order/DeliveryNotBeforeOrder \
   --condition "AllFieldsFilled(/Order/OrderDate, /Order/DeliveryDate) And [/Order/DeliveryDate] < [/Order/OrderDate]"
 echo "--- re-expression occurrences after modify: $(grep -c "DeliveryDate\] <" /tmp/edit2-order.json)"
-echo "--- the written model still validates: $(dmtool -m /tmp/edit2-order.json model validate | jq -c ".valid")"
+echo "--- the written model still validates: $(dmtool -m /tmp/edit2-order.json model check | jq -c ".valid")"
 ```
 
 ```output
@@ -273,7 +273,7 @@ cp examples/models/order-ruled.dm.json /tmp/edit2-rm-rule.json
 echo "--- $(dmtool -m /tmp/edit2-rm-rule.json export | grep -E "^- rules:") (before)"
 dmtool -m /tmp/edit2-rm-rule.json rule remove /Order/DeliveryNotBeforeOrder
 echo "--- $(dmtool -m /tmp/edit2-rm-rule.json export | grep -E "^- rules:") (after)"
-echo "--- the written model still validates: $(dmtool -m /tmp/edit2-rm-rule.json model validate | jq -c ".valid")"
+echo "--- the written model still validates: $(dmtool -m /tmp/edit2-rm-rule.json model check | jq -c ".valid")"
 ```
 
 ```output
@@ -306,7 +306,7 @@ rm -f /tmp/edit2-comp-spec.json /tmp/edit2-sub.json
 printf "%s" "{\"computedField\":\"/Subscription/Billing/EffectiveFee\",\"alternatives\":[{\"operation\":\"[BaseFee] * 2\"}],\"messages\":[{\"locale\":\"en_US\",\"text\":\"Effective fee is twice the base fee.\"},{\"locale\":\"de_DE\",\"text\":\"Effektivgebuehr ist das Doppelte der Basisgebuehr.\"}]}" > /tmp/edit2-comp-spec.json
 cp examples/models/subscription.dm.json /tmp/edit2-sub.json
 dmtool -m /tmp/edit2-sub.json computation add /tmp/edit2-comp-spec.json
-echo "--- the written model validates: $(dmtool -m /tmp/edit2-sub.json model validate | jq -c ".valid")"
+echo "--- the written model checks: $(dmtool -m /tmp/edit2-sub.json model check | jq -c ".valid")"
 ```
 
 ```output
@@ -323,7 +323,7 @@ echo "--- the written model validates: $(dmtool -m /tmp/edit2-sub.json model val
   "written" : true,
   "output" : "/tmp/edit2-sub.json"
 }
---- the written model validates: true
+--- the written model checks: true
 ```
 
 → The kernel accepted the spec and `computation add` wrote it in place (`written: true`). The computation path is **synthesized** from the field — `/Subscription/Billing/EffectiveFee` becomes the computation `/Subscription/Billing/EffectiveFeeComp` (the `…Comp` convention) — and surfaces under `.changed.computation`. The written model re-validates clean. That fresh computation is what we read back next.
@@ -377,7 +377,7 @@ echo "--- computation present before? $(dmtool -m /tmp/edit2-rm-comp.json comput
 dmtool -m /tmp/edit2-rm-comp.json computation remove /Subscription/Billing/EffectiveFeeComp
 echo "--- read it again (a structured refusal signals absence):"
 dmtool -m /tmp/edit2-rm-comp.json computation read /Subscription/Billing/EffectiveFeeComp 2>&1 | jq -c '{outcome, code: .diagnostics[0].code}'
-echo "--- the written model still validates: $(dmtool -m /tmp/edit2-rm-comp.json model validate | jq -c ".valid")"
+echo "--- the written model still validates: $(dmtool -m /tmp/edit2-rm-comp.json model check | jq -c ".valid")"
 ```
 
 ```output

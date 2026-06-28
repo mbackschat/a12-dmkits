@@ -560,7 +560,7 @@ The twelve v1 design forks, all decided (owner review 2026-06-02; #1 amended 202
 **Currently open:**
 
 - **Converter coverage order** (F10) — default: same corpus-backlog order as the builder; revisit if an read-heavy use case (e.g. bulk explain over a legacy model) demands different priorities.
-- **On-the-fly rule testing** (survey §12) — Phase-3 spike: deprecation status, cost (generates+executes code), and whether behavioral catalog examples are worth it.
+- **On-the-fly rule evaling** (survey §12) — Phase-3 spike: deprecation status, cost (generates+executes code), and whether behavioral catalog examples are worth it.
 
 ---
 

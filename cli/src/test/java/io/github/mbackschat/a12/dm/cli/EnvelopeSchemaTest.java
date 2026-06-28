@@ -37,7 +37,7 @@ class EnvelopeSchemaTest {
     void resultSchemaCoversAnActualEnvelope(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
         JsonNode props = M.readTree(CliTestSupport.run("schema", "result").out()).path("properties");
-        JsonNode env = M.readTree(CliTestSupport.run("-m", model.toString(), "model", "validate").out());
+        JsonNode env = M.readTree(CliTestSupport.run("-m", model.toString(), "model", "check").out());
         env.fieldNames().forEachRemaining(k ->
                 assertTrue(props.has(k), () -> "result schema is missing emitted envelope key '" + k + "'"));
     }

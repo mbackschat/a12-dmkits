@@ -78,7 +78,7 @@ class ApplyRefactorTest {
         assertEquals("/Order/Shipping/Postal", j.path("results").get(0).path("changed").path("to").asText());
         // the referrer was rewritten, so the written model still validates (a dangle would fail)
         assertTrue(Files.readString(model).contains("/Order/Shipping/Postal"));
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code(),
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code(),
                 "the rewritten reference keeps the model valid");
     }
 
@@ -97,7 +97,7 @@ class ApplyRefactorTest {
         assertEquals(0, j.path("_exit").asInt(), () -> "committed: " + j);
         assertTrue(j.path("committed").asBoolean());
         assertEquals(3, j.path("results").size());
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code());
         assertTrue(Files.readString(model).contains("/Order/Shipping/Postal"));
     }
 
@@ -127,7 +127,7 @@ class ApplyRefactorTest {
         assertEquals(0, j.path("_exit").asInt(), () -> "committed: " + j);
         assertTrue(j.path("committed").asBoolean());
         assertTrue(Files.readString(model).contains("/Order/Billing/Shipping/Zip"));
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code());
     }
 
     @Test
@@ -139,7 +139,7 @@ class ApplyRefactorTest {
         assertEquals(0, j.path("_exit").asInt(), () -> "committed: " + j);
         assertTrue(j.path("committed").asBoolean());
         assertTrue(Files.readString(model).contains("ZipRequired"));
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code());
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code());
     }
 
     @Test
@@ -150,7 +150,7 @@ class ApplyRefactorTest {
 
         assertEquals(0, j.path("_exit").asInt(), () -> "committed: " + j);
         assertTrue(j.path("committed").asBoolean());
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code(),
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code(),
                 "every using field was repointed to the new id");
     }
 

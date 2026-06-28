@@ -55,7 +55,7 @@ class RemoveVerbTest {
         assertEquals(0, res.code(), res.err());
         String written = Files.readString(model);
         assertFalse(written.contains("DeliveryNotBeforeOrder"), "the referencing rule should cascade away");
-        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "validate").code(),
+        assertEquals(0, CliTestSupport.run("-m", model.toString(), "model", "check").code(),
                 "result must stay kernel-valid");
     }
 

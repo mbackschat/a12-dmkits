@@ -80,7 +80,7 @@ class ResultEnvelopeTest {
     void validateInvalidIsOkButNotValidAndExitsOne() {
         Diagnostic d = Diagnostic.precheck(Optional.of("MVK_X"), "bad",
                 new Diagnostic.Where("/Order", Optional.empty()), Optional.empty(), Optional.empty());
-        ResultEnvelope env = ResultEnvelope.read("model", "validate", "model has 1 error", false, List.of(d), null);
+        ResultEnvelope env = ResultEnvelope.read("model", "check", "model has 1 error", false, List.of(d), null);
 
         assertEquals(1, env.exitCode());
         JsonNode j = env.toJson();
@@ -90,7 +90,7 @@ class ResultEnvelopeTest {
 
     @Test
     void validateValidExitsZero() {
-        ResultEnvelope env = ResultEnvelope.read("model", "validate", "model is valid", true, List.of(), null);
+        ResultEnvelope env = ResultEnvelope.read("model", "check", "model is valid", true, List.of(), null);
         assertEquals(0, env.exitCode());
         assertTrue(env.toJson().get("valid").asBoolean());
     }

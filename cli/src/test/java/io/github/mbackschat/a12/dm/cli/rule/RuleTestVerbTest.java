@@ -16,7 +16,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * {@code rule test} (FEATURE-GAPS) — the scoped, suppression-aware runtime polarity check for one rule
+ * {@code rule eval} (FEATURE-GAPS) — the scoped, suppression-aware runtime polarity check for one rule
  * against a document INSTANCE. It must distinguish fired / passed / **suppressed** (a rule the kernel skipped
  * because a referenced field is formally invalid — reporting that as a pass would mislead), and refuse a name
  * that isn't a validation rule. The fixture rule is {@code FeeCapRule}: fires when {@code MonthlyFee > 1000}.
@@ -34,7 +34,7 @@ class RuleTestVerbTest {
     @Test
     void firesOnAViolatingInstance(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
-        CliTestSupport.Result res = CliTestSupport.runKernel("-m", model.toString(), "rule", "test",
+        CliTestSupport.Result res = CliTestSupport.runKernel("-m", model.toString(), "rule", "eval",
                 CliTestSupport.RULE_FULL_NAME, "--instance", doc(dir, "2000").toString());
         assertEquals(0, res.code(), res::err);
         JsonNode data = MAPPER.readTree(res.out()).path("data");
@@ -47,7 +47,7 @@ class RuleTestVerbTest {
     @Test
     void passesOnASatisfyingInstance(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
-        CliTestSupport.Result res = CliTestSupport.runKernel("-m", model.toString(), "rule", "test",
+        CliTestSupport.Result res = CliTestSupport.runKernel("-m", model.toString(), "rule", "eval",
                 CliTestSupport.RULE_FULL_NAME, "--instance", doc(dir, "10").toString());
         assertEquals(0, res.code(), res::err);
         JsonNode data = MAPPER.readTree(res.out()).path("data");
@@ -59,7 +59,7 @@ class RuleTestVerbTest {
     void reportsSuppressionWhenAReferencedFieldIsFormallyInvalid(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRule(dir);
         // MonthlyFee is a 2-decimal field; 3 decimals make it formally invalid → FeeCapRule never runs.
-        CliTestSupport.Result res = CliTestSupport.runKernel("-m", model.toString(), "rule", "test",
+        CliTestSupport.Result res = CliTestSupport.runKernel("-m", model.toString(), "rule", "eval",
                 CliTestSupport.RULE_FULL_NAME, "--instance", doc(dir, "2000.999").toString());
         assertEquals(0, res.code(), res::err);
         JsonNode data = MAPPER.readTree(res.out()).path("data");
@@ -72,7 +72,7 @@ class RuleTestVerbTest {
     @Test
     void rejectsAComputationName(@TempDir Path dir) throws Exception {
         Path model = CliTestSupport.modelWithRuleAndComputation(dir);
-        CliTestSupport.Result res = CliTestSupport.runKernel("-m", model.toString(), "rule", "test",
+        CliTestSupport.Result res = CliTestSupport.runKernel("-m", model.toString(), "rule", "eval",
                 CliTestSupport.COMPUTATION_FULL_NAME, "--instance", doc(dir, "10").toString());
         assertEquals(2, res.code(), "a computation is not a validation rule — refuse");
     }
