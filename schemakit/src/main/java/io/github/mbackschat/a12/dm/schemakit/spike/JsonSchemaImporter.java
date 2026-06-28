@@ -560,10 +560,14 @@ public final class JsonSchemaImporter {
         }
         switch (schema.path("type").asText("")) {
             case "string" -> {
-                addStringField(g, name, schema, isRequired);
-                ctx.report().structure(path, "STRING");
-                if (schema.has("const")) {
-                    ctx.ruleNeeds().add(new RuleSynthesis.ConstValue(path, false, schema.get("const").asText()));
+                if (schema.path("format").isTextual()) {
+                    addFormattedString(g, name, schema, isRequired, path, ctx);
+                } else {
+                    addStringField(g, name, schema, isRequired);
+                    ctx.report().structure(path, "STRING");
+                    if (schema.has("const")) {
+                        ctx.ruleNeeds().add(new RuleSynthesis.ConstValue(path, false, schema.get("const").asText()));
+                    }
                 }
             }
             case "boolean" -> {
@@ -631,6 +635,85 @@ public final class JsonSchemaImporter {
                 s.required();
             }
         });
+    }
+
+    /**
+     * A string {@code format} (SCHEMAKIT-SPEC §4b). Temporal formats map to a12's native temporal field
+     * KINDS (always — they are first-class a12 types, strictly better than a string); the semantic string
+     * formats (email/uuid/…) follow the {@link MappingProfile#format()} strategy.
+     */
+    private static void addFormattedString(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
+                                           boolean isRequired, String path, Ctx ctx) {
+        String format = schema.get("format").asText();
+        switch (format) {
+            case "date" -> {
+                g.dateField(name, d -> { if (isRequired) { d.required(); } });
+                ctx.report().structure(path, "DATE (format date)");
+            }
+            case "date-time" -> {
+                g.dateTimeField(name, d -> { if (isRequired) { d.required(); } });
+                ctx.report().structure(path, "DATE_TIME (format date-time)");
+            }
+            case "time" -> {
+                g.timeField(name, t -> { if (isRequired) { t.required(); } });
+                ctx.report().structure(path, "TIME (format time)");
+            }
+            default -> addSemanticFormat(g, name, schema, format, isRequired, path, ctx);
+        }
+    }
+
+    /** A non-temporal {@code format} (email/uuid/…) — governed by the profile's {@link MappingProfile#format()}. */
+    private static void addSemanticFormat(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
+                                          String format, boolean isRequired, String path, Ctx ctx) {
+        switch (ctx.profile().format()) {
+            case PATTERN -> standardRegex(format).ifPresentOrElse(
+                    regex -> {
+                        g.stringField(name, s -> {
+                            if (schema.has("minLength")) {
+                                s.minLength(schema.get("minLength").asInt());
+                            }
+                            if (schema.has("maxLength")) {
+                                s.maxLength(schema.get("maxLength").asInt());
+                            }
+                            s.pattern(regex, name + " must be a valid " + format);
+                            if (isRequired) {
+                                s.required();
+                            }
+                        });
+                        ctx.report().structure(path, "STRING + pattern (format " + format + ")");
+                    },
+                    () -> {
+                        addStringField(g, name, schema, isRequired);
+                        ctx.report().structure(path, "STRING");
+                        ctx.report().diagnostic("format '" + format + "' at '" + name + "' has no standard regex "
+                                + "— imported as a plain string. TO DO: add a pattern by hand, or set the format "
+                                + "strategy to CUSTOM_TYPE");
+                    });
+            case CUSTOM_TYPE -> {
+                g.customField(name, c -> {
+                    c.type(format);
+                    if (isRequired) {
+                        c.required();
+                    }
+                });
+                ctx.report().structure(path, "CUSTOM type '" + format + "' (format " + format + ")");
+                ctx.report().diagnostic("format '" + format + "' at '" + name + "' mapped to a custom field type '"
+                        + format + "' — register a validator for it at runtime");
+            }
+            case IGNORE -> {
+                addStringField(g, name, schema, isRequired);
+                ctx.report().structure(path, "STRING (format '" + format + "' ignored)");
+            }
+        }
+    }
+
+    /** A standard regex for a well-known JSON Schema string {@code format}, where one exists. */
+    private static Optional<String> standardRegex(String format) {
+        return switch (format) {
+            case "email" -> Optional.of("[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+[.][A-Za-z]{2,}");
+            case "uuid" -> Optional.of("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+            default -> Optional.empty();
+        };
     }
 
     /** Strict bounds have no inclusive field-config home → collect them as Tier-A+ synthesized rules. */
