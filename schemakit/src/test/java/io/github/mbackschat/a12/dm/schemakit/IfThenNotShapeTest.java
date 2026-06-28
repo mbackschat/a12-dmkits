@@ -120,6 +120,17 @@ class IfThenNotShapeTest {
     }
 
     @Test
+    void notMinLengthSynthesizesAnInvertedLengthRule() {
+        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
+                { "title": "X", "type": "object",
+                  "properties": { "code": { "type": "string", "not": { "minLength": 3 } } } }
+                """);
+
+        assertKernelAccepts(r.dmJson());
+        assertEquals(1, synthesized(r), () -> "not minLength → one length rule (length must be < 3): " + r.report().dispositions());
+    }
+
+    @Test
     void notMaximumSynthesizesAnInvertedBoundRule() {
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
                 { "title": "X", "type": "object",
@@ -156,14 +167,14 @@ class IfThenNotShapeTest {
 
     @Test
     void aComplexNotIsReportedNotSilentlyDropped() {
-        // not{minLength} is outside the mapped set (const/enum/pattern/min/max) — it stays reported, not dropped.
+        // not{type} is outside the mapped set (const/enum/pattern/min/max/minLength/maxLength) — stays reported.
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
                 { "title": "X", "type": "object",
-                  "properties": { "f": { "type": "string", "not": { "minLength": 3 } } } }
+                  "properties": { "f": { "type": "string", "not": { "type": "number" } } } }
                 """);
 
         assertKernelAccepts(r.dmJson());
-        assertEquals(0, synthesized(r), "a 'not' outside const/enum/pattern/min/max is not synthesized");
+        assertEquals(0, synthesized(r), "a 'not' outside the mapped set (e.g. not{type}) is not synthesized");
         assertTrue(r.report().diagnostics().stream().anyMatch(d -> d.contains("not")),
                 () -> "the unmapped 'not' shape is reported: " + r.report().diagnostics());
     }

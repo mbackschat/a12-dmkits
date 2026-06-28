@@ -488,9 +488,13 @@ public final class JsonSchemaImporter {
             ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenBound(path, true, not.get("minimum").asText()));
         } else if (not.path("maximum").isNumber()) {
             ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenBound(path, false, not.get("maximum").asText()));
+        } else if (not.path("minLength").isNumber()) {
+            ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenLength(path, true, not.get("minLength").asInt()));
+        } else if (not.path("maxLength").isNumber()) {
+            ctx.ruleNeeds().add(new RuleSynthesis.ForbiddenLength(path, false, not.get("maxLength").asInt()));
         } else {
             ctx.report().diagnostic("property '" + name + "' uses a 'not' that isn't a simple "
-                    + "const/enum/pattern/minimum/maximum — not mapped; add the constraint by hand");
+                    + "const/enum/pattern/minimum/maximum/minLength/maxLength — not mapped; add the constraint by hand");
         }
     }
 

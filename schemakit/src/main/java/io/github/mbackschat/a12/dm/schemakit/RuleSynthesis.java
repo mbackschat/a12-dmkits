@@ -34,7 +34,8 @@ final class RuleSynthesis {
 
     /** A synthesized-rule request, collected during the import walk. Sealed so the synthesizer is exhaustive. */
     sealed interface Need permits ExclusiveBound, DependentRequired, ConstValue, MultipleOf, DiscriminatedRequired,
-            MultiConditionalRequired, UniqueItems, ForbiddenConst, ForbiddenEnum, ForbiddenPattern, ForbiddenBound {}
+            MultiConditionalRequired, UniqueItems, ForbiddenConst, ForbiddenEnum, ForbiddenPattern, ForbiddenBound,
+            ForbiddenLength {}
 
     /** One {@code if}-condition conjunct: a field pinned to a value ({@code field == value}). */
     record FieldValue(String field, String value) {}
@@ -70,6 +71,11 @@ final class RuleSynthesis {
     /** {@code not: {minimum/maximum}}: the inverted numeric bound — {@code min} ⇒ value must be {@code < bound}
      *  (error when {@code >= bound}); else value must be {@code > bound} (error when {@code <= bound}). */
     record ForbiddenBound(String fieldPath, boolean min, String bound) implements Need {}
+
+    /** {@code not: {minLength/maxLength}}: the inverted string-length bound — {@code min} ⇒ length must be
+     *  {@code < bound} (error when {@code length >= bound}); else length must be {@code > bound} (error when
+     *  {@code length <= bound}). A string field. */
+    record ForbiddenLength(String fieldPath, boolean min, int bound) implements Need {}
 
     /** {@code uniqueItems: true} on an array → a {@code RepetitionNotUnique} rule keyed on the repeatable
      *  group's row fields (resolved post-build from {@code groupPath}). */
@@ -224,6 +230,23 @@ final class RuleSynthesis {
                         .message(Dsl.en(field + " must be " + (f.min() ? "less than " : "greater than ")
                                 + f.bound() + ".")).build());
             }
+            case ForbiddenLength f -> {
+                String field = lastSegment(f.fieldPath());
+                if (!doc.fieldKind(f.fieldPath()).map("STRING"::equals).orElse(false)) {
+                    report.diagnostic("'not " + (f.min() ? "minLength" : "maxLength") + "' on '" + field
+                            + "' skipped — only string fields supported");
+                    yield Optional.empty();
+                }
+                StringRef r = m.str(f.fieldPath());
+                Condition violation = f.min() ? r.length().ge(f.bound()) : r.length().le(f.bound());
+                yield Optional.of(m.rule(m.group(parentGroup(f.fieldPath())))
+                        .name(field + (f.min() ? "NotMinLength" : "NotMaxLength")).errorField(r)
+                        .when(r.filled().and(violation))
+                        .code("FORBIDDEN_" + (f.min() ? "MINLEN_" : "MAXLEN_") + field.toUpperCase(Locale.ROOT))
+                        .severity(Severity.ERROR)
+                        .message(Dsl.en(field + " length must be " + (f.min() ? "less than " : "greater than ")
+                                + f.bound() + ".")).build());
+            }
             case ForbiddenConst f -> {
                 String field = lastSegment(f.fieldPath());
                 String code = "FORBIDDEN_" + field.toUpperCase(Locale.ROOT);
@@ -322,6 +345,7 @@ final class RuleSynthesis {
             case ForbiddenEnum f -> f.fieldPath();
             case ForbiddenPattern f -> f.fieldPath();
             case ForbiddenBound f -> f.fieldPath();
+            case ForbiddenLength f -> f.fieldPath();
         };
     }
 
@@ -342,6 +366,8 @@ final class RuleSynthesis {
             case ForbiddenPattern f -> "rule not-pattern(" + lastSegment(f.fieldPath()) + " ∌ /" + f.regex() + "/)";
             case ForbiddenBound f -> "rule not-" + (f.min() ? "minimum(" : "maximum(") + lastSegment(f.fieldPath())
                     + " " + (f.min() ? "<" : ">") + " " + f.bound() + ")";
+            case ForbiddenLength f -> "rule not-" + (f.min() ? "minLength(" : "maxLength(") + lastSegment(f.fieldPath())
+                    + " length " + (f.min() ? "<" : ">") + " " + f.bound() + ")";
         };
     }
 
