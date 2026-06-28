@@ -217,6 +217,7 @@ A single JSON Schema imports to **exactly one** document model today. Multiplici
 ### Why a mount beats inlining (and where it can't reach)
 
 - **Reuse without duplication.** An object `$def` referenced in N places inlines the structure N times; a mount references it **once**. Edits — and the included model's own **rules/computations** — stay single-sourced (`MountOptions.excludeRules`/`excludeComputations` opt out per mount).
+- **A mounting component still carries its OWN rules.** A bundle component that mounts a sibling *and* declares a rule-synthesizing constraint (an `exclusiveMinimum`, a `const`, an `if/then`) gets that rule synthesized normally — the rule is authored against the component loaded with a resolver over the bundle, so the mount resolves while the host's own typed rule is built. (The host's rules reference only its own fields; a mounted sibling's constraints are synthesized in *that* sibling's model.)
 - **Cross-document sharing.** A library of structures shared across many schemas is the common child / type-def-only model — the DRY unit a12 already provides, rather than copying the definition into every model.
 - **Recursion is the limit, not a win.** A self-referential schema has *no finite inline form* **and** *no self-include form* — the kernel rejects "a model includes itself." So recursion is bounded by `--recursion-depth` (expand) then reported; neither inlining nor mounting fully represents it.
 

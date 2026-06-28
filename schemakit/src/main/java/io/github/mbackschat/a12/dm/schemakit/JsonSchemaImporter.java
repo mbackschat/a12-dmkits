@@ -84,7 +84,7 @@ public final class JsonSchemaImporter {
         noteDialect(report, dialect, requestedDialect);
         JsonNode rootSchema = entryPointSchema(root, component);
         String modelId = identifier(component != null ? component : rootSchema.path("title").asText(null));
-        return buildModel(root, rootSchema, modelId, dialect, profile, report, false, Set.of());
+        return buildModel(root, rootSchema, modelId, dialect, profile, report, false, Set.of(), null);
     }
 
     /**
@@ -100,13 +100,25 @@ public final class JsonSchemaImporter {
             throw new IllegalArgumentException("no components/schemas to import as a bundle");
         }
         Set<String> breakEdges = cycleBreakEdges(schemas, root);   // inline (not mount) one edge per include cycle
+        // id → schema, for the rule-synthesis resolver: a mounting component loads its sibling's STRUCTURE skeleton
+        // (built on demand, no rules → no recursion) so its own typed rules can be authored. Order-independent.
+        java.util.Map<String, JsonNode> schemaById = new java.util.LinkedHashMap<>();
+        for (Iterator<Map.Entry<String, JsonNode>> it = schemas.fields(); it.hasNext(); ) {
+            Map.Entry<String, JsonNode> e = it.next();
+            schemaById.put(identifier(e.getKey()), e.getValue());
+        }
+        io.github.mbackschat.a12.dm.core.ModelResolver ruleResolver = id -> {
+            JsonNode sch = schemaById.get(id);
+            return sch == null ? null
+                    : buildStructure(root, sch, id, dialect, profile, TranscodeReport.builder(), true, breakEdges).dmJson();
+        };
         java.util.Map<String, ImportResult> models = new java.util.LinkedHashMap<>();
         for (Iterator<Map.Entry<String, JsonNode>> it = schemas.fields(); it.hasNext(); ) {
             Map.Entry<String, JsonNode> e = it.next();
             TranscodeReport.Builder report = TranscodeReport.builder();
             noteDialect(report, dialect, requestedDialect);
             models.put(identifier(e.getKey()),
-                    buildModel(root, e.getValue(), identifier(e.getKey()), dialect, profile, report, true, breakEdges));
+                    buildModel(root, e.getValue(), identifier(e.getKey()), dialect, profile, report, true, breakEdges, ruleResolver));
         }
         return new BundleResult(models);
     }
@@ -176,11 +188,15 @@ public final class JsonSchemaImporter {
         }
     }
 
-    /** Build one model from {@code rootSchema}. In {@code bundle} mode an object cross-reference is mounted as an
-     *  include rather than inlined (the §4e multi-model wiring). */
-    private static ImportResult buildModel(JsonNode root, JsonNode rootSchema, String modelId, Dialect dialect,
-                                           MappingProfile profile, TranscodeReport.Builder report, boolean bundle,
-                                           Set<String> breakEdges) {
+    /** A model's STRUCTURE (DM-JSON) before rule synthesis, plus the rule needs to synthesize onto it. Splitting
+     *  this out lets a bundle build a sibling's skeleton on demand to resolve a mount (see {@link #importBundle}). */
+    private record Structure(String dmJson, List<RuleSynthesis.Need> ruleNeeds) {}
+
+    /** Build a model's structure from {@code rootSchema} (no rules yet). In {@code bundle} mode an object
+     *  cross-reference is mounted as an include rather than inlined (the §4e multi-model wiring). */
+    private static Structure buildStructure(JsonNode root, JsonNode rootSchema, String modelId, Dialect dialect,
+                                            MappingProfile profile, TranscodeReport.Builder report, boolean bundle,
+                                            Set<String> breakEdges) {
         boolean rootUnion = isObjectUnion(rootSchema);   // a top-level oneOf/anyOf of objects → a root superset
         if (!rootUnion && !"object".equals(rootSchema.path("type").asText(""))) {
             String type = rootSchema.path("type").asText("");
@@ -200,15 +216,23 @@ public final class JsonSchemaImporter {
             }
         });
         ctx.includes().forEach(refId -> b.include(refId, refId));   // header includes for the mounts emitted above
+        return new Structure(b.build().toJson(), ctx.ruleNeeds());
+    }
 
-        String dmJson = b.build().toJson();
-        dmJson = RuleSynthesis.apply(dmJson, ctx.ruleNeeds(), ctx.report());   // Tier A+ synthesized rules
+    /** Build one full model from {@code rootSchema}: structure, then synthesized rules (Tier A+), then carried
+     *  rules/computations (Tier B/C). {@code ruleResolver} resolves a bundle sibling so a mounting component can
+     *  load for rule synthesis — {@code null} for a single self-contained model. */
+    private static ImportResult buildModel(JsonNode root, JsonNode rootSchema, String modelId, Dialect dialect,
+                                           MappingProfile profile, TranscodeReport.Builder report, boolean bundle,
+                                           Set<String> breakEdges, io.github.mbackschat.a12.dm.core.ModelResolver ruleResolver) {
+        Structure s = buildStructure(root, rootSchema, modelId, dialect, profile, report, bundle, breakEdges);
+        String dmJson = RuleSynthesis.apply(s.dmJson(), s.ruleNeeds(), report, ruleResolver);   // Tier A+
         if (rootSchema.has(Carriage.X_RULE) || rootSchema.has(Carriage.X_COMPUTATION)) {
             ObjectNode tree = (ObjectNode) parse(dmJson);     // restore carried rules/computations (Tier B/C)
-            Carriage.inject(tree, rootSchema, ctx.report());
+            Carriage.inject(tree, rootSchema, report);
             dmJson = tree.toString();
         }
-        return new ImportResult(dmJson, ctx.report().build());
+        return new ImportResult(dmJson, report.build());
     }
 
     /** {@link Dialect#AUTO} → sniff the document: the OpenAPI {@code openapi:} version field, else JSON Schema. */

@@ -38,6 +38,29 @@ class BundleShapeTest {
     }
 
     @Test
+    void aBundleComponentCanHaveBothAMountAndASynthesizedRule() {
+        // regression: a component that mounts a sibling AND carries a rule-synthesizing constraint must still
+        // import. Rule synthesis loads the model to author the typed rule — which needs a resolver for the
+        // sibling include (it used to load self-contained and throw "references a separate model").
+        JsonSchemaImporter.BundleResult bundle = new JsonSchemaImporter().importBundle("""
+                { "openapi": "3.1.0", "info": { "title": "X", "version": "1" },
+                  "components": { "schemas": {
+                    "Address": { "type": "object", "properties": { "city": { "type": "string" } } },
+                    "Customer": { "type": "object",
+                      "properties": {
+                        "home": { "$ref": "#/components/schemas/Address" },
+                        "discount": { "type": "number", "exclusiveMinimum": 0 } } } } } }
+                """, MappingProfile.defaults(), Dialect.AUTO);
+
+        String customer = bundle.models().get("Customer").dmJson();
+        assertTrue(customer.contains("modelAlias"), "Address is mounted");
+        assertTrue(bundle.models().get("Customer").report().dispositions().stream()
+                        .anyMatch(d -> d.tier() == TranscodeReport.Tier.TIER_A_PLUS),
+                "the discount exclusive bound synthesized a rule on the mounting component");
+        assertKernelAcceptsBundle(bundle);
+    }
+
+    @Test
     void recursiveComponentExpandsRatherThanSelfMounting() {
         // The kernel forbids a model including itself, so a self-recursive component is expanded (to the profile
         // recursion depth) then omitted with a to-do — NOT self-mounted — and still loads self-contained.

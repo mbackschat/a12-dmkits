@@ -135,11 +135,14 @@ final class RuleSynthesis {
     /** {@code not: {enum}}: the field must NOT be one of {@code values} (error fires when it is — a string field). */
     record ForbiddenEnum(String fieldPath, List<String> values) implements Need {}
 
-    static String apply(String dmJson, List<Need> needs, TranscodeReport.Builder report) {
+    static String apply(String dmJson, List<Need> needs, TranscodeReport.Builder report,
+                        io.github.mbackschat.a12.dm.core.ModelResolver resolver) {
         if (needs.isEmpty()) {
             return dmJson;
         }
-        BoundModel m = BoundModel.ofJson(dmJson);
+        // a bundle component may mount a sibling (an include) — then loading it to author the typed rule needs a
+        // resolver for that sibling; a single self-contained model passes resolver == null.
+        BoundModel m = resolver == null ? BoundModel.ofJson(dmJson) : BoundModel.ofJson(dmJson, resolver);
         ModelDocument doc = ModelDocument.read(dmJson);   // to resolve a repeatable group's actual row fields
         for (Need need : needs) {
             Optional<Rule> rule = ruleFor(m, doc, need, report);
