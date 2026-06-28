@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.MissingNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.Requiredness;
@@ -35,6 +36,7 @@ import java.util.function.IntConsumer;
 public final class JsonSchemaImporter {
 
     private static final ObjectMapper JSON = new ObjectMapper();
+    private static final ObjectMapper YAML = new ObjectMapper(new YAMLFactory());   // OpenAPI specs are often YAML
     private static final String DEFAULT_MODEL_ID = "ImportedModel";
     private static final String ROOT_GROUP = "Root";
     private static final String LOCALE = "en_US";
@@ -1122,11 +1124,17 @@ public final class JsonSchemaImporter {
         return trimmed.matches("[A-Za-z][A-Za-z0-9_]*") ? trimmed : DEFAULT_MODEL_ID;
     }
 
-    private static JsonNode parse(String jsonSchema) {
+    /** Parse the input as JSON first (exact behavior for JSON documents), then YAML (a JSON superset) so
+     *  OpenAPI/JSON-Schema documents in either form import. The generated DM-JSON re-parse always hits the JSON path. */
+    private static JsonNode parse(String document) {
         try {
-            return JSON.readTree(jsonSchema);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("not valid JSON: " + e.getMessage(), e);
+            return JSON.readTree(document);
+        } catch (Exception jsonError) {
+            try {
+                return YAML.readTree(document);
+            } catch (Exception yamlError) {
+                throw new IllegalArgumentException("not valid JSON or YAML: " + jsonError.getMessage(), jsonError);
+            }
         }
     }
 }

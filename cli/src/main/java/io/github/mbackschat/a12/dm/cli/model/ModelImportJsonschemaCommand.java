@@ -41,8 +41,8 @@ final class ModelImportJsonschemaCommand extends BaseCommand {
 
     @ParamKind(ParamKind.Kind.FILE)
     @Option(names = "--schema", required = true, paramLabel = "<file>",
-            description = "the JSON Schema or OpenAPI document to import (its `title`, or --component, becomes the "
-                    + "model id; else a default)")
+            description = "the JSON Schema or OpenAPI document to import, JSON or YAML (its `title`, or --component, "
+                    + "becomes the model id; else a default)")
     String schemaPath;
 
     @ParamKind(ParamKind.Kind.FREEFORM)

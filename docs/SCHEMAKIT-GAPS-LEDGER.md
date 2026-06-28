@@ -27,7 +27,6 @@ The live, unfinished import work. All are **reported, not enforced** today (the 
 |---|---|---|---|
 | **multi-model bundle output** | importing an OpenAPI doc needs `--component` to pick ONE entry-point schema (the rest of `components/schemas` resolve only as inlined refs) | the §4e multi-model path — every component → one model, wired by includes | medium effort; gated on the §4e include/mount output |
 | **top-level union component** | a `components/schemas` entry that is itself a `oneOf`/`anyOf` (no `type:object` root) is **refused** by the "object root" check | superset the union at the **model root** (today the superset only runs at the property level) | low–medium effort |
-| **YAML OpenAPI input** | the importer parses **JSON**; OpenAPI documents are frequently YAML | a YAML→JSON parse step (a Jackson YAML dataformat dep) — a **reuse-first dependency decision** for the owner before adding | small once the dep is approved |
 
 ---
 

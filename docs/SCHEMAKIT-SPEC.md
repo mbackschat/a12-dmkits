@@ -277,6 +277,7 @@ OpenAPI's "Schema Object" *is* a dialect of JSON Schema, so most imported/export
 
 An OpenAPI document is a **bundle**: its schemas live under `components/schemas`, cross-`$ref`-ing. So:
 
+- **Input is JSON *or* YAML** — most OpenAPI specs are YAML, so the importer tries JSON first (exact behavior for JSON), then YAML (a JSON superset). (A new dep, `jackson-dataformat-yaml`; a native-image re-capture trigger — NATIVE-IMAGE-GRAALVM §5.1.)
 - **`$ref` resolves by JSON Pointer** against the whole document — both `#/$defs/X` (JSON Schema) and `#/components/schemas/X` (OpenAPI).
 - **`--component <Name>`** selects the `components/schemas` entry to import as the model root; its sibling refs resolve. A bare schema needs none; a **multi-schema OpenAPI document with no `--component` is refused, listing the components** — choosing an entry point is a precondition, not a feature-omission (so it is a clear error, not an omit-with-to-do). The multi-model bundle output (all components → one model each, §4e) is the deferred path.
 - **AUTO** reads the `openapi:` version and states the detected dialect in the report.
@@ -288,7 +289,7 @@ An OpenAPI document is a **bundle**: its schemas live under `components/schemas`
 - **`x-a12-rule` / `x-a12-computation` carriage is dialect-agnostic** — `x-` extensions are first-class in every OpenAPI version, so the a12↔a12 round-trip survives the OpenAPI trip.
 - a12 carries **no null** and **inclusive-only** field bounds (strict bounds live in rules → carriage/projection), so the export dialect mainly drives the ref location + the envelope; `OPENAPI_30` + `$defs` is reported.
 
-The verbs/options are discoverable from the binary (`manifest`/`--help`): import takes `--dialect` + `--component`; export takes `--dialect` + `--wrap-openapi`. Genuine limitations (a top-level union *component* needs a `type:object` root; YAML OpenAPI input) are tracked in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md).
+The verbs/options are discoverable from the binary (`manifest`/`--help`): import takes `--dialect` + `--component`; export takes `--dialect` + `--wrap-openapi`. Remaining limitations are tracked in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md).
 
 ---
 

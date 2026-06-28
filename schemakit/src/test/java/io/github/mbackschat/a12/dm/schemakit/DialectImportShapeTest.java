@@ -96,6 +96,30 @@ class DialectImportShapeTest {
     }
 
     @Test
+    void yamlOpenApiDocumentImports() {
+        // OpenAPI specs are commonly YAML — the importer tries JSON, then YAML (a JSON superset).
+        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
+                openapi: "3.0.3"
+                info:
+                  title: Shop
+                  version: "1"
+                components:
+                  schemas:
+                    Order:
+                      type: object
+                      properties:
+                        code: { type: string }
+                        qty: { type: integer, minimum: 1, exclusiveMinimum: true }
+                      required: [code]
+                """, MappingProfile.defaults(), Dialect.AUTO, "Order");
+
+        assertKernelAccepts(r.dmJson());
+        assertTrue(reports(r, "OPENAPI_30"), () -> "YAML 3.0 doc detected: " + r.report().diagnostics());
+        assertTrue(r.dmJson().contains("code") && r.dmJson().contains("qty"), "the YAML component imported its fields");
+        assertEquals(1, synthesized(r), () -> "the YAML boolean exclusiveMinimum still maps: " + r.report().dispositions());
+    }
+
+    @Test
     void explicitDiscriminatorDrivesTheUnionEnum() {
         // A discriminated union as a PROPERTY of an object component (a top-level union component would need a
         // type:object root, which the importer requires — SCHEMAKIT-GAPS-LEDGER).
