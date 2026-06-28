@@ -40,6 +40,7 @@ public final class JsonSchemaExporter {
         ObjectNode schema = exportGroup(groupPaths.get(0), ctx);   // root group → top-level object
         emitDefs(schema, ctx);
         Carriage.collect(parse(dmJson), doc.groupPaths(), schema, ctx.report());  // rules/computations → x-a12-* (Tier B/C)
+        TierAProjection.project(dmJson, schema, ctx.report());                    // recognized rules → native keywords (Tier A)
         return new ExportResult(toJson(schema), ctx.report().build());
     }
 
