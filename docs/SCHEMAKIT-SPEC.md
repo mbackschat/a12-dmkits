@@ -68,20 +68,49 @@ schemakit is **runtime-callable and wired into `dmtool` from day one** (proposal
 
 ---
 
-## 4. The mapping contract (summary — full inventory in the proposal)
+## 4. The mapping contract
 
-Three tiers, *project-or-carry* (proposal §6); the structural layer is the feasible ~90% (proposal §4); every transcode emits a **transcoding report** (proposal §9.1) so the lossiness is auditable, never silent.
+**Direction matters (owner decision, 2026-06-28).** **Import → DM aims for TOTAL coverage:** every JSON Schema feature lands in a12 **structure or rules** — directly, via a *composed* rule, or via a *customizable strategy* (§4b). Anything a12 genuinely cannot represent is **omitted, never refused** (§4a). **Export → JSON Schema stays best-effort:** native Tier-A keywords + `x-a12-*` carriage (the asymmetry the proposal describes is real only on export). Every transcode emits a **transcoding report** (proposal §9.1) so the mapping is auditable, never silent.
 
-| Layer | Rule |
+### Import targets — structure + rules
+
+| Layer | Mapping |
 |---|---|
-| **Structure** | `object`↔group, `array`-of-`object`↔repeatable group, scalar↔field-kind via the field-type matcher (proposal §5), `$defs`/`$ref`↔include (object `$def`) / typedef (leaf `$def`) (proposal §4.1) |
-| **Rules — Tier A** | a small native subset → `required`/`pattern`/`enum`/`minimum`/`maximum`/`if-then` |
-| **Rules — Tier A+** *(import, proposal §12.2)* | synthesize a12 rules from `dependentRequired`/`if-then`+`required` (conditional requiredness), `uniqueItems` (cross-row uniqueness), `minItems` (group-fill count), `oneOf`/`not`-of-`const` (mutual exclusion) |
-| **Rules — Tier B** | everything else → carry the rendered DSL in `x-a12-rule` (lossless a12↔a12) |
-| **Computations — Tier C** | `x-a12-computation` only (no JSON-Schema analog); `readOnly:true` projects the *fact* a field is computed |
-| **Two-tier validation** *(proposal §12.1)* | exported Tier-A keywords = the field-local tier (any JSON-Schema validator); `:interpreter` = the full-rule tier. `dmtool` wires both. |
+| **Structure** | `object`→group, `array`-of-`object`→repeatable group, scalar→field-kind (the field-type matcher, §4b), `$defs`/`$ref`→typedef (leaf) / include-or-inline (object) |
+| **Field config** | `minLength`/`maxLength`/`pattern`→string config; `minimum`/`maximum`→number bounds |
+| **Rules (direct)** | `required`→requiredness; `enum`→ENUMERATION; `uniqueItems`→`RepetitionNotUnique`/`FieldValuesNotUnique`; `pattern`→`PatternViolated` |
+| **Rules (composed)** | `exclusiveMinimum`/`exclusiveMaximum`→strict `<`/`>`; `multipleOf`→modulo `{[x]−RoundDown([x]/N,0)·N} ≠ 0`; `const`→`!=` / single-value enum; `minItems`→`NumberOfFilledGroups ≥ N`; `dependentRequired`/`if-then`→conditional requiredness; `contains`/`minContains`→`Having`+count; `not`/`oneOf`/`anyOf`-of-`const`→opposite ops / mutual exclusion |
+| **Carriage (export, a12↔a12)** | the full rule rides `x-a12-rule`, a computation `x-a12-computation`; `readOnly:true` marks a computed field |
+| **Two-tier validation** *(proposal §12.1)* | exported Tier-A keywords = field-local tier (any validator); `:interpreter` = full-rule tier |
 
-**Refusal, not silent degrade:** recursive `$ref` and (v1) arbitrary `allOf`/`anyOf`/`oneOf` composition are **refused with a corrective diagnostic** in the report — the gate-and-refuse discipline (proposal §4.1, CLI-SPEC §6).
+### 4a. Omit, never block (import)
+
+Import **never refuses or aborts.** A feature a12 can't represent is **OMITTED** (`TranscodeReport.Tier.OMITTED`): the element is skipped, the rest imports, and the report carries a **corrective TO-DO** (where + how to add it by hand). The result is always a usable, kernel-valid DM **skeleton** the author completes — the proposal's "import → skeleton an author enriches," made a hard rule. (This **supersedes** the proposal's gate-and-refuse framing *for import*; refuse-and-block would leave the user unable to proceed.)
+
+### 4b. Customizable import decisions — the `MappingProfile`
+
+The choice-driven decisions are pluggable strategies on a `MappingProfile` (a shipped default + per-decision overrides; CLI flags build one — proposal §5/§9). Defaults agreed 2026-06-28:
+
+| Decision | Default | Alternatives |
+|---|---|---|
+| number scale (no `multipleOf`) | omit + TO-DO | default-scale-`N` / treat-as-integer |
+| array of scalar | omit + TO-DO | multi-select group / value-list / 1-field repeatable group |
+| array, no `maxItems` | omit + TO-DO | default-cap-`N` |
+| `oneOf`/`anyOf` of **same-kind object** shapes | **superset of fields + discriminator rule** | first-variant / omit |
+| `additionalProperties`/`patternProperties` (a map) | **repeatable `{key, value}` group** | ignore-extras / omit |
+| `format` | `pattern` (where a standard regex exists) | custom-type / ignore |
+| boolean | BOOLEAN | CONFIRM |
+| enum labels | derive-from-value | `x-enumNames` / blank |
+| recursive `$ref` | omit + TO-DO | bounded `recursionDepth: N` |
+
+### 4c. The residual omissions (no faithful static a12 form — omitted, never block)
+
+Four cases have no static a12 representation even with a strategy; each is **omitted with a corrective TO-DO** (not refused — examples in the session log + below):
+
+1. **cross-kind type union** — `type:["string","object"]`, `oneOf` across *different kinds* (a field has one kind). *(nullable `type:[X,"null"]` → optional X, and same-kind object unions → §4b superset — both DO map.)*
+2. **`unevaluatedProperties`/`unevaluatedItems` with applicators** — dynamic, annotation-dependent closure. *(a plain closed object maps for free.)*
+3. **`$dynamicRef`/`$dynamicAnchor`** — runtime-polymorphic references.
+4. **unbounded recursive `$ref`** — omitted by default; opt-in bounded `recursionDepth: N` (§4b).
 
 ---
 
@@ -105,7 +134,7 @@ Built test-first, smallest increment first. Progress is git, not a status table 
 
 1. **Flat object** — `object` + string/integer/number/boolean properties + `required` → DM with fields + requiredness; export back; round-trip equal; kernel-accepts. *(the first increment)*
 2. **Nested + array-of-object** — groups + repeatable groups + `minItems`/`maxItems`.
-3. **`$defs`/`$ref` both kinds** — object `$def`→include/mount, leaf `$def`→typedef; recursive `$ref` **refused** with a diagnostic.
+3. **`$defs`/`$ref` both kinds** — object `$def`→include/mount, leaf `$def`→typedef; recursive `$ref` **omitted** with a corrective to-do.
 4. **Rule carriage** — Tier-A `if/then`+`required`; Tier-B cross-field/aggregate as `x-a12-rule`; a computation as `x-a12-computation`; meta-schema-valid; re-import reconstructs all three.
 5. **Tier A+ import & interpreter coupling** — synthesize rules from `dependentRequired`/`uniqueItems`; two-tier validation holds (proposal §12).
 
@@ -115,10 +144,9 @@ Success = all five succeed; the suite settles feasibility (proposal §11).
 
 ## 7. Open items
 
+The customizable strategies and the residual omissions are settled in §4b/§4c. What's still genuinely open:
+
 - **Module name** — `:schemakit` (consistent with rulekit/modelkit). Reconsider only if it confuses with the `schema` verb.
-- **Array-of-scalar default strategy** — multi-select group vs value-list (proposal §9).
-- **Number scale policy** *(found in shape 1)* — an a12 number always carries a **bounded max scale, default 0** (`DocumentModelDraft` emits `maxFractionalDigits`, defaulting null→0), so **scale 0 = integer** and there is no "unbounded decimal" number. JSON `integer` round-trips cleanly; JSON `number` has no faithful target without a scale signal. Shape 1 **reports** a bare `number` rather than silently mapping it to an integer; the field-type matcher (proposal §5) resolves it via `multipleOf`→scale + a default-scale policy.
 - **Target draft** — Draft 2020-12 canonical + Draft-07 read-compat (proposal §12/§13).
 - **`ExternalSchemaProfile` seam** — keep the core profile non-JSON-Schema-specific so OpenAPI/TS/SQL/Protobuf become later profiles (proposal §12.2 #4).
-- **Live Tier-2 in-spike (owner decision)** — running the interpreter as the real full-rule tier (not just demonstrating carriage + complementarity) needs the DM-JSON→`ModelDef` loader, which currently lives in **`:cli`** (`interp.InterpreterModelLoader`). Reuse-first forbids reimplementing it; depending on `:cli` from `:schemakit` is a backwards edge. **Decision to make:** move/expose the loader in `:interpreter` (so any consumer — schemakit, future libs — can load + evaluate), or leave live Tier-2 to the CLI. Shape 5 currently proves Tier-1 (stock validator) + that the cross-field rule is carried for Tier-2.
-- **Combinators `allOf`/`anyOf`/`oneOf`/`not` (owner decision)** — not yet translated; currently **reported as unsupported**, never silently mismapped (a property-level combinator → a diagnostic; a top-level one → refused). Designed treatment (proposal §6/§12.2/§13): `allOf` of object schemas → **merge** (intersection = union of properties + required); `oneOf`/`anyOf`/`not` of `const` → **Tier A+ synthesis** (enum / mutual-exclusion rule); arbitrary `anyOf`/`oneOf`/`not` of object schemas → **refuse** (a12 has no structural union type). Which of these to build is a per-case call.
+- **Live Tier-2 in-spike (owner decision)** — running the interpreter as the real full-rule tier (not just demonstrating carriage + complementarity) needs the DM-JSON→`ModelDef` loader, which currently lives in **`:cli`** (`interp.InterpreterModelLoader`). Reuse-first forbids reimplementing it; depending on `:cli` from `:schemakit` is a backwards edge. **Decision to make:** move/expose the loader in `:interpreter` (so any consumer can load + evaluate), or leave live Tier-2 to the CLI. Shape 5 currently proves Tier-1 (stock validator) + that the cross-field rule is carried for Tier-2.
