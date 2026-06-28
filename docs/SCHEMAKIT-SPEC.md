@@ -6,31 +6,34 @@ The buildable contract for `:schemakit`, the JSON-Schema import/export subprojec
 
 ---
 
-## 1. The one non-negotiable: depend on the kernel only through `kernel-md-facade`
+## 1. The dependency boundary: reach the kernel only through the project's own modules
 
-**`:schemakit`'s import/export MUST NOT depend on the A12 kernel beyond the public `kernel-md-facade` API** (owner constraint, 2026-06-28). This is the same boundary the core library already holds (the D15/N8 *public-kernel-only* invariant, [ARCHITECTURE.md](ARCHITECTURE.md) §1/§4) — schemakit inherits it by construction:
+**`:schemakit` must not link the *raw* A12 kernel jars directly, and its own source must not import kernel types (`com.mgmtp.*`)** (owner constraint, 2026-06-28; refined 2026-06-28 — `:adapter` *is* permitted). It reaches the kernel only through the project's own, **mediated** modules — never past them to the raw internal kernel tier. This is the project's standing kernel-coupling discipline (the D15/N8 boundary, [ARCHITECTURE.md](ARCHITECTURE.md) §1/§4).
 
 ```
-   :schemakit  ──implementation──▶  root ` : `  ──api──▶  kernel-md-facade   (PUBLIC: expand/check/serialize)
-        │                            (dm.core · modelkit · rulekit)
-        │
-        ├──(joins at Tier-A projection / shape 5)──▶  :interpreter   (kernel-FREE; KMP jvm)
-        │
-        └──✗ NEVER  :adapter · kernel-md-model · kernel-md-a12internal · parsetree-api · tool-api
+   :schemakit ──▶ root ` : `   ──api──▶ kernel-md-facade        (PUBLIC: expand/check/serialize)
+        │          (dm.core · modelkit · rulekit)
+        ├────────▶ :adapter     ──▶ kernel internal-read tier   (MEDIATED: converts to dmkits types
+        │          (KernelAdapter.read → ReadResult/Condition)   at the N8 boundary — no raw kernel leaks)
+        └────────▶ :interpreter                                  (kernel-FREE; native-safe; KMP jvm/js)
+
+   ✗ schemakit never declares a DIRECT dep on the raw kernel jars, nor imports com.mgmtp.* in its own source.
 ```
 
-| Allowed | Forbidden |
+| schemakit may depend on | … and use |
 |---|---|
-| root `:` (modelkit `DocumentModelDraft`/`ModelDocument`, rulekit `Dsl`/`DslRenderer`/`RuleValidator`, `dm.core` `ModelLoader`) | `:adapter` (the internal-read tier) |
-| `kernel-md-facade` **transitively**, via root `:` (the kernel-accept gate `ModelLoader.loadSelfContained` rides it) | `kernel-md-model`, `kernel-md-a12internal`, `parsetree-api`, `tool-api`, `groovy.*` |
-| `:interpreter` (kernel-free, native-safe) for condition parsing + the two-tier coupling | constructing or reading kernel AST directly |
+| root `:` | modelkit (`DocumentModelDraft`/`ModelDocument`), rulekit (`Dsl`/`DslRenderer`/`RuleValidator`), `dm.core` (`ModelLoader` — the kernel-accept gate); the kernel only via `kernel-md-facade`, transitively |
+| **`:adapter`** | the project's **mediated** internal-read boundary (N8): it reads the kernel's internal APIs but **converts every kernel type to a dmkits type at the boundary** — schemakit sees `ReadResult`/`Condition`/records, never a raw `ICondition`. The clean path for reading a stored rule typed-ly (Tier-A projection) |
+| `:interpreter` | kernel-free, native-safe — evaluation (the two-tier coupling, §6 shape 5) + the clean-room DSL parser |
 
-**Why it's a hard rule, not a preference** — the same three reasons the interpreter is clean-room (INTERPRETER-SPEC §B): **license** (the internal kernel tier is EUPL-1.2 copyleft; the facade is the public consumer surface), **native-safety** (schemakit ships in the `dmtool` native binary — §3 — and the internal tier's Groovy can't go native), and **portability** (a future extraction to `a12-dm-json-schema` stays a lift, not a rewrite).
+| schemakit must NOT |
+|---|
+| declare a **direct** dependency on the raw internal kernel jars (`kernel-md-model`, `kernel-md-a12internal`, `parsetree-api`, `tool-api`) |
+| import `com.mgmtp.*` / `groovy.*` in its **own source** — it uses dmkits types only ("data out, never kernel objects") |
 
-**How it's enforced** — two guards, mirroring the interpreter's `verifyInterpreterPurity`:
+**Why** — the kernel is reached through controlled, **type-converting** surfaces so no raw kernel object ever leaks into schemakit, keeping its out-surface plain data and the module portable. *Native-safety note:* `:adapter` is JVM (bundled inside the native binary like the CLI; its Groovy/runtime-eval is JVM-only / refused in native), so a future kernel-free native/JS build leans on root `:` + `:interpreter` and avoids `:adapter`; `:adapter` is used where the typed kernel read is the cleaner path.
 
-1. **By construction:** schemakit's `build.gradle` declares no internal kernel jar and no `:adapter`. The internal tier is simply not on its classpath, so a forbidden call cannot compile.
-2. **By lint:** `verifySchemakitPurity` (wired into `check`) fails the build on a `com.mgmtp.*` or `groovy.*` import in `src/main` — schemakit's own source stays free of kernel types and emits plain data (the "data out, never kernel objects" invariant). The facade is reached *only* transitively through root `:`.
+**How it's enforced** — `verifySchemakitPurity` (wired into `check`, mirroring the interpreter's purity lint) fails the build on a `com.mgmtp.*` / `groovy.*` import in `src/main`, so schemakit's source stays free of raw kernel types regardless of which modules sit on its classpath.
 
 ---
 
@@ -40,13 +43,15 @@ The buildable contract for `:schemakit`, the JSON-Schema import/export subprojec
 |---|---|
 | Gradle unit | `:schemakit` — a JVM/Java module (`java-library`, JDK 21) |
 | Multiplatform? | **No.** JVM/Java only; native-safe via GraalVM ≠ Kotlin Multiplatform (proposal §10). No KMP, no JS. |
-| Depends on | `implementation project(':')` (the engine) · Jackson (JSON Schema parse/emit) · **later** `implementation project(':interpreter')` |
+| Depends on | `implementation project(':')` (the engine) · Jackson (JSON Schema parse/emit) · — and, as shapes need them — `:adapter` (typed rule read for Tier-A projection) + `:interpreter` (evaluation, two-tier) |
 | Package | `io.github.mbackschat.a12.dm.schemakit` — spike work under **`…schemakit.spike`** until promoted |
 | Extraction | spike in-repo under `.spike`; extract to `a12-dm-json-schema` before promotion (the interpreter discipline) |
 
 The transcoder operates through dmkits' typed surface (the dogfood rule): **import** builds via modelkit `DocumentModelDraft` and synthesizes rules via the rulekit `Dsl` builder + `DslRenderer`; **export** reads via modelkit `ModelDocument` (kernel-free) and the rulekit AST. The structural validity oracle is the kernel itself, reached only through `ModelLoader` (facade).
 
 The `a12-kernel-mm` metamodels (`MM_Field_1`/`MM_Rule_1`/`MM_Group_1`/`MM_Computation_1`/`CT_MODEL_HEADER_1`, the source-of-truth for valid DM structure) are a **read-only structural oracle** for the mapping — consult them when a config key or slot is in question; never a dependency.
+
+**Reuse-first — do not rebuild what already exists (owner directive, 2026-06-28).** Before writing any capability in schemakit, check whether it is already available in the project (root `:` — modelkit/rulekit/`dm.core`; `:adapter` — typed kernel read/`whereUsed`/diff/rewrite; `:interpreter` — parse/evaluate) and **reuse it**. The only genuinely new code schemakit should carry is the irreducibly JSON-Schema-specific glue (the mapping/profile, the `$ref` resolver, the report). When a needed capability seems to be missing — or duplicates something that exists — **surface it to the owner and let them decide case by case**; do not silently reimplement. This is the dogfood mantra (CLAUDE.md) applied with an explicit stop-and-ask.
 
 ---
 
@@ -82,7 +87,7 @@ Three tiers, *project-or-carry* (proposal §6); the structural layer is the feas
 
 ## 5. Verification gates
 
-The differential is **round-trip + kernel-accept**, all through the public facade (no `:adapter`):
+The differential is **round-trip + kernel-accept** (the kernel-accept gate rides the public facade via `ModelLoader`):
 
 1. **Kernel-accept** — every imported model loads clean: `ModelLoader.loadSelfContained` does not throw `ModelConsistencyException`.
 2. **Round-trip** — `import(schema) → DM → export → schema'` is structurally equal on `{type, properties, required, $defs}`; and `DM → export → import → DM'` preserves structure + (a12↔a12) rules/computations via `x-a12-*`.
@@ -90,7 +95,7 @@ The differential is **round-trip + kernel-accept**, all through the public facad
 4. **Report accuracy** — the transcoding report states every disposition; it is asserted against (it doubles as the spike's evidence, proposal §11).
 5. **Two-tier** *(shape 5)* — exported Tier-A keywords feed a stock validator while `interpreter.validateFull` enforces the full rule set on the same instance.
 
-Tests live in `:schemakit:test` (public-facade kernel-accept needs no `:adapter`). A kernel *runtime* differential, if ever needed for the two-tier demo, would go in `:adapter` (which has the kernel) — never pulling the kernel into `:schemakit`.
+Tests live in `:schemakit:test`; the kernel-accept gate uses only the public facade (`ModelLoader`), so the structural shapes need no `:adapter` on the test classpath. Tier-A projection and the two-tier shape pull in `:adapter`/`:interpreter` as those increments land.
 
 ---
 

@@ -12,7 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Spike shape 1 (SCHEMAKIT-SPEC §6): a flat top-level object round-trips, and every imported model is
- * kernel-accepted — through the PUBLIC facade only, the dependency boundary this subproject honors (§1).
+ * kernel-accepted — the accept gate rides the public facade (`ModelLoader`), so the structural shapes need
+ * no internal tier (the dependency boundary is SCHEMAKIT-SPEC §1).
  */
 class JsonSchemaSpikeTest {
 

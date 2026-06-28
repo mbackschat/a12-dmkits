@@ -23,7 +23,7 @@ final class SchemaTestSupport {
 
     private SchemaTestSupport() {}
 
-    /** Assert the kernel accepts a DM-JSON model — through the PUBLIC facade only ({@link ModelLoader}; no :adapter). */
+    /** Assert the kernel accepts a DM-JSON model — via the public facade ({@link ModelLoader}, the dm.core gate). */
     static void assertKernelAccepts(String dmJson) {
         try {
             ModelLoader.loadSelfContained(new StringReader(dmJson));
