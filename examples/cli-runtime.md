@@ -24,103 +24,26 @@ cat /tmp/rt-order-violation.json
 
 ## model eval — which rules fire?
 
-`model eval` runs the engine over the instance and reports, under `data.fired`, the **error codes of every rule that fired** (a rule *fires* when its violation condition evaluates true on this data). `--rule <path>` narrows the report to one stored rule and adds a `data.rule.{name,fired}` verdict for it. The flags come from the CLI itself — no external doc needed.
+`model eval` runs the engine over the instance and reports, under `data.fired`, the **error codes of every rule that fired** (a rule *fires* when its violation condition evaluates true on this data). `--rule <path>` narrows the report to one stored rule and adds a `data.rule.{name,fired}` verdict for it. Discover its directional **I/O contract** from the CLI itself with `schema model eval` — what it consumes (a document instance) and the `EvalDocResult` it returns. (We show `schema`, not `--help`, on purpose: the I/O contract is **identical on the JVM and native builds**, whereas the flag list differs — `--kernel` is JVM-only and absent from the native binary.)
 
 ```bash
-dmtool -m examples/models/order-ruled.dm.json model eval --help
+dmtool schema model eval \
+  | jq '{op, returns, consumes: .docInput.title, dataPayload: .dataSchema.title, dataKeys: (.dataSchema.properties|keys)}'
 ```
 
 ```output
-Usage: dmtool model eval [-hV] [--kernel] [--no-computations] [--strict-custom]
-                         [--text] [--code=<errorCode>] [--condition=<DSL>]
-                         [--custom-conditions-js=<dir>]
-                         [--custom-field-types-js=<dir>]
-                         [--field=<fieldPathInModel>]
-                         [--group=<groupPathInModel>] --instance=<document.
-                         json> [--locale=<locale>] [-m=<model.json>]
-                         [--name=<name>] [--predefined-types=<file>]
-                         [--rule=<rulePathInModel>] [--severity=ERROR|WARNING]
-                         [-w=<dir>]...
-Evaluate a document INSTANCE: report which rules fire in `data` (runtime;
-applies computations first by default — the form-engine flow — unless
---no-computations).
-      --code=<errorCode>     the candidate rule's error code (default: EVAL_DOC)
-      --condition=<DSL>      evaluate a CANDIDATE rule (with --field): a
-                               condition true on a VIOLATION; injected, not
-                               persisted
-      --custom-conditions-js=<dir>
-                             a directory of project JS custom-condition impls
-                               (<Name>.js, exporting check(data,
-                               relevantEntities, formallyIncorrectFields,
-                               errorField)); run via a persistent Node worker
-                               so a model's imperative CustomConditions
-                               evaluate. Needs `node`; if absent, the condition
-                               stays unsupported. Interpreter-only.
-      --custom-field-types-js=<dir>
-                             a directory of project JS custom-field-type impls
-                               (<Name>.js, exporting validate(value)); run via
-                               the same Node worker so an imperative custom
-                               field type (a checksum) validates instead of
-                               being reported unsupported. Needs `node`; if
-                               absent, the cell stays unsupported.
-                               Interpreter-only.
-      --field=<fieldPathInModel>
-                             the candidate rule's error field as a path INSIDE
-                               the model (with --condition)
-      --group=<groupPathInModel>
-                             the candidate rule's iteration scope (group path);
-                               defaults to the field's parent
-  -h, --help                 Show this help message and exit.
-      --instance=<document.json>
-                             the document INSTANCE (field data) — a nested JSON
-                               tree under "fields". See `schema model eval`.
-      --kernel               use the A12 kernel engine instead of the default
-                               interpreter (JVM only; not available in the
-                               native image, where the interpreter is the only
-                               engine)
-      --locale=<locale>      the evaluation locale (default: en_US)
-  -m, --model=<model.json>   the DM-JSON model file to operate on (set once;
-                               accepted before or after the verb)
-      --name=<name>          the candidate rule's name (default:
-                               EvalDocCandidate)
-      --no-computations      validate the document's STORED values as-is (the
-                               kernel's bare validateFull). By DEFAULT, eval
-                               first runs the model's computations and applies
-                               their values (the form-engine flow), so a
-                               required-or-referenced COMPUTED field is filled
-                               before validation — matching the running app.
-                               Use this to validate stored values directly, e.
-                               g. to check a computed field's stored value
-                               against its computation. Computations are
-                               reported separately by `model compute`.
-      --predefined-types=<file>
-                             a declarative custom-field-type registry (JSON: {
-                               "<TypeName>": { minLength?, maxLength?, pattern?
-                               } }), merged over the built-ins; lets a
-                               format-constraint custom type validate instead
-                               of being reported unsupported. Interpreter-only.
-      --rule=<rulePathInModel>
-                             narrow the report to an EXISTING rule (its full
-                               slash-path)
-      --severity=ERROR|WARNING
-                             the candidate rule's severity (default: ERROR)
-      --strict-custom        fail (exit 2) instead of degrading when the engine
-                               can't evaluate a custom construct (a custom
-                               field type with no --predefined-types entry, or
-                               a CustomCondition with no impl) — kernel
-                               fidelity over test-run-ability. Interpreter-only.
-      --text                 render the result envelope as human-readable text
-                               instead of JSON (JSON is the default and the
-                               machine contract). Catalogs
-                               (operators/manifest/…) stay JSON.
-  -V, --version              Print version information and exit.
-  -w, --workspace=<dir>      the workspace root(s): directory tree(s) to
-                               resolve a model's included / type-def-imported
-                               models from (repeatable), set once for every
-                               verb so multi-file models resolve with no
-                               per-verb flag. Env DMTOOL_WORKSPACE is the
-                               set-once-per-session fallback; default is the
-                               model's own folder.
+{
+  "op": "model eval",
+  "returns": "result",
+  "consumes": "DocumentInstance",
+  "dataPayload": "EvalDocResult",
+  "dataKeys": [
+    "fired",
+    "messages",
+    "rule",
+    "unsupported"
+  ]
+}
 ```
 
 Evaluate the violation instance, narrowed to the date rule:
@@ -320,42 +243,26 @@ dmtool -m examples/models/order-ruled.dm.json \
 
 ## model compute — what does a computed field evaluate to?
 
-`model compute` is the other runtime read: it runs the model's **computations** over the instance and returns each computed field's **value** under `data.computed`. We switch to the `subscription-computed` model, whose `EffectiveFeeComp` computes `/Subscription/Billing/EffectiveFee` as simply `[BaseFee]` — the effective fee equals the base fee. Give it a base fee and read back the result.
+`model compute` is the other runtime read: it runs the model's **computations** over the instance and returns each computed field's **value** under `data.computed`. Its I/O contract — same build-stable `schema` (not `--help`) as `model eval` above:
 
 ```bash
-dmtool -m examples/models/subscription-computed.dm.json model compute --help
+dmtool schema model compute \
+  | jq '{op, returns, consumes: .docInput.title, dataPayload: .dataSchema.title, dataKeys: (.dataSchema.properties|keys)}'
 ```
 
 ```output
-Usage: dmtool model compute [-hV] [--kernel] [--text] --instance=<document.
-                            json> [--locale=<locale>] [-m=<model.json>]
-                            [-w=<dir>]...
-Run computations over a document INSTANCE; report each computed field's value
-in `data` (read-only).
-  -h, --help                 Show this help message and exit.
-      --instance=<document.json>
-                             the document INSTANCE (field data) — a nested JSON
-                               tree under "fields". See `schema model compute`.
-      --kernel               use the A12 kernel engine instead of the default
-                               interpreter (JVM only; not available in the
-                               native image, where the interpreter is the only
-                               engine)
-      --locale=<locale>      the computation locale (default: en_US)
-  -m, --model=<model.json>   the DM-JSON model file to operate on (set once;
-                               accepted before or after the verb)
-      --text                 render the result envelope as human-readable text
-                               instead of JSON (JSON is the default and the
-                               machine contract). Catalogs
-                               (operators/manifest/…) stay JSON.
-  -V, --version              Print version information and exit.
-  -w, --workspace=<dir>      the workspace root(s): directory tree(s) to
-                               resolve a model's included / type-def-imported
-                               models from (repeatable), set once for every
-                               verb so multi-file models resolve with no
-                               per-verb flag. Env DMTOOL_WORKSPACE is the
-                               set-once-per-session fallback; default is the
-                               model's own folder.
+{
+  "op": "model compute",
+  "returns": "result",
+  "consumes": "DocumentInstance",
+  "dataPayload": "ComputeDocResult",
+  "dataKeys": [
+    "computed"
+  ]
+}
 ```
+
+We switch to the `subscription-computed` model, whose `EffectiveFeeComp` computes `/Subscription/Billing/EffectiveFee` as simply `[BaseFee]` — the effective fee equals the base fee. Give it a base fee and read back the result.
 
 ```bash
 cat > /tmp/rt-sub-filled.json <<'JSON'

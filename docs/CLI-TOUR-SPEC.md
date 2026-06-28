@@ -63,8 +63,11 @@ Demos call the CLI through [`../bin/dmtool`](../bin/dmtool), never a packaging a
 | absolute paths (`export --out-dir`) | pipe through `sed 's#/Users/[^"]*/#<repo>/#g'` |
 | German kernel messages (a failing model) | prefix `LANG=en_US.UTF-8` |
 | field/array ordering, extra keys | project with `jq` (as the model section does) |
+| a runtime verb's `--help` (build-divergent) | capture **`schema <verb>`**, not `--help` |
 
 A fork of showboat to add a redaction hook is the wrong bet — in-band scrubbing covers every case and issue #13 shows upstream prefers the deterministic-output route.
+
+**Runtime-verb `--help` is NOT build-stable — capture `schema`, not `--help` (2026-06-28).** A demo verified on **both** the JVM (`verify-demos.sh` / CI) and the native binary (`native-gate.sh`) must produce byte-identical output on both — and `model eval` / `model compute` / `rule eval` `--help` does **not**: the native build removes the JVM-only `--kernel` option (`Cli.NATIVE_REMOVED_OPTIONS`, enforced by `NativeImageRuntimeVerbsTest`), and picocli then **re-wraps the Usage synopsis** around the smaller option set — so both the synopsis line-breaks and the option list differ JVM↔native, and no after-the-fact scrub reproduces the wrap. The fix is to show the verb's **directional I/O contract** — `schema <verb>` (`{op, returns, docInput, dataSchema}`), which is byte-identical on both builds because it describes I/O, not CLI flags — and tell the `--kernel` story in prose. `cli-runtime.md` does this (it captures `schema model eval`/`schema model compute`); a future runtime-verb demo must too.
 
 ## Expanding this approach (backlog)
 
