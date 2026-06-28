@@ -21,6 +21,7 @@ import io.github.mbackschat.a12.dm.rulekit.validate.DraftComputation;
 import io.github.mbackschat.a12.dm.rulekit.validate.RkCode;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
+import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
@@ -36,8 +37,13 @@ final class ComputationReadCommand extends BaseCommand {
 
     @Parameters(index = "0", arity = "0..1", paramLabel = "<computationPathInModel>",
             description = "the computation's full name — its slash-path in the model, e.g. /Order/TotalComp; "
-                    + "omit to list every computation's full name")
+                    + "omit to list every computation's full name (or address it with --computation)")
     String computation;
+
+    @Option(names = "--computation", paramLabel = "<computationPathInModel>",
+            description = "the computation's full name — the named-flag alias for the positional (the locator "
+                    + "contract: the target-noun flag always works). The positional wins if both are given.")
+    String computationFlag;
 
     @Mixin
     WorkspaceOption workspace = new WorkspaceOption();
@@ -47,6 +53,9 @@ final class ComputationReadCommand extends BaseCommand {
         String model = model();
         if (model == null) {
             return fail("pass -m <model.json> (before or after the verb)");
+        }
+        if (computation == null) {   // locator contract: --computation is the named alias for the positional
+            computation = computationFlag;
         }
         String json;
         try {

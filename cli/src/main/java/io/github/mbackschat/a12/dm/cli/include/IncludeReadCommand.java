@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import io.github.mbackschat.a12.dm.modelkit.ModelDocument;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
@@ -29,14 +30,23 @@ final class IncludeReadCommand extends BaseCommand {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Parameters(index = "0", arity = "0..1", paramLabel = "<alias>",
-            description = "an include's alias to read just that one; omit to list every declared include")
+            description = "an include's alias to read just that one; omit to list every declared include "
+                    + "(or address it with --include / --alias)")
     String alias;
+
+    @Option(names = {"--include", "--alias"}, paramLabel = "<alias>",
+            description = "the include's alias — the named-flag alias for the positional (the locator contract: "
+                    + "the target-noun flag always works). The positional wins if both are given.")
+    String aliasFlag;
 
     @Override
     public Integer call() {
         String model = model();
         if (model == null) {
             return fail("pass -m <model.json> (before or after the verb)");
+        }
+        if (alias == null) {   // locator contract: --include/--alias is the named alias for the positional
+            alias = aliasFlag;
         }
         String json;
         try {

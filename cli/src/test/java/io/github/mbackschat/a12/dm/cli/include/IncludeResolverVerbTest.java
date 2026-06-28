@@ -61,6 +61,18 @@ class IncludeResolverVerbTest {
     }
 
     @Test
+    void includeReadAcceptsTheIncludeFlag(@TempDir Path dir) throws Exception {
+        // The locator contract for the workspace-resolved include verb (LocatorContractTest's sibling): the
+        // include is addressed by its alias positionally OR via --include/--alias, resolving identically.
+        Path m = workspace(dir);
+        CliTestSupport.Result pos = CliTestSupport.run("-m", m.toString(), "include", "read", "pricelist");
+        CliTestSupport.Result flag = CliTestSupport.run("-m", m.toString(), "include", "read", "--include", "pricelist");
+        assertEquals(0, pos.code(), pos::err);
+        assertEquals(0, flag.code(), flag::err);
+        assertEquals(pos.out(), flag.out(), "include read --include resolves identically to the positional");
+    }
+
+    @Test
     void validateResolvesASiblingIncludeByDefault(@TempDir Path dir) throws Exception {
         var res = CliTestSupport.run("-m", workspace(dir).toString(), "model", "check");
         assertEquals(0, res.code(), () -> "the multi-file model should validate: " + res.err() + res.out());

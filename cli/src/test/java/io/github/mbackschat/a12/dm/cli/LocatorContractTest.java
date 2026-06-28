@@ -44,6 +44,12 @@ class LocatorContractTest {
     }
 
     @Test
+    void computationReadAcceptsTheComputationFlag(@TempDir Path dir) throws Exception {
+        sameAsPositional(CliTestSupport.subscriptionComputed(dir), "computation", "read",
+                "/Subscription/Billing/EffectiveFeeComp", "--computation");
+    }
+
+    @Test
     void typedefReadAcceptsTheTypedefAndIdFlags(@TempDir Path dir) throws Exception {
         Path m = CliTestSupport.typedefs(dir);
         sameAsPositional(m, "typedef", "read", "PostalCodeType", "--typedef");
