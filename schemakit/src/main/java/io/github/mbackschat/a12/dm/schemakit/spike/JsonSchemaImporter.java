@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.schemakit.spike;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.modelkit.DocumentModelDraft;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.Requiredness;
@@ -50,7 +51,14 @@ public final class JsonSchemaImporter {
                 .locale(LOCALE);
         declareLeafTypedefs(b, ctx);
         b.rootGroup(ROOT_GROUP, g -> populate(g, root, "/" + ROOT_GROUP, ctx));
-        return new ImportResult(b.build().toJson(), ctx.report().build());
+
+        String dmJson = b.build().toJson();
+        if (root.has(Carriage.X_RULE) || root.has(Carriage.X_COMPUTATION)) {
+            ObjectNode tree = (ObjectNode) parse(dmJson);     // restore carried rules/computations (Tier B/C)
+            Carriage.inject(tree, root, ctx.report());
+            dmJson = tree.toString();
+        }
+        return new ImportResult(dmJson, ctx.report().build());
     }
 
     /** A leaf {@code $def} (string/integer) becomes a reusable a12 typeDefinition, declared before the root group. */

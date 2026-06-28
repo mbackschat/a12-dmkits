@@ -39,6 +39,7 @@ public final class JsonSchemaExporter {
         Ctx ctx = new Ctx(doc, fieldTypedefMap(doc), new TreeSet<>(), TranscodeReport.builder());
         ObjectNode schema = exportGroup(groupPaths.get(0), ctx);   // root group → top-level object
         emitDefs(schema, ctx);
+        Carriage.collect(parse(dmJson), schema, ctx.report());     // rules/computations → x-a12-* (Tier B/C)
         return new ExportResult(toJson(schema), ctx.report().build());
     }
 
@@ -157,6 +158,14 @@ public final class JsonSchemaExporter {
 
     private static String lastSegment(String path) {
         return path.substring(path.lastIndexOf('/') + 1);
+    }
+
+    private static JsonNode parse(String dmJson) {
+        try {
+            return JSON.readTree(dmJson);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("not valid DM-JSON: " + e.getMessage(), e);
+        }
     }
 
     private static String toJson(JsonNode node) {
