@@ -1,6 +1,6 @@
 # JSON Schema ⇄ Document Model — feasibility proposal
 
-**Status: research / proposal. Nothing is built. No module exists yet.** This doc assesses whether a JSON-Schema import/export capability for a12 Document Models (structure **and** rules) is feasible, and if so, what shape it should take — as an **isolated subproject**, mirroring how `:interpreter` was built ([INTERPRETER-SPEC.md](INTERPRETER-SPEC.md) — spike-in-repo, then extract; §8/§10).
+**Status: research / proposal. Nothing is built. No module exists yet.** This doc assesses whether a JSON-Schema import/export capability for a12 Document Models (structure **and** rules) is feasible, and if so, what shape it should take — as an **isolated subproject**, mirroring how `:interpreter` was built ([INTERPRETER-SPEC.md](INTERPRETER-SPEC.md) — spike-in-repo, then extract; §8/§10). Two design decisions are folded in (2026-06-28): it ships **JVM/Java, runtime-callable, in `dmtool` and the native binary** (not a design-time-only tool, and **not** multiplatform), and it is **coupled to the interpreter** for two-tier validation — see §10 and §12.
 
 It is written to be read top-to-bottom, but §2 is the headline: the feasibility answer is **asymmetric**, and that asymmetry drives every other decision.
 
@@ -205,7 +205,7 @@ Two legitimate goals pull the design in opposite directions:
 | Honest critique | rules — our crown jewel — mostly *don't cross* | "then why not just use DM-JSON, which already round-trips losslessly?" |
 | Highest value | **import**: foreign schema → DM skeleton an author then enriches | niche; DM-JSON already does lossless a12↔a12 |
 
-**Recommendation.** Lead with **Goal I, import-first.** The defensible, high-value capability is: *import a foreign JSON Schema → a clean DM **skeleton** (structure + Tier-A constraints + includes/typedefs), which an author then enriches with the rules/computations JSON Schema could never carry.* Export is the natural mirror and worth shipping, but be explicit that **export-to-foreign is structure + best-effort constraints**, and that full fidelity is a *byproduct* of `x-a12` carriage, not the selling point — because for pure a12↔a12 round-tripping, DM-JSON is already the better container. Treat "JSON Schema as a12's serialization format" as a **non-goal** (§13).
+**Recommendation.** Lead with **Goal I, import-first.** The defensible, high-value capability is: *import a foreign JSON Schema → a clean DM **skeleton** (structure + Tier-A constraints + includes/typedefs), which an author then enriches with the rules/computations JSON Schema could never carry.* Export is the natural mirror and worth shipping, but be explicit that **export-to-foreign is structure + best-effort constraints**, and that full fidelity is a *byproduct* of `x-a12` carriage, not the selling point — because for pure a12↔a12 round-tripping, DM-JSON is already the better container. Treat "JSON Schema as a12's serialization format" as a **non-goal** (§14). One caveat that raises export above mere documentation: once schemakit is runtime-coupled to the interpreter, the exported Tier-A keywords become the *field-local tier* of a real two-tier validation story (a ubiquitous foreign/edge validator does instant field checks; the interpreter does the full cross-field/aggregate/date rules) — see §12.
 
 ## 9. Mapping strategy architecture
 
@@ -241,19 +241,23 @@ What it records:
 
 Design notes: the report is **first-class output, not logging** — returned as a value (and writable to a file), so it's testable; the JSON form is the **CI contract** (a round-trip spike asserts against it); and on **import**, refusals (recursive `$ref`) appear here *and* block, consistent with the gate-and-refuse discipline (§4.1). It also doubles as the spike's own evidence (§11): a report that accurately states every disposition *is* the proof the framework works.
 
-## 10. Subproject shape (mirroring the interpreter spike — but simpler)
+## 10. Subproject shape & runtime stance (decided: ship JVM/Java, native-safe, in dmtool)
+
+The original draft scoped this as a JVM-only *design-time* tool kept out of the native binary. **That is reversed.** The decision (2026-06-28) is to give it the same reach as the interpreter — **callable at runtime and wired into `dmtool`, present in the native image** — but **without** going Kotlin Multiplatform: there is no JS/TS consumer to justify the KMP tax, so it stays **JVM/Java**. The distinction the first draft blurred: **native-safe ≠ multiplatform.** The interpreter is both; schemakit only needs the former, and it gets it for free.
 
 | Aspect | `:interpreter` | proposed `:schemakit` (working name) |
 |---|---|---|
-| Nature | runtime *evaluator* | design-time *transcoder* |
-| Multiplatform? | **yes** (KMP + Node — JS evaluation) | **no** — JVM-only build/design-time tool. **This is a big simplification: no KMP, no Node, no `expect/actual`.** |
+| Nature | runtime *evaluator* | *transcoder* — runtime-callable library **and** `dmtool` verbs (not design-time-only) |
+| Multiplatform? | **yes** (KMP + JS) | **no — JVM/Java only, by decision.** No JS/TS consumer needs it; skip KMP/Node/`expect-actual` entirely |
+| Native image | native-safe, in eval | **native-safe and in the native binary from day one.** Its deps — modelkit, rulekit, a JSON parser — are already kernel-free and already run in the native binary (they power `model new`/`rule add`/`apply`), so GraalVM-native is by construction, no new wall |
 | Kernel dep | kernel-free (purity lint) | depends on **`:` core** (modelkit `DocumentModelDraft` to build models; rulekit to parse/render rule DSL). Kernel only in **test scope** via `:adapter` |
 | Verification oracle | `RuntimeLaws` differential vs kernel | **round-trip + kernel-accept**: import schema → DM → `RuleValidator`/`checkConsistency` accepts → export → re-import → assert structural equality; and DM fixture → export → validate against a JSON-Schema meta-schema → re-import → assert equality |
 | Extraction trigger | before shipping / native-eval wiring | same discipline: spike in-repo under a `.spike` package; extract to `a12-dm-json-schema` before promotion |
 | CLI surface | runtime verbs | a verb family — **naming caveat:** `dmtool schema` is already taken (publishes verb I/O schemas). Use e.g. `dmtool model import-jsonschema` / `export-jsonschema`, **not** `dmtool schema` |
-| Native image | native-safe, in eval | design-time; keep **out** of the native binary/eval until promoted |
 
-Because it's JVM-only and leans on existing modelkit/rulekit, **the engineering cost is materially lower than the interpreter spike** — no multiplatform toolchain, and the hard rule machinery (parse/render DSL) already exists and is reused, not rebuilt.
+Because it's JVM/Java and leans on existing modelkit/rulekit, **the engineering cost stays materially lower than the interpreter spike** — no multiplatform toolchain, and the hard rule machinery (parse/render DSL) already exists and is reused, not rebuilt.
+
+**Why JVM/Java is the destination, not a waypoint.** A natural staging is "ship the JVM+native+`dmtool` tool now, go multiplatform later." With no JS/TS need, the JVM tool *is* the destination — the only thing a multiplatform build adds is Kotlin/JS and the in-browser two-tier validation it would unlock (§12.1), which is exactly what's not needed. Building toward an unused multiplatform target would be speculative. Cheap insurance only: keep the core value objects (`MappingProfile`, the transcoding-report model) free of JVM-only luxuries, so that *if* a browser consumer ever appears the port — reusing the interpreter's `commonMain` DM-JSON loader + DSL parser — is a lift, not a rewrite. Don't pay for it now.
 
 ## 11. The spike (de-risking first step)
 
@@ -263,29 +267,67 @@ Prove the asymmetry-handling end-to-end on **four shapes**, import **and** expor
 2. **Nested + array-of-object** — exercises groups + repeatable groups + `minItems`/`maxItems`.
 3. **`$defs`/`$ref` both kinds** — one object `$def` (→ include/mount) and one leaf `$def` (→ typedef); proves §4.1 both ways; and a recursive `$ref` that the importer **refuses** with a diagnostic.
 4. **Rule carriage** — an a12 fixture with (a) a Tier-A conditional-requiredness rule and (b) a Tier-B cross-field/aggregate rule and (c) a computation → export → confirm (a) appears as native `if/then`+`required`, (b)/(c) appear as `x-a12-*`, the schema validates against the JSON-Schema meta-schema, and re-import reconstructs all three exactly.
+5. **Tier A+ import & interpreter coupling** *(the §12 power check)* — import a schema with `dependentRequired` (or `if-then`+`required`) and `uniqueItems` on an array-of-object → confirm the importer **synthesizes a12 rules** (conditional requiredness + cross-row uniqueness), not just field config; then export a DM and confirm the Tier-A keywords feed a stock JSON-Schema validator while `interpreter.validateFull` enforces the full rule set on the same instance.
 
-Success = all four round-trip, the kernel accepts every imported model, exports are valid JSON Schema, **and the transcoding report (§9.1) accurately states every disposition** — the report is asserted against, so it doubles as the spike's evidence. That single suite settles feasibility.
+Success = all five succeed — the first four round-trip, the kernel accepts every imported model, exports are valid JSON Schema, the §12 power check holds, **and the transcoding report (§9.1) accurately states every disposition** — the report is asserted against, so it doubles as the spike's evidence. That single suite settles feasibility.
 
-## 12. Open decisions (the narrow, measurable ones)
+## 12. Interpreter coupling & the power the structural framing misses
 
+The biggest missed lever in the first draft is that it framed schemakit as a *standalone structural transcoder* and never connected it to the interpreter. That connection is what turns "a JSON-Schema converter" into something genuinely powerful — and crucially, **almost all of it lands on JVM/native, with no multiplatform requirement.**
+
+### 12.1 The capability coupling — two-tier validation
+
+"Couple it to the interpreter" means: **schemakit and the interpreter are designed as two halves of one validation story, and `dmtool` wires them together** — not that schemakit is *built on* the interpreter's code (it isn't; it's built on modelkit/rulekit). JSON Schema and the interpreter are complementary validators:
+
+- **JSON Schema** does the *field-local* tier ubiquitously — any off-the-shelf validator, any stack, no a12 code required.
+- **The interpreter** does the *cross-field / aggregate / date / iteration* tier that JSON Schema cannot express.
+
+So export a DM → JSON Schema (Tier-A native keywords) and you get a model that validates in two complementary places:
+
+```
+   DM ──schemakit export──▶ JSON Schema (Tier-A) ──▶ foreign/edge validator   (field-local, instant, ubiquitous)
+    └────────────────────────────────────────────▶ interpreter.validateFull  (the full rules — authoritative)
+```
+
+`dmtool` already runs the interpreter for `model eval`/`model validate`; export gives the *same model's* cheap pre-validation tier to any non-a12 consumer. This is server-side/native today (interpreter-JVM, in the native binary). The in-**browser** variant (JSON Schema via a JS validator + interpreter-**JS** in the page) is the *only* part that needs Kotlin/JS — out of scope per §10, but the coupling is shaped so it stays reachable if a browser consumer ever appears. **Without this coupling, export is "best-effort documentation"; with it, export is the field-local tier of a real validation architecture.**
+
+### 12.2 The power features (gaps in the structural-only framing)
+
+| # | Gap / opportunity | Payoff |
+|---|---|---|
+| 1 | **Tier A+ import — synthesize rules, not just field config.** JSON Schema's conditional vocab maps onto a12 *rule shapes*: `dependentRequired`/`if-then`+`required` → conditional requiredness; `uniqueItems` on array-of-object → cross-row uniqueness; `minItems` → a group-fill count rule; `oneOf`/`not` of `const` → mutual exclusion | import yields a model with *real rules*, not a blank-rule skeleton (lifts import past the ~15% field-local Tier-A floor). Validate each shape in the §11 spike before promising it |
+| 2 | **`format` → the predefined-types / CustomFieldType registry.** `format:iban`/`email`/custom → a CUSTOM field backed by a *registered predefined type whose validation the interpreter runs* (the `--predefined-types` / CustomFieldType SPI shipped after this draft) | closes the loop from "import as opaque CUSTOM" to "import as a *validated* type" |
+| 3 | **`readOnly` ↔ computed fields.** Computations are 0% native, but the *fact* a field is computed projects cleanly to `readOnly: true` (+ `x-a12-computation` for fidelity) | foreign form generators stop letting users edit computed fields — a genuine Tier-A crossing the draft denies |
+| 4 | **Generalize the seam.** The three-tier project-or-carry + `MappingProfile` + report is really a *DM ↔ external-schema bridge*. Name the core `ExternalSchemaProfile` so it isn't JSON-Schema-shaped at the bottom | OpenAPI 3.1, TypeScript interfaces, SQL DDL, Protobuf/Avro become later profiles, not rewrites |
+| 5 | **Real `$ref` scope.** External/remote `$ref`, `$id` base resolution, bundling — needed to import an actual OpenAPI document, not just a self-contained schema | a dereference/bundle step (or explicit refuse-with-diagnostic) makes import work on real-world inputs |
+| 6 | **Seed-instance loop.** `model seed` already generates valid instances; JSON Schema has `examples`/`default`. Import `examples` → seed fixtures; feed `model seed` output into `examples` on export | round-trips example data, not just structure |
+| 7 | **Portability lint (export advisory).** The report (§9.1) is one step from coaching: "these N rules won't cross — express this field-local check as field config and it becomes a native keyword" | the transcoder teaches authors to write portable models |
+
+None of these requires multiplatform. #1, #2, #4–#7 are pure JVM; #3 is trivial. Only the *browser* half of §12.1 needs Kotlin/JS, and that's deferred.
+
+## 13. Open decisions (the narrow, measurable ones)
+
+- **Resolved (2026-06-28):** JVM/Java only — no multiplatform (§10); runtime-callable, in `dmtool`, and in the native binary from day one (§10); coupled to the interpreter for two-tier validation (§12).
 - **Target draft**: Draft 2020-12 canonical + Draft-07 read-compat? (recommend yes — covers OpenAPI 3.1 and the deployed base.)
 - **Module name**: `:schemakit`? `:json-schema`? (avoid collision with the existing `dmtool schema` verb.)
 - **Where the round-trip/differential tests live** — `:adapter` (reuse the kernel oracle, like the interpreter's option C) vs a self-contained `:schemakit:test` with a test-scope kernel dep.
 - **Array-of-scalar default strategy** — multi-select group vs value-list.
 - **How aggressively to project Tier-A** on export (more native keywords = friendlier to foreign tools but more ways to be subtly lossy).
 
-## 13. Non-goals
+## 14. Non-goals
 
 - **JSON Schema as a12's serialization format.** DM-JSON already round-trips losslessly; don't reinvent it. (Re-open only if an external system *mandates* JSON Schema as the wire format.)
 - **Translating rule *logic* into JSON Schema.** Past Tier-A we *carry* (x-a12), we don't translate. No attempt to encode aggregates/iteration/date-arithmetic/three-valued logic in `allOf`/`if`-trees.
 - **Importing computations from foreign schemas** (no source exists).
-- **Multiplatform.** This is a JVM design-time tool.
+- **Kotlin Multiplatform / Kotlin-JS.** JVM/Java only — no JS/TS consumer needs it (§10). This is *not* the same as design-time-only: schemakit **is** runtime-callable, in `dmtool`, and in the native binary (native-safe ≠ multiplatform). Re-open only if a browser/JS validation consumer materializes — then the port reuses the interpreter's `commonMain` (§10).
 - **`$ref` recursion / arbitrary `allOf`/`anyOf`/`oneOf` composition** in v1 — refuse with diagnostics; revisit if a real corpus needs it.
 
-## 14. Licensing
+## 15. Licensing
 
 The JSON Schema specs and meta-schemas are openly licensed (permissive); transcoding against them raises no copyleft concern. The a12 side uses our own modelkit/rulekit. As with the interpreter spike, the rule to hold: if the implementation ever reads EUPL-licensed kernel source (e.g. grammar) rather than calling published APIs, settle provenance before extraction. Default expectation: clean.
 
-## 15. Recommendation
+## 16. Recommendation
 
-**Feasible and worth a spike — scoped as import-first, structure-and-constraints, with `x-a12` carriage for fidelity.** The structural layer (including the `$ref`→include/typedef split, §4.1) and the field-type mapping config (§5) are both tractable and are the real engineering. The rules question resolves not by translation but by the **three-tier project-or-carry** framework (§6): a small native subset, everything else carried losslessly in `x-a12-*`. The honest caveat — and the reason to lead with *import* and treat foreign *export* as best-effort — is that the crown-jewel rules mostly **do not cross** into generic JSON Schema, and for a12↔a12 fidelity DM-JSON is already the better container. Build the §11 four-shape spike before committing to a full module.
+**Feasible and worth a spike — scoped as import-first, structure-and-constraints, with `x-a12` carriage for fidelity, built JVM/Java and runtime-callable from `dmtool`.** The structural layer (including the `$ref`→include/typedef split, §4.1) and the field-type mapping config (§5) are both tractable and are the real engineering. The rules question resolves not by translation but by the **three-tier project-or-carry** framework (§6): a small native subset, everything else carried losslessly in `x-a12-*`. The honest caveat — and the reason to lead with *import* and treat foreign *export* as best-effort — is that the crown-jewel rules mostly **do not cross** into generic JSON Schema, and for a12↔a12 fidelity DM-JSON is already the better container.
+
+Two decisions fold in over the original draft (§10, §12): **(1)** ship it **JVM/Java, native-safe, in `dmtool` and the native binary from day one** — not a JVM-only design-time tool, and *not* Kotlin Multiplatform (no JS/TS consumer needs the KMP tax); **(2)** **couple it to the interpreter** — the exported Tier-A keywords are the field-local tier, the interpreter is the authoritative full-rule tier, and `dmtool` wires both. That coupling is what makes export more than documentation and is the difference between a structural converter and a genuinely powerful capability. Build the §11 spike — the four round-trip shapes plus the §12.2 power check — before committing to a full module.
