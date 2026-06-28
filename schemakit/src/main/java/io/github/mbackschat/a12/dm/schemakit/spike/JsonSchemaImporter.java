@@ -8,9 +8,11 @@ import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.modelkit.Requiredness;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -37,8 +39,9 @@ public final class JsonSchemaImporter {
     public record ImportResult(String dmJson, TranscodeReport report) {}
 
     /** Per-transcode state threaded through the recursion: the {@code $defs} pool, the inline stack (for
-     *  recursion detection), and the report being accumulated. */
-    private record Ctx(JsonNode defs, Deque<String> inlining, TranscodeReport.Builder report) {}
+     *  recursion detection), the report, and the Tier-A+ rule-synthesis needs collected during the walk. */
+    private record Ctx(JsonNode defs, Deque<String> inlining, TranscodeReport.Builder report,
+                       List<RuleSynthesis.Need> ruleNeeds) {}
 
     public ImportResult importSchema(String jsonSchema) {
         JsonNode root = parse(jsonSchema);
@@ -47,13 +50,14 @@ public final class JsonSchemaImporter {
             throw new IllegalArgumentException(
                     "import supports a top-level object schema; got type=" + (type.isEmpty() ? "<none>" : type));
         }
-        Ctx ctx = new Ctx(root.path("$defs"), new ArrayDeque<>(), TranscodeReport.builder());
+        Ctx ctx = new Ctx(root.path("$defs"), new ArrayDeque<>(), TranscodeReport.builder(), new ArrayList<>());
         DocumentModelDraft.Builder b = DocumentModelDraft.named(identifier(root.path("title").asText(null)))
                 .locale(LOCALE);
         declareLeafTypedefs(b, ctx);
         b.rootGroup(ROOT_GROUP, g -> populate(g, root, "/" + ROOT_GROUP, ctx));
 
         String dmJson = b.build().toJson();
+        dmJson = RuleSynthesis.apply(dmJson, ctx.ruleNeeds(), ctx.report());   // Tier A+ synthesized rules
         if (root.has(Carriage.X_RULE) || root.has(Carriage.X_COMPUTATION)) {
             ObjectNode tree = (ObjectNode) parse(dmJson);     // restore carried rules/computations (Tier B/C)
             Carriage.inject(tree, root, ctx.report());
@@ -189,6 +193,7 @@ public final class JsonSchemaImporter {
             case "integer" -> {
                 addIntegerField(g, name, schema, isRequired);
                 ctx.report().structure(path, "NUMBER(integer, scale 0)");
+                collectStrictBounds(schema, path, ctx);
             }
             // JSON `number` has no faithful a12 target without a scale signal: an a12 number always carries a
             // bounded max scale (modelkit defaults it to 0 = integer), so mapping a bare `number` to scale 0
@@ -240,6 +245,18 @@ public final class JsonSchemaImporter {
                 s.required();
             }
         });
+    }
+
+    /** Strict bounds have no inclusive field-config home → collect them as Tier-A+ synthesized rules. */
+    private static void collectStrictBounds(JsonNode schema, String path, Ctx ctx) {
+        if (schema.has("exclusiveMinimum")) {
+            ctx.ruleNeeds().add(new RuleSynthesis.Need(
+                    path, RuleSynthesis.Kind.EXCLUSIVE_MIN, schema.get("exclusiveMinimum").asText()));
+        }
+        if (schema.has("exclusiveMaximum")) {
+            ctx.ruleNeeds().add(new RuleSynthesis.Need(
+                    path, RuleSynthesis.Kind.EXCLUSIVE_MAX, schema.get("exclusiveMaximum").asText()));
+        }
     }
 
     /** An integer field (scale 0); {@code minimum}/{@code maximum} import to number value bounds. */
