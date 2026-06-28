@@ -16,7 +16,7 @@ The live, unfinished import work. All are **reported, not enforced** today (the 
 
 | Gap | The constraint | What a12 needs | Tractability |
 |---|---|---|---|
-| **`contains` with a non-single-valued clause** | `contains` whose predicate has a **range** or arbitrary item subschema (e.g. `{properties:{a:{minimum:5}}}`, nested objects) | extend the `Having` filter beyond equality — range/pattern clauses (`num.ge`/`str.violates`), reusing the violation primitives | medium. (Single- **and multi-property** equality predicates already map — §4f.) |
+| **`contains` with a nested/arbitrary-subschema clause** | `contains` whose predicate clause is a **nested object** or arbitrary subschema (not a value constraint on a row field) | resolve the clause against the nested structure (a deeper `Having` / cross-level reference) | complex; rare. (const/enum/**range**/pattern clauses, single- and multi-property, already map — §4f.) |
 | **nested / compound `not`** | `not {not {…}}` (double negation); a `not` carrying several keywords (today only the first recognized keyword maps) | nested → unwrap the double negation; compound → De-Morgan into the paired negated operators | complex; **near-zero ROI** (double/compound negation is pathological in real schemas). (`not {const\|enum\|pattern\|min\|max\|minLength\|maxLength}` and object `not {required}` already map — §4/§4f; `not {type}` is **not feasible** — §4.) |
 
 *(No open OpenAPI/structural gaps — array-of-`$ref` items and cross-component cycle-breaking both shipped; see SCHEMAKIT-SPEC §4g.)*

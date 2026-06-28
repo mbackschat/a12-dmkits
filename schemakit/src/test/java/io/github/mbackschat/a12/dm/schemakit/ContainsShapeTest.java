@@ -75,17 +75,30 @@ class ContainsShapeTest {
     }
 
     @Test
-    void aContainsWithAnUnpinnedPropertyIsReportedNotMapped() {
-        // a property that isn't a single value (here a range/type-only) → non-simple predicate → reported.
+    void rangeContainsClauseSynthesizesACountRule() {
         JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
                 { "type": "object", "properties": {
-                    "items": { "type": "array", "maxItems": 10,
-                      "items": { "type": "object", "properties": { "a": { "type": "integer" }, "b": { "type": "string" } } },
-                      "contains": { "properties": { "a": { "minimum": 5 }, "b": { "const": "X" } } } } } }
+                    "scores": { "type": "array", "maxItems": 10,
+                      "items": { "type": "object", "properties": { "value": { "type": "integer" } } },
+                      "contains": { "properties": { "value": { "minimum": 80 } } }, "minContains": 1 } } }
                 """);
 
         assertKernelAccepts(r.dmJson());
-        assertEquals(0, synthesized(r), "a contains predicate with a non-single-valued property is not mapped");
+        assertEquals(1, synthesized(r), () -> "≥1 score with value ≥ 80 → one count rule (range clause): " + r.report().dispositions());
+    }
+
+    @Test
+    void aContainsWithANonValueClauseIsReported() {
+        // a clause with no value constraint (just a type) has no positive match condition → reported.
+        JsonSchemaImporter.ImportResult r = new JsonSchemaImporter().importSchema("""
+                { "type": "object", "properties": {
+                    "items": { "type": "array", "maxItems": 10,
+                      "items": { "type": "object", "properties": { "a": { "type": "string" } } },
+                      "contains": { "properties": { "a": { "type": "string" } } } } } }
+                """);
+
+        assertKernelAccepts(r.dmJson());
+        assertEquals(0, synthesized(r), "a contains clause with no value constraint isn't mapped");
         assertTrue(r.report().diagnostics().stream().anyMatch(d -> d.contains("contains")),
                 () -> "the unmapped contains is reported: " + r.report().diagnostics());
     }

@@ -121,10 +121,13 @@ final class RuleSynthesis {
     record UniqueItems(String groupPath) implements Need {}
 
     /** {@code contains}/{@code minContains}/{@code maxContains}: the repeatable group must have {@code ≥ bound}
-     *  ({@code min}) or {@code ≤ bound} (not {@code min}) rows matching ALL {@code predicates} (each a row
-     *  field = value) — a {@code Having}-filtered {@code NumberOfFilledFields} count over the conjunction
-     *  (SCHEMAKIT-SPEC §4f). */
-    record ContainsCount(String groupPath, List<FieldValue> predicates, boolean min, int bound) implements Need {}
+     *  ({@code min}) or {@code ≤ bound} (not {@code min}) rows matching ALL {@code clauses} — a {@code Having}-
+     *  filtered {@code NumberOfFilledFields} count over the conjunction of positive match conditions
+     *  (equality, range, enum, or pattern per clause — SCHEMAKIT-SPEC §4f). */
+    record ContainsCount(String groupPath, List<Clause> clauses, boolean min, int bound) implements Need {}
+
+    /** One {@code contains} predicate clause: a row field must satisfy a value constraint (positive match). */
+    record Clause(String field, ValueConstraint constraint) {}
 
     /** {@code not: {const}}: the field must NOT equal {@code value} (error fires when it does; string/number field). */
     record ForbiddenConst(String fieldPath, String value) implements Need {}
@@ -414,27 +417,27 @@ final class RuleSynthesis {
                         .message(Dsl.en(ec.constraint().requirement(ec.targetField()) + " when " + when + ".")).build());
             }
             case ContainsCount cc -> {
-                List<Condition> preds = new ArrayList<>();
-                for (FieldValue fv : cc.predicates()) {
-                    Optional<Condition> p = equalsValue(m, doc, cc.groupPath() + "/" + fv.field(), fv.value());
-                    if (p.isEmpty()) {
-                        report.diagnostic("contains on '" + lastSegment(cc.groupPath()) + "' skipped — predicate field '"
-                                + fv.field() + "' is not a comparable kind (or wasn't imported)");
+                List<Condition> matches = new ArrayList<>();
+                for (Clause cl : cc.clauses()) {
+                    Optional<Condition> mc = matchCondition(m, doc, cc.groupPath() + "/" + cl.field(), cl.constraint(), report);
+                    if (mc.isEmpty()) {
+                        report.diagnostic("contains on '" + lastSegment(cc.groupPath()) + "' skipped — clause field '"
+                                + cl.field() + "' cannot carry the predicate (kind mismatch, or wasn't imported)");
                         yield Optional.empty();
                     }
-                    preds.add(p.get());
+                    matches.add(mc.get());
                 }
-                Condition having = preds.get(0);
-                for (int i = 1; i < preds.size(); i++) {
-                    having = having.and(preds.get(i));
+                Condition having = matches.get(0);
+                for (int i = 1; i < matches.size(); i++) {
+                    having = having.and(matches.get(i));
                 }
                 String row = lastSegment(cc.groupPath());
-                String anchor = cc.predicates().get(0).field();   // flatten on a predicate field; Having filters by all
+                String anchor = cc.clauses().get(0).field();   // flatten on a clause field; Having filters by all
                 NumberExpr count = Dsl.numberOfFilledFields(m.flatten(cc.groupPath() + "*/" + anchor).having(having));
                 Condition violation = cc.min() ? count.lt(cc.bound()) : count.gt(cc.bound());
-                String tag = cc.predicates().stream().map(fv -> sanitize(fv.value())).collect(Collectors.joining());
-                String desc = cc.predicates().stream()
-                        .map(fv -> fv.field() + " = " + fv.value()).collect(Collectors.joining(" and "));
+                String tag = cc.clauses().stream().map(cl -> capitalize(cl.field())).collect(Collectors.joining());
+                String desc = cc.clauses().stream()
+                        .map(cl -> cl.constraint().requirement(cl.field())).collect(Collectors.joining(" and "));
                 yield Optional.of(m.rule(m.group(parentGroup(cc.groupPath())))
                         .name(row + (cc.min() ? "MinContains" : "MaxContains") + tag)
                         .errorField(m.field(cc.groupPath() + "/" + anchor))
@@ -442,7 +445,7 @@ final class RuleSynthesis {
                         .code((cc.min() ? "MIN_CONTAINS_" : "MAX_CONTAINS_") + row.toUpperCase(Locale.ROOT)
                                 + "_" + tag.toUpperCase(Locale.ROOT)).severity(Severity.ERROR)
                         .message(Dsl.en("At " + (cc.min() ? "least " : "most ") + cc.bound() + " " + row
-                                + " must have " + desc + ".")).build());
+                                + " must match: " + desc + ".")).build());
             }
             case UniqueItems u -> {
                 List<FieldRef> keys = new ArrayList<>();
@@ -539,6 +542,44 @@ final class RuleSynthesis {
         return Optional.empty();
     }
 
+    /** The condition true when {@code path} MATCHES {@code c} (the positive form — the inverse of
+     *  {@link #violationCondition}). Powers the {@code contains} {@code Having} filter (SCHEMAKIT-SPEC §4f). */
+    private static Optional<Condition> matchCondition(BoundModel m, ModelDocument doc, String path,
+                                                      ValueConstraint c, TranscodeReport.Builder report) {
+        String kind = doc.fieldKind(path).orElse("");
+        String field = lastSegment(path);
+        return switch (c.kind()) {
+            case CONST -> equalsValue(m, doc, path, c.value());   // eq on string/enum/number, else empty
+            case MINIMUM, MAXIMUM, EXCLUSIVE_MIN, EXCLUSIVE_MAX -> {
+                if (!"NUMBER".equals(kind)) {
+                    yield reportUnsupported(report, field, "numeric bound");
+                }
+                NumberRef r = m.num(path);
+                yield Optional.of(switch (c.kind()) {
+                    case MINIMUM -> r.ge(c.value());
+                    case MAXIMUM -> r.le(c.value());
+                    case EXCLUSIVE_MIN -> r.gt(c.value());
+                    case EXCLUSIVE_MAX -> r.lt(c.value());
+                    default -> throw new IllegalStateException();
+                });
+            }
+            case ENUM -> switch (kind) {
+                case "STRING" -> {
+                    String[] rest = c.values().subList(1, c.values().size()).toArray(new String[0]);
+                    yield Optional.of(m.str(path).in(c.values().get(0), rest));
+                }
+                case "ENUMERATION" -> {
+                    String[] rest = c.values().subList(1, c.values().size()).toArray(new String[0]);
+                    yield Optional.of(m.enumOf(path).in(c.values().get(0), rest));
+                }
+                default -> reportUnsupported(report, field, "enum");
+            };
+            case PATTERN -> "STRING".equals(kind)
+                    ? Optional.of(m.str(path).matches(c.value()))
+                    : reportUnsupported(report, field, "pattern");
+        };
+    }
+
     /** Is {@code path} a direct child element of {@code groupPath} (one segment below, no deeper)? */
     private static boolean isDirectChild(String path, String groupPath) {
         String prefix = groupPath + "/";
@@ -584,8 +625,8 @@ final class RuleSynthesis {
                     .map(fv -> fv.field() + "=" + fv.value()).collect(Collectors.joining(" and "))
                     + "] → " + ec.constraint().requirement(ec.targetField()) + ")";
             case ContainsCount cc -> "rule " + (cc.min() ? "minContains(" : "maxContains(") + cc.bound() + " × "
-                    + lastSegment(cc.groupPath()) + "[" + cc.predicates().stream()
-                    .map(fv -> fv.field() + "=" + fv.value()).collect(Collectors.joining(",")) + "])";
+                    + lastSegment(cc.groupPath()) + "[" + cc.clauses().stream()
+                    .map(cl -> cl.constraint().requirement(cl.field())).collect(Collectors.joining(", ")) + "])";
             case UniqueItems u -> "rule uniqueItems(" + lastSegment(u.groupPath()) + ")";
             case ForbiddenConst f -> "rule not-const(" + lastSegment(f.fieldPath()) + " ≠ " + f.value() + ")";
             case ForbiddenEnum f -> "rule not-enum(" + lastSegment(f.fieldPath()) + " ∉ " + f.values() + ")";

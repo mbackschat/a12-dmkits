@@ -686,44 +686,44 @@ public final class JsonSchemaImporter {
             return;
         }
         boolean objectArray = "object".equals(arraySchema.path("items").path("type").asText(""));
-        Optional<List<RuleSynthesis.FieldValue>> predicate = containsPredicate(arraySchema.get("contains"), objectArray);
-        if (predicate.isEmpty()) {
-            ctx.report().diagnostic("array '" + groupPath + "' has a 'contains' with a non-simple predicate — not "
-                    + "mapped (only contains {const} on a scalar array, or contains {properties:{… : {const}}} of "
-                    + "single-valued props on an object array); add the count rule by hand");
+        Optional<List<RuleSynthesis.Clause>> clauses = containsClauses(arraySchema.get("contains"), objectArray);
+        if (clauses.isEmpty()) {
+            ctx.report().diagnostic("array '" + groupPath + "' has a 'contains' with a non-mappable predicate — not "
+                    + "mapped (each clause must be a simple const/enum/min/max/pattern on a scalar array or an "
+                    + "object array's property); add the count rule by hand");
             return;
         }
         int minContains = arraySchema.path("minContains").isInt() ? arraySchema.get("minContains").asInt() : 1;
         if (minContains >= 1) {   // bare 'contains' = ≥1; minContains:0 is vacuous
-            ctx.ruleNeeds().add(new RuleSynthesis.ContainsCount(groupPath, predicate.get(), true, minContains));
+            ctx.ruleNeeds().add(new RuleSynthesis.ContainsCount(groupPath, clauses.get(), true, minContains));
         }
         if (arraySchema.path("maxContains").isInt()) {
-            ctx.ruleNeeds().add(new RuleSynthesis.ContainsCount(groupPath, predicate.get(), false,
+            ctx.ruleNeeds().add(new RuleSynthesis.ContainsCount(groupPath, clauses.get(), false,
                     arraySchema.get("maxContains").asInt()));
         }
     }
 
-    /** The {@code contains} predicate as a conjunction of (row-relative field, value) pairs, or empty when it is
-     *  not a simple single-value pin. A scalar array pins the row {@code value} field; an object array pins one or
-     *  more properties (ALL must be single-valued, else the predicate is non-simple → reported). */
-    private static Optional<List<RuleSynthesis.FieldValue>> containsPredicate(JsonNode contains, boolean objectArray) {
+    /** The {@code contains} predicate as a conjunction of clauses (each a row field + a simple value constraint —
+     *  const/enum/min/max/pattern), or empty when a clause isn't mappable. A scalar array constrains the row
+     *  {@code value} field; an object array constrains one or more properties (ALL must be mappable). */
+    private static Optional<List<RuleSynthesis.Clause>> containsClauses(JsonNode contains, boolean objectArray) {
         if (objectArray) {
             JsonNode props = contains.path("properties");
             if (!props.isObject() || props.isEmpty()) {
                 return Optional.empty();
             }
-            List<RuleSynthesis.FieldValue> preds = new ArrayList<>();
+            List<RuleSynthesis.Clause> clauses = new ArrayList<>();
             for (Iterator<Map.Entry<String, JsonNode>> it = props.fields(); it.hasNext(); ) {
                 Map.Entry<String, JsonNode> e = it.next();
-                Optional<String> v = singleValueOf(e.getValue());
-                if (v.isEmpty()) {
-                    return Optional.empty();   // a non-single-value property (e.g. a range) → non-simple predicate
+                Optional<RuleSynthesis.ValueConstraint> vc = valueConstraintOf(e.getValue());
+                if (vc.isEmpty()) {
+                    return Optional.empty();   // a property with no mappable constraint → non-simple predicate
                 }
-                preds.add(new RuleSynthesis.FieldValue(e.getKey(), v.get()));
+                clauses.add(new RuleSynthesis.Clause(e.getKey(), vc.get()));
             }
-            return Optional.of(preds);
+            return Optional.of(clauses);
         }
-        return singleValueOf(contains).map(v -> List.of(new RuleSynthesis.FieldValue(ROW_FIELD, v)));
+        return valueConstraintOf(contains).map(vc -> List.of(new RuleSynthesis.Clause(ROW_FIELD, vc)));
     }
 
     /**
