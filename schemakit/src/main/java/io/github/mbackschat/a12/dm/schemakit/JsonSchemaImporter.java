@@ -1232,9 +1232,9 @@ public final class JsonSchemaImporter {
                 } else {
                     addStringField(g, name, schema, isRequired);
                     ctx.report().structure(path, "STRING");
-                    if (schema.has("const")) {
-                        ctx.ruleNeeds().add(new RuleSynthesis.ConstValue(path, false, schema.get("const").asText()));
-                    }
+                }
+                if (schema.has("const")) {   // applies to BOTH plain and formatted strings — the format path dropped it
+                    ctx.ruleNeeds().add(new RuleSynthesis.ConstValue(path, false, schema.get("const").asText()));
                 }
             }
             case "boolean" -> {
@@ -1244,20 +1244,14 @@ public final class JsonSchemaImporter {
                 ctx.report().structure(path, kind.name());
             }
             case "integer" -> {
-                addIntegerField(g, name, schema, isRequired, ctx);
+                addNumericField(g, name, schema, isRequired, 0, ctx);
                 ctx.report().structure(path, "NUMBER(integer, scale 0)");
-                collectStrictBounds(schema, path, ctx);
-                if (schema.has("const")) {
-                    ctx.ruleNeeds().add(new RuleSynthesis.ConstValue(path, true, schema.get("const").asText()));
-                }
-                if (schema.has("multipleOf")) {
-                    ctx.ruleNeeds().add(new RuleSynthesis.MultipleOf(path, schema.get("multipleOf").asText()));
-                }
+                collectNumericRules(schema, path, ctx);
             }
             // JSON `number` has no faithful a12 target without a scale signal: an a12 number always carries a
             // bounded max scale (modelkit defaults it to 0 = integer). The MappingProfile decides: OMIT (the
             // default — never silently turn a decimal into an integer), INTEGER (scale 0), or a DEFAULT_SCALE.
-            case "number" -> addNumberField(g, name, isRequired, path, ctx);
+            case "number" -> addNumber(g, name, schema, isRequired, path, ctx);
             default -> ctx.report().omit(path, "property '" + name + "' has type '"
                     + (schema.path("type").asText("").isEmpty() ? "<none>" : schema.path("type").asText(""))
                     + "' — omitted (not yet mapped). TO DO: add this field by hand");
@@ -1434,47 +1428,58 @@ public final class JsonSchemaImporter {
     }
 
     /** A bare {@code number} (unbounded decimal); the MappingProfile decides its a12 scale (or omits it). */
-    private static void addNumberField(DocumentModelDraft.GroupBuilder g, String name, boolean isRequired,
-                                       String path, Ctx ctx) {
+    /** A JSON {@code number} (decimal) under the scale strategy. OMIT drops it (no field, no rules — never a
+     *  silent integer coercion); INTEGER / DEFAULT_SCALE create the field at the chosen scale, then collect the
+     *  numeric rules. The rule collection runs ONLY when the field exists — omitting it would leave a dangling
+     *  rule referencing a missing field. */
+    private static void addNumber(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
+                                  boolean isRequired, String path, Ctx ctx) {
         switch (ctx.profile().numberScale()) {
             case OMIT -> ctx.report().omit(path, "property '" + name + "' is type 'number' (unbounded decimal) "
                     + "— omitted: an a12 number is always scale-bounded. TO DO: add the field by hand with a "
                     + "chosen scale, or set the MappingProfile numberScale to DEFAULT_SCALE / INTEGER");
             case INTEGER -> {
-                g.numberField(name, n -> {
-                    n.fractionDigits(0);
-                    if (isRequired) {
-                        n.required();
-                    }
-                });
+                addNumericField(g, name, schema, isRequired, 0, ctx);
                 ctx.report().structure(path, "NUMBER(integer, scale 0)");
                 ctx.report().diagnostic("number '" + name + "' imported as a scale-0 integer (--number-scale INTEGER) "
                         + "— any decimal places are DROPPED; set --number-scale DEFAULT_SCALE to keep them");
+                collectNumericRules(schema, path, ctx);
             }
             case DEFAULT_SCALE -> {
                 int scale = ctx.profile().defaultScale();
-                g.numberField(name, n -> {
-                    n.fractionDigits(scale);
-                    if (isRequired) {
-                        n.required();
-                    }
-                });
+                addNumericField(g, name, schema, isRequired, scale, ctx);
                 ctx.report().structure(path, "NUMBER(scale " + scale + ")");
                 ctx.report().diagnostic("number '" + name + "' has no scale in the schema — imported at the "
                         + "default scale " + scale + " (a guess; set --default-scale, --number-scale, or the "
                         + "field's scale by hand if a different precision is needed)");
+                collectNumericRules(schema, path, ctx);
             }
         }
     }
 
-    /** An integer field (scale 0); inclusive {@code minimum}/{@code maximum} import to number value bounds (an
-     *  OpenAPI-3.0 exclusive bound is suppressed here and rides a strict-bound rule instead — {@link #inclusiveBound}). */
-    private static void addIntegerField(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
-                                        boolean isRequired, Ctx ctx) {
+    /** Numeric constraints with no inclusive field-config home → Tier-A+ rules: strict (exclusive) bounds,
+     *  {@code const}, {@code multipleOf}. Applied to EVERY created numeric field — integer AND number. The
+     *  earlier divergence (the `number` path collected none of these) was a class bug (omit-never-silent, §4a). */
+    private static void collectNumericRules(JsonNode schema, String path, Ctx ctx) {
+        collectStrictBounds(schema, path, ctx);
+        if (schema.has("const")) {
+            ctx.ruleNeeds().add(new RuleSynthesis.ConstValue(path, true, schema.get("const").asText()));
+        }
+        if (schema.has("multipleOf")) {
+            ctx.ruleNeeds().add(new RuleSynthesis.MultipleOf(path, schema.get("multipleOf").asText()));
+        }
+    }
+
+    /** Create a numeric field at a fixed {@code scale}, applying inclusive {@code minimum}/{@code maximum} bounds
+     *  and requiredness (an OpenAPI-3.0 exclusive bound is suppressed here and rides a strict-bound rule instead —
+     *  {@link #inclusiveBound}). Shared by integer (scale 0) and number (the scale strategy), so both kinds honor
+     *  the same field-config constraints. */
+    private static void addNumericField(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
+                                        boolean isRequired, int scale, Ctx ctx) {
         Optional<String> minimum = inclusiveBound(schema, true, ctx);
         Optional<String> maximum = inclusiveBound(schema, false, ctx);
         g.numberField(name, n -> {
-            n.fractionDigits(0);
+            n.fractionDigits(scale);
             minimum.ifPresent(n::min);
             maximum.ifPresent(n::max);
             if (isRequired) {
