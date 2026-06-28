@@ -39,18 +39,22 @@ public final class JsonSchemaImporter {
     public record ImportResult(String dmJson, TranscodeReport report) {}
 
     /** Per-transcode state threaded through the recursion: the {@code $defs} pool, the inline stack (for
-     *  recursion detection), the report, and the Tier-A+ rule-synthesis needs collected during the walk. */
+     *  recursion detection), the report, the Tier-A+ rule-synthesis needs, and the customization profile. */
     private record Ctx(JsonNode defs, Deque<String> inlining, TranscodeReport.Builder report,
-                       List<RuleSynthesis.Need> ruleNeeds) {}
+                       List<RuleSynthesis.Need> ruleNeeds, MappingProfile profile) {}
 
     public ImportResult importSchema(String jsonSchema) {
+        return importSchema(jsonSchema, MappingProfile.defaults());
+    }
+
+    public ImportResult importSchema(String jsonSchema, MappingProfile profile) {
         JsonNode root = parse(jsonSchema);
         String type = root.path("type").asText("");
         if (!"object".equals(type)) {
             throw new IllegalArgumentException(
                     "import supports a top-level object schema; got type=" + (type.isEmpty() ? "<none>" : type));
         }
-        Ctx ctx = new Ctx(root.path("$defs"), new ArrayDeque<>(), TranscodeReport.builder(), new ArrayList<>());
+        Ctx ctx = new Ctx(root.path("$defs"), new ArrayDeque<>(), TranscodeReport.builder(), new ArrayList<>(), profile);
         DocumentModelDraft.Builder b = DocumentModelDraft.named(identifier(root.path("title").asText(null)))
                 .locale(LOCALE);
         declareLeafTypedefs(b, ctx);
@@ -191,8 +195,10 @@ public final class JsonSchemaImporter {
                 }
             }
             case "boolean" -> {
-                g.field(name, FieldKind.BOOLEAN, req);
-                ctx.report().structure(path, "BOOLEAN");
+                FieldKind kind = ctx.profile().booleanKind() == MappingProfile.BooleanKind.CONFIRM
+                        ? FieldKind.CONFIRM : FieldKind.BOOLEAN;
+                g.field(name, kind, req);
+                ctx.report().structure(path, kind.name());
             }
             case "integer" -> {
                 addIntegerField(g, name, schema, isRequired);
@@ -206,11 +212,9 @@ public final class JsonSchemaImporter {
                 }
             }
             // JSON `number` has no faithful a12 target without a scale signal: an a12 number always carries a
-            // bounded max scale (modelkit defaults it to 0 = integer), so mapping a bare `number` to scale 0
-            // would silently turn a decimal into an integer. So it is omitted, not mismapped.
-            case "number" -> ctx.report().omit(path, "property '" + name + "' is type 'number' (unbounded "
-                    + "decimal) — omitted: an a12 number is always scale-bounded. TO DO: add the field by hand "
-                    + "with a chosen scale, or set 'multipleOf' (→ scale) / a default-scale in the MappingProfile");
+            // bounded max scale (modelkit defaults it to 0 = integer). The MappingProfile decides: OMIT (the
+            // default — never silently turn a decimal into an integer), INTEGER (scale 0), or a DEFAULT_SCALE.
+            case "number" -> addNumberField(g, name, isRequired, path, ctx);
             default -> ctx.report().omit(path, "property '" + name + "' has type '"
                     + (schema.path("type").asText("").isEmpty() ? "<none>" : schema.path("type").asText(""))
                     + "' — omitted (not yet mapped). TO DO: add this field by hand");
@@ -280,6 +284,35 @@ public final class JsonSchemaImporter {
             }
             for (JsonNode dependent : e.getValue()) {
                 ctx.ruleNeeds().add(new RuleSynthesis.DependentRequired(groupPath, e.getKey(), dependent.asText()));
+            }
+        }
+    }
+
+    /** A bare {@code number} (unbounded decimal); the MappingProfile decides its a12 scale (or omits it). */
+    private static void addNumberField(DocumentModelDraft.GroupBuilder g, String name, boolean isRequired,
+                                       String path, Ctx ctx) {
+        switch (ctx.profile().numberScale()) {
+            case OMIT -> ctx.report().omit(path, "property '" + name + "' is type 'number' (unbounded decimal) "
+                    + "— omitted: an a12 number is always scale-bounded. TO DO: add the field by hand with a "
+                    + "chosen scale, or set the MappingProfile numberScale to DEFAULT_SCALE / INTEGER");
+            case INTEGER -> {
+                g.numberField(name, n -> {
+                    n.fractionDigits(0);
+                    if (isRequired) {
+                        n.required();
+                    }
+                });
+                ctx.report().structure(path, "NUMBER(integer, scale 0)");
+            }
+            case DEFAULT_SCALE -> {
+                int scale = ctx.profile().defaultScale();
+                g.numberField(name, n -> {
+                    n.fractionDigits(scale);
+                    if (isRequired) {
+                        n.required();
+                    }
+                });
+                ctx.report().structure(path, "NUMBER(scale " + scale + ")");
             }
         }
     }
