@@ -1,6 +1,36 @@
 {
   "reflection": [
     {
+      "type": "Com_mgmtp_a12_kernel_generated_order_internal_C_order",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_order_internal_C_order$getInstance",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_order_internal_C_orderBeanInfo"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_order_internal_C_orderCustomizer"
+    },
+    {
       "type": "Com_mgmtp_a12_kernel_generated_order_internal_ERValidator_order",
       "methods": [
         {
@@ -575,6 +605,36 @@
     },
     {
       "type": "Com_mgmtp_a12_kernel_generated_order_internal_R_orderCustomizer"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_storefront_internal_C_storefront",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_storefront_internal_C_storefront$getInstance",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_storefront_internal_C_storefrontBeanInfo"
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_storefront_internal_C_storefrontCustomizer"
     },
     {
       "type": "Com_mgmtp_a12_kernel_generated_storefront_internal_ERValidator_storefront",
@@ -1159,6 +1219,36 @@
       ]
     },
     {
+      "type": "Com_mgmtp_a12_kernel_generated_subscription_internal_R1_subscription$mvk_EffectiveFeeComp",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Com_mgmtp_a12_kernel_generated_subscription_internal_R1_subscription$mvk_EvalDocCandidate$0",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "org.codehaus.groovy.runtime.callsite.CallSite",
+            "groovy.lang.MetaClassImpl",
+            "groovy.lang.MetaMethod",
+            "java.lang.Class[]",
+            "java.lang.reflect.Constructor"
+          ]
+        }
+      ]
+    },
+    {
       "type": "Com_mgmtp_a12_kernel_generated_subscription_internal_R1_subscription$mvk_FeeCapRule",
       "methods": [
         {
@@ -1246,6 +1336,29 @@
       "type": "Com_mgmtp_a12_kernel_generated_subscription_internal_R_subscriptionCustomizer"
     },
     {
+      "type": "Script_0a3fcccd2c9009a8f733b16989a29134",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getMetaModel",
+          "parameterTypes": []
+        },
+        {
+          "name": "getValidator",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Script_0a3fcccd2c9009a8f733b16989a29134BeanInfo"
+    },
+    {
+      "type": "Script_0a3fcccd2c9009a8f733b16989a29134Customizer"
+    },
+    {
       "type": "Script_0ef1c1466c7d751a7565e66c3eb21cbe",
       "methods": [
         {
@@ -1273,6 +1386,10 @@
       "methods": [
         {
           "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getCalculator",
           "parameterTypes": []
         },
         {
@@ -1322,6 +1439,10 @@
           "parameterTypes": []
         },
         {
+          "name": "getCalculator",
+          "parameterTypes": []
+        },
+        {
           "name": "getMetaModel",
           "parameterTypes": []
         },
@@ -1345,6 +1466,10 @@
           "parameterTypes": []
         },
         {
+          "name": "getCalculator",
+          "parameterTypes": []
+        },
+        {
           "name": "getMetaModel",
           "parameterTypes": []
         },
@@ -1361,10 +1486,41 @@
       "type": "Script_64b7d41a142b346202c54ecb4032ddcdCustomizer"
     },
     {
+      "type": "Script_7b6c37b0182a9cb50c76d6ba3deb8e65",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getCalculator",
+          "parameterTypes": []
+        },
+        {
+          "name": "getMetaModel",
+          "parameterTypes": []
+        },
+        {
+          "name": "getValidator",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "Script_7b6c37b0182a9cb50c76d6ba3deb8e65BeanInfo"
+    },
+    {
+      "type": "Script_7b6c37b0182a9cb50c76d6ba3deb8e65Customizer"
+    },
+    {
       "type": "Script_81556b2ac311fec99848026475cbfe9e",
       "methods": [
         {
           "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getCalculator",
           "parameterTypes": []
         },
         {
@@ -1388,6 +1544,10 @@
       "methods": [
         {
           "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getCalculator",
           "parameterTypes": []
         },
         {
@@ -1612,6 +1772,10 @@
         },
         {
           "name": "getSortInfo",
+          "parameterTypes": []
+        },
+        {
+          "name": "getSortInfoCodeFragments",
           "parameterTypes": []
         },
         {
@@ -1953,6 +2117,32 @@
         },
         {
           "name": "getVariableName",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.GroupSortInfo",
+      "methods": [
+        {
+          "name": "getFullname",
+          "parameterTypes": []
+        },
+        {
+          "name": "getPairsCode",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.mgmtp.a12.kernel.core.codegen.internal.generator.backingbeans.GroupSortInfoPair",
+      "methods": [
+        {
+          "name": "getName",
+          "parameterTypes": []
+        },
+        {
+          "name": "getSortType",
           "parameterTypes": []
         }
       ]
@@ -3472,6 +3662,9 @@
         },
         {
           "name": "LT"
+        },
+        {
+          "name": "NE"
         },
         {
           "name": "NM"
@@ -5462,6 +5655,12 @@
           ]
         },
         {
+          "name": "setSortFields",
+          "parameterTypes": [
+            "java.util.List"
+          ]
+        },
+        {
           "name": "setUsageType",
           "parameterTypes": [
             "java.lang.String"
@@ -5470,7 +5669,25 @@
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.md.model.a12internal.Group$SortField"
+      "type": "com.mgmtp.a12.kernel.md.model.a12internal.Group$SortField",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setField",
+          "parameterTypes": [
+            "com.mgmtp.a12.kernel.md.model.a12internal.IDocumentModelObjectReference"
+          ]
+        },
+        {
+          "name": "setOrder",
+          "parameterTypes": [
+            "com.mgmtp.a12.kernel.md.model.api.IGroup$ISortField$Order"
+          ]
+        }
+      ]
     },
     {
       "type": "com.mgmtp.a12.kernel.md.model.a12internal.IAnnotated"
@@ -5544,11 +5761,43 @@
           "parameterTypes": [
             "com.mgmtp.a12.kernel.md.model.api.IRule$Severity"
           ]
+        },
+        {
+          "name": "setVariantFilter",
+          "parameterTypes": [
+            "com.mgmtp.a12.kernel.md.model.a12internal.VariantFilter"
+          ]
         }
       ]
     },
     {
-      "type": "com.mgmtp.a12.kernel.md.model.a12internal.VariantFilter"
+      "type": "com.mgmtp.a12.kernel.md.model.a12internal.VariantFilter",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "getFilterType",
+          "parameterTypes": []
+        },
+        {
+          "name": "getVariants",
+          "parameterTypes": []
+        },
+        {
+          "name": "setFilterType",
+          "parameterTypes": [
+            "com.mgmtp.a12.kernel.md.model.api.IVariantFilter$FilterType"
+          ]
+        },
+        {
+          "name": "setVariants",
+          "parameterTypes": [
+            "java.util.List"
+          ]
+        }
+      ]
     },
     {
       "type": "com.mgmtp.a12.kernel.md.model.a12internal.fieldtypes.BooleanType",
@@ -6510,6 +6759,9 @@
       "type": "groovy.lang.groovydoc.Groovydoc"
     },
     {
+      "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_order_internal_C_orderMetaClass"
+    },
+    {
       "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_order_internal_ERValidator_orderMetaClass"
     },
     {
@@ -6568,6 +6820,9 @@
     },
     {
       "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_order_internal_R_orderMetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_storefront_internal_C_storefrontMetaClass"
     },
     {
       "type": "groovy.runtime.metaclass.Com_mgmtp_a12_kernel_generated_storefront_internal_ERValidator_storefrontMetaClass"
@@ -6657,6 +6912,9 @@
       "type": "groovy.runtime.metaclass.CustomMetaClassCreationHandle"
     },
     {
+      "type": "groovy.runtime.metaclass.Script_0a3fcccd2c9009a8f733b16989a29134MetaClass"
+    },
+    {
       "type": "groovy.runtime.metaclass.Script_0ef1c1466c7d751a7565e66c3eb21cbeMetaClass"
     },
     {
@@ -6670,6 +6928,9 @@
     },
     {
       "type": "groovy.runtime.metaclass.Script_64b7d41a142b346202c54ecb4032ddcdMetaClass"
+    },
+    {
+      "type": "groovy.runtime.metaclass.Script_7b6c37b0182a9cb50c76d6ba3deb8e65MetaClass"
     },
     {
       "type": "groovy.runtime.metaclass.Script_81556b2ac311fec99848026475cbfe9eMetaClass"
@@ -6917,6 +7178,23 @@
         {
           "name": "<init>",
           "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.CustomSupportOptions",
+      "fields": [
+        {
+          "name": "customConditionsJsDir"
+        },
+        {
+          "name": "customFieldTypesJsDir"
+        },
+        {
+          "name": "predefinedTypesPath"
+        },
+        {
+          "name": "strictCustom"
         }
       ]
     },
@@ -7260,6 +7538,9 @@
           "name": "computation"
         },
         {
+          "name": "computationFlag"
+        },
+        {
           "name": "workspace"
         }
       ],
@@ -7479,6 +7760,9 @@
           "name": "field"
         },
         {
+          "name": "fieldFlag"
+        },
+        {
           "name": "group"
         },
         {
@@ -7658,6 +7942,9 @@
           "name": "clearIndexField"
         },
         {
+          "name": "clearSortFields"
+        },
+        {
           "name": "dryRun"
         },
         {
@@ -7674,6 +7961,9 @@
         },
         {
           "name": "repeatable"
+        },
+        {
+          "name": "sortFields"
         },
         {
           "name": "workspace"
@@ -7746,6 +8036,9 @@
       "fields": [
         {
           "name": "group"
+        },
+        {
+          "name": "groupFlag"
         }
       ],
       "methods": [
@@ -7881,6 +8174,9 @@
       "fields": [
         {
           "name": "alias"
+        },
+        {
+          "name": "aliasFlag"
         }
       ],
       "methods": [
@@ -7914,6 +8210,20 @@
       ]
     },
     {
+      "type": "io.github.mbackschat.a12.dm.cli.model.ModelCheckCommand",
+      "fields": [
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "io.github.mbackschat.a12.dm.cli.model.ModelCommand",
       "fields": [
         {
@@ -7931,7 +8241,7 @@
       "type": "io.github.mbackschat.a12.dm.cli.model.ModelComputeCommand",
       "fields": [
         {
-          "name": "doc"
+          "name": "instance"
         },
         {
           "name": "localeTag"
@@ -7974,7 +8284,7 @@
           "name": "condition"
         },
         {
-          "name": "doc"
+          "name": "customSupport"
         },
         {
           "name": "field"
@@ -7983,10 +8293,16 @@
           "name": "group"
         },
         {
+          "name": "instance"
+        },
+        {
           "name": "localeTag"
         },
         {
           "name": "name"
+        },
+        {
+          "name": "noComputations"
         },
         {
           "name": "ruleId"
@@ -8117,20 +8433,6 @@
       ]
     },
     {
-      "type": "io.github.mbackschat.a12.dm.cli.model.ModelValidateCommand",
-      "fields": [
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
       "type": "io.github.mbackschat.a12.dm.cli.rule.RuleAddCommand",
       "fields": [
         {
@@ -8207,6 +8509,38 @@
       "fields": [
         {
           "name": "rule"
+        },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.rule.RuleEvalCommand",
+      "fields": [
+        {
+          "name": "customSupport"
+        },
+        {
+          "name": "instance"
+        },
+        {
+          "name": "localeTag"
+        },
+        {
+          "name": "noComputations"
+        },
+        {
+          "name": "rule"
+        },
+        {
+          "name": "useKernel"
         },
         {
           "name": "workspace"
@@ -8298,6 +8632,9 @@
           "name": "rule"
         },
         {
+          "name": "ruleFlag"
+        },
+        {
           "name": "workspace"
         }
       ],
@@ -8345,32 +8682,6 @@
         },
         {
           "name": "rule"
-        },
-        {
-          "name": "workspace"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.rule.RuleTestCommand",
-      "fields": [
-        {
-          "name": "doc"
-        },
-        {
-          "name": "localeTag"
-        },
-        {
-          "name": "rule"
-        },
-        {
-          "name": "useKernel"
         },
         {
           "name": "workspace"
@@ -8532,6 +8843,9 @@
       "fields": [
         {
           "name": "id"
+        },
+        {
+          "name": "idFlag"
         }
       ],
       "methods": [
@@ -8614,6 +8928,23 @@
       ]
     },
     {
+      "type": "io.github.mbackschat.a12.dm.cli.workspace.WorkspaceCheckCommand",
+      "fields": [
+        {
+          "name": "dir"
+        },
+        {
+          "name": "recursive"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "io.github.mbackschat.a12.dm.cli.workspace.WorkspaceCommand",
       "fields": [
         {
@@ -8681,23 +9012,6 @@
         },
         {
           "name": "usersOverride"
-        }
-      ],
-      "methods": [
-        {
-          "name": "<init>",
-          "parameterTypes": []
-        }
-      ]
-    },
-    {
-      "type": "io.github.mbackschat.a12.dm.cli.workspace.WorkspaceValidateCommand",
-      "fields": [
-        {
-          "name": "dir"
-        },
-        {
-          "name": "recursive"
         }
       ],
       "methods": [
@@ -10532,6 +10846,12 @@
       "glob": "Com_mgmtp_a12_kernel_generated_order_internal_C_order$String.class"
     },
     {
+      "glob": "Com_mgmtp_a12_kernel_generated_order_internal_C_orderBeanInfo.groovy"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_order_internal_C_orderCustomizer.groovy"
+    },
+    {
       "glob": "Com_mgmtp_a12_kernel_generated_order_internal_ERValidator_order$CalculationCommand.class"
     },
     {
@@ -11082,6 +11402,12 @@
     },
     {
       "glob": "Com_mgmtp_a12_kernel_generated_storefront_internal_C_storefront$String.class"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_storefront_internal_C_storefrontBeanInfo.groovy"
+    },
+    {
+      "glob": "Com_mgmtp_a12_kernel_generated_storefront_internal_C_storefrontCustomizer.groovy"
     },
     {
       "glob": "Com_mgmtp_a12_kernel_generated_storefront_internal_ERValidator_storefront$CalculationCommand.class"
@@ -12101,6 +12427,30 @@
       "glob": "META-INF/services/org.slf4j.spi.SLF4JServiceProvider"
     },
     {
+      "glob": "Script_0a3fcccd2c9009a8f733b16989a29134$Com_mgmtp_a12_kernel_generated_order_internal_ERValidator_order.class"
+    },
+    {
+      "glob": "Script_0a3fcccd2c9009a8f733b16989a29134$Com_mgmtp_a12_kernel_generated_order_internal_Meta_order.class"
+    },
+    {
+      "glob": "Script_0a3fcccd2c9009a8f733b16989a29134$com$mgmtp$a12$kernel$core$rt$_30_8$internal$core.class"
+    },
+    {
+      "glob": "Script_0a3fcccd2c9009a8f733b16989a29134$com$mgmtp$a12$kernel$core$rt$_30_8$internal$formatdef.class"
+    },
+    {
+      "glob": "Script_0a3fcccd2c9009a8f733b16989a29134$com$mgmtp$a12$kernel$core$rt$_30_8$internal$meta.class"
+    },
+    {
+      "glob": "Script_0a3fcccd2c9009a8f733b16989a29134$com$mgmtp$a12$kernel$core$rt$_30_8$internal$util.class"
+    },
+    {
+      "glob": "Script_0a3fcccd2c9009a8f733b16989a29134BeanInfo.groovy"
+    },
+    {
+      "glob": "Script_0a3fcccd2c9009a8f733b16989a29134Customizer.groovy"
+    },
+    {
       "glob": "Script_0ef1c1466c7d751a7565e66c3eb21cbe$Com_mgmtp_a12_kernel_generated_subscription_internal_ERValidator_subscription.class"
     },
     {
@@ -12219,6 +12569,30 @@
     },
     {
       "glob": "Script_64b7d41a142b346202c54ecb4032ddcdCustomizer.groovy"
+    },
+    {
+      "glob": "Script_7b6c37b0182a9cb50c76d6ba3deb8e65$Com_mgmtp_a12_kernel_generated_subscription_internal_ERValidator_subscription.class"
+    },
+    {
+      "glob": "Script_7b6c37b0182a9cb50c76d6ba3deb8e65$Com_mgmtp_a12_kernel_generated_subscription_internal_Meta_subscription.class"
+    },
+    {
+      "glob": "Script_7b6c37b0182a9cb50c76d6ba3deb8e65$com$mgmtp$a12$kernel$core$rt$_30_8$internal$core.class"
+    },
+    {
+      "glob": "Script_7b6c37b0182a9cb50c76d6ba3deb8e65$com$mgmtp$a12$kernel$core$rt$_30_8$internal$formatdef.class"
+    },
+    {
+      "glob": "Script_7b6c37b0182a9cb50c76d6ba3deb8e65$com$mgmtp$a12$kernel$core$rt$_30_8$internal$meta.class"
+    },
+    {
+      "glob": "Script_7b6c37b0182a9cb50c76d6ba3deb8e65$com$mgmtp$a12$kernel$core$rt$_30_8$internal$util.class"
+    },
+    {
+      "glob": "Script_7b6c37b0182a9cb50c76d6ba3deb8e65BeanInfo.groovy"
+    },
+    {
+      "glob": "Script_7b6c37b0182a9cb50c76d6ba3deb8e65Customizer.groovy"
     },
     {
       "glob": "Script_81556b2ac311fec99848026475cbfe9e$Com_mgmtp_a12_kernel_generated_order_internal_ERValidator_order.class"
@@ -14621,6 +14995,12 @@
       "glob": "internal/templates/validation/groovy/metaDir/EnumerationOberflaechenWerte.st"
     },
     {
+      "glob": "internal/templates/validation/groovy/metaDir/GroupSortInfo.st"
+    },
+    {
+      "glob": "internal/templates/validation/groovy/metaDir/GroupSortInfoPair.st"
+    },
+    {
       "glob": "internal/templates/validation/groovy/metaDir/HintLists.st"
     },
     {
@@ -14910,6 +15290,9 @@
     },
     {
       "glob": "internal/vk_service_language_specifics/language_specifics_en_US.properties"
+    },
+    {
+      "glob": "io/github/mbackschat/a12/dm/cli/interp/custom-js-worker.mjs"
     },
     {
       "glob": "io/github/mbackschat/a12/dm/cli/version.properties"
@@ -15242,7 +15625,13 @@
       "glob": "models/order-tiered.dm.json"
     },
     {
+      "glob": "models/order-variant.dm.json"
+    },
+    {
       "glob": "models/order.dm.json"
+    },
+    {
+      "glob": "models/payment-customtype.dm.json"
     },
     {
       "glob": "models/person.dm.json"
