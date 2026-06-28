@@ -33,15 +33,18 @@ import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Option;
 
 /**
- * {@code dmtool model eval --instance <document.json>} — the runtime counterpart of {@code rule check}: run the
- * kernel's {@code validateFull} over a document INSTANCE and report which rules FIRED (the empirical
- * polarity check). Read-only: the {@code fired}/{@code messages}/{@code rule} payload rides {@code data}.
- * Narrow with {@code --rule} (existing) or a candidate ({@code --condition} + {@code --field}, injected,
- * not persisted). Computations are NOT run — use {@code model compute}.
+ * {@code dmtool model eval --instance <document.json>} — the runtime, model-scope evaluation verb (the runtime
+ * peer of the static {@code model check}): evaluate a document INSTANCE and report which rules FIRED (the
+ * empirical polarity check). By DEFAULT it runs the <b>form-engine flow</b> — compute → apply → validate — so a
+ * required-or-referenced computed field is filled before validation (matching the running app); {@code
+ * --no-computations} drops to the bare {@code validateFull} over stored values. Read-only: the {@code
+ * fired}/{@code messages}/{@code rule} payload rides {@code data}. Narrow with {@code --rule} (existing) or a
+ * candidate ({@code --condition} + {@code --field}, injected, not persisted). {@code model compute} reports the
+ * computed values themselves.
  */
 @Command(name = "eval", mixinStandardHelpOptions = true,
-        description = "Run a document INSTANCE through the runtime engine; report which rules fire in `data` "
-                + "(runtime).")
+        description = "Evaluate a document INSTANCE: report which rules fire in `data` (runtime; applies "
+                + "computations first by default — the form-engine flow — unless --no-computations).")
 final class ModelEvalCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();

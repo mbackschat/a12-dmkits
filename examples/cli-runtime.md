@@ -41,8 +41,9 @@ Usage: dmtool model eval [-hV] [--kernel] [--no-computations] [--strict-custom]
                          [--name=<name>] [--predefined-types=<file>]
                          [--rule=<rulePathInModel>] [--severity=ERROR|WARNING]
                          [-w=<dir>]...
-Run a document INSTANCE through the runtime engine; report which rules fire in
-`data` (runtime).
+Evaluate a document INSTANCE: report which rules fire in `data` (runtime;
+applies computations first by default — the form-engine flow — unless
+--no-computations).
       --code=<errorCode>     the candidate rule's error code (default: EVAL_DOC)
       --condition=<DSL>      evaluate a CANDIDATE rule (with --field): a
                                condition true on a VIOLATION; injected, not
