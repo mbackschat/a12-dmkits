@@ -35,6 +35,7 @@ public final class JsonSchemaImporter {
     private static final String DEFAULT_MODEL_ID = "ImportedModel";
     private static final String ROOT_GROUP = "Root";
     private static final String LOCALE = "en_US";
+    private static final String ROW_FIELD = "value";   // the single value field in a scalar-array row group
 
     public record ImportResult(String dmJson, TranscodeReport report) {}
 
@@ -153,9 +154,7 @@ public final class JsonSchemaImporter {
                                  String path, Ctx ctx) {
         JsonNode items = schema.path("items");
         if (!"object".equals(items.path("type").asText(""))) {
-            ctx.report().omit(path, "array '" + name + "' has scalar items — omitted. TO DO: add it by hand as a "
-                    + "multi-select group or a value-list field (proposal §9), or set the array-of-scalar "
-                    + "strategy in the MappingProfile");
+            addScalarArray(g, name, schema, items, path, ctx);
             return;
         }
         JsonNode maxItems = schema.get("maxItems");
@@ -176,6 +175,103 @@ public final class JsonSchemaImporter {
                     + " has no structural home (a12 repeatability has no min slot) — becomes a GroupFilled rule "
                     + "in the rule-synthesis increment (proposal §4)");
         }
+    }
+
+    /**
+     * An {@code array} of <em>scalar</em> items — no single a12 home, so the {@link MappingProfile} picks a
+     * target (SCHEMAKIT-SPEC §4b). All three non-{@code OMIT} strategies need a bounded cap ({@code maxItems
+     * ≥ 2}; a12 repeatability is a bounded max ≥ 2) — {@link #withCap} omits when absent. Each row holds the
+     * one value field named {@value #ROW_FIELD}. Omit, never block: an unmappable combination is skipped + a to-do.
+     */
+    private static void addScalarArray(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,
+                                       JsonNode items, String path, Ctx ctx) {
+        switch (ctx.profile().arrayOfScalar()) {
+            case OMIT -> ctx.report().omit(path, "array '" + name + "' has scalar items — omitted. TO DO: add it "
+                    + "by hand as a multi-select group or a value-list field (proposal §9), or set the "
+                    + "array-of-scalar strategy in the MappingProfile (MULTI_SELECT / VALUE_LIST / REPEATABLE_SINGLE)");
+            case MULTI_SELECT -> withCap(schema, name, path, ctx, max -> asMultiSelect(g, name, items, max, path, ctx));
+            case VALUE_LIST -> withCap(schema, name, path, ctx, max -> asValueList(g, name, items, max, path, ctx));
+            case REPEATABLE_SINGLE -> withCap(schema, name, path, ctx, max -> asRepeatableSingle(g, name, items, max, path, ctx));
+        }
+    }
+
+    /** Run {@code build} with the array's repeatability cap, or omit when there is no {@code maxItems ≥ 2}. */
+    private static void withCap(JsonNode schema, String name, String path, Ctx ctx, java.util.function.IntConsumer build) {
+        JsonNode maxItems = schema.get("maxItems");
+        if (maxItems == null || maxItems.asInt() < 2) {
+            ctx.report().omit(path, "array '" + name + "' of scalars has no maxItems ≥ 2 — omitted: an a12 "
+                    + "repeatable group needs a bounded max ≥ 2. TO DO: set maxItems on the schema, or add the "
+                    + "group by hand with a chosen max");
+            return;
+        }
+        build.accept(maxItems.asInt());
+    }
+
+    /** MULTI_SELECT → an a12 multi-select group of closed enum choices; needs {@code items.enum}. */
+    private static void asMultiSelect(DocumentModelDraft.GroupBuilder g, String name, JsonNode items,
+                                      int max, String path, Ctx ctx) {
+        if (!hasEnum(items)) {
+            ctx.report().omit(path, "array '" + name + "' under MULTI_SELECT needs a closed item set (items.enum) "
+                    + "— omitted. TO DO: add items.enum, or choose the VALUE_LIST / REPEATABLE_SINGLE strategy");
+            return;
+        }
+        String[] values = enumArrayValues(items);
+        g.multiSelectGroup(name, m -> m.enumField(ROW_FIELD, values).maxRows(max));
+        ctx.report().structure(path, "multi-select group (enum, max " + max + ")");
+    }
+
+    /** VALUE_LIST → a multi-select group with a free-text string field; needs string items. */
+    private static void asValueList(DocumentModelDraft.GroupBuilder g, String name, JsonNode items,
+                                    int max, String path, Ctx ctx) {
+        if (!"string".equals(items.path("type").asText(""))) {
+            ctx.report().omit(path, "array '" + name + "' under VALUE_LIST needs string items — omitted. "
+                    + "TO DO: choose the REPEATABLE_SINGLE strategy for non-string scalars");
+            return;
+        }
+        g.multiSelectGroup(name, m -> m.stringField(ROW_FIELD).maxRows(max));
+        ctx.report().structure(path, "value-list (string multi-select, max " + max + ")");
+    }
+
+    /** REPEATABLE_SINGLE → a plain repeatable group with one field of the item's kind (the general form). */
+    private static void asRepeatableSingle(DocumentModelDraft.GroupBuilder g, String name, JsonNode items,
+                                           int max, String path, Ctx ctx) {
+        if (scalarWouldOmit(items, ctx)) {
+            ctx.report().omit(path, "array '" + name + "' has items of type '"
+                    + (items.path("type").asText("").isEmpty() ? "<none>" : items.path("type").asText(""))
+                    + "' not importable under the current profile — omitted (an empty repeatable group is "
+                    + "invalid). TO DO: set the numberScale strategy for number items, or add the field by hand");
+            return;
+        }
+        g.group(name, sub -> {
+            sub.repeatable(max);
+            addScalar(sub, ROW_FIELD, items, true, path + "/" + ROW_FIELD, ctx);
+        });
+        ctx.report().structure(path, "repeatable single-field group (max " + max + ")");
+    }
+
+    /** Would {@link #addScalar} omit this item kind under the profile? (Used to avoid an empty repeatable group.) */
+    private static boolean scalarWouldOmit(JsonNode items, Ctx ctx) {
+        if (hasEnum(items)) {
+            return false;
+        }
+        return switch (items.path("type").asText("")) {
+            case "string", "boolean", "integer" -> false;
+            case "number" -> ctx.profile().numberScale() == MappingProfile.NumberScale.OMIT;
+            default -> true;   // unknown / unsupported scalar kind
+        };
+    }
+
+    private static boolean hasEnum(JsonNode items) {
+        return items.has("enum") && items.get("enum").isArray() && !items.get("enum").isEmpty();
+    }
+
+    private static String[] enumArrayValues(JsonNode items) {
+        JsonNode en = items.get("enum");
+        String[] values = new String[en.size()];
+        for (int i = 0; i < en.size(); i++) {
+            values[i] = en.get(i).asText();
+        }
+        return values;
     }
 
     private static void addScalar(DocumentModelDraft.GroupBuilder g, String name, JsonNode schema,

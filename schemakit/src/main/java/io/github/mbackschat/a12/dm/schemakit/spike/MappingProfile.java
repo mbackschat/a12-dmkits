@@ -6,9 +6,9 @@ package io.github.mbackschat.a12.dm.schemakit.spike;
  * a consumer overrides any single decision via {@code with…}. (CLI flags build one.) Each strategy is an
  * enum so illegal states are unrepresentable.
  *
- * <p>Decisions consulted today: {@link #numberScale}, {@link #booleanKind}. The structural strategies
- * ({@link #arrayOfScalar}, {@link #mapStrategy}, {@link #unionStrategy}, {@link #format},
- * {@link #recursionDepth}) are declared here and wired by their own increments (tasks #2–#6/#10).
+ * <p>Decisions consulted today: {@link #numberScale}, {@link #booleanKind}, {@link #arrayOfScalar}. The
+ * remaining structural strategies ({@link #mapStrategy}, {@link #unionStrategy}, {@link #format},
+ * {@link #recursionDepth}) are declared here and wired by their own increments (tasks #3–#6/#10).
  */
 public record MappingProfile(
         NumberScale numberScale,
@@ -63,5 +63,10 @@ public record MappingProfile(
     public MappingProfile withBooleanKind(BooleanKind kind) {
         return new MappingProfile(numberScale, defaultScale, arrayOfScalar, mapStrategy, unionStrategy,
                 format, kind, enumLabels, recursionDepth);
+    }
+
+    public MappingProfile withArrayOfScalar(ArrayOfScalar strategy) {
+        return new MappingProfile(numberScale, defaultScale, strategy, mapStrategy, unionStrategy,
+                format, booleanKind, enumLabels, recursionDepth);
     }
 }
