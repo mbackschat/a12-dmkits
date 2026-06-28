@@ -83,8 +83,8 @@ Both keep **artifact mode**: the transcode result (DM-JSON / JSON Schema) goes t
 | **Structure** | `object`→group, `array`-of-`object`→repeatable group, scalar→field-kind (the field-type matcher, §4b), `$defs`/`$ref`→typedef (leaf) / inlined group (object; reuse via a separate include child is the deferred multi-model increment, §4e) |
 | **Field config** | `minLength`/`maxLength`/`pattern`→string config; `minimum`/`maximum`→number bounds |
 | **Rules (direct)** | `required`→requiredness; `enum`→ENUMERATION; `uniqueItems`→`RepetitionNotUnique`/`FieldValuesNotUnique`; `pattern`→`PatternViolated` |
-| **Rules (composed), built** | `exclusiveMinimum`/`exclusiveMaximum`→strict `<`/`>`; `multipleOf`→modulo `{[x]−RoundDown([x]/N,0)·N} ≠ 0`; `const`→`!=` / single-value; `dependentRequired`→conditional requiredness; `oneOf`/`anyOf` discriminator→per-variant requiredness rules; `uniqueItems`→`RepetitionNotUnique`; `if {field=value} then {required}`→conditional requiredness; `not {const}`→`!=`, `not {enum}`→not-in-list |
-| **Rules — not yet built** (reported, not enforced) | `contains`/`minContains`→`Having`+count; *general* `if`/`then`/`else` (then-value-constraints, `else`, arbitrary schemas) and complex `not` (non-const/enum). (`minItems` has **no clean a12 rule form** — §4c; reported, not enforced.) |
+| **Rules (composed), built** | `exclusiveMinimum`/`exclusiveMaximum`→strict `<`/`>`; `multipleOf`→modulo `{[x]−RoundDown([x]/N,0)·N} ≠ 0`; `const`→`!=` / single-value; `dependentRequired`→conditional requiredness; `oneOf`/`anyOf` discriminator→per-variant requiredness rules; `uniqueItems`→`RepetitionNotUnique`; `if {field=value} then/else {required}`→conditional requiredness (the `else` fires on the negated condition); `not {const}`→`!=`, `not {enum}`→not-in-list, `not {pattern}`→match rule, `not {minimum/maximum}`→inverted numeric bound |
+| **Rules — not yet built** (reported, not enforced) | the open tractable gaps — `contains`/`minContains`, then/else **value**-constraints, multi-property `if`, complex `not` (`minLength`/`type`/`required`/nested) — are tracked in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md). (`minItems` has **no clean a12 rule form** — §4c; a permanent omission, not a gap.) |
 | **Carriage (export, a12↔a12)** | the full rule rides `x-a12-rule`, a computation `x-a12-computation`; `readOnly:true` marks a computed field |
 | **Two-tier validation** *(proposal §12.1)* | exported Tier-A keywords = field-local tier (any validator); `:interpreter` = full-rule tier |
 
@@ -143,8 +143,8 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | `exclusiveMinimum` / `exclusiveMaximum` | strict `<` / `>` rule | rule (Tier A+) |
 | `multipleOf` · `const` · `dependentRequired` | modulo rule · `!=` rule · conditional-requiredness rule | rule (Tier A+) |
 | `uniqueItems` | `RepetitionNotUnique` rule keyed on the repeatable group's row fields | rule (Tier A+) |
-| `if {field = value}` + `then {required}` | conditional-requiredness rule per dependent | rule (Tier A+) |
-| `not {const}` · `not {enum}` | `!=` rule · not-in-list rule | rule (Tier A+) |
+| `if {field = value}` + `then` / `else {required}` | conditional-requiredness rule per dependent (the `else` on the negated condition) | rule (Tier A+) |
+| `not {const}` · `not {enum}` · `not {pattern}` · `not {min/max}` | `!=` · not-in-list · must-not-match · inverted numeric bound | rule (Tier A+) |
 | `oneOf`/`anyOf` of same-kind objects | superset group + discriminator → enum + per-variant requiredness rules | strategy + rule (profile: union) |
 | `array` of scalar | repeatable single-field group (default) / multi-select / value-list | strategy (profile; **imported by default**) |
 | `array` / map with no `maxItems` / `maxProperties` | repeatable group capped at `--default-repeat-cap` (default 1000) | strategy (profile; **imported by default**, capped) |
@@ -156,7 +156,7 @@ The asymmetry in one place. **Import aims for total coverage** — every JSON Sc
 | cross-kind `type:[X,Y]` · mixed `oneOf`/`anyOf` | reported | omitted (§4c) |
 | `unevaluatedProperties` / `unevaluatedItems` | structure imports; constraint reported — **not enforced** | omitted (§4c) |
 | `$dynamicRef` / `$dynamicAnchor` | reported | omitted (§4c) |
-| `contains`/`minContains`; *general* `if`/`then`/`else` + complex `not` | structure imports; keyword reported — **not yet mapped** (needs starred-aggregate / arbitrary-schema synthesis) | omitted (gap) |
+| `contains`/`minContains`; then/else **value**-constraints; multi-property `if`; complex `not` (`minLength`/`type`/`required`/nested) | structure imports; keyword reported — **not yet mapped** ([`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md)) | omitted (gap) |
 
 ### Export — Document Model → JSON Schema
 
@@ -254,7 +254,7 @@ Built test-first, smallest increment first. Progress is git, not a status table 
 
 ## 7. Open items
 
-The customizable strategies and the residual omissions are settled in §4b/§4c. What's still genuinely open:
+The customizable strategies and the residual omissions are settled in §4b/§4c. The **open import-synthesis gaps** (tractable-but-deferred rule mappings — `contains`/`minContains`, then/else value-constraints, multi-property `if`, complex `not`) are tracked in [`SCHEMAKIT-GAPS-LEDGER.md`](SCHEMAKIT-GAPS-LEDGER.md). What's still genuinely open at the contract/architecture level:
 
 - **Module name** — `:schemakit` (consistent with rulekit/modelkit). Reconsider only if it confuses with the `schema` verb.
 - **Target draft** — Draft 2020-12 canonical + Draft-07 read-compat (proposal §12/§13).
