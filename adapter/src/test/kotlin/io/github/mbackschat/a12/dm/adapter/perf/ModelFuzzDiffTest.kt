@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.perf
 
 import io.github.mbackschat.a12.dm.adapter.laws.FuzzDiagnostics
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 
 /**
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.Test
  * .signaturesAgree]) over fuzzed documents. Models are valid-by-construction (modelkit `toJson`); a divergence
  * is reported via [FuzzDiagnostics.signatureDivergence] (which `(model, doc)` seed + the diverging signatures).
  */
+@Tag("fuzz")
 class ModelFuzzDiffTest {
 
     @Test

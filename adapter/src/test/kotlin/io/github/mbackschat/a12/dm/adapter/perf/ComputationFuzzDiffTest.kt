@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.perf
 
 import io.github.mbackschat.a12.dm.adapter.laws.FuzzDiagnostics
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 
 /**
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Test
  * survived). A divergence is reported via [FuzzDiagnostics.computeDivergence] (which `(model, doc)` seed + the
  * outcome signatures present in only one engine).
  */
+@Tag("fuzz")
 class ComputationFuzzDiffTest {
 
     @Test

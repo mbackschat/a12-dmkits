@@ -73,7 +73,14 @@ dependencies {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    // Gate tiering (docs/TESTING-SPEC "Test tiers"): the 8-min perf benchmark (@Tag 'perf') + the differential
+    // fuzzers (@Tag 'fuzz') are EXCLUDED from the default local run, so it stays ~2-3 min instead of ~12. Opt in
+    // with -PrunPerf / -PrunFuzz (or -PallTests for both). CI runs fuzz on every push (-PrunFuzz) and perf nightly.
+    useJUnitPlatform {
+        def all = project.hasProperty('allTests')
+        if (!all && !project.hasProperty('runPerf')) excludeTags 'perf'
+        if (!all && !project.hasProperty('runFuzz')) excludeTags 'fuzz'
+    }
     // Forward opt-in harness locations (read-only corpora) AND the opt-in perf knobs from the Gradle CLI to the
     // test JVM, e.g. -Da12.kernel.mm.dir=… / -Dperf.profile=true / -Dperf.edge=true — harnesses skip (or gate)
     // when their property is unset.

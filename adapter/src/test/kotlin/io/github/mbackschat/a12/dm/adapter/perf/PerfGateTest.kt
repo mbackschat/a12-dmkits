@@ -1,6 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.perf
 
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 
 /**
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.Test
  * — the honest read is **competitive-to-faster on these scenarios**, not "Nx faster" as a speed verdict. The
  * bounds are GATES (catch a regression, tolerate CI variance), not SLAs. Pure engine, no CLI.
  */
+@Tag("perf")
 class PerfGateTest {
 
     /** (scenario, gate N). Nested scenarios use a smaller Line count (× [PerfCatalog.SUBS_PER_LINE] = sub rows). */

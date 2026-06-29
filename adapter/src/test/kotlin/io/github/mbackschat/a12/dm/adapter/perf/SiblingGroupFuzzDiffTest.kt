@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.perf
 
 import io.github.mbackschat.a12.dm.adapter.laws.FuzzDiagnostics
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 
 /**
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.Test
  *     polarity, empty-as-0, AND the invalid-index 3VL corner — the strategy injects occasional duplicate/empty
  *     index values, KERNEL-FINDINGS §9).
  */
+@Tag("fuzz")
 class SiblingGroupFuzzDiffTest {
 
     @Test

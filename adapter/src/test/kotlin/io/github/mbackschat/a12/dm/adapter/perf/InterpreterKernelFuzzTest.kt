@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.perf
 
 import io.github.mbackschat.a12.dm.adapter.laws.FuzzDiagnostics
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 
 /**
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.Test
  * seed is materialized into BOTH engines from the same generator instance — deterministic for a fixed seed, so
  * a failing seed is exactly reproducible (printed in the assertion).
  */
+@Tag("fuzz")
 class InterpreterKernelFuzzTest {
 
     @Test

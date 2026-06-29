@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.laws
 
 import io.github.mbackschat.a12.dm.adapter.perf.PerfCatalog
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 
 /**
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.Test
  * Pure engine ([DmInterpreter.validateFull]) vs the [RuntimeLaws] kernel oracle, both materialized from the
  * same kernel-free generator; a diverging seed is reported via [FuzzDiagnostics.signatureDivergence].
  */
+@Tag("fuzz")
 class FullMessageFuzzDiffTest {
 
     @Test

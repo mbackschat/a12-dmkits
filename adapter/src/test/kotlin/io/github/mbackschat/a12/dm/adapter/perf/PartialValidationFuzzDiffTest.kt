@@ -2,6 +2,7 @@ package io.github.mbackschat.a12.dm.adapter.perf
 
 import io.github.mbackschat.a12.dm.adapter.laws.FuzzDiagnostics
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 
 /**
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.Test
  * uniqueness, AND the starred aggregates (`Sum`/`FirstFilled`/`SumOfProducts`) whose per-operator partial-relevance
  * the IF42 fix made kernel-exact (it once excluded those codes pending IG20; no longer).
  */
+@Tag("fuzz")
 class PartialValidationFuzzDiffTest {
 
     @Test
