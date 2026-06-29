@@ -55,10 +55,28 @@ A first spike built the structural-diff vertical end-to-end and de-risked the fo
 - **The diff approach holds.** `ModelDiff` (in `:adapter`) matches fields + rules into added/removed/modified with per-aspect deltas and a risk tier, and — verified on real fixtures — **ignores reformatting** (the structural-diff payoff). It's shipped as the self-describing `dmtool model diff` verb (manifest/`schema model diff`/`--help`/demonstrated, all conformance-gated) and a cli-tour walkthrough.
 - **Dogfooding signal: positive.** Building the engine as a *consumer* of the kits reused the typed surface cleanly — `KernelAdapter` (`ruleFullNames`/`canonicalConditionText`/`ruleSeverity`/`ruleErrorCode`), `BoundModel.fields()`/`FieldInfo` — with **no friction**, so no new `DEV-API-GAPS` entry. The kernel-canonical condition text gave format-independent rule comparison for free.
 
-**Decision: GO** — proceed to the full build. **Delivered so far:** the Phase-0 deterministic writer foundation (`model normalize` + guards), the `model diff` structural-diff vertical (engine + verb + risk tiers + schema + conformance + demo). What remains is tracked in the LEDGER: the completeness gaps (`MR1` AST-level condition diff, `MR2` reorder-as-change, `MR3` robust move-matching, `MR4` relational grouping, `MR5` compact/risk-grouped `--text`), the `md`+mermaid rendering, `model report` (comprehension), and the `workspace` rollup.
+**Decision: GO** — proceed to the full build. **Delivered so far:** the Phase-0 deterministic writer foundation (`model normalize` + guards); the `model diff` structural-diff vertical (engine + verb + risk tiers + schema + conformance + demo); and **`model report`** — the comprehension surface (`ModelReport` engine + verb: identity, structure outline, the dead-field set, and the glossed rules/computations catalog; trimmed per the §6 audit). What remains is tracked in the LEDGER: the completeness gaps (`MR1` AST-level condition diff, `MR2` reorder-as-change, `MR3` robust move-matching, `MR4` relational grouping, `MR5` compact verb-specific `--text`), the `md`+mermaid rendering, and the `workspace` rollup.
 
 ## 5. Where the detail lives
 
 - **Contract** (verbs, I/O shapes, the Phase-0 invariant + order policy, the change model + change kinds, the risk taxonomy, polarity detection, the gloss contract, the rendering & mermaid policy, self-describing/no-rot, the reuse map): [`MODEL-REVIEW-SPEC.md`](MODEL-REVIEW-SPEC.md).
 - **Open / deferred / out-of-scope** (the completeness gaps `MR1`–`MR4`, the deferred satellites with their re-open triggers, the won't-build decisions): [`MODEL-REVIEW-LEDGER.md`](MODEL-REVIEW-LEDGER.md).
 - **Progress**: git + the task list; this proposal is archived once the spec is fully built.
+
+## 6. Redundancy & overlap audit (2026-06-30)
+
+A review of the MODEL-REVIEW verbs for redundancy against the existing read surface (trigger: `model report`'s `usage` was a literal duplicate of `model usage`).
+
+**Fixed:**
+- **`model report.usage`** (the full field→referrers map) duplicated **`model usage`** (same shape *and* source) — the one literal overlap. **Removed:** the report carries only the `unreferenced` (dead-field) set — the audit value that belongs in a comprehension overview — and the full map stays `model usage`.
+- **Per-rule `polarity`** repeated the same constant note on every catalog entry (N copies of a long string — a token-efficiency violation). **Hoisted** to one report-level field.
+
+**Kept, with justification** (lean re-projection or inline convenience, not duplication):
+- `model report.identity` ⊂ `model info` and `.structure` ⊂ `model describe` — each is a *leaner, different* projection (the comprehension *frame*: header essentials; an outline of path+kind), pointing at `info`/`describe`/`field read` for the authoritative detail. Not a copied contract.
+- per-rule `canonicalText` overlaps `rule format`/`rule read` — one line per entry, useful *in* the catalog, and the *only* representation for an Opaque rule (no gloss). An inline convenience, not a wholesale dup.
+
+**No overlap:** `model diff` (the only diff), `model normalize` (the only canonicalizer), and `model report` vs `model diff` (comprehend one model vs diff two) are distinct.
+
+**Forward constraint:** the deferred `workspace report`/`workspace diff` rollup (LEDGER §2) **must not** duplicate `workspace list` (the model index) or `workspace check` (the validation gate) — it is the per-model report/diff *aggregator*, to be designed non-overlapping when built.
+
+**Other weaknesses (tracked, not blocking):** `--text` for both report and diff rides the generic renderer (compact verb-specific form = LEDGER MR5); the Hybrid-gloss *agent-enrichment* half is a convention, not an enforced feature (the deterministic tool gloss is what's built + citeable).

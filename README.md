@@ -154,7 +154,10 @@ dmtool -m order.dm.json rule deps  /Order/DeliveryNotBeforeOrder    # its forwar
 dmtool -m order.dm.json rule format /Order/DeliveryNotBeforeOrder --lang DE  # the kernel's canonical text, switched EN↔DE
 dmtool -m order.dm.json where-used /Order/DeliveryDate             # the inverse: which rules/computations use a field
 dmtool -m order.dm.json model usage                                # whole-model audit: every field's referrers + the unreferenced set
+dmtool -m order.dm.json model report                               # the comprehension dashboard: identity + structure outline + the dead-field set + a GLOSSED rules/computations catalog (each in plain language, next to its stored message)
 ```
+
+`model report` is the *understand-the-whole-model* companion to `model diff` below: where the others read one facet, it assembles the lot — and renders every rule/computation in **plain language** (a tool-computed gloss) next to its **stored message**, so you can see what a rule *does* against what it *claims*.
 
 ### Review what changed — a semantic diff
 

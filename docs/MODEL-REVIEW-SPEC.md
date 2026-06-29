@@ -63,15 +63,15 @@ The fix lives in the core write path (`DmJson` / `ModelWriter` / `ModelDocument`
 - **The glossed rules/computations catalog is the centerpiece** — every rule in plain language, grouped by the field/group it guards.
 - **Token-efficiency is first-class:** scoping (`--group`, `--rules-only`, depth limits) over a 50k-token monolith.
 
-## 4. `model report` — comprehend
+## 4. `model report` — comprehend (built)
 
-Assembles identity + health (J1, J6), the **structure outline** (J2) with per-field config, the **glossed catalog** (J3), and the **dependency/usage** view (J4, the unreferenced set surfaced). Output rides the result envelope; the `data` payload is published as `model-report.schema.json` (`schema model report`, `DataSchemaConformanceTest`).
+`dmtool -m <model> model report` assembles, in one read, **identity** (J1), a lean **structure outline** (J2 — field paths + kinds, group repeatability; full per-kind config stays a `field read` drill-down, keeping the payload token-efficient), the **unreferenced (dead-field) set** (J4 — the audit headline; the *full* field→referrers map stays `model usage`, deliberately **not** duplicated here — the redundancy audit, PROPOSAL §6), and the **glossed rules/computations catalog** (J3 — the centerpiece), with **polarity** carried **once** at the top (it's the same fact for every rule, not repeated per entry). Output rides the result envelope; the `data` payload is published as `model-report.schema.json` (`schema model report`, locked by `DataSchemaConformanceTest`). The engine is the `ModelReport` library primitive (`:adapter`), reusing `ModelContext.describe`/`explain` + `KernelAdapter` reads — assembly, not new foundations.
 
-Renderings (shape × host — §6): **json** (contract) · **md** (outline + glossed catalog + tables; mermaid only for a workspace-topology block) · **text** (outline + tables + ASCII `tree`; no mermaid).
+Renderings (shape × host — §6): **json** (contract, built) · **text** (built — currently the generic envelope renderer; the compact outline+catalog form is LEDGER MR5) · **md** (outline + glossed catalog + tables; mermaid only for a workspace-topology block — a later slice).
 
 ### 4a. The gloss (Hybrid C)
 
-Per rule/computation, side by side: a **deterministic gloss** (templated from the AST + operator catalog — the citeable baseline), **polarity** (`fires on violation`), and the **verbatim stored message** (the modeller's intent). The agent may add a *marked* fluency line; it never replaces the tool gloss. The independent gloss is what enables the gloss-vs-message drift signal (§5d).
+Per rule/computation, side by side: a **deterministic gloss** (templated from the AST + operator catalog — the citeable baseline) and the **verbatim stored message** (the modeller's intent); **polarity** (`fires on violation`) is the report-level constant carried once (§4), not per entry. The agent may add a *marked* fluency line; it never replaces the tool gloss. The independent gloss is what enables the gloss-vs-message drift signal (§5d).
 
 ## 5. `model diff` — review
 
