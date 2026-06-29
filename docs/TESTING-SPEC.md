@@ -217,6 +217,19 @@ These read the **real** model corpora to measure coverage; they skip when their 
 - **`validate/` keeps only F4 mechanics**; the kernel-law locks live under `validate/laws/` (tier 1) and `adapter/…/laws/` (tier 2).
 - **Fixtures load once** via the shared `Fixtures` util (`subscription()`/`order()`/…) — `BoundModel` is an immutable snapshot (F0), safe to share, so a new file costs a few lines.
 
+## Test tiers — the fast default vs. the heavy perf/fuzz lanes
+
+The full kernel-backed suite was ~12 min, but **two categories accounted for ~10 of it**: the **perf benchmark** (`PerfGateTest`, `@Tag("perf")`, ~8 min — the ratio regression-gate, [`INTERPRETER-PERFORMANCE.md`](INTERPRETER-PERFORMANCE.md)) and the **differential fuzzers** (the `*FuzzDiffTest` + `InterpreterKernelFuzzTest`, `@Tag("fuzz")`, ~2 min). The other ~2,000 unit/conformance tests run in ~2 min. So both heavy categories are **tagged and excluded from the default run** (`adapter/build.gradle`), dropping the routine gate to **~2–3 min**:
+
+| run | command | what runs |
+|---|---|---|
+| **default** (inner loop) | `./build.sh :adapter:test :cli:test` | everything **except** perf + fuzz (~2–3 min) |
+| + fuzzers | `./build.sh :adapter:test -PrunFuzz` | adds the differential fuzzers |
+| + perf | `./build.sh :adapter:test -PrunPerf` | adds the 8-min perf benchmark |
+| everything | `./build.sh :adapter:test -PallTests` | both |
+
+**Nothing is dropped — CI runs them on a defined trigger:** the fuzzers on **every push/PR** (`-PrunFuzz` — correctness nets, interpreter == kernel), the perf gate **nightly + on `workflow_dispatch`** (`-PrunPerf` — a ratio gate, not a per-commit check). `GateTierWiringTest` fails the build if either lane is dropped from the CI workflow (F11 loud-detection). **Tagging rule:** a new perf benchmark gets `@Tag("perf")`, a new differential fuzzer `@Tag("fuzz")` — so it joins the right lane automatically.
+
 ## Running
 
 Build with an isolated, public-repos-only Gradle home on JDK 21 (the kernel must first be in `mavenLocal` via the sibling bootstrap kit — see the README "Build & test"):

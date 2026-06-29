@@ -11,6 +11,8 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'   # nightly — runs the 8-min perf gate (the perf step below); see docs/TESTING-SPEC "Test tiers"
 
 permissions:
   contents: read
@@ -60,14 +62,27 @@ jobs:
           JAVA25_HOME: ${{ env.JAVA_HOME_25_X64 }}
         run: ./bootstrap.sh
 
-      - name: Build & test rulekit (core + adapter + cli)
+      # The default suite + the differential FUZZERS (-PrunFuzz) run on every push/PR — fuzzers are
+      # correctness nets (interpreter == kernel), ~2 min. The 8-min perf BENCHMARK is excluded here and
+      # runs in the nightly perf step below (docs/TESTING-SPEC "Test tiers").
+      - name: Build & test rulekit (core + adapter + cli + fuzzers)
         working-directory: a12-dmkits
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
           # Public-repos-only Gradle home, as the README's build does (here it also gives a clean,
           # cacheable home on the runner).
           GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated
-        run: ./gradlew --no-daemon test :adapter:test :cli:test
+        run: ./gradlew --no-daemon test :adapter:test :cli:test -PrunFuzz
+
+      # The perf gate (@Tag 'perf', ~8 min) — nightly + on-demand, not on every push (it's a ratio
+      # regression-gate, not a per-commit correctness check). Guaranteed to run, just not on the PR path.
+      - name: Perf gate (nightly + on-demand)
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        working-directory: a12-dmkits
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME_21_X64 }}
+          GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-isolated
+        run: ./gradlew --no-daemon :adapter:test -PrunPerf
 
       # Both agent plugins (Claude Code, Codex) bundle COPIES of the single-source assets — skill/SKILL.md
       # and scripts/ensure-dmtool.sh — synced by scripts/sync-plugin-assets.sh. Fail loudly if any copy
