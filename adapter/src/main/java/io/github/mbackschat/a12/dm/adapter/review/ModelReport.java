@@ -62,9 +62,15 @@ public record ModelReport(Identity identity, ModelCard structure, Usage usage,
     public record ComputationEntry(String computation, String scope, boolean explained, String computedField,
             String gloss, String canonicalText, List<Message> messages) {}
 
-    /** Assemble the comprehension view of {@code modelJson} (kernel-loadable). */
+    /** Assemble the comprehension view of {@code modelJson} (a self-contained, kernel-loadable model). */
     public static ModelReport of(String modelJson) {
-        BoundModel model = BoundModel.ofJson(modelJson);
+        return of(modelJson, null);
+    }
+
+    /** Assemble the comprehension view, resolving {@code include}s/imports through {@code resolver} (or none). */
+    public static ModelReport of(String modelJson,
+            com.mgmtp.a12.kernel.md.model.api.services.IDocumentModelReferenceResolver resolver) {
+        BoundModel model = resolver == null ? BoundModel.ofJson(modelJson) : BoundModel.ofJson(modelJson, resolver);
         ModelDocument doc = ModelDocument.read(modelJson);
         Identity identity = new Identity(doc.id(), doc.modelType(), doc.modelVersion(), doc.locales());
         ModelContext context = new ModelContext(model);

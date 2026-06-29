@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/model-report.schema.json",
+  "title": "ModelReport",
+  "description": "The `data` payload of `dmtool -m <model> model report` (MODEL-REVIEW-SPEC §4) — the comprehension read. `identity` is the header card; `structure` is a lean outline (field paths + kinds, group repeatability — full per-kind config is a `field read` drill-down); `usage` maps every field to its referrers (empty = unreferenced) with the unreferenced subset; `rules`/`computations` are the glossed catalog — each in plain language (`gloss`, the tool-computed half) with `polarity` (a rule fires on the VIOLATION) and the verbatim stored `messages` (the modeller's own text), so a reviewer sees what a condition DOES next to what it CLAIMS. A condition rulekit can't model is reported `explained:false` with its kernel-canonical text, never dropped.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["identity", "structure", "usage", "rules", "computations"],
+  "properties": {
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "modelType", "modelVersion", "locales"],
+      "properties": {
+        "id": { "type": "string", "description": "the model's header id" },
+        "modelType": { "type": "string", "description": "the kernel model type (e.g. document)" },
+        "modelVersion": { "type": "string", "description": "the document-model format version" },
+        "locales": { "type": "array", "items": { "type": "string" }, "description": "the declared display locales" }
+      }
+    },
+    "structure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fields", "groups"],
+      "description": "the lean structure outline (full per-kind config is available via `field read`)",
+      "properties": {
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "kind"],
+            "properties": {
+              "path": { "type": "string", "description": "the field's full path" },
+              "kind": { "type": "string", "description": "the value kind (NUMBER, STRING, DATE, ENUMERATION, …)" }
+            }
+          }
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "repeatable", "maxRepetitions"],
+            "properties": {
+              "path": { "type": "string", "description": "the group's full path" },
+              "repeatable": { "type": "boolean", "description": "whether the group repeats" },
+              "maxRepetitions": { "type": "integer", "description": "max rows (1 when non-repeatable)" }
+            }
+          }
+        }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["referrers", "unreferenced"],
+      "properties": {
+        "referrers": {
+          "type": "object",
+          "description": "field path → the rule/computation full names that reference it (empty array = nothing reads it)",
+          "additionalProperties": { "type": "array", "items": { "type": "string" } }
+        },
+        "unreferenced": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "the fields no rule or computation reads — the audit headline"
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "description": "the glossed rule catalog — every validation rule in plain language",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rule", "scope", "explained", "canonicalText", "polarity", "severity", "code", "messages"],
+        "properties": {
+          "rule": { "type": "string", "description": "the rule's full name" },
+          "scope": { "type": "string", "description": "the group the rule is scoped to (its grouping key)" },
+          "explained": { "type": "boolean", "description": "false when rulekit reads the condition as Opaque" },
+          "gloss": { "type": "string", "description": "the tool-computed plain-language one-liner (absent when Opaque)" },
+          "canonicalText": { "type": "string", "description": "the kernel-canonical condition text" },
+          "polarity": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["firesOn", "note"],
+            "properties": {
+              "firesOn": { "type": "string", "description": "what the condition fires on — always 'violation'" },
+              "note": { "type": "string", "description": "the polarity explanation" }
+            }
+          },
+          "severity": { "type": "string", "description": "ERROR / WARNING / INFO" },
+          "code": { "type": "string", "description": "the rule's error code" },
+          "errorField": { "type": "string", "description": "the field the diagnostic attaches to (when set)" },
+          "messages": {
+            "type": "array",
+            "description": "the verbatim stored messages (the modeller's own text)",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["locale", "text"],
+              "properties": {
+                "locale": { "type": "string" },
+                "text": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "computations": {
+      "type": "array",
+      "description": "the glossed computation catalog — every computed field in plain language",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["computation", "scope", "explained", "messages"],
+        "properties": {
+          "computation": { "type": "string", "description": "the computation's full name" },
+          "scope": { "type": "string", "description": "the group the computation is scoped to" },
+          "explained": { "type": "boolean", "description": "false when rulekit reads the operation as Opaque" },
+          "computedField": { "type": "string", "description": "the field this computation fills (when explained)" },
+          "gloss": { "type": "string", "description": "the tool-computed plain-language one-liner (absent when Opaque)" },
+          "canonicalText": { "type": "string", "description": "the kernel-canonical text (present when Opaque)" },
+          "messages": {
+            "type": "array",
+            "description": "the verbatim stored self-validation messages",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["locale", "text"],
+              "properties": {
+                "locale": { "type": "string" },
+                "text": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -67,6 +67,7 @@ final class SchemaCommand extends BaseCommand {
             Map.entry("model describe", "describe"),
             Map.entry("model diff", "model-diff"),
             Map.entry("model usage", "model-usage"),
+            Map.entry("model report", "model-report"),
             Map.entry("where-used", "where-used"),
             Map.entry("field read", "field-read"),
             Map.entry("group read", "group-read"),

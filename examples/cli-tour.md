@@ -21,6 +21,7 @@ model describe
 model diff
 model read
 model usage
+model report
 model rename
 model normalize
 model eval

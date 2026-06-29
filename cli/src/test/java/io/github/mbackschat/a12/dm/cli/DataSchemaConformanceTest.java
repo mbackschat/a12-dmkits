@@ -59,6 +59,7 @@ class DataSchemaConformanceTest {
     void everyServedDataSchemaConformsToRealOutput(@TempDir Path dir) throws Exception {
         Path sub = CliTestSupport.modelWithRule(dir);
         Path order = CliTestSupport.orderRuled(dir);
+        Path reportModel = CliTestSupport.modelWithRuleAndComputation(dir);   // rule + computation → both report catalogs
         Path docDir = Files.createDirectories(dir.resolve("docs"));
         Path doc = docDir.resolve("doc.json");
         Files.writeString(doc, """
@@ -80,6 +81,7 @@ class DataSchemaConformanceTest {
                 new Run("describe", new String[]{"-m", order.toString(), "model", "describe"}),
                 new Run("model-usage", new String[]{"-m", order.toString(), "model", "usage"}),
                 new Run("model-diff", new String[]{"model", "diff", order.toString(), sub.toString()}),
+                new Run("model-report", new String[]{"-m", reportModel.toString(), "model", "report"}),
                 new Run("read", new String[]{"-m", sub.toString(), "rule", "read", CliTestSupport.RULE_FULL_NAME}),
                 new Run("read", new String[]{"-m", sub.toString(), "rule", "read"}),
                 new Run("explain", new String[]{"-m", sub.toString(), "rule", "explain", CliTestSupport.RULE_FULL_NAME}),
@@ -187,8 +189,9 @@ class DataSchemaConformanceTest {
     /** Tripwire: if a new {@code DATA_SCHEMA} verb is added, it must be covered above or reasoned-exempt. */
     @Test
     void everyDataSchemaIsCoveredOrExempt() {
-        Set<String> covered = Set.of("model-info", "describe", "model-diff", "model-usage", "read", "explain",
-                "where-used", "field-read", "group-read", "typedef-read", "eval-doc", "compute-doc", "workspace-list");
+        Set<String> covered = Set.of("model-info", "describe", "model-diff", "model-report", "model-usage", "read",
+                "explain", "where-used", "field-read", "group-read", "typedef-read", "eval-doc", "compute-doc",
+                "workspace-list");
         List<String> uncovered = new ArrayList<>();
         for (String schema : SchemaCommand.DATA_SCHEMA.values()) {
             if (!covered.contains(schema) && !EXEMPT_SCHEMAS.containsKey(schema)) {

@@ -14,8 +14,8 @@ import picocli.CommandLine.Spec;
         description = "Whole-model operations: new, info, check, describe, read, usage, plus the runtime verbs "
                 + "eval/compute/seed against a document instance, and JSON-Schema import/export.",
         subcommands = { ModelNewCommand.class, ModelInfoCommand.class, ModelCheckCommand.class, ModelDescribeCommand.class,
-                ModelDiffCommand.class, ModelReadCommand.class, ModelUsageCommand.class, ModelRenameCommand.class,
-                ModelNormalizeCommand.class,
+                ModelDiffCommand.class, ModelReadCommand.class, ModelUsageCommand.class, ModelReportCommand.class,
+                ModelRenameCommand.class, ModelNormalizeCommand.class,
                 ModelEvalCommand.class, ModelComputeCommand.class, ModelSeedCommand.class,
                 ModelImportJsonschemaCommand.class, ModelExportJsonschemaCommand.class })
 public final class ModelCommand implements Callable<Integer> {
