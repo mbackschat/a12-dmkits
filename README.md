@@ -170,6 +170,12 @@ dmtool model diff before.dm.json after.dm.json        # two files: base then hea
 
 It's a **structural** semantic diff; the contract (change model, the full risk taxonomy, the rendering policy) is in [docs/MODEL-REVIEW-SPEC.md](docs/MODEL-REVIEW-SPEC.md), open items in [docs/MODEL-REVIEW-LEDGER.md](docs/MODEL-REVIEW-LEDGER.md).
 
+`dmtool` writes models **deterministically** (element/key order preserved — never reordered), so an edit yields a clean, *localized* git diff. To bring a foreign-authored model (e.g. exported from the A12 editor) into that canonical form once — as an explicit, reviewable commit rather than churn buried in the first edit — run:
+
+```sh
+dmtool -m order.dm.json model normalize        # formatting only — order preserved, no semantic change
+```
+
 ### Explore a whole folder of models
 
 When you're dropped into a *directory* of models — not one file — `workspace list` is the agent-friendly "ls" that goes *into* them: a per-model index with the sub/supertype graph and every `include` / type-def import **resolved to its file**, so you know what to wire (which `-w/--workspace`, which file provides a needed type-def) without reading raw JSON.

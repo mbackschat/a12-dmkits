@@ -22,6 +22,7 @@ model diff
 model read
 model usage
 model rename
+model normalize
 model eval
 model compute
 model seed

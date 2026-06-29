@@ -20,9 +20,9 @@ diff:      dmtool model diff old.dm.json new.dm.json              # pure two-fil
 
 The diff **engine is a library primitive** (the kit tier — reused by `model report` and, later, the `workspace` rollup; usable by a JVM library consumer). The verbs are thin consumers that wrap its result in the standard envelope. **Trust principle (governing):** every fact is computed by the tool from the model state(s); the surface never relies on the agent's narration.
 
-## 2. Phase 0 — deterministic, order-preserving writer (foundation)
+## 2. Phase 0 — deterministic, order-preserving writer (foundation — BUILT)
 
-The trust invariant *no change → no diff* and a sane git history (`blame`, merges) rest on a deterministic writer. This gates the trustworthiness of everything below.
+The trust invariant *no change → no diff* and a sane git history (`blame`, merges) rest on a deterministic writer. This gates the trustworthiness of everything below. **Status: delivered** — the writer was already order-preserving + deterministic (tree surgery), the `model normalize` verb engages it, and the guards lock it (§2b–§2d).
 
 ### 2a. The invariant (testable success criterion)
 
@@ -38,15 +38,15 @@ Element order in DM-JSON is **semantically meaningful** (declaration order = for
 | object keys (`type`/`id`/`name`/payload; locale & annotation maps) | **stable canonical order** (keys are not semantic) — the likely current leak |
 | new elements | deterministic position, recorded so a later diff reads as a clean `added` |
 
-The fix lives in the core write path (`DmJson` / `ModelWriter` / `ModelDocument`, shared by the CLI). *Note (spike-confirmed, tasks #1/#2):* the write path is Jackson **tree surgery**, so element/key order is **already preserved** — there is **no reordering**. Across all fixtures the round-trip is **deterministic** (a compact-reformatted input converges to the same output) and a **stable fixed point** (`once == twice`); the *only* divergence from the stored file is **formatting** (`"k":` vs `"k" : `, indentation/array style — Jackson's `DefaultPrettyPrinter`). And on an already-normalized model, a one-rule edit is **fully localized** (0 lines changed elsewhere, +14 added). So Phase 0 reduces to **(1)** `model normalize` (make the one-time reformat an explicit, reviewable commit) and **(2)** a stability/locality guard — **not** an order-preserving-writer rewrite, which the tree-surgery architecture already provides. (Open consideration: pick the canonical format closer to the stored fixtures to shrink the one-time churn — LEDGER §1.)
+The fix lives in the core write path (`DmJson` / `ModelWriter` / `ModelDocument`, shared by the CLI). *Note (spike-confirmed, tasks #1/#2):* the write path is Jackson **tree surgery**, so element/key order is **already preserved** — there is **no reordering**. Across all fixtures the round-trip is **deterministic** (a compact-reformatted input converges to the same output) and a **stable fixed point** (`once == twice`); the *only* divergence from the stored file is **formatting** (`"k":` vs `"k" : `, indentation/array style — Jackson's `DefaultPrettyPrinter`). And on an already-normalized model, a one-rule edit is **fully localized** (0 lines changed elsewhere, +14 added). So Phase 0 was **not an order-preserving-writer rewrite** (the tree-surgery architecture already provides it) — it was **(1)** the `model normalize` verb (§2c) and **(2)** the guards (§2d), both now shipped. **Canonical-format decision: keep Jackson's `DefaultPrettyPrinter`** — it is the form every mutating write path already emits, so adopting it costs nothing and `model normalize` brings foreign files to it (a one-time, explicit reformat); introducing a different canonical format would churn every existing tool output for no semantic gain.
 
-### 2c. `model normalize`
+### 2c. `model normalize` (built)
 
-A deliberate verb that canonicalizes a foreign-authored model **once**, so the one-time reformat is an explicit, reviewable commit rather than churn smuggled into the first content edit. `-o`/`--dry-run` per convention.
+`dmtool -m <model> model normalize` rewrites a foreign-authored model into the canonical form **once**, so the one-time reformat is an explicit, reviewable commit rather than churn smuggled into the first content edit. Formatting only — element/key order preserved, no semantic change; in place by default, `-o` redirects, `--dry-run` previews (`changed.reformatted` reports whether it differed). Self-describing like every verb (manifest/`--help`/demonstrated).
 
-### 2d. Guards
+### 2d. Guards (built)
 
-`RoundTripIdempotentTest` (load→write equals input across the fixture corpus) + `LocalizedEditDiffTest` (one edit → single-element diff) lock the invariant so a future serialization change can't reintroduce churn.
+`RoundTripIdempotentTest` (a normalized fixture round-trips byte-identical across the corpus, **element order preserved/never sorted**, format-independent, and the EditSession write path stays stable) + `LocalizedEditDiffTest` (one edit → single-element diff) lock the invariant, so a future serialization change (a POJO-serializing write path, a Jackson bump reordering map keys, a misguided element sort) fails the build instead of silently reintroducing churn.
 
 ## 3. The shared engine
 
