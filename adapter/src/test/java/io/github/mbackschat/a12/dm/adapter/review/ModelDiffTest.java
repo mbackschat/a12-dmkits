@@ -30,11 +30,11 @@ class ModelDiffTest {
     }
 
     /** A valid head: {@code base} + one rulekit-authored rule (the proven valid-model idiom). */
-    private static String withRule(String json) {
+    private static String withRule(String json, int threshold) {
         BoundModel m = BoundModel.ofJson(json);
         NumberRef fee = m.num("/Subscription/Addons/MonthlyFee");
         Rule rule = m.rule(m.group("/Subscription/Addons"))
-                .name("FeeCapRule").errorField(fee).when(fee.gt(1000))
+                .name("FeeCapRule").errorField(fee).when(fee.gt(threshold))
                 .code("FEE_CAP").severity(Severity.ERROR)
                 .message(en("Monthly fee too high."), de("Monatsgebühr zu hoch.")).build();
         return m.add(rule).toJson();
@@ -43,7 +43,7 @@ class ModelDiffTest {
     @Test
     void detectsAddedAndRemovedRule() {
         String base = base();
-        String head = withRule(base);
+        String head = withRule(base, 1000);
 
         assertTrue(has(ModelDiff.between(base, head), ElementKind.RULE, ChangeKind.ADDED, FEE_CAP),
                 "the new rule must be reported ADDED");
@@ -74,9 +74,51 @@ class ModelDiffTest {
                 "a pure reformat must not register as a change");
     }
 
+    @Test
+    void addedRuleCarriesItsConditionDetail() {
+        ElementChange added = change(ModelDiff.between(base(), withRule(base(), 1000)), FEE_CAP);
+        assertEquals(ChangeKind.ADDED, added.change());
+        String condition = delta(added, "condition").after();
+        assertTrue(condition.contains("MonthlyFee") && condition.contains("1000"),
+                () -> "ADDED rule should carry its condition as the after-side, got: " + condition);
+    }
+
+    @Test
+    void modifiedRuleReportsConditionBeforeAndAfter() {
+        // same rule name, different threshold → MODIFIED with a before/after condition delta
+        ElementChange modified = change(ModelDiff.between(withRule(base(), 1000), withRule(base(), 2000)), FEE_CAP);
+        assertEquals(ChangeKind.MODIFIED, modified.change());
+        ModelDiff.Delta condition = delta(modified, "condition");
+        assertTrue(condition.before().contains("1000"), () -> "before should hold the old threshold: " + condition.before());
+        assertTrue(condition.after().contains("2000"), () -> "after should hold the new threshold: " + condition.after());
+    }
+
+    @Test
+    void addedFieldCarriesItsKindDetail() {
+        String head = EditSession.read(base())
+                .addField("/Subscription/Addons", "Promo", FieldKind.NUMBER)
+                .validate().toJson();
+        ElementChange added = change(ModelDiff.between(base(), head), "/Subscription/Addons/Promo");
+        assertEquals(ChangeKind.ADDED, added.change());
+        assertEquals("NUMBER", delta(added, "kind").after());
+    }
+
     private static boolean has(ModelDiff diff, ElementKind kind, ChangeKind change, String id) {
         return diff.changes().stream().anyMatch(
                 (ElementChange c) -> c.element() == kind && c.change() == change && c.id().equals(id));
+    }
+
+    /** The single change for {@code id} (fails if absent or ambiguous). */
+    private static ElementChange change(ModelDiff diff, String id) {
+        return diff.changes().stream().filter(c -> c.id().equals(id)).reduce((a, b) -> {
+            throw new AssertionError("ambiguous change for " + id);
+        }).orElseThrow(() -> new AssertionError("no change for " + id + " in " + diff.changes()));
+    }
+
+    /** The {@code aspect} delta of a change (fails if absent). */
+    private static ModelDiff.Delta delta(ElementChange change, String aspect) {
+        return change.deltas().stream().filter(d -> d.aspect().equals(aspect)).findFirst()
+                .orElseThrow(() -> new AssertionError("no '" + aspect + "' delta in " + change.deltas()));
     }
 
     private static String readResource(String path) {
