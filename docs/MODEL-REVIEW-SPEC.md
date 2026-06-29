@@ -117,6 +117,8 @@ Three levels: **textual/line** (`git diff`), **structural/AST** (the common "sem
 
 **json** (the change-set, `model-diff.schema.json`) · **md** (risk-sorted cards, before→after condition + polarity callout, an optional scoped diff-impact mermaid subgraph) · **text** (risk-grouped, low-risk collapsed, ASCII; no mermaid).
 
+*(Status: `json` and the verb are built; `--text` currently rides the **generic** envelope renderer — the `summary` headlines the counts and the change-set renders as an indented tree — while the bespoke compact, risk-sorted, collapsed format is deferred to LEDGER MR5, paired with the risk ranking. The `md` artifact + mermaid accent are a later slice.)*
+
 ## 6. Rendering & the mermaid policy
 
 dmtool is **tree + text**; only workspace-topology and scoped-dependency are graph-shaped. Match representation to the shape, not to the all-graph tools:

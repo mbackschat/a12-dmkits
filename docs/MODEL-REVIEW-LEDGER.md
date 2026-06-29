@@ -11,6 +11,7 @@ These are the completeness gaps between the v1 structural diff and a *complete* 
 - **MR2 — reorder-as-change in the renderings.** A pure element reorder is a display-order (hence semantic, SPEC §2b) change; it is a tracked change kind (SPEC §5a `element position`) but is not yet surfaced in the `md`/`text` output. *(SPEC §5f.)*
 - **MR3 — robust move/rename + simultaneous-edit matching.** The v1 matcher is conservative content-fingerprint pairing (unsure ⇒ remove+add). A similarity-based matcher (GumTree-style) would survive a rename *and* edit in the same change. *(SPEC §5.)*
 - **MR4 — relational refactor grouping.** Present a reference-rewriting refactor (rename/move that rewrote N referrers) as **one** semantic operation, not N independent edits. The pieces exist (refactors report `rewroteReferences`); the diff should fold them. *(SPEC §5a.)*
+- **MR5 — compact / risk-grouped `--text` rendering.** `--text` already renders the diff via the generic envelope tree (the `summary` headlines the counts), but the SPEC §5f vision is a *compact, risk-sorted, low-risk-collapsed* listing. A bespoke formatter is deferred — it pairs with the risk ranking (the grouping key) and would otherwise force a per-verb branch into the deliberately-generic `TextRenderer` (a smell) or a higher-blast-radius generic change.
 
 ## 2. Deferred — with a re-open trigger
 
