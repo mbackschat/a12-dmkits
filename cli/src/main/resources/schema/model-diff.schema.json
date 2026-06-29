@@ -13,7 +13,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["element", "id", "change", "deltas"],
+        "required": ["element", "id", "change", "risk", "riskReasons", "deltas"],
         "properties": {
           "element": {
             "type": "string",
@@ -28,6 +28,16 @@
             "type": "string",
             "enum": ["ADDED", "REMOVED", "MODIFIED"],
             "description": "how the element changed between base and head"
+          },
+          "risk": {
+            "type": "string",
+            "enum": ["HIGH", "MEDIUM", "LOW"],
+            "description": "the change's risk tier (the max over its reasons; loosening > tightening, since a loosened/removed rule silently accepts bad data)"
+          },
+          "riskReasons": {
+            "type": "array",
+            "description": "the risk reason codes — a subset of the SPEC §5b taxonomy (e.g. RULE_REMOVED, KIND_CHANGED, SEVERITY_DOWNGRADED, CONSTRAINT_LOOSENED, RULE_ADDED, CONDITION_CHANGED, CONSTRAINT_TIGHTENED)",
+            "items": { "type": "string" }
           },
           "deltas": {
             "type": "array",

@@ -94,6 +94,18 @@ class ModelDiffTest {
     }
 
     @Test
+    void removedRuleIsHighRiskAndAddedRuleIsMedium() {
+        // a removed validation silently accepts bad data → HIGH; an added rule fails loudly → MEDIUM
+        ElementChange removed = change(ModelDiff.between(withRule(base(), 1000), base()), FEE_CAP);
+        assertEquals(ModelDiff.Risk.HIGH, removed.risk());
+        assertTrue(removed.reasons().contains("RULE_REMOVED"), () -> "reasons: " + removed.reasons());
+
+        ElementChange added = change(ModelDiff.between(base(), withRule(base(), 1000)), FEE_CAP);
+        assertEquals(ModelDiff.Risk.MEDIUM, added.risk());
+        assertTrue(added.reasons().contains("RULE_ADDED"), () -> "reasons: " + added.reasons());
+    }
+
+    @Test
     void addedFieldCarriesItsKindDetail() {
         String head = EditSession.read(base())
                 .addField("/Subscription/Addons", "Promo", FieldKind.NUMBER)

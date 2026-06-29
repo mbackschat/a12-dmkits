@@ -1,6 +1,8 @@
 package io.github.mbackschat.a12.dm.adapter.review;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -17,13 +19,14 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
  * MODEL-REVIEW spike — the structural model-diff engine (a library primitive, MODEL-REVIEW-SPEC §1/§5).
  * Parses BOTH model states into the model and compares <b>structure</b> (so JSON formatting noise never
  * reaches the reviewer), matching elements by id/path into added / removed / modified, each carrying the
- * per-aspect {@link Delta}s that changed.
+ * per-aspect {@link Delta}s that changed and a {@link Risk} tier with its reason codes.
  *
- * <p>This slice (spike tasks #3/#4) covers <b>fields and rules</b>. An element's state is an ordered
+ * <p>This slice (spike tasks #3/#4/#7) covers <b>fields and rules</b>. An element's state is an ordered
  * <i>aspect map</i> of format-independent values (kernel-canonical condition text + severity + code for a
- * rule; kind + per-kind config for a field), so a pure reformat is never a change, and a MODIFIED element
- * reports exactly the aspects that differ. Risk ranking, rename/move detection, computations/groups, and the
- * AST-level condition diff are later slices (LEDGER).
+ * rule; kind + per-kind config for a field), so a pure reformat is never a change. Risk follows the
+ * <b>loosening &gt; tightening</b> asymmetry (a removed/loosened rule silently accepts bad data) — a subset of
+ * the SPEC §5b taxonomy; the AST-level condition diff, polarity-inversion detection, rename/move, and
+ * computations/groups are later slices (MODEL-REVIEW-LEDGER).
  */
 public record ModelDiff(List<ElementChange> changes) {
 
@@ -33,11 +36,15 @@ public record ModelDiff(List<ElementChange> changes) {
     /** How an element changed between the two states. */
     public enum ChangeKind { ADDED, REMOVED, MODIFIED }
 
+    /** Risk tier — ordered so the highest reason wins ({@code HIGH} has the greatest ordinal). */
+    public enum Risk { LOW, MEDIUM, HIGH }
+
     /** One aspect that changed: {@code before}/{@code after} are null on the side where the element is absent. */
     public record Delta(String aspect, String before, String after) {}
 
-    /** One element-level change, with the aspects that differ (all aspects for ADDED/REMOVED). */
-    public record ElementChange(ElementKind element, String id, ChangeKind change, List<Delta> deltas) {}
+    /** One element-level change: its risk tier + reason codes, and the aspects that differ. */
+    public record ElementChange(ElementKind element, String id, ChangeKind change, Risk risk,
+            List<String> reasons, List<Delta> deltas) {}
 
     /** Diff {@code headJson} against {@code baseJson} (both must be kernel-loadable). */
     public static ModelDiff between(String baseJson, String headJson) {
@@ -55,20 +62,109 @@ public record ModelDiff(List<ElementChange> changes) {
         for (Map.Entry<String, Map<String, String>> e : base.entrySet()) {
             Map<String, String> headAspects = head.get(e.getKey());
             if (headAspects == null) {
-                out.add(new ElementChange(kind, e.getKey(), ChangeKind.REMOVED, allDeltas(e.getValue(), false)));
+                out.add(classified(kind, e.getKey(), ChangeKind.REMOVED, allDeltas(e.getValue(), false)));
             } else {
                 List<Delta> deltas = aspectDeltas(e.getValue(), headAspects);
                 if (!deltas.isEmpty()) {
-                    out.add(new ElementChange(kind, e.getKey(), ChangeKind.MODIFIED, deltas));
+                    out.add(classified(kind, e.getKey(), ChangeKind.MODIFIED, deltas));
                 }
             }
         }
         for (Map.Entry<String, Map<String, String>> e : head.entrySet()) {
             if (!base.containsKey(e.getKey())) {
-                out.add(new ElementChange(kind, e.getKey(), ChangeKind.ADDED, allDeltas(e.getValue(), true)));
+                out.add(classified(kind, e.getKey(), ChangeKind.ADDED, allDeltas(e.getValue(), true)));
             }
         }
     }
+
+    // --- risk classification (the §5b taste: loosening > tightening) ------------------------------
+
+    private static ElementChange classified(ElementKind kind, String id, ChangeKind change, List<Delta> deltas) {
+        List<String> reasons = reasons(kind, change, deltas);
+        Risk risk = reasons.stream().map(ModelDiff::riskOf).max(Comparator.naturalOrder()).orElse(Risk.LOW);
+        return new ElementChange(kind, id, change, risk, List.copyOf(reasons), deltas);
+    }
+
+    private static List<String> reasons(ElementKind kind, ChangeKind change, List<Delta> deltas) {
+        List<String> r = new ArrayList<>();
+        switch (change) {
+            case ADDED -> r.add(kind == ElementKind.RULE ? "RULE_ADDED" : "STRUCTURE_ADDED");
+            case REMOVED -> r.add(kind == ElementKind.RULE ? "RULE_REMOVED" : "STRUCTURE_REMOVED");
+            case MODIFIED -> {
+                for (Delta d : deltas) {
+                    r.add(modifiedReason(d));
+                }
+            }
+        }
+        return r;
+    }
+
+    private static String modifiedReason(Delta d) {
+        return switch (d.aspect()) {
+            case "kind" -> "KIND_CHANGED";
+            case "condition" -> "CONDITION_CHANGED";
+            case "severity" -> downgraded(d.before(), d.after()) ? "SEVERITY_DOWNGRADED" : "SEVERITY_CHANGED";
+            case "min", "minLength" -> loosened(true, d) ? "CONSTRAINT_LOOSENED" : "CONSTRAINT_TIGHTENED";
+            case "max", "maxLength" -> loosened(false, d) ? "CONSTRAINT_LOOSENED" : "CONSTRAINT_TIGHTENED";
+            case "pattern" -> patternReason(d);
+            case "scale" -> "SCALE_CHANGED";
+            case "code" -> "CODE_CHANGED";
+            default -> "METADATA_CHANGED";
+        };
+    }
+
+    private static Risk riskOf(String reason) {
+        return switch (reason) {
+            case "RULE_REMOVED", "KIND_CHANGED", "SEVERITY_DOWNGRADED", "CONSTRAINT_LOOSENED" -> Risk.HIGH;
+            case "RULE_ADDED", "CONDITION_CHANGED", "CONSTRAINT_TIGHTENED", "STRUCTURE_ADDED",
+                    "STRUCTURE_REMOVED", "PATTERN_CHANGED", "SEVERITY_CHANGED", "SCALE_CHANGED" -> Risk.MEDIUM;
+            default -> Risk.LOW;
+        };
+    }
+
+    /** A numeric bound is looser when it admits MORE values. {@code minSide}: lowering a min/minLength loosens. */
+    private static boolean loosened(boolean minSide, Delta d) {
+        if (d.after() == null) {
+            return true; // the constraint was removed → the field accepts more
+        }
+        if (d.before() == null) {
+            return false; // a constraint was added → the field accepts less
+        }
+        try {
+            int cmp = new BigDecimal(d.after()).compareTo(new BigDecimal(d.before()));
+            return minSide ? cmp < 0 : cmp > 0;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    private static String patternReason(Delta d) {
+        if (d.after() == null) {
+            return "CONSTRAINT_LOOSENED"; // pattern removed → accepts more
+        }
+        if (d.before() == null) {
+            return "CONSTRAINT_TIGHTENED"; // pattern added → accepts less
+        }
+        return "PATTERN_CHANGED"; // changed shape → direction unknown
+    }
+
+    private static boolean downgraded(String before, String after) {
+        return severityRank(after) < severityRank(before);
+    }
+
+    private static int severityRank(String severity) {
+        if (severity == null) {
+            return 0;
+        }
+        return switch (severity) {
+            case "ERROR" -> 3;
+            case "WARNING" -> 2;
+            case "INFO" -> 1;
+            default -> 0;
+        };
+    }
+
+    // --- aspect extraction ------------------------------------------------------------------------
 
     /** The aspects that differ between two aspect maps (deterministic order: base keys, then head-only keys). */
     private static List<Delta> aspectDeltas(Map<String, String> base, Map<String, String> head) {

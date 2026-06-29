@@ -58,11 +58,15 @@ final class ModelDiffCommand extends BaseCommand {
             int added = 0;
             int removed = 0;
             int modified = 0;
+            int highRisk = 0;
             for (ModelDiff.ElementChange change : diff.changes()) {
                 ObjectNode node = changes.addObject();
                 node.put("element", change.element().name());
                 node.put("id", change.id());
                 node.put("change", change.change().name());
+                node.put("risk", change.risk().name());
+                ArrayNode reasons = node.putArray("riskReasons");
+                change.reasons().forEach(reasons::add);
                 ArrayNode deltas = node.putArray("deltas");
                 for (ModelDiff.Delta delta : change.deltas()) {
                     ObjectNode d = deltas.addObject();
@@ -79,10 +83,13 @@ final class ModelDiffCommand extends BaseCommand {
                     case REMOVED -> removed++;
                     case MODIFIED -> modified++;
                 }
+                if (change.risk() == ModelDiff.Risk.HIGH) {
+                    highRisk++;
+                }
             }
-            ResultEnvelope env = ResultEnvelope.read("model", "diff",
-                    added + " added, " + removed + " removed, " + modified + " modified",
-                    true, List.of(), data);
+            String summary = added + " added, " + removed + " removed, " + modified + " modified"
+                    + (highRisk > 0 ? " (" + highRisk + " high-risk)" : "");
+            ResultEnvelope env = ResultEnvelope.read("model", "diff", summary, true, List.of(), data);
             out().print(env.toJsonString());
             return env.exitCode();
         } catch (RuntimeException e) {
