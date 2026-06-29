@@ -65,6 +65,7 @@ final class SchemaCommand extends BaseCommand {
     static final Map<String, String> DATA_SCHEMA = Map.ofEntries(
             Map.entry("model info", "model-info"),
             Map.entry("model describe", "describe"),
+            Map.entry("model diff", "model-diff"),
             Map.entry("model usage", "model-usage"),
             Map.entry("where-used", "where-used"),
             Map.entry("field read", "field-read"),

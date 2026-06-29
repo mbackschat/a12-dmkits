@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mbackschat/a12-dmkits/schema/model-diff.schema.json",
+  "title": "ModelDiff",
+  "description": "The `data` payload of `dmtool model diff <baseFile> <headFile>` (MODEL-REVIEW-SPEC §5) — a STRUCTURAL diff of two models: it parses both into the model and compares structure, so a pure reformat is never reported. `changes` lists every field and rule that was added, removed, or modified between base and head, each with the per-aspect `deltas` that changed (a rule's condition/severity/code; a field's kind and per-kind config). For an ADDED element a delta carries only `after`; for REMOVED, only `before`; for MODIFIED, both. Element ids are field paths or rule full names.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["changes"],
+  "properties": {
+    "changes": {
+      "type": "array",
+      "description": "the element-level changes (fields and rules added/removed/modified) — base order, then head-only additions",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["element", "id", "change", "deltas"],
+        "properties": {
+          "element": {
+            "type": "string",
+            "enum": ["FIELD", "RULE"],
+            "description": "the element family that changed (computation/group are a later slice)"
+          },
+          "id": {
+            "type": "string",
+            "description": "the element's path (field) or full name (rule)"
+          },
+          "change": {
+            "type": "string",
+            "enum": ["ADDED", "REMOVED", "MODIFIED"],
+            "description": "how the element changed between base and head"
+          },
+          "deltas": {
+            "type": "array",
+            "description": "the aspects that differ — every aspect for ADDED/REMOVED, only the differing ones for MODIFIED",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["aspect"],
+              "properties": {
+                "aspect": {
+                  "type": "string",
+                  "description": "the aspect name (rule: condition/severity/code; field: kind/scale/min/max/minLength/maxLength/pattern)"
+                },
+                "before": {
+                  "type": "string",
+                  "description": "the base-side value (absent when the element is ADDED)"
+                },
+                "after": {
+                  "type": "string",
+                  "description": "the head-side value (absent when the element is REMOVED)"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
