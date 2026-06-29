@@ -58,6 +58,31 @@ class ModelReportTest {
                 "a model this size has fields no rule reads — the audit headline");
     }
 
+    @Test
+    void ruleCatalogCarriesGlossPolarityAndVerbatimMessage() {
+        ModelReport r = ModelReport.of(modelWithRule());
+        ModelReport.RuleEntry fee = r.rules().stream().filter(e -> e.rule().equals(FEE_CAP)).findFirst()
+                .orElseThrow(() -> new AssertionError("FeeCapRule missing from the rule catalog: " + r.rules()));
+
+        assertTrue(fee.explained(), "the FeeCap condition is rulekit-modeled");
+        assertFalse(fee.gloss().isBlank(), "a plain-language gloss is computed (the tool half of the Hybrid)");
+        assertEquals("/Subscription/Addons", fee.scope(), "the entry is grouped by its scope group");
+        assertEquals("violation", fee.polarity().firesOn(), "polarity is the fixed violation fact");
+        assertEquals("ERROR", fee.severity());
+        assertEquals("FEE_CAP", fee.code());
+        assertTrue(fee.errorField() != null && fee.errorField().endsWith("MonthlyFee"),
+                () -> "the error field is reported, got: " + fee.errorField());
+        assertTrue(fee.messages().stream().anyMatch(m -> m.locale().equals("en_US") && m.text().contains("too high")),
+                () -> "the verbatim stored message rides alongside the gloss, got: " + fee.messages());
+    }
+
+    @Test
+    void catalogsArePresentEvenWhenAModelHasNoComputations() {
+        ModelReport r = ModelReport.of(modelWithRule());
+        assertFalse(r.rules().isEmpty(), "the rule catalog is populated");
+        assertTrue(r.computations() != null, "the computation catalog is present (empty here — exercised at the CLI level)");
+    }
+
     private static String readResource(String path) {
         try (InputStream in = ModelReportTest.class.getClassLoader().getResourceAsStream(path)) {
             assertTrue(in != null, "missing test resource: " + path);
