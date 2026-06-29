@@ -100,6 +100,8 @@ A removed/loosened rule **silently accepts bad data** (invisible); a tightened/a
 
 Risk codes are documented via `schema model diff` (the `data.findings`-code pattern, like `workspace roles`), not in `diagnostics`.
 
+*(Status: a subset is built — `RULE_REMOVED`/`RULE_ADDED`/`KIND_CHANGED`/`SEVERITY_DOWNGRADED`/`CONSTRAINT_LOOSENED`/`CONSTRAINT_TIGHTENED`/`CONDITION_CHANGED`/`STRUCTURE_ADDED`/`STRUCTURE_REMOVED` and a few LOW codes, with the loosening>tightening direction for numeric bounds/lengths/pattern. The `risk` tier + `riskReasons` ride each change in `data`. `POLARITY_INVERTED` (it needs the AST diff, LEDGER MR1), `REFERENCED_ELEMENT_REMOVED`, and `RETYPE_AFFECTS_READERS` are not yet computed — a removed/re-typed field is graded structurally without its reader set.)*
+
 ### 5c. Polarity-inversion detection (layered by confidence)
 
 1. **Structural (default):** `Not(...)` wrap, comparison flips (`<`↔`>=`), De Morgan shape changes → `confidence:high`, `basis:operator-flip`.

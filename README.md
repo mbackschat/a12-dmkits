@@ -156,6 +156,20 @@ dmtool -m order.dm.json where-used /Order/DeliveryDate             # the inverse
 dmtool -m order.dm.json model usage                                # whole-model audit: every field's referrers + the unreferenced set
 ```
 
+### Review what changed — a semantic diff
+
+When an agent has edited a model on your behalf, raw JSON diffs are unreadable. `model diff` compares two model files **structurally** (it parses both into the model, so a pure reformat is never reported) and reports the fields and rules **added / removed / modified** — each with per-aspect deltas (a rule's condition/severity/code, a field's kind/config) and a **risk tier**. Risk follows *loosening > tightening*: a removed or loosened rule silently accepts bad data (HIGH), while a tightened or added one fails loudly (MEDIUM).
+
+```sh
+dmtool model diff before.dm.json after.dm.json        # two files: base then head
+# → { "summary":"2 added, 1 removed, 1 modified (1 high-risk)",
+#     "data": { "changes": [
+#       { "element":"RULE", "id":"/Order/MinTotal", "change":"REMOVED", "risk":"HIGH",
+#         "riskReasons":["RULE_REMOVED"], "deltas":[ … ] }, … ] } }
+```
+
+It's a **structural** semantic diff; the contract (change model, the full risk taxonomy, the rendering policy) is in [docs/MODEL-REVIEW-SPEC.md](docs/MODEL-REVIEW-SPEC.md), open items in [docs/MODEL-REVIEW-LEDGER.md](docs/MODEL-REVIEW-LEDGER.md).
+
 ### Explore a whole folder of models
 
 When you're dropped into a *directory* of models — not one file — `workspace list` is the agent-friendly "ls" that goes *into* them: a per-model index with the sub/supertype graph and every `include` / type-def import **resolved to its file**, so you know what to wire (which `-w/--workspace`, which file provides a needed type-def) without reading raw JSON.

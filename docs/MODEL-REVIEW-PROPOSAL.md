@@ -47,7 +47,17 @@ The reuse-first finding: **the comprehension *data* (J1–J4, J6) is largely alr
 
 A note on framing the diff (the dialogue's terminology conclusion): **`model diff` is a *structural* semantic diff** (parse + compare structure, format-invariant); **`--deep` is the *behavioral* upgrade**; the umbrella **`model review` ⊋ semantic diff** (it adds comprehension + risk + gloss). The three-level ladder and the completeness gaps are in SPEC §5e and LEDGER §1.
 
-## 4. Where the detail lives
+## 4. Spike outcome — GO (2026-06-30)
+
+A first spike built the structural-diff vertical end-to-end and de-risked the foundation. What it proved:
+
+- **The trust foundation is essentially already in place.** Characterizing the round-trip (tasks #1/#2) showed the writer is **already order-preserving, deterministic, and a stable fixed point** (tree surgery, not POJO re-serialization); the *only* non-idempotency is one-time **formatting** churn, and on a normalized model an edit is **fully localized**. So Phase 0 shrank from "build an order-preserving writer" to "ship `model normalize` + guards" (SPEC §2b, LEDGER §1).
+- **The diff approach holds.** `ModelDiff` (in `:adapter`) matches fields + rules into added/removed/modified with per-aspect deltas and a risk tier, and — verified on real fixtures — **ignores reformatting** (the structural-diff payoff). It's shipped as the self-describing `dmtool model diff` verb (manifest/`schema model diff`/`--help`/demonstrated, all conformance-gated) and a cli-tour walkthrough.
+- **Dogfooding signal: positive.** Building the engine as a *consumer* of the kits reused the typed surface cleanly — `KernelAdapter` (`ruleFullNames`/`canonicalConditionText`/`ruleSeverity`/`ruleErrorCode`), `BoundModel.fields()`/`FieldInfo` — with **no friction**, so no new `DEV-API-GAPS` entry. The kernel-canonical condition text gave format-independent rule comparison for free.
+
+**Decision: GO** — proceed to the full build. What remains is tracked in the LEDGER: the completeness gaps (`MR1` AST-level condition diff, `MR2` reorder-as-change, `MR3` robust move-matching, `MR4` relational grouping, `MR5` compact/risk-grouped `--text`), the `md`+mermaid rendering, `model report` (comprehension), the `workspace` rollup, and `model normalize` + its guards.
+
+## 5. Where the detail lives
 
 - **Contract** (verbs, I/O shapes, the Phase-0 invariant + order policy, the change model + change kinds, the risk taxonomy, polarity detection, the gloss contract, the rendering & mermaid policy, self-describing/no-rot, the reuse map): [`MODEL-REVIEW-SPEC.md`](MODEL-REVIEW-SPEC.md).
 - **Open / deferred / out-of-scope** (the completeness gaps `MR1`–`MR4`, the deferred satellites with their re-open triggers, the won't-build decisions): [`MODEL-REVIEW-LEDGER.md`](MODEL-REVIEW-LEDGER.md).

@@ -18,6 +18,7 @@ model new
 model info
 model check
 model describe
+model diff
 model read
 model usage
 model rename
@@ -581,6 +582,46 @@ dmtool -m examples/models/order-ruled.dm.json model usage \
 ```
 
 → Four fields carry rules (each value is the referencing rule's full name — `OrderDate` and `DeliveryDate` both feed the delivery-date rule); the other **11** fields nothing reads. That's the audit a `where-used`-per-field loop used to assemble by hand — useful for spotting a field a rule *should* guard, or dead structure. Built on the same reference primitive as `where-used`, so the two never disagree.
+
+## model diff — review what changed
+
+When an agent edits a model on your behalf, raw JSON diffs are unreadable. `model diff <base> <head>` compares two model files **structurally** (it parses both into the model, so a pure reformat is never reported) and reports the fields and rules **added / removed / modified** — each with a **risk** tier. Risk follows *loosening > tightening*: a removed or loosened rule silently accepts bad data (HIGH), while a tightened or added one fails loudly (MEDIUM). Projected here to the headline plus the high-risk changes.
+
+```bash
+dmtool model diff examples/models/order-ruled.dm.json examples/models/order.dm.json \
+  | jq '{ summary, highRisk: (.data.changes | map(select(.risk=="HIGH")) | map({id, change, riskReasons})) }'
+```
+
+```output
+{
+  "summary": "11 added, 3 removed, 0 modified (3 high-risk)",
+  "highRisk": [
+    {
+      "id": "/Order/BillingAddress/PostalCodeFormat",
+      "change": "REMOVED",
+      "riskReasons": [
+        "RULE_REMOVED"
+      ]
+    },
+    {
+      "id": "/Order/DeliveryNotBeforeOrder",
+      "change": "REMOVED",
+      "riskReasons": [
+        "RULE_REMOVED"
+      ]
+    },
+    {
+      "id": "/Order/EligibilityCheck",
+      "change": "REMOVED",
+      "riskReasons": [
+        "RULE_REMOVED"
+      ]
+    }
+  ]
+}
+```
+
+→ The headline is `11 added, 3 removed, 0 modified (3 high-risk)`, and the three high-risk changes are exactly the **deleted validation rules** (`RULE_REMOVED`) — the dangerous, silent case a reviewer must see first. Unlike `where-used`/`model usage` (which read *one* model), this compares *two* and is the **review** surface: what did this edit change, and what should I look at first? It's a *structural* semantic diff — the full contract is in [MODEL-REVIEW-SPEC](../docs/MODEL-REVIEW-SPEC.md).
 
 ## field / group / config read — the structural facts
 
