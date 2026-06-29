@@ -50,12 +50,12 @@ class ModelReportTest {
     }
 
     @Test
-    void assemblesUsageWithReferrersAndUnreferenced() {
+    void assemblesUnreferencedDeadFields() {
         ModelReport r = ModelReport.of(modelWithRule());
-        assertTrue(r.usage().referrers().getOrDefault(FEE, java.util.List.of()).contains(FEE_CAP),
-                () -> "MonthlyFee should be referenced by FeeCapRule, got: " + r.usage().referrers().get(FEE));
         assertFalse(r.usage().unreferenced().isEmpty(),
-                "a model this size has fields no rule reads — the audit headline");
+                "a model this size has fields no rule reads — the dead-field audit headline");
+        assertFalse(r.usage().unreferenced().contains(FEE),
+                "MonthlyFee IS referenced (by FeeCapRule), so it must not be in the unreferenced set");
     }
 
     @Test
@@ -67,7 +67,6 @@ class ModelReportTest {
         assertTrue(fee.explained(), "the FeeCap condition is rulekit-modeled");
         assertFalse(fee.gloss().isBlank(), "a plain-language gloss is computed (the tool half of the Hybrid)");
         assertEquals("/Subscription/Addons", fee.scope(), "the entry is grouped by its scope group");
-        assertEquals("violation", fee.polarity().firesOn(), "polarity is the fixed violation fact");
         assertEquals("ERROR", fee.severity());
         assertEquals("FEE_CAP", fee.code());
         assertTrue(fee.errorField() != null && fee.errorField().endsWith("MonthlyFee"),
@@ -81,6 +80,13 @@ class ModelReportTest {
         ModelReport r = ModelReport.of(modelWithRule());
         assertFalse(r.rules().isEmpty(), "the rule catalog is populated");
         assertTrue(r.computations() != null, "the computation catalog is present (empty here — exercised at the CLI level)");
+    }
+
+    @Test
+    void polarityIsAModelLevelConstantNotRepeatedPerRule() {
+        assertEquals("violation", ModelReport.VIOLATION_POLARITY.firesOn(),
+                "an A12 rule fires on the violation — carried once at the model level, not duplicated per rule");
+        assertFalse(ModelReport.VIOLATION_POLARITY.note().isBlank(), "the polarity note explains the trap");
     }
 
     private static String readResource(String path) {

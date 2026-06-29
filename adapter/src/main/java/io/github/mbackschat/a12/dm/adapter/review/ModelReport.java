@@ -1,10 +1,7 @@
 package io.github.mbackschat.a12.dm.adapter.review;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeSet;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.adapter.ReadComputation;
@@ -45,18 +42,19 @@ public record ModelReport(Identity identity, ModelCard structure, Usage usage,
     /** The model's header facts — its identity card (J1). */
     public record Identity(String id, String modelType, String modelVersion, List<String> locales) {}
 
-    /** field path → the rule/computation full names that reference it; {@code unreferenced} = the fields with none. */
-    public record Usage(Map<String, List<String>> referrers, List<String> unreferenced) {}
+    /** The fields no rule or computation reads — the dead-field audit headline. (The full field→referrers map is `model usage`.) */
+    public record Usage(List<String> unreferenced) {}
 
-    /** Why a rule fires (constant across rules — the trap a reviewer must hold). */
+    /** Why a rule fires — constant across ALL rules, so the report carries it ONCE at the top (not per rule). */
     public record Polarity(String firesOn, String note) {}
 
     /** A localized stored message (the modeller's own NL — the verbatim half of the Hybrid gloss). */
     public record Message(String locale, String text) {}
 
-    /** One rule, glossed for comprehension. {@code gloss} is null when {@code explained} is false (Opaque). */
+    /** One rule, glossed for comprehension. {@code gloss} is null when {@code explained} is false (Opaque). Polarity is
+     *  the model-level constant {@link #VIOLATION_POLARITY}, not repeated here. */
     public record RuleEntry(String rule, String scope, boolean explained, String gloss, String canonicalText,
-            Polarity polarity, String severity, String code, String errorField, List<Message> messages) {}
+            String severity, String code, String errorField, List<Message> messages) {}
 
     /** One computation, glossed for comprehension. {@code gloss}/{@code computedField} null when Opaque. */
     public record ComputationEntry(String computation, String scope, boolean explained, String computedField,
@@ -80,20 +78,16 @@ public record ModelReport(Identity identity, ModelCard structure, Usage usage,
                 ruleCatalog(adapter, context), computationCatalog(adapter, context));
     }
 
-    /** Reuses the same {@code getDirectlyReferencedEntities} primitive as {@code where-used} / {@code model usage}. */
+    /** The dead-field set — reuses the same {@code getDirectlyReferencedEntities} primitive as {@code where-used}. */
     private static Usage usage(KernelAdapter adapter, ModelCard card) {
-        Map<String, List<String>> referrers = new LinkedHashMap<>();
         List<String> unreferenced = new ArrayList<>();
         for (ModelCard.Field field : card.fields()) {
             String path = field.path();
-            TreeSet<String> refs = new TreeSet<>(adapter.whereUsed(path));
-            refs.addAll(adapter.whereUsedInComputations(path));
-            referrers.put(path, List.copyOf(refs));
-            if (refs.isEmpty()) {
+            if (adapter.whereUsed(path).isEmpty() && adapter.whereUsedInComputations(path).isEmpty()) {
                 unreferenced.add(path);
             }
         }
-        return new Usage(referrers, List.copyOf(unreferenced));
+        return new Usage(List.copyOf(unreferenced));
     }
 
     private static List<RuleEntry> ruleCatalog(KernelAdapter adapter, ModelContext context) {
@@ -110,7 +104,7 @@ public record ModelReport(Identity identity, ModelCard structure, Usage usage,
             } else {
                 canonical = ((ReadResult.Opaque) read).canonicalText();
             }
-            out.add(new RuleEntry(name, scopeOf(name), explained, gloss, canonical, VIOLATION_POLARITY,
+            out.add(new RuleEntry(name, scopeOf(name), explained, gloss, canonical,
                     adapter.ruleSeverity(name), adapter.ruleErrorCode(name),
                     adapter.ruleErrorField(name).orElse(null), messages(adapter.ruleMessages(name))));
         }

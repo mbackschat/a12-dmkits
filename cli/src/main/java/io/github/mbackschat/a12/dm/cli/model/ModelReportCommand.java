@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -87,13 +86,13 @@ final class ModelReportCommand extends BaseCommand {
                     .put("maxRepetitions", g.maxRepetitions());
         }
 
-        ObjectNode usage = data.putObject("usage");
-        ObjectNode referrers = usage.putObject("referrers");
-        for (Map.Entry<String, List<String>> e : report.usage().referrers().entrySet()) {
-            ArrayNode arr = referrers.putArray(e.getKey());
-            e.getValue().forEach(arr::add);
-        }
-        ArrayNode unreferenced = usage.putArray("unreferenced");
+        // polarity is the same fact for every rule, so carry it ONCE at the top (not per rule)
+        ObjectNode polarity = data.putObject("polarity");
+        polarity.put("firesOn", ModelReport.VIOLATION_POLARITY.firesOn())
+                .put("note", ModelReport.VIOLATION_POLARITY.note());
+
+        // the dead-field audit headline; the full field→referrers map is `model usage` (not duplicated here)
+        ArrayNode unreferenced = data.putArray("unreferenced");
         report.usage().unreferenced().forEach(unreferenced::add);
 
         ArrayNode rules = data.putArray("rules");
@@ -104,7 +103,6 @@ final class ModelReportCommand extends BaseCommand {
                 node.put("gloss", r.gloss());
             }
             node.put("canonicalText", r.canonicalText());
-            node.putObject("polarity").put("firesOn", r.polarity().firesOn()).put("note", r.polarity().note());
             node.put("severity", r.severity());
             node.put("code", r.code());
             if (r.errorField() != null) {
