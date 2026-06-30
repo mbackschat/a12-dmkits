@@ -1,6 +1,6 @@
 # a12-dmkits — Model Review & Diff (gaps ledger)
 
-> **What this is** — the open-issues ledger for the model **review & inspection** surface (the `-LEDGER` family, peer of [`FEATURE-GAPS-LEDGER.md`](FEATURE-GAPS-LEDGER.md) / [`INTERPRETER-GAPS-LEDGER.md`](INTERPRETER-GAPS-LEDGER.md)). The **contract** is [`MODEL-REVIEW-SPEC.md`](MODEL-REVIEW-SPEC.md); the **rationale** is [`MODEL-REVIEW-PROPOSAL.md`](MODEL-REVIEW-PROPOSAL.md). **Records only OPEN work** — a shipped gap is **deleted** (git + the SPEC section / its finding are the record, no "shipped" list). `MR<n>` ids are stable so a code comment or SPEC ref resolves. §1 open (tractable, to build), §2 deferred (with a re-open trigger each), §3 out-of-scope (won't build).
+> **What this is** — the open-issues ledger for the model **review & inspection** surface (the `-LEDGER` family, peer of [`FEATURE-GAPS-LEDGER.md`](FEATURE-GAPS-LEDGER.md) / [`INTERPRETER-GAPS-LEDGER.md`](INTERPRETER-GAPS-LEDGER.md)). The **contract + rationale** are in [`MODEL-REVIEW-SPEC.md`](MODEL-REVIEW-SPEC.md) (rationale in its §9). **Records only OPEN work** — a shipped gap is **deleted** (git + the SPEC section / its finding are the record, no "shipped" list). `MR<n>` ids are stable so a code comment or SPEC ref resolves. §1 open (tractable, to build), §2 deferred (with a re-open trigger each), §3 out-of-scope (won't build).
 
 ## 1. Open — tractable, to build
 
@@ -15,7 +15,7 @@ These are the remaining completeness gaps between the structural diff and a *com
 
 Built only when the trigger fires (the disposition is expected to change; it lives here, not as a durable "why").
 
-- **`workspace report` / `workspace diff` rollup** (Phase 2). *Re-open when* multi-model oversight per agent session proves the dominant need — then scope up the single-model engine to a per-model rollup (models added/removed, includes rewired). **Design constraint (PROPOSAL §6 audit):** it must NOT duplicate `workspace list` (the model index) or `workspace check` (the validation gate) — it is the per-model report/diff *aggregator*, non-overlapping by construction.
+- **`workspace report` / `workspace diff` rollup** (Phase 2). *Re-open when* multi-model oversight per agent session proves the dominant need — then scope up the single-model engine to a per-model rollup (models added/removed, includes rewired). **Design constraint (SPEC §9d audit):** it must NOT duplicate `workspace list` (the model index) or `workspace check` (the validation gate) — it is the per-model report/diff *aggregator*, non-overlapping by construction.
 - **`--deep` behavioral polarity / equivalence diff.** The SeedGenerator + interpreter fire-set differential (SPEC §5c). *Re-open when* structural polarity detection proves insufficient on real diffs (false negatives on non-operator-flip inversions, or a need to report "re-expressed but behaviorally identical").
 - **CI / PR gate.** `workspace diff` JSON → fail the build on an unreviewed high-risk change. *Re-open when* the CI/PR-gate context is prioritized (it was not chosen for v1).
 - **git `textconv` driver.** A `.gitattributes` textconv rendering `.dm.json` through a readable projection so raw `git diff` / GitHub PR view is legible without running the tool. *Re-open when* GitHub-PR-web review becomes a target context (superseded for the chosen contexts by `model diff` + `report --format text`).

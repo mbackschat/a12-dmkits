@@ -1,6 +1,6 @@
 # a12-dmkits — Model Review & Diff (spec)
 
-> **Status — target contract, built out by the spike.** The stable contract for the human **review & inspection** surface over LLM-driven model edits. Sections describe the intended I/O and behaviour; they graduate from *target* to *implemented* as the spike (and follow-on work) ships them. **Rationale** (the *why*, the forks, the dialogue) lives in [`MODEL-REVIEW-PROPOSAL.md`](MODEL-REVIEW-PROPOSAL.md); **open/deferred/out-of-scope** items live in [`MODEL-REVIEW-LEDGER.md`](MODEL-REVIEW-LEDGER.md). When everything here is built, the proposal is archived and this becomes the durable reference (and may fold into [`CLI-SPEC.md`](CLI-SPEC.md)).
+> **Status — the contract for the human review & inspection surface** over LLM-driven model edits: the verb surface, I/O, the change model + risk taxonomy, the gloss, the rendering policy — plus the **rationale** (the problem, the trust principle, the six jobs, the settled forks) in §9. **Open/deferred/out-of-scope** items live in [`MODEL-REVIEW-LEDGER.md`](MODEL-REVIEW-LEDGER.md). This may later fold into [`CLI-SPEC.md`](CLI-SPEC.md).
 
 ## 1. Surface — two verbs, one engine
 
@@ -65,7 +65,7 @@ The fix lives in the core write path (`DmJson` / `ModelWriter` / `ModelDocument`
 
 ## 4. `model report` — comprehend (built)
 
-`dmtool -m <model> model report` assembles, in one read, **identity** (J1), a lean **structure outline** (J2 — field paths + kinds, group repeatability; full per-kind config stays a `field read` drill-down, keeping the payload token-efficient), the **unreferenced (dead-field) set** (J4 — the audit headline; the *full* field→referrers map stays `model usage`, deliberately **not** duplicated here — the redundancy audit, PROPOSAL §6), and the **glossed rules/computations catalog** (J3 — the centerpiece), with **polarity** carried **once** at the top (it's the same fact for every rule, not repeated per entry). Output rides the result envelope; the `data` payload is published as `model-report.schema.json` (`schema model report`, locked by `DataSchemaConformanceTest`). The engine is the `ModelReport` library primitive (`:adapter`), reusing `ModelContext.describe`/`explain` + `KernelAdapter` reads — assembly, not new foundations.
+`dmtool -m <model> model report` assembles, in one read, **identity** (J1), a lean **structure outline** (J2 — field paths + kinds, group repeatability; full per-kind config stays a `field read` drill-down, keeping the payload token-efficient), the **unreferenced (dead-field) set** (J4 — the audit headline; the *full* field→referrers map stays `model usage`, deliberately **not** duplicated here — the redundancy audit, §9d), and the **glossed rules/computations catalog** (J3 — the centerpiece), with **polarity** carried **once** at the top (it's the same fact for every rule, not repeated per entry). Output rides the result envelope; the `data` payload is published as `model-report.schema.json` (`schema model report`, locked by `DataSchemaConformanceTest`). The engine is the `ModelReport` library primitive (`:adapter`), reusing `ModelContext.describe`/`explain` + `KernelAdapter` reads — assembly, not new foundations.
 
 Renderings (shape × host — §6): **json** (contract, built) · **text** (built — `--text` renders the compact glossed rule/computation catalog + the dead-field set via the `ReportText` bespoke renderer, dispatched by the `VerbText` registry) · **md** (outline + glossed catalog + tables; mermaid only for a workspace-topology block — a later slice).
 
@@ -155,3 +155,54 @@ So mermaid is a **narrow accent**: the **workspace topology** (`workspace graph 
 | deterministic writer + `model normalize` | **new** (core `ModelWriter`/`DmJson`) |
 | diff engine + risk taxonomy + assembly/`md`/`text` rendering | **new** (the library primitive + the verb renderers) |
 | `workspace graph --format mermaid` | **new, tiny** (extends an existing verb) |
+
+## 9. Background & rationale
+
+The *why* behind this surface (the forks were settled in the design dialogue, 2026-06-28). The J-codes used above (J1–J6) are defined in §9b.
+
+### 9a. The problem — and the trust principle
+
+`dmtool` is driven by an **LLM** editing the structure + rules of large A12 models **in place**, under a user's natural-language instructions; the user must then oversee many changes across models **too big to diff as raw JSON**. "Too big to diff" is the symptom — there are three sub-problems, the third governing:
+
+| | Sub-problem | Why it's hard here |
+|---|---|---|
+| **A. Baseline** | review needs a *before* | the agent edits in place — no anchor to compare against (→ the two-file core + `--since`, §1) |
+| **B. Altitude** | raw JSON is the wrong representation | opaque condition strings, deep type-discriminated nesting, locale maps, relative paths, formatting churn (→ the structural diff + `model normalize` + the gloss) |
+| **C. Trust** | the reviewer oversees an **unreliable narrator** | the human is checking up on an LLM — if the review surface is *the agent's own summary*, the untrusted party reports on itself |
+
+**C governs.** The project thesis — *"valid means the engine accepts it, not that it looks right"* — has a review corollary: **"changed means the tool computed the change from two model states, not what the agent claims."** Every fact in this surface is tool-computed, never agent narration.
+
+### 9b. Comprehension + change-review — the six jobs
+
+Reducing review to "diff" is too narrow: you can't judge a change without understanding the thing. The reviewer's six jobs, and where each is answered:
+
+| | "I need to…" | Answered by |
+|---|---|---|
+| **J1** | orient — what is this model, how big, valid, related to what | `model info`, `workspace list`/`graph`; the report's **identity** |
+| **J2** | understand structure — the group/field tree, kinds, constraints | `model describe`, `field read`; the report's **structure outline** |
+| **J3** | understand logic — every rule/computation **in plain terms**, polarity, message | `rule explain` (per element), **assembled** by the report's **glossed catalog** (the centerpiece) |
+| **J4** | trace dependencies — field↔rule, dead set, includes | `where-used`, `model usage`; the report's **dead-field set** |
+| **J5** | review change — what the agent did, risk-ranked | **`model diff`** — the new capability |
+| **J6** | judge health — kernel-valid? suspicious? dead weight? | `model check`, `workspace roles` |
+
+The reuse-first finding: the comprehension *data* (J1–J4, J6) was **already built**, scattered across agent-facing verbs that emit JSON one element at a time. What was missing is two layers — a **human-facing assembly** (`model report`) and the **change overlay** (`model diff`, J5) — neither of which is "more data verbs."
+
+### 9c. Decisions (the settled forks)
+
+| Fork | Decision | Why |
+|---|---|---|
+| **Verb surface** | two verbs, one shared engine — `model report` + `model diff` | matches *verb = operation, target = scope*; each verb stays lean; they share the assembly+gloss+risk engine |
+| **Baseline** | pure two-file core + a `--since <ref>` git convenience | a git-free, testable engine (diffs two model states); `--since` is ergonomic sugar — dmtool stays a pure model tool |
+| **v1 scope** | single model; `workspace` rollup deferred | bound the first build; the single-model engine is what the rollup reuses |
+| **Gloss authorship** | Hybrid (C) — tool gloss authoritative + facts + verbatim message; agent enrichment marked, never replacing | preserves tool-truth while staying fluent; the independent gloss enables the gloss-vs-message drift signal (§5d) |
+| **First-write churn** | an explicit `model normalize` verb | canonicalizing a foreign model is a deliberate, isolated, reviewable step — never buried in a content edit |
+| **Deterministic writer** | a Phase-0 foundation, not optional hygiene (§2) | the trust invariant *no change → no diff*, plus sane `git blame`/merges, rest on it |
+| **Visualization** | mermaid as a narrow accent; bespoke HTML out (§6) | dmtool's data is tree + text; only workspace-topology + scoped-dependency are graph-shaped; in-chat HTML is standardized only via MCP Apps |
+
+### 9d. Redundancy & non-overlap
+
+The verbs were audited against the existing read surface (trigger: an early `model report` carried a `usage` map that literally duplicated `model usage`).
+
+- **`model report` is a lean re-projection, not a dup:** its `identity` ⊂ `model info` and `structure` ⊂ `model describe` are *leaner, different* projections (the comprehension frame — header essentials, an outline of path+kind) that point at `info`/`describe`/`field read` for authoritative detail. The full field→referrers map stays `model usage`; the report carries only the **dead-field set** (the audit value). **Polarity** is one report-level fact, not repeated per entry. Per-rule `canonicalText` is an inline convenience (and the *only* representation for an Opaque rule), not a wholesale dup of `rule format`.
+- **No overlap:** `model diff` is the only diff, `model normalize` the only canonicalizer, and report (comprehend one model) vs diff (compare two) are distinct.
+- **Forward constraint:** the deferred `workspace report`/`workspace diff` rollup (LEDGER §2) **must not** duplicate `workspace list` (the model index) or `workspace check` (the validation gate) — it is the per-model report/diff *aggregator*, to be designed non-overlapping.
