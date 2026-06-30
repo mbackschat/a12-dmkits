@@ -145,6 +145,13 @@ graalvmNative {
             imageName = 'dmtool'
             buildArgs.add('--no-fallback')
             buildArgs.add('-Os')   // size optimization (GraalVM 25 supports it; 21 didn't)
+            // Locale-COMPLETE, build-host-INDEPENDENT. GraalVM bundles only the BUILD HOST's default locale (+ en)
+            // unless told otherwise — so a binary built on a `de_DE` host carries the German condition-grammar
+            // terminal data while one built on an `en`/`C` host (Linux CI) does NOT. The kernel's condition
+            // FORMATTER is German-canonical (AbstractMultiLanguageHandler maps the GERMAN terminal map → the target
+            // language even to render ENGLISH), so a missing German locale makes `rule format` fail on the en-built
+            // binary only ("german token 'Und' is unknown"). Pin de+en so every build is identical regardless of host.
+            buildArgs.add('-H:IncludeLocales=en,de')
             buildArgs.add('-H:IncludeResources=catalog/.*\\.json')      // operator catalog
             buildArgs.add('-H:IncludeResources=internal/templates/.*')  // StringTemplate (checkConsistency)
             // ALL kernel i18n error-message bundles, every locale — NOT capture-bound. The agent only records

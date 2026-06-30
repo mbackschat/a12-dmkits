@@ -53,16 +53,6 @@ for d in examples/cli-*.md; do
   fi
 done
 
-# --- TEMP DIAGNOSTIC (revert before release): capture WHY `rule format` on a synthesized rule returns empty
-#     on Linux native but renders on macOS native — unreproducible on the author's machine, so dump the full
-#     envelope (diagnostics ride stdout) here. Tracked in task: "Diagnose Linux gate FAIL on cli-jsonschema". ---
-printf '{ "title": "Checkout", "type": "object", "required": ["total"], "properties": { "total": { "type": "number", "exclusiveMinimum": 0 }, "currency": { "type": "string", "const": "EUR" }, "tier": { "type": "string", "enum": ["STANDARD","PREMIUM"] }, "vatId": { "type": "string" } }, "if": { "properties": { "tier": { "const": "PREMIUM" } } }, "then": { "required": ["vatId"] } }' > /tmp/diag-checkout.schema.json
-echo "==== DIAG: import + rule format (full envelopes, stderr included) ===="
-{ "$NATIVE" model import-jsonschema --schema /tmp/diag-checkout.schema.json -o /tmp/diag-checkout.dm.json 2>&1 || true; } | sed 's/^/DIAG-import | /'
-echo "DIAG: rule read ->"; { "$NATIVE" -m /tmp/diag-checkout.dm.json rule read 2>&1 || true; } | sed 's/^/DIAG-read | /'
-echo "DIAG: rule format /Root/totalExclusiveMin (lang:model) ->"; { "$NATIVE" -m /tmp/diag-checkout.dm.json rule format /Root/totalExclusiveMin 2>&1 || true; } | sed 's/^/DIAG-fmt | /'
-echo "==== DIAG END ===="
-
 # No-crash coverage battery (docs/NATIVE-IMAGE-GRAALVM.md §3.6) — the demos byte-match a happy-path slice;
 # the battery drives a BROAD derived matrix (every fixture × read/validate verbs + the FieldKind × constraint
 # matrix + invalid conditions per locale) through the native binary and asserts no native-image failure
