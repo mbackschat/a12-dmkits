@@ -186,7 +186,7 @@ Import is **best-effort** — it maps as much as possible (even unbounded arrays
 
 ## Worked examples
 
-End-to-end walkthroughs of **every verb** — command + real captured output — live in [`examples/`](examples/): the verb tour, the rule/computation edit loop, structure editing with the safe-delete gate, the atomic `apply` session, runtime evaluation, and the version/compatibility surface.
+End-to-end walkthroughs of **every verb** — command + real captured output — live in [`examples/`](examples/) (full [index](examples/README.md)): discovering the tool, reading & **reviewing** a model (`model report` / `model diff`), the rule/computation edit loop, structure editing with the safe-delete gate, the atomic `apply` session, runtime evaluation, **JSON Schema ⇄ model** interop, custom field types & conditions, multi-file **workspaces**, and the version/compatibility surface.
 
 ## Changelog
 
