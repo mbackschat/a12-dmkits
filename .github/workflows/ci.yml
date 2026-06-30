@@ -91,6 +91,13 @@ jobs:
         working-directory: a12-dmkits
         run: ./scripts/sync-plugin-assets.sh --check
 
+      # The public mirror's SCENARIOS.md is generated fresh at release from probe/tasks/ (not committed
+      # here). Self-validate the generator so a probe/tasks change that breaks the scrape — or leaks
+      # internal framing — fails CI now, not at release time.
+      - name: Verify the public scenario generator
+        working-directory: a12-dmkits
+        run: ./scripts/gen-scenarios.sh --check
+
       # Doc-drift gate (F11 "loud detection at build"): the examples/ Showboat demos are executable
       # docs — `verify` re-runs each captured CLI invocation and exact-matches its recorded output. A
       # verb rename or output-shape change that wasn't reflected in the demos fails CI here instead of

@@ -46,6 +46,11 @@ cp -Rf "$ROOT/examples/models"   "$DEST/examples/"
 # heredoc here used to duplicate the index and silently rotted (it froze at 6 demos + a stale "cli-runtime
 # is JVM-only" note while the source README tracked all of them). One source of truth = no drift.
 cp -f "$ROOT/examples/README.md" "$DEST/examples/README.md"
+# 1c-bis. the multi-step SESSION catalogue — PUBLIC-MIRROR-ONLY, generated FRESH here from the internal
+#     probe/tasks/ (the source of truth). It is NOT committed in the source repo, so it can never go
+#     stale; each release regenerates it. The generator scrapes ONLY the scenario titles + the ordered
+#     turn prompts — no gold, no probe internals (see scripts/gen-scenarios.sh).
+"$ROOT/scripts/gen-scenarios.sh" > "$DEST/SCENARIOS.md"
 # 1d. the mirror's own GitHub Actions workflow(s) — single-sourced here (inert under .github/mirror-workflows/,
 #     i.e. NOT a workflow in this private repo) and shipped to the mirror's .github/workflows/ so the public
 #     repo can build the per-OS native binaries (RELEASE-SPEC §4). Must be assembled (not hand-kept on the
