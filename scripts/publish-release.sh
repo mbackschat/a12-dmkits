@@ -112,14 +112,21 @@ gh repo view "$MIRROR" >/dev/null 2>&1 || { echo "cannot reach mirror repo $MIRR
 echo "ok — $TITLE"
 
 say "1. mac arm64 native binary + verification gate (§3a/§5)"
-if [[ ! -x "$NATIVE" ]]; then
-  : "${GRAALVM_HOME:?set GRAALVM_HOME to a GraalVM 25 JDK}"
-  # Route through ./build.sh — it pins the isolated, init.d-free GRADLE_USER_HOME + JDK 21, so this fallback
-  # can't be silently contaminated by the machine's global private-registry init script (a bare `./gradlew`
-  # resolves the native-image/Kotlin plugins from the private registry and fails). GRAALVM_HOME passes
-  # through the env for the native-image toolchain detection.
-  ./build.sh :cli:nativeCompile -Porg.gradle.java.installations.fromEnv=GRAALVM_HOME
-fi
+: "${GRAALVM_HOME:?set GRAALVM_HOME to a GraalVM 25 JDK}"
+# ALWAYS (re)build — Gradle's nativeCompile is incremental: UP-TO-DATE & fast when the source is unchanged,
+# a full rebuild when it isn't. DO NOT guard on `[[ -x "$NATIVE" ]]`: reusing a pre-existing artifact ships a
+# STALE binary — it bit v0.8.1, where a leftover 0.8.0 nativeCompile output (predating the release source)
+# was reused, and the gate caught a 0.8.0 `--version` + a missing report-wrap under the 0.8.1 tag. Existence
+# is not freshness. Route through ./build.sh — it pins the isolated, init.d-free GRADLE_USER_HOME + JDK 21 so
+# a bare ./gradlew can't resolve native-image/Kotlin plugins from the private registry; GRAALVM_HOME
+# feeds the native-image toolchain detection.
+./build.sh :cli:nativeCompile -Porg.gradle.java.installations.fromEnv=GRAALVM_HOME
+# Guard the whole STALE-BINARY class (not just the reused-artifact path above): the binary we are about to
+# gate, upload, and flip to `latest` MUST report THIS release's version. Fail loud here — never ship a binary
+# whose `--version` disagrees with the tag.
+built_ver="$("$NATIVE" --version 2>/dev/null | awk 'NR==1{print $2}')"
+[[ "$built_ver" == "$VER" ]] || { echo "native binary reports '$built_ver', expected '$VER' — STALE/wrong build; delete $NATIVE and re-run." >&2; exit 1; }
+echo "native binary version ok: $built_ver"
 ./scripts/native-gate.sh "$NATIVE"
 
 say "2. Assemble the public mirror tree"
