@@ -135,3 +135,36 @@ dmtool model diff examples/models/order-ruled.dm.json /tmp/threshold-bumped.dm.j
 
 → `THRESHOLD_CHANGED` (MEDIUM): the structure and fields are untouched, only a literal moved — the tool says *what kind* of change it is, not just *that* it changed. So a reviewer scanning a large diff sees the HIGH flip first and can fast-skip the routine threshold tweaks. (The before/after condition text still rides each change's `deltas`; the precise located edit — *which* operand moved — is LEDGER MR1.)
 
+### The human view — `--text`
+
+JSON is the default and the machine contract, but a reviewer at the terminal wants to scan. The global `--text` flag renders the change-set **risk-sorted** — HIGH first, one line per change, LOW collapsed to a count — so the dangerous changes are read first:
+
+```bash
+dmtool model diff examples/models/order-ruled.dm.json examples/models/order.dm.json --text
+
+```
+
+```output
+11 added, 3 removed, 0 modified (3 high-risk)
+  (read · valid)
+
+HIGH (3)
+  REMOVED  rule  /Order/BillingAddress/PostalCodeFormat  RULE_REMOVED
+  REMOVED  rule  /Order/DeliveryNotBeforeOrder  RULE_REMOVED
+  REMOVED  rule  /Order/EligibilityCheck  RULE_REMOVED
+MEDIUM (11)
+  ADDED    field /Order/Items/UnitWeight  STRUCTURE_ADDED
+  ADDED    field /Order/Items/ItemCoverage  STRUCTURE_ADDED
+  ADDED    field /Order/PickupTime  STRUCTURE_ADDED
+  ADDED    field /Order/ScheduledAt  STRUCTURE_ADDED
+  ADDED    field /Order/CompletedAt  STRUCTURE_ADDED
+  ADDED    field /Order/RushLevel  STRUCTURE_ADDED
+  ADDED    field /Order/ApproxDate  STRUCTURE_ADDED
+  ADDED    field /Order/BirthDay  STRUCTURE_ADDED
+  ADDED    field /Order/BirthMonth  STRUCTURE_ADDED
+  ADDED    field /Order/BirthYear  STRUCTURE_ADDED
+  ADDED    field /Order/CoverageWindow  STRUCTURE_ADDED
+```
+
+→ The three deleted rules surface at the top under **HIGH**, the eleven added fields group under **MEDIUM** — the same change-set as the JSON, shaped for a human to triage top-down. `model report --text` likewise renders the glossed rule/computation catalog and the dead-field set as a scannable list. (`--text` is a boundary view; the JSON remains the contract every guard and agent reads.)
+

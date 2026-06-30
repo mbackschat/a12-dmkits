@@ -4,13 +4,12 @@
 
 ## 1. Open — tractable, to build
 
-These are the completeness gaps between the v1 structural diff and a *complete* one (SPEC §5e), plus the foundation verification in flight.
+These are the remaining completeness gaps between the structural diff and a *complete* one (SPEC §5e).
 
 - **MR1 — precise *located* condition edit-script.** Shipped so far: `POLARITY_INVERTED` (a clean structural flip, `ConditionPolarity`, SPEC §5c) and a **coarse classification** of any other condition change (`ConditionEdit` → `CONDITION_RESTRUCTURED`/`REFERENCE_CHANGED`/`OPERATOR_CHANGED`/`THRESHOLD_CHANGED`, SPEC §5e). What remains is the **located** edit script — *which* clause/operand moved ("the `And` clause referencing X was added", "threshold 1000→2000 on [Y]") — i.e. a positional tree diff over the Condition + `Calculation` ASTs, not just the change *category*. *(SPEC §5a/§5e.)*
 - **MR2 — reorder-as-change in the renderings.** A pure element reorder is a display-order (hence semantic, SPEC §2b) change; it is a tracked change kind (SPEC §5a `element position`) but is not yet surfaced in the `md`/`text` output. *(SPEC §5f.)*
 - **MR3 — robust move/rename + simultaneous-edit matching.** The v1 matcher is conservative content-fingerprint pairing (unsure ⇒ remove+add). A similarity-based matcher (GumTree-style) would survive a rename *and* edit in the same change. *(SPEC §5.)*
 - **MR4 — relational refactor grouping.** Present a reference-rewriting refactor (rename/move that rewrote N referrers) as **one** semantic operation, not N independent edits. The pieces exist (refactors report `rewroteReferences`); the diff should fold them. *(SPEC §5a.)*
-- **MR5 — compact verb-specific `--text` (diff *and* report).** Both `model diff` and `model report` `--text` currently ride the generic envelope tree (the `summary` headlines them), but the SPEC vision is compact verb-shaped renderings: the diff *risk-sorted, low-risk-collapsed* (§5f), the report an *indented structure outline + glossed catalog* (§4). A bespoke formatter is deferred for both — it wants a clean **per-verb text-render mechanism** (a registry the `--text` boundary dispatches to), since forcing per-verb branches into the deliberately-generic `TextRenderer` is a smell and a broad generic change risks the `--text` golden tests. The diff's needs the risk ranking as its grouping key.
 
 ## 2. Deferred — with a re-open trigger
 

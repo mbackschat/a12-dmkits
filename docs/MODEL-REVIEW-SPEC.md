@@ -67,7 +67,7 @@ The fix lives in the core write path (`DmJson` / `ModelWriter` / `ModelDocument`
 
 `dmtool -m <model> model report` assembles, in one read, **identity** (J1), a lean **structure outline** (J2 — field paths + kinds, group repeatability; full per-kind config stays a `field read` drill-down, keeping the payload token-efficient), the **unreferenced (dead-field) set** (J4 — the audit headline; the *full* field→referrers map stays `model usage`, deliberately **not** duplicated here — the redundancy audit, PROPOSAL §6), and the **glossed rules/computations catalog** (J3 — the centerpiece), with **polarity** carried **once** at the top (it's the same fact for every rule, not repeated per entry). Output rides the result envelope; the `data` payload is published as `model-report.schema.json` (`schema model report`, locked by `DataSchemaConformanceTest`). The engine is the `ModelReport` library primitive (`:adapter`), reusing `ModelContext.describe`/`explain` + `KernelAdapter` reads — assembly, not new foundations.
 
-Renderings (shape × host — §6): **json** (contract, built) · **text** (built — currently the generic envelope renderer; the compact outline+catalog form is LEDGER MR5) · **md** (outline + glossed catalog + tables; mermaid only for a workspace-topology block — a later slice).
+Renderings (shape × host — §6): **json** (contract, built) · **text** (built — `--text` renders the compact glossed rule/computation catalog + the dead-field set via the `ReportText` bespoke renderer, dispatched by the `VerbText` registry) · **md** (outline + glossed catalog + tables; mermaid only for a workspace-topology block — a later slice).
 
 ### 4a. The gloss (Hybrid C)
 
@@ -119,7 +119,7 @@ Three levels: **textual/line** (`git diff`), **structural/AST** (the common "sem
 
 **json** (the change-set, `model-diff.schema.json`) · **md** (risk-sorted cards, before→after condition + polarity callout, an optional scoped diff-impact mermaid subgraph) · **text** (risk-grouped, low-risk collapsed, ASCII; no mermaid).
 
-*(Status: `json` and the verb are built; `--text` currently rides the **generic** envelope renderer — the `summary` headlines the counts and the change-set renders as an indented tree — while the bespoke compact, risk-sorted, collapsed format is deferred to LEDGER MR5, paired with the risk ranking. The `md` artifact + mermaid accent are a later slice.)*
+*(Status: `json` and the verb are built; `--text` is the bespoke **risk-sorted** view (`DiffText` via the `VerbText` registry) — HIGH then MEDIUM, one line per change, LOW collapsed to a count. The `md` artifact + mermaid accent are a later slice.)*
 
 ## 6. Rendering & the mermaid policy
 

@@ -47,8 +47,29 @@ final class TextRenderer {
         sb.append(")\n");
         appendSection(sb, "diagnostics", env.get("diagnostics"));
         appendSection(sb, "changed", env.get("changed"));
-        appendSection(sb, "data", env.get("data"));
+        appendData(sb, env);
         return sb.toString();
+    }
+
+    /**
+     * The {@code data} section: a verb with a bespoke compact view (the {@link VerbText} registry, keyed
+     * on the envelope's {@code target}/{@code op}) renders that; every other verb falls back to the
+     * generic indented tree — so specializing one verb never changes another's {@code --text}.
+     */
+    private static void appendData(StringBuilder sb, JsonNode env) {
+        JsonNode data = env.get("data");
+        boolean empty = data == null || data.isNull()
+                || (data.isArray() && data.isEmpty()) || (data.isObject() && data.isEmpty());
+        if (empty) {
+            return;
+        }
+        var bespoke = VerbText.forVerb(env.path("target").asText(null), env.path("op").asText(null));
+        if (bespoke.isPresent()) {
+            sb.append('\n').append(bespoke.get().render(data));
+        } else {
+            sb.append("\ndata:\n");
+            tree(data, 2, sb);
+        }
     }
 
     private static void appendSection(StringBuilder sb, String label, JsonNode node) {
