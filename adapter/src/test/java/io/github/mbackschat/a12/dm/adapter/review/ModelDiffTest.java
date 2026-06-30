@@ -126,12 +126,30 @@ class ModelDiffTest {
     }
 
     @Test
-    void aThresholdChangeStaysMediumConditionChanged() {
-        // same operator, different threshold — not a polarity flip; we cannot prove sameness, so MEDIUM
+    void aThresholdChangeIsMediumThresholdChanged() {
+        // same operator + structure, different literal threshold — not a polarity flip; MEDIUM, classified
         ElementChange modified = change(ModelDiff.between(withRule(base(), 1000), withRule(base(), 2000)), FEE_CAP);
         assertEquals(ModelDiff.Risk.MEDIUM, modified.risk(), () -> "reasons: " + modified.reasons());
-        assertTrue(modified.reasons().contains("CONDITION_CHANGED"), () -> "reasons: " + modified.reasons());
+        assertTrue(modified.reasons().contains("THRESHOLD_CHANGED"), () -> "reasons: " + modified.reasons());
         assertFalse(modified.reasons().contains("POLARITY_INVERTED"), () -> "reasons: " + modified.reasons());
+    }
+
+    @Test
+    void anOperatorChangeIsMediumOperatorChanged() {
+        // gt → ge keeps refs/structure but swaps the operator (and is not the le complement)
+        ElementChange modified = change(
+                ModelDiff.between(withRule(base(), f -> f.gt(1000)), withRule(base(), f -> f.ge(1000))), FEE_CAP);
+        assertEquals(ModelDiff.Risk.MEDIUM, modified.risk(), () -> "reasons: " + modified.reasons());
+        assertTrue(modified.reasons().contains("OPERATOR_CHANGED"), () -> "reasons: " + modified.reasons());
+    }
+
+    @Test
+    void addingAClauseIsMediumConditionRestructured() {
+        ElementChange modified = change(
+                ModelDiff.between(withRule(base(), f -> f.gt(1000)),
+                        withRule(base(), f -> f.gt(1000).and(f.gt(0)))), FEE_CAP);
+        assertEquals(ModelDiff.Risk.MEDIUM, modified.risk(), () -> "reasons: " + modified.reasons());
+        assertTrue(modified.reasons().contains("CONDITION_RESTRUCTURED"), () -> "reasons: " + modified.reasons());
     }
 
     @Test

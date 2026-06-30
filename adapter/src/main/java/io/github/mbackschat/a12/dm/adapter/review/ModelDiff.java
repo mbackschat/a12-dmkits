@@ -14,6 +14,7 @@ import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
 import io.github.mbackschat.a12.dm.adapter.ReadResult;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionEdit;
 import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionPolarity;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
 
@@ -130,16 +131,24 @@ public record ModelDiff(List<ElementChange> changes) {
     }
 
     /**
-     * A changed condition reads as {@code POLARITY_INVERTED} only when both sides convert to a typed AST
-     * and the head is the clean logical complement of the base ({@link ConditionPolarity}); otherwise the
-     * honest {@code CONDITION_CHANGED} — an opaque or non-flip change whose direction we can't prove. The
-     * structural detector proves a flip, never sameness (that is the behavioral {@code --deep} path, SPEC §5c).
+     * Refines a changed condition from the two typed ASTs: {@code POLARITY_INVERTED} (HIGH) when the head
+     * is the clean logical complement of the base ({@link ConditionPolarity}); otherwise the edit kind
+     * ({@link ConditionEdit}, all MEDIUM) — restructured / reference / operator / threshold. An opaque or
+     * unconvertible condition stays the generic {@code CONDITION_CHANGED} (can't analyze). The structural
+     * detector proves a flip, never sameness (that is the behavioral {@code --deep} path, SPEC §5c).
      */
     private static String conditionReason(String ruleName, KernelAdapter base, KernelAdapter head) {
         if (base.read(ruleName) instanceof ReadResult.Converted b
-                && head.read(ruleName) instanceof ReadResult.Converted h
-                && ConditionPolarity.isInversionOf(h.condition(), b.condition())) {
-            return "POLARITY_INVERTED";
+                && head.read(ruleName) instanceof ReadResult.Converted h) {
+            if (ConditionPolarity.isInversionOf(h.condition(), b.condition())) {
+                return "POLARITY_INVERTED";
+            }
+            return switch (ConditionEdit.classify(b.condition(), h.condition())) {
+                case STRUCTURE -> "CONDITION_RESTRUCTURED";
+                case REFERENCES -> "REFERENCE_CHANGED";
+                case OPERATOR -> "OPERATOR_CHANGED";
+                case OPERAND -> "THRESHOLD_CHANGED";
+            };
         }
         return "CONDITION_CHANGED";
     }
@@ -161,7 +170,8 @@ public record ModelDiff(List<ElementChange> changes) {
         return switch (reason) {
             case "RULE_REMOVED", "KIND_CHANGED", "SEVERITY_DOWNGRADED", "CONSTRAINT_LOOSENED",
                     "POLARITY_INVERTED" -> Risk.HIGH;
-            case "RULE_ADDED", "CONDITION_CHANGED", "CONSTRAINT_TIGHTENED", "STRUCTURE_ADDED",
+            case "RULE_ADDED", "CONDITION_CHANGED", "CONDITION_RESTRUCTURED", "REFERENCE_CHANGED",
+                    "OPERATOR_CHANGED", "THRESHOLD_CHANGED", "CONSTRAINT_TIGHTENED", "STRUCTURE_ADDED",
                     "STRUCTURE_REMOVED", "PATTERN_CHANGED", "SEVERITY_CHANGED", "SCALE_CHANGED" -> Risk.MEDIUM;
             default -> Risk.LOW;
         };

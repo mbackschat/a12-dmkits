@@ -100,7 +100,7 @@ A removed/loosened rule **silently accepts bad data** (invisible); a tightened/a
 
 Risk codes are documented via `schema model diff` (the `data.findings`-code pattern, like `workspace roles`), not in `diagnostics`.
 
-*(Status: a subset is built — `RULE_REMOVED`/`RULE_ADDED`/`POLARITY_INVERTED`/`KIND_CHANGED`/`SEVERITY_DOWNGRADED`/`CONSTRAINT_LOOSENED`/`CONSTRAINT_TIGHTENED`/`CONDITION_CHANGED`/`STRUCTURE_ADDED`/`STRUCTURE_REMOVED` and a few LOW codes, with the loosening>tightening direction for numeric bounds/lengths/pattern. `POLARITY_INVERTED` is detected structurally from the two rule ASTs (§5c level 1); the `risk` tier + `riskReasons` ride each change in `data`. `REFERENCED_ELEMENT_REMOVED` and `RETYPE_AFFECTS_READERS` are not yet computed — a removed/re-typed field is graded structurally without its reader set.)*
+*(Status: a subset is built — `RULE_REMOVED`/`RULE_ADDED`/`POLARITY_INVERTED`/`KIND_CHANGED`/`SEVERITY_DOWNGRADED`/`CONSTRAINT_LOOSENED`/`CONSTRAINT_TIGHTENED`/`STRUCTURE_ADDED`/`STRUCTURE_REMOVED` and a few LOW codes, with the loosening>tightening direction for numeric bounds/lengths/pattern. `POLARITY_INVERTED` is detected structurally from the two rule ASTs (§5c level 1); a non-inverted condition change is further **classified** from the ASTs (`ConditionEdit`, §5e) into `CONDITION_RESTRUCTURED`/`REFERENCE_CHANGED`/`OPERATOR_CHANGED`/`THRESHOLD_CHANGED` (all MEDIUM), with `CONDITION_CHANGED` the fallback for an unparseable condition. The `risk` tier + `riskReasons` ride each change in `data`. `REFERENCED_ELEMENT_REMOVED` and `RETYPE_AFFECTS_READERS` are not yet computed — a removed/re-typed field is graded structurally without its reader set.)*
 
 ### 5c. Polarity-inversion detection (layered by confidence)
 
@@ -113,7 +113,7 @@ Because the gloss is an *independent* tool reading of the condition, placing it 
 
 ### 5e. What kind of diff this is
 
-Three levels: **textual/line** (`git diff`), **structural/AST** (the common "semantic diff" — parse + compare structure, format-invariant), **behavioral** (what it *does*). **`model diff` is a structural semantic diff;** `--deep` (§5c) is the behavioral upgrade (reports "re-expressed but behaviorally identical"). Scope: `model diff` *is* a semantic diff, but `model review` ⊋ semantic diff (it adds comprehension + risk + gloss — judgment, not diff). Completeness gaps (AST-level condition diff, reorder-as-change, robust move-matching, relational grouping) are tracked in LEDGER §1.
+Three levels: **textual/line** (`git diff`), **structural/AST** (the common "semantic diff" — parse + compare structure, format-invariant), **behavioral** (what it *does*). **`model diff` is a structural semantic diff;** `--deep` (§5c) is the behavioral upgrade (reports "re-expressed but behaviorally identical"). Scope: `model diff` *is* a semantic diff, but `model review` ⊋ semantic diff (it adds comprehension + risk + gloss — judgment, not diff). A changed rule condition is compared at the **AST** level: a clean complement is `POLARITY_INVERTED` (§5c), and otherwise `ConditionEdit` classifies the edit coarsely — STRUCTURE (clause add/remove) → REFERENCES → OPERATOR → OPERAND (literal) — reusing `ConditionReferences` + a Condition-layer operator/node-count walk (it never re-walks the deep `Calculation` operand tree). Remaining gaps (the precise *located* edit script — "the `And` clause referencing X was added"; reorder-as-change; robust move-matching; relational grouping) are tracked in LEDGER §1.
 
 ### 5f. Renderings
 

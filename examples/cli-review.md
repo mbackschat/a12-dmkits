@@ -108,3 +108,30 @@ dmtool model diff examples/models/order-ruled.dm.json /tmp/postalcode-flipped.dm
 
 → The rule wasn't added or removed — it was **modified**, and the diff calls it out as `POLARITY_INVERTED` (HIGH) because the new condition is the exact logical complement of the old one. This is the signal the trust principle is built for: a tool-computed fact, derived from the ASTs (not the agent's narration), that surfaces the one edit a line-based diff would bury. A condition change the tool *can't* prove is a clean flip stays the honest `CONDITION_CHANGED` (MEDIUM); proving behavioral *sameness* is the deferred `--deep` path (MODEL-REVIEW-SPEC §5c).
 
+### Not every condition change is dangerous — the tool classifies it
+
+A flip is HIGH, but most condition edits are routine. `model diff` reads the two ASTs and **classifies** a non-inverted change so a reviewer can triage: `CONDITION_RESTRUCTURED` (a clause was added/removed), `REFERENCE_CHANGED` (it now reads different fields), `OPERATOR_CHANGED` (an operator swapped in place), or `THRESHOLD_CHANGED` (only a literal moved) — all MEDIUM. Here we bump a date rule's threshold from `< 0` to `< -1` (same shape, same fields, one literal):
+
+```bash
+cp examples/models/order-ruled.dm.json /tmp/threshold-bumped.dm.json
+dmtool -m /tmp/threshold-bumped.dm.json rule modify /Order/DeliveryNotBeforeOrder \
+  --condition 'AllFieldsFilled(OrderDate, DeliveryDate) And DifferenceInDays(OrderDate, DeliveryDate) < -1' >/dev/null 2>&1
+dmtool model diff examples/models/order-ruled.dm.json /tmp/threshold-bumped.dm.json \
+  | jq '.data.changes | map(select(.change=="MODIFIED")) | map({id, risk, riskReasons})'
+
+```
+
+```output
+[
+  {
+    "id": "/Order/DeliveryNotBeforeOrder",
+    "risk": "MEDIUM",
+    "riskReasons": [
+      "THRESHOLD_CHANGED"
+    ]
+  }
+]
+```
+
+→ `THRESHOLD_CHANGED` (MEDIUM): the structure and fields are untouched, only a literal moved — the tool says *what kind* of change it is, not just *that* it changed. So a reviewer scanning a large diff sees the HIGH flip first and can fast-skip the routine threshold tweaks. (The before/after condition text still rides each change's `deltas`; the precise located edit — *which* operand moved — is LEDGER MR1.)
+

@@ -36,7 +36,7 @@
           },
           "riskReasons": {
             "type": "array",
-            "description": "the risk reason codes — a subset of the SPEC §5b taxonomy. HIGH (silently accepts bad data): RULE_REMOVED, POLARITY_INVERTED (a rule's condition was flipped to its logical complement — it now accepts what it used to reject; detected structurally from the two ASTs), KIND_CHANGED, SEVERITY_DOWNGRADED, CONSTRAINT_LOOSENED. MEDIUM (fails loudly / undetermined direction): RULE_ADDED, CONDITION_CHANGED (the condition changed but not a provable polarity flip), CONSTRAINT_TIGHTENED, STRUCTURE_ADDED/REMOVED, PATTERN_CHANGED, SEVERITY_CHANGED, SCALE_CHANGED. LOW: CODE_CHANGED, METADATA_CHANGED.",
+            "description": "the risk reason codes — a subset of the SPEC §5b taxonomy. HIGH (silently accepts bad data): RULE_REMOVED, POLARITY_INVERTED (a rule's condition was flipped to its logical complement — it now accepts what it used to reject; detected structurally from the two ASTs), KIND_CHANGED, SEVERITY_DOWNGRADED, CONSTRAINT_LOOSENED. MEDIUM (fails loudly / undetermined direction): RULE_ADDED, CONSTRAINT_TIGHTENED, STRUCTURE_ADDED/REMOVED, PATTERN_CHANGED, SEVERITY_CHANGED, SCALE_CHANGED, and — for a non-inverted condition change, classified from the ASTs — CONDITION_RESTRUCTURED (a clause was added/removed), REFERENCE_CHANGED (it reads different fields), OPERATOR_CHANGED (an operator swapped within the same shape), THRESHOLD_CHANGED (only a literal/threshold operand moved); CONDITION_CHANGED is the fallback when the condition can't be parsed for analysis. LOW: CODE_CHANGED, METADATA_CHANGED.",
             "items": { "type": "string" }
           },
           "deltas": {
