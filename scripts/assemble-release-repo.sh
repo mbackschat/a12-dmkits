@@ -42,26 +42,10 @@ cp -f  "$ROOT/plugin-codex/marketplace.json" "$DEST/.agents/plugins/marketplace.
 mkdir -p "$DEST/examples"
 cp -f  "$ROOT"/examples/cli-*.md "$DEST/examples/"
 cp -Rf "$ROOT/examples/models"   "$DEST/examples/"
-cat > "$DEST/examples/README.md" <<'EOF'
-# Worked examples — the dmtool CLI, verb by verb
-
-Six end-to-end walkthroughs (command + real captured output + narration) covering **every verb**. They
-are executable docs — kept in sync with the live CLI by a CI gate in the source repo.
-
-| Demo | Shows |
-|---|---|
-| [`cli-tour`](cli-tour.md) | discover + read — `manifest` · `operators` · `patterns` · `diagnostics` · `schema` · `model describe`/`validate` · `rule read`/`explain` |
-| [`cli-edit-loop`](cli-edit-loop.md) | author/modify rules & computations, `batch`, the re-express loop |
-| [`cli-structure-edit`](cli-structure-edit.md) | fields/groups/typedefs/includes/config + the safe-delete gate + the refactors |
-| [`cli-apply`](cli-apply.md) | the atomic multi-op session — rollback + correctives + in-session refactors |
-| [`cli-runtime`](cli-runtime.md) | `model eval` / `rule eval` / `model compute` against document instances **(JVM only — not in the native binary)** |
-| [`cli-version`](cli-version.md) | `--version`, `manifest.version`, the model-version compatibility policy |
-
-> **Try them:** clone this repo and run from its root with `dmtool` on PATH. The commands call the bare
-> `dmtool` (what the plugin/raw install provides); discovery verbs (`manifest`, `operators`, `patterns`,
-> `schema`, `--help`) need no model, and the model-based ones use the sample models shipped in
-> [`models/`](models/). (`cli-runtime`'s verbs are JVM-only — not in the native binary.)
-EOF
+# Ship the REAL examples/README.md — the single, maintained demo index — NOT a hand-written copy. A
+# heredoc here used to duplicate the index and silently rotted (it froze at 6 demos + a stale "cli-runtime
+# is JVM-only" note while the source README tracked all of them). One source of truth = no drift.
+cp -f "$ROOT/examples/README.md" "$DEST/examples/README.md"
 # 1d. the mirror's own GitHub Actions workflow(s) — single-sourced here (inert under .github/mirror-workflows/,
 #     i.e. NOT a workflow in this private repo) and shipped to the mirror's .github/workflows/ so the public
 #     repo can build the per-OS native binaries (RELEASE-SPEC §4). Must be assembled (not hand-kept on the
