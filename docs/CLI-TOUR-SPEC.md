@@ -4,7 +4,7 @@ The stable **method** for the rulekit CLI demos: how to author, verify, and exte
 
 The demos are authored with [showboat](https://github.com/simonw/showboat): each `examples/*.md` interleaves prose, a command, and its **captured output**, and `showboat verify` re-runs every command to prove the output still matches the live CLI. So a demo is documentation *and* a doc-drift regression test.
 
-**Seven demos** now cover the whole target-first verb surface, split by workflow — read/inspect, rulekit write/edit, modelkit structure, the `apply` session, runtime evaluation, custom-construct support, and versions/compatibility. The CI gate re-verifies all seven (`.github/workflows/ci.yml`). The per-demo verb inventory is kept current in [`../examples/README.md`](../examples/README.md) (rather than enumerated here, where it drifted); the backlog below records what each covers.
+**The demos** cover the whole target-first verb surface, split by workflow — read-one-model, the self-describing surface, review/comprehend, multi-file & workspaces, rulekit write/edit, modelkit structure, the `apply` session, runtime evaluation, custom constructs, and JSON-Schema/OpenAPI. The CI gate re-verifies every one (`.github/workflows/ci.yml`), and `scripts/verify-demos.sh` discovers them by glob so a new one can't go unverified. The **per-demo verb inventory is the single source in [`../examples/README.md`](../examples/README.md)** — not hard-counted or enumerated here, where it drifts on every demo add.
 
 ## Run / verify / regenerate
 
@@ -71,9 +71,12 @@ A fork of showboat to add a redaction hook is the wrong bet — in-band scrubbin
 
 ## Expanding this approach (backlog)
 
-**Six demos now cover the whole verb surface** on the `dmtool` target-first surface + the result envelope; the CI gate re-verifies all six (`.github/workflows/ci.yml`). Index: [`../examples/README.md`](../examples/README.md).
+**The demos cover the whole verb surface** on the `dmtool` target-first surface + the result envelope; the CI gate re-verifies every one (`.github/workflows/ci.yml`), and `scripts/verify-demos.sh` discovers them by glob. Index (the single source for the per-demo inventory): [`../examples/README.md`](../examples/README.md).
 
-- ✅ **Discover + read** (`cli-tour.md`) — `manifest` · `operators`(+`<id>`) · `schema result`/`<target> <op>` · `model describe`/`read`/`usage`/`validate` · `rule read`/`explain`/`check` · `field`/`group`/`config read`. Doubles as the discovery/self-describing showcase (assemble a call from `manifest` + `schema` alone).
+- ✅ **Read one model** (`cli-tour.md`) — `model check`/`describe`/`read`/`usage` · `rule read`/`explain`/`format`/`check` · `field`/`group`/`config read`.
+- ✅ **The self-describing surface** (`cli-discover.md`) — `manifest` · `operators`(+`<id>`) · `patterns`(+scaffold) · `diagnostics`(+`<code>`) · `schema result`/`<target> <op>` (assemble a call from `manifest` + `schema` alone).
+- ✅ **Review & comprehend** (`cli-review.md`) — `model report` (the glossed comprehension catalog) · `model diff` (the structural, risk-ranked semantic diff of two models).
+- ✅ **Multi-file & workspaces** (`cli-workspace.md`) — `model info` · `workspace list`/`graph`/`roles`.
 - ✅ **Rulekit write/edit** (`cli-edit-loop.md`) — `where-used` · the full `rule` + `computation` CRUD (add/read/explain/modify/remove) · `batch` · the F8 re-express loop (`--dry-run` preview vs in-place write) · **`;;` comments** (the `comment` key / `rule modify --comment`, preserved across a comment-less re-express).
 - ✅ **Modelkit structure** (`cli-structure-edit.md`) — `field`/`group` add·read·remove (the safe-delete gate + `--cascade`) · `typedef` + `field --typedef` · `include` (`-w/--workspace`) · `config read`/`modify` · `export`.
 - ✅ **The `apply` session** (`cli-apply.md`) — atomic multi-op · rollback · op-arg corrective (`RK_UNKNOWN_ARG`/`RK_UNKNOWN_OP` + did-you-mean) · cross-type corrective · read-mid-sequence · `schema apply` (the op-record frame).

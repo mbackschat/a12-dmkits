@@ -122,6 +122,9 @@ jobs:
         run: |
           export PATH="$PWD/bin:$PATH"   # the demos call bare `dmtool`; the repo shim resolves it
           uvx showboat@0.6.1 verify examples/cli-tour.md
+          uvx showboat@0.6.1 verify examples/cli-discover.md
+          uvx showboat@0.6.1 verify examples/cli-review.md
+          uvx showboat@0.6.1 verify examples/cli-workspace.md
           uvx showboat@0.6.1 verify examples/cli-edit-loop.md
           uvx showboat@0.6.1 verify examples/cli-structure-edit.md
           uvx showboat@0.6.1 verify examples/cli-apply.md
