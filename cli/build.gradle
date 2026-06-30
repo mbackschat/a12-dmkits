@@ -96,10 +96,13 @@ tasks.named('run') {
     workingDir = rootProject.projectDir
 }
 
-tasks.named('test') {
+// Config shared by EVERY :cli Test task (the main `test` + the `docGuardTest` split below). Putting the
+// native-agent capture here means a capture run (scripts/capture-native-config.sh, -PrkNativeAgent) covers
+// both — and since `test` dependsOn `docGuardTest`, plain `:cli:test` always drives both in CI too.
+tasks.withType(Test).configureEach {
     useJUnitPlatform()
     // Native-image reflection capture (docs/NATIVE-IMAGE-GRAALVM.md §5) — TEST-SUITE driven, opt-in.
-    // `-PrkNativeAgent` runs this suite under the GraalVM tracing agent so the captured reachability
+    // `-PrkNativeAgent` runs the suite under the GraalVM tracing agent so the captured reachability
     // metadata TRACKS THE TEST SUITE (grows with TDD), replacing the old curated verb-driving capture
     // whose coverage was bounded by the invocations it remembered to list (the v0.1.0/v0.1.1 bugs, §3.5).
     // The agent ships inside GraalVM, so the test JVM must be GraalVM, not the JDK-21 toolchain: point
@@ -117,6 +120,44 @@ tasks.named('test') {
         jvmArgs "-agentlib:native-image-agent=config-merge-dir=${cfgDir},caller-filter-file=${callerFilter}"
         maxParallelForks = 1
         outputs.upToDateWhen { false }   // always re-run; a cached (skipped) test run captures nothing
+    }
+}
+
+// A couple of guards read REPO FILES at RUNTIME that Gradle can't infer as inputs — CliTourFreshnessTest
+// reads examples/*.md; CommandReferencesResolveTest reads the source + public READMEs, skill/SKILL.md, the
+// Codex AGENTS.md, and the operator catalog. They run in THIS dedicated task with those files declared as
+// ITS inputs, so the win is scoped: editing a demo/doc re-runs ONLY these 2 classes (not the ~620-test
+// suite), and a docs change can no longer go up-to-date / restore from the BUILD CACHE into a FALSE GREEN
+// locally while CI (a fresh checkout) fails. `test` dependsOn this, so `:cli:test` (CI, local, and the
+// -PrkNativeAgent capture) always drives it — no `--rerun-tasks`/`--no-build-cache` dance.
+tasks.register('docGuardTest', Test) {
+    description = 'Freshness/conformance guards that read repo demos+docs at runtime (split out so a docs edit re-runs only these).'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter {
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.CliTourFreshnessTest'
+        includeTestsMatching 'io.github.mbackschat.a12.dm.cli.CommandReferencesResolveTest'
+    }
+    inputs.files(
+            rootProject.fileTree('examples') { include '**/*.md' },
+            rootProject.file('README.md'),
+            rootProject.file('plugin/README.md'),
+            rootProject.file('skill/SKILL.md'),
+            rootProject.file('plugin-codex/AGENTS.md'),
+            rootProject.fileTree('src/main/resources/catalog'))
+        .withPropertyName('guardReadRepoFiles')
+        .withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+        .optional()
+}
+
+tasks.named('test') {
+    dependsOn 'docGuardTest'
+    // The doc-reading guards live in docGuardTest (with the right inputs); keep them OUT of the cacheable
+    // main suite so a docs-only edit can't invalidate all ~620 tests.
+    filter {
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.CliTourFreshnessTest'
+        excludeTestsMatching 'io.github.mbackschat.a12.dm.cli.CommandReferencesResolveTest'
     }
 }
 

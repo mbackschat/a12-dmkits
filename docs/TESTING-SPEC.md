@@ -230,6 +230,12 @@ The full kernel-backed suite was ~12 min, but **two categories accounted for ~10
 
 **Nothing is dropped — CI runs them on a defined trigger:** the fuzzers on **every push/PR** (`-PrunFuzz` — correctness nets, interpreter == kernel), the perf gate **nightly + on `workflow_dispatch`** (`-PrunPerf` — a ratio gate, not a per-commit check). `GateTierWiringTest` fails the build if either lane is dropped from the CI workflow (F11 loud-detection). **Tagging rule:** a new perf benchmark gets `@Tag("perf")`, a new differential fuzzer `@Tag("fuzz")` — so it joins the right lane automatically.
 
+## Tests that read repo files at runtime → slim, task-specific inputs
+
+A few guards read repo files Gradle can't infer as inputs: `CliTourFreshnessTest` reads `examples/*.md`; `CommandReferencesResolveTest` reads the source + public READMEs, `skill/SKILL.md`, the Codex `AGENTS.md`, and the operator catalog. If those files aren't declared inputs, the test task goes **up-to-date / restores from the build cache** on a docs-only change — a **false green locally** while CI (a fresh checkout) fails. It bit us: a stale `cli-discover.md` capture passed locally in `1s` (cached) and only CI caught the drift.
+
+The fix is **not** to widen the main `test` task's inputs — that re-runs all ~620 tests on *any* `.md` edit. Instead these guards run in a dedicated **`docGuardTest`** task (`cli/build.gradle`) with exactly those files declared as **its** inputs, and `test dependsOn docGuardTest`. Result: a docs/demo edit re-runs **only** the 2 guard classes; a code edit doesn't touch them; and `:cli:test` (CI, local, and the `-PrkNativeAgent` capture — via the dependency) always drives them. **Standing rule:** when a test reads a repo file at runtime, declare that file as an input on a task scoped to *just* that test — never on the broad suite. Keep test dependencies slim and specific.
+
 ## Running
 
 Build with an isolated, public-repos-only Gradle home on JDK 21 (the kernel must first be in `mavenLocal` via the sibling bootstrap kit — see the README "Build & test"):

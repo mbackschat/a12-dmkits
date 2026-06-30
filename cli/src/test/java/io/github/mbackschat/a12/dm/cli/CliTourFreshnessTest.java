@@ -49,8 +49,11 @@ class CliTourFreshnessTest {
     private static final String REGEN =
             "`uvx showboat@0.6.1 verify " + DEMO + " --output " + DEMO + "`";
 
-    /** The diagnostics-summary block the tour captures: {@code {"count":N,"severities":[...],...}}. */
-    private static final Pattern DIAG_COUNT = Pattern.compile("\\{\"count\":(\\d+),\"severities\":");
+    /** The diagnostics-summary count the demo captures. Matched format-agnostically — the {@code \s*}
+     *  spans the optional newline+indent, so it works whether the block is compact or jq-pretty — and
+     *  anchored on the "severities" sibling so it never matches the patterns count block ("count"
+     *  followed by "ids"). */
+    private static final Pattern DIAG_COUNT = Pattern.compile("\"count\":\\s*(\\d+),\\s*\"severities\":");
 
     @Test
     void cliTourDiagnosticsCountMatchesTheLiveRegistry() throws Exception {
