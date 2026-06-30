@@ -8,7 +8,12 @@ The interop companion to the [verb tour](cli-tour.md): this demo converts **betw
 We work in `/tmp` so the repo stays put. First, a small JSON Schema:
 
 ```bash
-echo '{ "title": "Order", "type": "object", "required": ["id"], "properties": { "id": { "type": "string" }, "quantity": { "type": "integer" }, "status": { "type": "string", "enum": ["NEW","SHIPPED"] } } }' > /tmp/order.schema.json && echo "wrote /tmp/order.schema.json"
+echo '{ "title": "Order", "type": "object", "required": ["id"],
+        "properties": {
+          "id":       { "type": "string" },
+          "quantity": { "type": "integer" },
+          "status":   { "type": "string", "enum": ["NEW","SHIPPED"] } } }' \
+  > /tmp/order.schema.json && echo "wrote /tmp/order.schema.json"
 ```
 
 ```output
@@ -21,7 +26,9 @@ wrote /tmp/order.schema.json
 
 ```bash
 dmtool model import-jsonschema --schema /tmp/order.schema.json 2>/dev/null \
-  | jq -c '.content.modelRoot.rootGroups[0].Group.elements[] | {id, type: .Field.fieldType.type, enum: (.Field.fieldType.EnumerationType.values // [] | map(.value))}'
+  | jq -c '.content.modelRoot.rootGroups[0].Group.elements[]
+           | {id, type: .Field.fieldType.type,
+              enum: (.Field.fieldType.EnumerationType.values // [] | map(.value))}'
 ```
 
 ```output
@@ -70,8 +77,11 @@ dmtool model import-jsonschema --schema /tmp/catalog.schema.json 2>&1 1>/dev/nul
 
 ```output
 transcoding report: 3 mapped, 0 omitted, 2 note(s)
-  - number 'price' has no scale in the schema — imported at the default scale 2 (a guess; set --default-scale, --number-scale, or the field's scale by hand if a different precision is needed)
-  - 'tags' has no maxItems — capped at the default 1000 rows (a chosen bound, not from the schema); set maxItems, --default-repeat-cap, or --strict
+  - number 'price' has no scale in the schema — imported at the default scale 2 (a guess; set
+    --default-scale, --number-scale, or the field's scale by hand if a different precision is
+    needed)
+  - 'tags' has no maxItems — capped at the default 1000 rows (a chosen bound, not from the
+    schema); set maxItems, --default-repeat-cap, or --strict
 ```
 
 ## --strict — omit everything uncertain (the conservative stance)
@@ -80,11 +90,18 @@ The opposite stance is one flag. `--strict` omits everything it would have guess
 
 ```bash
 dmtool model import-jsonschema --schema /tmp/catalog.schema.json --strict -o /tmp/catalog-strict.dm.json 2>/dev/null \
-  | jq -c '.changed.report'
+  | jq '.changed.report'
 ```
 
 ```output
-{"mapped":0,"omitted":2,"notes":["property 'price' is type 'number' (unbounded decimal) — omitted: an a12 number is always scale-bounded. TO DO: add the field by hand with a chosen scale, or set the MappingProfile numberScale to DEFAULT_SCALE / INTEGER","array 'tags' has no maxItems and no default cap — omitted: a12 group repeatability is a bounded max ≥ 2. TO DO: set maxItems, raise --default-repeat-cap, or add by hand"]}
+{
+  "mapped": 0,
+  "omitted": 2,
+  "notes": [
+    "property 'price' is type 'number' (unbounded decimal) — omitted: an a12 number is always scale-bounded. TO DO: add the field by hand with a chosen scale, or set the MappingProfile numberScale to DEFAULT_SCALE / INTEGER",
+    "array 'tags' has no maxItems and no default cap — omitted: a12 group repeatability is a bounded max ≥ 2. TO DO: set maxItems, raise --default-repeat-cap, or add by hand"
+  ]
+}
 ```
 
 → Between the two extremes, per-decision flags tune each choice (`--number-scale`, `--array-of-scalar`, `--default-repeat-cap`, `--union`, `--format`, …) — each value's *implication* is in `dmtool model import-jsonschema --help` and `manifest` (see SCHEMAKIT-SPEC §4b).
@@ -165,7 +182,9 @@ transcoding report: 2 mapped, 0 omitted, 1 note(s)
   - dialect: OPENAPI_30 (auto-detected)
 transcoding report: 5 mapped, 0 omitted, 2 note(s)
   - dialect: OPENAPI_30 (auto-detected)
-  - number 'discount' has no scale in the schema — imported at the default scale 2 (a guess; set --default-scale, --number-scale, or the field's scale by hand if a different precision is needed)
+  - number 'discount' has no scale in the schema — imported at the default scale 2 (a guess; set
+    --default-scale, --number-scale, or the field's scale by hand if a different precision is
+    needed)
 ["/Root/discountExclusiveMin"]
 ```
 

@@ -22,11 +22,38 @@ final class JsonSchemaCli {
     private JsonSchemaCli() {
     }
 
-    /** The human-readable report, one omission/to-do per line, on stderr (the clean-artifact-on-stdout case). */
+    /** A fixed, terminal-independent wrap width for note lines — keeps the stderr audit trail free of
+     *  horizontal scroll for a real user, and keeps the captured demo output deterministic. */
+    private static final int NOTE_WIDTH = 96;
+    private static final String NOTE_BULLET = "  - ";
+    private static final String NOTE_HANGING_INDENT = "    ";
+
+    /** The human-readable report on stderr: a header, then each omission/to-do as a bulleted note,
+     *  word-wrapped with a hanging indent so a long to-do never scrolls off the right edge. */
     static void printReport(PrintWriter err, TranscodeReport report) {
         err.println("transcoding report: " + mapped(report) + " mapped, " + omitted(report) + " omitted, "
                 + report.diagnostics().size() + " note(s)");
-        report.diagnostics().forEach(note -> err.println("  - " + note));
+        report.diagnostics().forEach(note -> printWrappedNote(err, note));
+    }
+
+    /** Greedy word-wrap of one note: the {@link #NOTE_BULLET} leads the first line, continuations hang
+     *  under the text at {@link #NOTE_HANGING_INDENT}, every line kept within {@link #NOTE_WIDTH}. */
+    private static void printWrappedNote(PrintWriter err, String note) {
+        int budget = NOTE_WIDTH - NOTE_BULLET.length();
+        StringBuilder line = new StringBuilder();
+        boolean firstLine = true;
+        for (String word : note.split(" ")) {
+            if (line.length() > 0 && line.length() + 1 + word.length() > budget) {
+                err.println((firstLine ? NOTE_BULLET : NOTE_HANGING_INDENT) + line);
+                firstLine = false;
+                line.setLength(0);
+            }
+            if (line.length() > 0) {
+                line.append(' ');
+            }
+            line.append(word);
+        }
+        err.println((firstLine ? NOTE_BULLET : NOTE_HANGING_INDENT) + line);
     }
 
     /** The same report as STRUCTURED data ({@code mapped}/{@code omitted} counts + the {@code notes} to-do list)
