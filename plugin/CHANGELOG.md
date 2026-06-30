@@ -4,6 +4,25 @@ All notable changes to the **publicly released `dmtool` artifacts** — the nati
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/) plus **A12 Kernel compatibility metadata** (the kernel each release targets is recorded per entry, never folded into the version string).
 
+## [0.8.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
+
+Three headline capabilities this release: the **native binary now evaluates document instances** (a from-scratch, kernel-free interpreter powers the runtime verbs, so `model eval` / `rule eval` / `model compute` / `model seed` run in the shipped native image — previously JVM-only); a **model-review** family for understanding and comparing models (`model diff`, `model report`, `model normalize`); and **JSON Schema interop** (`model import-jsonschema` / `model export-jsonschema`).
+
+### Added
+
+- **Runtime evaluation in the native binary — a kernel-free interpreter.** `model eval` (which rules fire on a document instance), `rule eval` (a single rule), `model compute` (what a computed field evaluates to), and `model seed` (generate a valid sample instance) now default to a from-scratch evaluator that reproduces the A12 kernel's runtime semantics **without the kernel's on-the-fly Groovy** — so they run in the GraalVM native image, not just on the JVM. The interpreter is verified rule-for-rule against the kernel, and scales linearly on large documents (it overtakes the kernel on instances with thousands of repeated rows). Add `--kernel` to evaluate with the A12 kernel itself (JVM only). `model eval` / `rule eval` compute-then-validate by default, with `--apply-computed-back` exposed.
+- **Custom constructs at runtime.** `--predefined-types` declares custom field types declaratively; `--custom-conditions-js` and `--custom-field-types-js` run a model's imperative custom conditions / field types via a Node worker; `--strict-custom` fails loudly instead of degrading when a custom construct can't be honored. Unsupported custom constructs are surfaced, never silently skipped.
+- **Model review — understand and compare models.**
+  - `model diff` — a structural two-file diff with **risk tiers and reason codes** (a loosening change outranks a tightening one), **`POLARITY_INVERTED`** detection (a rule's condition was logically flipped) read straight from the rule ASTs, and **`--since <ref>`** to diff the working model against a git ref.
+  - `model report` — a self-describing comprehension surface: model identity, structure, field usage, and a glossed catalog of every rule and computation (plain-language gloss + polarity + message).
+  - `model normalize` — a deterministic, order-preserving canonical write-out.
+  - `--text` gives `model diff` and `model report` a compact human-readable rendering alongside the JSON envelope.
+- **JSON Schema interop.** `model import-jsonschema` builds a document model from a JSON Schema or OpenAPI document (JSON **or** YAML), with `--dialect` / `--component` selection, best-effort import defaults (every guess flagged) or `--strict`, multi-model bundle import (`--out-dir`, mounts, includes), and a structured transcoding report carried in the `-o` envelope. `model export-jsonschema` goes the other way, with dialect selection and `--wrap-openapi`.
+
+### Changed
+
+- **The native command tree no longer carries `--kernel`.** Kernel evaluation needs Groovy, so `--kernel` is a JVM-only option — it is now removed from every native surface (`manifest`, `--help`, schema) rather than merely refused at call time.
+
 ## [0.7.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
 A probe-driven **robustness + DX** wave: a cold agent ran realistic authoring sessions against the shipped binary, and every defect it surfaced was fixed at the root. The themes are a **unified value-type vocabulary**, **fuller read-backs**, a new **`typedef modify`** verb, **two native-image crash fixes**, and a broad sweep of **corrective, self-describing diagnostics** — so the tool explains itself and never leaks a raw stack trace.
