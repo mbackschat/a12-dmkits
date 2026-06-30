@@ -42,10 +42,13 @@ for d in examples/cli-*.md; do
     printf 'SKIP  %-26s — %s\n' "$base" "${NATIVE_SKIP[$base]}"
     continue
   fi
-  if DMTOOL_CLI="$NATIVE" uvx showboat@0.6.1 verify "$d" >/dev/null 2>&1; then
+  if out="$(DMTOOL_CLI="$NATIVE" uvx showboat@0.6.1 verify "$d" 2>&1)"; then
     printf 'PASS  %s\n' "$base"
   else
     printf 'FAIL  %s\n' "$base"
+    # Surface the byte-divergence — on a CROSS-OS gate a silent FAIL is useless (the binary diverges on the
+    # gate's OS, not the author's, so the diff can't be reproduced locally). Print showboat's expected/actual.
+    printf '%s\n' "$out" | sed 's/^/    | /'
     fails=$((fails+1))
   fi
 done
