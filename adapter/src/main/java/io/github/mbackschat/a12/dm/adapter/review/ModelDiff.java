@@ -11,8 +11,10 @@ import java.util.Objects;
 import java.util.Set;
 
 import io.github.mbackschat.a12.dm.adapter.KernelAdapter;
+import io.github.mbackschat.a12.dm.adapter.ReadResult;
 import io.github.mbackschat.a12.dm.core.ValueKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.ConditionPolarity;
 import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
 
 /**
@@ -21,12 +23,14 @@ import io.github.mbackschat.a12.dm.rulekit.dsl.FieldInfo;
  * reaches the reviewer), matching elements by id/path into added / removed / modified, each carrying the
  * per-aspect {@link Delta}s that changed and a {@link Risk} tier with its reason codes.
  *
- * <p>This slice (spike tasks #3/#4/#7) covers <b>fields and rules</b>. An element's state is an ordered
- * <i>aspect map</i> of format-independent values (kernel-canonical condition text + severity + code for a
- * rule; kind + per-kind config for a field), so a pure reformat is never a change. Risk follows the
- * <b>loosening &gt; tightening</b> asymmetry (a removed/loosened rule silently accepts bad data) — a subset of
- * the SPEC §5b taxonomy; the AST-level condition diff, polarity-inversion detection, rename/move, and
- * computations/groups are later slices (MODEL-REVIEW-LEDGER).
+ * <p>This slice covers <b>fields and rules</b>. An element's state is an ordered <i>aspect map</i> of
+ * format-independent values (kernel-canonical condition text + severity + code for a rule; kind + per-kind
+ * config for a field), so a pure reformat is never a change. Risk follows the <b>loosening &gt; tightening</b>
+ * asymmetry (a removed/loosened rule silently accepts bad data) — a subset of the SPEC §5b taxonomy.
+ * A changed rule condition is further refined from the two typed ASTs ({@link ConditionPolarity}): a
+ * provable structural flip is {@code POLARITY_INVERTED} (HIGH), otherwise the honest {@code CONDITION_CHANGED}.
+ * The fuller AST edit-script (which operand/clause moved), rename/move, and computations/groups are later
+ * slices (MODEL-REVIEW-LEDGER MR1–MR4).
  */
 public record ModelDiff(List<ElementChange> changes) {
 
@@ -50,59 +54,99 @@ public record ModelDiff(List<ElementChange> changes) {
     public static ModelDiff between(String baseJson, String headJson) {
         BoundModel base = BoundModel.ofJson(baseJson);
         BoundModel head = BoundModel.ofJson(headJson);
+        KernelAdapter baseRules = KernelAdapter.of(base);
+        KernelAdapter headRules = KernelAdapter.of(head);
         List<ElementChange> changes = new ArrayList<>();
-        match(ElementKind.FIELD, fieldAspects(base), fieldAspects(head), changes);
-        match(ElementKind.RULE, ruleAspects(KernelAdapter.of(base)), ruleAspects(KernelAdapter.of(head)), changes);
+        match(ElementKind.FIELD, fieldAspects(base), fieldAspects(head), ModelDiff::fieldReasons, changes);
+        match(ElementKind.RULE, ruleAspects(baseRules), ruleAspects(headRules),
+                (change, id, deltas) -> ruleReasons(change, id, deltas, baseRules, headRules), changes);
         return new ModelDiff(List.copyOf(changes));
     }
 
     /** Base-order REMOVED/MODIFIED first, then head-only ADDED — deterministic for a stable input order. */
     private static void match(ElementKind kind, Map<String, Map<String, String>> base,
-            Map<String, Map<String, String>> head, List<ElementChange> out) {
+            Map<String, Map<String, String>> head, ReasonClassifier classifier, List<ElementChange> out) {
         for (Map.Entry<String, Map<String, String>> e : base.entrySet()) {
             Map<String, String> headAspects = head.get(e.getKey());
             if (headAspects == null) {
-                out.add(classified(kind, e.getKey(), ChangeKind.REMOVED, allDeltas(e.getValue(), false)));
+                out.add(classified(kind, e.getKey(), ChangeKind.REMOVED, allDeltas(e.getValue(), false), classifier));
             } else {
                 List<Delta> deltas = aspectDeltas(e.getValue(), headAspects);
                 if (!deltas.isEmpty()) {
-                    out.add(classified(kind, e.getKey(), ChangeKind.MODIFIED, deltas));
+                    out.add(classified(kind, e.getKey(), ChangeKind.MODIFIED, deltas, classifier));
                 }
             }
         }
         for (Map.Entry<String, Map<String, String>> e : head.entrySet()) {
             if (!base.containsKey(e.getKey())) {
-                out.add(classified(kind, e.getKey(), ChangeKind.ADDED, allDeltas(e.getValue(), true)));
+                out.add(classified(kind, e.getKey(), ChangeKind.ADDED, allDeltas(e.getValue(), true), classifier));
             }
         }
     }
 
     // --- risk classification (the §5b taste: loosening > tightening) ------------------------------
 
-    private static ElementChange classified(ElementKind kind, String id, ChangeKind change, List<Delta> deltas) {
-        List<String> reasons = reasons(kind, change, deltas);
+    /** Maps a change to its reason codes — pluggable so the rule path can consult the two ASTs. */
+    @FunctionalInterface
+    private interface ReasonClassifier {
+        List<String> reasons(ChangeKind change, String id, List<Delta> deltas);
+    }
+
+    private static ElementChange classified(ElementKind kind, String id, ChangeKind change,
+            List<Delta> deltas, ReasonClassifier classifier) {
+        List<String> reasons = classifier.reasons(change, id, deltas);
         Risk risk = reasons.stream().map(ModelDiff::riskOf).max(Comparator.naturalOrder()).orElse(Risk.LOW);
         return new ElementChange(kind, id, change, risk, List.copyOf(reasons), deltas);
     }
 
-    private static List<String> reasons(ElementKind kind, ChangeKind change, List<Delta> deltas) {
+    /** Field reasons: structure add/remove + the per-aspect config reasons. */
+    private static List<String> fieldReasons(ChangeKind change, String id, List<Delta> deltas) {
         List<String> r = new ArrayList<>();
         switch (change) {
-            case ADDED -> r.add(kind == ElementKind.RULE ? "RULE_ADDED" : "STRUCTURE_ADDED");
-            case REMOVED -> r.add(kind == ElementKind.RULE ? "RULE_REMOVED" : "STRUCTURE_REMOVED");
+            case ADDED -> r.add("STRUCTURE_ADDED");
+            case REMOVED -> r.add("STRUCTURE_REMOVED");
+            case MODIFIED -> deltas.forEach(d -> r.add(modifiedReason(d)));
+        }
+        return r;
+    }
+
+    /**
+     * Rule reasons: add/remove + per-aspect, but a changed {@code condition} is refined from the two
+     * ASTs — {@code POLARITY_INVERTED} (HIGH) on a provable structural flip, else {@code CONDITION_CHANGED}.
+     */
+    private static List<String> ruleReasons(ChangeKind change, String name, List<Delta> deltas,
+            KernelAdapter base, KernelAdapter head) {
+        List<String> r = new ArrayList<>();
+        switch (change) {
+            case ADDED -> r.add("RULE_ADDED");
+            case REMOVED -> r.add("RULE_REMOVED");
             case MODIFIED -> {
                 for (Delta d : deltas) {
-                    r.add(modifiedReason(d));
+                    r.add(d.aspect().equals("condition") ? conditionReason(name, base, head) : modifiedReason(d));
                 }
             }
         }
         return r;
     }
 
+    /**
+     * A changed condition reads as {@code POLARITY_INVERTED} only when both sides convert to a typed AST
+     * and the head is the clean logical complement of the base ({@link ConditionPolarity}); otherwise the
+     * honest {@code CONDITION_CHANGED} — an opaque or non-flip change whose direction we can't prove. The
+     * structural detector proves a flip, never sameness (that is the behavioral {@code --deep} path, SPEC §5c).
+     */
+    private static String conditionReason(String ruleName, KernelAdapter base, KernelAdapter head) {
+        if (base.read(ruleName) instanceof ReadResult.Converted b
+                && head.read(ruleName) instanceof ReadResult.Converted h
+                && ConditionPolarity.isInversionOf(h.condition(), b.condition())) {
+            return "POLARITY_INVERTED";
+        }
+        return "CONDITION_CHANGED";
+    }
+
     private static String modifiedReason(Delta d) {
         return switch (d.aspect()) {
             case "kind" -> "KIND_CHANGED";
-            case "condition" -> "CONDITION_CHANGED";
             case "severity" -> downgraded(d.before(), d.after()) ? "SEVERITY_DOWNGRADED" : "SEVERITY_CHANGED";
             case "min", "minLength" -> loosened(true, d) ? "CONSTRAINT_LOOSENED" : "CONSTRAINT_TIGHTENED";
             case "max", "maxLength" -> loosened(false, d) ? "CONSTRAINT_LOOSENED" : "CONSTRAINT_TIGHTENED";
@@ -115,7 +159,8 @@ public record ModelDiff(List<ElementChange> changes) {
 
     private static Risk riskOf(String reason) {
         return switch (reason) {
-            case "RULE_REMOVED", "KIND_CHANGED", "SEVERITY_DOWNGRADED", "CONSTRAINT_LOOSENED" -> Risk.HIGH;
+            case "RULE_REMOVED", "KIND_CHANGED", "SEVERITY_DOWNGRADED", "CONSTRAINT_LOOSENED",
+                    "POLARITY_INVERTED" -> Risk.HIGH;
             case "RULE_ADDED", "CONDITION_CHANGED", "CONSTRAINT_TIGHTENED", "STRUCTURE_ADDED",
                     "STRUCTURE_REMOVED", "PATTERN_CHANGED", "SEVERITY_CHANGED", "SCALE_CHANGED" -> Risk.MEDIUM;
             default -> Risk.LOW;

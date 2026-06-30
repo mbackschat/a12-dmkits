@@ -3,10 +3,12 @@ package io.github.mbackschat.a12.dm.adapter.review;
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.de;
 import static io.github.mbackschat.a12.dm.rulekit.dsl.Dsl.en;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
 
@@ -16,6 +18,7 @@ import io.github.mbackschat.a12.dm.adapter.review.ModelDiff.ElementKind;
 import io.github.mbackschat.a12.dm.edit.EditSession;
 import io.github.mbackschat.a12.dm.modelkit.FieldKind;
 import io.github.mbackschat.a12.dm.rulekit.dsl.BoundModel;
+import io.github.mbackschat.a12.dm.rulekit.dsl.Condition;
 import io.github.mbackschat.a12.dm.rulekit.dsl.NumberRef;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Rule;
 import io.github.mbackschat.a12.dm.rulekit.dsl.Severity;
@@ -31,10 +34,15 @@ class ModelDiffTest {
 
     /** A valid head: {@code base} + one rulekit-authored rule (the proven valid-model idiom). */
     private static String withRule(String json, int threshold) {
+        return withRule(json, fee -> fee.gt(threshold));
+    }
+
+    /** {@code base} + the {@code FeeCapRule} guarding {@code MonthlyFee} with a caller-supplied condition. */
+    private static String withRule(String json, Function<NumberRef, Condition> condOf) {
         BoundModel m = BoundModel.ofJson(json);
         NumberRef fee = m.num("/Subscription/Addons/MonthlyFee");
         Rule rule = m.rule(m.group("/Subscription/Addons"))
-                .name("FeeCapRule").errorField(fee).when(fee.gt(threshold))
+                .name("FeeCapRule").errorField(fee).when(condOf.apply(fee))
                 .code("FEE_CAP").severity(Severity.ERROR)
                 .message(en("Monthly fee too high."), de("Monatsgebühr zu hoch.")).build();
         return m.add(rule).toJson();
@@ -103,6 +111,27 @@ class ModelDiffTest {
         ElementChange added = change(ModelDiff.between(base(), withRule(base(), 1000)), FEE_CAP);
         assertEquals(ModelDiff.Risk.MEDIUM, added.risk());
         assertTrue(added.reasons().contains("RULE_ADDED"), () -> "reasons: " + added.reasons());
+    }
+
+    @Test
+    void polarityInversionIsHighRiskNotJustAConditionChange() {
+        // gt → le is the clean complement: the rule now fires on the complementary set, silently
+        // accepting what it used to reject → POLARITY_INVERTED (HIGH), per the loosening>tightening taste.
+        String base = withRule(base(), fee -> fee.gt(1000));
+        String head = withRule(base(), fee -> fee.le(1000));
+        ElementChange modified = change(ModelDiff.between(base, head), FEE_CAP);
+        assertEquals(ChangeKind.MODIFIED, modified.change());
+        assertEquals(ModelDiff.Risk.HIGH, modified.risk(), () -> "reasons: " + modified.reasons());
+        assertTrue(modified.reasons().contains("POLARITY_INVERTED"), () -> "reasons: " + modified.reasons());
+    }
+
+    @Test
+    void aThresholdChangeStaysMediumConditionChanged() {
+        // same operator, different threshold — not a polarity flip; we cannot prove sameness, so MEDIUM
+        ElementChange modified = change(ModelDiff.between(withRule(base(), 1000), withRule(base(), 2000)), FEE_CAP);
+        assertEquals(ModelDiff.Risk.MEDIUM, modified.risk(), () -> "reasons: " + modified.reasons());
+        assertTrue(modified.reasons().contains("CONDITION_CHANGED"), () -> "reasons: " + modified.reasons());
+        assertFalse(modified.reasons().contains("POLARITY_INVERTED"), () -> "reasons: " + modified.reasons());
     }
 
     @Test
