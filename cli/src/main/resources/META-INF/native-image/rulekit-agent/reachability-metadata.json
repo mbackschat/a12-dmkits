@@ -8275,6 +8275,26 @@
       ]
     },
     {
+      "type": "io.github.mbackschat.a12.dm.cli.model.ModelDiffCommand",
+      "fields": [
+        {
+          "name": "baseFile"
+        },
+        {
+          "name": "headFile"
+        },
+        {
+          "name": "since"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "io.github.mbackschat.a12.dm.cli.model.ModelEvalCommand",
       "fields": [
         {
@@ -8325,6 +8345,85 @@
       ]
     },
     {
+      "type": "io.github.mbackschat.a12.dm.cli.model.ModelExportJsonschemaCommand",
+      "fields": [
+        {
+          "name": "dialect"
+        },
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "wrapOpenApi"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.model.ModelImportJsonschemaCommand",
+      "fields": [
+        {
+          "name": "arrayOfScalar"
+        },
+        {
+          "name": "booleanKind"
+        },
+        {
+          "name": "component"
+        },
+        {
+          "name": "defaultRepeatCap"
+        },
+        {
+          "name": "defaultScale"
+        },
+        {
+          "name": "dialect"
+        },
+        {
+          "name": "enumLabels"
+        },
+        {
+          "name": "format"
+        },
+        {
+          "name": "mapStrategy"
+        },
+        {
+          "name": "numberScale"
+        },
+        {
+          "name": "outDir"
+        },
+        {
+          "name": "outputPath"
+        },
+        {
+          "name": "recursionDepth"
+        },
+        {
+          "name": "schemaPath"
+        },
+        {
+          "name": "strict"
+        },
+        {
+          "name": "unionStrategy"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "io.github.mbackschat.a12.dm.cli.model.ModelInfoCommand",
       "fields": [
         {
@@ -8362,6 +8461,23 @@
       ]
     },
     {
+      "type": "io.github.mbackschat.a12.dm.cli.model.ModelNormalizeCommand",
+      "fields": [
+        {
+          "name": "dryRun"
+        },
+        {
+          "name": "outputPath"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "io.github.mbackschat.a12.dm.cli.model.ModelReadCommand",
       "fields": [
         {
@@ -8387,6 +8503,20 @@
         {
           "name": "outputPath"
         },
+        {
+          "name": "workspace"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "io.github.mbackschat.a12.dm.cli.model.ModelReportCommand",
+      "fields": [
         {
           "name": "workspace"
         }
@@ -15694,7 +15824,13 @@
       "glob": "schema/group-read.schema.json"
     },
     {
+      "glob": "schema/model-diff.schema.json"
+    },
+    {
       "glob": "schema/model-info.schema.json"
+    },
+    {
+      "glob": "schema/model-report.schema.json"
     },
     {
       "glob": "schema/model-usage.schema.json"
