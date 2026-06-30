@@ -171,6 +171,8 @@ dmtool model diff before.dm.json after.dm.json        # two files: base then hea
 #         "riskReasons":["RULE_REMOVED"], "deltas":[ … ] }, … ] } }
 ```
 
+The sharpest case is a **silent polarity flip** — a rule that stays but now fires on the complementary set, accepting what it used to reject. `model diff` reads both conditions as typed ASTs and proves the flip structurally, grading it HIGH `POLARITY_INVERTED` (not a generic `CONDITION_CHANGED`) — the one edit a line-based diff buries.
+
 It's a **structural** semantic diff; the contract (change model, the full risk taxonomy, the rendering policy) is in [docs/MODEL-REVIEW-SPEC.md](docs/MODEL-REVIEW-SPEC.md), open items in [docs/MODEL-REVIEW-LEDGER.md](docs/MODEL-REVIEW-LEDGER.md).
 
 `dmtool` writes models **deterministically** (element/key order preserved — never reordered), so an edit yields a clean, *localized* git diff. To bring a foreign-authored model (e.g. exported from the A12 editor) into that canonical form once — as an explicit, reviewable commit rather than churn buried in the first edit — run:

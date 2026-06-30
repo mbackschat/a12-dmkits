@@ -1,5 +1,7 @@
 # dmtool CLI — review & comprehend a model
 
+**
+
 The **review** surface of `dmtool`: comprehend a whole model in one read (`model report`), and review what an edit changed (`model diff`). Both are JSON-in / JSON-out and **tool-computed** — every fact is read from the model, never the agent's narration. Commands run through `dmtool` from the repo root; some steps use `jq`. Re-check with `uvx showboat@0.6.1 verify examples/cli-review.md` (exit 0 = output still matches the live CLI).
 
 ## model report — understand the whole model
@@ -75,3 +77,34 @@ dmtool model diff examples/models/order-ruled.dm.json examples/models/order.dm.j
 ```
 
 → The headline is `11 added, 3 removed, 0 modified (3 high-risk)`, and the three high-risk changes are exactly the **deleted validation rules** (`RULE_REMOVED`) — the dangerous, silent case a reviewer must see first. Unlike `where-used`/`model usage` (which read *one* model), this compares *two* and is the **review** surface: what did this edit change, and what should I look at first? It's a *structural* semantic diff — the full contract is in [MODEL-REVIEW-SPEC](../docs/MODEL-REVIEW-SPEC.md).
+
+### A silent polarity flip — the most dangerous edit
+
+Deleting a rule fails loudly (the data it guarded is now unchecked, and `RULE_REMOVED` is HIGH). The *quieter* danger is **inverting** a rule: it stays, guards the same field, but now fires on the **complementary** set — silently accepting exactly what it used to reject. `model diff` reads both conditions as typed ASTs and proves the flip structurally, so it grades **HIGH `POLARITY_INVERTED`** — not a generic `CONDITION_CHANGED`. Here we flip `PostalCodeFormat` to its logical complement (`FieldFilled … PatternViolated` → `FieldNotFilled … PatternMatched`) and diff:
+
+```bash
+cp examples/models/order-ruled.dm.json /tmp/postalcode-flipped.dm.json
+dmtool -m /tmp/postalcode-flipped.dm.json rule modify /Order/BillingAddress/PostalCodeFormat \
+  --condition 'FieldNotFilled(PostalCode) Or [PostalCode] PatternMatched "[0-9]{5}"' >/dev/null 2>&1
+dmtool model diff examples/models/order-ruled.dm.json /tmp/postalcode-flipped.dm.json \
+  | jq '{ summary, inverted: (.data.changes | map(select(.risk=="HIGH")) | map({id, change, riskReasons})) }'
+
+```
+
+```output
+{
+  "summary": "0 added, 0 removed, 1 modified (1 high-risk)",
+  "inverted": [
+    {
+      "id": "/Order/BillingAddress/PostalCodeFormat",
+      "change": "MODIFIED",
+      "riskReasons": [
+        "POLARITY_INVERTED"
+      ]
+    }
+  ]
+}
+```
+
+→ The rule wasn't added or removed — it was **modified**, and the diff calls it out as `POLARITY_INVERTED` (HIGH) because the new condition is the exact logical complement of the old one. This is the signal the trust principle is built for: a tool-computed fact, derived from the ASTs (not the agent's narration), that surfaces the one edit a line-based diff would bury. A condition change the tool *can't* prove is a clean flip stays the honest `CONDITION_CHANGED` (MEDIUM); proving behavioral *sameness* is the deferred `--deep` path (MODEL-REVIEW-SPEC §5c).
+

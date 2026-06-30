@@ -24,6 +24,14 @@ import java.util.Optional;
  */
 public final class ConditionPolarity {
 
+    /**
+     * The comparison key for {@link #isInversionOf}: the canonical rendering. It is style-independent
+     * (a {@link FieldRef}'s {@link PathStyle} hint is authored-notation provenance, not semantics, and
+     * the renderer emits the absolute path regardless) — so two conditions authored via different
+     * notations but referencing the same elements compare equal, which record {@code .equals()} would not.
+     */
+    private static final DslRenderer CANONICAL = new DslRenderer();
+
     private ConditionPolarity() {}
 
     /** The logical complement of {@code condition}, or {@link Optional#empty()} when no clean one exists. */
@@ -61,7 +69,7 @@ public final class ConditionPolarity {
      * inversion.
      */
     public static boolean isInversionOf(Condition head, Condition base) {
-        return complement(base).map(head::equals).orElse(false);
+        return complement(base).map(c -> CANONICAL.render(c).equals(CANONICAL.render(head))).orElse(false);
     }
 
     private static Optional<Condition> deMorgan(LogicCondition l) {

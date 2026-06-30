@@ -9,6 +9,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 import io.github.mbackschat.a12.dm.Fixtures;
+import io.github.mbackschat.a12.dm.core.ValueKind;
 
 /**
  * {@link ConditionPolarity} — the pure-AST logical complement that powers {@code model diff}'s
@@ -63,6 +64,16 @@ class ConditionPolarityTest {
         assertFalse(ConditionPolarity.isInversionOf(
                 m.num(FEE).ge(0).and(m.str(EMAIL).filled()),
                 m.num(FEE).lt(0).and(m.str(EMAIL).filled())));
+    }
+
+    @Test
+    void inversionIsIndependentOfAuthoredPathNotation() {
+        // the demo surfaced this: base reads its stored notation, head reads `rule modify`'s — the same
+        // field via different PathStyle hints must NOT defeat detection (styleHint is provenance, not
+        // semantics; record .equals() would wrongly count it). Inversion compares the canonical rendering.
+        FieldRef canonical = new FieldRef(FEE, ValueKind.NUMBER, PathStyle.CANONICAL);
+        FieldRef absolute = new FieldRef(FEE, ValueKind.NUMBER, PathStyle.ABSOLUTE);
+        assertTrue(ConditionPolarity.isInversionOf(absolute.notFilled(), canonical.filled()));
     }
 
     @Test

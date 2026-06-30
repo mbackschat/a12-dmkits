@@ -100,12 +100,12 @@ A removed/loosened rule **silently accepts bad data** (invisible); a tightened/a
 
 Risk codes are documented via `schema model diff` (the `data.findings`-code pattern, like `workspace roles`), not in `diagnostics`.
 
-*(Status: a subset is built — `RULE_REMOVED`/`RULE_ADDED`/`KIND_CHANGED`/`SEVERITY_DOWNGRADED`/`CONSTRAINT_LOOSENED`/`CONSTRAINT_TIGHTENED`/`CONDITION_CHANGED`/`STRUCTURE_ADDED`/`STRUCTURE_REMOVED` and a few LOW codes, with the loosening>tightening direction for numeric bounds/lengths/pattern. The `risk` tier + `riskReasons` ride each change in `data`. `POLARITY_INVERTED` (it needs the AST diff, LEDGER MR1), `REFERENCED_ELEMENT_REMOVED`, and `RETYPE_AFFECTS_READERS` are not yet computed — a removed/re-typed field is graded structurally without its reader set.)*
+*(Status: a subset is built — `RULE_REMOVED`/`RULE_ADDED`/`POLARITY_INVERTED`/`KIND_CHANGED`/`SEVERITY_DOWNGRADED`/`CONSTRAINT_LOOSENED`/`CONSTRAINT_TIGHTENED`/`CONDITION_CHANGED`/`STRUCTURE_ADDED`/`STRUCTURE_REMOVED` and a few LOW codes, with the loosening>tightening direction for numeric bounds/lengths/pattern. `POLARITY_INVERTED` is detected structurally from the two rule ASTs (§5c level 1); the `risk` tier + `riskReasons` ride each change in `data`. `REFERENCED_ELEMENT_REMOVED` and `RETYPE_AFFECTS_READERS` are not yet computed — a removed/re-typed field is graded structurally without its reader set.)*
 
 ### 5c. Polarity-inversion detection (layered by confidence)
 
-1. **Structural (default):** `Not(...)` wrap, comparison flips (`<`↔`>=`), De Morgan shape changes → `confidence:high`, `basis:operator-flip`.
-2. **Behavioral (`--deep`, LEDGER):** SeedGenerator + interpreter → fire-set delta; inversion ≈ complemented fire-set.
+1. **Structural (default — BUILT):** the head condition is the logical **complement** of the base. The kernel has no `Not` node (`ConditionPolarity`), so the complement is pushed into the leaf polarity bits (comparison flip `<`↔`>=`, presence `filled`, pattern `matched`, value-list `included`) and across `And`↔`Or` by De Morgan; a clean full flip ⇒ `POLARITY_INVERTED` (HIGH), `basis:operator-flip`. Conservative: a node with no clean complement (quantifiers, custom, date/custom-type validity, tolerance comparisons) yields no inversion, so a flip is never claimed falsely. The comparison key is the canonical **rendering** (style-independent — a `PathStyle` hint is authored-notation provenance, not semantics), so a base read from stored notation and a head read from a `rule modify` edit still match.
+2. **Behavioral (`--deep`, LEDGER):** SeedGenerator + interpreter → fire-set delta; inversion ≈ complemented fire-set. This is also the only path that can prove *sameness* (`CONDITION_CHANGED_SAME_POLARITY`); the structural detector proves a **flip**, never sameness, so a non-flip change stays the honest `CONDITION_CHANGED`.
 
 ### 5d. gloss-vs-message drift signal
 

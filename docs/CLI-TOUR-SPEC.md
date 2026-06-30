@@ -75,7 +75,7 @@ A fork of showboat to add a redaction hook is the wrong bet — in-band scrubbin
 
 - ✅ **Read one model** (`cli-tour.md`) — `model check`/`describe`/`read`/`usage` · `rule read`/`explain`/`format`/`check` · `field`/`group`/`config read`.
 - ✅ **The self-describing surface** (`cli-discover.md`) — `manifest` · `operators`(+`<id>`) · `patterns`(+scaffold) · `diagnostics`(+`<code>`) · `schema result`/`<target> <op>` (assemble a call from `manifest` + `schema` alone).
-- ✅ **Review & comprehend** (`cli-review.md`) — `model report` (the glossed comprehension catalog) · `model diff` (the structural, risk-ranked semantic diff of two models).
+- ✅ **Review & comprehend** (`cli-review.md`) — `model report` (the glossed comprehension catalog) · `model diff` (the structural, risk-ranked semantic diff of two models — incl. `POLARITY_INVERTED`, a silent polarity flip detected structurally from the rule ASTs).
 - ✅ **Multi-file & workspaces** (`cli-workspace.md`) — `model info` · `workspace list`/`graph`/`roles`.
 - ✅ **Rulekit write/edit** (`cli-edit-loop.md`) — `where-used` · the full `rule` + `computation` CRUD (add/read/explain/modify/remove) · `batch` · the F8 re-express loop (`--dry-run` preview vs in-place write) · **`;;` comments** (the `comment` key / `rule modify --comment`, preserved across a comment-less re-express).
 - ✅ **Modelkit structure** (`cli-structure-edit.md`) — `field`/`group` add·read·remove (the safe-delete gate + `--cascade`) · `typedef` + `field --typedef` · `include` (`-w/--workspace`) · `config read`/`modify` · `export`.
