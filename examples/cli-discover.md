@@ -135,17 +135,32 @@ dmtool operators DifferenceInDays | jq '{id,kind,meaning}'
 Where `operators` is the *vocabulary*, `patterns` is the *idiom* catalogue — the recurring BA tasks, each a typed-DSL-backed template that's correct by construction, across three `kind`s: **rule** idioms (date-order, mutually-exclusive, …) bake in the two hardest rule traps — the **violation polarity** and a **referenced error field**; the **computation** idiom `tiered-amount` bakes in a **mutually-exclusive, exhaustive precondition table**; the **field** idioms (bounded-number, formatted-string, value-set-enum) scaffold the **field-level alternative** to a rule. `patterns` lists them, with each idiom's `kind`; the summary here is projected with `jq`.
 
 ```bash
-dmtool patterns | jq -c '{count, ids: (.patterns|map(.id))}'
+dmtool patterns | jq '{count, ids: (.patterns|map(.id))}'
 ```
 
 ```output
-{"count":9,"ids":["date-order","mutually-exclusive","at-least-one-of","required-when","sum-of-line-items","tiered-amount","bounded-number","formatted-string","value-set-enum"]}
+{
+  "count": 9,
+  "ids": [
+    "date-order",
+    "mutually-exclusive",
+    "at-least-one-of",
+    "required-when",
+    "sum-of-line-items",
+    "tiered-amount",
+    "bounded-number",
+    "formatted-string",
+    "value-set-enum"
+  ]
+}
 ```
 
 → Nine idioms. Pass an id with `--arg name=value` parameters (and `-m <model>`) to **scaffold** the artifact from one — a rule-spec, a computation-spec (`tiered-amount`), or a field-spec (the field idioms) — built through the typed DSL (correct by construction) and **auto-checked** against the kernel.
 
 ```bash
-dmtool -m examples/models/order-ruled.dm.json patterns date-order --arg earlier=/Order/OrderDate --arg later=/Order/DeliveryDate | jq '{pattern, spec: {field: .spec.field, condition: .spec.condition}, valid}'
+dmtool -m examples/models/order-ruled.dm.json \
+  patterns date-order --arg earlier=/Order/OrderDate --arg later=/Order/DeliveryDate \
+  | jq '{pattern, spec: {field: .spec.field, condition: .spec.condition}, valid}'
 ```
 
 ```output
@@ -166,11 +181,25 @@ dmtool -m examples/models/order-ruled.dm.json patterns date-order --arg earlier=
 The twin of `operators`, for **diagnostic codes**: when a verb refuses or rejects, its `diagnostics[].code` (e.g. `RK_NO_SUCH_FIELD`) is explorable — so an agent that gets a code back can look up what it means and how to fix it, rather than guess. `diagnostics` (no arg) lists every `RK_*` code (filter with `--severity`/`--source`); the summary here is projected with `jq`.
 
 ```bash
-dmtool diagnostics | jq -c '{count, severities: (.diagnostics|map(.severity)|unique), sources: (.diagnostics|map(.source)|unique)}'
+dmtool diagnostics | jq '{count, severities: (.diagnostics|map(.severity)|unique), sources: (.diagnostics|map(.source)|unique)}'
 ```
 
 ```output
-{"count":40,"severities":["ERROR","INFO","WARNING"],"sources":["ENVIRONMENT","INTERNAL","KERNEL","LINT","PRECHECK"]}
+{
+  "count": 40,
+  "severities": [
+    "ERROR",
+    "INFO",
+    "WARNING"
+  ],
+  "sources": [
+    "ENVIRONMENT",
+    "INTERNAL",
+    "KERNEL",
+    "LINT",
+    "PRECHECK"
+  ]
+}
 ```
 
 Pass a code for its full entry — meaning + the canonical fix:

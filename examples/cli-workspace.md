@@ -7,11 +7,28 @@ When you're handed a model that references others, or a whole **directory** of m
 `model info` is the model's identity card in a single read: `id`/`modelType`/`modelVersion`, the super/subtype graph (the `abstract`/`superTypes`/`subTypes` convention), and every outbound reference — `include`s and type-def imports — **resolved to its file** (via `-w/--workspace`, default the model's own folder). It carries *counts*, never contents — the field/rule/config detail stays in `model describe`/`model read`/`config read`, so it adds no redundancy. Projected here with `jq`.
 
 ```bash
-dmtool -m examples/models/multifile/app/storefront.dm.json model info -w examples/models/multifile | jq -c '.data | {id, includes, counts}'
+dmtool -m examples/models/multifile/app/storefront.dm.json model info -w examples/models/multifile \
+  | jq '.data | {id, includes, counts}'
 ```
 
 ```output
-{"id":"storefront","includes":[{"alias":"catalog","ref":"catalog","resolvedPath":"lib/catalog.dm.json"}],"counts":{"groups":2,"fields":1,"rules":0,"computations":0,"typeDefinitions":0}}
+{
+  "id": "storefront",
+  "includes": [
+    {
+      "alias": "catalog",
+      "ref": "catalog",
+      "resolvedPath": "lib/catalog.dm.json"
+    }
+  ],
+  "counts": {
+    "groups": 2,
+    "fields": 1,
+    "rules": 0,
+    "computations": 0,
+    "typeDefinitions": 0
+  }
+}
 ```
 
 → `storefront` resolves its `catalog` include to `lib/catalog.dm.json` (the file to hand `-w/--workspace`), and the counts orient you — 2 groups, 1 field, no rules/computations — without dumping their contents. This is the single-model peer of `workspace list` below, which does the same across a whole folder.
@@ -21,12 +38,26 @@ dmtool -m examples/models/multifile/app/storefront.dm.json model info -w example
 When you're handed a **directory** of models, `workspace list` is the cross-model "ls" that goes *into* them: a per-model index where every `include` / type-def import is **cross-resolved to its file within the scan**. So an agent learns which file provides a referenced model — instead of guessing an `-w/--workspace`. Kernel-free (a half-wired workspace still lists); `--recursive` widens the resolution scope, `--validate` adds a per-model validity flag, `--format table` renders the same facts for humans. Projected here with `jq`.
 
 ```bash
-dmtool workspace list examples/models/multifile --recursive | jq -c '.data.models[] | {id, path, includes: [.includes[] | {ref, resolvedPath}]}'
+dmtool workspace list examples/models/multifile --recursive \
+  | jq '.data.models[] | {id, path, includes: [.includes[] | {ref, resolvedPath}]}'
 ```
 
 ```output
-{"id":"storefront","path":"app/storefront.dm.json","includes":[{"ref":"catalog","resolvedPath":"lib/catalog.dm.json"}]}
-{"id":"catalog","path":"lib/catalog.dm.json","includes":[]}
+{
+  "id": "storefront",
+  "path": "app/storefront.dm.json",
+  "includes": [
+    {
+      "ref": "catalog",
+      "resolvedPath": "lib/catalog.dm.json"
+    }
+  ]
+}
+{
+  "id": "catalog",
+  "path": "lib/catalog.dm.json",
+  "includes": []
+}
 ```
 
 → `storefront` declares an `include` of the model id `catalog`, and the scan **resolves it to `lib/catalog.dm.json`** — the file an agent must put on the `-w/--workspace` to load `storefront`. Were the target outside the scan, `resolvedPath` would be `null` (widen with `--recursive`, as here). The same resolution covers type-def imports and surfaces the sub/supertype convention (`abstract`/`superTypes`/`subTypes`), so one read maps a whole workspace.
@@ -53,12 +84,49 @@ A12 models carry a `roles` header annotation (a comma-separated list) naming who
 
 ```bash
 dmtool workspace roles examples/models/storefront-workspace \
-  | jq -c '{rolesFile: .data.rolesFile, usersFile: .data.usersFile, definedRoles: [.data.definedRoles[].name],
-            users: [.data.users[] | {username, authorities}], models: [.data.models[] | {id, roles}], findings: .data.findings}'
+  | jq '{rolesFile: .data.rolesFile, usersFile: .data.usersFile, definedRoles: [.data.definedRoles[].name],
+         users: [.data.users[] | {username, authorities}], models: [.data.models[] | {id, roles}], findings: .data.findings}'
 ```
 
 ```output
-{"rolesFile":"auth/roles.yaml","usersFile":"auth/users.yaml","definedRoles":["shopper","merchant"],"users":[{"username":"alice","authorities":["shopper"]},{"username":"bob","authorities":["merchant"]}],"models":[{"id":"Catalog_DM","roles":["merchant"]},{"id":"Storefront_DM","roles":["shopper","merchant"]}],"findings":[]}
+{
+  "rolesFile": "auth/roles.yaml",
+  "usersFile": "auth/users.yaml",
+  "definedRoles": [
+    "shopper",
+    "merchant"
+  ],
+  "users": [
+    {
+      "username": "alice",
+      "authorities": [
+        "shopper"
+      ]
+    },
+    {
+      "username": "bob",
+      "authorities": [
+        "merchant"
+      ]
+    }
+  ],
+  "models": [
+    {
+      "id": "Catalog_DM",
+      "roles": [
+        "merchant"
+      ]
+    },
+    {
+      "id": "Storefront_DM",
+      "roles": [
+        "shopper",
+        "merchant"
+      ]
+    }
+  ],
+  "findings": []
+}
 ```
 
 → Both models gate to roles `auth/roles.yaml` defines (`shopper`/`merchant`), so the lint is clean. The headline finding is an **undefined role** — a model gating to a role the file doesn't declare, which even the A12 model editor permits silently. Resolving the same models against a roles file that omits `merchant` surfaces it. The lint is **purely advisory — it warns, it never blocks** (access-control config is often a dev seed or owned by an external IdP, so it must not stop work on the models); the verb **always exits 0**:
@@ -66,11 +134,34 @@ dmtool workspace roles examples/models/storefront-workspace \
 ```bash
 dmtool workspace roles examples/models/storefront-workspace \
   --roles examples/models/shopper-only-roles.yaml 2>&1 \
-  | jq -c '{warnings: .data.warnings, findings: [.data.findings[] | {code, modelId, username, role}]}'; echo "(exit ${PIPESTATUS[0]})"
+  | jq '{warnings: .data.warnings, findings: [.data.findings[] | {code, modelId, username, role}]}'
+echo "(exit ${PIPESTATUS[0]})"
 ```
 
 ```output
-{"warnings":3,"findings":[{"code":"UNDEFINED_ROLE","modelId":"Catalog_DM","username":null,"role":"merchant"},{"code":"UNDEFINED_ROLE","modelId":"Storefront_DM","username":null,"role":"merchant"},{"code":"UNDEFINED_AUTHORITY","modelId":null,"username":"bob","role":"merchant"}]}
+{
+  "warnings": 3,
+  "findings": [
+    {
+      "code": "UNDEFINED_ROLE",
+      "modelId": "Catalog_DM",
+      "username": null,
+      "role": "merchant"
+    },
+    {
+      "code": "UNDEFINED_ROLE",
+      "modelId": "Storefront_DM",
+      "username": null,
+      "role": "merchant"
+    },
+    {
+      "code": "UNDEFINED_AUTHORITY",
+      "modelId": null,
+      "username": "bob",
+      "role": "merchant"
+    }
+  ]
+}
 (exit 0)
 ```
 

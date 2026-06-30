@@ -10,7 +10,10 @@ The **review** surface of `dmtool`: comprehend a whole model in one read (`model
 
 ```bash
 dmtool -m examples/models/order-ruled.dm.json model report \
-  | jq '{ summary, model: .data.identity.id, fields: (.data.structure.fields | length), polarity: .data.polarity.firesOn, rules: (.data.rules | map({rule, gloss})) }'
+  | jq '{ summary, model: .data.identity.id,
+          fields: (.data.structure.fields | length),
+          polarity: .data.polarity.firesOn,
+          rules: (.data.rules | map({rule, gloss})) }'
 ```
 
 ```output

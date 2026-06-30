@@ -62,7 +62,18 @@ dmtool -m examples/models/subscription-computed.dm.json \
 `computation modify` is the re-express verb. By default it **writes** the modified model in place (`-o` redirects); **`--dry-run`** previews read-only (writes nothing). The before/after/lossiness ride the envelope's `.changed`. Re-express the computation as *base fee + the total of all add-on monthly fees*. We work on a `/tmp` copy so the fixture stays put, and count `Sum(` occurrences to prove what was written.
 
 ```bash
-printf "%s" "{ \"computedField\":\"/Subscription/Billing/EffectiveFee\", \"alternatives\":[{\"operation\":\"[BaseFee] + Sum(/Subscription/Addons*/MonthlyFee)\"}], \"messages\":[{\"locale\":\"en_US\",\"text\":\"Base plus add-ons.\"},{\"locale\":\"de_DE\",\"text\":\"Basis plus Zusatz.\"}] }" > /tmp/edit-eff.json
+cat > /tmp/edit-eff.json <<'EOF'
+{
+  "computedField": "/Subscription/Billing/EffectiveFee",
+  "alternatives": [
+    { "operation": "[BaseFee] + Sum(/Subscription/Addons*/MonthlyFee)" }
+  ],
+  "messages": [
+    { "locale": "en_US", "text": "Base plus add-ons." },
+    { "locale": "de_DE", "text": "Basis plus Zusatz." }
+  ]
+}
+EOF
 cp examples/models/subscription-computed.dm.json /tmp/edit-sub.json
 dmtool -m /tmp/edit-sub.json \
   computation modify /Subscription/Billing/EffectiveFeeComp \
@@ -127,7 +138,17 @@ echo "--- the written model still validates: $(dmtool -m /tmp/edit-sub.json mode
 `rule add` validates a candidate against the real kernel and, on accept, **writes it into the model in place** (it emits the envelope, not the model text). The new rule's path lands under `.changed.rule`. We add on a fresh `/tmp` copy, then `model check` the persisted model and confirm the rule count rose via `export`.
 
 ```bash
-printf "%s" "{\"field\":\"/Subscription/Billing/EffectiveFee\",\"condition\":\"[EffectiveFee] < [BaseFee]\",\"code\":\"EFFECTIVE_BELOW_BASE\",\"messages\":[{\"locale\":\"en_US\",\"text\":\"Effective fee is below base fee.\"},{\"locale\":\"de_DE\",\"text\":\"Effektivgebuehr unter Basisgebuehr.\"}]}" > /tmp/edit-rule.json
+cat > /tmp/edit-rule.json <<'EOF'
+{
+  "field": "/Subscription/Billing/EffectiveFee",
+  "condition": "[EffectiveFee] < [BaseFee]",
+  "code": "EFFECTIVE_BELOW_BASE",
+  "messages": [
+    { "locale": "en_US", "text": "Effective fee is below base fee." },
+    { "locale": "de_DE", "text": "Effektivgebuehr unter Basisgebuehr." }
+  ]
+}
+EOF
 cp examples/models/subscription-computed.dm.json /tmp/edit-add.json
 dmtool -m /tmp/edit-add.json rule add /tmp/edit-rule.json \
   | jq -c "{outcome, rule: .changed.rule, written}"
@@ -166,7 +187,18 @@ dmtool -m examples/models/multifile/app/storefront.dm.json \
 `batch` runs a JSON array of verb invocations in a single process, amortizing the kernel's warm-up. Each op is `{id, verb, args}`, where `verb` is the **target** (`rule`) and the operation (`check`) leads `args` — the same target-first form a standalone call uses; each result is tagged by its `id`, so a producer can attribute every verdict.
 
 ```bash
-printf "%s" "[{\"id\":\"ok\",\"verb\":\"rule\",\"args\":[\"check\",\"-m\",\"examples/models/subscription-computed.dm.json\",\"--field\",\"/Subscription/Billing/EffectiveFee\",\"--condition\",\"[EffectiveFee] < [BaseFee]\",\"--code\",\"X\"]},{\"id\":\"bad\",\"verb\":\"rule\",\"args\":[\"check\",\"-m\",\"examples/models/subscription-computed.dm.json\",\"--field\",\"/Subscription/Billing/EffectiveFee\",\"--condition\",\"[EffectiveFee] PatternViolated \\\"x\\\"\",\"--code\",\"Y\"]}]" > /tmp/edit-ops.json
+cat > /tmp/edit-ops.json <<'EOF'
+[
+  { "id": "ok",  "verb": "rule",
+    "args": ["check", "-m", "examples/models/subscription-computed.dm.json",
+             "--field", "/Subscription/Billing/EffectiveFee",
+             "--condition", "[EffectiveFee] < [BaseFee]", "--code", "X"] },
+  { "id": "bad", "verb": "rule",
+    "args": ["check", "-m", "examples/models/subscription-computed.dm.json",
+             "--field", "/Subscription/Billing/EffectiveFee",
+             "--condition", "[EffectiveFee] PatternViolated \"x\"", "--code", "Y"] }
+]
+EOF
 dmtool batch /tmp/edit-ops.json | jq -c ".[] | {id, valid: .result.valid}"
 ```
 
@@ -183,7 +215,7 @@ Two more self-description verbs round out the surface. `operators <id>` gives on
 
 ```bash
 dmtool operators DateRange | jq '{id, kind, meaning}'
-dmtool schema rule add | jq -c '.input.oneOf'
+dmtool schema rule add | jq '.input.oneOf'
 ```
 
 ```output
@@ -192,7 +224,25 @@ dmtool schema rule add | jq -c '.input.oneOf'
   "kind": "FUNCTION",
   "meaning": "Constructs a date range from a start and an end date. Computation-only: it assigns a DATE_RANGE field in a computation operation; it has no condition form (the overlap predicates take date-range FIELDS, and a constructed range cannot be nested or compared). Both operands must be format-compatible date fields."
 }
-[{"title":"rule-spec","required":["field","condition","code","messages"]},{"title":"computation-spec","required":["computedField","alternatives","messages"]}]
+[
+  {
+    "title": "rule-spec",
+    "required": [
+      "field",
+      "condition",
+      "code",
+      "messages"
+    ]
+  },
+  {
+    "title": "computation-spec",
+    "required": [
+      "computedField",
+      "alternatives",
+      "messages"
+    ]
+  }
+]
 ```
 
 → `operators DateRange` carries the meaning and the use-site rule (computation-only); `schema rule add` returns the op's directional contract, with the input shape under `.input` — a `oneOf` of a rule-spec (`field`/`condition`/`code`) or a computation-spec (`computedField`/`alternatives`), both requiring `messages`. A cold agent learns the whole contract from the tool, no external docs.
@@ -303,7 +353,18 @@ echo "--- the written model still validates: $(dmtool -m /tmp/edit2-rm-rule.json
 
 ```bash
 rm -f /tmp/edit2-comp-spec.json /tmp/edit2-sub.json
-printf "%s" "{\"computedField\":\"/Subscription/Billing/EffectiveFee\",\"alternatives\":[{\"operation\":\"[BaseFee] * 2\"}],\"messages\":[{\"locale\":\"en_US\",\"text\":\"Effective fee is twice the base fee.\"},{\"locale\":\"de_DE\",\"text\":\"Effektivgebuehr ist das Doppelte der Basisgebuehr.\"}]}" > /tmp/edit2-comp-spec.json
+cat > /tmp/edit2-comp-spec.json <<'EOF'
+{
+  "computedField": "/Subscription/Billing/EffectiveFee",
+  "alternatives": [
+    { "operation": "[BaseFee] * 2" }
+  ],
+  "messages": [
+    { "locale": "en_US", "text": "Effective fee is twice the base fee." },
+    { "locale": "de_DE", "text": "Effektivgebuehr ist das Doppelte der Basisgebuehr." }
+  ]
+}
+EOF
 cp examples/models/subscription.dm.json /tmp/edit2-sub.json
 dmtool -m /tmp/edit2-sub.json computation add /tmp/edit2-comp-spec.json
 echo "--- the written model checks: $(dmtool -m /tmp/edit2-sub.json model check | jq -c ".valid")"

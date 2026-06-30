@@ -30,12 +30,20 @@ cat > /tmp/ct-bad.json <<'JSON'
 JSON
 dmtool -m examples/models/payment-customtype.dm.json \
   model eval --instance /tmp/ct-bad.json \
-  | jq -c '{fired: .data.fired, unsupported: .data.unsupported}'
+  | jq '{fired: .data.fired, unsupported: .data.unsupported}'
 
 ```
 
 ```output
-{"fired":[],"unsupported":[{"name":"/Payment[1]/Iban","reason":"custom field type 'Iban' has no registered validator"}]}
+{
+  "fired": [],
+  "unsupported": [
+    {
+      "name": "/Payment[1]/Iban",
+      "reason": "custom field type 'Iban' has no registered validator"
+    }
+  ]
+}
 ```
 
 ## Supply the type: now it validates
@@ -49,12 +57,22 @@ JSON
 dmtool -m examples/models/payment-customtype.dm.json \
   model eval --instance /tmp/ct-bad.json \
   --predefined-types /tmp/ct-types.json \
-  | jq -c '{fired: .data.fired, msg: [.data.messages[] | {code, field}]}'
+  | jq '{fired: .data.fired, msg: [.data.messages[] | {code, field}]}'
 
 ```
 
 ```output
-{"fired":["customFieldTypeInvalid"],"msg":[{"code":"customFieldTypeInvalid","field":"/Payment[1]/Iban"}]}
+{
+  "fired": [
+    "customFieldTypeInvalid"
+  ],
+  "msg": [
+    {
+      "code": "customFieldTypeInvalid",
+      "field": "/Payment[1]/Iban"
+    }
+  ]
+}
 ```
 
 A well-formed IBAN passes with the same registry — nothing fired, nothing unsupported:
@@ -66,12 +84,15 @@ JSON
 dmtool -m examples/models/payment-customtype.dm.json \
   model eval --instance /tmp/ct-ok.json \
   --predefined-types /tmp/ct-types.json \
-  | jq -c '{fired: .data.fired, unsupported: .data.unsupported}'
+  | jq '{fired: .data.fired, unsupported: .data.unsupported}'
 
 ```
 
 ```output
-{"fired":[],"unsupported":null}
+{
+  "fired": [],
+  "unsupported": null
+}
 ```
 
 ## `--strict-custom`: fail instead of degrade
@@ -82,13 +103,17 @@ The lenient default lets you test-run a model that uses constructs the engine ca
 dmtool -m examples/models/payment-customtype.dm.json \
   model eval --instance /tmp/ct-bad.json --strict-custom \
   > /tmp/ct-strict.json 2>&1; echo "(exit $?)"
-jq -c '{outcome, ok, summary}' /tmp/ct-strict.json
+jq '{outcome, ok, summary}' /tmp/ct-strict.json
 
 ```
 
 ```output
 (exit 2)
-{"outcome":"refused","ok":false,"summary":"--strict-custom: 1 construct(s) could not be evaluated (a custom field type with no --predefined-types entry, or a CustomCondition with no impl); supply the missing handler or drop --strict-custom"}
+{
+  "outcome": "refused",
+  "ok": false,
+  "summary": "--strict-custom: 1 construct(s) could not be evaluated (a custom field type with no --predefined-types entry, or a CustomCondition with no impl); supply the missing handler or drop --strict-custom"
+}
 ```
 
 ## Custom conditions
@@ -101,12 +126,16 @@ cat > /tmp/ct-order.json <<'JSON'
 JSON
 dmtool -m examples/models/order-ruled.dm.json \
   rule eval /Order/EligibilityCheck --instance /tmp/ct-order.json \
-  | jq -c '{rule: .data.rule, verdict: .data.verdict, reason: .data.unsupported[0].reason}'
+  | jq '{rule: .data.rule, verdict: .data.verdict, reason: .data.unsupported[0].reason}'
 
 ```
 
 ```output
-{"rule":"/Order/EligibilityCheck","verdict":"unsupported","reason":"unregistered custom condition \"ExternalEligibility\" — register it in the custom-condition registry"}
+{
+  "rule": "/Order/EligibilityCheck",
+  "verdict": "unsupported",
+  "reason": "unregistered custom condition \"ExternalEligibility\" — register it in the custom-condition registry"
+}
 ```
 
 ## The imperative tail — the JS escape
@@ -125,12 +154,22 @@ JSON
 dmtool -m examples/models/payment-customtype.dm.json \
   model eval --instance /tmp/ct-fr.json \
   --custom-field-types-js /tmp/ct-js \
-  | jq -c '{fired: .data.fired, msg: [.data.messages[] | {code, field}]}'
+  | jq '{fired: .data.fired, msg: [.data.messages[] | {code, field}]}'
 
 ```
 
 ```output
-{"fired":["customFieldTypeInvalid"],"msg":[{"code":"customFieldTypeInvalid","field":"/Payment[1]/Iban"}]}
+{
+  "fired": [
+    "customFieldTypeInvalid"
+  ],
+  "msg": [
+    {
+      "code": "customFieldTypeInvalid",
+      "field": "/Payment[1]/Iban"
+    }
+  ]
+}
 ```
 
 The worker **never outlives `dmtool`** (it self-exits when the parent's pipe closes — even on a hard kill — plus an idle timeout and a JVM shutdown hook). And it degrades the same way: no `node` on PATH, or a `.js` that throws, leaves the construct `unsupported` rather than crashing.

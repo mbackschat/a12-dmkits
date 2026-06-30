@@ -260,7 +260,7 @@ A repetition list can name one direct-child field as its **index field** — the
 
 ```bash
 dmtool -m /tmp/struct2.dm.json group modify /Subscription/Addons --index-field Name
-dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons | jq -c '.data'
+dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons | jq '.data'
 ```
 
 ```output
@@ -278,7 +278,16 @@ dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons | jq -c '.data'
   "written" : true,
   "output" : "/tmp/struct2.dm.json"
 }
-{"group":"/Subscription/Addons","repeatable":true,"maxRepetitions":20,"indexField":"Name","fields":["/Subscription/Addons/Name","/Subscription/Addons/MonthlyFee"]}
+{
+  "group": "/Subscription/Addons",
+  "repeatable": true,
+  "maxRepetitions": 20,
+  "indexField": "Name",
+  "fields": [
+    "/Subscription/Addons/Name",
+    "/Subscription/Addons/MonthlyFee"
+  ]
+}
 ```
 
 → `changed.indexField: Name` and the read's `data.indexField` confirm the row-key landed. `--clear-index-field` removes it; an index field on a single (non-repeating) group is refused.
@@ -290,7 +299,7 @@ A repetition list can also declare how its rows are **sorted for display** — o
 ```bash
 dmtool -m /tmp/struct2.dm.json group modify /Subscription/Addons \
   --sort-field MonthlyFee:desc --sort-field Name
-dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons | jq -c '.data.sortFields'
+dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons | jq '.data.sortFields'
 ```
 
 ```output
@@ -314,7 +323,16 @@ dmtool -m /tmp/struct2.dm.json group read /Subscription/Addons | jq -c '.data.so
   "written" : true,
   "output" : "/tmp/struct2.dm.json"
 }
-[{"name":"MonthlyFee","order":"DESC"},{"name":"Name","order":"ASC"}]
+[
+  {
+    "name": "MonthlyFee",
+    "order": "DESC"
+  },
+  {
+    "name": "Name",
+    "order": "ASC"
+  }
+]
 ```
 
 → `changed.sortFields` and the read's `data.sortFields` confirm the order landed (highest fee first, then name). `--clear-sort-fields` removes it; a sort field on a single (non-repeating) group, or a `:order` other than `asc`/`desc`, is refused.
@@ -612,12 +630,16 @@ dmtool -m /tmp/struct2-tdx.json \
 → both fields are now typed by the new `Money` definition. The gate **never coerces** — hand it fields that don't share a concrete type and it refuses (`RK_TYPE_MISMATCH`) before touching anything:
 
 ```bash
-dmtool -m /tmp/struct2-tdx.json typedef extract --from /Subscription/Billing/BaseFee,/Subscription/PlanName --id X >/tmp/x.json 2>&1; echo "(exit $?)"; jq -c "{outcome, code: .diagnostics[0].code, fix: .diagnostics[0].fix}" /tmp/x.json
+dmtool -m /tmp/struct2-tdx.json typedef extract --from /Subscription/Billing/BaseFee,/Subscription/PlanName --id X >/tmp/x.json 2>&1; echo "(exit $?)"; jq "{outcome, code: .diagnostics[0].code, fix: .diagnostics[0].fix}" /tmp/x.json
 ```
 
 ```output
 (exit 2)
-{"outcome":"refused","code":"RK_TYPE_MISMATCH","fix":"pass --from fields that exist and have the same type (none already a typedef)"}
+{
+  "outcome": "refused",
+  "code": "RK_TYPE_MISMATCH",
+  "fix": "pass --from fields that exist and have the same type (none already a typedef)"
+}
 ```
 
 `typedef inline` is the inverse — expand the definition's concrete type back into each using field, then drop it:
@@ -661,11 +683,21 @@ Renaming the **referenced** field rewrites the referrer and stays valid — `cha
 
 ```bash
 dmtool -m /tmp/struct2-rn.json field rename /Order/DeliveryDate --to ShipDate \
-  | jq -c '{outcome, ok, changed}'
+  | jq '{outcome, ok, changed}'
 ```
 
 ```output
-{"outcome":"applied","ok":true,"changed":{"renamed":"/Order/DeliveryDate","to":"/Order/ShipDate","rewroteReferences":["/Order/DeliveryNotBeforeOrder"]}}
+{
+  "outcome": "applied",
+  "ok": true,
+  "changed": {
+    "renamed": "/Order/DeliveryDate",
+    "to": "/Order/ShipDate",
+    "rewroteReferences": [
+      "/Order/DeliveryNotBeforeOrder"
+    ]
+  }
+}
 ```
 
 The `DeliveryNotBeforeOrder` condition now reads `/Order/ShipDate` where it read `/Order/DeliveryDate`, so the model still validates — a true reference-preserving rename, not a refusal:
@@ -681,12 +713,16 @@ dmtool -m /tmp/struct2-rn.json model check | jq -c '{valid}'
 A name **collision** is still refused (the gate's one remaining block) — `RK_NAME_EXISTS`, exit 2, nothing written:
 
 ```bash
-dmtool -m /tmp/struct2-rn.json field rename /Order/Quantity --to OrderDate >/tmp/rn-coll.json 2>&1; echo "(exit $?)"; jq -c '{outcome, code: .diagnostics[0].code, fix: .diagnostics[0].fix}' /tmp/rn-coll.json
+dmtool -m /tmp/struct2-rn.json field rename /Order/Quantity --to OrderDate >/tmp/rn-coll.json 2>&1; echo "(exit $?)"; jq '{outcome, code: .diagnostics[0].code, fix: .diagnostics[0].fix}' /tmp/rn-coll.json
 ```
 
 ```output
 (exit 2)
-{"outcome":"refused","code":"RK_NAME_EXISTS","fix":"choose a name not already used by a sibling, or rename/remove the existing one first"}
+{
+  "outcome": "refused",
+  "code": "RK_NAME_EXISTS",
+  "fix": "choose a name not already used by a sibling, or rename/remove the existing one first"
+}
 ```
 
 → `group rename` re-homes the whole subtree **and** rewrites references into it from outside (starred references like `Sum(Items*/Amount)` follow too — KERNEL-FINDINGS §10); `rule rename` is collision-only (nothing references a rule). The rewriting engine is the kernel's `MoveSupportDM`, wrapped at the adapter boundary (`ReferenceRewriter`) — the same engine that powers `move`, next.
@@ -697,11 +733,21 @@ dmtool -m /tmp/struct2-rn.json field rename /Order/Quantity --to OrderDate >/tmp
 
 ```bash
 dmtool -m /tmp/struct2-rn.json field move /Order/ShipDate --to /Order/ShippingAddress \
-  | jq -c '{outcome, ok, changed}'
+  | jq '{outcome, ok, changed}'
 ```
 
 ```output
-{"outcome":"applied","ok":true,"changed":{"moved":"/Order/ShipDate","to":"/Order/ShippingAddress/ShipDate","rewroteReferences":["/Order/DeliveryNotBeforeOrder"]}}
+{
+  "outcome": "applied",
+  "ok": true,
+  "changed": {
+    "moved": "/Order/ShipDate",
+    "to": "/Order/ShippingAddress/ShipDate",
+    "rewroteReferences": [
+      "/Order/DeliveryNotBeforeOrder"
+    ]
+  }
+}
 ```
 
 The rule's error-entity path and its condition both followed the field — `DifferenceInDays(OrderDate, ShippingAddress/ShipDate)` now — so the model still validates:
@@ -717,12 +763,16 @@ dmtool -m /tmp/struct2-rn.json model check | jq -c '{valid}'
 The move gate refuses before touching anything: a **missing destination** is `RK_NO_SUCH_GROUP` (exit 2, nothing written) — likewise a name collision at the destination (`RK_NAME_EXISTS`) and a group moved into its own subtree (`RK_MOVE_INTO_SELF`):
 
 ```bash
-dmtool -m /tmp/struct2-rn.json field move /Order/Quantity --to /Order/Nope >/tmp/mv-refuse.json 2>&1; echo "(exit $?)"; jq -c '{outcome, code: .diagnostics[0].code, fix: .diagnostics[0].fix}' /tmp/mv-refuse.json
+dmtool -m /tmp/struct2-rn.json field move /Order/Quantity --to /Order/Nope >/tmp/mv-refuse.json 2>&1; echo "(exit $?)"; jq '{outcome, code: .diagnostics[0].code, fix: .diagnostics[0].fix}' /tmp/mv-refuse.json
 ```
 
 ```output
 (exit 2)
-{"outcome":"refused","code":"RK_NO_SUCH_GROUP","fix":"pass --to an existing group's full name-path (see `group read` or `model describe`)"}
+{
+  "outcome": "refused",
+  "code": "RK_NO_SUCH_GROUP",
+  "fix": "pass --to an existing group's full name-path (see `group read` or `model describe`)"
+}
 ```
 
 → `move` relocates the node, rewrites every reference to it (error-entity paths *and* condition operands, absolute or relative), and re-validates — gated, never a silent dangle. A `group move` re-homes the whole subtree the same way.
@@ -742,11 +792,19 @@ ready: order-aggregates in /tmp/struct2-ext
 ```bash
 dmtool -m /tmp/struct2-ext/order.dm.json \
   group extract /Order/BillingAddress --reference billing-address \
-  | jq -c '{outcome, ok, changed: {extracted: .changed.extracted, reference: .changed.reference, mountedAt: .changed.mountedAt}}'
+  | jq '{outcome, ok, changed: {extracted: .changed.extracted, reference: .changed.reference, mountedAt: .changed.mountedAt}}'
 ```
 
 ```output
-{"outcome":"applied","ok":true,"changed":{"extracted":"/Order/BillingAddress","reference":"billing-address","mountedAt":"/Order/BillingAddress"}}
+{
+  "outcome": "applied",
+  "ok": true,
+  "changed": {
+    "extracted": "/Order/BillingAddress",
+    "reference": "billing-address",
+    "mountedAt": "/Order/BillingAddress"
+  }
+}
 ```
 
 → the subtree (and its own rule) moved into `billing-address.dm.json`; the base now **mounts** it at the same path. Two files, the base slimmed to a `modelAlias`:
@@ -775,15 +833,23 @@ The inverse, `include inline`, folds a mounted include's content back into the b
 
 ```bash
 dmtool -m /tmp/struct2-ext/order.dm.json include inline billing-address \
-  | jq -c '{outcome, ok, changed}'
+  | jq '{outcome, ok, changed}'
 ```
 
 ```output
-{"outcome":"applied","ok":true,"changed":{"inlined":"billing-address","reference":"billing-address"}}
+{
+  "outcome": "applied",
+  "ok": true,
+  "changed": {
+    "inlined": "billing-address",
+    "reference": "billing-address"
+  }
+}
 ```
 
 ```bash
-jq -c '[.. | objects | select(has("modelAlias")) | .modelAlias]' /tmp/struct2-ext/order.dm.json && dmtool -m /tmp/struct2-ext/order.dm.json model check | jq -c '{valid}'
+jq -c '[.. | objects | select(has("modelAlias")) | .modelAlias]' /tmp/struct2-ext/order.dm.json \
+  && dmtool -m /tmp/struct2-ext/order.dm.json model check | jq -c '{valid}'
 ```
 
 ```output
@@ -810,11 +876,20 @@ staged sub + lib
 One catch worth knowing: the **included model must cover the host's locales**, or the kernel refuses the merged model. `subscription` declares `en_US` *and* `de_DE`; the committed `catalog` declares only `en_US`. So we first widen the library copy's locales to match the host (a one-line `jq` edit on the `/tmp` copy — never the committed fixture):
 
 ```bash
-jq ".header.locales = [{\"code\":\"en_US\"},{\"code\":\"de_DE\"}]" /tmp/struct2-lib/catalog.dm.json > /tmp/struct2-catalog-bi.json && mv /tmp/struct2-catalog-bi.json /tmp/struct2-lib/catalog.dm.json && jq -c ".header.locales" /tmp/struct2-lib/catalog.dm.json
+jq ".header.locales = [{\"code\":\"en_US\"},{\"code\":\"de_DE\"}]" /tmp/struct2-lib/catalog.dm.json > /tmp/struct2-catalog-bi.json \
+  && mv /tmp/struct2-catalog-bi.json /tmp/struct2-lib/catalog.dm.json \
+  && jq ".header.locales" /tmp/struct2-lib/catalog.dm.json
 ```
 
 ```output
-[{"code":"en_US"},{"code":"de_DE"}]
+[
+  {
+    "code": "en_US"
+  },
+  {
+    "code": "de_DE"
+  }
+]
 ```
 
 Now `include add` resolves `catalog` from `-w/--workspace` and mounts it under `/Subscription` as `Catalog`:
@@ -958,11 +1033,21 @@ dmtool -m /tmp/struct2-cfg.json config modify --decimal-separator ","
 → `changed.decimalSeparator = ","` — the only field that moved. A read-back confirms it persisted:
 
 ```bash
-dmtool -m /tmp/struct2-cfg.json config read | jq -c ".data"
+dmtool -m /tmp/struct2-cfg.json config read | jq ".data"
 ```
 
 ```output
-{"decimalSeparator":",","timeZone":"Europe/Berlin","conditionLanguage":"en_US","fieldRefByShortNameAllowed":true,"supportedCharacters":[],"locales":["en_US","de_DE"]}
+{
+  "decimalSeparator": ",",
+  "timeZone": "Europe/Berlin",
+  "conditionLanguage": "en_US",
+  "fieldRefByShortNameAllowed": true,
+  "supportedCharacters": [],
+  "locales": [
+    "en_US",
+    "de_DE"
+  ]
+}
 ```
 
 → The comma stuck; the other settings are untouched. (`config modify` also takes `--time-zone` and `--condition-language`; at least one of the three is required.) Note `locales: ["en_US", "de_DE"]` — this model is **bilingual**, so a new rule or computation must carry both an `en_US` and a `de_DE` message.
@@ -986,11 +1071,17 @@ dmtool -m /tmp/struct2-cfg.json config read | jq -c ".data.annotations"
 `model rename --to <newId>` changes the model's header `id` — a §6 **safety-gated** refactor. With a workspace (`-w`) it refuses if a sibling **includes** the old id (the cross-model cascade is out of scope); here it's a standalone single-model edit:
 
 ```bash
-dmtool -m /tmp/struct2-cfg.json model rename --to subscription-v2 | jq -c "{outcome, changed}"
+dmtool -m /tmp/struct2-cfg.json model rename --to subscription-v2 | jq "{outcome, changed}"
 ```
 
 ```output
-{"outcome":"applied","changed":{"id":"subscription-v2","from":"subscription"}}
+{
+  "outcome": "applied",
+  "changed": {
+    "id": "subscription-v2",
+    "from": "subscription"
+  }
+}
 ```
 
 → `changed.from`/`changed.id` show the id moved `subscription → subscription-v2`. Run with `-w <workspace>` to arm the cross-model gate that refuses (writing nothing) when another model would be left including a now-missing id.
@@ -1279,23 +1370,50 @@ Changing an *existing* field — adding a constraint, or fixing its label — no
 ```bash
 dmtool model new --id addr --locale en_US --root Address -o /tmp/addr.dm.json >/dev/null
 dmtool -m /tmp/addr.dm.json field add --group /Address --name PostalCode --kind STRING >/dev/null
-printf '%s' '{"group":"/Address","name":"PostalCode","kind":"STRING","string":{"pattern":"[0-9]{5}","patternMessage":"The postal code must be exactly 5 digits."}}' > /tmp/plz.spec.json
-dmtool -m /tmp/addr.dm.json field modify /tmp/plz.spec.json | jq -c '{outcome, changed}'
+cat > /tmp/plz.spec.json <<'EOF'
+{
+  "group": "/Address",
+  "name": "PostalCode",
+  "kind": "STRING",
+  "string": {
+    "pattern": "[0-9]{5}",
+    "patternMessage": "The postal code must be exactly 5 digits."
+  }
+}
+EOF
+dmtool -m /tmp/addr.dm.json field modify /tmp/plz.spec.json | jq '{outcome, changed}'
 
 ```
 
 ```output
-{"outcome":"applied","changed":{"modified":"/Address/PostalCode","kind":"STRING","aspects":["type"]}}
+{
+  "outcome": "applied",
+  "changed": {
+    "modified": "/Address/PostalCode",
+    "kind": "STRING",
+    "aspects": [
+      "type"
+    ]
+  }
+}
 ```
 
 The same verb edits field **metadata** in place — here just the label, with no re-type (so no `kind`). A spec carrying an aspect is never silently ignored; one that would change nothing is refused:
 
 ```bash
 printf '%s' '{"group":"/Address","name":"PostalCode","label":{"en_US":"Postal code"}}' > /tmp/plz.meta.json
-dmtool -m /tmp/addr.dm.json field modify /tmp/plz.meta.json | jq -c '{outcome, changed}'
+dmtool -m /tmp/addr.dm.json field modify /tmp/plz.meta.json | jq '{outcome, changed}'
 
 ```
 
 ```output
-{"outcome":"applied","changed":{"modified":"/Address/PostalCode","aspects":["label"]}}
+{
+  "outcome": "applied",
+  "changed": {
+    "modified": "/Address/PostalCode",
+    "aspects": [
+      "label"
+    ]
+  }
+}
 ```

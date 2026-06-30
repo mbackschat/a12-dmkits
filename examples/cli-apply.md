@@ -281,11 +281,17 @@ dmtool -m /tmp/apply-typo.dm.json apply /tmp/apply-typo-ops.json 2>&1; echo "(ex
 
 ```bash
 printf "%s" '[ {"target":"field","op":"bogus","group":"/Order","name":"X","kind":"NUMBER"} ]' > /tmp/apply-badop-ops.json
-dmtool -m /tmp/apply-typo.dm.json apply /tmp/apply-badop-ops.json 2>&1 | jq -c ".results[0].diagnostics[0] | {code, summary, fix: (.fix | .[0:40] + \"…\")}"; echo "(exit ${PIPESTATUS[0]})"
+dmtool -m /tmp/apply-typo.dm.json apply /tmp/apply-badop-ops.json 2>&1 \
+  | jq ".results[0].diagnostics[0] | {code, summary, fix: (.fix | .[0:40] + \"…\")}"
+echo "(exit ${PIPESTATUS[0]})"
 ```
 
 ```output
-{"code":"RK_UNKNOWN_OP","summary":"apply does not support op 'field bogus'","fix":"supported ops: computation add, computat…"}
+{
+  "code": "RK_UNKNOWN_OP",
+  "summary": "apply does not support op 'field bogus'",
+  "fix": "supported ops: computation add, computat…"
+}
 (exit 1)
 ```
 

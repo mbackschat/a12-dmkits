@@ -7,7 +7,10 @@ A tour of **reading** one A12 model with **dmtool** (JSON-in / JSON-out over the
 Rules don't mean anything without the model they guard. This fixture is an **Order**: a customer and product, a quantity and pricing, shipping/billing addresses, a repeating `Items` line-item group, a `Priority` enum, and the two dates a delivery turns on. `model describe` returns the structure (under `data`); read the relevant fields and their **kinds**.
 
 ```bash
-dmtool -m examples/models/order-ruled.dm.json model describe | jq -c ".data.fields[] | select(.path|test(\"OrderDate|DeliveryDate|/Quantity\$\")) | {path,kind} + (if .scale!=null then {scale:.scale} else {} end)"
+dmtool -m examples/models/order-ruled.dm.json model describe \
+  | jq -c ".data.fields[]
+           | select(.path|test(\"OrderDate|DeliveryDate|/Quantity\$\"))
+           | {path,kind} + (if .scale!=null then {scale:.scale} else {} end)"
 ```
 
 ```output
@@ -232,7 +235,10 @@ dmtool -m examples/models/order-ruled.dm.json rule check --field /Order/Quantity
 `--suggest-error-field` adds the legal error-field picks to `data` — the condition's referenced fields inside its iteration scope. The error field must be one of these (the `MVK_ERROR_FIELD_NOT_REFERENCED` law), so you choose it up front instead of after a reject.
 
 ```bash
-dmtool -m examples/models/order-ruled.dm.json rule check --field /Order/Quantity --condition "[/Order/Quantity] < 1" --code RK_DEMO --suggest-error-field | jq .data
+dmtool -m examples/models/order-ruled.dm.json rule check \
+  --field /Order/Quantity --condition "[/Order/Quantity] < 1" \
+  --code RK_DEMO --suggest-error-field \
+  | jq .data
 ```
 
 ```output
@@ -300,7 +306,9 @@ Where `rule read` / `model read` render conditions, `model usage` answers the **
 
 ```bash
 dmtool -m examples/models/order-ruled.dm.json model usage \
-  | jq '{ referenced: (.data.usage | to_entries | map(select(.value | length > 0)) | from_entries), unreferencedCount: (.data.unreferenced | length) }'
+  | jq '{ referenced: (.data.usage | to_entries
+                       | map(select(.value | length > 0)) | from_entries),
+          unreferencedCount: (.data.unreferenced | length) }'
 ```
 
 ```output

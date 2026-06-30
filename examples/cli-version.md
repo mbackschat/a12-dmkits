@@ -64,25 +64,42 @@ wrote /tmp/dmver-28.0.0.json (older, same major) and /tmp/dmver-99.0.0.json (new
 **Tolerant** — the older same-major model still validates (`valid:true`, exit 0), and the difference is made explicit as an informational `RK_MODEL_VERSION_SKEW`:
 
 ```bash
-dmtool -m /tmp/dmver-28.0.0.json model check | jq -c '{valid, diagnostics: [.diagnostics[] | {severity, code}]}'
+dmtool -m /tmp/dmver-28.0.0.json model check | jq '{valid, diagnostics: [.diagnostics[] | {severity, code}]}'
 
 ```
 
 ```output
-{"valid":true,"diagnostics":[{"severity":"INFO","code":"RK_MODEL_VERSION_SKEW"}]}
+{
+  "valid": true,
+  "diagnostics": [
+    {
+      "severity": "INFO",
+      "code": "RK_MODEL_VERSION_SKEW"
+    }
+  ]
+}
 ```
 
 **Fail-fast** — a newer model the kernel can't load is rejected (`valid:false`, exit 1); rulekit codes the kernel's version-mismatch as `RK_MODEL_VERSION_INCOMPATIBLE` so an agent can branch on it:
 
 ```bash
 dmtool -m /tmp/dmver-99.0.0.json model check > /tmp/dmver-out.json; echo "exit=$?"
-jq -c '{valid, diagnostics: [.diagnostics[] | {severity, code, summary}]}' /tmp/dmver-out.json
+jq '{valid, diagnostics: [.diagnostics[] | {severity, code, summary}]}' /tmp/dmver-out.json
 
 ```
 
 ```output
 exit=1
-{"valid":false,"diagnostics":[{"severity":"ERROR","code":"RK_MODEL_VERSION_INCOMPATIBLE","summary":"Version mismatch: Document model version is 99.0.0 and application version is 28.4.0."}]}
+{
+  "valid": false,
+  "diagnostics": [
+    {
+      "severity": "ERROR",
+      "code": "RK_MODEL_VERSION_INCOMPATIBLE",
+      "summary": "Version mismatch: Document model version is 99.0.0 and application version is 28.4.0."
+    }
+  ]
+}
 ```
 
 **No implicit bump** — editing a loaded model writes its version back unchanged (here `28.0.0`, never bumped to the reference `28.4.0`):
