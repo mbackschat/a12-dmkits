@@ -31,7 +31,7 @@
 # `--kernel` engine needs a JVM (see the project docs).
 set -uo pipefail
 
-VERSION="v0.8.0"
+VERSION="v0.8.1"
 REPO="mbackschat/a12-dmtool-releases"
 # Host-provided dirs differ by agent: Claude Code sets CLAUDE_PLUGIN_*, Codex sets PLUGIN_* — accept both.
 DATA="${CLAUDE_PLUGIN_DATA:-${PLUGIN_DATA:-$HOME/.cache/dmtool-plugin}}"

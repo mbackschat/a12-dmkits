@@ -4,6 +4,23 @@ All notable changes to the **publicly released `dmtool` artifacts** — the nati
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/) plus **A12 Kernel compatibility metadata** (the kernel each release targets is recorded per entry, never folded into the version string).
 
+## [0.8.1] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
+
+A small maintenance + docs release on the 0.8.0 surface — no change to the model operations themselves.
+
+### Added
+
+- **`SCENARIOS.md`** — a catalogue of realistic, multi-turn authoring/validation sessions the CLI is exercised with (the natural-language *asks*, complementing the runnable `examples/` walkthroughs).
+
+### Changed
+
+- The JSON Schema **transcoding report** (`model import-jsonschema` / `model export-jsonschema`, on stderr) now word-wraps its omission/to-do notes at a fixed width, so a long note no longer scrolls off the right edge of a terminal.
+- The bundled `examples/` walkthroughs were tidied for readability — long commands wrapped, nested JSON output pretty-printed.
+
+### Fixed
+
+- The release mirror now ships the real, maintained `examples/README.md` index (a hardcoded copy could previously go stale).
+
 ## [0.8.0] — kernel 30.8.1 (A12 Tools 2025.06-ext5)
 
 Three headline capabilities this release: the **native binary now evaluates document instances** (a from-scratch, kernel-free interpreter powers the runtime verbs, so `model eval` / `rule eval` / `model compute` / `model seed` run in the shipped native image — previously JVM-only); a **model-review** family for understanding and comparing models (`model diff`, `model report`, `model normalize`); and **JSON Schema interop** (`model import-jsonschema` / `model export-jsonschema`).
