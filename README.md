@@ -165,6 +165,7 @@ When an agent has edited a model on your behalf, raw JSON diffs are unreadable. 
 
 ```sh
 dmtool model diff before.dm.json after.dm.json        # two files: base then head
+dmtool -m order.dm.json model diff --since HEAD        # or: vs the model's last git-committed state
 # → { "summary":"2 added, 1 removed, 1 modified (1 high-risk)",
 #     "data": { "changes": [
 #       { "element":"RULE", "id":"/Order/MinTotal", "change":"REMOVED", "risk":"HIGH",

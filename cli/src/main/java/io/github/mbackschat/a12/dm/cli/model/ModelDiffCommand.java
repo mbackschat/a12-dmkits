@@ -12,7 +12,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.mbackschat.a12.dm.adapter.review.ModelDiff;
 import io.github.mbackschat.a12.dm.cli.BaseCommand;
 import io.github.mbackschat.a12.dm.cli.ResultEnvelope;
+import io.github.mbackschat.a12.dm.cli.model.GitBaseline.GitBaselineException;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
@@ -21,35 +23,65 @@ import picocli.CommandLine.Parameters;
  * reported; lists the fields and rules <b>added / removed / modified</b> between base and head, each with the
  * per-aspect {@code deltas} that changed (a rule's condition/severity/code; a field's kind + per-kind config).
  *
- * <p>Unlike most verbs it takes <b>two positional file paths</b> rather than a single {@code -m} model (the
- * pure two-file core; the {@code --since <ref>} git convenience is a follow-up — MODEL-REVIEW-LEDGER). A read
- * op: the payload rides the envelope's {@code data} (shape: {@code model-diff.schema}).
+ * <p>Two input modes: the pure two-file core ({@code <baseFile> <headFile>}), or the {@code --since <ref>}
+ * git convenience ({@code -m <model> model diff --since HEAD}) that diffs the model's current file against its
+ * content at a git ref — the review entrypoint "what changed since HEAD?" (§9c; the engine stays git-free,
+ * only the CLI materializes the baseline). A read op: the payload rides {@code data} (shape: {@code model-diff.schema}).
  */
 @Command(name = "diff", mixinStandardHelpOptions = true,
-        description = "Structural diff of two model files (base then head): the fields and rules added, removed, "
-                + "or modified, with per-aspect deltas (condition/severity/kind/config), in `data`. A pure "
-                + "reformat is never reported (it compares structure, not text). Shape: `model-diff.schema`.")
+        description = "Structural diff of two models: the fields and rules added, removed, or modified, with "
+                + "per-aspect deltas (condition/severity/kind/config), in `data`. A pure reformat is never "
+                + "reported (it compares structure, not text). Pass two files (base then head), or "
+                + "`-m <model> --since <ref>` to diff against a git ref. Shape: `model-diff.schema`.")
 final class ModelDiffCommand extends BaseCommand {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    @Parameters(index = "0", paramLabel = "<baseFile>",
-            description = "the BASE model file — the before-state (e.g. the committed version)")
+    @Parameters(index = "0", arity = "0..1", paramLabel = "<baseFile>",
+            description = "the BASE model file — the before-state (e.g. the committed version); omit with --since")
     String baseFile;
 
-    @Parameters(index = "1", paramLabel = "<headFile>",
-            description = "the HEAD model file — the after-state (e.g. the agent's edited version)")
+    @Parameters(index = "1", arity = "0..1", paramLabel = "<headFile>",
+            description = "the HEAD model file — the after-state (e.g. the agent's edited version); omit with --since")
     String headFile;
+
+    @Option(names = "--since", paramLabel = "<ref>",
+            description = "diff the -m model's current file (HEAD) against its content at this git <ref> "
+                    + "(e.g. HEAD) — BASE is `git show <ref>:<model>`. Requires -m; omit the two file positionals.")
+    String since;
 
     @Override
     public Integer call() {
         String baseJson;
         String headJson;
-        try {
-            baseJson = Files.readString(Path.of(baseFile));
-            headJson = Files.readString(Path.of(headFile));
-        } catch (IOException e) {
-            return fail("cannot read model files: " + e.getMessage());
+        if (since != null) {
+            if (baseFile != null || headFile != null) {
+                return fail("--since diffs the -m model against a git ref; do not also pass <baseFile> <headFile>");
+            }
+            String modelPath = model();
+            if (modelPath == null) {
+                return fail("--since needs -m <model> (the file to diff against its content at the git <ref>)");
+            }
+            try {
+                headJson = Files.readString(Path.of(modelPath));
+            } catch (IOException e) {
+                return fail("cannot read model: " + e.getMessage());
+            }
+            try {
+                baseJson = GitBaseline.contentAt(Path.of(modelPath), since);
+            } catch (GitBaselineException e) {
+                return fail(e.getMessage());
+            }
+        } else {
+            if (baseFile == null || headFile == null) {
+                return fail("pass two model files (<baseFile> <headFile>), or -m <model> --since <ref>");
+            }
+            try {
+                baseJson = Files.readString(Path.of(baseFile));
+                headJson = Files.readString(Path.of(headFile));
+            } catch (IOException e) {
+                return fail("cannot read model files: " + e.getMessage());
+            }
         }
         try {
             ModelDiff diff = ModelDiff.between(baseJson, headJson);

@@ -168,3 +168,7 @@ MEDIUM (11)
 
 → The three deleted rules surface at the top under **HIGH**, the eleven added fields group under **MEDIUM** — the same change-set as the JSON, shaped for a human to triage top-down. `model report --text` likewise renders the glossed rule/computation catalog and the dead-field set as a scannable list. (`--text` is a boundary view; the JSON remains the contract every guard and agent reads.)
 
+### The review entrypoint — `--since <ref>`
+
+The two-file form is the testable core, but the everyday review question is "what did the agent change since the last commit?" In a git repo that's one command — `dmtool -m order.dm.json model diff --since HEAD` — which materializes the BASE from `git show HEAD:order.dm.json` and diffs it against the working file, so you never hand-roll a `git show` into a temp file. (It's the one deliberate git touch; the diff engine itself stays git-free.)
+
